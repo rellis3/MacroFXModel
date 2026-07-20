@@ -571,6 +571,7 @@
   <button class="dark-btn" onclick="saveToJournal()" id="journalBtn" title="Save active pair's levels to Trade Journal" style="border-color:var(--purple-bd);color:var(--purple)"><span>📓</span><span>Journal</span></button>
   <button class="dark-btn" onclick="saveAllPairsToJournal()" id="journalAllBtn" title="Save ALL pairs' levels to Trade Journal in one go" style="border-color:var(--purple-bd);color:var(--purple)"><span>📓</span><span>All Pairs</span></button>
   <button class="dark-btn" onclick="openSiteMap()" title="Site map — all pages with descriptions" style="border-color:#4f7df0;color:#4f7df0"><span>🗺</span><span>Site Map</span></button>
+  <button class="dark-btn" onclick="openApiMap()" title="API map — every backend endpoint, what it does, who calls it" style="border-color:#34d399;color:#34d399"><span>🔌</span><span>API Map</span></button>
   <div class="live-pill"><div class="live-dot"></div>Live</div>
   <span class="upd" id="upd"></span>
 </div>
@@ -2670,6 +2671,35 @@ function _renderBetaPanel(estimates, portfolio, deviation, rebalance, positions,
 .sm-item-name{font-size:12px;font-weight:600;color:#e2e8f0;white-space:nowrap;min-width:160px}
 .sm-item-desc{font-size:11px;color:#64748b;line-height:1.4}
 .sm-item.sm-hidden{display:none}
+
+/* ── API Map Modal ──────────────────────────────────────────────────────── */
+#amOverlay{display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.72);backdrop-filter:blur(3px);align-items:center;justify-content:center}
+#amOverlay.open{display:flex}
+#amModal{background:#0d1117;border:1px solid #1e2a3a;border-radius:14px;width:min(1180px,97vw);max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.7)}
+#amHeader{display:flex;align-items:center;gap:10px;padding:16px 20px 12px;border-bottom:1px solid #1e2a3a;flex-shrink:0}
+#amHeader h2{margin:0;font-size:15px;font-weight:700;color:#e2e8f0;flex:1}
+#amHeader .am-count{font-size:11px;color:#64748b;font-weight:600;white-space:nowrap}
+#amSearch{background:#111827;border:1px solid #1e2a3a;border-radius:7px;color:#e2e8f0;font-size:12px;padding:6px 11px;width:220px;outline:none;font-family:'DM Sans',sans-serif}
+#amSearch:focus{border-color:#34d399}
+#amClose{background:none;border:none;color:#64748b;font-size:18px;cursor:pointer;line-height:1;padding:2px 6px}
+#amClose:hover{color:#e2e8f0}
+#amBody{overflow-y:auto;padding:16px 20px 20px;display:flex;flex-direction:column;gap:22px}
+.am-cat{display:flex;flex-direction:column;gap:12px}
+.am-cat-hd{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:5px 0 7px;border-bottom:1px solid #1e2a3a}
+.am-feat{display:flex;flex-direction:column;gap:1px;margin-bottom:6px}
+.am-feat-hd{font-size:10.5px;font-weight:600;color:#8896ab;padding:3px 6px}
+.am-row{display:grid;grid-template-columns:54px 260px 1fr 240px;gap:10px;align-items:baseline;padding:3px 6px;border-radius:6px;font-size:11.5px}
+.am-row:hover{background:#161b27}
+.am-method{font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:4px;text-align:center;letter-spacing:.03em;white-space:nowrap}
+.am-get{background:#0d3b2e;color:#34d399}
+.am-post{background:#3b2a0d;color:#fbbf24}
+.am-put{background:#0d2b3b;color:#38bdf8}
+.am-delete{background:#3b0d16;color:#f87171}
+.am-path{font-family:'JetBrains Mono',Consolas,monospace;color:#c9d4e3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.am-desc{color:#94a3b8;line-height:1.4}
+.am-consumers{color:#5b7085;font-size:10.5px;line-height:1.4}
+.am-row.am-hidden{display:none}
+@media (max-width:900px){.am-row{grid-template-columns:1fr;gap:2px}#amSearch{width:140px}}
 </style>
 
 <!-- ── Site Map Modal ──────────────────────────────────────────────────── -->
@@ -2820,6 +2850,553 @@ function _renderBetaPanel(estimates, portfolio, deviation, rebalance, positions,
   </div>
 </div>
 
+<!-- ── API Map Modal ───────────────────────────────────────────────────── -->
+<div id="amOverlay" onclick="if(event.target===this)closeApiMap()">
+  <div id="amModal">
+    <div id="amHeader">
+      <h2>🔌 API Map</h2>
+      <span class="am-count">377 endpoints</span>
+      <input id="amSearch" type="search" placeholder="Filter endpoints…" oninput="amFilter(this.value)" autocomplete="off">
+      <button id="amClose" onclick="closeApiMap()">✕</button>
+    </div>
+    <div id="amBody">
+      <div class="am-cat" data-cat="core dashboard &amp; live data">
+        <div class="am-cat-hd" style="color:#10b981">Core Dashboard &amp; Live Data</div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Levels, Regime &amp; Live Forecast</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/monitor/status</span><span class="am-desc">Bot status: level counts, last alert, running state, recent errors</span><span class="am-consumers">doc-only reference on index.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/hmm/regimes</span><span class="am-desc">In-memory HMM regime state for all pairs</span><span class="am-consumers">indexv2.html, js/main.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/levels</span><span class="am-desc">All loaded price levels per pair with stars/signal/tags</span><span class="am-consumers">today.html, indexv2.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/levels/reload</span><span class="am-desc">Full level recompute from OANDA, fires async (~30s)</span><span class="am-consumers">js/main.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/levels/reload-kv</span><span class="am-desc">Re-reads levels from KV into memory, no OANDA hit</span><span class="am-consumers">doc-only reference on index.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast</span><span class="am-desc">Latest computed session vol/range forecast</span><span class="am-consumers">today.html, vol-forecast.html, vol-forecast-v2.html, position-sizer.html, indexv2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/history</span><span class="am-desc">Last 5 computed forecast sessions</span><span class="am-consumers">vol-forecast.html, vol-forecast-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/vol-forecast/refresh</span><span class="am-desc">Force-triggers an async vol-forecast recompute</span><span class="am-consumers">vol-forecast.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/daily-brief</span><span class="am-desc">Forecast + hit rates + HMM regime + live price per instrument</span><span class="am-consumers">today.html, vol-forecast-v2.html, vol-forecast.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/session-stats</span><span class="am-desc">Pre-computed Asia/London/NY session-consumption stats</span><span class="am-consumers">indexv2.html, today.html, vol-forecast.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/session-stats/refresh</span><span class="am-desc">Triggers background recompute of session-consumption stats</span><span class="am-consumers">vol-forecast.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forecast-path/summary</span><span class="am-desc">Live 4h event-aware forecast cone summary per pair, 15-min cached</span><span class="am-consumers">today.html, position-sizer.html, forecast-path.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/position-size</span><span class="am-desc">Vol-based position sizing off a supplied forecast range, with heat cap</span><span class="am-consumers">position-sizer.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">AI Analysis &amp; Briefs</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/analysis</span><span class="am-desc">Sends pair/dashboard snapshot to Claude, returns structured AI analysis</span><span class="am-consumers">js/ai.js, today.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/analysis-historical</span><span class="am-desc">Sends backtest stats to Claude, returns plain-English coaching advice</span><span class="am-consumers">analysis.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/morning-brief</span><span class="am-desc">Cached AI-generated morning macro brief</span><span class="am-consumers">today.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/morning-brief</span><span class="am-desc">Generates + caches a new AI morning macro brief</span><span class="am-consumers">today.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/events</span><span class="am-desc">This week’s ForexFactory economic calendar</span><span class="am-consumers">today.html, js/events.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/brief-auto/config</span><span class="am-desc">Auto-brief scheduler config (enabled pairs, hour)</span><span class="am-consumers">brief-config.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/brief-auto/config</span><span class="am-desc">Saves auto-brief scheduler config to KV</span><span class="am-consumers">brief-config.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/brief-auto/run-now</span><span class="am-desc">Manually triggers the auto-brief job immediately</span><span class="am-consumers">brief-config.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/ai-backtest</span><span class="am-desc">Sends backtest config+results to Claude for verdict/tweak feedback</span><span class="am-consumers">js/backtest.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Cross-Asset Risk</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/futures-quote</span><span class="am-desc">Live CME futures price (or OANDA CFD fallback) for a pair</span><span class="am-consumers">js/oi.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cvol</span><span class="am-desc">EVZ/GVZ implied vol levels + 5y percentiles (FRED)</span><span class="am-consumers">today.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/risk-flags</span><span class="am-desc">Cross-asset risk-flag composite (VIX/credit/JPY/EVZ)</span><span class="am-consumers">today.html</span></div>
+        </div>
+      </div>
+      <div class="am-cat" data-cat="python bots — plans, state &amp; alerts">
+        <div class="am-cat-hd" style="color:#22c55e">Python Bots — Plans, State &amp; Alerts</div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Regime / HMM bots</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/hmm5m</span><span class="am-desc">Live 1m/5m HMM regime data for all pairs</span><span class="am-consumers">js/main.js + Python bot poll</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/hmm5m-v2</span><span class="am-desc">V2 shadow HMM regime data</span><span class="am-consumers">indexv2.html, js/regime-v2.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/hmm1h-v2</span><span class="am-desc">V2 1h HTF regime data for regime_bot_v2.py</span><span class="am-consumers">bot-only</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/hmm30m-v2</span><span class="am-desc">V2 30m MTF regime signal for regime_bot_v7.py</span><span class="am-consumers">bot-only</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/hmm2h-v2</span><span class="am-desc">V2 2h HTF confirmation gate for regime_bot_v7.py</span><span class="am-consumers">bot-only</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/hmm5m-train-status</span><span class="am-desc">Per-pair V2 Baum-Welch training status</span><span class="am-consumers">js/regime-v2.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/hmm5m-train</span><span class="am-desc">Triggers async V2 Baum-Welch HMM training</span><span class="am-consumers">js/regime-v2.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/hmm5m-train-params</span><span class="am-desc">Trained HMM V2 parameter export</span><span class="am-consumers">js/regime-v2.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/regime-v2/tg-test</span><span class="am-desc">Sends sample V2 regime-bot entry alert via Telegram</span><span class="am-consumers">js/bot-config.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/regime-v7/tg-test</span><span class="am-desc">Sends sample V7 regime-bot entry alert via Telegram</span><span class="am-consumers">js/bot-config.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/regime-append</span><span class="am-desc">Bots POST per-cycle regime state/events into rolling KV arrays</span><span class="am-consumers">RegimeV7/V4/V2 bots, bot/regime_bot.py</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/regime-backfill</span><span class="am-desc">Bulk-merges historical regime records/events for one pair into KV</span><span class="am-consumers">scripts/parse_regime_logs.py</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/regime-backfill-trigger</span><span class="am-desc">Async job wrapper: parses regime bot logs, writes to KV</span><span class="am-consumers">regime-viewer.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/regime-backfill-status/:jobId</span><span class="am-desc">Polls the regime-log backfill job</span><span class="am-consumers">regime-viewer.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/regime-history</span><span class="am-desc">Merged R2 + local-KV regime records/events for a pair</span><span class="am-consumers">regime-viewer.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/regime-history-export</span><span class="am-desc">Uploads local regime-history JSON to R2 (local-only tool)</span><span class="am-consumers">internal tool only</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Volatility-bot / Yield-Spread-bot / Range-Line-bot plans</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/volatility-bot/refresh-plan</span><span class="am-desc">Recomputes + writes the volatility-bot’s daily KV plan</span><span class="am-consumers">volatility_bot.py / manual curl</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/volatility-bot/plan</span><span class="am-desc">Returns the volatility-bot’s current KV plan</span><span class="am-consumers">volatility_bot.py poll</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/volatility-bot/rebuild-book</span><span class="am-desc">Chains gap-fill → dataset refresh → book rebuild → plan refresh</span><span class="am-consumers">manual curl / nightly schedule</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/volatility-bot/session-m1/:pair</span><span class="am-desc">Today’s session M1 candles for one pair (chart modal)</span><span class="am-consumers">js/bot-config.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forecast-drift/:pair</span><span class="am-desc">Compares volatility-bot plan lines vs the reference forecaster</span><span class="am-consumers">js/bot-config.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/yield-spread/refresh-plan</span><span class="am-desc">Recomputes + writes the yield-spread bot’s KV plan</span><span class="am-consumers">Python bot / manual curl</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/yield-spread/plan</span><span class="am-desc">Returns the yield-spread bot’s current KV plan</span><span class="am-consumers">Python bot poll</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/range-line-bot/refresh-plan</span><span class="am-desc">Async refresh of per-instrument range-line policy plan into KV</span><span class="am-consumers">doc example only</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/range-line-bot/plan</span><span class="am-desc">Frozen per-instrument fade/follow/skip policy plan from KV</span><span class="am-consumers">doc example only</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/range-line-bot/refresh-confluence</span><span class="am-desc">Async recompute of today’s structural confluence levels into KV</span><span class="am-consumers">range-zones.html (error text only)</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/range-line-bot/confluence</span><span class="am-desc">Today’s computed confluence levels artifact from KV</span><span class="am-consumers">none found</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/range-line-bot/zones</span><span class="am-desc">Joins live bot status, plan and confluence into tradeable zones</span><span class="am-consumers">range-zones.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/range-line-bot/oi</span><span class="am-desc">Saves manually-pasted OI levels for an instrument/date into KV</span><span class="am-consumers">range-zones.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/range-line-bot/oi</span><span class="am-desc">Returns stored OI levels for a date per instrument</span><span class="am-consumers">range-zones.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/range-line-bot/oi/sync</span><span class="am-desc">Pulls OI analyser data into today’s forward-test OI slot</span><span class="am-consumers">range-zones.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/range-line-bot/oi-audit</span><span class="am-desc">Forward-test audit: trade log vs OI levels, expectancy stats</span><span class="am-consumers">range-zones.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oi-history</span><span class="am-desc">Per-pair day-over-day OI deltas/stability</span><span class="am-consumers">today.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/oi-history/snapshot</span><span class="am-desc">Archives today’s OI-store summary into oi_history artifact</span><span class="am-consumers">cron/internal only</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oi-bot/zones</span><span class="am-desc">OI gamma-regime bot’s planned trade zones per instrument</span><span class="am-consumers">doc example only</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/oi-bot/zones/refresh</span><span class="am-desc">Rebuilds the OI-bot’s planned zones from latest OI store</span><span class="am-consumers">doc example only</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/oi-bot/broadcast</span><span class="am-desc">Sends OI-bot’s planned levels + rationale to Telegram</span><span class="am-consumers">js/bot-config.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oi-levels</span><span class="am-desc">Converts OI analyser store into per-instrument confluence levels</span><span class="am-consumers">none found</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Levels-v2 / Telegram-v2 (learned levels bot)</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/levels-v2/learn</span><span class="am-desc">Offline-learns + freezes per-cell expectancy policy from M1</span><span class="am-consumers">telegram-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/levels-v2/learn-status</span><span class="am-desc">Persistent (KV-backed) learn progress/status, survives restarts</span><span class="am-consumers">telegram-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/levels-v2/status/:jobId</span><span class="am-desc">Polls learn job status (in-memory jobId variant)</span><span class="am-consumers">telegram-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/levels-v2/refresh</span><span class="am-desc">Applies frozen v2 policy to live OANDA bars, writes live entries</span><span class="am-consumers">telegram-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/levels-v2/entries</span><span class="am-desc">Live v2 entries + policy metadata/bands</span><span class="am-consumers">telegram-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/levels-v2/ledger</span><span class="am-desc">Realized-vs-policy ledger stats, per-cell refit candidates</span><span class="am-consumers">telegram-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/levels-v2/alert-config</span><span class="am-desc">v2 zone-alert config + Telegram-configured status</span><span class="am-consumers">telegram-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/levels-v2/alert-config</span><span class="am-desc">Saves v2 zone-alert config (grade/cooldown/proximity/pairs)</span><span class="am-consumers">telegram-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/levels-v2/alert-diag</span><span class="am-desc">Last alert-loop diagnostic snapshot (why 0 alerts fired)</span><span class="am-consumers">telegram-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/levels-v2/telegram-config</span><span class="am-desc">Whether the v2-dedicated Telegram bot is configured</span><span class="am-consumers">telegram-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/levels-v2/telegram-config</span><span class="am-desc">Saves v2-dedicated Telegram bot token/chatId</span><span class="am-consumers">telegram-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-delete">DELETE</span><span class="am-path">/api/levels-v2/telegram-config</span><span class="am-desc">Removes v2 Telegram bot; alerts revert to shared v1 bot</span><span class="am-consumers">telegram-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/levels-v2/telegram-test</span><span class="am-desc">Sends a test Telegram message via the active v2 bot</span><span class="am-consumers">telegram-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/levels-v2/confluence-test</span><span class="am-desc">Tags M1 touches by level-source confluence count, measures edge per bucket</span><span class="am-consumers">telegram-v2.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Bot state, trade history &amp; runtime status</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/state</span><span class="am-desc">Aggregates bot_config + regime snapshot for Python bot</span><span class="am-consumers">bot/utils/state_reader.py, gold-zones.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/refresh</span><span class="am-desc">Touches timestamp on ai_entries_* KV keys so bot staleness gate passes</span><span class="am-consumers">bot/utils/state_reader.py</span></div>
+          <div class="am-row"><span class="am-method am-put">PUT</span><span class="am-path">/api/bot/status</span><span class="am-desc">Python bot reports runtime status back to dashboard (5-min TTL)</span><span class="am-consumers">bot/utils/state_reader.py</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/trade-history</span><span class="am-desc">Closed trade history across all bots for a date range</span><span class="am-consumers">bot-config.html, analysis/trade_analyzer.py</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/trade-history/backfill</span><span class="am-desc">One-off backfill of externally-supplied closed trades</span><span class="am-consumers">backtestSystem/backfill_trade_history.py</span></div>
+        </div>
+      </div>
+      <div class="am-cat" data-cat="vol-forecast platform — archive, alerts &amp; exports">
+        <div class="am-cat-hd" style="color:#4f7df0">Vol-Forecast Platform — Archive, Alerts &amp; Exports</div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Archive, compare, audit, exports</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/export</span><span class="am-desc">Plain-text export of the latest forecast</span><span class="am-consumers">doc link</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/zones</span><span class="am-desc">Text export of confluence zones (Fib/pivots/levels)</span><span class="am-consumers">vol-forecast.html, vol-forecast-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/live</span><span class="am-desc">Intraday live session status vs forecast</span><span class="am-consumers">indexv2.html, vol-forecast.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/session</span><span class="am-desc">Live/historical session status alias for v2 dashboard</span><span class="am-consumers">today.html, vol-forecast-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/session-stats</span><span class="am-desc">Pre-computed session consumption stats</span><span class="am-consumers">vol-forecast-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/vol-forecast/session-stats/compute</span><span class="am-desc">Triggers background recompute of session consumption stats</span><span class="am-consumers">vol-forecast-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/live/export</span><span class="am-desc">Plain-text export of the live session status</span><span class="am-consumers">doc link</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/archive</span><span class="am-desc">Lists all stored daily forecast archive entries</span><span class="am-consumers">vol-forecast.html, vol-forecast-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/archive/:date</span><span class="am-desc">Stored daily forecast for a given date</span><span class="am-consumers">vol-forecast.html, vol-forecast-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/by-date</span><span class="am-desc">Query-param alias to fetch a stored forecast by date</span><span class="am-consumers">vol-forecast.html, vol-forecast-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/archive/:date/export</span><span class="am-desc">Plain-text export of a past date’s stored forecast</span><span class="am-consumers">doc text only</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/archive/bulk-export</span><span class="am-desc">Plain-text export of every stored forecast concatenated</span><span class="am-consumers">none found</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/vol-forecast/reference/:date</span><span class="am-desc">Saves a pasted external (COG) reference forecast for a date</span><span class="am-consumers">vol-forecast.html, vol-forecast-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/reference/:date</span><span class="am-desc">Saved external reference forecast for a date</span><span class="am-consumers">vol-forecast.html, vol-forecast-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/compare/:date</span><span class="am-desc">Side-by-side our forecast vs saved reference + shadow estimators</span><span class="am-consumers">vol-forecast.html, vol-forecast-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/audit/:date?</span><span class="am-desc">Saved end-of-day session audit snapshot for a date</span><span class="am-consumers">none found</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/extended/export</span><span class="am-desc">Extended text export: vol percentile, O-H/O-L legs, weekly/monthly ranges</span><span class="am-consumers">doc link</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/weekly</span><span class="am-desc">Week-to-date range consumption + directional bias vs forecast</span><span class="am-consumers">today.html, vol-forecast.html, vol-forecast-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/weekly/export</span><span class="am-desc">Plain-text export of the weekly range tracker status</span><span class="am-consumers">none found</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/levels-history</span><span class="am-desc">Per-instrument historical hit rates + median reach time per level</span><span class="am-consumers">none found</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/intraday-profile</span><span class="am-desc">Per-instrument hourly volatility profile</span><span class="am-consumers">vol-forecast.html, vol-forecast-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/archive/range</span><span class="am-desc">Archived per-day forecast band %s for a pair/date range</span><span class="am-consumers">forecast-replay.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/backtest-range</span><span class="am-desc">Walk-forward regenerates each day’s forecast from D1 history</span><span class="am-consumers">forecast-replay.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Event impact &amp; hit rates</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/event-impact</span><span class="am-desc">Stored event-vs-range-expansion study (FOMC/NFP/CPI)</span><span class="am-consumers">vol-forecast.html, vol-forecast-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/vol-forecast/event-impact/refresh</span><span class="am-desc">Triggers background recompute of event vol-impact study</span><span class="am-consumers">vol-forecast.html, vol-forecast-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/hit-rates</span><span class="am-desc">Stored per-level historical hit-rate/reach-time results</span><span class="am-consumers">vol-forecast.html, vol-forecast-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/hit-rates/export.txt</span><span class="am-desc">Downloadable plain-text daily hit-rate log</span><span class="am-consumers">vol-forecast.html, vol-forecast-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/vol-forecast/hit-rates/compute</span><span class="am-desc">Triggers background backfill computation of level hit rates</span><span class="am-consumers">vol-forecast.html, vol-forecast-v2.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Level-proximity Telegram alerts</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/level-alerts/config</span><span class="am-desc">Level-proximity alert config + dedicated-bot status</span><span class="am-consumers">vol-forecast-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/vol-forecast/level-alerts/config</span><span class="am-desc">Saves level-proximity alert config</span><span class="am-consumers">vol-forecast-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/level-alerts/telegram-config</span><span class="am-desc">Whether dedicated vol-level-alert Telegram bot is configured</span><span class="am-consumers">vol-forecast-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/vol-forecast/level-alerts/telegram-config</span><span class="am-desc">Saves dedicated vol-level-alert Telegram bot token/chatId</span><span class="am-consumers">vol-forecast-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-delete">DELETE</span><span class="am-path">/api/vol-forecast/level-alerts/telegram-config</span><span class="am-desc">Removes dedicated vol-level-alert Telegram bot credentials</span><span class="am-consumers">vol-forecast-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/vol-forecast/level-alerts/test</span><span class="am-desc">Sends test message via dedicated vol-level-alert bot</span><span class="am-consumers">vol-forecast-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/vol-forecast/level-alerts/scan</span><span class="am-desc">Manually triggers one level-proximity alert scan cycle</span><span class="am-consumers">vol-forecast-v2.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Index vol estimators</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/rv-har</span><span class="am-desc">Realized-vol HAR σ (5-min path) per index, cached daily</span><span class="am-consumers">none found</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/cog-hv</span><span class="am-desc">Close-to-close HV σ reproducing COG’s method per index</span><span class="am-consumers">vol-forecast-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast/cog-window-review</span><span class="am-desc">Compares cc-HV lookback windows vs stored COG vol</span><span class="am-consumers">vol-forecast-v2.html</span></div>
+        </div>
+      </div>
+      <div class="am-cat" data-cat="vol-level research &amp; falsification harnesses">
+        <div class="am-cat-hd" style="color:#e879f9">Vol-Level Research &amp; Falsification Harnesses</div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Estimator A/B &amp; forecast-quality research</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast-research</span><span class="am-desc">Latest stored forecast-quality research (skill, bias, recalibration)</span><span class="am-consumers">vol-research-book.html, vol-forecast-v2.html, vol-forecast-research.html, vol-forecast.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/vol-forecast-research/run</span><span class="am-desc">Async walk-forward evaluation of the forecast itself per instrument</span><span class="am-consumers">vol-forecast-research.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast-research/status/:jobId</span><span class="am-desc">Polls the vol-forecast-research job</span><span class="am-consumers">vol-forecast-research.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/estimator-ab</span><span class="am-desc">Latest stored Yang-Zhang vs Realized-Variance+HAR A/B rankings</span><span class="am-consumers">vol-research-book.html, estimator-ab.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/estimator-ab/run</span><span class="am-desc">Runs HAR-vs-YZ σ-estimator A/B per pair</span><span class="am-consumers">estimator-ab.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/estimator-ab/status/:jobId</span><span class="am-desc">Polls estimator-ab run</span><span class="am-consumers">estimator-ab.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/vol-horse-race/run</span><span class="am-desc">Races 8 σ-forecasters vs next-day realized vol (QLIKE/MZ), OOS</span><span class="am-consumers">vol-horse-race.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-horse-race/status/:jobId</span><span class="am-desc">Polls vol-horse-race job</span><span class="am-consumers">vol-horse-race.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">COG comparison / reverse-engineering</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cog-level-poc</span><span class="am-desc">Reversion at COG’s forecast levels vs ours on matched days</span><span class="am-consumers">cog-level-poc.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cog-reverse-engineer</span><span class="am-desc">Infers COG’s vol estimator/daily anchor from his published vol</span><span class="am-consumers">cog-reverse-engineer.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/cog-fade/run</span><span class="am-desc">Fades COG’s reproduced median/75th σ line, costed IS/OOS</span><span class="am-consumers">cog-fade.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cog-fade/status/:jobId</span><span class="am-desc">Polls cog-fade job</span><span class="am-consumers">cog-fade.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Reversal / reversion / exhaustion studies</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/reversal-study/run</span><span class="am-desc">Extracts intraday reversal swings vs London-open/running-extreme</span><span class="am-consumers">reversal-study.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/reversal-study/status/:jobId</span><span class="am-desc">Polls reversal-study job</span><span class="am-consumers">reversal-study.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/reversal-fade/run</span><span class="am-desc">Fades k×median reversal (IS-fit k) vs plain median, costed OOS</span><span class="am-consumers">reversal-fade.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/reversal-fade/status/:jobId</span><span class="am-desc">Polls reversal-fade job</span><span class="am-consumers">reversal-fade.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/forecast-accuracy/run</span><span class="am-desc">Range-magnitude hit/exceed accuracy + fade panel</span><span class="am-consumers">forecast-accuracy.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forecast-accuracy/status/:jobId</span><span class="am-desc">Polls forecast-accuracy job</span><span class="am-consumers">forecast-accuracy.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/reversion-proof/run</span><span class="am-desc">Per-day transparent reversion-vs-line numbers for one pair</span><span class="am-consumers">reversion-proof.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/reversion-proof/status/:jobId</span><span class="am-desc">Polls reversion-proof job</span><span class="am-consumers">reversion-proof.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/reversion-proof/day</span><span class="am-desc">One London day’s M1 candles to plot the line/price path</span><span class="am-consumers">reversion-proof.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/exhaustion-forecast/run</span><span class="am-desc">Fade-back line (k_fade×σ) + range-budget-gated fade, IS/OOS</span><span class="am-consumers">exhaustion-forecast.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/exhaustion-forecast/status/:jobId</span><span class="am-desc">Polls exhaustion-forecast job</span><span class="am-consumers">exhaustion-forecast.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">News, WaveTrend-confirmed &amp; pooled fades</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/news-exhaustion/run</span><span class="am-desc">Buckets sessions by news impact, tests fade/follow expectancy</span><span class="am-consumers">news-exhaustion.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/news-exhaustion/status/:jobId</span><span class="am-desc">Polls news-exhaustion job</span><span class="am-consumers">news-exhaustion.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/vumanchu-fade/run</span><span class="am-desc">Fades median/75th only when WaveTrend confirms exhaustion vs blind</span><span class="am-consumers">vumanchu-fade.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vumanchu-fade/status/:jobId</span><span class="am-desc">Polls vumanchu-fade job</span><span class="am-consumers">vumanchu-fade.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/forecast-style-fade/run</span><span class="am-desc">Ranks which forecaster’s lines (6 forecasters × 4 line types) fade best</span><span class="am-consumers">forecast-style-fade.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forecast-style-fade/status/:jobId</span><span class="am-desc">Polls forecast-style-fade job</span><span class="am-consumers">forecast-style-fade.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/pooled-fade/run</span><span class="am-desc">Full VuManChu-fade method on 1-min bars, pooled equity curve, cost ×1/2/3</span><span class="am-consumers">pooled-fade.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/pooled-fade/status/:jobId</span><span class="am-desc">Polls pooled-fade job</span><span class="am-consumers">pooled-fade.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/pooled-fade/volcompare</span><span class="am-desc">A/Bs pooled fade under platform σ vs HAR σ (indices+gold)</span><span class="am-consumers">sigma-fade-ab.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/pooled-fade/volcompare/status/:jobId</span><span class="am-desc">Polls pooled-fade volcompare job</span><span class="am-consumers">sigma-fade-ab.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/fade-inspect/run</span><span class="am-desc">Inspects one session: bands, candle path, engine’s read of every level touch</span><span class="am-consumers">fade-viewer.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/fade-inspect/status/:jobId</span><span class="am-desc">Polls fade-inspect job</span><span class="am-consumers">fade-viewer.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/forward-track/refresh</span><span class="am-desc">Scans newly completed sessions, appends confirmed fade signals to forward KV log</span><span class="am-consumers">forward-track.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forward-track/refresh/status/:jobId</span><span class="am-desc">Polls forward-track refresh job</span><span class="am-consumers">forward-track.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forward-track</span><span class="am-desc">Pooled forward-tracking stats split at tracking-start vs pre-tracking</span><span class="am-consumers">forward-track.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Fill realism &amp; honest policy</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/fill-realism/run</span><span class="am-desc">Projected-band fade at 1/15/60-min bar ladder, tests fill-artifact risk</span><span class="am-consumers">fill-realism.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/fill-realism/status/:jobId</span><span class="am-desc">Polls fill-realism job</span><span class="am-consumers">fill-realism.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/honest-policy/run</span><span class="am-desc">Reproduces COG’s cell-selection + multi-pair portfolio, honest 1-min fills</span><span class="am-consumers">honest-policy.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/honest-policy/status/:jobId</span><span class="am-desc">Polls honest-policy job</span><span class="am-consumers">honest-policy.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Intraday / cross-pair / forecast-path research</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/intraday-research</span><span class="am-desc">Latest persisted intraday-research (expansion/touch stats) file</span><span class="am-consumers">today.html, vol-research-book.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/intraday-research/run</span><span class="am-desc">Runs expansion-curve + level-touch/excursion research, all horizons</span><span class="am-consumers">vol-research-book.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/intraday-research/status/:jobId</span><span class="am-desc">Polls intraday-research job</span><span class="am-consumers">vol-research-book.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cross-pair-research</span><span class="am-desc">Synthesizes cross-pair consistency/trust-tiers from persisted research JSON</span><span class="am-consumers">cross-pair-research.html, vol-research-book.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forecast-path/reach</span><span class="am-desc">Calibrated probability price touches a target within a window (Monte-Carlo)</span><span class="am-consumers">forecast-path.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forecast-path/iv</span><span class="am-desc">Daily implied-vol history (FRED) for the cone’s width-conditioner A/B</span><span class="am-consumers">forecast-path.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/calendar-events</span><span class="am-desc">Calendar events (CSV + live top-up) filtered by date/pair/impact</span><span class="am-consumers">forecast-path.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/weekly-vol-backtest/d1/:pair</span><span class="am-desc">OANDA D1 candles for a pair/date-range (cone chart viewer)</span><span class="am-consumers">forecast-path.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/weekly-vol-backtest/m15/:pair</span><span class="am-desc">Paginated OANDA M15 candles for a pair/date-range</span><span class="am-consumers">forecast-path.html, weekly-vol-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/weekly-vol-backtest/m5/:pair</span><span class="am-desc">Paginated OANDA M5 candles for a pair/date-range</span><span class="am-consumers">forecast-path.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Credit lead-lag study</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/credit-leadlag/run</span><span class="am-desc">Credit-spread-vs-realized-vol lead-lag study</span><span class="am-consumers">credit-leadlag.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/credit-leadlag/targets</span><span class="am-desc">Allowlist of credit-leadlag study target instruments</span><span class="am-consumers">credit-leadlag.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/credit-leadlag/status/:jobId</span><span class="am-desc">Polls the credit-leadlag study job</span><span class="am-consumers">credit-leadlag.html</span></div>
+        </div>
+      </div>
+      <div class="am-cat" data-cat="fx range backtest engines">
+        <div class="am-cat-hd" style="color:#8b5cf6">FX Range Backtest Engines</div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Vol-Backtest core (v1) &amp; diagnostics</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-backtest</span><span class="am-desc">Full stats (Sharpe, equity curves, by regime/dow/session) for latest backtest</span><span class="am-consumers">vol-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/decision-audit</span><span class="am-desc">Browser-written rolling decision-engine proximity/gate audit log</span><span class="am-consumers">backtest-viewer.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-backtest/trades</span><span class="am-desc">Every filled trade (cached) for the Backtest Viewer</span><span class="am-consumers">backtest-viewer.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/vol-backtest/run</span><span class="am-desc">Async daily vol-range backtest job with strategy/SL/regime options</span><span class="am-consumers">vol-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-backtest/status/:jobId</span><span class="am-desc">Polls vol-backtest job</span><span class="am-consumers">vol-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/vol-backtest/level-analysis</span><span class="am-desc">Job-queued level-hit analysis across instruments</span><span class="am-consumers">vol-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-backtest/level-analysis/status/:jobId</span><span class="am-desc">Polls level-analysis job</span><span class="am-consumers">vol-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-backtest/m1-status</span><span class="am-desc">How many M1 parquet pairs are cached locally + Drive IDs</span><span class="am-consumers">none found</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-backtest/diagnose</span><span class="am-desc">Env vars, R2 connectivity and OANDA connectivity diagnostic</span><span class="am-consumers">forecaster-backtest.html, regime-backtest.html (linked)</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-backtest/candles/:pair</span><span class="am-desc">M1 candles for a pair/date range (chart rendering)</span><span class="am-consumers">forecaster-backtest.html, gold-zones.html, hedge-backtest.html, backtest-viewer.html, asia-range-backtest.html, range-fib-backtest.html, regime-viewer.html, regime-backtest.html, vol-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/version</span><span class="am-desc">Deployed version tag, deploy timestamp, R2-configured flag</span><span class="am-consumers">none found</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Honest-Forecast / VWAP / Trend-EMA A/B / Rank-IC / v2 / Bench / Strategy Lab</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/honest-forecast/run</span><span class="am-desc">Re-tests the forecast under honest fills/costs/IS-OOS split</span><span class="am-consumers">honest-forecast-harness.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/honest-forecast/status/:jobId</span><span class="am-desc">Polls honest-forecast job</span><span class="am-consumers">honest-forecast-harness.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/vwap-reversion/run</span><span class="am-desc">Tests VWAP fade/bounce/follow modes on real M1, IS/OOS</span><span class="am-consumers">vwap-reversion.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vwap-reversion/status/:jobId</span><span class="am-desc">Polls vwap-reversion job</span><span class="am-consumers">vwap-reversion.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/trend-ema-ab/run</span><span class="am-desc">A/B of EMA-crossover vs momentum signal in the trend engine</span><span class="am-consumers">trend-ema-ab.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/trend-ema-ab/status/:jobId</span><span class="am-desc">Polls trend-ema-ab job</span><span class="am-consumers">trend-ema-ab.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/rank-ic/run</span><span class="am-desc">Spearman rank-IC test of day-type score vs forward returns</span><span class="am-consumers">rank-ic.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/rank-ic/status/:jobId</span><span class="am-desc">Polls rank-ic job</span><span class="am-consumers">rank-ic.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/rank-ic-live/run</span><span class="am-desc">Rank-IC test of live entry-grade scores vs realized trade pnl</span><span class="am-consumers">rank-ic.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/rank-ic-live/status/:jobId</span><span class="am-desc">Polls rank-ic-live job</span><span class="am-consumers">rank-ic.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/vol-forecast-bench/run</span><span class="am-desc">OOS scorecard comparing σ estimators (EWMA/HV/YZ/GARCH/HAR-RV)</span><span class="am-consumers">vol-forecast-bench.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-forecast-bench/status/:jobId</span><span class="am-desc">Polls vol-forecast-bench job</span><span class="am-consumers">vol-forecast-bench.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/vol-backtest-v2/run</span><span class="am-desc">Horizon-agnostic backtest of adaptive day-type selector vs fixed legs</span><span class="am-consumers">vol-backtest-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-backtest-v2/status/:jobId</span><span class="am-desc">Polls vol-backtest-v2 job</span><span class="am-consumers">vol-backtest-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/strategy-lab/run</span><span class="am-desc">Runs the 12-strategy gauntlet + benchmark on chosen universe</span><span class="am-consumers">strategy-lab.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/strategy-lab/status/:jobId</span><span class="am-desc">Polls strategy-lab job</span><span class="am-consumers">strategy-lab.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/strategy-lab/specs</span><span class="am-desc">Catalogue of gauntlet strategy specs and defaults</span><span class="am-consumers">strategy-lab.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Weekly Vol Backtest</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/weekly-vol-backtest</span><span class="am-desc">Full stats (by instrument/level/regime/velocity/fill-day) for latest weekly backtest</span><span class="am-consumers">weekly-vol-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/weekly-vol-backtest/run</span><span class="am-desc">Async weekly-horizon backtest job with strategy/exit/filter options</span><span class="am-consumers">weekly-vol-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/weekly-vol-backtest/status/:jobId</span><span class="am-desc">Polls weekly-vol-backtest job</span><span class="am-consumers">weekly-vol-backtest.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Asia-Range / Range-Fib / Range-Line / Range-Level-Edge / Pivot-Spike</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/asia-range-backtest/run</span><span class="am-desc">Asia/Monday-range Fibonacci confluence backtest</span><span class="am-consumers">asia-range-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/asia-range-backtest/status/:jobId</span><span class="am-desc">Polls asia-range-backtest job</span><span class="am-consumers">asia-range-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/asia-range-backtest/trades</span><span class="am-desc">Latest persisted Asia-range backtest trade list</span><span class="am-consumers">asia-range-backtest.html, asia-range-analysis.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/range-fib/meta</span><span class="am-desc">Supported instruments + fib-level list for the stripped range-fib backtest</span><span class="am-consumers">range-fib-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/range-fib/run</span><span class="am-desc">Bare range-extension backtest (no confluence/indicators) for one pair</span><span class="am-consumers">range-fib-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/range-line/run</span><span class="am-desc">Learns fade/follow/skip per (line×approach) cell, triple-barrier exit</span><span class="am-consumers">range-line-strategy.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/range-line/status/:jobId</span><span class="am-desc">Polls range-line job</span><span class="am-consumers">range-line-strategy.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/range-level-edge/defaults</span><span class="am-desc">Range-level-edge backtest default params + pair list</span><span class="am-consumers">range-level-edge.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/range-level-edge/run</span><span class="am-desc">Tests standalone edge of 5m range levels vs placebo</span><span class="am-consumers">range-level-edge.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/range-level-edge/status/:jobId</span><span class="am-desc">Polls range-level-edge job</span><span class="am-consumers">range-level-edge.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/pivot-spike/run</span><span class="am-desc">Pivot-spike touch/SL backtest with IS/OOS split</span><span class="am-consumers">pivot-spike-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/pivot-spike/status/:jobId</span><span class="am-desc">Polls pivot-spike job</span><span class="am-consumers">pivot-spike-backtest.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Z-Score &amp; Macro-Direction backtests</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/zscore-backtest/run</span><span class="am-desc">Backtests USDJPY/EURUSD mean-reversion into Asia range on yield-spread z-score</span><span class="am-consumers">zscore-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/zscore-backtest/status/:jobId</span><span class="am-desc">Polls z-score v1 backtest job</span><span class="am-consumers">zscore-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/zscore-backtest</span><span class="am-desc">Latest saved z-score backtest per-pair/combined results</span><span class="am-consumers">zscore-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/zscore-backtest/trades</span><span class="am-desc">Trade list from latest z-score backtest results file</span><span class="am-consumers">backtest-viewer.html, zscore-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/zscore-backtest/candles/:pair</span><span class="am-desc">M1 candles for a pair/date range (chart rendering)</span><span class="am-consumers">backtest-viewer.html, zscore-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/zscore-backtest/diagnose</span><span class="am-desc">FRED/R2 key presence + which pairs have cached M1 data</span><span class="am-consumers">zscore-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/zscore-backtest/pairs</span><span class="am-desc">Configured z-score pairs with labels/default thresholds</span><span class="am-consumers">zscore-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/zscore-v2/defaults</span><span class="am-desc">Z-score v2 default backtest params + pair list</span><span class="am-consumers">zscore-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/zscore-v2/run</span><span class="am-desc">A/B v1 (hard z-gate) vs v2 (confidence-scored) backtest</span><span class="am-consumers">zscore-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/zscore-v2/status/:jobId</span><span class="am-desc">Polls z-score v2 A/B job</span><span class="am-consumers">zscore-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/macro-direction/defaults</span><span class="am-desc">Macro-direction backtest default params + pair list</span><span class="am-consumers">macro-direction.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/macro-direction/run</span><span class="am-desc">Tests whether macro direction call predicts FX drift</span><span class="am-consumers">macro-direction.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/macro-direction/status/:jobId</span><span class="am-desc">Polls macro-direction job</span><span class="am-consumers">macro-direction.html</span></div>
+        </div>
+      </div>
+      <div class="am-cat" data-cat="nasdaq / equity backtests">
+        <div class="am-cat-hd" style="color:#06b6d4">NASDAQ / Equity Backtests</div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Macro-Equity / VIX Vol-Carry</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/macro-equity-backtest/trades</span><span class="am-desc">Stores uploaded macro-equity backtest trades in memory</span><span class="am-consumers">populated by macro_equity_backtest.py</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/macro-equity-backtest/trades</span><span class="am-desc">Returns stored macro-equity backtest trades</span><span class="am-consumers">none found</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/macro-equity-backtest/results</span><span class="am-desc">Stores macro-equity backtest results summary</span><span class="am-consumers">populated by macro_equity_backtest.py</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/macro-equity-backtest/results</span><span class="am-desc">Returns stored macro-equity backtest results summary</span><span class="am-consumers">none found</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/macro-equity-backtest/run</span><span class="am-desc">Runs the JS macro-equity engine as an async job</span><span class="am-consumers">macro-equity-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/macro-equity-backtest/status/:jobId</span><span class="am-desc">Polls macro-equity backtest job</span><span class="am-consumers">macro-equity-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/vix-vol-carry-backtest/trades</span><span class="am-desc">Stores uploaded VIX vol-carry backtest trades</span><span class="am-consumers">populated by vix_vol_carry_backtest.py</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vix-vol-carry-backtest/trades</span><span class="am-desc">Returns stored VIX vol-carry backtest trades</span><span class="am-consumers">vix-vol-carry-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/vix-vol-carry-backtest/results</span><span class="am-desc">Stores VIX vol-carry backtest results summary</span><span class="am-consumers">populated by python script</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vix-vol-carry-backtest/results</span><span class="am-desc">Returns stored VIX vol-carry backtest results</span><span class="am-consumers">vix-vol-carry-backtest.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Global Liquidity backtests</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/global-liquidity/backtest/run</span><span class="am-desc">Runs the global-liquidity FX backtest as an async job</span><span class="am-consumers">global-liquidity.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/global-liquidity/backtest/status/:jobId</span><span class="am-desc">Polls global-liquidity backtest job</span><span class="am-consumers">global-liquidity.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/global-liquidity/nq-backtest/run</span><span class="am-desc">Runs the global-liquidity-vs-NQ timing test as an async job</span><span class="am-consumers">global-liquidity.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/global-liquidity/nq-backtest/status/:jobId</span><span class="am-desc">Polls global-liquidity NQ backtest job</span><span class="am-consumers">global-liquidity.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">NQ-QMR</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/nq-qmr/backtest</span><span class="am-desc">Runs the NQ-QMR H1 backtest for a chosen instrument/config</span><span class="am-consumers">nq-qmr-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/nq-qmr/m5-candles</span><span class="am-desc">NAS100 M5 candles for one date (trade replay)</span><span class="am-consumers">nq-qmr-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/nq-qmr/optimize</span><span class="am-desc">Grid-searches NQ-QMR parameters, returns top-5 configs</span><span class="am-consumers">nq-qmr-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/nq-qmr/walkforward-retrain</span><span class="am-desc">Walk-forward IS/OOS retrain of NQ-QMR parameters</span><span class="am-consumers">nq-qmr-backtest.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">NASDAQ Liquidity Continuation / COG Threshold / COG V2</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/nasdaq-liquidity/run</span><span class="am-desc">4-gate NASDAQ liquidity-continuation backtest + reports</span><span class="am-consumers">nasdaq-liquidity-continuation.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/nasdaq-liquidity/config</span><span class="am-desc">Whether FRED_KEY is configured (real-data eligibility)</span><span class="am-consumers">nasdaq-liquidity-continuation.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/nasdaq-liquidity/status/:jobId</span><span class="am-desc">Polls NASDAQ liquidity job</span><span class="am-consumers">nasdaq-liquidity-continuation.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/nasdaq-liquidity/results</span><span class="am-desc">Latest saved NASDAQ liquidity backtest results</span><span class="am-consumers">nasdaq-liquidity-continuation.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/cog-threshold/run</span><span class="am-desc">4-gate COG threshold backtest (daily or event engine)</span><span class="am-consumers">nasdaq-threshold-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cog-threshold/status/:jobId</span><span class="am-desc">Polls COG threshold job</span><span class="am-consumers">nasdaq-threshold-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cog-threshold/results</span><span class="am-desc">Latest saved COG threshold backtest results</span><span class="am-consumers">none found</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cog-threshold/config</span><span class="am-desc">Gate/exit/execution config/thresholds the UI renders</span><span class="am-consumers">nasdaq-threshold-backtest.html, nasdaq-threshold-engine.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cog-threshold/live</span><span class="am-desc">Live synthetic-dataset snapshot: gate states + open trade</span><span class="am-consumers">nasdaq-threshold-engine.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/cog-v2/run</span><span class="am-desc">COG V2 persistent-state-machine backtest on synthetic data</span><span class="am-consumers">cog-v2-engine.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cog-v2/status/:jobId</span><span class="am-desc">Polls COG V2 job</span><span class="am-consumers">cog-v2-engine.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cog-v2/results</span><span class="am-desc">Latest saved COG V2 backtest results</span><span class="am-consumers">none found</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/cog-v2/run-historical</span><span class="am-desc">COG V2 backtest on real OANDA M5 + macro data</span><span class="am-consumers">cog-v2-engine.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cog-v2/config</span><span class="am-desc">Setup/risk/trigger/confidence config the V2 UI renders</span><span class="am-consumers">cog-v2-engine.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cog-v2/live</span><span class="am-desc">Live synthetic-dataset snapshot: setup/risk/trigger state + open trade</span><span class="am-consumers">cog-v2-engine.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Liquidity gate &amp; diversification</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/liquidity-gate/backtest</span><span class="am-desc">Net-liquidity/curve/credit-gated backtest for one instrument</span><span class="am-consumers">liquidity-gate-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/liquidity-gate/sweep</span><span class="am-desc">Liquidity-gate backtest run across all instruments</span><span class="am-consumers">liquidity-gate-backtest.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/liquidity-gate/live</span><span class="am-desc">Today’s live liquidity-gate signal per instrument</span><span class="am-consumers">bot-config.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/liquidity-pulse/data</span><span class="am-desc">RRP/TGA liquidity-pulse vs NQ return correlation data</span><span class="am-consumers">liquidity-pulse.html</span></div>
+        </div>
+      </div>
+      <div class="am-cat" data-cat="gold">
+        <div class="am-cat-hd" style="color:#eab308">Gold</div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Gold backtest &amp; trades</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/gold-backtest/trades</span><span class="am-desc">Stores uploaded gold backtest trades for the viewer</span><span class="am-consumers">js/gold-backtest-app.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/gold-backtest/trades</span><span class="am-desc">Returns stored gold backtest trades</span><span class="am-consumers">backtest-viewer.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/gold/trades</span><span class="am-desc">Live gold trade journal, CSV converted to JSON</span><span class="am-consumers">gold-zones.html</span></div>
+        </div>
+      </div>
+      <div class="am-cat" data-cat="macro / portfolio systems">
+        <div class="am-cat-hd" style="color:#14b8a6">Macro / Portfolio Systems</div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Factor &amp; trend research</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/trend/backtest</span><span class="am-desc">Diversified time-series-momentum trend-following backtest, broad basket</span><span class="am-consumers">trend.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/trend-v2/backtest</span><span class="am-desc">A/B trend sizing test: trailing stdev vs forecaster σ</span><span class="am-consumers">trend-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/trend-basket</span><span class="am-desc">Diversified G10 FX time-series momentum basket backtest</span><span class="am-consumers">trend-basket.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/econ-trend</span><span class="am-desc">Cross-sectional fundamentals-only currency trend backtest vs placebo</span><span class="am-consumers">econ-trend.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/credit-stress</span><span class="am-desc">CSI credit/VIX risk-overlay gate backtest on the trend basket</span><span class="am-consumers">credit-stress.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/fx-carry</span><span class="am-desc">Honest FX carry factor backtest with FRED-priced accrual</span><span class="am-consumers">system-fx-carry-factor.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Yield coupling &amp; MVE (null result, kept as reference)</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/yield-coupling</span><span class="am-desc">FX price vs bond-yield-spread overlay + coupling stats</span><span class="am-consumers">yield-coupling.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/yield-coupling-real</span><span class="am-desc">Real FRED/ECB daily-yield divergence-fade backtest, IS/OOS</span><span class="am-consumers">yield-coupling-real.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/yield-context</span><span class="am-desc">Lightweight per-pair rates-coupling regime reading</span><span class="am-consumers">today.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/mve</span><span class="am-desc">Lists MVE-supported instruments</span><span class="am-consumers">none found</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/mve/:sym</span><span class="am-desc">Live MVE fair-value/mispricing for one instrument</span><span class="am-consumers">mve.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/mve-validate/:sym</span><span class="am-desc">Walk-forward OOS validation of MVE mispricing vs forward returns</span><span class="am-consumers">mve.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/mve-validate-all</span><span class="am-desc">Pooled MVE OOS validation across all supported instruments</span><span class="am-consumers">mve.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Diversification, correlation &amp; beta infra</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/diversification/data</span><span class="am-desc">FRED + Yahoo data for the diversification backtest</span><span class="am-consumers">diversification.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/beta-history</span><span class="am-desc">Downsampled beta history records for correlation dashboard</span><span class="am-consumers">correlations.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/beta/rebuild</span><span class="am-desc">Triggers background rebuild of beta estimates from OANDA data</span><span class="am-consumers">none found</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/corr-history/rebuild</span><span class="am-desc">Triggers background rebuild of 5-year correlation history</span><span class="am-consumers">correlations.html, hedge-signals.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/corr-history/progress</span><span class="am-desc">Polls in-progress correlation history build progress</span><span class="am-consumers">correlations.html, hedge-signals.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/corr-history/status</span><span class="am-desc">Correlation history file existence/age/staleness</span><span class="am-consumers">correlations.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/corr-history</span><span class="am-desc">Full (or lite) correlation history JSON</span><span class="am-consumers">correlations.html, hedge-backtest.html</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Hedge overlay v1/v2 &amp; audit</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/hedge-alerts</span><span class="am-desc">Compact avg/std correlation + last beta summary for dashboard</span><span class="am-consumers">bot-config.html, hedge-backtest.html, index.html, today.html, js/levels.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/hedge-signals</span><span class="am-desc">Current hedge signal list + last run time</span><span class="am-consumers">hedge-signals.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/hedge-signals/config</span><span class="am-desc">Hedge-signals v1 config (merged with defaults)</span><span class="am-consumers">hedge-signals.html</span></div>
+          <div class="am-row"><span class="am-method am-put">PUT</span><span class="am-path">/api/hedge-signals/config</span><span class="am-desc">Saves hedge-signals v1 config to KV</span><span class="am-consumers">hedge-signals.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/hedge-signals/check</span><span class="am-desc">Force-recomputes hedge signals now</span><span class="am-consumers">hedge-signals.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/hedge-signals/ack</span><span class="am-desc">Marks a hedge signal as acknowledged/dismissed</span><span class="am-consumers">hedge-signals.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/hedge-signals/tg-config</span><span class="am-desc">Telegram token/chatId configured for hedge-signal alerts</span><span class="am-consumers">hedge-signals.html</span></div>
+          <div class="am-row"><span class="am-method am-put">PUT</span><span class="am-path">/api/hedge-signals/tg-config</span><span class="am-desc">Saves Telegram token/chatId for hedge-signal alerts</span><span class="am-consumers">hedge-signals.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/hedge-signals/tg-test</span><span class="am-desc">Sends a test Telegram message to configured hedge-signal chat</span><span class="am-consumers">hedge-signals.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/hedge-signals/prices</span><span class="am-desc">Live prices + vol ATR estimates for hedge SL display</span><span class="am-consumers">bot-config.html, hedge-signals.html, today.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/hedge-audit</span><span class="am-desc">Logged advisory hedge-suggestion audit entries</span><span class="am-consumers">bot-config.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/hedge-audit/entries</span><span class="am-desc">Appends new hedge-suggestion audit entries (dedup by ticket)</span><span class="am-consumers">bot-config.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/hedge-signals-v2</span><span class="am-desc">Current cointegration-gated hedge v2 signal list</span><span class="am-consumers">hedge-signals-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/hedge-signals-v2/check</span><span class="am-desc">Force-recomputes hedge v2 signals now</span><span class="am-consumers">hedge-signals-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/hedge-signals-v2/config</span><span class="am-desc">Hedge-signals v2 config (merged with defaults)</span><span class="am-consumers">hedge-signals-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-put">PUT</span><span class="am-path">/api/hedge-signals-v2/config</span><span class="am-desc">Saves hedge-signals v2 config to KV</span><span class="am-consumers">hedge-signals-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/hedge-signals-v2/backtest/run</span><span class="am-desc">v2 cointegration-pairs vs v1-style baseline IS/OOS A/B</span><span class="am-consumers">hedge-signals-v2.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/hedge-signals-v2/backtest/status/:jobId</span><span class="am-desc">Polls hedge-signals-v2 backtest job</span><span class="am-consumers">hedge-signals-v2.html</span></div>
+        </div>
+      </div>
+      <div class="am-cat" data-cat="trade decision engine">
+        <div class="am-cat-hd" style="color:#f97316">Trade Decision Engine</div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Meta-labeling go/skip/size scorer</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/trade-decision/decide</span><span class="am-desc">Fast-loop per-event go/skip/size score for a pair+price touch</span><span class="am-consumers">trade-decision-engine.html, today.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/trade-decision/score-positions</span><span class="am-desc">Shadow-scores every open bot position read-only, logs for calibration</span><span class="am-consumers">bot-config.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/trade-decision/shadow-book</span><span class="am-desc">Reads the durable shadow-scoring book, optionally by ticket ids</span><span class="am-consumers">bot-config.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/trade-decision/state/:pair</span><span class="am-desc">Inspects a pair’s cached feature snapshot (regime, zones, staleness)</span><span class="am-consumers">trade-decision-engine.html, today.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/trade-decision/refresh</span><span class="am-desc">Runs the slow loop (OANDA+macro) to rebuild snapshot(s)</span><span class="am-consumers">trade-decision-engine.html, today.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/trade-decision/log</span><span class="am-desc">Recent logged decide() calls/results</span><span class="am-consumers">trade-decision-engine.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/trade-decision/health</span><span class="am-desc">Model version, weights, calibration flag, snapshot summary</span><span class="am-consumers">trade-decision-engine.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/trade-decision/backfill/run</span><span class="am-desc">Replays M1 history through decide() to build labeled log</span><span class="am-consumers">trade-decision-engine.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/trade-decision/backfill/status/:jobId</span><span class="am-desc">Polls TDE backfill job</span><span class="am-consumers">trade-decision-engine.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/trade-decision/backfill/report</span><span class="am-desc">Last completed TDE backfill report</span><span class="am-consumers">trade-decision-engine.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/trade-decision/macro-verdict/run</span><span class="am-desc">Computes macro-alignment bucket + ablation verdict</span><span class="am-consumers">trade-decision-engine.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/trade-decision/macro-verdict</span><span class="am-desc">Last computed macro-verdict result</span><span class="am-consumers">trade-decision-engine.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/trade-decision/config</span><span class="am-desc">TDE runtime config (backfill schedule, gap-fill flag)</span><span class="am-consumers">trade-decision-engine.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/trade-decision/config</span><span class="am-desc">Updates TDE runtime config in KV</span><span class="am-consumers">trade-decision-engine.html</span></div>
+        </div>
+      </div>
+      <div class="am-cat" data-cat="forecast analysis (js/analyserroutes.js)">
+        <div class="am-cat-hd" style="color:#a78bfa">Forecast Analysis (js/analyserRoutes.js)</div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Auth &amp; dataset</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/forecast-analysis/login</span><span class="am-desc">Checks password, sets analyser_pw cookie, returns access level</span><span class="am-consumers">forecast-analysis.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forecast-analysis/whoami</span><span class="am-desc">Current access level (admin/view/null) from supplied password</span><span class="am-consumers">forecast-analysis.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/forecast-analysis/refresh</span><span class="am-desc">Admin: async job recomputing the analyser dataset</span><span class="am-consumers">forecast-analysis.html, forecast-refresh.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forecast-analysis/refresh/status/:jobId</span><span class="am-desc">Admin: polls refresh job status/log/result</span><span class="am-consumers">forecast-analysis.html, forecast-refresh.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forecast-analysis/pairs</span><span class="am-desc">Lists discoverable pairs in the dataset</span><span class="am-consumers">none found</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forecast-analysis/manifest</span><span class="am-desc">Dataset manifest (pairs/horizons/build info)</span><span class="am-consumers">forecast-analysis.html, forecast-refresh.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forecast-analysis/aggregates</span><span class="am-desc">Cross-pair aggregate stats</span><span class="am-consumers">forecast-analysis.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forecast-analysis/pair/:pair/:horizon</span><span class="am-desc">Raw stored records for one pair/horizon</span><span class="am-consumers">none found</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Per-line confidence book &amp; studies</div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/forecast-analysis/per-line/run</span><span class="am-desc">Admin: async job building the per-line book</span><span class="am-consumers">forecast-analysis.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forecast-analysis/per-line/status/:jobId</span><span class="am-desc">Admin: polls per-line build job</span><span class="am-consumers">forecast-analysis.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forecast-analysis/per-line/:horizon</span><span class="am-desc">The built per-line confidence book</span><span class="am-consumers">forecast-analysis.html, forecast-book-report.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forecast-analysis/per-line/:horizon/trades/:pair</span><span class="am-desc">Trade log for one pair’s per-line book</span><span class="am-consumers">forecast-analysis.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forecast-analysis/per-line/:horizon/chart/:pair/:date</span><span class="am-desc">M1 chart + forecast geometry for one trade’s session</span><span class="am-consumers">forecast-analysis.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forecast-analysis/exit-study/:horizon</span><span class="am-desc">Fixed vs chandelier vs walk-forward stop study, IS/OOS</span><span class="am-consumers">forecast-analysis.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forecast-analysis/daytype-study/:horizon</span><span class="am-desc">A/B: trend-day gate vs velocity-only policy</span><span class="am-consumers">forecast-analysis.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forecast-analysis/stop-study/:horizon</span><span class="am-desc">Per-pair optimal stop-loss from winners’-MAE distribution</span><span class="am-consumers">forecast-analysis.html</span></div>
+        </div>
+      </div>
+      <div class="am-cat" data-cat="infrastructure &amp; shared data">
+        <div class="am-cat-hd" style="color:#64748b">Infrastructure &amp; Shared Data</div>
+        <div class="am-feat">
+          <div class="am-feat-hd">KV, config &amp; R2</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/kv-health</span><span class="am-desc">KV persistence backend status + round-trip probe of critical keys</span><span class="am-consumers">js/bot-config.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/nav-layout</span><span class="am-desc">Saved dashboard nav dropdown ordering from KV</span><span class="am-consumers">index.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/nav-layout</span><span class="am-desc">Saves the dashboard nav dropdown ordering/layout to KV</span><span class="am-consumers">index.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/scratchpad</span><span class="am-desc">User’s free-text scratchpad notes from KV</span><span class="am-consumers">index.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/scratchpad</span><span class="am-desc">Saves the user’s free-text scratchpad notes to KV</span><span class="am-consumers">index.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/r2/list</span><span class="am-desc">Lists R2 bucket object keys under a prefix</span><span class="am-consumers">none found</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/config</span><span class="am-desc">Which API keys/KV are configured (booleans only)</span><span class="am-consumers">js/main.js, js/caps.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/config/caps</span><span class="am-desc">Proximity-cap config (FX/gold/NAS100) from KV, merged with defaults</span><span class="am-consumers">js/caps.js, js/gold-app.js</span></div>
+          <div class="am-row"><span class="am-method am-put">PUT</span><span class="am-path">/api/config/caps</span><span class="am-desc">Saves proximity-cap + confluence-mode config to KV</span><span class="am-consumers">js/caps.js, js/gold-app.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/kv/get</span><span class="am-desc">Generic key-value read — used broadly by dashboard pages &amp; pylego/ bots</span><span class="am-consumers">_worker.js; also live on Railway via server.js catch-all</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/kv/set</span><span class="am-desc">Generic key-value write — used broadly by dashboard pages &amp; pylego/ bots</span><span class="am-consumers">_worker.js; also live on Railway via server.js catch-all</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/dyn-anchor-forecast</span><span class="am-desc">Dynamic-anchor EMA/slope forecast per pair, cached to KV</span><span class="am-consumers">none found</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oanda-instruments</span><span class="am-desc">Lists OANDA account instruments, optionally filtered</span><span class="am-consumers">none found</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">OANDA market-data proxy (_worker.js, also live on Railway)</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/quote</span><span class="am-desc">Latest mid price for a symbol via OANDA M1 candle</span><span class="am-consumers">today.html, js/gold-app.js, js/levels.js, js/main.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/ohlc</span><span class="am-desc">120 days of D1 OHLC bars via OANDA</span><span class="am-consumers">today.html, js/gold-app.js, js/levels.js, js/main.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oanda_ohlc5m</span><span class="am-desc">M5 OHLC bars, KV-cached 4 min</span><span class="am-consumers">vol-forecast-v2.html, today.html, gold-zones.html, range-zones.html, js/gold-app.js, js/levels.js, js/main.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oanda_ohlc15m</span><span class="am-desc">M15 OHLC bars, KV-cached 12 min</span><span class="am-consumers">js/gold-app.js, js/levels.js, js/main.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oanda_ohlc30m</span><span class="am-desc">M30 OHLC bars, KV-cached 22 min</span><span class="am-consumers">js/gold-app.js, js/levels.js, js/main.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oanda_ohlc1m</span><span class="am-desc">M1 bars for one trading date (journal replay)</span><span class="am-consumers">bot-config.html, js/zone-audit.js, js/journal-app.js, js/journal-replay-worker.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/ohlc-range</span><span class="am-desc">Paginated OHLC candles over an explicit date window</span><span class="am-consumers">forecast-replay.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oanda_stream</span><span class="am-desc">SSE live OANDA price stream (proxied via Cloudflare worker)</span><span class="am-consumers">js/main.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/oanda_book</span><span class="am-desc">OANDA positionBook — retail long/short distribution proxy</span><span class="am-consumers">js/main.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/spread</span><span class="am-desc">Live bid/ask spread from OANDA pricing, uncached</span><span class="am-consumers">js/main.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/regime-candles</span><span class="am-desc">Historical OANDA M5 candles for a pair/date range</span><span class="am-consumers">none found</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Macro / rates data proxy</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/fred</span><span class="am-desc">KV-read-only VIX/GS10/NFCI/TIPS etc (server.js does the FRED fetch)</span><span class="am-consumers">today.html, js/gold-app.js, js/levels.js, js/main.js, rate-matrix.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/fredhistory</span><span class="am-desc">Historical FRED/yield series for spread chart &amp; gold-lab, KV-cached</span><span class="am-consumers">today.html, js/globalLiquidityEngine.js, global-liquidity.html, js/compass.js, js/gold-lab-app.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/ecbsdw</span><span class="am-desc">ECB SDW daily EUR rates (€STR, DE 10Y), KV-cached 12h</span><span class="am-consumers">js/levels.js, js/main.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/events</span><span class="am-desc">Finnhub economic calendar, next 3 days (worker-level variant)</span><span class="am-consumers">today.html, js/events.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/surprise</span><span class="am-desc">Finnhub calendar past 30 days, actual-vs-estimate for Surprise Index</span><span class="am-consumers">js/events.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">COT &amp; sentiment</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cot/urls</span><span class="am-desc">Stored CFTC report URLs per asset class</span><span class="am-consumers">js/cot.js</span></div>
+          <div class="am-row"><span class="am-method am-put">PUT</span><span class="am-path">/api/cot/urls</span><span class="am-desc">Saves CFTC report URLs (validated as cftc.gov links)</span><span class="am-consumers">js/cot.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cot</span><span class="am-desc">Fetches + parses CFTC COT reports (TFF/gold disagg) into per-pair data</span><span class="am-consumers">js/gold-app.js, js/cot.js</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/cot-extremes</span><span class="am-desc">3yr weekly COT history, percentile/z-score extremes across 35+ instruments</span><span class="am-consumers">js/main.js, cot-extremes.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/sentiment</span><span class="am-desc">Myfxbook community retail long/short outlook, KV-cached 30 min</span><span class="am-consumers">js/main.js</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Telegram (shared v1 bot)</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/telegram/config</span><span class="am-desc">Whether Telegram bot token/chatId are stored (never the token)</span><span class="am-consumers">js/alerts.js</span></div>
+          <div class="am-row"><span class="am-method am-put">PUT</span><span class="am-path">/api/telegram/config</span><span class="am-desc">Saves Telegram bot token + chat ID to KV</span><span class="am-consumers">js/alerts.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/telegram</span><span class="am-desc">Sends a message via the configured Telegram bot</span><span class="am-consumers">js/alerts.js</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/telegram/test-server</span><span class="am-desc">Sends a test Telegram message from the server</span><span class="am-consumers">js/alerts.js</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
   window.openSiteMap=function(){
@@ -2829,6 +3406,28 @@ function _renderBetaPanel(estimates, portfolio, deviation, rebalance, positions,
     setTimeout(function(){document.getElementById('smSearch').focus();},80);
   };
   window.closeSiteMap=function(){document.getElementById('smOverlay').classList.remove('open');};
+  window.openApiMap=function(){
+    document.getElementById('amOverlay').classList.add('open');
+    document.getElementById('amSearch').value='';
+    amFilter('');
+    setTimeout(function(){document.getElementById('amSearch').focus();},80);
+  };
+  window.closeApiMap=function(){document.getElementById('amOverlay').classList.remove('open');};
+  window.amFilter=function(q){
+    var s=q.trim().toLowerCase();
+    document.querySelectorAll('#amBody .am-row').forEach(function(el){
+      var txt=(el.textContent||'').toLowerCase();
+      el.classList.toggle('am-hidden',s.length>0&&txt.indexOf(s)<0);
+    });
+    document.querySelectorAll('#amBody .am-feat').forEach(function(g){
+      var visible=Array.from(g.querySelectorAll('.am-row')).some(function(i){return!i.classList.contains('am-hidden');});
+      g.style.display=visible?'':'none';
+    });
+    document.querySelectorAll('#amBody .am-cat').forEach(function(g){
+      var visible=Array.from(g.querySelectorAll('.am-row')).some(function(i){return!i.classList.contains('am-hidden');});
+      g.style.display=visible?'':'none';
+    });
+  };
   window.smFilter=function(q){
     var s=q.trim().toLowerCase();
     document.querySelectorAll('#smBody .sm-item').forEach(function(el){
@@ -2841,7 +3440,7 @@ function _renderBetaPanel(estimates, portfolio, deviation, rebalance, positions,
     });
   };
   document.addEventListener('keydown',function(e){
-    if(e.key==='Escape')closeSiteMap();
+    if(e.key==='Escape'){closeSiteMap();closeApiMap();}
   });
 })();
 </script>
