@@ -7261,6 +7261,27 @@ app.get('/api/vol-forecast/reference/:date', async (req, res) => {
   }
 });
 
+// ── COG reference dump — all parsed reference forecasts, one JSON ─────────────
+// GET /api/vol-forecast/reference-dump — every stored COG reference date parsed to
+// { date: { INST: { vol, hl_med, hl_75, oc_med, oc_75 } } }. Feeds an offline test
+// of candidate σ adjustments against COG's actual published numbers (the analysis
+// runs on local price history; only COG's values need to come from KV).
+app.get('/api/vol-forecast/reference-dump', async (_req, res) => {
+  try {
+    const idxRaw = await kv.get('vol_reference_index').catch(() => null);
+    const dates = idxRaw ? JSON.parse(idxRaw).map(e => e.date).filter(Boolean).sort() : [];
+    const ref = {};
+    for (const d of dates) {
+      const raw = await kv.get(`vol_reference_${d}`).catch(() => null);
+      if (!raw) continue;
+      try { ref[d] = _parseExportText(JSON.parse(raw).text); } catch { /* skip malformed */ }
+    }
+    res.json({ ok: true, dates: Object.keys(ref).length, ref });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── COG day-of-week weighting probe ───────────────────────────────────────────
 // GET /api/cog-dow — over every stored COG reference date, compare COG's number to
 // OURS (the archived forecast for that session) and group the COG/ours ratio by
