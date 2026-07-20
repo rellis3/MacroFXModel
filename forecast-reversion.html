@@ -196,13 +196,17 @@
 // Cache-bust the brick import so a stale cached module (missing a new export)
 // can't silently break the page after a deploy.
 import { LADDER_LINES, reversionTrades, tallyTrades, STYLES, ladderLevels } from './js/reversionLadder.js?v=6';
-import { waveTrendSeries } from './js/vumanchuCore.js?v=1';
-import { findDivergences, reversalDecision } from './js/divergenceCore.js?v=1';
+import { computeWaveTrend } from './js/vumanchuCore.js?v=1';
+import { findDivergences, reversalDecision } from './js/divergenceCore.js?v=2';
 
 // Style labels (page-level: the brick knows fade_all/follow_med_fade_75; momentum
 // and divergence are page selectors that drive the brick's decideAction hook).
 const STYLE_LABEL = { fade_all: 'Fade all', follow_med_fade_75: 'Cont med · fade 75th', momentum: 'Momentum (WT)', divergence: 'Divergence (WT)' };
-const WT_OB = 53, WT_OS = -53;   // VuManChu Cipher B overbought / oversold bands
+// Matched to the user's VuManChu Cipher B: WaveTrend 9/12/3, divergences read on
+// the SIGNAL line (wt2), OB/OS bands 53/−53, and divergence-zone gates 45/−65
+// (regular divergences only; hidden are ungated).
+const WT_OPTS = { n1: 9, n2: 12, sp: 3 };
+const WT_OB = 53, WT_OS = -53, DIV_OB = 45, DIV_OS = -65;
 
 const OANDA_SYM = {
   eurusd:'EUR/USD', gbpusd:'GBP/USD', usdjpy:'USD/JPY', eurjpy:'EUR/JPY',
@@ -506,9 +510,11 @@ function forwardBarsFor(i) {
 function prepIndicators() {
   for (const d of days) {
     if (d.bars.length) {
-      d.wt = waveTrendSeries(d.bars); d.hi = d.bars.map(b => b.high); d.lo = d.bars.map(b => b.low);
-      d.divs = findDivergences(d.hi, d.lo, d.wt, { reach: 2 });
-    } else { d.wt = []; d.hi = []; d.lo = []; d.divs = []; }
+      const wt = computeWaveTrend(d.bars, WT_OPTS);
+      d.wt1 = wt.wt1; d.wt = wt.wt2;   // wt2 (signal line) drives divergences + OB/OS, like VuManChu
+      d.hi = d.bars.map(b => b.high); d.lo = d.bars.map(b => b.low);
+      d.divs = findDivergences(d.hi, d.lo, d.wt, { reach: 2, obLevel: DIV_OB, osLevel: DIV_OS });
+    } else { d.wt1 = []; d.wt = []; d.hi = []; d.lo = []; d.divs = []; }
   }
 }
 // A per-touch fade/follow decider for the WT-driven styles (null → not selector-driven).
@@ -523,7 +529,7 @@ function makeDecider(d) {
     };
   }
   if (state.style === 'divergence') {
-    return (L, ti) => reversalDecision(d.hi, d.lo, d.wt, ti, L.side);
+    return (L, ti) => reversalDecision(d.hi, d.lo, d.wt, ti, L.side, { obLevel: DIV_OB, osLevel: DIV_OS });
   }
   return null;
 }
@@ -667,14 +673,19 @@ function drawOsc(ts, pf) {
 
   for (const d of days) {
     if (!d.wt || !d.wt.length) continue;
-    // WT1 line for this day (only the on-screen part)
-    octx.strokeStyle = '#38bdf8'; octx.globalAlpha = 0.9; octx.lineWidth = 1.2; octx.setLineDash([]);
-    octx.beginPath(); let started = false;
-    for (let k = 0; k < d.bars.length; k++) {
-      const x = ts.timeToCoordinate(d.bars[k].time); if (x == null || x < -2 || x > W + 2) { started = false; continue; }
-      const y = wtY(d.wt[k]); if (!started) { octx.moveTo(x, y); started = true; } else octx.lineTo(x, y);
-    }
-    octx.stroke();
+    // WaveTrend for this day (only the on-screen part): wt1 (faster wave, faint)
+    // + wt2 (signal line, primary — the one divergences key off).
+    const wtLine = (series2, color, width, alpha) => {
+      octx.strokeStyle = color; octx.globalAlpha = alpha; octx.lineWidth = width; octx.setLineDash([]);
+      octx.beginPath(); let started = false;
+      for (let k = 0; k < d.bars.length; k++) {
+        const x = ts.timeToCoordinate(d.bars[k].time); if (x == null || x < -2 || x > W + 2) { started = false; continue; }
+        const y = wtY(series2[k]); if (!started) { octx.moveTo(x, y); started = true; } else octx.lineTo(x, y);
+      }
+      octx.stroke();
+    };
+    if (d.wt1 && d.wt1.length) wtLine(d.wt1, '#6b7280', 1, 0.55);   // wt1 faster wave (grey)
+    wtLine(d.wt, '#38bdf8', 1.3, 0.95);                             // wt2 signal line (blue)
     // divergences: connector on the oscillator AND on price
     for (const dv of d.divs) {
       const xP = ts.timeToCoordinate(d.bars[dv.iPrev].time), xR = ts.timeToCoordinate(d.bars[dv.iRec].time);

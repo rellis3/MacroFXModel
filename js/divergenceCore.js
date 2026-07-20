@@ -47,23 +47,37 @@ function mk(kind, bias, iPrev, iRec, pricePrev, priceRec, oscPrev, oscRec) {
 }
 
 // All divergences between consecutive oscillator pivots. `priceHi`/`priceLo` are
-// the per-bar highs/lows (same length as `osc`). Returns an array sorted by the
-// recent-pivot index (each: {kind:'regular'|'hidden', bias:'bull'|'bear',
-// iPrev, iRec, price/osc at each pivot}) — enough to both drive a selector and
-// draw the connecting lines.
-export function findDivergences(priceHi, priceLo, osc, { reach = 2 } = {}) {
+// the per-bar highs/lows (same length as `osc`). `obLevel`/`osLevel` gate the
+// REGULAR divergences to the overbought/oversold zone (VuManChu applies its
+// OB/OS limits to regular divergences only — bear pivot ≥ obLevel, bull pivot ≤
+// osLevel; hidden divergences stay UNGATED, matching the Pine `showHiddenDiv_nl`
+// default). null on a level = no gate. Feed the SIGNAL line (WaveTrend wt2) — the
+// series VuManChu keys divergences off — not wt1. Returns divergences sorted by
+// recent-pivot index (each carries both pivot indices + price/osc values, enough
+// to drive a selector and draw the connecting lines).
+export function findDivergences(priceHi, priceLo, osc, { reach = 2, obLevel = null, osLevel = null } = {}) {
   const out = [];
-  const tops = pivotHighs(osc, reach);
+  const tops = pivotHighs(osc, reach), bots = pivotLows(osc, reach);
+  // Regular pivots are the OB/OS-gated subset (so consecutive regular pairs are
+  // consecutive GATED pivots, exactly like Pine's gated fractal stream).
+  const regTops = obLevel == null ? tops : tops.filter(i => osc[i] >= obLevel);
+  const regBots = osLevel == null ? bots : bots.filter(i => osc[i] <= osLevel);
+  for (let k = 1; k < regTops.length; k++) {
+    const p = regTops[k - 1], r = regTops[k];
+    if (priceHi[r] > priceHi[p] && osc[r] < osc[p]) out.push(mk('regular', 'bear', p, r, priceHi[p], priceHi[r], osc[p], osc[r]));
+  }
+  for (let k = 1; k < regBots.length; k++) {
+    const p = regBots[k - 1], r = regBots[k];
+    if (priceLo[r] < priceLo[p] && osc[r] > osc[p]) out.push(mk('regular', 'bull', p, r, priceLo[p], priceLo[r], osc[p], osc[r]));
+  }
+  // Hidden divergences over ALL pivots (ungated).
   for (let k = 1; k < tops.length; k++) {
     const p = tops[k - 1], r = tops[k];
-    if (priceHi[r] > priceHi[p] && osc[r] < osc[p]) out.push(mk('regular', 'bear', p, r, priceHi[p], priceHi[r], osc[p], osc[r]));
-    else if (priceHi[r] < priceHi[p] && osc[r] > osc[p]) out.push(mk('hidden', 'bear', p, r, priceHi[p], priceHi[r], osc[p], osc[r]));
+    if (priceHi[r] < priceHi[p] && osc[r] > osc[p]) out.push(mk('hidden', 'bear', p, r, priceHi[p], priceHi[r], osc[p], osc[r]));
   }
-  const bots = pivotLows(osc, reach);
   for (let k = 1; k < bots.length; k++) {
     const p = bots[k - 1], r = bots[k];
-    if (priceLo[r] < priceLo[p] && osc[r] > osc[p]) out.push(mk('regular', 'bull', p, r, priceLo[p], priceLo[r], osc[p], osc[r]));
-    else if (priceLo[r] > priceLo[p] && osc[r] < osc[p]) out.push(mk('hidden', 'bull', p, r, priceLo[p], priceLo[r], osc[p], osc[r]));
+    if (priceLo[r] > priceLo[p] && osc[r] < osc[p]) out.push(mk('hidden', 'bull', p, r, priceLo[p], priceLo[r], osc[p], osc[r]));
   }
   return out.sort((a, b) => a.iRec - b.iRec);
 }
@@ -73,11 +87,11 @@ export function findDivergences(priceHi, priceLo, osc, { reach = 2 } = {}) {
 // pivot within `window` bars back)? Up-touches look for a bear reversal, down-
 // touches for a bull reversal. Returns 'fade' (reversal present → revert) or
 // 'follow' (none → let momentum continue). Only reads data ≤ touchIdx.
-export function reversalDecision(priceHi, priceLo, osc, touchIdx, side, { reach = 2, window = 5 } = {}) {
+export function reversalDecision(priceHi, priceLo, osc, touchIdx, side, { reach = 2, window = 5, obLevel = null, osLevel = null } = {}) {
   if (touchIdx < 2 * reach) return 'follow';   // too early to have a confirmable pivot pair
   const hi = priceHi.slice(0, touchIdx + 1), lo = priceLo.slice(0, touchIdx + 1), o = osc.slice(0, touchIdx + 1);
   const wantBias = side > 0 ? 'bear' : 'bull';
-  const divs = findDivergences(hi, lo, o, { reach });
+  const divs = findDivergences(hi, lo, o, { reach, obLevel, osLevel });
   const hit = divs.some(d => d.kind === 'regular' && d.bias === wantBias && (touchIdx - d.iRec) <= window);
   return hit ? 'fade' : 'follow';
 }

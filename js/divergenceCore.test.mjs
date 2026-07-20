@@ -32,6 +32,15 @@ divs = findDivergences(pHiHB, pLoHB, oscHB, { reach: 2 });
 const hb = divs.find(d => d.kind === 'hidden' && d.bias === 'bull');
 ok('detects a hidden bull', !!hb && hb.iPrev === 2 && hb.iRec === 6);
 
+// ── OB/OS gate: regular divergences gated, hidden ungated ────────────────────
+console.log('[OB/OS gate]');
+// regular-bear fixture: osc tops are 8 and 6. Gate obLevel=7 keeps only the top
+// at 8, so the pair (8,6) can't form → no regular bear once gated.
+ok('regular bear present ungated', findDivergences(priceHi, priceLo, oscRB, { reach: 2 }).some(d => d.kind === 'regular' && d.bias === 'bear'));
+ok('regular bear GONE when gate excludes a pivot', !findDivergences(priceHi, priceLo, oscRB, { reach: 2, obLevel: 7 }).some(d => d.kind === 'regular'));
+// hidden divergences ignore the gate entirely.
+ok('hidden bull still found with a (bull) gate set', findDivergences(pHiHB, pLoHB, oscHB, { reach: 2, osLevel: -100 }).some(d => d.kind === 'hidden' && d.bias === 'bull'));
+
 // ── reversalDecision: fade at an up-touch with a regular bear ─────────────────
 console.log('[reversalDecision]');
 // Use the regular-bear fixture; touch at the last bar, up-side.
