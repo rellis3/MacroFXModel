@@ -8059,14 +8059,32 @@ async function openTradeChartModal(idx) {
     const isLong = t.direction === 'BUY';
     const win    = net >= 0;
     const entryCol = isLong ? '#10b981' : '#f87171';
-    // Marker times are real bar times inside `data` by construction (the slice
-    // spans entryIdx…exitIdx), so LW-Charts never rejects or misplaces them.
-    try {
-      _tcSeries.setMarkers([
-        { time: bars5[entryIdx].time, position: isLong ? 'belowBar' : 'aboveBar', color: entryCol, shape: isLong ? 'arrowUp' : 'arrowDown', text: isLong ? '▲ BUY' : '▼ SELL' },
-        { time: bars5[exitIdx].time,  position: isLong ? 'aboveBar' : 'belowBar', color: win ? '#10b981' : '#f87171', shape: 'circle', text: win ? 'Exit ▲' : 'Exit ▼' },
-      ]);
-    } catch(me) { /* markers failed — price lines still show entry/exit */ }
+    const exitCol  = win ? '#10b981' : '#f87171';
+
+    // Anchor markers to the RECORDED fill prices, not to the candle. The old
+    // belowBar/aboveBar placement pinned the arrow to the M1 candle at the
+    // entry minute, so when the bot's fill price differed from that minute's mid
+    // (a stale/whipsaw quote on a fast fill, or a market-closed stamp) the ▲ BUY
+    // floated far from the Entry line — the "miles apart" report. Each marker now
+    // rides its own transparent 1-point overlay series positioned 'inBar' at the
+    // fill price, so ▲ BUY sits exactly on the Entry line and the exit dot on the
+    // Exit line. The overlay points also pull the price scale to include both
+    // fills, so a far exit (e.g. below every candle) is never clipped off-screen.
+    const _priceMarker = (barTime, price, marker) => {
+      if (price == null) return;
+      const s = _tcChart.addLineSeries({
+        color: 'rgba(0,0,0,0)', lineWidth: 1, lastValueVisible: false,
+        priceLineVisible: false, crosshairMarkerVisible: false,
+      });
+      s.setData([{ time: barTime, value: price }]);
+      try { s.setMarkers([{ ...marker, time: barTime, position: 'inBar' }]); } catch(me) {}
+    };
+    _priceMarker(bars5[entryIdx].time, t.open_price, {
+      color: entryCol, shape: isLong ? 'arrowUp' : 'arrowDown', text: isLong ? '▲ BUY' : '▼ SELL',
+    });
+    _priceMarker(bars5[exitIdx].time, t.close_price, {
+      color: exitCol, shape: 'circle', text: win ? 'Exit ▲' : 'Exit ▼',
+    });
 
     _tcPriceLines = [];
     if (t.open_price  != null) _tcPriceLines.push(_tcSeries.createPriceLine({ price: t.open_price,  color: '#60a5fa', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Entry' }));
