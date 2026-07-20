@@ -129,12 +129,14 @@ def sigma_proxy_series(closes: list[float | None], window: int = _SIGMA_WINDOW) 
 class ReplayEntry:
     session_idx: int
     bar_idx: int
+    entry_time: pd.Timestamp
     direction: int
     entry_price: float
     bot_sl_dist: float
     bot_tp_dist: float
     decision: str   # fade | follow
     line: str
+    sigma: float    # this session's causal sigma-proxy reading — for vol-regime segmentation
 
 
 def replay_entries(pair: str, bars: pd.DataFrame, frac_k: dict, policy: dict) -> list[ReplayEntry]:
@@ -170,11 +172,11 @@ def replay_entries(pair: str, bars: pd.DataFrame, frac_k: dict, policy: dict) ->
                 direction = 1 if spec['side'] == 'buy' else -1
                 bar_idx = idx.searchsorted(ts)
                 entries.append(ReplayEntry(
-                    session_idx=s_i, bar_idx=bar_idx, direction=direction,
+                    session_idx=s_i, bar_idx=bar_idx, entry_time=ts, direction=direction,
                     entry_price=spec['entry'],
                     bot_sl_dist=abs(spec['entry'] - spec['sl']),
                     bot_tp_dist=abs(spec['tp'] - spec['entry']),
-                    decision=spec['decision'], line=spec['line'],
+                    decision=spec['decision'], line=spec['line'], sigma=sigma,
                 ))
     return entries
 

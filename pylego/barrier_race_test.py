@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 
-from barrier_race import Entry, race_grid
+from barrier_race import Entry, race_grid, race_trailing
 
 
 def _bars(opens, highs, lows, closes):
@@ -118,6 +118,69 @@ def test_explicit_entry_price_overrides_bar_open():
 def test_empty_entries_returns_empty():
     bars = _bars(opens=[100], highs=[100], lows=[100], closes=[100])
     assert race_grid(bars, [], sl_grid=[5.0], tp_r_grid=[1.0], max_bars_ahead=10, min_bars_ahead=1) == []
+
+
+# ── race_trailing ──────────────────────────────────────────────────────────
+
+def test_trail_hard_sl_before_any_favourable_move():
+    # Price drops straight through the initial stop before ever running in
+    # profit — never arms, exits at the hard stop: -1.0R exactly.
+    bars = _bars(opens=[100, 90], highs=[100, 91], lows=[100, 89], closes=[100, 90])
+    entries = [Entry(idx=0, direction=1, entry_price=100.0)]
+    res = race_trailing(bars, entries, initial_sl_grid=[5.0], activate_r_grid=[1.0],
+                        trail_r_grid=[0.5], max_bars_ahead=10)
+    assert len(res) == 1
+    assert res[0].n == 1
+    assert res[0].avg_r == -1.0
+    assert res[0].win_rate == 0.0
+
+
+def test_trail_locks_profit_long():
+    # Runs to 106 (1.2R, arms at activate_r=1.0), trails to 107 (stop ratchets
+    # to 104.5), then pulls back and the trail (not the hard stop) exits at
+    # 104.5 -> (104.5-100)/5 = +0.9R. Hand-verified bar by bar in the docstring
+    # math above.
+    bars = _bars(opens=[100, 106, 104], highs=[106, 107, 104], lows=[100, 104, 103],
+                closes=[100, 106, 104])
+    entries = [Entry(idx=0, direction=1, entry_price=100.0)]
+    res = race_trailing(bars, entries, initial_sl_grid=[5.0], activate_r_grid=[1.0],
+                        trail_r_grid=[0.5], max_bars_ahead=10)
+    r = res[0]
+    assert abs(r.avg_r - 0.9) < 1e-9
+    assert r.win_rate == 1.0
+
+
+def test_trail_locks_profit_short():
+    # Mirror of the long case: runs down to 94 (arms), trails to 96.5, pulls
+    # back up and the trail exits at 96.5 -> (100-96.5)/5 = +0.7R.
+    bars = _bars(opens=[100, 97], highs=[95, 97], lows=[94, 93], closes=[95, 95])
+    entries = [Entry(idx=0, direction=-1, entry_price=100.0)]
+    res = race_trailing(bars, entries, initial_sl_grid=[5.0], activate_r_grid=[1.0],
+                        trail_r_grid=[0.5], max_bars_ahead=10)
+    r = res[0]
+    assert abs(r.avg_r - 0.7) < 1e-9
+
+
+def test_trail_never_activates_marks_to_close():
+    # Price wanders but never reaches activate_r's favourable move, and never
+    # hits the hard stop — times out and marks to the last close.
+    bars = _bars(opens=[100, 101, 100], highs=[102, 103, 101], lows=[99, 100, 100],
+                closes=[100, 101, 102])
+    entries = [Entry(idx=0, direction=1, entry_price=100.0)]
+    res = race_trailing(bars, entries, initial_sl_grid=[10.0], activate_r_grid=[2.0],
+                        trail_r_grid=[0.5], max_bars_ahead=3)
+    r = res[0]
+    assert abs(r.avg_r - 0.2) < 1e-9   # (102-100)/10
+
+
+def test_trail_cost_price_drags_outcome():
+    bars = _bars(opens=[100, 90], highs=[100, 91], lows=[100, 89], closes=[100, 90])
+    entries = [Entry(idx=0, direction=1, entry_price=100.0)]
+    no_cost = race_trailing(bars, entries, initial_sl_grid=[5.0], activate_r_grid=[1.0],
+                            trail_r_grid=[0.5], max_bars_ahead=10)[0]
+    with_cost = race_trailing(bars, entries, initial_sl_grid=[5.0], activate_r_grid=[1.0],
+                              trail_r_grid=[0.5], max_bars_ahead=10, cost_price=1.0)[0]
+    assert abs((no_cost.avg_r - with_cost.avg_r) - 0.2) < 1e-9   # 1.0/5.0
 
 
 if __name__ == '__main__':

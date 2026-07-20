@@ -143,3 +143,100 @@ def race_grid(bars: pd.DataFrame, entries: list[Entry], sl_grid: list[float],
                 avg_r=float(np.mean(outcomes_r)),
             ))
     return results
+
+
+@dataclass
+class TrailResult:
+    """No fixed TP — the trail IS the exit. avg_r/median_r are full precision,
+    same no-premature-rounding contract as BarrierResult."""
+    initial_sl: float
+    activate_r: float
+    trail_r: float
+    n: int
+    win_rate: float    # fraction of outcomes > 0 (not a barrier win — no TP to hit)
+    avg_r: float
+    median_r: float
+
+
+def race_trailing(bars: pd.DataFrame, entries: list[Entry], initial_sl_grid: list[float],
+                  activate_r_grid: list[float], trail_r_grid: list[float],
+                  max_bars_ahead: int, cost_price: float = 0.0,
+                  min_bars_ahead: int = 1) -> list[TrailResult]:
+    """Chandelier trailing-stop exit: hard initial stop unchanged until the
+    trade is `activate_r` in favour, then a stop that ratchets to
+    `trail_r * initial_sl` behind the best price reached — never loosens, no
+    fixed take-profit. Mirrors `Gold/mfe_mae_analysis.simulate_chandelier` /
+    `volatility_bot.engine.ride_trail_stop` (same ratchet semantics), pulled
+    into the shared core so a trailing-exit sweep is bar-path-correct on the
+    real M1 tape exactly like `race_grid`'s fixed barriers — same walker
+    family, different exit rule.
+
+    Unlike `race_grid`, the trail is inherently path-dependent per (entry,
+    combo) pair — it can't share one precomputed cummax/cummin path across the
+    whole grid, so this is O(entries x combos x bars-until-stop), a real
+    per-bar Python loop. Keep grids small; this is not a mechanical-sampling
+    scale tool.
+    """
+    high = bars['high'].to_numpy()
+    low = bars['low'].to_numpy()
+    close = bars['close'].to_numpy()
+    opens = bars['open'].to_numpy()
+    n_bars = len(bars)
+
+    results: list[TrailResult] = []
+    for initial_sl in initial_sl_grid:
+        for activate_r in activate_r_grid:
+            for trail_r in trail_r_grid:
+                outcomes = []
+                for e in entries:
+                    idx = e.idx
+                    if idx >= n_bars:
+                        continue
+                    end_pos = min(idx + max_bars_ahead, n_bars)
+                    if end_pos - idx < min_bars_ahead:
+                        continue
+                    entry_price = e.entry_price if e.entry_price is not None else float(opens[idx])
+                    sign = e.direction
+                    stop = entry_price - sign * initial_sl
+                    best = entry_price
+                    armed = False
+                    outcome = None
+                    for b in range(idx, end_pos):
+                        hi, lo = high[b], low[b]
+                        if sign > 0:
+                            if lo <= stop:
+                                outcome = (stop - entry_price) / initial_sl
+                                break
+                            if hi > best:
+                                best = hi
+                                run_r = (best - entry_price) / initial_sl
+                                if not armed and run_r >= activate_r:
+                                    armed = True
+                                if armed:
+                                    stop = max(stop, best - trail_r * initial_sl)
+                        else:
+                            if hi >= stop:
+                                outcome = (entry_price - stop) / initial_sl
+                                break
+                            if lo < best:
+                                best = lo
+                                run_r = (entry_price - best) / initial_sl
+                                if not armed and run_r >= activate_r:
+                                    armed = True
+                                if armed:
+                                    stop = min(stop, best + trail_r * initial_sl)
+                    if outcome is None:
+                        last_close = float(close[end_pos - 1])
+                        outcome = sign * (last_close - entry_price) / initial_sl
+                    outcome -= (cost_price / initial_sl) if initial_sl > 0 else 0.0
+                    outcomes.append(outcome)
+
+                if not outcomes:
+                    continue
+                arr = np.array(outcomes)
+                results.append(TrailResult(
+                    initial_sl=initial_sl, activate_r=activate_r, trail_r=trail_r,
+                    n=len(arr), win_rate=float((arr > 0).mean()),
+                    avg_r=float(arr.mean()), median_r=float(np.median(arr)),
+                ))
+    return results
