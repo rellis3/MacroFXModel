@@ -504,10 +504,13 @@ export default {
       }
 
       // -- /api/oanda_ohlc1m  ----------------------------------
-      // M1 bars for a specific trading date — used by journal day replay.
+      // M1 bars for a specific trading date — used by journal day replay and
+      // the Positions trade-chart modal.
       // ?symbol=EUR/USD&date=2025-05-09[&days=1]
-      // days defaults to 1 (single session). Pass days=7 for "run to SL/TP"
-      // mode so subsequent sessions are included (OANDA caps at 5000 bars ≈ 3.5 days).
+      // days defaults to 1 (single session); up to 14 for run-to-SL/TP mode /
+      // multi-day trades. OANDA rejects a from→to range implying >5000 M1
+      // candles (~3.5 calendar days — the WEEKEND counts even though it has no
+      // candles), so longer ranges are fetched in chunks and concatenated.
       // Returns { values: [{ datetime, open, high, low, close }] } oldest-first.
       if (path === '/api/oanda_ohlc1m') {
         if (!env.OANDA_KEY) return err('OANDA_KEY not configured', 503);
@@ -532,27 +535,34 @@ export default {
         // the session is still live) — clamp to now so today's date always works.
         const now = new Date();
         if (toDate > now) toDate = now;
-        const fromRFC  = fromDate.toISOString();
-        const toRFC    = toDate.toISOString();
+        // Chunk at 4800 minutes (< OANDA's 5000-candle from/to cap, computed on
+        // CALENDAR minutes, weekends included). A 14-day request = 5 chunks;
+        // weekend chunks just return few/no candles.
+        const CHUNK_MS = 4800 * 60000;
+        const candles  = [];
+        for (let cs = fromDate.getTime(); cs < toDate.getTime(); cs += CHUNK_MS) {
+          const ce = Math.min(cs + CHUNK_MS, toDate.getTime());
+          const oandaUrl = `${oandaBase}/v3/instruments/${encodeURIComponent(instrument)}/candles`
+            + `?granularity=M1&from=${encodeURIComponent(new Date(cs).toISOString())}`
+            + `&to=${encodeURIComponent(new Date(ce).toISOString())}&price=M`;
 
-        const oandaUrl = `${oandaBase}/v3/instruments/${encodeURIComponent(instrument)}/candles`
-          + `?granularity=M1&from=${encodeURIComponent(fromRFC)}&to=${encodeURIComponent(toRFC)}&price=M`;
-
-        const res = await fetch(oandaUrl, {
-          headers: { 'Authorization': `Bearer ${env.OANDA_KEY}` },
-        });
-
-        if (!res.ok) {
-          const errText = await res.text().catch(() => 'Oanda error');
-          return err(`Oanda M1 fetch failed (${res.status}): ${errText.slice(0, 300)}`, 502);
+          const res = await fetch(oandaUrl, {
+            headers: { 'Authorization': `Bearer ${env.OANDA_KEY}` },
+          });
+          if (!res.ok) {
+            const errText = await res.text().catch(() => 'Oanda error');
+            return err(`Oanda M1 fetch failed (${res.status}): ${errText.slice(0, 300)}`, 502);
+          }
+          const data = await res.json();
+          if (data.candles) candles.push(...data.candles);
         }
+        if (!candles.length) return err('Oanda returned no candles', 502);
 
-        const data = await res.json();
-        if (!data.candles) return err('Oanda returned no candles', 502);
-
-        // Convert UTC → London local datetime, filter complete candles, keep oldest-first for replay.
-        const values = data.candles
-          .filter(c => c.complete && c.mid)
+        // Convert UTC → London local datetime, filter complete candles, dedupe
+        // chunk-boundary overlaps, keep oldest-first for replay.
+        const seenTimes = new Set();
+        const values = candles
+          .filter(c => c.complete && c.mid && !seenTimes.has(c.time) && seenTimes.add(c.time))
           .map(c => ({
             datetime: new Date(c.time).toLocaleString('sv-SE', { timeZone: 'Europe/London' }).substring(0, 19),
             open:  c.mid.o,
