@@ -102,8 +102,19 @@ export function ladderLevels(open, pcts) {
 //              band (nothing further out to target).
 // The stop is SYMMETRIC either way (equal distance the other side of entry).
 // Returns an array of resolved trades.
+// First bar index where a line is reached (up-line: high ≥ price; down-line:
+// low ≤ price). −1 if never touched. This is the touch the entry fills at — the
+// same bar for a fade (limit) or a follow (stop), so a selector can read a signal
+// there and pick the action before the walk.
+export function firstTouchIdx(bars, price, side) {
+  for (let k = 0; k < bars.length; k++) {
+    if (side > 0 ? bars[k].high >= price : bars[k].low <= price) return k;
+  }
+  return -1;
+}
+
 export function reversionTrades(open, bars, pcts, opts = {}) {
-  const { armed = null, costPct = 0, style = 'fade_all', sltp = null, forwardBars = null } = opts;
+  const { armed = null, costPct = 0, style = 'fade_all', sltp = null, forwardBars = null, decideAction = null } = opts;
   const lad = ladderLevels(open, pcts);
   if (!lad || !bars || !bars.length) return [];
   const styleDef = STYLES[style] || STYLES.fade_all;
@@ -127,7 +138,18 @@ export function reversionTrades(open, bars, pcts, opts = {}) {
   const trades = [];
   for (const L of lad.lines) {
     if (armed && !armed.has(L.key)) continue;
-    const action = styleDef.action(L);
+    // Action = fixed style, OR a per-touch selector (momentum / divergence). The
+    // selector reads a signal AT the touch bar (causal) and returns 'fade' /
+    // 'follow' / null; null means "no signal, no trade".
+    let action;
+    if (decideAction) {
+      const ti = firstTouchIdx(bars, L.price, L.side);
+      if (ti < 0) continue;                     // line never touched this session
+      action = decideAction(L, ti, bars);
+      if (action !== 'fade' && action !== 'follow') continue;
+    } else {
+      action = styleDef.action(L);
+    }
     let isBuy, bandTarget, entryType;
     if (action === 'follow') {
       if (L.outerTarget == null) continue;    // outermost: nothing further out to target
