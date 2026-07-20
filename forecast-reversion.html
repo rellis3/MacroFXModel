@@ -35,6 +35,7 @@
   .ghost { background: none; color: var(--text2); border: 1px solid var(--border);
     border-radius: 6px; padding: 4px 10px; font-size: 11px; cursor: pointer; font-family: 'DM Mono', monospace; }
   .ghost:hover { color: var(--text); border-color: var(--text3); }
+  .ghost.active { color: var(--blue); border-color: var(--blue); background: var(--blue-bg); }
   .status { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; margin-left: auto; }
   .a2 { text-decoration: none; }
   /* Honest framing banner */
@@ -127,6 +128,8 @@
     <div class="seg" id="style">
       <button data-y="fade_all" class="on">Fade all</button>
       <button data-y="follow_med_fade_75">Cont med · fade 75th</button>
+      <button data-y="momentum" title="WaveTrend decides per touch: overbought &amp; rolling over at an up-line (oversold &amp; turning up at a down-line) → fade; otherwise momentum-aligned → follow.">Momentum</button>
+      <button data-y="divergence" title="Regular price↔WaveTrend divergence at the touch → fade (reversal); none → follow (continuation).">Divergence</button>
     </div>
     <label title="Next level: TP = the adjacent band, SL = symmetric (1:1). Fixed: SL = a set pip/point distance, TP = SL × the multiplier — same entry line + direction.">SL/TP</label>
     <div class="seg" id="sltp">
@@ -147,6 +150,7 @@
     <button class="go" id="go">Generate</button>
     <button class="ghost" id="statsBtn" title="Show / hide the reversion tally">Stats</button>
     <button class="ghost" id="scanBtn" title="Sweep a grid of fixed SL × TP-multiplier over the current touches and find the best — in-sample, look for a plateau not a spike.">🔍 Scan SL/TP</button>
+    <button class="ghost" id="oscBtn" title="Show the WaveTrend oscillator pane + price↔oscillator divergence lines (regular = reversal, hidden = continuation).">〰 Osc</button>
     <a class="a2" href="forecast-replay.html"><button class="ghost" title="Open the plain Replay view (forecast lines vs realized H/L, no trades)">↩ Replay</button></a>
     <span class="status" id="status"></span>
   </div>
@@ -191,7 +195,14 @@
 <script type="module">
 // Cache-bust the brick import so a stale cached module (missing a new export)
 // can't silently break the page after a deploy.
-import { LADDER_LINES, reversionTrades, tallyTrades, STYLES, ladderLevels } from './js/reversionLadder.js?v=5';
+import { LADDER_LINES, reversionTrades, tallyTrades, STYLES, ladderLevels } from './js/reversionLadder.js?v=6';
+import { waveTrendSeries } from './js/vumanchuCore.js?v=1';
+import { findDivergences, reversalDecision } from './js/divergenceCore.js?v=1';
+
+// Style labels (page-level: the brick knows fade_all/follow_med_fade_75; momentum
+// and divergence are page selectors that drive the brick's decideAction hook).
+const STYLE_LABEL = { fade_all: 'Fade all', follow_med_fade_75: 'Cont med · fade 75th', momentum: 'Momentum (WT)', divergence: 'Divergence (WT)' };
+const WT_OB = 53, WT_OS = -53;   // VuManChu Cipher B overbought / oversold bands
 
 const OANDA_SYM = {
   eurusd:'EUR/USD', gbpusd:'GBP/USD', usdjpy:'USD/JPY', eurjpy:'EUR/JPY',
@@ -247,7 +258,7 @@ function bandsFor(f) {
 }
 
 // ── State ────────────────────────────────────────────────────────────────────
-const state = { armed: new Set(LADDER_LINES.map(l => l.key)), showStats: false, style: 'fade_all', sltpMode: 'level', eod: 'kill' };
+const state = { armed: new Set(LADDER_LINES.map(l => l.key)), showStats: false, style: 'fade_all', sltpMode: 'level', eod: 'kill', showOsc: false };
 const HOLD_SESSIONS = 5;   // 'let run' holds a trade at most this many sessions past EOD
 function styleMode() { return $('style').querySelector('button.on')?.dataset.y || 'fade_all'; }
 function eodModeSel() { return $('eod').querySelector('button.on')?.dataset.e || 'kill'; }
@@ -349,6 +360,12 @@ let dpr = window.devicePixelRatio || 1;
     state.showStats = !state.showStats;
     $('stats').classList.toggle('hidden', !state.showStats);
   });
+  $('oscBtn').addEventListener('click', () => {
+    state.showOsc = !state.showOsc;
+    $('oscBtn').classList.toggle('active', state.showOsc);
+    applyOscMargins();
+    scheduleDraw();
+  });
   $('scanBtn').addEventListener('click', runScan);
   $('scanClose').addEventListener('click', () => $('scanOverlay').classList.remove('open'));
   $('scanOverlay').addEventListener('click', e => { if (e.target === $('scanOverlay')) $('scanOverlay').classList.remove('open'); });
@@ -380,6 +397,12 @@ function ensureChart(name) {
     priceFormat: { type: 'price', precision: pf.precision, minMove: pf.minMove },
   });
   chart.timeScale().subscribeVisibleTimeRangeChange(scheduleDraw);
+  applyOscMargins();
+}
+// Reserve the bottom of the price pane for the oscillator band when Osc is on.
+function applyOscMargins() {
+  if (!series) return;
+  try { series.priceScale().applyOptions({ scaleMargins: state.showOsc ? { top: 0.06, bottom: 0.34 } : { top: 0.12, bottom: 0.12 } }); } catch (_) {}
 }
 
 function setupOverlay() {
@@ -429,6 +452,7 @@ async function loadData() {
     if (candlesRes.error || !candlesRes.values?.length) { setStatus(candlesRes.error || 'no candles for that range'); $('go').disabled = false; return; }
     const fcDays = fcRes?.ok ? (fcRes.days || {}) : {};
     buildDays(candlesRes.values, fcDays);
+    prepIndicators();
     ensureChart(name);
     if (!overlayCanvas) setupOverlay();
     const cdata = candlesRes.values.map(c => ({
@@ -476,14 +500,42 @@ function forwardBarsFor(i) {
   for (let j = i + 1; j < Math.min(days.length, i + 1 + HOLD_SESSIONS); j++) fwd = fwd.concat(days[j].bars);
   return fwd;
 }
+// Per-day WaveTrend series + high/low arrays, cached once after load (EMA is
+// causal so wt[i] reads only bars ≤ i — no lookahead). Used by the momentum /
+// divergence selectors AND the oscillator viz.
+function prepIndicators() {
+  for (const d of days) {
+    if (d.bars.length) {
+      d.wt = waveTrendSeries(d.bars); d.hi = d.bars.map(b => b.high); d.lo = d.bars.map(b => b.low);
+      d.divs = findDivergences(d.hi, d.lo, d.wt, { reach: 2 });
+    } else { d.wt = []; d.hi = []; d.lo = []; d.divs = []; }
+  }
+}
+// A per-touch fade/follow decider for the WT-driven styles (null → not selector-driven).
+function makeDecider(d) {
+  if (state.style === 'momentum') {
+    return (L, ti) => {
+      const w = d.wt[ti], wp = d.wt[ti - 1] ?? w;
+      // Overbought & rolling over at an up-line (oversold & turning up at a
+      // down-line) = exhaustion → fade; otherwise momentum aligned → follow.
+      if (L.side > 0) return (w >= WT_OB && w < wp) ? 'fade' : 'follow';
+      return (w <= WT_OS && w > wp) ? 'fade' : 'follow';
+    };
+  }
+  if (state.style === 'divergence') {
+    return (L, ti) => reversalDecision(d.hi, d.lo, d.wt, ti, L.side);
+  }
+  return null;
+}
 function computeTrades() {
   const costPct = Math.max(0, +$('cost').value || 0);
   const sltp = sltpOpts();
   for (let i = 0; i < days.length; i++) {
     const d = days[i];
-    d.trades = (d.f && d.bars.length)
-      ? reversionTrades(d.open, d.bars, bandsFor(d.f), { armed: state.armed, costPct, style: state.style, sltp, forwardBars: forwardBarsFor(i) })
-      : [];
+    if (!(d.f && d.bars.length)) { d.trades = []; continue; }
+    const decideAction = makeDecider(d);
+    d.trades = reversionTrades(d.open, d.bars, bandsFor(d.f),
+      { armed: state.armed, costPct, style: state.style, sltp, forwardBars: forwardBarsFor(i), decideAction });
   }
 }
 function recomputeAndDraw() {
@@ -561,6 +613,7 @@ function drawOverlay() {
     // Reversion trades: entry ▸ exit segment + a direction triangle at entry.
     for (const tr of d.trades) drawTrade(ts, tr, pf);
   }
+  if (state.showOsc) drawOsc(ts, pf);
 }
 
 function drawTrade(ts, tr, pf) {
@@ -588,6 +641,61 @@ function drawTrade(ts, tr, pf) {
   octx.restore();
 }
 
+// ── WaveTrend oscillator pane + divergence lines ─────────────────────────────
+// Drawn in a reserved band at the bottom of the chart (price pane pushed up by
+// applyOscMargins). WT1 per day, OB/OS guides, and a line between each
+// divergence's two pivots on BOTH the oscillator and the price (the connector
+// you see on a TradingView divergence). Regular = reversal (solid), hidden =
+// continuation (dashed); bull = green, bear = red.
+function drawOsc(ts, pf) {
+  const W = overlayCanvas.width / dpr, H = overlayCanvas.height / dpr;
+  const TIME_AXIS = 30;
+  const bandBottom = H - TIME_AXIS - 4, bandH = (H - TIME_AXIS) * 0.30, bandTop = bandBottom - bandH;
+  const wtY = v => bandTop + (1 - (Math.max(-100, Math.min(100, v)) + 100) / 200) * bandH;
+  octx.save();
+  // band background + separator
+  octx.fillStyle = 'rgba(8,10,16,0.72)'; octx.fillRect(0, bandTop, W, bandBottom - bandTop);
+  octx.strokeStyle = 'rgba(255,255,255,0.12)'; octx.lineWidth = 1; octx.setLineDash([]);
+  octx.beginPath(); octx.moveTo(0, bandTop); octx.lineTo(W, bandTop); octx.stroke();
+  // OB / 0 / OS guides
+  for (const [lvl, col] of [[WT_OB, 'rgba(239,68,68,0.35)'], [0, 'rgba(255,255,255,0.10)'], [WT_OS, 'rgba(34,197,94,0.35)']]) {
+    const y = wtY(lvl); octx.strokeStyle = col; octx.setLineDash([3, 3]);
+    octx.beginPath(); octx.moveTo(0, y); octx.lineTo(W, y); octx.stroke();
+  }
+  octx.fillStyle = 'rgba(255,255,255,0.4)'; octx.font = "10px 'DM Mono', monospace"; octx.textAlign = 'left';
+  octx.setLineDash([]); octx.fillText('WaveTrend', 6, bandTop + 11);
+
+  for (const d of days) {
+    if (!d.wt || !d.wt.length) continue;
+    // WT1 line for this day (only the on-screen part)
+    octx.strokeStyle = '#38bdf8'; octx.globalAlpha = 0.9; octx.lineWidth = 1.2; octx.setLineDash([]);
+    octx.beginPath(); let started = false;
+    for (let k = 0; k < d.bars.length; k++) {
+      const x = ts.timeToCoordinate(d.bars[k].time); if (x == null || x < -2 || x > W + 2) { started = false; continue; }
+      const y = wtY(d.wt[k]); if (!started) { octx.moveTo(x, y); started = true; } else octx.lineTo(x, y);
+    }
+    octx.stroke();
+    // divergences: connector on the oscillator AND on price
+    for (const dv of d.divs) {
+      const xP = ts.timeToCoordinate(d.bars[dv.iPrev].time), xR = ts.timeToCoordinate(d.bars[dv.iRec].time);
+      if (xP == null || xR == null) continue;
+      if (Math.max(xP, xR) < 0 || Math.min(xP, xR) > W) continue;
+      const col = dv.bias === 'bull' ? '#22c55e' : '#ef4444';
+      octx.strokeStyle = col; octx.globalAlpha = 0.95; octx.lineWidth = 1.5;
+      octx.setLineDash(dv.kind === 'hidden' ? [4, 3] : []);
+      // oscillator connector
+      octx.beginPath(); octx.moveTo(xP, wtY(dv.oscPrev)); octx.lineTo(xR, wtY(dv.oscRec)); octx.stroke();
+      // price connector (across the candle pivots)
+      const yPp = series.priceToCoordinate(dv.pricePrev), yPr = series.priceToCoordinate(dv.priceRec);
+      if (yPp != null && yPr != null) { octx.beginPath(); octx.moveTo(xP, yPp); octx.lineTo(xR, yPr); octx.stroke(); }
+      // label R (regular / reversal) or H (hidden / continuation)
+      octx.setLineDash([]); octx.globalAlpha = 1; octx.fillStyle = col; octx.font = "9px 'DM Mono', monospace"; octx.textAlign = 'center';
+      octx.fillText(dv.kind === 'regular' ? 'R' : 'H', xR, wtY(dv.oscRec) - 5);
+    }
+  }
+  octx.restore();
+}
+
 // ── Stats panel ──────────────────────────────────────────────────────────────
 function renderStats() {
   const el = $('stats');
@@ -609,7 +717,7 @@ function renderStats() {
       + `<td>${wr}%</td><td class="${net >= 0 ? 'pos' : 'neg'}">${net >= 0 ? '+' : ''}${net.toFixed(2)}</td></tr>`;
   }).join('');
   const twr = (total.winRate * 100).toFixed(0);
-  const styleLbl = STYLES[state.style]?.label || 'Fade all';
+  const styleLbl = STYLE_LABEL[state.style] || 'Fade all';
   const u = unitFor($('pair').value);
   const sltpLbl = state.sltpMode === 'fixed'
     ? `SL ${+$('slval').value || 0}${u.label} · TP ${+$('tpmult').value || 0}×`
