@@ -231,5 +231,8 @@ alongside.
 - `payoff_geometry.py` — Phase-2 MFE/MAE reward-vs-risk + expectancy grid → `charts/*_10.png`, `payoff_geometry_summary.json`.
 - `evt_envelope.py` — reflection-principle / LIL tail test: excursions vs half-normal → `charts/*_11.png`, `evt_envelope_summary.json`.
 - `daytype_classifier.py` — Phase-3 prior-vol → today's-expansion classifier (logistic/GBM, IS/OOS, pooled FX, robustness incl. placebo/drop-gap/trend-label/walk-forward/transparent-rule) → `daytype_classifier_summary.json`. Run `python3 daytype_classifier.py` (full) or `... robust` (skeptic pass).
+- **`MARKET_STATE_FINDINGS.md`** — Phase-4 "budget as *state*, not signal" (Tiers 1–4): state-conditioned trend sizing/gating, time-adjusted consumption, remaining-budget exits, vov continuity, cone calibration, and the composite. Read this for the honest scoreboard.
+- `budget_research_lib.py` — shared baseplate for Phase 4 (TSMOM reproduction of `js/trendFollowEngine.js` + causal state features on the σ contract).
+- `tier1_state_conditioning.py` / `tier2_time_adjusted.py` / `tier3_budget_vov_cone.py` / `tier4_state_composite.py` — the four Phase-4 tests (each prints a pre-registered verdict).
 - `analysis-book.html` — human-readable write-up of every phase with charts + explanations.
 - `summary.json` / `forecast_vs_fade_summary.json` — headline stats.
