@@ -987,7 +987,7 @@ async function loadAlertCfg() {
       `<div class="kv"><span>enabled</span><b><label class="mono"><input type="checkbox" id="alEn" ${c.enabled ? 'checked' : ''}> auto-scan every 20 min</label></b></div>` +
       `<div class="kv"><span>bot token</span><b><input id="alTok" placeholder="${c.hasToken ? '•••• stored — leave blank to keep' : 'paste bot token'}" style="width:220px"></b></div>` +
       `<div class="kv"><span>chat id</span><b><input id="alChat" value="${c.hasChat ? (c.chatId || '') : ''}" placeholder="chat / channel id" style="width:220px"></b></div>` +
-      `<div class="kv"><span>pairs</span><b><input id="alPairs" value="${pairsStr}" placeholder="gold, eurusd, nq" style="width:220px"></b></div>` +
+      `<div class="kv"><span>pairs <span class="muted">(blank = all)</span></span><b><input id="alPairs" value="${pairsStr}" placeholder="all pairs — or gold, eurusd, nq" style="width:220px"></b></div>` +
       `<div class="kv"><span>stretched ≥ pct</span><b><input id="alHi" type="number" min="80" max="99" value="${c.pctHigh}" style="width:64px"></b></div>` +
       `<div class="kv"><span>quiet ≤ pct</span><b><input id="alLo" type="number" min="1" max="20" value="${c.pctLow}" style="width:64px"></b></div>` +
       `<div class="kv"><span>min |z|</span><b><input id="alZ" type="number" step="0.1" min="0.5" max="4" value="${c.zMin}" style="width:64px"></b></div>` +

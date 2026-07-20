@@ -11893,7 +11893,7 @@ if (process.env.OANDA_KEY && process.env.CONE_FWD_AUTO !== '0') {
 // every scan). Pure logic in js/surpriseAlertCore.js.
 const _clampNum = (v, lo, hi, dflt) => { const n = Number(v); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : dflt; };
 const _saDefaultConfig = () => ({
-  enabled: false, token: '', chatId: '', pairs: ['gold'],
+  enabled: false, token: '', chatId: '', pairs: [],   // empty = monitor ALL pairs
   pctHigh: _SA_DEFAULTS.pctHigh, pctLow: _SA_DEFAULTS.pctLow,
   zMin: _SA_DEFAULTS.zMin, minGapMin: _SA_DEFAULTS.minGapMin,
 });
@@ -11911,7 +11911,9 @@ async function _surpriseAlertScan({ force = false, dryRun = false } = {}) {
     const cfg = await _saLoadConfig();
     if (!force && !cfg.enabled) return { skipped: 'disabled' };
     if (!dryRun && (!cfg.token || !cfg.chatId)) return { skipped: 'no Telegram creds' };
-    const names = (cfg.pairs && cfg.pairs.length ? cfg.pairs : ['gold'])
+    // Blank pairs list = monitor every pair (same default as the forward-track
+    // and /summary). A non-empty list narrows it to those pairs.
+    const names = (cfg.pairs && cfg.pairs.length ? cfg.pairs : Object.keys(_wbtInstrMap))
       .map(p => String(p).toLowerCase().replace(/[^a-z0-9]/g, '')).filter(n => _wbtInstrMap[n]);
     const nowSec = Math.floor(Date.now() / 1000);
     const minGapSec = (cfg.minGapMin ?? _SA_DEFAULTS.minGapMin) * 60;
@@ -11956,7 +11958,7 @@ app.post('/api/forecast-path/alert/config', express.json({ limit: '8kb' }), asyn
       // keep existing token/chat when the field is blank or the masked sentinel
       token:     (b.token && !/^•+set•+$/.test(b.token)) ? String(b.token).trim() : cur.token,
       chatId:    b.chatId != null && b.chatId !== '' ? String(b.chatId).trim() : cur.chatId,
-      pairs:     Array.isArray(b.pairs) && b.pairs.length ? b.pairs.map(String) : cur.pairs,
+      pairs:     Array.isArray(b.pairs) ? b.pairs.map(String) : cur.pairs,   // [] is valid = all pairs
       pctHigh:   b.pctHigh != null ? _clampNum(b.pctHigh, 80, 99, cur.pctHigh) : cur.pctHigh,
       pctLow:    b.pctLow  != null ? _clampNum(b.pctLow, 1, 20, cur.pctLow)   : cur.pctLow,
       zMin:      b.zMin    != null ? _clampNum(b.zMin, 0.5, 4, cur.zMin)       : cur.zMin,
