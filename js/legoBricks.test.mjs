@@ -614,12 +614,15 @@ console.log('\n[oiLevelExport]');
       callWall: 1.1000, putWall: 1.0900,
       callWalls: [{ strike: 1.1000, oi: 9000, tier: 3 }, { strike: 1.1050, oi: 4000, tier: 2 }],
       putWalls:  [{ strike: 1.0900, oi: 8000, tier: 3 }, { strike: 1.0850, oi: 3000, tier: 1 }],
+      exposures: { gex: 1200 },                          // positive net GEX → PIN
+      volumeMagnets: [{ strike: 1.1025, volume: 5000 }], // today's heaviest volume
     },
     'NAS100_USD': {
       pair: 'NAS100_USD', spot: 20000, savedAt: '7/21/2026, 08:20:00',
       maxPain: 20050, callWall: 20200, putWall: 19800,
       callWalls: [{ strike: 20200, oi: 5000, tier: 2 }],
       putWalls:  [{ strike: 19800, oi: 6000, tier: 3 }],
+      exposures: { gex: -800 },                          // negative net GEX → BREAKOUT
     },
     'EUR/GBP': { pair: 'EUR/GBP' },   // no walls → must be skipped entirely
   };
@@ -634,6 +637,9 @@ console.log('\n[oiLevelExport]');
   ok('OI export emits max_pain (no tier) at 5dp', text.includes('OI 1.09480 : max_pain'));
   ok('OI export emits index walls at 2dp', text.includes('OI 20200.00 : call_wall t2'));
   ok('OI export stamps the per-pair staleness line', text.includes('saved 7/21/2026, 08:15:00') && text.includes('spot 1.0955') && text.includes('DTE 4'));
+  ok('OI export tags PIN regime from +GEX', text.includes('regime PIN'));
+  ok('OI export tags BREAKOUT regime from -GEX', text.includes('regime BREAKOUT'));
+  ok('OI export emits volume magnet as oi_volume', text.includes('OI 1.10250 : oi_volume'));
   ok('OI export parser lines all start with "OI "',
      text.split('\n').filter(l => /^\d|^-?\d/.test(l.trim())).every(l => l.startsWith('OI ')));
   // Empty store → graceful placeholder, never a throw.

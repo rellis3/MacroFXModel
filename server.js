@@ -7190,23 +7190,6 @@ app.get('/api/oi-levels', async (_req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// Plain-text paste block for the "OI Walls & Max Pain" TradingView indicator — the
-// same copy→paste pattern as /api/vol-forecast/zones. Reuses the shared
-// `oiStoreToLevels` brick via `buildOILevelText`, so the pasted call/put walls +
-// max pain are bit-identical to what the OI bot and /api/oi-levels trade off. The
-// per-pair block stamps the paste time + spot so a STALE wall is visible, not silent.
-app.get('/api/oi-levels/export', async (_req, res) => {
-  try {
-    const raw = await kv.get('oi_store').catch(() => null);
-    const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
-    const generated = new Date().toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
-    const text = buildOILevelText(store, { generated });
-    res.type('text/plain').send(text);
-  } catch (e) {
-    res.status(500).type('text/plain').send(`OI level export error: ${e.message}`);
-  }
-});
-
 // KV persistence health — does bot config/credentials survive a redeploy? The
 // bot-config page polls this to show a red banner when the backend is the ephemeral
 // file store (the "account details keep being lost" failure) so it's never silent.
@@ -7354,7 +7337,7 @@ app.get('/api/vol-forecast/export', (_req, res) => {
 // Clusters Fibonacci retracements (3/5/10-day swings), previous daily opens/H/L,
 // weekly pivots, vol forecast absolute levels, and round numbers. Returns zones
 // with 2+ distinct level types. Format: CZ {price} : {count} {type1},{type2},...
-app.get('/api/vol-forecast/zones', (_req, res) => {
+app.get('/api/vol-forecast/zones', async (_req, res) => {
   if (!forecastState.latest) {
     return res.status(202).type('text/plain').send('Forecast not yet available — check back in 60s.');
   }
@@ -7362,7 +7345,16 @@ app.get('/api/vol-forecast/zones', (_req, res) => {
     return res.status(202).type('text/plain').send('OHLC cache not yet populated — check back in 60s.');
   }
   try {
-    const text = buildConfluenceZoneText(forecastState.ohlcCache, forecastState.latest);
+    let text = buildConfluenceZoneText(forecastState.ohlcCache, forecastState.latest);
+    // Append the OI WALLS & MAX PAIN section (walls / max pain / gamma flip /
+    // volume + per-pair gamma regime) from the OI analyser store, via the shared
+    // `oiStoreToLevels` brick — one paste, one indicator. Silent if no OI pasted yet.
+    try {
+      const raw = await kv.get('oi_store').catch(() => null);
+      const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
+      const oiText = buildOILevelText(store, { generated: forecastState.latest.session_date });
+      if (oiText && !oiText.includes('no OI data')) text += '\n\n' + oiText;
+    } catch { /* OI is a bonus section — never fail the zones export over it */ }
     res.type('text/plain').send(text);
   } catch (e) {
     res.status(500).type('text/plain').send(`Zone computation error: ${e.message}`);

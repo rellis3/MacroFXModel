@@ -1,7 +1,8 @@
 // oiLevelExport.js
-// Builds the plain-text paste block for the "OI Walls & Max Pain" TradingView
-// indicator — the same copy-then-paste pattern as the Confluence-Zones export
-// (`confluenceZoneExport.js` / `Confluence Zones Indicator.pine`).
+// Builds the plain-text OI section appended to the Confluence-Zones paste block —
+// the "OI WALLS & MAX PAIN" part of the C+Z export, drawn by the merged
+// `Confluence Zones Indicator.pine`. (It began as a standalone indicator/export;
+// that was retired 2026-07 in favour of one combined overlay.)
 //
 // SINGLE SOURCE OF TRUTH: level extraction is NOT re-implemented here. It reuses
 // the `oiStoreToLevels` brick (js/oiConfluence.js) — the exact same converter the
@@ -13,10 +14,18 @@
 //   OI 1.09480 : max_pain          (pin/magnet strike)
 //   OI 1.09000 : put_wall t2       (support floor — heavy put OI below)
 //   OI 1.09600 : gamma_flip        (long↔short-gamma regime boundary)
+//   OI 1.10250 : oi_volume         (heaviest TODAY's option volume — transient)
 // `t{n}` = wall strength tier (3 = strongest); omitted for non-wall types and for
-// walls with no tier. The indicator parses ONLY lines beginning with "OI " — every
-// other line (headers, the per-pair `· saved …` context line) is ignored by it and
-// exists purely so a human reading the paste can see how STALE each pair is.
+// walls with no tier. The indicator parses ONLY lines beginning with "OI " for
+// levels, plus the per-pair `· … · regime PIN|BREAKOUT` context line for the gamma
+// regime tint. Every other line is ignored by the indicator and exists purely so a
+// human reading the paste can see how STALE each pair is.
+//
+// GAMMA REGIME: derived from the sign of net dealer GEX (inst.exposures.gex) —
+// positive → PIN (dealers long gamma, hedging dampens moves, walls hold / pull to
+// max pain); negative → BREAKOUT (short gamma, hedging amplifies, breaks run. This
+// is the GEX-SIGN read only; the fuller classifier's gravity weighting needs live
+// ATR, which the paste doesn't carry — so it's labelled as such, not overstated.
 //
 // HONESTY: these levels are only as fresh as the user's last option-chain paste on
 // the dashboard. The per-pair context line stamps that paste time + spot so a stale
@@ -34,9 +43,9 @@ const CANON = {
 };
 
 // Which level types to export, in the order they should print within a block, and
-// the price decimals per instrument class. Focus is the user's ask — the strongest
-// call/put walls + max pain — plus gamma_flip (a cheap, useful regime boundary).
-const TYPE_ORDER = ['call_wall', 'gamma_flip', 'max_pain', 'put_wall'];
+// the price decimals per instrument class. The strongest call/put walls + max pain,
+// plus gamma_flip (regime boundary) and oi_volume (today's heaviest-volume strikes).
+const TYPE_ORDER = ['call_wall', 'gamma_flip', 'max_pain', 'put_wall', 'oi_volume'];
 const WANT = new Set(TYPE_ORDER);
 
 const JPY_KEY = /JPY/i;
@@ -53,11 +62,21 @@ function priceDp(pair, canon) {
   return 5;
 }
 
+// Gamma regime from the SIGN of net dealer GEX only (see header note). Positive →
+// PIN, negative → BREAKOUT, zero/absent → no call (rather than a fake NEUTRAL).
+function regimeOf(inst) {
+  const g = inst?.exposures?.gex;
+  if (!Number.isFinite(g) || g === 0) return null;
+  return g > 0 ? 'PIN' : 'BREAKOUT';
+}
+
 function fmtSaved(inst) {
   const bits = [];
   if (inst?.savedAt) bits.push(`saved ${inst.savedAt}`);
   if (Number.isFinite(inst?.spot)) bits.push(`spot ${inst.spot}`);
   if (Number.isFinite(inst?.dte)) bits.push(`DTE ${inst.dte}`);
+  const rg = regimeOf(inst);
+  if (rg) bits.push(`regime ${rg}`);
   return bits.length ? `· ${bits.join(' · ')}` : null;
 }
 
@@ -67,7 +86,7 @@ export function buildOILevelText(store, { topWalls = 2, generated = null } = {})
   const hdr = '──── OI WALLS & MAX PAIN ' + '─'.repeat(Math.max(0, LW - 25));
   const lines = [hdr];
   lines.push(`Generated: ${generated ?? 'latest'}`);
-  lines.push('Types: call_wall (red · resistance) · put_wall (green · support) · max_pain (yellow · magnet) · gamma_flip (purple)');
+  lines.push('Types: call_wall (red · resistance) · put_wall (green · support) · max_pain (yellow · magnet) · gamma_flip (purple) · oi_volume (blue · today)');
   lines.push('');
 
   const entries = Object.entries(store || {});
