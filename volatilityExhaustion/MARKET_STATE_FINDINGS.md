@@ -173,6 +173,51 @@ NQ conviction-gating lead is **retired (dead, not merely unconfirmed)**: "volati
 modifies trend-following in trending assets" is unsupported. (A proper SPX/FTSE M1 basket
 could revisit, but the prior is now clearly negative.)
 
+## Tier 8 — the definitive multi-index conviction test (`tier8_multi_index_conviction.py`)
+
+**Run 2026-07-21 with R2 reachable** — the full 6-index equity basket (nq, de30,
+spx500, uk100, us2000, us30), M1 from R2, London-daily bars, same TSMOM + 0.5×
+spent/chaotic gate as Tier 1. Pre-registered: the NQ effect is real only if it
+echoes (gating improves OOS Sharpe AND calm edge > chaotic edge) on **≥4/6**
+indices; otherwise it stays retired as instrument-specific.
+
+| index | full Sharpe | base OOS | gated OOS | calm bp/day | chaotic bp/day | echoes? |
+|---|---|---|---|---|---|---|
+| nq | +0.56 | +0.54 | **+0.64** | +9.37 | −3.23 | **YES** |
+| de30 | −0.22 | +0.15 | −0.08 | −1.78 | −5.06 | no |
+| spx500 | +0.50 | +0.52 | +0.36 | +1.91 | +1.26 | no |
+| uk100 | −0.20 | −0.48 | −0.52 | −5.73 | +4.86 | no |
+| us2000 | −0.09 | −0.27 | −0.23 | −3.46 | +3.27 | no |
+| us30 | +0.20 | +0.17 | +0.04 | −0.44 | −1.31 | no |
+
+**Echoes on 1/6 → pre-registered verdict: STAYS RETIRED — instrument-specific.**
+
+The decomposition is worth reading, because it shows *why* it's noise rather than
+a weak law: the two halves of the echo condition fail on **different** indices.
+The calm>chaotic conditional sign holds on 4/6 (nq, de30, spx500, us30) — but on
+three of those the gate still *hurt* OOS Sharpe (spx500 +0.52→+0.36, us30
++0.17→+0.04, de30 +0.15→−0.08), so the in-sample conditional split didn't
+translate into out-of-sample improvement anywhere but NQ. Conversely the one
+other index where gating nominally helped (us2000, −0.27→−0.23) has the
+conditional edge **backwards** (chaotic +3.27 beats calm −3.46). No index
+reproduces the NQ pattern of both-things-at-once, and the failures aren't even
+consistently signed with each other — the same scatter that gold (reversed) and
+DAX (reversed) showed in Tiers 6–7. That is the signature of one instrument's
+in-sample idiosyncrasy, not a cross-asset effect.
+
+Also worth stating plainly: base TSMOM itself is only positive on 3/6 of these
+indices OOS (nq, spx500, us30) — half the basket has no trend edge to gate in
+the first place, which caps what any conviction modifier could ever have done
+here.
+
+**This closes the question.** The last directional lead from the whole
+volatility-dispersion study is now dead on the definitive test it was
+pre-registered against: 1/6 echo vs the ≥4/6 bar, on top of gold and DAX both
+rejecting it earlier. Final tally across all non-FX assets tested: **NQ 1,
+everything else 7** (gold, DAX daily, de30, spx500, uk100, us2000, us30). The
+model's honest scope is unchanged and now complete: **magnitude / dispersion
+state only — no directional content survived anywhere.**
+
 ---
 
 ## Scoreboard
@@ -191,16 +236,18 @@ could revisit, but the prior is now clearly negative.)
 | 6A | gold conviction-gating (NQ replication) | **FAILED to replicate** (reversed) |
 | 6B | Asia-compression, 25 FX crosses | **PASS, 21/25 OOS** — the most robust finding |
 | 7 | DAX conviction-gating (NQ tie-breaker) | **REJECTED** — NQ lead retired (1/3 indices, dead) |
-| 8 | multi-index conviction (definitive) | **built, ready-to-run** — data-gated (needs de30/spx500/uk100/us2000/us30 M1 local or R2 creds); NQ echoes 1/1 so far |
+| 8 | multi-index conviction (definitive) | **RUN — 1/6 echo vs ≥4/6 bar: STAYS RETIRED, instrument-specific** |
 
-**Where this leaves the project (post-Tier-6):** the lens is a **dispersion / expansion
-state engine** ("budget" retired — the depletion metaphor is false) — magnitude-only,
-honestly validated. It belongs on the sizing/targets/calibration side, exactly as
-`CLAUDE.md` says ("the real edge is risk"). The strongest single result is **Asia
-compression → London expansion (21/25 FX crosses OOS)**. The once-promising directional
-lead — **index conviction-gating (NQ)** — **failed to replicate on gold** and is now
-unconfirmed; only a true multi-index test (blocked here on data) can revive or bury it.
-Three intuitions are now falsified and retired: **direction from consumption (FX)**, the
-**intraday fuel-tank exit model**, and **"budget spent → reversal"** (flat ~0.51 at every
-level). The honest headline stands: *the volatility forecast is a market-state /
+**Where this leaves the project (post-Tier-8, final):** the lens is a **dispersion /
+expansion state engine** ("budget" retired — the depletion metaphor is false) —
+magnitude-only, honestly validated. It belongs on the sizing/targets/calibration side,
+exactly as `CLAUDE.md` says ("the real edge is risk"). The strongest single result is
+**Asia compression → London expansion (21/25 FX crosses OOS)**. The last directional
+lead — **index conviction-gating (NQ)** — is now **buried by the definitive test it was
+pre-registered against**: 1/6 echo across the full 6-index basket (bar was ≥4/6), after
+gold and DAX had already rejected it. Four intuitions are now falsified and retired:
+**direction from consumption (FX)**, the **intraday fuel-tank exit model**, **"budget
+spent → reversal"** (flat ~0.51 at every level), and **"volatility state modifies
+trend-following in trending assets"** (NQ-only, noise). The honest headline stands, now
+with no open directional question: *the volatility forecast is a market-state /
 dispersion model — it estimates the distribution of movement, not its direction.*
