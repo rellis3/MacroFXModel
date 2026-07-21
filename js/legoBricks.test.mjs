@@ -20,6 +20,7 @@ import { buildVolatilityPlan } from './volatilityBotPlan.js';
 import { refreshVolatilityPlan } from './volatilityBotProducer.js';
 import { bucketM1IntoSessions } from './forecastAnalyser.js';
 import { londonMidnightSec } from './volBacktestEngine.js';
+import { buildOILevelText } from './oiLevelExport.js';
 
 let failures = 0;
 const ok   = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -597,6 +598,46 @@ console.log('[metricsCore — distribution shape / tail]');
      ['skew', 'excessKurt', 'var95', 'cvar95'].every(k => Number.isFinite(st[k])),
      `skew=${st.skew} exKurt=${st.excessKurt} var95=${st.var95} cvar95=${st.cvar95}`);
   ok('summarizeTrades var95 ≥ cvar95 (tail is worse than threshold)', st.var95 >= st.cvar95);
+}
+
+// ── oiLevelExport: the OI-walls paste-block builder ──────────────────────────
+// Synthetic oi_store: one FX pair with headline + ranked walls + max pain, one
+// index (2dp), and one empty entry (no levels → skipped). Proves the block emits
+// the right canonical headers, decimals, tier tags and staleness line, and reuses
+// oiStoreToLevels (so the numbers match /api/oi-levels and the bots).
+console.log('\n[oiLevelExport]');
+{
+  const store = {
+    'EUR/USD': {
+      pair: 'EUR/USD', spot: 1.0955, dte: 4, savedAt: '7/21/2026, 08:15:00',
+      maxPain: 1.0948,
+      callWall: 1.1000, putWall: 1.0900,
+      callWalls: [{ strike: 1.1000, oi: 9000, tier: 3 }, { strike: 1.1050, oi: 4000, tier: 2 }],
+      putWalls:  [{ strike: 1.0900, oi: 8000, tier: 3 }, { strike: 1.0850, oi: 3000, tier: 1 }],
+    },
+    'NAS100_USD': {
+      pair: 'NAS100_USD', spot: 20000, savedAt: '7/21/2026, 08:20:00',
+      maxPain: 20050, callWall: 20200, putWall: 19800,
+      callWalls: [{ strike: 20200, oi: 5000, tier: 2 }],
+      putWalls:  [{ strike: 19800, oi: 6000, tier: 3 }],
+    },
+    'EUR/GBP': { pair: 'EUR/GBP' },   // no walls → must be skipped entirely
+  };
+  const text = buildOILevelText(store, { generated: '2026-07-21 08:30 UTC' });
+  ok('OI export has the block header', text.includes('OI WALLS & MAX PAIN'));
+  ok('OI export stamps Generated', text.includes('Generated: 2026-07-21 08:30 UTC'));
+  ok('OI export uses canonical FX header (EUR/USD → EURUSD)', /\nEURUSD\n/.test(text));
+  ok('OI export uses canonical index header (NAS100_USD → NQ)', /\nNQ\n/.test(text));
+  ok('OI export skips a pair with no levels (EUR/GBP absent)', !text.includes('EURGBP') && !text.includes('EUR/GBP'));
+  ok('OI export emits FX walls at 5dp with tier', text.includes('OI 1.10000 : call_wall t3'));
+  ok('OI export emits put_wall with tier', text.includes('OI 1.09000 : put_wall t3'));
+  ok('OI export emits max_pain (no tier) at 5dp', text.includes('OI 1.09480 : max_pain'));
+  ok('OI export emits index walls at 2dp', text.includes('OI 20200.00 : call_wall t2'));
+  ok('OI export stamps the per-pair staleness line', text.includes('saved 7/21/2026, 08:15:00') && text.includes('spot 1.0955') && text.includes('DTE 4'));
+  ok('OI export parser lines all start with "OI "',
+     text.split('\n').filter(l => /^\d|^-?\d/.test(l.trim())).every(l => l.startsWith('OI ')));
+  // Empty store → graceful placeholder, never a throw.
+  ok('OI export handles empty store gracefully', buildOILevelText({}).includes('no OI data'));
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);
