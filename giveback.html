@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Give-Back · exit quality per bot</title>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --panel2:#1c2230; --line:#30363d; --fg:#e6edf3; --dim:#8b949e;
+          --good:#3fb950; --bad:#f85149; --warn:#d29922; --accent:#58a6ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; }
+  header { padding:20px 24px; border-bottom:1px solid var(--line); }
+  h1 { margin:0 0 4px; font-size:20px; }
+  .sub { color:var(--dim); font-size:13px; max-width:760px; }
+  .wrap { padding:20px 24px; max-width:1100px; margin:0 auto; }
+  .bar { display:flex; gap:10px; align-items:center; margin-bottom:16px; flex-wrap:wrap; }
+  button { background:var(--panel2); color:var(--fg); border:1px solid var(--line); border-radius:6px;
+           padding:6px 12px; cursor:pointer; font-size:13px; }
+  button:hover { border-color:var(--accent); }
+  a { color:var(--accent); text-decoration:none; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:16px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; }
+  .card h2 { margin:0 0 2px; font-size:16px; display:flex; justify-content:space-between; align-items:baseline; }
+  .card .n { color:var(--dim); font-size:12px; font-weight:400; }
+  .headline { font-size:26px; font-weight:700; margin:8px 0 2px; }
+  .headline.bad { color:var(--bad); } .headline.good { color:var(--good); }
+  .hlabel { color:var(--dim); font-size:12px; margin-bottom:12px; }
+  .rows { display:grid; grid-template-columns:1fr auto; gap:4px 10px; font-size:13px; }
+  .rows .k { color:var(--dim); } .rows .v { text-align:right; font-variant-numeric:tabular-nums; }
+  .note { color:var(--dim); font-size:12px; margin-top:12px; border-top:1px solid var(--line); padding-top:10px; }
+  table { width:100%; border-collapse:collapse; margin-top:10px; font-size:12px; }
+  th,td { text-align:right; padding:3px 6px; border-bottom:1px solid var(--line); font-variant-numeric:tabular-nums; }
+  th:first-child,td:first-child,th:nth-child(2),td:nth-child(2) { text-align:left; }
+  th { color:var(--dim); font-weight:600; }
+  .pos { color:var(--good); } .neg { color:var(--bad); }
+  details { margin-top:8px; } summary { cursor:pointer; color:var(--accent); font-size:12px; }
+  .explain { background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:12px 14px;
+             font-size:12.5px; color:var(--dim); margin-bottom:16px; }
+  .explain b { color:var(--fg); }
+  .empty { color:var(--dim); padding:24px 0; }
+  .pending { color:var(--warn); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Give-Back — exit quality per bot</h1>
+  <div class="sub">For every <b>closed</b> trade: how far it ran into profit (peak / MFE) vs. what the exit
+  actually kept. The gap is the give-back — the open profit handed back before anything banked it.
+  Reconstructed from the real M1 high/low path. <a href="index.html">← Dashboard</a></div>
+</header>
+<div class="wrap">
+  <div class="explain">
+    <b>How to read this.</b> A big give-back on <b>winners</b> = your exits let profit revert (banking / trailing
+    room). But if the <b>losers barely got green</b> (low peak MFE) before reversing, that's an <b>entry/stop</b>
+    problem, not an exit one — banking earlier won't help. Read both per bot before changing anything. The
+    "bank X% of peak" idea is only worth chasing where winners give back a lot <i>and</i> there's a real peak to bank.
+    Range-Line &amp; OI only — these are the KV-logged live bots; Gold/Confluence journal to files (use the CLI tool).
+  </div>
+  <div class="bar">
+    <button id="refresh">↻ Recompute</button>
+    <span id="stamp" class="sub"></span>
+  </div>
+  <div id="cards" class="cards"><div class="empty">Loading…</div></div>
+</div>
+<script>
+const fmt0 = (x) => x == null || !isFinite(x) ? '—' : Math.round(x).toLocaleString();
+const fmt1 = (x) => x == null || !isFinite(x) ? '—' : x.toFixed(1);
+const usd  = (x) => x == null || !isFinite(x) ? '—' : (x < 0 ? '-$' : '$') + Math.abs(Math.round(x)).toLocaleString();
+const pctv = (x) => x == null || !isFinite(x) ? '—' : Math.round(x * 100) + '%';
+const cls  = (x) => x > 0 ? 'pos' : (x < 0 ? 'neg' : '');
+
+function card(b) {
+  if (!b.n) return `<div class="card"><h2>${b.label}</h2>
+    <div class="empty">No closed trades logged yet${b.pending ? ` · <span class="pending">${b.pending} awaiting MFE</span>` : ''}.
+    New trades will appear here as they close.</div></div>`;
+  const gb = b.totalGivebackUsd;
+  const rows = b.trades.slice(0, 12).map(t => `<tr>
+    <td>${t.time_close ? new Date(t.time_close * 1000).toISOString().slice(5, 16).replace('T', ' ') : '—'}</td>
+    <td>${t.symbol || ''} ${t.direction || ''}</td>
+    <td>${fmt1(t.mfePips)}</td>
+    <td class="${cls(t.realizedPips)}">${fmt1(t.realizedPips)}</td>
+    <td>${fmt1(t.givebackPips)}</td>
+    <td>${pctv(t.givebackFrac)}</td></tr>`).join('');
+  return `<div class="card">
+    <h2>${b.label} <span class="n">${b.n} trades${b.pending ? ` · ${b.pending} pending` : ''}</span></h2>
+    <div class="headline ${gb > 0 ? 'bad' : 'good'}">${usd(gb)}</div>
+    <div class="hlabel">total open profit handed back off the peak (of ${usd(b.totalMfeUsd)} peak) · realised ${usd(b.totalRealizedUsd)}</div>
+    <div class="rows">
+      <div class="k">Median peak reached (MFE)</div><div class="v">${fmt1(b.medianMfePips)} pips</div>
+      <div class="k">Median kept at exit</div><div class="v">${fmt1(b.medianRealizedPips)} pips</div>
+      <div class="k">Median given back</div><div class="v">${fmt1(b.medianGivebackPips)} pips (${pctv(b.medianGivebackFrac)} of peak)</div>
+      <div class="k">Winners (${b.winners}) give back</div><div class="v">${pctv(b.winnersGivebackFrac)} of their peak</div>
+      <div class="k">Losers (${b.losers}) — median peak first</div><div class="v">${fmt1(b.losersMedianMfePips)} pips</div>
+      <div class="k">Reached green then closed red</div><div class="v">${b.greenThenRed}/${b.n}</div>
+    </div>
+    <details><summary>Recent trades</summary>
+      <table><thead><tr><th>Closed</th><th>Instrument</th><th>MFE(p)</th><th>Kept(p)</th><th>Gave(p)</th><th>%</th></tr></thead>
+      <tbody>${rows}</tbody></table></details>
+    <div class="note">${b.losersMedianMfePips < 5
+      ? 'Losers barely got green → this reads as an <b>entry/stop</b> issue more than a banking one.'
+      : 'Losers reached decent green before reversing → a bank/trail rule could genuinely help here.'}</div>
+  </div>`;
+}
+
+async function load(refresh) {
+  const el = document.getElementById('cards');
+  el.innerHTML = '<div class="empty">Computing (walking M1)…</div>';
+  try {
+    const r = await fetch('/api/giveback' + (refresh ? '?refresh=1' : ''));
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'failed');
+    document.getElementById('stamp').textContent = 'as of ' + new Date(d.generatedAt).toLocaleString();
+    const bots = Object.values(d.bots || {});
+    el.innerHTML = bots.length ? bots.map(card).join('') : '<div class="empty">No bots.</div>';
+  } catch (e) {
+    el.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  }
+}
+document.getElementById('refresh').onclick = () => load(true);
+load(false);
+</script>
+</body>
+</html>

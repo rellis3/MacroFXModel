@@ -98,6 +98,7 @@ import { fetchM1Gap as _fetchM1Gap } from './js/m1GapFill.js';   // OANDA M1 gap
 import { rvHarSigma as _rvHarSigma } from './js/indexRvHar.js';   // validated 5-min realized-vol HAR σ for index COG lines (not the GK shadow)
 import { ccHvSigma as _ccHvSigma, ccHvMulti as _ccHvMulti, ccHvIntraday as _ccHvIntraday } from './js/ccHvSigma.js';   // COG's own σ method (close-to-close HV) for reproducing his index lines
 import { resampleTo as _resampleTo } from './js/barUtils.js';   // resample the OANDA 1-min gap to 5-min before merging
+import { excursionFromM1, summarizeGiveback } from './js/giveback.js';   // per-bot give-back (MFE vs realised) analytics
 import { volHorseRace as _volHorseRace, HR_MODELS as _HR_MODELS } from './js/volHorseRaceEngine.js';   // 8-model σ-forecast horse race per instrument (QLIKE/MZ), does HAR's gold win generalise
 import { scanConfirmedSignals as _scanConfirmedSignals, mergeLog as _mergeLog, forwardStats as _forwardStats } from './js/forwardTrackEngine.js';   // live post-research track record of the confirmed fade
 import { parseCalendarCsv as _parseCalendarCsv, pairCurrencies as _calPairCurrencies } from './js/newsCalendar.js';   // economic-calendar parser
@@ -7007,6 +7008,50 @@ app.get('/api/oi-bot/zones', async (req, res) => {
 app.post('/api/oi-bot/zones/refresh', async (_req, res) => {
   try { const n = await _refreshOIBotZones(); res.json({ ok: true, instruments: n }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── Give-back analytics: per-bot MFE-vs-realised from the durable trade logs.
+// Answers "we run in profit intraday then end red — how, per bot?" on the
+// dashboard (no Python). Rows carry mfe_pips live now (pylego brokers); older
+// rows are enriched here from the M1 path via loadM1ForPair. Cached 5 min — the
+// M1 walk is the only cost. ?refresh=1 forces a recompute.
+let _givebackCache = { at: 0, data: null };
+app.get('/api/giveback', async (req, res) => {
+  try {
+    if (req.query.refresh !== '1' && _givebackCache.data && Date.now() - _givebackCache.at < 5 * 60_000)
+      return res.json(_givebackCache.data);
+    const BOTS = [
+      { id: 'range_line', label: 'Range-Line', kvKey: 'range_line_trade_log' },
+      { id: 'oi',         label: 'OI Gamma',   kvKey: 'oi_bot_trade_log' },
+    ];
+    const pipFor = (k) => { try { return _pipSize(k) || 0.0001; } catch { return 0.0001; } };
+    const out = {};
+    for (const bot of BOTS) {
+      const raw = await kv.get(bot.kvKey).catch(() => null);
+      const rows = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : [];
+      // Reconstruct mfe_pips for pre-logging rows from the real M1 path; group by
+      // instrument key so each parquet loads once.
+      const byKey = {};
+      for (const r of rows) {
+        if (r.mfe_pips != null || r.open_price == null || !r.time_open || !r.time_close) continue;
+        const k = r.key || (() => { try { return resolveKey(r.symbol); } catch { return null; } })();
+        if (k) (byKey[k] ||= []).push(r);
+      }
+      for (const [k, rs] of Object.entries(byKey)) {
+        let packed = null; try { packed = await loadM1ForPair(k, BT_M1_DIR); } catch { packed = null; }
+        if (!packed) continue;
+        const pip = pipFor(k);
+        for (const r of rs) {
+          const e = excursionFromM1(packed, r, pip);
+          if (e) { r.mfe_pips = +e.mfePips.toFixed(1); r.mae_pips = +e.maePips.toFixed(1); }
+        }
+      }
+      out[bot.id] = { label: bot.label, ...summarizeGiveback(rows, pipFor) };
+    }
+    const payload = { ok: true, generatedAt: Date.now(), bots: out };
+    _givebackCache = { at: Date.now(), data: payload };
+    res.json(payload);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ── OI bot: push the planned levels + WHY to Telegram, one pretty message per
