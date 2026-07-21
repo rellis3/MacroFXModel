@@ -135,8 +135,8 @@
       <button data-y="budget" title="Range-budget: realized session range ÷ the forecast's expected day range at the touch. Unspent (vol still to come) → fade (strong reversal); spent (range used up) → follow (break). Direction is the open question — the test is whether budget separates the outcomes.">Budget</button>
     </div>
     <span id="budInputs" style="display:none;align-items:center;gap:6px">
-      <label title="Spent threshold: below this = unspent → fade; at/above = spent → follow. 1.0 = realized range equals the forecast's expected day range.">Bud cut</label>
-      <input type="number" id="budcut" value="0.75" step="0.05" min="0.05" style="width:52px">
+      <label title="Spent threshold as a % of the forecast's expected day range. A touch where LESS than this % of the day's range has printed = unspent → fade; at/above = spent → follow. 100 = the full expected range. Slide it and watch the fade/follow split in the tally change.">Bud cut %</label>
+      <input type="number" id="budcut" value="75" step="5" min="5" max="300" style="width:52px">
     </span>
     <label title="Next level: TP = the adjacent band, SL = symmetric (1:1). Fixed: SL = a set pip/point distance, TP = SL × the multiplier — same entry line + direction.">SL/TP</label>
     <div class="seg" id="sltp">
@@ -549,7 +549,7 @@ function makeDecider(d) {
     // question — flip fade/follow here if the tally says the reverse.
     const bands = bandsFor(d.f);
     const expFrac = bands && bands.hl_median > 0 ? 2 * bands.hl_median / 100 : 0;  // expected day-range fraction (median H-L band)
-    const cut = Math.max(0.01, +$('budcut').value || 0.75);
+    const cut = Math.max(1, +$('budcut').value || 75) / 100;   // input is a PERCENT of expected range → ratio
     return (L, ti, bars) => {
       if (!(expFrac > 0)) return null;
       let hi = -Infinity, lo = Infinity;
@@ -761,13 +761,23 @@ function renderStats() {
     ? `SL ${+$('slval').value || 0}${u.label} · TP ${+$('tpmult').value || 0}×`
     : 'Next level';
   const eodLbl = state.eod === 'run' ? 'Let run' : 'Kill @ EOD';
-  const styleTag = state.style === 'budget' ? `${styleLbl} cut ${+$('budcut').value || 0.75}` : styleLbl;
+  const styleTag = state.style === 'budget' ? `${styleLbl} cut ${+$('budcut').value || 75}%` : styleLbl;
+  // Fade/follow split — shows a selector style (momentum/divergence/budget) is
+  // actually dividing the touches. For the fixed styles it's all one action.
+  const selector = ['momentum', 'divergence', 'budget'].includes(state.style);
+  let nFade = 0, nFollow = 0;
+  for (const t of all) { if (t.action === 'follow') nFollow++; else nFade++; }
+  const splitLine = selector
+    ? `<div class="st-empty">This style split the ${total.n} touches into <b class="pos">${nFade} fade</b> + <b class="neg">${nFollow} follow</b>. `
+      + (nFollow === 0 ? 'All fade → same as Fade-all (loosen the cut / signal to see follows). ' : nFade === 0 ? 'All follow (tighten to see fades). ' : '')
+      + `</div>` : '';
   el.innerHTML = `<h3>Reversion tally <span class="calcTag">${styleTag} · ${sltpLbl} · ${eodLbl} · ${calc}</span></h3>`
     + `<table class="st"><thead><tr><th>Line</th><th>N</th><th>W</th><th>L</th><th>Exp</th><th>Win%</th><th>ΣNet%</th></tr></thead>`
     + `<tbody>${rows}`
     + `<tr class="tot"><td>TOTAL</td><td>${total.n}</td><td>${total.wins}</td><td>${total.losses}</td><td>${total.expired}</td>`
     + `<td>${total.n ? twr + '%' : '—'}</td><td class="${total.netPct >= 0 ? 'pos' : 'neg'}">${total.netPct >= 0 ? '+' : ''}${total.netPct.toFixed(2)}</td></tr>`
     + `</tbody></table>`
+    + splitLine
     + `<div class="st-empty">N = touches (1 per line per session). ΣNet% sums per-trade % after cost — a rough cumulative for eyeballing, not compounded equity. In-sample.</div>`;
 }
 
