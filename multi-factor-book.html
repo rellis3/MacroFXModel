@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<!--
+  multi-factor-book.html — the combined multi-factor book. Blends the two replicated
+  FX/macro factors that already live in this repo — time-series TREND (trendFollowEngine)
+  and FX CARRY (carryEngine) — into one diversified, vol-targeted portfolio via
+  multiFactorEngine. Calls POST /api/multi-factor/run → poll /status (real OANDA D1 +
+  FRED rates, deployed server only). Read-only research — trades nothing, feeds no bot.
+
+  The point is NOT a clever entry. It is diversification + vol sizing: trend pays in
+  crises, carry bleeds in them, so the blend's Sharpe should beat either leg IF both
+  legs are alive. If a leg is dead OOS, the blend is dragged and the honest read says
+  so — combining dead factors does not create edge. Expect a MODEST, boring number
+  (~0.5–0.9 blended Sharpe in the good case) with multi-year flat stretches, not a
+  money printer. VRP (vix-vol-carry) is Python-only and not yet a third leg.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multi-Factor Book — Trend + Carry Blend</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; background:#0b0d12; color:#e6e8ec; font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  .wrap { max-width:1000px; margin:0 auto; padding:24px; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  h2 { font-size:14px; margin:0 0 10px; color:#cdd3dc; }
+  .sub { color:#8891a0; font-size:12px; margin-bottom:20px; }
+  .panel { background:#12151c; border:1px solid #2a2f3a; border-radius:10px; padding:16px; margin-bottom:16px; }
+  label { font-size:12px; color:#9aa; margin-right:6px; }
+  select, input { background:#1a1e26; color:#e6e8ec; border:1px solid #2a2f3a; border-radius:6px; padding:6px; }
+  button { background:#1f6feb; color:#fff; border:0; border-radius:8px; padding:9px 16px; font-size:13px; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:default; }
+  table { width:100%; border-collapse:collapse; font-size:12px; margin-top:8px; }
+  th { color:#8891a0; text-align:left; font-weight:600; }
+  td, th { padding:4px 8px; border-bottom:1px solid #1c2230; }
+  td.num, th.num { text-align:right; font-family:monospace; }
+  .kpi { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; }
+  .kpi div { background:#0d1017; border:1px solid #22262f; border-radius:8px; padding:10px 12px; }
+  .kpi .v { font-size:20px; font-weight:700; font-family:monospace; }
+  .kpi .l { font-size:10px; color:#8891a0; text-transform:uppercase; letter-spacing:.05em; }
+  .mono { font-family:monospace; }
+  .read { border-left:3px solid #3b4252; padding:10px 12px; background:#0d1017; border-radius:6px; font-size:13px; color:#cdd3dc; }
+  .read.good { border-left-color:#2ea043; }
+  .read.warn { border-left-color:#d29922; }
+  .pos { color:#3fb950; } .neg { color:#f85149; }
+  .cell { text-align:center; font-family:monospace; border-radius:4px; }
+  .note { color:#6b7280; font-size:11px; margin-top:8px; }
+  svg { width:100%; height:220px; display:block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🧱 Multi-Factor Book — Trend + Carry</h1>
+  <div class="sub">
+    Blends the two replicated factors already built here — <b>time-series trend</b> and <b>FX carry</b> — into one
+    diversified, vol-targeted book. The edge on offer is <b>diversification + vol sizing</b>, not the entry. Real OANDA D1
+    + FRED rates, ~20y. <b>Read-only — trades nothing.</b> Expect a modest, boring number (~0.5–0.9 blended Sharpe in the
+    good case) with multi-year flat stretches — and if a leg is dead out-of-sample, the honest read will say the blend is dead too.
+  </div>
+
+  <div class="panel">
+    <label>Portfolio vol target</label>
+    <select id="vt"><option value="0.10">10%</option><option value="0.15">15%</option><option value="0.20">20%</option></select>
+    <label style="margin-left:12px">Cost (bp/turnover)</label><input id="cost" type="number" value="2" min="0" max="50" style="width:70px">
+    <button id="run" style="margin-left:12px">Run blend</button>
+    <div class="note">Each leg is costed by its own engine; the blend adds only slow factor-weight turnover. Interbank carry is an <b>upper bound</b> — a retail broker's swap haircut makes real carry worse (see FX Carry Factor page).</div>
+  </div>
+
+  <div id="out"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const pct = x => (x == null ? '—' : (+x).toFixed(1) + '%');
+const f2 = x => (x == null ? '—' : (+x).toFixed(2));
+const sClass = x => x == null ? '' : (x > 0 ? 'pos' : 'neg');
+
+function corrColor(v) {
+  if (v == null) return '#12151c';
+  // green (uncorrelated / negative) → red (correlated). This is the diversification signal.
+  const t = Math.max(-1, Math.min(1, v));
+  if (t <= 0) return `rgba(46,160,67,${0.15 + 0.35 * -t})`;
+  return `rgba(248,81,73,${0.10 + 0.45 * t})`;
+}
+
+function equitySvg(eq) {
+  if (!eq || eq.length < 2) return '';
+  const xs = eq.map((_, i) => i / (eq.length - 1));
+  const vs = eq.map(p => p.v);
+  const lo = Math.min(...vs), hi = Math.max(...vs), rng = hi - lo || 1;
+  const W = 960, H = 220, pad = 4;
+  const pathD = eq.map((p, i) => `${i ? 'L' : 'M'}${(pad + xs[i] * (W - 2 * pad)).toFixed(1)},${(H - pad - ((p.v - lo) / rng) * (H - 2 * pad)).toFixed(1)}`).join(' ');
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><path d="${pathD}" fill="none" stroke="#1f6feb" stroke-width="1.5"/></svg>
+    <div class="note">Blended equity (vol-targeted), ${eq[0].t} → ${eq[eq.length-1].t}. Growth of 1.</div>`;
+}
+
+function statsTable(rows) {
+  const head = `<tr><th>Series</th><th class="num">Sharpe</th><th class="num">Ann Ret</th><th class="num">Ann Vol</th><th class="num">Max DD</th><th class="num">Calmar</th><th class="num">Win%</th></tr>`;
+  const body = rows.map(r => `<tr><td>${r.label}</td>
+    <td class="num ${sClass(r.s.sharpe)}">${f2(r.s.sharpe)}</td>
+    <td class="num">${pct(r.s.annReturn)}</td>
+    <td class="num">${pct(r.s.annVol)}</td>
+    <td class="num neg">${pct(r.s.maxDD)}</td>
+    <td class="num">${f2(r.s.calmar)}</td>
+    <td class="num">${r.s.winRate == null ? '—' : r.s.winRate + '%'}</td></tr>`).join('');
+  return `<table>${head}${body}</table>`;
+}
+
+function render(r) {
+  const book = r.book;
+  if (!book || !book.ok) { $('out').innerHTML = `<div class="panel">Blend failed: ${book?.error || 'unknown'}</div>`; return; }
+  const h = book.headline, kpi = (l, v, cls='') => `<div><div class="l">${l}</div><div class="v ${cls}">${v}</div></div>`;
+  const d = book.diversification;
+  const good = /Diversification is doing real work/.test(book.read);
+
+  // Legs availability
+  const legLine = (name, leg) => leg?.ok
+    ? `<span class="pos">✓ ${name}</span> <span class="note">(${leg.markets ? leg.markets.length + ' markets' : (leg.ccys ? leg.ccys.length + ' ccys' : '')}, ${leg.bars} days, ${leg.first}→${leg.last})</span>`
+    : `<span class="neg">✗ ${name}</span> <span class="note">${leg?.error || 'unavailable'}</span>`;
+
+  // Correlation matrix
+  const nm = book.correlation.names;
+  const cm = book.correlation.matrix;
+  const corrTbl = `<table><tr><th></th>${nm.map(n => `<th class="num">${n}</th>`).join('')}</tr>${
+    nm.map((n, i) => `<tr><td>${n}</td>${nm.map((_, j) => {
+      const v = cm[i][j];
+      return `<td class="cell" style="background:${corrColor(v)}">${v == null ? '—' : v.toFixed(2)}</td>`;
+    }).join('')}</tr>`).join('')}</table>
+    <div class="note">Off-diagonal = daily-return correlation between legs. Green = uncorrelated (real diversification); red = the legs are one bet wearing several hats.</div>`;
+
+  $('out').innerHTML = `
+    <div class="panel">
+      <h2>Blended book — full sample (${book.window.commonDates} common days, ${book.window.first}→${book.window.last})</h2>
+      <div class="kpi">
+        ${kpi('Sharpe', f2(h.sharpe), sClass(h.sharpe))}
+        ${kpi('Ann Return', pct(h.annReturn))}
+        ${kpi('Ann Vol', pct(h.annVol))}
+        ${kpi('Max DD', pct(h.maxDD), 'neg')}
+        ${kpi('Calmar', f2(h.calmar))}
+      </div>
+      ${equitySvg(book.equity)}
+    </div>
+
+    <div class="panel">
+      <div class="read ${good ? 'good' : 'warn'}">${book.read}</div>
+    </div>
+
+    <div class="panel">
+      <h2>In-sample vs out-of-sample (${book.window.isDays} / ${book.window.oosDays} day chronological split)</h2>
+      ${statsTable([{ label: 'In-sample (first 70%)', s: book.is }, { label: 'Out-of-sample (last 30%)', s: book.oos }])}
+      <div class="note">OOS is the only number that counts. A blend that only works in-sample is fitted, not real.</div>
+    </div>
+
+    <div class="panel">
+      <h2>Diversification — is the blend actually adding?</h2>
+      <div class="kpi">
+        ${kpi('Avg ρ (legs)', f2(d.avgCorrelation))}
+        ${kpi('Diversification ratio', f2(d.diversificationRatio))}
+        ${kpi('Blend Sharpe', f2(h.sharpe), sClass(h.sharpe))}
+        ${kpi('Best single leg', `${f2(d.bestSingleSharpe)}`)}
+      </div>
+      <div class="note">Diversification ratio &gt; 1 and blend Sharpe &gt; best single leg ⇒ the blend beats its parts. Diversification ratio ≈ 1 ⇒ the legs move together and you gained nothing.</div>
+      ${corrTbl}
+    </div>
+
+    <div class="panel">
+      <h2>Each factor, standalone (same window)</h2>
+      ${statsTable(book.perFactor.map(f => ({ label: f.name, s: f })))}
+      <div class="note">These are the legs on their own. The blend row above should be calmer (lower vol per unit return) than any single leg if diversification is real.</div>
+    </div>
+
+    <div class="panel">
+      <h2>Legs fetched</h2>
+      <div>${legLine('Trend', r.legs.trend)}</div>
+      <div style="margin-top:6px">${legLine('Carry', r.legs.carry)}</div>
+      <div class="note" style="margin-top:10px">${r.note}</div>
+    </div>`;
+}
+
+async function run() {
+  const btn = $('run'); btn.disabled = true;
+  $('out').innerHTML = '<div class="panel">⏳ Fetching ~20y D1 for the trend basket + carry universe and FRED rates, then blending… (first run can take a minute)</div>';
+  try {
+    const body = { volTargetPort: +$('vt').value, costBp: +$('cost').value };
+    const start = await (await fetch('/api/multi-factor/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
+    if (!start.ok) { $('out').innerHTML = `<div class="panel">Error: ${start.error} (deployed server only)</div>`; btn.disabled = false; return; }
+    const jobId = start.jobId;
+    let tries = 0;
+    const poll = async () => {
+      const s = await (await fetch(`/api/multi-factor/status/${jobId}`)).json();
+      if (s.status === 'running') {
+        $('out').innerHTML = `<div class="panel">⏳ ${s.step || 'running'}… (${s.legsDone}/${s.legsTotal} legs, ${s.elapsed}s)</div>`;
+        if (tries++ < 120) return setTimeout(poll, 2000);
+        $('out').innerHTML = '<div class="panel">Timed out waiting for the job. Try again.</div>'; btn.disabled = false; return;
+      }
+      if (s.status === 'done') { render(s); btn.disabled = false; return; }
+      $('out').innerHTML = `<div class="panel">Error: ${s.error || 'job failed'}${s.legs ? '<br><span class="note">' + JSON.stringify(s.legs) + '</span>' : ''}</div>`; btn.disabled = false;
+    };
+    poll();
+  } catch (e) { $('out').innerHTML = `<div class="panel">Error: ${e.message}</div>`; btn.disabled = false; }
+}
+$('run').addEventListener('click', run);
+</script>
+</body>
+</html>

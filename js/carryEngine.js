@@ -102,6 +102,7 @@ const annPct = arr => +(mean(arr) * 252 * 100).toFixed(2);
 export function runCarryBasket(priceByCcy, rateByCcy, {
   fundingCcy = 'USD', volWindow = 60, targetVol = 0.10, rebalDays = 21,
   costBps = 2, isFrac = 0.7, signalMode = 'sign',   // 'sign' | 'diff' (magnitude-weighted)
+  returnDaily = false,   // when true, attach the full daily SIMPLE-return series (for the multi-factor combiner)
 } = {}) {
   const { dates, cols, ccys } = alignSeries(priceByCcy);
   const n = dates.length;
@@ -182,6 +183,10 @@ export function runCarryBasket(priceByCcy, rateByCcy, {
     equity: sampleEquity(dates, eq, 400),
     perYear: perYearReturns(dates, total),
     current,
+    // Optional full daily series for the multi-factor combiner. `total` is a daily
+    // LOG return (equity = exp(cumsum)); expose SIMPLE returns so it composes with
+    // engines that use (1+r) compounding. No downsampling — the combiner needs every day.
+    ...(returnDaily ? { daily: { dates: dates.slice(), ret: total.map(x => Math.expm1(x)) } } : {}),
   };
 }
 
