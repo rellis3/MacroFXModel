@@ -38,6 +38,18 @@ export const PATH_DEFAULTS = {
   assetClass: 'fx',
   driftLambda: 0.97,   // EWMA decay for the drift estimate (~33-day half-life)
   driftCapSigma: 0.5,  // |drift per day| capped at this × daily σ
+  driftSource: 'ewma', // which drift bends the cone center + is graded for
+                       // direction: 'ewma' (past-return EWMA, the default),
+                       // 'trend' (the replicated multi-lookback momentum sign,
+                       // trendFollowEngine.momentumSignal), or 'blend' (mean of
+                       // the two). The calibration tally grades sign(mu) vs the
+                       // realized H-day move for whichever is chosen — so 'trend'
+                       // tests the honest direction question OOS.
+  trendDriftFrac: 0.4, // VISUAL scale only: the trend line leans up to this
+                       // fraction of the drift cap at full conviction (|sig|=1).
+                       // It sets how far the line bends, NOT the graded result —
+                       // the direction hit-rate depends only on sign(trend), so
+                       // this fraction can never flatter or worsen the number.
   nPaths: 40,          // Monte-Carlo sample paths
   seed: 42,            // deterministic path RNG
   warmup: 300,         // first index eligible for a cone (σ + momentum history)
@@ -101,8 +113,7 @@ export function coneFromContext(ctx, i, horizonDays) {
   const anchor = bars[i - 1].close;
   const sig = i < n ? sigma[i] : nextSigma(bars, opts.assetClass);
   if (!(sig > 0)) return null;
-  const muRaw = drift[i === n ? n - 1 : i] ?? 0;   // at i===n, ew through the last return
-  const mu = Math.max(-opts.driftCapSigma * sig, Math.min(opts.driftCapSigma * sig, i === n ? _liveDrift(ctx) : muRaw));
+  const mu = _driftMu(ctx, i, sig);
 
   const steps = [];
   const bandsFn = opts.bandsFn ?? computeBands;
@@ -117,6 +128,26 @@ export function coneFromContext(ctx, i, horizonDays) {
   }
   return { i, anchorDate: _dateOf(bars[i - 1]), anchor, sigma: sig, mu,
            trendScore: i === n ? momentumSignal(ctx.closes)[n - 1] : trend[i], steps };
+}
+
+// Drift (per day) for the chosen source, clamped to the cap. Kept in one place
+// so coneFromContext, samplePaths and calibrationTally all agree.
+//   ewma  — EWMA of past daily log-returns (drift[i], or _liveDrift at i===n)
+//   trend — momentum sign × trendDriftFrac × cap × σ (sign is what's graded)
+//   blend — mean of the two
+function _driftMu(ctx, i, sig) {
+  const { drift, opts } = ctx;
+  const n = ctx.closes.length;
+  const ewma = i === n ? _liveDrift(ctx) : (drift[i] ?? 0);
+  const src = opts.driftSource || 'ewma';
+  let mu = ewma;
+  if (src === 'trend' || src === 'blend') {
+    const t = i === n ? (momentumSignal(ctx.closes)[n - 1] ?? 0) : (ctx.trend[i] ?? 0);
+    const trendMu = t * opts.trendDriftFrac * opts.driftCapSigma * sig;
+    mu = src === 'trend' ? trendMu : 0.5 * (ewma + trendMu);
+  }
+  const cap = opts.driftCapSigma * sig;
+  return Math.max(-cap, Math.min(cap, mu));
 }
 
 // Live drift (i === n): EWMA through the final return, same recursion as ctx.

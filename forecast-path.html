@@ -202,6 +202,7 @@
       <button id="tCone" class="on">P50/P75 cone</button>
       <button id="tPaths">Sample paths</button>
       <button id="tConsensus">Most-agreed path</button>
+      <button id="tTrendLine" title="Daily cone only. Bends the center by the REPLICATED multi-lookback momentum sign (trendFollowEngine) instead of the past-return EWMA, and grades sign vs the realized H-day move. It's the honest direction test — expect ~coin-flip; the label states its live hit-rate so it can't masquerade as a signal. Visual lean is display-only and never changes the graded number.">Trend line</button>
       <button id="tActual" class="on">Reveal actual</button>
       <button id="tNews" class="on">News</button>
       <button id="tEventCone" class="on" title="Widen the cone into scheduled-release windows (multiplier learned causally from this pair's history; A/B-graded in the calibration card)">Event σ</button>
@@ -259,7 +260,12 @@
       claims 50% containment, P75 claims 75%, drift direction claims to beat a coin
       flip — the calibration card grades every claim on non-overlapping windows.
       Sample paths are draws from that same claim (wicks cosmetic); their per-step
-      median is the "most-agreed path". The <b>hindcast trail</b> draws the very
+      median is the "most-agreed path". The <b>trend line</b> (orange, daily only)
+      bends the center by the replicated multi-lookback momentum sign instead of
+      the EWMA drift and reports its own live hit-rate — the honest direction
+      test; expect ~coin-flip, and never trade off the line itself (the label
+      says so, and its lean is display-only — only the sign is graded). The
+      <b>hindcast trail</b> draws the very
       windows the calibration card grades — each faint segment is the path the
       model claimed at that moment (causally), ending green (final close inside
       the P75 claim) or red (busted). <b>Day forecast</b> draws the daily export's
@@ -287,17 +293,17 @@
 // cached forecastPathCore.js (missing a newly-imported export) kills the whole
 // module script silently — dead buttons, nothing loads. Bump when this page
 // starts importing something new from a brick.
-import { createLevelChart } from './js/levelChart.js?v=15';
-import { priceDigits, assetClass as instrAssetClass } from './js/instrumentRegistry.js?v=15';
-import { bisect, resampleTo } from './js/barUtils.js?v=15';
-import { collectLevels } from './js/levelSources.js?v=15';
+import { createLevelChart } from './js/levelChart.js?v=16';
+import { priceDigits, assetClass as instrAssetClass } from './js/instrumentRegistry.js?v=16';
+import { bisect, resampleTo } from './js/barUtils.js?v=16';
+import { collectLevels } from './js/levelSources.js?v=16';
 import {
   buildForecastContext, coneFromContext, samplePaths, calibrationTally, PATH_DEFAULTS,
   buildIntradayContext, intradayCone, intradaySamplePaths, intradayTally, INTRADAY_DEFAULTS,
   intradayRealizedZ, intradayReachability, reachabilityCalibration, dayRangeStatus,
-} from './js/forecastPathCore.js?v=15';
-import { computeBands, nextSigma } from './js/forecastCore.js?v=15';
-import { COG_CONST } from './js/cogReverseEngineer.js?v=15';
+} from './js/forecastPathCore.js?v=16';
+import { computeBands, nextSigma } from './js/forecastCore.js?v=16';
+import { COG_CONST } from './js/cogReverseEngineer.js?v=16';
 
 // COG's band calibration (reverse-engineered, verified against his exports):
 // raw constants × σ, NO per-asset correction — computeBands-shaped so it can
@@ -401,7 +407,7 @@ const view = createLevelChart($('chart'), { height: 480 });
 const chart = view.chart;
 
 let bars = [], ctx = null, i = 0, extraSeries = [], actualSeries = null, events = [], d1History = [], ivByDate = null;
-const toggles = { cone: true, paths: false, consensus: false, actual: true, news: true, levels: false, bands: false, trail: true, eventCone: true, impliedCone: false, budgetCone: false };
+const toggles = { cone: true, paths: false, consensus: false, trendLine: false, actual: true, news: true, levels: false, bands: false, trail: true, eventCone: true, impliedCone: false, budgetCone: false };
 const eng = () => ENGINES[$('gran').value];
 const isIntraday = () => $('gran').value !== 'D1';
 // Major releases as epoch seconds — the event-aware cone's input.
@@ -455,6 +461,23 @@ function eventMarkers(times, evs) {
           text: g.count > 1 ? `×${g.count}` : '' });
 }
 
+// Live-graded direction hit-rate for the TREND-drift cone (daily only), memoized
+// by pair+horizon+calc so the replay slider stays smooth. This is the honest
+// number the trend line must carry: sign(momentum) vs the realized H-day move,
+// benchmark 50%. It reuses the same non-overlapping-window tally as the cards.
+let _trendDirCache = { key: null, full: null, recent: null };
+function trendDir(H) {
+  const key = `${pairSel.value}|${H}|${$('calc').value}`;
+  if (_trendDirCache.key === key) return _trendDirCache;
+  let full = null, recent = null;
+  try {
+    const t = calibrationTally(bars, { horizonDays: H, assetClass: ASSET_CLASS(pairSel.value), bandsFn: activeBandsFn(), driftSource: 'trend' });
+    full = t.full.direction; recent = t.recent.direction;
+  } catch { /* not enough history */ }
+  _trendDirCache = { key, full, recent };
+  return _trendDirCache;
+}
+
 function render() {
   if (!ctx) return;
   clearExtra();
@@ -486,6 +509,14 @@ function render() {
       line('rgba(148,163,184,.22)', 1, 0).setData([t0, ...p.map(c => ({ time: e.stepT(c), value: c.close }))]);
     if (toggles.consensus)
       line('#c084fc', 2, 0).setData([t0, ...consensus.map(c => ({ time: e.stepT(c), value: c.close }))]);
+  }
+
+  // Trend line (daily only): the cone center bent by the replicated momentum
+  // sign instead of the EWMA drift. Distinct orange, next to blue (EWMA) and
+  // purple (consensus). The honest hit-rate rides in the readout, not the line.
+  if (toggles.trendLine && !isIntraday() && ctx.trend) {
+    const tc = e.cone({ ...ctx, opts: { ...ctx.opts, driftSource: 'trend' } }, live ? bars.length : i, H);
+    if (tc) line('#fb923c', 2, 0).setData([t0, ...tc.steps.map(s => ({ time: e.stepT(s), value: s.center }))]);
   }
 
   if (toggles.actual && !live) {
@@ -625,6 +656,26 @@ function render() {
 
   const dirWord = cone.mu > 0 ? '<span class="good">up</span>' : cone.mu < 0 ? '<span class="bad">down</span>' : 'flat';
   const lastS = cone.steps[cone.steps.length - 1];
+
+  // Trend-line readout — the honest, live-graded hit-rate that keeps the orange
+  // line from masquerading as a signal. Daily only.
+  let trendHtml = '';
+  if (toggles.trendLine && !isIntraday() && cone.trendScore != null) {
+    const td = trendDir(H);
+    const arrow = cone.trendScore > 0 ? '↑' : cone.trendScore < 0 ? '↓' : '→';
+    const hr = td.full && td.full.hitRate != null ? Math.round(td.full.hitRate * 100) : null;
+    const rhr = td.recent && td.recent.hitRate != null ? Math.round(td.recent.hitRate * 100) : null;
+    const strong = hr != null && td.full.n >= 100 && hr >= 55;
+    const caveat = hr == null ? 'not enough resolved windows yet'
+      : Math.abs(hr - 50) < 3 ? 'basically a coin flip — do not trade off this line'
+      : strong ? `above the 50% coin flip on n=${td.full.n} — modest, still not a standalone signal`
+      : `vs the 50% coin flip (n=${td.full.n}) — treat as context/sizing only`;
+    trendHtml =
+      `<div class="kv"><span>trend line <span style="color:#fb923c">▬</span></span><b>${arrow} calls next ${e.fmtStep(H)} move ` +
+      `${hr == null ? '—' : `<span class="${strong ? 'good' : ''}">${hr}%</span>`}` +
+      `${rhr != null ? ` <span class="muted">(recent ${rhr}%)</span>` : ''}</b></div>` +
+      `<div class="muted" style="margin:2px 0 4px">${caveat}. The line's lean is display-only; only the sign is graded.</div>`;
+  }
   const dg = priceDigits(pairSel.value);
   const calcLabel = $('calc').value === 'cog' ? 'COG' : 'Platform (Feller)';
   const calcScope = isIntraday() ? 'Day-forecast lines' : 'cone envelopes + tally';
@@ -634,6 +685,7 @@ function render() {
     `<div class="kv"><span>${e.sigmaLabel}</span><b>${(e.sigmaOf(cone) * 100).toFixed(3)}%</b></div>` +
     `<div class="kv"><span>drift / bar</span><b>${(cone.mu * 1e4).toFixed(2)} bp (${dirWord})</b></div>` +
     (cone.trendScore != null ? `<div class="kv"><span>trend score</span><b>${cone.trendScore.toFixed(2)} ∈ [-1,1]</b></div>` : '') +
+    trendHtml +
     (cone.eventSteps > 0 ? `<div class="kv"><span>news σ widening</span><b class="warn">${cone.eventSteps} of ${H} steps in a release window</b></div>` : '') +
     `<div class="kv"><span>P75 range @ ${e.fmtStep(H)}</span><b>${lastS.p75Dn.toFixed(dg)} – ${lastS.p75Up.toFixed(dg)}</b></div>` +
     surpriseHtml + evHtml +
@@ -953,7 +1005,7 @@ $('calc').onchange = () => {   // bandsFn is captured in the D1 context — rebu
   if (ctx) ctx = eng().build(bars, ASSET_CLASS(pairSel.value));
   render(); renderCalib();
 };
-for (const [id, key] of [['tCone','cone'],['tPaths','paths'],['tConsensus','consensus'],['tActual','actual'],['tNews','news'],['tLevels','levels'],['tBands','bands'],['tTrail','trail']])
+for (const [id, key] of [['tCone','cone'],['tPaths','paths'],['tConsensus','consensus'],['tTrendLine','trendLine'],['tActual','actual'],['tNews','news'],['tLevels','levels'],['tBands','bands'],['tTrail','trail']])
   $(id).onclick = () => { toggles[key] = !toggles[key]; $(id).classList.toggle('on', toggles[key]); render(); };
 $('tEventCone').onclick = () => {   // eventAware lives in the context — rebuild it
   toggles.eventCone = !toggles.eventCone;
