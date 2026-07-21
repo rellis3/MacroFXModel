@@ -102,7 +102,7 @@ import { excursionFromM1, summarizeGiveback } from './js/giveback.js';   // per-
 import { volHorseRace as _volHorseRace, HR_MODELS as _HR_MODELS } from './js/volHorseRaceEngine.js';   // 8-model σ-forecast horse race per instrument (QLIKE/MZ), does HAR's gold win generalise
 import { scanConfirmedSignals as _scanConfirmedSignals, mergeLog as _mergeLog, forwardStats as _forwardStats } from './js/forwardTrackEngine.js';   // live post-research track record of the confirmed fade
 import { parseCalendarCsv as _parseCalendarCsv, pairCurrencies as _calPairCurrencies } from './js/newsCalendar.js';   // economic-calendar parser
-import { buildIntradayContext as _fpBuildCtx, intradayCone as _fpCone, intradayTally as _fpTally, intradayRealizedZ as _fpRealZ, intradayReachability as _fpReach, reachabilityCalibration as _fpReachCalib, intradaySamplePaths as _fpPaths, dayRangeStatus as _fpDayRange } from './js/forecastPathCore.js';   // forecast-path summary + reachability (cone claims API)
+import { buildIntradayContext as _fpBuildCtx, intradayCone as _fpCone, intradayTally as _fpTally, intradayRealizedZ as _fpRealZ, intradayReachability as _fpReach, reachabilityCalibration as _fpReachCalib, intradaySamplePaths as _fpPaths, dayRangeStatus as _fpDayRange, buildForecastContext as _fpBuildDaily, coneFromContext as _fpConeDaily, calibrationTally as _fpTallyDaily } from './js/forecastPathCore.js';   // forecast-path summary + reachability (cone claims API) + daily trend-direction (driftSource:'trend')
 import { makeClaim as _cfMakeClaim, shouldRecord as _cfShouldRecord, resolveClaims as _cfResolve, pruneStale as _cfPrune, summarizeForward as _cfSummarize } from './js/coneForwardTrack.js';   // cone forward-track (live claims vs outcomes)
 import { detectSurprise as _saDetect, shouldFire as _saShouldFire, recordFired as _saRecordFired, SURPRISE_DEFAULTS as _SA_DEFAULTS } from './js/surpriseAlertCore.js';   // cone surprise-alert (context ping, not a signal)
 import { fillRealismLadder as _fillRealismLadder } from './js/fillRealismEngine.js';   // per-line fade Sharpe vs bar resolution (fill-artifact test)
@@ -12218,6 +12218,46 @@ app.get('/api/forecast-path/summary', async (req, res) => {
     } catch (e) { errors[p] = e?.message || String(e); }
   }
   res.json({ ok: true, n: Object.keys(out).length, pairs: out, errors });
+});
+
+// ── Daily trend-direction — the honest direction read for the per-pair card ──
+// The DAILY cone bent by the replicated momentum sign (driftSource:'trend'),
+// graded through the SAME non-overlapping-window tally as the standalone page.
+// Returns the live trend bias + its live 10-day direction hit-rate (vs the 50%
+// coin flip) so the drawer can show it WITH the number that keeps it honest.
+// Daily data moves slowly → 3h per-pair cache. Separate from the intraday
+// summary (this is a 10-day-horizon signal, not the 4h cone).
+const _fpTrendDirCache = new Map();
+const _FP_TRENDDIR_TTL = 3 * 3600e3;
+async function _fpTrendDir(name) {
+  const oanda = _wbtInstrMap[name];
+  if (!oanda) throw new Error(`Unknown pair: ${name}`);
+  const assetClass = _assetClassFor(name);
+  const bars = await _btFetchD1(oanda, 800);              // warmup 300 + momentum 252 + windows
+  if (!bars || bars.length < 360) throw new Error(`only ${bars?.length ?? 0} D1 bars`);
+  const H = 10;
+  const ctx = _fpBuildDaily(bars, { assetClass, driftSource: 'trend', horizonDays: H });
+  const live = _fpConeDaily(ctx, bars.length, H);
+  const t = _fpTallyDaily(bars, { assetClass, driftSource: 'trend', horizonDays: H });
+  const ts = live?.trendScore ?? 0;
+  return {
+    pair: name.toUpperCase(), at: Date.now(), horizonDays: H,
+    dir: ts > 0 ? 'up' : ts < 0 ? 'down' : 'flat', trendScore: +ts.toFixed(2),
+    hitRate: t.full.direction.hitRate, n: t.full.direction.n,
+    recentHitRate: t.recent.direction.hitRate, recentN: t.recent.direction.n,
+  };
+}
+app.get('/api/forecast-path/trend-dir', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+  const name = String(req.query.pair || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (!name || !_wbtInstrMap[name]) return res.status(404).json({ ok: false, error: `Unknown pair: ${name}` });
+  const hit = _fpTrendDirCache.get(name);
+  if (hit && Date.now() - hit.at < _FP_TRENDDIR_TTL) return res.json({ ok: true, ...hit.data });
+  try {
+    const data = await _fpTrendDir(name);
+    _fpTrendDirCache.set(name, { at: Date.now(), data });
+    res.json({ ok: true, ...data });
+  } catch (e) { res.status(/HTTP/.test(e.message) ? 502 : 500).json({ ok: false, error: e?.message || String(e) }); }
 });
 
 // Target reachability — the "price" primitive for programmatic consumers (the
