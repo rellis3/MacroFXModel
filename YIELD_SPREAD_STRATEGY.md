@@ -125,6 +125,19 @@ beat flat sizing. Trade it **flat-sized**.
   high PFs suggest it will).
 - **Data honesty**: OANDA D1-derived daily closes + FRED with publication lags. Do not
   remove the lags "to get more trades" — that reintroduces lookahead.
+- **USDCHF foreign series was re-based (2026-07-21).** The original Swiss leg
+  `IRSTCI01CHM156N` (OECD call-money) was **discontinued on FRED — last obs 2024-03-01**.
+  The live signal fetch (~550d back) saw zero Swiss obs → CHF z came back `null` and the
+  pair was silently dropped from the live book (never traded); in the *backtest* the
+  forward-fill froze the CHF leg at 1.34% from 2024-03 on, so CHF's recent contribution to
+  the "6/6 pairs positive" claim was partly a **frozen-leg artifact**, not a true spread.
+  Swapped to `IR3TIB01CHM156N` (Swiss 3-month interbank, live; same family FRED uses for
+  GBP/AUD). Re-run M1 sweep: book stays robust across all 12 cells (Sharpe ~1.0–1.2, years-
+  positive unchanged); honest CHF card is PF **2.49** (was a partly-frozen 3.84), still a
+  positive contributor. The old headline returns on some cells were slightly *inflated* by
+  the frozen leg — the post-swap numbers are the honest ones. Lesson: an OECD "…156N"
+  series going stale fails **silently** (forward-fill hides it) — spot-check foreign-leg
+  `asOf` dates, don't just trust a non-null z.
 
 ---
 
