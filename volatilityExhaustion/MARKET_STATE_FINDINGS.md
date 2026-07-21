@@ -159,6 +159,20 @@ crosses: compressed Asia → larger London+ extension holds OOS on **21/25 cross
 (mean Δ +0.063σ; the 4 misses are mostly CHF crosses). Up from 5/6 majors — this is now a
 **pervasive, robust** FX effect. The single most reliable finding in the whole study.
 
+## Tier 7 — DAX daily: the NQ tie-breaker (`tier7_dax_conviction.py`)
+
+No SPX/DAX/FTSE **M1** exists in the repo (R2/Drive, unreachable here), but `dax_raw.csv`
+has 20y of daily DAX OHLC — and the conviction test runs on daily bars. So DAX is the
+honest tie-breaker for the NQ lead.
+
+**DAX rejects it, like gold.** DAX TSMOM is weak (full Sharpe +0.17), gating **hurt** OOS
+(−0.11 → −0.29), and the conditional edge is **backwards vs NQ**: chaotic +3.50 bp beats
+calm +2.89 bp. Tally across the 3 non-FX assets: **NQ echoes, gold reversed, DAX reversed
+— 1/3, both rejections opposite-signed.** That is the signature of noise, not a law. The
+NQ conviction-gating lead is **retired (dead, not merely unconfirmed)**: "volatility state
+modifies trend-following in trending assets" is unsupported. (A proper SPX/FTSE M1 basket
+could revisit, but the prior is now clearly negative.)
+
 ---
 
 ## Scoreboard
@@ -174,8 +188,9 @@ crosses: compressed Asia → larger London+ extension holds OOS on **21/25 cross
 | 3 #6 | cone calibration by regime | usable (39% vs 31% exceed) |
 | 4 | compose survivors | modest real composite (AUC 0.562); **no Opportunity Index** |
 | 5 | liquidity (tick volume) in composite | **NULL** (partial — no spread/depth data) |
-| 6A | gold conviction-gating (NQ replication) | **FAILED to replicate** (reversed) — NQ lead deflated |
+| 6A | gold conviction-gating (NQ replication) | **FAILED to replicate** (reversed) |
 | 6B | Asia-compression, 25 FX crosses | **PASS, 21/25 OOS** — the most robust finding |
+| 7 | DAX conviction-gating (NQ tie-breaker) | **REJECTED** — NQ lead retired (1/3 indices, dead) |
 
 **Where this leaves the project (post-Tier-6):** the lens is a **dispersion / expansion
 state engine** ("budget" retired — the depletion metaphor is false) — magnitude-only,
