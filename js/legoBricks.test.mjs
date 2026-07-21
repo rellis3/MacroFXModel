@@ -7,7 +7,7 @@
 import { bisect, extractBars, resampleTo, bodyRange, calcATR } from './barUtils.js';
 import { rollingZScore, rollingPercentile, rollingZAt, linregSlope, ewma, stdev, rankData, spearman, rankIC } from './statsCore.js';
 import { atrWilder, adxWilder, ema, rsiWilder } from './indicatorCore.js';
-import { summarizeTrades, sharpeRatio, maxDrawdownFromPnls, profitFactor, winRate, sharpeStdError, minTrackRecordLength } from './metricsCore.js';
+import { summarizeTrades, sharpeRatio, maxDrawdownFromPnls, profitFactor, winRate, sharpeStdError, minTrackRecordLength, skewness, excessKurtosis, histVaR, histCVaR } from './metricsCore.js';
 import { FIB_LEVELS, calcFibs } from './fibProjection.js';
 import { instrument, pipSize, resolveKey, INSTRUMENT_KEYS } from './instrumentRegistry.js';
 import { summarize } from './honestForecastEngine.js';
@@ -555,6 +555,48 @@ console.log('[metricsCore — Sharpe honesty]');
      minTrackRecordLength(0.3, { benchmark: 0.3 }) === Infinity && minTrackRecordLength(-0.2) === Infinity);
   ok('negative skew / fat tails lengthen the required track record',
      minTrackRecordLength(0.5, { skew: -1, kurt: 6 }) > minTrackRecordLength(0.5));
+}
+
+// skewness / excessKurtosis / histVaR / histCVaR — distribution shape & tail.
+console.log('[metricsCore — distribution shape / tail]');
+{
+  // Symmetric series → skew ~0. A [-2,-1,0,1,2]-style symmetric set is exactly 0.
+  ok('skewness ~0 on a symmetric series', near(skewness([-2, -1, 0, 1, 2]), 0, 1e-12));
+  // Right-skewed (one big positive outlier) → skew > 0; left-skewed mirror < 0.
+  ok('skewness > 0 for right tail', skewness([1, 1, 1, 1, 10]) > 0);
+  ok('skewness < 0 for left tail', skewness([-10, -1, -1, -1, -1]) < 0);
+  ok('skewness sign flips under negation',
+     near(skewness([1, 1, 1, 1, 10]), -skewness([-1, -1, -1, -1, -10]), 1e-12));
+  ok('skewness 0 for n<3 / flat', skewness([1, 2]) === 0 && skewness([5, 5, 5, 5]) === 0);
+
+  // Hand calc: uniform [-2,-1,0,1,2], population m2=2, m4=(16+1+0+1+16)/5=6.8,
+  // excess kurt = m4/m2² − 3 = 6.8/4 − 3 = −1.3 (platykurtic, as a uniform is).
+  ok('excessKurtosis matches hand calc (uniform → −1.3)',
+     near(excessKurtosis([-2, -1, 0, 1, 2]), 6.8 / 4 - 3, 1e-12), `=${excessKurtosis([-2, -1, 0, 1, 2]).toFixed(3)}`);
+  ok('excessKurtosis > 0 for a fat-tailed set', excessKurtosis([0, 0, 0, 0, 0, 0, 0, 0, -8, 8]) > 0);
+  ok('excessKurtosis 0 for n<4 / flat', excessKurtosis([1, 2, 3]) === 0 && excessKurtosis([5, 5, 5, 5]) === 0);
+
+  // histVaR type-7 quantile hand check. xs = 0..100 by 1 (n=101). 5% quantile:
+  // pos = 0.05*(100) = 5 → exactly the 6th order stat = 5. (returns in-series sign.)
+  const ramp = Array.from({ length: 101 }, (_, i) => i);
+  ok('histVaR(95%) matches type-7 hand calc', near(histVaR(ramp, 0.95), 5, 1e-12), `=${histVaR(ramp, 0.95)}`);
+  // Interpolation check: [0,10], 95% → 1−p=0.05, pos=0.05 → 0 + 0.05*(10−0)=0.5.
+  ok('histVaR interpolates between order stats', near(histVaR([0, 10], 0.95), 0.5, 1e-12));
+  // A loss-bearing series returns a negative VaR.
+  ok('histVaR negative for a loss tail', histVaR([-5, -3, -1, 0, 1, 2, 3], 0.90) < 0);
+  // CVaR ≤ VaR (mean of the tail is worse than the threshold), and equals the
+  // mean of the sub-threshold points. For the ramp, tail = {0..5} mean = 2.5.
+  ok('histCVaR ≤ histVaR', histCVaR(ramp, 0.95) <= histVaR(ramp, 0.95));
+  ok('histCVaR = mean of the bad tail (ramp)', near(histCVaR(ramp, 0.95), (0 + 1 + 2 + 3 + 4 + 5) / 6, 1e-12), `=${histCVaR(ramp, 0.95)}`);
+  ok('VaR/CVaR 0 on empty', histVaR([], 0.95) === 0 && histCVaR([], 0.95) === 0);
+
+  // summarizeTrades exposes the additive shape fields without breaking goldens
+  // (verified above); sanity-check they're present and finite.
+  const st = summarizeTrades(recs.map(r => r.pnl_pct), recs.map(r => r.date));
+  ok('summarizeTrades carries skew/excessKurt/var95/cvar95',
+     ['skew', 'excessKurt', 'var95', 'cvar95'].every(k => Number.isFinite(st[k])),
+     `skew=${st.skew} exKurt=${st.excessKurt} var95=${st.var95} cvar95=${st.cvar95}`);
+  ok('summarizeTrades var95 ≥ cvar95 (tail is worse than threshold)', st.var95 >= st.cvar95);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);
