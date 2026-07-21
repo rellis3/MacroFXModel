@@ -242,9 +242,12 @@
     <div class="card">
       <h2>Surprise alert — Telegram ping</h2>
       <div class="muted" style="margin-bottom:8px">
-        Pings you when a pair is unusually <b>stretched</b> (high pct of its calibrated
-        4h cone — continuation is statistically stretched, fade context) or unusually
-        <b>quiet</b> (low pct — quiet stretches tend to expand). Each message ends with a
+        Pings you when a pair is unusually <b>stretched</b> — far from the day's open
+        for this point in the session, either <b>up</b> (high cone pct) or <b>down</b>
+        (low pct) — or genuinely <b>quiet/compressed</b> (little of the day's typical
+        range travelled, from the range budget). Stretched pings are <b>path-aware</b>:
+        if price already ran and is <b>rolling over</b>, the message says the fade is
+        underway (late to chase), not just "continuation stretched". Each ends with a
         practical next-step line. It is a <b>context ping, never a buy/sell call</b> —
         intraday direction here is a proven coin flip.
       </div>
