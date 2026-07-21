@@ -132,7 +132,12 @@
       <button data-y="follow_med_fade_75">Cont med · fade 75th</button>
       <button data-y="momentum" title="WaveTrend decides per touch: overbought &amp; rolling over at an up-line (oversold &amp; turning up at a down-line) → fade; otherwise momentum-aligned → follow.">Momentum</button>
       <button data-y="divergence" title="Regular price↔WaveTrend divergence at the touch → fade (reversal); none → follow (continuation).">Divergence</button>
+      <button data-y="budget" title="Range-budget: realized session range ÷ the forecast's expected day range at the touch. Unspent (vol still to come) → fade (strong reversal); spent (range used up) → follow (break). Direction is the open question — the test is whether budget separates the outcomes.">Budget</button>
     </div>
+    <span id="budInputs" style="display:none;align-items:center;gap:6px">
+      <label title="Spent threshold: below this = unspent → fade; at/above = spent → follow. 1.0 = realized range equals the forecast's expected day range.">Bud cut</label>
+      <input type="number" id="budcut" value="0.75" step="0.05" min="0.05" style="width:52px">
+    </span>
     <label title="Next level: TP = the adjacent band, SL = symmetric (1:1). Fixed: SL = a set pip/point distance, TP = SL × the multiplier — same entry line + direction.">SL/TP</label>
     <div class="seg" id="sltp">
       <button data-x="level" class="on">Next level</button>
@@ -203,7 +208,7 @@ import { findDivergences, reversalDecision } from './js/divergenceCore.js?v=2';
 
 // Style labels (page-level: the brick knows fade_all/follow_med_fade_75; momentum
 // and divergence are page selectors that drive the brick's decideAction hook).
-const STYLE_LABEL = { fade_all: 'Fade all', follow_med_fade_75: 'Cont med · fade 75th', momentum: 'Momentum (WT)', divergence: 'Divergence (WT)' };
+const STYLE_LABEL = { fade_all: 'Fade all', follow_med_fade_75: 'Cont med · fade 75th', momentum: 'Momentum (WT)', divergence: 'Divergence (WT)', budget: 'Budget (vol)' };
 // Matched to the user's VuManChu Cipher B: WaveTrend 9/12/3, divergences read on
 // the SIGNAL line (wt2), OB/OS bands 53/−53, and divergence-zone gates 45/−65
 // (regular divergences only; hidden are ungated).
@@ -337,8 +342,10 @@ let dpr = window.devicePixelRatio || 1;
     const b = e.target.closest('button'); if (!b || b.classList.contains('on')) return;
     $('style').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
     state.style = styleMode();
+    $('budInputs').style.display = state.style === 'budget' ? 'inline-flex' : 'none';
     recomputeAndDraw();
   });
+  $('budcut').addEventListener('change', recomputeAndDraw);
   $('cost').addEventListener('change', recomputeAndDraw);
   // SL/TP mode toggle: 'fixed' reveals the pip/point SL + TP× inputs.
   $('sltp').addEventListener('click', e => {
@@ -532,6 +539,24 @@ function makeDecider(d) {
   }
   if (state.style === 'divergence') {
     return (L, ti) => reversalDecision(d.hi, d.lo, d.wt, ti, L.side, { obLevel: DIV_OB, osLevel: DIV_OS });
+  }
+  if (state.style === 'budget') {
+    // "Has the day's vol been priced in yet?" — the forecast's expected day range
+    // is the vol budget; realized range so far ÷ that = fraction spent (causal, at
+    // the touch). Premise: UNSPENT (vol still to come) → the level is a strong
+    // reversal → FADE; SPENT (range used up, a further push exceeds forecast) →
+    // expansion → FOLLOW. `cut` is the spent threshold. Direction is the empirical
+    // question — flip fade/follow here if the tally says the reverse.
+    const bands = bandsFor(d.f);
+    const expFrac = bands && bands.hl_median > 0 ? 2 * bands.hl_median / 100 : 0;  // expected day-range fraction (median H-L band)
+    const cut = Math.max(0.01, +$('budcut').value || 0.75);
+    return (L, ti, bars) => {
+      if (!(expFrac > 0)) return null;
+      let hi = -Infinity, lo = Infinity;
+      for (let k = 0; k <= ti; k++) { if (bars[k].high > hi) hi = bars[k].high; if (bars[k].low < lo) lo = bars[k].low; }
+      const spent = ((hi - lo) / d.open) / expFrac;
+      return spent < cut ? 'fade' : 'follow';
+    };
   }
   return null;
 }
@@ -736,7 +761,8 @@ function renderStats() {
     ? `SL ${+$('slval').value || 0}${u.label} · TP ${+$('tpmult').value || 0}×`
     : 'Next level';
   const eodLbl = state.eod === 'run' ? 'Let run' : 'Kill @ EOD';
-  el.innerHTML = `<h3>Reversion tally <span class="calcTag">${styleLbl} · ${sltpLbl} · ${eodLbl} · ${calc}</span></h3>`
+  const styleTag = state.style === 'budget' ? `${styleLbl} cut ${+$('budcut').value || 0.75}` : styleLbl;
+  el.innerHTML = `<h3>Reversion tally <span class="calcTag">${styleTag} · ${sltpLbl} · ${eodLbl} · ${calc}</span></h3>`
     + `<table class="st"><thead><tr><th>Line</th><th>N</th><th>W</th><th>L</th><th>Exp</th><th>Win%</th><th>ΣNet%</th></tr></thead>`
     + `<tbody>${rows}`
     + `<tr class="tot"><td>TOTAL</td><td>${total.n}</td><td>${total.wins}</td><td>${total.losses}</td><td>${total.expired}</td>`
