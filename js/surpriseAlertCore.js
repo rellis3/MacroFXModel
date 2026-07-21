@@ -18,14 +18,16 @@
  */
 
 export const SURPRISE_DEFAULTS = {
-  pctHigh:   90,   // cone percentile >= this  → STRETCHED (move unusually large)
-  pctLow:    10,   // cone percentile <= this  → QUIET     (unusually compressed)
-  zMin:      1.4,  // |z| magnitude floor — both the pct band AND this must trip
-  minCalibN: 120,  // don't ping unless the hour-of-day cone has real calibration
+  pctHigh:   90,   // displacement pct ≥ this → STRETCHED UP   (far above the open)
+  pctLow:    10,   // displacement pct ≤ this → STRETCHED DOWN (far below the open)
+  zMin:      1.4,  // |z| magnitude floor — the pct band AND this must trip
+  quietBudgetPct: 20, // day-range consumed ≤ this pct (reliable) → QUIET/compressed
+  minCalibN: 120,  // don't ping a stretch unless the cone has real calibration
   minGapMin: 90,   // dedupe: no repeat ping for same pair+category within the gap
 };
 
 const round = (x, d = 0) => { const p = 10 ** d; return Math.round(x * p) / p; };
+const _sp = v => v == null ? '?' : (v >= 0 ? '+' : '') + v.toFixed(2) + '%';   // signed pct
 
 /**
  * Decide whether `summary` (one _fpSummarizePair row) is surprising.
@@ -34,74 +36,97 @@ const round = (x, d = 0) => { const p = 10 ** d; return Math.round(x * p) / p; }
  */
 export function detectSurprise(summary, opts = {}) {
   const o = { ...SURPRISE_DEFAULTS, ...opts };
-  if (!summary || !summary.surprise) return null;
-  const { pct, z } = summary.surprise;
-  if (pct == null || z == null) return null;
+  if (!summary) return null;
 
-  // Guard on calibration — an uncalibrated cone shouldn't drive a ping.
+  const s = summary.surprise || {};
+  const pct = s.pct, z = s.z;
   const calibN = summary.calib?.n ?? 0;
-  if (calibN < o.minCalibN) return null;
+  const haveDisp = pct != null && z != null && calibN >= o.minCalibN;
 
-  const stretched = pct >= o.pctHigh && z >= o.zMin;
-  const quiet     = pct <= o.pctLow  && z <= -o.zMin;
+  // Displacement percentile is DIRECTIONAL: high pct = far above the open
+  // (stretched up), low pct = far below (stretched down). Both are "stretched",
+  // opposite sides — a big directional move, NOT a quiet one.
+  const stretchedUp   = haveDisp && pct >= o.pctHigh && z >= o.zMin;
+  const stretchedDown = haveDisp && pct <= o.pctLow  && z <= -o.zMin;
+  const stretched = stretchedUp || stretchedDown;
+
+  // TRUE quiet = little of the day's typical range travelled (compression), read
+  // off the range budget — NOT the displacement pct (a big directional move is
+  // stretched, not quiet; that pre-2026-07-21 mislabel is fixed here).
+  const db = summary.dayBudget;
+  const quiet = !stretched && db && db.reliable && db.consumedPercentile != null
+             && db.consumedPercentile <= o.quietBudgetPct;
+
   if (!stretched && !quiet) return null;
 
-  const category = stretched ? 'stretched' : 'quiet';
-  // Severity 1..3 by how far into the tail the calibrated percentile sits.
-  const tail = stretched ? pct : (100 - pct);
-  const severity = tail >= 98 ? 3 : tail >= 95 ? 2 : 1;
+  const category  = stretched ? 'stretched' : 'quiet';
+  const direction = stretchedUp ? 'up' : stretchedDown ? 'down' : null;
+  const reversing = stretched && s.reversing === true;   // rolled over from the intraday extreme
+  const phase     = stretched ? (reversing ? 'reversing' : 'extending') : null;
 
   const pair = summary.pair || 'PAIR';
-  const bandLo = summary.p75Lo, bandHi = summary.p75Hi;
   const dig = _digits(summary.anchor);
-  const loStr = bandLo != null ? bandLo.toFixed(dig) : '—';
-  const hiStr = bandHi != null ? bandHi.toFixed(dig) : '—';
+  const loStr = summary.p75Lo != null ? summary.p75Lo.toFixed(dig) : '—';
+  const hiStr = summary.p75Hi != null ? summary.p75Hi.toFixed(dig) : '—';
 
-  // Context lines (event window, calibration shakiness, day-range budget).
+  // Severity 1..3.
+  let severity;
+  if (stretched) { const tail = stretchedUp ? pct : (100 - pct); severity = tail >= 98 ? 3 : tail >= 95 ? 2 : 1; }
+  else { const cp = db.consumedPercentile; severity = cp <= 5 ? 3 : cp <= 12 ? 2 : 1; }
+
+  // Context lines.
   const context = [];
   const evs = summary.upcomingEvents || [];
-  if (evs.length) {
-    context.push(`⚠️ Event near/inside the window (${evs.slice(0, 3).join(', ')}) — this move may be event-driven, not mean-reverting.`);
-  }
-  const hour = summary.dayBudget?.hour;
-  if (hour != null && Array.isArray(summary.shakyHours) && summary.shakyHours.includes(hour)) {
+  if (evs.length) context.push(`⚠️ Event near/inside the window (${evs.slice(0, 3).join(', ')}) — this move may be event-driven, not mean-reverting.`);
+  const hour = db?.hour;
+  if (stretched && hour != null && Array.isArray(summary.shakyHours) && summary.shakyHours.includes(hour))
     context.push(`ℹ️ This hour's cone has been historically less reliable — treat the percentile as softer.`);
+  if (stretched && db && db.reliable && db.consumedPercentile != null && db.consumedPercentile >= 75)
+    context.push(`📐 ~${round(db.rangeSoFarPct, 2)}% range already travelled — around the ${round(db.consumedPercentile)}th pct of a typical day's budget.`);
+
+  const dirWord = direction === 'up' ? 'upside' : direction === 'down' ? 'downside' : '';
+  const zStr = z != null ? ((z >= 0 ? '+' : '') + z.toFixed(1)) : '?';
+
+  let dot, headline, lead;
+  if (stretched && reversing) {
+    dot = '🟠';
+    headline = `${dot} <b>${pair}</b> — extended ${direction}, now reversing (${_ord(round(pct))} pct)`;
+    lead = `Price ran to ~${_sp(s.peakPct)} from the open and has pulled back to ~${_sp(s.dispPct)} (z=${zStr}). Still historically far, but <b>the move has already started reversing</b> — the fade is underway, not ahead.`;
+  } else if (stretched) {
+    dot = '🟡';
+    headline = `${dot} <b>${pair}</b> — stretched ${direction} (${_ord(round(pct))} pct)`;
+    lead = `Price sits at the ${_ord(round(pct))} percentile of today's calibrated 4h range (z=${zStr}), ~${_sp(s.dispPct)} from the open and near its intraday extreme. A move this large this far into the session is unusual — <b>continuation is statistically stretched to the ${dirWord}</b>.`;
+  } else {
+    dot = '🔵';
+    headline = `${dot} <b>${pair}</b> — quiet / compressed (${_ord(round(db.consumedPercentile))} pct of typical)`;
+    lead = `Only ~${round(db.rangeSoFarPct, 2)}% of the day's range has travelled — around the ${_ord(round(db.consumedPercentile))} percentile for this hour. Unusually compressed — <b>quiet stretches tend to expand</b>.`;
   }
-  const db = summary.dayBudget;
-  if (db && db.reliable && db.consumedPercentile != null) {
-    if (stretched && db.consumedPercentile >= 75) {
-      context.push(`📐 ~${round(db.rangeSoFarPct, 2)}% range already travelled — around the ${round(db.consumedPercentile)}th pct of a typical day's budget.`);
-    } else if (quiet && db.consumedPercentile <= 25) {
-      context.push(`📐 Only ~${round(db.rangeSoFarPct, 2)}% travelled — near the ${round(db.consumedPercentile)}th pct of a typical day; room left in the budget.`);
-    }
-  }
 
-  const nextSteps = _nextSteps(category, { loStr, hiStr, hasEvent: evs.length > 0 });
+  const nextSteps = _nextSteps(category, { phase, direction, loStr, hiStr, hasEvent: evs.length > 0 });
 
-  const dot = stretched ? '🟡' : '🔵';
-  const zStr = (z >= 0 ? '+' : '') + z.toFixed(1);
-  const headline = `${dot} <b>${pair}</b> — ${category} (${_ord(round(pct))} pct)`;
-  const lead = stretched
-    ? `Price sits at the ${_ord(round(pct))} percentile of today's calibrated 4h range (z=${zStr}). A move this large this far into the session is unusual — <b>continuation is statistically stretched</b>.`
-    : `Price sits at the ${_ord(round(pct))} percentile of today's calibrated 4h range (z=${zStr}). Unusually compressed for this time of day — <b>quiet stretches tend to expand</b>.`;
-
-  const calibLine = `📊 Cone ±${summary.p75HalfPct != null ? summary.p75HalfPct.toFixed(2) : '?'}% (P75), calibrated on ${calibN} windows. Range edges: ${loStr} / ${hiStr}.`;
+  const calibLine = stretched
+    ? `📊 Cone ±${summary.p75HalfPct != null ? summary.p75HalfPct.toFixed(2) : '?'}% (P75), calibrated on ${calibN} windows. Range edges: ${loStr} / ${hiStr}.`
+    : `📊 Range edges: ${loStr} / ${hiStr}. Typical full-day range ~${db.typicalFullPct != null ? db.typicalFullPct + '%' : '?'}.`;
 
   const text = [headline, '', lead, ...context, '', `👉 <b>Next:</b> ${nextSteps}`, '', calibLine].join('\n');
 
-  return { pair, category, pct: round(pct), z: round(z, 2), severity, headline, context, nextSteps, text };
+  return { pair, category, direction, phase, dedupeKey: category + (phase ? ':' + phase : ''),
+           pct: pct != null ? round(pct) : null, z: z != null ? round(z, 2) : null,
+           severity, headline, context, nextSteps, text };
 }
 
 // The next-steps line the owner asked for — practical, and explicitly NOT a
 // buy/sell call. Direction stays a coin flip; the cone only sizes/frames risk.
-function _nextSteps(category, { loStr, hiStr, hasEvent }) {
+function _nextSteps(category, { phase, direction, loStr, hiStr, hasEvent }) {
   if (category === 'stretched') {
-    const base = `this is context, not a signal. If you're already positioned with the move, the easy part may be done — consider trailing a stop rather than adding. Fresh fade setups now have statistical backing, but wait for your own trigger; don't fade a strong trend blindly.`;
-    return hasEvent
-      ? base + ` With an event in the window, hold off until it clears — event moves can keep extending.`
-      : base;
+    if (phase === 'reversing') {
+      const base = `this is context, not a signal. The move already ran and is rolling over — a fade here is LATE, so don't chase it. If you're positioned with the original ${direction} move, protect profit (trail / lock in) rather than add. Take a fresh counter-trade only on your own trigger, not just because it's pulled back.`;
+      return hasEvent ? base + ` An event is in the window — the reversal could be event-driven, so treat levels loosely.` : base;
+    }
+    const base = `this is context, not a signal. The move is still near its extreme, so if you're positioned with it the easy part may be done — consider trailing rather than adding. A fade now has statistical backing but no path confirmation yet; wait for a turn on your own trigger, don't fade a strong trend blindly.`;
+    return hasEvent ? base + ` With an event in the window, hold off until it clears — event moves can keep extending.` : base;
   }
-  // quiet
+  // quiet / compressed
   const base = `this is context, not a signal. Expect a range expansion — a break has more room than usual. Set price alerts on the range edges (${loStr} / ${hiStr}) and let it come to you rather than forcing an entry into the chop.`;
   return hasEvent
     ? base + ` An event is near — the expansion may be the event itself, so size for it.`

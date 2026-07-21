@@ -12014,7 +12014,30 @@ async function _fpSummarizePair(name) {
     const h = n - (ds + 1);
     if (h >= 1 && ds + 1 > 100) {
       const r = _fpRealZ(ctx, ds + 1, h, bars[n - 1].close);
-      if (r) surprise = { z: +r.z.toFixed(2), pct: Math.round(r.pct * 100) };
+      if (r) {
+        // Path-awareness: the surprise z is NET displacement from the day-open
+        // anchor and is path-blind — a steady grind and a spike-then-reverse
+        // read identically. Scan the real intraday high/low path so a consumer
+        // can tell "extended & still pushing" from "extended but rolling over".
+        const anchorPx = bars[ds].close;
+        let hiEx = 0, loEx = 0;                       // max up / down displacement (fractions)
+        for (let j = ds + 1; j < n; j++) {
+          const up = (bars[j].high - anchorPx) / anchorPx;
+          const dn = (bars[j].low - anchorPx) / anchorPx;
+          if (up > hiEx) hiEx = up;
+          if (dn < loEx) loEx = dn;
+        }
+        const dispNow = (bars[n - 1].close - anchorPx) / anchorPx;
+        const peak = dispNow >= 0 ? hiEx : loEx;      // the same-side intraday extreme
+        const retraceFrac = Math.abs(peak) > 1e-9 ? Math.max(0, (Math.abs(peak) - Math.abs(dispNow)) / Math.abs(peak)) : 0;
+        surprise = {
+          z: +r.z.toFixed(2), pct: Math.round(r.pct * 100),
+          dispPct: +(dispNow * 100).toFixed(3),       // current displacement from the open
+          peakPct: +(peak * 100).toFixed(3),          // furthest it got, same side
+          retraceFrac: +retraceFrac.toFixed(2),       // how far back from that extreme (0=at peak, 1=back to open)
+          reversing: h >= 4 && retraceFrac >= 0.33,   // pulled ≥1/3 back → the move is already rolling over
+        };
+      }
     } }
 
   const t = _fpTally(bars, opts);
@@ -12241,11 +12264,14 @@ async function _surpriseAlertScan({ force = false, dryRun = false } = {}) {
         const det = _saDetect(sum, detOpts);
         if (!det) continue;
         const pairKey = det.pair;
-        if (!force && !_saShouldFire(state, pairKey, det.category, nowSec, minGapSec)) continue;
-        out.alerts.push({ pair: pairKey, category: det.category, pct: det.pct, z: det.z, severity: det.severity, text: det.text });
+        // Dedupe on category+phase so an "extending → reversing" transition can
+        // send a fresh, more useful ping instead of being suppressed.
+        const dkey = det.dedupeKey || det.category;
+        if (!force && !_saShouldFire(state, pairKey, dkey, nowSec, minGapSec)) continue;
+        out.alerts.push({ pair: pairKey, category: det.category, phase: det.phase, direction: det.direction, pct: det.pct, z: det.z, severity: det.severity, text: det.text });
         if (dryRun) continue;
         const sent = await sendTelegram(cfg.token, cfg.chatId, det.text);
-        if (sent) { out.fired++; state = _saRecordFired(state, pairKey, det.category, nowSec); }
+        if (sent) { out.fired++; state = _saRecordFired(state, pairKey, dkey, nowSec); }
       } catch (e) { out.errors[name] = e?.message || String(e); }
     }
     if (!dryRun) await kv.put('surprise_alert_state', JSON.stringify(state)).catch(() => {});

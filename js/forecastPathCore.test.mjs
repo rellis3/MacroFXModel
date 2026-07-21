@@ -102,6 +102,42 @@ const bars = syntheticBars(1200);
   ok(t.claimed.p50 === 0.5 && t.claimed.p75 === 0.75, 'claims stated');
 }
 
+// 3b) Drift source: trend/blend bend the center by the momentum sign, and the
+// VISUAL scale (trendDriftFrac) never changes the graded direction sign.
+{
+  // A clean uptrend so the momentum sign is unambiguous.
+  const up = [];
+  for (let i = 0; i < 600; i++) { const p = 100 * Math.exp(0.0006 * i); up.push({ time: `2020-01-${i}`, date: String(i), close: p, open: p, high: p * 1.002, low: p * 0.998 }); }
+  const ctxE = buildForecastContext(up, { driftSource: 'ewma' });
+  const ctxT = buildForecastContext(up, { driftSource: 'trend' });
+  const i = 560, H = 10;
+  const cE = coneFromContext(ctxE, i, H), cT = coneFromContext(ctxT, i, H);
+  ok(cT.mu > 0, 'trend drift is up on an uptrend');
+  ok(cT.trendScore > 0, 'trend score positive on an uptrend');
+  // Fractional band width is identical between sources (same σ; only the center
+  // level shifts, which scales the absolute width but not the σ-based fraction).
+  const sE = cE.steps[H - 1], sT = cT.steps[H - 1];
+  const fE = (sE.p75Up - sE.p75Dn) / (2 * sE.center);
+  const fT = (sT.p75Up - sT.p75Dn) / (2 * sT.center);
+  ok(Math.abs(fE - fT) < 1e-9, 'P75 fractional width source-independent (only center moves)');
+  // trendDriftFrac scales the lean but not the sign.
+  const cSmall = coneFromContext(buildForecastContext(up, { driftSource: 'trend', trendDriftFrac: 0.1 }), i, H);
+  const cBig   = coneFromContext(buildForecastContext(up, { driftSource: 'trend', trendDriftFrac: 0.8 }), i, H);
+  ok(Math.sign(cSmall.mu) === Math.sign(cBig.mu), 'trendDriftFrac cannot flip the graded direction sign');
+  ok(Math.abs(cBig.mu) > Math.abs(cSmall.mu), 'larger frac leans further (visual only)');
+  // Blend sits between ewma and trend.
+  const cB = coneFromContext(buildForecastContext(up, { driftSource: 'blend' }), i, H);
+  ok(cB.mu > 0, 'blend drift up on an uptrend');
+  // Direction hit-rate: on a pure uptrend a trend cone calls the move up →
+  // hit-rate 1.0 (the honest number; on real data it lands ~coin flip).
+  const tT = calibrationTally(up, { horizonDays: H, driftSource: 'trend' });
+  ok(tT.full.direction.hitRate === 1, 'trend direction hits 100% on a monotone uptrend');
+  ok(tT.claimed.direction === 0.5, 'direction benchmark stays the 50% coin flip');
+  // Frac is magnitude-only: the graded direction hit-rate is identical at any frac.
+  const tSmall = calibrationTally(up, { horizonDays: H, driftSource: 'trend', trendDriftFrac: 0.1 });
+  ok(tSmall.full.direction.hitRate === tT.full.direction.hitRate, 'hit-rate independent of trendDriftFrac');
+}
+
 // 4) samplePaths: deterministic, right shape, consensus tracks the drift path.
 {
   const ctx = buildForecastContext(bars);
