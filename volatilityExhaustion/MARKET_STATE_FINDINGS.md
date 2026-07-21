@@ -119,6 +119,25 @@ extreme is a coin flip. The reversal intuition survives in memory because spent-
 reversals are dramatic and, per #1, *large* — but continuations are ~equally frequent
 and forgettable (survivorship).
 
+## Tier 5 — does liquidity state improve the composite? (`tier5_liquidity.py`)
+
+Tested the owner's proposal: two days with the same range/σ can be different markets by
+how the move is financed. Only tick volume is available (mid candles → no spread/depth),
+so this is the honest slice: Asia relative tick volume + within-session volume trend,
+added to the composite. Pooled FX OOS:
+
+| model | OOS AUC | Brier-skill |
+|---|---|---|
+| composite (regime+compr+vov) | 0.562 | +1.04% |
+| liquidity only (relvol+trend) | 0.509 | −0.04% |
+| composite + liquidity | 0.562 | +1.14% |
+
+**NULL (partial test).** Tick-volume liquidity alone is worthless (AUC 0.509), and adding
+it moves Brier-skill +0.10pp with AUC unchanged — noise. Caveats: OANDA tick volume is a
+weak participation proxy (no true FX volume), and **spread / order-book depth are untested
+(no data)** — the richer liquidity signals the owner named remain open. On the testable
+slice, participation does not sharpen the expansion forecast.
+
 ---
 
 ## Scoreboard
@@ -133,6 +152,7 @@ and forgettable (survivorship).
 | 3 #5 | vol continuity | modest real (+0.094), not novel |
 | 3 #6 | cone calibration by regime | usable (39% vs 31% exceed) |
 | 4 | compose survivors | modest real composite (AUC 0.562); **no Opportunity Index** |
+| 5 | liquidity (tick volume) in composite | **NULL** (partial — no spread/depth data) |
 
 **Where this leaves the project:** the budget lens is a **range-budget / expansion state
 engine** — weak-to-modest, honestly validated, magnitude-only. It belongs on the
