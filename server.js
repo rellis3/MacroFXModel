@@ -7282,6 +7282,103 @@ app.get('/api/vol-forecast/reference-dump', async (_req, res) => {
   }
 });
 
+// ── COG σ-overlay measure-first test ──────────────────────────────────────────
+// GET /api/cog-overlay-test — for each stored COG reference date, compare OUR base
+// forecast σ to COG's published σ and to a candidate reactive overlay:
+//   adjusted = base + λ·(CC-HV − base)          (CC-HV = COG's close-to-close-HV method)
+// plus a momentum-gated variant (blend at λ0.5 only when short/long vol > 1, i.e.
+// vol rising). Reports mean|error-to-COG| for base vs each λ, per instrument, and
+// returns every per-date row so it's auditable (NQ's CC-HV should track COG's NQ
+// number — a built-in sanity check). λ is pre-registered, not fitted. Nothing in
+// the live forecaster changes — measure-first only.
+const _OVL_INST = [
+  { name: 'EURUSD', oanda: 'EUR_USD',    cls: 'fx' },
+  { name: 'GOLD',   oanda: 'XAU_USD',    cls: 'commodity' },
+  { name: 'NQ',     oanda: 'NAS100_USD', cls: 'index' },
+];
+const _OVL_LAMBDAS = [0, 0.25, 0.5, 0.75, 1.0];
+app.get('/api/cog-overlay-test', async (_req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not configured' });
+  try {
+    const idxRaw = await kv.get('vol_reference_index').catch(() => null);
+    const dates = idxRaw ? JSON.parse(idxRaw).map(e => e.date).filter(Boolean).sort() : [];
+    if (!dates.length) return res.json({ ok: true, dates: 0, note: 'No COG reference data stored.' });
+    const cogByDate = {};
+    for (const d of dates) {
+      const raw = await kv.get(`vol_reference_${d}`).catch(() => null);
+      if (raw) { try { cogByDate[d] = _parseExportText(JSON.parse(raw).text); } catch { /* skip */ } }
+    }
+    // Per-instrument CC-HV(20) + vol-momentum(10/60) from London-aligned D1, session-
+    // dated with the +1 evening rule so keys line up with the reference/archive dates.
+    const sigMaps = {};
+    for (const it of _OVL_INST) {
+      try {
+        const base = _oandaBaseMe();
+        const url = `${base}/v3/instruments/${encodeURIComponent(it.oanda)}/candles?granularity=D&count=2600&price=M&dailyAlignment=0&alignmentTimezone=Europe%2FLondon`;
+        const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(30_000) });
+        if (!r.ok) { sigMaps[it.name] = {}; continue; }
+        const lon = ((await r.json()).candles ?? [])
+          .filter(c => c.complete !== false && c.mid)
+          .map(c => { const t = new Date(c.time); if (t.getUTCHours() >= 20) t.setUTCDate(t.getUTCDate() + 1); return { date: t.toISOString().slice(0, 10), close: +c.mid.c }; })
+          .filter(c => c.close > 0)
+          .sort((a, b) => (a.date < b.date ? -1 : 1));
+        const map = {};
+        for (let i = 62; i < lon.length; i++) {
+          const slice = lon.slice(0, i);   // closes strictly before lon[i].date
+          const cc = _ccHvSigma(slice, { window: 20 });
+          const s = _ccHvSigma(slice, { window: 10 }), l = _ccHvSigma(slice, { window: 60 });
+          if (cc.volAnnual > 0 && s.volAnnual > 0 && l.volAnnual > 0) map[lon[i].date] = { cchv: cc.volAnnual, mom: s.volAnnual / l.volAnnual };
+        }
+        sigMaps[it.name] = map;
+      } catch { sigMaps[it.name] = {}; }
+    }
+    const acc = {}, rows = [];
+    for (const d of dates) {
+      const cog = cogByDate[d]; if (!cog) continue;
+      const ourRaw = await kv.get(`vol_forecast_${d}`).catch(() => null);
+      if (!ourRaw) continue;
+      let ours; try { ours = JSON.parse(ourRaw).instruments || {}; } catch { continue; }
+      const ourUC = {}; for (const k of Object.keys(ours)) ourUC[k.toUpperCase()] = ours[k];
+      for (const it of _OVL_INST) {
+        const c = cog[it.name], o = ourUC[it.name], sig = sigMaps[it.name]?.[d];
+        if (!c || !(c.vol > 0) || !o || !(o.vol_annual > 0) || !sig) continue;
+        const base = o.vol_annual, target = c.vol, cchv = sig.cchv, mom = sig.mom;
+        const baseErr = Math.abs(base - target);
+        const row = { date: d, inst: it.name, cog: +target.toFixed(2), base: +base.toFixed(2), cchv: +cchv.toFixed(2), mom: +mom.toFixed(2), baseErr: +baseErr.toFixed(2) };
+        for (const lam of _OVL_LAMBDAS) {
+          const err = Math.abs((base + lam * (cchv - base)) - target);
+          const key = `${it.name}|${lam}`;
+          (acc[key] ||= { errs: [], improved: 0, n: 0 });
+          acc[key].errs.push(err); acc[key].n++; if (err < baseErr - 1e-9) acc[key].improved++;
+        }
+        const adjG = mom > 1 ? base + 0.5 * (cchv - base) : base;
+        const errG = Math.abs(adjG - target);
+        (acc[`${it.name}|gated`] ||= { errs: [], improved: 0, n: 0 });
+        acc[`${it.name}|gated`].errs.push(errG); acc[`${it.name}|gated`].n++; if (errG < baseErr - 1e-9) acc[`${it.name}|gated`].improved++;
+        row.adjGated = +adjG.toFixed(2);
+        rows.push(row);
+      }
+    }
+    const mean = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : NaN;
+    const summary = {};
+    for (const it of _OVL_INST) {
+      const s = { n: acc[`${it.name}|0`]?.n || 0 };
+      for (const lam of _OVL_LAMBDAS) { const a = acc[`${it.name}|${lam}`]; s[`mae_l${lam}`] = a ? +mean(a.errs).toFixed(3) : null; }
+      const g = acc[`${it.name}|gated`];
+      s.mae_gated = g ? +mean(g.errs).toFixed(3) : null;
+      s.gated_improved_pct = g && g.n ? +(100 * g.improved / g.n).toFixed(0) : null;
+      summary[it.name] = s;
+    }
+    res.json({
+      ok: true, refDates: dates.length, scoredRows: rows.length,
+      note: 'mae_l0 = base error to COG; mae_l1.0 = pure-CC-HV error; gated = blend λ0.5 only when vol rising. Overlay helps if MAE drops below mae_l0 without hurting pairs that already match. λ pre-registered, not fitted. Sanity: NQ cchv≈cog.',
+      summary, rows,
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── COG day-of-week weighting probe ───────────────────────────────────────────
 // GET /api/cog-dow — over every stored COG reference date, compare COG's number to
 // OURS (the archived forecast for that session) and group the COG/ours ratio by
