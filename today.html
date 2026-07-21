@@ -1983,7 +1983,30 @@ async function loadDrawerPath(name) {
     ['release windows ahead', s.upcomingEvents?.length ? s.upcomingEvents.join(' · ') + (s.eventSteps ? ' (σ widened now)' : '') : 'none in next 12h'],
   ];
   el.innerHTML = rows.map(([k, v]) => `<div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:2px 0"><span class="muted">${k}</span><b>${v}</b></div>`).join('')
+    + `<div id="drTrendBias" style="display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:2px 0"><span class="muted">trend bias (daily)</span><b class="muted">…</b></div>`
     + `<div class="muted" style="font-size:10px;margin-top:4px">P75 containment on this pair's history: ${s.calib?.c75Final != null ? Math.round(s.calib.c75Final * 100) + '% (claim 75%, n=' + s.calib.n + ')' : '—'} · <a href="forecast-path.html?pair=${encodeURIComponent(name)}&gran=M15" target="_blank" style="color:var(--accent, #5b9dff)">open in Forecast Path →</a></div>`;
+  loadDrawerTrendBias(name);
+}
+
+// Daily trend bias — the honest direction read: which way the replicated
+// momentum signal leans, WITH its own live 10-day hit-rate so it can't read as
+// a signal. ~coin flip by design; the label says so. Lazy, own 3h server cache.
+async function loadDrawerTrendBias(name) {
+  const row = $('drTrendBias'); if (!row) return;
+  const b = row.querySelector('b');
+  try {
+    const j = await jget(`/api/forecast-path/trend-dir?pair=${encodeURIComponent(name.toLowerCase())}`);
+    if (!j?.ok || j.dir == null) { b.textContent = '—'; return; }
+    const arrow = j.dir === 'up' ? '↑' : j.dir === 'down' ? '↓' : '→';
+    const hr = j.hitRate != null ? Math.round(j.hitRate * 100) : null;
+    // Colour only when it's meaningfully off the coin flip on a real sample.
+    const cls = hr == null ? 'muted' : (Math.abs(hr - 50) >= 5 && j.n >= 100) ? (hr >= 55 ? 'pos' : 'neg') : '';
+    const tail = hr == null ? '<span class="muted">(no graded history yet)</span>'
+      : Math.abs(hr - 50) < 3 ? `<span class="muted">· ${hr}% next-10d, ~coin flip</span>`
+      : `<span class="muted">· calls next 10d ${hr}% (n=${j.n}) vs 50%</span>`;
+    b.innerHTML = `<span class="${cls}">${arrow} ${j.dir}</span> ${tail}`;
+    b.title = 'Daily cone bent by the replicated momentum sign (trendFollowEngine), graded on non-overlapping 10-day windows vs a 50% coin flip. Context/sizing only — never a buy/sell signal. Full line on the Forecast Path page.';
+  } catch { b.textContent = '—'; }
 }
 
 // ── Volatility cone graphic — percentile of current σ per lookback window ─────
