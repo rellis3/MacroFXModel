@@ -3846,7 +3846,7 @@ loadVbLiveStatus();
 const RL_DEFAULTS = {
   paper_mode: true, kill_switch: false, risk_pct: 0.5, max_lot: 2.0, max_open: 12,
   single_position_per_pair: true,  // false = one position per Asia/Monday ladder slot instead
-  confluence_min: 0,               // structural-confluence entry gate: 0=off, 1=confluent, 2=strong
+  confluence_min: 2,               // structural-confluence entry gate: 0=off, 1=confluent, 2=strong (default — best OOS book)
   oi_confluence: false,            // UNVALIDATED opt-in: OI levels add to the confluence gate
   oi_override: false,              // UNVALIDATED opt-in: OI read overrides the learned direction
   oi_gamma_regime: false,          // UNVALIDATED opt-in: gamma sign → fade (PIN) / follow (BREAKOUT)

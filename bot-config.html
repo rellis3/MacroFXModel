@@ -3843,9 +3843,9 @@ python range_line_bot/range_line_bot.py --live --url &lt;dashboard-url&gt;</pre>
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="rl_single_position_per_pair"> on</label></div>
         <div class="form-row"><span class="form-lbl">Confluence gate <small>trade only levels backed by 15m-fib/pivot/POC/VAH/VAL/round/VWAP confluence (OOS-validated). Needs the daily confluence artifact.</small></span>
           <select id="rl_confluence_min" style="width:200px;text-align:left">
-            <option value="0">off — trade all levels (default)</option>
+            <option value="0">off — trade all levels</option>
             <option value="1">confluent (≥1 source)</option>
-            <option value="2">strong (≥2 sources) — best OOS book</option>
+            <option value="2">strong (≥2 sources) — best OOS book (default)</option>
           </select></div>
         <div class="form-row"><span class="form-lbl">OI strengthens levels <small style="color:#f59e0b">UNVALIDATED</small> <small>count options-OI (call/put walls, max pain, gamma flip) as extra confluence sources in the gate above, so an OI-backed level ranks stronger. Needs the OI analyser + range_line_oi_live. The forward test scores it.</small></span>
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="rl_oi_confluence"> on</label></div>

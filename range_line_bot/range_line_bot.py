@@ -76,12 +76,15 @@ DEFAULT_CFG = {
     "paper_spread_pips": {},       # paper-fill spread OVERRIDES, {pair: pips/points in the
                                    # pair's OWN pip units}. Blank → per-asset-class
                                    # defaults (pylego.costs.DEFAULT_SPREAD_PIPS)
-    "confluence_min": 0,           # structural-confluence entry gate (OOS-validated "trade
-                                    # only stronger levels"). 0 = OFF (no behaviour change,
-                                    # today's default); 1 = confluent (>=1 source); 2 =
-                                    # strong (>=2, the best OOS book). Needs the dashboard's
-                                    # range_line_confluence artifact; falls back to OFF if
-                                    # it's missing so a stale artifact can't silently halt trading.
+    "confluence_min": 2,           # structural-confluence entry gate (OOS-validated "trade
+                                    # only stronger levels"). 0 = OFF (trade every level);
+                                    # 1 = confluent (>=1 source); 2 = strong (>=2 sources,
+                                    # the best OOS book — the default). Needs the dashboard's
+                                    # range_line_confluence artifact; if it's missing/stale the
+                                    # gate has no sources so every level ranks 0 and NO trades
+                                    # are taken until it reloads (see the loop's confluence
+                                    # fetch) — an absent artifact halts entries, it does NOT
+                                    # silently fall back to trading everything.
     "oi_confluence": False,        # UNVALIDATED, opt-in: count OI levels (walls/max-pain/
                                     # gamma) as extra distinct sources in the confluence_min
                                     # gate, so an OI-backed level ranks stronger. Needs
