@@ -42,7 +42,8 @@ import { runEconTrend, runEconTrendPlacebo, evaluateEconTrend, ECON_TREND_DEFAUL
 import { buildFundamentals as buildEconFundamentals, ECON_UNIVERSE } from './js/econTrendEngine.js';
 import { buildCsi, runCsiOverlay, evaluateCsi, creditVega, CSI_DEFAULTS } from './js/creditStressCore.js';
 import { buildCsiInputs } from './js/creditStressEngine.js';
-import { runCarryBasket, financingHaircut } from './js/carryEngine.js';
+import { runCarryBasket, financingHaircut, alignSeries as _carryAlignSeries } from './js/carryEngine.js';
+import { combineFactors as _combineFactors, MF_DEFAULTS as _MF_DEFAULTS } from './js/multiFactorEngine.js';
 import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
@@ -50,7 +51,7 @@ import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _r
 import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS, BM_P75 as _BM_P75 } from './js/volBacktestEngine.js';
 import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED } from './js/mve/liveAdapter.js';
 import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency } from './js/mve/validateInstrument.js';
-import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS } from './js/trendFollowEngine.js';
+import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS, buildPortfolioReturns as _trendBuildPortfolio } from './js/trendFollowEngine.js';
 import { runGauntlet as _runStrategyGauntlet, GAUNTLET_SPECS as _GAUNTLET_SPECS, SIGNALS as _LAB_SIGNALS } from './js/strategyLabEngine.js';
 import { runTrendAB as _runTrendAB } from './js/trendFollowV2Engine.js';
 import { volSigmaSeries as _volSigmaSeries, nextSigma as _nextSigma } from './js/forecastCore.js';
@@ -6033,6 +6034,108 @@ app.get('/api/trend/backtest', async (req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
+});
+
+// ── Multi-Factor Book: combine the replicated factors into one diversified book ─
+// Runs the trend-following basket AND the FX-carry factor, takes each engine's
+// costed daily return stream, and blends them with multiFactorEngine (equal-risk,
+// vol-targeted, no-lookahead). The point is the diversification: trend pays in
+// crises, carry bleeds in them, so the blend's Sharpe should beat either leg IF
+// both legs are alive. Honest by construction — a dead leg drags the blend and the
+// read says so. VRP (vix-vol-carry) is a Python-only backtest and is NOT wired in
+// yet; the engine is factor-agnostic, so it's a one-leg addition once exposed in JS.
+// Same async-job pattern as /api/trend-ema-ab/run. Needs OANDA_KEY + FRED_KEY.
+const mfJobs = new Map();
+function _purgeStaleMfJobs() { const cut = Date.now() - 60 * 60_000; for (const [id, j] of mfJobs) if (j.startedAt < cut) mfJobs.delete(id); }
+
+app.post('/api/multi-factor/run', express.json({ limit: '64kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not configured (runs on Railway)' });
+  if (!process.env.FRED_KEY)  return res.status(503).json({ ok: false, error: 'FRED_KEY not configured (needed for carry interbank rates)' });
+  const b = req.body ?? {};
+  const num = (v, lo, hi, d) => { const x = +v; return Number.isFinite(x) ? Math.min(Math.max(x, lo), hi) : d; };
+  const volTargetPort = num(b.volTargetPort, 0.02, 0.40, 0.10);
+  const costBp = num(b.costBp, 0, 50, 2);
+
+  const jobId = `mf_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleMfJobs();
+  mfJobs.set(jobId, { status: 'running', startedAt, step: 'starting', legsTotal: 2, legsDone: 0 });
+  const bump = (patch) => { const j = mfJobs.get(jobId); if (j) mfJobs.set(jobId, { ...j, ...patch }); };
+
+  (async () => {
+    try {
+      const factors = [];
+      const legs = {};
+
+      // ── Leg 1: Trend-following basket ────────────────────────────────────────
+      bump({ step: 'fetching trend universe' });
+      const trendPrices = {};
+      const trendSkipped = [];
+      for (const sym of _TREND_UNIVERSE) {
+        try {
+          const bars = await _btFetchD1(sym, 5000);
+          if (bars && bars.length >= 300) trendPrices[sym] = bars.map(x => ({ t: x.date, v: x.close })).filter(p => Number.isFinite(p.v) && p.v > 0);
+          else trendSkipped.push(`${sym} (${bars?.length ?? 0} bars)`);
+        } catch (e) { trendSkipped.push(`${sym} (${e.message})`); }
+      }
+      // Inner-join on the common trading calendar so the trend stream carries real dates
+      // (the basket engine index-aligns; date-aligning here removes that ambiguity before blending).
+      const tAlign = _carryAlignSeries(trendPrices);
+      const tMarkets = tAlign.ccys.map(sym => ({ symbol: sym, closes: tAlign.cols[sym] }));
+      if (tMarkets.length >= 3 && tAlign.dates.length >= 300) {
+        const pr = _trendBuildPortfolio(tMarkets, { ..._TREND_DEFAULTS, volTargetPort, costBp });
+        if (pr.ok) {
+          factors.push({ name: 'Trend', dates: tAlign.dates.slice(-pr.scaled.length), dailyRet: pr.scaled });
+          legs.trend = { ok: true, markets: tMarkets.map(m => m.symbol), skipped: trendSkipped, bars: pr.scaled.length, first: tAlign.dates[tAlign.dates.length - pr.scaled.length], last: tAlign.dates[tAlign.dates.length - 1] };
+        } else legs.trend = { ok: false, error: pr.error, skipped: trendSkipped };
+      } else legs.trend = { ok: false, error: `only ${tMarkets.length} trend markets / ${tAlign.dates.length} common dates`, skipped: trendSkipped };
+      bump({ legsDone: 1, step: 'fetching carry universe' });
+
+      // ── Leg 2: FX-carry factor ───────────────────────────────────────────────
+      const from = '2005-01-01';
+      const priceByCcy = {}, rateByCcy = {};
+      try { rateByCcy.USD = await fetchFredSeries(CARRY_FUNDING_FRED, from, process.env.FRED_KEY); } catch (e) { legs.carry = { ok: false, error: `USD funding rate: ${e.message}` }; }
+      if (rateByCcy.USD) {
+        await Promise.all(CARRY_UNIVERSE.map(async u => {
+          try {
+            const bars = await fetchOandaD1Range(u.inst, from);
+            priceByCcy[u.ccy] = bars.map(x => ({ t: x.date, v: u.invert ? 1 / x.close : x.close })).filter(p => Number.isFinite(p.v) && p.v > 0);
+          } catch { /* skip this ccy */ }
+          try { const rm = await fetchFredSeries(u.fred, from, process.env.FRED_KEY); if (rm.size) rateByCcy[u.ccy] = rm; } catch { /* skip */ }
+        }));
+        const carry = runCarryBasket(priceByCcy, rateByCcy, { targetVol: volTargetPort, costBps: costBp, returnDaily: true });
+        if (!carry.error && carry.daily && carry.daily.dates.length >= 300) {
+          factors.push({ name: 'Carry', dates: carry.daily.dates, dailyRet: carry.daily.ret });
+          legs.carry = { ok: true, ccys: carry.ccys, bars: carry.daily.dates.length, first: carry.first, last: carry.last, standalone: carry.all };
+        } else legs.carry = { ok: false, error: carry.error || 'carry produced no daily series' };
+      }
+      bump({ legsDone: 2, step: 'blending' });
+
+      if (factors.length < 2) { mfJobs.set(jobId, { status: 'error', startedAt, error: `need ≥2 live factors to blend; got ${factors.length}`, legs }); return; }
+
+      const book = _combineFactors(factors, { volTargetPort });
+      mfJobs.set(jobId, { status: 'done', startedAt, result: {
+        params: { volTargetPort, costBp },
+        legs,
+        book,
+        note: 'Each leg is already costed by its own engine. The blend adds only slow factor-weight turnover. VRP (vix-vol-carry) is Python-only and not yet a leg. OANDA/FRED data; interbank carry is an upper bound (retail swap haircut applies — see /api/fx-carry).',
+      } });
+    } catch (e) {
+      const msg = e?.message || String(e);
+      console.error('[multi-factor/run]', msg, e?.stack ?? '');
+      mfJobs.set(jobId, { status: 'error', startedAt, error: msg });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/multi-factor/status/:jobId', (req, res) => {
+  const job = mfJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000), step: job.step, legsDone: job.legsDone, legsTotal: job.legsTotal });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, legs: job.legs });
 });
 
 // ── Trend-following v2: forecast-σ sizing A/B ────────────────────────────────

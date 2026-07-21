@@ -448,6 +448,17 @@ drawdowns, honest. Distinct family from the yield work; new engine + page. Phase
 (carry: rank by short-rate, blend 50/50 with trend) needs G10 short-rate data
 (FRED/ECB partial; the rest is the sourcing work).
 
+### 1u. Multi-factor combiner (2026-07-21) — the trend+carry blend (Phase 2 above)
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Multi-factor book** | `js/multiFactorEngine.js` | the factor-agnostic COMBINER — `combineFactors(factors, cfg)` takes N **date-tagged, already-costed** daily return streams (`{name, dates, dailyRet}`), inner-joins them on common dates (`joinFactors`), normalises each to an equal risk budget with a **trailing (no-lookahead) vol** (`trailingVol[t]` uses returns strictly `< t`), equal-weights the normalised legs, then scales the blend to a portfolio vol target — the same construction as `trendFollowEngine.buildPortfolioReturns` lifted one level up. Reports headline + true **IS/OOS** stats, per-factor standalone stats over the joined window, the **factor correlation matrix**, and diversification metrics (avg ρ, diversification ratio, blend-vs-best-single-leg). Honest read: flags a blend that's dead OOS, that doesn't beat its best leg, or whose legs are highly correlated ("one bet wearing several hats" — the `SYSTEM_ASSESSMENT.md` §2.4 warning made numeric). **It sizes/diversifies edge; it does NOT create it — a blend of dead factors is dead** ("a method is not a strategy"). Pure; reuses `statsCore` + `metricsCore`, imports the factor engines' outputs, copies no signal. Tested `js/multiFactorEngine.test.mjs` (18 asserts: join, no-lookahead mutation test, blend-Sharpe-beats-best-leg on uncorrelated legs, correlated-leg flag, dead-blend honesty, guardrails). **This is Phase 2 (blend carry + trend) from §1j.** VRP (`vix-vol-carry`, Python-only) is a natural third leg but not yet wired — the engine is factor-agnostic, so it's a one-leg addition once exposed as a JS daily series. | `server.js` `POST /api/multi-factor/run` + `/status/:jobId` (async-job; runs the trend basket via `buildPortfolioReturns` on the date-aligned universe + the carry factor via `runCarryBasket({returnDaily:true})`, then blends); `multi-factor-book.html` viewer (blended KPIs + equity, IS/OOS, correlation heatmap, per-leg standalone, honest read). Needs `OANDA_KEY` + `FRED_KEY` (deployed only). | ✅ built — **infrastructure; the blend is only as real as its legs OOS** |
+
+Small non-breaking add to `carryEngine.runCarryBasket`: an opt-in `returnDaily`
+flag attaches the full daily **simple**-return series (`daily:{dates, ret}`,
+`expm1` of the internal log returns) so the combiner can consume it. Off by
+default — the public `/api/fx-carry` payload is unchanged.
+
 ### 1k. Z-Score V2 confidence core (2026-07-06) — macro as confidence, not gate
 
 | Brick | File | Owns | Consumers | Status |
