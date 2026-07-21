@@ -7,6 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./css/index.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- Effective-number-of-bets metrics — single source of truth in js/diversificationCore.js
+     (unit-tested in js/diversificationCore.test.mjs). Exposed to the classic
+     inline script below via window.divCore. -->
+<script type="module">
+  import { effectiveBetsPCA, effectiveBetsEntropy, effectiveBetsWeighted, correlationMatrix }
+    from './js/diversificationCore.js';
+  window.divCore = { effectiveBetsPCA, effectiveBetsEntropy, effectiveBetsWeighted, correlationMatrix };
+</script>
 <style>
 #dvApp { padding: 0 20px 60px; max-width: 1380px; margin: 0 auto; }
 
@@ -320,6 +328,10 @@ input[type=range].dv-range::-webkit-slider-thumb:hover { transform: scale(1.2); 
     <div class="dv-info" style="margin-top:12px;">
       Correlations computed on monthly (end-of-month) returns. Values near 0 indicate orthogonal alpha sources.
       A well-diversified book targets |ρ| &lt; 0.30 across all pairs.
+    </div>
+    <div class="bt-card" style="margin-top:14px;">
+      <div class="bt-card-hdr">Effective Number of Bets — how many independent bets is this really?</div>
+      <div class="bt-card-body" id="enbCard"></div>
     </div>
     <div class="bt-card" style="margin-top:14px;">
       <div class="bt-card-hdr">Pairwise Scatter — Select Pair</div>
@@ -1977,10 +1989,66 @@ function renderCorrelationMatrix() {
   html += '</tbody></table>';
   document.getElementById('corrWrap').innerHTML = html;
 
+  renderEffectiveBets(retByMonth);
+
   // Populate scatter selects
   const sx = document.getElementById('scatterX'), sy = document.getElementById('scatterY');
   sx.innerHTML = SYS_NAMES.map((n,i)=>`<option value="${i}">${n}</option>`).join('');
   sy.innerHTML = SYS_NAMES.map((n,i)=>`<option value="${i}" ${i===1?'selected':''}>${n}</option>`).join('');
+}
+
+// ── Effective Number of Bets ──────────────────────────────────────────────────
+// Turns the correlation matrix into "how many INDEPENDENT bets do we really
+// have?" — the SYSTEM_ASSESSMENT §2.4 / punch-list #6 metric. `cols` are the
+// monthly-return columns already aligned across systems (one per SYS_KEY).
+function renderEffectiveBets(cols) {
+  const el = document.getElementById('enbCard');
+  if (!el) return;
+  if (!window.divCore) { el.innerHTML = '<div class="dv-info">Loading metric…</div>'; return; }
+
+  const N = cols.length;
+  const corr = window.divCore.correlationMatrix(cols);
+  // Weights aligned to SYS_KEYS; fall back to equal weight.
+  const rawW = (Array.isArray(_weights) && _weights.length === N) ? _weights : new Array(N).fill(1);
+  const sw = rawW.reduce((a, b) => a + b, 0) || 1;
+  const w = rawW.map(x => x / sw);
+
+  const pca = window.divCore.effectiveBetsPCA(corr);
+  const ent = window.divCore.effectiveBetsEntropy(corr);
+  const wtd = window.divCore.effectiveBetsWeighted(corr, w);
+  const ratio = isFinite(pca) && N > 0 ? pca / N : NaN;
+
+  // Verdict on the PCA ratio (bounded 1/N…1). Higher = more genuinely independent.
+  let verdict, vColor;
+  if (!isFinite(ratio))      { verdict = 'insufficient overlapping history to estimate'; vColor = 'var(--text3)'; }
+  else if (ratio >= 0.75)    { verdict = 'genuinely diversified — most strategies are pulling in different directions'; vColor = 'var(--green)'; }
+  else if (ratio >= 0.5)     { verdict = 'partially diversified — meaningful shared exposure, but not one bet'; vColor = 'var(--amber, #f59e0b)'; }
+  else                       { verdict = `concentrated — the ${N} strategies behave like ~${fmt(pca,1)} bets in different costumes`; vColor = 'var(--red)'; }
+
+  const tile = (label, val, sub, color) => `
+    <div style="flex:1;min-width:130px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;">${label}</div>
+      <div style="font-size:24px;font-weight:600;color:${color||'var(--text)'};font-family:'DM Mono',monospace;">${val}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:2px;">${sub}</div>
+    </div>`;
+
+  el.innerHTML = `
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+      ${tile('Strategies', String(N), 'nominal count', 'var(--text)')}
+      ${tile('Effective bets (PCA)', isFinite(pca)?fmt(pca,2):'—', `of ${N} · (Σλ)²/Σλ²`, isFinite(ratio)&&ratio<0.5?'var(--red)':isFinite(ratio)&&ratio>=0.75?'var(--green)':'var(--text)')}
+      ${tile('Effective bets (entropy)', isFinite(ent)?fmt(ent,2):'—', 'Meucci exp(−Σp·lnp)', 'var(--text)')}
+      ${tile('Effective bets (weighted)', isFinite(wtd)?fmt(wtd,2):'—', 'at current sizing', 'var(--text)')}
+      ${tile('Independence', isFinite(ratio)?fmt(ratio*100,0)+'%':'—', 'PCA ÷ nominal', vColor)}
+    </div>
+    <div class="dv-info" style="border-left:3px solid ${vColor};padding-left:10px;">
+      <strong style="color:${vColor}">Verdict:</strong> ${verdict}.
+      <div style="margin-top:6px;color:var(--text3);">
+        A book of ${N} strategies is only ${N} bets if they're uncorrelated. <b>Effective bets</b> discounts for shared
+        exposure: identical strategies count once, negatively-correlated (hedged) ones can count as more than one.
+        PCA/entropy read the correlation structure itself; the weighted figure uses your current allocation.
+        Computed on monthly returns — see <code>SYSTEM_ASSESSMENT.md</code> §2.4.
+      </div>
+    </div>`;
 }
 
 function renderScatter() {

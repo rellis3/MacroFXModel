@@ -4615,6 +4615,9 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
         <span class="pos-bot-badge pos-paper-badge" style="background:#06302b;border:1px solid #0f766e;color:#4fd1c5">Range-Line</span>
       </div>
 
+      <!-- Live-book concentration: how many INDEPENDENT bets are the open trades really? -->
+      <div id="posDiversification" style="margin-bottom:14px"></div>
+
       <div class="pos-table-wrap">
         <table class="pos-table">
           <thead>
@@ -5102,6 +5105,13 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
 
 </div><!-- /page -->
 
+<!-- Effective-number-of-bets brick (single source of truth in js/diversificationCore.js,
+     unit-tested). Exposed to the classic inline positions-tab script via window.divCore. -->
+<script type="module">
+  import { effectiveBetsPCA, effectiveBetsWeighted, effectiveBetsEntropy }
+    from './js/diversificationCore.js';
+  window.divCore = { effectiveBetsPCA, effectiveBetsWeighted, effectiveBetsEntropy };
+</script>
 <script type="module" src="js/bot-config.js?v=2"></script>
 
 <!-- Help tooltip -->
@@ -6768,6 +6778,115 @@ function _tdeSuggestCell(sugg) {
     `style="color:var(--text3);font-size:10px">${d === 'error' ? '⚠' : '—'}</span></td>`;
 }
 
+// ── Live-book Effective Number of Bets ───────────────────────────────────────
+// Reuses the diversificationCore brick (window.divCore). Unlike the strategy-level
+// card on diversification.html (independence of the 5 backtested SLEEVES over
+// history), THIS answers a live-risk question: how many INDEPENDENT bets are the
+// currently-open trades? It is direction- AND size-aware — two BUYs in a
+// +correlated pair are one bet; a BUY + a SELL in a +correlated pair partly
+// cancel. We net signed lots per instrument, weight by |net lots| (a NOTIONAL
+// proxy, not vol-scaled), and direction-adjust the hedge-engine correlation
+// matrix so aligned exposures read as positively correlated. Headline = the
+// allocation-aware weighted ENB on that matrix.
+function renderLiveDiversification(allPositions, hedgeData) {
+  const el = document.getElementById('posDiversification');
+  if (!el) return;
+  if (!window.divCore) { el.innerHTML = ''; return; }
+
+  // Net signed lots per instrument (BUY/LONG +, SELL/SHORT −).
+  const net = {};
+  for (const p of allPositions || []) {
+    if (!p.symbol) continue;
+    const key = _normSym(p.symbol);
+    const d = /^(buy|long)$/i.test(p.direction || '') ? 1 : -1;
+    const lots = Math.abs(Number(p.lots) || 0);
+    if (!net[key]) net[key] = { disp: p.symbol, lots: 0 };
+    net[key].lots += d * lots;
+  }
+  const syms = Object.keys(net).filter(k => Math.abs(net[k].lots) > 1e-9);
+  const N = syms.length;
+  const nPos = (allPositions || []).length;
+
+  if (N === 0) { el.innerHTML = ''; return; }
+  if (N === 1) { el.innerHTML = _enbCardHtml({ N, nPos, enb: 1, single: net[syms[0]].disp }); return; }
+
+  // Pairwise correlation lookup from hedgeData.avg_corr (keyed "${a}_${b}").
+  const lookup = {};
+  if (hedgeData && hedgeData.avg_corr && Array.isArray(hedgeData.pairs)) {
+    const np = hedgeData.pairs.map(p => ({ raw: p, n: _normSym(p) }));
+    for (let i = 0; i < np.length; i++) for (let j = i + 1; j < np.length; j++) {
+      const c = hedgeData.avg_corr[`${np[i].raw}_${np[j].raw}`] ?? hedgeData.avg_corr[`${np[j].raw}_${np[i].raw}`];
+      if (c != null) { lookup[`${np[i].n}|${np[j].n}`] = c; lookup[`${np[j].n}|${np[i].n}`] = c; }
+    }
+  }
+
+  const dir = syms.map(k => Math.sign(net[k].lots));
+  const wRaw = syms.map(k => Math.abs(net[k].lots));
+  const sw = wRaw.reduce((a, b) => a + b, 0) || 1;
+  const w = wRaw.map(x => x / sw);
+
+  // Direction-adjusted matrix (headline) + raw matrix (structural). Missing ρ → 0.
+  const Cadj = [], Craw = [];
+  let covered = 0, offDiag = 0;
+  for (let i = 0; i < N; i++) {
+    Cadj[i] = []; Craw[i] = [];
+    for (let j = 0; j < N; j++) {
+      if (i === j) { Cadj[i][j] = 1; Craw[i][j] = 1; continue; }
+      offDiag++;
+      let r = lookup[`${syms[i]}|${syms[j]}`];
+      if (r == null) r = 0; else covered++;
+      Craw[i][j] = r;
+      Cadj[i][j] = dir[i] * dir[j] * r;
+    }
+  }
+  const coverage = offDiag ? covered / offDiag : 1;
+
+  const enb = window.divCore.effectiveBetsWeighted(Cadj, w);   // direction + size aware
+  const structural = window.divCore.effectiveBetsPCA(Craw);    // direction-blind risk factors
+  el.innerHTML = _enbCardHtml({ N, nPos, enb, structural, coverage });
+}
+
+function _enbCardHtml(o) {
+  const { N, nPos, enb, structural, coverage, single } = o;
+  const overHedged = !single && (!isFinite(enb) || enb > N + 1e-6);
+  const enbShown = single ? 1 : (overHedged ? N : enb);
+  const ratio = isFinite(enbShown) && N > 0 ? enbShown / N : NaN;
+  const pct = isFinite(ratio) ? Math.round(ratio * 100) : null;
+
+  let vColor, verdict;
+  if (single) { vColor = 'var(--text3)'; verdict = `Single instrument (${single}) — trivially one bet.`; }
+  else if (overHedged) { vColor = 'var(--green)'; verdict = `Net-hedged — the open trades largely offset (effectively more than ${N} independent bets).`; }
+  else if (ratio >= 0.75) { vColor = 'var(--green)'; verdict = 'Genuinely spread — the open trades are pulling independently.'; }
+  else if (ratio >= 0.5) { vColor = 'var(--amber, #f59e0b)'; verdict = 'Partly concentrated — meaningful shared exposure across the book.'; }
+  else { vColor = 'var(--red)'; verdict = `Concentrated — ${nPos} trades across ${N} instruments behave like ~${(isFinite(enb) ? enb : N).toFixed(1)} independent bets; one shock hits most of them at once.`; }
+
+  const enbStr = single ? '1.0' : overHedged ? ('&ge;' + N) : enb.toFixed(2);
+  const tile = (label, val, sub, color) =>
+    `<div style="flex:1;min-width:118px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+       <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">${label}</div>
+       <div style="font-size:22px;font-weight:700;color:${color || 'var(--text)'}">${val}</div>
+       <div style="font-size:10px;color:var(--text3);margin-top:2px">${sub}</div>
+     </div>`;
+  const covNote = (!single && coverage != null && coverage < 0.999)
+    ? ` · correlation coverage ${Math.round(coverage * 100)}% (missing pairs treated as independent)` : '';
+
+  return `<div style="background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+    <div style="font-weight:600;margin-bottom:8px">Effective Number of Bets — live book
+      <span style="font-size:11px;color:var(--text3);font-weight:400">· how concentrated is the open risk right now?</span></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+      ${tile('Open trades', String(nPos), 'positions', 'var(--text)')}
+      ${tile('Instruments', String(N), 'distinct symbols', 'var(--text)')}
+      ${tile('Effective bets', enbStr, 'direction + size aware', vColor)}
+      ${tile('Independence', pct != null ? pct + '%' : '—', 'of nominal', vColor)}
+      ${(!single && structural != null && isFinite(structural)) ? tile('Risk factors', structural.toFixed(2), 'structural (dir-blind)', 'var(--text)') : ''}
+    </div>
+    <div style="font-size:12px;color:var(--text2);border-left:3px solid ${vColor};padding-left:10px">
+      <strong style="color:${vColor}">${verdict}</strong>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">Netted signed lots per instrument, weighted by |lots| (notional proxy, not vol-scaled), on the hedge engine's rolling correlations${covNote}.</div>
+    </div>
+  </div>`;
+}
+
 async function loadPositionsTab() {
   const tbody = document.getElementById('posTableBody');
   const tfoot = document.getElementById('posTableFoot');
@@ -6832,6 +6951,9 @@ async function loadPositionsTab() {
       staleBots.length ? `<div class="pos-summary-item" style="color:var(--amber)">Stale: ${staleBots.join(', ')}</div>` : '',
     ].join('');
   }
+
+  // Live-book concentration (direction + size aware) — reuses the ENB brick.
+  renderLiveDiversification(allPositions, hedgeData);
 
   if (!allPositions.length) {
     tbody.innerHTML = '<tr><td colspan="13" class="pos-empty">No open positions across all bots</td></tr>';
@@ -8059,14 +8181,32 @@ async function openTradeChartModal(idx) {
     const isLong = t.direction === 'BUY';
     const win    = net >= 0;
     const entryCol = isLong ? '#10b981' : '#f87171';
-    // Marker times are real bar times inside `data` by construction (the slice
-    // spans entryIdx…exitIdx), so LW-Charts never rejects or misplaces them.
-    try {
-      _tcSeries.setMarkers([
-        { time: bars5[entryIdx].time, position: isLong ? 'belowBar' : 'aboveBar', color: entryCol, shape: isLong ? 'arrowUp' : 'arrowDown', text: isLong ? '▲ BUY' : '▼ SELL' },
-        { time: bars5[exitIdx].time,  position: isLong ? 'aboveBar' : 'belowBar', color: win ? '#10b981' : '#f87171', shape: 'circle', text: win ? 'Exit ▲' : 'Exit ▼' },
-      ]);
-    } catch(me) { /* markers failed — price lines still show entry/exit */ }
+    const exitCol  = win ? '#10b981' : '#f87171';
+
+    // Anchor markers to the RECORDED fill prices, not to the candle. The old
+    // belowBar/aboveBar placement pinned the arrow to the M1 candle at the
+    // entry minute, so when the bot's fill price differed from that minute's mid
+    // (a stale/whipsaw quote on a fast fill, or a market-closed stamp) the ▲ BUY
+    // floated far from the Entry line — the "miles apart" report. Each marker now
+    // rides its own transparent 1-point overlay series positioned 'inBar' at the
+    // fill price, so ▲ BUY sits exactly on the Entry line and the exit dot on the
+    // Exit line. The overlay points also pull the price scale to include both
+    // fills, so a far exit (e.g. below every candle) is never clipped off-screen.
+    const _priceMarker = (barTime, price, marker) => {
+      if (price == null) return;
+      const s = _tcChart.addLineSeries({
+        color: 'rgba(0,0,0,0)', lineWidth: 1, lastValueVisible: false,
+        priceLineVisible: false, crosshairMarkerVisible: false,
+      });
+      s.setData([{ time: barTime, value: price }]);
+      try { s.setMarkers([{ ...marker, time: barTime, position: 'inBar' }]); } catch(me) {}
+    };
+    _priceMarker(bars5[entryIdx].time, t.open_price, {
+      color: entryCol, shape: isLong ? 'arrowUp' : 'arrowDown', text: isLong ? '▲ BUY' : '▼ SELL',
+    });
+    _priceMarker(bars5[exitIdx].time, t.close_price, {
+      color: exitCol, shape: 'circle', text: win ? 'Exit ▲' : 'Exit ▼',
+    });
 
     _tcPriceLines = [];
     if (t.open_price  != null) _tcPriceLines.push(_tcSeries.createPriceLine({ price: t.open_price,  color: '#60a5fa', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Entry' }));

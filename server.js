@@ -42,18 +42,19 @@ import { runEconTrend, runEconTrendPlacebo, evaluateEconTrend, ECON_TREND_DEFAUL
 import { buildFundamentals as buildEconFundamentals, ECON_UNIVERSE } from './js/econTrendEngine.js';
 import { buildCsi, runCsiOverlay, evaluateCsi, creditVega, CSI_DEFAULTS } from './js/creditStressCore.js';
 import { buildCsiInputs } from './js/creditStressEngine.js';
-import { runCarryBasket, financingHaircut } from './js/carryEngine.js';
+import { runCarryBasket, financingHaircut, alignSeries as _carryAlignSeries } from './js/carryEngine.js';
+import { combineFactors as _combineFactors, MF_DEFAULTS as _MF_DEFAULTS } from './js/multiFactorEngine.js';
 import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
-import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS } from './js/volBacktestEngine.js';
+import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS, BM_P75 as _BM_P75 } from './js/volBacktestEngine.js';
 import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED } from './js/mve/liveAdapter.js';
 import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency } from './js/mve/validateInstrument.js';
-import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS } from './js/trendFollowEngine.js';
+import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS, buildPortfolioReturns as _trendBuildPortfolio } from './js/trendFollowEngine.js';
 import { runGauntlet as _runStrategyGauntlet, GAUNTLET_SPECS as _GAUNTLET_SPECS, SIGNALS as _LAB_SIGNALS } from './js/strategyLabEngine.js';
 import { runTrendAB as _runTrendAB } from './js/trendFollowV2Engine.js';
-import { volSigmaSeries as _volSigmaSeries } from './js/forecastCore.js';
+import { volSigmaSeries as _volSigmaSeries, nextSigma as _nextSigma } from './js/forecastCore.js';
 import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } from './js/creditLeadLagEngine.js';
 import { compareForecastLines as _compareForecastLines } from './js/forecastDriftCompare.js';
 import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
@@ -75,7 +76,7 @@ import { learnAndFreeze as learnAndFreezeV2, deriveBands as deriveBandsV2, flatt
 import { refreshAllPairsV2, checkV2AlertsNow, loadV2Creds, sendV2Test, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
 import { ledgerStats as ledgerStatsV2, refitFromLedger as refitFromLedgerV2 } from './js/entryLedgerV2.js';
 import { DEFAULT_V2_ALERT_CFG } from './js/alertV2Core.js';
-import { evaluatePair as evaluateVolLevelPair, ALERT_LEVEL_KEYS as VOL_LEVEL_KEYS } from './js/volLevelAlertCore.js';
+import { evaluatePair as evaluateVolLevelPair, ALERT_LEVEL_KEYS as VOL_LEVEL_KEYS, dispersionContext as volDispersionContext } from './js/volLevelAlertCore.js';
 import { confluenceForPair, mergeConfluence } from './js/confluenceTest.js';
 import { runRangeFibBacktest, RANGE_FIB_INSTRUMENTS, FIB_LEVELS as RANGE_FIB_LEVELS } from './js/rangeFibEngine.js';
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
@@ -2304,6 +2305,7 @@ READABILITY IS THE #1 GOAL — write for a sharp trader who is NOT a rates/vol s
 - Every line must be understandable by a smart non-specialist. The FIRST time you use a desk term (2s10s, OAS, backwardation, EVZ, real yield, breakeven), add a 3-6 word plain gloss right there (e.g. "the 2s10s curve — long rates minus short — at +36bp").
 - Lead the headline and theme with the plain-English "so what" (what it means / what to do), not the metric. Speak numbers like a person ("the 10-year near 4.5%", "VIX easing to 15"), not to spurious decimals.
 - Be honest about weight: rates/curve, credit spreads and the vol-risk-premium are the evidenced macro reads — lean on them. Don't state technicals or positioning as mechanism-of-fact, and don't manufacture a strong directional call from a quiet, data-light tape — say when it's a lean.
+- NO FOLKLORE-AS-FACT. Options positioning, implied-vol percentiles (EVZ/GVZ/VIX rank), gamma, technical levels and S/R do NOT reliably PREDICT what comes next — they describe where the market is positioned NOW. NEVER claim one "historically precedes", "reliably leads", "tends to precede", or "signals an incoming" move, and never say "the tape wants to" or state "smart money is doing X" as fact. Elevated EVZ means options are priced for a bigger move than realized — say exactly that ("options are braced for movement the tape hasn't delivered"), not that it foreshadows one. Describe positioning; hedge the inference.
 
 Respond with ONLY valid JSON, no markdown:
 {"headline":"one-sentence front-page read, plain-English so-what first","regime":"RISK-ON|RISK-OFF|MIXED|TRANSITION","theme":"2-3 plain-spoken sentences on what's driving markets today, jargon glossed","dollar":"1-2 sentences on the USD","rates":"1-2 sentences on yields/curve","risk":"1-2 sentences on the risk mood (VIX/credit)","complex":"1-2 sentences: what it means for the FX majors + gold/indices","watch":["1-3 things to watch"],"byAsset":[{"asset":"USD|EUR|JPY|GBP|Gold|Stocks|Oil","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line"}],"tldr":"one-line bottom line"}`;
@@ -6035,6 +6037,108 @@ app.get('/api/trend/backtest', async (req, res) => {
   }
 });
 
+// ── Multi-Factor Book: combine the replicated factors into one diversified book ─
+// Runs the trend-following basket AND the FX-carry factor, takes each engine's
+// costed daily return stream, and blends them with multiFactorEngine (equal-risk,
+// vol-targeted, no-lookahead). The point is the diversification: trend pays in
+// crises, carry bleeds in them, so the blend's Sharpe should beat either leg IF
+// both legs are alive. Honest by construction — a dead leg drags the blend and the
+// read says so. VRP (vix-vol-carry) is a Python-only backtest and is NOT wired in
+// yet; the engine is factor-agnostic, so it's a one-leg addition once exposed in JS.
+// Same async-job pattern as /api/trend-ema-ab/run. Needs OANDA_KEY + FRED_KEY.
+const mfJobs = new Map();
+function _purgeStaleMfJobs() { const cut = Date.now() - 60 * 60_000; for (const [id, j] of mfJobs) if (j.startedAt < cut) mfJobs.delete(id); }
+
+app.post('/api/multi-factor/run', express.json({ limit: '64kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not configured (runs on Railway)' });
+  if (!process.env.FRED_KEY)  return res.status(503).json({ ok: false, error: 'FRED_KEY not configured (needed for carry interbank rates)' });
+  const b = req.body ?? {};
+  const num = (v, lo, hi, d) => { const x = +v; return Number.isFinite(x) ? Math.min(Math.max(x, lo), hi) : d; };
+  const volTargetPort = num(b.volTargetPort, 0.02, 0.40, 0.10);
+  const costBp = num(b.costBp, 0, 50, 2);
+
+  const jobId = `mf_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleMfJobs();
+  mfJobs.set(jobId, { status: 'running', startedAt, step: 'starting', legsTotal: 2, legsDone: 0 });
+  const bump = (patch) => { const j = mfJobs.get(jobId); if (j) mfJobs.set(jobId, { ...j, ...patch }); };
+
+  (async () => {
+    try {
+      const factors = [];
+      const legs = {};
+
+      // ── Leg 1: Trend-following basket ────────────────────────────────────────
+      bump({ step: 'fetching trend universe' });
+      const trendPrices = {};
+      const trendSkipped = [];
+      for (const sym of _TREND_UNIVERSE) {
+        try {
+          const bars = await _btFetchD1(sym, 5000);
+          if (bars && bars.length >= 300) trendPrices[sym] = bars.map(x => ({ t: x.date, v: x.close })).filter(p => Number.isFinite(p.v) && p.v > 0);
+          else trendSkipped.push(`${sym} (${bars?.length ?? 0} bars)`);
+        } catch (e) { trendSkipped.push(`${sym} (${e.message})`); }
+      }
+      // Inner-join on the common trading calendar so the trend stream carries real dates
+      // (the basket engine index-aligns; date-aligning here removes that ambiguity before blending).
+      const tAlign = _carryAlignSeries(trendPrices);
+      const tMarkets = tAlign.ccys.map(sym => ({ symbol: sym, closes: tAlign.cols[sym] }));
+      if (tMarkets.length >= 3 && tAlign.dates.length >= 300) {
+        const pr = _trendBuildPortfolio(tMarkets, { ..._TREND_DEFAULTS, volTargetPort, costBp });
+        if (pr.ok) {
+          factors.push({ name: 'Trend', dates: tAlign.dates.slice(-pr.scaled.length), dailyRet: pr.scaled });
+          legs.trend = { ok: true, markets: tMarkets.map(m => m.symbol), skipped: trendSkipped, bars: pr.scaled.length, first: tAlign.dates[tAlign.dates.length - pr.scaled.length], last: tAlign.dates[tAlign.dates.length - 1] };
+        } else legs.trend = { ok: false, error: pr.error, skipped: trendSkipped };
+      } else legs.trend = { ok: false, error: `only ${tMarkets.length} trend markets / ${tAlign.dates.length} common dates`, skipped: trendSkipped };
+      bump({ legsDone: 1, step: 'fetching carry universe' });
+
+      // ── Leg 2: FX-carry factor ───────────────────────────────────────────────
+      const from = '2005-01-01';
+      const priceByCcy = {}, rateByCcy = {};
+      try { rateByCcy.USD = await fetchFredSeries(CARRY_FUNDING_FRED, from, process.env.FRED_KEY); } catch (e) { legs.carry = { ok: false, error: `USD funding rate: ${e.message}` }; }
+      if (rateByCcy.USD) {
+        await Promise.all(CARRY_UNIVERSE.map(async u => {
+          try {
+            const bars = await fetchOandaD1Range(u.inst, from);
+            priceByCcy[u.ccy] = bars.map(x => ({ t: x.date, v: u.invert ? 1 / x.close : x.close })).filter(p => Number.isFinite(p.v) && p.v > 0);
+          } catch { /* skip this ccy */ }
+          try { const rm = await fetchFredSeries(u.fred, from, process.env.FRED_KEY); if (rm.size) rateByCcy[u.ccy] = rm; } catch { /* skip */ }
+        }));
+        const carry = runCarryBasket(priceByCcy, rateByCcy, { targetVol: volTargetPort, costBps: costBp, returnDaily: true });
+        if (!carry.error && carry.daily && carry.daily.dates.length >= 300) {
+          factors.push({ name: 'Carry', dates: carry.daily.dates, dailyRet: carry.daily.ret });
+          legs.carry = { ok: true, ccys: carry.ccys, bars: carry.daily.dates.length, first: carry.first, last: carry.last, standalone: carry.all };
+        } else legs.carry = { ok: false, error: carry.error || 'carry produced no daily series' };
+      }
+      bump({ legsDone: 2, step: 'blending' });
+
+      if (factors.length < 2) { mfJobs.set(jobId, { status: 'error', startedAt, error: `need ≥2 live factors to blend; got ${factors.length}`, legs }); return; }
+
+      const book = _combineFactors(factors, { volTargetPort });
+      mfJobs.set(jobId, { status: 'done', startedAt, result: {
+        params: { volTargetPort, costBp },
+        legs,
+        book,
+        note: 'Each leg is already costed by its own engine. The blend adds only slow factor-weight turnover. VRP (vix-vol-carry) is Python-only and not yet a leg. OANDA/FRED data; interbank carry is an upper bound (retail swap haircut applies — see /api/fx-carry).',
+      } });
+    } catch (e) {
+      const msg = e?.message || String(e);
+      console.error('[multi-factor/run]', msg, e?.stack ?? '');
+      mfJobs.set(jobId, { status: 'error', startedAt, error: msg });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/multi-factor/status/:jobId', (req, res) => {
+  const job = mfJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000), step: job.step, legsDone: job.legsDone, legsTotal: job.legsTotal });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, legs: job.legs });
+});
+
 // ── Trend-following v2: forecast-σ sizing A/B ────────────────────────────────
 // Same universe/data as /api/trend/backtest, but runs BOTH sizing variants —
 // v1 trailing 63d stdev vs the forecaster's σ (fx→Yang-Zhang, index→GARCH,
@@ -7256,6 +7360,186 @@ app.get('/api/vol-forecast/reference/:date', async (req, res) => {
     const raw = await kv.get(`vol_reference_${date}`);
     if (!raw) return res.status(404).json({ ok: false, error: `No reference data for ${date}` });
     res.json({ ok: true, ...JSON.parse(raw) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── COG reference dump — all parsed reference forecasts, one JSON ─────────────
+// GET /api/vol-forecast/reference-dump — every stored COG reference date parsed to
+// { date: { INST: { vol, hl_med, hl_75, oc_med, oc_75 } } }. Feeds an offline test
+// of candidate σ adjustments against COG's actual published numbers (the analysis
+// runs on local price history; only COG's values need to come from KV).
+app.get('/api/vol-forecast/reference-dump', async (_req, res) => {
+  try {
+    const idxRaw = await kv.get('vol_reference_index').catch(() => null);
+    const dates = idxRaw ? JSON.parse(idxRaw).map(e => e.date).filter(Boolean).sort() : [];
+    const ref = {};
+    for (const d of dates) {
+      const raw = await kv.get(`vol_reference_${d}`).catch(() => null);
+      if (!raw) continue;
+      try { ref[d] = _parseExportText(JSON.parse(raw).text); } catch { /* skip malformed */ }
+    }
+    res.json({ ok: true, dates: Object.keys(ref).length, ref });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── COG σ-overlay measure-first test ──────────────────────────────────────────
+// GET /api/cog-overlay-test — for each stored COG reference date, compare OUR base
+// forecast σ to COG's published σ and to a candidate reactive overlay:
+//   adjusted = base + λ·(CC-HV − base)          (CC-HV = COG's close-to-close-HV method)
+// plus a momentum-gated variant (blend at λ0.5 only when short/long vol > 1, i.e.
+// vol rising). Reports mean|error-to-COG| for base vs each λ, per instrument, and
+// returns every per-date row so it's auditable (NQ's CC-HV should track COG's NQ
+// number — a built-in sanity check). λ is pre-registered, not fitted. Nothing in
+// the live forecaster changes — measure-first only.
+const _OVL_INST = [
+  { name: 'EURUSD', oanda: 'EUR_USD',    cls: 'fx' },
+  { name: 'GOLD',   oanda: 'XAU_USD',    cls: 'commodity' },
+  { name: 'NQ',     oanda: 'NAS100_USD', cls: 'index' },
+];
+const _OVL_LAMBDAS = [0, 0.25, 0.5, 0.75, 1.0];
+app.get('/api/cog-overlay-test', async (_req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not configured' });
+  try {
+    const idxRaw = await kv.get('vol_reference_index').catch(() => null);
+    const dates = idxRaw ? JSON.parse(idxRaw).map(e => e.date).filter(Boolean).sort() : [];
+    if (!dates.length) return res.json({ ok: true, dates: 0, note: 'No COG reference data stored.' });
+    const cogByDate = {};
+    for (const d of dates) {
+      const raw = await kv.get(`vol_reference_${d}`).catch(() => null);
+      if (raw) { try { cogByDate[d] = _parseExportText(JSON.parse(raw).text); } catch { /* skip */ } }
+    }
+    // Per-instrument CC-HV(20) + vol-momentum(10/60) from London-aligned D1, session-
+    // dated with the +1 evening rule so keys line up with the reference/archive dates.
+    const sigMaps = {};
+    for (const it of _OVL_INST) {
+      try {
+        const base = _oandaBaseMe();
+        const url = `${base}/v3/instruments/${encodeURIComponent(it.oanda)}/candles?granularity=D&count=2600&price=M&dailyAlignment=0&alignmentTimezone=Europe%2FLondon`;
+        const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(30_000) });
+        if (!r.ok) { sigMaps[it.name] = {}; continue; }
+        const lon = ((await r.json()).candles ?? [])
+          .filter(c => c.complete !== false && c.mid)
+          .map(c => { const t = new Date(c.time); if (t.getUTCHours() >= 20) t.setUTCDate(t.getUTCDate() + 1); return { date: t.toISOString().slice(0, 10), close: +c.mid.c }; })
+          .filter(c => c.close > 0)
+          .sort((a, b) => (a.date < b.date ? -1 : 1));
+        const map = {};
+        for (let i = 62; i < lon.length; i++) {
+          const slice = lon.slice(0, i);   // closes strictly before lon[i].date
+          const cc = _ccHvSigma(slice, { window: 20 });
+          const s = _ccHvSigma(slice, { window: 10 }), l = _ccHvSigma(slice, { window: 60 });
+          if (cc.volAnnual > 0 && s.volAnnual > 0 && l.volAnnual > 0) map[lon[i].date] = { cchv: cc.volAnnual, mom: s.volAnnual / l.volAnnual };
+        }
+        sigMaps[it.name] = map;
+      } catch { sigMaps[it.name] = {}; }
+    }
+    const acc = {}, rows = [];
+    for (const d of dates) {
+      const cog = cogByDate[d]; if (!cog) continue;
+      const ourRaw = await kv.get(`vol_forecast_${d}`).catch(() => null);
+      if (!ourRaw) continue;
+      let ours; try { ours = JSON.parse(ourRaw).instruments || {}; } catch { continue; }
+      const ourUC = {}; for (const k of Object.keys(ours)) ourUC[k.toUpperCase()] = ours[k];
+      for (const it of _OVL_INST) {
+        const c = cog[it.name], o = ourUC[it.name], sig = sigMaps[it.name]?.[d];
+        if (!c || !(c.vol > 0) || !o || !(o.vol_annual > 0) || !sig) continue;
+        const base = o.vol_annual, target = c.vol, cchv = sig.cchv, mom = sig.mom;
+        const baseErr = Math.abs(base - target);
+        const row = { date: d, inst: it.name, cog: +target.toFixed(2), base: +base.toFixed(2), cchv: +cchv.toFixed(2), mom: +mom.toFixed(2), baseErr: +baseErr.toFixed(2) };
+        for (const lam of _OVL_LAMBDAS) {
+          const err = Math.abs((base + lam * (cchv - base)) - target);
+          const key = `${it.name}|${lam}`;
+          (acc[key] ||= { errs: [], improved: 0, n: 0 });
+          acc[key].errs.push(err); acc[key].n++; if (err < baseErr - 1e-9) acc[key].improved++;
+        }
+        const adjG = mom > 1 ? base + 0.5 * (cchv - base) : base;
+        const errG = Math.abs(adjG - target);
+        (acc[`${it.name}|gated`] ||= { errs: [], improved: 0, n: 0 });
+        acc[`${it.name}|gated`].errs.push(errG); acc[`${it.name}|gated`].n++; if (errG < baseErr - 1e-9) acc[`${it.name}|gated`].improved++;
+        row.adjGated = +adjG.toFixed(2);
+        rows.push(row);
+      }
+    }
+    const mean = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : NaN;
+    const summary = {};
+    for (const it of _OVL_INST) {
+      const s = { n: acc[`${it.name}|0`]?.n || 0 };
+      for (const lam of _OVL_LAMBDAS) { const a = acc[`${it.name}|${lam}`]; s[`mae_l${lam}`] = a ? +mean(a.errs).toFixed(3) : null; }
+      const g = acc[`${it.name}|gated`];
+      s.mae_gated = g ? +mean(g.errs).toFixed(3) : null;
+      s.gated_improved_pct = g && g.n ? +(100 * g.improved / g.n).toFixed(0) : null;
+      summary[it.name] = s;
+    }
+    res.json({
+      ok: true, refDates: dates.length, scoredRows: rows.length,
+      note: 'mae_l0 = base error to COG; mae_l1.0 = pure-CC-HV error; gated = blend λ0.5 only when vol rising. Overlay helps if MAE drops below mae_l0 without hurting pairs that already match. λ pre-registered, not fitted. Sanity: NQ cchv≈cog.',
+      summary, rows,
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── COG day-of-week weighting probe ───────────────────────────────────────────
+// GET /api/cog-dow — over every stored COG reference date, compare COG's number to
+// OURS (the archived forecast for that session) and group the COG/ours ratio by
+// weekday. Demeaned PER INSTRUMENT so the constant σ-source gap (e.g. NQ's CC-HV)
+// doesn't masquerade as a weekday effect: `rel` = (COG/ours on that weekday) ÷ (that
+// instrument's overall COG/ours). rel≈1.00 on every weekday ⇒ COG applies no
+// day-of-week weight; a consistent Mon<1, Wed/Thu>1 tilt across metrics ⇒ he does.
+app.get('/api/cog-dow', async (_req, res) => {
+  try {
+    const idxRaw = await kv.get('vol_reference_index').catch(() => null);
+    const dates = idxRaw ? JSON.parse(idxRaw).map(e => e.date).filter(Boolean).sort() : [];
+    if (!dates.length) return res.json({ ok: true, dates: 0, note: 'No COG reference data stored yet.' });
+    const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const METRICS = [['vol', 'vol_annual'], ['hl_med', 'hl_median'], ['hl_75', 'hl_75'], ['oc_med', 'oc_median'], ['oc_75', 'oc_75']];
+    const rows = [];   // { metric, wd, inst, r }
+    let matchedDates = 0;
+    for (const d of dates) {
+      const [refRaw, ourRaw] = await Promise.all([
+        kv.get(`vol_reference_${d}`).catch(() => null),
+        kv.get(`vol_forecast_${d}`).catch(() => null),
+      ]);
+      if (!refRaw || !ourRaw) continue;
+      let cog, ours;
+      try { cog = _parseExportText(JSON.parse(refRaw).text); } catch { continue; }
+      try { ours = JSON.parse(ourRaw).instruments || {}; } catch { continue; }
+      const ourUC = {}; for (const k of Object.keys(ours)) ourUC[k.toUpperCase()] = ours[k];
+      const wd = new Date(d + 'T00:00:00Z').getUTCDay();
+      if (wd < 1 || wd > 5) continue;
+      matchedDates++;
+      for (const inst of Object.keys(cog)) {
+        const o = ourUC[inst], c = cog[inst];
+        if (!o) continue;
+        for (const [ck, ok] of METRICS) {
+          const cv = c[ck], ov = o[ok];
+          if (cv > 0 && ov > 0) rows.push({ metric: ck, wd, inst, r: cv / ov });
+        }
+      }
+    }
+    const mean = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : NaN;
+    const byMetric = {};
+    for (const [ck] of METRICS) {
+      const mr = rows.filter(r => r.metric === ck);
+      const instVals = {};
+      for (const r of mr) (instVals[r.inst] ||= []).push(r.r);
+      const instMean = {};
+      for (const k in instVals) instMean[k] = mean(instVals[k]);
+      const wdRel = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+      for (const r of mr) if (wdRel[r.wd] && instMean[r.inst] > 0) wdRel[r.wd].push(r.r / instMean[r.inst]);
+      const out = { overall_cog_over_ours: mr.length ? +mean(mr.map(r => r.r)).toFixed(3) : null };
+      for (const w of [1, 2, 3, 4, 5]) out[WD[w]] = { n: wdRel[w].length, rel: wdRel[w].length ? +mean(wdRel[w]).toFixed(3) : null };
+      byMetric[ck] = out;
+    }
+    res.json({
+      ok: true, refDates: dates.length, matchedDates, matchedRows: rows.length,
+      note: 'rel = (COG/ours ratio on that weekday) ÷ (that instrument\'s overall COG/ours). 1.00 = no weekday weight; >1 = COG runs bigger than us on that weekday.',
+      byMetric,
+    });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
@@ -11893,7 +12177,7 @@ if (process.env.OANDA_KEY && process.env.CONE_FWD_AUTO !== '0') {
 // every scan). Pure logic in js/surpriseAlertCore.js.
 const _clampNum = (v, lo, hi, dflt) => { const n = Number(v); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : dflt; };
 const _saDefaultConfig = () => ({
-  enabled: false, token: '', chatId: '', pairs: ['gold'],
+  enabled: false, token: '', chatId: '', pairs: [],   // empty = monitor ALL pairs
   pctHigh: _SA_DEFAULTS.pctHigh, pctLow: _SA_DEFAULTS.pctLow,
   zMin: _SA_DEFAULTS.zMin, minGapMin: _SA_DEFAULTS.minGapMin,
 });
@@ -11911,7 +12195,9 @@ async function _surpriseAlertScan({ force = false, dryRun = false } = {}) {
     const cfg = await _saLoadConfig();
     if (!force && !cfg.enabled) return { skipped: 'disabled' };
     if (!dryRun && (!cfg.token || !cfg.chatId)) return { skipped: 'no Telegram creds' };
-    const names = (cfg.pairs && cfg.pairs.length ? cfg.pairs : ['gold'])
+    // Blank pairs list = monitor every pair (same default as the forward-track
+    // and /summary). A non-empty list narrows it to those pairs.
+    const names = (cfg.pairs && cfg.pairs.length ? cfg.pairs : Object.keys(_wbtInstrMap))
       .map(p => String(p).toLowerCase().replace(/[^a-z0-9]/g, '')).filter(n => _wbtInstrMap[n]);
     const nowSec = Math.floor(Date.now() / 1000);
     const minGapSec = (cfg.minGapMin ?? _SA_DEFAULTS.minGapMin) * 60;
@@ -11956,7 +12242,7 @@ app.post('/api/forecast-path/alert/config', express.json({ limit: '8kb' }), asyn
       // keep existing token/chat when the field is blank or the masked sentinel
       token:     (b.token && !/^•+set•+$/.test(b.token)) ? String(b.token).trim() : cur.token,
       chatId:    b.chatId != null && b.chatId !== '' ? String(b.chatId).trim() : cur.chatId,
-      pairs:     Array.isArray(b.pairs) && b.pairs.length ? b.pairs.map(String) : cur.pairs,
+      pairs:     Array.isArray(b.pairs) ? b.pairs.map(String) : cur.pairs,   // [] is valid = all pairs
       pctHigh:   b.pctHigh != null ? _clampNum(b.pctHigh, 80, 99, cur.pctHigh) : cur.pctHigh,
       pctLow:    b.pctLow  != null ? _clampNum(b.pctLow, 1, 20, cur.pctLow)   : cur.pctLow,
       zMin:      b.zMin    != null ? _clampNum(b.zMin, 0.5, 4, cur.zMin)       : cur.zMin,
@@ -12716,10 +13002,49 @@ async function _fetchVolLevelCandles(sym, gran = 'M5', count = 150) {
     if (!d.candles) return null;
     const bars = d.candles
       .filter(c => c.complete && c.mid)
-      .map(c => ({ open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c }));
+      .map(c => ({ open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c,
+                   t: Math.floor(new Date(c.time).getTime() / 1000) }));   // epoch sec, for session slicing
     _m5SrvCache.set(cacheKey, { data: bars, ts: Date.now() });
     return bars;
   } catch { return null; }
+}
+
+// Daily "expansion regime" for the volatility-budget alert block. The OOS-validated
+// transparent rule (volatilityExhaustion/daytype_classifier.py): today leans EXPANSION
+// if the prior day blew through its own 75th H-L line OR σ is accelerating
+// (σ_pred_today > 1.10 × mean of the prior 5). Uses the SAME σ math the plan uses
+// (_volSigmaSeries / _nextSigma) — imported, not re-derived — so it can't drift from
+// the forecast. Cached per (sym, session-date): one D1 fetch/instrument/day.
+const _volLevelRegimeCache = new Map();       // key `${sym}|${sessionDate}` -> {priorExceed, sigAccel}
+async function _volLevelDailyRegime(sym, ac, sessionDate) {
+  const key = `${sym}|${sessionDate}`;
+  if (_volLevelRegimeCache.has(key)) return _volLevelRegimeCache.get(key);
+  let out = { priorExceed: null, sigAccel: null };
+  try {
+    const bars = await _btFetchD1(sym.replace('/', '_'), 60);       // ~60 completed D1 bars
+    if (bars && bars.length >= 10) {
+      const sig = _volSigmaSeries(bars, ac);                        // σ_pred[i], causal
+      const n = bars.length;
+      const sPrev = sig[n - 1];                                     // σ_pred for last completed day
+      const prev = bars[n - 1];
+      const hl75corr = (_ASSET_PARAMS[ac] ?? _ASSET_PARAMS.fx).hl_75_corr;
+      const hl75sig = _BM_P75 * hl75corr;
+      if (sPrev > 0 && prev.open > 0) {
+        const realizedHlSig = (prev.high - prev.low) / prev.open / sPrev;
+        out.priorExceed = realizedHlSig > hl75sig;
+      }
+      // σ acceleration: today's forecast σ vs the mean of the prior 5 σ_pred.
+      const prior5 = [];
+      for (let i = n - 5; i < n; i++) if (i >= 0 && sig[i] > 0) prior5.push(sig[i]);
+      const sToday = _nextSigma(bars, ac);
+      if (prior5.length && sToday > 0) {
+        out.sigAccel = sToday / (prior5.reduce((a, b) => a + b, 0) / prior5.length);
+      }
+    }
+  } catch (e) { /* leave nulls — budget block simply omits the regime line */ }
+  _volLevelRegimeCache.set(key, out);
+  if (_volLevelRegimeCache.size > 200) _volLevelRegimeCache.clear();   // bound the cache
+  return out;
 }
 
 // One scan cycle: for each forecast instrument, if live price is within the
@@ -12757,8 +13082,29 @@ async function checkVolLevelAlertsNow() {
     if (!pre.some(ev => now - (_volLevelState.lastAlert[`${canonical}|${ev.key}`] ?? 0) >= cdMs)) continue;
 
     const bars   = await _fetchVolLevelCandles(sym);
+
+    // Daily dispersion context: range-used % (this session's H-L vs the forecast
+    // median day) + the OOS-validated expansion regime. All optional — if any
+    // input is unavailable the alert simply omits that part.
+    let dispersion = null;
+    try {
+      const sessOpenSec = _btLondonMidnightSec(new Date(now));
+      const sessBars = Array.isArray(bars) ? bars.filter(b => b.t >= sessOpenSec) : [];
+      let sessionHigh = null, sessionLow = null;
+      if (sessBars.length) {
+        sessionHigh = Math.max(...sessBars.map(b => b.high));
+        sessionLow  = Math.min(...sessBars.map(b => b.low));
+      }
+      const regime = await _volLevelDailyRegime(sym, inst.ac ?? 'fx', brief.session_date);
+      dispersion = volDispersionContext({
+        sessionHigh, sessionLow, sessionOpen: open,
+        hlMedPct: levels?.hl_med?.pct ?? null,
+        priorExceed: regime.priorExceed, sigAccel: regime.sigAccel,
+      });
+    } catch { dispersion = null; }
+
     const events = evaluateVolLevelPair({ pair: canonical, price, dp, pipSize, sessionOpen: open,
-      levels, thresholdPips: threshold, enabled: cfg.levels, bars });
+      levels, thresholdPips: threshold, enabled: cfg.levels, bars, dispersion });
 
     for (const ev of events) {
       const ck = `${canonical}|${ev.key}`;

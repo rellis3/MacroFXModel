@@ -186,10 +186,84 @@ export function scanNearLevels({ levels, price, pipSize, sessionOpen, thresholdP
     .sort((a, b) => a.distPips - b.distPips);
 }
 
+// ── Daily dispersion state (the "how much of today's expected range is spent"
+// lens) + the OOS-validated expansion regime ─────────────────────────────────
+// Renamed from "budget" deliberately: the research falsified the depletion metaphor —
+// range is NOT a tank that drains (a spent morning predicts MORE afternoon range, not
+// less: vol clusters; volatilityExhaustion/MARKET_STATE_FINDINGS.md Tier 3 #4). So this
+// is a DISPERSION state — the distribution of movement the day samples from — not a
+// budget. Two honest reads:
+//
+//   • range-used %  — FACTUAL. How much of the forecast MEDIAN day range price has
+//     already covered (session H-L ÷ forecast median H-L). Pure arithmetic, no model.
+//     (A high value does NOT imply "little left" — see the metaphor note above.)
+//   • expansion regime — a VALIDATED, TRANSPARENT selector (not a fitted model):
+//     lean = EXPANSION if the prior day blew through its own 75th line OR σ is
+//     accelerating (σ_pred_today > 1.10 × mean of the prior 5). On the pooled-FX
+//     OOS half this separates blow-through days 0.388 vs 0.307 (+8pp) — see the
+//     study. It predicts *range magnitude* (does today's range run PAST the median →
+//     levels more likely to BREAK), NOT direction. The trend-vs-revert character label
+//     was pure noise (AUC 0.505), so this deliberately does NOT say "fade" or "buy" —
+//     only "levels more likely to break" vs "more likely to hold".
+//
+// All inputs are passed in (session H-L, forecast median-H-L %, and the two daily
+// regime flags computed from the SAME σ series the plan uses). Pure + testable.
+export const SIG_ACCEL_EXPAND = 1.10;   // σ_pred_today / mean(prior 5) above this = accelerating
+
+export function dispersionContext({ sessionHigh, sessionLow, sessionOpen, hlMedPct,
+                                    priorExceed = null, sigAccel = null } = {}) {
+  let rangeUsedPct = null, state = null;
+  if (sessionHigh > 0 && sessionLow > 0 && sessionOpen > 0 && hlMedPct > 0 && sessionHigh >= sessionLow) {
+    const medianRange = sessionOpen * hlMedPct / 100;         // forecast median H-L in price
+    if (medianRange > 0) {
+      rangeUsedPct = +(100 * (sessionHigh - sessionLow) / medianRange).toFixed(0);
+      state = rangeUsedPct < 30 ? 'fresh'
+            : rangeUsedPct < 70 ? 'active'
+            : rangeUsedPct < 90 ? 'stretched'
+            : 'wide';
+    }
+  }
+
+  // Expansion regime — only when at least one daily flag is known.
+  let lean = null;
+  const accel = sigAccel != null && sigAccel > SIG_ACCEL_EXPAND;
+  const exceeded = priorExceed === true;
+  if (priorExceed != null || sigAccel != null) {
+    lean = (accel || exceeded) ? 'expansion' : 'contained';
+  }
+  return { rangeUsedPct, state, lean, accel, priorExceed: exceeded };
+}
+
+// Factual descriptors — no depletion language (a high % does NOT mean "little left").
+const DISPERSION_STATE_TXT = {
+  fresh:     'early — little of a typical day covered',
+  active:    'mid-range for a typical day',
+  stretched: 'most of a typical day covered',
+  wide:      'already a wide-range day',
+};
+
+// Render the dispersion block as Telegram lines (empty array if nothing to show).
+export function formatDispersionLines(ctx) {
+  if (!ctx || (ctx.rangeUsedPct == null && ctx.lean == null)) return [];
+  const lines = ['', '<b>📊 Daily dispersion</b>'];
+  if (ctx.rangeUsedPct != null) {
+    lines.push(`📐 Range used: <b>${ctx.rangeUsedPct}%</b> of the median day · <i>${DISPERSION_STATE_TXT[ctx.state]}</i>`);
+  }
+  if (ctx.lean === 'expansion') {
+    const why = ctx.priorExceed && ctx.accel ? 'prior day blew through + vol accelerating'
+              : ctx.priorExceed ? 'prior day blew through its 75th'
+              : 'vol accelerating vs its recent average';
+    lines.push(`⚠️ <b>Expansion regime</b> — range likely to run <i>past</i> levels today; a level here is more likely to BREAK than hold (${why}).`);
+  } else if (ctx.lean === 'contained') {
+    lines.push('🔒 <b>Contained regime</b> — range likely to stay within the median day; a level here is more likely to CAP the move.');
+  }
+  return lines;
+}
+
 // ── Message formatting ────────────────────────────────────────────────────────
 // Build the informational Telegram text for one near-level event. All fields are
 // optional; missing enrichment is simply omitted (e.g. no candles → no speed).
-export function formatAlert({ pair, price, dp = 5, near, speed, mom, divergence }) {
+export function formatAlert({ pair, price, dp = 5, near, speed, mom, divergence, dispersion }) {
   const px      = v => (v == null ? '—' : Number(v).toFixed(dp));
   const icon    = pairIcon(pair);
   const dirArrow = near.side === 'above' ? '⬆️' : '⬇️';         // which way price must go to reach it
@@ -226,15 +300,18 @@ export function formatAlert({ pair, price, dp = 5, near, speed, mom, divergence 
   const dt = DIV_TEXT[divergence];
   if (dt) lines.push(dt);
 
+  // Daily dispersion block (range-used % + validated expansion regime).
+  for (const bl of formatDispersionLines(dispersion)) lines.push(bl);
+
   lines.push('');
-  lines.push('<i>ℹ️ Informational — no trade signal.</i>');
+  lines.push('<i>ℹ️ Informational — no trade signal. Regime = range magnitude (break vs hold), not direction.</i>');
   return lines.join('\n');
 }
 
 // Compose the full per-pair evaluation. Returns an array of {near, text, key}
 // ready to send (already filtered by threshold). `bars` may be null (no
 // enrichment). Cooldown is applied by the caller.
-export function evaluatePair({ pair, price, dp, pipSize, sessionOpen, levels, thresholdPips, enabled, bars, speedOpts, momOpts, divOpts }) {
+export function evaluatePair({ pair, price, dp, pipSize, sessionOpen, levels, thresholdPips, enabled, bars, speedOpts, momOpts, divOpts, dispersion = null }) {
   const nears = scanNearLevels({ levels, price, pipSize, sessionOpen, thresholdPips, enabled });
   if (!nears.length) return [];
   const speed = bars ? approachSpeed(bars, { pipSize, ...speedOpts }) : null;
@@ -243,6 +320,6 @@ export function evaluatePair({ pair, price, dp, pipSize, sessionOpen, levels, th
   return nears.map(near => ({
     key:  near.key,
     near,
-    text: formatAlert({ pair, price, dp, near, speed, mom, divergence: div }),
+    text: formatAlert({ pair, price, dp, near, speed, mom, divergence: div, dispersion }),
   }));
 }

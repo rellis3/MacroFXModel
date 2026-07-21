@@ -5,7 +5,7 @@
 //
 //   node js/reversionLadder.test.mjs
 
-import { ladderLevels, reversionTrades, tallyTrades, LADDER_LINES, STYLES } from './reversionLadder.js';
+import { ladderLevels, reversionTrades, tallyTrades, LADDER_LINES, STYLES, firstTouchIdx } from './reversionLadder.js';
 
 let failures = 0;
 const ok   = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -177,6 +177,27 @@ const fwdTouch = [[100.2, 101.2, 100.1, 101.0]];   // touches 101.0 only after E
 const runDrop = reversionTrades(OPEN, mkBars(noTouchSession), PCTS,
   { armed: armH, forwardBars: mkBars(fwdTouch, noTouchSession.length) });
 ok('let run: post-session-only entry dropped', runDrop.length === 0);
+
+// ── decideAction selector injection (momentum / divergence hook) ─────────────
+console.log('[decideAction]');
+const touchBars = mkBars([
+  [100.0, 100.2, 99.9, 100.1],
+  [100.1, 101.05, 100.0, 101.0],   // H_med (101.0) touched at bar 1
+  [101.0, 101.6, 100.6, 100.7],
+]);
+ok('firstTouchIdx finds the up-line touch', firstTouchIdx(touchBars, 101.0, 1) === 1);
+ok('firstTouchIdx = -1 when never touched', firstTouchIdx(touchBars, 105.0, 1) === -1);
+// Force FOLLOW on the touched up-line → BUY, target the outer band (H_p75 101.5).
+const forced = reversionTrades(OPEN, touchBars, PCTS,
+  { armed: armH, decideAction: (L, ti) => (ti === 1 ? 'follow' : null) })[0];
+ok('decideAction override → follow/BUY', forced && forced.action === 'follow' && forced.side === 'BUY');
+// Selector returns null → no trade for that line.
+const skipped = reversionTrades(OPEN, touchBars, PCTS, { armed: armH, decideAction: () => null });
+ok('decideAction null → no trade', skipped.length === 0);
+// decideAction is also passed the bars so a real selector can read an indicator.
+let sawBars = false;
+reversionTrades(OPEN, touchBars, PCTS, { armed: armH, decideAction: (L, ti, bars) => { sawBars = Array.isArray(bars) && bars.length === 3; return 'fade'; } });
+ok('decideAction receives (line, touchIdx, bars)', sawBars);
 
 // ── costs netting + tally ────────────────────────────────────────────────────
 console.log('[costs + tally]');

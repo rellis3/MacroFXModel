@@ -161,6 +161,62 @@ pin the level; this is why crisis-day 75th numbers are unreliable. The bulk is s
 "lines look wide on calm days" intuition for the right reason, but can't be trimmed away
 (the tail is clustered signal, Section 4). Charts `*_11_evt_envelope.png` (survival + QQ).
 
+## Phase 3 — does prior-vol predict TODAY's expansion? (`daytype_classifier.py`)
+
+The owner's push: "continuation past the 75th is only ~25%, and vol clusters — can
+yesterday's vol tell us whether TODAY blows through or stays contained?" A different
+question from the fade study: not *fade-or-follow at the level* but *is today an
+expansion (blow-through) day or a contained day*, from information known **before**
+the London open. If that classifies with real OOS skill, the live level-alert can
+honestly tag break-vs-hold; if not, it ships factual context only.
+
+**Label (primary):** `expand[i] = realized H-L(i) in σ-units > forecast 75th line`
+(`BM_P75 × hl_75_corr`, fx = 1.674σ). **Features** (all causal): σ level & percentile,
+σ-acceleration, vol-of-vol, overnight gap, prior-day exceedance & efficiency.
+**Validation:** time-ordered 60/40 per instrument + pooled FX (z-scored within
+instrument); benchmarks = base-rate floor and a σ-only ablation; logistic (min-DOF)
++ shallow GBM. Pre-registered pass = pooled OOS AUC ≥ 0.55 AND beats the base floor
+AND beats σ-only AND +skill on ≥4/6 majors.
+
+**Result — PASS, but MAGNITUDE only (not direction).**
+
+| test | pooled-FX OOS |
+|---|---|
+| logistic full | AUC **0.680**, Brier-skill **+9.4%** |
+| σ-only ablation | AUC 0.556, +0.7% |
+| placebo (shuffled labels) | AUC 0.501, −0.03% ✓ clean |
+| walk-forward (0.40/0.55/0.70 train) | AUC 0.67 / 0.67 / 0.69 ✓ stable |
+| per-instrument +skill | **6/6 FX majors** (+ NQ AUC 0.712) |
+
+So prior-vol/regime **does** predict whether today spends past its budget — OOS,
+cross-sectionally consistent, placebo-clean. Two honest caveats from the robustness
+pass:
+1. **`gap` carries most of it** (gap-only AUC 0.617; drop-gap falls to 0.589/+1.9%).
+   The overnight gap is a narrow (~12% of days), partly measurement-window effect:
+   energy spent in a between-session jump sits outside the London-day H-L window, so
+   big-gap days show a *smaller* measured range. Real and causal, but not the deep
+   vol-clustering insight it first looks like. The clean vol-clustering residual
+   (accel + prior-exceedance, gap removed) is a **modest but real +1.9%**, placebo-clean.
+2. **Direction is NOT predictable.** The trend-vs-revert *character* label (efficiency
+   ratio) is pure noise — pooled-FX OOS AUC **0.505**. The classifier knows *how big*
+   today will be, not *which way*. This is why the live alert says **break-vs-hold**,
+   never "fade" or "buy" — and why the fade *entry* stays dead (Phase 2 payoff geometry).
+
+**Transparent live rule (no black box in the hot path).** A 2-condition selector —
+lean **EXPANSION** if the prior day blew through its 75th **OR** σ is accelerating
+(`σ_pred_today > 1.10 × mean prior-5`) — keeps the OOS signal without porting a fitted
+model: on the pooled-FX OOS half it separates blow-through days **0.388 vs 0.307
+(+8pp)**, using only the clean vol-clustering features (no gap). This is what the
+Telegram level-alert carries (`js/volLevelAlertCore.js` `budgetContext`), on the same
+`volSigmaSeries` σ the plan uses (imported, not re-derived).
+
+**Honest verdict / odds.** A genuine, rare positive — but correctly scoped: *magnitude
+yes, direction no*. It is a **context / range-budget** signal (how much room today has,
+whether a level is more likely to break or hold), **not** a directional entry and
+**not**, on its own, a trading edge — a classification win still has to be *sized onto*
+an existing edge to make money (a method is not a strategy). Its honest uses: alert
+context, and a candidate sizing/gating input. Fade-the-level remains null after costs.
+
 ## Analysis book
 `analysis-book.html` — a dark-theme page with every key chart and a plain-English *what it shows /
 what it means* under each, ending in the scoreboard and honest conclusion. Open it with `charts/`
@@ -174,5 +230,9 @@ alongside.
 - `forecast_vs_fade.py` — Phase-1 forecast-line-vs-actual-fade accuracy → `charts/*_8,_9.png`; `robust` mode = the outlier-trim test.
 - `payoff_geometry.py` — Phase-2 MFE/MAE reward-vs-risk + expectancy grid → `charts/*_10.png`, `payoff_geometry_summary.json`.
 - `evt_envelope.py` — reflection-principle / LIL tail test: excursions vs half-normal → `charts/*_11.png`, `evt_envelope_summary.json`.
+- `daytype_classifier.py` — Phase-3 prior-vol → today's-expansion classifier (logistic/GBM, IS/OOS, pooled FX, robustness incl. placebo/drop-gap/trend-label/walk-forward/transparent-rule) → `daytype_classifier_summary.json`. Run `python3 daytype_classifier.py` (full) or `... robust` (skeptic pass).
+- **`MARKET_STATE_FINDINGS.md`** — Phase-4 "budget as *state*, not signal" (Tiers 1–4): state-conditioned trend sizing/gating, time-adjusted consumption, remaining-budget exits, vov continuity, cone calibration, and the composite. Read this for the honest scoreboard.
+- `budget_research_lib.py` — shared baseplate for Phase 4 (TSMOM reproduction of `js/trendFollowEngine.js` + causal state features on the σ contract).
+- `tier1_state_conditioning.py` / `tier2_time_adjusted.py` / `tier3_budget_vov_cone.py` / `tier4_state_composite.py` — the four Phase-4 tests (each prints a pre-registered verdict).
 - `analysis-book.html` — human-readable write-up of every phase with charts + explanations.
 - `summary.json` / `forecast_vs_fade_summary.json` — headline stats.
