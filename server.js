@@ -6777,6 +6777,45 @@ async function _oiAccumulateTradeLog() {
 setInterval(_oiAccumulateTradeLog, 10 * 60_000);                  // every 10 min
 setTimeout(_oiAccumulateTradeLog, 35_000);                        // and shortly after boot
 
+// Confluence bot: same story — it journals closed trades to per-pair FILES (not
+// reachable by the dashboard) and its `today_closed_trades` KV is transient.
+// Roll it up into a durable `confluence_trade_log` so its give-back shows on the
+// webpage next to Range-Line/OI. LIVE-only (paper closes stay in the file
+// journals); MFE/MAE is reconstructed from M1 by /api/giveback.
+async function _confluenceAccumulateTradeLog() {
+  try {
+    const raw = await kv.get('confluence_bot_status').catch(() => null);
+    if (!raw) return;
+    const status = JSON.parse(raw).data ?? JSON.parse(raw);
+    const closed = status?.today_closed_trades || [];
+    if (!closed.length) return;
+    const logRaw = await kv.get('confluence_trade_log').catch(() => null);
+    const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : [];
+    const seen = new Set(log.map(t => t.position_id ?? t.ticket));
+    let added = 0;
+    for (const c of closed) {
+      const id = c.position_id ?? c.ticket;
+      if (id == null || seen.has(id)) continue;
+      seen.add(id);
+      log.push({
+        position_id: id, symbol: c.symbol, direction: c.direction,
+        key: (() => { try { return resolveKey(c.symbol) || String(c.symbol || '').toLowerCase().replace(/[/_]/g, ''); } catch { return String(c.symbol || '').toLowerCase().replace(/[/_]/g, ''); } })(),
+        open_price: c.open_price, close_price: c.close_price, profit: c.profit,
+        reason: c.reason, time_open: c.time_open, time_close: c.time_close,
+        mfe_pips: c.mfe_pips ?? null, mae_pips: c.mae_pips ?? null,
+        date: _rlSessionDate(c.time_open),
+      });
+      added++;
+    }
+    if (!added) return;
+    if (log.length > 5000) log.splice(0, log.length - 5000);
+    await kv.put('confluence_trade_log', JSON.stringify({ data: log, timestamp: Date.now() }));
+    console.log(`[confluence] trade log +${added} (${log.length} total)`);
+  } catch (e) { console.error('[confluence] trade-log accumulate failed:', e.message); }
+}
+setInterval(_confluenceAccumulateTradeLog, 10 * 60_000);
+setTimeout(_confluenceAccumulateTradeLog, 40_000);
+
 // Reuse the OI the user ALREADY computes in the index.html OI analyser (KV
 // `oi_store`, per pair: max pain / call+put walls / gamma flip / HVL) instead of
 // a second manual entry. Snapshot those computed levels into TODAY's session slot
@@ -7023,6 +7062,7 @@ app.get('/api/giveback', async (req, res) => {
     const BOTS = [
       { id: 'range_line', label: 'Range-Line', kvKey: 'range_line_trade_log' },
       { id: 'oi',         label: 'OI Gamma',   kvKey: 'oi_bot_trade_log' },
+      { id: 'confluence', label: 'Confluence', kvKey: 'confluence_trade_log' },
     ];
     const pipFor = (k) => { try { return _pipSize(k) || 0.0001; } catch { return 0.0001; } };
     const out = {};

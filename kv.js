@@ -125,6 +125,7 @@ const _CF_EXACT = new Set([
   'oi_bot_credentials',         // OI bot MT5 credentials — must survive redeploys
   'oi_bot_zones',               // OI bot daily zone plan (per-instrument regime-switch trades) — keep last good plan across a redeploy; the worker's /api/kv/get serves it to the executor
   'oi_bot_trade_log',           // OI resolved closed-trade log (deduped, capped) — give-back/MFE history; same durability need as range_line_trade_log
+  'confluence_trade_log',       // Confluence resolved closed-trade log (deduped, capped) — give-back/MFE history for the webpage; same durability need
   // NOTE: oi_bot_status is deliberately NOT here — the bot rewrites it every ~30s
   // (same reason as range_line_bot_status / volatility_bot_status).
   'morning_brief_v1',       // Daily Brief top-down macro read (AI, ~1 gen/day) — must survive redeploys or the front page goes blank until regenerated
