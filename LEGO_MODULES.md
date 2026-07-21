@@ -627,6 +627,26 @@ candidate.
 
 ---
 
+### 1u. Diversification core — effective number of bets (2026-07-21)
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Diversification core** | `js/diversificationCore.js` | the "how many INDEPENDENT bets is this book really?" metric asked for by `SYSTEM_ASSESSMENT.md` §2.4 / punch-list #6. `pearson` (finite-aligned, mirrors the inline page copy) + `correlationMatrix(cols)`; `symmetricEigenvalues` (cyclic Jacobi, robust for small matrices); three effective-number-of-bets definitions — `effectiveBetsPCA` (inverse participation ratio `(Σλ)²/Σλ²`, bounded `[1,n]`), `effectiveBetsEntropy` (Meucci `exp(−Σpᵢlnpᵢ)`), `effectiveBetsWeighted` (allocation-aware `(Σw)²/wᵀCw`, **can exceed n when net-hedged** — documented); `effectiveBetsAvgCorr(n,ρ̄)` (the crude single-ρ closed form, kept as the migration home for the copy inlined in `perLineStrategy.js` `concentrationStats`); `diversificationSummary(cols,weights)` → `{n,corr,eigenvalues,pca,entropy,weighted,ratio}` (ratio = PCA÷n, cleanly in (0,1]). Pure, no DOM/network. Tested `js/diversificationCore.test.mjs` (32 asserts: ρ=1→1 bet, ρ=0→n bets, hand-computed 2×2, negative-corr >n, mirror→1). | `diversification.html` — Correlations tab "Effective Number of Bets" card, wired via a `<script type="module">` exposing `window.divCore` to the page's classic script; computes on the same 5-system monthly-return matrix the correlation grid uses | ✅ built |
+
+Turns the correlation matrix `diversification.html` already renders into the one
+number that matters for §2.4: a book of N strategies is only N bets if they're
+uncorrelated. **Note the existing simpler copy** — `perLineStrategy.js`'s
+`concentrationStats` computes `N/(1+(N−1)ρ̄)` on per-instrument daily PnL (a
+single-average-ρ approximation at the *instrument* level inside one book);
+`effectiveBetsAvgCorr` is its exact formula, so that inline use is a §2 candidate
+to migrate onto this brick. This brick's eigenvalue/weighted forms are the more
+faithful measures when the full matrix is available, applied at the
+*strategy-book* level. **Built ≠ edge**: this is a risk diagnostic, not a signal —
+it tells you how illusory the book's diversification is, per the honest read on
+the "diversification is the real edge" thread that prompted it.
+
+---
+
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
 
 Ranked by **drift risk × reuse**. "Live" = a copy runs in a production bot, so a
@@ -663,6 +683,7 @@ drift directly desyncs trading from its backtest (the worst case).
 | # | Candidate brick | What it owns | Duplicated in | Risk |
 |---|---|---|---|---|
 | 15c | **Cross-asset risk-flag composite** | the "3+ flags → cut gross" daily risk dashboard (VIX level, VIX/VIX3M term structure, HY-OAS 5-obs speed, USD/JPY 5-obs JPY bid, EVZ 5y percentile) — `computeRiskFlags()` in `server.js` (2026-07-11, education review), served at `/api/risk-flags`, rendered on `today.html`, injected into `/api/analysis` + morning-brief prompts. Currently server glue with one copy; **extract to a brick if a bot wants it** (RegimeV2/V4's E-gates already compute VIX-backwardation separately — that's the known second copy to unify). Stock-bond correlation flag deliberately absent (no daily SPX series server-side — add the feed first, don't proxy). | `server.js computeRiskFlags` vs `RegimeV4` VIX-term gate (partial) | 🟡 LOW-MED |
+| 15d | **Effective-bets (single-ρ) inline copy** | `N/(1+(N−1)ρ̄)` per-instrument concentration | `perLineStrategy.js` `concentrationStats` — now has an exact home in `diversificationCore.effectiveBetsAvgCorr` (§1u); migrate when next touching that block | 🟡 LOW |
 | 16 | **OANDA D1 fetcher** | daily OHLC + 22:00 session-day shift + retry | `volBacktestEngine.js:51-84` (no retry) vs `cogHistoricalDataLoader.js:72-110` (retry/backoff) | 🟡 MEDIUM |
 | 17 | **FRED fetcher + publication lag** | series fetch, lag shift, forward-fill | `nasdaqDataSources`, `cogDataSources`, `nasdaqTransforms:172-189`, `server.js:3882-3958` (local re-impl), `GlobalLiquidity/backtestCore.mjs` (3 different FRED_ID maps) | 🟡 MEDIUM |
 | 18 | **COT/CFTC parser** | TFF + disaggregated parse, symbol map | `_worker.js:67-175` (parse) vs `js/cot.js:7-52` (client transform); two symbol maps drift | 🟡 LOW-MED |
