@@ -4690,16 +4690,27 @@ app.get('/api/trend-basket', async (req, res) => {
       if (!filtered.error) {
         const dOOS = +(filtered.oos.sharpe - result.oos.sharpe).toFixed(2);
         const dIS  = +(filtered.is.sharpe  - result.is.sharpe ).toFixed(2);
-        // Honest verdict: quality must beat the raw basket on OOS Sharpe AND the
-        // filtered book must still hold a non-trivial number of names.
         const nFilteredPos = filtered.current.filter(c => c.trend !== 0).length;
+        // HONEST verdict, noise-aware (working agreement: don't call noise a win).
+        // Every Sharpe carries a Lo-2002 standard error; a ΔOOS Sharpe smaller
+        // than that SE is statistically indistinguishable from zero. A card
+        // inside its own error bar of zero has shown nothing.
+        const seRawOos  = +(_sharpeStdError(result.oos.sharpe,   result.oos.days)  || 0).toFixed(2);
+        const seFiltOos = +(_sharpeStdError(filtered.oos.sharpe, filtered.oos.days) || 0).toFixed(2);
+        const deltaMeaningful   = Math.abs(dOOS) >= seRawOos;        // clears one SE
+        const filteredBeatsZero = filtered.oos.sharpe >= seFiltOos;  // filtered SR itself distinguishable from 0
+        let verdict;
+        if (!deltaMeaningful)          verdict = 'within-noise';     // Δ inside the error bar — no evidence
+        else if (dOOS <= 0)            verdict = 'no-improvement';
+        else if (!filteredBeatsZero)   verdict = 'improves-but-still-null'; // beat the raw, but still ~0
+        else if (nFilteredPos < 3)     verdict = 'quality-wins-but-thin';
+        else                           verdict = 'quality-wins-oos';
         qualityAB = {
           measure, baseline: result, filtered,
           deltaOosSharpe: dOOS, deltaIsSharpe: dIS,
+          seRawOos, seFiltOos,                                       // the error bars, surfaced
           filteredPositionsNow: nFilteredPos, universeSize: result.ccys.length,
-          verdict: dOOS > 0 && nFilteredPos >= 3 ? 'quality-wins-oos'
-                 : dOOS > 0 ? 'quality-wins-but-thin'
-                 : 'no-improvement',
+          verdict,
         };
       }
     }
