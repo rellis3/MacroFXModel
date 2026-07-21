@@ -89,6 +89,36 @@ capital-deployment score for FX; doing so would be exactly the confluence-on-san
 The composite here is honest because every input earned its place OOS — and it's a
 range-budget forecaster, which is what the evidence supports.
 
+## Tier 3 #4b — the reversal question, done right (`budget_reversal_test.py`)
+
+The Tier 3 #4 write-up conflated two axes and wrongly said "continuation". Correcting
+the record: #4 measured **range** (unsigned), which is direction-blind — "more range
+follows" is true whether the day continues OR reverses hard (a hard reversal adds range
+too). So #4 does NOT speak to reversal-vs-continuation. This test does, directly.
+
+At each fresh session extreme, a symmetric two-barrier race (reverse θσ toward open vs
+extend θσ), bucketed by **budget consumed** at that moment. Pooled FX, OOS:
+
+| budget used | P(reversal) | n |
+|---|---|---|
+| 0–50% | 0.516 | 13,243 |
+| 50–70% | 0.507 | 27,331 |
+| 70–90% | 0.501 | 29,180 |
+| **90–110%** | **0.518** | 24,400 |
+| 110%+ | 0.519 | 54,836 |
+
+**FLAT.** P(reversal) is ~0.50–0.52 at *every* budget level; the 90%+ bucket (0.518) is
+indistinguishable from the 50–70% bucket (0.507), gradient +0.011 (noise). So "90% of
+budget spent → expect a reversal" has **no edge** — the tiny universal fade lean (~52%,
+the known weak FX exhaustion) is *constant*, not stronger when the budget is spent.
+
+**The complete, corrected model:** budget consumption tells you a move is *coming*
+(magnitude, #1 clustering) but **not which way** — neither "tighten stops, it's calming"
+(false) nor "fade it, it'll reverse" (false, this test). Direction at a spent-budget
+extreme is a coin flip. The reversal intuition survives in memory because spent-extreme
+reversals are dramatic and, per #1, *large* — but continuations are ~equally frequent
+and forgettable (survivorship).
+
 ---
 
 ## Scoreboard
@@ -98,7 +128,8 @@ range-budget forecaster, which is what the evidence supports.
 | 1a | mechanical vol-sizing | marginal help (mechanical, expected) |
 | 1b | state-gating the trend edge | **FX null; NQ suggestive (+0.54→+0.64)** — lead, needs index breadth |
 | 2 | compressed-Asia → London expansion | **PASS, 5/6 FX OOS** (magnitude) |
-| 3 #4 | remaining-budget exits | **NULL & reversed** — fuel-tank premise false |
+| 3 #4 | remaining-budget exits (range) | **NULL & reversed** — fuel-tank premise false |
+| 3 #4b | reversal-vs-continuation by budget | **NULL** — P(reversal) flat ~0.51 at all budget levels |
 | 3 #5 | vol continuity | modest real (+0.094), not novel |
 | 3 #6 | cone calibration by regime | usable (39% vs 31% exceed) |
 | 4 | compose survivors | modest real composite (AUC 0.562); **no Opportunity Index** |
