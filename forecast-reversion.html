@@ -100,6 +100,17 @@
   table.scan-heat td.cell.best { outline:2px solid #fff; outline-offset:-2px; }
   table.scan-heat td.cell:hover { outline:2px solid var(--blue); outline-offset:-2px; }
   table.scan-heat td.rowlab { color:var(--text2); text-align:right; padding-right:8px; white-space:nowrap; }
+  /* Fade-vs-Follow diagnostics modal */
+  .ff-head { font-size:11.5px; font-family:'DM Mono',monospace; padding:9px 14px; color:var(--text2); border-bottom:1px solid var(--border); }
+  .ff-head b { color:var(--text); }
+  #ffBody { padding:6px 14px 16px; }
+  .ff-sec { margin-bottom:12px; }
+  .ff-sec h4 { font-size:10.5px; margin:8px 0 4px; color:var(--text2); text-transform:uppercase; letter-spacing:.5px; }
+  table.ff { width:100%; border-collapse:collapse; font-family:'DM Mono',monospace; font-size:10.5px; }
+  table.ff th { color:var(--text3); font-weight:500; text-align:right; padding:3px 6px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  table.ff th:first-child { text-align:left; }
+  table.ff td { text-align:right; padding:3px 6px; border-bottom:1px solid rgba(255,255,255,.04); color:var(--text2); }
+  table.ff td:first-child { text-align:left; }
 </style>
 </head>
 <body>
@@ -157,6 +168,7 @@
     <button class="go" id="go">Generate</button>
     <button class="ghost" id="statsBtn" title="Show / hide the reversion tally">Stats</button>
     <button class="ghost" id="scanBtn" title="Sweep a grid of fixed SL × TP-multiplier over the current touches and find the best — in-sample, look for a plateau not a spike.">🔍 Scan SL/TP</button>
+    <button class="ghost" id="ffBtn" title="Fade-vs-Follow: for every touch, race a symmetric revert-vs-continue move and bucket the outcome by candidate signals (vol-spent, line family, tier, timing) to see what — if anything — separates a fade from a follow.">⚖ Fade/Follow</button>
     <button class="ghost" id="oscBtn" title="Show the WaveTrend oscillator pane + price↔oscillator divergence lines (regular = reversal, hidden = continuation).">〰 Osc</button>
     <a class="a2" href="forecast-replay.html"><button class="ghost" title="Open the plain Replay view (forecast lines vs realized H/L, no trades)">↩ Replay</button></a>
     <span class="status" id="status"></span>
@@ -199,10 +211,26 @@
     </div>
   </div>
 
+  <!-- Fade-vs-Follow diagnostics modal -->
+  <div id="ffOverlay" class="scan-overlay">
+    <div class="scan-modal">
+      <div class="scan-hdr">
+        <b>⚖ Fade vs Follow — what separates them?</b>
+        <span id="ffSub" class="scan-sub"></span>
+        <button class="ghost" id="ffClose" style="margin-left:auto">✕ Close</button>
+      </div>
+      <div class="scan-note">
+        For every touch of an armed line we race a <b>symmetric</b> move from the touch bar — revert one inner-band (<b>fade</b>) vs continue the same distance out (<b>follow</b>) — then bucket the outcome by candidate signals. <b>Fade edge = Revert% − Continue%</b> (+ green = reverts won, − red = continues won). <b>In-sample, causal (read at/after the touch), exploratory — not an edge claim.</b> Prior M1 testing (5 pairs) came back ~null with vol-spent running <i>opposite</i> to the exhaustion premise; this checks it on the current range.
+      </div>
+      <div id="ffHead" class="ff-head"></div>
+      <div id="ffBody" style="overflow:auto"></div>
+    </div>
+  </div>
+
 <script type="module">
 // Cache-bust the brick import so a stale cached module (missing a new export)
 // can't silently break the page after a deploy.
-import { LADDER_LINES, reversionTrades, tallyTrades, STYLES, ladderLevels } from './js/reversionLadder.js?v=6';
+import { LADDER_LINES, reversionTrades, tallyTrades, STYLES, ladderLevels, firstTouchIdx } from './js/reversionLadder.js?v=6';
 import { computeWaveTrend } from './js/vumanchuCore.js?v=1';
 import { findDivergences, reversalDecision } from './js/divergenceCore.js?v=2';
 
@@ -861,6 +889,137 @@ function applyScanCell(slUnit, tpMult) {
   $('scanOverlay').classList.remove('open');
   recomputeAndDraw();
 }
+
+// ── Fade-vs-Follow diagnostics ───────────────────────────────────────────────
+// The "what data separates a fade from a follow?" panel — the analysis behind the
+// exhaustion/reversal reframe, wired onto the page's own touches. For every touch
+// of an armed line we run a geometry-neutral, SYMMETRIC race from the touch bar:
+// does price first REVERT one inner-band (a fade would win) or CONTINUE the same
+// distance outward (a follow would win)? Then we bucket that binary by candidate
+// signals — vol-spent at the touch (the exhaustion premise), line family (Range
+// H/L vs Close O-C, the O-C being the exhaustion levels), tier (median vs 75th)
+// and when in the session the touch happened — to show which, if any, tilts the
+// outcome. Everything is read AT/AFTER the touch within the SAME session (causal);
+// the labels use only intra-session bars, so this is an IN-SAMPLE diagnostic, NOT
+// an edge claim. Prior M1 testing (5 pairs) came back ~null and, notably, vol-spent
+// ran OPPOSITE to the premise: touches that had spent MORE of the day's expected
+// range continued more often, not less. This panel re-checks that on any range.
+function ffTouches() {
+  const recs = [];
+  for (const d of days) {
+    if (!(d.f && d.bars.length)) continue;
+    const bands = bandsFor(d.f);
+    const lad = ladderLevels(d.open, bands);
+    if (!lad || !(bands.hl_median > 0)) continue;
+    const expFrac = 2 * bands.hl_median / 100;   // expected full day range (price fraction) — same convention as the Budget style
+    const bars = d.bars, n = bars.length;
+    for (const L of lad.lines) {
+      if (!state.armed.has(L.key)) continue;
+      const ti = firstTouchIdx(bars, L.price, L.side);
+      if (ti < 0) continue;
+      const dIn = Math.abs(L.price - L.target);   // one inner-band step (target always defined; innermost → open)
+      if (!(dIn > 0)) continue;
+      // vol-spent AT the touch (causal): realized range over [0..ti] ÷ expected day range
+      let hi = -Infinity, lo = Infinity;
+      for (let k = 0; k <= ti; k++) { if (bars[k].high > hi) hi = bars[k].high; if (bars[k].low < lo) lo = bars[k].low; }
+      const spent = expFrac > 0 ? ((hi - lo) / d.open) / expFrac : null;
+      // symmetric revert-vs-continue race from the bar AFTER the touch (this
+      // session only). We start at ti+1, never resolving on the touch bar itself
+      // — its own span usually reaches the (adjacent) inner band, and the intrabar
+      // order (did it tag the line or the inner level first?) is unknown. This is
+      // the same no-lookahead-on-the-fill-bar discipline walkBars uses.
+      const revLevel  = L.price - L.side * dIn;   // one inner-band toward the open
+      const contLevel = L.price + L.side * dIn;   // one band further out
+      let label = 'undecided';
+      for (let k = ti + 1; k < n; k++) {
+        const b = bars[k];
+        const hitRev  = L.side > 0 ? b.low  <= revLevel  : b.high >= revLevel;
+        const hitCont = L.side > 0 ? b.high >= contLevel : b.low  <= contLevel;
+        if (hitRev && hitCont) { label = 'undecided'; break; }   // same-bar straddle → no clean intrabar read
+        if (hitRev)  { label = 'revert';   break; }
+        if (hitCont) { label = 'continue'; break; }
+      }
+      recs.push({
+        spent, label,
+        family: L.band.startsWith('hl') ? 'range' : 'close',
+        tier: L.tier, touchFrac: n > 1 ? ti / (n - 1) : 0,
+      });
+    }
+  }
+  return recs;
+}
+// Aggregate a list of touch records into revert / continue / undecided rates +
+// the signed fade edge (Revert% − Continue%; + = fades won more).
+function ffAgg(recs, label, range) {
+  let rev = 0, cont = 0, und = 0;
+  for (const r of recs) { if (r.label === 'revert') rev++; else if (r.label === 'continue') cont++; else und++; }
+  const n = recs.length;
+  return { label, range, n, rev, cont, und,
+    revPct: n ? rev / n * 100 : 0, contPct: n ? cont / n * 100 : 0, undPct: n ? und / n * 100 : 0,
+    edge: n ? (rev - cont) / n * 100 : 0 };
+}
+// Split records into terciles on a numeric signal (drops null/NaN keys). Needs ≥6
+// to be meaningful — returns null otherwise (honest: don't tercile a handful).
+function ffTerciles(recs, keyFn, labels) {
+  const w = recs.filter(r => keyFn(r) != null && !Number.isNaN(keyFn(r))).sort((a, b) => keyFn(a) - keyFn(b));
+  const n = w.length;
+  if (n < 6) return null;
+  const t = Math.floor(n / 3);
+  const groups = [w.slice(0, t), w.slice(t, 2 * t), w.slice(2 * t)];
+  return groups.map((g, i) => ffAgg(g, labels[i], `${keyFn(g[0]).toFixed(2)}–${keyFn(g[g.length - 1]).toFixed(2)}`));
+}
+function ffEdgeColor(e) {
+  const t = Math.max(-1, Math.min(1, (e || 0) / 25));   // ±25pp saturates
+  if (t >= 0) { const g = Math.round(140 * t) + 60; return `rgb(40,${g + 50},70)`; }
+  const r = Math.round(140 * -t) + 60; return `rgb(${r + 50},45,55)`;
+}
+function ffRow(b) {
+  return `<tr><td>${b.label}${b.range ? ` <span style="color:var(--text3)">${b.range}</span>` : ''}</td>`
+    + `<td>${b.n}</td><td class="pos">${b.revPct.toFixed(0)}%</td><td class="neg">${b.contPct.toFixed(0)}%</td>`
+    + `<td style="color:var(--text3)">${b.undPct.toFixed(0)}%</td>`
+    + `<td style="background:${b.n ? ffEdgeColor(b.edge) : 'transparent'};color:${b.n ? '#0b0d14' : 'var(--text3)'};font-weight:600">`
+    + `${b.n ? (b.edge >= 0 ? '+' : '') + b.edge.toFixed(0) : '—'}</td></tr>`;
+}
+function ffSection(title, buckets, note) {
+  if (!buckets) return `<div class="ff-sec"><h4>${title}</h4><div class="st-empty">too few touches to split</div></div>`;
+  return `<div class="ff-sec"><h4>${title}</h4>`
+    + `<table class="ff"><thead><tr><th>Bucket</th><th>N</th><th>Revert</th><th>Cont</th><th>Undec</th>`
+    + `<th title="Revert% − Continue% (+ = fades won more)">Fade edge</th></tr></thead>`
+    + `<tbody>${buckets.map(ffRow).join('')}</tbody></table>`
+    + (note ? `<div class="st-empty">${note}</div>` : '') + `</div>`;
+}
+function runFadeFollow() {
+  if (!days.length) { setStatus('generate a range first'); return; }
+  const recs = ffTouches();
+  if (!recs.length) { setStatus('arm at least one line — no touches to analyse'); return; }
+  const all = ffAgg(recs, 'ALL');
+  const spentT = ffTerciles(recs, r => r.spent, ['LOW spent', 'MID spent', 'HIGH spent']);
+  const timeT  = ffTerciles(recs, r => r.touchFrac, ['EARLY', 'MID', 'LATE']);
+  const fam  = [['range', 'Range (H/L)'], ['close', 'Close (O-C) — exhaustion']].map(([k, l]) => ffAgg(recs.filter(r => r.family === k), l));
+  const tier = [['med', 'Median'], ['p75', '75th (further out)']].map(([k, l]) => ffAgg(recs.filter(r => r.tier === k), l));
+  // Headline: does vol-spent move the outcome the way the exhaustion premise says?
+  // Premise = LESS spent → reversal, so revert% should FALL as spent rises.
+  let headline = '';
+  if (spentT) {
+    const lo = spentT[0], hi = spentT[2], diff = hi.revPct - lo.revPct;
+    headline = diff <= -4
+      ? `Vol-spent <b class="pos">supports</b> the premise — LESS spent reverted more (${lo.revPct.toFixed(0)}% low vs ${hi.revPct.toFixed(0)}% high).`
+      : diff >= 4
+      ? `Vol-spent <b class="neg">runs opposite</b> to the premise — MORE spent reverted more (${hi.revPct.toFixed(0)}% high vs ${lo.revPct.toFixed(0)}% low), the same sign prior M1 testing found.`
+      : `Vol-spent is <b>flat</b> across its range (${lo.revPct.toFixed(0)}% low vs ${hi.revPct.toFixed(0)}% high revert) — no separation.`;
+  }
+  $('ffSub').textContent = `${$('pair').value.toUpperCase()} · ${tfGran()} · ${calcMode() === 'cog' ? 'COG' : 'Original'} · ${all.n} touches`;
+  $('ffHead').innerHTML = `Base rate over <b>${all.n}</b> touches: <b class="pos">${all.revPct.toFixed(0)}% revert</b> · <b class="neg">${all.contPct.toFixed(0)}% continue</b> · ${all.undPct.toFixed(0)}% undecided. ${headline}`;
+  $('ffBody').innerHTML =
+      ffSection('By vol-spent at touch — the exhaustion premise', spentT, 'Spent = realized range at the touch ÷ the forecast’s expected day range. Premise: LOW spent → reversal, so the fade edge should fall as spent rises.')
+    + ffSection('By line family', fam, 'The Close (O-C) lines are the exhaustion levels; Range (H/L) is the outer envelope.')
+    + ffSection('By tier', tier, 'Median vs 75th percentile line — the 75th sits further out (more “exhausted”).')
+    + ffSection('By touch timing — session fraction', timeT, 'When in the session the line was first tagged (0 = open, 1 = close).');
+  $('ffOverlay').classList.add('open');
+}
+$('ffBtn').addEventListener('click', runFadeFollow);
+$('ffClose').addEventListener('click', () => $('ffOverlay').classList.remove('open'));
+$('ffOverlay').addEventListener('click', e => { if (e.target === $('ffOverlay')) $('ffOverlay').classList.remove('open'); });
 
 window.addEventListener('resize', () => { sizeOverlay(); scheduleDraw(); });
 </script>
