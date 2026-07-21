@@ -153,11 +153,17 @@
     <div class="seg" id="sltp">
       <button data-x="level" class="on">Next level</button>
       <button data-x="fixed">Fixed</button>
+      <button data-x="atr" title="SL = multiplier × ATR (computed causally on the loaded timeframe — load 15m for a 15-min ATR). Vol-relative: the stop auto-scales with the pair's current volatility. TP = SL × the TP multiple.">ATR</button>
     </div>
     <span id="fixedInputs" style="display:none;align-items:center;gap:6px">
       <label>SL</label><input type="number" id="slval" value="10" step="1" min="0" style="width:56px" title="Stop distance in pips (FX) or points (gold/indices).">
       <span id="slunit" style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">pips</span>
       <label>TP ×</label><input type="number" id="tpmult" value="2" step="0.5" min="0" style="width:48px" title="Take-profit as a multiple of the SL distance (2 = 2R).">
+    </span>
+    <span id="atrInputs" style="display:none;align-items:center;gap:6px">
+      <label title="ATR lookback (bars) on the loaded timeframe.">ATR</label><input type="number" id="atrper" value="14" step="1" min="2" style="width:44px">
+      <label>SL ×</label><input type="number" id="atrmult" value="1.5" step="0.1" min="0.1" style="width:48px" title="SL distance = this × ATR.">
+      <label>TP ×</label><input type="number" id="atrtp" value="2" step="0.5" min="0" style="width:48px" title="TP = this × the SL distance (2 = 2R).">
     </span>
     <label title="Kill @ EOD: a trade unresolved by the session close is marked to that close (expired). Let run: the trade keeps going into the following sessions until SL or TP hits (up to ~5 sessions), then marks to close. Same entries either way — only the exit horizon changes.">EOD</label>
     <div class="seg" id="eod">
@@ -381,10 +387,15 @@ let dpr = window.devicePixelRatio || 1;
     $('sltp').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
     state.sltpMode = sltpModeSel();
     $('fixedInputs').style.display = state.sltpMode === 'fixed' ? 'inline-flex' : 'none';
+    $('atrInputs').style.display = state.sltpMode === 'atr' ? 'inline-flex' : 'none';
     recomputeAndDraw();
   });
   $('slval').addEventListener('change', recomputeAndDraw);
   $('tpmult').addEventListener('change', recomputeAndDraw);
+  // ATR period changes the ATR series → recompute it; mult/TP only re-race.
+  $('atrper').addEventListener('change', () => { if (days.length) prepAtr(); recomputeAndDraw(); });
+  $('atrmult').addEventListener('change', recomputeAndDraw);
+  $('atrtp').addEventListener('change', recomputeAndDraw);
   // EOD toggle: kill-at-close vs let the trade run into later sessions.
   $('eod').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b || b.classList.contains('on')) return;
@@ -553,6 +564,31 @@ function prepIndicators() {
       d.divs = findDivergences(d.hi, d.lo, d.wt, { reach: 2, obLevel: DIV_OB, osLevel: DIV_OS });
     } else { d.wt1 = []; d.wt = []; d.hi = []; d.lo = []; d.divs = []; }
   }
+  prepAtr();
+}
+// Wilder ATR over the CONTINUOUS loaded series (spans days), seeded by the SMA of
+// the first `period` true ranges. Each day's `d.atr` = the ATR entering that
+// session (value at its first bar — causal). Recomputed on period change.
+function atrSeries(bars, period) {
+  const n = bars.length, out = new Array(n).fill(NaN);
+  if (n < period + 1) return out;
+  const tr = new Array(n);
+  tr[0] = bars[0].high - bars[0].low;
+  for (let i = 1; i < n; i++) {
+    const h = bars[i].high, l = bars[i].low, pc = bars[i - 1].close;
+    tr[i] = Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc));
+  }
+  let sum = 0; for (let i = 1; i <= period; i++) sum += tr[i];
+  out[period] = sum / period;
+  for (let i = period + 1; i < n; i++) out[i] = (out[i - 1] * (period - 1) + tr[i]) / period;
+  return out;
+}
+function prepAtr() {
+  const period = Math.max(2, Math.round(+$('atrper')?.value || 14));
+  const all = days.flatMap(d => d.bars);            // continuous, time-ordered
+  const atr = atrSeries(all, period);
+  const byTime = new Map(); for (let i = 0; i < all.length; i++) byTime.set(all[i].time, atr[i]);
+  for (const d of days) d.atr = d.bars.length ? byTime.get(d.bars[0].time) : NaN;
 }
 // A per-touch fade/follow decider for the WT-driven styles (null → not selector-driven).
 function makeDecider(d) {
@@ -590,10 +626,18 @@ function makeDecider(d) {
 }
 function computeTrades() {
   const costPct = Math.max(0, +$('cost').value || 0);
-  const sltp = sltpOpts();
+  const baseSltp = sltpOpts();   // null (level) or {mode:'fixed',...} for Fixed mode
+  const atrMode = state.sltpMode === 'atr';
+  const atrMult = Math.max(0.1, +$('atrmult').value || 1.5), atrTp = Math.max(0, +$('atrtp').value || 2);
   for (let i = 0; i < days.length; i++) {
     const d = days[i];
     if (!(d.f && d.bars.length)) { d.trades = []; continue; }
+    // ATR mode: per-day SL distance = atrMult × the session's entering ATR.
+    let sltp = baseSltp;
+    if (atrMode) {
+      if (!(d.atr > 0)) { d.trades = []; continue; }   // ATR not warmed up yet → skip the day
+      sltp = { mode: 'fixed', slDist: atrMult * d.atr, tpMult: atrTp };
+    }
     const decideAction = makeDecider(d);
     d.trades = reversionTrades(d.open, d.bars, bandsFor(d.f),
       { armed: state.armed, costPct, style: state.style, sltp, forwardBars: forwardBarsFor(i), decideAction });
@@ -785,9 +829,18 @@ function renderStats() {
   const twr = (total.winRate * 100).toFixed(0);
   const styleLbl = STYLE_LABEL[state.style] || 'Fade all';
   const u = unitFor($('pair').value);
-  const sltpLbl = state.sltpMode === 'fixed'
-    ? `SL ${+$('slval').value || 0}${u.label} · TP ${+$('tpmult').value || 0}×`
-    : 'Next level';
+  // ATR mode: show the mode + the AVERAGE resulting SL in pips/points across days.
+  let sltpLbl;
+  if (state.sltpMode === 'fixed') {
+    sltpLbl = `SL ${+$('slval').value || 0}${u.label} · TP ${+$('tpmult').value || 0}×`;
+  } else if (state.sltpMode === 'atr') {
+    const mult = +$('atrmult').value || 1.5;
+    const atrs = days.filter(d => d.atr > 0).map(d => d.atr);
+    const avgSlUnit = atrs.length ? (mult * atrs.reduce((s, v) => s + v, 0) / atrs.length / u.size) : 0;
+    sltpLbl = `SL ${mult}×ATR(${+$('atrper').value || 14}) ≈ ${avgSlUnit.toFixed(1)}${u.label} · TP ${+$('atrtp').value || 0}×`;
+  } else {
+    sltpLbl = 'Next level';
+  }
   const eodLbl = state.eod === 'run' ? 'Let run' : 'Kill @ EOD';
   const styleTag = state.style === 'budget' ? `${styleLbl} cut ${+$('budcut').value || 75}%` : styleLbl;
   // Fade/follow split — shows a selector style (momentum/divergence/budget) is
