@@ -164,6 +164,33 @@ window.toggleDark = function() {
   document.getElementById('d-lbl').textContent = isDark ? 'Light' : 'Dark';
 };
 
+// Copy the OI walls + max-pain paste block for the "OI Walls & Max Pain"
+// TradingView indicator. Server builds it from the OI analyser store (the same
+// `oiStoreToLevels` brick /api/oi-levels uses) — one source of truth, so the
+// pasted levels match what the bots trade off. Levels are only as fresh as the
+// last option-chain paste; the block stamps each pair's save time.
+window.exportOIWalls = async function(btn) {
+  const orig = btn ? btn.innerHTML : '';
+  if (btn) { btn.innerHTML = '<span>⏳</span><span>OI…</span>'; btn.disabled = true; }
+  const restore = (txt, ms = 2200) => { if (!btn) return; if (txt) btn.innerHTML = txt; setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, ms); };
+  try {
+    const res = await fetch('/api/oi-levels/export');
+    if (!res.ok) throw new Error((await res.text()).slice(0, 120));
+    const text = await res.text();
+    if (text.includes('no OI data')) { alert('No OI data yet — open the 📊 OI analyser and paste an option chain first.'); restore(null); return; }
+    await navigator.clipboard.writeText(text).catch(() => {
+      Object.assign(document.createElement('a'), {
+        href: URL.createObjectURL(new Blob([text], { type: 'text/plain' })),
+        download: 'oi-walls.txt',
+      }).click();
+    });
+    restore('<span>✓</span><span>Copied</span>');
+  } catch (e) {
+    console.warn('[OI export]', e?.message);
+    restore('<span>✗</span><span>Error</span>', 3000);
+  }
+};
+
 window.forceRefresh = async function() {
   const symKey = S.currentPair.symbol.replace('/', '');
   const sessionDay = londonSessionDay();

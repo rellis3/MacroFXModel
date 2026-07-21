@@ -71,6 +71,7 @@ import { pipSize as _pipSize, instrument, oandaSymbol, resolveKey } from './js/i
 import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
 import { refreshRangeLineConfluence, packLiveM1 } from './js/rangeLineConfluenceProducer.js';
 import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas, classifyOIChange, oiWallStability } from './js/oiConfluence.js';
+import { buildOILevelText } from './js/oiLevelExport.js';
 import { buildOIZones } from './js/oiZones.js';
 import { buildRangeZones } from './js/rangeLineZones.js';
 import { learnAndFreeze as learnAndFreezeV2, deriveBands as deriveBandsV2, flattenPolicy as flattenPolicyV2 } from './js/levelsV2Learn.js';
@@ -7187,6 +7188,23 @@ app.get('/api/oi-levels', async (_req, res) => {
     }
     res.json({ ok: true, byInstrument, instruments: Object.keys(byInstrument) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Plain-text paste block for the "OI Walls & Max Pain" TradingView indicator — the
+// same copy→paste pattern as /api/vol-forecast/zones. Reuses the shared
+// `oiStoreToLevels` brick via `buildOILevelText`, so the pasted call/put walls +
+// max pain are bit-identical to what the OI bot and /api/oi-levels trade off. The
+// per-pair block stamps the paste time + spot so a STALE wall is visible, not silent.
+app.get('/api/oi-levels/export', async (_req, res) => {
+  try {
+    const raw = await kv.get('oi_store').catch(() => null);
+    const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
+    const generated = new Date().toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+    const text = buildOILevelText(store, { generated });
+    res.type('text/plain').send(text);
+  } catch (e) {
+    res.status(500).type('text/plain').send(`OI level export error: ${e.message}`);
+  }
 });
 
 // KV persistence health — does bot config/credentials survive a redeploy? The
