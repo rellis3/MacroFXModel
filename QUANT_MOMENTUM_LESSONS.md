@@ -142,9 +142,39 @@ The test above is wired, not just proposed:
   quality-filtered, ΔOOS Sharpe, verdict) and **`trend-basket.html`** shows a
   Frog-in-the-Pan A/B panel.
 
-**Verdict still PENDING** — it needs the real IS/OOS run on OANDA data (the
-sandbox has no OANDA, so only the mechanics are validated so far). Run
-`trend-basket.html` on the deploy and read the **OOS** row. Pre-registered
-outcomes stand: it "wins" only if the filtered basket beats the raw basket on
-**OOS** Sharpe with the book still ≥3 names; the honest prior remains **null in
-thin FX (~25–35%)**. If it's null, bank it as a documented null — that's a win too.
+### Result — NULL (banked 2026-07-21, full 2005→2026 OANDA run)
+
+Ran on deploy, 6142 aligned days, 7 currencies, 2bps/rebalance, driftDiffusion quality:
+
+| | OOS Sharpe | CAGR | Vol | maxDD |
+|---|---|---|---|---|
+| Raw basket | **0.15** ± 0.37 | 2.6% | 17.0% | −33% |
+| Quality-filtered | **0.16** ± 0.37 | 1.9% | 12.1% | −28% |
+
+**ΔOOS Sharpe = +0.01**, against a Sharpe standard error of **±0.37**. The filter
+did **not** add risk-adjusted edge:
+
+- The +0.01 is **noise** — far smaller than the error bar. The two baskets are
+  statistically indistinguishable, and both OOS Sharpes are inside their own
+  error bar of zero.
+- What the filter actually did was **shrink the book** (7 → 4 names): vol fell
+  17%→12% and return fell 2.6%→1.9% in step, so Sharpe barely moved. Less of
+  everything, not more edge.
+- The IS bump (−0.01→+0.06) is **not evidence** (in-sample never is) and was
+  *larger* than the OOS bump — if anything a faint hint of in-sample flattering.
+
+**This was the pre-registered null** (~25–35% prior). The deeper read: the *raw*
+FX-trend factor is itself thin here (OOS 0.15 ± 0.37 — indistinguishable from
+zero even with 2020 and 2022, its two best years, sitting inside the OOS window).
+FX-only trend is the weak version of the managed-futures premium; the quality
+filter can't rescue a factor that's marginal to begin with.
+
+**Harness fix shipped alongside:** the verdict logic was calling +0.01 a "win"
+(threshold was merely ΔOOS > 0). It now requires the delta to clear the Sharpe
+standard error and surfaces `± SE` on every row — a ΔSharpe smaller than its SE
+reads as **NULL / within-noise**, not a win. (This is the working-agreement rule
+made mechanical: a card inside its own error bar of zero has shown nothing.)
+
+Nothing to trade here. The bricks stay (pure, tested, reusable); the trend basket
+remains an honest, thin, satellite diversifier — not an edge, with or without the
+quality filter.

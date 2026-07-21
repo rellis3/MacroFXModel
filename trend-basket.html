@@ -98,27 +98,30 @@ async function run(){
 
 function qualityPanel(j){
   const qab=j.qualityAB; if(!qab) return '';
-  const vColors={'quality-wins-oos':'#6ee7b7','quality-wins-but-thin':'#fbbf24','no-improvement':'#fdba74'};
+  const vColors={'quality-wins-oos':'#6ee7b7','quality-wins-but-thin':'#fbbf24','improves-but-still-null':'#fdba74','no-improvement':'#fdba74','within-noise':'#94a3b8'};
+  const se=qab.seRawOos, seF=qab.seFiltOos;
   const vText={
-    'quality-wins-oos':'Quality filter BEATS the raw basket on OOS Sharpe, holding a non-trivial book.',
-    'quality-wins-but-thin':'Quality filter edges OOS Sharpe up but the book is thin — treat with caution (few names).',
-    'no-improvement':'No improvement — filtering to the smooth trends does NOT beat the raw basket OOS.',
+    'quality-wins-oos':`Quality filter beats the raw basket on OOS Sharpe by more than the error bar (±${se}), holding a non-trivial book.`,
+    'quality-wins-but-thin':`Quality filter clears the error bar on OOS Sharpe but the book is thin (few names) — treat with caution.`,
+    'improves-but-still-null':`Quality filter edges OOS Sharpe up past the error bar, but the filtered Sharpe is itself within noise of zero — no tradeable edge.`,
+    'no-improvement':'No improvement — filtering to the smooth trends does not beat the raw basket OOS.',
+    'within-noise':`NULL — ΔOOS Sharpe (${qab.deltaOosSharpe>0?'+':''}${qab.deltaOosSharpe}) is smaller than the raw basket's Sharpe standard error (±${se}). The two are statistically indistinguishable, and both OOS Sharpes are within their own error bar of zero. The filter mainly shrank the book (fewer names → lower vol AND lower return), not added edge.`,
   };
-  const c=vColors[qab.verdict]||'#fdba74';
+  const c=vColors[qab.verdict]||'#94a3b8';
   const dSign=qab.deltaOosSharpe>0?'+':'';
   return `
     <div class="panel"><h2>Frog-in-the-Pan quality filter <span class="sub" style="font-weight:400">— does keeping only the SMOOTH trends beat the raw basket? (${qab.measure})</span></h2>
       <table><thead><tr><th></th><th>Sharpe</th><th>CAGR</th><th>Vol</th><th>maxDD</th><th>Calmar</th><th>win%</th></tr></thead><tbody>
-        ${statRow('Raw basket — OOS', qab.baseline.oos)}
-        ${statRow('Quality-filtered — OOS ◄', qab.filtered.oos, true)}
+        ${statRow('Raw basket — OOS (±'+se+' SE)', qab.baseline.oos)}
+        ${statRow('Quality-filtered — OOS ◄ (±'+seF+' SE)', qab.filtered.oos, true)}
         ${statRow('Raw basket — IS', qab.baseline.is)}
         ${statRow('Quality-filtered — IS', qab.filtered.is)}
       </tbody></table>
       <div style="margin:10px 0;padding:9px 12px;border-left:3px solid ${c};background:rgba(255,255,255,0.03)">
-        <b style="color:${c}">Verdict: ${vText[qab.verdict]}</b><br>
-        <span class="mono" style="color:var(--dim)">ΔOOS Sharpe ${dSign}${qab.deltaOosSharpe} · ΔIS Sharpe ${qab.deltaIsSharpe>0?'+':''}${qab.deltaIsSharpe} · filtered book holds ${qab.filteredPositionsNow}/${qab.universeSize} currencies now</span>
+        <b style="color:${c}">Verdict: ${vText[qab.verdict]||qab.verdict}</b><br>
+        <span class="mono" style="color:var(--dim)">ΔOOS Sharpe ${dSign}${qab.deltaOosSharpe} (vs ±${se} SE) · ΔIS Sharpe ${qab.deltaIsSharpe>0?'+':''}${qab.deltaIsSharpe} · filtered book holds ${qab.filteredPositionsNow}/${qab.universeSize} currencies now</span>
       </div>
-      <div class="cap">Two trends of the same size aren't equal: a <b>smooth</b> one (continuous information) tends to persist; a <b>spiky/lottery</b> one mean-reverts. Each rebalance this keeps the top-half of trending currencies by path quality (median split — no tuned threshold) and drops the rest. <b>Honest prior: likely null in FX</b> — Frog-in-the-Pan is a 500-stock equity result; with ~7 currencies the dispersion it feeds on is thin. It "wins" only if <b>OOS</b> Sharpe beats the raw basket with the book still ≥3 names. See QUANT_MOMENTUM_LESSONS.md.</div>
+      <div class="cap">Two trends of the same size aren't equal: a <b>smooth</b> one (continuous information) tends to persist; a <b>spiky/lottery</b> one mean-reverts. Each rebalance this keeps the top-half of trending currencies by path quality (median split — no tuned threshold) and drops the rest. <b>Honest prior: likely null in FX</b> — Frog-in-the-Pan is a 500-stock equity result; with ~7 currencies the dispersion it feeds on is thin. It "wins" only if <b>OOS</b> Sharpe beats the raw basket by more than the Sharpe error bar (±SE) with the book still ≥3 names — a ΔSharpe smaller than the SE is noise, not a result. See QUANT_MOMENTUM_LESSONS.md.</div>
     </div>`;
 }
 
