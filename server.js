@@ -75,7 +75,7 @@ import { learnAndFreeze as learnAndFreezeV2, deriveBands as deriveBandsV2, flatt
 import { refreshAllPairsV2, checkV2AlertsNow, loadV2Creds, sendV2Test, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
 import { ledgerStats as ledgerStatsV2, refitFromLedger as refitFromLedgerV2 } from './js/entryLedgerV2.js';
 import { DEFAULT_V2_ALERT_CFG } from './js/alertV2Core.js';
-import { evaluatePair as evaluateVolLevelPair, ALERT_LEVEL_KEYS as VOL_LEVEL_KEYS, budgetContext as volBudgetContext } from './js/volLevelAlertCore.js';
+import { evaluatePair as evaluateVolLevelPair, ALERT_LEVEL_KEYS as VOL_LEVEL_KEYS, dispersionContext as volDispersionContext } from './js/volLevelAlertCore.js';
 import { confluenceForPair, mergeConfluence } from './js/confluenceTest.js';
 import { runRangeFibBacktest, RANGE_FIB_INSTRUMENTS, FIB_LEVELS as RANGE_FIB_LEVELS } from './js/rangeFibEngine.js';
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
@@ -12979,10 +12979,10 @@ async function checkVolLevelAlertsNow() {
 
     const bars   = await _fetchVolLevelCandles(sym);
 
-    // Daily volatility-budget context: range-used % (this session's H-L vs the
-    // forecast median day) + the OOS-validated expansion regime. All optional —
-    // if any input is unavailable the alert simply omits that part.
-    let budget = null;
+    // Daily dispersion context: range-used % (this session's H-L vs the forecast
+    // median day) + the OOS-validated expansion regime. All optional — if any
+    // input is unavailable the alert simply omits that part.
+    let dispersion = null;
     try {
       const sessOpenSec = _btLondonMidnightSec(new Date(now));
       const sessBars = Array.isArray(bars) ? bars.filter(b => b.t >= sessOpenSec) : [];
@@ -12992,15 +12992,15 @@ async function checkVolLevelAlertsNow() {
         sessionLow  = Math.min(...sessBars.map(b => b.low));
       }
       const regime = await _volLevelDailyRegime(sym, inst.ac ?? 'fx', brief.session_date);
-      budget = volBudgetContext({
+      dispersion = volDispersionContext({
         sessionHigh, sessionLow, sessionOpen: open,
         hlMedPct: levels?.hl_med?.pct ?? null,
         priorExceed: regime.priorExceed, sigAccel: regime.sigAccel,
       });
-    } catch { budget = null; }
+    } catch { dispersion = null; }
 
     const events = evaluateVolLevelPair({ pair: canonical, price, dp, pipSize, sessionOpen: open,
-      levels, thresholdPips: threshold, enabled: cfg.levels, bars, budget });
+      levels, thresholdPips: threshold, enabled: cfg.levels, bars, dispersion });
 
     for (const ev of events) {
       const ck = `${canonical}|${ev.key}`;
