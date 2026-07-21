@@ -126,3 +126,25 @@ Why the discount vs the equity result:
 
 No new edge claimed. The momentum *factor* is real; whether the *quality filter*
 improves the FX basket after costs is an open question we can now answer cheaply.
+
+---
+
+## Status — the quality filter is now BUILT (2026-07-21)
+
+The test above is wired, not just proposed:
+
+- **`js/trendQuality.js`** — `trendQualityScore` (drift÷diffusion or Frog-in-the-Pan
+  `fipID`) + `makeQualityDirection`, composed onto `trendBasketEngine` via its
+  existing `directionAt` hook (the validated engine is untouched). Parameter-free
+  selector: each rebalance keeps the top-half of trending currencies by path
+  quality (cross-sectional median split). Unit-tested (`js/trendQuality.test.mjs`).
+- **`/api/trend-basket`** now returns a `qualityAB` block (raw basket vs
+  quality-filtered, ΔOOS Sharpe, verdict) and **`trend-basket.html`** shows a
+  Frog-in-the-Pan A/B panel.
+
+**Verdict still PENDING** — it needs the real IS/OOS run on OANDA data (the
+sandbox has no OANDA, so only the mechanics are validated so far). Run
+`trend-basket.html` on the deploy and read the **OOS** row. Pre-registered
+outcomes stand: it "wins" only if the filtered basket beats the raw basket on
+**OOS** Sharpe with the book still ≥3 names; the honest prior remains **null in
+thin FX (~25–35%)**. If it's null, bank it as a documented null — that's a win too.

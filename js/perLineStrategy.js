@@ -24,6 +24,7 @@
 import { summarizeTrades } from './metricsCore.js';
 import { backtestStats, portfolioStats } from './backtestStats.js';
 import { intradayMtmDrawdown, tradeTimingStats } from './intradayDrawdown.js';
+import { effectiveBetsAvgCorr } from './diversificationCore.js';
 
 export const DEFAULT_COST_PCT = { fx: 0.012, index: 0.010, commodity: 0.020 };
 export const DEFAULT_SLIP_PCT = { fx: 0.006, index: 0.008, commodity: 0.012 };  // extra on FOLLOW (stop) entries
@@ -444,8 +445,9 @@ export function concentrationStats(pairs, pnlByPair, perPair) {
   const avgCorr = cnt ? sum / cnt : 0;
   // Effective independent bets: with average correlation ρ, N correlated series carry the
   // risk of N/(1+(N-1)ρ) independent ones (=1 when ρ=1, =N when ρ=0). Clamp ρ≥0 for the count.
+  // Single-ρ effective-bets formula lives in the shared brick (diversificationCore) — one home.
   const rho = Math.max(0, avgCorr);
-  const nEff = N / (1 + (N - 1) * rho);
+  const nEff = effectiveBetsAvgCorr(N, rho);
   // Concentration of gross PnL — how much one/three instruments carry (the gold problem).
   const rows = pairs.map(p => ({ pair: p, gross: Math.abs(perPair[p]?.totalPnl ?? 0) })).sort((a, b) => b.gross - a.gross);
   const gross = rows.reduce((s, r) => s + r.gross, 0) || 1;

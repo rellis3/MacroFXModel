@@ -38,6 +38,7 @@ import { runRankICSuite, RANKIC_INSTRUMENTS }                       from './js/r
 import { runRankICLiveSuite, RANKIC_LIVE_INSTRUMENTS }             from './js/rankICLiveEngine.js';
 import { computeCoupling, computeReturnsCoupling, computeCouplingPersistence, couplingState, computePriorDayProjection, computeDailyLeadLag, computeDivergenceEvents, backtestDivergenceFade, walkForwardDivergence, computeProjectionGate, computeConvexity, alignByTime, buildSpread } from './js/yieldCouplingCore.js';
 import { runTrendBasket } from './js/trendBasketEngine.js';
+import { makeQualityDirection } from './js/trendQuality.js';
 import { runEconTrend, runEconTrendPlacebo, evaluateEconTrend, ECON_TREND_DEFAULTS } from './js/econTrendCore.js';
 import { buildFundamentals as buildEconFundamentals, ECON_UNIVERSE } from './js/econTrendEngine.js';
 import { buildCsi, runCsiOverlay, evaluateCsi, creditVega, CSI_DEFAULTS } from './js/creditStressCore.js';
@@ -4675,8 +4676,34 @@ app.get('/api/trend-basket', async (req, res) => {
         availability.push({ ccy: u.ccy, inst: u.inst, bars: s.length, first: s[0]?.t ?? null, last: s[s.length - 1]?.t ?? null });
       } catch (e) { availability.push({ ccy: u.ccy, inst: u.inst, error: e.message }); }
     }));
-    const result = runTrendBasket(seriesByCcy, { lookback, rebalDays, targetVol, costBps });
-    const data = { ...result, availability, universe: TREND_UNIVERSE.map(u => u.ccy) };
+    const baseOpts = { lookback, rebalDays, targetVol, costBps };
+    const result = runTrendBasket(seriesByCcy, baseOpts);
+    // Frog-in-the-Pan A/B: same machinery, but keep only the SMOOTH trends
+    // (top-half by path quality each rebalance) via the directionAt selector.
+    // Pre-registered null test (QUANT_MOMENTUM_LESSONS.md) — thin FX universe.
+    let qualityAB = null;
+    if (!result.error) {
+      const measure = req.query.quality === 'fipID' ? 'fipID' : 'driftDiffusion';
+      const filtered = runTrendBasket(seriesByCcy, {
+        ...baseOpts, directionAt: makeQualityDirection({ lookback, measure }),
+      });
+      if (!filtered.error) {
+        const dOOS = +(filtered.oos.sharpe - result.oos.sharpe).toFixed(2);
+        const dIS  = +(filtered.is.sharpe  - result.is.sharpe ).toFixed(2);
+        // Honest verdict: quality must beat the raw basket on OOS Sharpe AND the
+        // filtered book must still hold a non-trivial number of names.
+        const nFilteredPos = filtered.current.filter(c => c.trend !== 0).length;
+        qualityAB = {
+          measure, baseline: result, filtered,
+          deltaOosSharpe: dOOS, deltaIsSharpe: dIS,
+          filteredPositionsNow: nFilteredPos, universeSize: result.ccys.length,
+          verdict: dOOS > 0 && nFilteredPos >= 3 ? 'quality-wins-oos'
+                 : dOOS > 0 ? 'quality-wins-but-thin'
+                 : 'no-improvement',
+        };
+      }
+    }
+    const data = { ...result, qualityAB, availability, universe: TREND_UNIVERSE.map(u => u.ccy) };
     _trendCache.set(cacheKey, { data, ts: Date.now() });
     res.json(data);
   } catch (err) {

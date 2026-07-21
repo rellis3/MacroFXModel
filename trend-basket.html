@@ -96,6 +96,32 @@ async function run(){
   finally{ $('run').disabled=false; }
 }
 
+function qualityPanel(j){
+  const qab=j.qualityAB; if(!qab) return '';
+  const vColors={'quality-wins-oos':'#6ee7b7','quality-wins-but-thin':'#fbbf24','no-improvement':'#fdba74'};
+  const vText={
+    'quality-wins-oos':'Quality filter BEATS the raw basket on OOS Sharpe, holding a non-trivial book.',
+    'quality-wins-but-thin':'Quality filter edges OOS Sharpe up but the book is thin — treat with caution (few names).',
+    'no-improvement':'No improvement — filtering to the smooth trends does NOT beat the raw basket OOS.',
+  };
+  const c=vColors[qab.verdict]||'#fdba74';
+  const dSign=qab.deltaOosSharpe>0?'+':'';
+  return `
+    <div class="panel"><h2>Frog-in-the-Pan quality filter <span class="sub" style="font-weight:400">— does keeping only the SMOOTH trends beat the raw basket? (${qab.measure})</span></h2>
+      <table><thead><tr><th></th><th>Sharpe</th><th>CAGR</th><th>Vol</th><th>maxDD</th><th>Calmar</th><th>win%</th></tr></thead><tbody>
+        ${statRow('Raw basket — OOS', qab.baseline.oos)}
+        ${statRow('Quality-filtered — OOS ◄', qab.filtered.oos, true)}
+        ${statRow('Raw basket — IS', qab.baseline.is)}
+        ${statRow('Quality-filtered — IS', qab.filtered.is)}
+      </tbody></table>
+      <div style="margin:10px 0;padding:9px 12px;border-left:3px solid ${c};background:rgba(255,255,255,0.03)">
+        <b style="color:${c}">Verdict: ${vText[qab.verdict]}</b><br>
+        <span class="mono" style="color:var(--dim)">ΔOOS Sharpe ${dSign}${qab.deltaOosSharpe} · ΔIS Sharpe ${qab.deltaIsSharpe>0?'+':''}${qab.deltaIsSharpe} · filtered book holds ${qab.filteredPositionsNow}/${qab.universeSize} currencies now</span>
+      </div>
+      <div class="cap">Two trends of the same size aren't equal: a <b>smooth</b> one (continuous information) tends to persist; a <b>spiky/lottery</b> one mean-reverts. Each rebalance this keeps the top-half of trending currencies by path quality (median split — no tuned threshold) and drops the rest. <b>Honest prior: likely null in FX</b> — Frog-in-the-Pan is a 500-stock equity result; with ~7 currencies the dispersion it feeds on is thin. It "wins" only if <b>OOS</b> Sharpe beats the raw basket with the book still ≥3 names. See QUANT_MOMENTUM_LESSONS.md.</div>
+    </div>`;
+}
+
 function render(j){
   const cur=j.current.map(c=>`<span class="chip ${c.trend>0?'long':c.trend<0?'short':'flat'}">${c.ccy} ${c.trend>0?'▲ long':c.trend<0?'▼ short':'flat'}</span>`).join(' ');
   const perYear=j.perYear.map(y=>`<td class="mono" style="color:${y.ret>0?'#6ee7b7':'#fdba74'}">${y.ret>0?'+':''}${y.ret}%<br><span style="color:var(--dim);font-size:10px">${y.year}</span></td>`).join('');
@@ -112,6 +138,7 @@ function render(j){
       </tbody></table>
       <div class="cap">The <b>OOS</b> row is the one that counts — it's data the strategy never "saw". The benchmark is just holding all currencies long (short USD); the basket should beat it on risk-adjusted terms if the trend factor is real, not just a USD bet. Diagnostic, after ${j.params.costBps}bps/rebalance cost.</div>
     </div>
+    ${qualityPanel(j)}
     <div class="panel"><h2>Equity curve <span class="sub" style="font-weight:400">— growth of 1 (log-return compounded, after cost)</span></h2>
       <canvas id="eqc"></canvas>
       <div class="cap">Watch the <b>drawdowns and flat stretches</b> — this is what you'd have to sit through. A smooth line here would be a red flag (overfit).</div></div>
