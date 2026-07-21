@@ -191,6 +191,7 @@ could revisit, but the prior is now clearly negative.)
 | 6A | gold conviction-gating (NQ replication) | **FAILED to replicate** (reversed) |
 | 6B | Asia-compression, 25 FX crosses | **PASS, 21/25 OOS** — the most robust finding |
 | 7 | DAX conviction-gating (NQ tie-breaker) | **REJECTED** — NQ lead retired (1/3 indices, dead) |
+| 8 | multi-index conviction (definitive) | **built, ready-to-run** — data-gated (needs de30/spx500/uk100/us2000/us30 M1 local or R2 creds); NQ echoes 1/1 so far |
 
 **Where this leaves the project (post-Tier-6):** the lens is a **dispersion / expansion
 state engine** ("budget" retired — the depletion metaphor is false) — magnitude-only,
