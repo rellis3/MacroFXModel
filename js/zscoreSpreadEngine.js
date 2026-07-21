@@ -38,7 +38,11 @@ export const ZSCORE_PAIRS = {
   },
   usdchf: {
     label: 'USDCHF', pairDisplay: 'USD/CHF',
-    baseSeries: 'GS2', quoteSeries: 'IRSTCI01CHM156N',
+    // Was IRSTCI01CHM156N (OECD call-money) — DISCONTINUED on FRED, last obs 2024-03-01,
+    // so the live fetch window (~550d back) saw zero Swiss obs → null z → USDCHF silently
+    // dropped from the book. Swapped to the 3-month interbank series (IR3TIB01CHM156N,
+    // still live, same family FRED uses for GBP/AUD). See YIELD_SPREAD_STRATEGY.md.
+    baseSeries: 'GS2', quoteSeries: 'IR3TIB01CHM156N',
     pip: 0.0001, defaultThreshold: 2.0,
   },
 };
