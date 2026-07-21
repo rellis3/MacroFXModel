@@ -79,6 +79,17 @@ const _CF_EXACT = new Set([
   // NOTE: gold_v2_status / gold_v2_zones are deliberately NOT here — the bot
   // rewrites them every ~2 min, so they stay local/ephemeral to protect the
   // CF KV write quota (same reasoning as volatility_bot_status).
+  'confluence_bot_config',      // Confluence bot settings — must survive redeploys
+  'confluence_bot_credentials', // Confluence bot MT5 credentials — must survive redeploys
+  'confluence_bot_trades',      // Confluence bot closed-trade history (rolling) — cannot be auto-rebuilt
+  // NOTE: confluence_bot_status / confluence_bot_zones are deliberately NOT here —
+  // rewritten every ~1-2 min, same reasoning as gold_v2_status/gold_v2_zones above.
+  // _worker.js's PERMANENT_KEYS already listed config/credentials/trades as
+  // permanent (no TTL), but that gate only controls the TTL passed to CF KV — on
+  // Railway, put() below routes through isCfKey() FIRST, and these three keys were
+  // missing from it, so every save silently landed in the local file store (wiped
+  // every Railway redeploy) instead of ever reaching CF KV. Surfaced as "Confluence
+  // bot config forgotten on every deployment" (found + fixed 2026-07-21).
   'fred_data_v3',           // FRED dashboard cache (31 series) — survives Railway restarts
   'policy_v2',              // Telegram-v2 frozen confidence policy — learned from a full M1 run (minutes); MUST survive redeploys or every restart wipes it
   'ledger_v2',              // Telegram-v2 daily-learning ledger — accumulated live signal outcomes; cannot be rebuilt, must survive redeploys

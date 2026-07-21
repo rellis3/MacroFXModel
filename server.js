@@ -6934,7 +6934,7 @@ app.get('/api/kv-health', async (_req, res) => {
     const CHECK = [
       'yield_spread_config', 'yield_spread_credentials', 'yield_spread_plan',
       'volatility_bot_config', 'oi_bot_config', 'range_line_bot_config',
-      'macro_equity_config', 'regime_bot_config',
+      'macro_equity_config', 'regime_bot_config', 'confluence_bot_config',
     ];
     const probe = await kv.probe(CHECK);
     res.json({ ok: true, ...kv.health(), ...probe });
