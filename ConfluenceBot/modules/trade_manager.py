@@ -73,9 +73,15 @@ class ManagedTrade:
     def entry_dt(self) -> datetime:
         return datetime.fromisoformat(self.entry_time)
 
-    def update_excursion(self, price: float) -> None:
+    def update_excursion(self, price: float, pip: float = 1.0) -> None:
+        """Track peak favourable / adverse excursion, in PIPS. The run MUST be
+        divided by the instrument's pip size: without it `run` is a raw price
+        distance (~0.0014 for an FX pair) that round(_,1) collapses to 0.0, so
+        every FX trade logged MFE/MAE = 0 while gold/indices (large price units)
+        looked fine — the bug that made the give-back diagnostic unreadable.
+        pnl_pips (journal._pips) is already pip-normalised; this now matches it."""
         sign = 1 if self.direction == 'LONG' else -1
-        run  = sign * (price - self.entry_price)
+        run  = sign * (price - self.entry_price) / (pip or 1.0)
         if run > self.mfe_pips:
             self.mfe_pips = round(run, 1)
         if -run > self.mae_pips:

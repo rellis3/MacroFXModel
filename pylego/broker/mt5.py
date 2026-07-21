@@ -43,6 +43,7 @@ class Mt5Broker:
         self.pip = pip_resolver                 # pair -> pip size
         self.log = log or logging.getLogger("pylego.broker.mt5")
         self.deviation = deviation
+        self._exc_cache: dict[int, tuple] = {}  # position_id -> (mfe_pips, mae_pips)
 
         if mt5_module is not None:
             self.mt5 = mt5_module
@@ -164,6 +165,43 @@ class Mt5Broker:
         info = self.mt5.account_info()
         return info.balance if info else None
 
+    def _excursion_pips(self, pid, symbol, time_open, time_close, is_long, open_price):
+        """Best-effort MFE/MAE (pips) for a CLOSED position, reconstructed from the
+        M1 high/low path between open and close (MT5 deal history has no
+        excursion). Cached by position_id, computed once. Returns
+        ``(mfe_pips, mae_pips)`` — MFE>=0, MAE<=0 — or ``(None, None)`` on ANY
+        failure. NEVER raises: serialize_closed_trades feeds the dashboard AND
+        the server rollup, and a throw there would blank the whole payload."""
+        if pid in self._exc_cache:
+            return self._exc_cache[pid]
+        res = (None, None)
+        try:
+            if self.available and time_open and open_price:
+                mt5 = self.mt5
+                frm = datetime.fromtimestamp(int(time_open), tz=timezone.utc)
+                to = (datetime.fromtimestamp(int(time_close), tz=timezone.utc)
+                      if time_close else datetime.now(timezone.utc))
+                rates = mt5.copy_rates_range(symbol, mt5.TIMEFRAME_M1, frm, to)
+                if rates is not None and len(rates):
+                    info = mt5.symbol_info(symbol)
+                    point = float(getattr(info, 'point', 0.0) or 0.0)
+                    digits = int(getattr(info, 'digits', 0) or 0)
+                    pip = point * (10 if digits in (3, 5) else 1) if point else None
+                    if pip:
+                        hi = max(float(r['high']) for r in rates)
+                        lo = min(float(r['low']) for r in rates)
+                        if is_long:
+                            mfe, mae = (hi - open_price) / pip, (lo - open_price) / pip
+                        else:
+                            mfe, mae = (open_price - lo) / pip, (open_price - hi) / pip
+                        res = (round(max(mfe, 0.0), 1), round(min(mae, 0.0), 1))
+        except Exception:
+            res = (None, None)
+        if len(self._exc_cache) > 4000:         # unbounded-uptime backstop
+            self._exc_cache.clear()
+        self._exc_cache[pid] = res
+        return res
+
     # ── Position serialisers (feed the dashboard positions tab — §7) ─────────
     def serialize_open_positions(self) -> list:
         """Live open positions for this bot's magic. Field set is part of the
@@ -235,6 +273,9 @@ class Mt5Broker:
                     direction = 'BUY' if last_out.type == 1 else 'SELL'
                     open_price = None
                     time_open = None
+                mfe_pips, mae_pips = self._excursion_pips(
+                    pid, last_out.symbol, time_open, int(last_out.time),
+                    direction == 'BUY', open_price)
                 result.append({
                     'position_id': pid,
                     'symbol':      last_out.symbol,
@@ -248,6 +289,10 @@ class Mt5Broker:
                     'time_open':   time_open,
                     'time_close':  int(last_out.time),
                     'comment':     str(ind.comment if ind else last_out.comment or ''),
+                    # MFE/MAE (pips) reconstructed from the M1 path — the give-back
+                    # inputs the dashboard/analysis read without re-walking M1.
+                    'mfe_pips':    mfe_pips,
+                    'mae_pips':    mae_pips,
                 })
             return sorted(result, key=lambda t: t['time_close'])
         except Exception:

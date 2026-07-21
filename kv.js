@@ -118,11 +118,13 @@ const _CF_EXACT = new Set([
   'range_line_bot_plan',        // Range-Line bot daily plan (per-instrument policy) — keep last good plan across a redeploy
   'range_line_confluence',      // Range-Line bot daily confluence levels (for the entry gate) — must live in CF KV so the worker's /api/kv/get can serve it to the bot (same store the plan uses)
   'range_line_bot_audit_log',   // Range-Line bot entry/exit audit log — cannot be auto-rebuilt
+  'range_line_trade_log',       // Range-Line resolved closed-trade log (deduped, capped 5000) — the give-back/MFE history; appended every 10 min, NOT rewritten every cycle, so persist it or the record resets on every redeploy
   // NOTE: range_line_bot_status is deliberately NOT here — the bot rewrites it every
   // ~30s (same reason as volatility_bot_status).
   'oi_bot_config',              // OI bot settings (universe, regime toggles, FX opt-in) — must survive redeploys
   'oi_bot_credentials',         // OI bot MT5 credentials — must survive redeploys
   'oi_bot_zones',               // OI bot daily zone plan (per-instrument regime-switch trades) — keep last good plan across a redeploy; the worker's /api/kv/get serves it to the executor
+  'oi_bot_trade_log',           // OI resolved closed-trade log (deduped, capped) — give-back/MFE history; same durability need as range_line_trade_log
   // NOTE: oi_bot_status is deliberately NOT here — the bot rewrites it every ~30s
   // (same reason as range_line_bot_status / volatility_bot_status).
   'morning_brief_v1',       // Daily Brief top-down macro read (AI, ~1 gen/day) — must survive redeploys or the front page goes blank until regenerated

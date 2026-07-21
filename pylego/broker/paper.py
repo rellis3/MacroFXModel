@@ -59,7 +59,20 @@ class PaperBroker:
 
     # ── market data (fed by the loop) ─────────────────────────────────────────
     def set_price(self, pair: str, px: float) -> None:
-        self._price[pair] = float(px)
+        px = float(px)
+        self._price[pair] = px
+        # Track each open position's favourable / adverse price water-marks so a
+        # closed trade can report its MFE/MAE (peak profit reached vs the exit) —
+        # the give-back diagnostic. Additive only: does not touch fills or exits.
+        for p in self._pos.values():
+            if p['pair'] != pair:
+                continue
+            if p['direction'] == 'LONG':
+                if px > p['fav_price']: p['fav_price'] = px
+                if px < p['adv_price']: p['adv_price'] = px
+            else:
+                if px < p['fav_price']: p['fav_price'] = px
+                if px > p['adv_price']: p['adv_price'] = px
 
     def price(self, pair: str):
         return self._price.get(pair)
@@ -134,7 +147,9 @@ class PaperBroker:
         self._next += 1
         self._pos[t] = {"ticket": t, "pair": pair, "direction": direction,
                         "lots": float(lots), "open_price": px, "sl": float(sl), "tp": float(tp),
-                        "comment": comment or "", "time_open": int(time.time())}
+                        "comment": comment or "", "time_open": int(time.time()),
+                        # MFE/MAE water-marks — seeded at the fill, moved by set_price.
+                        "fav_price": px, "adv_price": px}
         return t
 
     def _exit_price(self, pair: str, direction: str):
@@ -159,8 +174,15 @@ class PaperBroker:
             close = p["open_price"]
         profit = self._profit(p["pair"], p["open_price"], close, p["direction"], p["lots"])
         self._bal += profit                   # realized P&L moves the paper balance
+        # MFE/MAE from the tracked water-marks (favourable/adverse pip distance
+        # off the entry, always signed so MFE>=0, MAE<=0). Never assumes the path
+        # — the marks are the extremes actually seen while the position was open.
+        pip, _ = self._pip_and_value(p["pair"])
+        mfe_pips = round(abs(p.get("fav_price", p["open_price"]) - p["open_price"]) / pip, 1)
+        mae_pips = -round(abs(p.get("adv_price", p["open_price"]) - p["open_price"]) / pip, 1)
         self._closed.append({**p, "reason": reason, "close_price": close,
-                             "profit": profit, "time_close": int(time.time())})
+                             "profit": profit, "time_close": int(time.time()),
+                             "mfe_pips": mfe_pips, "mae_pips": mae_pips})
         return True
 
     def modify(self, ticket, pair=None, sl=None, tp=None, paper_mode=True) -> bool:
@@ -212,6 +234,9 @@ class PaperBroker:
             "close_price": round(c["close_price"], 5) if c.get("close_price") is not None else None,
             "profit": round(c.get("profit", 0.0), 4), "reason": c.get("reason"),
             "time_open": c.get("time_open"), "time_close": c.get("time_close"),
+            # MFE/MAE in pips (peak favourable / worst adverse) — the give-back
+            # inputs; the server rollup persists them into *_trade_log.
+            "mfe_pips": c.get("mfe_pips"), "mae_pips": c.get("mae_pips"),
         } for c in self._closed[-50:]]
 
     # ── triple-barrier execution (what MT5 does natively via SL/TP) ────────────
