@@ -89,6 +89,90 @@ capital-deployment score for FX; doing so would be exactly the confluence-on-san
 The composite here is honest because every input earned its place OOS — and it's a
 range-budget forecaster, which is what the evidence supports.
 
+## Tier 3 #4b — the reversal question, done right (`budget_reversal_test.py`)
+
+The Tier 3 #4 write-up conflated two axes and wrongly said "continuation". Correcting
+the record: #4 measured **range** (unsigned), which is direction-blind — "more range
+follows" is true whether the day continues OR reverses hard (a hard reversal adds range
+too). So #4 does NOT speak to reversal-vs-continuation. This test does, directly.
+
+At each fresh session extreme, a symmetric two-barrier race (reverse θσ toward open vs
+extend θσ), bucketed by **budget consumed** at that moment. Pooled FX, OOS:
+
+| budget used | P(reversal) | n |
+|---|---|---|
+| 0–50% | 0.516 | 13,243 |
+| 50–70% | 0.507 | 27,331 |
+| 70–90% | 0.501 | 29,180 |
+| **90–110%** | **0.518** | 24,400 |
+| 110%+ | 0.519 | 54,836 |
+
+**FLAT.** P(reversal) is ~0.50–0.52 at *every* budget level; the 90%+ bucket (0.518) is
+indistinguishable from the 50–70% bucket (0.507), gradient +0.011 (noise). So "90% of
+budget spent → expect a reversal" has **no edge** — the tiny universal fade lean (~52%,
+the known weak FX exhaustion) is *constant*, not stronger when the budget is spent.
+
+**The complete, corrected model:** budget consumption tells you a move is *coming*
+(magnitude, #1 clustering) but **not which way** — neither "tighten stops, it's calming"
+(false) nor "fade it, it'll reverse" (false, this test). Direction at a spent-budget
+extreme is a coin flip. The reversal intuition survives in memory because spent-extreme
+reversals are dramatic and, per #1, *large* — but continuations are ~equally frequent
+and forgettable (survivorship).
+
+## Tier 5 — does liquidity state improve the composite? (`tier5_liquidity.py`)
+
+Tested the owner's proposal: two days with the same range/σ can be different markets by
+how the move is financed. Only tick volume is available (mid candles → no spread/depth),
+so this is the honest slice: Asia relative tick volume + within-session volume trend,
+added to the composite. Pooled FX OOS:
+
+| model | OOS AUC | Brier-skill |
+|---|---|---|
+| composite (regime+compr+vov) | 0.562 | +1.04% |
+| liquidity only (relvol+trend) | 0.509 | −0.04% |
+| composite + liquidity | 0.562 | +1.14% |
+
+**NULL (partial test).** Tick-volume liquidity alone is worthless (AUC 0.509), and adding
+it moves Brier-skill +0.10pp with AUC unchanged — noise. Caveats: OANDA tick volume is a
+weak participation proxy (no true FX volume), and **spread / order-book depth are untested
+(no data)** — the richer liquidity signals the owner named remain open. On the testable
+slice, participation does not sharpen the expansion forecast.
+
+## Tier 6 — widen the evidence: gold + 25 FX crosses (`tier6_gold_crosssection.py`)
+
+Using the larger `VolRangeForecaster/data/m1` set (25 FX crosses + gold; still **no
+equity indices** — the real MOP test remains blocked on data).
+
+**A. Gold conviction-gating — the NQ lead did NOT replicate; it reversed.** Gold trends
+(base OOS Sharpe **+1.13**), but gating **hurt** it (+1.13 → **+1.00**), and the
+conditional edge is **backwards vs NQ**: gold's trend edge is *stronger* in spent/chaotic
+states (**+2.69 bp/day**) than calm (**−1.36 bp**). So on the one other non-FX trending
+asset available, the Tier-1 NQ result failed to generalise. With n=2 (NQ helps, gold
+hurts), **the "volatility state modifies trend-following in trending assets" claim is not
+supported** — the NQ result now looks instrument-specific, more likely noise than a law.
+It can only be settled by the real multi-index test (SPX/DAX/FTSE/Nikkei/HSI), which this
+sandbox can't run. **Downgraded from "the lead I'd fund" to "unconfirmed, failed its one
+replication."**
+
+**B. Asia-compression — much stronger cross-section.** Re-running Tier 2 across all 25 FX
+crosses: compressed Asia → larger London+ extension holds OOS on **21/25 crosses**
+(mean Δ +0.063σ; the 4 misses are mostly CHF crosses). Up from 5/6 majors — this is now a
+**pervasive, robust** FX effect. The single most reliable finding in the whole study.
+
+## Tier 7 — DAX daily: the NQ tie-breaker (`tier7_dax_conviction.py`)
+
+No SPX/DAX/FTSE **M1** exists in the repo (R2/Drive, unreachable here), but `dax_raw.csv`
+has 20y of daily DAX OHLC — and the conviction test runs on daily bars. So DAX is the
+honest tie-breaker for the NQ lead.
+
+**DAX rejects it, like gold.** DAX TSMOM is weak (full Sharpe +0.17), gating **hurt** OOS
+(−0.11 → −0.29), and the conditional edge is **backwards vs NQ**: chaotic +3.50 bp beats
+calm +2.89 bp. Tally across the 3 non-FX assets: **NQ echoes, gold reversed, DAX reversed
+— 1/3, both rejections opposite-signed.** That is the signature of noise, not a law. The
+NQ conviction-gating lead is **retired (dead, not merely unconfirmed)**: "volatility state
+modifies trend-following in trending assets" is unsupported. (A proper SPX/FTSE M1 basket
+could revisit, but the prior is now clearly negative.)
+
 ---
 
 ## Scoreboard
@@ -98,15 +182,25 @@ range-budget forecaster, which is what the evidence supports.
 | 1a | mechanical vol-sizing | marginal help (mechanical, expected) |
 | 1b | state-gating the trend edge | **FX null; NQ suggestive (+0.54→+0.64)** — lead, needs index breadth |
 | 2 | compressed-Asia → London expansion | **PASS, 5/6 FX OOS** (magnitude) |
-| 3 #4 | remaining-budget exits | **NULL & reversed** — fuel-tank premise false |
+| 3 #4 | remaining-budget exits (range) | **NULL & reversed** — fuel-tank premise false |
+| 3 #4b | reversal-vs-continuation by budget | **NULL** — P(reversal) flat ~0.51 at all budget levels |
 | 3 #5 | vol continuity | modest real (+0.094), not novel |
 | 3 #6 | cone calibration by regime | usable (39% vs 31% exceed) |
 | 4 | compose survivors | modest real composite (AUC 0.562); **no Opportunity Index** |
+| 5 | liquidity (tick volume) in composite | **NULL** (partial — no spread/depth data) |
+| 6A | gold conviction-gating (NQ replication) | **FAILED to replicate** (reversed) |
+| 6B | Asia-compression, 25 FX crosses | **PASS, 21/25 OOS** — the most robust finding |
+| 7 | DAX conviction-gating (NQ tie-breaker) | **REJECTED** — NQ lead retired (1/3 indices, dead) |
+| 8 | multi-index conviction (definitive) | **built, ready-to-run** — data-gated (needs de30/spx500/uk100/us2000/us30 M1 local or R2 creds); NQ echoes 1/1 so far |
 
-**Where this leaves the project:** the budget lens is a **range-budget / expansion state
-engine** — weak-to-modest, honestly validated, magnitude-only. It belongs on the
-sizing/targets/calibration side, exactly as `CLAUDE.md` says ("the real edge is risk").
-The single directional lead worth real research time is **index conviction-gating**
-(Tier 1 NQ), which needs the full diversified basket to confirm. Two intuitions are now
-falsified and should be retired: **direction from consumption (FX)** and the **intraday
-fuel-tank exit model**.
+**Where this leaves the project (post-Tier-6):** the lens is a **dispersion / expansion
+state engine** ("budget" retired — the depletion metaphor is false) — magnitude-only,
+honestly validated. It belongs on the sizing/targets/calibration side, exactly as
+`CLAUDE.md` says ("the real edge is risk"). The strongest single result is **Asia
+compression → London expansion (21/25 FX crosses OOS)**. The once-promising directional
+lead — **index conviction-gating (NQ)** — **failed to replicate on gold** and is now
+unconfirmed; only a true multi-index test (blocked here on data) can revive or bury it.
+Three intuitions are now falsified and retired: **direction from consumption (FX)**, the
+**intraday fuel-tank exit model**, and **"budget spent → reversal"** (flat ~0.51 at every
+level). The honest headline stands: *the volatility forecast is a market-state /
+dispersion model — it estimates the distribution of movement, not its direction.*
