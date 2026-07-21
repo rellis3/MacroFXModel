@@ -10,8 +10,10 @@
  *
  * Two layers:
  *   • Low-level metric fns — `sharpeRatio`, `sortinoRatio`, `maxDrawdown*`,
- *     `profitFactor`, `winRate`, `expectancy`, `calmar`. Each takes its
- *     annualisation explicitly (periodsPerYear) so the caller owns the meaning.
+ *     `profitFactor`, `winRate`, `expectancy`, `calmar`, plus the distribution
+ *     shape / tail set (`skewness`, `excessKurtosis`, `histVaR`, `histCVaR`).
+ *     Each takes its annualisation explicitly (periodsPerYear) so the caller
+ *     owns the meaning.
  *   • `summarizeTrades(pnls, dates)` — reproduces honestForecastEngine.summarize
  *     BIT-FOR-BIT (per-trade Sharpe annualised by the strategy's *actual* trade
  *     frequency, additive-cumulative drawdown, PF 99-fallback). honestForecast
@@ -91,6 +93,69 @@ export function minTrackRecordLength(sharpeAnnual, {
   return periods / k;   // years
 }
 
+// ── Distribution shape / tail risk ───────────────────────────────────────────
+// Cheap, pure functions of a return/pnl series that catch fat left tails a lone
+// Sharpe hides (CLAUDE.md output-analysis guidance). All use POPULATION moments
+// (ddof=0) to match the rest of this module and the (kurt-1)/4 term in
+// `minTrackRecordLength`. Units are the series' own units (a per-TRADE pnl series
+// gives per-trade tail stats, NOT portfolio VaR over a horizon — label as such).
+
+// Sample skewness (Fisher-Pearson, biased/MLE g1). >0 right tail, <0 fat LEFT
+// tail. 0 for n<3 or a flat series.
+export function skewness(xs) {
+  const n = xs.length;
+  if (n < 3) return 0;
+  const m = mean(xs);
+  let s2 = 0, s3 = 0;
+  for (const x of xs) { const d = x - m; const d2 = d * d; s2 += d2; s3 += d2 * d; }
+  const sd = Math.sqrt(s2 / n);
+  return sd > 1e-12 ? (s3 / n) / (sd * sd * sd) : 0;
+}
+
+// EXCESS kurtosis (normal = 0, not 3) — named "excess" so it can't be silently
+// swapped with raw kurtosis. >0 = fatter tails than Gaussian. 0 for n<4 or flat.
+export function excessKurtosis(xs) {
+  const n = xs.length;
+  if (n < 4) return 0;
+  const m = mean(xs);
+  let s2 = 0, s4 = 0;
+  for (const x of xs) { const d2 = (x - m) ** 2; s2 += d2; s4 += d2 * d2; }
+  const v = s2 / n;
+  return v > 1e-24 ? (s4 / n) / (v * v) - 3 : 0;
+}
+
+// Empirical quantile of an ASCENDING-sorted copy (type-7 linear interpolation,
+// numpy/R default) — no distributional assumption. Internal helper.
+function quantileSorted(sorted, q) {
+  const n = sorted.length;
+  if (!n) return 0;
+  if (n === 1) return sorted[0];
+  const pos = q * (n - 1);
+  const lo = Math.floor(pos), frac = pos - lo;
+  return lo + 1 < n ? sorted[lo] + frac * (sorted[lo + 1] - sorted[lo]) : sorted[lo];
+}
+
+// Historical VaR at confidence p (default 95%): the (1−p) empirical quantile,
+// returned in the series' own sign convention — for a loss-bearing series it is
+// the NEGATIVE number below which (1−p) of outcomes fall ("5% of the time you
+// lose at least |VaR|"). No parametric/normal assumption.
+export function histVaR(xs, p = 0.95) {
+  if (!xs.length) return 0;
+  return quantileSorted(xs.slice().sort((a, b) => a - b), 1 - p);
+}
+
+// Historical CVaR / Expected Shortfall at confidence p: the mean of the outcomes
+// at or beyond the VaR quantile — the AVERAGE size of the bad-tail event, the
+// number VaR alone doesn't tell you. ≤ VaR by construction.
+export function histCVaR(xs, p = 0.95) {
+  if (!xs.length) return 0;
+  const sorted = xs.slice().sort((a, b) => a - b);
+  const thr = quantileSorted(sorted, 1 - p);
+  let s = 0, k = 0;
+  for (const x of sorted) { if (x <= thr) { s += x; k++; } else break; }
+  return k ? s / k : thr;
+}
+
 // ── Trade-distribution metrics ───────────────────────────────────────────────
 export function winRate(pnls) {
   if (!pnls.length) return 0;
@@ -113,7 +178,7 @@ export const expectancy = pnls => (pnls.length ? mean(pnls) : 0);
 // actual trade frequency, clamped to ≥0.25yr so tiny samples don't blow up.
 export function summarizeTrades(pnls, dates) {
   const n = pnls.length;
-  if (!n) return { trades: 0, winRate: 0, profitFactor: 0, expectancy: 0, sharpe: 0, sharpeSE: null, minTrackYears: null, maxDD: 0, totalPnl: 0 };
+  if (!n) return { trades: 0, winRate: 0, profitFactor: 0, expectancy: 0, sharpe: 0, sharpeSE: null, minTrackYears: null, maxDD: 0, totalPnl: 0, skew: 0, excessKurt: 0, var95: 0, cvar95: 0 };
   const m = mean(pnls);
   const sd = stdev(pnls, 0);            // population std, as in the original
   const sorted = dates.slice().sort();
@@ -129,7 +194,14 @@ export function summarizeTrades(pnls, dates) {
   // shown nothing. Same trade-frequency basis as the Sharpe itself. Additive
   // fields only; the frozen golden test compares the original keys.
   const se = sharpeStdError(annSharpe, n, tradesPerYr);
-  const mtrYears = minTrackRecordLength(annSharpe, { periodsPerYear: tradesPerYr });
+  // Distribution shape of THIS strategy's per-trade pnl. Skew/kurt aren't just
+  // reported — they feed minTrackRecordLength, which otherwise assumes Gaussian
+  // returns (skew 0 / kurt 3). FX pnl is left-skewed and fat-tailed, and both
+  // LENGTHEN the true track record needed to trust the Sharpe. `minTrackYears`
+  // is now the honest, fat-tail-adjusted figure. (minTrackRecordLength wants raw
+  // kurtosis, so pass excessKurt + 3.)
+  const sk = skewness(pnls), ek = excessKurtosis(pnls);
+  const mtrYears = minTrackRecordLength(annSharpe, { periodsPerYear: tradesPerYr, skew: sk, kurt: ek + 3 });
   return {
     trades: n,
     tradesPerYr: +tradesPerYr.toFixed(1),
@@ -141,5 +213,10 @@ export function summarizeTrades(pnls, dates) {
     minTrackYears: Number.isFinite(mtrYears) ? +mtrYears.toFixed(1) : null,
     maxDD: +maxDrawdownFromPnls(pnls).toFixed(3),
     totalPnl: +pnls.reduce((s, x) => s + x, 0).toFixed(3),
+    // Additive fat-left-tail diagnostics (per-TRADE units, not portfolio VaR).
+    skew: +sk.toFixed(3),
+    excessKurt: +ek.toFixed(3),
+    var95: +histVaR(pnls, 0.95).toFixed(4),
+    cvar95: +histCVaR(pnls, 0.95).toFixed(4),
   };
 }

@@ -212,10 +212,13 @@ Apply these to any new signal, Python throwaway or JS engine alike.
   optimistic standard errors — check before leaning on it.
 - **Report distributional shape, not just Sharpe.** Skew, excess kurtosis,
   historical VaR/CVaR are cheap, pure functions of a return series and catch
-  fat left tails a single Sharpe number hides. Candidate addition to
-  `js/metricsCore.js` as a Tier-1 primitive (pure, unit-testable, useful on
-  every equity curve — not built yet, see `LEGO_MODULES.md §2` when someone
-  needs it).
+  fat left tails a single Sharpe number hides. **Built 2026-07-21** as Tier-1
+  primitives in `js/metricsCore.js` (`skewness`, `excessKurtosis`, `histVaR`,
+  `histCVaR`; hand-checked in `legoBricks.test.mjs`). `summarizeTrades` emits
+  `skew`/`excessKurt`/`var95`/`cvar95` and feeds the real skew/kurt into
+  `minTrackRecordLength`, so its `minTrackYears` is now fat-tail-adjusted rather
+  than Gaussian. Note VaR/CVaR on a per-trade pnl series are per-trade tail
+  stats, not portfolio VaR over a horizon.
 - **A monthly/yearly return heatmap is a cheap concentration check — use it.**
   If a handful of months or one multi-year stretch is carrying the whole
   result, a heatmap makes that visible in seconds. Generating the diagnostic
