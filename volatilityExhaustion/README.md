@@ -217,6 +217,48 @@ whether a level is more likely to break or hold), **not** a directional entry an
 an existing edge to make money (a method is not a strategy). Its honest uses: alert
 context, and a candidate sizing/gating input. Fade-the-level remains null after costs.
 
+## Phase 5 — richer at-the-moment conditioners on the fresh-extreme race (`conditioners.py`)
+
+The owner's push after the direction nulls: absolute distance/velocity is too poor a
+conditioner — test two richer, principled, σ-normalized *at-the-moment* state features on
+the **same** fresh-extreme reversal race, controlling for raw distance:
+- **F1 `vwap_stretch`** = `(price − sessionVWAP)/(σ_pred·O)`, signed +ve = extended past
+  VWAP in the extreme's direction ("1.8σ above VWAP is stretched; 0.2σ above isn't").
+- **F2 `time_z`** = `dist_in_σ / √(elapsed session fraction)` — reaching a σ-distance
+  *early* scores high (unusual for the time); late scores ≈ distance ("1.9% by 09:15 ≠
+  1.9% by 18:30").
+
+The honest control: both correlate with distance, so the headline is terciles of the
+feature computed **only on far events (dist ≥ 1.5σ)** — the incremental separation.
+Pre-registered pass: high-vs-low tercile P(hold) sep ≥ 0.03, **same sign IS & OOS, on
+≥ 5/6 FX majors**.
+
+**Result — NULL (both), pre-registered bar not cleared.**
+
+| feature | majors passing (sep≥3pp, IS&OOS same sign) | verdict |
+|---|---|---|
+| `vwap_stretch` | **1/6** | NULL |
+| `time_z` | **0/6** | NULL |
+
+- **`vwap_stretch`** is the *near-miss*: the **sign** is economically right and
+  replicates — IS 6/6 positive, OOS 5/6 positive (more-stretched-past-VWAP extremes
+  revert slightly more), with OOS seps up to +0.069 (CHF), +0.068 (NZD). But it is
+  *per-instrument unstable* (USDCAD +0.064 IS → −0.004 OOS; GBPUSD +0.058 → +0.003), so
+  only 1/6 clears the both-halves magnitude bar. Same weak-but-sign-consistent character
+  as the base fresh-extreme effect — **not** a new edge. And even the best cells (~3–7pp)
+  can't survive Phase-2's payoff wall (R/R ≈ 1.0 on a 0.25σ target → negative after cost).
+- **`time_z`** is genuinely dead — signs scatter across IS/OOS (0/6 consistent). Time-
+  normalising the path adds nothing to the race outcome.
+- **NQ** (index) flips around with no IS/OOS consistency on either feature.
+
+**Takeaway:** this closes the last *cheap, in-sandbox* directional-conditioner lead. The
+symmetric-payoff wall, not a poverty of price conditioners, is what kills the fade —
+richer σ-normalized state doesn't move it. The still-open (bigger, data-gated) idea is
+**day-level macro-state conditioning** (yields/DXY/credit/COT/regime), which needs those
+daily feeds wired in and must respect the release-cadence rule — a deliberate build, not
+a bolt-on. The evidence continues to point at *magnitude/state → environment → execution*,
+not direction-at-exhaustion.
+
 ## Analysis book
 `analysis-book.html` — a dark-theme page with every key chart and a plain-English *what it shows /
 what it means* under each, ending in the scoreboard and honest conclusion. Open it with `charts/`
@@ -234,5 +276,6 @@ alongside.
 - **`MARKET_STATE_FINDINGS.md`** — Phase-4 "budget as *state*, not signal" (Tiers 1–4): state-conditioned trend sizing/gating, time-adjusted consumption, remaining-budget exits, vov continuity, cone calibration, and the composite. Read this for the honest scoreboard.
 - `budget_research_lib.py` — shared baseplate for Phase 4 (TSMOM reproduction of `js/trendFollowEngine.js` + causal state features on the σ contract).
 - `tier1_state_conditioning.py` / `tier2_time_adjusted.py` / `tier3_budget_vov_cone.py` / `tier4_state_composite.py` — the four Phase-4 tests (each prints a pre-registered verdict).
+- `conditioners.py` — Phase-5 richer at-the-moment conditioners (VWAP-stretch/σ + time-normalized path) on the fresh-extreme race, distance-controlled, IS/OOS, pre-registered cross-sectional verdict → `conditioners_summary.json`. Run `python3 conditioners.py` (6 majors + NQ) or `... EURUSD` (one pair).
 - `analysis-book.html` — human-readable write-up of every phase with charts + explanations.
 - `summary.json` / `forecast_vs_fade_summary.json` — headline stats.

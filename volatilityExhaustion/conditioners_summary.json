@@ -1,0 +1,289 @@
+{
+  "EURUSD": {
+    "pair": "EURUSD",
+    "n_events": 43785,
+    "n_far": 7947,
+    "mean_hold": 0.5193331049446157,
+    "split_date": "2021-03-15",
+    "features": {
+      "vwap_stretch": {
+        "IS": {
+          "p_low": 0.5464,
+          "p_high": 0.5588,
+          "sep": 0.0123,
+          "n_low": 1217,
+          "n_high": 1217
+        },
+        "OOS": {
+          "p_low": 0.5227,
+          "p_high": 0.5415,
+          "sep": 0.0188,
+          "n_low": 1433,
+          "n_high": 1433
+        }
+      },
+      "time_z": {
+        "IS": {
+          "p_low": 0.5094,
+          "p_high": 0.5119,
+          "sep": 0.0025,
+          "n_low": 1217,
+          "n_high": 1217
+        },
+        "OOS": {
+          "p_low": 0.4745,
+          "p_high": 0.5513,
+          "sep": 0.0768,
+          "n_low": 1433,
+          "n_high": 1433
+        }
+      }
+    }
+  },
+  "GBPUSD": {
+    "pair": "GBPUSD",
+    "n_events": 45809,
+    "n_far": 8514,
+    "mean_hold": 0.5049662730031217,
+    "split_date": "2021-03-15",
+    "features": {
+      "vwap_stretch": {
+        "IS": {
+          "p_low": 0.4537,
+          "p_high": 0.5122,
+          "sep": 0.0584,
+          "n_low": 1232,
+          "n_high": 1232
+        },
+        "OOS": {
+          "p_low": 0.5262,
+          "p_high": 0.5293,
+          "sep": 0.0031,
+          "n_low": 1606,
+          "n_high": 1606
+        }
+      },
+      "time_z": {
+        "IS": {
+          "p_low": 0.4765,
+          "p_high": 0.4805,
+          "sep": 0.0041,
+          "n_low": 1232,
+          "n_high": 1232
+        },
+        "OOS": {
+          "p_low": 0.5212,
+          "p_high": 0.5635,
+          "sep": 0.0423,
+          "n_low": 1606,
+          "n_high": 1606
+        }
+      }
+    }
+  },
+  "AUDUSD": {
+    "pair": "AUDUSD",
+    "n_events": 44320,
+    "n_far": 8445,
+    "mean_hold": 0.5076714801444043,
+    "split_date": "2021-03-15",
+    "features": {
+      "vwap_stretch": {
+        "IS": {
+          "p_low": 0.5186,
+          "p_high": 0.5418,
+          "sep": 0.0232,
+          "n_low": 1292,
+          "n_high": 1292
+        },
+        "OOS": {
+          "p_low": 0.522,
+          "p_high": 0.5686,
+          "sep": 0.0466,
+          "n_low": 1523,
+          "n_high": 1523
+        }
+      },
+      "time_z": {
+        "IS": {
+          "p_low": 0.5248,
+          "p_high": 0.5565,
+          "sep": 0.0317,
+          "n_low": 1292,
+          "n_high": 1292
+        },
+        "OOS": {
+          "p_low": 0.5279,
+          "p_high": 0.52,
+          "sep": -0.0079,
+          "n_low": 1523,
+          "n_high": 1523
+        }
+      }
+    }
+  },
+  "NZDUSD": {
+    "pair": "NZDUSD",
+    "n_events": 45639,
+    "n_far": 8235,
+    "mean_hold": 0.5133328951116369,
+    "split_date": "2021-03-15",
+    "features": {
+      "vwap_stretch": {
+        "IS": {
+          "p_low": 0.5553,
+          "p_high": 0.5883,
+          "sep": 0.033,
+          "n_low": 1212,
+          "n_high": 1212
+        },
+        "OOS": {
+          "p_low": 0.5007,
+          "p_high": 0.5691,
+          "sep": 0.0684,
+          "n_low": 1534,
+          "n_high": 1534
+        }
+      },
+      "time_z": {
+        "IS": {
+          "p_low": 0.5809,
+          "p_high": 0.5594,
+          "sep": -0.0215,
+          "n_low": 1212,
+          "n_high": 1212
+        },
+        "OOS": {
+          "p_low": 0.5326,
+          "p_high": 0.5724,
+          "sep": 0.0398,
+          "n_low": 1534,
+          "n_high": 1534
+        }
+      }
+    }
+  },
+  "USDCAD": {
+    "pair": "USDCAD",
+    "n_events": 49370,
+    "n_far": 9222,
+    "mean_hold": 0.5076564715414219,
+    "split_date": "2021-03-15",
+    "features": {
+      "vwap_stretch": {
+        "IS": {
+          "p_low": 0.4812,
+          "p_high": 0.5453,
+          "sep": 0.0641,
+          "n_low": 1436,
+          "n_high": 1436
+        },
+        "OOS": {
+          "p_low": 0.5162,
+          "p_high": 0.5119,
+          "sep": -0.0043,
+          "n_low": 1639,
+          "n_high": 1639
+        }
+      },
+      "time_z": {
+        "IS": {
+          "p_low": 0.5167,
+          "p_high": 0.5292,
+          "sep": 0.0125,
+          "n_low": 1436,
+          "n_high": 1436
+        },
+        "OOS": {
+          "p_low": 0.5363,
+          "p_high": 0.4991,
+          "sep": -0.0372,
+          "n_low": 1639,
+          "n_high": 1639
+        }
+      }
+    }
+  },
+  "USDCHF": {
+    "pair": "USDCHF",
+    "n_events": 49495,
+    "n_far": 9273,
+    "mean_hold": 0.5147388625113648,
+    "split_date": "2021-03-15",
+    "features": {
+      "vwap_stretch": {
+        "IS": {
+          "p_low": 0.5242,
+          "p_high": 0.5435,
+          "sep": 0.0193,
+          "n_low": 1448,
+          "n_high": 1448
+        },
+        "OOS": {
+          "p_low": 0.4897,
+          "p_high": 0.559,
+          "sep": 0.0693,
+          "n_low": 1644,
+          "n_high": 1644
+        }
+      },
+      "time_z": {
+        "IS": {
+          "p_low": 0.5221,
+          "p_high": 0.5186,
+          "sep": -0.0035,
+          "n_low": 1448,
+          "n_high": 1448
+        },
+        "OOS": {
+          "p_low": 0.5231,
+          "p_high": 0.5195,
+          "sep": -0.0036,
+          "n_low": 1644,
+          "n_high": 1644
+        }
+      }
+    }
+  },
+  "NQ": {
+    "pair": "NQ",
+    "n_events": 44805,
+    "n_far": 9854,
+    "mean_hold": 0.46427854034147975,
+    "split_date": "2021-03-22",
+    "features": {
+      "vwap_stretch": {
+        "IS": {
+          "p_low": 0.4558,
+          "p_high": 0.4892,
+          "sep": 0.0334,
+          "n_low": 1619,
+          "n_high": 1619
+        },
+        "OOS": {
+          "p_low": 0.4883,
+          "p_high": 0.4799,
+          "sep": -0.0084,
+          "n_low": 1667,
+          "n_high": 1667
+        }
+      },
+      "time_z": {
+        "IS": {
+          "p_low": 0.4836,
+          "p_high": 0.4923,
+          "sep": 0.0086,
+          "n_low": 1619,
+          "n_high": 1619
+        },
+        "OOS": {
+          "p_low": 0.4529,
+          "p_high": 0.4907,
+          "sep": 0.0378,
+          "n_low": 1667,
+          "n_high": 1667
+        }
+      }
+    }
+  }
+}
