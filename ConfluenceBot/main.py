@@ -1050,7 +1050,7 @@ class SymbolEngine:
     def _manage_trades(self, price: float) -> None:
         spread = self._paper_spread()
         for trade in list(self.tm.open_trades):
-            trade.update_excursion(price)
+            trade.update_excursion(price, self.instr.pip)
             if trade.mode == 'LIVE' and trade.ticket and self.bot._mt5_ok:
                 self._manage_live_trade(trade, price)
             else:

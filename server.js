@@ -6723,6 +6723,7 @@ async function _rlAccumulateTradeLog() {
         key: (() => { try { return resolveKey(c.symbol) || String(c.symbol || '').toLowerCase().replace(/[/_]/g, ''); } catch { return String(c.symbol || '').toLowerCase().replace(/[/_]/g, ''); } })(),
         open_price: c.open_price, close_price: c.close_price, profit: c.profit,
         reason: c.reason, time_open: c.time_open, time_close: c.time_close,
+        mfe_pips: c.mfe_pips ?? null, mae_pips: c.mae_pips ?? null,   // give-back inputs
         date: _rlSessionDate(c.time_open),
       });
       added++;
@@ -6735,6 +6736,45 @@ async function _rlAccumulateTradeLog() {
 }
 setInterval(_rlAccumulateTradeLog, 10 * 60_000);                  // every 10 min
 setTimeout(_rlAccumulateTradeLog, 30_000);                        // and shortly after boot
+
+// OI bot has no durable trade log of its own — its `today_closed_trades` is
+// transient (reset daily), so its give-back history vanished nightly. Mirror the
+// Range-Line rollup: dedupe by position_id into a persistent `oi_bot_trade_log`
+// (in _CF_EXACT so it survives redeploys), carrying the MFE/MAE the broker now
+// reconstructs. Same shape the offline give-back tool (--bot oi) reads.
+async function _oiAccumulateTradeLog() {
+  try {
+    const raw = await kv.get('oi_bot_status').catch(() => null);
+    if (!raw) return;
+    const status = JSON.parse(raw).data ?? JSON.parse(raw);
+    const closed = status?.today_closed_trades || [];
+    if (!closed.length) return;
+    const logRaw = await kv.get('oi_bot_trade_log').catch(() => null);
+    const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : [];
+    const seen = new Set(log.map(t => t.position_id ?? t.ticket));
+    let added = 0;
+    for (const c of closed) {
+      const id = c.position_id ?? c.ticket;
+      if (id == null || seen.has(id)) continue;
+      seen.add(id);
+      log.push({
+        position_id: id, symbol: c.symbol, direction: c.direction,
+        key: (() => { try { return resolveKey(c.symbol) || String(c.symbol || '').toLowerCase().replace(/[/_]/g, ''); } catch { return String(c.symbol || '').toLowerCase().replace(/[/_]/g, ''); } })(),
+        open_price: c.open_price, close_price: c.close_price, profit: c.profit,
+        reason: c.reason, time_open: c.time_open, time_close: c.time_close,
+        mfe_pips: c.mfe_pips ?? null, mae_pips: c.mae_pips ?? null,
+        date: _rlSessionDate(c.time_open),
+      });
+      added++;
+    }
+    if (!added) return;
+    if (log.length > 5000) log.splice(0, log.length - 5000);      // cap
+    await kv.put('oi_bot_trade_log', JSON.stringify({ data: log, timestamp: Date.now() }));
+    console.log(`[oi-bot] trade log +${added} (${log.length} total)`);
+  } catch (e) { console.error('[oi-bot] trade-log accumulate failed:', e.message); }
+}
+setInterval(_oiAccumulateTradeLog, 10 * 60_000);                  // every 10 min
+setTimeout(_oiAccumulateTradeLog, 35_000);                        // and shortly after boot
 
 // Reuse the OI the user ALREADY computes in the index.html OI analyser (KV
 // `oi_store`, per pair: max pain / call+put walls / gamma flip / HVL) instead of
