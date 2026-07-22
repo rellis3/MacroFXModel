@@ -147,7 +147,16 @@ alert_pips       = input.float(3.0, "Alert Proximity (pips)", minval=0.1, step=0
 alert_min_count  = input.int(2, "Min Count for CZ Alert", minval=2, maxval=5, group="Alerts",
      tooltip="Only alert on confluence zones with this many or more distinct level types.")
 alert_oi         = input.bool(true, "Also alert near OI walls / max pain", group="Alerts")
-alert_extend_right = input.bool(true, "Extend Lines Right", group="Alerts")
+
+// =====================================================
+// LINE DRAWING (day-anchored, like the Volatility overlay)
+// =====================================================
+
+openSource    = input.string("London Midnight (00:00)", "Day Start",
+     options=["London Midnight (00:00)", "Pre-Session (23:00 prev night)"], group="Line Drawing",
+     tooltip="Lines are painted across the current day from this open time (Europe/London). Midnight = standard FX day; 23:00 = post-market reset, better for indices.")
+extend_future = input.bool(false, "Extend lines into the future (past now)", group="Line Drawing",
+     tooltip="Off (default): lines are day-bounded from the open to the current bar, with the label just past the right end so it stays readable. On: lines project to the right edge.")
 
 // =====================================================
 // POC / NPOC (computed live from chart's daily bars)
@@ -337,6 +346,20 @@ else
         array.set(_dL, _nd - 1, math.min(array.get(_dL, _nd - 1), low))
 
 // =====================================================
+// DAY-START ANCHOR (Europe/London) — where day-bounded level lines begin
+// =====================================================
+
+_use23     = str.contains(openSource, "23:00")
+_lonHour   = hour(time, "Europe/London")
+_prevLonHr = barstate.isfirst ? -1 : hour(time[1], "Europe/London")
+_newDayMid = ta.change(dayofmonth(time, "Europe/London")) != 0
+_newDay23  = _lonHour == 23 and _prevLonHr != 23
+_dayNew    = _use23 ? _newDay23 : _newDayMid
+var int dayStartTime = na
+if _dayNew or barstate.isfirst
+    dayStartTime := time
+
+// =====================================================
 // GAMMA REGIME BACKGROUND TINT
 // =====================================================
 
@@ -419,7 +442,12 @@ if barstate.islast
 
     sym    = f_normaliseTicker(syminfo.ticker, goldChart, nqChart, spxChart, de30Chart, uk100Chart, us30Chart, us2kChart)
     pip    = f_pipSize(sym)
-    zExt   = alert_extend_right ? extend.right : extend.none
+    zExt   = extend_future ? extend.right : extend.none
+    // Day-bounded segment span (London open → now) + a dark, opaque-ish label tag
+    // placed 2 bars past the line end so the line never runs through the text.
+    x1     = na(dayStartTime) ? time : dayStartTime
+    x2     = time
+    lblBg  = color.new(color.black, 20)
 
     // ── Confluence zones (hidden in OI-only mode) ─────────────────────────────
     nZones = array.size(czPrices)
@@ -433,16 +461,17 @@ if barstate.islast
                 continue
             zCol     = f_zoneColour(zCount)
             zColDraw = (not isAnchored and dim_unanchor) ? color.new(zCol, 70) : zCol
-            ln = line.new(bar_index - 1, zPrice, bar_index + 3, zPrice,
-                 color=zColDraw, width=zone_width, style=line.style_solid, extend=zExt)
+            ln = line.new(x1, zPrice, x2, zPrice,
+                 color=zColDraw, width=zone_width, style=line.style_solid,
+                 xloc=xloc.bar_time, extend=zExt)
             array.push(czLines, ln)
             if show_label
                 string lText = str.tostring(zCount) + "L"
                 if show_types
                     lText := lText + "  " + zTypes
-                lb = label.new(bar_index + 4, zPrice, lText,
+                lb = label.new(bar_index + 2, zPrice, lText,
                      style=label.style_label_left,
-                     color=color.new(zColDraw, 75), textcolor=zColDraw,
+                     color=lblBg, textcolor=zColDraw,
                      size=size.small)
                 array.push(czLabels, lb)
 
@@ -456,16 +485,17 @@ if barstate.islast
             zCol   = f_oiColour(zType)
             zStyle = f_oiStyle(zType)
             zW     = oi_base_w + (zTier >= 3 ? 2 : zTier == 2 ? 1 : 0)
-            ln = line.new(bar_index - 1, zPrice, bar_index + 3, zPrice,
-                 color=zCol, width=zW, style=zStyle, extend=zExt)
+            ln = line.new(x1, zPrice, x2, zPrice,
+                 color=zCol, width=zW, style=zStyle,
+                 xloc=xloc.bar_time, extend=zExt)
             array.push(oiLines, ln)
             if show_oi_lbl
                 string lText = zType
                 if zTier > 0
                     lText := lText + " t" + str.tostring(zTier)
-                lb = label.new(bar_index + 4, zPrice, lText,
+                lb = label.new(bar_index + 2, zPrice, lText,
                      style=label.style_label_left,
-                     color=color.new(zCol, 75), textcolor=zCol,
+                     color=lblBg, textcolor=zCol,
                      size=size.small)
                 array.push(oiLabels, lb)
 
@@ -589,7 +619,7 @@ if show_table and barstate.islast
 
     int totalRows = nVisCZ + nVisOI + (hasRegime ? 1 : 0)
     if totalRows > 0
-        czTable := table.new(position.top_left, 3, totalRows + 1,
+        czTable := table.new(position.bottom_right, 3, totalRows + 1,
              bgcolor=color.new(color.black, 60),
              border_width=1, border_color=color.new(color.gray, 60),
              frame_width=1,  frame_color=color.new(color.gray, 50))
@@ -600,13 +630,18 @@ if show_table and barstate.islast
 
         int row = 0
 
-        // Regime header row
+        // Regime header row — with a plain-English meaning of PIN / BREAKOUT.
+        //   PIN      = dealers long gamma → moves dampened, price pulled to max
+        //              pain, walls hold → FADE walls back toward max pain.
+        //   BREAKOUT = dealers short gamma → moves amplified, wall breaks run →
+        //              FOLLOW a decisive break.
         if hasRegime
             row += 1
-            regCol = oiRegime == "PIN" ? col_pain : col_call
+            regCol  = oiRegime == "PIN" ? col_pain : col_call
+            regMean = oiRegime == "PIN" ? "walls hold · fade→max pain" : "breaks run · follow"
             table.cell(czTable, 0, row, "REGIME", text_color=regCol, text_size=size.tiny, bgcolor=color.new(regCol, 80))
             table.cell(czTable, 1, row, oiRegime, text_color=regCol, text_size=size.tiny, bgcolor=color.new(regCol, 80))
-            table.cell(czTable, 2, row, "GEX",    text_color=regCol, text_size=size.tiny, bgcolor=color.new(regCol, 80))
+            table.cell(czTable, 2, row, regMean,  text_color=regCol, text_size=size.tiny, bgcolor=color.new(regCol, 80))
 
         // OI level rows
         if show_oi
