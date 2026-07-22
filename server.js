@@ -6325,6 +6325,18 @@ async function _refreshVolatilityPlan() {
       fetchSessionOpen: (sym) => _btFetchSessionOpenLondon(sym),   // London-midnight open anchor
       sigmaSeries: _volSigmaSeries,
       volSource: 'platform',                                        // HAR path disabled (see note above)
+      // COG bands are the business-standard line set — same calc as the v2
+      // "⬇ COG" export. cogHvSigma reproduces the export's ONE special case:
+      // NQ drawn from COG's own close-to-close HV σ (window 30, the VF_COGHV_WINDOW
+      // the page uses), guarded to the export's sane band (4–200% annual). Every
+      // other instrument keeps the platform σ, exactly as the export does.
+      bandMode: 'cog',
+      cogHvSigma: async (_oandaSym, pair) => {
+        if (String(pair).toLowerCase() !== 'nq') return null;      // NQ only (matches the export's _CCHV_USE)
+        const out = await _computeCogHv({ win: 30, insts: ['NQ'] });
+        const hv = out?.indices?.NQ?.volAnnual;                    // annualised %, COG's method
+        return (hv > 4 && hv < 200) ? hv / 100 / Math.sqrt(252) : null;   // → daily σ fraction, or fall back
+      },
       kvPut: (k, v) => kv.put(k, v),
       onLog,
     });

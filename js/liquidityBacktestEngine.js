@@ -24,9 +24,10 @@
  * comparison payload. No network.
  */
 
-import { runRangeLineAnalyser, recordsForPair, extractTouches, runPerLine, runHeldPosition,
-         buildPolicy, costForPair, portfolioStats, pnlFor,
+import { runRangeLineAnalyser, extractTouches, runPerLine, runHeldPosition,
          CONFLUENCE_SOURCES, DAILY_CONFLUENCE_SOURCES } from './rangeLineAnalyser.js';
+import { buildPolicy, costForPair, pnlFor } from './perLineStrategy.js';
+import { portfolioStats } from './backtestStats.js';
 import { bucketM1IntoSessions } from './forecastAnalyser.js';
 
 // Default liquidity level source params (matching the education defaults).
