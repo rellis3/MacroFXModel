@@ -2354,7 +2354,9 @@ async function exportConfluenceZones() {
   btn.textContent = '⏳ Computing…'; btn.disabled = true;
   try {
     const res = await fetch('/api/vol-forecast/zones');
-    if (!res.ok) { const t = await res.text(); throw new Error(t.slice(0, 120)); }
+    // 202 (still warming) is a 2xx, so res.ok is true — treat anything but 200 as
+    // not-ready and surface the message instead of copying it to the clipboard.
+    if (res.status !== 200) { const t = await res.text(); throw new Error(t.slice(0, 120)); }
     const text = await res.text();
     await navigator.clipboard.writeText(text).catch(() => {
       const date = currentForecast?.session_date ?? 'latest';

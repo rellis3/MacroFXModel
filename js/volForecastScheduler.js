@@ -312,6 +312,34 @@ async function fetchNewsEvents(targetDate) {
   return events;
 }
 
+// On-demand OHLC cache warm. The daily `runVolForecast` fills `ohlcCache`, but a
+// mid-day restart warms `latest` from KV WITHOUT it (ohlcCache is in-memory only)
+// and skips the immediate recompute when today's forecast is already cached — so
+// anything needing raw bars (the C+Z zone export) would 202 for hours until the
+// next scheduled run. This fills the cache on demand via the same `fetchOHLC` path.
+// Idempotent + single-flight so concurrent callers share one fetch, and partial
+// (some instruments failed) is fine — the zone builder skips short series.
+let _ohlcWarmInFlight = null;
+export async function ensureOhlcCache() {
+  if (Object.keys(forecastState.ohlcCache).length > 0) return forecastState.ohlcCache;
+  if (_ohlcWarmInFlight) return _ohlcWarmInFlight;
+  _ohlcWarmInFlight = (async () => {
+    let n = 0;
+    for (const cfg of INSTRUMENTS) {
+      try {
+        forecastState.ohlcCache[cfg.name] = await fetchOHLC(cfg);
+        n++;
+        await new Promise(r => setTimeout(r, 120));   // be polite to Oanda (matches runVolForecast)
+      } catch (e) {
+        console.warn(`[VOL-FORECAST] ohlc warm ${cfg.name} failed: ${e.message}`);
+      }
+    }
+    console.log(`[VOL-FORECAST] ohlcCache warmed on demand: ${n}/${INSTRUMENTS.length}`);
+    return forecastState.ohlcCache;
+  })().finally(() => { _ohlcWarmInFlight = null; });
+  return _ohlcWarmInFlight;
+}
+
 // ── Core computation ──────────────────────────────────────────────────────────
 export async function runVolForecast(targetDate) {
   const target = targetDate ?? new Date(_applicableSessionDate(new Date()) + 'T12:00:00Z');
@@ -709,6 +737,11 @@ export async function startVolForecastScheduler() {
     console.log(`[VOL-FORECAST] ${reason} — computing on startup …`);
     runVolForecast(new Date(neededDate + 'T12:00:00Z'))
       .catch(e => console.error('[VOL-FORECAST] Startup run failed:', e.message));
+  } else {
+    // Warmed from KV without a recompute → ohlcCache (in-memory) is empty, which
+    // would 202 the C+Z zone export until the next scheduled run. Warm it in the
+    // background so a mid-day redeploy self-heals within seconds, not hours.
+    ensureOhlcCache().catch(e => console.error('[VOL-FORECAST] Startup ohlc warm failed:', e.message));
   }
 
   // Scheduler: check every 5 minutes
