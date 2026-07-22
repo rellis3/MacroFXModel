@@ -740,6 +740,89 @@ export function reachabilityCalibration(bars, opts = {}) {
            note: 'Predicted vs realized touch frequency, binned. Well-calibrated ⇒ predicted ≈ realized per bin (gap→0).' };
 }
 
+// ── Intraday excursion — how FAR up/down price may REACH within H bars ───────
+// A DIFFERENT question from the cone envelope. The envelope is close-LOCATION
+// ("where will price BE at step h", P50/P75). This is the running MAX high /
+// MIN low over the whole window — the day's REACH — as median/75th/90th levels
+// off the anchor, which is what a "how far might it range" table wants. Using
+// the envelope for that would understate it: a high is systematically further
+// out than a close. Same seeded MC + intrabar wick model as reachability (a
+// wick counts as reach). Returns fractions AND prices. The percentile labels
+// are only trustworthy once excursionCalibration verifies them (a p75 reach
+// must be exceeded ~25% of the time).
+export function intradayExcursion(ctx, i, H, opts = {}) {
+  const o = { ...ctx.opts, nPaths: 500, pctiles: [50, 75, 90], ...opts };
+  const horizon = H ?? ctx.opts.horizonBars;
+  const ladder = _stepSigmas(ctx, i, horizon);
+  if (!ladder) return null;
+  const anchor = ctx.bars[i - 1].close;
+
+  // Causal median prior-bar range → intrabar wick budget (same as reachability).
+  const ranges = [];
+  for (let k = Math.max(0, i - 97); k < i - 1; k++) ranges.push(ctx.bars[k].high - ctx.bars[k].low);
+  ranges.sort((a, b) => a - b);
+  const medRange = ranges.length ? ranges[ranges.length >> 1] : 0;
+
+  const rng = mulberry32(o.seed);
+  const upExc = new Array(o.nPaths), dnExc = new Array(o.nPaths);
+  for (let p = 0; p < o.nPaths; p++) {
+    let prev = anchor, runHi = anchor, runLo = anchor;
+    for (let k = 0; k < horizon; k++) {
+      const close = prev * Math.exp(ladder.mu + ladder.sigs[k] * gauss(rng));
+      const bodyHi = Math.max(prev, close), bodyLo = Math.min(prev, close);
+      const pad = Math.max(0, medRange - (bodyHi - bodyLo));
+      const u = rng();
+      const hi = bodyHi + pad * u, lo = bodyLo - pad * (1 - u);
+      if (hi > runHi) runHi = hi;
+      if (lo < runLo) runLo = lo;
+      prev = close;
+    }
+    upExc[p] = (runHi - anchor) / anchor;      // ≥ 0
+    dnExc[p] = (anchor - runLo) / anchor;      // ≥ 0
+  }
+  upExc.sort((a, b) => a - b); dnExc.sort((a, b) => a - b);
+  const q = (arr, pc) => { const idx = (pc / 100) * (arr.length - 1), lo = Math.floor(idx), hi = Math.ceil(idx); return arr[lo] + (arr[hi] - arr[lo]) * (idx - lo); };
+  const lvl = (arr, sgn) => o.pctiles.map(pc => { const f = q(arr, pc); return { pctile: pc, frac: f, price: anchor * (1 + sgn * f) }; });
+  return { i, anchor, horizonBars: horizon, nPaths: o.nPaths, up: lvl(upExc, +1), down: lvl(dnExc, -1) };
+}
+
+// ── Excursion calibration — does a "75th-percentile reach" get exceeded 25% ──
+// The falsification the excursion levels need before their labels are believed.
+// Over non-overlapping windows, compute the reach levels CAUSALLY at entry, then
+// check how often the window's realized high/low actually exceeded each level:
+// a level at percentile p should be exceeded (100−p)% of the time (p50→50%,
+// p75→25%, p90→10%). `gap` = mean |realized − claimed| across cells (→0 good).
+export function excursionCalibration(bars, opts = {}) {
+  const o = { ...INTRADAY_DEFAULTS, pctiles: [50, 75, 90], calibPaths: 300, ...opts };
+  const ctx = buildIntradayContext(bars, o);
+  const H = o.horizonBars;
+  const n = bars.length;
+  const acc = {};
+  for (const pc of o.pctiles) acc[pc] = { up: { exceed: 0, n: 0 }, down: { exceed: 0, n: 0 } };
+  let windows = 0;
+  for (let i = Math.max(o.warmupBars, 2); i + H <= n; i += H) {
+    const ex = intradayExcursion(ctx, i, H, { nPaths: o.calibPaths, pctiles: o.pctiles });
+    if (!ex) continue;
+    let hi = -Infinity, lo = Infinity;
+    for (let h = 1; h <= H; h++) { const b = bars[i + h - 1]; if (b.high > hi) hi = b.high; if (b.low < lo) lo = b.low; }
+    for (let k = 0; k < o.pctiles.length; k++) {
+      const pc = o.pctiles[k];
+      acc[pc].up.n++;   if (hi >= ex.up[k].price)   acc[pc].up.exceed++;
+      acc[pc].down.n++; if (lo <= ex.down[k].price) acc[pc].down.exceed++;
+    }
+    windows++;
+  }
+  const rows = o.pctiles.map(pc => {
+    const u = acc[pc].up, d = acc[pc].down;
+    return { pctile: pc, claimedExceed: (100 - pc) / 100,
+             up: { exceed: u.n ? u.exceed / u.n : null, n: u.n },
+             down: { exceed: d.n ? d.exceed / d.n : null, n: d.n } };
+  });
+  const cells = rows.flatMap(r => [r.up.exceed, r.down.exceed].filter(x => x != null).map(x => Math.abs(x - r.claimedExceed)));
+  const gap = cells.length ? cells.reduce((s, v) => s + v, 0) / cells.length : null;
+  return { horizonBars: H, windows, claimed: 'a level at percentile p should be exceeded (100−p)% of the time', rows, gap };
+}
+
 // ── Day range budget — how much of the day's volatility is spent vs left ─────
 // Pure climatology: no edge claim, just describing this pair's own intraday
 // range distribution. For the CURRENT (last, partial) UTC day it reports how
