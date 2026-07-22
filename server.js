@@ -4053,7 +4053,12 @@ app.get('/api/oanda_ohlc5m', async (req, res) => {
     const values = data.candles
       .filter(c => c.mid && (gran === 'D' || c.complete))
       .map(c => ({
+        // `datetime` is Europe/London wall-clock (kept for existing consumers);
+        // `t` is the TRUE UTC epoch (seconds) — charts must use this so overlays
+        // computed in UTC (e.g. the forecast cone) align, instead of drifting by
+        // the London offset when a consumer re-stamps the local string as 'Z'.
         datetime: new Date(c.time).toLocaleString('sv-SE', { timeZone: 'Europe/London' }).substring(0, 19),
+        t: Math.floor(new Date(c.time).getTime() / 1000),
         open: c.mid.o, high: c.mid.h, low: c.mid.l, close: c.mid.c,
       }))
       .reverse();

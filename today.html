@@ -2369,10 +2369,13 @@ async function loadDrawerChart(r, barsP) {
   const d = r.d;
   const resp = await barsP;
   if (!resp.values?.length) throw new Error(resp.error ?? 'no candles');
-  // newest-first → ascending; datetime is London local 'YYYY-MM-DD HH:MM:SS'
+  // newest-first → ascending. `t` is the TRUE UTC epoch (seconds) — use it so
+  // the candles share a time base with the forecast cone (also UTC); `datetime`
+  // is Europe/London wall-clock, and re-stamping it 'Z' shifted the candles by
+  // the London offset (+1h in BST), which floated the cone left of the data.
   const asc = resp.values.slice().reverse();
   const bars = asc.map(b => ({
-    time: Math.floor(new Date(b.datetime.replace(' ', 'T') + 'Z').getTime() / 1000),
+    time: b.t != null ? b.t : Math.floor(new Date(b.datetime.replace(' ', 'T') + 'Z').getTime() / 1000),
     open: +b.open, high: +b.high, low: +b.low, close: +b.close,
   }));
   const todayKey = asc[asc.length - 1].datetime.slice(0, 10);
