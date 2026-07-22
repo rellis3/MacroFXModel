@@ -31,8 +31,12 @@ const CLUSTER_THRESH = {
 const FX_CLUSTER_THRESH  = 0.0005;   // 5 pips standard FX
 const JPY_CLUSTER_THRESH = 0.05;     // 5 pips JPY pairs
 
-// Range filter: only emit levels within this many × daily-range multiples of reference price
-const RANGE_MULT = 2.5;
+// Range filter: only emit levels within this many × the forecast daily range (the
+// 75th-pct H-L) of the reference price. 1.5 keeps the zones close to the day's
+// expected envelope — a small buffer past the expected high/low so boundary levels
+// aren't clipped, without pulling in levels 2–3 daily ranges away that price can't
+// realistically reach today. (Was 2.5 — tightened 2026-07 to hug the vol envelope.)
+const RANGE_MULT = 1.5;
 
 // Pivot confirmation: bars on each side that must be lower (for pivot high) or higher (for pivot low)
 const PIVOT_CONFIRM = 2;
