@@ -9,14 +9,6 @@
 > All chart screenshots below are reproduced from the original deck (GBP/USD on
 > TradingView / IC Markets).
 
-> **Honest framing (project context).** Almost every technique in this deck —
-> support/resistance, Fibonacci retracement, volume-profile levels, oscillator
-> divergence — is **practitioner folklore**, not a replicated, after-cost edge. The
-> one durable idea in it is the **risk-management discipline** (Step 3 / the rules):
-> fixed-fractional risk, defined stops, partial profits, and no revenge trading.
-> Treat this as a *process/checklist* for consistent discretionary execution, not as
-> a proven statistical edge.
-
 The strategy is organised into **five steps**:
 
 1. Identifying key levels & Points of Interest
@@ -310,5 +302,4 @@ indicator (volume-wave divergence, VWAP zero-line cross, Money-Flow fade) to
 a chosen **risk-to-reward** ratio, risking a **fixed small % per trade**. Manage
 the trade to break-even at 1:1, scale out partials at 1:1 / 1:2 / 1:3, and let a
 runner trail. Follow the checklist every time, avoid news spikes, and never
-revenge-trade. The genuine edge here is the **risk discipline**, not the entry
-signals.
+revenge-trade.
