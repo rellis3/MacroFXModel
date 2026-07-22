@@ -11334,19 +11334,33 @@ app.post('/api/macro-conditioner/run', express.json({ limit: '16kb' }), (req, re
     const perPair = {}, log = [];
     try {
       // 1) FRED VIX + HY → macroCore fredHistory shape ({ vix:[{date,value}…asc], hy:[…] })
+      //    Both are DAILY business-day series since 2010 (~4000 obs expected). A short
+      //    response (partial FRED read) truncates the regime window and silently biases
+      //    the whole test, so fetch with a size-sanity retry and LOG each series' span.
       const fromDate = '2010-01-01';
-      const [vixMap, hyMap] = await Promise.all([
-        fetchFredSeries(_MACRO_FRED_SERIES.vix, fromDate, process.env.FRED_KEY),
-        fetchFredSeries(_MACRO_FRED_SERIES.hy,  fromDate, process.env.FRED_KEY),
-      ]);
+      const _fetchFredSane = async (sid, minObs) => {
+        let m = await fetchFredSeries(sid, fromDate, process.env.FRED_KEY);
+        if (m.size < minObs) {                            // suspiciously short → one retry
+          log.push(`FRED ${sid}: only ${m.size} obs (<${minObs}) — retrying once`);
+          try { const m2 = await fetchFredSeries(sid, fromDate, process.env.FRED_KEY); if (m2.size > m.size) m = m2; } catch { /* keep first */ }
+        }
+        return m;
+      };
+      const vixMap = await _fetchFredSane(_MACRO_FRED_SERIES.vix, 1500);
+      const hyMap  = await _fetchFredSane(_MACRO_FRED_SERIES.hy,  1500);
       const toArr = m => [...m.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([date, value]) => ({ date, value }));
       const fredHistory = { vix: toArr(vixMap), hy: toArr(hyMap) };
+      const span = a => a.length ? `${a[0].date}→${a[a.length - 1].date}` : 'none';
+      log.push(`FRED vix: ${fredHistory.vix.length} obs (${span(fredHistory.vix)}) · hy: ${fredHistory.hy.length} obs (${span(fredHistory.hy)})`);
+      if (fredHistory.hy.length < 1500 || fredHistory.vix.length < 1500)
+        log.push('⚠ short FRED series — regime window is truncated; verdict may read INSUFFICIENT_COVERAGE (a broken join, not a null).');
       // 2) regime map — market-wide (VIX+HY), so compute ONCE and reuse for every pair.
       const ctxByDate = _macroContextByDate('EURUSD', fredHistory, { to: Date.now() });
       const regimeByDate = {};
       for (const [d, v] of Object.entries(ctxByDate)) regimeByDate[d] = v.macro.regime;
+      const regDates = Object.keys(regimeByDate).sort();
       const nOff = Object.values(regimeByDate).filter(r => r === 'RISK_OFF').length;
-      log.push(`FRED: vix ${fredHistory.vix.length} obs, hy ${fredHistory.hy.length} obs · regime days ${Object.keys(regimeByDate).length} (risk-off ${nOff})`);
+      log.push(`regime days ${regDates.length} (${regDates[0] || '—'}→${regDates[regDates.length - 1] || '—'}) · risk-off ${nOff}`);
       // 3) per pair: London-daily + causal σ + join regime → σ-controlled conditional
       const pooledRows = [];
       for (const cfg of insts) {
@@ -11361,17 +11375,20 @@ app.post('/api/macro-conditioner/run', express.json({ limit: '16kb' }), (req, re
             close: daily.map(d => d.close), sigma: Array.from(sig),
           };
           const r = _mcondAnalyzePair(series, regimeByDate, opts);
-          if (r.insufficient) { log.push(`${cfg.name}: insufficient (${r.nDays}d)`); continue; }
+          if (r.insufficient) { log.push(`${cfg.name}: insufficient (${r.nDays}d regime-covered)`); continue; }
           pooledRows.push(...r._rows); delete r._rows;      // pool, then strip from wire payload
           r.src = src; perPair[cfg.name] = r;
-          log.push(`${cfg.name}: ${r.nDays}d · ${r.verdict.label} (${r.verdict.bucketsAgreeing}/3) · src ${src}`);
+          const cov = r.coverage;
+          log.push(`${cfg.name}: ${r.nDays}d covered / ${cov.priceDays}d price (${Math.round(cov.coveredFrac * 100)}%, ${cov.firstRegimeDate}→${cov.lastRegimeDate}) · ${r.verdict.label} (${r.verdict.bucketsAgreeing}/${r.verdict.bucketsEvaluable} agree/eval) · src ${src}`);
         } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
       }
       const names = Object.keys(perPair);
       if (!names.length) { macroCondJobs.set(jobId, { status: 'error', error: 'No pairs evaluated', log, startedAt }); return; }
       const pooledSummary = _mcondSummarize(pooledRows);
-      const pooled = { nDays: pooledRows.length, summary: pooledSummary, verdict: _mcondVerdict(pooledSummary, opts) };
-      log.push(`POOLED FX: ${pooledRows.length}d · ${pooled.verdict.label} (${pooled.verdict.bucketsAgreeing}/3 σ-buckets show IS/OOS-consistent regime spread)`);
+      const pooledDates = pooledRows.map(r => r.date).sort();
+      const pooledCoverage = { regimeDays: pooledRows.length, firstRegimeDate: pooledDates[0] || null, lastRegimeDate: pooledDates[pooledDates.length - 1] || null };
+      const pooled = { nDays: pooledRows.length, summary: pooledSummary, verdict: _mcondVerdict(pooledSummary, opts), coverage: pooledCoverage };
+      log.push(`POOLED FX: ${pooledRows.length}d · ${pooled.verdict.label} (${pooled.verdict.bucketsAgreeing}/${pooled.verdict.bucketsEvaluable} σ-buckets agree/evaluable)`);
       macroCondJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...opts, perPair, pooled, pairs: names, log } });
     } catch (e) { macroCondJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt }); }
   })();

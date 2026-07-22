@@ -104,4 +104,35 @@ function makePair({ n = 800, plantIncremental = false, seed = 1 }) {
   ok(res.insufficient === true, 'guards <100 days');
 }
 
+// ── 7. coverage: missing-regime days are DROPPED, not counted NEUTRAL ─────────
+{
+  const { series, regimeByDate } = makePair({ n: 800 });
+  const full = buildRows(series, regimeByDate, {});
+  ok(full.coverage.coveredFrac === 1 && full.coverage.droppedNoRegime === 0, 'full coverage → nothing dropped');
+  // now blank out the regime for the FIRST 70% of dates (simulate a truncated HY series
+  // that only covers recent years — the exact bug the live run hit)
+  const truncated = {};
+  const cut = Math.floor(series.date.length * 0.7);
+  series.date.slice(cut).forEach(d => { truncated[d] = regimeByDate[d]; });
+  const b = buildRows(series, truncated, {});
+  ok(b.coverage.droppedNoRegime > 0, 'uncovered days are dropped');
+  ok(b.coverage.coveredFrac < 0.4, 'coveredFrac reflects the truncation');
+  ok(b.rows.every(r => truncated[r.date] !== undefined), 'every kept row has a real regime (none faked NEUTRAL)');
+  // IS/OOS split lands WITHIN the covered window, not across the empty first 70%
+  ok(b.rows.some(r => r.seg === 0) && b.rows.some(r => r.seg === 1), 'both IS & OOS populated inside covered window');
+}
+
+// ── 8. truncated coverage → INSUFFICIENT_COVERAGE, never a fake REDUNDANT null ─
+{
+  // regime only on a thin recent slice → too few risk-off days on BOTH halves to judge
+  const { series, regimeByDate } = makePair({ n: 1600, plantIncremental: true });
+  const thin = {};
+  const cut = Math.floor(series.date.length * 0.92);   // ~8% coverage
+  series.date.slice(cut).forEach(d => { thin[d] = regimeByDate[d]; });
+  const res = analyzePair(series, thin, { minSpread: 0.05, minN: 30 });
+  ok(res.verdict.label === 'INSUFFICIENT_COVERAGE', 'thin regime coverage → INSUFFICIENT_COVERAGE, not REDUNDANT/NULL');
+  ok(res.verdict.bucketsEvaluable < 2, 'fewer than 2 evaluable buckets reported');
+  ok(res.coverage.coveredFrac < 0.15, 'coverage surfaced on the result');
+}
+
 console.log(`macroConditionerEngine: ${passed} assertions passed`);
