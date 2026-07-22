@@ -46,6 +46,7 @@ import { buildCsiInputs } from './js/creditStressEngine.js';
 import { runCarryBasket, financingHaircut, alignSeries as _carryAlignSeries } from './js/carryEngine.js';
 import { combineFactors as _combineFactors, MF_DEFAULTS as _MF_DEFAULTS } from './js/multiFactorEngine.js';
 import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
+import { runMaxCopierSuite, MAXCOPIER_INSTRUMENTS, MAXCOPIER_DEFAULTS, EXIT_MODES as MAXCOPIER_EXIT_MODES } from './js/maxCopierEngine.js';
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
@@ -9985,6 +9986,74 @@ app.post('/api/vol-backtest-v2/run', express.json({ limit: '256kb' }), (req, res
 
 app.get('/api/vol-backtest-v2/status/:jobId', (req, res) => {
   const job = v2Jobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Max Copier strategy backtester (M1 event engine; runs off local/R2 parquet,
+//    no OANDA D1 needed). Three exit modes A/B'd on the same signals, IS/OOS. ──
+const maxCopierJobs = new Map();
+function _purgeStaleMaxCopierJobs() {
+  const cutoff = Date.now() - 60 * 60_000; // 1h TTL
+  for (const [id, job] of maxCopierJobs) if (job.startedAt < cutoff) maxCopierJobs.delete(id);
+}
+
+app.post('/api/max-copier/run', express.json({ limit: '256kb' }), (req, res) => {
+  const b = req.body ?? {};
+  const num = (v, d) => (v === undefined || v === '' || isNaN(+v) ? d : +v);
+  const D = MAXCOPIER_DEFAULTS;
+  const opts = {
+    donchianLookback: Math.round(num(b.donchianLookback, D.donchianLookback)),
+    impulseAtrMult:   num(b.impulseAtrMult, D.impulseAtrMult),
+    consolBars:       Math.round(num(b.consolBars, D.consolBars)),
+    consolMaxAtr:     num(b.consolMaxAtr, D.consolMaxAtr),
+    vaDepth:          Math.min(Math.max(num(b.vaDepth, D.vaDepth), 0.05), 0.5),
+    entryTimeout:     Math.round(num(b.entryTimeout, D.entryTimeout)),
+    stopAtrBuffer:    num(b.stopAtrBuffer, D.stopAtrBuffer),
+    requireDivergence: b.requireDivergence === undefined ? D.requireDivergence : !!b.requireDivergence,
+    nPositions:       Math.min(Math.max(Math.round(num(b.nPositions, D.nPositions)), 1), 10),
+    maxHoldBarsM15:   Math.round(num(b.maxHoldBarsM15, D.maxHoldBarsM15)),
+    tpR:              num(b.tpR, D.tpR),
+    mmMult:           num(b.mmMult, D.mmMult),
+    ladderR:          num(b.ladderR, D.ladderR),
+    trailAtrMult:     num(b.trailAtrMult, D.trailAtrMult),
+    trailStartR:      num(b.trailStartR, D.trailStartR),
+    oosFrac:          Math.min(Math.max(num(b.oosFrac, D.oosFrac), 0.1), 0.6),
+  };
+
+  const pair = b.pair ? String(b.pair).toLowerCase() : '';
+  const instruments = pair && MAXCOPIER_INSTRUMENTS.includes(pair)
+    ? [pair] : MAXCOPIER_INSTRUMENTS;
+
+  const jobId     = `mc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleMaxCopierJobs();
+  maxCopierJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    try {
+      const { results, pooled, log } = await runMaxCopierSuite(opts, instruments);
+      if (!results.length) {
+        maxCopierJobs.set(jobId, { status: 'error', error: 'No results generated (no M1 data reachable?)', log, startedAt });
+        return;
+      }
+      maxCopierJobs.set(jobId, { status: 'done', result: { results, pooled, log, opts, exitModes: MAXCOPIER_EXIT_MODES }, startedAt });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[max-copier/run]', msg, e?.stack ?? '');
+      maxCopierJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/max-copier/status/:jobId', (req, res) => {
+  const job = maxCopierJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') {
     return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });

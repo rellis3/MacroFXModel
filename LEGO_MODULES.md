@@ -690,6 +690,24 @@ faithful measures when the full matrix is available, applied at the
 it tells you how illusory the book's diversification is, per the honest read on
 the "diversification is the real edge" thread that prompted it.
 
+### 1z. Max Copier engine (2026-07-22) — impulse-continuation basket backtester
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Max Copier engine** | `js/maxCopierEngine.js` | an M1-driven, event-based backtester for the discretionary "Max copier" strategy (`max copier strategy.md`): HTF (1H Donchian) level → impulse past it (close ≥ k·ATR beyond) → M15 consolidation → rotate into the value-area → **hidden-divergence** confirm → enter a basket of N positions → managed exit. **Exit model is a SELECTOR (`EXIT_MODES`), not knobs** — three modes (`fixed_r` minimal-DOF baseline / `shared_htf` measured-move / `ladder_trail` scale-out-plus-trail) are simulated on the SAME detected signals and A/B'd on OOS Sharpe (`bestMode`, ≥30-basket gate). Headline stats are **per-basket** (correlated basket = sizing, not diversification); per-position rows are emitted for the prop-firm CSV. MAE read off the real M1 path. Exports `runMaxCopier` (pure, network-free), `compareMaxCopier`, `runMaxCopierSuite` (async; lazy-imports `loadM1ForPair` so the core stays dependency-free), `MAXCOPIER_INSTRUMENTS` (24 FX + gold), `MAXCOPIER_DEFAULTS`, plus the pure divergence helpers (`swingLows`/`swingHighs`/`hasHiddenDivergence`). **Reuses bricks, copies nothing**: `barUtils` (`extractBars`/`resampleTo`/`bisect`), `indicatorCore` (`atrWilder`/`rsiWilder`), `forecastCore` (`summarizeSplit` + `DEFAULT_COST_PCT`/`DEFAULT_SLIP_PCT`), `instrumentRegistry` (`instrument` → pip/asset-class). Tested `js/maxCopierEngine.test.mjs` (offline synthetic: divergence truth-table, one-clean-long-setup pipeline, ladder-varies-positions, gold=commodity friction, flat→no-signal). | `server.js` `/api/max-copier/run` + `/status/:jobId` (async-job Map, no OANDA D1 — runs off local/R2 parquet); `max-copier-backtest.html` (IS/OOS 3-mode tables, pooled portfolio, per-instrument, cost-sensitivity, yearly-concentration, 3 CLAUDE.md-spec CSV exports); linked from `index.html`. | ✅ built · ⛔ **null** (2016→2026 all-26 run: pooled OOS Sharpe negative across all three exit modes; gold marginally +0.1–0.15 OOS ≈ noise, every FX pair negative — the mechanical proxy has no after-cost edge, as the folklore prior predicted) |
+
+**Known limitation / candidate upgrade:** the "value area" is approximated
+**by price** (lower/upper `vaDepth` of the consolidation range), not by a real
+tick-volume value-area (the parquet carries tick volume, so a proper VP/TPO
+value area is a future toggle). Also: **basket = sizing.** N correlated
+positions on one signal is one bet at N× size; per-basket is the honest stat
+unit, per-position is only for the broker/prop trade log. Every threshold
+(Donchian lookback, impulse k, consolidation bounds, `vaDepth`, stop buffer,
+divergence on/off) is a **degree of freedom = overfit surface** — the engine is
+a *mechanical proxy* of a discretionary method, judged OOS. The swing-fractal +
+value-area logic is engine-local glue for now; if a second consumer wants it, it
+becomes a §2 candidate to extract.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
