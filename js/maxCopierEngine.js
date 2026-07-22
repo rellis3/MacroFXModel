@@ -339,7 +339,8 @@ function simulateBasket(sig, packed, opts, mode, frictions) {
     const mfeR = slDist > 0 ? mfeAtExit[p] / slDist : 0; // positive
     basketPnlPct += pnlPct;
     positions.push({
-      date, dir, pos: p + 1, entry: round(entry), exit: round(ex.px), reason: ex.reason, exitTime: ex.time,
+      date, dir, pos: p + 1, entry: round(entry), exit: round(ex.px), reason: ex.reason,
+      entryTime, exitTime: ex.time,
       pnlPct: round(pnlPct, 4), pnlR: round(pnlR, 4),
       maePct: round(maePct, 4), maeR: round(maeR, 4), mfeR: round(mfeR, 4), slDist: round(slDist),
     });
