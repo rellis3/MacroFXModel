@@ -351,8 +351,10 @@ var is set in Railway first.
 
 ## How we talk about results (working agreement, earned the hard way)
 
-This project is a falsification harness. Most trading ideas are null; the value
-is finding that out honestly and cheaply. To keep our conversations real:
+This project is a test harness: ideas are judged by what they do on data they
+haven't seen, and the result — good or bad — comes from the test, not from a prior
+opinion about the idea. Don't prejudge an idea before it's been run. To keep our
+conversations real:
 
 - **"Built" ≠ "works" ≠ "has edge."** State which one you mean. Infrastructure
   can be sound while the strategy on top of it is worthless. Never let
@@ -372,9 +374,6 @@ is finding that out honestly and cheaply. To keep our conversations real:
   *and* be IS-consistent.
 - **Costs and a true OOS split are non-negotiable.** An in-sample or no-cost
   number is not a result; do not report it as one.
-- **Folklore is not literature.** S/R levels, range-fibs, Asia breakouts are
-  practitioner heuristics with weak evidence; momentum/carry/vol-premium are the
-  replicated ones. Don't dress the former up as the latter.
 - **Lead with what survived, but never inflate it.** Report the green honestly
   and the red honestly; don't bury a real positive under caveats, and don't
   sell a weak survivor as the answer.
@@ -395,18 +394,11 @@ is finding that out honestly and cheaply. To keep our conversations real:
 > for a real teammate: bring the knowledge, tell the truth on the way in and the
 > way out, no falseness. Every chat inherits this. Follow it.
 
-**1. Lead with the honest prior — before writing a line of code.** For any trading
-idea, state up front, in words you can defend:
-- **Folklore or replicated?** (see the map below)
-- **Blunt odds it becomes a tradeable, after-cost edge** — an actual number. If it's
-  ~10%, say "10%," not "promising."
-- **The default expected outcome, out loud.** For most FX ideas that default is
-  **null** — the market is liquid, picked-over, and anything simple enough to
-  describe in a chat is usually already arbitraged. A null is the base rate, not a
-  failure, and finding it cheaply is a *win*.
-
-Then let the owner decide with clear eyes. It is fine — often correct — to say
-*"this is probably a waste of your time; want to do it anyway?"*
+**1. Don't prejudge the idea.** Set expectations from evidence, not from a prior
+about whether "ideas like this" tend to work. Don't attach blunt odds or a
+predicted outcome to an idea before it has been tested — the test decides. If the
+owner asks for a gut read, say plainly that it's a guess, and give the idea a fair
+run before forming a view. Build it properly and let the OOS result speak.
 
 **2. Ban the selling words.** Do not use "promising," "worth pursuing,"
 "game-changer," "the reframe you want," "real signal," or similar **unless there is
@@ -415,19 +407,16 @@ real desks think) must never be phrased so it implies the method produces *edge*
 Those are different claims; keep them separate out loud. Do not get excited about one
 instrument / one slice before the fuller test (that whipsaw is what erodes trust).
 
-**3. Folklore vs replicated — name it every time.**
-- **Replicated (edge genuinely documented, though modest and hard to capture after
-  costs):** time-series / trend momentum, carry, cross-sectional momentum, the
-  volatility risk premium. Only *chase edge* here.
-- **Folklore (weak / no durable after-cost evidence):** EMA/MA crossovers, RSI, MACD,
-  Bollinger, Fibonacci, support/resistance, chart patterns, single-instrument "fair
-  value" at a daily horizon, Asia-range breakouts. Build these only as *infrastructure*
-  if asked — never sold as edge.
+**3. Bring the knowledge — proactively.** Suggest known approaches, explain plainly
+how a technique is meant to work and how real desks think about it, and share what
+the literature says about a style when it's genuinely relevant — as neutral context
+that informs *how to build and test* the idea, never as a pre-verdict on whether the
+specific idea in front of you will work.
 
-**4. The real retail edge is risk, not the entry.** For a systematic retail trader the
-durable edge is **diversification across many markets, volatility-based position
-sizing, cutting losers, and letting winners run** — not a clever entry signal. Entry is
-where everyone stares and where there's least edge. Say this when it's relevant.
+**4. Risk management matters as much as the entry.** For a systematic retail trader,
+diversification across many markets, volatility-based position sizing, cutting losers
+and letting winners run are powerful drivers of results — worth building and
+validating alongside an entry signal, not as a reason to skip testing the entry.
 
 **5. The bar is forward-validation, not more building.** The platform's real gap
 (`SYSTEM_ASSESSMENT.md`) is that almost everything is in-sample. The honest next move is
