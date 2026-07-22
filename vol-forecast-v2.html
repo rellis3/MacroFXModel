@@ -2101,16 +2101,17 @@ function _cogBands(volAnnual, mult) {
 // (>5% AND within 0.5–2.0× the GARCH σ) so garbage can't ship; else fall back to
 // primary σ, flagged. Window tunable via VF_COGHV_WINDOW. fx + gold always primary.
 const VF_COGHV_WINDOW = 30;                          // 30-day tracks COG's smoothing best (10/14/20/30 in the endpoint log)
-// NQ is the ONLY index we draw from COG's close-to-close HV — it's the one COG
-// actually publishes, and OANDA's NAS100 close-to-close data tracks him. Every
-// other index reads too low from OANDA's cc data (SPX500/US30/DE30/UK100/US2000),
-// so they stay on the platform σ (GARCH). fx + gold always use the platform σ too.
-const _CCHV_USE = new Set(['NQ']);
+// The instruments we draw from COG's close-to-close HV — the ones COG actually
+// publishes and cross-reference against him: NQ (indices) and EURUSD (forex). Both
+// use his own cc-HV method so our lines match his. Every OTHER index reads too low
+// from OANDA's cc data (SPX500/US30/DE30/UK100/US2000) and the rest of fx + gold
+// stay on the platform σ (Yang-Zhang/GARCH) — COG doesn't publish them to match to.
+const _CCHV_USE = new Set(['NQ', 'EURUSD']);
 let _cogHvByInst = null, _cogHvPromise = null, _cogHvMeta = null;
 async function loadCogHv() {
   if (_cogHvByInst) return _cogHvByInst;
-  // Ask only for the indices we actually draw from cc-HV (NQ) — the server then
-  // computes just those, not all ~8 indices, so the cold path (and the warm) is fast.
+  // Ask only for the instruments we actually draw from cc-HV (NQ, EURUSD) — the
+  // server computes just those, not all indices, so the cold path (and warm) is fast.
   const _inst = encodeURIComponent([..._CCHV_USE].join(','));
   if (!_cogHvPromise) _cogHvPromise = fetch(`/api/vol-forecast/cog-hv?window=${VF_COGHV_WINDOW}&inst=${_inst}`)
     .then(r => r.json())
@@ -2118,14 +2119,15 @@ async function loadCogHv() {
     .catch(() => (_cogHvByInst = {}));
   return _cogHvPromise;
 }
-// The σ to draw an instrument's COG bands from. Only NQ uses COG's close-to-close
-// HV (the one index COG publishes and OANDA tracks him on); every other index + fx
-// + gold use the platform σ. A light finite/sane check only — no "rejection".
+// The σ to draw an instrument's COG bands from. The _CCHV_USE set (NQ, EURUSD) uses
+// COG's close-to-close HV so our lines match his; everything else uses the platform
+// σ. Light finite/sane check only (floor 1% — FX cc-HV can sit ~3-5%, well below an
+// index's, so the old >4 floor would wrongly reject calm EURUSD) — no "rejection".
 function _cogVol(name, f) {
   const g = f?.vol_annual;
   if (_CCHV_USE.has(name)) {
     const hv = _cogHvByInst && _cogHvByInst[name]?.volAnnual;
-    if (hv > 4 && hv < 200) return hv;
+    if (hv > 1 && hv < 200) return hv;
   }
   return g;
 }
