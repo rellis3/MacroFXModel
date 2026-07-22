@@ -736,8 +736,7 @@
         <div class="vf-exp-sep"></div>
         <button class="vf-exp-item" id="vfSessionExportBtn" onclick="closeExpDropdown();exportSession()"           disabled>⬇ Session</button>
         <button class="vf-exp-item" id="vfV3ExportBtn"      onclick="closeExpDropdown();exportV3()"                disabled>⬇ V+S</button>
-        <button class="vf-exp-item" id="vfCZExportBtn"      onclick="closeExpDropdown();exportConfluenceZones()"   disabled>⬇ C+Z</button>
-        <button class="vf-exp-item" id="vfOIExportBtn"      onclick="closeExpDropdown();exportOIWalls()"           disabled>⬇ OI Walls <span style="font-size:9px;opacity:.55">calls/puts · max pain</span></button>
+        <button class="vf-exp-item" id="vfCZExportBtn"      onclick="closeExpDropdown();exportConfluenceZones()"   disabled>⬇ C+Z <span style="font-size:9px;opacity:.55">+ OI walls</span></button>
         <button class="vf-exp-item" id="vfWeeklyExportBtn"  onclick="closeExpDropdown();exportWeekly()"            disabled>⬇ Weekly</button>
         <button class="vf-exp-item" id="vfCalWkBtn"         onclick="closeExpDropdown();exportCalibratedWeekly()"  disabled>⬇ Weekly (cal) <span style="font-size:9px;opacity:.55">backtest %</span></button>
         <button class="vf-exp-item" id="vfCogBtn"           onclick="closeExpDropdown();exportCog()"               disabled>⬇ COG <span style="font-size:9px;opacity:.55">reverse-eng</span></button>
@@ -1689,7 +1688,7 @@ function renderV2Grid(data, isHistorical = false) {
   if (!isHistorical) loadAllM5Charts(data.instruments);
 
   if (levelsViewActive) renderLevelsTable();
-  const en = ['vfExportBtn','vfExtendedBtn','vfLevelsBtn','vfCZExportBtn','vfOIExportBtn'];
+  const en = ['vfExportBtn','vfExtendedBtn','vfLevelsBtn','vfCZExportBtn'];
   en.forEach(id => { const el = document.getElementById(id); if (el) el.disabled = false; });
 }
 
@@ -2368,33 +2367,7 @@ async function exportConfluenceZones() {
     setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2200);
   } catch (e) {
     btn.textContent = '✗ Error'; btn.title = e.message;
-    setTimeout(() => { btn.textContent = orig; btn.disabled = false; btn.title = 'Confluence Zones: Fibonacci + prev highs/lows + weekly pivots + vol levels'; }, 3000);
-  }
-}
-
-// OI walls + max pain — server builds the paste block from the OI analyser store
-// (index.html). Independent of the vol forecast; same fetch→copy pattern as C+Z.
-async function exportOIWalls() {
-  const btn = document.getElementById('vfOIExportBtn');
-  const orig = btn.textContent;
-  btn.textContent = '⏳ Fetching…'; btn.disabled = true;
-  try {
-    const res = await fetch('/api/oi-levels/export');
-    if (!res.ok) { const t = await res.text(); throw new Error(t.slice(0, 120)); }
-    const text = await res.text();
-    if (text.includes('no OI data')) throw new Error('No OI data — paste an option chain on the index.html OI analyser first.');
-    await navigator.clipboard.writeText(text).catch(() => {
-      const date = currentForecast?.session_date ?? 'latest';
-      Object.assign(document.createElement('a'), {
-        href: URL.createObjectURL(new Blob([text], { type: 'text/plain' })),
-        download: `oi-walls-${date}.txt`,
-      }).click();
-    });
-    btn.textContent = '✓ Copied!';
-    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2200);
-  } catch (e) {
-    btn.textContent = '✗ Error'; btn.title = e.message;
-    setTimeout(() => { btn.textContent = orig; btn.disabled = false; btn.title = 'OI Walls: strongest call/put walls + max pain (paste into the OI Walls & Max Pain indicator)'; }, 3200);
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; btn.title = 'Confluence Zones: Fibonacci + prev highs/lows + weekly pivots + vol levels + OI walls / max pain / gamma regime'; }, 3000);
   }
 }
 

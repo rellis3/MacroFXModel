@@ -1,25 +1,42 @@
 //@version=6
-indicator("C.og - Confluence Zones v1", overlay=true, max_lines_count=500, max_labels_count=500)
+indicator("C.og - Confluence Zones + OI v2", overlay=true, max_lines_count=500, max_labels_count=500)
 
 // =====================================================
 // HOW TO USE
 // =====================================================
 // 1. On the vol-forecast dashboard, click ⬇ C+Z.
-// 2. Paste the copied text into the input below.
-// 3. The indicator draws horizontal zones for the
-//    current chart symbol — coloured by confluence
-//    layer count (yellow=2, orange=3, red/purple=4+).
-// 4. POC and NPOC lines are computed live from the
-//    chart's own daily bars — no paste needed for those.
-// 5. Set Alert Proximity Pips and enable alerts via
-//    TradingView's alert panel (any condition → this
-//    indicator → "CZ Proximity Alert").
+// 2. Paste the copied text into the input below. The block
+//    now contains TWO sections:
+//      • CONFLUENCE ZONES  — fib / S/R / pivots / vol levels
+//      • OI WALLS & MAX PAIN — option walls, max pain, gamma
+//    Both are drawn for the current chart symbol.
+// 3. Confluence zones are coloured by layer count
+//    (yellow=2, orange=3, red/purple=4+). OI levels are
+//    coloured by type:
+//      • call_wall  → RED    (resistance — heavy call OI above)
+//      • put_wall   → GREEN  (support — heavy put OI below)
+//      • max_pain   → YELLOW (pin / magnet, dashed)
+//      • gamma_flip → PURPLE (regime boundary, dotted)
+//      • oi_volume  → BLUE   (today's heaviest option volume)
+//    OI wall thickness scales with strength tier (t1..t3).
+// 4. The gamma REGIME (PIN vs BREAKOUT) tints the chart
+//    background + shows a label (from net-GEX sign):
+//      • PIN      → dealers long gamma, moves dampened,
+//                   price pulled to max pain, walls hold.
+//      • BREAKOUT → dealers short gamma, moves amplified,
+//                   wall breaks tend to run.
+// 5. "Show ONLY OI levels" hides the confluence zones +
+//    POC/NPOC so you see just the option structure.
+// 6. POC and NPOC lines are computed live from the chart's
+//    own daily bars — no paste needed for those.
 //
-// Refresh the paste each trading day (or after major
-// moves) to keep C+Z zones aligned to current prices.
-// POC/NPOC update automatically each bar.
+// Refresh the paste each trading day (or after major moves /
+// a new option expiry). The OI section stamps each pair's
+// save time (· saved …) so a STALE wall is visible — the
+// levels are only as fresh as your last option-chain paste,
+// not a live feed. POC/NPOC update automatically each bar.
 //
-// LEVEL TYPES IN EXPORT:
+// CONFLUENCE LEVEL TYPES:
 //   sr     — Swing pivot S/R (2-bar confirmation, 30-day lookback)
 //   fib    — Fibonacci from identified swing pivot pairs (recursive)
 //   d_open — Previous daily opens (last 5 days)
@@ -29,6 +46,11 @@ indicator("C.og - Confluence Zones v1", overlay=true, max_lines_count=500, max_l
 //   vol_m  — Vol forecast median absolute levels
 //   vol_75 — Vol forecast 75th-pct absolute levels
 //   round  — Psychological round numbers
+// OI LEVEL TYPES:
+//   call_wall / put_wall — strongest call/put-OI strikes (t3 = strongest)
+//   max_pain             — option max-pain strike (price-pinning magnet)
+//   gamma_flip           — dealer gamma sign change (regime boundary)
+//   oi_volume            — heaviest TODAY's option volume (transient)
 
 // =====================================================
 // INPUTS — TICKER MAPPING (match your chart symbols)
@@ -59,30 +81,72 @@ czText = input.text_area(
 "\n" +
 "EURUSD\n" +
 "CZ 1.08750 : 4 fib,sr,d_open\n" +
-"CZ 1.08420 : 3 fib,w_piv"
+"CZ 1.08420 : 3 fib,w_piv\n" +
+"\n" +
+"──── OI WALLS & MAX PAIN ───────────────────\n" +
+"Generated: 2026-06-18\n" +
+"\n" +
+"GOLD\n" +
+"· saved 6/18/2026, 08:15:00 · spot 2300.0 · DTE 4 · regime PIN\n" +
+"OI 2400.00 : call_wall t3\n" +
+"OI 2350.00 : max_pain\n" +
+"OI 2300.00 : put_wall t2\n" +
+"\n" +
+"EURUSD\n" +
+"· saved 6/18/2026, 08:16:00 · spot 1.0875 · DTE 4 · regime BREAKOUT\n" +
+"OI 1.09000 : call_wall t3\n" +
+"OI 1.08800 : gamma_flip\n" +
+"OI 1.08480 : max_pain\n" +
+"OI 1.08000 : put_wall t3"
 )
 
 // =====================================================
-// STYLE INPUTS
+// STYLE INPUTS — CONFLUENCE ZONES
 // =====================================================
 
-col_4plus  = input.color(color.new(color.fuchsia, 0),  "4+ Layer Zone Colour",      group="Zone Colours")
-col_3      = input.color(color.new(color.orange,  0),  "3 Layer Zone Colour",       group="Zone Colours")
-col_2      = input.color(color.new(color.yellow,  0),  "2 Layer Zone Colour",       group="Zone Colours")
+col_4plus  = input.color(color.new(color.fuchsia, 0),  "4+ Layer Zone Colour",      group="Confluence Zone Colours")
+col_3      = input.color(color.new(color.orange,  0),  "3 Layer Zone Colour",       group="Confluence Zone Colours")
+col_2      = input.color(color.new(color.yellow,  0),  "2 Layer Zone Colour",       group="Confluence Zone Colours")
 
-zone_width = input.int(2, "Line Width", minval=1, maxval=5, group="Zone Colours")
-show_label = input.bool(true, "Show Labels",                   group="Zone Colours")
-show_types = input.bool(true, "Show Level Types in Label",     group="Zone Colours")
-show_table   = input.bool(true,  "Show Zone Summary Table",       group="Zone Colours")
-req_anchor   = input.bool(false, "Only show vol-anchored zones",   group="Zone Colours",
+zone_width = input.int(2, "Line Width", minval=1, maxval=5, group="Confluence Zone Colours")
+show_label = input.bool(true, "Show Labels",                   group="Confluence Zone Colours")
+show_types = input.bool(true, "Show Level Types in Label",     group="Confluence Zone Colours")
+show_table   = input.bool(true,  "Show Zone Summary Table",       group="Confluence Zone Colours")
+req_anchor   = input.bool(false, "Only show vol-anchored zones",   group="Confluence Zone Colours",
      tooltip="Hides zones that do not include a vol_m or vol_75 level. Unanchored zones are levels of interest only — no statistical engine drives price to them.")
-dim_unanchor = input.bool(true,  "Dim unanchored zones",           group="Zone Colours",
+dim_unanchor = input.bool(true,  "Dim unanchored zones",           group="Confluence Zone Colours",
      tooltip="When 'Only show vol-anchored' is off: dims unanchored zones rather than hiding them. Toggle off to show all zones at full colour.")
 
+// =====================================================
+// STYLE INPUTS — OI WALLS / MAX PAIN / GAMMA
+// =====================================================
+
+show_oi     = input.bool(true,  "Show OI Levels", group="OI Walls & Gamma")
+oi_only     = input.bool(false, "Show ONLY OI levels (hide confluence zones + POC/NPOC)", group="OI Walls & Gamma",
+     tooltip="Focus the chart on the option structure — hides fib/S-R/pivot confluence zones and the POC/NPOC lines.")
+col_call    = input.color(color.new(color.red,    0), "Call Wall Colour (resistance)", group="OI Walls & Gamma")
+col_put     = input.color(color.new(color.green,  0), "Put Wall Colour (support)",     group="OI Walls & Gamma")
+col_pain    = input.color(color.new(color.yellow, 0), "Max Pain Colour (magnet)",      group="OI Walls & Gamma")
+col_gamma   = input.color(color.new(color.purple, 0), "Gamma Flip Colour (regime)",    group="OI Walls & Gamma")
+col_vol     = input.color(color.new(color.aqua,   0), "Volume Magnet Colour (today)",  group="OI Walls & Gamma")
+oi_base_w   = input.int(2, "OI Base Line Width", minval=1, maxval=4, group="OI Walls & Gamma",
+     tooltip="Walls with a higher strength tier (t2, t3) draw thicker than this base.")
+show_oi_lbl = input.bool(true, "Show OI Labels", group="OI Walls & Gamma")
+
+show_regime  = input.bool(true, "Show Gamma Regime Tint + Label", group="OI Walls & Gamma",
+     tooltip="Tints the background by the pasted gamma regime (from net-GEX sign): PIN = walls hold / pull to max pain; BREAKOUT = wall breaks run. GEX-sign read only (the fuller classifier's gravity weighting needs live ATR, not in the paste).")
+col_pin_bg   = input.color(color.new(color.teal,   90), "PIN Tint",      group="OI Walls & Gamma")
+col_break_bg = input.color(color.new(color.orange, 90), "BREAKOUT Tint", group="OI Walls & Gamma")
+
+// =====================================================
+// ALERTS
+// =====================================================
+
 alert_pips       = input.float(3.0, "Alert Proximity (pips)", minval=0.1, step=0.5, group="Alerts",
-     tooltip="Fire alert when close comes within this many pips of any zone with count ≥ alert_min_count.")
-alert_min_count  = input.int(2, "Min Count for Alert", minval=2, maxval=5, group="Alerts",
-     tooltip="Only alert on zones with this many or more distinct level types.")
+     tooltip="Fire alert when close comes within this many pips of any qualifying zone / OI level.")
+alert_min_count  = input.int(2, "Min Count for CZ Alert", minval=2, maxval=5, group="Alerts",
+     tooltip="Only alert on confluence zones with this many or more distinct level types.")
+alert_oi         = input.bool(true, "Also alert near OI walls / max pain", group="Alerts")
 alert_extend_right = input.bool(true, "Extend Lines Right", group="Alerts")
 
 // =====================================================
@@ -112,7 +176,7 @@ f_normaliseTicker(t, goldT, nqT, spxT, de30T, uk100T, us30T, us2kT) =>
         r := "NQ"
     else if tU == str.upper(spxT) or tU == "SPX500USD" or tU == "US500" or tU == "SP1!"
         r := "SPX500"
-    else if tU == str.upper(de30T) or tU == "GER40" or tU == "GER30" or tU == "DE30EUR" or tU == "FDAX1!"
+    else if tU == str.upper(de30T) or tU == "GER40" or tU == "GER30" or tU == "DE30EUR" or tU == "DE30USD" or tU == "FDAX1!"
         r := "DE30"
     else if tU == str.upper(uk100T) or tU == "UK100GBP" or tU == "Z1!" or tU == "FTSE100"
         r := "UK100"
@@ -135,7 +199,7 @@ f_pipSize(sym) =>
      str.contains(symU, "JPY")                       ? 0.01   : 0.0001
 
 // =====================================================
-// PARSE C+Z BLOCK
+// PARSE C+Z + OI BLOCK
 // =====================================================
 
 // Known ticker names to detect symbol-header lines
@@ -156,6 +220,11 @@ var float[]  czPrices = array.new_float()
 var int[]    czCounts = array.new_int()
 var string[] czTypes  = array.new_string()
 
+var float[]  oiPrices = array.new_float()
+var string[] oiTypes  = array.new_string()
+var int[]    oiTiers  = array.new_int()
+var string   oiRegime = na
+
 if barstate.isfirst
     sym   = f_normaliseTicker(syminfo.ticker, goldChart, nqChart, spxChart, de30Chart, uk100Chart, us30Chart, us2kChart)
     symUp = str.upper(sym)
@@ -163,6 +232,7 @@ if barstate.isfirst
     n     = array.size(rows)
 
     bool inCZSection = false
+    bool inOISection = false
     bool inSymBlock  = false
 
     if n > 0
@@ -174,40 +244,78 @@ if barstate.isfirst
                 continue
             rowUp = str.upper(rawRow)
 
+            // ── Section switches ──────────────────────────────────────────────
+            if str.contains(rowUp, "OI WALLS")
+                inOISection := true
+                inCZSection := false
+                inSymBlock  := false
+                continue
             if str.contains(rowUp, "CONFLUENCE ZONES")
                 inCZSection := true
+                inOISection := false
                 inSymBlock  := false
                 continue
 
-            if not inCZSection
+            // Skip meta lines in either section
+            if str.contains(rowUp, "GENERATED:") or str.contains(rowUp, "CONFIG:") or str.contains(rowUp, "TYPES:")
                 continue
 
-            if str.contains(rowUp, "GENERATED:") or str.contains(rowUp, "CONFIG:")
+            // ── CONFLUENCE ZONES section ──────────────────────────────────────
+            if inCZSection
+                if not str.startswith(rawRow, "CZ ") and f_isKnownTicker(rowUp) and str.length(rawRow) <= 12
+                    inSymBlock := str.contains(rowUp, symUp)
+                    continue
+                if inSymBlock and str.startswith(rawRow, "CZ ")
+                    parts = str.split(rawRow, " : ")
+                    if array.size(parts) == 2
+                        priceStr   = str.trim(str.replace_all(array.get(parts, 0), "CZ ", ""))
+                        countTypes = str.trim(array.get(parts, 1))
+                        ctParts    = str.split(countTypes, " ")
+                        if array.size(ctParts) >= 2
+                            price = str.tonumber(priceStr)
+                            cnt   = int(str.tonumber(str.trim(array.get(ctParts, 0))))
+                            types = str.trim(array.get(ctParts, 1))
+                            if not na(price) and not na(cnt) and price > 0
+                                array.push(czPrices, price)
+                                array.push(czCounts, cnt)
+                                array.push(czTypes,  types)
                 continue
 
-            if not str.startswith(rawRow, "CZ ") and f_isKnownTicker(rowUp) and str.length(rawRow) <= 12
-                inSymBlock := str.contains(rowUp, symUp)
+            // ── OI WALLS & MAX PAIN section ───────────────────────────────────
+            if inOISection
+                // Gamma-regime context line (only our symbol's block)
+                if inSymBlock and str.contains(rowUp, "REGIME")
+                    if str.contains(rowUp, "BREAKOUT")
+                        oiRegime := "BREAKOUT"
+                    else if str.contains(rowUp, "PIN")
+                        oiRegime := "PIN"
+                    continue
+                // Symbol-header line
+                if not str.startswith(rawRow, "OI ") and f_isKnownTicker(rowUp) and str.length(rawRow) <= 12
+                    inSymBlock := str.contains(rowUp, symUp)
+                    continue
+                // Level line: "OI {price} : {type} [t{n}]"
+                if inSymBlock and str.startswith(rawRow, "OI ")
+                    parts = str.split(rawRow, " : ")
+                    if array.size(parts) == 2
+                        priceStr = str.trim(str.replace_all(array.get(parts, 0), "OI ", ""))
+                        rhs      = str.trim(array.get(parts, 1))
+                        price    = str.tonumber(priceStr)
+                        rhsParts = str.split(rhs, " ")
+                        typ      = array.size(rhsParts) >= 1 ? str.trim(array.get(rhsParts, 0)) : rhs
+                        int tier = 0
+                        if array.size(rhsParts) >= 2
+                            tstr = str.trim(array.get(rhsParts, 1))
+                            if str.startswith(tstr, "t")
+                                tier := int(str.tonumber(str.replace_all(tstr, "t", "")))
+                        if not na(price) and price > 0
+                            array.push(oiPrices, price)
+                            array.push(oiTypes,  typ)
+                            array.push(oiTiers,  na(tier) ? 0 : tier)
                 continue
-
-            if inSymBlock and str.startswith(rawRow, "CZ ")
-                parts = str.split(rawRow, " : ")
-                if array.size(parts) == 2
-                    priceStr   = str.trim(str.replace_all(array.get(parts, 0), "CZ ", ""))
-                    countTypes = str.trim(array.get(parts, 1))
-                    ctParts    = str.split(countTypes, " ")
-                    if array.size(ctParts) >= 2
-                        price = str.tonumber(priceStr)
-                        cnt   = int(str.tonumber(str.trim(array.get(ctParts, 0))))
-                        types = str.trim(array.get(ctParts, 1))
-                        if not na(price) and not na(cnt) and price > 0
-                            array.push(czPrices, price)
-                            array.push(czCounts, cnt)
-                            array.push(czTypes,  types)
 
 // =====================================================
 // DAILY BAR ACCUMULATION (runs every bar)
-// Builds a rolling array of each complete day's H/L.
-// Last element = current (possibly incomplete) day.
 // =====================================================
 
 var float[] _dH = array.new_float(0)
@@ -229,33 +337,64 @@ else
         array.set(_dL, _nd - 1, math.min(array.get(_dL, _nd - 1), low))
 
 // =====================================================
-// DRAW ZONES + ALERT
+// GAMMA REGIME BACKGROUND TINT
+// =====================================================
+
+regimeTint = (not show_regime or not show_oi or na(oiRegime)) ? na :
+     oiRegime == "PIN"      ? col_pin_bg :
+     oiRegime == "BREAKOUT" ? col_break_bg : na
+bgcolor(regimeTint, title="OI Gamma Regime")
+
+// =====================================================
+// DRAW ZONES + OI LEVELS
 // =====================================================
 
 var line[]  czLines    = array.new_line()
 var label[] czLabels   = array.new_label()
+var line[]  oiLines    = array.new_line()
+var label[] oiLabels   = array.new_label()
 var line[]  pocLines   = array.new_line()
 var label[] pocLabels  = array.new_label()
 var line[]  npocLines  = array.new_line()
 var label[] npocLabels = array.new_label()
+var label   regimeLbl  = na
 
 f_zoneColour(cnt) =>
     cnt >= 4 ? col_4plus : cnt == 3 ? col_3 : col_2
 
-if barstate.islast
-    // ── Cleanup — CZ ──────────────────────────────────────────────────────────
-    int _nl = array.size(czLines)
-    if _nl > 0
-        for i = 0 to _nl - 1
-            line.delete(array.get(czLines, i))
-    int _nlab = array.size(czLabels)
-    if _nlab > 0
-        for i = 0 to _nlab - 1
-            label.delete(array.get(czLabels, i))
-    array.clear(czLines)
-    array.clear(czLabels)
+f_oiColour(typ) =>
+    typ == "call_wall"   ? col_call  :
+     typ == "put_wall"   ? col_put   :
+     typ == "max_pain"   ? col_pain  :
+     typ == "gamma_flip" ? col_gamma :
+     typ == "oi_volume"  ? col_vol   : color.gray
 
-    // ── Cleanup — POC ─────────────────────────────────────────────────────────
+f_oiStyle(typ) =>
+    typ == "max_pain"    ? line.style_dashed :
+     typ == "gamma_flip" ? line.style_dotted : line.style_solid
+
+if barstate.islast
+    // ── Cleanup (inline, proven pattern) ──────────────────────────────────────
+    int _ncz = array.size(czLines)
+    if _ncz > 0
+        for i = 0 to _ncz - 1
+            line.delete(array.get(czLines, i))
+    array.clear(czLines)
+    int _nczl = array.size(czLabels)
+    if _nczl > 0
+        for i = 0 to _nczl - 1
+            label.delete(array.get(czLabels, i))
+    array.clear(czLabels)
+    int _noi = array.size(oiLines)
+    if _noi > 0
+        for i = 0 to _noi - 1
+            line.delete(array.get(oiLines, i))
+    array.clear(oiLines)
+    int _noil = array.size(oiLabels)
+    if _noil > 0
+        for i = 0 to _noil - 1
+            label.delete(array.get(oiLabels, i))
+    array.clear(oiLabels)
     int _npl = array.size(pocLines)
     if _npl > 0
         for i = 0 to _npl - 1
@@ -266,8 +405,6 @@ if barstate.islast
         for i = 0 to _npll - 1
             label.delete(array.get(pocLabels, i))
     array.clear(pocLabels)
-
-    // ── Cleanup — NPOC ────────────────────────────────────────────────────────
     int _nnl = array.size(npocLines)
     if _nnl > 0
         for i = 0 to _nnl - 1
@@ -278,32 +415,27 @@ if barstate.islast
         for i = 0 to _nnll - 1
             label.delete(array.get(npocLabels, i))
     array.clear(npocLabels)
+    label.delete(regimeLbl)
 
     sym    = f_normaliseTicker(syminfo.ticker, goldChart, nqChart, spxChart, de30Chart, uk100Chart, us30Chart, us2kChart)
     pip    = f_pipSize(sym)
-    nZones = array.size(czPrices)
+    zExt   = alert_extend_right ? extend.right : extend.none
 
-    // ── Draw CZ zones from paste block ────────────────────────────────────────
-    if nZones > 0
+    // ── Confluence zones (hidden in OI-only mode) ─────────────────────────────
+    nZones = array.size(czPrices)
+    if not oi_only and nZones > 0
         for i = 0 to nZones - 1
             zPrice     = array.get(czPrices, i)
             zCount     = array.get(czCounts, i)
             zTypes     = array.get(czTypes,  i)
             isAnchored = str.contains(zTypes, "vol_m") or str.contains(zTypes, "vol_75")
-
-            // Skip unanchored zones entirely when filter is on
             if req_anchor and not isAnchored
                 continue
-
             zCol     = f_zoneColour(zCount)
-            // Unanchored zones drawn dimmed (70% transparent) unless user disabled dimming
             zColDraw = (not isAnchored and dim_unanchor) ? color.new(zCol, 70) : zCol
-            zExt     = alert_extend_right ? extend.right : extend.none
-
             ln = line.new(bar_index - 1, zPrice, bar_index + 3, zPrice,
                  color=zColDraw, width=zone_width, style=line.style_solid, extend=zExt)
             array.push(czLines, ln)
-
             if show_label
                 string lText = str.tostring(zCount) + "L"
                 if show_types
@@ -314,12 +446,42 @@ if barstate.islast
                      size=size.small)
                 array.push(czLabels, lb)
 
-    // ── Draw POC / NPOC from daily bars ───────────────────────────────────────
+    // ── OI levels (walls / max pain / gamma flip / volume) ────────────────────
+    nOI = array.size(oiPrices)
+    if show_oi and nOI > 0
+        for i = 0 to nOI - 1
+            zPrice = array.get(oiPrices, i)
+            zType  = array.get(oiTypes,  i)
+            zTier  = array.get(oiTiers,  i)
+            zCol   = f_oiColour(zType)
+            zStyle = f_oiStyle(zType)
+            zW     = oi_base_w + (zTier >= 3 ? 2 : zTier == 2 ? 1 : 0)
+            ln = line.new(bar_index - 1, zPrice, bar_index + 3, zPrice,
+                 color=zCol, width=zW, style=zStyle, extend=zExt)
+            array.push(oiLines, ln)
+            if show_oi_lbl
+                string lText = zType
+                if zTier > 0
+                    lText := lText + " t" + str.tostring(zTier)
+                lb = label.new(bar_index + 4, zPrice, lText,
+                     style=label.style_label_left,
+                     color=color.new(zCol, 75), textcolor=zCol,
+                     size=size.small)
+                array.push(oiLabels, lb)
+
+    // ── Gamma regime label ────────────────────────────────────────────────────
+    if show_regime and show_oi and not na(oiRegime)
+        regCol = oiRegime == "PIN" ? col_pain : col_call
+        regTxt = oiRegime == "PIN" ? "PIN — walls hold / pull to max pain" : "BREAKOUT — wall breaks tend to run"
+        regimeLbl := label.new(bar_index, high, regTxt,
+             style=label.style_label_down, yloc=yloc.abovebar,
+             color=color.new(regCol, 20), textcolor=color.white, size=size.normal)
+
+    // ── POC / NPOC (hidden in OI-only mode) ───────────────────────────────────
     nDays = array.size(_dH)
-    if nDays >= 2
+    if not oi_only and nDays >= 2
         lastComplete = nDays - 2  // last element is current incomplete day; skip it
 
-        // POC — last poc_days complete daily midpoints
         if show_poc
             pocStart = math.max(0, lastComplete - poc_days + 1)
             for d = pocStart to lastComplete
@@ -337,7 +499,6 @@ if barstate.islast
                              color=color.new(col_poc, 75), textcolor=col_poc, size=size.small)
                         array.push(pocLabels, lb)
 
-        // NPOC — scan full lookback; keep midpoints not visited since formation
         if show_npoc
             for d = 0 to lastComplete
                 ph = array.get(_dH, d)
@@ -345,7 +506,6 @@ if barstate.islast
                 if not na(ph) and not na(pl)
                     mid = (ph + pl) / 2.0
                     isNaked = true
-                    // Any day after this one (including today's partial bar) trades through → no longer naked
                     for j = d + 1 to nDays - 1
                         jh = array.get(_dH, j)
                         jl = array.get(_dL, j)
@@ -365,84 +525,118 @@ if barstate.islast
                             array.push(npocLabels, lb)
 
 // =====================================================
-// PROXIMITY ALERT (CZ paste zones only)
+// PROXIMITY ALERT (CZ zones + OI levels)
 // =====================================================
 
-f_anyZoneNear() =>
+f_anyNear() =>
     sym  = f_normaliseTicker(syminfo.ticker, goldChart, nqChart, spxChart, de30Chart, uk100Chart, us30Chart, us2kChart)
     pip  = f_pipSize(sym)
     dist = alert_pips * pip
     near = false
-    n    = array.size(czPrices)
-    if n > 0
-        for i = 0 to n - 1
-            if array.get(czCounts, i) >= alert_min_count
-                zTyp      = array.get(czTypes, i)
-                isAnch    = str.contains(zTyp, "vol_m") or str.contains(zTyp, "vol_75")
-                // Only alert on anchored zones when filter is on; always alert otherwise
-                if not req_anchor or isAnch
-                    if math.abs(close - array.get(czPrices, i)) <= dist
-                        near := true
-                        break
+    // Confluence zones (unless OI-only)
+    if not oi_only
+        n = array.size(czPrices)
+        if n > 0
+            for i = 0 to n - 1
+                if array.get(czCounts, i) >= alert_min_count
+                    zTyp   = array.get(czTypes, i)
+                    isAnch = str.contains(zTyp, "vol_m") or str.contains(zTyp, "vol_75")
+                    if not req_anchor or isAnch
+                        if math.abs(close - array.get(czPrices, i)) <= dist
+                            near := true
+                            break
+    // OI walls / max pain
+    if alert_oi and show_oi and not near
+        m = array.size(oiPrices)
+        if m > 0
+            for i = 0 to m - 1
+                if math.abs(close - array.get(oiPrices, i)) <= dist
+                    near := true
+                    break
     near
 
-bool nearZone = f_anyZoneNear()
+bool nearZone = f_anyNear()
 
 if nearZone and not nearZone[1]
-    alert("CZ: price approaching confluence zone on " + syminfo.ticker, alert.freq_once_per_bar_close)
+    alert("C+Z/OI: price approaching a confluence zone or OI level on " + syminfo.ticker, alert.freq_once_per_bar_close)
 
-alertcondition(nearZone, title="CZ Proximity Alert",
-     message="Price within {{plot_0}} pips of a confluence zone on {{ticker}}")
+alertcondition(nearZone, title="CZ/OI Proximity Alert",
+     message="Price near a confluence zone or OI level on {{ticker}}")
 
 // Hidden plot so alertcondition message can reference {{plot_0}}
 plot(nearZone ? close : na, display=display.none, title="_cz_alert_ref")
 
 // =====================================================
-// SUMMARY TABLE (CZ paste zones)
+// SUMMARY TABLE (CZ zones + OI levels)
 // =====================================================
 
 var table czTable = na
 
 if show_table and barstate.islast
     table.delete(czTable)
-    nZones = array.size(czPrices)
-    if nZones > 0
-        // Count how many zones will actually be displayed (respects anchor filter)
-        int nVisible = 0
-        for i = 0 to nZones - 1
+    sym  = f_normaliseTicker(syminfo.ticker, goldChart, nqChart, spxChart, de30Chart, uk100Chart, us30Chart, us2kChart)
+    pip  = f_pipSize(sym)
+
+    // Count visible CZ rows (respect anchor filter + OI-only)
+    int nVisCZ = 0
+    if not oi_only
+        for i = 0 to array.size(czPrices) - 1
             zTyp = array.get(czTypes, i)
             if not req_anchor or str.contains(zTyp, "vol_m") or str.contains(zTyp, "vol_75")
-                nVisible += 1
+                nVisCZ += 1
+    int nVisOI = show_oi ? array.size(oiPrices) : 0
+    bool hasRegime = show_regime and show_oi and not na(oiRegime)
 
-        if nVisible > 0
-            czTable := table.new(position.top_left, 3, nVisible + 1,
-                 bgcolor=color.new(color.black, 60),
-                 border_width=1, border_color=color.new(color.gray, 60),
-                 frame_width=1,  frame_color=color.new(color.gray, 50))
+    int totalRows = nVisCZ + nVisOI + (hasRegime ? 1 : 0)
+    if totalRows > 0
+        czTable := table.new(position.top_left, 3, totalRows + 1,
+             bgcolor=color.new(color.black, 60),
+             border_width=1, border_color=color.new(color.gray, 60),
+             frame_width=1,  frame_color=color.new(color.gray, 50))
 
-            table.cell(czTable, 0, 0, "Price",  text_color=color.new(color.white, 40), text_size=size.tiny, bgcolor=color.new(color.gray, 80))
-            table.cell(czTable, 1, 0, "Layers", text_color=color.new(color.white, 40), text_size=size.tiny, bgcolor=color.new(color.gray, 80))
-            table.cell(czTable, 2, 0, "Types",  text_color=color.new(color.white, 40), text_size=size.tiny, bgcolor=color.new(color.gray, 80))
+        table.cell(czTable, 0, 0, "Price",  text_color=color.new(color.white, 40), text_size=size.tiny, bgcolor=color.new(color.gray, 80))
+        table.cell(czTable, 1, 0, "Kind",   text_color=color.new(color.white, 40), text_size=size.tiny, bgcolor=color.new(color.gray, 80))
+        table.cell(czTable, 2, 0, "Dist",   text_color=color.new(color.white, 40), text_size=size.tiny, bgcolor=color.new(color.gray, 80))
 
-            sym  = f_normaliseTicker(syminfo.ticker, goldChart, nqChart, spxChart, de30Chart, uk100Chart, us30Chart, us2kChart)
-            pip  = f_pipSize(sym)
+        int row = 0
 
-            int row = 0
-            for i = 0 to nZones - 1
+        // Regime header row
+        if hasRegime
+            row += 1
+            regCol = oiRegime == "PIN" ? col_pain : col_call
+            table.cell(czTable, 0, row, "REGIME", text_color=regCol, text_size=size.tiny, bgcolor=color.new(regCol, 80))
+            table.cell(czTable, 1, row, oiRegime, text_color=regCol, text_size=size.tiny, bgcolor=color.new(regCol, 80))
+            table.cell(czTable, 2, row, "GEX",    text_color=regCol, text_size=size.tiny, bgcolor=color.new(regCol, 80))
+
+        // OI level rows
+        if show_oi
+            for i = 0 to array.size(oiPrices) - 1
+                zPrice = array.get(oiPrices, i)
+                zType  = array.get(oiTypes,  i)
+                zTier  = array.get(oiTiers,  i)
+                zCol   = f_oiColour(zType)
+                pipDist = math.round(math.abs(close - zPrice) / pip, 1)
+                tierStr = zTier > 0 ? " t" + str.tostring(zTier) : ""
+                row += 1
+                bg = color.new(zCol, 82)
+                table.cell(czTable, 0, row, str.tostring(zPrice), text_color=zCol, text_size=size.tiny, bgcolor=bg)
+                table.cell(czTable, 1, row, zType + tierStr,      text_color=zCol, text_size=size.tiny, bgcolor=bg)
+                table.cell(czTable, 2, row, str.tostring(pipDist) + "p", text_color=zCol, text_size=size.tiny, bgcolor=bg)
+
+        // CZ zone rows
+        if not oi_only
+            for i = 0 to array.size(czPrices) - 1
                 zPrice     = array.get(czPrices, i)
                 zCount     = array.get(czCounts, i)
                 zTypes     = array.get(czTypes,  i)
                 isAnchored = str.contains(zTypes, "vol_m") or str.contains(zTypes, "vol_75")
-
                 if req_anchor and not isAnchored
                     continue
-
                 row += 1
                 zCol    = f_zoneColour(zCount)
                 zColTbl = (not isAnchored and dim_unanchor) ? color.new(zCol, 60) : zCol
                 pipDist = math.round(math.abs(close - zPrice) / pip, 1)
                 bg      = color.new(zColTbl, 80)
-
                 table.cell(czTable, 0, row, str.tostring(zPrice),  text_color=zColTbl, text_size=size.tiny, bgcolor=bg)
-                table.cell(czTable, 1, row, str.tostring(zCount),  text_color=zColTbl, text_size=size.tiny, bgcolor=bg)
+                table.cell(czTable, 1, row, str.tostring(zCount) + "L", text_color=zColTbl, text_size=size.tiny, bgcolor=bg)
                 table.cell(czTable, 2, row, str.tostring(pipDist) + "p " + zTypes, text_color=zColTbl, text_size=size.tiny, bgcolor=bg)
