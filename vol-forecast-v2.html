@@ -740,6 +740,7 @@
         <button class="vf-exp-item" id="vfWeeklyExportBtn"  onclick="closeExpDropdown();exportWeekly()"            disabled>⬇ Weekly</button>
         <button class="vf-exp-item" id="vfCalWkBtn"         onclick="closeExpDropdown();exportCalibratedWeekly()"  disabled>⬇ Weekly (cal) <span style="font-size:9px;opacity:.55">backtest %</span></button>
         <button class="vf-exp-item" id="vfCogBtn"           onclick="closeExpDropdown();exportCog()"               disabled>⬇ COG <span style="font-size:9px;opacity:.55">reverse-eng</span></button>
+        <button class="vf-exp-item" id="vfCogSessBtn"       onclick="closeExpDropdown();exportCogSession()"        disabled>⬇ COG + Session <span style="font-size:9px;opacity:.55">+ Asia/Ldn/NY</span></button>
         <button class="vf-exp-item" id="vfCogWkBtn"         onclick="closeExpDropdown();exportCogWeekly()"         disabled>⬇ COG Weekly <span style="font-size:9px;opacity:.55">√5 / √20</span></button>
       </div>
     </div>
@@ -1509,8 +1510,8 @@ function loadSession(date) {
     .then(data => {
       currentSession = data;
 
-      // Enable session export buttons
-      ['vfSessionExportBtn','vfV3ExportBtn'].forEach(id => {
+      // Enable session export buttons (COG+Session needs stats too)
+      ['vfSessionExportBtn','vfV3ExportBtn','vfCogSessBtn'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = false;
       });
@@ -2169,6 +2170,13 @@ async function exportCogWeekly() {
   await loadCogHv();
   _emitCalibrated('vfCogWkBtn', buildCogExportText(currentForecast, { weekly: true }), `vol-forecast-cog-weekly-${currentForecast.session_date}.txt`);
 }
+// Clean COG export + the COG-consistent session block appended under it (opt-in).
+async function exportCogSession() {
+  if (!currentForecast) return;
+  await loadCogHv();
+  if (!currentSessionStats) { try { currentSessionStats = await fetch('/api/vol-forecast/session-stats').then(r => r.json()); } catch { /* emit COG-only if stats unavailable */ } }
+  _emitCalibrated('vfCogSessBtn', buildCogSessionText(currentForecast, currentSessionStats || {}), `vol-forecast-cog-session-${currentForecast.session_date}.txt`);
+}
 
 // ── Export HAR-RV shadow: challenger σ (HAR-RV), incumbent band math ──────────
 // Same line format as the main export so the two blocks compare line-for-line;
@@ -2319,24 +2327,38 @@ function exportSession() {
   });
 }
 
-function buildV3Text(forecastData, statsData) {
-  const lines = buildExportText(forecastData).split('\n');
+// Shared SESSION STATS block — appended UNDER an export so the base export is never
+// touched. "% of price" = session share (of daily H-L) × the DAILY H-L range, sourced
+// from the COG bands (cc-HV σ for NQ/EURUSD, platform σ × COG_C otherwise) so the
+// session price levels line up with the COG lines the user trades. Returns a line[].
+function _sessionStatsLines(forecastData, statsData) {
   const LW=34, div=n=>{const p=`──── ${n} `;return p+'─'.repeat(Math.max(0,LW-p.length));};
-  lines.push('', div('SESSION STATS'), '');
-  for (const [name, stats] of Object.entries(statsData.instruments ?? {})) {
+  const lines = ['', div('SESSION STATS'), ''];
+  for (const [name, stats] of Object.entries(statsData?.instruments ?? {})) {
     if (!stats?.asia || !stats?.london) continue;
     const a=stats.asia, l=stats.london, fc=forecastData.instruments?.[name];
-    const eff=(c,v)=>fc&&v?` (≈${(c*v/100).toFixed(2)}% of price)` : '';
+    const cb = fc && fc.vol_annual>0 ? _cogBands(_cogVol(name,fc),1) : null;
+    const dr = cb ? cb.hl_median : fc?.hl_median;   // daily H-L basis (session % is a % of daily H-L)
+    const eff=(c)=>dr?` (≈${(c*dr/100).toFixed(2)}% of price)` : '';
     lines.push(name);
-    lines.push(`Asia range      : ${a.p50}% of daily · ${a.p75}% 75th${eff(a.p50,fc?.hl_median)}`);
-    if (stats.asia_oc) { const ao=stats.asia_oc; lines.push(`Asia O-C        : ${ao.p50}% of daily · ${ao.p75}% 75th${eff(ao.p50,fc?.hl_median)}`); }
-    lines.push(`London range    : ${l.p50}% of daily · ${l.p75}% 75th${eff(l.p50,fc?.hl_median)}`);
-    if (stats.london_oc) { const lo=stats.london_oc; lines.push(`London O-C      : ${lo.p50}% of daily · ${lo.p75}% 75th${eff(lo.p50,fc?.hl_median)}`); }
-    if (stats.ny) { const ny=stats.ny; lines.push(`NY range        : ${ny.p50}% of daily · ${ny.p75}% 75th${eff(ny.p50,fc?.hl_median)}`); }
-    if (stats.ny_oc) { const nyo=stats.ny_oc; lines.push(`NY O-C          : ${nyo.p50}% of daily · ${nyo.p75}% 75th${eff(nyo.p50,fc?.hl_median)}`); }
+    lines.push(`Asia range      : ${a.p50}% of daily · ${a.p75}% 75th${eff(a.p50)}`);
+    if (stats.asia_oc) { const ao=stats.asia_oc; lines.push(`Asia O-C        : ${ao.p50}% of daily · ${ao.p75}% 75th${eff(ao.p50)}`); }
+    lines.push(`London range    : ${l.p50}% of daily · ${l.p75}% 75th${eff(l.p50)}`);
+    if (stats.london_oc) { const lo=stats.london_oc; lines.push(`London O-C      : ${lo.p50}% of daily · ${lo.p75}% 75th${eff(lo.p50)}`); }
+    if (stats.ny) { const ny=stats.ny; lines.push(`NY range        : ${ny.p50}% of daily · ${ny.p75}% 75th${eff(ny.p50)}`); }
+    if (stats.ny_oc) { const nyo=stats.ny_oc; lines.push(`NY O-C          : ${nyo.p50}% of daily · ${nyo.p75}% 75th${eff(nyo.p50)}`); }
     lines.push('');
   }
-  return lines.join('\n');
+  return lines;
+}
+// Vol + Session (standard bands + session block).
+function buildV3Text(forecastData, statsData) {
+  return buildExportText(forecastData).split('\n').concat(_sessionStatsLines(forecastData, statsData)).join('\n');
+}
+// COG export (clean, UNCHANGED) + the session block appended under it — the opt-in
+// "COG + Session" view, so the base COG export is never touched.
+function buildCogSessionText(forecastData, statsData) {
+  return [buildCogExportText(forecastData, { weekly: false }), ..._sessionStatsLines(forecastData, statsData)].join('\n');
 }
 
 function exportV3() {
