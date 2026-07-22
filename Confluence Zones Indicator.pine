@@ -609,7 +609,7 @@ if show_table and barstate.islast
 
     // Count visible CZ rows (respect anchor filter + OI-only)
     int nVisCZ = 0
-    if not oi_only
+    if not oi_only and array.size(czPrices) > 0
         for i = 0 to array.size(czPrices) - 1
             zTyp = array.get(czTypes, i)
             if not req_anchor or str.contains(zTyp, "vol_m") or str.contains(zTyp, "vol_75")
@@ -644,7 +644,7 @@ if show_table and barstate.islast
             table.cell(czTable, 2, row, regMean,  text_color=regCol, text_size=size.tiny, bgcolor=color.new(regCol, 80))
 
         // OI level rows
-        if show_oi
+        if show_oi and array.size(oiPrices) > 0
             for i = 0 to array.size(oiPrices) - 1
                 zPrice = array.get(oiPrices, i)
                 zType  = array.get(oiTypes,  i)
@@ -659,7 +659,7 @@ if show_table and barstate.islast
                 table.cell(czTable, 2, row, str.tostring(pipDist) + "p", text_color=zCol, text_size=size.tiny, bgcolor=bg)
 
         // CZ zone rows
-        if not oi_only
+        if not oi_only and array.size(czPrices) > 0
             for i = 0 to array.size(czPrices) - 1
                 zPrice     = array.get(czPrices, i)
                 zCount     = array.get(czCounts, i)
