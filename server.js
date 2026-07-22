@@ -6187,6 +6187,88 @@ app.get('/api/multi-factor/status/:jobId', (req, res) => {
   return res.status(500).json({ ok: false, status: 'error', error: job.error, legs: job.legs });
 });
 
+// ── /api/factor-blend — Trend + YIELD-SPREAD book (the two vetted-here sleeves) ─
+// Same blending machinery as /api/multi-factor, but Leg 2 is the validated
+// yield-spread mean-reversion (standalone OOS ~1.1) instead of the FX-carry factor
+// (which tested dead here). Trend pays in trends, yield-spread fades rate
+// dislocations — near-uncorrelated, so the blend should beat either leg IF both are
+// alive. The yield-spread leg uses its FLAT-sized daily stream (the validated honest
+// series; z-tier sizing is backwards) at the robust config (|z|≥2.0, 90d window,
+// orient-on, pub lags). Each leg is already costed by its own engine. Railway only.
+const fbJobs = new Map();
+function _purgeStaleFbJobs() { const cut = Date.now() - 60 * 60_000; for (const [id, j] of fbJobs) if (j.startedAt < cut) fbJobs.delete(id); }
+app.post('/api/factor-blend/run', express.json({ limit: '64kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not configured (runs on Railway)' });
+  if (!process.env.FRED_KEY)  return res.status(503).json({ ok: false, error: 'FRED_KEY not configured (needed for yield-spread rates)' });
+  const b = req.body ?? {};
+  const num = (v, lo, hi, d) => { const x = +v; return Number.isFinite(x) ? Math.min(Math.max(x, lo), hi) : d; };
+  const volTargetPort = num(b.volTargetPort, 0.02, 0.40, 0.10);
+  const costBp = num(b.costBp, 0, 50, 2);
+  const jobId = `fb_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleFbJobs();
+  fbJobs.set(jobId, { status: 'running', startedAt, step: 'starting', legsTotal: 2, legsDone: 0 });
+  const bump = (patch) => { const j = fbJobs.get(jobId); if (j) fbJobs.set(jobId, { ...j, ...patch }); };
+  res.json({ ok: true, jobId });
+
+  (async () => {
+    try {
+      const factors = [];
+      const legs = {};
+
+      // ── Leg 1: Trend-following basket (identical to /api/multi-factor) ────────
+      bump({ step: 'fetching trend universe' });
+      const trendPrices = {}; const trendSkipped = [];
+      for (const sym of _TREND_UNIVERSE) {
+        try {
+          const bars = await _btFetchD1(sym, 5000);
+          if (bars && bars.length >= 300) trendPrices[sym] = bars.map(x => ({ t: x.date, v: x.close })).filter(p => Number.isFinite(p.v) && p.v > 0);
+          else trendSkipped.push(`${sym} (${bars?.length ?? 0} bars)`);
+        } catch (e) { trendSkipped.push(`${sym} (${e.message})`); }
+      }
+      const tAlign = _carryAlignSeries(trendPrices);
+      const tMarkets = tAlign.ccys.map(sym => ({ symbol: sym, closes: tAlign.cols[sym] }));
+      if (tMarkets.length >= 3 && tAlign.dates.length >= 300) {
+        const pr = _trendBuildPortfolio(tMarkets, { ..._TREND_DEFAULTS, volTargetPort, costBp });
+        if (pr.ok) {
+          factors.push({ name: 'Trend', dates: tAlign.dates.slice(-pr.scaled.length), dailyRet: pr.scaled });
+          legs.trend = { ok: true, markets: tMarkets.map(m => m.symbol), skipped: trendSkipped, bars: pr.scaled.length };
+        } else legs.trend = { ok: false, error: pr.error, skipped: trendSkipped };
+      } else legs.trend = { ok: false, error: `only ${tMarkets.length} trend markets / ${tAlign.dates.length} common dates`, skipped: trendSkipped };
+      bump({ legsDone: 1, step: 'running yield-spread book' });
+
+      // ── Leg 2: Yield-spread mean-reversion (flat-sized daily stream) ──────────
+      try {
+        const ys = await runFullYieldSpread({ returnDaily: true, zWindow: 90, entryThreshold: 2.0, zExit: 1.5, maxHoldDays: 20, pubLagUsDays: 2, pubLagForeignDays: 45, autoOrient: true });
+        const d = ys?.combined?.daily;
+        if (d && d.dates?.length >= 300) {
+          factors.push({ name: 'YieldSpread', dates: d.dates, dailyRet: d.dailyReturns });
+          legs.yieldSpread = { ok: true, bars: d.dates.length, first: d.dates[0], last: d.dates[d.dates.length - 1], standalone: ys.combined.portfolioSharpe, nTrades: ys.combined.nTrades };
+        } else legs.yieldSpread = { ok: false, error: `yield-spread produced no daily series (${d?.dates?.length ?? 0} dates)` };
+      } catch (e) { legs.yieldSpread = { ok: false, error: e.message }; }
+      bump({ legsDone: 2, step: 'blending' });
+
+      if (factors.length < 2) { fbJobs.set(jobId, { status: 'error', startedAt, error: `need ≥2 live factors to blend; got ${factors.length}`, legs }); return; }
+
+      const book = _combineFactors(factors, { volTargetPort });
+      fbJobs.set(jobId, { status: 'done', startedAt, result: {
+        params: { volTargetPort, costBp }, legs, book,
+        note: 'Trend + yield-spread. Each leg is already costed by its own engine. Yield-spread leg = FLAT-sized validated daily stream (|z|≥2.0/90d/orient-on/pub-lags). Overlap window = yield-spread M1 availability (~2015+). OANDA/FRED on Railway.',
+      } });
+    } catch (e) {
+      console.error('[factor-blend/run]', e?.message, e?.stack ?? '');
+      fbJobs.set(jobId, { status: 'error', startedAt, error: e?.message || String(e) });
+    }
+  })();
+});
+app.get('/api/factor-blend/status/:jobId', (req, res) => {
+  const job = fbJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000), step: job.step, legsDone: job.legsDone, legsTotal: job.legsTotal });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, legs: job.legs });
+});
+
 // ── Trend-following v2: forecast-σ sizing A/B ────────────────────────────────
 // Same universe/data as /api/trend/backtest, but runs BOTH sizing variants —
 // v1 trailing 63d stdev vs the forecaster's σ (fx→Yang-Zhang, index→GARCH,

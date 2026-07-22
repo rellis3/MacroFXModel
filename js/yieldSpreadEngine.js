@@ -47,6 +47,7 @@ function cfFromOpts(opts) {
     tiers: opts.tiers ?? YIELD_SPREAD_DEFAULTS.tiers,
     autoOrient: opts.autoOrient !== false,
     invert: opts.invert || {},
+    returnDaily: opts.returnDaily || false,
   };
 }
 
@@ -89,6 +90,8 @@ function simulatePair(pd, cf) {
 
   const trades = [];
   const dailyRet = {};
+  const flatRet = {};             // FLAT-sized daily MTM (size=1, sign only) — the validated
+                                  // honest stream (z-tier sizing is backwards); for factor blending.
   const costFrac = cf.costPct / 100;
   let pos = null;
   for (let i = 0; i < daily.length; i++) {
@@ -96,8 +99,9 @@ function simulatePair(pd, cf) {
     if (pos && i > 0) {
       const prev = daily[i - 1].close;
       if (prev > 0) {
-        const r = (pos.dir === 'LONG' ? (close - prev) / prev : (prev - close) / prev) * pos.size;
-        dailyRet[date] = (dailyRet[date] || 0) + r;
+        const base = pos.dir === 'LONG' ? (close - prev) / prev : (prev - close) / prev;
+        dailyRet[date] = (dailyRet[date] || 0) + base * pos.size;
+        flatRet[date]  = (flatRet[date]  || 0) + base;
       }
     }
     const zInfo = zByDate.get(date);
@@ -108,6 +112,7 @@ function simulatePair(pd, cf) {
       const ex = shouldExit(absZ, holdDays, { zExit: cf.zExit, maxHoldDays: cf.maxHoldDays });
       if (ex.exit) {
         dailyRet[date] = (dailyRet[date] || 0) - costFrac * pos.size;
+        flatRet[date]  = (flatRet[date]  || 0) - costFrac;
         trades.push({
           pair: cfg.label, date: pos.entryDate, exitDate: date, dir: pos.dir,
           size: pos.size, tierLabel: pos.tierLabel, entryClose: pos.entryClose, exitClose: close,
@@ -127,6 +132,7 @@ function simulatePair(pd, cf) {
   if (pos) {
     const last = daily[daily.length - 1];
     dailyRet[last.date] = (dailyRet[last.date] || 0) - costFrac * pos.size;
+    flatRet[last.date]  = (flatRet[last.date]  || 0) - costFrac;
     trades.push({
       pair: cfg.label, date: pos.entryDate, exitDate: last.date, dir: pos.dir,
       size: pos.size, tierLabel: pos.tierLabel, entryClose: pos.entryClose, exitClose: last.close,
@@ -144,7 +150,7 @@ function simulatePair(pd, cf) {
   return {
     pair: cfg.label, pairDisplay: cfg.pairDisplay,
     all: summ(trades), is: summ(is), oos: summ(oos),
-    splitDate, trades, dates, dailyByDate: dailyRet,
+    splitDate, trades, dates, dailyByDate: dailyRet, flatDailyByDate: flatRet,
     portfolioSharpe: { all: sharpeFromDaily(retAll), oos: sharpeFromDaily(retOos) },
   };
 }
@@ -154,6 +160,7 @@ function simulateBook(pairDataList, cf) {
   const perPair = {};
   const allTrades = [];
   const combinedDaily = {};
+  const combinedFlat = {};
   const dateSet = new Set();
   for (const pd of pairDataList) {
     const r = simulatePair(pd, cf);
@@ -161,6 +168,7 @@ function simulateBook(pairDataList, cf) {
     allTrades.push(...r.trades);
     for (const d of r.dates) dateSet.add(d);
     for (const dt in r.dailyByDate) combinedDaily[dt] = (combinedDaily[dt] || 0) + r.dailyByDate[dt];
+    for (const dt in r.flatDailyByDate) combinedFlat[dt] = (combinedFlat[dt] || 0) + r.flatDailyByDate[dt];
   }
   const { splitDate, is, oos } = splitByDate(allTrades, cf.splitFrac);
   const pd0 = pairDataList[0];
@@ -177,6 +185,9 @@ function simulateBook(pairDataList, cf) {
       portfolioSharpe: { all: sharpeFromDaily(cRetAll), oos: sharpeFromDaily(cRetOos) },
       perYear: perYearBreakdown(allTrades, { costPct: cf.costPct }),
       perYearOos: perYearBreakdown(oos, { costPct: cf.costPct }),
+      // Flat-sized daily return stream (dates + returns) for factor blending — only
+      // when requested, to avoid bloating the standard /run response.
+      ...(cf.returnDaily ? { daily: { dates: sortedDates, dailyReturns: sortedDates.map(d => combinedFlat[d] || 0) } } : {}),
     },
   };
 }
