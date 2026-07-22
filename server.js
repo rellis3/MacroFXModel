@@ -67,6 +67,7 @@ import { creditRegime as _creditRegime } from './js/creditHmm.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
+import { bucketM1IntoSessions as _bucketM1IntoSessions } from './js/forecastAnalyser.js';
 import { recordsForPair, touchesForPair, extractTouches, runPerLine, costForPair, runRigor, runSensitivity, deflatedSharpe, eRatioByCell, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk, runConfluenceFilter, runVolSizing } from './js/rangeLineAnalyser.js';
 import { runLiquidityAB, runLiquidityABSuite } from './js/liquidityBacktestEngine.js';
 import { pipSize as _pipSize, instrument, oandaSymbol, resolveKey } from './js/instrumentRegistry.js';
@@ -13149,7 +13150,7 @@ app.post('/api/liquidity-backtest/run', express.json({ limit: '32kb' }), async (
         }
 
         // Convert packed M1 → sessions (same as recordsForPair does internally).
-        const sessions = bucketM1IntoSessions(packed);
+        const sessions = _bucketM1IntoSessions(packed);
         if (!sessions || !sessions.size) {
           results.push({ pair: p, error: 'Could not build sessions' });
           liqJobs.set(jobId, { status: 'running', startedAt: Date.now(), progress: (i + 1) / validPairs.length, pairsDone: i + 1, pairsTotal: validPairs.length });

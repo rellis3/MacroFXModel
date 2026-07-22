@@ -332,9 +332,22 @@ var is set in Railway first.
 
 > The volatility-bot plan producer recomputes σ from OANDA D1 via
 > `volSigmaSeries` (the backtest's exact math) — **not** `/api/vol-forecast`,
-> whose correction constants are a flagged drift. The plan's lines must be
-> bit-identical to the per-line book's, so the producer never sources the live
-> forecast. Don't "simplify" it to read `/api/vol-forecast`.
+> whose correction constants are a flagged drift. So the producer never sources
+> the live forecast; don't "simplify" it to read `/api/vol-forecast`.
+>
+> **Band lines: COG is the default (migrated 2026-07-22).** The plan's band
+> FRACTIONS are built by `computeCogBands` (`js/cogBands.js` — COG's uniform
+> published constants, the same calc as the vol-forecast-v2 "⬇ COG" export), via
+> `buildVolatilityPlan`'s `bandMode:'cog'` default. NQ's σ is drawn from COG's
+> close-to-close HV (window 30) to match the export exactly; every other
+> instrument uses the platform σ above. The shared `computeBands` (Feller +
+> per-class correction) is **UNCHANGED** — every backtest and the live forecaster
+> still use it; only the bot opted into COG. The policy book was learned on the
+> old Feller geometry and its edge was **not** re-validated on the wider COG lines
+> (cells ride along geometry-relatively); COG's FX median (1.56σ) runs wider than
+> both the old bot (~1.29σ) and the backtest realized-best (~1.34σ) — a
+> consistency-with-COG product choice, not a validated improvement. `bandMode:
+> 'feller'` reverts. See `LEGO_MODULES.md §1x`.
 
 ## How we talk about results (working agreement, earned the hard way)
 

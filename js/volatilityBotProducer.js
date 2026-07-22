@@ -38,12 +38,24 @@ export async function refreshVolatilityPlan({
   // platform's GARCH/HV are the worst σ for indices/gold; HAR is far better-placed.
   // The policy is cell-keyed (up75:fade …), so it rides along when the bands move.
   volSource = 'platform', harSigma = null,
+  // Band line set. 'cog' (default) = COG's uniform published constants — the
+  // business-standard lines, bit-identical to the v2 "⬇ COG" export. 'feller' =
+  // the original per-asset-class Feller band math (legacy). Only the band
+  // FRACTIONS change; the policy cells are geometry-relative and ride along.
+  bandMode = 'cog',
+  // COG's σ override for the ONE instrument he draws from close-to-close HV (NQ):
+  // (oandaSym, pair) => daily σ FRACTION or null. Returns non-null only for NQ so
+  // its line matches the v2 COG export exactly; every other instrument keeps the
+  // platform σ (which is what the export uses for them too). Injected so the core
+  // stays offline-testable. Only consulted when bandMode==='cog'.
+  cogHvSigma = null,
   now = () => new Date().toISOString(), stamp = () => Date.now(),
   onLog = () => {},
 } = {}) {
   if ([getBook, fetchD1, sigmaSeries, kvPut].some(f => typeof f !== 'function'))
     throw new Error('refreshVolatilityPlan: getBook/fetchD1/sigmaSeries/kvPut are required functions');
   const harOn = volSource === 'har-nonfx' && typeof harSigma === 'function';
+  const cogHvOn = bandMode === 'cog' && typeof cogHvSigma === 'function';
 
   const book = await getBook(horizon);
   if (!book || !Array.isArray(book.survivors?.pairs) || !book.survivors.pairs.length)
@@ -84,6 +96,17 @@ export async function refreshVolatilityPlan({
       } else {
         sigma = nextSigma(bars, ac, sigmaSeries);
       }
+      // COG cc-HV σ override — the v2 COG export draws exactly ONE instrument (NQ)
+      // from COG's own close-to-close HV σ; every other instrument uses the
+      // platform σ (which we already have). Matching that keeps NQ's line
+      // bit-identical to the export. cogHvSigma returns non-null only for NQ; any
+      // failure keeps the σ we already computed. Non-fx only (NQ is an index).
+      if (cogHvOn && nonFx) {
+        try {
+          const cc = await cogHvSigma(inst.oanda, pair);   // daily σ fraction or null
+          if (cc > 0) { sigma = cc; sigmaSrc = 'cc-hv'; }
+        } catch (e) { onLog(`${pair}: cc-HV σ failed (${e.message}) — keeping ${sigmaSrc} σ`); }
+      }
       // OPEN must be the MIDNIGHT-EUROPE/LONDON session open (the bands hang off it,
       // and the book's sessions are London days). `fetchD1`'s last bar opens at
       // 22:00 UTC and drops the forming candle, so it's a prior session's open —
@@ -113,7 +136,7 @@ export async function refreshVolatilityPlan({
     } catch (e) { onLog(`${pair}: ${e.message}`); fail++; }
   }
 
-  const plan = { generatedAt: now(), source: 'per-line book', horizonScale: horizon, sigmaSource: harOn ? 'har-nonfx' : 'platform', ...buildPlan(book, volByPair) };
+  const plan = { generatedAt: now(), source: 'per-line book', horizonScale: horizon, sigmaSource: harOn ? 'har-nonfx' : 'platform', bandSource: bandMode, ...buildPlan(book, volByPair, { bandMode }) };
   // Refuse to publish an empty universe. A 0-pair plan is never tradeable and
   // always means pricing failed (OANDA unreachable at the moment, or survivor
   // names that didn't resolve) — writing it would silently strand the bot

@@ -22,14 +22,20 @@
  */
 
 import { computeBands } from './forecastCore.js';
+import { computeCogBands } from './cogBands.js';
 
 // Build the plan from a stored per-line book + live per-pair vol.
 //   book      — the object getPerLineBook() returns (policy, survivors, config…)
 //   volByPair — { pair: { open, sigma, assetClass, pip } } today's daily σ (frac),
 //               session open, asset class and pip size for each pair.
+//   bandMode  — 'cog' (default) uses COG's uniform constants (the v2 "⬇ COG"
+//               export math — the business-standard line set); 'feller' uses the
+//               original Feller + per-asset-class correction via computeBands.
+//               The band FRACTIONS are the only thing this switch changes; the
+//               policy cells are geometry-relative and ride along either way.
 // Returns the plan object (caller stamps generatedAt). Only survivor pairs that
 // have usable vol are included; only tradeable (non-skip) policy cells are kept.
-export function buildVolatilityPlan(book, volByPair = {}, { universe } = {}) {
+export function buildVolatilityPlan(book, volByPair = {}, { universe, bandMode = 'cog' } = {}) {
   if (!book || typeof book !== 'object') throw new Error('buildVolatilityPlan: book required');
   const pairsWanted = Array.isArray(universe) && universe.length
     ? universe.map(p => String(p).toLowerCase())
@@ -47,7 +53,11 @@ export function buildVolatilityPlan(book, volByPair = {}, { universe } = {}) {
     const v = volByPair[pair];
     if (!v || !(v.open > 0) || !(v.sigma > 0)) continue;        // no live vol → not tradeable today
     const assetClass = v.assetClass || 'fx';
-    const b = computeBands(v.open, v.sigma, assetClass);        // canonical vol math (never ported)
+    // COG bands (default): uniform constants, no asset-class correction — the line
+    // set we standardise on. 'feller' keeps the original per-class band math.
+    const b = bandMode === 'feller'
+      ? computeBands(v.open, v.sigma, assetClass)               // canonical Feller vol math (never ported)
+      : computeCogBands(v.open, v.sigma);                       // COG's published calc (v2 export parity)
     pairs[pair] = {
       open: +v.open.toFixed(6), sigma: +v.sigma.toFixed(8),
       assetClass, pip: v.pip ?? null,
@@ -61,7 +71,8 @@ export function buildVolatilityPlan(book, volByPair = {}, { universe } = {}) {
     conditions: book.conditions || ['approachVel'],
     marginPct: book.marginPct ?? 0.01,
     survivorMargin: book.survivorMargin ?? 0.5,
-    universe: Object.keys(pairs),                               // only pairs with a live plan today
+    bandMode,                                                   // which line set the fractions were built from
+    universe: Object.keys(pairs),                              // only pairs with a live plan today
     policy,
     pairs,
   };

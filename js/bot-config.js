@@ -3542,7 +3542,13 @@ async function loadVbLiveStatus() {
     if (tradesEl) tradesEl.textContent = (st.today_closed_trades || []).length;
     if (uniEl)  uniEl.textContent  = (st.universe || []).length;
     const pa = document.getElementById('vbPlanAge');
-    if (pa) pa.textContent = planWrap?.generatedAt ? new Date(planWrap.generatedAt).toISOString().slice(0, 16).replace('T', ' ') + 'Z' : '—';
+    if (pa) {
+      const age = planWrap?.generatedAt ? new Date(planWrap.generatedAt).toISOString().slice(0, 16).replace('T', ' ') + 'Z' : '—';
+      // Surface the line set the plan was built from (COG is the standard). Older
+      // plans predate the field ⇒ they were Feller; label them so it's unambiguous.
+      const band = planWrap?.bandSource || planWrap?.bandMode || (planWrap ? 'feller' : null);
+      pa.textContent = band ? `${age} · ${band === 'cog' ? 'COG lines' : band + ' lines'}` : age;
+    }
 
     // Map each open position to the line it's fading. The bot stores the line in the
     // position comment as "Vol {line_id} {decision}" (e.g. "Vol HL50_dn fade"); we

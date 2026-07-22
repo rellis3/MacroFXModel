@@ -562,6 +562,28 @@ If a third consumer appears (or the QMR engine gets versioned out of `server.js`
 
 ---
 
+### 1x. COG band brick — the business-standard line set (2026-07-22)
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **COG bands** | `js/cogBands.js` | `computeCogBands(open, sigma)` — COG's published vol-range line set as a reusable brick: his fixed constants (`COG_CONST` imported from `cogReverseEngineer.js` — the single source of truth, back-solved from his manual: `{BM_P50:1.56, BM_P75:1.93, HN_P50:0.74, HN_P75:1.24}`) × a daily σ FRACTION, with **NO per-asset-class correction** (COG uses one uniform set for fx/index/gold). Output keys **match `computeBands`** so it's a drop-in swap; the only differences are deliberate — uniform constants + no `assetClass` arg. This is the SAME calc the vol-forecast-v2 "⬇ COG" export uses, so a plan built with it is bit-identical to that export. Horizon-agnostic (pass a σ already scaled by √periods). Pure/synthetic-testable. Tested `js/cogBands.test.mjs` (4 asserts: constants×σ, price levels off open, uniform-vs-Feller-class-dependence, drop-in key-shape). | **`volatilityBotPlan.buildVolatilityPlan`** (via `bandMode:'cog'`, now the **default**) → the volatility bot's live lines; opt-in for the forecaster/other consumers next. | ✅ built — **volatility bot migrated to COG by default 2026-07-22** |
+
+> **Volatility-bot migration (2026-07-22).** `buildVolatilityPlan` gained a
+> `bandMode` (default **`'cog'`**); `refreshVolatilityPlan` defaults `bandMode:'cog'`
+> and takes an injected `cogHvSigma(oandaSym, pair) → daily σ frac|null` that
+> reproduces the export's ONE special case — **NQ** drawn from COG's close-to-close
+> HV σ (window 30, guarded 4–200% annual), every other instrument on platform σ.
+> Server wires it via `_computeCogHv`. Plan carries `bandSource`/`bandMode` so the
+> bot-config UI shows "COG lines". The policy book was learned on the OLD (Feller)
+> geometry; the cells are geometry-relative and ride along, but the edge was **not**
+> re-validated on the wider COG lines — a queued follow-up, not shipped as validated.
+> Note COG's FX median (1.56σ) is WIDER than both the current bot (~1.29σ) and the
+> backtest realized-best (~1.34σ): this is consistency-with-COG, a product choice.
+> `computeBands` (Feller) is UNCHANGED — every backtest/forecaster still uses it;
+> only the bot's plan path opts into COG. Set `bandMode:'feller'` to revert.
+
+---
+
 ### 1r. Trend-following v2 — forecast-σ sizing A/B + Sharpe honesty (2026-07-17)
 
 | Brick | File | Owns | Consumers | Status |
