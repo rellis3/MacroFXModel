@@ -61,6 +61,7 @@ import { compareForecastLines as _compareForecastLines } from './js/forecastDrif
 import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
 import { fetchWeekEvents as _fetchWeekEvents } from './js/econCalendar.js';
 import { macroContext as _macroContext, macroContextByDate as _macroContextByDate, MACRO_FRED_SERIES as _MACRO_FRED_SERIES, riskSensFor as _riskSensFor } from './js/macroCore.js';
+import { analyzePair as _mcondAnalyzePair, summarizeRows as _mcondSummarize, verdict as _mcondVerdict } from './js/macroConditionerEngine.js';
 import { creditGate as _creditGateBrick } from './js/creditCore.js';
 import { creditRegime as _creditRegime } from './js/creditHmm.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
@@ -11084,6 +11085,87 @@ app.post('/api/exhaustion-forecast/run', express.json({ limit: '16kb' }), (req, 
 });
 app.get('/api/exhaustion-forecast/status/:jobId', (req, res) => {
   const job = exhJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Macro-Conditioner — does the risk regime add to day-character BEYOND σ? ───
+//    The honest question, NOT "fade here": holding forecast σ fixed (tercile
+//    bucket), does macroCore's VIX+HY risk regime still move the day's character
+//    (expansion rate / day-efficiency)? Flat within a bucket ⇒ REDUNDANT with σ
+//    (the expected null); separates ⇒ a real INCREMENTAL state signal. Async job
+//    over FX majors; pools rows for the pooled-FX verdict. FRED VIX+HY joined by
+//    London date via macroContextByDate (publication-lag honest, frozen thresholds).
+const macroCondJobs = new Map();
+const _MCOND_MAJORS = ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'USDJPY'];
+app.post('/api/macro-conditioner/run', express.json({ limit: '16kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+  if (!process.env.FRED_KEY)  return res.status(500).json({ ok: false, error: 'FRED_KEY not set' });
+  const { pair = '', isFrac, minSpread, minN } = req.body || {};
+  let insts = WBT_INSTRUMENTS.filter(i => _MCOND_MAJORS.includes(i.name));
+  if (pair) insts = insts.filter(i => i.name === pair.toUpperCase());
+  if (!insts.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+  const jobId = `mcond_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [id, j] of macroCondJobs) if (j.startedAt < Date.now() - 60 * 60_000) macroCondJobs.delete(id);
+  macroCondJobs.set(jobId, { status: 'running', startedAt });
+  const opts = {
+    isFrac:    Number.isFinite(+isFrac)    ? +isFrac    : 0.5,
+    minSpread: Number.isFinite(+minSpread) ? +minSpread : 0.05,
+    minN:      Number.isFinite(+minN)      ? +minN      : 30,
+    assetClass: 'fx',
+  };
+  (async () => {
+    const perPair = {}, log = [];
+    try {
+      // 1) FRED VIX + HY → macroCore fredHistory shape ({ vix:[{date,value}…asc], hy:[…] })
+      const fromDate = '2010-01-01';
+      const [vixMap, hyMap] = await Promise.all([
+        fetchFredSeries(_MACRO_FRED_SERIES.vix, fromDate, process.env.FRED_KEY),
+        fetchFredSeries(_MACRO_FRED_SERIES.hy,  fromDate, process.env.FRED_KEY),
+      ]);
+      const toArr = m => [...m.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([date, value]) => ({ date, value }));
+      const fredHistory = { vix: toArr(vixMap), hy: toArr(hyMap) };
+      // 2) regime map — market-wide (VIX+HY), so compute ONCE and reuse for every pair.
+      const ctxByDate = _macroContextByDate('EURUSD', fredHistory, { to: Date.now() });
+      const regimeByDate = {};
+      for (const [d, v] of Object.entries(ctxByDate)) regimeByDate[d] = v.macro.regime;
+      const nOff = Object.values(regimeByDate).filter(r => r === 'RISK_OFF').length;
+      log.push(`FRED: vix ${fredHistory.vix.length} obs, hy ${fredHistory.hy.length} obs · regime days ${Object.keys(regimeByDate).length} (risk-off ${nOff})`);
+      // 3) per pair: London-daily + causal σ + join regime → σ-controlled conditional
+      const pooledRows = [];
+      for (const cfg of insts) {
+        try {
+          const { bars, src } = await _intradayForAB(cfg);
+          const daily = buildLondonDaily(bars);
+          if (daily.length < 150) { log.push(`${cfg.name}: only ${daily.length} daily bars`); continue; }
+          const sig = _volSigmaSeries(daily, 'fx');
+          const series = {
+            date:  daily.map(d => d.date),  open: daily.map(d => d.open),
+            high:  daily.map(d => d.high),  low:  daily.map(d => d.low),
+            close: daily.map(d => d.close), sigma: Array.from(sig),
+          };
+          const r = _mcondAnalyzePair(series, regimeByDate, opts);
+          if (r.insufficient) { log.push(`${cfg.name}: insufficient (${r.nDays}d)`); continue; }
+          pooledRows.push(...r._rows); delete r._rows;      // pool, then strip from wire payload
+          r.src = src; perPair[cfg.name] = r;
+          log.push(`${cfg.name}: ${r.nDays}d · ${r.verdict.label} (${r.verdict.bucketsAgreeing}/3) · src ${src}`);
+        } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
+      }
+      const names = Object.keys(perPair);
+      if (!names.length) { macroCondJobs.set(jobId, { status: 'error', error: 'No pairs evaluated', log, startedAt }); return; }
+      const pooledSummary = _mcondSummarize(pooledRows);
+      const pooled = { nDays: pooledRows.length, summary: pooledSummary, verdict: _mcondVerdict(pooledSummary, opts) };
+      log.push(`POOLED FX: ${pooledRows.length}d · ${pooled.verdict.label} (${pooled.verdict.bucketsAgreeing}/3 σ-buckets show IS/OOS-consistent regime spread)`);
+      macroCondJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...opts, perPair, pooled, pairs: names, log } });
+    } catch (e) { macroCondJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt }); }
+  })();
+  res.json({ ok: true, jobId });
+});
+app.get('/api/macro-conditioner/status/:jobId', (req, res) => {
+  const job = macroCondJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
