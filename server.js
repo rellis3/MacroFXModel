@@ -11600,9 +11600,10 @@ async function _computeCogHv({ win, insts = null, force = false }) {
   for (const k of _cogHvCache.keys()) if (!k.startsWith(`${todayISO}:`)) _cogHvCache.delete(k);  // drop stale days
   const indices = {}, log = [];
   const nowSec = Math.floor(Date.now() / 1000);
-  // Only the instruments the caller actually consumes (the page passes inst=NQ, the
-  // one index we draw from COG's cc-HV). No filter ⇒ every index (full diagnostic).
-  const list = WBT_INSTRUMENTS.filter(i => i.assetClass === 'index' && (!wanted || wanted.has(i.name.toUpperCase())));
+  // Only the instruments the caller actually consumes (the page passes inst=NQ,EURUSD
+  // — the two we draw from COG's cc-HV). When a filter is given, honour it for ANY
+  // asset class (EURUSD is fx, not an index); no filter ⇒ every index (full diagnostic).
+  const list = WBT_INSTRUMENTS.filter(i => wanted ? wanted.has(i.name.toUpperCase()) : i.assetClass === 'index');
   for (const cfg of list) {
     try {
       // PRIMARY = CC-HV on London-daily closes built from the INTRADAY 5-min path
@@ -17300,8 +17301,9 @@ if (process.env.OANDA_KEY) {
   // Forecast v2 COG export button is a memory hit instead of a cold recompute.
   // Primes the exact key the page requests (window 30, inst NQ — the one index we
   // draw from COG's method). Also a boot warm so a mid-day restart is covered.
-  const _warmCogHv = () => _computeCogHv({ win: 30, insts: ['NQ'], force: true })
-    .then(r => console.log(`[cog-hv] warmed window 30 · NQ (${r.indices?.NQ?.volAnnual ?? 'n/a'}%)`))
+  // Warm the exact key the page requests — must match _CCHV_USE on vol-forecast-v2.
+  const _warmCogHv = () => _computeCogHv({ win: 30, insts: ['NQ', 'EURUSD'], force: true })
+    .then(r => console.log(`[cog-hv] warmed window 30 · NQ ${r.indices?.NQ?.volAnnual ?? 'n/a'}% · EURUSD ${r.indices?.EURUSD?.volAnnual ?? 'n/a'}%`))
     .catch(e => console.error('[cog-hv] warm failed:', e.message));
   _scheduleDailyLondon(0, 8, _warmCogHv);           // 3 min after the 00:05 vol plan
   setTimeout(_warmCogHv, 100_000);                  // boot warm (after other startup fetches)
