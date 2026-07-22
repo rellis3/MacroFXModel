@@ -2,7 +2,7 @@
 // Offline, network-free unit tests for the Max Copier engine on synthetic data.
 // Run:  node js/maxCopierEngine.test.mjs
 import {
-  runMaxCopier, compareMaxCopier, EXIT_MODES,
+  runMaxCopier, compareMaxCopier, traceMaxCopier, EXIT_MODES,
   swingLows, swingHighs, hasHiddenDivergence,
 } from './maxCopierEngine.js';
 
@@ -44,8 +44,8 @@ function buildPacked() {
 const TEST_OPTS = {
   donchianLookback: 10, impulseAtrMult: 0.3, consolBars: 8, consolMaxAtr: 50,
   vaDepth: 0.3, entryTimeout: 40, stopAtrBuffer: 0.5, requireDivergence: false,
-  minGapBars: 5, nPositions: 4, maxHoldBarsM15: 40, atrPeriod: 10, rsiPeriod: 14,
-  oosFrac: 0.4,
+  divergenceSource: 'rsi', minGapBars: 5, nPositions: 4, maxHoldBarsM15: 40,
+  atrPeriod: 10, rsiPeriod: 14, oosFrac: 0.4,
 };
 
 console.log('[divergence helpers]');
@@ -100,6 +100,25 @@ console.log('[pipeline on synthetic long setup]');
     ok('ladder_trail positions are not all identical',
       new Set(first.map((p) => p.pnlR)).size > 1, JSON.stringify(first.map((p) => p.pnlR)));
   }
+}
+
+console.log('[autopsy + trace]');
+{
+  const packed = buildPacked();
+  const run = runMaxCopier(packed, 'eurusd', TEST_OPTS);
+  const au = run.autopsy;
+  ok('autopsy has premise horizons', au && au.premise && [16,32,96].every(H => au.premise[H] && Number.isFinite(au.premise[H].mean)));
+  ok('autopsy premise counts impulses', au.premise[16].n >= 1, `n=${au.premise[16].n}`);
+  ok('autopsy expectancy has breakeven + edgeGap', Number.isFinite(au.expectancy.breakevenWinRate) && Number.isFinite(au.expectancy.edgeGap));
+  ok('autopsy exitMix reasons are known', Object.keys(au.exitMix).every(r => ['tp','stop','trail','time'].includes(r)));
+  ok('autopsyRaw is present for pooling', run.autopsyRaw && run.autopsyRaw.premise && run.autopsyRaw.expectancy);
+  ok('positions carry mfeR + exitTime', run.modes.fixed_r.positions.every(p => Number.isFinite(p.mfeR) && Number.isFinite(p.exitTime)));
+
+  const tr = traceMaxCopier(packed, 'eurusd', TEST_OPTS, { mode:'fixed_r' });
+  ok('trace returns candles + WaveTrend', tr.candles.length > 0 && tr.wt.length === tr.candles.length);
+  ok('trace WaveTrend values finite', tr.wt.every(w => Number.isFinite(w.wt1) && Number.isFinite(w.wt2)));
+  ok('trace lists ≥1 impulse mark', tr.impulses.length >= 1, `impulses=${tr.impulses.length}`);
+  ok('trace trade carries entry/stop/exits', tr.trades.length >= 1 && tr.trades[0].exits.length >= 1);
 }
 
 console.log('[compare + split]');
