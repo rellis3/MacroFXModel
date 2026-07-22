@@ -12,11 +12,14 @@
   header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
   h1 { margin:0; font-size:16px; font-weight:600; }
   .sub { color:var(--muted); font-size:12px; }
-  .wrap { display:flex; gap:16px; padding:16px 20px; flex-wrap:wrap; }
-  .main { flex:1 1 680px; min-width:340px; }
-  #chart { height:480px; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
-  .side { flex:0 0 300px; }
-  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:12px; }
+  /* Chart on top (full width), info cards flow below in a responsive grid that
+     scrolls down — same shape as the daily-brief per-pair drawer. */
+  .wrap { padding:16px 20px; }
+  .main { width:100%; }
+  #chart { height:520px; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
+  .side { display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:12px; align-items:start; margin-top:14px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px; }
+  .side .card.wide { grid-column:1 / -1; }   /* full-width row (long help text) */
   .card h2 { margin:0 0 8px; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
   select, input[type=date] { background:#1e293b; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:5px 8px; font-size:12px; }
   button { background:#1e293b; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer; }
@@ -224,6 +227,10 @@
       <div id="dayBudget"><span class="muted">how much of the day's typical range is spent vs still to come (intraday only)</span></div>
     </div>
     <div class="card">
+      <h2>Intraday range — how far it may reach</h2>
+      <div id="excursion"><span class="muted">the next-~4h reach (running high/low, not where it closes) at median / busy 75th / big-day 90th, up and down from here — intraday only</span></div>
+    </div>
+    <div class="card">
       <h2>Target reachability</h2>
       <div class="ctl" style="margin:0 0 6px">
         <input id="reachTarget" class="mono" placeholder="target price" style="flex:1 1 120px;background:#1e293b;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-size:12px">
@@ -253,7 +260,7 @@
       </div>
       <div id="alertCfg"><span class="muted">loading…</span></div>
     </div>
-    <div class="card muted">
+    <div class="card muted wide">
       <b>How to read this honestly.</b> The cone is the model's real claim: a capped
       EWMA drift plus uncertainty envelopes. On <b>D1</b> the envelopes are the Feller
       close-displacement bands from the SAME σ math as the live forecaster
@@ -296,17 +303,18 @@
 // cached forecastPathCore.js (missing a newly-imported export) kills the whole
 // module script silently — dead buttons, nothing loads. Bump when this page
 // starts importing something new from a brick.
-import { createLevelChart } from './js/levelChart.js?v=16';
-import { priceDigits, assetClass as instrAssetClass } from './js/instrumentRegistry.js?v=16';
-import { bisect, resampleTo } from './js/barUtils.js?v=16';
-import { collectLevels } from './js/levelSources.js?v=16';
+import { createLevelChart } from './js/levelChart.js?v=17';
+import { priceDigits, assetClass as instrAssetClass } from './js/instrumentRegistry.js?v=17';
+import { bisect, resampleTo } from './js/barUtils.js?v=17';
+import { collectLevels } from './js/levelSources.js?v=17';
 import {
   buildForecastContext, coneFromContext, samplePaths, calibrationTally, PATH_DEFAULTS,
   buildIntradayContext, intradayCone, intradaySamplePaths, intradayTally, INTRADAY_DEFAULTS,
   intradayRealizedZ, intradayReachability, reachabilityCalibration, dayRangeStatus,
-} from './js/forecastPathCore.js?v=16';
-import { computeBands, nextSigma } from './js/forecastCore.js?v=16';
-import { COG_CONST } from './js/cogReverseEngineer.js?v=16';
+  intradayExcursion, excursionCalibration,
+} from './js/forecastPathCore.js?v=17';
+import { computeBands, nextSigma } from './js/forecastCore.js?v=17';
+import { COG_CONST } from './js/cogReverseEngineer.js?v=17';
 
 // COG's band calibration (reverse-engineered, verified against his exports):
 // raw constants × σ, NO per-asset correction — computeBands-shaped so it can
@@ -695,6 +703,63 @@ function render() {
     `<div class="muted" style="margin-top:6px">Direction is the weak claim (≈ coin flip); the envelopes are the strong one. See calibration.</div>`;
 
   renderDayBudget();
+  renderExcursion(live ? bars.length : i, H);
+}
+
+// Intraday reach table — how FAR up/down price may go in the next ~4h (running
+// high/low, not where it closes), at median / busy(75th) / big-day(90th), as
+// levels off "now" with Δ-from-now, mirroring the vol-forecast range panel. The
+// percentile labels are only trusted because excursionCalibration grades them
+// (a p75 reach exceeded ~25% of the time); that check rides in the footer.
+let _excCalib = { key: null, data: null };
+function renderExcursion(idx, H) {
+  const el = $('excursion'); if (!el) return;
+  if (!isIntraday() || !ctx) { el.innerHTML = '<span class="muted">Intraday (M5/M15) only — how far the next few hours may reach.</span>'; return; }
+  let ex;
+  try { ex = intradayExcursion(ctx, idx, H, { nPaths: 600 }); } catch { ex = null; }
+  if (!ex) { el.innerHTML = '<span class="muted">Not enough history at this point.</span>'; return; }
+  const dg = priceDigits(pairSel.value), a = ex.anchor;
+  const dpc = f => (f >= 0 ? '+' : '') + (f * 100).toFixed(2) + '%';
+  const dpx = p => { const d = p - a; return (d >= 0 ? '+' : '') + d.toFixed(dg); };
+  const NAMES = ['normal day (median)', 'busy day (75th)', 'big day (90th)'];
+  const DOT = ['#34d399', '#fbbf24', '#f87171'];
+  const row = (label, price, side) => {
+    const cls = side > 0 ? 'good' : side < 0 ? 'bad' : 'muted';
+    return `<tr><td style="text-align:left">${label}</td><td>${price.toFixed(dg)}</td>` +
+           `<td class="${cls}">${dpx(price)}</td><td class="${cls}">${dpc(price / a - 1)}</td></tr>`;
+  };
+  const upRows = [2, 1, 0].map(k => row(`<span style="color:${DOT[k]}">◤</span> High · ${NAMES[k]}`, ex.up[k].price, +1)).join('');
+  const dnRows = [0, 1, 2].map(k => row(`<span style="color:${DOT[k]}">◣</span> Low · ${NAMES[k]}`, ex.down[k].price, -1)).join('');
+  const nowRow = `<tr style="border-top:1px solid var(--accent);border-bottom:1px solid var(--accent)"><td style="text-align:left;color:var(--accent)">now</td><td style="color:var(--accent)">${a.toFixed(dg)}</td><td>—</td><td>—</td></tr>`;
+  el.innerHTML =
+    `<table><thead><tr><th style="text-align:left">Level</th><th>Price</th><th>Δ now</th><th>Δ%</th></tr></thead>` +
+    `<tbody>${upRows}${nowRow}${dnRows}</tbody></table>` +
+    `<div class="muted" style="margin-top:6px">Reach = furthest the running high/low goes over the next ${H} bars — not where it closes. Forward from “now”, so both sides project.${_excCalibNote()}</div>`;
+  _ensureExcCalib(H);
+}
+
+// Lazy, cached excursion calibration — grades whether the reach labels hold
+// (a level at pct p should be exceeded (100−p)% of the time). Computed once per
+// pair+horizon+calc off the render hot path, then re-renders the footer.
+function _excCalibNote() {
+  const d = _excCalib.data;
+  if (!d) return ' <span class="muted">Calibrating labels…</span>';
+  const p90 = d.rows.find(r => r.pctile === 90);
+  const ex = v => v == null ? '—' : Math.round(v * 100) + '%';
+  const g = d.gap == null ? '' : d.gap <= 0.05 ? 'good' : d.gap <= 0.10 ? 'warn' : 'bad';
+  return ` <b>Labels calibrated</b> on ${d.windows} windows (gap <span class="${g}">${d.gap == null ? '—' : (d.gap * 100).toFixed(1) + 'pp'}</span>): the 90th-reach was actually exceeded ${ex(p90 && p90.up.exceed)}↑ / ${ex(p90 && p90.down.exceed)}↓ vs the 10% it claims.`;
+}
+function _ensureExcCalib(H) {
+  const key = `${pairSel.value}|${H}|${$('calc').value}`;
+  if (_excCalib.key === key) return;
+  _excCalib = { key, data: null };
+  setTimeout(() => {
+    if (_excCalib.key !== key || !bars.length) return;
+    try {
+      const data = excursionCalibration(bars, { horizonBars: H, calibPaths: 120 });
+      if (_excCalib.key === key) { _excCalib.data = data; renderExcursion(i >= bars.length ? bars.length : i, H); }
+    } catch { /* leave the note as-is */ }
+  }, 0);
 }
 
 // Volatility left in the day — pure range climatology (intraday only).

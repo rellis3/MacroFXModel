@@ -17,6 +17,7 @@ import {
   buildIntradayContext, intradayCone, intradaySamplePaths, intradayTally,
   profileMult, INTRADAY_DEFAULTS, intradayRealizedZ, normCdf, eventMult,
   intradayReachability, reachabilityCalibration, dayRangeStatus,
+  intradayExcursion, excursionCalibration,
 } from './forecastPathCore.js';
 
 // ── Synthetic GBM daily bars (seeded) ────────────────────────────────────────
@@ -388,6 +389,31 @@ const m15 = syntheticM15(55);   // ~5280 bars
   const lo = rc.curve.find(c => c.bin === 0 && c.n >= 10);
   const hi = rc.curve.find(c => c.bin === 0.9 && c.n >= 10);
   if (lo && hi) ok(hi.realized > lo.realized, `reliability monotone (${lo.realized?.toFixed(2)} → ${hi.realized?.toFixed(2)})`);
+}
+
+// 16b) Intraday excursion — reach levels ordered, monotone in percentile, and
+// the "p should be exceeded (100−p)%" calibration holds on synthetic bars.
+{
+  const ctx = buildIntradayContext(m15);
+  const i = 3000, H = 16;
+  const ex = intradayExcursion(ctx, i, H, { nPaths: 400 });
+  ok(ex && ex.up.length === 3 && ex.down.length === 3, 'excursion returns 3 levels each side');
+  // Reach fractions are non-negative and increase with percentile.
+  ok(ex.up[0].frac >= 0 && ex.up[0].frac <= ex.up[1].frac && ex.up[1].frac <= ex.up[2].frac, 'up reach monotone in pctile');
+  ok(ex.down[0].frac >= 0 && ex.down[0].frac <= ex.down[1].frac && ex.down[1].frac <= ex.down[2].frac, 'down reach monotone in pctile');
+  // Prices: up levels above anchor and increasing; down levels below and decreasing.
+  ok(ex.up[0].price > ex.anchor && ex.up[2].price > ex.up[0].price, 'up prices above anchor, increasing');
+  ok(ex.down[0].price < ex.anchor && ex.down[2].price < ex.down[0].price, 'down prices below anchor, decreasing');
+  // Determinism (seeded).
+  const ex2 = intradayExcursion(ctx, i, H, { nPaths: 400 });
+  ok(ex.up[1].price === ex2.up[1].price, 'excursion is deterministic (seeded)');
+
+  const ec = excursionCalibration(m15, { horizonBars: H, calibPaths: 150 });
+  ok(ec.windows >= 30, `enough excursion windows (${ec.windows})`);
+  ok(ec.gap != null && ec.gap < 0.15, `excursion exceed-rates near claimed on synthetic (gap ${ec.gap?.toFixed(3)})`);
+  // The median level should be exceeded far more often than the 90th.
+  const p50 = ec.rows.find(r => r.pctile === 50), p90 = ec.rows.find(r => r.pctile === 90);
+  ok(p50.up.exceed > p90.up.exceed, `p50 exceeded more than p90 (${p50.up.exceed?.toFixed(2)} > ${p90.up.exceed?.toFixed(2)})`);
 }
 
 // 17) Implied-vol width conditioner: scales the day's σ, causal, off by default.
