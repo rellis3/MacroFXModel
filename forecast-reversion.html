@@ -144,10 +144,15 @@
       <button data-y="momentum" title="WaveTrend decides per touch: overbought &amp; rolling over at an up-line (oversold &amp; turning up at a down-line) → fade; otherwise momentum-aligned → follow.">Momentum</button>
       <button data-y="divergence" title="Regular price↔WaveTrend divergence at the touch → fade (reversal); none → follow (continuation).">Divergence</button>
       <button data-y="budget" title="Range-budget: realized session range ÷ the forecast's expected day range at the touch. Unspent (vol still to come) → fade (strong reversal); spent (range used up) → follow (break). Direction is the open question — the test is whether budget separates the outcomes.">Budget</button>
+      <button data-y="timing" title="Session timing: how far through the London day the touch is (0 = open, 1 = close). EARLY touches → fade (revert); LATE → follow (continue) — the separator the Fade/Follow panel flagged as cleanest. Tcut is the early/late boundary.">Timing</button>
     </div>
     <span id="budInputs" style="display:none;align-items:center;gap:6px">
       <label title="Spent threshold as a % of the forecast's expected day range. A touch where LESS than this % of the day's range has printed = unspent → fade; at/above = spent → follow. 100 = the full expected range. Slide it and watch the fade/follow split in the tally change.">Bud cut %</label>
       <input type="number" id="budcut" value="75" step="5" min="5" max="300" style="width:52px">
+    </span>
+    <span id="timeInputs" style="display:none;align-items:center;gap:6px">
+      <label title="Session fraction boundary (0 = open, 1 = close). Touches before this = early → fade; at/after = late → follow.">T cut</label>
+      <input type="number" id="tcut" value="0.5" step="0.05" min="0.05" max="0.95" style="width:52px">
     </span>
     <label title="Next level: TP = the adjacent band, SL = symmetric (1:1). Fixed: SL = a set pip/point distance, TP = SL × the multiplier — same entry line + direction.">SL/TP</label>
     <div class="seg" id="sltp">
@@ -242,7 +247,7 @@ import { findDivergences, reversalDecision } from './js/divergenceCore.js?v=2';
 
 // Style labels (page-level: the brick knows fade_all/follow_med_fade_75; momentum
 // and divergence are page selectors that drive the brick's decideAction hook).
-const STYLE_LABEL = { fade_all: 'Fade all', follow_med_fade_75: 'Cont med · fade 75th', momentum: 'Momentum (WT)', divergence: 'Divergence (WT)', budget: 'Budget (vol)' };
+const STYLE_LABEL = { fade_all: 'Fade all', follow_med_fade_75: 'Cont med · fade 75th', momentum: 'Momentum (WT)', divergence: 'Divergence (WT)', budget: 'Budget (vol)', timing: 'Timing (session)' };
 // Matched to the user's VuManChu Cipher B: WaveTrend 9/12/3, divergences read on
 // the SIGNAL line (wt2), OB/OS bands 53/−53, and divergence-zone gates 45/−65
 // (regular divergences only; hidden are ungated).
@@ -377,9 +382,11 @@ let dpr = window.devicePixelRatio || 1;
     $('style').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
     state.style = styleMode();
     $('budInputs').style.display = state.style === 'budget' ? 'inline-flex' : 'none';
+    $('timeInputs').style.display = state.style === 'timing' ? 'inline-flex' : 'none';
     recomputeAndDraw();
   });
   $('budcut').addEventListener('change', recomputeAndDraw);
+  $('tcut').addEventListener('change', recomputeAndDraw);
   $('cost').addEventListener('change', recomputeAndDraw);
   // SL/TP mode toggle: 'fixed' reveals the pip/point SL + TP× inputs.
   $('sltp').addEventListener('click', e => {
@@ -622,6 +629,13 @@ function makeDecider(d) {
       return spent < cut ? 'fade' : 'follow';
     };
   }
+  if (state.style === 'timing') {
+    // Session fraction of the touch (0 = open, 1 = close). EARLY → fade (revert),
+    // LATE → follow (continue) — the direction the Fade/Follow panel flagged.
+    const cut = Math.max(0.05, Math.min(0.95, +$('tcut').value || 0.5));
+    const n = d.bars.length;
+    return (L, ti) => ((n > 1 ? ti / (n - 1) : 0) < cut ? 'fade' : 'follow');
+  }
   return null;
 }
 function computeTrades() {
@@ -842,10 +856,11 @@ function renderStats() {
     sltpLbl = 'Next level';
   }
   const eodLbl = state.eod === 'run' ? 'Let run' : 'Kill @ EOD';
-  const styleTag = state.style === 'budget' ? `${styleLbl} cut ${+$('budcut').value || 75}%` : styleLbl;
+  const styleTag = state.style === 'budget' ? `${styleLbl} cut ${+$('budcut').value || 75}%`
+    : state.style === 'timing' ? `${styleLbl} cut ${+$('tcut').value || 0.5}` : styleLbl;
   // Fade/follow split — shows a selector style (momentum/divergence/budget) is
   // actually dividing the touches. For the fixed styles it's all one action.
-  const selector = ['momentum', 'divergence', 'budget'].includes(state.style);
+  const selector = ['momentum', 'divergence', 'budget', 'timing'].includes(state.style);
   let nFade = 0, nFollow = 0;
   for (const t of all) { if (t.action === 'follow') nFollow++; else nFade++; }
   const splitLine = selector
@@ -957,6 +972,16 @@ function applyScanCell(slUnit, tpMult) {
 // an edge claim. Prior M1 testing (5 pairs) came back ~null and, notably, vol-spent
 // ran OPPOSITE to the premise: touches that had spent MORE of the day's expected
 // range continued more often, not less. This panel re-checks that on any range.
+// Rough UTC session of a touch timestamp (Asia / London / NY; London-NY overlap → NY).
+function ffSession(unixSec) {
+  const h = Math.floor((((unixSec % 86400) + 86400) % 86400) / 3600);
+  if (h >= 7 && h < 12) return 'London';
+  if (h >= 12 && h < 21) return 'NY';
+  return 'Asia';
+}
+const _DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+function ffDow(unixSec) { return _DOW[new Date(unixSec * 1000).getUTCDay()]; }
+function ffMedian(arr) { if (!arr.length) return null; const s = [...arr].sort((a, b) => a - b); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
 function ffTouches() {
   const recs = [];
   for (const d of days) {
@@ -983,19 +1008,25 @@ function ffTouches() {
       // the same no-lookahead-on-the-fill-bar discipline walkBars uses.
       const revLevel  = L.price - L.side * dIn;   // one inner-band toward the open
       const contLevel = L.price + L.side * dIn;   // one band further out
-      let label = 'undecided';
+      let label = 'undecided', mae = 0, mfe = 0;  // excursions from the line (price), pre-resolution
       for (let k = ti + 1; k < n; k++) {
         const b = bars[k];
+        const adv = L.side > 0 ? b.high - L.price : L.price - b.low;   // toward continuation (adverse to a fade)
+        const fav = L.side > 0 ? L.price - b.low  : b.high - L.price;  // toward the revert (favourable)
+        if (adv > mae) mae = adv;
+        if (fav > mfe) mfe = fav;
         const hitRev  = L.side > 0 ? b.low  <= revLevel  : b.high >= revLevel;
         const hitCont = L.side > 0 ? b.high >= contLevel : b.low  <= contLevel;
         if (hitRev && hitCont) { label = 'undecided'; break; }   // same-bar straddle → no clean intrabar read
         if (hitRev)  { label = 'revert';   break; }
         if (hitCont) { label = 'continue'; break; }
       }
+      const tt = bars[ti].time;
       recs.push({
         spent, label,
         family: L.band.startsWith('hl') ? 'range' : 'close',
         tier: L.tier, touchFrac: n > 1 ? ti / (n - 1) : 0,
+        session: ffSession(tt), dow: ffDow(tt), mae: mae / dIn, mfe: mfe / dIn,   // MAE/MFE in inner-band units
       });
     }
   }
@@ -1041,6 +1072,18 @@ function ffSection(title, buckets, note) {
     + `<tbody>${buckets.map(ffRow).join('')}</tbody></table>`
     + (note ? `<div class="st-empty">${note}</div>` : '') + `</div>`;
 }
+// MAE/MFE per touch, split by outcome — informs stop sizing (spec Q5).
+function ffMaeSection(recs) {
+  const rows = [['revert', 'Reverted (fade won)'], ['continue', 'Continued (follow won)'], ['undecided', 'Undecided']].map(([k, l]) => {
+    const g = recs.filter(r => r.label === k);
+    const mae = ffMedian(g.map(r => r.mae)), mfe = ffMedian(g.map(r => r.mfe));
+    return `<tr><td>${l}</td><td>${g.length}</td><td>${mae != null ? mae.toFixed(2) : '—'}</td><td>${mfe != null ? mfe.toFixed(2) : '—'}</td></tr>`;
+  }).join('');
+  return `<div class="ff-sec"><h4>MAE / MFE per touch — stop sizing</h4>`
+    + `<table class="ff"><thead><tr><th>Outcome</th><th>N</th><th title="Median max adverse excursion: how far price pushed further OUT past the line before resolving — the heat a fade takes">Med MAE</th><th title="Median max favourable excursion toward the revert">Med MFE</th></tr></thead>`
+    + `<tbody>${rows}</tbody></table>`
+    + `<div class="st-empty">In inner-band units (1.0 = one band). MAE = heat past the line before it resolved → a fade needs its stop beyond the reverts' MAE; high MAE on continues is the runaway you're stopping out of.</div></div>`;
+}
 function runFadeFollow() {
   if (!days.length) { setStatus('generate a range first'); return; }
   const recs = ffTouches();
@@ -1050,6 +1093,8 @@ function runFadeFollow() {
   const timeT  = ffTerciles(recs, r => r.touchFrac, ['EARLY', 'MID', 'LATE']);
   const fam  = [['range', 'Range (H/L)'], ['close', 'Close (O-C) — exhaustion']].map(([k, l]) => ffAgg(recs.filter(r => r.family === k), l));
   const tier = [['med', 'Median'], ['p75', '75th (further out)']].map(([k, l]) => ffAgg(recs.filter(r => r.tier === k), l));
+  const sess = [['Asia', 'Asia'], ['London', 'London'], ['NY', 'New York']].map(([k, l]) => ffAgg(recs.filter(r => r.session === k), l)).filter(b => b.n > 0);
+  const dow  = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map(k => ffAgg(recs.filter(r => r.dow === k), k)).filter(b => b.n > 0);
   // Headline: does vol-spent move the outcome the way the exhaustion premise says?
   // Premise = LESS spent → reversal, so revert% should FALL as spent rises.
   let headline = '';
@@ -1067,7 +1112,10 @@ function runFadeFollow() {
       ffSection('By vol-spent at touch — the exhaustion premise', spentT, 'Spent = realized range at the touch ÷ the forecast’s expected day range. Premise: LOW spent → reversal, so the fade edge should fall as spent rises.')
     + ffSection('By line family', fam, 'The Close (O-C) lines are the exhaustion levels; Range (H/L) is the outer envelope.')
     + ffSection('By tier', tier, 'Median vs 75th percentile line — the 75th sits further out (more “exhausted”).')
-    + ffSection('By touch timing — session fraction', timeT, 'When in the session the line was first tagged (0 = open, 1 = close).');
+    + ffSection('By touch timing — session fraction', timeT, 'When in the session the line was first tagged (0 = open, 1 = close). The cleanest separator in prior runs — early revert, late continue.')
+    + ffSection('By session (UTC)', sess, 'Asia / London / New York by the touch’s UTC hour (London-NY overlap counted as NY). Spec Q1: does a London-open touch behave differently from one before the NY close?')
+    + ffSection('By day of week', dow, 'Concentration check — is any single weekday carrying the result?')
+    + ffMaeSection(recs);
   $('ffOverlay').classList.add('open');
 }
 $('ffBtn').addEventListener('click', runFadeFollow);
