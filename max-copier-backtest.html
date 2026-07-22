@@ -52,7 +52,15 @@
   code { background:var(--panel2); padding:1px 5px; border-radius:4px; font-size:12px; }
   .hidden { display:none; }
   .logbox { max-height:180px; overflow:auto; font:12px/1.5 ui-monospace,monospace; color:var(--mut); background:#0b0d13; border:1px solid var(--line); border-radius:8px; padding:10px; }
+  .verdict { border-left:3px solid var(--accent); padding:8px 12px; margin:8px 0; background:var(--panel2); border-radius:0 8px 8px 0; font-size:13px; }
+  .verdict.bad { border-left-color:var(--red); } .verdict.meh { border-left-color:var(--amber); } .verdict.good { border-left-color:var(--green); }
+  .chartwrap { position:relative; width:100%; }
+  #mcChart { width:100%; height:420px; } #mcWt { width:100%; height:150px; }
+  .legend { display:flex; gap:14px; flex-wrap:wrap; font-size:11.5px; color:var(--mut); margin:8px 0; }
+  .legend span { display:inline-flex; align-items:center; gap:5px; }
+  .dot { width:10px; height:10px; border-radius:50%; display:inline-block; } .bar { width:14px; height:0; border-top:2px solid; display:inline-block; }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -103,6 +111,32 @@
   </div>
 
   <div id="results"></div>
+
+  <h2>Replay chart — see what each trade saw</h2>
+  <p class="sub">Candles + VuManChu WaveTrend, with the strategy's own marks: impulse breaks, HTF level, consolidation box, value-area entry, hidden-divergence points, and the basket's stop/exits. This is the "what"; the autopsy above is the "why".</p>
+  <div class="panel">
+    <div class="row" style="margin-bottom:10px;">
+      <div><label>Instrument</label><select id="cPair"></select></div>
+      <div><label>From</label><input id="cFrom" type="date"></div>
+      <div><label>To</label><input id="cTo" type="date"></div>
+      <div><label>Exit model</label><select id="cMode"><option>fixed_r</option><option>shared_htf</option><option>ladder_trail</option></select></div>
+      <div><label>Divergence</label><select id="cDiv"><option value="wavetrend">VuManChu WT</option><option value="rsi">RSI</option></select></div>
+      <div style="align-self:flex-end;"><button id="cRun">Load replay chart</button></div>
+      <span id="cStatus" class="muted"></span>
+    </div>
+    <div class="legend">
+      <span><span class="dot" style="background:#4a9fe0"></span>impulse break</span>
+      <span><span class="bar" style="border-color:#e0a94b"></span>HTF level</span>
+      <span><span class="bar" style="border-color:#8b97a8"></span>consolidation hi/lo</span>
+      <span><span class="dot" style="background:#7c6cf0"></span>value-area entry</span>
+      <span><span class="dot" style="background:#e5c04b"></span>divergence pt</span>
+      <span><span class="dot" style="background:#3fb27f"></span>win exit</span>
+      <span><span class="dot" style="background:#e5604d"></span>loss / stop</span>
+    </div>
+    <div class="chartwrap"><div id="mcChart"></div></div>
+    <div class="chartwrap"><div id="mcWt"></div><div class="note" style="margin:2px 0 0;">VuManChu WaveTrend (WT1 solid / WT2 dashed) — the oscillator the hidden-divergence check reads.</div></div>
+    <div id="cTradeInfo" class="note"></div>
+  </div>
 </div>
 
 <script type="module">
@@ -110,6 +144,7 @@ const $ = (id) => document.getElementById(id);
 const EXIT_LABELS = { fixed_r:'fixed_r', shared_htf:'shared_htf', ladder_trail:'ladder_trail' };
 const PAIRS = ['ALL','eurusd','gbpusd','usdjpy','audusd','nzdusd','usdcad','usdchf','gbpjpy','eurjpy','eurgbp','euraud','eurcad','eurchf','eurnzd','audjpy','audnzd','audcad','audchf','gbpaud','gbpcad','gbpchf','cadjpy','chfjpy','nzdjpy','gold'];
 $('pair').innerHTML = PAIRS.map(p => `<option value="${p==='ALL'?'':p}">${p==='ALL'?'All 26 (24 FX + gold)':p}</option>`).join('');
+$('cPair').innerHTML = PAIRS.filter(p=>p!=='ALL').map(p => `<option value="${p}"${p==='gold'?' selected':''}>${p}</option>`).join('');
 
 const fmt = (v, d = 2) => (v === null || v === undefined || !Number.isFinite(+v)) ? '—' : (+v).toFixed(d);
 const cls = (v) => (+v > 0 ? 'pos' : +v < 0 ? 'neg' : 'muted');
@@ -196,6 +231,9 @@ function render(out) {
   html += `<div class="note">Best exit model OOS (≥30 baskets): ${pb ? `<span class="tag mode">${pb.mode}</span> Sharpe ${fmt(pb.sharpe,2)} on ${pb.trades} baskets` : '<span class="neg">none cleared the ≥30-baskets gate</span>'}.</div>`;
   html += modeTable(pooled, exitModes);
 
+  // Autopsy — WHY (with numbers)
+  if (out.autopsy) html += renderAutopsy(out.autopsy);
+
   // Diagnostics controls
   html += `<h2>Diagnostics &amp; export</h2>`;
   html += `<div class="row" style="margin-bottom:10px;">
@@ -219,6 +257,62 @@ function render(out) {
   $('dxScope').onchange = renderDiagnostics;
   $('dxMode').onchange = renderDiagnostics;
   renderDiagnostics();
+}
+
+// ── autopsy: prove WHY it (didn't) work ──────────────────────────────────────
+function renderAutopsy(a) {
+  let h = `<h2>Autopsy — why it works / doesn't (pooled, with numbers)</h2>`;
+
+  // (A) Premise
+  const P = a.premise;
+  const H96 = P['96'] || {};
+  const premiseDead = Math.abs(H96.mean) < 0.15; // <0.15 ATR over 24h ≈ economically nil vs a ~1-ATR stop + costs
+  h += `<div class="panel"><h3 style="margin:0 0 6px;font-size:14px;">A · The premise: does an impulse past a level actually predict continuation?</h3>
+    <div class="scroll"><table><thead><tr><th>horizon after impulse</th><th>mean fwd move (ATR)</th><th>hit-rate &gt; 0</th><th>t-stat</th><th>n impulses</th></tr></thead><tbody>
+    ${['16','32','96'].map(k=>{const p=P[k]||{};const lbl={16:'+4h',32:'+8h',96:'+24h'}[k];return `<tr><td>${lbl}</td><td class="${cls(p.mean)}">${fmt(p.mean,3)}</td><td>${fmt(p.hitRate,1)}%</td><td>${fmt(p.tStat,2)}</td><td>${p.n}</td></tr>`;}).join('')}
+    </tbody></table></div>
+    <div class="verdict ${premiseDead?'bad':'meh'}">${premiseDead
+      ? `<b>This is the root cause.</b> The forward move after an impulse is ~${fmt(H96.mean,2)} ATR over 24h with a ${fmt(H96.hitRate,0)}% hit-rate — essentially a coin flip. Any faint positive drift (t≈${fmt(H96.tStat,1)} is the replicated time-series-momentum whisper) is a small fraction of the ~1-ATR stop and is eaten by costs. The signal the entire strategy sits on carries no exploitable after-cost edge, so no entry finesse or exit model can rescue it.`
+      : `Forward drift after impulse is ${fmt(H96.mean,2)} ATR/24h (t≈${fmt(H96.tStat,1)}) — a real but modest continuation. Whether it survives the ~1-ATR stop + costs is what the rest tests.`}</div>
+  </div>`;
+
+  // (B) Divergence value-add
+  const D = a.divergence;
+  const divHelps = D.passed.meanR > D.failed.meanR && D.passed.meanR > 0;
+  h += `<div class="panel"><h3 style="margin:0 0 6px;font-size:14px;">B · Does the hidden-divergence "confirmation" add anything?</h3>
+    <div class="scroll"><table><thead><tr><th>subset (fixed_r)</th><th>n baskets</th><th>win%</th><th>mean R</th></tr></thead><tbody>
+    <tr><td>divergence confirmed</td><td>${D.passed.n}</td><td>${fmt(D.passed.winRate,1)}</td><td class="${cls(D.passed.meanR)}">${fmt(D.passed.meanR,3)}</td></tr>
+    <tr><td>divergence absent</td><td>${D.failed.n}</td><td>${fmt(D.failed.winRate,1)}</td><td class="${cls(D.failed.meanR)}">${fmt(D.failed.meanR,3)}</td></tr>
+    </tbody></table></div>
+    <div class="verdict ${divHelps?'good':'bad'}">${divHelps
+      ? `Confirmed setups beat unconfirmed AND are positive — the filter adds value.`
+      : `The "confirmation" ${D.passed.meanR>D.failed.meanR?'selects a less-bad subset':'does not even separate winners from losers'}, but confirmed baskets still average ${fmt(D.passed.meanR,3)}R — it discards ${D.failed.n} of ${D.passed.n+D.failed.n} setups to still lose. It's a smaller loss, not an edge.`}</div>
+  </div>`;
+
+  // (C) Expectancy arithmetic
+  const E = a.expectancy;
+  h += `<div class="panel"><h3 style="margin:0 0 6px;font-size:14px;">C · The expectancy arithmetic</h3>
+    <div class="kpis">
+      <div class="kpi"><div class="v">${fmt(E.winRate,1)}%</div><div class="l">actual win rate</div></div>
+      <div class="kpi"><div class="v">${fmt(E.breakevenWinRate,1)}%</div><div class="l">breakeven needed</div></div>
+      <div class="kpi"><div class="v ${cls(E.edgeGap)}">${fmt(E.edgeGap,1)}pp</div><div class="l">edge gap (actual − needed)</div></div>
+      <div class="kpi"><div class="v pos">+${fmt(E.avgWinR,2)}R</div><div class="l">avg winner</div></div>
+      <div class="kpi"><div class="v neg">${fmt(E.avgLossR,2)}R</div><div class="l">avg loser</div></div>
+      <div class="kpi"><div class="v ${cls(E.expectancyR)}">${fmt(E.expectancyR,3)}R</div><div class="l">expectancy / basket</div></div>
+    </div>
+    <div class="verdict ${E.edgeGap<0?'bad':'good'}">With a +${fmt(E.avgWinR,2)}R / ${fmt(E.avgLossR,2)}R payoff, it needs to win ${fmt(E.breakevenWinRate,1)}% of the time; it wins ${fmt(E.winRate,1)}%. That ${fmt(E.edgeGap,1)}pp gap <b>is</b> the negative expectancy (${fmt(E.expectancyR,3)}R/basket), before you even add the correlation penalty of stacking ${''}the basket.</div>
+  </div>`;
+
+  // (D) Exit mix + MFE-before-stop
+  const M = a.mfeBeforeStop, mix = a.exitMix||{};
+  const totMix = Object.values(mix).reduce((x,y)=>x+y,0)||1;
+  h += `<div class="panel"><h3 style="margin:0 0 6px;font-size:14px;">D · Do the entries actually time a move? (exit mix + MFE-before-stop)</h3>
+    <div class="scroll"><table><thead><tr><th>exit reason</th>${Object.keys(mix).map(k=>`<th>${k}</th>`).join('')}</tr></thead><tbody>
+    <tr><td>share of baskets</td>${Object.keys(mix).map(k=>`<td>${fmt(100*mix[k]/totMix,0)}%</td>`).join('')}</tr></tbody></table></div>
+    <div class="verdict ${M.reached1R<40?'bad':'meh'}">Of the ${M.nStopped} baskets that stopped out, only <b>${fmt(M.reachedHalfR,0)}%</b> ever reached +0.5R and <b>${fmt(M.reached1R,0)}%</b> reached +1R first. Most losers <b>never went in favour at all</b> — the value-area entry isn't timing a continuation, it's often stepping straight into the stop.</div>
+  </div>`;
+
+  return h;
 }
 
 // ── diagnostics: cost-sensitivity + yearly concentration + CSV export ─────────
@@ -314,6 +408,102 @@ function renderDiagnostics() {
     const money = (x) => `"$${(Math.round(x*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}"`;
     dl('Trade Date,PnL ($),Risk ($)\n' + positions.map(p=>`${p.date},${money(p.pnlR*riskDollars)},${money(riskDollars)}`).join('\n'), `maxcopier_usd_${tag}.csv`);
   };
+}
+
+// ── Replay chart ─────────────────────────────────────────────────────────────
+async function pollTrace(jobId) {
+  let fails = 0;
+  for (let i = 0; i < 200; i++) {
+    await new Promise(r => setTimeout(r, 2500));
+    let res = null;
+    try { res = await fetch(`/api/max-copier/status/${jobId}`).then(r => r.json()); }
+    catch { if (++fails > 20) throw new Error('lost contact'); continue; }
+    if (!res) { if (++fails > 20) throw new Error('empty'); continue; }
+    fails = 0;
+    if (res.status === 'running') { $('cStatus').textContent = `Loading… ${res.elapsed||0}s`; continue; }
+    if (res.status === 'done') return res.trace;
+    if (res.status === 'error') throw new Error(res.error || 'trace error');
+  }
+  throw new Error('timed out');
+}
+
+let CHART = null, WTCHART = null;
+const COL = { up:'#3fb27f', down:'#e5604d', level:'#e0a94b', consol:'#8b97a8', entry:'#7c6cf0', div:'#e5c04b', stop:'#e5604d', tp:'#3fb27f', trail:'#4a9fe0', time:'#8b97a8', impulse:'#4a9fe0' };
+
+$('cRun').onclick = async () => {
+  if (typeof LightweightCharts === 'undefined') { $('cStatus').innerHTML = '<span class="neg">Chart library blocked (offline/CSP). Numbers still work.</span>'; return; }
+  const body = {
+    pair: $('cPair').value, fromDate: $('cFrom').value, toDate: $('cTo').value,
+    mode: $('cMode').value, divergenceSource: $('cDiv').value,
+    // mirror the backtest params so the chart matches the run
+    donchianLookback: $('donchianLookback').value, impulseAtrMult: $('impulseAtrMult').value,
+    consolBars: $('consolBars').value, consolMaxAtr: $('consolMaxAtr').value, vaDepth: $('vaDepth').value,
+    stopAtrBuffer: $('stopAtrBuffer').value, entryTimeout: $('entryTimeout').value,
+    requireDivergence: $('requireDivergence').value === '1', nPositions: $('nPositions').value,
+    maxHoldBarsM15: $('maxHoldBarsM15').value, tpR: $('tpR').value, mmMult: $('mmMult').value,
+    ladderR: $('ladderR').value, trailAtrMult: $('trailAtrMult').value, trailStartR: $('trailStartR').value,
+  };
+  $('cRun').disabled = true; $('cStatus').textContent = 'Starting…';
+  try {
+    const start = await fetch('/api/max-copier/trace', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) }).then(r=>r.json());
+    if (!start.ok) throw new Error(start.error || 'failed to start');
+    const trace = await pollTrace(start.jobId);
+    renderChart(trace);
+    $('cStatus').textContent = `${trace.pair} · ${trace.from} → ${trace.to} · ${trace.nCandles} bars · ${trace.trades.length} setups · div=${trace.divergenceSource}`;
+  } catch (e) { $('cStatus').innerHTML = `<span class="neg">${e.message}</span>`; }
+  finally { $('cRun').disabled = false; }
+};
+
+function renderChart(t) {
+  if (CHART) { CHART.remove(); CHART = null; } if (WTCHART) { WTCHART.remove(); WTCHART = null; }
+  const dark = { layout:{ background:{color:'#0e1016'}, textColor:'#8b97a8' }, grid:{ vertLines:{color:'#1a1f2b'}, horzLines:{color:'#1a1f2b'} }, timeScale:{ timeVisible:true, secondsVisible:false, borderColor:'#2a3242' }, rightPriceScale:{ borderColor:'#2a3242' }, crosshair:{ mode:0 } };
+  const priceEl = $('mcChart'), wtEl = $('mcWt');
+  CHART = LightweightCharts.createChart(priceEl, { ...dark, width: priceEl.clientWidth, height: 420 });
+  WTCHART = LightweightCharts.createChart(wtEl, { ...dark, width: wtEl.clientWidth, height: 150 });
+
+  const candle = CHART.addCandlestickSeries({ upColor:COL.up, downColor:COL.down, borderVisible:false, wickUpColor:COL.up, wickDownColor:COL.down });
+  candle.setData(t.candles);
+
+  // Per-trade level / consolidation / stop / entry segments (localised, cap 60).
+  const seg = (pts, color, width, style) => { const s = CHART.addLineSeries({ color, lineWidth:width, lineStyle:style||0, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false }); s.setData(pts); };
+  const trades = t.trades.slice(-60);
+  for (const tr of trades) {
+    const lastExit = tr.exits.length ? Math.max(...tr.exits.map(e=>e.time)) : tr.entryTime;
+    seg([{time:tr.impulseTime,value:tr.level},{time:tr.entryTime,value:tr.level}], COL.level, 1);
+    seg([{time:tr.consolFrom,value:tr.cHigh},{time:tr.consolTo,value:tr.cHigh}], COL.consol, 1, 2);
+    seg([{time:tr.consolFrom,value:tr.cLow},{time:tr.consolTo,value:tr.cLow}], COL.consol, 1, 2);
+    seg([{time:tr.entryTime,value:tr.entry},{time:lastExit,value:tr.entry}], COL.entry, 1);
+    seg([{time:tr.entryTime,value:tr.stop},{time:lastExit,value:tr.stop}], COL.stop, 1, 2);
+  }
+
+  // Markers (impulse / divergence / entry / exits), sorted by time.
+  const M = [];
+  for (const im of t.impulses) M.push({ time:im.time, position: im.dir==='long'?'belowBar':'aboveBar', color:COL.impulse, shape: im.dir==='long'?'arrowUp':'arrowDown', text:'impulse' });
+  for (const tr of trades) {
+    for (const dp of tr.divPts) M.push({ time:dp.time, position:'belowBar', color:COL.div, shape:'circle', text:'div' });
+    const win = (tr.basketPnlR||0) > 0;
+    M.push({ time:tr.entryTime, position: tr.dir==='long'?'belowBar':'aboveBar', color: win?COL.up:COL.down, shape:'circle', text:`${tr.dir==='long'?'▲':'▼'}${!tr.tradable?'(skip)':''} ${tr.basketPnlR==null?'':(tr.basketPnlR>0?'+':'')+tr.basketPnlR+'R'}` });
+    for (const ex of tr.exits) M.push({ time:ex.time, position:'aboveBar', color: COL[ex.reason]||COL.time, shape:'square', text:ex.reason });
+  }
+  M.sort((a,b)=>a.time-b.time);
+  candle.setMarkers(M);
+
+  // WaveTrend pane
+  const wt1 = WTCHART.addLineSeries({ color:'#7c6cf0', lineWidth:2, priceLineVisible:false, lastValueVisible:false });
+  const wt2 = WTCHART.addLineSeries({ color:'#e0a94b', lineWidth:1, lineStyle:2, priceLineVisible:false, lastValueVisible:false });
+  wt1.setData(t.wt.map(w=>({time:w.time, value:w.wt1})));
+  wt2.setData(t.wt.map(w=>({time:w.time, value:w.wt2})));
+  for (const lvl of [53,0,-53]) wt1.createPriceLine({ price:lvl, color:'#2a3242', lineWidth:1, lineStyle:2, axisLabelVisible:false });
+
+  // Sync the two time scales.
+  let lock = false;
+  const sync = (from, to) => from.timeScale().subscribeVisibleLogicalRangeChange(r => { if (lock || !r) return; lock = true; to.timeScale().setVisibleLogicalRange(r); lock = false; });
+  sync(CHART, WTCHART); sync(WTCHART, CHART);
+  CHART.timeScale().fitContent(); WTCHART.timeScale().fitContent();
+
+  $('cTradeInfo').innerHTML = trades.length >= 60 ? 'Showing the most recent 60 setups in the window (zoom/pan to inspect).' : `${trades.length} setups drawn. Amber = HTF level · grey dashed = consolidation hi/lo · purple = value-area entry · red dashed = stop.`;
+
+  new ResizeObserver(() => { if (CHART) CHART.applyOptions({ width: priceEl.clientWidth }); if (WTCHART) WTCHART.applyOptions({ width: wtEl.clientWidth }); }).observe(priceEl);
 }
 </script>
 </body>

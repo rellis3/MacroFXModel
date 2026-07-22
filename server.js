@@ -46,7 +46,7 @@ import { buildCsiInputs } from './js/creditStressEngine.js';
 import { runCarryBasket, financingHaircut, alignSeries as _carryAlignSeries } from './js/carryEngine.js';
 import { combineFactors as _combineFactors, MF_DEFAULTS as _MF_DEFAULTS } from './js/multiFactorEngine.js';
 import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
-import { runMaxCopierSuite, MAXCOPIER_INSTRUMENTS, MAXCOPIER_DEFAULTS, EXIT_MODES as MAXCOPIER_EXIT_MODES } from './js/maxCopierEngine.js';
+import { runMaxCopierSuite, traceMaxCopierPair, MAXCOPIER_INSTRUMENTS, MAXCOPIER_DEFAULTS, EXIT_MODES as MAXCOPIER_EXIT_MODES } from './js/maxCopierEngine.js';
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
@@ -10002,11 +10002,10 @@ function _purgeStaleMaxCopierJobs() {
   for (const [id, job] of maxCopierJobs) if (job.startedAt < cutoff) maxCopierJobs.delete(id);
 }
 
-app.post('/api/max-copier/run', express.json({ limit: '256kb' }), (req, res) => {
-  const b = req.body ?? {};
+function _parseMaxCopierOpts(b) {
   const num = (v, d) => (v === undefined || v === '' || isNaN(+v) ? d : +v);
   const D = MAXCOPIER_DEFAULTS;
-  const opts = {
+  return {
     donchianLookback: Math.round(num(b.donchianLookback, D.donchianLookback)),
     impulseAtrMult:   num(b.impulseAtrMult, D.impulseAtrMult),
     consolBars:       Math.round(num(b.consolBars, D.consolBars)),
@@ -10015,6 +10014,7 @@ app.post('/api/max-copier/run', express.json({ limit: '256kb' }), (req, res) => 
     entryTimeout:     Math.round(num(b.entryTimeout, D.entryTimeout)),
     stopAtrBuffer:    num(b.stopAtrBuffer, D.stopAtrBuffer),
     requireDivergence: b.requireDivergence === undefined ? D.requireDivergence : !!b.requireDivergence,
+    divergenceSource: b.divergenceSource === 'rsi' ? 'rsi' : 'wavetrend',
     nPositions:       Math.min(Math.max(Math.round(num(b.nPositions, D.nPositions)), 1), 10),
     maxHoldBarsM15:   Math.round(num(b.maxHoldBarsM15, D.maxHoldBarsM15)),
     tpR:              num(b.tpR, D.tpR),
@@ -10024,6 +10024,11 @@ app.post('/api/max-copier/run', express.json({ limit: '256kb' }), (req, res) => 
     trailStartR:      num(b.trailStartR, D.trailStartR),
     oosFrac:          Math.min(Math.max(num(b.oosFrac, D.oosFrac), 0.1), 0.6),
   };
+}
+
+app.post('/api/max-copier/run', express.json({ limit: '256kb' }), (req, res) => {
+  const b = req.body ?? {};
+  const opts = _parseMaxCopierOpts(b);
 
   const pair = b.pair ? String(b.pair).toLowerCase() : '';
   const instruments = pair && MAXCOPIER_INSTRUMENTS.includes(pair)
@@ -10060,6 +10065,38 @@ app.get('/api/max-copier/status/:jobId', (req, res) => {
   }
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// Chart-replay trace for ONE instrument over a window (shares the job Map + the
+// /status endpoint above — the client knows whether it asked for a suite or trace).
+app.post('/api/max-copier/trace', express.json({ limit: '256kb' }), (req, res) => {
+  const b = req.body ?? {};
+  const pair = String(b.pair || '').toLowerCase();
+  if (!MAXCOPIER_INSTRUMENTS.includes(pair)) {
+    return res.status(400).json({ ok: false, error: `pair must be one of the 26 instruments (got "${pair}")` });
+  }
+  const opts = _parseMaxCopierOpts(b);
+  const mode = MAXCOPIER_EXIT_MODES.includes(b.mode) ? b.mode : 'fixed_r';
+  const window = { fromDate: b.fromDate || '', toDate: b.toDate || '', mode };
+
+  const jobId = `mct_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleMaxCopierJobs();
+  maxCopierJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    try {
+      const trace = await traceMaxCopierPair(pair, opts, window);
+      if (trace.error) { maxCopierJobs.set(jobId, { status: 'error', error: trace.error, startedAt }); return; }
+      maxCopierJobs.set(jobId, { status: 'done', result: { trace }, startedAt });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'trace error';
+      console.error('[max-copier/trace]', msg, e?.stack ?? '');
+      maxCopierJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
 });
 
 // ── Strategy Lab — the spec-driven gauntlet backtester ───────────────────────
