@@ -73,14 +73,15 @@ function _runBook(sessions, assetClass, confSources, opts = {}) {
   if (!records || !records.length) return null;
 
   const pairKey = opts.pair || 'unknown';
-  const recByPair = { [pairKey]: records };
 
   const cost = costForPair(pairKey) || 0.0005;
   const slip = 0.0003;
   const cByPair = { [pairKey]: cost };
   const sByPair = { [pairKey]: slip };
 
-  const touches = extractTouches(recByPair, { pairKey });
+  // extractTouches flattens the WINDOW-RECORD ARRAY (not a by-pair object) into
+  // decided touches; pair-tagging happens below via `allTouches`.
+  const touches = extractTouches(records);
   if (!touches || !touches.length) return null;
 
   const allTouches = touches.map(t => ({ ...t, pair: pairKey }));
