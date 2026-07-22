@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Liquidity Levels — intraday liquidity strategy backtest</title>
+<style>
+  :root { --bg:#0b0e14; --panel:#141924; --panel2:#1b2230; --fg:#dfe6f2; --dim:#8b97ad;
+          --grn:#22c55e; --red:#ef4444; --amb:#f59e0b; --blu:#4a90d9; --border:#26314a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  header { padding:18px 22px; border-bottom:1px solid var(--border); background:var(--panel); }
+  h1 { margin:0 0 4px; font-size:19px; }
+  .sub { color:var(--dim); font-size:13px; max-width:940px; }
+  .wrap { padding:22px; max-width:1200px; margin:0 auto; }
+  .banner { background:#1a2a1a; border:1px solid #2a5a2a; color:#8fe6ab; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:18px; }
+  .banner.warn { background:#2a2312; border:1px solid #6b551f; color:#e6cf9a; }
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px 18px; margin-bottom:18px; }
+  .panel h2 { margin:0 0 12px; font-size:15px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; }
+  label { display:block; font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px; }
+  input, select { width:100%; background:var(--panel2); border:1px solid var(--border); color:var(--fg); border-radius:6px; padding:7px 9px; font-size:13px; }
+  button { background:var(--blu); color:#fff; border:0; border-radius:7px; padding:10px 20px; font-size:14px; font-weight:600; cursor:pointer; margin-top:14px; }
+  button:disabled { opacity:.5; cursor:default; }
+  .status { margin-top:10px; color:var(--dim); font-size:13px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:right; padding:6px 10px; border-bottom:1px solid var(--border); }
+  th:first-child, td:first-child { text-align:left; }
+  th { color:var(--dim); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.03em; }
+  .pos { color:var(--grn); } .neg { color:var(--red); } .muted { color:var(--dim); font-size:12px; }
+  .verdict { font-size:13px; padding:10px 14px; border-radius:8px; margin-top:12px; }
+  .verdict.good { background:#0f2a18; border:1px solid #1f6b3a; color:#8fe6ab; }
+  .verdict.bad  { background:#2a1212; border:1px solid #6b1f1f; color:#e69a9a; }
+  .verdict.warn { background:#2a2312; border:1px solid #6b551f; color:#e6cf9a; }
+  .scroll { overflow-x:auto; }
+  .flex { display:flex; gap:12px; align-items:center; }
+  .card { background:var(--panel2); border:1px solid var(--border); border-radius:8px; padding:14px; }
+  .card .num { font-size:22px; font-weight:700; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Liquidity Levels — intraday liquidity strategy backtest</h1>
+  <div class="sub">Tests whether <b>liquidity levels</b> (volume profile POC/VAH/VAL + naked prior extremes + session range alignment zones + OI walls forward-only) add edge beyond the proven range-line fib ladder on a 5m chart. Runs an A/B within the same range-line harness: <b>Control</b> = standard confluence sources (pivots/prior-hilo/VP/swing-SR/swing-fib/round/VWAP); <b>Treatment</b> = standard + liquidity levels. Pre-registered verdict: liquidity wins only if the treatment's OOS held-chandelier Sharpe improves AND liquidity-level cells show positive expectancy.</div>
+</header>
+<div class="wrap">
+
+  <div class="banner warn">⚠️ <b>No historical OI data for spot FX.</b> The OI walls source returns <code>[]</code> in backtest mode — it's a forward-only plug-in for live use. This backtest tests the <b>volume profile, naked levels, and session alignment</b> components of the liquidity strategy. OI can be added as extra confluence when going live.</div>
+
+  <div class="panel">
+    <h2>Run parameters</h2>
+    <div class="grid">
+      <div><label>Pair</label><select id="pair"></select></div>
+      <div><label>Date from</label><input id="dateFrom" placeholder="2020-01-01"></div>
+      <div><label>Date to</label><input id="dateTo" placeholder="today"></div>
+      <div><label>Asia hours</label><input id="asiaHrs" value="6" title="Formation window for Asia range"></div>
+      <div><label>min lookback (sessions)</label><input id="minLookback" value="20"></div>
+      <div><label>min N (per cell)</label><input id="minN" value="50"></div>
+      <div><label>IS split fraction</label><input id="splitFrac" value="0.6"></div>
+      <div><label>VP lookback (days)</label><input id="vpLookback" value="5" title="Volume profile lookback window"></div>
+      <div><label>Naked lookback (days)</label><input id="nakedLookback" value="30" title="Naked level scan window"></div>
+      <div><label>Alignment tolerance (pips)</label><input id="alignPips" value="2" title="Session alignment zone tolerance — lesson default 2 pips EUR/USD"></div>
+    </div>
+    <button id="runBtn">Run A/B</button>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div id="results" style="display:none">
+    <div class="panel">
+      <h2>Verdict</h2>
+      <div id="verdictBox"></div>
+    </div>
+
+    <div class="grid" style="grid-template-columns:1fr 1fr; margin-bottom:18px;">
+      <div class="card" id="baselineSummary">
+        <div style="color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.04em;">Baseline (standard confluence)</div>
+        <div class="num" id="baseSharpe2x">—</div>
+        <div class="muted">OOS Sharpe @2× cost</div>
+        <div style="margin-top:6px"><span id="baseTrades">0</span> trades · <span id="baseWinRate">—</span>% win</div>
+      </div>
+      <div class="card" id="treatmentSummary">
+        <div style="color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.04em;">Treatment (+liquidity levels)</div>
+        <div class="num" id="treatSharpe2x">—</div>
+        <div class="muted">OOS Sharpe @2× cost</div>
+        <div style="margin-top:6px"><span id="treatTrades">0</span> trades · <span id="treatWinRate">—</span>% win</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Exit A/B — held chandelier comparison</h2>
+      <div class="scroll"><table><thead><tr>
+        <th>Book</th><th>Trades</th><th>Sharpe 1×</th><th>Sharpe 2×</th><th>Sharpe 3×</th><th>Trades/day</th><th>Win%</th><th>Payoff</th><th>Expectancy</th>
+      </tr></thead><tbody id="abBody"></tbody></table></div>
+    </div>
+
+    <div class="panel">
+      <h2>Liquidity-level cells — OOS per-cell expectancy</h2>
+      <div class="muted" style="margin-bottom:8px">Cells whose name includes <code>liq_</code>, <code>Align</code> or <code>Liquidity</code> come from the liquidity level source. Positive expectancy = the liquidity level type adds value.</div>
+      <div class="scroll"><table><thead><tr>
+        <th>Cell</th><th>Decision</th><th>Trades</th><th>OOS Expectancy</th><th>Win%</th>
+      </tr></thead><tbody id="cellBody"></tbody></table></div>
+    </div>
+
+    <div class="panel">
+      <h2>Per-pair detail (multi-pair runs)</h2>
+      <div class="scroll"><table><thead><tr>
+        <th>Pair</th><th>Verdict</th><th>Base Sharpe 2×</th><th>Treat Sharpe 2×</th><th>Base trades</th><th>Treat trades</th><th>Reason</th>
+      </tr></thead><tbody id="pairBody"></tbody></table></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Pair list (same as the bot's strong universe) ────────────────────────────
+const PAIRS = ['eurusd','gbpusd','usdjpy','audusd','nzdusd','usdcad','usdchf','gbpjpy',
+  'eurjpy','eurgbp','euraud','eurcad','eurchf','eurnzd',
+  'audjpy','audnzd','audcad','audchf',
+  'gbpaud','gbpcad','gbpchf','gbpnzd',
+  'cadjpy','chfjpy','nzdjpy','gold',
+  'nq','spx500','de30','uk100','us30','us2000'];
+const UNIVERSE_LABELS = { strong:'FX Strong (14)', all:'All FX (26)', index:'Equity Indices (6)', single:'Single pair' };
+
+const $ = id => document.getElementById(id);
+
+// Populate pair selector
+const sel = $('pair');
+sel.innerHTML = `<option value="">All FX (strong — 14 pairs: gold + JPY crosses + majors)</option>
+  <option value="__all">All FX (26 pairs)</option>
+  <option value="__index">Equity Indices (6)</option>
+  <option value="__all_index">FX + Indices</option>` +
+  PAIRS.map(p => `<option value="${p}">${p.toUpperCase()}</option>`).join('');
+
+const ACTIVE_PAIRS = {
+  '':     ['gold','audjpy','audusd','nzdjpy','nzdusd','usdjpy','cadjpy','eurjpy','gbpjpy','euraud','eurusd','gbpusd','usdchf','usdcad'],
+  __all:  PAIRS.filter(p => !['nq','spx500','de30','uk100','us30','us2000'].includes(p)),
+  __index: ['nq','spx500','de30','uk100','us30','us2000'],
+  __all_index: PAIRS,
+};
+
+let JOB = null;
+
+$('runBtn').addEventListener('click', async () => {
+  const pairVal = sel.value;
+  const pairs = ACTIVE_PAIRS[pairVal] || [pairVal];
+  if (!pairs.length) return;
+
+  const opts = {
+    pair: pairVal || pairs.join(','),
+    pairs,
+    asiaHrs: parseFloat($('asiaHrs').value) || 6,
+    minLookback: parseInt($('minLookback').value) || 20,
+    minN: parseInt($('minN').value) || 50,
+    splitFrac: parseFloat($('splitFrac').value) || 0.6,
+    dateFrom: $('dateFrom').value || '',
+    dateTo: $('dateTo').value || '',
+    liqParams: {
+      vpLookback: parseInt($('vpLookback').value) || 5,
+      nakedLookback: parseInt($('nakedLookback').value) || 30,
+      alignPips: parseFloat($('alignPips').value) || 2,
+    },
+  };
+
+  $('status').textContent = 'Submitting job…';
+  $('runBtn').disabled = true;
+  $('results').style.display = 'none';
+
+  try {
+    const resp = await fetch('/api/liquidity-backtest/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(opts),
+    });
+    const { ok, jobId, error } = await resp.json();
+    if (!ok || !jobId) { $('status').textContent = `Error: ${error || 'no jobId'}`; $('runBtn').disabled = false; return; }
+    JOB = jobId;
+    $('status').textContent = `Job ${jobId.slice(0,12)}… submitted`;
+
+    // Poll
+    const poll = async () => {
+      const r = await fetch(`/api/liquidity-backtest/status/${jobId}`);
+      const st = await r.json();
+      if (st.status === 'running') {
+        $('status').textContent = `Running… (${((st.progress || 0)*100).toFixed(0)}%)`;
+        setTimeout(poll, 2000);
+      } else if (st.status === 'done' || st.status === 'error') {
+        $('runBtn').disabled = false;
+        if (st.status === 'error') { $('status').textContent = `Error: ${st.error || 'unknown'}`; return; }
+        $('status').textContent = 'Done';
+        renderResults(st);
+      } else { setTimeout(poll, 2000); }
+    };
+    setTimeout(poll, 1500);
+  } catch (e) {
+    $('status').textContent = `Fetch error: ${e.message}`;
+    $('runBtn').disabled = false;
+  }
+});
+
+function renderResults(data) {
+  $('results').style.display = 'block';
+  const c = data.comparison || {};
+  const b = data.baseline?.held?.chand || {};
+  const t = data.treatment?.held?.chand || {};
+
+  // Verdict
+  const vBox = $('verdictBox');
+  const cls = c.verdict === 'liquidity_wins' ? 'good' : c.verdict === 'baseline_wins' ? 'bad' : c.verdict === 'liquidity_wins_weak' ? 'warn' : 'warn';
+  vBox.className = `verdict ${cls}`;
+  vBox.innerHTML = `<b>${c.verdict}</b><br>${c.reason || ''}` +
+    (data.config ? `<div class="muted" style="margin-top:6px">Config: Asia ${data.config.asiaHrs}h · minN ${data.config.minN} · split ${data.config.splitFrac} · VP lb ${data.config.liqParams?.vpLookback}d · align ${data.config.liqParams?.alignPips}pips · naked lb ${data.config.liqParams?.nakedLookback}d</div>` : '');
+
+  // Summary cards
+  $('baseSharpe2x').textContent = c.baselineSharpe2x != null ? c.baselineSharpe2x.toFixed(2) : '—';
+  $('baseSharpe2x').style.color = (c.baselineSharpe2x ?? 0) > 0 ? 'var(--grn)' : 'var(--red)';
+  $('baseTrades').textContent = c.baselineTrades ?? 0;
+  $('baseWinRate').textContent = b.winRate ?? '—';
+
+  $('treatSharpe2x').textContent = c.treatmentSharpe2x != null ? c.treatmentSharpe2x.toFixed(2) : '—';
+  $('treatSharpe2x').style.color = (c.treatmentSharpe2x ?? 0) > 0 ? 'var(--grn)' : 'var(--red)';
+  $('treatTrades').textContent = c.treatmentTrades ?? 0;
+  $('treatWinRate').textContent = t.winRate ?? '—';
+
+  // Exit A/B table
+  const abBody = $('abBody');
+  const rows = [];
+  for (const label of ['Baseline', 'Treatment']) {
+    const book = label === 'Baseline' ? data.baseline : data.treatment;
+    if (!book?.held) continue;
+    for (const mode of ['fixedHeld', 'struct', 'chand']) {
+      const m = book.held[mode] || {};
+      const at = mult => (m.costStress || []).find(x => x.mult === mult)?.sharpe;
+      rows.push(`<tr><td>${label} ${mode}</td><td>${m.trades ?? 0}</td>
+        <td class="${(at(1)??0)>0?'pos':'neg'}">${(at(1)??'—')}</td>
+        <td class="${(at(2)??0)>0?'pos':'neg'}">${(at(2)??'—')}</td>
+        <td class="${(at(3)??0)>0?'pos':'neg'}">${(at(3)??'—')}</td>
+        <td>${m.tradesPerDay ?? '—'}</td>
+        <td>${m.winRate ?? '—'}</td>
+        <td>${m.payoff ?? '—'}</td>
+        <td class="${(m.expectancy??0)>0?'pos':'neg'}">${(m.expectancy??'—')}</td></tr>`);
+    }
+  }
+  abBody.innerHTML = rows.join('');
+
+  // Liquidity cell stats
+  const cellBody = $('cellBody');
+  const cells = data.treatment?.cellStats || [];
+  const liqCells = cells.filter(c => c.cell.includes('liq_') || c.cell.includes('Liquidity') || c.cell.includes('Align'));
+  cellBody.innerHTML = liqCells.length
+    ? liqCells.map(c => `<tr><td style="font-family:monospace">${c.cell}</td><td>${c.decision}</td><td>${c.n}</td>
+        <td class="${(c.expectancy??0)>0?'pos':'neg'}">${(c.expectancy??'—')}</td>
+        <td>${c.winRate ?? '—'}</td></tr>`).join('')
+    : '<tr><td colspan="5" class="muted">No liquidity-level cells in the treatment policy — either the liquidity source produced no tradeable touches, or all were skipped by the IS policy gate.</td></tr>';
+
+  // Per-pair table
+  const pairBody = $('pairBody');
+  if (data.comparison?.detail?.length > 1) {
+    pairBody.innerHTML = data.comparison.detail.map(d => `<tr>
+      <td>${d.pair}</td>
+      <td class="${d.verdict === 'liquidity_wins' || d.verdict === 'liquidity_wins_weak' ? 'pos' : d.verdict === 'baseline_wins' ? 'neg' : ''}">${d.verdict}</td>
+      <td class="${(d.baselineSharpe2x??0)>0?'pos':'neg'}">${(d.baselineSharpe2x??'—')}</td>
+      <td class="${(d.treatmentSharpe2x??0)>0?'pos':'neg'}">${(d.treatmentSharpe2x??'—')}</td>
+      <td>${d.baselineTrades}</td>
+      <td>${d.treatmentTrades}</td>
+      <td class="muted" style="font-size:11px;max-width:200px">${d.reason || ''}</td>
+    </tr>`).join('');
+  } else {
+    pairBody.innerHTML = '<tr><td colspan="7" class="muted">Single-pair run — no cross-pair comparison.</td></tr>';
+  }
+}
+</script>
+</body>
+</html>

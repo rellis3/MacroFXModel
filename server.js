@@ -68,6 +68,7 @@ import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForP
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
 import { recordsForPair, touchesForPair, extractTouches, runPerLine, costForPair, runRigor, runSensitivity, deflatedSharpe, eRatioByCell, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk, runConfluenceFilter, runVolSizing } from './js/rangeLineAnalyser.js';
+import { runLiquidityAB, runLiquidityABSuite } from './js/liquidityBacktestEngine.js';
 import { pipSize as _pipSize, instrument, oandaSymbol, resolveKey } from './js/instrumentRegistry.js';
 import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
 import { refreshRangeLineConfluence, packLiveM1 } from './js/rangeLineConfluenceProducer.js';
@@ -13072,6 +13073,128 @@ app.get('/api/range-line/status/:jobId', (req, res) => {
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error });
 });
+
+// ── Liquidity levels A/B backtest ─────────────────────────────────────────────
+// Compares the standard range-line book (baseline confluence sources) against a
+// book augmented with liquidity levels (volume profile POC/VAH/VAL + naked prior
+// extremes + session alignment zones + OI walls forward-only).
+// POST /api/liquidity-backtest/run          → { ok, jobId }
+// GET  /api/liquidity-backtest/status/:id   → { ok, status, ...result }
+const liqJobs = new Map();
+function _purgeStaleLiqJobs() { const cut = Date.now() - 60 * 60_000; for (const [k, j] of liqJobs) if ((j.startedAt || 0) < cut) liqJobs.delete(k); }
+
+// STRONG_PAIRS subset that have M1 data.
+const LIQ_UNIVERSE = ['gold', 'audjpy', 'audusd', 'nzdjpy', 'nzdusd', 'usdjpy',
+  'cadjpy', 'eurjpy', 'gbpjpy', 'euraud', 'eurusd', 'gbpusd', 'usdchf', 'usdcad',
+  ...ASIA_INSTRUMENTS.filter(p => !['gold', 'audjpy', 'audusd', 'nzdjpy', 'nzdusd',
+    'usdjpy', 'cadjpy', 'eurjpy', 'gbpjpy', 'euraud', 'eurusd', 'gbpusd', 'usdchf', 'usdcad'].includes(p)),
+  'nq', 'spx500', 'de30', 'uk100', 'us30', 'us2000'];
+const LIQ_KNOWN = new Set([...ASIA_INSTRUMENTS, ...['nq', 'spx500', 'de30', 'uk100', 'us30', 'us2000']]);
+
+app.post('/api/liquidity-backtest/run', express.json({ limit: '32kb' }), async (req, res) => {
+  const b = req.body || {};
+  const pairs = Array.isArray(b.pairs) ? b.pairs : (b.pair ? [b.pair] : []);
+  if (!pairs.length) return res.status(400).json({ ok: false, error: 'No pairs specified' });
+  const validPairs = pairs.filter(p => LIQ_KNOWN.has(p.toLowerCase()));
+  if (!validPairs.length) return res.status(400).json({ ok: false, error: `No valid pairs among: ${pairs.join(', ')}` });
+
+  const opts = {
+    pair: validPairs.join(','),
+    asiaHrs: parseFloat(b.asiaHrs) || 6,
+    minLookback: parseInt(b.minLookback) || 20,
+    minBarsPerSession: parseInt(b.minBarsPerSession) || 30,
+    minN: parseInt(b.minN) || 50,
+    splitFrac: parseFloat(b.splitFrac) || 0.6,
+    marginPct: parseFloat(b.marginPct) || 0,
+    dateFrom: b.dateFrom || '',
+    dateTo: b.dateTo || '',
+    liqParams: {
+      vpLookback: parseInt(b.liqParams?.vpLookback) || 5,
+      nakedLookback: parseInt(b.liqParams?.nakedLookback) || 30,
+      nakedBufferPips: parseFloat(b.liqParams?.nakedBufferPips) || 0,
+      alignPips: parseFloat(b.liqParams?.alignPips) || 2,
+    },
+  };
+
+  const jobId = `liq_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  _purgeStaleLiqJobs();
+  liqJobs.set(jobId, { status: 'running', startedAt: Date.now(), progress: 0, pairsTotal: validPairs.length, pairsDone: 0 });
+
+  (async () => {
+    try {
+      const results = [];
+      for (let i = 0; i < validPairs.length; i++) {
+        const p = validPairs[i].toLowerCase();
+        const ac = p === 'gold' || p.includes('xau') ? 'commodity' :
+          ['nq','spx500','de30','uk100','us30','us2000'].includes(p) ? 'index' : 'fx';
+        let packed = null;
+        try { packed = await loadM1ForPair(p, BT_M1_DIR); } catch {}
+        if (!packed || !packed.n) {
+          results.push({ pair: p, error: 'No M1 data' });
+          liqJobs.set(jobId, { status: 'running', startedAt: Date.now(), progress: (i + 1) / validPairs.length, pairsDone: i + 1, pairsTotal: validPairs.length });
+          continue;
+        }
+
+        // Convert packed M1 → sessions (same as recordsForPair does internally).
+        const sessions = bucketM1IntoSessions(packed);
+        if (!sessions || !sessions.size) {
+          results.push({ pair: p, error: 'Could not build sessions' });
+          liqJobs.set(jobId, { status: 'running', startedAt: Date.now(), progress: (i + 1) / validPairs.length, pairsDone: i + 1, pairsTotal: validPairs.length });
+          continue;
+        }
+
+        const ab = runLiquidityAB(sessions, ac, { ...opts, pair: p });
+        results.push(ab || { pair: p, error: 'Engine returned null' });
+
+        packed = null;  // release M1
+        liqJobs.set(jobId, { status: 'running', startedAt: Date.now(), progress: (i + 1) / validPairs.length, pairsDone: i + 1, pairsTotal: validPairs.length });
+      }
+
+      // Single-pair: return direct; multi-pair: return pooled + detail.
+      const isSingle = validPairs.length === 1;
+      liqJobs.set(jobId, { status: 'done', startedAt: Date.now(), result: isSingle ? (results[0] || {}) : runPooledLiquidityResults(results) });
+    } catch (e) {
+      liqJobs.set(jobId, { status: 'error', error: e.message, startedAt: Date.now() });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/liquidity-backtest/status/:id', (req, res) => {
+  const job = liqJobs.get(req.params.id);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found' });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result, startedAt: job.startedAt });
+  if (job.status === 'error') return res.status(500).json({ ok: false, status: 'error', error: job.error, startedAt: job.startedAt });
+  return res.json({ ok: true, status: 'running', progress: job.progress || 0, pairsDone: job.pairsDone || 0, pairsTotal: job.pairsTotal || 0 });
+});
+
+// Helper: pool multi-pair results into a cross-pair summary.
+function runPooledLiquidityResults(results) {
+  const withData = results.filter(r => r && r.comparison && r.comparison.verdict !== 'no_data' && r.comparison.verdict !== 'thin_sample');
+  const wins = withData.filter(r => r.comparison?.verdict === 'liquidity_wins' || r.comparison?.verdict === 'liquidity_wins_weak');
+  const losses = withData.filter(r => r.comparison?.verdict === 'baseline_wins');
+  const neutrals = withData.filter(r => r.comparison?.verdict === 'neutral');
+  return {
+    pairs: results.length,
+    withData: withData.length,
+    comparison: {
+      liquidityWins: wins.length,
+      baselineWins: losses.length,
+      neutral: neutrals.length,
+      pctWins: withData.length ? +(wins.length / withData.length * 100).toFixed(1) : 0,
+      detail: results.map(r => ({
+        pair: r.pair,
+        verdict: r.comparison?.verdict,
+        reason: r.comparison?.reason,
+        baselineSharpe2x: r.comparison?.baselineSharpe2x,
+        treatmentSharpe2x: r.comparison?.treatmentSharpe2x,
+        baselineTrades: r.comparison?.baselineTrades ?? r.baselineTrades,
+        treatmentTrades: r.comparison?.treatmentTrades ?? r.treatmentTrades,
+      })),
+    },
+  };
+}
 
 // ── Telegram-v2 confidence engine ─────────────────────────────────────────────
 // Offline LEARN (build + freeze the per-cell expectancy policy from M1) → live

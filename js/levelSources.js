@@ -378,6 +378,7 @@ function vwapAnchorLevels(ctx) {
 
 // ── Registry ─────────────────────────────────────────────────────────────────
 // Plug a source into a strategy/chart by id. defaultParams document the knobs.
+import { LIQUIDITY_LEVEL_SOURCE } from './liquidityLevels.js';
 export const LEVEL_SOURCES = {
   daily_open:     { id: 'daily_open',     label: 'Daily Opens',        kind: 'daily_open', defaultParams: { days: 5 },                                        levels: dailyOpenLevels },
   prior_hilo:     { id: 'prior_hilo',     label: 'Prior High/Low',     kind: 'extreme',    defaultParams: { prevDay: true, prevWeek: true, extremesDays: [20] }, levels: priorHighLowLevels },
@@ -387,6 +388,7 @@ export const LEVEL_SOURCES = {
   swing_fib:      { id: 'swing_fib',      label: 'Swing-Fib Clusters', kind: 'fib_cluster',defaultParams: { lookbackDays: 60, strength: 3, topK: 6, clusterPips: 8, minConfluence: 2 }, levels: swingFibLevels },
   round_number:   { id: 'round_number',   label: 'Round Numbers',      kind: 'round',      defaultParams: { spanPips: 200, halves: true },                    levels: roundNumberLevels },
   vwap:           { id: 'vwap',           label: 'VWAP Anchors',       kind: 'vwap',       defaultParams: { lookbackDays: 5 },                                levels: vwapAnchorLevels },
+  liquidity_levels: { ...LIQUIDITY_LEVEL_SOURCE, levels: LIQUIDITY_LEVEL_SOURCE.levels },
 };
 
 export {
