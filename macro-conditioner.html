@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Macro-Regime Conditioner — does risk-off add anything beyond σ?</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#1c2230; --ink:#e6edf3; --dim:#8b949e;
+    --line:#2b3240; --off:#e5534b; --neu:#6e7681; --on:#3fb950; --accent:#58a6ff;
+    --amber:#d29922;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  header{padding:20px 24px 8px}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--dim);max-width:900px}
+  .sub b{color:var(--ink)}
+  main{padding:12px 24px 60px;max-width:1120px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin:14px 0}
+  .panel h2{font-size:15px;margin:0 0 4px;display:flex;align-items:center;gap:10px}
+  .panel .note{color:var(--dim);font-size:12.5px;margin:0 0 12px}
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  button{background:var(--accent);color:#0b0f14;border:0;border-radius:7px;padding:8px 16px;font-weight:600;cursor:pointer}
+  button:disabled{opacity:.5;cursor:default}
+  select,input{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
+  label.ctl{color:var(--dim);font-size:12.5px;display:flex;gap:6px;align-items:center}
+  .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:.02em}
+  .b-null{background:#21262d;color:var(--dim);border:1px solid var(--line)}
+  .b-inc{background:rgba(63,185,80,.15);color:var(--on);border:1px solid var(--on)}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--dim);margin:2px 0 10px}
+  .sw{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:5px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr}}
+  .chartTitle{font-size:12.5px;color:var(--dim);text-align:center;margin-bottom:4px}
+  svg{width:100%;height:auto;display:block}
+  table{border-collapse:collapse;width:100%;font-size:12.5px;margin-top:6px}
+  th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--dim);font-weight:600}
+  .pos{color:var(--on)} .neg{color:var(--off)} .muted{color:var(--dim)}
+  .ribbon{display:flex;height:16px;border-radius:4px;overflow:hidden;border:1px solid var(--line)}
+  .ribbon i{flex:1 0 auto}
+  pre.log{background:#0b0f14;border:1px solid var(--line);border-radius:8px;padding:10px 12px;color:#9fb4c9;font-size:11.5px;max-height:180px;overflow:auto;white-space:pre-wrap}
+  .status{color:var(--dim);font-size:12.5px;margin-left:6px}
+  .kill{background:var(--panel2);border-left:3px solid var(--amber);padding:8px 12px;border-radius:6px;font-size:12.5px;color:#cdd6e0;margin:6px 0 0}
+</style>
+</head>
+<body>
+<header>
+  <h1>Macro-Regime Conditioner</h1>
+  <p class="sub">The honest question — <b>not</b> "fade here." Risk-off is also high-VIX is also high-σ,
+  which the forecast band already prices. So this holds <b>forecast σ fixed</b> (tercile bucket) and asks:
+  does macroCore's VIX+HY risk regime <b>still move the day's character</b> within a bucket?
+  <b>Flat within each σ bucket → macro is redundant with σ</b> (the expected null). Separates → a real
+  <b>incremental</b> state signal. Character = expansion rate (realized H-L &gt; forecast 75th) and
+  day-efficiency. FX majors, causal, IS/OOS split. This is a <b>dispersion/state</b> read that would feed
+  sizing / target-width / posture — never a directional entry.</p>
+</header>
+<main>
+  <div class="panel">
+    <div class="controls">
+      <button id="run">▶ Run</button>
+      <label class="ctl">Metric
+        <select id="metric"><option value="expand">Expansion rate</option><option value="dayEff">Day-efficiency</option></select>
+      </label>
+      <label class="ctl">Min spread <input id="minSpread" type="number" step="0.01" value="0.05" style="width:64px"></label>
+      <label class="ctl">Min n/cell <input id="minN" type="number" step="10" value="30" style="width:64px"></label>
+      <span id="status" class="status"></span>
+    </div>
+    <p class="kill" id="killbox">Pre-registered read: regime is <b>INCREMENTAL</b> only if ≥2 of 3 σ buckets show a
+      RISK_OFF − RISK_ON spread with the <b>same sign IS &amp; OOS</b>, |OOS| ≥ min-spread, each cell ≥ min-n.
+      Otherwise the verdict is <b>REDUNDANT_OR_NULL</b> — σ already carries it. A null here is a clean result, not a failure.</p>
+  </div>
+
+  <div class="panel" id="pooledPanel" style="display:none">
+    <h2>Pooled FX — σ-controlled conditional <span id="pooledVerdict"></span></h2>
+    <p class="note">Within each forecast-σ tercile, the three bars are RISK_OFF / NEUTRAL / RISK_ON. The dashed line is
+      the σ-only rate (regime-blind — what σ alone gives). Regime only "adds" if the bars separate <i>from each other</i> inside a bucket, the same way IS and OOS.</p>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--off)"></i>RISK_OFF</span>
+      <span><i class="sw" style="background:var(--neu)"></i>NEUTRAL</span>
+      <span><i class="sw" style="background:var(--on)"></i>RISK_ON</span>
+      <span><i class="sw" style="background:transparent;border-top:2px dashed #8b949e;border-radius:0;height:0;width:14px"></i>σ-only (regime-blind)</span>
+    </div>
+    <div class="grid2">
+      <div><div class="chartTitle">In-sample</div><div id="chartIS"></div></div>
+      <div><div class="chartTitle">Out-of-sample</div><div id="chartOOS"></div></div>
+    </div>
+    <table id="spreadTbl"></table>
+  </div>
+
+  <div class="panel" id="episodePanel" style="display:none">
+    <h2>Risk-off episodes — the tiny-sample reality</h2>
+    <p class="note">"Risk-off days" aren't independent draws — they're a handful of clustered events. Each bar is one
+      contiguous RISK_OFF episode; height = its expansion rate, width ∝ its day-count. If a couple of episodes dominate, treat any headline with suspicion.</p>
+    <div id="episodeStrip"></div>
+  </div>
+
+  <div class="panel" id="ribbonPanel" style="display:none">
+    <h2>Regime timeline (VIX + HY → risk-off / neutral / risk-on)</h2>
+    <p class="note">How rare and clustered the risk-off state is over the sample.</p>
+    <div class="ribbon" id="ribbon"></div>
+  </div>
+
+  <div class="panel" id="perPairPanel" style="display:none">
+    <h2>Per-pair verdicts</h2>
+    <table id="perPairTbl"></table>
+  </div>
+
+  <div class="panel" id="logPanel" style="display:none">
+    <h2>Run log</h2><pre class="log" id="log"></pre>
+  </div>
+</main>
+<script>
+const REGIMES=['RISK_OFF','NEUTRAL','RISK_ON'];
+const COL={RISK_OFF:'var(--off)',NEUTRAL:'var(--neu)',RISK_ON:'var(--on)'};
+const BUCKETS=['lo','mid','hi'], BUCKET_LABEL={lo:'low σ',mid:'mid σ',hi:'high σ'};
+const $=id=>document.getElementById(id);
+let LAST=null;
+
+function fmtPct(x){return x==null?'—':(x*100).toFixed(1)+'%';}
+function fmtSp(x){if(x==null)return '<span class="muted">—</span>';const c=x>0?'pos':x<0?'neg':'muted';return `<span class="${c}">${x>0?'+':''}${(x*100).toFixed(1)}pp</span>`;}
+
+// grouped bars for one segment: 3 σ-buckets × 3 regime bars of the chosen metric
+function groupedBars(cells,sigmaOnly,metric){
+  const W=440,H=230,padL=34,padB=42,padT=10,padR=8;
+  const plotW=W-padL-padR, plotH=H-padT-padB, gw=plotW/3, bw=gw/4.2;
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img">`;
+  // y grid 0..max
+  const vals=[]; for(const b of BUCKETS)for(const r of REGIMES){const v=cells[b][r][metric]; if(v!=null)vals.push(v); const so=sigmaOnly[b][metric]; if(so!=null)vals.push(so);}
+  const ymax=Math.max(0.1,Math.ceil((Math.max(...vals,0.001))*10)/10);
+  for(let g=0;g<=5;g++){const y=padT+plotH*(1-g/5);const v=(ymax*g/5);
+    s+=`<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="var(--line)" stroke-width="1"/>`;
+    s+=`<text x="${padL-5}" y="${y+3}" fill="var(--dim)" font-size="9" text-anchor="end">${(v*100).toFixed(0)}%</text>`;}
+  BUCKETS.forEach((b,bi)=>{
+    const x0=padL+bi*gw;
+    REGIMES.forEach((r,ri)=>{
+      const v=cells[b][r][metric], n=cells[b][r].n;
+      const x=x0+gw/2-bw*1.5+ri*bw+ri*2;
+      if(v!=null){const h=plotH*(v/ymax);
+        s+=`<rect x="${x}" y="${padT+plotH-h}" width="${bw}" height="${h}" rx="2" fill="${COL[r]}"><title>${r} · ${BUCKET_LABEL[b]}\n${(v*100).toFixed(1)}%  (n=${n})</title></rect>`;}
+      else {s+=`<rect x="${x}" y="${padT+plotH-2}" width="${bw}" height="2" fill="var(--line)"><title>${r} · ${BUCKET_LABEL[b]}\n(too few)</title></rect>`;}
+    });
+    // σ-only dashed reference across the group
+    const so=sigmaOnly[b][metric];
+    if(so!=null){const y=padT+plotH*(1-so/ymax);
+      s+=`<line x1="${x0+6}" y1="${y}" x2="${x0+gw-6}" y2="${y}" stroke="#8b949e" stroke-width="1.4" stroke-dasharray="4 3"/>`;}
+    s+=`<text x="${x0+gw/2}" y="${H-padB+15}" fill="var(--ink)" font-size="11" text-anchor="middle">${BUCKET_LABEL[b]}</text>`;
+    s+=`<text x="${x0+gw/2}" y="${H-padB+28}" fill="var(--dim)" font-size="9" text-anchor="middle">n=${sigmaOnly[b].n}</text>`;
+  });
+  return s+'</svg>';
+}
+
+function verdictBadge(v){
+  if(!v)return '';
+  const inc=v.label==='INCREMENTAL';
+  return `<span class="badge ${inc?'b-inc':'b-null'}">${inc?'INCREMENTAL (beyond σ)':'REDUNDANT / NULL vs σ'} · ${v.bucketsAgreeing}/3</span>`;
+}
+
+function spreadTable(sum,metric){
+  let h='<tr><th>σ bucket</th><th>RISK_OFF (IS/OOS)</th><th>RISK_ON (IS/OOS)</th><th>spread IS</th><th>spread OOS</th></tr>';
+  for(const b of BUCKETS){
+    const cIS=sum.cells.IS[b],cO=sum.cells.OOS[b];
+    const off=`${fmtPct(cIS.RISK_OFF[metric])} / ${fmtPct(cO.RISK_OFF[metric])}`;
+    const on=`${fmtPct(cIS.RISK_ON[metric])} / ${fmtPct(cO.RISK_ON[metric])}`;
+    const spIS = (cIS.RISK_OFF[metric]!=null&&cIS.RISK_ON[metric]!=null)?cIS.RISK_OFF[metric]-cIS.RISK_ON[metric]:null;
+    // regimeSpread stored for expand only; recompute per metric for display
+    const spO = (cO.RISK_OFF[metric]!=null&&cO.RISK_ON[metric]!=null)?cO.RISK_OFF[metric]-cO.RISK_ON[metric]:null;
+    h+=`<tr><td>${BUCKET_LABEL[b]}</td><td>${off}</td><td>${on}</td><td>${fmtSp(spIS)}</td><td>${fmtSp(spO)}</td></tr>`;
+  }
+  return h;
+}
+
+function episodeStrip(eps,metric){
+  if(!eps||!eps.length){$('episodeStrip').innerHTML='<span class="muted">no risk-off episodes</span>';return;}
+  const W=880,H=140,padB=30,padT=8;const totalDays=eps.reduce((s,e)=>s+e.n,0);
+  const ymax=Math.max(0.1,Math.ceil(Math.max(...eps.map(e=>e[metric]??0),0.001)*10)/10);
+  let x=2,s=`<svg viewBox="0 0 ${W} ${H}" role="img">`;
+  for(let g=0;g<=4;g++){const y=padT+(H-padB-padT)*(1-g/4);s+=`<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="var(--line)"/>`;s+=`<text x="2" y="${y-2}" fill="var(--dim)" font-size="9">${(ymax*g/4*100).toFixed(0)}%</text>`;}
+  for(const e of eps){const w=Math.max(6,(e.n/totalDays)*(W-8));const v=e[metric]??0;const bh=(H-padB-padT)*(v/ymax);
+    s+=`<rect x="${x}" y="${padT+(H-padB-padT)-bh}" width="${w-2}" height="${bh}" fill="var(--off)" opacity="0.8" rx="1"><title>${e.start} → ${e.end}\n${e.n} days · ${(v*100).toFixed(1)}%</title></rect>`;
+    if(w>44)s+=`<text x="${x+w/2}" y="${H-padB+12}" fill="var(--dim)" font-size="8" text-anchor="middle">${e.start.slice(0,7)}</text>`;
+    x+=w;}
+  $('episodeStrip').innerHTML=s+'</svg>';
+}
+
+function ribbon(tl){
+  if(!tl||!tl.length){$('ribbon').innerHTML='';return;}
+  $('ribbon').innerHTML=tl.map(p=>`<i style="background:${COL[p.regime]}" title="${p.date}: ${p.regime}"></i>`).join('');
+}
+
+function render(res,metric){
+  const P=res.pooled;
+  $('pooledVerdict').innerHTML=verdictBadge(P.verdict);
+  $('chartIS').innerHTML=groupedBars(P.summary.cells.IS,P.summary.sigmaOnly.IS,metric);
+  $('chartOOS').innerHTML=groupedBars(P.summary.cells.OOS,P.summary.sigmaOnly.OOS,metric);
+  $('spreadTbl').innerHTML=spreadTable(P.summary,metric);
+  $('pooledPanel').style.display='';
+  // episodes + ribbon from the first pair (regime is market-wide)
+  const first=res.perPair[res.pairs[0]];
+  episodeStrip(first?.episodes,metric);$('episodePanel').style.display='';
+  ribbon(first?.timeline);$('ribbonPanel').style.display='';
+  // per-pair verdicts
+  let h='<tr><th>pair</th><th>days</th><th>verdict</th><th>OOS spread lo/mid/hi</th><th>src</th></tr>';
+  for(const p of res.pairs){const r=res.perPair[p];const sp=BUCKETS.map(b=>{const x=r.summary.regimeSpread.OOS[b];return x==null?'—':(x>0?'+':'')+(x*100).toFixed(0);}).join(' / ');
+    h+=`<tr><td>${p}</td><td>${r.nDays}</td><td>${r.verdict.label==='INCREMENTAL'?'<span class="pos">INCREMENTAL</span>':'<span class="muted">redundant/null</span>'}</td><td>${sp}</td><td class="muted">${r.src||''}</td></tr>`;}
+  $('perPairTbl').innerHTML=h;$('perPairPanel').style.display='';
+  if(res.log){$('log').textContent=res.log.join('\n');$('logPanel').style.display='';}
+}
+
+async function poll(jobId){
+  for(;;){
+    await new Promise(r=>setTimeout(r,1500));
+    const r=await fetch(`/api/macro-conditioner/status/${jobId}`).then(r=>r.json()).catch(()=>null);
+    if(!r)continue;
+    if(r.status==='running'){$('status').textContent=`running… ${r.elapsed||0}s`;continue;}
+    if(r.status==='done'){$('status').textContent=`done · pooled ${r.pooled.verdict.label}`;LAST=r;render(r,$('metric').value);$('run').disabled=false;return;}
+    $('status').textContent='error: '+(r.error||'unknown');if(r.log){$('log').textContent=r.log.join('\n');$('logPanel').style.display='';}$('run').disabled=false;return;
+  }
+}
+async function run(){
+  $('run').disabled=true;$('status').textContent='starting…';
+  const body={isFrac:0.5,minSpread:+$('minSpread').value,minN:+$('minN').value};
+  const r=await fetch('/api/macro-conditioner/run',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json()).catch(e=>({ok:false,error:String(e)}));
+  if(!r.ok){$('status').textContent='error: '+r.error;$('run').disabled=false;return;}
+  poll(r.jobId);
+}
+$('run').onclick=run;
+$('metric').onchange=()=>{if(LAST)render(LAST,$('metric').value);};
+
+// ── demo payload (?demo=1) — a REDUNDANT/null result so the honest default renders offline ──
+function demoPayload(){
+  const cell=(e,n)=>({n,expand:e,dayEff:0.34+e*0.1});
+  const seg=(base)=>{const o={};for(const b of BUCKETS){const lift={lo:0.16,mid:0.27,hi:0.42}[b];
+    o[b]={RISK_OFF:cell(lift+base+0.01,180),NEUTRAL:cell(lift+base,900),RISK_ON:cell(lift+base-0.005,620)};}return o;};
+  const sigmaOnly=(base)=>{const o={};for(const b of BUCKETS){const lift={lo:0.16,mid:0.27,hi:0.42}[b];o[b]={n:1700,expand:lift+base,dayEff:0.34+(lift+base)*0.1};}return o;};
+  const cells={IS:seg(0.0),OOS:seg(0.005)};
+  const regimeSpread={IS:{lo:0.01,mid:0.01,hi:0.01},OOS:{lo:0.015,mid:-0.008,hi:0.006}};
+  const summary={cells,sigmaOnly:{IS:sigmaOnly(0),OOS:sigmaOnly(0.005)},regimeSpread,n:15000};
+  const verdict={label:'REDUNDANT_OR_NULL',bucketsAgreeing:0};
+  const eps=[['2015-08','2015-09',14],['2016-06','2016-07',9],['2018-12','2019-01',22],['2020-02','2020-04',48],['2022-01','2022-10',63],['2023-03','2023-03',7]]
+    .map(([s,e,n])=>({start:s+'-01',end:e+'-20',n,expand:0.44+Math.random()*0.14,dayEff:0.4}));
+  const tl=[];const base=Date.UTC(2015,0,1);for(let i=0;i<600;i++){const d=new Date(base+i*15*864e5).toISOString().slice(0,10);
+    const u=Math.random();tl.push({date:d,regime:u<0.12?'RISK_OFF':u<0.5?'RISK_ON':'NEUTRAL'});}
+  return {ok:true,pairs:['EURUSD'],perPair:{EURUSD:{nDays:2600,summary,verdict,episodes:eps,timeline:tl,src:'m1-5min'}},
+    pooled:{nDays:15000,summary,verdict},log:['DEMO payload — synthetic, illustrates a REDUNDANT-with-σ null (bars flat within each σ bucket).']};
+}
+if(new URLSearchParams(location.search).get('demo')==='1'){LAST=demoPayload();$('status').textContent='DEMO (synthetic)';render(LAST,'expand');}
+</script>
+</body>
+</html>
