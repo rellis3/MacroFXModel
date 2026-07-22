@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Max Copier Strategy — Backtest</title>
+<style>
+  :root {
+    --bg:#0e1016; --panel:#161a24; --panel2:#1d2330; --line:#2a3242;
+    --fg:#e7ecf3; --mut:#8b97a8; --green:#3fb27f; --red:#e5604d; --amber:#e0a94b;
+    --blue:#4a9fe0; --accent:#7c6cf0;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+    font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  a { color:var(--blue); }
+  .wrap { max-width:1180px; margin:0 auto; padding:22px 18px 80px; }
+  h1 { font-size:22px; margin:0 0 2px; }
+  h2 { font-size:16px; margin:26px 0 10px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  .sub { color:var(--mut); font-size:13px; margin:0 0 14px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px; }
+  .banner { background:linear-gradient(180deg,#241d33,#1a1626); border:1px solid #3a3050; border-radius:10px; padding:14px 16px; margin-bottom:18px; font-size:13px; }
+  .banner b { color:#c8b8ff; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:12px; }
+  label { display:block; font-size:12px; color:var(--mut); margin-bottom:4px; }
+  input,select { width:100%; background:var(--panel2); border:1px solid var(--line); color:var(--fg);
+    border-radius:7px; padding:8px 9px; font:inherit; }
+  input:focus,select:focus { outline:1px solid var(--accent); }
+  .row { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; }
+  button { background:var(--accent); color:#fff; border:0; border-radius:8px; padding:10px 18px;
+    font:600 14px/1 inherit; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:default; }
+  button.ghost { background:var(--panel2); border:1px solid var(--line); color:var(--fg); font-weight:500; padding:8px 12px; }
+  .muted { color:var(--mut); }
+  .pos { color:var(--green); } .neg { color:var(--red); } .amb { color:var(--amber); }
+  table { border-collapse:collapse; width:100%; font-size:12.5px; }
+  th,td { text-align:right; padding:5px 8px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th:first-child,td:first-child { text-align:left; }
+  thead th { color:var(--mut); font-weight:600; border-bottom:1px solid var(--line); }
+  .tag { display:inline-block; font-size:11px; padding:2px 7px; border-radius:20px; border:1px solid var(--line); color:var(--mut); }
+  .tag.win { background:rgba(63,178,127,.12); border-color:#2f6b52; color:var(--green); }
+  .tag.lose { background:rgba(229,96,77,.10); border-color:#7a3b33; color:var(--red); }
+  .tag.mode { background:rgba(124,108,240,.14); border-color:#4a4080; color:#c8b8ff; }
+  details { margin:8px 0; }
+  summary { cursor:pointer; padding:8px 10px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  .scroll { overflow-x:auto; }
+  .note { font-size:12px; color:var(--mut); margin:8px 0; }
+  .kpis { display:flex; gap:18px; flex-wrap:wrap; margin:6px 0; }
+  .kpi { background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:8px 12px; min-width:110px; }
+  .kpi .v { font-size:18px; font-weight:700; } .kpi .l { font-size:11px; color:var(--mut); }
+  code { background:var(--panel2); padding:1px 5px; border-radius:4px; font-size:12px; }
+  .hidden { display:none; }
+  .logbox { max-height:180px; overflow:auto; font:12px/1.5 ui-monospace,monospace; color:var(--mut); background:#0b0d13; border:1px solid var(--line); border-radius:8px; padding:10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Max Copier Strategy — Backtester</h1>
+  <p class="sub">Impulse-continuation baskets on gold + 24 FX pairs · M1 event engine · true IS/OOS split · three exit models A/B'd on the same signals.</p>
+
+  <div class="banner">
+    <b>Read before trusting a number.</b> This is a <b>mechanical proxy</b> of a discretionary strategy
+    (see <a href="#" onclick="return false;" title="max copier strategy.md in the repo">the doc</a>). Every phrase —
+    "significant" level, "decisive" impulse, "value area low", "hidden divergence", "keep more on if strong" — is
+    <b>folklore</b>, translated here into fixed thresholds. Each threshold is a degree of freedom / overfit surface, so the
+    <b>headline is the OUT-OF-SAMPLE column</b>, not in-sample. Costs (round-trip spread + slippage on stop/trail exits) are on
+    by default. A basket of 3–5 correlated positions on one signal is <b>position sizing + staggered exits</b>, not
+    diversification — so headline stats are computed <b>per-basket</b> (the CSV export is per-position, what actually hits a prop
+    account). Pre-registered pass bar: <b>OOS Sharpe &gt; 0, survives 2–3× cost, ≥30 OOS baskets, not carried by one year</b>.
+    Honest prior: continuation is a replicated family, but this specific entry machinery is folklore — <b>expect null</b>.
+  </div>
+
+  <div class="panel">
+    <div class="grid" style="margin-bottom:12px;">
+      <div><label>Instrument</label><select id="pair"></select></div>
+      <div><label>Donchian lookback (1H bars)</label><input id="donchianLookback" type="number" value="20" min="5" step="1"></div>
+      <div><label>Impulse ≥ (× ATR beyond level)</label><input id="impulseAtrMult" type="number" value="0.5" step="0.1"></div>
+      <div><label>Consolidation window (M15 bars)</label><input id="consolBars" type="number" value="16" step="1"></div>
+      <div><label>Consolidation max range (× ATR)</label><input id="consolMaxAtr" type="number" value="2.5" step="0.1"></div>
+      <div><label>Value-area depth (0–0.5)</label><input id="vaDepth" type="number" value="0.30" step="0.05"></div>
+      <div><label>Stop buffer (× ATR beyond range)</label><input id="stopAtrBuffer" type="number" value="0.5" step="0.1"></div>
+      <div><label>Basket size (positions)</label><input id="nPositions" type="number" value="4" min="1" max="10" step="1"></div>
+      <div><label>Require hidden divergence</label><select id="requireDivergence"><option value="1" selected>Yes (as written)</option><option value="0">No (ablation)</option></select></div>
+      <div><label>OOS tail fraction</label><input id="oosFrac" type="number" value="0.4" step="0.05" min="0.1" max="0.6"></div>
+    </div>
+    <details>
+      <summary class="muted">Exit-model &amp; timing parameters (advanced)</summary>
+      <div class="grid" style="margin-top:12px;">
+        <div><label>Entry timeout (M15 bars)</label><input id="entryTimeout" type="number" value="32" step="1"></div>
+        <div><label>Max hold (M15 bars)</label><input id="maxHoldBarsM15" type="number" value="96" step="1"></div>
+        <div><label>fixed_r target (R)</label><input id="tpR" type="number" value="2.0" step="0.5"></div>
+        <div><label>shared_htf measured-move ×</label><input id="mmMult" type="number" value="1.0" step="0.1"></div>
+        <div><label>ladder rung spacing (R)</label><input id="ladderR" type="number" value="1.0" step="0.5"></div>
+        <div><label>trail distance (× ATR)</label><input id="trailAtrMult" type="number" value="3.0" step="0.5"></div>
+        <div><label>trail arms at (R of MFE)</label><input id="trailStartR" type="number" value="1.0" step="0.5"></div>
+      </div>
+    </details>
+    <div class="row" style="margin-top:14px;">
+      <button id="run">Run backtest</button>
+      <span id="status" class="muted"></span>
+    </div>
+  </div>
+
+  <div id="results"></div>
+</div>
+
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const EXIT_LABELS = { fixed_r:'fixed_r', shared_htf:'shared_htf', ladder_trail:'ladder_trail' };
+const PAIRS = ['ALL','eurusd','gbpusd','usdjpy','audusd','nzdusd','usdcad','usdchf','gbpjpy','eurjpy','eurgbp','euraud','eurcad','eurchf','eurnzd','audjpy','audnzd','audcad','audchf','gbpaud','gbpcad','gbpchf','cadjpy','chfjpy','nzdjpy','gold'];
+$('pair').innerHTML = PAIRS.map(p => `<option value="${p==='ALL'?'':p}">${p==='ALL'?'All 26 (24 FX + gold)':p}</option>`).join('');
+
+const fmt = (v, d = 2) => (v === null || v === undefined || !Number.isFinite(+v)) ? '—' : (+v).toFixed(d);
+const cls = (v) => (+v > 0 ? 'pos' : +v < 0 ? 'neg' : 'muted');
+let LAST = null; // { results, pooled, opts, exitModes }
+
+// ── run + resilient poll ─────────────────────────────────────────────────────
+async function poll(jobId) {
+  let fails = 0;
+  for (let i = 0; i < 600; i++) {           // up to ~30 min
+    await new Promise(r => setTimeout(r, 3000));
+    let res = null;
+    try { res = await fetch(`/api/max-copier/status/${jobId}`).then(r => r.json()); }
+    catch { if (++fails > 25) throw new Error('lost contact with server'); continue; }
+    if (!res) { if (++fails > 25) throw new Error('empty status'); continue; }
+    fails = 0;
+    if (res.status === 'running') { $('status').textContent = `Running… ${res.elapsed || 0}s (26 instruments × ~10y M1 takes several minutes)`; continue; }
+    if (res.status === 'done') return res;
+    if (res.status === 'error') throw new Error(res.error || 'engine error');
+  }
+  throw new Error('timed out');
+}
+
+$('run').onclick = async () => {
+  const body = {
+    pair: $('pair').value,
+    donchianLookback: $('donchianLookback').value, impulseAtrMult: $('impulseAtrMult').value,
+    consolBars: $('consolBars').value, consolMaxAtr: $('consolMaxAtr').value, vaDepth: $('vaDepth').value,
+    stopAtrBuffer: $('stopAtrBuffer').value, nPositions: $('nPositions').value,
+    requireDivergence: $('requireDivergence').value === '1',
+    oosFrac: $('oosFrac').value, entryTimeout: $('entryTimeout').value, maxHoldBarsM15: $('maxHoldBarsM15').value,
+    tpR: $('tpR').value, mmMult: $('mmMult').value, ladderR: $('ladderR').value,
+    trailAtrMult: $('trailAtrMult').value, trailStartR: $('trailStartR').value,
+  };
+  $('run').disabled = true; $('results').innerHTML = ''; $('status').textContent = 'Starting…';
+  try {
+    const start = await fetch('/api/max-copier/run', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) }).then(r => r.json());
+    if (!start.ok) throw new Error(start.error || 'failed to start');
+    const out = await poll(start.jobId);
+    LAST = out;
+    $('status').innerHTML = `Done — ${out.results.length} instrument(s).`;
+    render(out);
+  } catch (e) {
+    $('status').innerHTML = `<span class="neg">Error: ${e.message}</span>`;
+  } finally { $('run').disabled = false; }
+};
+
+// ── rendering ────────────────────────────────────────────────────────────────
+function summaryRow(label, s, best) {
+  if (!s) return '';
+  const winTag = best ? `<span class="tag ${s.sharpe>0?'win':'lose'}">${s.sharpe>0?'OOS+':'OOS−'}</span>` : '';
+  return `<tr>
+    <td>${label} ${winTag}</td>
+    <td>${s.trades}</td><td>${fmt(s.tradesPerYr,1)}</td>
+    <td>${fmt(s.winRate,1)}</td><td>${fmt(s.profitFactor,2)}</td>
+    <td class="${cls(s.expectancy)}">${fmt(s.expectancy,4)}</td>
+    <td class="${cls(s.sharpe)}">${fmt(s.sharpe,2)}</td>
+    <td class="neg">${fmt(s.maxDD,2)}</td>
+    <td class="${cls(s.totalPnl)}">${fmt(s.totalPnl,2)}</td>
+    <td>${fmt(s.skew,2)}</td><td>${fmt(s.excessKurt,2)}</td>
+    <td class="neg">${fmt(s.cvar95,3)}</td>
+    <td>${s.minTrackYears==null?'—':fmt(s.minTrackYears,1)}</td>
+  </tr>`;
+}
+function modeTable(modes, exitModes) {
+  const head = `<thead><tr><th>mode / split</th><th>n</th><th>/yr</th><th>win%</th><th>PF</th><th>exp%</th><th>Sharpe</th><th>maxDD%</th><th>ΣPnL%</th><th>skew</th><th>exKurt</th><th>CVaR%</th><th>minYrs</th></tr></thead>`;
+  let rows = '';
+  for (const m of exitModes) {
+    const sp = modes[m].split;
+    rows += `<tr><td colspan="13" style="color:#c8b8ff;padding-top:10px;"><span class="tag mode">${EXIT_LABELS[m]}</span></td></tr>`;
+    rows += summaryRow('· in-sample', sp.is, false);
+    rows += summaryRow('· OUT-of-sample', sp.oos, true);
+    rows += summaryRow('· full', sp.full, false);
+  }
+  return `<div class="scroll"><table>${head}<tbody>${rows}</tbody></table></div>`;
+}
+
+function render(out) {
+  const { results, pooled, exitModes, opts } = out;
+  let html = '';
+
+  // Pooled / portfolio
+  html += `<h2>Portfolio (all selected instruments pooled)</h2>`;
+  const pb = pooled.best;
+  html += `<div class="note">Best exit model OOS (≥30 baskets): ${pb ? `<span class="tag mode">${pb.mode}</span> Sharpe ${fmt(pb.sharpe,2)} on ${pb.trades} baskets` : '<span class="neg">none cleared the ≥30-baskets gate</span>'}.</div>`;
+  html += modeTable(pooled, exitModes);
+
+  // Diagnostics controls
+  html += `<h2>Diagnostics &amp; export</h2>`;
+  html += `<div class="row" style="margin-bottom:10px;">
+    <div><label>Instrument scope</label><select id="dxScope">${results.map(r=>`<option value="${r.pair}">${r.pair}</option>`).join('')}<option value="__ALL__">All pooled</option></select></div>
+    <div><label>Exit model</label><select id="dxMode">${exitModes.map(m=>`<option value="${m}"${pb&&pb.mode===m?' selected':''}>${EXIT_LABELS[m]}</option>`).join('')}</select></div>
+  </div>`;
+  html += `<div id="dx"></div>`;
+
+  // Per-instrument
+  html += `<h2>Per-instrument</h2>`;
+  for (const r of results) {
+    const b = r.best;
+    const badge = b ? `<span class="tag ${b.sharpe>0?'win':'lose'}">best OOS: ${b.mode} ${fmt(b.sharpe,2)}</span>` : `<span class="tag lose">no OOS winner</span>`;
+    html += `<details><summary><b>${r.pair}</b> <span class="muted">· ${r.signalCount} signals · ${r.dateRange?r.dateRange.join(' → '):''} · cost ${r.costPct}%</span> ${badge}</summary>${modeTable(r.modes, exitModes)}</details>`;
+  }
+
+  // Log
+  if (out.log && out.log.length) html += `<h2>Run log</h2><div class="logbox">${out.log.map(l=>l.replace(/</g,'&lt;')).join('<br>')}</div>`;
+
+  $('results').innerHTML = html;
+  $('dxScope').onchange = renderDiagnostics;
+  $('dxMode').onchange = renderDiagnostics;
+  renderDiagnostics();
+}
+
+// ── diagnostics: cost-sensitivity + yearly concentration + CSV export ─────────
+function gatherRecords(scope, mode) {
+  const rs = LAST.results;
+  const pick = scope === '__ALL__' ? rs : rs.filter(r => r.pair === scope);
+  let records = [], positions = [];
+  for (const r of pick) {
+    const md = r.modes[mode];
+    for (const rec of (md.records||[])) records.push(rec);
+    for (const p of (md.positions||[])) positions.push({ ...p, pair:r.pair });
+  }
+  records.sort((a,b)=> a.date<b.date?-1:a.date>b.date?1:0);
+  positions.sort((a,b)=> a.date<b.date?-1:a.date>b.date?1:0);
+  return { records, positions };
+}
+// per-basket stats after subtracting an extra cost (% of price) from each basket return
+function statsWithExtra(records, extraPct) {
+  const pnls = records.map(r => r.pnl_pct - extraPct);
+  const n = pnls.length; if (!n) return null;
+  const mean = pnls.reduce((a,b)=>a+b,0)/n;
+  const sd = Math.sqrt(pnls.reduce((a,b)=>a+(b-mean)*(b-mean),0)/Math.max(1,n));
+  const years = Math.max(0.25, spanYears(records));
+  const sharpe = sd>0 ? (mean/sd)*Math.sqrt(n/years) : 0;
+  const gw = pnls.filter(x=>x>0).reduce((a,b)=>a+b,0), gl = -pnls.filter(x=>x<0).reduce((a,b)=>a+b,0);
+  return { sharpe, pf: gl>0?gw/gl:(gw>0?99:0), total: pnls.reduce((a,b)=>a+b,0), win: 100*pnls.filter(x=>x>0).length/n, n };
+}
+function spanYears(records) {
+  if (records.length<2) return 0.25;
+  const a=new Date(records[0].date).getTime(), b=new Date(records[records.length-1].date).getTime();
+  return Math.max(0.25,(b-a)/(365.25*864e5));
+}
+
+function renderDiagnostics() {
+  const scope = $('dxScope').value, mode = $('dxMode').value;
+  const { records, positions } = gatherRecords(scope, mode);
+  const base = statsWithExtra(records, 0);
+  let html = '';
+
+  // Cost sensitivity — a thin edge that dies at 2–3× cost is not real.
+  const step = 0.012;
+  html += `<div class="panel"><h3 style="margin:0 0 8px;font-size:14px;">Cost sensitivity <span class="muted" style="font-weight:400;">(basket returns; +N× a ~1-pip FX round-trip subtracted per basket)</span></h3>`;
+  if (!base) { html += `<div class="muted">No baskets.</div></div>`; }
+  else {
+    html += `<div class="scroll"><table><thead><tr><th>scenario</th><th>Sharpe</th><th>vs base</th><th>PF</th><th>win%</th><th>ΣPnL%</th></tr></thead><tbody>`;
+    for (const [lab, ex] of [['as run',0],['+1× cost',step],['+2× cost',step*2],['+3× cost',step*3]]) {
+      const s = statsWithExtra(records, ex); const ratio = base.sharpe? s.sharpe/base.sharpe : 0;
+      const rc = ratio>=0.7?'pos':ratio>=0.4?'amb':'neg';
+      html += `<tr><td>${lab}</td><td class="${cls(s.sharpe)}">${fmt(s.sharpe,2)}</td><td class="${rc}">${fmt(ratio,2)}×</td><td>${fmt(s.pf,2)}</td><td>${fmt(s.win,1)}</td><td class="${cls(s.total)}">${fmt(s.total,2)}</td></tr>`;
+    }
+    html += `</tbody></table></div></div>`;
+  }
+
+  // Yearly concentration — is one year carrying the whole result?
+  const byYear = new Map();
+  for (const r of records) { const y = r.date.slice(0,4); const o = byYear.get(y)||{n:0,pnl:0,w:0}; o.n++; o.pnl+=r.pnl_pct; if(r.pnl_pct>0)o.w++; byYear.set(y,o); }
+  html += `<div class="panel"><h3 style="margin:0 0 8px;font-size:14px;">Yearly concentration <span class="muted" style="font-weight:400;">(basket ΣPnL% by year — read the recent years in isolation)</span></h3>`;
+  if (byYear.size) {
+    html += `<div class="scroll"><table><thead><tr><th>year</th>${[...byYear.keys()].sort().map(y=>`<th>${y}</th>`).join('')}</tr></thead><tbody>`;
+    html += `<tr><td>ΣPnL%</td>${[...byYear.keys()].sort().map(y=>{const o=byYear.get(y);return `<td class="${cls(o.pnl)}">${fmt(o.pnl,1)}</td>`;}).join('')}</tr>`;
+    html += `<tr><td>baskets</td>${[...byYear.keys()].sort().map(y=>`<td>${byYear.get(y).n}</td>`).join('')}</tr>`;
+    html += `<tr><td>win%</td>${[...byYear.keys()].sort().map(y=>{const o=byYear.get(y);return `<td>${fmt(100*o.w/o.n,0)}</td>`;}).join('')}</tr>`;
+    html += `</tbody></table></div></div>`;
+  } else html += `<div class="muted">No baskets.</div></div>`;
+
+  // CSV export (per-position — what actually hits the prop account)
+  html += `<div class="panel"><h3 style="margin:0 0 8px;font-size:14px;">Export trade log (per position → prop-firm toolkit)</h3>
+    <div class="row" style="margin-bottom:8px;">
+      <div><label>Account size ($)</label><input id="acct" type="number" value="100000" step="1000" style="width:130px"></div>
+      <div><label>Risk per position (% of account)</label><input id="riskPct" type="number" value="0.25" step="0.05" style="width:130px"></div>
+    </div>
+    <div class="note"><b>R-unit = stop distance</b> (entry → just beyond the consolidation extreme), which varies per trade with volatility — so <b>R and Return% are NOT redundant</b> here (avoids the fixed-%-of-equity degeneracy). <b>MAE is read from the real M1 path</b> (low-vs-entry for longs, high-vs-entry for shorts). $ P&amp;L = R-multiple × (account × risk%). ${positions.length} positions in scope.</div>
+    <div class="row">
+      <button class="ghost" id="csvPct">⬇ % Returns</button>
+      <button class="ghost" id="csvR">⬇ R-Multiples</button>
+      <button class="ghost" id="csvCur">⬇ Currency P&amp;L</button>
+    </div>
+    <div class="note" id="csvMsg"></div>
+  </div>`;
+
+  $('dx').innerHTML = html;
+
+  const dl = (text, fname) => {
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([text],{type:'text/csv'})), download: fname });
+    a.click(); URL.revokeObjectURL(a.href); $('csvMsg').textContent = `Saved ${fname} (${positions.length} rows).`;
+  };
+  const tag = `${scope==='__ALL__'?'all':scope}_${mode}`;
+  $('csvPct').onclick = () => dl('Date,Return %,MAE %\n' + positions.map(p=>`${p.date},${p.pnlPct},${p.maePct}`).join('\n'), `maxcopier_pct_${tag}.csv`);
+  $('csvR').onclick   = () => dl('date,R,MAE (R)\n' + positions.map(p=>`${p.date},${p.pnlR},${p.maeR}`).join('\n'), `maxcopier_R_${tag}.csv`);
+  $('csvCur').onclick = () => {
+    const acct = +$('acct').value || 100000, riskPct = +$('riskPct').value || 0.25;
+    const riskDollars = acct * riskPct / 100;
+    const money = (x) => `"$${(Math.round(x*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}"`;
+    dl('Trade Date,PnL ($),Risk ($)\n' + positions.map(p=>`${p.date},${money(p.pnlR*riskDollars)},${money(riskDollars)}`).join('\n'), `maxcopier_usd_${tag}.csv`);
+  };
+}
+</script>
+</body>
+</html>
