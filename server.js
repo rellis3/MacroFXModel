@@ -26,7 +26,7 @@ import { computeHMM5mV2, computeMacroContext } from './hmm5m-v2.js';
 import { trainHMM5mAll, loadTrainedParams, fetchFredMacro } from './hmm5m-train.js';
 import { detectPolarityFlip } from './js/polarity.js';
 import { assessEntry, resampleBars } from './js/vumanchu.js';
-import { startVolForecastScheduler, forecastState, runVolForecast, getSessionStatus } from './js/volForecastScheduler.js';
+import { startVolForecastScheduler, forecastState, runVolForecast, getSessionStatus, ensureOhlcCache } from './js/volForecastScheduler.js';
 import { yangZhangVolSeries, hv20Series, ewmaVolSeries, computeForecast as _computeForecast } from './js/volForecast.js';
 import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
 import { computeHitRates, isHitRatesComputing, HR_INSTRUMENTS } from './js/hitRateBackfill.js';
@@ -7341,8 +7341,14 @@ app.get('/api/vol-forecast/zones', async (_req, res) => {
   if (!forecastState.latest) {
     return res.status(202).type('text/plain').send('Forecast not yet available — check back in 60s.');
   }
+  // ohlcCache is in-memory and empty after a warm-from-KV restart (it's only filled
+  // by a full runVolForecast). Warm it on demand rather than making the user wait
+  // hours for the next scheduled run — the fetch is single-flight + cached after.
   if (!forecastState.ohlcCache || !Object.keys(forecastState.ohlcCache).length) {
-    return res.status(202).type('text/plain').send('OHLC cache not yet populated — check back in 60s.');
+    try { await ensureOhlcCache(); } catch (e) { console.warn('[zones] ohlc warm failed:', e.message); }
+  }
+  if (!forecastState.ohlcCache || !Object.keys(forecastState.ohlcCache).length) {
+    return res.status(202).type('text/plain').send('OHLC cache warming from OANDA — try again in ~20s.');
   }
   try {
     let text = buildConfluenceZoneText(forecastState.ohlcCache, forecastState.latest);
