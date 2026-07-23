@@ -80,4 +80,12 @@ for (const t of gated.trades) {
 const ungatedAgain = runPoiReaction(packed, { instrument: 'eurusd', warmupDays: 60 });
 assert.strictEqual(ungatedAgain.trades.length, trades.length, 'ungated path is deterministic / unchanged by gate code');
 
+// Stage-4 order modes: fade is the default (regression), breakout/selector run
+// and tag each trade with its resolved mode + valid entryType.
+const brk = runPoiReaction(packed, { instrument: 'eurusd', warmupDays: 60, orderMode: 'breakout' });
+const selr = runPoiReaction(packed, { instrument: 'eurusd', warmupDays: 60, orderMode: 'selector' });
+assert.ok(trades.every(t => t.mode === 'fade' && t.entryType === 'limit'), 'default mode = fade/limit');
+assert.ok(brk.trades.every(t => t.mode === 'breakout' && t.entryType === 'stop'), 'breakout mode = stop entries');
+assert.ok(selr.trades.every(t => (t.mode === 'fade' || t.mode === 'breakout') && t.T != null), 'selector resolves a mode + records T');
+
 console.log(`poiReactionV1Engine.test: OK — ${trades.length} ungated / ${gated.trades.length} gated(≥2) synthetic trades, ${meta.days} days, all invariants hold`);
