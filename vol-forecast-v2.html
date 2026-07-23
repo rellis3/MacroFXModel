@@ -179,16 +179,24 @@
 .v2-lad-lbl .px { font-size: 8px; font-family: 'DM Mono', monospace; font-weight: 600; color: var(--text2); white-space: nowrap; }
 .v2-lad-lbl.hit .px { color: var(--green); }
 .v2-lad-lbl.open .px { color: var(--text); font-weight: 700; }
-.v2-lad-exh {
-  display: flex; justify-content: space-between; gap: 6px; margin: 5px 8px 0;
-  font-size: 9px; font-family: 'DM Mono', monospace;
-}
-.v2-lad-exh .side { display: flex; gap: 4px; align-items: baseline; }
-.v2-lad-exh .amt { font-weight: 600; color: var(--text2); }
-.v2-lad-exh .lab { color: var(--text3); }
-.v2-lad-exh .t-norm { color: var(--green); }
-.v2-lad-exh .t-busy { color: var(--amber); }
-.v2-lad-exh .t-big  { color: var(--red); }
+/* Reach / exhaustion readout: RANGE bar + DIRECTION bar (with peak give-back) + verdict */
+.v2-lad-ro { margin: 6px 8px 0; font-family: 'DM Mono', monospace; font-size: 9px; }
+.v2-lad-ro .tag { color: var(--text3); font-size: 7.5px; letter-spacing: .05em; }
+.v2-lad-ro .bar { position: relative; height: 7px; background: var(--s2); border: 1px solid var(--border); border-radius: 4px; margin: 2px 0; }
+.v2-lad-ro .fill { position: absolute; top: 0; bottom: 0; border-radius: 4px; }
+.v2-lad-ro .fill.norm { background: var(--green); }
+.v2-lad-ro .fill.busy { background: var(--amber); }
+.v2-lad-ro .fill.big  { background: var(--red); }
+.v2-lad-ro .tk { position: absolute; top: -2px; bottom: -2px; width: 1px; background: var(--text3); opacity: .5; }
+.v2-lad-ro .ctr { position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--text2); opacity: .6; }
+.v2-lad-ro .dot { position: absolute; top: 50%; width: 8px; height: 8px; border-radius: 50%; transform: translate(-50%, -50%); background: var(--text); border: 2px solid var(--s1); z-index: 3; }
+.v2-lad-ro .peak { position: absolute; top: 50%; width: 8px; height: 8px; border-radius: 50%; transform: translate(-50%, -50%); background: transparent; border: 2px dashed var(--text3); z-index: 2; }
+.v2-lad-ro .txt { color: var(--text2); }
+.v2-lad-ro .txt .em { font-weight: 700; color: var(--text); }
+.v2-lad-verdict { display: inline-block; font-weight: 700; padding: 1px 7px; border-radius: 4px; font-size: 8.5px; font-family: 'DM Mono', monospace; margin: 6px 8px 2px; }
+.v2-lad-verdict.chop  { color: var(--amber); border: 1px solid var(--amber); }
+.v2-lad-verdict.trend { color: var(--green); border: 1px solid var(--green); }
+.v2-lad-verdict.bal   { color: var(--text3); border: 1px solid var(--border2); }
 
 /* ── v2 M5 mini-chart (Lightweight Charts) ───────────────────────────────────── */
 .v2-m5-wrap { position: relative; height: 300px; margin: 4px 0 2px;
@@ -1126,7 +1134,10 @@
       <div class="vfh-title">Session Tracker (inside each card)</div>
       <p>The range ladder and reach-time stamps track how far today's price action has moved against the forecast levels in real time.</p>
       <table class="vfh-tbl">
-        <tr><td>Range ladder</td><td>One horizontal map of today's expected travel: <b>Low</b> and <b>High</b> tiers each side of the open — normal (median, green), busy (75th, amber), big (90th, red). The bright dot is where price is now (net move from open); the blue band is the range carved so far (its edges are today's high &amp; low); a glowing tick = that level was hit. The <b>exhaustion</b> line underneath shows how much of each side's expected move is used (e.g. "133% of normal · past busy" = the down-move has already exceeded a normal day). Levels are shown in price when the session is live, in % from open otherwise.</td></tr>
+        <tr><td>Range ladder</td><td>One horizontal map of today's expected travel: <b>Low</b> and <b>High</b> tiers each side of the open — normal (median, green), busy (75th, amber), big (90th, red). The bright dot is where price is now (net move from open); the blue band is the range carved so far (its edges are today's high &amp; low); a glowing tick = that level was hit. Levels are shown in price when the session is live, in % from open otherwise.</td></tr>
+        <tr><td>Day Range bar</td><td>How much of the day's <b>width</b> (high&minus;low span) is used, as a percentile with ticks at the 50th/75th/90th. Range only ratchets on a <i>new</i> high or low — a pullback adds nothing. The trailing figure is time-aware: "<i>87% to 75th</i>" = chance of reaching the next tier given range used and how much of the day is left (once past a tier it targets the next one, so it never pins at 100%).</td></tr>
+        <tr><td>Net Move bar</td><td>Where the <b>net</b> move (close vs open) sits versus its expected directional envelope, as a percentile. The dashed ring marks how far the move <i>peaked</i> before retreating — "<i>peaked 91st → gave back</i>" = pushed to the 91st percentile then handed some back (directional exhaustion the range bar can't see).</td></tr>
+        <tr><td>Verdict</td><td><b>CHOPPY</b> = wide range but little net direction · <b>TRENDING</b> = the move is directional · <b>BUILDING</b> = room both ways. A read on the day's structure, not a trade signal.</td></tr>
         <tr><td>Breakout probability</td><td>Brownian motion estimate of whether price will extend further given how much range is left and how much of the day has passed. High early in the day = range is not yet "used up". Falls as the session progresses and range is consumed.</td></tr>
         <tr><td>Level reach times</td><td>The UTC time each forecast level was first hit today: O-H med/75th (upside), O-L med/75th (downside), H-L med/75th (full range). Blank = not yet reached.</td></tr>
       </table>
@@ -1785,6 +1796,48 @@ function _ladderTiers(f, s) {
   return { up50, up75, up90, dn50, dn75, dn90, list };
 }
 
+// ── Ladder reach / exhaustion helpers ──────────────────────────────────────────
+// Standard-normal CDF (Abramowitz-Stegun 26.2.17), used to turn an excursion into
+// a percentile of the half-normal O-H/O-L distribution.
+function _normCdf(x) {
+  if (x < 0) return 1 - _normCdf(-x);
+  const t = 1 / (1 + 0.2316419 * x);
+  const p = t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+  return 1 - (1 / Math.sqrt(2 * Math.PI)) * Math.exp(-0.5 * x * x) * p;
+}
+// Percentile of a one-sided excursion v against its half-normal median m
+// (m = 0.6745σ ⇒ P50). Returns 0–99.
+function _reachPct(v, m) {
+  if (m <= 0) return 0;
+  return Math.max(0, Math.min(99, Math.round((2 * _normCdf(v * 0.6745 / m) - 1) * 100)));
+}
+// Percentile of the H-L range: piecewise on the known tier points (median→50th,
+// 75th→75th) with a linear extrapolation beyond. The range distribution isn't
+// half-normal and we deliberately don't invent a Brownian-range 90th, so this
+// stays interpolated between the two tiers the forecaster actually publishes.
+function _rangePctl(hl, med, p75) {
+  if (hl <= med) return Math.round(50 * hl / Math.max(med, 1e-9));
+  if (hl <= p75) return Math.round(50 + 25 * (hl - med) / Math.max(p75 - med, 1e-9));
+  return Math.min(99, Math.round(75 + 25 * (hl - p75) / Math.max(p75 - med, 1e-9)));
+}
+// Tier-aware "chance of reaching the next unmet range tier" (fixes the pinned-100%
+// quirk of measuring only vs the median). Reuses the Brownian _breakoutProb. Range
+// has just two published tiers, so once past the 75th there's no further target.
+function _rangeExhaust(hl, med, p75, tf) {
+  if (hl < med) return `${_breakoutProb(hl / med, tf)}% to median`;
+  if (hl < p75) return `${_breakoutProb(hl / p75, tf)}% to 75th`;
+  return '75th range exceeded';
+}
+function _ord(n) { const s = ['th','st','nd','rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
+function _tcl(p) { return p >= 90 ? 'big' : p >= 50 ? 'busy' : 'norm'; }
+// choppy vs trending from (range percentile, direction percentile)
+function _dayVerdict(rp, dp) {
+  if (rp >= 65 && dp < 40) return ['chop',  'CHOPPY · range spent, little net direction'];
+  if (dp >= 55 && dp >= rp - 20) return ['trend', 'TRENDING · the move is directional'];
+  if (rp < 45 && dp < 45) return ['bal', 'BUILDING · room both ways'];
+  return ['bal', 'MIXED'];
+}
+
 // One horizontal ladder that does the job of the old gauge + Range-detail bars:
 // the colleague's tiered High/Low levels (in price), a live "you are here" dot,
 // the range carved so far, and how exhausted each side's expected move is.
@@ -1832,17 +1885,31 @@ function ladderHtml(name, f, s) {
       + `<span class="v2-lad-lbl open" style="left:50%"><span class="px">${_fmtPrice(open, ldp)}</span></span>`
     : '';
 
-  // exhaustion: how much of the expected move each side has used (colour = tier)
+  // Reach / exhaustion read (Option C): RANGE bar (how much of the day's width is
+  // used, time-aware) + DIRECTION bar (where the net move sits, and how far it has
+  // given back from its peak) + a choppy/trending verdict.
   let exh = '';
-  if (s && s.oh != null && s.ol != null) {
-    // colour tier: green building (< normal), amber past normal, red big day (≥ 90th)
-    const tc = (v, p50, p90) => v >= p90 ? 'big' : v >= p50 ? 'busy' : 'norm';
-    const upPct = up50 > 0 ? Math.round(s.oh / up50 * 100) : 0;
-    const dnPct = dn50 > 0 ? Math.round(s.ol / dn50 * 100) : 0;
-    exh = `<div class="v2-lad-exh">
-      <span class="side"><span class="lab">↑</span><span class="amt">${s.oh.toFixed(2)}%</span><span class="lab t-${tc(s.oh, up50, up90)}">${upPct}% of normal</span></span>
-      <span class="side"><span class="lab t-${tc(s.ol, dn50, dn90)}">${dnPct}% of normal</span><span class="amt">${s.ol.toFixed(2)}%</span><span class="lab">↓</span></span>
-    </div>`;
+  if (s && s.hl != null && s.oh != null && s.ol != null) {
+    let tf = 0.5;
+    if (s.bar_time) { const nt = new Date(s.bar_time); if (!isNaN(nt)) tf = Math.min(0.99, (nt.getUTCHours() * 60 + nt.getUTCMinutes()) / (24 * 60)); }
+    const rp = _rangePctl(s.hl, f.hl_median, f.hl_75);
+    const oc = s.oc ?? 0, sg = oc >= 0 ? 1 : -1;
+    const dMed = sg >= 0 ? up50 : dn50;
+    const dp = _reachPct(Math.abs(oc), dMed);
+    const peak = sg >= 0 ? s.oh : s.ol;
+    const pp = _reachPct(peak, dMed);
+    const gaveBack = pp - dp >= 8;                       // meaningful retreat from the peak
+    const xN = 50 + sg * Math.min(48, dp / 2 * 0.96);
+    const xP = 50 + sg * Math.min(48, pp / 2 * 0.96);
+    const dirWord = sg >= 0 ? 'up' : 'down';
+    const [vc, vt] = _dayVerdict(rp, dp);
+    exh = `<div class="v2-lad-ro"><span class="tag">DAY RANGE</span>
+      <div class="bar"><div class="fill ${_tcl(rp)}" style="width:${Math.min(100, rp)}%"></div><div class="tk" style="left:50%"></div><div class="tk" style="left:75%"></div><div class="tk" style="left:90%"></div></div>
+      <span class="txt"><span class="em">${s.hl.toFixed(2)}%</span> · ${_ord(rp)} pct · ${_rangeExhaust(s.hl, f.hl_median, f.hl_75, tf)}</span></div>
+    <div class="v2-lad-ro"><span class="tag">NET MOVE</span>
+      <div class="bar"><div class="ctr"></div><div class="fill ${_tcl(dp)}" style="left:${Math.min(50, xN).toFixed(1)}%;width:${Math.abs(xN - 50).toFixed(1)}%;opacity:.55"></div>${gaveBack ? `<div class="peak" style="left:${xP.toFixed(1)}%" title="peaked ${_ord(pp)} pct"></div>` : ''}<div class="dot" style="left:${xN.toFixed(1)}%"></div></div>
+      <span class="txt"><span class="em">${dlt(oc)}</span> ${dirWord} · ${_ord(dp)} pct${gaveBack ? ` · peaked ${_ord(pp)} → gave back` : ''}</span></div>
+    <span class="v2-lad-verdict ${vc}">${vt}</span>`;
   }
 
   return `<div class="v2-ladder">
