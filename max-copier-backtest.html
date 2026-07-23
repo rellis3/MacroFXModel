@@ -3,508 +3,491 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Max Copier Strategy — Backtest</title>
-<style>
-  :root {
-    --bg:#0e1016; --panel:#161a24; --panel2:#1d2330; --line:#2a3242;
-    --fg:#e7ecf3; --mut:#8b97a8; --green:#3fb27f; --red:#e5604d; --amber:#e0a94b;
-    --blue:#4a9fe0; --accent:#7c6cf0;
-  }
-  * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--fg);
-    font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
-  a { color:var(--blue); }
-  .wrap { max-width:1180px; margin:0 auto; padding:22px 18px 80px; }
-  h1 { font-size:22px; margin:0 0 2px; }
-  h2 { font-size:16px; margin:26px 0 10px; border-bottom:1px solid var(--line); padding-bottom:6px; }
-  .sub { color:var(--mut); font-size:13px; margin:0 0 14px; }
-  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px; }
-  .banner { background:linear-gradient(180deg,#241d33,#1a1626); border:1px solid #3a3050; border-radius:10px; padding:14px 16px; margin-bottom:18px; font-size:13px; }
-  .banner b { color:#c8b8ff; }
-  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:12px; }
-  label { display:block; font-size:12px; color:var(--mut); margin-bottom:4px; }
-  input,select { width:100%; background:var(--panel2); border:1px solid var(--line); color:var(--fg);
-    border-radius:7px; padding:8px 9px; font:inherit; }
-  input:focus,select:focus { outline:1px solid var(--accent); }
-  .row { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; }
-  button { background:var(--accent); color:#fff; border:0; border-radius:8px; padding:10px 18px;
-    font:600 14px/1 inherit; cursor:pointer; }
-  button:disabled { opacity:.5; cursor:default; }
-  button.ghost { background:var(--panel2); border:1px solid var(--line); color:var(--fg); font-weight:500; padding:8px 12px; }
-  .muted { color:var(--mut); }
-  .pos { color:var(--green); } .neg { color:var(--red); } .amb { color:var(--amber); }
-  table { border-collapse:collapse; width:100%; font-size:12.5px; }
-  th,td { text-align:right; padding:5px 8px; border-bottom:1px solid var(--line); white-space:nowrap; }
-  th:first-child,td:first-child { text-align:left; }
-  thead th { color:var(--mut); font-weight:600; border-bottom:1px solid var(--line); }
-  .tag { display:inline-block; font-size:11px; padding:2px 7px; border-radius:20px; border:1px solid var(--line); color:var(--mut); }
-  .tag.win { background:rgba(63,178,127,.12); border-color:#2f6b52; color:var(--green); }
-  .tag.lose { background:rgba(229,96,77,.10); border-color:#7a3b33; color:var(--red); }
-  .tag.mode { background:rgba(124,108,240,.14); border-color:#4a4080; color:#c8b8ff; }
-  details { margin:8px 0; }
-  summary { cursor:pointer; padding:8px 10px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; list-style:none; }
-  summary::-webkit-details-marker { display:none; }
-  .scroll { overflow-x:auto; }
-  .note { font-size:12px; color:var(--mut); margin:8px 0; }
-  .kpis { display:flex; gap:18px; flex-wrap:wrap; margin:6px 0; }
-  .kpi { background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:8px 12px; min-width:110px; }
-  .kpi .v { font-size:18px; font-weight:700; } .kpi .l { font-size:11px; color:var(--mut); }
-  code { background:var(--panel2); padding:1px 5px; border-radius:4px; font-size:12px; }
-  .hidden { display:none; }
-  .logbox { max-height:180px; overflow:auto; font:12px/1.5 ui-monospace,monospace; color:var(--mut); background:#0b0d13; border:1px solid var(--line); border-radius:8px; padding:10px; }
-  .verdict { border-left:3px solid var(--accent); padding:8px 12px; margin:8px 0; background:var(--panel2); border-radius:0 8px 8px 0; font-size:13px; }
-  .verdict.bad { border-left-color:var(--red); } .verdict.meh { border-left-color:var(--amber); } .verdict.good { border-left-color:var(--green); }
-  .chartwrap { position:relative; width:100%; }
-  #mcChart { width:100%; height:420px; } #mcWt { width:100%; height:150px; }
-  .legend { display:flex; gap:14px; flex-wrap:wrap; font-size:11.5px; color:var(--mut); margin:8px 0; }
-  .legend span { display:inline-flex; align-items:center; gap:5px; }
-  .dot { width:10px; height:10px; border-radius:50%; display:inline-block; } .bar { width:14px; height:0; border-top:2px solid; display:inline-block; }
-</style>
+<title>Max Copier Backtest</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  #mcApp { max-width:1400px; margin:0 auto; padding:0 20px 70px; }
+  .mc-controls{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .mc-controls label{display:block;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:4px}
+  .mc-controls input,.mc-controls select{width:100%;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 8px;font:13px 'DM Mono',monospace}
+  .mc-controls input:focus,.mc-controls select:focus{outline:1px solid var(--blue)}
+  .btn-primary{background:var(--blue);color:#fff;border:0;border-radius:8px;padding:9px 20px;font:600 13px 'DM Sans',sans-serif;cursor:pointer}
+  .btn-primary:disabled{opacity:.5;cursor:default}
+  .mc-note{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin:6px 0}
+
+  /* KPI tiles */
+  .bt-kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+  @media(max-width:900px){.bt-kpi-grid{grid-template-columns:repeat(2,1fr)}}
+  .bt-kpi{background:var(--s1);border:1.5px solid var(--border);border-radius:var(--rl);padding:16px 18px 14px;display:flex;flex-direction:column;gap:4px}
+  .bt-kpi-label{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace}
+  .bt-kpi-value{font-size:27px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text);line-height:1.1}
+  .bt-kpi-value.green{color:var(--green)}.bt-kpi-value.red{color:var(--red)}.bt-kpi-value.blue{color:var(--blue)}.bt-kpi-value.amber{color:var(--amber)}
+  .bt-kpi-sub{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace}
+  .bt-sec-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:10px}
+  @media(max-width:900px){.bt-sec-grid{grid-template-columns:repeat(2,1fr)}}
+  .bt-sec{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;display:flex;align-items:center;justify-content:space-between}
+  .bt-sec-lbl{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace}
+  .bt-sec-val{font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text)}
+
+  /* section card */
+  .bt-card{background:var(--s1);border:1.5px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-top:14px}
+  .bt-card-hdr{padding:12px 18px;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);font-family:'DM Mono',monospace;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .bt-card-body{padding:18px}
+  .bt-two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+  @media(max-width:900px){.bt-two-col{grid-template-columns:1fr}}
+
+  /* tables */
+  .bt-tbl{width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:12px}
+  .bt-tbl th{padding:7px 10px;text-align:right;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);white-space:nowrap}
+  .bt-tbl th:first-child{text-align:left}
+  .bt-tbl td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text);white-space:nowrap;text-align:right}
+  .bt-tbl td:first-child{text-align:left}
+  .bt-tbl tr:last-child td{border-bottom:none}
+  .bt-tbl tr:hover td{background:var(--s2)}
+  .bt-tbl td.pos,.bt-tbl .pos{color:var(--green)} .bt-tbl td.neg,.bt-tbl .neg{color:var(--red)} .bt-tbl td.neu{color:var(--text2)}
+  .bt-tbl-scroll{overflow-x:auto}
+  .rb-badge{display:inline-block;padding:2px 7px;border-radius:9px;font-size:10px;font-weight:600;font-family:'DM Mono',monospace;border:1px solid}
+  .rb-badge.win{color:var(--green);background:var(--green-bg);border-color:var(--green-bd)}
+  .rb-badge.loss{color:var(--red);background:var(--red-bg);border-color:var(--red-bd)}
+  .rb-badge.mode{color:var(--blue);background:var(--blue-bg);border-color:var(--blue-bd)}
+
+  /* horizontal breakdown bars */
+  .reason-row{display:flex;align-items:center;gap:10px;padding:5px 0}
+  .reason-lbl{width:60px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);flex-shrink:0}
+  .reason-bar-track{flex:1;height:6px;background:var(--s2);border-radius:3px;overflow:hidden}
+  .reason-bar-fill{height:100%;border-radius:3px}
+  .reason-stat{width:170px;text-align:right;font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);flex-shrink:0}
+
+  /* chart */
+  .fb-chart-section{background:#131722;border:1.5px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-top:14px}
+  .fb-chart-topbar{display:flex;align-items:center;gap:6px 12px;flex-wrap:wrap;padding:7px 12px;background:#0e1117;border-bottom:1px solid #1c2133;min-height:38px}
+  .fb-chart-topbar .lbl{font-family:'DM Mono',monospace;font-size:11px;color:#5a6380}
+  .fb-chart-topbar select,.fb-chart-topbar input{background:#1a1d27;border:1px solid #2a3050;color:#d1d4dc;border-radius:5px;padding:4px 7px;font:11px 'DM Mono',monospace}
+  .fb-price-wrap{position:relative;height:420px;background:#131722}
+  #mcPrice{width:100%;height:100%}
+  .fb-pnl-wrap{position:relative;height:130px;background:#0e1117;border-top:1px solid #1c2133}
+  #mcWt{width:100%;height:100%}
+  .fb-pnl-lbl{position:absolute;top:4px;left:8px;font-family:'DM Mono',monospace;font-size:10px;color:#5a6380;pointer-events:none;z-index:2}
+  .fb-nav-bar{display:flex;align-items:center;gap:8px;padding:7px 12px;background:#0e1117;border-top:1px solid #1c2133;font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);flex-wrap:wrap}
+  .fb-nav-btn{background:#1a1d27;border:1px solid #2a3050;border-radius:4px;color:#9ba3bf;font-family:'DM Mono',monospace;font-size:11px;padding:3px 11px;cursor:pointer}
+  .fb-nav-btn:hover{border-color:var(--blue);color:var(--blue)} .fb-nav-btn:disabled{opacity:.35;cursor:default}
+  .fb-legend{display:flex;gap:12px;flex-wrap:wrap;font-size:10.5px;color:#5a6380;font-family:'DM Mono',monospace;align-items:center}
+  .fb-legend span{display:inline-flex;align-items:center;gap:4px}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block}.hbar{width:13px;height:0;border-top:2px solid;display:inline-block}
+
+  /* verdict box for autopsy */
+  .verdict{border-left:3px solid var(--blue);padding:9px 13px;margin-top:12px;background:var(--s2);border-radius:0 8px 8px 0;font-size:12.5px;line-height:1.55;font-family:'DM Sans',sans-serif}
+  .verdict.bad{border-left-color:var(--red)} .verdict.meh{border-left-color:var(--amber)} .verdict.good{border-left-color:var(--green)}
+  .banner{background:var(--s2);border:1px solid var(--border);border-radius:var(--rl);padding:13px 16px;margin-top:14px;font-size:12.5px;line-height:1.6;color:var(--text2)}
+  .banner b{color:var(--text)}
+  .logbox{max-height:160px;overflow:auto;font:11px/1.5 'DM Mono',monospace;color:var(--text3);background:#0b0d13;border:1px solid var(--border);border-radius:8px;padding:10px}
+  h2.sec{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);font-family:'DM Mono',monospace;margin:26px 0 2px}
+</style>
 </head>
-<body>
-<div class="wrap">
-  <h1>Max Copier Strategy — Backtester</h1>
-  <p class="sub">Impulse-continuation baskets on gold + 24 FX pairs · M1 event engine · true IS/OOS split · three exit models A/B'd on the same signals.</p>
+<body class="dark">
+<div class="sticky-header"><div style="max-width:1400px;margin:0 auto;padding:0 20px">
+  <div class="topbar">
+    <div class="logo-box"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M1 13 L5 7 L8 10 L15 2" stroke="white" stroke-width="1.8" stroke-linejoin="round" fill="none"/><line x1="1" y1="13" x2="15" y2="13" stroke="white" stroke-width="1.2" opacity=".5"/></svg></div>
+    <div class="title-block">
+      <div class="title" style="font-size:15px;font-weight:700;">Max Copier Backtest</div>
+      <div class="sub">impulse-continuation baskets · M1 event engine · 3 exit models A/B · IS/OOS · VuManChu divergence</div>
+    </div>
+    <div style="flex:1"></div>
+    <a href="forecaster-backtest.html" style="text-decoration:none"><button class="dark-btn">Forecaster BT →</button></a>
+    <a href="vol-backtest-v2.html" style="text-decoration:none"><button class="dark-btn">Vol BT →</button></a>
+    <a href="index.html" style="text-decoration:none"><button class="dark-btn">← Dashboard</button></a>
+  </div>
+</div></div>
 
+<div id="mcApp">
   <div class="banner">
-    <b>Read before trusting a number.</b> This is a <b>mechanical proxy</b> of a discretionary strategy
-    (see <a href="#" onclick="return false;" title="max copier strategy.md in the repo">the doc</a>). Every phrase —
-    "significant" level, "decisive" impulse, "value area low", "hidden divergence", "keep more on if strong" — is
-    <b>folklore</b>, translated here into fixed thresholds. Each threshold is a degree of freedom / overfit surface, so the
-    <b>headline is the OUT-OF-SAMPLE column</b>, not in-sample. Costs (round-trip spread + slippage on stop/trail exits) are on
-    by default. A basket of 3–5 correlated positions on one signal is <b>position sizing + staggered exits</b>, not
-    diversification — so headline stats are computed <b>per-basket</b> (the CSV export is per-position, what actually hits a prop
-    account). Pre-registered pass bar: <b>OOS Sharpe &gt; 0, survives 2–3× cost, ≥30 OOS baskets, not carried by one year</b>.
-    Honest prior: continuation is a replicated family, but this specific entry machinery is folklore — <b>expect null</b>.
+    <b>Mechanical proxy of a discretionary strategy — read the OUT-OF-SAMPLE column, not in-sample.</b> Every threshold ("significant" level, "decisive" impulse, value area, hidden divergence) is folklore turned into a number, so each is overfit surface. A basket of 3–5 correlated positions is <b>sizing, not diversification</b> — headline stats are per-basket; the CSV export is per-position. Costs (spread + slippage on stop/trail) are on by default. Honest prior: <b>expect null</b> — and the Autopsy section below proves why.
   </div>
 
-  <div class="panel">
-    <div class="grid" style="margin-bottom:12px;">
-      <div><label>Instrument</label><select id="pair"></select></div>
-      <div><label>Donchian lookback (1H bars)</label><input id="donchianLookback" type="number" value="20" min="5" step="1"></div>
-      <div><label>Impulse ≥ (× ATR beyond level)</label><input id="impulseAtrMult" type="number" value="0.5" step="0.1"></div>
-      <div><label>Consolidation window (M15 bars)</label><input id="consolBars" type="number" value="16" step="1"></div>
-      <div><label>Consolidation max range (× ATR)</label><input id="consolMaxAtr" type="number" value="2.5" step="0.1"></div>
-      <div><label>Value-area depth (0–0.5)</label><input id="vaDepth" type="number" value="0.30" step="0.05"></div>
-      <div><label>Stop buffer (× ATR beyond range)</label><input id="stopAtrBuffer" type="number" value="0.5" step="0.1"></div>
-      <div><label>Basket size (positions)</label><input id="nPositions" type="number" value="4" min="1" max="10" step="1"></div>
-      <div><label>Require hidden divergence</label><select id="requireDivergence"><option value="1" selected>Yes (as written)</option><option value="0">No (ablation)</option></select></div>
-      <div><label>OOS tail fraction</label><input id="oosFrac" type="number" value="0.4" step="0.05" min="0.1" max="0.6"></div>
-    </div>
-    <details>
-      <summary class="muted">Exit-model &amp; timing parameters (advanced)</summary>
-      <div class="grid" style="margin-top:12px;">
-        <div><label>Entry timeout (M15 bars)</label><input id="entryTimeout" type="number" value="32" step="1"></div>
-        <div><label>Max hold (M15 bars)</label><input id="maxHoldBarsM15" type="number" value="96" step="1"></div>
-        <div><label>fixed_r target (R)</label><input id="tpR" type="number" value="2.0" step="0.5"></div>
-        <div><label>shared_htf measured-move ×</label><input id="mmMult" type="number" value="1.0" step="0.1"></div>
-        <div><label>ladder rung spacing (R)</label><input id="ladderR" type="number" value="1.0" step="0.5"></div>
-        <div><label>trail distance (× ATR)</label><input id="trailAtrMult" type="number" value="3.0" step="0.5"></div>
-        <div><label>trail arms at (R of MFE)</label><input id="trailStartR" type="number" value="1.0" step="0.5"></div>
+  <div class="bt-card">
+    <div class="bt-card-hdr">Parameters</div>
+    <div class="bt-card-body">
+      <div class="mc-controls">
+        <div><label>Instrument</label><select id="pair"></select></div>
+        <div><label>Donchian lookback (1H)</label><input id="donchianLookback" type="number" value="20" step="1"></div>
+        <div><label>Impulse ≥ (×ATR)</label><input id="impulseAtrMult" type="number" value="0.5" step="0.1"></div>
+        <div><label>Consol window (M15)</label><input id="consolBars" type="number" value="16" step="1"></div>
+        <div><label>Consol max range (×ATR)</label><input id="consolMaxAtr" type="number" value="2.5" step="0.1"></div>
+        <div><label>Value-area depth</label><input id="vaDepth" type="number" value="0.30" step="0.05"></div>
+        <div><label>Stop buffer (×ATR)</label><input id="stopAtrBuffer" type="number" value="0.5" step="0.1"></div>
+        <div><label>Basket size</label><input id="nPositions" type="number" value="4" step="1"></div>
+        <div><label>Divergence</label><select id="requireDivergence"><option value="1" selected>Required</option><option value="0">Off (ablation)</option></select></div>
+        <div><label>Div oscillator</label><select id="divergenceSource"><option value="wavetrend" selected>VuManChu WT</option><option value="rsi">RSI</option></select></div>
+        <div><label>OOS fraction</label><input id="oosFrac" type="number" value="0.4" step="0.05"></div>
       </div>
-    </details>
-    <div class="row" style="margin-top:14px;">
-      <button id="run">Run backtest</button>
-      <span id="status" class="muted"></span>
+      <details style="margin-top:12px"><summary class="mc-note" style="cursor:pointer">Exit-model &amp; timing parameters (advanced)</summary>
+        <div class="mc-controls" style="margin-top:10px">
+          <div><label>Entry timeout (M15)</label><input id="entryTimeout" type="number" value="32" step="1"></div>
+          <div><label>Max hold (M15)</label><input id="maxHoldBarsM15" type="number" value="96" step="1"></div>
+          <div><label>fixed_r target (R)</label><input id="tpR" type="number" value="2.0" step="0.5"></div>
+          <div><label>shared_htf MM ×</label><input id="mmMult" type="number" value="1.0" step="0.1"></div>
+          <div><label>ladder rung (R)</label><input id="ladderR" type="number" value="1.0" step="0.5"></div>
+          <div><label>trail (×ATR)</label><input id="trailAtrMult" type="number" value="3.0" step="0.5"></div>
+          <div><label>trail arms (R)</label><input id="trailStartR" type="number" value="1.0" step="0.5"></div>
+        </div>
+      </details>
+      <div style="margin-top:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <button class="btn-primary" id="run">Run backtest</button>
+        <span id="status" class="mc-note"></span>
+      </div>
     </div>
   </div>
 
-  <div id="results"></div>
+  <div id="results" style="display:none">
+    <div class="bt-card"><div class="bt-card-hdr">Focus
+      <span style="flex:1"></span>
+      <select id="fScope" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:3px 7px;font:11px 'DM Mono',monospace"></select>
+      <select id="fMode" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:3px 7px;font:11px 'DM Mono',monospace"></select>
+      <span id="fSplit" class="rb-badge mode">OOS-only</span>
+    </div></div>
 
-  <h2>Replay chart — see what each trade saw</h2>
-  <p class="sub">Candles + VuManChu WaveTrend, with the strategy's own marks: impulse breaks, HTF level, consolidation box, value-area entry, hidden-divergence points, and the basket's stop/exits. This is the "what"; the autopsy above is the "why".</p>
-  <div class="panel">
-    <div class="row" style="margin-bottom:10px;">
-      <div><label>Instrument</label><select id="cPair"></select></div>
-      <div><label>From</label><input id="cFrom" type="date"></div>
-      <div><label>To</label><input id="cTo" type="date"></div>
-      <div><label>Exit model</label><select id="cMode"><option>fixed_r</option><option>shared_htf</option><option>ladder_trail</option></select></div>
-      <div><label>Divergence</label><select id="cDiv"><option value="wavetrend">VuManChu WT</option><option value="rsi">RSI</option></select></div>
-      <div style="align-self:flex-end;"><button id="cRun">Load replay chart</button></div>
-      <span id="cStatus" class="muted"></span>
+    <div class="bt-kpi-grid" id="kpiGrid"></div>
+    <div class="bt-sec-grid" id="secGrid"></div>
+
+    <div class="fb-chart-section">
+      <div class="fb-chart-topbar">
+        <span class="lbl" id="cPairLbl" style="color:#d1d4dc;font-weight:600">—</span>
+        <div style="width:1px;height:16px;background:#1c2133"></div>
+        <span class="lbl">From</span><input id="cFrom" type="date">
+        <span class="lbl">To</span><input id="cTo" type="date">
+        <button class="fb-nav-btn" id="cRun">Load</button>
+        <span id="cStatus" class="lbl"></span>
+        <div style="flex:1"></div>
+        <div class="fb-legend">
+          <span><span class="dot" style="background:#4a9fe0"></span>impulse</span>
+          <span><span class="hbar" style="border-color:#e0a94b"></span>level</span>
+          <span><span class="hbar" style="border-color:#8b97a8"></span>consol</span>
+          <span><span class="dot" style="background:#7c6cf0"></span>entry</span>
+          <span><span class="dot" style="background:#e5c04b"></span>div</span>
+          <span><span class="dot" style="background:#26a69a"></span>win</span>
+          <span><span class="dot" style="background:#ef5350"></span>loss</span>
+        </div>
+      </div>
+      <div class="fb-price-wrap"><div id="mcPrice"></div></div>
+      <div class="fb-pnl-wrap"><span class="fb-pnl-lbl">VuManChu WaveTrend (WT1 solid · WT2 dashed) — the oscillator the divergence check reads</span><div id="mcWt"></div></div>
+      <div class="fb-nav-bar">
+        <span style="color:#5a6380">Trade:</span>
+        <button class="fb-nav-btn" id="tPrev" disabled>◀ Prev</button>
+        <button class="fb-nav-btn" id="tNext" disabled>Next ▶</button>
+        <span id="tInfo" style="color:var(--text2)"></span>
+        <div style="flex:1"></div>
+        <button class="fb-nav-btn" id="fitAll">Fit All</button>
+      </div>
     </div>
-    <div class="legend">
-      <span><span class="dot" style="background:#4a9fe0"></span>impulse break</span>
-      <span><span class="bar" style="border-color:#e0a94b"></span>HTF level</span>
-      <span><span class="bar" style="border-color:#8b97a8"></span>consolidation hi/lo</span>
-      <span><span class="dot" style="background:#7c6cf0"></span>value-area entry</span>
-      <span><span class="dot" style="background:#e5c04b"></span>divergence pt</span>
-      <span><span class="dot" style="background:#3fb27f"></span>win exit</span>
-      <span><span class="dot" style="background:#e5604d"></span>loss / stop</span>
+
+    <div class="bt-card">
+      <div class="bt-card-hdr">Equity curve <span class="mc-note" style="text-transform:none;letter-spacing:0">cumulative % P&amp;L, per basket (focus)</span></div>
+      <div class="bt-card-body" style="height:230px"><canvas id="equityChart"></canvas></div>
     </div>
-    <div class="chartwrap"><div id="mcChart"></div></div>
-    <div class="chartwrap"><div id="mcWt"></div><div class="note" style="margin:2px 0 0;">VuManChu WaveTrend (WT1 solid / WT2 dashed) — the oscillator the hidden-divergence check reads.</div></div>
-    <div id="cTradeInfo" class="note"></div>
+
+    <div class="bt-two-col">
+      <div class="bt-card"><div class="bt-card-hdr">Exit reasons</div><div class="bt-card-body" id="exitReasons"></div></div>
+      <div class="bt-card"><div class="bt-card-hdr" id="brkHdr">Per-instrument</div><div class="bt-tbl-scroll" id="brkTable"></div></div>
+    </div>
+
+    <h2 class="sec">Autopsy — why it works / doesn't</h2>
+    <div id="autopsy"></div>
+
+    <h2 class="sec">Exit-model A/B (pooled, IS / OOS / full)</h2>
+    <div class="bt-card"><div class="bt-tbl-scroll" id="modeCompare"></div></div>
+
+    <div class="bt-two-col">
+      <div class="bt-card"><div class="bt-card-hdr">Cost sensitivity <span class="mc-note" style="text-transform:none;letter-spacing:0">a thin edge that dies at 2–3× cost is not real</span></div><div class="bt-card-body" id="costSens"></div></div>
+      <div class="bt-card"><div class="bt-card-hdr">Yearly concentration</div><div class="bt-tbl-scroll" id="yearTable"></div></div>
+    </div>
+
+    <div class="bt-card">
+      <div class="bt-card-hdr">Export trade log → prop-firm toolkit</div>
+      <div class="bt-card-body">
+        <div class="mc-controls" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr))">
+          <div><label>Account size ($)</label><input id="acct" type="number" value="100000" step="1000"></div>
+          <div><label>Risk per position (%)</label><input id="riskPct" type="number" value="0.25" step="0.05"></div>
+        </div>
+        <div class="mc-note" style="margin:10px 0">Per-position (what hits the account). <b>R-unit = stop distance</b> (vol-varying, so R and Return% aren't redundant). <b>MAE from the real M1 path.</b> $ P&amp;L = R × (account × risk%). <span id="csvCount"></span></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="fb-nav-btn" id="csvPct">⬇ % Returns</button>
+          <button class="fb-nav-btn" id="csvR">⬇ R-Multiples</button>
+          <button class="fb-nav-btn" id="csvCur">⬇ Currency P&amp;L</button>
+          <span id="csvMsg" class="mc-note"></span>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="sec">Run log</h2>
+    <div class="logbox" id="logbox"></div>
   </div>
 </div>
 
 <script type="module">
 const $ = (id) => document.getElementById(id);
-const EXIT_LABELS = { fixed_r:'fixed_r', shared_htf:'shared_htf', ladder_trail:'ladder_trail' };
 const PAIRS = ['ALL','eurusd','gbpusd','usdjpy','audusd','nzdusd','usdcad','usdchf','gbpjpy','eurjpy','eurgbp','euraud','eurcad','eurchf','eurnzd','audjpy','audnzd','audcad','audchf','gbpaud','gbpcad','gbpchf','cadjpy','chfjpy','nzdjpy','gold'];
-$('pair').innerHTML = PAIRS.map(p => `<option value="${p==='ALL'?'':p}">${p==='ALL'?'All 26 (24 FX + gold)':p}</option>`).join('');
-$('cPair').innerHTML = PAIRS.filter(p=>p!=='ALL').map(p => `<option value="${p}"${p==='gold'?' selected':''}>${p}</option>`).join('');
+const EXIT_MODES = ['fixed_r','shared_htf','ladder_trail'];
+$('pair').innerHTML = PAIRS.map(p=>`<option value="${p==='ALL'?'':p}">${p==='ALL'?'All 26 (24 FX + gold)':p}</option>`).join('');
+const fmt=(v,d=2)=>(v==null||!Number.isFinite(+v))?'—':(+v).toFixed(d);
+const cls=v=>+v>0?'green':+v<0?'red':'neu';
+let LAST=null, equityChart=null, PRICE=null, WT=null, TRADES=[], tIdx=0;
 
-const fmt = (v, d = 2) => (v === null || v === undefined || !Number.isFinite(+v)) ? '—' : (+v).toFixed(d);
-const cls = (v) => (+v > 0 ? 'pos' : +v < 0 ? 'neg' : 'muted');
-let LAST = null; // { results, pooled, opts, exitModes }
-
-// ── run + resilient poll ─────────────────────────────────────────────────────
-async function poll(jobId) {
-  let fails = 0;
-  for (let i = 0; i < 600; i++) {           // up to ~30 min
-    await new Promise(r => setTimeout(r, 3000));
-    let res = null;
-    try { res = await fetch(`/api/max-copier/status/${jobId}`).then(r => r.json()); }
-    catch { if (++fails > 25) throw new Error('lost contact with server'); continue; }
-    if (!res) { if (++fails > 25) throw new Error('empty status'); continue; }
-    fails = 0;
-    if (res.status === 'running') { $('status').textContent = `Running… ${res.elapsed || 0}s (26 instruments × ~10y M1 takes several minutes)`; continue; }
-    if (res.status === 'done') return res;
-    if (res.status === 'error') throw new Error(res.error || 'engine error');
+// ── run + poll ───────────────────────────────────────────────────────────────
+async function poll(jobId, statusEl, max=600){
+  let fails=0;
+  for(let i=0;i<max;i++){
+    await new Promise(r=>setTimeout(r,3000));
+    let res=null; try{res=await fetch(`/api/max-copier/status/${jobId}`).then(r=>r.json());}catch{if(++fails>25)throw new Error('lost contact');continue;}
+    if(!res){if(++fails>25)throw new Error('empty');continue;} fails=0;
+    if(res.status==='running'){statusEl.textContent=`running… ${res.elapsed||0}s`;continue;}
+    if(res.status==='done')return res; if(res.status==='error')throw new Error(res.error||'engine error');
   }
   throw new Error('timed out');
 }
-
-$('run').onclick = async () => {
-  const body = {
-    pair: $('pair').value,
-    donchianLookback: $('donchianLookback').value, impulseAtrMult: $('impulseAtrMult').value,
-    consolBars: $('consolBars').value, consolMaxAtr: $('consolMaxAtr').value, vaDepth: $('vaDepth').value,
-    stopAtrBuffer: $('stopAtrBuffer').value, nPositions: $('nPositions').value,
-    requireDivergence: $('requireDivergence').value === '1',
-    oosFrac: $('oosFrac').value, entryTimeout: $('entryTimeout').value, maxHoldBarsM15: $('maxHoldBarsM15').value,
-    tpR: $('tpR').value, mmMult: $('mmMult').value, ladderR: $('ladderR').value,
-    trailAtrMult: $('trailAtrMult').value, trailStartR: $('trailStartR').value,
-  };
-  $('run').disabled = true; $('results').innerHTML = ''; $('status').textContent = 'Starting…';
-  try {
-    const start = await fetch('/api/max-copier/run', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) }).then(r => r.json());
-    if (!start.ok) throw new Error(start.error || 'failed to start');
-    const out = await poll(start.jobId);
-    LAST = out;
-    $('status').innerHTML = `Done — ${out.results.length} instrument(s).`;
-    render(out);
-  } catch (e) {
-    $('status').innerHTML = `<span class="neg">Error: ${e.message}</span>`;
-  } finally { $('run').disabled = false; }
+function body(){
+  return {pair:$('pair').value,donchianLookback:$('donchianLookback').value,impulseAtrMult:$('impulseAtrMult').value,
+    consolBars:$('consolBars').value,consolMaxAtr:$('consolMaxAtr').value,vaDepth:$('vaDepth').value,stopAtrBuffer:$('stopAtrBuffer').value,
+    nPositions:$('nPositions').value,requireDivergence:$('requireDivergence').value==='1',divergenceSource:$('divergenceSource').value,
+    oosFrac:$('oosFrac').value,entryTimeout:$('entryTimeout').value,maxHoldBarsM15:$('maxHoldBarsM15').value,tpR:$('tpR').value,
+    mmMult:$('mmMult').value,ladderR:$('ladderR').value,trailAtrMult:$('trailAtrMult').value,trailStartR:$('trailStartR').value};
+}
+$('run').onclick=async()=>{
+  $('run').disabled=true;$('status').textContent='starting…';$('results').style.display='none';
+  try{
+    const start=await fetch('/api/max-copier/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body())}).then(r=>r.json());
+    if(!start.ok)throw new Error(start.error||'failed to start');
+    const out=await poll(start.jobId,$('status')); LAST=out;
+    $('status').textContent=`done — ${out.results.length} instrument(s), ${out.results.reduce((s,r)=>s+r.signalCount,0)} baskets`;
+    initFocus(out); $('results').style.display='block';
+  }catch(e){$('status').innerHTML=`<span style="color:var(--red)">${e.message}</span>`;}
+  finally{$('run').disabled=false;}
 };
 
-// ── rendering ────────────────────────────────────────────────────────────────
-function summaryRow(label, s, best) {
-  if (!s) return '';
-  const winTag = best ? `<span class="tag ${s.sharpe>0?'win':'lose'}">${s.sharpe>0?'OOS+':'OOS−'}</span>` : '';
-  return `<tr>
-    <td>${label} ${winTag}</td>
-    <td>${s.trades}</td><td>${fmt(s.tradesPerYr,1)}</td>
-    <td>${fmt(s.winRate,1)}</td><td>${fmt(s.profitFactor,2)}</td>
-    <td class="${cls(s.expectancy)}">${fmt(s.expectancy,4)}</td>
-    <td class="${cls(s.sharpe)}">${fmt(s.sharpe,2)}</td>
-    <td class="neg">${fmt(s.maxDD,2)}</td>
-    <td class="${cls(s.totalPnl)}">${fmt(s.totalPnl,2)}</td>
-    <td>${fmt(s.skew,2)}</td><td>${fmt(s.excessKurt,2)}</td>
-    <td class="neg">${fmt(s.cvar95,3)}</td>
-    <td>${s.minTrackYears==null?'—':fmt(s.minTrackYears,1)}</td>
-  </tr>`;
+// ── focus selector ───────────────────────────────────────────────────────────
+function initFocus(out){
+  const pb=out.pooled.best;
+  $('fScope').innerHTML=`<option value="__ALL__">All pooled (${out.results.length})</option>`+out.results.map(r=>`<option value="${r.pair}">${r.pair}</option>`).join('');
+  $('fMode').innerHTML=EXIT_MODES.map(m=>`<option value="${m}"${pb&&pb.mode===m?' selected':''}>${m}</option>`).join('');
+  $('fScope').onchange=renderFocus; $('fMode').onchange=renderFocus;
+  $('logbox').innerHTML=(out.log||[]).map(l=>l.replace(/</g,'&lt;')).join('<br>');
+  renderModeCompare(out); renderAutopsy(out.autopsy);
+  renderFocus();
+  // chart defaults
+  $('cFrom').value=''; $('cTo').value='';
 }
-function modeTable(modes, exitModes) {
-  const head = `<thead><tr><th>mode / split</th><th>n</th><th>/yr</th><th>win%</th><th>PF</th><th>exp%</th><th>Sharpe</th><th>maxDD%</th><th>ΣPnL%</th><th>skew</th><th>exKurt</th><th>CVaR%</th><th>minYrs</th></tr></thead>`;
-  let rows = '';
-  for (const m of exitModes) {
-    const sp = modes[m].split;
-    rows += `<tr><td colspan="13" style="color:#c8b8ff;padding-top:10px;"><span class="tag mode">${EXIT_LABELS[m]}</span></td></tr>`;
-    rows += summaryRow('· in-sample', sp.is, false);
-    rows += summaryRow('· OUT-of-sample', sp.oos, true);
-    rows += summaryRow('· full', sp.full, false);
+function gather(scope,mode){
+  const rs=LAST.results, pick=scope==='__ALL__'?rs:rs.filter(r=>r.pair===scope);
+  let records=[],positions=[];
+  for(const r of pick){const md=r.modes[mode]; for(const rec of (md.records||[]))records.push(rec); for(const p of (md.positions||[]))positions.push({...p,pair:r.pair});}
+  records.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
+  positions.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
+  return {records,positions};
+}
+function spanYears(recs){if(recs.length<2)return 0.25;const a=new Date(recs[0].date).getTime(),b=new Date(recs[recs.length-1].date).getTime();return Math.max(0.25,(b-a)/(365.25*864e5));}
+function kpis(records,positions){
+  const n=records.length; if(!n)return null;
+  const pnls=records.map(r=>r.pnl_pct), wins=pnls.filter(x=>x>0), losses=pnls.filter(x=>x<0);
+  const mean=pnls.reduce((a,b)=>a+b,0)/n, sd=Math.sqrt(pnls.reduce((a,b)=>a+(b-mean)**2,0)/Math.max(1,n));
+  const years=spanYears(records), sharpe=sd>0?(mean/sd)*Math.sqrt(n/years):0;
+  const dn=pnls.filter(x=>x<0), dd0=Math.sqrt(dn.reduce((a,b)=>a+b*b,0)/Math.max(1,n)), sortino=dd0>0?(mean/dd0)*Math.sqrt(n/years):0;
+  const gw=wins.reduce((a,b)=>a+b,0), gl=-losses.reduce((a,b)=>a+b,0);
+  let cum=0,peak=0,mdd=0,eq=[]; for(const r of records){cum+=r.pnl_pct;peak=Math.max(peak,cum);mdd=Math.min(mdd,cum-peak);eq.push({ts:new Date(r.date).getTime()/1000,val:cum});}
+  const total=cum, avgWin=wins.length?gw/wins.length:0, avgLoss=losses.length?gl/losses.length:0;
+  const pnlR=positions.map(p=>p.pnlR), mfeR=positions.map(p=>p.mfeR), maeR=positions.map(p=>p.maeR);
+  const durMin=positions.filter(p=>p.exitTime&&p.entryTime).map(p=>(p.exitTime-p.entryTime)/60);
+  const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
+  return {n,wins:wins.length,losses:losses.length,winRate:100*wins.length/n,pf:gl>0?gw/gl:(gw>0?99:0),expectancy:mean,
+    sharpe,sortino,maxDD:Math.abs(mdd),total,avgWin,avgLoss,years,cagr:years>0?(Math.pow(1+total/100,1/years)-1)*100:0,eq,
+    avgMFER:avg(mfeR),avgMAER:avg(maeR),avgPnlR:avg(pnlR),avgDur:avg(durMin),rr:avgLoss>0?avgWin/avgLoss:0};
+}
+function renderFocus(){
+  const scope=$('fScope').value, mode=$('fMode').value;
+  const {records,positions}=gather(scope,mode);
+  const k=kpis(records,positions);
+  if(!k){$('kpiGrid').innerHTML='<div class="mc-note" style="padding:20px">No baskets in this focus.</div>';$('secGrid').innerHTML='';return;}
+  $('kpiGrid').innerHTML=[
+    {label:'Win Rate',value:fmt(k.winRate,1)+'%',cls:k.winRate>=50?'green':'red',sub:`${k.wins}W / ${k.losses}L · ${k.n} baskets`},
+    {label:'Profit Factor',value:fmt(k.pf,2),cls:k.pf>=1.5?'green':k.pf>=1?'amber':'red',sub:`Expectancy ${fmt(k.expectancy,3)}%`},
+    {label:'Sharpe (full)',value:fmt(k.sharpe,2),cls:k.sharpe>=1?'green':k.sharpe>=0?'amber':'red',sub:`Sortino ${fmt(k.sortino,2)}`},
+    {label:'Max Drawdown',value:fmt(k.maxDD,2)+'pp',cls:k.maxDD<=5?'green':k.maxDD<=15?'amber':'red',sub:`over ${fmt(k.years,1)} yr`},
+    {label:'Total P&L',value:(k.total>=0?'+':'')+fmt(k.total,2)+'%',cls:k.total>=0?'green':'red',sub:`CAGR ${fmt(k.cagr,1)}%`},
+    {label:'Avg Win',value:'+'+fmt(k.avgWin,3)+'%',cls:'green',sub:`${k.wins} winners`},
+    {label:'Avg Loss',value:'−'+fmt(k.avgLoss,3)+'%',cls:'red',sub:`${k.losses} losers`},
+    {label:'Baskets',value:String(k.n),cls:'blue',sub:`${scope==='__ALL__'?LAST.results.length+' instruments':scope}`},
+  ].map(x=>`<div class="bt-kpi"><div class="bt-kpi-label">${x.label}</div><div class="bt-kpi-value ${x.cls}">${x.value}</div><div class="bt-kpi-sub">${x.sub}</div></div>`).join('');
+  $('secGrid').innerHTML=[
+    {lbl:'Avg MFE (R)',val:fmt(k.avgMFER,2)+'R'},{lbl:'Avg MAE (R)',val:fmt(k.avgMAER,2)+'R'},
+    {lbl:'Avg Duration',val:Math.round(k.avgDur)+'m'},{lbl:'R:R Ratio',val:fmt(k.rr,2)},{lbl:'Avg P&L (R)',val:fmt(k.avgPnlR,3)+'R'},
+  ].map(s=>`<div class="bt-sec"><span class="bt-sec-lbl">${s.lbl}</span><span class="bt-sec-val">${s.val}</span></div>`).join('');
+  renderEquity(k.eq); renderExitReasons(positions); renderBreakdown(scope,mode); renderCost(records); renderYear(records); wireCsv(scope,mode,positions);
+  // point the chart at the focus instrument
+  $('cPairLbl').textContent = scope==='__ALL__' ? 'gold' : scope;
+}
+
+function renderEquity(eq){
+  if(equityChart){equityChart.destroy();equityChart=null;}
+  if(eq.length<2)return;
+  equityChart=new Chart($('equityChart').getContext('2d'),{type:'line',
+    data:{labels:eq.map(e=>new Date(e.ts*1000).toLocaleDateString()),datasets:[{data:eq.map(e=>e.val),borderColor:'#4f7df0',backgroundColor:'rgba(79,125,240,.1)',borderWidth:1.5,pointRadius:0,fill:true,tension:.15}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#5a6380',font:{family:'DM Mono',size:9},maxTicksLimit:8},grid:{color:'#1c2133'}},y:{ticks:{color:'#5a6380',font:{family:'DM Mono',size:9},callback:v=>v+'%'},grid:{color:'#1c2133'}}}}});
+}
+function renderExitReasons(positions){
+  const by={}; for(const p of positions){const o=by[p.reason]||{n:0,w:0,pnl:0};o.n++;if(p.pnlPct>0)o.w++;o.pnl+=p.pnlPct;by[p.reason]=o;}
+  const maxN=Math.max(1,...Object.values(by).map(v=>v.n)), col={stop:'#ef5350',tp:'#4ade80',trail:'#60a5fa',time:'#a78bfa'};
+  $('exitReasons').innerHTML=Object.entries(by).sort((a,b)=>b[1].n-a[1].n).map(([r,d])=>`
+    <div class="reason-row"><span class="reason-lbl" style="color:${col[r]||'#a78bfa'}">${r}</span>
+    <div class="reason-bar-track"><div class="reason-bar-fill" style="width:${d.n/maxN*100}%;background:${col[r]||'#a78bfa'}"></div></div>
+    <span class="reason-stat">${d.n} pos · ${fmt(100*d.w/d.n,0)}% win · ${d.pnl>=0?'+':''}${fmt(d.pnl,2)}%</span></div>`).join('');
+}
+function renderBreakdown(scope,mode){
+  if(scope==='__ALL__'){
+    $('brkHdr').textContent='Per-instrument (OOS, this exit model)';
+    const rows=LAST.results.map(r=>{const o=r.modes[mode].split.oos;return {pair:r.pair,n:o.trades,win:o.winRate,sharpe:o.sharpe,pf:o.profitFactor,pnl:o.totalPnl};}).sort((a,b)=>b.sharpe-a.sharpe);
+    $('brkTable').innerHTML=`<table class="bt-tbl"><thead><tr><th>instrument</th><th>OOS n</th><th>win%</th><th>Sharpe</th><th>PF</th><th>ΣPnL%</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.pair}</td><td>${r.n}</td><td>${fmt(r.win,1)}</td><td class="${cls(r.sharpe)}">${fmt(r.sharpe,2)}</td><td>${fmt(r.pf,2)}</td><td class="${cls(r.pnl)}">${fmt(r.pnl,1)}</td></tr>`).join('')}</tbody></table>`;
+  }else{
+    $('brkHdr').textContent=`${scope} — exit-model A/B (OOS)`;
+    const r=LAST.results.find(x=>x.pair===scope);
+    $('brkTable').innerHTML=`<table class="bt-tbl"><thead><tr><th>exit model</th><th>OOS n</th><th>win%</th><th>Sharpe</th><th>PF</th><th>maxDD%</th></tr></thead><tbody>${EXIT_MODES.map(m=>{const o=r.modes[m].split.oos;return `<tr><td><span class="rb-badge mode">${m}</span></td><td>${o.trades}</td><td>${fmt(o.winRate,1)}</td><td class="${cls(o.sharpe)}">${fmt(o.sharpe,2)}</td><td>${fmt(o.profitFactor,2)}</td><td class="neg">${fmt(o.maxDD,2)}</td></tr>`;}).join('')}</tbody></table>`;
   }
-  return `<div class="scroll"><table>${head}<tbody>${rows}</tbody></table></div>`;
+}
+function renderModeCompare(out){
+  const rows=[];
+  for(const m of EXIT_MODES){const s=out.pooled[m].split;
+    rows.push(`<tr><td colspan="8"><span class="rb-badge mode">${m}</span></td></tr>`);
+    for(const [lbl,split] of [['in-sample',s.is],['OUT-of-sample',s.oos],['full',s.full]]){
+      rows.push(`<tr><td style="padding-left:20px">${lbl}</td><td>${split.trades}</td><td>${fmt(split.winRate,1)}</td><td>${fmt(split.profitFactor,2)}</td><td class="${cls(split.sharpe)}">${fmt(split.sharpe,2)}</td><td class="neg">${fmt(split.maxDD,2)}</td><td class="${cls(split.totalPnl)}">${fmt(split.totalPnl,2)}</td><td>${split.minTrackYears==null?'—':fmt(split.minTrackYears,1)}</td></tr>`);
+    }}
+  $('modeCompare').innerHTML=`<table class="bt-tbl"><thead><tr><th>mode / split</th><th>n</th><th>win%</th><th>PF</th><th>Sharpe</th><th>maxDD%</th><th>ΣPnL%</th><th>minYrs</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+}
+function renderCost(records){
+  const step=0.012, base=costStat(records,0);
+  if(!base){$('costSens').innerHTML='<div class="mc-note">No baskets.</div>';return;}
+  const rows=[['as run',0],['+1× cost',step],['+2× cost',step*2],['+3× cost',step*3]].map(([lbl,ex])=>{const s=costStat(records,ex),ratio=base.sharpe?s.sharpe/base.sharpe:0;const rc=ratio>=.7?'green':ratio>=.4?'amber':'red';return `<tr><td>${lbl}</td><td class="${cls(s.sharpe)}">${fmt(s.sharpe,2)}</td><td class="${rc}">${fmt(ratio,2)}×</td><td>${fmt(s.pf,2)}</td><td class="${cls(s.total)}">${fmt(s.total,2)}</td></tr>`;});
+  $('costSens').innerHTML=`<table class="bt-tbl"><thead><tr><th>scenario</th><th>Sharpe</th><th>vs base</th><th>PF</th><th>ΣPnL%</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+}
+function costStat(records,extra){const p=records.map(r=>r.pnl_pct-extra),n=p.length;if(!n)return null;const m=p.reduce((a,b)=>a+b,0)/n,sd=Math.sqrt(p.reduce((a,b)=>a+(b-m)**2,0)/Math.max(1,n)),y=spanYears(records);const gw=p.filter(x=>x>0).reduce((a,b)=>a+b,0),gl=-p.filter(x=>x<0).reduce((a,b)=>a+b,0);return {sharpe:sd>0?(m/sd)*Math.sqrt(n/y):0,pf:gl>0?gw/gl:(gw>0?99:0),total:p.reduce((a,b)=>a+b,0)};}
+function renderYear(records){
+  const by=new Map(); for(const r of records){const y=r.date.slice(0,4),o=by.get(y)||{n:0,pnl:0,w:0};o.n++;o.pnl+=r.pnl_pct;if(r.pnl_pct>0)o.w++;by.set(y,o);}
+  const ys=[...by.keys()].sort();
+  $('yearTable').innerHTML=`<table class="bt-tbl"><thead><tr><th>year</th>${ys.map(y=>`<th>${y}</th>`).join('')}</tr></thead><tbody>
+    <tr><td>ΣPnL%</td>${ys.map(y=>`<td class="${cls(by.get(y).pnl)}">${fmt(by.get(y).pnl,1)}</td>`).join('')}</tr>
+    <tr><td>baskets</td>${ys.map(y=>`<td>${by.get(y).n}</td>`).join('')}</tr>
+    <tr><td>win%</td>${ys.map(y=>{const o=by.get(y);return `<td>${fmt(100*o.w/o.n,0)}</td>`;}).join('')}</tr></tbody></table>`;
 }
 
-function render(out) {
-  const { results, pooled, exitModes, opts } = out;
-  let html = '';
-
-  // Pooled / portfolio
-  html += `<h2>Portfolio (all selected instruments pooled)</h2>`;
-  const pb = pooled.best;
-  html += `<div class="note">Best exit model OOS (≥30 baskets): ${pb ? `<span class="tag mode">${pb.mode}</span> Sharpe ${fmt(pb.sharpe,2)} on ${pb.trades} baskets` : '<span class="neg">none cleared the ≥30-baskets gate</span>'}.</div>`;
-  html += modeTable(pooled, exitModes);
-
-  // Autopsy — WHY (with numbers)
-  if (out.autopsy) html += renderAutopsy(out.autopsy);
-
-  // Diagnostics controls
-  html += `<h2>Diagnostics &amp; export</h2>`;
-  html += `<div class="row" style="margin-bottom:10px;">
-    <div><label>Instrument scope</label><select id="dxScope">${results.map(r=>`<option value="${r.pair}">${r.pair}</option>`).join('')}<option value="__ALL__">All pooled</option></select></div>
-    <div><label>Exit model</label><select id="dxMode">${exitModes.map(m=>`<option value="${m}"${pb&&pb.mode===m?' selected':''}>${EXIT_LABELS[m]}</option>`).join('')}</select></div>
-  </div>`;
-  html += `<div id="dx"></div>`;
-
-  // Per-instrument
-  html += `<h2>Per-instrument</h2>`;
-  for (const r of results) {
-    const b = r.best;
-    const badge = b ? `<span class="tag ${b.sharpe>0?'win':'lose'}">best OOS: ${b.mode} ${fmt(b.sharpe,2)}</span>` : `<span class="tag lose">no OOS winner</span>`;
-    html += `<details><summary><b>${r.pair}</b> <span class="muted">· ${r.signalCount} signals · ${r.dateRange?r.dateRange.join(' → '):''} · cost ${r.costPct}%</span> ${badge}</summary>${modeTable(r.modes, exitModes)}</details>`;
-  }
-
-  // Log
-  if (out.log && out.log.length) html += `<h2>Run log</h2><div class="logbox">${out.log.map(l=>l.replace(/</g,'&lt;')).join('<br>')}</div>`;
-
-  $('results').innerHTML = html;
-  $('dxScope').onchange = renderDiagnostics;
-  $('dxMode').onchange = renderDiagnostics;
-  renderDiagnostics();
-}
-
-// ── autopsy: prove WHY it (didn't) work ──────────────────────────────────────
-function renderAutopsy(a) {
-  let h = `<h2>Autopsy — why it works / doesn't (pooled, with numbers)</h2>`;
-
-  // (A) Premise
-  const P = a.premise;
-  const H96 = P['96'] || {};
-  const premiseDead = Math.abs(H96.mean) < 0.15; // <0.15 ATR over 24h ≈ economically nil vs a ~1-ATR stop + costs
-  h += `<div class="panel"><h3 style="margin:0 0 6px;font-size:14px;">A · The premise: does an impulse past a level actually predict continuation?</h3>
-    <div class="scroll"><table><thead><tr><th>horizon after impulse</th><th>mean fwd move (ATR)</th><th>hit-rate &gt; 0</th><th>t-stat</th><th>n impulses</th></tr></thead><tbody>
-    ${['16','32','96'].map(k=>{const p=P[k]||{};const lbl={16:'+4h',32:'+8h',96:'+24h'}[k];return `<tr><td>${lbl}</td><td class="${cls(p.mean)}">${fmt(p.mean,3)}</td><td>${fmt(p.hitRate,1)}%</td><td>${fmt(p.tStat,2)}</td><td>${p.n}</td></tr>`;}).join('')}
+// ── autopsy ──────────────────────────────────────────────────────────────────
+function renderAutopsy(a){
+  if(!a){$('autopsy').innerHTML='';return;}
+  const P=a.premise, H=P['96']||{}, dead=Math.abs(H.mean)<0.15;
+  let h=`<div class="bt-card"><div class="bt-card-hdr">A · Premise — does an impulse predict continuation?</div><div class="bt-card-body">
+    <div class="bt-tbl-scroll"><table class="bt-tbl"><thead><tr><th>horizon after impulse</th><th>mean fwd (ATR)</th><th>hit-rate &gt;0</th><th>t-stat</th><th>n impulses</th></tr></thead><tbody>
+    ${['16','32','96'].map(k=>{const p=P[k]||{},l={16:'+4h',32:'+8h',96:'+24h'}[k];return `<tr><td>${l}</td><td class="${cls(p.mean)}">${fmt(p.mean,3)}</td><td>${fmt(p.hitRate,1)}%</td><td>${fmt(p.tStat,2)}</td><td>${p.n}</td></tr>`;}).join('')}
     </tbody></table></div>
-    <div class="verdict ${premiseDead?'bad':'meh'}">${premiseDead
-      ? `<b>This is the root cause.</b> The forward move after an impulse is ~${fmt(H96.mean,2)} ATR over 24h with a ${fmt(H96.hitRate,0)}% hit-rate — essentially a coin flip. Any faint positive drift (t≈${fmt(H96.tStat,1)} is the replicated time-series-momentum whisper) is a small fraction of the ~1-ATR stop and is eaten by costs. The signal the entire strategy sits on carries no exploitable after-cost edge, so no entry finesse or exit model can rescue it.`
-      : `Forward drift after impulse is ${fmt(H96.mean,2)} ATR/24h (t≈${fmt(H96.tStat,1)}) — a real but modest continuation. Whether it survives the ~1-ATR stop + costs is what the rest tests.`}</div>
-  </div>`;
+    <div class="verdict ${dead?'bad':'meh'}">${dead?`<b>This is the root cause.</b> The forward move after an impulse is ~${fmt(H.mean,2)} ATR over 24h at a ${fmt(H.hitRate,0)}% hit-rate — essentially a coin flip. The faint positive drift (t≈${fmt(H.tStat,1)} = the replicated time-series-momentum whisper) is a fraction of the ~1-ATR stop and dies to costs. No entry or exit finesse can rescue a coin-flip premise.`:`Forward drift is ${fmt(H.mean,2)} ATR/24h (t≈${fmt(H.tStat,1)}) — modest but real; whether it survives the stop + costs is what B–D test.`}</div></div></div>`;
 
-  // (B) Divergence value-add
-  const D = a.divergence;
-  const divHelps = D.passed.meanR > D.failed.meanR && D.passed.meanR > 0;
-  h += `<div class="panel"><h3 style="margin:0 0 6px;font-size:14px;">B · Does the hidden-divergence "confirmation" add anything?</h3>
-    <div class="scroll"><table><thead><tr><th>subset (fixed_r)</th><th>n baskets</th><th>win%</th><th>mean R</th></tr></thead><tbody>
+  const D=a.divergence, helps=D.passed.meanR>D.failed.meanR&&D.passed.meanR>0;
+  h+=`<div class="bt-card"><div class="bt-card-hdr">B · Does hidden-divergence confirmation add anything?</div><div class="bt-card-body">
+    <div class="bt-tbl-scroll"><table class="bt-tbl"><thead><tr><th>subset (fixed_r)</th><th>n baskets</th><th>win%</th><th>mean R</th></tr></thead><tbody>
     <tr><td>divergence confirmed</td><td>${D.passed.n}</td><td>${fmt(D.passed.winRate,1)}</td><td class="${cls(D.passed.meanR)}">${fmt(D.passed.meanR,3)}</td></tr>
     <tr><td>divergence absent</td><td>${D.failed.n}</td><td>${fmt(D.failed.winRate,1)}</td><td class="${cls(D.failed.meanR)}">${fmt(D.failed.meanR,3)}</td></tr>
-    </tbody></table></div>
-    <div class="verdict ${divHelps?'good':'bad'}">${divHelps
-      ? `Confirmed setups beat unconfirmed AND are positive — the filter adds value.`
-      : `The "confirmation" ${D.passed.meanR>D.failed.meanR?'selects a less-bad subset':'does not even separate winners from losers'}, but confirmed baskets still average ${fmt(D.passed.meanR,3)}R — it discards ${D.failed.n} of ${D.passed.n+D.failed.n} setups to still lose. It's a smaller loss, not an edge.`}</div>
-  </div>`;
+    </tbody></table></div><div class="verdict ${helps?'good':'bad'}">${helps?`Confirmed setups beat unconfirmed and are positive — the filter adds value.`:`The "confirmation" ${D.passed.meanR>D.failed.meanR?'selects a less-bad subset':'does not separate winners from losers'}, but confirmed baskets still average ${fmt(D.passed.meanR,3)}R — discarding ${D.failed.n} of ${D.passed.n+D.failed.n} setups to still lose is a smaller loss, not an edge.`}</div></div></div>`;
 
-  // (C) Expectancy arithmetic
-  const E = a.expectancy;
-  h += `<div class="panel"><h3 style="margin:0 0 6px;font-size:14px;">C · The expectancy arithmetic</h3>
-    <div class="kpis">
-      <div class="kpi"><div class="v">${fmt(E.winRate,1)}%</div><div class="l">actual win rate</div></div>
-      <div class="kpi"><div class="v">${fmt(E.breakevenWinRate,1)}%</div><div class="l">breakeven needed</div></div>
-      <div class="kpi"><div class="v ${cls(E.edgeGap)}">${fmt(E.edgeGap,1)}pp</div><div class="l">edge gap (actual − needed)</div></div>
-      <div class="kpi"><div class="v pos">+${fmt(E.avgWinR,2)}R</div><div class="l">avg winner</div></div>
-      <div class="kpi"><div class="v neg">${fmt(E.avgLossR,2)}R</div><div class="l">avg loser</div></div>
-      <div class="kpi"><div class="v ${cls(E.expectancyR)}">${fmt(E.expectancyR,3)}R</div><div class="l">expectancy / basket</div></div>
+  const E=a.expectancy;
+  h+=`<div class="bt-card"><div class="bt-card-hdr">C · The expectancy arithmetic</div><div class="bt-card-body">
+    <div class="bt-sec-grid" style="grid-template-columns:repeat(3,1fr);margin-top:0">
+      <div class="bt-sec"><span class="bt-sec-lbl">actual win rate</span><span class="bt-sec-val">${fmt(E.winRate,1)}%</span></div>
+      <div class="bt-sec"><span class="bt-sec-lbl">breakeven needed</span><span class="bt-sec-val">${fmt(E.breakevenWinRate,1)}%</span></div>
+      <div class="bt-sec"><span class="bt-sec-lbl">edge gap</span><span class="bt-sec-val" style="color:${E.edgeGap<0?'var(--red)':'var(--green)'}">${fmt(E.edgeGap,1)}pp</span></div>
+      <div class="bt-sec"><span class="bt-sec-lbl">avg winner</span><span class="bt-sec-val" style="color:var(--green)">+${fmt(E.avgWinR,2)}R</span></div>
+      <div class="bt-sec"><span class="bt-sec-lbl">avg loser</span><span class="bt-sec-val" style="color:var(--red)">${fmt(E.avgLossR,2)}R</span></div>
+      <div class="bt-sec"><span class="bt-sec-lbl">expectancy</span><span class="bt-sec-val" style="color:${E.expectancyR<0?'var(--red)':'var(--green)'}">${fmt(E.expectancyR,3)}R</span></div>
     </div>
-    <div class="verdict ${E.edgeGap<0?'bad':'good'}">With a +${fmt(E.avgWinR,2)}R / ${fmt(E.avgLossR,2)}R payoff, it needs to win ${fmt(E.breakevenWinRate,1)}% of the time; it wins ${fmt(E.winRate,1)}%. That ${fmt(E.edgeGap,1)}pp gap <b>is</b> the negative expectancy (${fmt(E.expectancyR,3)}R/basket), before you even add the correlation penalty of stacking ${''}the basket.</div>
-  </div>`;
+    <div class="verdict ${E.edgeGap<0?'bad':'good'}">With a +${fmt(E.avgWinR,2)}R / ${fmt(E.avgLossR,2)}R payoff it needs to win ${fmt(E.breakevenWinRate,1)}%; it wins ${fmt(E.winRate,1)}%. That ${fmt(E.edgeGap,1)}pp gap <b>is</b> the negative expectancy (${fmt(E.expectancyR,3)}R/basket).</div></div></div>`;
 
-  // (D) Exit mix + MFE-before-stop
-  const M = a.mfeBeforeStop, mix = a.exitMix||{};
-  const totMix = Object.values(mix).reduce((x,y)=>x+y,0)||1;
-  h += `<div class="panel"><h3 style="margin:0 0 6px;font-size:14px;">D · Do the entries actually time a move? (exit mix + MFE-before-stop)</h3>
-    <div class="scroll"><table><thead><tr><th>exit reason</th>${Object.keys(mix).map(k=>`<th>${k}</th>`).join('')}</tr></thead><tbody>
-    <tr><td>share of baskets</td>${Object.keys(mix).map(k=>`<td>${fmt(100*mix[k]/totMix,0)}%</td>`).join('')}</tr></tbody></table></div>
-    <div class="verdict ${M.reached1R<40?'bad':'meh'}">Of the ${M.nStopped} baskets that stopped out, only <b>${fmt(M.reachedHalfR,0)}%</b> ever reached +0.5R and <b>${fmt(M.reached1R,0)}%</b> reached +1R first. Most losers <b>never went in favour at all</b> — the value-area entry isn't timing a continuation, it's often stepping straight into the stop.</div>
-  </div>`;
-
-  return h;
+  const M=a.mfeBeforeStop, mix=a.exitMix||{}, tot=Object.values(mix).reduce((x,y)=>x+y,0)||1;
+  h+=`<div class="bt-card"><div class="bt-card-hdr">D · Do the entries time a move? (exit mix + MFE-before-stop)</div><div class="bt-card-body">
+    <div class="bt-tbl-scroll"><table class="bt-tbl"><thead><tr><th>exit reason</th>${Object.keys(mix).map(k=>`<th>${k}</th>`).join('')}</tr></thead><tbody><tr><td>share of baskets</td>${Object.keys(mix).map(k=>`<td>${fmt(100*mix[k]/tot,0)}%</td>`).join('')}</tr></tbody></table></div>
+    <div class="verdict ${M.reached1R<40?'bad':'meh'}">Of the ${M.nStopped} baskets that stopped, only <b>${fmt(M.reachedHalfR,0)}%</b> ever reached +0.5R and <b>${fmt(M.reached1R,0)}%</b> reached +1R first. Most losers never went in favour — the value-area entry isn't timing a continuation, it often steps into the stop.</div></div></div>`;
+  $('autopsy').innerHTML=h;
 }
 
-// ── diagnostics: cost-sensitivity + yearly concentration + CSV export ─────────
-function gatherRecords(scope, mode) {
-  const rs = LAST.results;
-  const pick = scope === '__ALL__' ? rs : rs.filter(r => r.pair === scope);
-  let records = [], positions = [];
-  for (const r of pick) {
-    const md = r.modes[mode];
-    for (const rec of (md.records||[])) records.push(rec);
-    for (const p of (md.positions||[])) positions.push({ ...p, pair:r.pair });
-  }
-  records.sort((a,b)=> a.date<b.date?-1:a.date>b.date?1:0);
-  positions.sort((a,b)=> a.date<b.date?-1:a.date>b.date?1:0);
-  return { records, positions };
-}
-// per-basket stats after subtracting an extra cost (% of price) from each basket return
-function statsWithExtra(records, extraPct) {
-  const pnls = records.map(r => r.pnl_pct - extraPct);
-  const n = pnls.length; if (!n) return null;
-  const mean = pnls.reduce((a,b)=>a+b,0)/n;
-  const sd = Math.sqrt(pnls.reduce((a,b)=>a+(b-mean)*(b-mean),0)/Math.max(1,n));
-  const years = Math.max(0.25, spanYears(records));
-  const sharpe = sd>0 ? (mean/sd)*Math.sqrt(n/years) : 0;
-  const gw = pnls.filter(x=>x>0).reduce((a,b)=>a+b,0), gl = -pnls.filter(x=>x<0).reduce((a,b)=>a+b,0);
-  return { sharpe, pf: gl>0?gw/gl:(gw>0?99:0), total: pnls.reduce((a,b)=>a+b,0), win: 100*pnls.filter(x=>x>0).length/n, n };
-}
-function spanYears(records) {
-  if (records.length<2) return 0.25;
-  const a=new Date(records[0].date).getTime(), b=new Date(records[records.length-1].date).getTime();
-  return Math.max(0.25,(b-a)/(365.25*864e5));
+// ── CSV export ───────────────────────────────────────────────────────────────
+function wireCsv(scope,mode,positions){
+  $('csvCount').textContent=`${positions.length} positions in focus.`;
+  const dl=(text,fname)=>{const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([text],{type:'text/csv'})),download:fname});a.click();URL.revokeObjectURL(a.href);$('csvMsg').textContent=`saved ${fname}`;};
+  const tag=`${scope==='__ALL__'?'all':scope}_${mode}`;
+  $('csvPct').onclick=()=>dl('Date,Return %,MAE %\n'+positions.map(p=>`${p.date},${p.pnlPct},${p.maePct}`).join('\n'),`maxcopier_pct_${tag}.csv`);
+  $('csvR').onclick=()=>dl('date,R,MAE (R)\n'+positions.map(p=>`${p.date},${p.pnlR},${p.maeR}`).join('\n'),`maxcopier_R_${tag}.csv`);
+  $('csvCur').onclick=()=>{const acct=+$('acct').value||100000,rp=+$('riskPct').value||0.25,rd=acct*rp/100;const money=x=>`"$${(Math.round(x*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}"`;dl('Trade Date,PnL ($),Risk ($)\n'+positions.map(p=>`${p.date},${money(p.pnlR*rd)},${money(rd)}`).join('\n'),`maxcopier_usd_${tag}.csv`);};
 }
 
-function renderDiagnostics() {
-  const scope = $('dxScope').value, mode = $('dxMode').value;
-  const { records, positions } = gatherRecords(scope, mode);
-  const base = statsWithExtra(records, 0);
-  let html = '';
-
-  // Cost sensitivity — a thin edge that dies at 2–3× cost is not real.
-  const step = 0.012;
-  html += `<div class="panel"><h3 style="margin:0 0 8px;font-size:14px;">Cost sensitivity <span class="muted" style="font-weight:400;">(basket returns; +N× a ~1-pip FX round-trip subtracted per basket)</span></h3>`;
-  if (!base) { html += `<div class="muted">No baskets.</div></div>`; }
-  else {
-    html += `<div class="scroll"><table><thead><tr><th>scenario</th><th>Sharpe</th><th>vs base</th><th>PF</th><th>win%</th><th>ΣPnL%</th></tr></thead><tbody>`;
-    for (const [lab, ex] of [['as run',0],['+1× cost',step],['+2× cost',step*2],['+3× cost',step*3]]) {
-      const s = statsWithExtra(records, ex); const ratio = base.sharpe? s.sharpe/base.sharpe : 0;
-      const rc = ratio>=0.7?'pos':ratio>=0.4?'amb':'neg';
-      html += `<tr><td>${lab}</td><td class="${cls(s.sharpe)}">${fmt(s.sharpe,2)}</td><td class="${rc}">${fmt(ratio,2)}×</td><td>${fmt(s.pf,2)}</td><td>${fmt(s.win,1)}</td><td class="${cls(s.total)}">${fmt(s.total,2)}</td></tr>`;
-    }
-    html += `</tbody></table></div></div>`;
-  }
-
-  // Yearly concentration — is one year carrying the whole result?
-  const byYear = new Map();
-  for (const r of records) { const y = r.date.slice(0,4); const o = byYear.get(y)||{n:0,pnl:0,w:0}; o.n++; o.pnl+=r.pnl_pct; if(r.pnl_pct>0)o.w++; byYear.set(y,o); }
-  html += `<div class="panel"><h3 style="margin:0 0 8px;font-size:14px;">Yearly concentration <span class="muted" style="font-weight:400;">(basket ΣPnL% by year — read the recent years in isolation)</span></h3>`;
-  if (byYear.size) {
-    html += `<div class="scroll"><table><thead><tr><th>year</th>${[...byYear.keys()].sort().map(y=>`<th>${y}</th>`).join('')}</tr></thead><tbody>`;
-    html += `<tr><td>ΣPnL%</td>${[...byYear.keys()].sort().map(y=>{const o=byYear.get(y);return `<td class="${cls(o.pnl)}">${fmt(o.pnl,1)}</td>`;}).join('')}</tr>`;
-    html += `<tr><td>baskets</td>${[...byYear.keys()].sort().map(y=>`<td>${byYear.get(y).n}</td>`).join('')}</tr>`;
-    html += `<tr><td>win%</td>${[...byYear.keys()].sort().map(y=>{const o=byYear.get(y);return `<td>${fmt(100*o.w/o.n,0)}</td>`;}).join('')}</tr>`;
-    html += `</tbody></table></div></div>`;
-  } else html += `<div class="muted">No baskets.</div></div>`;
-
-  // CSV export (per-position — what actually hits the prop account)
-  html += `<div class="panel"><h3 style="margin:0 0 8px;font-size:14px;">Export trade log (per position → prop-firm toolkit)</h3>
-    <div class="row" style="margin-bottom:8px;">
-      <div><label>Account size ($)</label><input id="acct" type="number" value="100000" step="1000" style="width:130px"></div>
-      <div><label>Risk per position (% of account)</label><input id="riskPct" type="number" value="0.25" step="0.05" style="width:130px"></div>
-    </div>
-    <div class="note"><b>R-unit = stop distance</b> (entry → just beyond the consolidation extreme), which varies per trade with volatility — so <b>R and Return% are NOT redundant</b> here (avoids the fixed-%-of-equity degeneracy). <b>MAE is read from the real M1 path</b> (low-vs-entry for longs, high-vs-entry for shorts). $ P&amp;L = R-multiple × (account × risk%). ${positions.length} positions in scope.</div>
-    <div class="row">
-      <button class="ghost" id="csvPct">⬇ % Returns</button>
-      <button class="ghost" id="csvR">⬇ R-Multiples</button>
-      <button class="ghost" id="csvCur">⬇ Currency P&amp;L</button>
-    </div>
-    <div class="note" id="csvMsg"></div>
-  </div>`;
-
-  $('dx').innerHTML = html;
-
-  const dl = (text, fname) => {
-    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([text],{type:'text/csv'})), download: fname });
-    a.click(); URL.revokeObjectURL(a.href); $('csvMsg').textContent = `Saved ${fname} (${positions.length} rows).`;
-  };
-  const tag = `${scope==='__ALL__'?'all':scope}_${mode}`;
-  $('csvPct').onclick = () => dl('Date,Return %,MAE %\n' + positions.map(p=>`${p.date},${p.pnlPct},${p.maePct}`).join('\n'), `maxcopier_pct_${tag}.csv`);
-  $('csvR').onclick   = () => dl('date,R,MAE (R)\n' + positions.map(p=>`${p.date},${p.pnlR},${p.maeR}`).join('\n'), `maxcopier_R_${tag}.csv`);
-  $('csvCur').onclick = () => {
-    const acct = +$('acct').value || 100000, riskPct = +$('riskPct').value || 0.25;
-    const riskDollars = acct * riskPct / 100;
-    const money = (x) => `"$${(Math.round(x*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}"`;
-    dl('Trade Date,PnL ($),Risk ($)\n' + positions.map(p=>`${p.date},${money(p.pnlR*riskDollars)},${money(riskDollars)}`).join('\n'), `maxcopier_usd_${tag}.csv`);
-  };
-}
-
-// ── Replay chart ─────────────────────────────────────────────────────────────
-async function pollTrace(jobId) {
-  let fails = 0;
-  for (let i = 0; i < 200; i++) {
-    await new Promise(r => setTimeout(r, 2500));
-    let res = null;
-    try { res = await fetch(`/api/max-copier/status/${jobId}`).then(r => r.json()); }
-    catch { if (++fails > 20) throw new Error('lost contact'); continue; }
-    if (!res) { if (++fails > 20) throw new Error('empty'); continue; }
-    fails = 0;
-    if (res.status === 'running') { $('cStatus').textContent = `Loading… ${res.elapsed||0}s`; continue; }
-    if (res.status === 'done') return res.trace;
-    if (res.status === 'error') throw new Error(res.error || 'trace error');
-  }
-  throw new Error('timed out');
-}
-
-let CHART = null, WTCHART = null;
-const COL = { up:'#3fb27f', down:'#e5604d', level:'#e0a94b', consol:'#8b97a8', entry:'#7c6cf0', div:'#e5c04b', stop:'#e5604d', tp:'#3fb27f', trail:'#4a9fe0', time:'#8b97a8', impulse:'#4a9fe0' };
-
-$('cRun').onclick = async () => {
-  if (typeof LightweightCharts === 'undefined') { $('cStatus').innerHTML = '<span class="neg">Chart library blocked (offline/CSP). Numbers still work.</span>'; return; }
-  const body = {
-    pair: $('cPair').value, fromDate: $('cFrom').value, toDate: $('cTo').value,
-    mode: $('cMode').value, divergenceSource: $('cDiv').value,
-    // mirror the backtest params so the chart matches the run
-    donchianLookback: $('donchianLookback').value, impulseAtrMult: $('impulseAtrMult').value,
-    consolBars: $('consolBars').value, consolMaxAtr: $('consolMaxAtr').value, vaDepth: $('vaDepth').value,
-    stopAtrBuffer: $('stopAtrBuffer').value, entryTimeout: $('entryTimeout').value,
-    requireDivergence: $('requireDivergence').value === '1', nPositions: $('nPositions').value,
-    maxHoldBarsM15: $('maxHoldBarsM15').value, tpR: $('tpR').value, mmMult: $('mmMult').value,
-    ladderR: $('ladderR').value, trailAtrMult: $('trailAtrMult').value, trailStartR: $('trailStartR').value,
-  };
-  $('cRun').disabled = true; $('cStatus').textContent = 'Starting…';
-  try {
-    const start = await fetch('/api/max-copier/trace', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) }).then(r=>r.json());
-    if (!start.ok) throw new Error(start.error || 'failed to start');
-    const trace = await pollTrace(start.jobId);
-    renderChart(trace);
-    $('cStatus').textContent = `${trace.pair} · ${trace.from} → ${trace.to} · ${trace.nCandles} bars · ${trace.trades.length} setups · div=${trace.divergenceSource}`;
-  } catch (e) { $('cStatus').innerHTML = `<span class="neg">${e.message}</span>`; }
-  finally { $('cRun').disabled = false; }
+// ── replay chart ─────────────────────────────────────────────────────────────
+const COL={up:'#26a69a',down:'#ef5350',level:'#e0a94b',consol:'#8b97a8',entry:'#7c6cf0',div:'#e5c04b',stop:'#ef5350',tp:'#26a69a',trail:'#60a5fa',time:'#8b97a8',impulse:'#4a9fe0'};
+$('cRun').onclick=async()=>{
+  if(typeof LightweightCharts==='undefined'){$('cStatus').innerHTML='<span style="color:var(--red)">chart lib blocked</span>';return;}
+  const scope=$('fScope').value, pair=scope==='__ALL__'?'gold':scope, mode=$('fMode').value;
+  const b={...body(),pair,fromDate:$('cFrom').value,toDate:$('cTo').value,mode};
+  $('cRun').disabled=true;$('cStatus').textContent='loading…';
+  try{
+    const start=await fetch('/api/max-copier/trace',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json());
+    if(!start.ok)throw new Error(start.error||'failed');
+    const res=await poll(start.jobId,$('cStatus'),200);
+    drawChart(res.trace);
+    $('cStatus').textContent=`${res.trace.pair} · ${res.trace.from}→${res.trace.to} · ${res.trace.trades.length} setups`;
+  }catch(e){$('cStatus').innerHTML=`<span style="color:var(--red)">${e.message}</span>`;}
+  finally{$('cRun').disabled=false;}
 };
-
-function renderChart(t) {
-  if (CHART) { CHART.remove(); CHART = null; } if (WTCHART) { WTCHART.remove(); WTCHART = null; }
-  const dark = { layout:{ background:{color:'#0e1016'}, textColor:'#8b97a8' }, grid:{ vertLines:{color:'#1a1f2b'}, horzLines:{color:'#1a1f2b'} }, timeScale:{ timeVisible:true, secondsVisible:false, borderColor:'#2a3242' }, rightPriceScale:{ borderColor:'#2a3242' }, crosshair:{ mode:0 } };
-  const priceEl = $('mcChart'), wtEl = $('mcWt');
-  CHART = LightweightCharts.createChart(priceEl, { ...dark, width: priceEl.clientWidth, height: 420 });
-  WTCHART = LightweightCharts.createChart(wtEl, { ...dark, width: wtEl.clientWidth, height: 150 });
-
-  const candle = CHART.addCandlestickSeries({ upColor:COL.up, downColor:COL.down, borderVisible:false, wickUpColor:COL.up, wickDownColor:COL.down });
+function drawChart(t){
+  if(PRICE){PRICE.remove();PRICE=null;} if(WT){WT.remove();WT=null;}
+  $('cPairLbl').textContent=t.pair;
+  const mk=(el,bg,h)=>LightweightCharts.createChart(el,{width:el.clientWidth,height:h,layout:{background:{color:bg},textColor:'#d1d4dc'},grid:{vertLines:{color:'#1c2133'},horzLines:{color:'#1c2133'}},rightPriceScale:{borderColor:'#2a3050'},timeScale:{borderColor:'#2a3050',timeVisible:true,secondsVisible:false},crosshair:{mode:0}});
+  PRICE=mk($('mcPrice'),'#131722',$('mcPrice').clientHeight||420);
+  WT=mk($('mcWt'),'#0e1117',130);
+  const candle=PRICE.addCandlestickSeries({upColor:COL.up,downColor:COL.down,borderVisible:false,wickUpColor:COL.up,wickDownColor:COL.down});
   candle.setData(t.candles);
-
-  // Per-trade level / consolidation / stop / entry segments (localised, cap 60).
-  const seg = (pts, color, width, style) => { const s = CHART.addLineSeries({ color, lineWidth:width, lineStyle:style||0, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false }); s.setData(pts); };
-  const trades = t.trades.slice(-60);
-  for (const tr of trades) {
-    const lastExit = tr.exits.length ? Math.max(...tr.exits.map(e=>e.time)) : tr.entryTime;
-    seg([{time:tr.impulseTime,value:tr.level},{time:tr.entryTime,value:tr.level}], COL.level, 1);
-    seg([{time:tr.consolFrom,value:tr.cHigh},{time:tr.consolTo,value:tr.cHigh}], COL.consol, 1, 2);
-    seg([{time:tr.consolFrom,value:tr.cLow},{time:tr.consolTo,value:tr.cLow}], COL.consol, 1, 2);
-    seg([{time:tr.entryTime,value:tr.entry},{time:lastExit,value:tr.entry}], COL.entry, 1);
-    seg([{time:tr.entryTime,value:tr.stop},{time:lastExit,value:tr.stop}], COL.stop, 1, 2);
+  const seg=(pts,color,w,style)=>{const s=PRICE.addLineSeries({color,lineWidth:w,lineStyle:style||0,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});s.setData(pts);};
+  TRADES=t.trades.slice(-80);
+  for(const tr of TRADES){
+    const le=tr.exits.length?Math.max(...tr.exits.map(e=>e.time)):tr.entryTime;
+    seg([{time:tr.impulseTime,value:tr.level},{time:tr.entryTime,value:tr.level}],COL.level,1);
+    seg([{time:tr.consolFrom,value:tr.cHigh},{time:tr.consolTo,value:tr.cHigh}],COL.consol,1,2);
+    seg([{time:tr.consolFrom,value:tr.cLow},{time:tr.consolTo,value:tr.cLow}],COL.consol,1,2);
+    seg([{time:tr.entryTime,value:tr.entry},{time:le,value:tr.entry}],COL.entry,1);
+    seg([{time:tr.entryTime,value:tr.stop},{time:le,value:tr.stop}],COL.stop,1,2);
   }
-
-  // Markers (impulse / divergence / entry / exits), sorted by time.
-  const M = [];
-  for (const im of t.impulses) M.push({ time:im.time, position: im.dir==='long'?'belowBar':'aboveBar', color:COL.impulse, shape: im.dir==='long'?'arrowUp':'arrowDown', text:'impulse' });
-  for (const tr of trades) {
-    for (const dp of tr.divPts) M.push({ time:dp.time, position:'belowBar', color:COL.div, shape:'circle', text:'div' });
-    const win = (tr.basketPnlR||0) > 0;
-    M.push({ time:tr.entryTime, position: tr.dir==='long'?'belowBar':'aboveBar', color: win?COL.up:COL.down, shape:'circle', text:`${tr.dir==='long'?'▲':'▼'}${!tr.tradable?'(skip)':''} ${tr.basketPnlR==null?'':(tr.basketPnlR>0?'+':'')+tr.basketPnlR+'R'}` });
-    for (const ex of tr.exits) M.push({ time:ex.time, position:'aboveBar', color: COL[ex.reason]||COL.time, shape:'square', text:ex.reason });
+  const M=[];
+  for(const im of t.impulses)M.push({time:im.time,position:im.dir==='long'?'belowBar':'aboveBar',color:COL.impulse,shape:im.dir==='long'?'arrowUp':'arrowDown',text:'imp'});
+  for(const tr of TRADES){
+    for(const dp of tr.divPts)M.push({time:dp.time,position:'belowBar',color:COL.div,shape:'circle',text:'div'});
+    const win=(tr.basketPnlR||0)>0;
+    M.push({time:tr.entryTime,position:tr.dir==='long'?'belowBar':'aboveBar',color:win?COL.up:COL.down,shape:'circle',text:`${tr.dir==='long'?'▲':'▼'}${tr.basketPnlR==null?'':(tr.basketPnlR>0?'+':'')+tr.basketPnlR+'R'}`});
+    for(const ex of tr.exits)M.push({time:ex.time,position:'aboveBar',color:COL[ex.reason]||COL.time,shape:'square',text:ex.reason});
   }
-  M.sort((a,b)=>a.time-b.time);
-  candle.setMarkers(M);
-
-  // WaveTrend pane
-  const wt1 = WTCHART.addLineSeries({ color:'#7c6cf0', lineWidth:2, priceLineVisible:false, lastValueVisible:false });
-  const wt2 = WTCHART.addLineSeries({ color:'#e0a94b', lineWidth:1, lineStyle:2, priceLineVisible:false, lastValueVisible:false });
-  wt1.setData(t.wt.map(w=>({time:w.time, value:w.wt1})));
-  wt2.setData(t.wt.map(w=>({time:w.time, value:w.wt2})));
-  for (const lvl of [53,0,-53]) wt1.createPriceLine({ price:lvl, color:'#2a3242', lineWidth:1, lineStyle:2, axisLabelVisible:false });
-
-  // Sync the two time scales.
-  let lock = false;
-  const sync = (from, to) => from.timeScale().subscribeVisibleLogicalRangeChange(r => { if (lock || !r) return; lock = true; to.timeScale().setVisibleLogicalRange(r); lock = false; });
-  sync(CHART, WTCHART); sync(WTCHART, CHART);
-  CHART.timeScale().fitContent(); WTCHART.timeScale().fitContent();
-
-  $('cTradeInfo').innerHTML = trades.length >= 60 ? 'Showing the most recent 60 setups in the window (zoom/pan to inspect).' : `${trades.length} setups drawn. Amber = HTF level · grey dashed = consolidation hi/lo · purple = value-area entry · red dashed = stop.`;
-
-  new ResizeObserver(() => { if (CHART) CHART.applyOptions({ width: priceEl.clientWidth }); if (WTCHART) WTCHART.applyOptions({ width: wtEl.clientWidth }); }).observe(priceEl);
+  M.sort((a,b)=>a.time-b.time); candle.setMarkers(M);
+  const w1=WT.addLineSeries({color:'#7c6cf0',lineWidth:2,priceLineVisible:false,lastValueVisible:false});
+  const w2=WT.addLineSeries({color:'#e0a94b',lineWidth:1,lineStyle:2,priceLineVisible:false,lastValueVisible:false});
+  w1.setData(t.wt.map(x=>({time:x.time,value:x.wt1}))); w2.setData(t.wt.map(x=>({time:x.time,value:x.wt2})));
+  for(const lv of [53,0,-53])w1.createPriceLine({price:lv,color:'#2a3050',lineWidth:1,lineStyle:2,axisLabelVisible:false});
+  let lock=false; const sync=(from,to)=>from.timeScale().subscribeVisibleLogicalRangeChange(r=>{if(lock||!r)return;lock=true;to.timeScale().setVisibleLogicalRange(r);lock=false;});
+  sync(PRICE,WT); sync(WT,PRICE);
+  PRICE.timeScale().fitContent(); WT.timeScale().fitContent();
+  tIdx=0; updateNav();
+  new ResizeObserver(()=>{if(PRICE)PRICE.applyOptions({width:$('mcPrice').clientWidth});if(WT)WT.applyOptions({width:$('mcWt').clientWidth});}).observe($('mcPrice'));
+  $('tPrev').disabled=$('tNext').disabled=!TRADES.length;
 }
+function updateNav(){
+  const has=TRADES.length; $('tPrev').disabled=!has||tIdx<=0; $('tNext').disabled=!has||tIdx>=TRADES.length-1;
+  if(!has){$('tInfo').textContent='';return;}
+  const tr=TRADES[tIdx], le=tr.exits.length?Math.max(...tr.exits.map(e=>e.time)):tr.entryTime;
+  $('tInfo').textContent=`#${tIdx+1}/${TRADES.length} · ${tr.dir.toUpperCase()} · ${tr.basketPnlR==null?'':(tr.basketPnlR>0?'+':'')+tr.basketPnlR+'R'} · ${new Date(tr.entryTime*1000).toISOString().slice(0,10)}${tr.divPassed?'':' · (div skip)'}`;
+  const pad=6*3600; try{PRICE.timeScale().setVisibleRange({from:tr.impulseTime-pad,to:le+pad});}catch(e){}
+}
+$('tPrev').onclick=()=>{if(tIdx>0){tIdx--;updateNav();}};
+$('tNext').onclick=()=>{if(tIdx<TRADES.length-1){tIdx++;updateNav();}};
+$('fitAll').onclick=()=>{try{PRICE.timeScale().fitContent();}catch(e){}};
 </script>
 </body>
 </html>

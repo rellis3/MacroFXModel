@@ -112,7 +112,7 @@ console.log('[autopsy + trace]');
   ok('autopsy expectancy has breakeven + edgeGap', Number.isFinite(au.expectancy.breakevenWinRate) && Number.isFinite(au.expectancy.edgeGap));
   ok('autopsy exitMix reasons are known', Object.keys(au.exitMix).every(r => ['tp','stop','trail','time'].includes(r)));
   ok('autopsyRaw is present for pooling', run.autopsyRaw && run.autopsyRaw.premise && run.autopsyRaw.expectancy);
-  ok('positions carry mfeR + exitTime', run.modes.fixed_r.positions.every(p => Number.isFinite(p.mfeR) && Number.isFinite(p.exitTime)));
+  ok('positions carry mfeR + entryTime + exitTime', run.modes.fixed_r.positions.every(p => Number.isFinite(p.mfeR) && Number.isFinite(p.entryTime) && Number.isFinite(p.exitTime) && p.exitTime >= p.entryTime));
 
   const tr = traceMaxCopier(packed, 'eurusd', TEST_OPTS, { mode:'fixed_r' });
   ok('trace returns candles + WaveTrend', tr.candles.length > 0 && tr.wt.length === tr.candles.length);
