@@ -47,6 +47,7 @@ import { runCarryBasket, financingHaircut, alignSeries as _carryAlignSeries } fr
 import { combineFactors as _combineFactors, MF_DEFAULTS as _MF_DEFAULTS } from './js/multiFactorEngine.js';
 import { runForecastV2Suite, V2_INSTRUMENTS, HORIZONS as V2_HORIZONS } from './js/volBacktestV2Engine.js';
 import { runZoneSuite, ZONE_INSTRUMENTS } from './js/macroFxZoneEngine.js';
+import { runDecisionSuite, DECISION_INSTRUMENTS } from './js/macroFxDecisionEngine.js';
 import { runMaxCopierSuite, traceMaxCopierPair, MAXCOPIER_INSTRUMENTS, MAXCOPIER_DEFAULTS, EXIT_MODES as MAXCOPIER_EXIT_MODES } from './js/maxCopierEngine.js';
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
@@ -10204,6 +10205,80 @@ app.post('/api/macrofx-zone/run', express.json({ limit: '256kb' }), (req, res) =
 
 app.get('/api/macrofx-zone/status/:jobId', (req, res) => {
   const job = zoneJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── MacroFX Decision Engine (the ASSEMBLED system): state-directed + confidence-
+//    gated + trade-managed, A/B'd head-to-head against the v1 naked skeleton.
+//    Same async-job pattern. ──
+const decisionJobs = new Map();
+function _purgeStaleDecisionJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of decisionJobs) if (job.startedAt < cutoff) decisionJobs.delete(id);
+}
+
+app.post('/api/macrofx-decision/run', express.json({ limit: '256kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) {
+    return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch D1 data' });
+  }
+  const b = req.body ?? {};
+  const num = (v, d) => (v === undefined || v === '' || isNaN(+v) ? d : +v);
+  const opts = {
+    dateFrom:    b.dateFrom || '',
+    dateTo:      b.dateTo   || '',
+    oosFrac:     Math.min(Math.max(num(b.oosFrac, 0.4), 0.1), 0.6),
+    minSources:  Math.min(Math.max(Math.round(num(b.minSources, 2)), 2), 5),
+    clusterPips: Math.max(num(b.clusterPips, 10), 1),
+    followMin:   Math.min(Math.max(num(b.followMin, 0.55), 0), 1),
+    fadeMax:     Math.min(Math.max(num(b.fadeMax, 0.38), 0), 1),
+    confThresh:  Math.min(Math.max(num(b.confThresh, 0.5), 0), 1),
+    reachMult:   Math.max(num(b.reachMult, 1.5), 0.25),
+    slMult:      Math.max(num(b.slMult, 1.5), 0.25),
+    partialFrac: Math.min(Math.max(num(b.partialFrac, 0.5), 0), 1),
+    beAtR:       Math.max(num(b.beAtR, 1.0), 0.1),
+    trailR:      Math.max(num(b.trailR, 1.0), 0.1),
+    asiaAnchor:  b.asiaAnchor === true || b.asiaAnchor === 'true' || b.asiaAnchor === 1 || b.asiaAnchor === '1',
+    regrBands:   !(b.regrBands === false || b.regrBands === 'false' || b.regrBands === 0 || b.regrBands === '0'),
+    accountSize: Math.max(num(b.accountSize, 10000), 1),
+    riskPct:     Math.max(num(b.riskPct, 1.0), 0.01),
+  };
+  if (b.costPct !== undefined && b.costPct !== '') opts.costPct = num(b.costPct, undefined);
+  if (b.slipPct !== undefined && b.slipPct !== '') opts.slipPct = num(b.slipPct, undefined);
+
+  const instFilter = b.pair
+    ? DECISION_INSTRUMENTS.filter(i => i.name === String(b.pair).toUpperCase())
+    : undefined;
+
+  const jobId = `dec_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleDecisionJobs();
+  decisionJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    try {
+      const { results, log } = await runDecisionSuite(opts, instFilter ?? DECISION_INSTRUMENTS);
+      if (!results.length) {
+        decisionJobs.set(jobId, { status: 'error', error: 'No results generated', log, startedAt });
+        return;
+      }
+      decisionJobs.set(jobId, { status: 'done', result: { results, log, opts }, startedAt });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[macrofx-decision/run]', msg, e?.stack ?? '');
+      decisionJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/macrofx-decision/status/:jobId', (req, res) => {
+  const job = decisionJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') {
     return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
