@@ -166,13 +166,17 @@
   transform: translate(-50%, -50%); background: var(--text);
   border: 2px solid var(--s1); z-index: 6; transition: left .4s;
 }
-.v2-lad-labels { position: relative; height: 22px; margin: 3px 8px 0; }
-.v2-lad-lbl {
+/* Δ% row sits ABOVE the track, price row BELOW it — one number per side so
+   labels don't stack or collide. */
+.v2-lad-pct { position: relative; height: 12px; margin: 0 8px 2px; }
+.v2-lad-pct .p {
   position: absolute; transform: translateX(-50%);
-  display: flex; flex-direction: column; align-items: center; line-height: 1.1;
+  font-size: 7.5px; font-family: 'DM Mono', monospace; color: var(--text3); white-space: nowrap;
 }
+.v2-lad-pct .p.open { color: var(--text2); font-weight: 600; }
+.v2-lad-labels { position: relative; height: 13px; margin: 3px 8px 0; }
+.v2-lad-lbl { position: absolute; transform: translateX(-50%); line-height: 1; }
 .v2-lad-lbl .px { font-size: 8px; font-family: 'DM Mono', monospace; font-weight: 600; color: var(--text2); white-space: nowrap; }
-.v2-lad-lbl .dl { font-size: 7.5px; font-family: 'DM Mono', monospace; color: var(--text3); white-space: nowrap; }
 .v2-lad-lbl.hit .px { color: var(--green); }
 .v2-lad-lbl.open .px { color: var(--text); font-weight: 700; }
 .v2-lad-exh {
@@ -1820,9 +1824,13 @@ function ladderHtml(name, f, s) {
     if (s.oc != null) dot = `<div class="v2-lad-dot" style="left:${X(s.oc)}%" title="Now: ${open != null ? pxAt(s.oc) + ' · ' : ''}${dlt(s.oc)} from open"></div>`;
   }
 
-  const lbl = t => `<div class="v2-lad-lbl ${t.kind}${t.hit ? ' hit' : ''}" style="left:${X(t.pct)}%">${open != null ? `<span class="px">${lpx(t.pct)}</span>` : ''}<span class="dl">${dlt(t.pct)}</span></div>`;
-  const openLbl = `<div class="v2-lad-lbl open" style="left:50%">${open != null ? `<span class="px">${_fmtPrice(open, ldp)}</span>` : ''}<span class="dl">Open</span></div>`;
-  const labels = list.map(lbl).join('') + openLbl;
+  // Δ% labels above the track (+ "Open" at centre); price labels below it.
+  const pctRow = list.map(t => `<span class="p" style="left:${X(t.pct)}%">${dlt(t.pct)}</span>`).join('')
+    + `<span class="p open" style="left:50%">Open</span>`;
+  const priceRow = open != null
+    ? list.map(t => `<span class="v2-lad-lbl${t.hit ? ' hit' : ''}" style="left:${X(t.pct)}%"><span class="px">${lpx(t.pct)}</span></span>`).join('')
+      + `<span class="v2-lad-lbl open" style="left:50%"><span class="px">${_fmtPrice(open, ldp)}</span></span>`
+    : '';
 
   // exhaustion: how much of the expected move each side has used (colour = tier)
   let exh = '';
@@ -1838,8 +1846,9 @@ function ladderHtml(name, f, s) {
   }
 
   return `<div class="v2-ladder">
+    <div class="v2-lad-pct">${pctRow}</div>
     <div class="v2-lad-track">${zones}<div class="v2-lad-open" style="left:50%"></div>${band}${ticks}${hilo}${dot}</div>
-    <div class="v2-lad-labels">${labels}</div>
+    <div class="v2-lad-labels">${priceRow}</div>
     ${exh}
   </div>`;
 }
