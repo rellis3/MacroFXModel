@@ -585,6 +585,25 @@ If a third consumer appears (or the QMR engine gets versioned out of `server.js`
 
 ---
 
+### 1y. Price-slowdown decomposition brick (2026-07-23) — the "two budgets" diagnostic
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Slowdown decomp** | `js/priceSlowdownDecomp.js` | `decomposeSessions(bars, opts)` — splits every session into the TWO volatility budgets (RANGE = path travelled `(runHigh−runLow)/open`, what the HL bands model; DISPLACEMENT = distance from open `(price−open)/open`, what the OC bands model), finds the first HL-line tag, measures approach velocity at the tag, and labels how far it faded back (`retraceToOcMed` = tradeable target, `retraceToOpen` = full fade). Plus `groupSessions`, `fadeRateBy`, `fadeRateByQuantile`, `hitRateBy` aggregators. IMPORTS `computeBands`+`volSigmaSeries` (forecastCore), `labelOutcome` (dayTypeCore) and `touchFeatures.approachVel` — never re-inlines σ/band/velocity math, so it can't disagree with the forecaster. Causal (σ for session i uses data < i; velocity uses bars ≤ tag; fade label reads the close as the OUTCOME). Pure/synthetic-testable — `js/priceSlowdownDecomp.test.mjs` (4 asserts: session anchoring, range≥\|disp\| invariant, round-trip→REVERSION→open, trend→CONTINUATION with range≈disp). | `price-slowdown-lab.html` (visual explainer, EURUSD baked in); `scripts/run-slowdown-decomp.mjs` (regenerator over EUR/GBP/AUD parquet) | ✅ built — **descriptive diagnostic, not a costed OOS strategy** |
+
+> **What it found (10y × EUR/GBP/AUD, descriptive — no costs, no IS/OOS split).**
+> Conditional on tagging the median exhaustion line (HL50), fading ALL the way
+> back to the open is **rare (~12%)**; the tradeable retrace to the OC-median line
+> happens **~40%**. A **velocity spike** into the line lifts the tradeable-fade rate
+> from ~30% (grind) to ~50% (spike) and the full-fade rate ~2–3×, **monotone and
+> consistent across all three pairs**. Range-*budget*-consumed at the tag was weak
+> and inconsistent — the kinematics carry the signal, not the static count. This is
+> consistent with the platform's earlier finding (`ENTRY_ZONE_CONFIDENCE.md`): the
+> pre-day day-type score is dead (AUC≈0.50), `approachVel` is significant OOS
+> (p<0.001). The costed OOS fade edge lives in the per-line book, not here.
+
+---
+
 ### 1r. Trend-following v2 — forecast-σ sizing A/B + Sharpe honesty (2026-07-17)
 
 | Brick | File | Owns | Consumers | Status |
