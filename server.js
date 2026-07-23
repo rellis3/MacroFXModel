@@ -10167,6 +10167,9 @@ app.post('/api/macrofx-zone/run', express.json({ limit: '256kb' }), (req, res) =
     erWindow:    Math.round(num(b.erWindow, 14)),
     accountSize: Math.max(num(b.accountSize, 10000), 1),
     riskPct:     Math.max(num(b.riskPct, 1.0), 0.01),
+    asiaAnchor:  b.asiaAnchor === true || b.asiaAnchor === 'true' || b.asiaAnchor === 1 || b.asiaAnchor === '1',
+    regrBands:   !(b.regrBands === false || b.regrBands === 'false' || b.regrBands === 0 || b.regrBands === '0'),
+    regrLookback: Math.max(Math.round(num(b.regrLookback, 80)), 20),
   };
   if (b.costPct !== undefined && b.costPct !== '') opts.costPct = num(b.costPct, undefined);
   if (b.slipPct !== undefined && b.slipPct !== '') opts.slipPct = num(b.slipPct, undefined);
