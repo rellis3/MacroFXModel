@@ -384,16 +384,23 @@ export function compareZones(d1Bars, m1ByDate, assetClass, name, opts = {}) {
   return { modes: out, trades, diagnostics };
 }
 
-// Group packed M1 columns ({n,times,opens,...}) → Map(date → bars[]). Mirrors
-// volBacktestV2Engine.groupM1ByDate (kept local; that one isn't exported).
-function groupM1ByDate(packed) {
+// Group packed M1 columns ({n,times,opens,...}) → Map('YYYY-MM-DD' → bars[] with
+// `.time` in epoch SECONDS). CRITICAL: loadM1ForPair returns `times` as epoch
+// SECONDS (Int32Array — epoch-ms wouldn't even fit Int32), so we must NOT treat
+// them as ms. The earlier version did `new Date(t)` (which reads ms) → every bar
+// filed under a 1970 date → the date lookup missed and Asia-anchored mode found
+// no session → 0 trades. Convert sec→ms only for the Date label; keep `.time`
+// in seconds so it matches dayEpoch (Date.parse(date)/1000) and resampleTo's
+// second-based bucketing. Regression-tested in macroFxZoneEngine.test.mjs.
+export function groupM1ByDate(packed) {
   const map = new Map();
   if (!packed || !packed.n) return map;
   const { n, times, opens, highs, lows, closes } = packed;
   for (let i = 0; i < n; i++) {
     const t = times[i];
-    const date = (typeof t === 'string' ? t : new Date(t).toISOString()).substring(0, 10);
-    const tsec = typeof t === 'string' ? Math.floor(Date.parse(t) / 1000) : Math.floor(t / 1000);
+    // String ISO (defensive) → seconds; numeric → already epoch seconds.
+    const tsec = typeof t === 'string' ? Math.floor(Date.parse(t) / 1000) : Math.floor(t);
+    const date = new Date(tsec * 1000).toISOString().substring(0, 10);
     if (!map.has(date)) map.set(date, []);
     map.get(date).push({ time: tsec, open: opens[i], high: highs[i], low: lows[i], close: closes[i] });
   }
