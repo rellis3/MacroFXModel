@@ -219,9 +219,13 @@ function render(){
   const m = meta(_inst), d = m.digits;
   const zones = Array.isArray(inst.zones) ? inst.zones : [];
   const entered = new Set((_status?.lines?.find(l => l.instrument===_inst)?.entered) || []);
-  const opens = (_status?.mt5_positions || []).filter(p => posBelongs(p, _inst));
-  const closed = (_status?.today_closed_trades || []).filter(p => posBelongs(p, _inst))
-    .concat(Array.isArray(_trades) ? _trades.filter(p => posBelongs(p, _inst)) : []);
+  // Open/closed trades are shown for EVERY instrument (never hidden behind the
+  // per-instrument filter) — the live positions are the point of this page. The
+  // per-instrument `opens` subset is only for the chart overlay + zone open badges.
+  const allOpens = _status?.mt5_positions || [];
+  const opens = allOpens.filter(p => posBelongs(p, _inst));
+  const allClosed = (_status?.today_closed_trades || [])
+    .concat(Array.isArray(_trades) ? _trades : []);
 
   $('price').textContent = `${m.display} ${fmt(inst.spot, d)}`;
   // Chips
@@ -231,24 +235,36 @@ function render(){
     `<span class="chip">spot <b>${fmt(inst.spot,d)}</b></span>`,
     inst.maxPain!=null?`<span class="chip">max pain <b>${fmt(inst.maxPain,d)}</b></span>`:'',
     `<span class="chip">${zones.length} zones</span>`,
-    `<span class="chip" style="color:var(--amber)">${opens.length} open</span>`,
+    `<span class="chip" style="color:var(--amber)">${allOpens.length} open${opens.length!==allOpens.length?` · ${opens.length} here`:''}</span>`,
     inst.stale?`<span class="chip stale">⚠ stale — re-paste</span>`:'',
   ].join('');
 
-  renderOpen(opens, zones, d);
+  renderOpen(allOpens, d);
   renderZones(zones, entered, opens, inst.spot, d);
-  renderClosed(closed, d);
+  renderClosed(allClosed, d);
   drawChart(m, inst, zones, entered, opens, d);
 }
 
-function renderOpen(opens, zones, d){
+// Which plan instrument does a position belong to? Scan every instrument's aliases
+// (never assume it's the selected one) so a trade is always attributed if we can.
+function attribInst(pos){
+  for(const k of Object.keys(_zones?.instruments || {})) if(posBelongs(pos, k)) return k;
+  return null;
+}
+
+function renderOpen(opens, dSel){
   $('openN').textContent = opens.length ? `${opens.length} running` : '';
-  if(!opens.length){ $('openWrap').innerHTML = `<div class="empty">No open OI positions for this instrument. Multiday trades appear here once filled.</div>`; return; }
+  if(!opens.length){ $('openWrap').innerHTML = `<div class="empty">No open OI positions reported by the bot. Multiday trades appear here once filled (this reads the bot's live positions, so existing trades show too — no reboot needed).</div>`; return; }
   const rows = opens.map(p => {
-    const z = matchZone(p, zones);
+    const key = attribInst(p), km = key ? meta(key) : null, d = km ? km.digits : dSel;
+    const zs = key && _zones.instruments[key] ? (_zones.instruments[key].zones||[]) : [];
+    const z = matchZone(p, zs);
     const pnlCls = p.profit>0?'pos':p.profit<0?'neg':'';
     const dirCls = p.direction==='BUY'?'b-buy':'b-sell';
-    return `<tr>
+    const instCell = key ? meta(key).display : `<span class="muted" title="unmatched broker symbol — set broker_symbols in config">${p.symbol||'?'}</span>`;
+    const here = key===_inst ? ' style="background:rgba(245,158,11,.06)"' : '';
+    return `<tr${here}>
+      <td>${instCell}</td>
       <td><span class="badge ${dirCls}">${p.direction}</span></td>
       <td class="mono">${p.lots}</td>
       <td class="mono">${fmt(p.open_price,d)}</td>
@@ -261,9 +277,9 @@ function renderOpen(opens, zones, d){
     </tr>`;
   }).join('');
   $('openWrap').innerHTML = `<table><thead><tr>
-    <th>Dir</th><th>Lots</th><th>Entry</th><th>Now</th><th>P/L</th><th>Age</th>
+    <th>Instr</th><th>Dir</th><th>Lots</th><th>Entry</th><th>Now</th><th>P/L</th><th>Age</th>
     <th>Plan SL</th><th>Plan TP</th><th>Zone</th></tr></thead><tbody>${rows}</tbody></table>
-    <div class="muted" style="margin-top:6px">SL/TP shown are the plan levels the trade entered on; the broker holds the live bracket. "—" = the zone has since rolled off the plan (older multiday hold).</div>`;
+    <div class="muted" style="margin-top:6px">All open OI positions (every instrument; the selected one is tinted). SL/TP are the plan levels the trade entered on — the broker holds the live bracket; "—" = the zone has rolled off the plan (older multiday hold) or the symbol didn't match a plan instrument.</div>`;
 }
 
 function renderZones(zones, entered, opens, spot, d){
@@ -296,14 +312,16 @@ function renderZones(zones, entered, opens, spot, d){
   }).join('');
 }
 
-function renderClosed(closed, d){
+function renderClosed(closed, dSel){
   $('closedN').textContent = closed.length ? `${closed.length}` : '';
-  if(!closed.length){ $('closedEmpty').textContent = 'No closed OI trades today for this instrument.'; $('closedWrap').innerHTML = `<div class="empty">No closed OI trades today for this instrument.</div>`; return; }
+  if(!closed.length){ $('closedWrap').innerHTML = `<div class="empty">No closed OI trades today.</div>`; return; }
   const rows = closed.map(p => {
+    const key = attribInst(p), d = key ? meta(key).digits : dSel;
     const pnl = p.profit ?? p.pnl;
     const cls = pnl>0?'pos':pnl<0?'neg':'';
     const t = p.time_close ? new Date(p.time_close*1000).toISOString().slice(5,16).replace('T',' ') : '';
     return `<tr>
+      <td>${key?meta(key).display:`<span class="muted">${p.symbol||'?'}</span>`}</td>
       <td><span class="badge ${p.direction==='BUY'?'b-buy':'b-sell'}">${p.direction||''}</span></td>
       <td class="mono">${p.lots??''}</td>
       <td class="mono">${fmt(p.open_price,d)}</td>
@@ -314,7 +332,7 @@ function renderClosed(closed, d){
     </tr>`;
   }).join('');
   $('closedWrap').innerHTML = `<table><thead><tr>
-    <th>Dir</th><th>Lots</th><th>Entry</th><th>Exit</th><th>P/L</th><th>Closed</th><th>Zone</th>
+    <th>Instr</th><th>Dir</th><th>Lots</th><th>Entry</th><th>Exit</th><th>P/L</th><th>Closed</th><th>Zone</th>
     </tr></thead><tbody>${rows}</tbody></table>`;
 }
 
