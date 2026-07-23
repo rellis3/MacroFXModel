@@ -31,6 +31,10 @@ import { extractBars, resampleTo } from './barUtils.js';
 import { collectLevels, clusterLevels } from './levelSources.js';
 import { walkBars } from './forecastCore.js';
 import { pipSize, assetClass as assetClassOf } from './instrumentRegistry.js';
+// Stage-3 VuManChu confirmation gate — reuse the shared bricks (Lego Principle:
+// one WaveTrend/Money-Flow/VWAP compute + one divergence reader, never re-inlined).
+import { computeWaveTrend, computeMoneyFlow, computeVWAP } from './vumanchuCore.js';
+import { reversalDecision } from './divergenceCore.js';
 
 const DAY = 86400;
 
@@ -63,7 +67,47 @@ export const DEFAULT_CFG = {
   oosFrac: 0.4,          // last 40% of the timeline is out-of-sample
   account: 10000,        // £ account for the currency P&L export
   riskPct: 1.0,          // % of account risked per trade (the R unit)
+
+  // ── Stage-3 VuManChu confirmation gate (OPT-IN; default OFF ⇒ Stage 1–2
+  // behaviour is byte-identical). When on, a trade only fires if ≥ gateMinSignals
+  // of the deck's three VuManChu reads confirm at the touch: WaveTrend regular
+  // divergence, VWAP oscillator turning toward zero in-direction, Money-Flow in
+  // the opposing colour and fading toward zero. All read only bars ≤ the touch. ──
+  gate: false,
+  gateMinSignals: 1,     // 1 = any of the three; 2 = the deck's "ideal" majority
+  gateLookbackDays: 3,   // entry-TF context window before the touch for the gate
+  gateDivReach: 2,       // fractal reach for WaveTrend pivots (VuManChu 5-bar = 2)
+  gateDivWindow: 6,      // divergence is "fresh" if its recent pivot is ≤ this back
+  gateSlope: 3,          // bars back used to read VWAP/Money-Flow slope toward zero
 };
+
+// Evaluate the VuManChu gate at the touch bar (the LAST bar of `gateBars`).
+// `gateBars` are entry-TF bars WITH volume up to and including the touch. Reuses
+// the shared vumanchuCore compute + divergenceCore reader — no re-inlined math.
+function evalGate(gateBars, isBuy, c) {
+  const nb = gateBars.length;
+  if (nb < 3 * c.gateDivReach + 5) return { pass: false, signals: 0 };
+  const { wt2 } = computeWaveTrend(gateBars);      // signal line drives divergence
+  const mf = computeMoneyFlow(gateBars);
+  const { osc } = computeVWAP(gateBars);
+  const last = nb - 1, k = Math.min(c.gateSlope, last);
+  const highs = gateBars.map(b => b.high), lows = gateBars.map(b => b.low);
+  const side = isBuy ? -1 : +1;                    // down-touch = buy, up-touch = sell
+
+  // 1) WaveTrend REGULAR divergence of the matching bias, fresh at the touch.
+  const divSig = reversalDecision(highs, lows, wt2, last, side,
+    { reach: c.gateDivReach, window: c.gateDivWindow, obLevel: 53, osLevel: -53 }) === 'fade';
+  // 2) VWAP oscillator turning toward the zero line in the trade direction
+  //    (buy → rising, sell → falling).
+  const vwapSig = isBuy ? (osc[last] > osc[last - k]) : (osc[last] < osc[last - k]);
+  // 3) Money Flow in the opposing colour and fading toward zero
+  //    (buy → red/negative and rising; sell → green/positive and falling).
+  const mfSig = isBuy ? (mf[last] < 0 && mf[last] > mf[last - k])
+                      : (mf[last] > 0 && mf[last] < mf[last - k]);
+
+  const signals = (divSig ? 1 : 0) + (vwapSig ? 1 : 0) + (mfSig ? 1 : 0);
+  return { pass: signals >= c.gateMinSignals, signals, divSig, vwapSig, mfSig };
+}
 
 // Resample packed→object bars for a window KEEPING summed volume (barUtils'
 // resampleTo drops volume; the volume profile / VWAP sources need it).
@@ -201,7 +245,29 @@ export function runPoiReaction(packed, cfg = {}) {
     const sl = isBuy ? entry - stopDist : entry + stopDist;
     const tp = isBuy ? entry + c.rr * stopDist : entry - c.rr * stopDist;
 
-    const r = walkBars(entryBars, entry, tp, sl, isBuy, 'limit', dayOpen);
+    // Stage-3 gate (opt-in): find the first touch of the zone, evaluate the
+    // VuManChu confirmation there, and skip the trade if it doesn't confirm.
+    // Ungated (default) path is unchanged — walkBars scans the full day.
+    let barsForFill = entryBars, gateInfo = null;
+    if (c.gate) {
+      let touchIdx = -1;
+      for (let bi = 0; bi < entryBars.length; bi++) {
+        const b = entryBars[bi];
+        if (b.low <= entry && entry <= b.high) { touchIdx = bi; break; }
+      }
+      if (touchIdx < 0) continue;                       // zone never reached today
+      const touchTime = entryBars[touchIdx].time;
+      // Gate reads ONLY bars fully completed BEFORE the touch bar (toEpoch =
+      // touchTime excludes the touch bucket). The limit fills mid-bar, so the
+      // touch bar's own close is not yet known at entry — including it would be
+      // an intrabar peek. Confirmation is judged on the approach, as a trader would.
+      const gateBars = resampleVol(packed, touchTime - c.gateLookbackDays * DAY, touchTime, c.entryTfMin);
+      gateInfo = evalGate(gateBars, isBuy, c);
+      if (!gateInfo.pass) continue;                     // VuManChu did not confirm
+      barsForFill = entryBars.slice(touchIdx);
+    }
+
+    const r = walkBars(barsForFill, entry, tp, sl, isBuy, 'limit', dayOpen);
     if (!r || !r.filled) continue;
 
     const grossPct = r.pnlPct;
@@ -227,6 +293,10 @@ export function runPoiReaction(packed, cfg = {}) {
       zoneScore: +zone.score.toFixed(3), zoneSources: zone.sources,
       stopDist: +stopDist.toFixed(6), atr: +atr.toFixed(6), dayOpen: +dayOpen.toFixed(6),
       cumR: +cum.toFixed(4),
+      gateSignals: gateInfo ? gateInfo.signals : null,
+      gateDiv: gateInfo ? gateInfo.divSig : null,
+      gateVwap: gateInfo ? gateInfo.vwapSig : null,
+      gateMf: gateInfo ? gateInfo.mfSig : null,
     });
   }
 

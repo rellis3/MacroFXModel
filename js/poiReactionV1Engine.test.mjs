@@ -67,4 +67,17 @@ for (const t of trades) {
   else { assert.ok(t.sl > t.entry && t.tp < t.entry, 'SELL: tp<entry<sl'); }
 }
 
-console.log(`poiReactionV1Engine.test: OK — ${trades.length} synthetic trades, ${meta.days} days, all invariants hold`);
+// Stage-3 gate is opt-in and causal: enabling it never INCREASES the trade count
+// (it can only filter), and the ungated run is unaffected by gate params.
+const gated = runPoiReaction(packed, { instrument: 'eurusd', warmupDays: 60, gate: true, gateMinSignals: 2 });
+assert.ok(gated.trades.length <= trades.length, 'gate only filters — never adds trades');
+for (const t of gated.trades) {
+  assert.ok(t.gateSignals >= 2, 'gated trade meets the minSignals threshold');
+  // gate reads bars strictly before the touch, so a gated trade is still shaped
+  // exactly like an ungated one (no extra/lookahead fields leak in).
+  assert.ok(Number.isFinite(t.netPct) && /^\d{4}-\d\d-\d\d$/.test(t.date), 'gated trade well-formed');
+}
+const ungatedAgain = runPoiReaction(packed, { instrument: 'eurusd', warmupDays: 60 });
+assert.strictEqual(ungatedAgain.trades.length, trades.length, 'ungated path is deterministic / unchanged by gate code');
+
+console.log(`poiReactionV1Engine.test: OK — ${trades.length} ungated / ${gated.trades.length} gated(≥2) synthetic trades, ${meta.days} days, all invariants hold`);
