@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Asia Range-Extension Backtest — Confidence Brain</title>
+<style>
+  :root { --bg:#0e1117; --panel:#161b22; --line:#2b3340; --tx:#c9d1d9; --mut:#8b949e;
+          --grn:#3fb950; --red:#f85149; --acc:#58a6ff; --amber:#d29922; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--tx); font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; }
+  .wrap { max-width:1100px; margin:0 auto; padding:24px 18px 80px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  .sub { color:var(--mut); margin:0 0 20px; font-size:13px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px; margin-bottom:18px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; }
+  label { display:block; font-size:12px; color:var(--mut); margin-bottom:4px; }
+  input,select { width:100%; background:#0d1117; border:1px solid var(--line); color:var(--tx);
+                 border-radius:6px; padding:7px 9px; font-size:13px; }
+  button { background:var(--acc); color:#04121f; border:0; border-radius:6px; padding:10px 18px;
+           font-weight:600; cursor:pointer; font-size:14px; }
+  button:disabled { opacity:.5; cursor:default; }
+  button.ghost { background:transparent; border:1px solid var(--line); color:var(--tx); font-weight:500; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { text-align:right; padding:7px 10px; border-bottom:1px solid var(--line); }
+  th:first-child,td:first-child { text-align:left; }
+  thead th { color:var(--mut); font-weight:600; font-size:12px; }
+  .pos { color:var(--grn); } .neg { color:var(--red); }
+  .note { color:var(--mut); font-size:12px; margin-top:10px; }
+  .status { color:var(--amber); font-size:13px; margin-left:12px; }
+  .verdict { border-left:3px solid var(--amber); padding:10px 14px; background:#1c2128; border-radius:6px; margin-top:14px; font-size:13px; }
+  .row2 { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:14px; }
+  code { background:#0d1117; padding:1px 5px; border-radius:4px; color:var(--acc); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Asia Range-Extension Backtest <span style="color:var(--mut);font-weight:400">· confidence brain</span></h1>
+  <p class="sub">Asia (00:00–06:00) range extensions as entries; a state-conditioned brain ranks the day's ~14 levels and
+     trades the top-N, choosing fade vs follow from regime. Baseline = every level, framework-fade. Costs on. Spec:
+     <code>RANGE_EXTENSION_STRATEGY.md</code> · result: <code>RANGE_EXTENSION_FINDINGS.md</code>.<br>
+     <b style="color:var(--amber)">Honest result:</b> a NULL for tradeable edge — the ranker orders levels correctly (top-1 ≫ top-3 ≫ all)
+     but even the best level is ~breakeven after realistic costs; alignment zones &amp; follow-direction are refuted. This is a costed harness, not a signal to trade.</p>
+
+  <div class="panel">
+    <div class="grid">
+      <div><label>Pair (blank = all 26)</label><select id="pair"><option value="">All pairs</option></select></div>
+      <div><label>Date from</label><input id="dateFrom" placeholder="2016-01-01"></div>
+      <div><label>Date to</label><input id="dateTo" placeholder="2025-12-31"></div>
+      <div><label>Direction</label><select id="direction">
+        <option value="auto">auto (day-type selector)</option>
+        <option value="fade">fade only</option>
+        <option value="follow">follow only</option></select></div>
+      <div><label>Top-N / day</label><input id="topN" value="3" type="number" min="1" max="10"></div>
+      <div><label>Min confidence</label><input id="minConfidence" value="0.5" type="number" step="0.05" min="0" max="1"></div>
+      <div><label>SL × Asia range</label><input id="slMult" value="0.75" type="number" step="0.05"></div>
+      <div><label>TP mode</label><select id="tpMode"><option value="structural">structural</option><option value="rr">fixed R</option></select></div>
+      <div><label>TP R (if fixed)</label><input id="tpR" value="1.5" type="number" step="0.1"></div>
+      <div><label>Max trade multiple</label><input id="maxTradeMult" value="4.0" type="number" step="0.5"></div>
+    </div>
+    <div class="row2">
+      <button id="run">Run A/B backtest</button>
+      <span class="status" id="status"></span>
+    </div>
+  </div>
+
+  <div class="panel" id="results" style="display:none">
+    <h3 style="margin:0 0 12px">Baseline (every level, fade) vs Treatment (brain: top-N + fade/follow)</h3>
+    <table>
+      <thead><tr><th>Metric</th>
+        <th>Baseline — Full</th><th>Base — OOS</th>
+        <th>Treatment — Full</th><th>Treat — OOS</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="verdict" id="verdict"></div>
+    <div class="row2">
+      <button class="ghost" data-csv="pct">Export % Returns CSV</button>
+      <button class="ghost" data-csv="r">Export R-Multiples CSV</button>
+      <button class="ghost" data-csv="ccy">Export Currency P&amp;L CSV</button>
+    </div>
+    <p class="note">CSV exports are the <b>treatment</b> trade log. Account = <b>$10,000</b>, risk = <b>1%/trade</b>.
+       R-unit = the trade's <b>Asia-range-based stop distance</b> (vol-varying, so R and % Return differ per trade —
+       not the degenerate fixed-% case). MAE is read from the realised intra-trade path.</p>
+  </div>
+</div>
+
+<script type="module">
+const PAIRS = ['eurusd','gbpusd','usdjpy','audusd','nzdusd','usdcad','usdchf','gbpjpy','eurjpy','eurgbp',
+  'euraud','eurcad','eurchf','eurnzd','audjpy','audnzd','audcad','audchf','gbpaud','gbpcad','gbpchf','gbpnzd',
+  'cadjpy','chfjpy','nzdjpy','gold'];
+const $ = (id) => document.getElementById(id);
+PAIRS.forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = p.toUpperCase(); $('pair').appendChild(o); });
+
+function fmt(v, cls) { const n = Number(v); const c = n > 0 ? 'pos' : n < 0 ? 'neg' : ''; return `<span class="${cls?c:''}">${v}</span>`; }
+
+function render(res) {
+  $('results').style.display = 'block';
+  const b = res.baseline, t = res.treatment;
+  const s = (o, part) => o && o.trades ? o[part] : null;
+  const rows = [
+    ['Trades (n)', o => o ? o.trades : 0, false],
+    ['Expectancy (R)', o => o ? o.expectancy : null, true],
+    ['Win rate (%)', o => o ? o.winRate : null, false],
+    ['Profit factor', o => o ? o.profitFactor : null, true],
+    ['Sharpe (ann.)', o => o ? `${o.sharpe}±${o.sharpeSE ?? '?'}` : null, false],
+    ['Max DD (R)', o => o ? o.maxDD : null, false],
+  ];
+  const col = (summ, part) => summ && summ.trades ? (part === 'full' ? summ.full : summ.OOS) : null;
+  let html = '';
+  for (const [label, get, colr] of rows) {
+    const bf = col(b, 'full'), bo = col(b, 'OOS'), tf = col(t, 'full'), to = col(t, 'OOS');
+    const c = (o) => { if (o == null) return '<td>—</td>'; const v = get(o); return `<td>${colr ? fmt(v, true) : v}</td>`; };
+    html += `<tr><td>${label}</td>${c(bf)}${c(bo)}${c(tf)}${c(to)}</tr>`;
+  }
+  $('tbody').innerHTML = html;
+
+  // verdict
+  const bE = b && b.trades ? b.OOS.expectancy : null, tE = t && t.trades ? t.OOS.expectancy : null;
+  const tN = t && t.trades ? t.OOS.trades : 0;
+  let v;
+  if (tE == null || bE == null) v = 'Insufficient trades to judge.';
+  else if (tE > 0 && tE > bE && tN >= 30) v = `✅ Treatment OOS expectancy ${tE}R > baseline ${bE}R AND > 0, with ${tN} OOS trades. Meets the pre-registered "worked" bar.`;
+  else if (tE > bE) v = `⚠️ Treatment beats baseline OOS (${tE}R vs ${bE}R) but ${tE > 0 ? 'thin sample' : 'still ≤ 0'} — reduces the bleed of a negative-expectancy rule, not proven edge.`;
+  else v = `❌ Treatment OOS ${tE}R does not beat baseline ${bE}R. Selection did not help. Null.`;
+  $('verdict').textContent = v;
+}
+
+let CACHE = null;
+async function run() {
+  $('run').disabled = true; $('status').textContent = 'starting…'; $('results').style.display = 'none';
+  const body = {
+    pair: $('pair').value, dateFrom: $('dateFrom').value, dateTo: $('dateTo').value,
+    direction: $('direction').value, topN: $('topN').value, minConfidence: $('minConfidence').value,
+    slMult: $('slMult').value, tpMode: $('tpMode').value, tpR: $('tpR').value, maxTradeMult: $('maxTradeMult').value,
+  };
+  const r = await fetch('/api/range-ext/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json());
+  if (!r.ok) { $('status').textContent = 'error: ' + r.error; $('run').disabled = false; return; }
+  const jobId = r.jobId;
+  const poll = async () => {
+    const s = await fetch('/api/range-ext/status/' + jobId).then(r => r.json());
+    if (s.status === 'running') {
+      $('status').textContent = `${s.arm || ''} ${s.currentPair || ''} ${s.pairsDone}/${s.pairsTotal || '?'} · ${s.elapsed}s`;
+      setTimeout(poll, 1500);
+    } else if (s.status === 'done') {
+      $('status').textContent = 'done'; CACHE = s; render(s); $('run').disabled = false;
+    } else { $('status').textContent = 'error: ' + s.error; $('run').disabled = false; }
+  };
+  poll();
+}
+$('run').addEventListener('click', run);
+
+// ── CSV exports (treatment trade log, 3 house schemas) ──
+const ACCT = 10000, RISK_FRAC = 0.01;
+async function exportCsv(kind) {
+  const d = await fetch('/api/range-ext/trades').then(r => r.json());
+  if (!d.ok) { alert(d.error); return; }
+  const T = d.trades;
+  let header, rows;
+  if (kind === 'pct') {
+    header = 'Instrument,Date,Return %,MAE %';
+    rows = T.map(t => { const riskPct = t.sl_dist_price / t.entry_price * 100; return `${t.instrument},${t.date},${(t.r * riskPct).toFixed(4)},${(t.mae_r * riskPct).toFixed(4)}`; });
+  } else if (kind === 'r') {
+    header = 'instrument,date,R,MAE (R)';
+    rows = T.map(t => `${t.instrument},${t.date},${t.r},${t.mae_r}`);
+  } else {
+    header = 'Instrument,Trade Date,PnL ($),Risk ($)';
+    const risk$ = ACCT * RISK_FRAC;
+    rows = T.map(t => `${t.instrument},${t.date},${(t.r * risk$).toFixed(2)},${risk$.toFixed(2)}`);
+  }
+  const blob = new Blob([header + '\n' + rows.join('\n') + '\n'], { type: 'text/csv' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `range_ext_${kind}.csv`; a.click();
+}
+document.querySelectorAll('[data-csv]').forEach(b => b.addEventListener('click', () => exportCsv(b.dataset.csv)));
+</script>
+</body>
+</html>
