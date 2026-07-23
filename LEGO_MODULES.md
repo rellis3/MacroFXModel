@@ -605,6 +605,33 @@ If a third consumer appears (or the QMR engine gets versioned out of `server.js`
 
 ---
 
+### 1z. Range-extension strategy + confidence brain (2026-07-23) — Asia extensions, conditioned
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Session ranges** | `js/sessionRanges.js` | canonical London-DST + Asia/Monday session-range helpers — `dayStartEpoch`, `londonOffsetHours`, `dowOf`, `isoDate`, `eachDate`, `buildAsiaSessions`, `buildMondayRanges`, `prevSession`, `mondayForDay`, `prevMonday`. Bodies via `barUtils.bodyRange` (closes, not wicks). Pure/synthetic-tested. **Extraction target:** the identical private copies still living in `rangeFibEngine.js` and `asiaRangeEngine.js` (flagged §2) — new code imports this; those two are the un-migrated copies to retire next. | `rangeExtEngine` ✅; **un-migrated copies:** `rangeFibEngine` 🔲, `asiaRangeEngine` 🔲 | 🟡 |
+| **Range-ext confidence brain** | `js/rangeExtConfidence.js` | the `score → choice` selector — `dayContext` (state → trendiness → fade/follow), `scoreLevel` (level confidence from multiple/alignment/regime-fit), `selectLevels` (top-N above floor), `DEFAULT_WEIGHTS`. Pure; every constant a prior, ablatable, none fit to trade outcomes. | `rangeExtEngine` ✅ | ✅ built |
+| **Range-ext engine** | `js/rangeExtEngine.js` | Asia range-extension backtest with the brain — `runPairRangeExt`, `runRangeExtBacktest`, `summarizeRangeExt` (IS/OOS), A/B (all-fade baseline vs brain). Imports the baseplate wholesale (`barUtils`, `fibProjection`, `sessionRanges`, `forecastCore.walkBars`, `dayTypeCore`, `indicatorCore.atrWilder`, `statsCore.rollingPercentile`, `metricsCore.summarizeTrades`, `instrumentRegistry`). Costs on; no-lookahead (state features use data < D). | `server.js` `/api/range-ext/*` → `range-ext-backtest.html`; tests `js/rangeExt.test.mjs` | ✅ built |
+
+> **What it found (10y × 26 FX + gold, M1, costed OOS — full write-up
+> `RANGE_EXTENSION_STRATEGY.md` / `RANGE_EXTENSION_FINDINGS.md`): NULL for
+> tradeable edge, with durable negative findings.** The base "trade every Asia
+> extension" fade loses everywhere (pooled −0.12 R, **0/26 pairs positive**),
+> extending the POI null. Three refutations: (1) the framework's **two-session
+> "alignment zones" HURT** (`align=none` +0.31 R vs aligned negative on top
+> picks); (2) **follow/breakout direction is harmful** (−0.31 R vs fade −0.15 R);
+> (3) base negative in every feature bucket. The confidence brain **works as a
+> ranker** — top-1/pair-day ≫ top-3 ≫ all, geometry-robust (+0.05 R OOS at flat
+> cost, t 7.3) — but under **realistic per-pair spreads** it falls to +0.017 R
+> (t 2.4, below the \|t\|>3 bar), and its survivors are exactly the wide-spread
+> crosses where the cost model is least reliable (majors flat-to-negative). So the
+> selector orders levels correctly; the raw method has **no edge to concentrate**.
+> Kept as a costed harness + the brain, ready to test the data-gated mechanistic
+> conditioners (OI/gamma walls, rate-spread, catalyst calendar) that the sandbox
+> can't source.
+
+---
+
 ### 1r. Trend-following v2 — forecast-σ sizing A/B + Sharpe honesty (2026-07-17)
 
 | Brick | File | Owns | Consumers | Status |
@@ -858,6 +885,14 @@ unifying them changes existing numbers, so adopt deliberately with an OOS re-run
    pnlHeld})` per instrument — the SAME bricks `rangeLineBotProducer` freezes —
    so telegram-v2 and the bot grade one edge, not two drifted copies of it. Detail:
    `TELEGRAM_V2.md`'s "v3 correction" note.
+10. **Session-range + London-DST helpers — 3rd copy now canonical.** The identical
+    `dayStartEpoch`/`_londonOffsetHours`/`_buildAsiaSessions`/`_buildMondayRanges`/
+    `_prevAsia`/`_mondayForDay` logic lives privately in **both** `rangeFibEngine.js`
+    and `asiaRangeEngine.js`. Extracted 2026-07-23 to `js/sessionRanges.js` (canonical,
+    unit-tested) and consumed by the new `rangeExtEngine.js`. The two old copies are
+    **not yet migrated** (asiaRangeEngine is production/range-line-bot path → highest
+    caution; rangeFibEngine has no test). Retire by pointing both at `sessionRanges`
+    with an equivalence check — behaviour must stay byte-identical.
 
 ---
 

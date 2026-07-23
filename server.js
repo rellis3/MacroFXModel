@@ -69,6 +69,7 @@ import { creditRegime as _creditRegime } from './js/creditHmm.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
+import { runRangeExtBacktest, summarizeRangeExt, RANGE_EXT_INSTRUMENTS } from './js/rangeExtEngine.js';
 import { bucketM1IntoSessions as _bucketM1IntoSessions } from './js/forecastAnalyser.js';
 import { recordsForPair, touchesForPair, extractTouches, runPerLine, costForPair, runRigor, runSensitivity, deflatedSharpe, eRatioByCell, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk, runConfluenceFilter, runVolSizing } from './js/rangeLineAnalyser.js';
 import { runLiquidityAB, runLiquidityABSuite } from './js/liquidityBacktestEngine.js';
@@ -13287,6 +13288,92 @@ app.get('/api/asia-range-backtest/trades', (_req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
+});
+
+// ── Range-Extension Strategy (Asia extensions + confidence brain) ─────────────
+// Levels = Asia session range extensions (fibProjection ladder). The brain
+// (rangeExtConfidence) ranks the day's levels on state (vol regime, day-type,
+// Asia-range wideness, two-session alignment, extension multiple) and trades the
+// top-N, choosing fade vs follow from state. Runs BOTH arms — baseline (every
+// level, fade) and treatment (brain) — and returns the A/B on OOS expectancy.
+// Engine: js/rangeExtEngine.js  •  spec: RANGE_EXTENSION_STRATEGY.md
+const RANGE_EXT_DATA_DIR = path.join(__dirname, 'VolRangeForecaster', 'data', 'range_ext');
+const rxJobs = new Map();
+function _purgeStaleRxJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of rxJobs) if (job.startedAt < cutoff) rxJobs.delete(id);
+}
+app.post('/api/range-ext/run', (req, res) => {
+  const b = req.body || {};
+  const opts = {
+    dateFrom: b.dateFrom || '', dateTo: b.dateTo || '',
+    topN: parseInt(b.topN) || 3,
+    minConfidence: b.minConfidence != null ? parseFloat(b.minConfidence) : 0.5,
+    direction: ['auto', 'fade', 'follow'].includes(b.direction) ? b.direction : 'auto',
+    slMult: parseFloat(b.slMult) || 0.75,
+    tpMode: b.tpMode === 'rr' ? 'rr' : 'structural',
+    tpR: parseFloat(b.tpR) || 1.5,
+    maxTradeMult: parseFloat(b.maxTradeMult) || 4.0,
+    tradeHourFrom: parseInt(b.tradeHourFrom) || 6,
+    tradeHourTo: parseInt(b.tradeHourTo) || 20,
+    sessionTz: b.sessionTz === 'london' ? 'london' : 'utc',
+  };
+  const pairsToRun = b.pair
+    ? [String(b.pair).toLowerCase()].filter(p => RANGE_EXT_INSTRUMENTS.includes(p))
+    : RANGE_EXT_INSTRUMENTS;
+  if (!pairsToRun.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${b.pair}` });
+
+  const jobId = `rx_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleRxJobs();
+  rxJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    try {
+      const prog = (arm) => ({ pair, i, total }) => {
+        const job = rxJobs.get(jobId);
+        if (job) rxJobs.set(jobId, { ...job, arm, currentPair: pair, pairsDone: i, pairsTotal: total });
+      };
+      const base = await runRangeExtBacktest({ ...opts, mode: 'all', onProgress: prog('baseline') }, pairsToRun);
+      const treat = await runRangeExtBacktest({ ...opts, mode: 'gated', onProgress: prog('treatment') }, pairsToRun);
+      const result = {
+        ok: true,
+        params: { ...opts, pairs: pairsToRun.length },
+        baseline: summarizeRangeExt(base.trades),
+        treatment: summarizeRangeExt(treat.trades),
+        log: { baseline: base.log, treatment: treat.log },
+      };
+      if (!fs.existsSync(RANGE_EXT_DATA_DIR)) fs.mkdirSync(RANGE_EXT_DATA_DIR, { recursive: true });
+      const ts = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 15);
+      fs.writeFileSync(path.join(RANGE_EXT_DATA_DIR, `range_ext_${ts}.json`),
+        JSON.stringify({ result, trades: treat.trades }, null, 0) + '\n');
+      rxJobs.set(jobId, { status: 'done', startedAt, result });
+    } catch (e) {
+      console.error('[range-ext/run]', e?.message, e?.stack ?? '');
+      rxJobs.set(jobId, { status: 'error', error: e?.message || String(e), startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+app.get('/api/range-ext/status/:jobId', (req, res) => {
+  const job = rxJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running',
+    elapsed: Math.round((Date.now() - job.startedAt) / 1000),
+    arm: job.arm ?? null, currentPair: job.currentPair ?? null,
+    pairsDone: job.pairsDone ?? 0, pairsTotal: job.pairsTotal ?? null });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+app.get('/api/range-ext/trades', (_req, res) => {
+  try {
+    if (!fs.existsSync(RANGE_EXT_DATA_DIR)) return res.json({ ok: false, error: 'No range-ext results yet — run a backtest first' });
+    const files = fs.readdirSync(RANGE_EXT_DATA_DIR).filter(f => f.startsWith('range_ext_') && f.endsWith('.json')).sort().reverse();
+    if (!files.length) return res.json({ ok: false, error: 'No range-ext results yet — run a backtest first' });
+    const data = JSON.parse(fs.readFileSync(path.join(RANGE_EXT_DATA_DIR, files[0]), 'utf8'));
+    res.json({ ok: true, trades: data.trades || [], file: files[0] });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ── Range-Line Strategy (Forecast-Level per-line policy on range levels) ──────
