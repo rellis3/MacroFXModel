@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>ColezTrades POI-Reaction Backtester</title>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root{--bg:#0e1117;--panel:#161b22;--panel2:#1c232c;--bd:#2b333d;--fg:#c9d1d9;--mut:#8b949e;
+        --up:#26a69a;--dn:#ef5350;--acc:#58a6ff;--gold:#e3b341}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif}
+  header{padding:16px 22px;border-bottom:1px solid var(--bd);background:linear-gradient(180deg,#12171e,#0e1117)}
+  h1{margin:0;font-size:19px}
+  .sub{color:var(--mut);font-size:12.5px;margin-top:3px;max-width:900px}
+  .wrap{display:grid;grid-template-columns:320px 1fr;gap:0;min-height:calc(100vh - 64px)}
+  .cfg{border-right:1px solid var(--bd);padding:16px;background:var(--panel);overflow:auto}
+  .main{padding:18px 22px;overflow:auto}
+  .grp{margin-bottom:15px}
+  .grp>label{display:block;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--mut);margin-bottom:6px}
+  select,input{width:100%;background:var(--panel2);border:1px solid var(--bd);color:var(--fg);border-radius:6px;padding:6px 8px;font-size:13px}
+  input[type=checkbox]{width:auto}
+  .row{display:flex;gap:8px}.row>*{flex:1}
+  .chk{display:flex;flex-wrap:wrap;gap:5px}
+  .chk label{display:flex;align-items:center;gap:4px;background:var(--panel2);border:1px solid var(--bd);border-radius:5px;padding:3px 7px;font-size:12px;cursor:pointer}
+  .chk label.on{border-color:var(--acc);color:#fff;background:#1b2b40}
+  button{cursor:pointer;border:1px solid var(--bd);background:var(--panel2);color:var(--fg);border-radius:6px;padding:7px 12px;font-size:13px}
+  button.primary{background:var(--acc);border-color:var(--acc);color:#04121f;font-weight:600;width:100%;padding:10px;font-size:14px}
+  button:hover{filter:brightness(1.12)}
+  button.mini{padding:4px 8px;font-size:12px}
+  .hint{color:var(--mut);font-size:11px;margin-top:4px}
+  .cards{display:flex;flex-wrap:wrap;gap:10px;margin:6px 0 18px}
+  .card{background:var(--panel);border:1px solid var(--bd);border-radius:9px;padding:12px 14px;min-width:120px}
+  .card .k{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+  .card .v{font-size:22px;font-weight:650;margin-top:2px}
+  .pos{color:var(--up)}.neg{color:var(--dn)}
+  table{border-collapse:collapse;width:100%;font-size:12.5px}
+  th,td{padding:5px 8px;border-bottom:1px solid var(--bd);text-align:right;white-space:nowrap}
+  th{color:var(--mut);font-weight:600;text-align:right;position:sticky;top:0;background:var(--panel)}
+  th:first-child,td:first-child{text-align:left}
+  tr:hover td{background:#141a22}
+  .sec{margin:22px 0 8px;font-size:15px;font-weight:600;border-left:3px solid var(--acc);padding-left:9px}
+  .panel{background:var(--panel);border:1px solid var(--bd);border-radius:10px;padding:14px}
+  canvas{display:block;width:100%}
+  #chart{height:420px;width:100%}
+  .muted{color:var(--mut);font-size:12px}
+  .flag{background:#2d2410;border:1px solid #5c4a12;color:#e3c766;border-radius:7px;padding:9px 12px;font-size:12.5px;margin:10px 0}
+  .busy{display:none;align-items:center;gap:10px;color:var(--acc)}
+  .spin{width:15px;height:15px;border:2px solid #2b333d;border-top-color:var(--acc);border-radius:50%;animation:s .8s linear infinite}
+  @keyframes s{to{transform:rotate(360deg)}}
+  .tabs{display:flex;gap:6px;margin-bottom:8px}
+  .tabs button.on{border-color:var(--acc);color:#fff}
+  a{color:var(--acc)}
+</style>
+</head>
+<body>
+<header>
+  <h1>ColezTrades POI-Reaction Backtester <span class="muted" style="font-size:13px">· 26 FX pairs · 2016–2026 M1</span></h1>
+  <div class="sub">Mechanised ColezTrades: level-confluence <b>Points of Interest</b> → fade or break, with an optional <b>VuManChu</b> confirmation gate. Config it, run it, read the honest IS/OOS card. Costs on; true out-of-sample split. Engine <code>js/poiReactionV1Engine.js</code> · <a href="education/coleztrades_poi_backtest/COLEZTRADES_POI_BACKTEST.md">findings</a>.</div>
+</header>
+<div class="wrap">
+  <!-- ── Config panel ─────────────────────────────────────────── -->
+  <div class="cfg">
+    <div class="grp">
+      <label>Pairs <button class="mini" id="pAll" style="float:right">all 26</button><button class="mini" id="pMaj" style="float:right;margin-right:5px">majors</button></label>
+      <div class="chk" id="pairs"></div>
+    </div>
+    <div class="grp">
+      <label>Level sources (POIs built from confluence of these)</label>
+      <div class="chk" id="sources"></div>
+    </div>
+    <div class="grp">
+      <label>Order mode (Stage 4)</label>
+      <select id="orderMode">
+        <option value="fade">Fade the POI (reversion) — default</option>
+        <option value="breakout">Break through the POI (follow)</option>
+        <option value="selector">Selector: trend-day T decides fade vs follow</option>
+      </select>
+      <div class="hint" id="selHint" style="display:none">Fade when T &lt; <span id="tv">0.35</span> (range day); else follow.</div>
+    </div>
+    <div class="grp">
+      <label>VuManChu confirmation gate (Stage 3)</label>
+      <select id="gate">
+        <option value="0">Off — levels only</option>
+        <option value="1">On · any 1 of 3 signals</option>
+        <option value="2">On · ≥2 of 3 (ideal)</option>
+        <option value="3">On · all 3</option>
+      </select>
+      <div class="hint">WaveTrend divergence + VWAP + Money-Flow, read strictly before the touch.</div>
+    </div>
+    <div class="grp"><label>Confluence & zone</label>
+      <div class="row">
+        <div><input id="minConfluence" type="number" min="1" max="6" step="1" value="2"><div class="hint">min sources</div></div>
+        <div><input id="tolerancePips" type="number" min="1" step="1" value="8"><div class="hint">cluster pips</div></div>
+      </div>
+    </div>
+    <div class="grp"><label>Risk</label>
+      <div class="row">
+        <div><input id="slAtrMult" type="number" step="0.1" value="0.5"><div class="hint">stop = ×ATR</div></div>
+        <div><input id="rr" type="number" step="0.1" value="1.0"><div class="hint">reward:risk</div></div>
+      </div>
+    </div>
+    <div class="grp"><label>Execution</label>
+      <div class="row">
+        <div><select id="entryTfMin"><option>5</option><option selected>15</option><option>30</option><option>60</option></select><div class="hint">entry TF (min)</div></div>
+        <div><input id="costPct" type="number" step="0.001" value="0.012"><div class="hint">cost % / trade</div></div>
+      </div>
+    </div>
+    <div class="grp"><label>Out-of-sample fraction</label>
+      <input id="oosFrac" type="number" min="0.1" max="0.6" step="0.05" value="0.4">
+    </div>
+    <div class="grp"><label>Sample pair (for the trade chart)</label>
+      <select id="samplePair"></select>
+    </div>
+    <button class="primary" id="run">▶ Run backtest</button>
+    <div class="busy" id="busy" style="margin-top:10px"><div class="spin"></div><span id="busyTxt">running…</span></div>
+    <div class="hint" id="err" style="color:var(--dn);margin-top:8px"></div>
+  </div>
+
+  <!-- ── Results ─────────────────────────────────────────────── -->
+  <div class="main">
+    <div id="empty" class="muted" style="margin-top:40px;text-align:center">Configure on the left and hit <b>Run backtest</b>. Default = the levels-only baseline (Stage 1–2). A full 26-pair gated run can take a few minutes; the majors are quick.</div>
+    <div id="out" style="display:none">
+      <div id="verdict" class="flag"></div>
+      <div class="sec">Pooled result — after costs, out-of-sample</div>
+      <div class="cards" id="cards"></div>
+
+      <div class="sec">Portfolio equity (cumulative % return, all selected pairs)</div>
+      <div class="panel"><canvas id="equity" height="220"></canvas></div>
+
+      <div class="sec">Per-pair Sharpe — full vs out-of-sample</div>
+      <div class="panel"><canvas id="bars" height="230"></canvas></div>
+
+      <div class="sec">Per-pair table
+        <span style="float:right;font-weight:400">
+          <button class="mini" id="csv1">CSV · % returns</button>
+          <button class="mini" id="csv2">CSV · R-multiples</button>
+          <button class="mini" id="csv3">CSV · $ P&amp;L</button>
+        </span>
+      </div>
+      <div class="hint" style="margin:-2px 0 8px">CSV exports = the <b id="csvPair"></b> trade log (the sample pair shown below). Account £10,000, risk 1% (£100) per trade; R-unit = the per-trade ATR stop (varies), so R ≠ % return. MAE from the real M1 path.</div>
+      <div class="panel" style="max-height:340px;overflow:auto"><table id="tbl"></table></div>
+
+      <div class="sec">Trade proof — <span id="chartPair"></span> daily candles, POI zones (gold) & entries (▲ buy / ▼ sell, green win / red loss)</div>
+      <div class="panel"><div id="chart"></div><div class="muted" id="chartNote" style="margin-top:6px"></div></div>
+    </div>
+  </div>
+</div>
+<script>
+const ALL_PAIRS=['eurusd','gbpusd','audusd','nzdusd','usdcad','usdchf','usdjpy','eurjpy','gbpjpy','audjpy','cadjpy','chfjpy','nzdjpy','eurgbp','euraud','eurcad','eurchf','eurnzd','audnzd','audcad','audchf','gbpaud','gbpcad','gbpchf','gbpnzd','gold'];
+const MAJORS=['eurusd','gbpusd','audusd','usdcad','usdchf','usdjpy','eurjpy','gbpjpy','nzdusd','gold'];
+const SOURCES=['daily_open','prior_hilo','pivots','swing_sr','swing_fib','volume_profile','round_number','vwap'];
+const SRC_ON=['daily_open','prior_hilo','pivots','swing_sr','swing_fib','volume_profile','round_number'];
+const $=id=>document.getElementById(id);
+const fmt=(v,d=3)=>v==null?'—':(+v).toFixed(d);
+const cls=v=>v==null?'':(v>0?'pos':(v<0?'neg':''));
+
+// build pair + source chips
+function chips(host, items, on){ host.innerHTML=''; items.forEach(p=>{
+  const l=document.createElement('label'); const c=document.createElement('input'); c.type='checkbox'; c.value=p; c.checked=on.includes(p);
+  if(c.checked)l.classList.add('on'); c.onchange=()=>{l.classList.toggle('on',c.checked); if(host===$('pairs'))syncSample();};
+  l.appendChild(c); l.appendChild(document.createTextNode(' '+p.toUpperCase())); host.appendChild(l); }); }
+chips($('pairs'),ALL_PAIRS,MAJORS); chips($('sources'),SOURCES,SRC_ON);
+const checked=host=>[...host.querySelectorAll('input:checked')].map(c=>c.value);
+$('pAll').onclick=()=>{chips($('pairs'),ALL_PAIRS,ALL_PAIRS);syncSample()};
+$('pMaj').onclick=()=>{chips($('pairs'),ALL_PAIRS,MAJORS);syncSample()};
+function syncSample(){ const ps=checked($('pairs')); const s=$('samplePair'); const cur=s.value;
+  s.innerHTML=ps.map(p=>`<option>${p}</option>`).join(''); if(ps.includes(cur))s.value=cur; }
+syncSample();
+$('orderMode').onchange=e=>$('selHint').style.display=e.target.value==='selector'?'block':'none';
+
+let LAST=null;
+$('run').onclick=async()=>{
+  const pairs=checked($('pairs')); const sources=checked($('sources'));
+  if(!pairs.length){$('err').textContent='pick at least one pair';return;}
+  if(!sources.length){$('err').textContent='pick at least one level source';return;}
+  $('err').textContent=''; $('busy').style.display='flex'; $('busyTxt').textContent='submitting…'; $('run').disabled=true;
+  const body={pairs,sources,orderMode:$('orderMode').value,gate:$('gate').value!=='0',gateMinSignals:+$('gate').value||1,
+    minConfluence:+$('minConfluence').value,tolerancePips:+$('tolerancePips').value,slAtrMult:+$('slAtrMult').value,rr:+$('rr').value,
+    entryTfMin:+$('entryTfMin').value,costPct:+$('costPct').value,oosFrac:+$('oosFrac').value,samplePair:$('samplePair').value};
+  try{
+    const j=await (await fetch('/api/poi-reaction/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
+    if(!j.ok)throw new Error(j.error||'run failed');
+    const jobId=j.jobId;
+    while(true){ await new Promise(r=>setTimeout(r,2500));
+      const s=await (await fetch('/api/poi-reaction/status/'+jobId)).json();
+      if(s.status==='running'){$('busyTxt').textContent=`running… ${s.pairsDone||0}/${s.pairsTotal||pairs.length} pairs (${s.elapsed||0}s)`;continue;}
+      if(s.status==='done'){LAST=s;render(s);break;}
+      throw new Error(s.error||'engine error');
+    }
+  }catch(e){$('err').textContent=e.message;}
+  finally{$('busy').style.display='none';$('run').disabled=false;}
+};
+
+function render(s){
+  $('empty').style.display='none'; $('out').style.display='block';
+  const p=s.pooled, oos=p.oos, full=p.full;
+  // verdict line
+  const edge = oos.sharpe>0 && oos.expectancy>0 && (oos.trades||0)>=30;
+  $('verdict').innerHTML = `<b>Pooled OOS:</b> Sharpe ${fmt(oos.sharpe)} · expectancy ${fmt(oos.expectancy,4)} R/trade · win ${fmt(oos.winRate,1)}% · ${oos.trades||0} OOS trades. `
+    + (edge? 'Positive OOS after costs — worth a closer look (check per-pair consistency & trade count).'
+           : 'No positive after-cost OOS edge here — the strategy does not beat its costs on unseen data. Buy-&-hold mean Sharpe '+fmt(s.bhSharpeMean)+'.');
+  // metric cards
+  const card=(k,v,c='')=>`<div class="card"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`;
+  $('cards').innerHTML =
+    card('OOS Sharpe',fmt(oos.sharpe),cls(oos.sharpe))+
+    card('OOS expectancy',fmt(oos.expectancy,4)+' R',cls(oos.expectancy))+
+    card('OOS win rate',fmt(oos.winRate,1)+'%')+
+    card('Full Sharpe',fmt(full.sharpe),cls(full.sharpe))+
+    card('Profit factor',fmt(full.profitFactor,2),cls((full.profitFactor||1)-1))+
+    card('Max DD',fmt(full.maxDD,1)+'%',cls(full.maxDD))+
+    card('Trades',s.totalTrades)+
+    card('Skew / kurt',fmt(full.skew,2)+' / '+fmt(full.excessKurt,2));
+  drawEquity(s); drawBars(s); drawTable(s); drawChart(s);
+  $('csvPair').textContent=(s.sample.pair||'').toUpperCase();
+}
+
+// ── equity curve (canvas) ──
+function drawEquity(s){
+  const cv=$('equity'), ctx=cv.getContext('2d'); const W=cv.width=cv.clientWidth, H=cv.height;
+  ctx.clearRect(0,0,W,H); const d=s.equity; if(!d||!d.length)return;
+  const xs=d.map((_,i)=>i), ys=d.map(e=>e.cum);
+  const mn=Math.min(0,...ys), mx=Math.max(0,...ys); const pad=28;
+  const X=i=>pad+(W-pad-8)*i/(d.length-1), Y=v=>H-pad-(H-pad-8)*(v-mn)/((mx-mn)||1);
+  // zero line
+  ctx.strokeStyle='#2b333d';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pad,Y(0));ctx.lineTo(W-8,Y(0));ctx.stroke();
+  // OOS split
+  const si=d.findIndex(e=>e.date>=s.splitDate);
+  if(si>0){ctx.strokeStyle='#e3b341';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(X(si),8);ctx.lineTo(X(si),H-pad);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#e3b341';ctx.font='11px sans-serif';ctx.fillText('OOS →',X(si)+4,18);}
+  // curve
+  ctx.strokeStyle='#58a6ff';ctx.lineWidth=1.4;ctx.beginPath();d.forEach((e,i)=>{const x=X(i),y=Y(e.cum);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();
+  ctx.fillStyle='#8b949e';ctx.font='11px sans-serif';ctx.fillText(fmt(mx,0)+'%',2,Y(mx)+4);ctx.fillText(fmt(mn,0)+'%',2,Y(mn));
+}
+// ── per-pair Sharpe bars (canvas) ──
+function drawBars(s){
+  const cv=$('bars'), ctx=cv.getContext('2d'); const W=cv.width=cv.clientWidth, H=cv.height; ctx.clearRect(0,0,W,H);
+  const rows=s.perPair.filter(r=>r.full).sort((a,b)=>a.full.sharpe-b.full.sharpe);
+  if(!rows.length)return; const n=rows.length; const pad=22, bw=(W-pad-8)/n;
+  const vals=rows.flatMap(r=>[r.full.sharpe,r.oos.sharpe]); const mx=Math.max(0.3,...vals.map(Math.abs));
+  const Y=v=>H/2-(H/2-14)*v/mx;
+  ctx.strokeStyle='#2b333d';ctx.beginPath();ctx.moveTo(pad,H/2);ctx.lineTo(W-8,H/2);ctx.stroke();
+  rows.forEach((r,i)=>{const x=pad+bw*i;
+    const f=r.full.sharpe,o=r.oos.sharpe;
+    ctx.fillStyle=f>0?'#26a69a':'#ef5350';ctx.fillRect(x+bw*0.12,Math.min(H/2,Y(f)),bw*0.36,Math.abs(Y(f)-H/2));
+    ctx.fillStyle=o>0?'#2ea043':'#f85149';ctx.globalAlpha=.6;ctx.fillRect(x+bw*0.52,Math.min(H/2,Y(o)),bw*0.36,Math.abs(Y(o)-H/2));ctx.globalAlpha=1;
+    ctx.save();ctx.translate(x+bw*0.5,H-6);ctx.rotate(-Math.PI/3);ctx.fillStyle='#8b949e';ctx.font='9px sans-serif';ctx.fillText(r.pair,0,0);ctx.restore();});
+  ctx.fillStyle='#8b949e';ctx.font='11px sans-serif';ctx.fillText('full ■  oos ■',W-90,12);
+}
+// ── per-pair table ──
+function drawTable(s){
+  const cols=[['pair','pair'],['n','nTrades'],['full Sh','full.sharpe'],['full win%','full.winRate'],['full PF','full.profitFactor'],['full exp R','full.expectancy'],['IS Sh','is.sharpe'],['OOS Sh','oos.sharpe'],['OOS n','oos.trades']];
+  const get=(r,path)=>path.split('.').reduce((o,k)=>o==null?null:o[k],r);
+  let h='<tr>'+cols.map(c=>`<th>${c[0]}</th>`).join('')+'</tr>';
+  for(const r of s.perPair){ if(r.error){h+=`<tr><td>${r.pair}</td><td colspan="8" style="color:#8b949e;text-align:left">${r.error}</td></tr>`;continue;}
+    h+='<tr>'+cols.map(c=>{const v=get(r,c[1]);
+      if(c[1]==='pair')return `<td>${(v||'').toUpperCase()}</td>`;
+      if(c[1]==='nTrades'||c[1]==='oos.trades')return `<td>${v??''}</td>`;
+      const num=typeof v==='number'?v:null; const d=c[1].includes('win')?1:(c[1].includes('exp')?4:(c[1].includes('PF')?2:3));
+      return `<td class="${cls(c[1].includes('win')?null:num)}">${num==null?'—':num.toFixed(d)}</td>`;}).join('')+'</tr>';}
+  $('tbl').innerHTML=h;
+}
+// ── trade proof chart (lightweight-charts) ──
+let chart, cSeries;
+function drawChart(s){
+  const el=$('chart'); el.innerHTML='';
+  const sm=s.sample; if(!sm||!sm.daily||!sm.daily.length){$('chartNote').textContent='no sample data';return;}
+  $('chartPair').textContent=(sm.pair||'').toUpperCase();
+  if(typeof LightweightCharts==='undefined'){el.innerHTML='<div class="muted" style="padding:30px;text-align:center">chart library unavailable (offline) — candles render when the page is served online</div>';return;}
+  chart=LightweightCharts.createChart(el,{height:420,layout:{background:{color:'#0e1117'},textColor:'#c9d1d9'},
+    grid:{vertLines:{color:'#161b22'},horzLines:{color:'#161b22'}},timeScale:{timeVisible:false,borderColor:'#2b333d'},
+    rightPriceScale:{borderColor:'#2b333d'}});
+  cSeries=chart.addCandlestickSeries({upColor:'#26a69a',downColor:'#ef5350',wickUpColor:'#26a69a',wickDownColor:'#ef5350',borderVisible:false});
+  cSeries.setData(sm.daily.map(b=>({time:b.t,open:b.o,high:b.h,low:b.l,close:b.c})));
+  // markers for trades (cap for readability)
+  const tr=sm.trades||[]; const show=tr.length>400?tr.slice(-400):tr;
+  const mk=show.map(t=>{const ts=Math.floor(new Date(t.date+'T00:00:00Z').getTime()/1000);
+    const buy=t.side==='BUY'; const win=t.outcome==='win';
+    return {time:ts,position:buy?'belowBar':'aboveBar',shape:buy?'arrowUp':'arrowDown',
+      color:win?'#26a69a':'#ef5350',text:t.R>0?('+'+t.R):(''+t.R)};});
+  mk.sort((a,b)=>a.time-b.time); cSeries.setMarkers(mk);
+  // POI zone price lines for the last few trades (avoid clutter)
+  show.slice(-12).forEach(t=>cSeries.createPriceLine({price:t.zonePrice,color:'#e3b341',lineWidth:1,lineStyle:2,axisLabelVisible:false}));
+  chart.timeScale().fitContent();
+  const wins=tr.filter(t=>t.outcome==='win').length;
+  $('chartNote').textContent=`${tr.length} trades on ${(sm.pair||'').toUpperCase()} · ${wins} wins (${(100*wins/(tr.length||1)).toFixed(0)}%) · showing last ${show.length} markers. Gold dashed = recent POI confluence zones.`;
+}
+
+// CSV exports (sample pair trade log, 3 house schemas)
+function dl(name, rows){
+  const b = new Blob([rows.join('\n') + '\n'], {type:'text/csv'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name; a.click();
+}
+function exportCsv(tag, header, rowFn){
+  const t = (LAST && LAST.sample && LAST.sample.trades) || [];
+  if (!t.length) return;
+  const rows = [header];
+  for (const x of t) rows.push(rowFn(x));
+  dl('poi_' + LAST.sample.pair + '_' + tag + '.csv', rows);
+}
+$('csv1').onclick = () => exportCsv('pct', 'Instrument,Date,Return %,MAE %', x => x.instrument + ',' + x.date + ',' + x.netPct + ',' + x.maePct);
+$('csv2').onclick = () => exportCsv('R', 'instrument,date,R,MAE (R)', x => x.instrument + ',' + x.date + ',' + x.R + ',' + x.maeR);
+$('csv3').onclick = () => exportCsv('pnl', 'Instrument,Trade Date,PnL ($),Risk ($)', x => x.instrument + ',' + x.date + ',' + x.pnlCcy + ',' + x.riskCcy);
+</script>
+</body>
+</html>

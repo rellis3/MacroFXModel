@@ -12,10 +12,12 @@
  *      level)  →  the shared fill primitive `walkBars` (js/forecastCore.js),
  *      with an honest intrabar SL-first / TP resolution and no lookahead.
  *
- * This is **Stage 1–2** of the build plan: the zero-parameter POI touch plus the
- * confluence selector (`minConfluence`). The VuManChu confirmation gate (Stage 3)
- * is deliberately NOT here yet — Stage 1 establishes the baseline the gate must
- * beat. Costs are ON by default.
+ * All build-plan stages live here, selected by config (defaults = Stage 1–2 so
+ * the baseline is byte-identical):
+ *   Stage 1–2  levels + confluence POI fade           (default)
+ *   Stage 3    VuManChu confirmation gate             (`gate:true`, m-of-3)
+ *   Stage 4    order mode fade / breakout / selector  (`orderMode`, trend-day T)
+ * Costs are ON by default.
  *
  * Contract (pure; no network, no DOM):
  *   runPoiReaction(packed, cfg) → { trades[], records[], meta }
@@ -31,6 +33,9 @@ import { extractBars, resampleTo } from './barUtils.js';
 import { collectLevels, clusterLevels } from './levelSources.js';
 import { walkBars } from './forecastCore.js';
 import { pipSize, assetClass as assetClassOf } from './instrumentRegistry.js';
+// Stage-4 fade-vs-follow selector — the trend-day-ness score T (drift÷diffusion),
+// reused from the shared brick (never re-derived).
+import { dayTypeScore } from './dayTypeCore.js';
 // Stage-3 VuManChu confirmation gate — reuse the shared bricks (Lego Principle:
 // one WaveTrend/Money-Flow/VWAP compute + one divergence reader, never re-inlined).
 import { computeWaveTrend, computeMoneyFlow, computeVWAP } from './vumanchuCore.js';
@@ -79,6 +84,17 @@ export const DEFAULT_CFG = {
   gateDivReach: 2,       // fractal reach for WaveTrend pivots (VuManChu 5-bar = 2)
   gateDivWindow: 6,      // divergence is "fresh" if its recent pivot is ≤ this back
   gateSlope: 3,          // bars back used to read VWAP/Money-Flow slope toward zero
+
+  // ── Stage-4 order mode ──────────────────────────────────────────────────────
+  // 'fade'     — limit at the POI, target the reversion away from it (Stage 1–3).
+  // 'breakout' — false-breakout FOLLOW: a stop THROUGH the POI in the approach
+  //              direction, target the continuation (deck's stop-order idea).
+  // 'selector' — per-day, use the trend-day score T (dayTypeScore, no lookahead):
+  //              T < selectorFadeMax → fade (range day); else → breakout (trend day).
+  orderMode: 'fade',
+  selectorFadeMax: 0.35, // T below this ⇒ fade; at/above ⇒ follow (selector mode)
+  selectorWin: 14,       // window for the trend-day score
+  breakoutSlipFrac: 0.05,// stop-entry slippage as a fraction of the stop distance
 };
 
 // Evaluate the VuManChu gate at the touch bar (the LAST bar of `gateBars`).
@@ -195,6 +211,7 @@ export function runPoiReaction(packed, cfg = {}) {
 
   const daily = buildDaily(packed);
   if (daily.length < c.warmupDays + 5) return { trades: [], records: [], meta: { instrument, days: daily.length, note: 'insufficient history' } };
+  const dailyCloses = daily.map(d => d.close);   // for the Stage-4 trend-day selector
 
   const trades = [];
   const records = [];
@@ -240,10 +257,32 @@ export function runPoiReaction(packed, cfg = {}) {
     }
     if (!zone) continue;
 
-    const isBuy = zone.price < dayOpen;
-    const entry = zone.price;
-    const sl = isBuy ? entry - stopDist : entry + stopDist;
-    const tp = isBuy ? entry + c.rr * stopDist : entry - c.rr * stopDist;
+    // Stage-4 order mode. 'selector' picks fade vs breakout from the trend-day
+    // score T (no lookahead — uses daily closes < di). Range day → fade the POI;
+    // trend day → follow the break through it.
+    let mode = c.orderMode, T = null;
+    if (mode === 'selector') {
+      T = dayTypeScore(dailyCloses, di, c.selectorWin);
+      mode = (T != null && T < c.selectorFadeMax) ? 'fade' : 'breakout';
+    }
+
+    let isBuy, entry, sl, tp, entryType;
+    if (mode === 'breakout') {
+      // False-breakout FOLLOW: a stop THROUGH the zone in the approach direction.
+      isBuy = zone.price > dayOpen;                    // rising into the zone → break up
+      entryType = 'stop';
+      const slip = stopDist * c.breakoutSlipFrac;      // stop-entry slippage
+      entry = isBuy ? zone.price + slip : zone.price - slip;
+      sl = isBuy ? entry - stopDist : entry + stopDist;
+      tp = isBuy ? entry + c.rr * stopDist : entry - c.rr * stopDist;
+    } else {
+      // FADE (Stage 1–3): limit at the POI, target the reversion away from it.
+      isBuy = zone.price < dayOpen;                    // buy support / sell resistance
+      entryType = 'limit';
+      entry = zone.price;
+      sl = isBuy ? entry - stopDist : entry + stopDist;
+      tp = isBuy ? entry + c.rr * stopDist : entry - c.rr * stopDist;
+    }
 
     // Stage-3 gate (opt-in): find the first touch of the zone, evaluate the
     // VuManChu confirmation there, and skip the trade if it doesn't confirm.
@@ -258,16 +297,19 @@ export function runPoiReaction(packed, cfg = {}) {
       if (touchIdx < 0) continue;                       // zone never reached today
       const touchTime = entryBars[touchIdx].time;
       // Gate reads ONLY bars fully completed BEFORE the touch bar (toEpoch =
-      // touchTime excludes the touch bucket). The limit fills mid-bar, so the
+      // touchTime excludes the touch bucket). The order fills mid/next-bar, so the
       // touch bar's own close is not yet known at entry — including it would be
       // an intrabar peek. Confirmation is judged on the approach, as a trader would.
       const gateBars = resampleVol(packed, touchTime - c.gateLookbackDays * DAY, touchTime, c.entryTfMin);
+      // For a breakout the confirmation should read as a FOLLOW (momentum), so
+      // pass the opposite side to the reversal-divergence check via isBuy as-is;
+      // the gate still measures VWAP/MF alignment with the trade direction.
       gateInfo = evalGate(gateBars, isBuy, c);
       if (!gateInfo.pass) continue;                     // VuManChu did not confirm
       barsForFill = entryBars.slice(touchIdx);
     }
 
-    const r = walkBars(barsForFill, entry, tp, sl, isBuy, 'limit', dayOpen);
+    const r = walkBars(barsForFill, entry, tp, sl, isBuy, entryType, dayOpen);
     if (!r || !r.filled) continue;
 
     const grossPct = r.pnlPct;
@@ -297,6 +339,7 @@ export function runPoiReaction(packed, cfg = {}) {
       gateDiv: gateInfo ? gateInfo.divSig : null,
       gateVwap: gateInfo ? gateInfo.vwapSig : null,
       gateMf: gateInfo ? gateInfo.mfSig : null,
+      mode, entryType, T: T == null ? null : +T.toFixed(3),
     });
   }
 

@@ -9640,6 +9640,141 @@ app.get('/api/vwap-reversion/status/:jobId', (req, res) => {
   return res.status(500).json({ ok: false, status: 'error', error: job.error });
 });
 
+// ── ColezTrades POI-Reaction backtest (interactive, all stages) ──────────────
+// Mechanised ColezTrades strategy: level-confluence POIs faded/broken with an
+// optional VuManChu gate + fade/breakout/selector order mode. Config-driven,
+// runs across the requested pairs on real M1, true IS/OOS split, costs ON.
+// Engine (js/poiReactionV1Engine.js) is pure; M1 loaded here. Async-job pattern.
+const poiJobs = new Map();
+function _purgeStalePoiJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, j] of poiJobs) if (j.startedAt < cutoff) poiJobs.delete(id);
+}
+const POI_ALL_PAIRS = ['eurusd','gbpusd','audusd','nzdusd','usdcad','usdchf','usdjpy','eurjpy','gbpjpy','audjpy','cadjpy','chfjpy','nzdjpy','eurgbp','euraud','eurcad','eurchf','eurnzd','audnzd','audcad','audchf','gbpaud','gbpcad','gbpchf','gbpnzd','gold'];
+const POI_DEFAULT_PAIRS = ['eurusd','gbpusd','audusd','usdcad','usdchf','usdjpy','eurjpy','gbpjpy','nzdusd','gold'];
+
+app.post('/api/poi-reaction/run', express.json({ limit: '256kb' }), (req, res) => {
+  const b = req.body ?? {};
+  const num = (v, d) => (v === undefined || v === '' || isNaN(+v) ? d : +v);
+  const cfg = {
+    sources: Array.isArray(b.sources) && b.sources.length ? b.sources : undefined,   // engine default if unset
+    entryTfMin:    num(b.entryTfMin, 15),
+    tolerancePips: num(b.tolerancePips, 8),
+    minConfluence: Math.max(1, Math.round(num(b.minConfluence, 2))),
+    slAtrMult:     num(b.slAtrMult, 0.5),
+    rr:            num(b.rr, 1.0),
+    oosFrac:       Math.min(Math.max(num(b.oosFrac, 0.4), 0.1), 0.6),
+    gate:          b.gate === true || b.gate === 'true',
+    gateMinSignals: Math.min(3, Math.max(1, Math.round(num(b.gateMinSignals, 1)))),
+    orderMode:     ['fade','breakout','selector'].includes(b.orderMode) ? b.orderMode : 'fade',
+    selectorFadeMax: num(b.selectorFadeMax, 0.35),
+  };
+  if (b.costPct !== undefined && b.costPct !== '') cfg.costPct = num(b.costPct, undefined);
+  // strip undefined so engine defaults apply
+  Object.keys(cfg).forEach(k => cfg[k] === undefined && delete cfg[k]);
+
+  let pairs = Array.isArray(b.pairs) && b.pairs.length
+    ? b.pairs.map(p => String(p).toLowerCase().replace('/', '')).filter(p => POI_ALL_PAIRS.includes(p))
+    : POI_DEFAULT_PAIRS;
+  if (!pairs.length) pairs = POI_DEFAULT_PAIRS;
+  const samplePair = pairs.includes(String(b.samplePair||'').toLowerCase()) ? String(b.samplePair).toLowerCase() : pairs[0];
+
+  const jobId = `poi_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStalePoiJobs();
+  poiJobs.set(jobId, { status: 'running', startedAt, pairsTotal: pairs.length, pairsDone: 0 });
+
+  (async () => {
+    try {
+      const { runPoiReaction } = await import('./js/poiReactionV1Engine.js');
+      const { summarizeTrades, sortinoRatio } = await import('./js/metricsCore.js');
+      const enrich = (recs) => {
+        const p = recs.map(r => r.pnl_pct), d = recs.map(r => r.date);
+        if (!p.length) return { trades: 0 };
+        const s = summarizeTrades(p, d); s.sortino = +sortinoRatio(p).toFixed(3); return s;
+      };
+      const splitOf = (recs, oosFrac) => {
+        const sorted = recs.slice().sort((a, z) => a.date < z.date ? -1 : 1);
+        if (!sorted.length) return { splitDate: null, is: [], oos: [] };
+        const cut = Math.floor(sorted.length * (1 - oosFrac));
+        const splitDate = sorted[cut]?.date ?? null;
+        return { splitDate, is: sorted.filter(r => splitDate ? r.date < splitDate : true),
+                 oos: sorted.filter(r => splitDate ? r.date >= splitDate : false) };
+      };
+
+      const perPair = [], allRecords = [];
+      let sampleTrades = null, sampleDaily = null, bhSharpes = [];
+      for (const pair of pairs) {
+        let packed; try { packed = await loadM1ForPair(pair, BT_M1_DIR); } catch { packed = null; }
+        if (!packed || !packed.n) { perPair.push({ pair, error: 'no M1 data' });
+          const j = poiJobs.get(jobId); if (j) { j.pairsDone++; poiJobs.set(jobId, j); } continue; }
+        const { trades, records, meta } = runPoiReaction(packed, { ...cfg, instrument: pair });
+        const sp = splitOf(records, cfg.oosFrac);
+        perPair.push({ pair, nTrades: trades.length, from: meta.from, to: meta.to, splitDate: sp.splitDate,
+          full: enrich(records), is: enrich(sp.is), oos: enrich(sp.oos) });
+        for (const r of records) allRecords.push({ ...r, pair });
+
+        // buy&hold benchmark (daily close-to-close Sharpe)
+        const dayClose = new Map();
+        for (let k = 0; k < packed.n; k++) { const dd = packed.times[k] - (packed.times[k] % 86400); dayClose.set(dd, packed.closes[k]); }
+        const dc = [...dayClose.entries()].sort((a, z) => a[0] - z[0]);
+        const rets = []; for (let k = 1; k < dc.length; k++) rets.push((dc[k][1] - dc[k-1][1]) / dc[k-1][1]);
+        const mean = rets.reduce((a, x) => a + x, 0) / (rets.length || 1);
+        const sd = Math.sqrt(rets.reduce((a, x) => a + (x - mean) ** 2, 0) / (rets.length || 1));
+        bhSharpes.push(sd > 0 ? +(mean / sd * Math.sqrt(252)).toFixed(3) : 0);
+
+        if (pair === samplePair) {
+          sampleTrades = trades;
+          // daily candles for the trade-proof chart (compact)
+          const cndl = new Map();
+          for (let k = 0; k < packed.n; k++) { const dd = packed.times[k] - (packed.times[k] % 86400);
+            let o = cndl.get(dd); if (!o) cndl.set(dd, { t: dd, o: packed.opens[k], h: packed.highs[k], l: packed.lows[k], c: packed.closes[k] });
+            else { if (packed.highs[k] > o.h) o.h = packed.highs[k]; if (packed.lows[k] < o.l) o.l = packed.lows[k]; o.c = packed.closes[k]; } }
+          sampleDaily = [...cndl.values()].sort((a, z) => a.t - z.t)
+            .map(x => ({ t: x.t, o: +x.o.toFixed(6), h: +x.h.toFixed(6), l: +x.l.toFixed(6), c: +x.c.toFixed(6) }));
+        }
+        const j = poiJobs.get(jobId); if (j) { j.pairsDone++; poiJobs.set(jobId, j); }
+      }
+
+      // pooled + equity curve (cumulative R) + yearly net R
+      allRecords.sort((a, z) => a.date < z.date ? -1 : 1);
+      const psp = splitOf(allRecords, cfg.oosFrac);
+      const pooled = { full: enrich(allRecords), is: enrich(psp.is), oos: enrich(psp.oos), splitDate: psp.splitDate };
+      // pooled equity curve in cumulative % return (chronological across pairs)
+      const equity = [];
+      { let c2 = 0; for (const r of allRecords) { c2 += r.pnl_pct; equity.push({ date: r.date, cum: +c2.toFixed(4) }); } }
+      const byYear = {}; for (const r of allRecords) { const y = r.date.slice(0, 4); byYear[y] = +(((byYear[y] || 0) + r.pnl_pct)).toFixed(3); }
+      // downsample equity for payload
+      const step = Math.max(1, Math.ceil(equity.length / 1500));
+      const equityDS = equity.filter((_, i) => i % step === 0 || i === equity.length - 1);
+
+      const bhMean = +(bhSharpes.reduce((a, x) => a + x, 0) / (bhSharpes.length || 1)).toFixed(3);
+      poiJobs.set(jobId, { status: 'done', startedAt, result: {
+        cfg, pairs, samplePair, totalTrades: allRecords.length,
+        perPair, pooled, byYear, equity: equityDS, splitDate: psp.splitDate, bhSharpeMean: bhMean,
+        sample: { pair: samplePair, daily: sampleDaily, trades: sampleTrades },
+      } });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[poi-reaction/run]', msg, e?.stack ?? '');
+      poiJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/poi-reaction/status/:jobId', (req, res) => {
+  const job = poiJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000),
+                      pairsDone: job.pairsDone, pairsTotal: job.pairsTotal });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
 // ── EMA-crossover A/B vs momentum (is buy/sell-on-cross any good?) ────────────
 // Injects an EMA-15/50/100 crossover as the SIGNAL into the SAME trend primitive
 // and A/Bs it against the momentum signal — basket + single-pair + buy&hold
