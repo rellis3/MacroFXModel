@@ -166,7 +166,7 @@ body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-s
     <button class="on" data-bot="v1" style="color:#f4c430">Gold V1</button>
     <button data-bot="v2" style="color:#ff9f43">Gold V2</button>
     <button data-bot="cf" style="color:#c084fc">Confluence</button>
-    <button data-bot="oi" style="color:#4dd0e1">OI Gamma</button>
+    <a href="oi-zones.html" class="gz-btn" style="color:#4dd0e1;margin-left:2px;display:inline-flex;align-items:center" title="OI Gamma bot moved to its own page — zones + live multiday trades">OI Gamma ↗</a>
   </div>
   <select id="gzPairSel" title="Confluence bot — pick the instrument to view"
           style="display:none;margin-left:8px;background:var(--s2);color:var(--text1);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11.5px;cursor:pointer"></select>
@@ -313,7 +313,10 @@ body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-s
 // ── State ─────────────────────────────────────────────────────────────
 // Bot selector: 'v1' = Gold/main.py (gold_bot_* keys), 'v2' = GoldV2/main.py
 // (gold_v2_* keys, level-matrix zones with per-zone contributing legs).
+// OI Gamma moved to its own page (oi-zones.html) — never boot this multi-bot page
+// into the retired 'oi' tab even if a stale localStorage value selects it.
 let _bot = localStorage.getItem('gzBot') || 'v1';
+if (_bot === 'oi') { _bot = 'v1'; try { localStorage.setItem('gzBot', 'v1'); } catch {} }
 const BOT_KV = {
   v1: { zones: 'gold_bot_zones',       status: 'gold_bot_status'       },
   v2: { zones: 'gold_v2_zones',        status: 'gold_v2_status'        },
