@@ -176,6 +176,11 @@ note's data.
 The mechanised ColezTrades POI-reaction fade — levels + confluence, 1:1, costs on
 — returns **no edge** over 26 pairs and 10 years: pooled Sharpe −3.4, negative in
 every year, positive on only 1/26 pairs, and beaten by a naive buy-and-hold
-benchmark. The next honest step (if pursued) is **Stage 3**: add the VuManChu
-confirmation gate and measure whether it moves the OOS number off this floor — not
-to add tunable knobs to this baseline, which has nothing to tune toward.
+benchmark.
+
+**Stage 3 (the VuManChu confirmation gate) is now tested — see
+[`STAGE3_VUMANCHU_GATE.md`](STAGE3_VUMANCHU_GATE.md).** It is also **null**: after
+removing a lookahead that first made it look like an edge, the gate filters *volume*
+(trades ~4× less), not *losers* — per-trade expectancy stays −0.018 R, win rate
+~49 %, pooled OOS Sharpe still −2.7. Neither the levels nor the VuManChu
+confirmation, alone or together, shows a tradeable edge here.
