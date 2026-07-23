@@ -106,16 +106,29 @@ function parseExportText(text) {
 
 app.use(express.json({ limit: '1mb' }));
 
-const PAGE = fs.readFileSync(path.join(__dirname, 'cog-replay.html'), 'utf8');
+// Load the page at boot, but never let a read error crash the process — the
+// healthcheck must still come up so the deploy can report a clear state.
+let PAGE = '';
+try {
+  PAGE = fs.readFileSync(path.join(__dirname, 'cog-replay.html'), 'utf8');
+} catch (e) {
+  console.error('[cog-standalone] could not read cog-replay.html:', e.message);
+}
 
-// Optional healthcheck target — reports whether the two backends are configured.
+// Healthcheck target — ALWAYS 200, no env or file dependency, so a healthy
+// process is never marked unhealthy. Reports what's configured so the first
+// deploy is diagnosable from the URL alone.
 app.get('/api/config', (_req, res) => res.json({
   ok: true, service: 'cog-replay-standalone',
+  page_loaded: PAGE.length > 0,
   cloudflare_kv: CF_OK, oanda: !!process.env.OANDA_KEY,
 }));
 
 // The ONLY page this service serves.
-app.get(['/', '/cog-replay.html'], (_req, res) => res.type('html').send(PAGE));
+app.get(['/', '/cog-replay.html'], (_req, res) => {
+  if (!PAGE) return res.status(500).type('text/plain').send('cog-replay.html not bundled with this deploy');
+  res.type('html').send(PAGE);
+});
 
 // ── The four endpoints cog-replay.html calls, served directly ─────────────────
 
@@ -188,6 +201,6 @@ app.get('/api/ohlc-range', async (req, res) => {
 // Everything else is invisible.
 app.use((_req, res) => res.status(404).type('text/plain').send('Not found'));
 
-app.listen(PORT, () => console.log(
-  `[cog-standalone] COG replay on :${PORT} — CF KV ${CF_OK ? 'configured' : 'MISSING'}, OANDA ${process.env.OANDA_KEY ? 'configured' : 'MISSING'}`
+app.listen(PORT, '0.0.0.0', () => console.log(
+  `[cog-standalone] COG replay on :${PORT} — page ${PAGE.length > 0 ? 'loaded' : 'MISSING'}, CF KV ${CF_OK ? 'configured' : 'MISSING'}, OANDA ${process.env.OANDA_KEY ? 'configured' : 'MISSING'}`
 ));
