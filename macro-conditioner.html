@@ -28,6 +28,9 @@
   .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:.02em}
   .b-null{background:#21262d;color:var(--dim);border:1px solid var(--line)}
   .b-inc{background:rgba(63,185,80,.15);color:var(--on);border:1px solid var(--on)}
+  .b-insuf{background:rgba(210,153,34,.15);color:var(--amber);border:1px solid var(--amber)}
+  .covwarn{background:rgba(210,153,34,.10);border-left:3px solid var(--amber);padding:8px 12px;border-radius:6px;font-size:12.5px;color:#e8d9b0;margin:10px 0 0}
+  .covok{color:var(--dim);font-size:12px;margin:8px 0 0}
   .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--dim);margin:2px 0 10px}
   .sw{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:5px}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
@@ -75,6 +78,7 @@
 
   <div class="panel" id="pooledPanel" style="display:none">
     <h2>Pooled FX — σ-controlled conditional <span id="pooledVerdict"></span></h2>
+    <div id="coverage"></div>
     <p class="note">Within each forecast-σ tercile, the three bars are RISK_OFF / NEUTRAL / RISK_ON. The dashed line is
       the σ-only rate (regime-blind — what σ alone gives). Regime only "adds" if the bars separate <i>from each other</i> inside a bucket, the same way IS and OOS.</p>
     <div class="legend">
@@ -154,8 +158,27 @@ function groupedBars(cells,sigmaOnly,metric){
 
 function verdictBadge(v){
   if(!v)return '';
+  if(v.label==='INSUFFICIENT_COVERAGE')
+    return `<span class="badge b-insuf">INSUFFICIENT COVERAGE — test could not run · ${v.bucketsEvaluable||0}/3 buckets evaluable</span>`;
   const inc=v.label==='INCREMENTAL';
-  return `<span class="badge ${inc?'b-inc':'b-null'}">${inc?'INCREMENTAL (beyond σ)':'REDUNDANT / NULL vs σ'} · ${v.bucketsAgreeing}/3</span>`;
+  return `<span class="badge ${inc?'b-inc':'b-null'}">${inc?'INCREMENTAL (beyond σ)':'REDUNDANT / NULL vs σ'} · ${v.bucketsAgreeing}/${v.bucketsEvaluable??3} agree/eval</span>`;
+}
+
+function coverageBanner(res){
+  const P=res.pooled, cov=P&&P.coverage;
+  const insuf=P&&P.verdict&&P.verdict.label==='INSUFFICIENT_COVERAGE';
+  // pull the regime span from the run log's FRED line if present
+  const fredLine=(res.log||[]).find(l=>l.startsWith('FRED vix'))||'';
+  const regLine=(res.log||[]).find(l=>l.startsWith('regime days'))||'';
+  if(insuf){
+    return `<p class="covwarn">⚠ <b>The test could not run</b> — the regime series doesn't span enough of the price history to populate both the in-sample and out-of-sample halves with risk-off days.
+      This is a <b>broken join, not a null</b>. Check the run log: if a FRED series (usually HY / BAMLH0A0HYM2) came back short, re-run — a full series enables the real IS/OOS verdict.<br>
+      <span class="muted">${fredLine}${regLine?' · '+regLine:''}</span></p>`;
+  }
+  if(cov){
+    return `<p class="covok">Regime coverage: ${cov.regimeDays.toLocaleString()} pair-days, ${cov.firstRegimeDate||'—'} → ${cov.lastRegimeDate||'—'}. <span class="muted">${fredLine}</span></p>`;
+  }
+  return '';
 }
 
 function spreadTable(sum,metric){
@@ -193,6 +216,7 @@ function ribbon(tl){
 function render(res,metric){
   const P=res.pooled;
   $('pooledVerdict').innerHTML=verdictBadge(P.verdict);
+  $('coverage').innerHTML=coverageBanner(res);
   $('chartIS').innerHTML=groupedBars(P.summary.cells.IS,P.summary.sigmaOnly.IS,metric);
   $('chartOOS').innerHTML=groupedBars(P.summary.cells.OOS,P.summary.sigmaOnly.OOS,metric);
   $('spreadTbl').innerHTML=spreadTable(P.summary,metric);
@@ -202,9 +226,11 @@ function render(res,metric){
   episodeStrip(first?.episodes,metric);$('episodePanel').style.display='';
   ribbon(first?.timeline);$('ribbonPanel').style.display='';
   // per-pair verdicts
-  let h='<tr><th>pair</th><th>days</th><th>verdict</th><th>OOS spread lo/mid/hi</th><th>src</th></tr>';
+  let h='<tr><th>pair</th><th>covered / price</th><th>verdict</th><th>OOS spread lo/mid/hi</th><th>src</th></tr>';
+  const vLabel=v=>v.label==='INCREMENTAL'?'<span class="pos">INCREMENTAL</span>':v.label==='INSUFFICIENT_COVERAGE'?'<span style="color:var(--amber)">insufficient</span>':'<span class="muted">redundant/null</span>';
   for(const p of res.pairs){const r=res.perPair[p];const sp=BUCKETS.map(b=>{const x=r.summary.regimeSpread.OOS[b];return x==null?'—':(x>0?'+':'')+(x*100).toFixed(0);}).join(' / ');
-    h+=`<tr><td>${p}</td><td>${r.nDays}</td><td>${r.verdict.label==='INCREMENTAL'?'<span class="pos">INCREMENTAL</span>':'<span class="muted">redundant/null</span>'}</td><td>${sp}</td><td class="muted">${r.src||''}</td></tr>`;}
+    const cov=r.coverage?`${r.nDays} / ${r.coverage.priceDays} (${Math.round(r.coverage.coveredFrac*100)}%)`:r.nDays;
+    h+=`<tr><td>${p}</td><td>${cov}</td><td>${vLabel(r.verdict)}</td><td>${sp}</td><td class="muted">${r.src||''}</td></tr>`;}
   $('perPairTbl').innerHTML=h;$('perPairPanel').style.display='';
   if(res.log){$('log').textContent=res.log.join('\n');$('logPanel').style.display='';}
 }
@@ -238,15 +264,30 @@ function demoPayload(){
   const cells={IS:seg(0.0),OOS:seg(0.005)};
   const regimeSpread={IS:{lo:0.01,mid:0.01,hi:0.01},OOS:{lo:0.015,mid:-0.008,hi:0.006}};
   const summary={cells,sigmaOnly:{IS:sigmaOnly(0),OOS:sigmaOnly(0.005)},regimeSpread,n:15000};
-  const verdict={label:'REDUNDANT_OR_NULL',bucketsAgreeing:0};
+  const verdict={label:'REDUNDANT_OR_NULL',bucketsAgreeing:0,bucketsEvaluable:3};
   const eps=[['2015-08','2015-09',14],['2016-06','2016-07',9],['2018-12','2019-01',22],['2020-02','2020-04',48],['2022-01','2022-10',63],['2023-03','2023-03',7]]
     .map(([s,e,n])=>({start:s+'-01',end:e+'-20',n,expand:0.44+Math.random()*0.14,dayEff:0.4}));
   const tl=[];const base=Date.UTC(2015,0,1);for(let i=0;i<600;i++){const d=new Date(base+i*15*864e5).toISOString().slice(0,10);
     const u=Math.random();tl.push({date:d,regime:u<0.12?'RISK_OFF':u<0.5?'RISK_ON':'NEUTRAL'});}
-  return {ok:true,pairs:['EURUSD'],perPair:{EURUSD:{nDays:2600,summary,verdict,episodes:eps,timeline:tl,src:'m1-5min'}},
-    pooled:{nDays:15000,summary,verdict},log:['DEMO payload — synthetic, illustrates a REDUNDANT-with-σ null (bars flat within each σ bucket).']};
+  const cov={regimeDays:15000,firstRegimeDate:'2010-06-01',lastRegimeDate:'2026-03-20'};
+  return {ok:true,pairs:['EURUSD'],perPair:{EURUSD:{nDays:2600,summary,verdict,episodes:eps,timeline:tl,src:'m1-5min',coverage:{priceDays:2600,regimeDays:2600,coveredFrac:1,firstRegimeDate:'2010-06-01',lastRegimeDate:'2026-03-20'}}},
+    pooled:{nDays:15000,summary,verdict,coverage:cov},
+    log:['FRED vix: 4193 obs (2010-01-04→2026-03-20) · hy: 4180 obs (2010-01-04→2026-03-20)','DEMO payload — synthetic, illustrates a REDUNDANT-with-σ null (bars flat within each σ bucket).']};
 }
-if(new URLSearchParams(location.search).get('demo')==='1'){LAST=demoPayload();$('status').textContent='DEMO (synthetic)';render(LAST,'expand');}
+function demoInsuf(){
+  // the exact live-bug shape: regime only covers the recent window → IS empty → INSUFFICIENT
+  const d=demoPayload();
+  const thin=n=>({n,expand:null,dayEff:null});
+  for(const b of BUCKETS){for(const rg of REGIMES){d.pooled.summary.cells.IS[b][rg]=thin(0);}d.pooled.summary.regimeSpread.IS[b]=null;}
+  d.pooled.verdict={label:'INSUFFICIENT_COVERAGE',bucketsAgreeing:0,bucketsEvaluable:0};
+  d.pooled.coverage={regimeDays:1066,firstRegimeDate:'2023-10-02',lastRegimeDate:'2026-03-20'};
+  d.perPair.EURUSD.verdict=d.pooled.verdict;
+  d.log=['FRED vix: 4193 obs (2010-01-04→2026-03-20) · hy: 786 obs (2023-09-01→2026-03-20)','⚠ short FRED series — regime window is truncated; verdict may read INSUFFICIENT_COVERAGE (a broken join, not a null).','regime days 1066 (2023-10-02→2026-03-20) · risk-off 157'];
+  return d;
+}
+{const dm=new URLSearchParams(location.search).get('demo');
+ if(dm==='insuf'){LAST=demoInsuf();$('status').textContent='DEMO — insufficient coverage';render(LAST,'expand');}
+ else if(dm==='1'){LAST=demoPayload();$('status').textContent='DEMO (synthetic)';render(LAST,'expand');}}
 </script>
 </body>
 </html>

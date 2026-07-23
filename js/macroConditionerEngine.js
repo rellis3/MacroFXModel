@@ -42,12 +42,20 @@ const _mean = a => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : null);
 //   sigma[i] = causal forecast daily σ (fraction of price) for day i; NaN/0 → skip.
 // regimeByDate = { 'YYYY-MM-DD': 'RISK_OFF'|'NEUTRAL'|'RISK_ON' } (from macroContextByDate).
 // assetClass selects the 75th-line correction (fx/index/commodity). isFrac = IS share.
-// Returns { rows, episodes, timeline, nDays, splitDate } — rows feed summarizeRows.
+//
+// COVERAGE HONESTY (the fix for the truncated-HY fake-null): a day whose date is
+// NOT in regimeByDate is DROPPED, never silently counted as NEUTRAL ("no data" ≠
+// "neutral regime"). The IS/OOS split is then taken over the REGIME-COVERED rows,
+// so a regime series that only spans recent years can't dump every risk-off day
+// into the OOS half and leave IS empty. A date present but not a valid label still
+// canonicalises to NEUTRAL. `coverage` reports the join so a broken merge is visible.
+// Returns { rows, episodes, timeline, nDays, splitDate, coverage }.
 export function buildRows(series, regimeByDate, { assetClass = 'fx', isFrac = 0.5 } = {}) {
   const { date, open, high, low, close, sigma } = series;
   const n = Math.min(date.length, open.length, sigma.length);
   const p = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
   const hl75 = BM_P75 * p.hl_75_corr;                 // 75th H-L line, σ-units
+  const has = d => Object.prototype.hasOwnProperty.call(regimeByDate, d);
 
   // causal σ percentile within this instrument (rank ÷ N over the finite σ's)
   const finite = [];
@@ -59,35 +67,47 @@ export function buildRows(series, regimeByDate, { assetClass = 'fx', isFrac = 0.
     return sorted.length ? lo / sorted.length : 0.5;
   };
 
+  // price-valid days (σ + OHLC finite), regardless of regime coverage
   const usable = [];
   for (let i = 0; i < n; i++) {
     const s = sigma[i], O = open[i];
     if (!(s > 0) || !(O > 0) || !isFinite(high[i]) || !isFinite(low[i]) || !isFinite(close[i])) continue;
     usable.push(i);
   }
-  const splitAt = Math.floor(usable.length * isFrac);
-  const splitDate = usable.length ? date[usable[Math.min(splitAt, usable.length - 1)]] : null;
+  // KEEP only regime-covered days; split IS/OOS WITHIN that covered set
+  const covered = usable.filter(i => has(date[i]));
+  const dropped = usable.length - covered.length;
+  const splitAt = Math.floor(covered.length * isFrac);
+  const splitDate = covered.length ? date[covered[Math.min(splitAt, covered.length - 1)]] : null;
 
   const rows = [];
-  const timeline = [];
-  usable.forEach((i, k) => {
+  covered.forEach((i, k) => {
     const s = sigma[i], O = open[i];
     const rlz = (high[i] - low[i]) / O / s;             // realized range, σ-units
     const rng = high[i] - low[i];
     const eff = rng > 0 ? Math.abs(close[i] - O) / rng : 0;
-    const regime = _canonRegime(regimeByDate[date[i]]);
     rows.push({
-      date: date[i], sigmaRank: rankOf(s), regime,
+      date: date[i], sigmaRank: rankOf(s), regime: _canonRegime(regimeByDate[date[i]]),
       expand: rlz > hl75 ? 1 : 0, dayEff: eff,
-      seg: k < splitAt ? 0 : 1,                          // 0 = IS, 1 = OOS
+      seg: k < splitAt ? 0 : 1,                          // 0 = IS, 1 = OOS (within covered window)
     });
-    timeline.push({ date: date[i], regime });
   });
+  // timeline = covered days only (so the ribbon shows the true regime span, not a
+  // sea of fake-NEUTRAL for uncovered dates)
+  const timeline = rows.map(r => ({ date: r.date, regime: r.regime }));
 
   // risk-off EPISODES: contiguous RISK_OFF runs (≤ gapDays non-off between = same
   // episode) — exposes that "risk-off days" are a handful of clustered events.
   const episodes = _episodes(rows, 5);
-  return { rows, episodes, timeline, nDays: rows.length, splitDate };
+  const coverage = {
+    priceDays: usable.length, regimeDays: rows.length, droppedNoRegime: dropped,
+    coveredFrac: usable.length ? +(rows.length / usable.length).toFixed(3) : 0,
+    firstRegimeDate: rows.length ? rows[0].date : null,
+    lastRegimeDate:  rows.length ? rows[rows.length - 1].date : null,
+    firstPriceDate: usable.length ? date[usable[0]] : null,
+    lastPriceDate:  usable.length ? date[usable[usable.length - 1]] : null,
+  };
+  return { rows, episodes, timeline, nDays: rows.length, splitDate, coverage };
 }
 
 function _episodes(rows, gapDays) {
@@ -147,31 +167,39 @@ export function summarizeRows(rows) {
 }
 
 // ── Pre-registered verdict: is regime INCREMENTAL to σ, IS/OOS-consistent? ────
-// Pass = in ≥2 of 3 σ buckets, regimeSpread(RISK_OFF−RISK_ON) has the SAME sign IS &
-// OOS and |OOS| ≥ minSpread, AND each contributing cell has ≥ minN days. Else the
-// honest verdict is REDUNDANT (σ already carries it) or NULL (no separation).
+// A σ bucket is EVALUABLE only if BOTH the IS and OOS RISK_OFF/RISK_ON cells clear
+// minN — i.e. we actually have enough risk-off days on BOTH halves to judge it.
+// Pass in an evaluable bucket = same-sign IS & OOS spread with |OOS| ≥ minSpread.
+// Labels:
+//   INSUFFICIENT_COVERAGE — fewer than 2 evaluable buckets (usually an empty IS
+//     half from a truncated regime series): the test COULD NOT RUN, not a null.
+//   INCREMENTAL           — ≥2 evaluable buckets agree (regime adds beyond σ).
+//   REDUNDANT_OR_NULL     — ≥2 evaluable buckets but they DON'T agree (σ carries it).
 export function verdict(summary, { minSpread = 0.05, minN = 30 } = {}) {
-  let agree = 0; const perBucket = {};
+  let agree = 0, evaluable = 0; const perBucket = {};
   for (const b of SIGMA_BUCKETS) {
     const sIs = summary.regimeSpread.IS[b], sOos = summary.regimeSpread.OOS[b];
+    const nOffIs = summary.cells.IS[b].RISK_OFF.n,  nOnIs = summary.cells.IS[b].RISK_ON.n;
     const nOffOos = summary.cells.OOS[b].RISK_OFF.n, nOnOos = summary.cells.OOS[b].RISK_ON.n;
-    const ok = sIs != null && sOos != null &&
-      (sIs > 0) === (sOos > 0) && Math.abs(sOos) >= minSpread &&
-      nOffOos >= minN && nOnOos >= minN;
-    perBucket[b] = { is: sIs, oos: sOos, nOffOos, nOnOos, passes: ok };
+    const canEval = sIs != null && sOos != null &&
+      nOffIs >= minN && nOnIs >= minN && nOffOos >= minN && nOnOos >= minN;
+    const ok = canEval && (sIs > 0) === (sOos > 0) && Math.abs(sOos) >= minSpread;
+    perBucket[b] = { is: sIs, oos: sOos, nOffIs, nOnIs, nOffOos, nOnOos, evaluable: canEval, passes: ok };
+    if (canEval) evaluable++;
     if (ok) agree++;
   }
-  const label = agree >= 2 ? 'INCREMENTAL' : 'REDUNDANT_OR_NULL';
-  return { label, bucketsAgreeing: agree, perBucket, minSpread, minN };
+  const label = evaluable < 2 ? 'INSUFFICIENT_COVERAGE'
+              : agree >= 2 ? 'INCREMENTAL' : 'REDUNDANT_OR_NULL';
+  return { label, bucketsAgreeing: agree, bucketsEvaluable: evaluable, perBucket, minSpread, minN };
 }
 
 // ── Full per-pair analysis (build + summarize + verdict), reused by the route ─
 export function analyzePair(series, regimeByDate, opts = {}) {
-  const { rows, episodes, timeline, nDays, splitDate } = buildRows(series, regimeByDate, opts);
-  if (nDays < 100) return { insufficient: true, nDays };
+  const { rows, episodes, timeline, nDays, splitDate, coverage } = buildRows(series, regimeByDate, opts);
+  if (nDays < 100) return { insufficient: true, nDays, coverage };
   const summary = summarizeRows(rows);
   return {
-    nDays, splitDate,
+    nDays, splitDate, coverage,
     summary,
     verdict: verdict(summary, opts),
     episodes,
