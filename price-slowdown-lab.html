@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Price Slowdown Lab — the two volatility budgets</title>
+<style>
+  :root{
+    --bg:#0e1016; --panel:#161a24; --panel2:#1d222e; --line:#2a3140;
+    --text:#e6e9ef; --text2:#aab2c0; --text3:#6f7889;
+    --accent:#5b9dff; --green:#3fb27f; --red:#e5604d; --amber:#e0a93b;
+    --range:#8a93a6; --disp:#5b9dff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.55}
+  header{padding:22px 26px;border-bottom:1px solid var(--line);background:var(--panel)}
+  h1{margin:0 0 6px;font-size:20px;font-weight:650}
+  .sub{color:var(--text2);font-size:13px;max-width:940px}
+  .sub b{color:var(--text)}
+  main{padding:22px 26px;max-width:1180px;margin:0 auto}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:18px 20px;margin-bottom:20px}
+  .card h2{margin:0 0 4px;font-size:15px;font-weight:640}
+  .card .lead{color:var(--text2);font-size:13px;margin:0 0 14px;max-width:900px}
+  .two-budget{display:flex;gap:14px;flex-wrap:wrap;margin:8px 0 4px}
+  .bud{flex:1;min-width:280px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:13px 15px}
+  .bud h3{margin:0 0 5px;font-size:13px;font-weight:640}
+  .bud.range h3{color:var(--range)} .bud.disp h3{color:var(--disp)}
+  .bud p{margin:0;font-size:12.5px;color:var(--text2)}
+  .bud .eq{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--text);background:#0c0f16;border:1px solid var(--line);border-radius:5px;padding:2px 6px;display:inline-block;margin:6px 0}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  @media(max-width:900px){.grid3{grid-template-columns:1fr}}
+  .day{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:12px}
+  .day .dt{font-size:12.5px;font-weight:640;margin-bottom:2px}
+  .day .tag{font-size:11px;padding:1px 7px;border-radius:20px;font-weight:600;vertical-align:middle;margin-left:6px}
+  .tag.rev{background:rgba(63,178,127,.16);color:var(--green)}
+  .tag.cont{background:rgba(229,96,77,.16);color:var(--red)}
+  .day .meta{font-size:11.5px;color:var(--text3);margin-top:6px;line-height:1.5}
+  .day .meta b{color:var(--text2)}
+  svg{display:block;width:100%;height:auto}
+  .legend{color:var(--text3);font-size:11.5px;margin-top:12px;line-height:1.9}
+  .sw{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:middle;margin-right:4px}
+  table{border-collapse:collapse;width:100%;font-size:13px;margin-top:6px}
+  th,td{padding:7px 9px;text-align:right;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  thead th{color:var(--text3);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+  .barwrap{position:relative;height:16px;background:#0c0f16;border-radius:4px;overflow:hidden;min-width:120px}
+  .bar{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
+  .b-oc{background:linear-gradient(90deg,#2f6f52,#3fb27f)}
+  .b-open{background:linear-gradient(90deg,#8a5a1f,#e0a93b)}
+  ul.take{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--text2)}
+  ul.take li{margin-bottom:9px}
+  ul.take b{color:var(--text)}
+  .note{font-size:12px;color:var(--text3);border-left:2px solid var(--line);padding:2px 0 2px 12px;margin-top:12px}
+  .big{font-size:26px;font-weight:680;letter-spacing:-.5px}
+  .kpis{display:flex;gap:26px;flex-wrap:wrap;margin:4px 0 2px}
+  .kpi .l{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+  .kpi .big.g{color:var(--green)} .kpi .big.a{color:var(--amber)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Price Slowdown Lab <span style="color:var(--text3);font-weight:400;font-size:15px">· the two volatility budgets</span></h1>
+  <div class="sub" id="hdr">Every trading day spends <b>two different, non-interchangeable volatility budgets</b>. Telling them apart is how you read whether price is exhausting (about to fade) or trending (about to run). Built on the shared bricks — <code>computeBands</code>, <code>volSigmaSeries</code>, <code>touchFeatures</code> — so it can't disagree with the forecaster.</div>
+</header>
+<main>
+
+  <div class="card">
+    <h2>1 · The two budgets</h2>
+    <p class="lead">A day can spend a lot of one and none of the other. That gap <em>is</em> the fade.</p>
+    <div class="two-budget">
+      <div class="bud range">
+        <h3>RANGE budget — the path travelled</h3>
+        <div class="eq">(runHigh − runLow) / open</div>
+        <p>Total distance covered. <b>Every move spends it — out AND back.</b> This is what the Feller <b>HL bands</b> (1.572σ / 2.049σ) model. A day that pokes out and comes home has spent almost all of it.</p>
+      </div>
+      <div class="bud disp">
+        <h3>DISPLACEMENT budget — distance from the open</h3>
+        <div class="eq">(price − open) / open</div>
+        <p>How far price <b>is</b> from the open, right now. <b>The reach-back gives it back.</b> This is what the <b>close bands</b> (0.67σ / 1.15σ) model. "Fade to open" = this draining to zero.</p>
+      </div>
+    </div>
+    <p class="note">When the two curves move together → trend day (path ≈ displacement). When range keeps climbing but displacement returns toward zero → the reach-out-and-back, i.e. the fade.</p>
+  </div>
+
+  <div class="card">
+    <h2>2 · Three real EURUSD days</h2>
+    <p class="lead" id="lead2">Session time left→right; y-axis in σ units. <span style="color:var(--range)">Grey area = range spent</span>; <span style="color:var(--disp)">blue line = displacement from open</span> (crosses zero when price is back at the open). Dashed guides = the median close band (OC) and the exhaustion bands (HL50/HL75). The dot marks the first HL50 tag.</p>
+    <div class="grid3" id="days"></div>
+    <div class="legend">
+      <span class="sw" style="background:var(--range);opacity:.55"></span>range budget spent (σ)&nbsp;&nbsp;
+      <span class="sw" style="background:var(--disp)"></span>displacement from open (σ)&nbsp;&nbsp;
+      <span class="sw" style="background:var(--amber)"></span>OC median (fade target)&nbsp;&nbsp;
+      <span class="sw" style="background:var(--text3)"></span>HL50 / HL75 exhaustion&nbsp;&nbsp;
+      <span class="sw" style="background:var(--green);border-radius:50%"></span>first HL50 tag
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>3 · So how do you know it's slowing? — the evidence</h2>
+    <p class="lead" id="lead3"></p>
+    <div class="kpis" id="kpis"></div>
+    <p style="font-size:13px;color:var(--text2);margin:16px 0 4px">Fade rate by <b>approach velocity</b> into the tag — the speed of the last leg into the exhaustion line, in σ units. Two targets: the <span style="color:var(--green)">tradeable retrace to the OC-median line</span> vs the <span style="color:var(--amber)">full fade all the way back to open</span>.</p>
+    <table id="veltbl">
+      <thead><tr><th>Approach into HL50</th><th>n</th><th>→ OC-median (tradeable)</th><th></th><th>→ open (full fade)</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p style="font-size:13px;color:var(--text2);margin:20px 0 4px">Same gradient holds <b>across three pairs</b> (10y each) — a spike into the line roughly <b>1.5×</b> the tradeable-fade rate of a grind, and <b>2–3×</b> the full-fade-to-open rate. Consistency across pairs is what separates signal from one lucky slice.</p>
+    <table id="pairtbl">
+      <thead><tr><th>Pair · retrace → OC-median</th><th>grind</th><th>med</th><th>spike</th></tr></thead>
+      <tbody>
+        <tr><td>EURUSD</td><td>32.8%</td><td>34.0%</td><td><b style="color:var(--green)">46.2%</b></td></tr>
+        <tr><td>GBPUSD</td><td>30.9%</td><td>35.9%</td><td><b style="color:var(--green)">49.8%</b></td></tr>
+        <tr><td>AUDUSD</td><td>27.4%</td><td>34.2%</td><td><b style="color:var(--green)">49.6%</b></td></tr>
+      </tbody>
+    </table>
+    <p class="note">Range-<em>budget</em>-consumed at the tag (how much of the projected range was already spent) was <b>weak and inconsistent</b> for full fade-back — no clean gradient across the three pairs. The <em>kinematics</em> of the approach carry the signal, not the static budget count. This matches the platform's earlier finding that the pre-day day-type score is dead (AUC≈0.50) while the at-the-moment approach velocity is significant OOS (p&lt;0.001).</p>
+  </div>
+
+  <div class="card">
+    <h2>4 · What this means for the vol strategy</h2>
+    <ul class="take">
+      <li><b>Target the inner band, not the open.</b> Conditional on tagging the median exhaustion line, only ~<span id="t-open"></span> of days come <em>all the way</em> back to the open — but ~<span id="t-oc"></span> retrace to the OC-median line. Your fade TP should be the next band in (which is exactly what the per-line engine does), not "back to open".</li>
+      <li><b>The trigger is velocity, not a range quota.</b> "Price is slowing down" reads best as a <em>fast thrust into an exhaustion line that then decelerates</em> — a spike lifts the tradeable-fade rate from ~30% to ~50%. A slow grind into the line is the one you don't fade.</li>
+      <li><b>Two budgets, two bands — use both.</b> HL lines (range) locate <em>where</em> exhaustion can happen; OC lines (displacement) are <em>where the fade goes</em>. The signed gap between them, live, is your fade-vs-trend read.</li>
+      <li><b>Honest status.</b> This is a <em>descriptive</em> diagnostic over 10y × 3 pairs — no costs, no IS/OOS split. It says the relationship is real and stable; it is <em>not</em> a costed backtest. The costed OOS fade edge already lives in the per-line book.</li>
+    </ul>
+  </div>
+
+  <div style="color:var(--text3);font-size:11.5px;margin:4px 2px 30px">
+    Data: EURUSD/GBPUSD/AUDUSD M1 → 5-min, session-anchored 22:00 UTC · <span id="span"></span> · σ = causal Yang-Zhang(30) via <code>volSigmaSeries</code> · bands via <code>computeBands</code> · velocity via <code>touchFeatures.approachVel</code>. Engine: <code>js/priceSlowdownDecomp.js</code>.
+  </div>
+</main>
+
+<script>
+const DATA = {"pair":"EURUSD","span":["2016-02-28","2026-05-21"],"sessions":2999,"taggedN":1072,"overallFadeBack":0.1483,"overallToOcMed":0.3974,"overallToOpen":0.1147,"byVel":{"2·med":{"n":432,"fadeBackRate":0.1296,"meanCloseDisp":1.3024},"3·spike":{"n":509,"fadeBackRate":0.1591,"meanCloseDisp":1.4354},"1·grind":{"n":125,"fadeBackRate":0.176,"meanCloseDisp":1.2438}},"byVelOcMed":{"2·med":{"n":432,"rate":0.3403},"3·spike":{"n":509,"rate":0.4617},"1·grind":{"n":125,"rate":0.328}},"byVelOpen":{"2·med":{"n":432,"rate":0.0926},"3·spike":{"n":509,"rate":0.1434},"1·grind":{"n":125,"rate":0.064}},"byVelQ":{"q1":{"range":[0.021,0.335],"n":214,"fadeBackRate":0.1402},"q2":{"range":[0.335,0.494],"n":213,"fadeBackRate":0.1549},"q3":{"range":[0.494,0.67],"n":213,"fadeBackRate":0.0986},"q4":{"range":[0.67,0.985],"n":213,"fadeBackRate":0.1596},"q5":{"range":[0.985,3.083],"n":213,"fadeBackRate":0.1925}},"byVelQOcMed":{"q1":{"n":214,"rate":0.3178},"q2":{"n":213,"rate":0.3568},"q3":{"n":213,"rate":0.3146},"q4":{"n":213,"rate":0.4272},"q5":{"n":213,"rate":0.5681}},"byBudget":{"q1":{"range":[0.502,0.559],"n":215,"fadeBackRate":0.1256},"q2":{"range":[0.559,0.601],"n":214,"fadeBackRate":0.1636},"q3":{"range":[0.601,0.65],"n":215,"fadeBackRate":0.2047},"q4":{"range":[0.65,0.734],"n":214,"fadeBackRate":0.1355},"q5":{"range":[0.734,1.36],"n":214,"fadeBackRate":0.1121}},"examples":{"fade":{"date":"2019-08-06","rangeMax":2.0322,"dispClose":-0.0098,"approachVel":0.336,"velBucket":"2·med","outcome":"REVERSION","tagSide":"up","tagTimeFrac":0.77,"hl50":1.289,"hl75":1.674,"ocMed":0.7,"path":[{"f":0,"disp":0.0555,"range":0.1011},{"f":0.0105,"disp":0.0685,"range":0.1337},{"f":0.0209,"disp":0.0294,"range":0.1337},{"f":0.0314,"disp":-0.0033,"range":0.1337},{"f":0.0418,"disp":-0.0196,"range":0.1337},{"f":0.0523,"disp":0.0261,"range":0.1337},{"f":0.0627,"disp":0.075,"range":0.1337},{"f":0.0732,"disp":0.1109,"range":0.1696},{"f":0.0836,"disp":0.1631,"range":0.212},{"f":0.0941,"disp":0.349,"range":0.3882},{"f":0.1045,"disp":0.4795,"range":0.5513},{"f":0.115,"disp":0.3229,"range":0.5513},{"f":0.1254,"disp":0.212,"range":0.5513},{"f":0.1359,"disp":0.2512,"range":0.5513},{"f":0.1463,"disp":0.4926,"range":0.5513},{"f":0.1568,"disp":0.5382,"range":0.5708},{"f":0.1672,"disp":0.336,"range":0.6165},{"f":0.1777,"disp":0.2512,"range":0.6165},{"f":0.1882,"disp":0.1925,"range":0.6165},{"f":0.1986,"disp":0.2381,"range":0.6165},{"f":0.2091,"disp":0.3099,"range":0.6165},{"f":0.2195,"disp":0.2707,"range":0.6165},{"f":0.23,"disp":0.4273,"range":0.6165},{"f":0.2404,"disp":0.3816,"range":0.6165},{"f":0.2509,"disp":0.336,"range":0.6165},{"f":0.2613,"disp":0.3556,"range":0.6165},{"f":0.2718,"disp":0.3686,"range":0.6165},{"f":0.2822,"disp":0.3882,"range":0.6165},{"f":0.2927,"disp":0.2642,"range":0.6165},{"f":0.3031,"disp":0.2805,"range":0.6165},{"f":0.3136,"disp":0.1598,"range":0.6165},{"f":0.324,"disp":0.075,"range":0.6165},{"f":0.3345,"disp":0.0587,"range":0.6165},{"f":0.3449,"disp":0.0098,"range":0.6165},{"f":0.3554,"disp":0.0718,"range":0.6165},{"f":0.3659,"disp":-0.0391,"range":0.623},{"f":0.3763,"disp":-0.0457,"range":0.7829},{"f":0.3868,"disp":-0.0881,"range":0.7829},{"f":0.3972,"disp":-0.0555,"range":0.7829},{"f":0.4077,"disp":-0.1305,"range":0.7829},{"f":0.4181,"disp":-0.4077,"range":1.0634},{"f":0.4286,"disp":-0.2838,"range":1.0634},{"f":0.439,"disp":-0.2316,"range":1.0634},{"f":0.4495,"disp":-0.3262,"range":1.0634},{"f":0.4599,"disp":-0.4077,"range":1.0634},{"f":0.4704,"disp":-0.5121,"range":1.2134},{"f":0.4808,"disp":-0.5056,"range":1.2134},{"f":0.4913,"disp":-0.61,"range":1.233},{"f":0.5017,"disp":-0.5121,"range":1.233},{"f":0.5122,"disp":-0.548,"range":1.2689},{"f":0.5226,"disp":-0.623,"range":1.2689},{"f":0.5331,"disp":-0.6622,"range":1.308},{"f":0.5436,"disp":-0.4599,"range":1.308},{"f":0.554,"disp":-0.4012,"range":1.308},{"f":0.5645,"disp":-0.3001,"range":1.308},{"f":0.5749,"disp":-0.1925,"range":1.308},{"f":0.5854,"disp":-0.1207,"range":1.308},{"f":0.5958,"disp":-0.1207,"range":1.308},{"f":0.6063,"disp":-0.1598,"range":1.308},{"f":0.6167,"disp":0.0033,"range":1.308},{"f":0.6272,"disp":0.2218,"range":1.308},{"f":0.6376,"disp":0.5382,"range":1.3146},{"f":0.6481,"disp":0.7992,"range":1.6081},{"f":0.6585,"disp":1.0242,"range":1.9539},{"f":0.669,"disp":0.7796,"range":1.993},{"f":0.6794,"disp":1.0308,"range":1.993},{"f":0.6899,"disp":0.7894,"range":1.993},{"f":0.7003,"disp":0.4599,"range":1.993},{"f":0.7108,"disp":0.5317,"range":1.993},{"f":0.7213,"disp":0.897,"range":1.993},{"f":0.7317,"disp":0.7927,"range":1.993},{"f":0.7422,"disp":1.1123,"range":1.993},{"f":0.7526,"disp":1.1515,"range":1.993},{"f":0.7631,"disp":1.2297,"range":1.993},{"f":0.7735,"disp":1.0177,"range":2.0322},{"f":0.784,"disp":0.9884,"range":2.0322},{"f":0.7944,"disp":0.7731,"range":2.0322},{"f":0.8049,"disp":0.7861,"range":2.0322},{"f":0.8153,"disp":0.6393,"range":2.0322},{"f":0.8258,"disp":0.4143,"range":2.0322},{"f":0.8362,"disp":0.4599,"range":2.0322},{"f":0.8467,"disp":0.5056,"range":2.0322},{"f":0.8571,"disp":0.5219,"range":2.0322},{"f":0.8676,"disp":0.4926,"range":2.0322},{"f":0.878,"disp":0.4991,"range":2.0322},{"f":0.8885,"disp":0.4273,"range":2.0322},{"f":0.899,"disp":0.3034,"range":2.0322},{"f":0.9094,"disp":0.1664,"range":2.0322},{"f":0.9199,"disp":0.0294,"range":2.0322},{"f":0.9303,"disp":0.1142,"range":2.0322},{"f":0.9408,"disp":0.0163,"range":2.0322},{"f":0.9512,"disp":0.0033,"range":2.0322},{"f":0.9617,"disp":0.0946,"range":2.0322},{"f":0.9721,"disp":0.0326,"range":2.0322},{"f":0.9826,"disp":-0.0033,"range":2.0322},{"f":0.993,"disp":0.062,"range":2.0322},{"f":1,"disp":-0.0098,"range":2.0322}]},"trend":{"date":"2024-11-05","rangeMax":8.0119,"dispClose":-6.295,"approachVel":0.9653,"velBucket":"3·spike","outcome":"CONTINUATION","tagSide":"dn","tagTimeFrac":0.0906,"hl50":1.289,"hl75":1.674,"ocMed":0.7,"path":[{"f":0,"disp":0,"range":0},{"f":0.0105,"disp":-0.0126,"range":0.1006},{"f":0.0209,"disp":0.022,"range":0.1289},{"f":0.0314,"disp":-0.0377,"range":0.1289},{"f":0.0418,"disp":-0.0975,"range":0.2138},{"f":0.0523,"disp":-0.4434,"range":0.5849},{"f":0.0627,"disp":-0.239,"range":0.5849},{"f":0.0732,"disp":-0.0377,"range":0.5849},{"f":0.0836,"disp":-0.0377,"range":0.7987},{"f":0.0941,"disp":-1.3049,"range":1.698},{"f":0.1045,"disp":-2.113,"range":2.4841},{"f":0.115,"disp":-2.6664,"range":3.3142},{"f":0.1254,"disp":-3.2073,"range":3.4903},{"f":0.1359,"disp":-2.6256,"range":3.6506},{"f":0.1463,"disp":-2.9589,"range":3.6506},{"f":0.1568,"disp":-2.6822,"range":3.6506},{"f":0.1672,"disp":-3.0689,"range":3.6506},{"f":0.1777,"disp":-3.789,"range":4.2198},{"f":0.1882,"disp":-4.8361,"range":5.1316},{"f":0.1986,"disp":-4.638,"range":5.4618},{"f":0.2091,"disp":-5.5184,"range":5.9492},{"f":0.2195,"disp":-5.5089,"range":6.0058},{"f":0.23,"disp":-5.3895,"range":6.0058},{"f":0.2404,"disp":-6.0875,"range":6.8673},{"f":0.2509,"disp":-5.7228,"range":6.8673},{"f":0.2613,"disp":-5.3266,"range":6.8673},{"f":0.2718,"disp":-5.1756,"range":6.8673},{"f":0.2822,"disp":-5.0687,"range":6.8673},{"f":0.2927,"disp":-4.5845,"range":6.8673},{"f":0.3031,"disp":-4.5279,"range":6.8673},{"f":0.3136,"disp":-5.1442,"range":6.8673},{"f":0.324,"disp":-5.2574,"range":6.8673},{"f":0.3345,"disp":-5.5278,"range":6.8673},{"f":0.3449,"disp":-6.1347,"range":6.8673},{"f":0.3554,"disp":-6.751,"range":7.0654},{"f":0.3659,"disp":-6.6378,"range":7.3767},{"f":0.3763,"disp":-6.2039,"range":7.3767},{"f":0.3868,"disp":-5.641,"range":7.3767},{"f":0.3972,"disp":-5.7605,"range":7.3767},{"f":0.4077,"disp":-5.9051,"range":7.3767},{"f":0.4181,"disp":-5.8171,"range":7.3767},{"f":0.4286,"disp":-5.7668,"range":7.3767},{"f":0.439,"disp":-5.4083,"range":7.3767},{"f":0.4495,"disp":-4.9367,"range":7.3767},{"f":0.4599,"disp":-5.1851,"range":7.3767},{"f":0.4704,"disp":-5.2826,"range":7.3767},{"f":0.4808,"disp":-5.2543,"range":7.3767},{"f":0.4913,"disp":-5.2385,"range":7.3767},{"f":0.5017,"disp":-5.6536,"range":7.3767},{"f":0.5122,"disp":-5.663,"range":7.3767},{"f":0.5226,"disp":-5.5781,"range":7.3767},{"f":0.5331,"disp":-5.6536,"range":7.3767},{"f":0.5436,"disp":-5.9617,"range":7.3767},{"f":0.554,"disp":-6.5403,"range":7.3767},{"f":0.5645,"disp":-6.5875,"range":7.3767},{"f":0.5749,"disp":-6.9617,"range":7.3767},{"f":0.5854,"disp":-6.6158,"range":7.427},{"f":0.5958,"disp":-6.9868,"range":7.427},{"f":0.6063,"disp":-7.3987,"range":8.0119},{"f":0.6167,"disp":-7.6094,"range":8.0119},{"f":0.6272,"disp":-7.5402,"range":8.0119},{"f":0.6376,"disp":-7.0245,"range":8.0119},{"f":0.6481,"disp":-6.8988,"range":8.0119},{"f":0.6585,"disp":-7.1252,"range":8.0119},{"f":0.669,"disp":-6.7415,"range":8.0119},{"f":0.6794,"disp":-6.707,"range":8.0119},{"f":0.6899,"disp":-7.0371,"range":8.0119},{"f":0.7003,"disp":-6.9617,"range":8.0119},{"f":0.7108,"disp":-6.6095,"range":8.0119},{"f":0.7213,"disp":-6.4837,"range":8.0119},{"f":0.7317,"disp":-6.2793,"range":8.0119},{"f":0.7422,"disp":-6.119,"range":8.0119},{"f":0.7526,"disp":-5.9366,"range":8.0119},{"f":0.7631,"disp":-6.207,"range":8.0119},{"f":0.7735,"disp":-6.3013,"range":8.0119},{"f":0.784,"disp":-6.3139,"range":8.0119},{"f":0.7944,"disp":-6.2825,"range":8.0119},{"f":0.8049,"disp":-6.0875,"range":8.0119},{"f":0.8153,"disp":-5.924,"range":8.0119},{"f":0.8258,"disp":-6.2007,"range":8.0119},{"f":0.8362,"disp":-6.1378,"range":8.0119},{"f":0.8467,"disp":-5.5215,"range":8.0119},{"f":0.8571,"disp":-5.5687,"range":8.0119},{"f":0.8676,"disp":-5.4964,"range":8.0119},{"f":0.878,"disp":-5.5718,"range":8.0119},{"f":0.8885,"disp":-5.9555,"range":8.0119},{"f":0.899,"disp":-5.9492,"range":8.0119},{"f":0.9094,"disp":-6.2101,"range":8.0119},{"f":0.9199,"disp":-6.119,"range":8.0119},{"f":0.9303,"disp":-6.1378,"range":8.0119},{"f":0.9408,"disp":-6.0529,"range":8.0119},{"f":0.9512,"disp":-6.0844,"range":8.0119},{"f":0.9617,"disp":-6.1315,"range":8.0119},{"f":0.9721,"disp":-6.2384,"range":8.0119},{"f":0.9826,"disp":-6.207,"range":8.0119},{"f":0.993,"disp":-6.2825,"range":8.0119},{"f":1,"disp":-6.295,"range":8.0119}]},"roundtrip":{"date":"2020-11-03","rangeMax":4.4013,"dispClose":0.1258,"approachVel":1.0165,"velBucket":"3·spike","outcome":"REVERSION","tagSide":"up","tagTimeFrac":0.0906,"hl50":1.289,"hl75":1.674,"ocMed":0.7,"path":[{"f":0,"disp":0,"range":0.0262},{"f":0.0105,"disp":0.0367,"range":0.1703},{"f":0.0209,"disp":0.0576,"range":0.1703},{"f":0.0314,"disp":0.1153,"range":0.186},{"f":0.0418,"disp":0.4244,"range":0.4925},{"f":0.0523,"disp":0.7283,"range":0.8331},{"f":0.0627,"disp":1.0532,"range":1.2208},{"f":0.0732,"disp":0.9431,"range":1.2287},{"f":0.0836,"disp":0.8279,"range":1.2366},{"f":0.0941,"disp":1.2837,"range":1.4016},{"f":0.1045,"disp":0.5449,"range":1.4016},{"f":0.115,"disp":0.0996,"range":1.7212},{"f":0.1254,"disp":-0.3275,"range":2.2426},{"f":0.1359,"disp":-0.3668,"range":2.2426},{"f":0.1463,"disp":-0.8698,"range":2.4784},{"f":0.1568,"disp":-0.7493,"range":2.5386},{"f":0.1672,"disp":-0.875,"range":2.5386},{"f":0.1777,"disp":-1.1868,"range":2.6591},{"f":0.1882,"disp":-1.9649,"range":3.6914},{"f":0.1986,"disp":-2.7534,"range":4.4013},{"f":0.2091,"disp":-2.4469,"range":4.4013},{"f":0.2195,"disp":-1.8024,"range":4.4013},{"f":0.23,"disp":-1.978,"range":4.4013},{"f":0.2404,"disp":-1.9596,"range":4.4013},{"f":0.2509,"disp":-1.9413,"range":4.4013},{"f":0.2613,"disp":-2.0749,"range":4.4013},{"f":0.2718,"disp":-1.2051,"range":4.4013},{"f":0.2822,"disp":-1.4566,"range":4.4013},{"f":0.2927,"disp":-1.6086,"range":4.4013},{"f":0.3031,"disp":-1.3885,"range":4.4013},{"f":0.3136,"disp":-1.4069,"range":4.4013},{"f":0.324,"disp":-1.6505,"range":4.4013},{"f":0.3345,"disp":-1.7081,"range":4.4013},{"f":0.3449,"disp":-1.7448,"range":4.4013},{"f":0.3554,"disp":-1.7081,"range":4.4013},{"f":0.3659,"disp":-1.8575,"range":4.4013},{"f":0.3763,"disp":-1.9832,"range":4.4013},{"f":0.3868,"disp":-2.088,"range":4.4013},{"f":0.3972,"disp":-2.1902,"range":4.4013},{"f":0.4077,"disp":-2.1483,"range":4.4013},{"f":0.4181,"disp":-1.5719,"range":4.4013},{"f":0.4286,"disp":-1.5693,"range":4.4013},{"f":0.439,"disp":-1.0008,"range":4.4013},{"f":0.4495,"disp":-0.9379,"range":4.4013},{"f":0.4599,"disp":-1.3047,"range":4.4013},{"f":0.4704,"disp":-1.2261,"range":4.4013},{"f":0.4808,"disp":-1.3545,"range":4.4013},{"f":0.4913,"disp":-0.82,"range":4.4013},{"f":0.5017,"disp":-1.1318,"range":4.4013},{"f":0.5122,"disp":-0.9248,"range":4.4013},{"f":0.5226,"disp":-0.8803,"range":4.4013},{"f":0.5331,"disp":-0.7545,"range":4.4013},{"f":0.5436,"disp":-0.6969,"range":4.4013},{"f":0.554,"disp":-0.5502,"range":4.4013},{"f":0.5645,"disp":-0.4663,"range":4.4013},{"f":0.5749,"disp":-0.3196,"range":4.4013},{"f":0.5854,"disp":-0.4978,"range":4.4013},{"f":0.5958,"disp":0.2515,"range":4.4013},{"f":0.6063,"disp":0.4663,"range":4.4013},{"f":0.6167,"disp":0.2515,"range":4.4013},{"f":0.6272,"disp":0.152,"range":4.4013},{"f":0.6376,"disp":0.1886,"range":4.4013},{"f":0.6481,"disp":0.1624,"range":4.4013},{"f":0.6585,"disp":-0.1362,"range":4.4013},{"f":0.669,"disp":-0.0707,"range":4.4013},{"f":0.6794,"disp":-0.3353,"range":4.4013},{"f":0.6899,"disp":-0.579,"range":4.4013},{"f":0.7003,"disp":-0.5135,"range":4.4013},{"f":0.7108,"disp":0.0157,"range":4.4013},{"f":0.7213,"disp":-0.0314,"range":4.4013},{"f":0.7317,"disp":0.0157,"range":4.4013},{"f":0.7422,"disp":-0.2541,"range":4.4013},{"f":0.7526,"disp":-0.2358,"range":4.4013},{"f":0.7631,"disp":-0.3196,"range":4.4013},{"f":0.7735,"disp":-0.2672,"range":4.4013},{"f":0.784,"disp":0.0105,"range":4.4013},{"f":0.7944,"disp":0.0996,"range":4.4013},{"f":0.8049,"disp":-0.0052,"range":4.4013},{"f":0.8153,"disp":0.1389,"range":4.4013},{"f":0.8258,"disp":0.0314,"range":4.4013},{"f":0.8362,"disp":-0.1598,"range":4.4013},{"f":0.8467,"disp":-0.1048,"range":4.4013},{"f":0.8571,"disp":0.0052,"range":4.4013},{"f":0.8676,"disp":-0.0131,"range":4.4013},{"f":0.878,"disp":-0.0314,"range":4.4013},{"f":0.8885,"disp":-0.0157,"range":4.4013},{"f":0.899,"disp":-0.0707,"range":4.4013},{"f":0.9094,"disp":-0.021,"range":4.4013},{"f":0.9199,"disp":0.1572,"range":4.4013},{"f":0.9303,"disp":0.0576,"range":4.4013},{"f":0.9408,"disp":0.0288,"range":4.4013},{"f":0.9512,"disp":0.2148,"range":4.4013},{"f":0.9617,"disp":0.0472,"range":4.4013},{"f":0.9721,"disp":0.0576,"range":4.4013},{"f":0.9826,"disp":0.1886,"range":4.4013},{"f":0.993,"disp":0.1912,"range":4.4013},{"f":1,"disp":0.1258,"range":4.4013}]}}};
+
+// ── helpers ──
+const pct = x => x==null ? '—' : (x*100).toFixed(1)+'%';
+function el(t,attrs,kids){const e=document.createElementNS('http://www.w3.org/2000/svg',t);for(const k in(attrs||{}))e.setAttribute(k,attrs[k]);(kids||[]).forEach(c=>e.appendChild(c));return e;}
+
+// ── header / kpis ──
+document.getElementById('span').textContent = DATA.span[0]+' → '+DATA.span[1];
+document.getElementById('lead3').innerHTML =
+  `Across <b>${DATA.taggedN.toLocaleString()}</b> EURUSD days that tagged the median exhaustion line (HL50) over <b>${DATA.span[0].slice(0,4)}–${DATA.span[1].slice(0,4)}</b>:`;
+const kpis=[
+  {l:'Tag → OC-median (tradeable fade)',v:pct(DATA.overallToOcMed),c:'g'},
+  {l:'Tag → all the way back to open',v:pct(DATA.overallToOpen),c:'a'},
+  {l:'Tagged HL50 days',v:DATA.taggedN.toLocaleString(),c:''},
+];
+document.getElementById('kpis').innerHTML = kpis.map(k=>`<div class="kpi"><div class="l">${k.l}</div><div class="big ${k.c}">${k.v}</div></div>`).join('');
+document.getElementById('t-open').textContent = pct(DATA.overallToOpen);
+document.getElementById('t-oc').textContent = pct(DATA.overallToOcMed);
+
+// ── velocity table (bars) ──
+const order=[['1·grind','grind'],['2·med','med'],['3·spike','spike']];
+const maxOc=Math.max(...order.map(([k])=>DATA.byVelOcMed[k]?.rate||0));
+const maxOp=Math.max(...order.map(([k])=>DATA.byVelOpen[k]?.rate||0));
+document.querySelector('#veltbl tbody').innerHTML = order.map(([k,label])=>{
+  const oc=DATA.byVelOcMed[k]||{}, op=DATA.byVelOpen[k]||{};
+  const barOc=`<div class="barwrap"><div class="bar b-oc" style="width:${(oc.rate/maxOc*100)||0}%"></div></div>`;
+  const barOp=`<div class="barwrap"><div class="bar b-open" style="width:${(op.rate/maxOp*100)||0}%"></div></div>`;
+  return `<tr><td>${label}</td><td>${oc.n||'—'}</td><td>${pct(oc.rate)}</td><td>${barOc}</td><td>${pct(op.rate)}</td><td>${barOp}</td></tr>`;
+}).join('');
+
+// ── day charts ──
+const W=340,H=210,PADL=34,PADR=10,PADT=14,PADB=22;
+function drawDay(container, ex, title){
+  if(!ex){container.innerHTML=`<div class="day"><div class="dt">${title}: (no example found)</div></div>`;return;}
+  const p=ex.path;
+  // y-range: displacement can go negative; range is positive & climbing
+  let yMin=0,yMax=Math.max(ex.hl75, ex.rangeMax*1);
+  p.forEach(pt=>{ yMin=Math.min(yMin,pt.disp); yMax=Math.max(yMax,pt.range,pt.disp); });
+  yMin=Math.min(yMin, -0.2); yMax*=1.06;
+  const X=f=>PADL+f*(W-PADL-PADR);
+  const Y=v=>PADT+(yMax-v)/(yMax-yMin)*(H-PADT-PADB);
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,preserveAspectRatio:'xMidYMid meet'});
+  // zero line
+  svg.appendChild(el('line',{x1:PADL,y1:Y(0),x2:W-PADR,y2:Y(0),stroke:'#3a4354','stroke-width':1}));
+  svg.appendChild(el('text',{x:PADL-4,y:Y(0)+3,'text-anchor':'end',fill:'#6f7889','font-size':9},[txt('open')]));
+  // guide bands (dashed) — sign depends on tag side
+  const s = ex.tagSide==='dn' ? -1 : 1;
+  const guides=[[s*ex.ocMed,'var(--amber)','OC'],[s*ex.hl50,'#6f7889','HL50'],[s*ex.hl75,'#586172','HL75']];
+  guides.forEach(([v,col,lab])=>{
+    if(v>yMax||v<yMin)return;
+    svg.appendChild(el('line',{x1:PADL,y1:Y(v),x2:W-PADR,y2:Y(v),stroke:col,'stroke-width':1,'stroke-dasharray':'3 3',opacity:.7}));
+    svg.appendChild(el('text',{x:W-PADR,y:Y(v)-3,'text-anchor':'end',fill:col,'font-size':8.5},[txt(lab)]));
+  });
+  // range area
+  let dArea=`M ${X(p[0].f)} ${Y(0)}`;
+  p.forEach(pt=>dArea+=` L ${X(pt.f)} ${Y(pt.range)}`);
+  dArea+=` L ${X(p[p.length-1].f)} ${Y(0)} Z`;
+  svg.appendChild(el('path',{d:dArea,fill:'var(--range)',opacity:.16}));
+  let dLine=`M ${X(p[0].f)} ${Y(p[0].range)}`;
+  p.forEach(pt=>dLine+=` L ${X(pt.f)} ${Y(pt.range)}`);
+  svg.appendChild(el('path',{d:dLine,fill:'none',stroke:'var(--range)','stroke-width':1.3,opacity:.65}));
+  // displacement line (colored by outcome)
+  const col = ex.outcome==='REVERSION' ? 'var(--green)' : 'var(--red)';
+  let dl=`M ${X(p[0].f)} ${Y(p[0].disp)}`;
+  p.forEach(pt=>dl+=` L ${X(pt.f)} ${Y(pt.disp)}`);
+  svg.appendChild(el('path',{d:dl,fill:'none',stroke:'var(--disp)','stroke-width':2}));
+  // tag marker
+  if(ex.tagTimeFrac!=null){
+    const tf=ex.tagTimeFrac;
+    svg.appendChild(el('line',{x1:X(tf),y1:PADT,x2:X(tf),y2:H-PADB,stroke:'var(--green)','stroke-width':1,'stroke-dasharray':'2 3',opacity:.5}));
+    svg.appendChild(el('circle',{cx:X(tf),cy:Y(s*ex.hl50),r:3.4,fill:'var(--green)'}));
+  }
+  // y ticks
+  [Math.ceil(yMin),0,Math.round(yMax)].forEach(v=>{ if(v>yMax||v<yMin)return;
+    svg.appendChild(el('text',{x:PADL-4,y:Y(v)+3,'text-anchor':'end',fill:'#4c5568','font-size':8.5},[txt(v+'σ')])); });
+
+  const box=document.createElement('div');box.className='day';
+  const tagCls = ex.outcome==='REVERSION'?'rev':'cont';
+  const tagLbl = ex.outcome==='REVERSION'?'faded':'trended';
+  box.innerHTML=`<div class="dt">${title}<span class="tag ${tagCls}">${tagLbl}</span></div>
+    <div style="font-size:11px;color:var(--text3)">${ex.date} · tag ${ex.tagSide==='up'?'▲ high':'▼ low'} side</div>`;
+  box.appendChild(svg);
+  box.insertAdjacentHTML('beforeend',
+    `<div class="meta">range spent <b>${ex.rangeMax}σ</b> · closing displacement <b>${ex.dispClose}σ</b><br>approach velocity <b>${ex.approachVel}σ</b> (${ex.velBucket.split('·')[1]})</div>`);
+  container.appendChild(box);
+}
+function txt(s){return document.createTextNode(s);}
+const days=document.getElementById('days');
+drawDay(days, DATA.examples.fade, 'Clean fade');
+drawDay(days, DATA.examples.roundtrip, 'Round-trip');
+drawDay(days, DATA.examples.trend, 'Trend day');
+</script>
+</body>
+</html>
