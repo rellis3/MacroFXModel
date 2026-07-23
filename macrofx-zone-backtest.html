@@ -101,6 +101,14 @@
         </select>
         <div class="hint">adds the Ch 4 Asia-range family</div>
       </div>
+      <div>
+        <label>Regression bands (Ch 10)</label>
+        <select id="regrBands">
+          <option value="1">On (fair value ±σ)</option>
+          <option value="0">Off</option>
+        </select>
+        <div class="hint">D1 OLS fair-value family</div>
+      </div>
     </div>
     <div style="margin-top:14px"><button id="run">Run zone backtest</button></div>
     <div id="status"></div>
@@ -187,6 +195,7 @@ function renderInstrument(r, idx){
       html += row(k, s, period==='oos' && s.trades>=30 && s.sharpe===best && s.sharpe>0); }
     html += `</tbody></table>${period==='is'?'<div style="height:10px"></div>':''}`;
   }
+  html += diagBlock(r.diagnostics);
   // CSV exports (mandatory 3 schemas) — export the `zone` mode (strategy under test).
   const n = (r.trades?.zone||[]).length;
   html += `<div class="exports">
@@ -200,6 +209,31 @@ function renderInstrument(r, idx){
       Stop distance is <b>vol-scaled (slMult × hl50)</b> and varies per trade, so R ≠ %Return.
       MAE is read off the real intra-trade path (M1 where available, else the D1 bar).</div>`;
   return html + `</div>`;
+}
+
+// ── Diagnostics block: per-year stability (zone book) + Monte Carlo (OOS) ────
+function diagBlock(d){
+  if(!d) return '';
+  let h = `<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:10px">
+    <div class="mut" style="font-size:11.5px;margin-bottom:6px"><b>Diagnostics — zone book</b> · per-year stability (not parameter walk-forward: the selector has no fitted params)</div>`;
+  if(d.perYear?.length){
+    h += `<table><thead><tr><th>year</th><th>trades</th><th>win%</th><th>expect</th><th>Sharpe</th><th>totalPnl</th></tr></thead><tbody>`;
+    for(const y of d.perYear) h += `<tr><td>${y.year}</td><td>${y.trades}</td><td>${fmt(y.winRate,1)}%</td>
+      <td class="${cls(y.expectancy)}">${fmt(y.expectancy,4)}</td><td class="${cls(y.sharpe)}">${fmt(y.sharpe,2)}</td>
+      <td class="${cls(y.totalPnl)}">${fmt(y.totalPnl,2)}</td></tr>`;
+    h += `</tbody></table>`;
+  }
+  if(d.mc){
+    const b=d.mc.bootstrap, mc=d.mc.montecarlo;
+    h += `<div class="rmeta" style="margin-top:8px">
+      <b>Monte Carlo (OOS, ${d.mc.trades} trades)</b> — bootstrap total PnL 5/50/95: <b>${fmt(b?.total?.p5,2)} / ${fmt(b?.total?.p50,2)} / ${fmt(b?.total?.p95,2)}</b> ·
+      Sharpe 5/50/95: <b>${fmt(b?.sharpe?.p5,2)} / ${fmt(b?.sharpe?.p50,2)} / ${fmt(b?.sharpe?.p95,2)}</b> ·
+      P(profit): <b>${fmt(b?.pPositive,2)}</b> · shuffle maxDD p50/p95/p99: ${fmt(mc?.maxDD?.p50,2)} / ${fmt(mc?.maxDD?.p95,2)} / ${fmt(mc?.maxDD?.p99,2)}.
+      <br><i>${d.mcNote}</i></div>`;
+  } else {
+    h += `<div class="rmeta" style="margin-top:8px"><i>Monte Carlo skipped — &lt;10 OOS trades.</i></div>`;
+  }
+  return h + `</div>`;
 }
 
 // ── CSV helpers (exact house schemas) ────────────────────────────────────────
@@ -247,6 +281,7 @@ $('run').onclick = async () => {
     clusterPips:$('clusterPips').value, fadeMax:$('fadeMax').value, reachMult:$('reachMult').value,
     slMult:$('slMult').value, rr:$('rr').value, erWindow:$('erWindow').value, costPct:$('costPct').value,
     accountSize:$('accountSize').value, riskPct:$('riskPct').value, asiaAnchor:$('asiaAnchor').value,
+    regrBands:$('regrBands').value,
   };
   $('run').disabled=true; $('results').innerHTML=''; $('legendCard').style.display='none';
   $('status').textContent='Submitting…';

@@ -9,7 +9,7 @@
  */
 
 import assert from 'node:assert';
-import { buildZones, runZoneMode, compareZones, asiaExtensionLevels, ASIA_EXT_RATIOS } from './macroFxZoneEngine.js';
+import { buildZones, runZoneMode, compareZones, asiaExtensionLevels, ASIA_EXT_RATIOS, regressionLevels } from './macroFxZoneEngine.js';
 
 let passed = 0;
 const ok = (cond, msg) => { assert.ok(cond, msg); console.log('  ✓', msg); passed++; };
@@ -147,6 +147,33 @@ function synthM1(d1) {
   // asiaAnchor requires M1: with none, zero trades.
   const noM1 = runZoneMode(d1, null, 'fx', 'EURUSD', 'zone', { minLookback: 80, asiaAnchor: true });
   ok(noM1.length === 0, 'asiaAnchor with no M1 → no trades (Asia range needs intraday)');
+}
+
+// 8) Regression fair-value family (Ch 10): fitted FV + ±σ bands, no lookahead.
+{
+  const prior = d1.slice(0, 200).map(b => ({ ...b, time: Math.floor(Date.parse(b.date) / 1000) }));
+  const lv = regressionLevels(prior, { regrLookback: 80, regrSds: [1, 2] });
+  ok(lv.length === 5, `regressionLevels emits fair value + ±1σ/±2σ (${lv.length})`);
+  ok(lv.filter(x => x.kind === 'regr_fv').length === 1, 'exactly one fair-value level');
+  ok(lv.every(x => x.source === 'regr_band' && Number.isFinite(x.price)), 'regr levels tagged regr_band, finite');
+  const fv = lv.find(x => x.kind === 'regr_fv').price;
+  const up2 = lv.find(x => x.meta.sd === 2).price, dn2 = lv.find(x => x.meta.sd === -2).price;
+  ok(up2 > fv && fv > dn2, 'band ordering: +2σ > fair value > -2σ');
+  ok(regressionLevels(prior.slice(0, 5), {}).length === 0, 'too few bars → no regression levels (guarded)');
+  // regrBands flows through buildZones as a distinct source.
+  const withR  = buildZones(prior, d1[200].open, 0.006, 'fx', 'EURUSD', { clusterPips: 10, regrBands: true, regrLookback: 80 });
+  const noR    = buildZones(prior, d1[200].open, 0.006, 'fx', 'EURUSD', { clusterPips: 10, regrBands: false });
+  ok(withR.zones.some(z => z.sources.includes('regr_band')) && !noR.zones.some(z => z.sources.includes('regr_band')),
+     'regrBands toggles the regr_band evidence family in the zone builder');
+}
+
+// 9) Diagnostics: per-year stability + Monte Carlo on the OOS book.
+{
+  const { diagnostics } = compareZones(d1, null, 'fx', 'EURUSD', { minLookback: 80, oosFrac: 0.4 });
+  ok(Array.isArray(diagnostics.perYear) && diagnostics.perYear.length >= 1, `perYear breakdown present (${diagnostics.perYear.length} years)`);
+  ok(diagnostics.perYear.every(y => 'sharpe' in y && 'trades' in y && /^\d{4}$/.test(y.year)), 'per-year rows carry year/trades/sharpe');
+  ok(diagnostics.mc && diagnostics.mc.bootstrap && diagnostics.mc.montecarlo, 'Monte Carlo block (bootstrap CI + shuffle drawdown) present');
+  ok(/expectation-setting/i.test(diagnostics.mcNote), 'MC is labelled expectation-setting, not OOS evidence');
 }
 
 console.log(`\n${passed} checks passed.`);
