@@ -48,8 +48,22 @@ both backends are configured.
 3. **Variables:** add the env vars above.
 4. **Settings → Networking → Generate Domain** — that URL is the one you share.
 
-No start-command override is needed (the folder's `npm start` runs `node server.js`),
-and no healthcheck config applies (the repo-root `railway.json` is outside this root).
+Start command and healthcheck are pinned by `cog-standalone/railway.json`
+(`node server.js`, healthcheck `/api/config`) so Railway can't use stale settings.
+
+### If the deploy fails on "Network › Healthcheck"
+
+Build + Deploy succeed but Healthcheck fails ⇒ the process isn't answering. The usual
+cause is a **stale dashboard override** from an earlier attempt beating `railway.json`:
+
+1. **Settings → Deploy → Custom Start Command** — make sure it is **empty** (or exactly
+   `node server.js`). A leftover value like `node cog-standalone/server.js` is wrong once
+   Root Directory is `/cog-standalone` (it would look for `cog-standalone/cog-standalone/…`)
+   and the process never starts.
+2. **Settings → Deploy → Healthcheck Path** — empty or `/api/config`.
+3. Redeploy. `/api/config` always returns 200 (no env needed), so a healthy process
+   passes; `page_loaded` / `cloudflare_kv` / `oanda` in its JSON tell you what's still
+   missing.
 
 ## Read-only share
 
