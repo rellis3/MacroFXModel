@@ -126,48 +126,65 @@
 }
 .v2-badge.derived-badge { background: var(--s2); color: var(--text3); border: 1px solid var(--border); }
 
-/* ── v2 Range Map ────────────────────────────────────────────────────────────── */
-.v2-range-map {
-  position: relative; height: 44px;
-  background: var(--s2); border-radius: 8px;
-  overflow: visible;
+/* ── v2 Range Ladder (unified: forecast tiers + live position + exhaustion) ──── */
+/* Colleague-style level ladder, laid out horizontally: Low big/busy/normal ·
+   Open · High normal/busy/big — with a live "you are here" dot, the range carved
+   so far (band), and how much of the expected move each side has used up.        */
+.v2-ladder { padding: 2px 0 0; }
+.v2-lad-track {
+  position: relative; height: 40px; margin: 0 8px;
+  background: var(--s2); border-radius: 8px; overflow: visible;
 }
-.v2-rm-track {
-  position: absolute; left: 6px; right: 6px; top: 50%; transform: translateY(-50%);
-  height: 8px; background: var(--border); border-radius: 4px;
+.v2-lad-zone { position: absolute; top: 6px; bottom: 6px; opacity: .13; }
+.v2-lad-zone.norm { background: var(--green); }
+.v2-lad-zone.busy { background: var(--amber); }
+.v2-lad-zone.big  { background: var(--red); }
+.v2-lad-open {
+  position: absolute; top: -3px; bottom: -3px; width: 2px;
+  background: var(--text2); opacity: .7; transform: translateX(-50%); z-index: 3;
 }
-.v2-rm-bar {
-  position: absolute; top: 50%; transform: translateY(-50%);
-  height: 16px; background: var(--blue); opacity: .35;
-  border-radius: 5px; transition: left .4s, width .4s;
+.v2-lad-tick {
+  position: absolute; top: 4px; bottom: 4px; width: 2px; border-radius: 1px;
+  transform: translateX(-50%); z-index: 4;
 }
-.v2-rm-bar.complete { opacity: .55; background: var(--green); }
-.v2-rm-tick {
-  position: absolute; top: -5px; bottom: -5px; width: 2px; border-radius: 1px;
+.v2-lad-tick.norm { background: var(--green); }
+.v2-lad-tick.busy { background: var(--amber); }
+.v2-lad-tick.big  { background: var(--red); }
+.v2-lad-tick.hit  { width: 3px; box-shadow: 0 0 5px 1px rgba(255,255,255,.28); }
+.v2-lad-band {
+  position: absolute; top: 50%; height: 14px; transform: translateY(-50%);
+  background: var(--blue); opacity: .30; border-radius: 4px; z-index: 2;
+  transition: left .4s, width .4s;
 }
-.v2-rm-tick.med { background: var(--blue); opacity: .9; }
-.v2-rm-tick.p75 { background: var(--amber); }
-.v2-rm-center {
-  position: absolute; top: -6px; bottom: -6px; width: 2px;
-  background: var(--text2); opacity: .6; transform: translateX(-50%);
+.v2-lad-band.complete { background: var(--green); opacity: .32; }
+.v2-lad-hl {
+  position: absolute; top: 50%; width: 2px; height: 18px;
+  transform: translate(-50%, -50%); background: var(--text3); z-index: 4;
 }
-.v2-rm-price-dot {
-  position: absolute; top: 50%; transform: translate(-50%, -50%);
-  width: 8px; height: 8px; border-radius: 50%;
-  background: var(--text); border: 2px solid var(--s1);
-  transition: left .4s;
-  z-index: 2;
+.v2-lad-dot {
+  position: absolute; top: 50%; width: 9px; height: 9px; border-radius: 50%;
+  transform: translate(-50%, -50%); background: var(--text);
+  border: 2px solid var(--s1); z-index: 6; transition: left .4s;
 }
-.v2-rm-labels {
-  display: flex; justify-content: space-between;
+.v2-lad-labels { position: relative; height: 22px; margin: 3px 8px 0; }
+.v2-lad-lbl {
+  position: absolute; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; line-height: 1.1;
+}
+.v2-lad-lbl .px { font-size: 8px; font-family: 'DM Mono', monospace; font-weight: 600; color: var(--text2); white-space: nowrap; }
+.v2-lad-lbl .dl { font-size: 7.5px; font-family: 'DM Mono', monospace; color: var(--text3); white-space: nowrap; }
+.v2-lad-lbl.hit .px { color: var(--green); }
+.v2-lad-lbl.open .px { color: var(--text); font-weight: 700; }
+.v2-lad-exh {
+  display: flex; justify-content: space-between; gap: 6px; margin: 5px 8px 0;
   font-size: 9px; font-family: 'DM Mono', monospace;
-  color: var(--text3); padding: 4px 2px 0; position: relative;
 }
-.v2-rm-lbl { display: flex; flex-direction: column; align-items: center; gap: 1px; }
-.v2-rm-lbl .tag { font-size: 8px; opacity: .7; }
-.v2-rm-lbl .val { font-size: 9px; font-weight: 500; color: var(--text2); }
-.v2-rm-lbl.center .tag { color: var(--text2); }
-.v2-rm-lbl.center .val { color: var(--text); font-weight: 700; }
+.v2-lad-exh .side { display: flex; gap: 4px; align-items: baseline; }
+.v2-lad-exh .amt { font-weight: 600; color: var(--text2); }
+.v2-lad-exh .lab { color: var(--text3); }
+.v2-lad-exh .t-norm { color: var(--green); }
+.v2-lad-exh .t-busy { color: var(--amber); }
+.v2-lad-exh .t-big  { color: var(--red); }
 
 /* ── v2 M5 mini-chart (Lightweight Charts) ───────────────────────────────────── */
 .v2-m5-wrap { position: relative; height: 300px; margin: 4px 0 2px;
@@ -238,12 +255,6 @@
 .vf-nday-val { font-size: 11px; font-weight: 600; font-family: 'DM Mono', monospace; color: var(--text); }
 .vf-nday-sub { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; }
 .vf-nday-hint { font-size: 9px; font-family: 'DM Mono', monospace; color: var(--text3); line-height: 1.5; padding-left: 52px; opacity: .75; }
-/* Range detail toggle */
-.v2-bars-toggle { display: flex; align-items: center; gap: 5px; padding: 3px 8px;
-  font-size: 9px; font-family: 'DM Mono', monospace; color: var(--text3);
-  background: var(--s2); border: 1px solid var(--border); border-radius: 8px;
-  cursor: pointer; width: fit-content; transition: color .15s, border-color .15s; }
-.v2-bars-toggle:hover { color: var(--text); border-color: var(--border2); }
 /* Level hit times */
 .v2-level-hits { display: flex; flex-wrap: wrap; gap: 4px; min-height: 0; }
 .v2-hit-chip { font-size: 9px; font-family: 'DM Mono', monospace;
@@ -252,40 +263,6 @@
 .v2-hit-chip b { color: var(--text2); font-weight: 600; }
 .v2-hit-chip.hit { color: var(--green); border-color: rgba(34,197,94,0.4); background: rgba(34,197,94,0.08); }
 .v2-hit-chip.hit b { color: var(--green); }
-
-/* ── v2 Metric bars ──────────────────────────────────────────────────────────── */
-.v2-metric-bars { display: flex; flex-direction: column; gap: 6px; }
-.v2-mbar-row { display: flex; align-items: center; gap: 8px; }
-.v2-mbar-lbl { width: 26px; font-size: 9.5px; font-family: 'DM Mono', monospace; color: var(--text3); flex-shrink: 0; text-align: right; letter-spacing: .02em; }
-.v2-mbar-track {
-  flex: 1; height: 8px; background: var(--s2); border-radius: 4px;
-  position: relative; overflow: visible;
-  border: 1px solid var(--border);
-}
-.v2-mbar-fill {
-  height: 100%; border-radius: 4px;
-  background: linear-gradient(90deg, var(--amber) 0%, #d97706 100%);
-  transition: width .5s ease;
-}
-.v2-mbar-fill.reached {
-  background: linear-gradient(90deg, var(--green) 0%, #059669 100%);
-}
-.v2-mbar-med-mark {
-  position: absolute; top: -3px; bottom: -3px; width: 2px;
-  background: var(--blue); border-radius: 1px; opacity: .9;
-}
-.v2-mbar-75-mark {
-  position: absolute; top: -3px; bottom: -3px; width: 2px;
-  background: var(--amber); border-radius: 1px; opacity: .8;
-}
-.v2-mbar-val {
-  font-size: 10.5px; font-weight: 700; font-family: 'DM Mono', monospace;
-  color: var(--text); width: 44px; text-align: right; flex-shrink: 0;
-}
-.v2-mbar-pct {
-  font-size: 9px; font-family: 'DM Mono', monospace;
-  color: var(--text3); width: 52px; flex-shrink: 0;
-}
 
 /* ── v2 Metric tiles ─────────────────────────────────────────────────────────── */
 .v2-metric-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
@@ -1143,9 +1120,9 @@
     <!-- SESSION TRACKER -->
     <div class="vfh-section">
       <div class="vfh-title">Session Tracker (inside each card)</div>
-      <p>The intraday progress bar and reach-time stamps track how far today's price action has moved against the forecast levels in real time.</p>
+      <p>The range ladder and reach-time stamps track how far today's price action has moved against the forecast levels in real time.</p>
       <table class="vfh-tbl">
-        <tr><td>Consumed bar</td><td>How much of the median H-L forecast has been used up so far today. Green dot at the median mark, amber at the 75th. Fills left-to-right as range builds.</td></tr>
+        <tr><td>Range ladder</td><td>One horizontal map of today's expected travel: <b>Low</b> and <b>High</b> tiers each side of the open — normal (median, green), busy (75th, amber), big (90th, red). The bright dot is where price is now (net move from open); the blue band is the range carved so far (its edges are today's high &amp; low); a glowing tick = that level was hit. The <b>exhaustion</b> line underneath shows how much of each side's expected move is used (e.g. "133% of normal · past busy" = the down-move has already exceeded a normal day). Levels are shown in price when the session is live, in % from open otherwise.</td></tr>
         <tr><td>Breakout probability</td><td>Brownian motion estimate of whether price will extend further given how much range is left and how much of the day has passed. High early in the day = range is not yet "used up". Falls as the session progresses and range is consumed.</td></tr>
         <tr><td>Level reach times</td><td>The UTC time each forecast level was first hit today: O-H med/75th (upside), O-L med/75th (downside), H-L med/75th (full range). Blank = not yet reached.</td></tr>
       </table>
@@ -1246,7 +1223,7 @@
         <tr><td>Gold (commodity)</td><td>Rogers-Satchell EWMA (λ=0.94) on daily OHLC. Handles trending markets without understating vol — unlike close-to-close estimators it doesn't subtract the directional component.</td></tr>
         <tr><td>Indices (NQ, SPX, DE30…)</td><td>GARCH(1,1): α=0.06, β=0.91, ω=4.76e-6 (~20% long-run floor). Responds quickly to vol spikes (α), mean-reverts over ~23 days (β), and can't collapse in quiet patches (ω floor).</td></tr>
         <tr><td>FX pairs</td><td>GARCH(1,1): same α/β, ω=3.60e-7 (~5% long-run floor). Lower floor reflects calmer FX baseline vs equity indices.</td></tr>
-        <tr><td>Range distribution</td><td>Brownian motion: H-L P50 = 1.572σ, P75 = 2.049σ. O-C P50 = 0.675σ (half-normal). Per-asset correction factors calibrated against reference system.</td></tr>
+        <tr><td>Range distribution</td><td>Brownian motion: H-L P50 = 1.572σ, P75 = 2.049σ. O-C / O-H / O-L are half-normal: P50 = 0.675σ, P75 = 1.150σ, and the ladder's "big day" P90 = 1.645σ (= Φ⁻¹(0.95), extended from the 75th so the per-asset correction carries through). Per-asset correction factors calibrated against reference system.</td></tr>
         <tr><td>Multi-day scaling</td><td>σ_N = σ_1 × √N (independent days). Not ×N — range partially cancels across days for a random walk.</td></tr>
       </table>
     </div>
@@ -1727,8 +1704,8 @@ function buildV2Card(name, f, meta, isHistorical = false) {
     return `<div class="vf-cone-strip" title="Vol cone — percentile of today's σ across different lookback windows. ${trend} = short-term vol ${expanding ? 'above' : 'below'} long-term average.">${items}${vovBadge}</div>`;
   })() : '';
 
-  // Multi-day H-L projections (√T scaling) — ported from v1, folded into the
-  // collapsible "Range detail" section to keep the default card compact.
+  // Multi-day H-L projections (√T scaling) — ported from v1, shown as a compact
+  // block under the metric tiles (the ladder above covers the intraday view).
   const ndayHtml = (f.hl_5d != null && f.hl_20d != null) ? `
     <div class="vf-nday-block">
       <div class="vf-nday-title">Multi-Day Range <span>— H-L across N sessions</span></div>
@@ -1743,9 +1720,6 @@ function buildV2Card(name, f, meta, isHistorical = false) {
   const trendCol   = trendDir === 'exp' ? 'var(--green)' : trendDir === 'ctr' ? 'var(--amber)' : 'var(--text3)';
   const trendChip  = (f.cone_5d != null || f.cone_21d != null)
     ? `<span class="v2-trend-chip" style="color:${trendCol}">${trendLabel}</span>` : '';
-
-  const hlMax = (f.hl_75 || 1) * 1.1;
-  const ocMax = (f.oc_75 || 1) * 1.1;
 
   const pctBadge = pct != null
     ? `<span class="v2-pct-badge ${pctClass}" title="Vol higher than ${pct}% of 252-day history">${pct}th</span>` : '';
@@ -1766,21 +1740,14 @@ function buildV2Card(name, f, meta, isHistorical = false) {
     </div>
     <div class="v2-lvl-legend" id="m5legend-${name}"></div>
     <div class="v2-m5-status" id="m5status-${name}"></div>
-    ${buildRangeMap(name, f)}
-    <button class="v2-bars-toggle" type="button" onclick="(function(btn){var b=btn.closest('.v2-card').querySelector('.v2-metric-bars');var open=b.style.display!=='none';b.style.display=open?'none':'flex';btn.querySelector('.v2-bars-arrow').textContent=open?'▸':'▾';})(this)">
-      Range detail <span class="v2-bars-arrow">▸</span>
-    </button>
-    <div class="v2-metric-bars" id="mbars-${name}" style="display:none">
-      ${v2MetricBar('H-L', f.hl_median, f.hl_75, hlMax)}
-      ${v2MetricBar('O-C', f.oc_median, f.oc_75, ocMax)}
-      ${ndayHtml}
-    </div>
+    ${buildRangeLadder(name, f)}
     <div class="v2-metric-tiles">
       <div class="v2-tile" id="tile-hl75-${name}"><div class="v2-tile-val">${f.hl_75.toFixed(2)}%</div><div class="v2-tile-lbl">H-L 75th</div></div>
       <div class="v2-tile v2-tile-med" id="tile-hlmed-${name}"><div class="v2-tile-val">${f.hl_median.toFixed(2)}%</div><div class="v2-tile-lbl">H-L Med</div></div>
       <div class="v2-tile" id="tile-oc75-${name}"><div class="v2-tile-val">${f.oc_75.toFixed(2)}%</div><div class="v2-tile-lbl">O-C 75th</div></div>
       <div class="v2-tile v2-tile-med" id="tile-ocmed-${name}"><div class="v2-tile-val">${f.oc_median.toFixed(2)}%</div><div class="v2-tile-lbl">O-C Med</div></div>
     </div>
+    ${ndayHtml}
     <div id="v2-level-hits-${name}" class="v2-level-hits"></div>
     ${newsChip}
     <div id="vf-pos-${name}" class="vf-pos-result" style="display:none"></div>
@@ -1789,56 +1756,96 @@ function buildV2Card(name, f, meta, isHistorical = false) {
   return card;
 }
 
-function buildRangeMap(name, f) {
-  const scale = (f.oc_75 || 0.5) * 1.15;
-  const pos = v => Math.max(2, Math.min(98, 50 + (v / scale) * 50)).toFixed(1);
-  const ocMedUp = pos(f.oc_median), oc75Up = pos(f.oc_75);
-  const ocMedDn = pos(-f.oc_median), oc75Dn = pos(-f.oc_75);
-  const mono = "font-size:8px;font-family:'DM Mono',monospace;color:var(--text3)";
-  return `<div class="v2-range-map" id="rmap-${name}">
-    <div class="v2-rm-track">
-      <div class="v2-rm-center" style="left:50%"></div>
-      <div class="v2-rm-tick p75" style="left:${oc75Dn}%"  title="O-C 75th dn"></div>
-      <div class="v2-rm-tick med" style="left:${ocMedDn}%" title="O-C Med dn"></div>
-      <div class="v2-rm-tick med" style="left:${ocMedUp}%" title="O-C Med up"></div>
-      <div class="v2-rm-tick p75" style="left:${oc75Up}%"  title="O-C 75th up"></div>
-    </div>
-    <div style="position:relative;height:14px;margin-top:2px">
-      <span style="position:absolute;left:${oc75Dn}%;transform:translateX(-50%);${mono}">−75th</span>
-      <span style="position:absolute;left:${ocMedDn}%;transform:translateX(-50%);${mono}">−med</span>
-      <span style="position:absolute;left:50%;transform:translateX(-50%);font-size:8px;font-family:'DM Mono',monospace;color:var(--text2);font-weight:600">O</span>
-      <span style="position:absolute;left:${ocMedUp}%;transform:translateX(-50%);${mono}">+med</span>
-      <span style="position:absolute;left:${oc75Up}%;transform:translateX(-50%);${mono}">+75th</span>
-    </div>
+// 90th-percentile ("big day") multiplier for the one-sided O-H / O-L excursions.
+// O-H/O-L are half-normal (|N|); the forecast's median/75th use HN P50=0.6745,
+// P75=1.1503. HN P90 = Φ⁻¹(0.95) = 1.6449. We extend the forecast's 75th (which
+// already carries the per-asset correction) to the 90th via the exact half-normal
+// tail ratio — so no engine change, and the Brownian range constants are untouched.
+const OC_90_FROM_75 = 1.6449 / 1.1503;   // ≈ 1.4300
+
+function _ladderTiers(f, s) {
+  // Honor the backend's asset-corrected O-H/O-L targets when present (the same
+  // values the reached-flags are computed against); else fall back to O-C (the
+  // half-normal magnitude O-H/O-L share by the reflection principle).
+  const up50 = s?.oh_target_med ?? f.oc_median, up75 = s?.oh_target_75 ?? f.oc_75;
+  const dn50 = s?.ol_target_med ?? f.oc_median, dn75 = s?.ol_target_75 ?? f.oc_75;
+  const up90 = up75 * OC_90_FROM_75, dn90 = dn75 * OC_90_FROM_75;
+  const list = [
+    { pct: -dn90, kind: 'big',  name: 'Low big',   hit: s ? (s.ol >= dn90) : false, at: null },
+    { pct: -dn75, kind: 'busy', name: 'Low busy',  hit: !!(s && s.ol_75_reached_at), at: s?.ol_75_reached_at },
+    { pct: -dn50, kind: 'norm', name: 'Low',       hit: !!(s && s.ol_reached_at),    at: s?.ol_reached_at },
+    { pct: +up50, kind: 'norm', name: 'High',      hit: !!(s && s.oh_reached_at),    at: s?.oh_reached_at },
+    { pct: +up75, kind: 'busy', name: 'High busy', hit: !!(s && s.oh_75_reached_at), at: s?.oh_75_reached_at },
+    { pct: +up90, kind: 'big',  name: 'High big',  hit: s ? (s.oh >= up90) : false, at: null },
+  ];
+  return { up50, up75, up90, dn50, dn75, dn90, list };
+}
+
+// One horizontal ladder that does the job of the old gauge + Range-detail bars:
+// the colleague's tiered High/Low levels (in price), a live "you are here" dot,
+// the range carved so far, and how exhausted each side's expected move is.
+function ladderHtml(name, f, s) {
+  const open = s?.anchor_open ?? null;
+  const dp   = open != null ? _priceDp(open) : 2;
+  // compact precision for the visible labels so big-number prices don't collide;
+  // tooltips keep full precision (dp).
+  const ldp  = open == null ? 2 : open >= 5000 ? 0 : open >= 500 ? 1 : dp;
+  const { up50, up75, up90, dn50, dn75, dn90, list } = _ladderTiers(f, s);
+  const half = Math.max(up90, dn90) * 1.15 || 1e-6;   // axis half-width, in % from open
+  const X    = pct => Math.max(1.5, Math.min(98.5, 50 + (pct / half) * 50));
+  const dlt  = pct => `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
+  const pxAt = pct => open != null ? _fmtPrice(open * (1 + pct / 100), dp) : null;
+  const lpx  = pct => open != null ? _fmtPrice(open * (1 + pct / 100), ldp) : null;
+
+  // background zones: open→normal, normal→busy, busy→big (down side then up side)
+  const zone = (a, b, kind) => {
+    const l = Math.min(X(a), X(b)), w = Math.abs(X(b) - X(a));
+    return `<div class="v2-lad-zone ${kind}" style="left:${l}%;width:${w}%"></div>`;
+  };
+  const zones = zone(0, -dn50, 'norm') + zone(-dn50, -dn75, 'busy') + zone(-dn75, -dn90, 'big')
+              + zone(0,  up50, 'norm') + zone( up50,  up75, 'busy') + zone( up75,  up90, 'big');
+
+  const ticks = list.map(t => {
+    const tip = `${t.name}: ${open != null ? pxAt(t.pct) + ' · ' : ''}${dlt(t.pct)}${t.hit ? (t.at ? ' · hit ' + _fmtTime(t.at) : ' · hit') : ''}`;
+    return `<div class="v2-lad-tick ${t.kind}${t.hit ? ' hit' : ''}" style="left:${X(t.pct)}%" title="${tip}"></div>`;
+  }).join('');
+
+  // live overlay: range carved so far (band), day high/low ticks, current price dot
+  let band = '', hilo = '', dot = '';
+  if (s && s.oh != null && s.ol != null) {
+    const l = X(-s.ol), r = X(s.oh);
+    band = `<div class="v2-lad-band${s.complete ? ' complete' : ''}" style="left:${l}%;width:${Math.max(0, r - l)}%" title="Range so far ${(s.oh + s.ol).toFixed(2)}%"></div>`;
+    hilo = `<div class="v2-lad-hl" style="left:${X(s.oh)}%" title="Day high${open != null ? ' ' + pxAt(s.oh) : ''}"></div>`
+         + `<div class="v2-lad-hl" style="left:${X(-s.ol)}%" title="Day low${open != null ? ' ' + pxAt(-s.ol) : ''}"></div>`;
+    if (s.oc != null) dot = `<div class="v2-lad-dot" style="left:${X(s.oc)}%" title="Now: ${open != null ? pxAt(s.oc) + ' · ' : ''}${dlt(s.oc)} from open"></div>`;
+  }
+
+  const lbl = t => `<div class="v2-lad-lbl ${t.kind}${t.hit ? ' hit' : ''}" style="left:${X(t.pct)}%">${open != null ? `<span class="px">${lpx(t.pct)}</span>` : ''}<span class="dl">${dlt(t.pct)}</span></div>`;
+  const openLbl = `<div class="v2-lad-lbl open" style="left:50%">${open != null ? `<span class="px">${_fmtPrice(open, ldp)}</span>` : ''}<span class="dl">Open</span></div>`;
+  const labels = list.map(lbl).join('') + openLbl;
+
+  // exhaustion: how much of the expected move each side has used (colour = tier)
+  let exh = '';
+  if (s && s.oh != null && s.ol != null) {
+    // colour tier: green building (< normal), amber past normal, red big day (≥ 90th)
+    const tc = (v, p50, p90) => v >= p90 ? 'big' : v >= p50 ? 'busy' : 'norm';
+    const upPct = up50 > 0 ? Math.round(s.oh / up50 * 100) : 0;
+    const dnPct = dn50 > 0 ? Math.round(s.ol / dn50 * 100) : 0;
+    exh = `<div class="v2-lad-exh">
+      <span class="side"><span class="lab">↑</span><span class="amt">${s.oh.toFixed(2)}%</span><span class="lab t-${tc(s.oh, up50, up90)}">${upPct}% of normal</span></span>
+      <span class="side"><span class="lab t-${tc(s.ol, dn50, dn90)}">${dnPct}% of normal</span><span class="amt">${s.ol.toFixed(2)}%</span><span class="lab">↓</span></span>
+    </div>`;
+  }
+
+  return `<div class="v2-ladder">
+    <div class="v2-lad-track">${zones}<div class="v2-lad-open" style="left:50%"></div>${band}${ticks}${hilo}${dot}</div>
+    <div class="v2-lad-labels">${labels}</div>
+    ${exh}
   </div>`;
 }
 
-function v2MetricBar(label, medVal, p75Val, maxVal, actualVal, hitP75, subLbl) {
-  const medW = Math.min(100, (medVal / maxVal) * 100).toFixed(1);
-  const p75W = Math.min(100, (p75Val / maxVal) * 100).toFixed(1);
-  if (actualVal != null) {
-    const actW   = Math.min(100, (actualVal / maxVal) * 100).toFixed(1);
-    const actCls = hitP75 ? 'reached' : '';
-    return `<div class="v2-mbar-row">
-      <span class="v2-mbar-lbl">${label}</span>
-      <div class="v2-mbar-track">
-        <div class="v2-mbar-fill ${actCls}" style="width:${actW}%"></div>
-        <div class="v2-mbar-med-mark" style="left:${medW}%" title="Med ${medVal.toFixed(2)}%"></div>
-        <div class="v2-mbar-75-mark" style="left:${p75W}%" title="75th ${p75Val.toFixed(2)}%"></div>
-      </div>
-      <span class="v2-mbar-val">${actualVal.toFixed(2)}%</span>
-      <span class="v2-mbar-pct">${subLbl || ''}</span>
-    </div>`;
-  }
-  return `<div class="v2-mbar-row">
-    <span class="v2-mbar-lbl">${label}</span>
-    <div class="v2-mbar-track">
-      <div class="v2-mbar-fill" style="width:${medW}%"></div>
-      <div class="v2-mbar-75-mark" style="left:${p75W}%" title="75th ${p75Val.toFixed(2)}%"></div>
-    </div>
-    <span class="v2-mbar-val">${medVal.toFixed(2)}%</span>
-    <span class="v2-mbar-pct">75th ${p75Val.toFixed(2)}%</span>
-  </div>`;
+function buildRangeLadder(name, f) {
+  return `<div id="rmap-${name}">${ladderHtml(name, f, null)}</div>`;
 }
 
 // ── Update card with live session data ─────────────────────────────────────────
@@ -1853,47 +1860,9 @@ function updateV2CardSession(name, s, data) {
   const lb = document.getElementById(`v2live-${name}`);
   if (lb) lb.style.display = '';
 
-  // Update range map
+  // Update range ladder with live position + exhaustion (re-render in place)
   const rmap = document.getElementById(`rmap-${name}`);
-  if (rmap && s.oh != null && s.ol != null) {
-    const scale = (fc.oc_75 || 0.5) * 1.15;
-    const pos = v => Math.max(2, Math.min(98, 50 + (v / scale) * 50));
-    const bL = pos(-s.ol), bR = pos(s.oh), bW = bR - bL;
-    const cP = pos(s.oc ?? 0);
-    const track = rmap.querySelector('.v2-rm-track');
-    if (track) {
-      track.querySelectorAll('.v2-rm-bar,.v2-rm-price-dot').forEach(e => e.remove());
-      const bar = document.createElement('div');
-      bar.className = 'v2-rm-bar' + (s.complete ? ' complete' : '');
-      bar.style.cssText = `left:${bL.toFixed(1)}%;width:${bW.toFixed(1)}%`;
-      bar.title = `O-H ${s.oh.toFixed(2)}% · O-L ${s.ol.toFixed(2)}% · O-C ${s.oc>=0?'+':''}${s.oc.toFixed(2)}%`;
-      track.appendChild(bar);
-      const dot = document.createElement('div');
-      dot.className = 'v2-rm-price-dot';
-      dot.style.left = cP.toFixed(1) + '%';
-      dot.title = `O-C: ${s.oc>=0?'+':''}${s.oc.toFixed(2)}%`;
-      track.appendChild(dot);
-    }
-  }
-
-  // Rebuild metric bars with actual data
-  const mb = document.getElementById(`mbars-${name}`);
-  if (mb && s.hl != null) {
-    const hlMax = (fc.hl_75 || 1) * 1.1, ocMax = (fc.oc_75 || 1) * 1.1;
-    const ocAbs = Math.abs(s.oc ?? 0);
-    const hlPct = fc.hl_median > 0 ? Math.round(s.hl / fc.hl_median * 100) : null;
-    const ocPct = fc.oc_median > 0 ? Math.round(ocAbs / fc.oc_median * 100) : null;
-    const ohMed = s.oh_target_med ?? fc.oc_median, ohP75 = s.oh_target_75 ?? fc.oc_75;
-    const olMed = s.ol_target_med ?? fc.oc_median, olP75 = s.ol_target_75 ?? fc.oc_75;
-    const ohMax = Math.max(ohP75, ocMax) * 1.05, olMax = Math.max(olP75, ocMax) * 1.05;
-    const ohPct = ohMed > 0 ? Math.round(s.oh / ohMed * 100) : null;
-    const olPct = olMed > 0 ? Math.round(s.ol / olMed * 100) : null;
-    mb.innerHTML =
-      v2MetricBar('H-L', fc.hl_median, fc.hl_75, hlMax, s.hl,  s.hl>=fc.hl_75,   hlPct ? `${hlPct}% med` : '') +
-      v2MetricBar('O-C', fc.oc_median, fc.oc_75, ocMax, ocAbs, ocAbs>=fc.oc_75,   ocPct ? `${ocPct}% med` : '') +
-      v2MetricBar('O-H', ohMed, ohP75, ohMax, s.oh, s.oh>=ohP75, ohPct ? `${ohPct}% med` : (s.oh_reached_at ? '✓' : '')) +
-      v2MetricBar('O-L', olMed, olP75, olMax, s.ol, s.ol>=olP75, olPct ? `${olPct}% med` : (s.ol_reached_at ? '✓' : ''));
-  }
+  if (rmap) rmap.innerHTML = ladderHtml(name, fc, s);
 
   // Update tiles
   if (s.hl != null) {
