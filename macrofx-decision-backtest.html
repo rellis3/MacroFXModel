@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MacroFX Decision Engine — assembled backtest</title>
+<style>
+  :root{
+    --bg:#0e1016; --panel:#161a24; --panel2:#1d222e; --line:#2a3140;
+    --text:#e6e9ef; --text2:#aab2c0; --text3:#6f7889;
+    --accent:#5b9dff; --green:#3fb27f; --red:#e5604d; --amber:#e0a93b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  header{padding:20px 24px;border-bottom:1px solid var(--line);background:var(--panel)}
+  h1{margin:0 0 4px;font-size:19px;font-weight:650}
+  .sub{color:var(--text2);font-size:13px;max-width:1040px}
+  main{padding:22px 24px;max-width:1320px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:18px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+  label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+  input,select{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:7px 9px;font-size:13px}
+  button{background:var(--accent);color:#fff;border:0;border-radius:7px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer}
+  button.sm{padding:5px 11px;font-size:11.5px;background:var(--panel2);border:1px solid var(--line);color:var(--text2)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .hint{color:var(--text3);font-size:11px;margin-top:3px}
+  #status{margin:14px 0;color:var(--text2);font-size:13px;min-height:18px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{padding:6px 9px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  thead th{color:var(--text3);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+  .inst-title{font-size:14px;font-weight:600;margin:2px 0 10px}
+  .mode{color:var(--text2);font-weight:600}
+  .pos{color:var(--green)} .neg{color:var(--red)} .mut{color:var(--text3)}
+  .win{background:rgba(63,178,127,.12)} .asm{background:rgba(91,157,255,.10)}
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;margin-left:6px}
+  .b-good{background:rgba(63,178,127,.18);color:var(--green)}
+  .b-bad{background:rgba(229,96,77,.18);color:var(--red)}
+  .b-meh{background:rgba(224,169,59,.18);color:var(--amber)}
+  .legend{color:var(--text3);font-size:11.5px;margin-top:10px;line-height:1.7}
+  code{background:var(--panel2);padding:1px 5px;border-radius:4px;color:var(--text2)}
+  .exports{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .rmeta{color:var(--text3);font-size:11px;margin-top:6px}
+  .sec{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+  .sec h4{margin:0 0 6px;font-size:11.5px;color:var(--text2);text-transform:uppercase;letter-spacing:.03em}
+</style>
+</head>
+<body>
+<header>
+  <h1>MacroFX Decision Engine <span class="mut" style="font-size:13px">· the assembled system</span></h1>
+  <div class="sub">
+    The v1 backtester built only the <b>skeleton</b> — levels → zones, trading
+    every zone every day. This is the rest of the picture the 20-doc spec
+    describes: a <b>monitored decision process</b> on top of the same zones. Per
+    session it reads a market state (trend-strength + trend-day-ness + regime +
+    vol) into a trendiness <code>S</code> that <b>directs</b> each zone —
+    <b>follow</b> a break when S is high, <b>fade</b> to fair value when low,
+    <b>stand aside</b> in between. A <b>confidence gate</b> (independent-evidence
+    count + state alignment + location) fires only high-conviction trades, so the
+    book is <b>selective</b>. <b>Trade management</b> (partial at +1R → break-even
+    → trail → time-exit) works the tail. It runs <b>head-to-head vs the v1 naked
+    skeleton</b> on the same split — the question is whether the decision +
+    confidence + management layers change the result. No verdict pre-loaded.
+  </div>
+</header>
+<main>
+  <div class="card">
+    <div class="grid">
+      <div>
+        <label>Instrument</label>
+        <select id="pair">
+          <option value="">All instruments</option>
+          <option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option>
+          <option>AUDUSD</option><option>NZDUSD</option><option>USDCAD</option>
+          <option>USDCHF</option><option>GBPJPY</option><option>GOLD</option><option>NQ</option>
+        </select>
+      </div>
+      <div><label>OOS fraction</label><input id="oosFrac" type="number" value="0.4" step="0.05" min="0.1" max="0.6"></div>
+      <div><label>Follow when S ≥</label><input id="followMin" type="number" value="0.55" step="0.05"><div class="hint">high trendiness → follow</div></div>
+      <div><label>Fade when S ≤</label><input id="fadeMax" type="number" value="0.38" step="0.05"><div class="hint">low → fade · between → stand aside</div></div>
+      <div><label>Confidence gate ≥</label><input id="confThresh" type="number" value="0.5" step="0.05"><div class="hint">selectivity</div></div>
+      <div><label>Min distinct sources</label><input id="minSources" type="number" value="2" step="1" min="2" max="5"></div>
+      <div><label>Cluster tol (pips)</label><input id="clusterPips" type="number" value="10" step="1"></div>
+      <div><label>Reach (×hl75)</label><input id="reachMult" type="number" value="1.5" step="0.1"></div>
+      <div><label>SL multiple (×hl50)</label><input id="slMult" type="number" value="1.5" step="0.1"></div>
+      <div><label>Partial at +R</label><input id="beAtR" type="number" value="1.0" step="0.25"><div class="hint">then stop→break-even</div></div>
+      <div><label>Partial fraction</label><input id="partialFrac" type="number" value="0.5" step="0.1" min="0" max="1"></div>
+      <div><label>Trail (×R)</label><input id="trailR" type="number" value="1.0" step="0.25"><div class="hint">runner trail behind peak</div></div>
+      <div>
+        <label>Asia extensions (M1)</label>
+        <select id="asiaAnchor"><option value="">Off</option><option value="1">On (anchor at Asia close)</option></select>
+      </div>
+      <div>
+        <label>Regression bands</label>
+        <select id="regrBands"><option value="1">On</option><option value="0">Off</option></select>
+      </div>
+      <div><label>Cost % (opt)</label><input id="costPct" type="number" placeholder="auto" step="0.001"></div>
+      <div><label>Account size ($)</label><input id="accountSize" type="number" value="10000" step="1000"></div>
+      <div><label>Risk per trade (%)</label><input id="riskPct" type="number" value="1" step="0.25"></div>
+    </div>
+    <div style="margin-top:14px"><button id="run">Run assembled backtest</button></div>
+    <div id="status"></div>
+  </div>
+
+  <div id="results"></div>
+
+  <div class="card" id="legendCard" style="display:none">
+    <div class="legend">
+      <b>Read it like this.</b> <b>assembled</b> = state-directed + confidence-gated
+      + trade-managed. <b>naked</b> = the v1 skeleton (fade every zone, fixed exit).
+      The headline is whether <b>assembled OOS Sharpe</b> beats naked <b>and</b>
+      clears zero at a non-trivial trade count. The <b>confidence calibration</b>
+      table is the real tell: if higher-confidence buckets have better expectancy,
+      the gate is finding something; if not, the confidence score is noise.
+      <b>Exit mix</b> shows how much of the result the trade manager (trail/BE vs
+      raw stop vs time) is doing. Selectivity is expected — the assembled book
+      should trade a fraction of the naked one.
+      <br><br><b>Deferred, honestly.</b> Options/Gamma (Ch 9), Macro (Ch 11),
+      order-book Liquidity (Ch 8) need data OANDA mids can't source — not faked in.
+    </div>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (v,d=2)=> (v===undefined||v===null||isNaN(v)) ? '—' : (+v).toFixed(d);
+const cls = v => v>0 ? 'pos' : v<0 ? 'neg' : 'mut';
+let LAST = null;
+
+function row(label, s, isWin){
+  return `<tr class="${label==='assembled'?'asm':''} ${isWin?'win':''}">
+    <td class="mode">${label}</td>
+    <td>${s.trades}<span class="mut"> · ${fmt(s.tradesPerYr,0)}/yr</span></td>
+    <td>${fmt(s.winRate,1)}%</td>
+    <td>${fmt(s.profitFactor,2)}</td>
+    <td class="${cls(s.expectancy)}">${fmt(s.expectancy,4)}</td>
+    <td class="${cls(s.sharpe)}"><b>${fmt(s.sharpe,2)}</b><span class="mut"> ±${fmt(s.sharpeSE,2)}</span></td>
+    <td class="mut">${s.minTrackYears==null?'∞':fmt(s.minTrackYears,1)}y</td>
+    <td class="${cls(s.maxDD)}">${fmt(s.maxDD,2)}</td>
+    <td class="mut">${fmt(s.skew,2)}</td>
+  </tr>`;
+}
+
+function verdict(r){
+  const a = r.managed.oos, n = r.naked.oos;
+  if(a.trades<30) return `<span class="badge b-bad">assembled &lt;30 OOS trades — inconclusive</span>`;
+  const beats = a.sharpe > n.sharpe;
+  const good = beats && a.sharpe>0;
+  const b = good ? 'b-good' : a.sharpe>0 ? 'b-meh' : 'b-bad';
+  return `<span class="badge ${b}">OOS assembled ${fmt(a.sharpe,2)} vs naked ${fmt(n.sharpe,2)} — ${beats?(a.sharpe>0?'assembled wins & clears 0':'less-bad, still ≤0'):'no improvement'}</span>`;
+}
+
+function tbl(title, sA, sN){
+  const best = Math.max(sA.sharpe, sN.sharpe);
+  return `<table><thead><tr><th>${title}</th><th>trades</th><th>win%</th><th>PF</th><th>expect</th><th>Sharpe ±SE</th><th>minTrack</th><th>maxDD</th><th>skew</th></tr></thead><tbody>
+    ${row('assembled', sA, sA.trades>=30 && sA.sharpe===best && sA.sharpe>0)}
+    ${row('naked', sN, false)}
+  </tbody></table>`;
+}
+
+function calTable(cal){
+  if(!cal?.length) return '';
+  let h = `<div class="sec"><h4>Confidence calibration — does higher conviction pay?</h4>
+    <table><thead><tr><th>confidence</th><th>trades</th><th>win%</th><th>expect</th><th>Sharpe</th></tr></thead><tbody>`;
+  for(const b of cal) h += `<tr><td>${fmt(b.lo,2)}–${fmt(b.hi,2)}</td><td>${b.trades}</td><td>${fmt(b.winRate,1)}%</td>
+    <td class="${cls(b.expectancy)}">${fmt(b.expectancy,4)}</td><td class="${cls(b.sharpe)}">${fmt(b.sharpe,2)}</td></tr>`;
+  return h + `</tbody></table></div>`;
+}
+
+function exitTable(mix){
+  const keys = Object.keys(mix||{});
+  if(!keys.length) return '';
+  const total = keys.reduce((s,k)=>s+mix[k],0)||1;
+  let h = `<div class="sec"><h4>Exit mix — how the trade manager closes</h4><div class="rmeta">`;
+  h += keys.sort((a,b)=>mix[b]-mix[a]).map(k=>`<b>${k}</b> ${mix[k]} (${fmt(mix[k]/total*100,0)}%)`).join(' · ');
+  return h + `</div></div>`;
+}
+
+function renderInstrument(r, idx){
+  const split = r.managed.splitDate;
+  let html = `<div class="card"><div class="inst-title">${r.instrument}
+    <span class="mut">· ${r.assetClass} · OOS from ${split||'—'}</span> ${verdict(r)}</div>`;
+  html += tbl('IS', r.managed.is, r.naked.is) + '<div style="height:10px"></div>' + tbl('OOS', r.managed.oos, r.naked.oos);
+  html += calTable(r.calibration);
+  html += exitTable(r.exitMix);
+  const n = (r.trades?.managed||[]).length;
+  html += `<div class="exports"><span class="mut" style="font-size:11.5px">Export <b>assembled</b> trade log (${n}):</span>
+      <button class="sm" onclick="csvPct(${idx})">% Returns</button>
+      <button class="sm" onclick="csvR(${idx})">R-Multiples</button>
+      <button class="sm" onclick="csvDollar(${idx})">Currency P&amp;L</button></div>
+    <div class="rmeta">Account $${(LAST?.opts?.accountSize??10000).toLocaleString()} · R-unit = ${fmt(LAST?.opts?.riskPct??1,2)}% of equity ($${((LAST?.opts?.accountSize??10000)*(LAST?.opts?.riskPct??1)/100).toFixed(0)}). Stop is vol-scaled (varies per trade), so R ≠ %Return. MAE off the real intra-trade path.</div>`;
+  return html + `</div>`;
+}
+
+function dl(name, rows){ const blob=new Blob([rows.join('\n')],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href); }
+function tr(idx){ return (LAST?.results?.[idx]?.trades?.managed)||[]; }
+function csvPct(idx){ const r=LAST.results[idx]; const rows=['Date,Return %,MAE %']; for(const t of tr(idx)) rows.push(`${t.date},${t.pnl_pct},${t.mae_pct}`); dl(`${r.instrument}_assembled_returns.csv`,rows); }
+function csvR(idx){ const r=LAST.results[idx]; const rows=['date,R,MAE (R)']; for(const t of tr(idx)){ const maeR=t.stop_pct>1e-9?(t.mae_pct/t.stop_pct).toFixed(4):0; rows.push(`${t.date},${t.R},${maeR}`);} dl(`${r.instrument}_assembled_rmultiples.csv`,rows); }
+function csvDollar(idx){ const r=LAST.results[idx]; const rows=['Trade Date,PnL ($),Risk ($)']; for(const t of tr(idx)) rows.push(`${t.date},${t.pnl_dollar},${t.risk_dollar}`); dl(`${r.instrument}_assembled_dollars.csv`,rows); }
+
+async function poll(jobId){
+  for(let i=0;i<300;i++){
+    await new Promise(r=>setTimeout(r,2000));
+    const res = await fetch(`/api/macrofx-decision/status/${jobId}`).then(r=>r.json()).catch(()=>null);
+    if(!res) continue;
+    if(res.status==='running'){ $('status').textContent = `Running… ${res.elapsed||0}s`; continue; }
+    if(res.status==='done') return res;
+    if(res.status==='error') throw new Error(res.error||'engine error');
+  }
+  throw new Error('timed out');
+}
+
+$('run').onclick = async () => {
+  const body = {
+    pair:$('pair').value, oosFrac:$('oosFrac').value, followMin:$('followMin').value, fadeMax:$('fadeMax').value,
+    confThresh:$('confThresh').value, minSources:$('minSources').value, clusterPips:$('clusterPips').value,
+    reachMult:$('reachMult').value, slMult:$('slMult').value, beAtR:$('beAtR').value, partialFrac:$('partialFrac').value,
+    trailR:$('trailR').value, asiaAnchor:$('asiaAnchor').value, regrBands:$('regrBands').value,
+    costPct:$('costPct').value, accountSize:$('accountSize').value, riskPct:$('riskPct').value,
+  };
+  $('run').disabled=true; $('results').innerHTML=''; $('legendCard').style.display='none';
+  $('status').textContent='Submitting…';
+  try{
+    const start = await fetch('/api/macrofx-decision/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json());
+    if(!start.ok) throw new Error(start.error||'failed to start');
+    const out = await poll(start.jobId);
+    LAST = out;
+    $('status').textContent = `Done — ${out.results.length} instrument(s).`;
+    $('results').innerHTML = out.results.map(renderInstrument).join('');
+    $('legendCard').style.display='';
+  }catch(e){ $('status').innerHTML = `<span class="neg">Error: ${e.message}</span>`; }
+  finally{ $('run').disabled=false; }
+};
+</script>
+</body>
+</html>
