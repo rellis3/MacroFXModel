@@ -9,7 +9,7 @@
  */
 
 import assert from 'node:assert';
-import { buildZones, runZoneMode, compareZones, asiaExtensionLevels, ASIA_EXT_RATIOS, regressionLevels } from './macroFxZoneEngine.js';
+import { buildZones, runZoneMode, compareZones, asiaExtensionLevels, ASIA_EXT_RATIOS, regressionLevels, groupM1ByDate } from './macroFxZoneEngine.js';
 
 let passed = 0;
 const ok = (cond, msg) => { assert.ok(cond, msg); console.log('  ✓', msg); passed++; };
@@ -174,6 +174,39 @@ function synthM1(d1) {
   ok(diagnostics.perYear.every(y => 'sharpe' in y && 'trades' in y && /^\d{4}$/.test(y.year)), 'per-year rows carry year/trades/sharpe');
   ok(diagnostics.mc && diagnostics.mc.bootstrap && diagnostics.mc.montecarlo, 'Monte Carlo block (bootstrap CI + shuffle drawdown) present');
   ok(/expectation-setting/i.test(diagnostics.mcNote), 'MC is labelled expectation-setting, not OOS evidence');
+}
+
+// 10) REGRESSION: packed M1 from loadM1ForPair uses epoch SECONDS (Int32Array).
+//     groupM1ByDate must file bars under the correct calendar date (not 1970)
+//     and keep `.time` in seconds — the bug that zeroed out Asia-anchored mode.
+{
+  // Build a packed struct exactly like loadM1ForPair: times = epoch SECONDS.
+  const days = d1.slice(0, 40);
+  const rows = [];
+  for (const b of days) {
+    const dayEpoch = Math.floor(Date.parse(b.date) / 1000);
+    for (let k = 0; k < 48; k++) {
+      const frac = k / 47, mid = b.open + (b.close - b.open) * frac;
+      const wob = Math.sin(k * 0.9) * (b.high - b.low) * 0.35;
+      rows.push([dayEpoch + k * 1800, mid, Math.max(mid, mid + wob * 0.2) + (b.high - b.low) * 0.1, Math.min(mid, mid + wob * 0.2) - (b.high - b.low) * 0.1, mid + wob * 0.2]);
+    }
+  }
+  const n = rows.length;
+  const packed = {
+    n,
+    times:  Int32Array.from(rows.map(r => r[0])),   // epoch SECONDS, as loadM1ForPair emits
+    opens:  Float32Array.from(rows.map(r => r[1])),
+    highs:  Float32Array.from(rows.map(r => r[2])),
+    lows:   Float32Array.from(rows.map(r => r[3])),
+    closes: Float32Array.from(rows.map(r => r[4])),
+  };
+  const map = groupM1ByDate(packed);
+  ok(map.has(days[0].date), `groupM1ByDate files bars under the real date ${days[0].date} (not 1970)`);
+  const firstBar = map.get(days[0].date)[0];
+  ok(firstBar.time === Math.floor(Date.parse(days[0].date) / 1000), 'bar .time stays in epoch seconds (matches dayEpoch scale)');
+  // The end-to-end proof: Asia-anchored mode over this loader-shaped M1 trades.
+  const recs = runZoneMode(days, map, 'fx', 'EURUSD', 'zone', { minLookback: 20, asiaAnchor: true, minSources: 2 });
+  ok(recs.length > 0, `asiaAnchor over loader-shaped (epoch-seconds) M1 produces trades (${recs.length}) — regression guard`);
 }
 
 console.log(`\n${passed} checks passed.`);
