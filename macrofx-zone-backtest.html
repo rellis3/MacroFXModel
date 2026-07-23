@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MacroFX Decision-Zone Backtester</title>
+<style>
+  :root{
+    --bg:#0e1016; --panel:#161a24; --panel2:#1d222e; --line:#2a3140;
+    --text:#e6e9ef; --text2:#aab2c0; --text3:#6f7889;
+    --accent:#5b9dff; --green:#3fb27f; --red:#e5604d; --amber:#e0a93b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  header{padding:20px 24px;border-bottom:1px solid var(--line);background:var(--panel)}
+  h1{margin:0 0 4px;font-size:19px;font-weight:650}
+  .sub{color:var(--text2);font-size:13px;max-width:1000px}
+  main{padding:22px 24px;max-width:1320px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:18px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+  label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+  input,select{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:7px 9px;font-size:13px}
+  button{background:var(--accent);color:#fff;border:0;border-radius:7px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer}
+  button.sm{padding:5px 11px;font-size:11.5px;background:var(--panel2);border:1px solid var(--line);color:var(--text2)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .hint{color:var(--text3);font-size:11px;margin-top:3px}
+  #status{margin:14px 0;color:var(--text2);font-size:13px;min-height:18px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{padding:6px 9px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  thead th{color:var(--text3);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+  .inst-title{font-size:14px;font-weight:600;margin:2px 0 10px}
+  .mode{color:var(--text2);font-weight:600}
+  .pos{color:var(--green)} .neg{color:var(--red)} .mut{color:var(--text3)}
+  .win{background:rgba(63,178,127,.12)} .zone{background:rgba(91,157,255,.10)}
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;margin-left:6px}
+  .b-good{background:rgba(63,178,127,.18);color:var(--green)}
+  .b-bad{background:rgba(229,96,77,.18);color:var(--red)}
+  .b-meh{background:rgba(224,169,59,.18);color:var(--amber)}
+  .legend{color:var(--text3);font-size:11.5px;margin-top:10px;line-height:1.7}
+  code{background:var(--panel2);padding:1px 5px;border-radius:4px;color:var(--text2)}
+  .exports{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .rmeta{color:var(--text3);font-size:11px;margin-top:6px}
+  .claims{margin:6px 0 12px;font-size:12px;color:var(--text2)}
+</style>
+</head>
+<body>
+<header>
+  <h1>MacroFX Decision-Zone Backtester <span class="mut" style="font-size:13px">· the 20-doc "MacroFXModel" price-only core</span></h1>
+  <div class="sub">
+    Tests the one <b>falsifiable</b> claim the 20-chapter spec rests on
+    (Chapters 1 &amp; 5): <i>turning points cluster where several INDEPENDENT
+    models name the same price</i> → build <b>Decision Zones</b> from clustered
+    evidence and let a <b>Market-State selector</b> decide fade-vs-follow. Built
+    entirely on the shared bricks — <code>computeBands</code> (vol/forecast),
+    <code>collectLevels</code>+<code>clusterLevels</code> (zone builder),
+    <code>dayTypeCore</code> (market state), <code>walkBars</code> (fills),
+    <code>summarizeSplit</code> (IS/OOS). Costs on, true later-period OOS split,
+    no lookahead. The verdict rows are deliberately harsh.
+  </div>
+</header>
+<main>
+  <div class="card">
+    <div class="grid">
+      <div>
+        <label>Instrument</label>
+        <select id="pair">
+          <option value="">All instruments</option>
+          <option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option>
+          <option>AUDUSD</option><option>NZDUSD</option><option>USDCAD</option>
+          <option>USDCHF</option><option>GBPJPY</option><option>GOLD</option><option>NQ</option>
+        </select>
+      </div>
+      <div><label>OOS fraction</label><input id="oosFrac" type="number" value="0.4" step="0.05" min="0.1" max="0.6"></div>
+      <div><label>Min distinct sources</label><input id="minSources" type="number" value="2" step="1" min="2" max="5">
+           <div class="hint">confluence gate (zone modes)</div></div>
+      <div><label>Cluster tol (pips)</label><input id="clusterPips" type="number" value="10" step="1">
+           <div class="hint">merge levels within</div></div>
+      <div><label>T: fade below</label><input id="fadeMax" type="number" value="0.45" step="0.05">
+           <div class="hint">low trend-day-ness → fade</div></div>
+      <div><label>Reach (×hl75)</label><input id="reachMult" type="number" value="1.5" step="0.1">
+           <div class="hint">max zone distance from open</div></div>
+      <div><label>SL multiple (×hl50)</label><input id="slMult" type="number" value="1.5" step="0.1"></div>
+      <div><label>Follow RR target</label><input id="rr" type="number" value="1.5" step="0.1"></div>
+      <div><label>ER window</label><input id="erWindow" type="number" value="14" step="1"></div>
+      <div><label>Cost % (opt)</label><input id="costPct" type="number" placeholder="auto" step="0.001"></div>
+      <div><label>Account size ($)</label><input id="accountSize" type="number" value="10000" step="1000"></div>
+      <div><label>Risk per trade (%)</label><input id="riskPct" type="number" value="1" step="0.25"></div>
+    </div>
+    <div style="margin-top:14px"><button id="run">Run zone backtest</button></div>
+    <div id="status"></div>
+  </div>
+
+  <div id="results"></div>
+
+  <div class="card" id="legendCard" style="display:none">
+    <div class="legend">
+      <b>The A/B is the test.</b> All four modes trade the same way; they differ only
+      in the gate and the direction rule:
+      <br>• <b>zone</b> — the MacroFXModel: only zones where <b>≥ min distinct
+      sources</b> agree; direction by the state selector.
+      <br>• <b>isolated</b> — the <b>null</b>: same selector, confluence gate dropped
+      (any single level trades). <b>Claim A</b> = zone must beat isolated OOS.
+      <br>• <b>zone_fade / zone_follow</b> — always fade / always follow at zones.
+      <b>Claim B</b> = zone (adaptive) must beat the better of these OOS.
+      <br><b>"Worked"</b> = zone beats isolated <i>and</i> beats the best fixed rule
+      on <b>OOS Sharpe</b>, Sharpe &gt; 0, at <b>≥30 OOS trades</b>. Anything less —
+      in-sample-only, &lt;30 OOS trades, or Sharpe inside its own ± error bar of
+      zero — has shown nothing.
+      <br><br><b>Deferred, honestly.</b> The spec's Options/Gamma (Ch 9), Macro
+      (Ch 11) and order-book Liquidity (Ch 8) engines need data that can't be
+      sourced honestly here (OANDA mids only), so they are <i>not</i> faked in.
+      This is the price-only core: volatility + structural confluence + state.
+    </div>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (v,d=2)=> (v===undefined||v===null||isNaN(v)) ? '—' : (+v).toFixed(d);
+const cls = v => v>0 ? 'pos' : v<0 ? 'neg' : 'mut';
+const MODES = ['zone','isolated','zone_fade','zone_follow'];
+const LABEL = { zone:'zone', isolated:'isolated', zone_fade:'zone·fade', zone_follow:'zone·follow' };
+let LAST = null;   // last suite result (for CSV export)
+
+function row(label, s, isBest){
+  return `<tr class="${label==='zone'?'zone':''} ${isBest?'win':''}">
+    <td class="mode">${LABEL[label]}</td>
+    <td>${s.trades}<span class="mut"> · ${fmt(s.tradesPerYr,0)}/yr</span></td>
+    <td>${fmt(s.winRate,1)}%</td>
+    <td>${fmt(s.profitFactor,2)}</td>
+    <td class="${cls(s.expectancy)}">${fmt(s.expectancy,4)}</td>
+    <td class="${cls(s.sharpe)}"><b>${fmt(s.sharpe,2)}</b><span class="mut"> ±${fmt(s.sharpeSE,2)}</span></td>
+    <td class="mut">${s.minTrackYears==null?'∞':fmt(s.minTrackYears,1)}y</td>
+    <td class="${cls(s.maxDD)}">${fmt(s.maxDD,2)}</td>
+    <td class="mut">${fmt(s.skew,2)}</td>
+    <td class="${cls(s.cvar95)}">${fmt(s.cvar95,3)}</td>
+  </tr>`;
+}
+
+function verdict(m){
+  const oos = k => m[k].oos;
+  const z = oos('zone');
+  if(z.trades<30) return `<span class="badge b-bad">zone &lt;30 OOS trades — inconclusive</span>`;
+  const iso = oos('isolated');
+  const bestFixedKey = oos('zone_fade').sharpe >= oos('zone_follow').sharpe ? 'zone_fade' : 'zone_follow';
+  const bestFixed = oos(bestFixedKey);
+  const beatsIso   = z.sharpe > iso.sharpe;
+  const beatsFixed = z.sharpe > bestFixed.sharpe;
+  const worked = beatsIso && beatsFixed && z.sharpe > 0;
+  const b = worked ? 'b-good' : z.sharpe>0 ? 'b-meh' : 'b-bad';
+  const a = `Claim A: zone ${fmt(z.sharpe,2)} vs isolated ${fmt(iso.sharpe,2)} — ${beatsIso?'confluence adds':'confluence adds NOTHING'}`;
+  const bb = `Claim B: vs best fixed ${LABEL[bestFixedKey]} ${fmt(bestFixed.sharpe,2)} — ${beatsFixed?'selector adds':'selector adds NOTHING'}`;
+  return `<span class="badge ${b}">OOS zone ${fmt(z.sharpe,2)} · ${worked?'both claims hold':'not confirmed'}</span>
+          <div class="claims">${a}. ${bb}.</div>`;
+}
+
+function metHead(period){
+  return `<thead><tr><th>${period} mode</th><th>trades</th><th>win%</th><th>PF</th>
+    <th>expect</th><th>Sharpe ±SE</th><th>minTrack</th><th>maxDD</th><th>skew</th><th>CVaR95</th></tr></thead>`;
+}
+
+function renderInstrument(r, idx){
+  const m = r.modes, split = m.zone.splitDate;
+  let html = `<div class="card"><div class="inst-title">${r.instrument}
+    <span class="mut">· ${r.assetClass} · OOS from ${split||'—'}</span> ${verdict(m)}</div>`;
+  for(const period of ['is','oos']){
+    const best = Math.max(...MODES.map(k=>m[k][period].sharpe));
+    html += `<table>${metHead(period.toUpperCase())}<tbody>`;
+    for(const k of MODES){ const s=m[k][period];
+      html += row(k, s, period==='oos' && s.trades>=30 && s.sharpe===best && s.sharpe>0); }
+    html += `</tbody></table>${period==='is'?'<div style="height:10px"></div>':''}`;
+  }
+  // CSV exports (mandatory 3 schemas) — export the `zone` mode (strategy under test).
+  const n = (r.trades?.zone||[]).length;
+  html += `<div class="exports">
+      <span class="mut" style="font-size:11.5px">Export <b>zone</b> trade log (${n}):</span>
+      <button class="sm" onclick="csvPct(${idx})">% Returns</button>
+      <button class="sm" onclick="csvR(${idx})">R-Multiples</button>
+      <button class="sm" onclick="csvDollar(${idx})">Currency P&amp;L</button>
+    </div>
+    <div class="rmeta">Account $${(LAST?.opts?.accountSize??10000).toLocaleString()} ·
+      R-unit = ${fmt(LAST?.opts?.riskPct??1,2)}% of equity per trade ($${((LAST?.opts?.accountSize??10000)*(LAST?.opts?.riskPct??1)/100).toFixed(0)}).
+      Stop distance is <b>vol-scaled (slMult × hl50)</b> and varies per trade, so R ≠ %Return.
+      MAE is read off the real intra-trade path (M1 where available, else the D1 bar).</div>`;
+  return html + `</div>`;
+}
+
+// ── CSV helpers (exact house schemas) ────────────────────────────────────────
+function dl(name, rows){
+  const blob = new Blob([rows.join('\n')], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  URL.revokeObjectURL(a.href);
+}
+function trades(idx){ return (LAST?.results?.[idx]?.trades?.zone)||[]; }
+function csvPct(idx){
+  const r = LAST.results[idx];
+  const rows = ['Date,Return %,MAE %'];
+  for(const t of trades(idx)) rows.push(`${t.date},${t.pnl_pct},${t.mae_pct}`);
+  dl(`${r.instrument}_zone_returns.csv`, rows);
+}
+function csvR(idx){
+  const r = LAST.results[idx];
+  const rows = ['date,R,MAE (R)'];
+  for(const t of trades(idx)){ const maeR = t.stop_pct>1e-9 ? (t.mae_pct/t.stop_pct).toFixed(4) : 0; rows.push(`${t.date},${t.R},${maeR}`); }
+  dl(`${r.instrument}_zone_rmultiples.csv`, rows);
+}
+function csvDollar(idx){
+  const r = LAST.results[idx];
+  const rows = ['Trade Date,PnL ($),Risk ($)'];
+  for(const t of trades(idx)) rows.push(`${t.date},${t.pnl_dollar},${t.risk_dollar}`);
+  dl(`${r.instrument}_zone_dollars.csv`, rows);
+}
+
+async function poll(jobId){
+  for(let i=0;i<240;i++){
+    await new Promise(r=>setTimeout(r,2000));
+    const res = await fetch(`/api/macrofx-zone/status/${jobId}`).then(r=>r.json()).catch(()=>null);
+    if(!res) continue;
+    if(res.status==='running'){ $('status').textContent = `Running… ${res.elapsed||0}s`; continue; }
+    if(res.status==='done') return res;
+    if(res.status==='error') throw new Error(res.error||'engine error');
+  }
+  throw new Error('timed out');
+}
+
+$('run').onclick = async () => {
+  const body = {
+    pair:$('pair').value, oosFrac:$('oosFrac').value, minSources:$('minSources').value,
+    clusterPips:$('clusterPips').value, fadeMax:$('fadeMax').value, reachMult:$('reachMult').value,
+    slMult:$('slMult').value, rr:$('rr').value, erWindow:$('erWindow').value, costPct:$('costPct').value,
+    accountSize:$('accountSize').value, riskPct:$('riskPct').value,
+  };
+  $('run').disabled=true; $('results').innerHTML=''; $('legendCard').style.display='none';
+  $('status').textContent='Submitting…';
+  try{
+    const start = await fetch('/api/macrofx-zone/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json());
+    if(!start.ok) throw new Error(start.error||'failed to start');
+    const out = await poll(start.jobId);
+    LAST = out;
+    $('status').textContent = `Done — ${out.results.length} instrument(s).`;
+    $('results').innerHTML = out.results.map(renderInstrument).join('');
+    $('legendCard').style.display='';
+  }catch(e){ $('status').innerHTML = `<span class="neg">Error: ${e.message}</span>`; }
+  finally{ $('run').disabled=false; }
+};
+</script>
+</body>
+</html>
