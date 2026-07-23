@@ -7081,6 +7081,10 @@ const OI_BOT_CFG_DEFAULTS = {
   requireEstablished: false, avoidLiquidating: true,
   maxZonesPerSide: 4,                // bot trades the K strongest walls per side (display count is separate)
   fx_enabled: false, fx_pairs: [],   // opt-in FX universe (weak asset); [] + fx_enabled = none added
+  fxFallbackTpR: 2.0,                // FX-only: give a wall-less trade (breakout past the outermost
+                                     // partial-OI wall) a measured-move TP at this R-multiple of the
+                                     // stop, so FX OI trades are never SL-only. 0 = leave SL-only.
+  fallbackTpR: 0,                    // same for gold+indices (default off — they usually have a wall ahead)
 };
 function _oiBotStabilityChange(hist, key) {
   const norm = x => String(x).toLowerCase().replace(/[/_]/g, '');
@@ -7124,7 +7128,11 @@ async function _refreshOIBotZones() {
           stale = `spot ${inst.spot} outside strike range ${lo}–${hi} — stale/mis-scaled OI, re-paste`;
         }
       }
-      const zones = stale ? [] : buildOIZones(inst, inst.spot, { ...cfg, pip, stability, change });
+      // FX (anything outside the gold+indices base universe) gets a measured-move TP
+      // fallback so a wall-less breakout isn't left SL-only; gold/indices use their own.
+      const isFx = !OI_BOT_UNIVERSE.includes(key);
+      const fallbackTpR = isFx ? (cfg.fxFallbackTpR ?? 2.0) : (cfg.fallbackTpR ?? 0);
+      const zones = stale ? [] : buildOIZones(inst, inst.spot, { ...cfg, pip, stability, change, fallbackTpR });
       const gex = inst.exposures?.gex ?? 0;
       instruments[key] = { spot: inst.spot ?? null, maxPain: inst.maxPain ?? null,
         regime: gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : 'NEUTRAL', zones, zoneCount: zones.length, stale };

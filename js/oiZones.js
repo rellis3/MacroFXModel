@@ -50,6 +50,10 @@ export function buildOIZones(inst, price, cfg = {}) {
     persistenceWeight = 0.1,       // how much across-expiry durability boosts a wall's
                                    // rank/size (0 = ignore; each extra expiry ≈ +10%).
     persistentDTE = 5,             // "durable" = present in ≥ this many expiries (size bump + rationale)
+    fallbackTpR = 0,               // when a zone has NO wall-based TP (e.g. a breakout through the
+                                   // outermost wall — common on FX where CME OI is partial), give it
+                                   // a measured-move TP at this R-multiple of the stop distance.
+                                   // 0 = leave it SL-only (unchanged). The producer sets it for FX.
     stability = null,              // oiWallStability(...) output (server-injected from oi_history)
     change = null,                 // classifyOIChange(...) output (server-injected)
   } = cfg;
@@ -89,8 +93,22 @@ export function buildOIZones(inst, price, cfg = {}) {
   const persNote = w => (w?.persistence > 1 ? ` · durable ${w.persistence}exp` : '');
 
   const zones = [];
-  const add = z => zones.push({ ...z, entry: +z.entry.toFixed(6), sl: +z.sl.toFixed(6),
-    tp1: z.tp1 != null ? +z.tp1.toFixed(6) : null, tp2: z.tp2 != null ? +z.tp2.toFixed(6) : null, regime });
+  // Fallback measured-move TP: a trade with no wall-based target (both null) would go
+  // to the broker SL-only. If fallbackTpR > 0, give it a TP at fallbackTpR × the stop
+  // distance, in the trade's direction — so it always has a defined exit (used for FX,
+  // where partial CME OI often leaves a breakout with no next wall ahead).
+  const add = z => {
+    let { tp1, tp2, rationale } = z;
+    if (tp1 == null && tp2 == null && fallbackTpR > 0 && z.sl != null) {
+      const risk = Math.abs(z.entry - z.sl);
+      if (risk > 0) {
+        tp1 = z.side === 'buy' ? z.entry + fallbackTpR * risk : z.entry - fallbackTpR * risk;
+        rationale = `${rationale} · TP ${fallbackTpR}R measured move (no wall ahead)`;
+      }
+    }
+    zones.push({ ...z, entry: +z.entry.toFixed(6), sl: +z.sl.toFixed(6),
+      tp1: tp1 != null ? +tp1.toFixed(6) : null, tp2: tp2 != null ? +tp2.toFixed(6) : null, rationale, regime });
+  };
 
   // ── Mode A — PIN: fade strong walls toward max pain ─────────────────────────
   if (fadeInPin && regime === 'PIN') {

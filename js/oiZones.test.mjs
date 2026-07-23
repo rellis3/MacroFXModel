@@ -102,6 +102,27 @@ console.log('[Persistence — across-expiry durability boosts rank + size]');
     z0.find(x => x.side === 'sell')?.level === 4250, `${z0.find(x => x.side === 'sell')?.level}`);
 }
 
+console.log('[Fallback TP — a wall-less breakout gets a measured-move target]');
+{
+  // BREAKOUT with a single call wall above and nothing beyond it → break-buy has no
+  // next-wall TP. Without fallback it's SL-only; with fallbackTpR it gets a measured move.
+  const inst = { ...base, exposures: { gex: -5000 },
+    callWalls: [{ strike: 4300, oi: 9000, tier: 'strong', mult: 3 }],   // outermost — no wall above
+    putWalls:  [{ strike: 4100, oi: 8000, tier: 'strong', mult: 3 }] };
+  const noTp = buildOIZones(inst, 4200, cfg).find(z => z.mode === 'break' && z.side === 'buy');
+  ok('no fallback → breakout past the outermost wall is SL-only', noTp && noTp.tp1 == null, JSON.stringify(noTp));
+  const withTp = buildOIZones(inst, 4200, { ...cfg, fallbackTpR: 2 }).find(z => z.mode === 'break' && z.side === 'buy');
+  // entry 4320, sl 4295 → risk 25 → 2R above entry = 4370.
+  ok('fallbackTpR=2 → TP = entry + 2×stop distance', withTp && Math.abs(withTp.tp1 - 4370) < 1e-6, `${withTp?.tp1}`);
+  ok('fallback TP noted in rationale', /2R measured move/.test(withTp.rationale), withTp.rationale);
+  // A trade that ALREADY has a wall-based TP is untouched by the fallback.
+  const inst2 = { ...base, exposures: { gex: -5000 },
+    callWalls: [{ strike: 4250, oi: 9000, tier: 'strong', mult: 3 }, { strike: 4350, oi: 8000, tier: 'strong', mult: 3 }],
+    putWalls:  [{ strike: 4100, oi: 8000, tier: 'strong', mult: 3 }] };
+  const hasWall = buildOIZones(inst2, 4200, { ...cfg, fallbackTpR: 2 }).find(z => z.mode === 'break' && z.level === 4250);
+  ok('wall-based TP kept (fallback does not override it)', hasWall && hasWall.tp1 === 4350, `${hasWall?.tp1}`);
+}
+
 console.log('[Guards]');
 ok('no inst / bad price → []', buildOIZones(null, 4200, cfg).length === 0 && buildOIZones(base, 0, cfg).length === 0);
 ok('NEUTRAL gex (flat) → no fade/break zones', buildOIZones({ ...base, exposures: { gex: 0 } }, 4200, cfg).every(z => z.mode === 'maxpain'));
