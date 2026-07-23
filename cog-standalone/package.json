@@ -1,0 +1,9 @@
+{
+  "name": "cog-replay-standalone",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Isolated single-page service exposing only the COG Forecast Replay page + its four data endpoints (proxied to the main MacroFXModel app).",
+  "engines": { "node": ">=18.0.0" },
+  "scripts": { "start": "node server.js" },
+  "dependencies": { "express": "^4.18.2" }
+}
