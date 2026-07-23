@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OI Gamma Zones</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root{--bg:#0b0e13;--s1:#141922;--s2:#1b2230;--s3:#232c3d;--border:#2a3346;--border2:#3a465e;
+    --text:#e6ebf2;--text2:#9fb0c6;--text3:#6b7a90;--r:10px;--teal:#4fd1c5;--green:#34d399;--red:#f87171;
+    --amber:#f59e0b;--purple:#c084fc;--gold:#facc15;--cyan:#4dd0e1;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px}
+  a{color:var(--cyan);text-decoration:none}
+  .wrap{max-width:1240px;margin:0 auto;padding:18px 20px 60px}
+  .topbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+  .title{font-size:18px;font-weight:700;color:var(--cyan)}
+  .sub{color:var(--text3);font-size:12px;margin-bottom:4px}
+  select,button{background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:7px;
+    padding:6px 10px;font-size:13px;font-family:inherit;cursor:pointer}
+  .gz-btn{background:var(--s2);border:1px solid var(--border);color:var(--text2);border-radius:7px;
+    padding:6px 10px;font-size:12px;font-weight:600}
+  .price{font-family:'DM Mono',monospace;font-weight:700;font-size:15px;color:var(--gold)}
+  .muted{color:var(--text3);font-size:12px}
+  .spacer{flex:1}
+  .banner{background:#3b0d0d;border:1px solid var(--red);color:#fecaca;border-radius:8px;padding:8px 12px;
+    font-size:12.5px;margin:8px 0;display:none}
+  .card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:14px}
+  #chart{height:380px;width:100%;border-radius:var(--r);overflow:hidden;border:1px solid var(--border);background:var(--s1)}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+  .chip{font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);background:var(--s2);
+    border:1px solid var(--border);border-radius:20px;padding:3px 10px}
+  .chip b{color:var(--text)}
+  .chip.pin{color:var(--green);border-color:rgba(52,211,153,.4)}
+  .chip.breakout{color:var(--red);border-color:rgba(248,113,113,.4)}
+  .chip.stale{color:var(--amber);border-color:rgba(245,158,11,.5)}
+  .sec{margin-top:22px}
+  .sec-h{font-weight:700;font-size:14px;margin-bottom:8px;display:flex;align-items:baseline;gap:8px}
+  .sec-h .n{font-family:'DM Mono',monospace;color:var(--text3);font-size:12px;font-weight:500}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+  .zone{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:12px 13px;position:relative}
+  .zone.buy{border-left:3px solid var(--green)}
+  .zone.sell{border-left:3px solid var(--red)}
+  .zone.fired{opacity:.62}
+  .zone.open{outline:2px solid var(--amber);outline-offset:-2px}
+  .zrow{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .zlabel{font-family:'DM Mono',monospace;font-weight:600;font-size:13px}
+  .zlevel{font-family:'DM Mono',monospace;color:var(--text2);font-size:13px}
+  .badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;border-radius:5px;padding:2px 7px}
+  .b-buy{background:rgba(52,211,153,.14);color:var(--green)}
+  .b-sell{background:rgba(248,113,113,.14);color:var(--red)}
+  .b-fade{background:rgba(248,113,113,.14);color:var(--red)}
+  .b-break{background:rgba(77,208,225,.16);color:var(--cyan)}
+  .b-maxpain{background:rgba(192,132,252,.16);color:var(--purple)}
+  .b-fired{background:var(--s3);color:var(--text3)}
+  .b-open{background:rgba(245,158,11,.18);color:var(--amber)}
+  .rationale{font-size:11.5px;color:var(--text3);margin-top:8px;line-height:1.4}
+  .tpsl{display:flex;gap:16px;font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);margin-top:8px;flex-wrap:wrap}
+  .tpsl b{color:var(--text)}
+  .dist{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--border)}
+  th{color:var(--text3);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+  td.mono,th.mono{font-family:'DM Mono',monospace}
+  td.pos{color:var(--green)} td.neg{color:var(--red)}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--text3);margin-top:6px}
+  .empty{color:var(--text3);font-size:12.5px;padding:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <span class="title">🎯 OI Gamma Zones</span>
+    <select id="instSel" title="instrument"></select>
+    <select id="gran" title="chart granularity — coarser shows the whole multiday trade">
+      <option value="M5">M5</option>
+      <option value="H1" selected>H1</option>
+      <option value="D">D</option>
+    </select>
+    <span class="price" id="price">—</span>
+    <span class="spacer"></span>
+    <span class="muted" id="botState">—</span>
+    <button id="refreshBtn" onclick="load()">↺</button>
+    <a href="bot-config.html#oi" class="gz-btn">Config</a>
+    <a href="index.html" class="gz-btn">← Dashboard</a>
+  </div>
+  <div class="sub">The OI bot's dealer-gamma zones <b>and the live trades running against them</b>. OI positions are multiday — this page shows what's still open, where it entered, and the planned zones it's watching. The Python executor trades this same <code>oi_bot_zones</code> plan (no drift).</div>
+  <div class="banner" id="banner"></div>
+
+  <div style="margin-top:10px"><div id="chart"></div></div>
+  <div class="legend">
+    <span style="color:var(--amber)">▬ open trade entry (bright)</span>
+    <span style="color:var(--green)">▬ buy zone</span>
+    <span style="color:var(--red)">▬ sell zone</span>
+    <span>· · SL / TP (dashed)</span>
+    <span style="color:var(--text3)">dim = already fired</span>
+    <span style="color:var(--gold)">▬ spot</span>
+  </div>
+  <div class="chips" id="chips"></div>
+
+  <!-- Active running trades — the reason this page exists -->
+  <div class="sec">
+    <div class="sec-h">🟠 Active trades <span class="n" id="openN"></span></div>
+    <div class="card" id="openWrap"><div class="empty" id="openEmpty">—</div></div>
+  </div>
+
+  <!-- Planned zones the bot is watching -->
+  <div class="sec">
+    <div class="sec-h">🎯 Planned zones <span class="n" id="zoneN"></span></div>
+    <div class="grid" id="zones"></div>
+  </div>
+
+  <!-- Closed trade history -->
+  <div class="sec">
+    <div class="sec-h">📕 Closed today <span class="n" id="closedN"></span></div>
+    <div class="card" id="closedWrap"><div class="empty" id="closedEmpty">—</div></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let _zones = null, _status = null, _trades = null, _cfg = null;
+let _inst = localStorage.getItem('oiInst') || null;
+let _chart = null, _series = null, _lines = [];
+
+// instrument → chart metadata (mirrors gold-zones _OI_INST; canonical resolveKey keys).
+const _OI_INST = {
+  gold:{display:'XAU/USD',oanda:'XAU_USD',digits:2}, nq:{display:'NAS100',oanda:'NAS100_USD',digits:1},
+  spx:{display:'SPX500',oanda:'SPX500_USD',digits:1}, dax:{display:'DE30',oanda:'DE30_EUR',digits:1},
+  dow:{display:'US30',oanda:'US30_USD',digits:1}, us30:{display:'US30',oanda:'US30_USD',digits:1},
+  rut:{display:'US2000',oanda:'US2000_USD',digits:1},
+};
+function meta(key){
+  if(_OI_INST[key]) return _OI_INST[key];
+  const jpy = key.endsWith('jpy');
+  return {display:`${key.slice(0,3).toUpperCase()}/${key.slice(3).toUpperCase()}`,
+          oanda:`${key.slice(0,3).toUpperCase()}_${key.slice(3).toUpperCase()}`, digits:jpy?3:5};
+}
+// default broker-symbol routing (mirrors oi_bot _BROKER_OVERRIDE); config.broker_symbols overrides.
+const _BROKER = {de30:'GER40',uk100:'UK100',us2000:'US2000',spx:'SP500',spx500:'SP500',
+                 nq:'USTECH100',us30:'US30',dow:'US30',dax:'GER40',rut:'US2000',gold:'XAUUSD'};
+const fmt = (v,d) => v==null||!isFinite(v) ? '—' : Number(v).toFixed(d);
+const norm = s => String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+
+// Does an open/closed position belong to instrument `key`? Match its broker symbol
+// against the instrument's known aliases (config override → default routing → OANDA
+// token → display). Multiday trades whose zone dropped off the plan still attribute.
+function posBelongs(pos, key){
+  const ps = norm(pos.symbol); if(!ps) return false;
+  const m = meta(key), cands = new Set();
+  const cs = _cfg?.broker_symbols; if(cs && cs[key]) cands.add(norm(cs[key]));
+  if(_BROKER[key]) cands.add(norm(_BROKER[key]));
+  cands.add(norm(m.oanda.split('_')[0]));
+  cands.add(norm(m.display.replace('/','')));
+  for(const c of cands){ if(c && (ps===c || ps.startsWith(c) || c.startsWith(ps))) return true; }
+  return false;
+}
+// Parse the zone id out of an "OI [mode_side_level]" order comment.
+function zidOf(comment){ const m = String(comment||'').match(/\[([^\]]+)\]/); return m ? m[1] : null; }
+// Reconstruct a zone's id the way the executor does: mode_side_level (level compact).
+function zoneZid(z){ const l = Number(z.level); return `${z.mode}_${z.side}_${(''+l).replace(/\.?0+$/,'') || l}`; }
+// Tie a live position to its planned zone (recovers SL/TP/rationale) — by comment zid,
+// falling back to nearest same-side zone level. Null if the zone is no longer planned.
+function matchZone(pos, zones){
+  const zid = zidOf(pos.comment);
+  if(zid){ const z = zones.find(z => zoneZid(z) === zid); if(z) return z; }
+  const lvl = zid ? parseFloat(zid.split('_').pop()) : null;
+  if(lvl!=null && isFinite(lvl)){
+    const side = pos.direction==='BUY' ? 'buy' : 'sell';
+    let best=null, bd=Infinity;
+    for(const z of zones){ if(z.side!==side) continue; const d=Math.abs(z.level-lvl); if(d<bd){bd=d;best=z;} }
+    if(best && bd <= Math.abs(best.level)*0.002) return best;
+  }
+  return null;
+}
+function ageOf(epochSec){
+  if(!epochSec) return '';
+  const s = Math.max(0, Date.now()/1000 - epochSec), h = s/3600;
+  if(h < 1) return `${Math.round(s/60)}m`;
+  if(h < 24) return `${h.toFixed(1)}h`;
+  return `${(h/24).toFixed(1)}d`;
+}
+
+async function load(){
+  const b = $('banner'); b.style.display='none';
+  let z,s,t,c;
+  try{
+    const [zr,sr,tr,cr] = await Promise.all([
+      fetch('/api/kv/get?key=oi_bot_zones'), fetch('/api/kv/get?key=oi_bot_status'),
+      fetch('/api/kv/get?key=oi_bot_trades'), fetch('/api/kv/get?key=oi_bot_config'),
+    ]);
+    z=await zr.json(); s=await sr.json(); t=await tr.json(); c=await cr.json();
+  }catch(e){ b.style.display='block'; b.textContent='Load failed: '+e.message; return; }
+  _zones  = (!z.miss && z.data) ? z.data : null;
+  _status = (!s.miss && s.data) ? s.data : null;
+  _trades = (!t.miss && t.data) ? t.data : null;
+  _cfg    = (!c.miss && c.data) ? c.data : null;
+  if(!_zones || !_zones.instruments || !Object.keys(_zones.instruments).length){
+    b.style.display='block';
+    b.textContent = 'No OI bot zones yet — paste CME OI on the dashboard for gold/an index, then the 10-min producer builds zones (or POST /api/oi-bot/zones/refresh).';
+    $('instSel').innerHTML='<option>—</option>'; $('zones').innerHTML=''; $('chips').innerHTML='';
+    return;
+  }
+  const keys = Object.keys(_zones.instruments);
+  if(!_inst || !keys.includes(_inst)) _inst = keys[0];
+  $('instSel').innerHTML = keys.map(k => `<option value="${k}"${k===_inst?' selected':''}>${meta(k).display}</option>`).join('');
+  // Bot state line
+  if(_status){
+    const mode = _status.mode || '—', bal = _status.balance;
+    const gen = _status.generatedAt ? new Date(_status.generatedAt).toISOString().slice(11,16)+'Z' : '';
+    $('botState').textContent = `${mode.toUpperCase()}${bal!=null?` · bal ${bal}`:''}${_status.kill_switch?' · KILL':''}${gen?` · plan ${gen}`:''}`;
+  } else $('botState').textContent = 'bot offline (no status)';
+  render();
+}
+
+function render(){
+  const inst = _zones.instruments[_inst]; if(!inst){ return; }
+  const m = meta(_inst), d = m.digits;
+  const zones = Array.isArray(inst.zones) ? inst.zones : [];
+  const entered = new Set((_status?.lines?.find(l => l.instrument===_inst)?.entered) || []);
+  const opens = (_status?.mt5_positions || []).filter(p => posBelongs(p, _inst));
+  const closed = (_status?.today_closed_trades || []).filter(p => posBelongs(p, _inst))
+    .concat(Array.isArray(_trades) ? _trades.filter(p => posBelongs(p, _inst)) : []);
+
+  $('price').textContent = `${m.display} ${fmt(inst.spot, d)}`;
+  // Chips
+  const reg = inst.regime || 'NEUTRAL';
+  $('chips').innerHTML = [
+    `<span class="chip ${reg==='PIN'?'pin':reg==='BREAKOUT'?'breakout':''}">regime <b>${reg}</b></span>`,
+    `<span class="chip">spot <b>${fmt(inst.spot,d)}</b></span>`,
+    inst.maxPain!=null?`<span class="chip">max pain <b>${fmt(inst.maxPain,d)}</b></span>`:'',
+    `<span class="chip">${zones.length} zones</span>`,
+    `<span class="chip" style="color:var(--amber)">${opens.length} open</span>`,
+    inst.stale?`<span class="chip stale">⚠ stale — re-paste</span>`:'',
+  ].join('');
+
+  renderOpen(opens, zones, d);
+  renderZones(zones, entered, opens, inst.spot, d);
+  renderClosed(closed, d);
+  drawChart(m, inst, zones, entered, opens, d);
+}
+
+function renderOpen(opens, zones, d){
+  $('openN').textContent = opens.length ? `${opens.length} running` : '';
+  if(!opens.length){ $('openWrap').innerHTML = `<div class="empty">No open OI positions for this instrument. Multiday trades appear here once filled.</div>`; return; }
+  const rows = opens.map(p => {
+    const z = matchZone(p, zones);
+    const pnlCls = p.profit>0?'pos':p.profit<0?'neg':'';
+    const dirCls = p.direction==='BUY'?'b-buy':'b-sell';
+    return `<tr>
+      <td><span class="badge ${dirCls}">${p.direction}</span></td>
+      <td class="mono">${p.lots}</td>
+      <td class="mono">${fmt(p.open_price,d)}</td>
+      <td class="mono">${fmt(p.price,d)}</td>
+      <td class="mono ${pnlCls}">${p.profit>0?'+':''}${fmt(p.profit,2)}</td>
+      <td class="mono">${ageOf(p.time_open)}</td>
+      <td class="mono">${z?fmt(z.sl,d):'—'}</td>
+      <td class="mono">${z?fmt(z.tp1??z.tp2,d):'—'}</td>
+      <td class="muted">${z?`${z.mode} · ${z.rationale||''}`:(zidOf(p.comment)||'')}</td>
+    </tr>`;
+  }).join('');
+  $('openWrap').innerHTML = `<table><thead><tr>
+    <th>Dir</th><th>Lots</th><th>Entry</th><th>Now</th><th>P/L</th><th>Age</th>
+    <th>Plan SL</th><th>Plan TP</th><th>Zone</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="muted" style="margin-top:6px">SL/TP shown are the plan levels the trade entered on; the broker holds the live bracket. "—" = the zone has since rolled off the plan (older multiday hold).</div>`;
+}
+
+function renderZones(zones, entered, opens, spot, d){
+  $('zoneN').textContent = zones.length ? `${zones.length}` : '';
+  if(!zones.length){ $('zones').innerHTML = `<div class="empty">No planned zones — regime NEUTRAL, no walls ≥ min tier, or stale data.</div>`; return; }
+  const openZids = new Set(opens.map(p => zidOf(p.comment)).filter(Boolean));
+  $('zones').innerHTML = zones.map(z => {
+    const zid = zoneZid(z);
+    const fired = entered.has(zid), isOpen = openZids.has(zid);
+    const cls = ['zone', z.side, fired?'fired':'', isOpen?'open':''].join(' ');
+    const dist = spot ? `${z.entry>spot?'+':''}${((z.entry-spot)).toFixed(d)}` : '';
+    const mb = z.mode==='fade'?'b-fade':z.mode==='break'?'b-break':'b-maxpain';
+    return `<div class="${cls}">
+      <div class="zrow">
+        <span class="zlabel">${z.side.toUpperCase()} <span class="badge ${mb}">${z.mode}</span></span>
+        <span class="zlevel">${fmt(z.level,d)}</span>
+      </div>
+      <div class="zrow" style="margin-top:6px">
+        <span>${isOpen?'<span class="badge b-open">open</span> ':''}${fired?'<span class="badge b-fired">fired</span> ':''}<span class="dist">Δ ${dist}</span></span>
+        <span class="dist">×${z.sizeFactor??1}</span>
+      </div>
+      <div class="tpsl">
+        <span>entry <b>${fmt(z.entry,d)}</b></span>
+        <span>SL <b>${fmt(z.sl,d)}</b></span>
+        ${z.tp1!=null?`<span>TP1 <b>${fmt(z.tp1,d)}</b></span>`:''}
+        ${z.tp2!=null?`<span>TP2 <b>${fmt(z.tp2,d)}</b></span>`:''}
+      </div>
+      ${z.rationale?`<div class="rationale">${z.rationale}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function renderClosed(closed, d){
+  $('closedN').textContent = closed.length ? `${closed.length}` : '';
+  if(!closed.length){ $('closedEmpty').textContent = 'No closed OI trades today for this instrument.'; $('closedWrap').innerHTML = `<div class="empty">No closed OI trades today for this instrument.</div>`; return; }
+  const rows = closed.map(p => {
+    const pnl = p.profit ?? p.pnl;
+    const cls = pnl>0?'pos':pnl<0?'neg':'';
+    const t = p.time_close ? new Date(p.time_close*1000).toISOString().slice(5,16).replace('T',' ') : '';
+    return `<tr>
+      <td><span class="badge ${p.direction==='BUY'?'b-buy':'b-sell'}">${p.direction||''}</span></td>
+      <td class="mono">${p.lots??''}</td>
+      <td class="mono">${fmt(p.open_price,d)}</td>
+      <td class="mono">${fmt(p.close_price,d)}</td>
+      <td class="mono ${cls}">${pnl>0?'+':''}${fmt(pnl,2)}</td>
+      <td class="mono">${t}</td>
+      <td class="muted">${zidOf(p.comment)||''}</td>
+    </tr>`;
+  }).join('');
+  $('closedWrap').innerHTML = `<table><thead><tr>
+    <th>Dir</th><th>Lots</th><th>Entry</th><th>Exit</th><th>P/L</th><th>Closed</th><th>Zone</th>
+    </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+async function drawChart(m, inst, zones, entered, opens, d){
+  const el = $('chart');
+  if(!_chart){
+    _chart = LightweightCharts.createChart(el, { layout:{background:{color:'#141922'},textColor:'#9fb0c6'},
+      grid:{vertLines:{color:'#1b2230'},horzLines:{color:'#1b2230'}}, rightPriceScale:{borderColor:'#2a3346'},
+      timeScale:{borderColor:'#2a3346',timeVisible:true}, height:380, autoSize:true });
+    _series = _chart.addCandlestickSeries({ upColor:'#34d399',downColor:'#f87171',borderVisible:false,
+      wickUpColor:'#34d399',wickDownColor:'#f87171' });
+  }
+  _series.applyOptions({ priceFormat:{ type:'price', precision:d, minMove:1/Math.pow(10,d) } });
+
+  let candles = [];
+  try{
+    const gran = $('gran').value || 'H1';
+    const r = await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(m.oanda)}&granularity=${gran}`);
+    if(r.ok){ const j = await r.json();
+      if(j.values?.length) candles = j.values.slice().reverse().map(bb => ({
+        time: Math.floor(new Date(bb.datetime.replace(' ','T')+'Z').getTime()/1000),
+        open:+bb.open, high:+bb.high, low:+bb.low, close:+bb.close })).filter(cc => cc.time>0 && cc.high>0);
+    }
+  }catch(e){}
+  if(!candles.length && inst.spot){ const now=Math.floor(Date.now()/1000), buf=inst.spot*0.002;
+    for(let i=80;i>=0;i--) candles.push({time:now-i*900,open:inst.spot,high:inst.spot+buf,low:inst.spot-buf,close:inst.spot}); }
+  if(candles.length) _series.setData(candles);
+
+  _lines.forEach(pl => { try{ _series.removePriceLine(pl); }catch{} });
+  _lines = [];
+  const line = (price,color,width,style,title) => { if(price!=null && isFinite(price))
+    _lines.push(_series.createPriceLine({price:+price,color,lineWidth:width,lineStyle:style,axisLabelVisible:true,title})); };
+
+  // Planned zones — entry solid (green buy / red sell), dim if fired; SL/TP dashed.
+  const openZids = new Set(opens.map(p => zidOf(p.comment)).filter(Boolean));
+  for(const z of zones){
+    const fired = entered.has(zoneZid(z));
+    const col = z.side==='buy' ? (fired?'#1f6b4f':'#34d399') : (fired?'#7a3636':'#f87171');
+    line(z.entry, col, openZids.has(zoneZid(z))?2:1, 0, `${z.side[0].toUpperCase()}·${z.mode[0]} ${fmt(z.entry,d)}`);
+    line(z.sl, '#f87171', 1, 2, null);
+    if(z.tp1!=null) line(z.tp1, '#34d399', 1, 2, null);
+  }
+  if(inst.maxPain!=null) line(inst.maxPain, '#c084fc', 1, 1, `max pain ${fmt(inst.maxPain,d)}`);
+  if(inst.spot!=null)   line(inst.spot,   '#facc15', 1, 1, `spot ${fmt(inst.spot,d)}`);
+
+  // Active trades — bright amber entry lines + entry markers on the chart.
+  const markers = [];
+  for(const p of opens){
+    line(p.open_price, '#f59e0b', 2, 0, `OPEN ${p.direction} ${fmt(p.open_price,d)}`);
+    if(p.time_open) markers.push({ time:p.time_open, position:p.direction==='BUY'?'belowBar':'aboveBar',
+      color:'#f59e0b', shape:p.direction==='BUY'?'arrowUp':'arrowDown',
+      text:`OI ${p.direction} ${ageOf(p.time_open)}` });
+  }
+  try{ _series.setMarkers(markers.sort((a,b)=>a.time-b.time)); }catch{}
+}
+
+$('instSel').addEventListener('change', e => { _inst = e.target.value; try{localStorage.setItem('oiInst',_inst);}catch{} render(); });
+$('gran').addEventListener('change', () => render());
+load();
+setInterval(load, 60_000);
+</script>
+</body>
+</html>
