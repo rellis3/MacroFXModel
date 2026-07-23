@@ -53,6 +53,12 @@ import {
   summarizeSplit, DEFAULT_COST_PCT, DEFAULT_SLIP_PCT,
 } from './forecastCore.js';
 import { collectLevels, clusterLevels } from './levelSources.js';
+// Asia-session range + fib projection come from the SHARED bricks — never
+// re-derived. bodyRange builds the 5m-body high/low of the session window;
+// calcFibs projects the extension ladder off that range (identical math to the
+// Asia-range backtester and the live bot). CLAUDE.md Lego Principle #1.
+import { bodyRange } from './barUtils.js';
+import { calcFibs } from './fibProjection.js';
 import { pipSize as pipSizeOf } from './instrumentRegistry.js';
 import { fetchD1, INSTRUMENTS } from './volBacktestEngine.js';
 // NOTE: loadM1ForPair (volBacktestM1Engine.js) pulls in the parquet reader, a
@@ -73,6 +79,35 @@ const pipFor = (name, assetClass) => {
   try { return pipSizeOf(name); }
   catch { return assetClass === 'fx' ? 0.0001 : assetClass === 'commodity' ? 1.0 : 1.0; }
 };
+
+// ── Asia Range Extensions (Chapter 4 — "the spatial framework") ──────────────
+// INTRADAY-ONLY, by construction: an Asian-session high/low/range is M1
+// structure a D1 bar simply does not contain, so this family is built from the
+// session's own M1 bars via the shared bricks (bodyRange + calcFibs), never
+// from D1. Ratios mirror the doc's ladder (Ch 4: 1.0/1.272/1.618/2.0/2.618/
+// 3.618) projected BOTH directions off the range, plus the range boundaries and
+// mid. calcFibs' `low + range·lv` gives: lv≥1 → above the Asia high, lv≤0 →
+// below the Asia low.
+export const ASIA_EXT_RATIOS = [
+  -2.618, -1.618, -1.0, -0.618, -0.272, 0, 0.5, 1, 1.272, 1.618, 2.0, 2.618, 3.618,
+];
+
+// Emit the Asia extension levels for ONE session from its M1 bars. `asiaBars`
+// must be exactly the session-window (00:00–06:00 UTC) M1 bars; resampled to
+// `resampleMin` (5m) bodies inside bodyRange, same as asiaRangeEngine. Weight
+// keys the extension family by prominence (range edges > golden ext > far ext).
+export function asiaExtensionLevels(asiaBars, resampleMin, ratios = ASIA_EXT_RATIOS) {
+  const r = bodyRange(asiaBars, resampleMin);
+  if (!r) return null;                                   // no Asia session (weekend/holiday/no M1)
+  const fibs = calcFibs(r.low, r.range, ratios);
+  const out = fibs.map(f => {
+    const w = f.level === 0 || f.level === 1 ? 1.6           // the range itself (PDH/PDL-grade)
+            : Math.abs(f.level) <= 1.618 ? 1.3               // near extensions / golden pocket
+            : 1.0;                                           // far extensions
+    return { price: f.price, kind: 'asia_ext', label: `Asia ${f.level}`, weight: w, source: 'asia_ext', meta: { ratio: f.level } };
+  });
+  return { levels: out, range: r };
+}
 
 // ── Real-path MAE (Chapter 15 / CLAUDE.md: read MAE off the ACTUAL bars, never
 // approximated from close-to-close). Scans the window bars over the realised
@@ -95,7 +130,7 @@ function maeFromPath(bars, entry, isBuy, open, fillTime, exitTime) {
 // numeric `.time` epoch-sec). `open`/`sigma` are the session's known-at-open
 // forecast inputs. Emits clustered zones with a distinct-source count = the
 // "independent evidence" the spec rewards (Ch 5: diversity, not quantity).
-export function buildZones(priorBars, open, sigma, assetClass, name, cfg) {
+export function buildZones(priorBars, open, sigma, assetClass, name, cfg, extraLevels = []) {
   const { clusterPips = 10 } = cfg;
   const pip = pipFor(name, assetClass);
   const bands = computeBands(open, sigma, assetClass);
@@ -113,7 +148,9 @@ export function buildZones(priorBars, open, sigma, assetClass, name, cfg) {
   const ctx = { dailyBars: priorBars, instrument: name, price: open, pipSize: pip };
   const structural = collectLevels(ctx, STRUCTURAL_SOURCES);
 
-  const zones = clusterLevels([...volLevels, ...structural], clusterPips, pip);
+  // extraLevels = the intraday-only families (Asia extensions) the caller built
+  // from M1 for THIS session — kept out of the D1 structural set on purpose.
+  const zones = clusterLevels([...volLevels, ...structural, ...extraLevels], clusterPips, pip);
   // distinctSources = number of independent evidence families in the zone.
   for (const z of zones) z.distinctSources = z.sources.length;
   return { bands, zones, pip };
@@ -178,11 +215,18 @@ export function runZoneMode(d1Bars, m1ByDate, assetClass, name, mode, opts = {})
     slipPct = DEFAULT_SLIP_PCT[assetClass] ?? 0.006,
     erWindow = 14, slopeThresh = 0.002,
     accountSize = 10000, riskPct = 1.0,
+    // Asia-anchored mode (Chapter 4): when true, each session is anchored at
+    // ASIA CLOSE (06:00 UTC) — reference price + fill window both start there —
+    // and the M1 Asia range extensions join the confluence as the `asia_ext`
+    // evidence family. Requires M1 (skips any day without it). Off = the
+    // original D1-open-anchored behaviour.
+    asiaAnchor = false, asiaWindowH = 6, asiaResampleMin = 5,
   } = opts;
   const cfg = {
     minSources: opts.minSources ?? 2, clusterPips: opts.clusterPips ?? (assetClass === 'fx' ? 10 : 8),
     fadeMax: opts.fadeMax ?? 0.45, reachMult: opts.reachMult ?? 1.5,
     slMult: opts.slMult ?? 1.5, rr: opts.rr ?? 1.5, slipPct,
+    asiaRatios: opts.asiaRatios ?? ASIA_EXT_RATIOS,
   };
   const riskDollar = accountSize * riskPct / 100;
   const closes = d1Bars.map(b => b.close);
@@ -200,17 +244,34 @@ export function runZoneMode(d1Bars, m1ByDate, assetClass, name, mode, opts = {})
     const sigma = sigD[i];
     if (!sigma || sigma < 1e-8) continue;
 
-    const open = bar.open;
+    const dayEpoch = Math.floor(Date.parse(bar.date) / 1000);   // UTC midnight of the session date
+    const dayM1 = m1ByDate?.get(bar.date) ?? null;
+
+    // Anchor + fill window depend on the mode. Asia-anchored trades only the
+    // post-06:00 path off Asia-close price (no lookahead onto the Asia window).
+    let open, win, extraLevels = [];
+    if (asiaAnchor) {
+      if (!dayM1?.length) continue;                   // Asia mode REQUIRES M1
+      const asiaEnd  = dayEpoch + asiaWindowH * 3600;
+      const asiaBars = dayM1.filter(b => b.time >= dayEpoch && b.time < asiaEnd);
+      const post     = dayM1.filter(b => b.time >= asiaEnd);
+      if (!post.length) continue;                     // nothing to trade after Asia close
+      const asia = asiaExtensionLevels(asiaBars, asiaResampleMin, cfg.asiaRatios);
+      if (!asia) continue;                            // no valid Asia session that day
+      open = post[0].open;                            // reference = price at Asia close (06:00 UTC)
+      win  = post;                                    // fills ONLY on the post-Asia path
+      extraLevels = asia.levels;
+    } else {
+      open = bar.open;                                // D1-open anchor (original behaviour)
+      win  = dayM1 ?? [{ time: dayEpoch, open: bar.open, high: bar.high, low: bar.low, close: bar.close }];
+    }
+
     const priorBars = timed.slice(0, i);              // STRICTLY before session i (no lookahead)
-    const { bands, zones } = buildZones(priorBars, open, sigma, assetClass, name, cfg);
+    const { bands, zones } = buildZones(priorBars, open, sigma, assetClass, name, cfg, extraLevels);
     const T = dayTypeScore(closes, i, erWindow);
     const regime = classifyRegime(closes, i, 20, 5, slopeThresh, 1.0);
     const { action, orders } = planSession(open, bands, zones, T, regime, mode, cfg);
     if (!orders.length) continue;                     // No-Trade is a valid outcome (Ch 7)
-
-    // Fill window: intraday if we have it, else the single D1 bar.
-    const win = m1ByDate?.get(bar.date)
-      ?? [{ time: Math.floor(Date.parse(bar.date) / 1000), open: bar.open, high: bar.high, low: bar.low, close: bar.close }];
 
     // Take the first order that fills (chronologically). walkBars owns the causal
     // fill/SL/TP resolution; we add real-path MAE around it.

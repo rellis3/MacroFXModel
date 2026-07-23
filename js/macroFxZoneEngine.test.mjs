@@ -9,7 +9,7 @@
  */
 
 import assert from 'node:assert';
-import { buildZones, runZoneMode, compareZones } from './macroFxZoneEngine.js';
+import { buildZones, runZoneMode, compareZones, asiaExtensionLevels, ASIA_EXT_RATIOS } from './macroFxZoneEngine.js';
 
 let passed = 0;
 const ok = (cond, msg) => { assert.ok(cond, msg); console.log('  ✓', msg); passed++; };
@@ -93,6 +93,60 @@ const d1 = synthD1();
   for (const m of ['zone', 'isolated', 'zone_fade', 'zone_follow'])
     assert.ok(modes[m]?.is && modes[m]?.oos && modes[m]?.full, `mode ${m} has is/oos/full`);
   ok(true, 'compareZones returns zone/isolated/zone_fade/zone_follow with IS/OOS/full');
+}
+
+// ── Synthetic intraday M1 (real 00:00–06:00 Asia window + post-Asia path) ────
+// Builds a Map(date → m1 bars) covering the trade dates in `d1`, so asiaAnchor
+// mode has genuine intraday structure to work off.
+function synthM1(d1) {
+  const map = new Map();
+  for (const b of d1) {
+    const dayEpoch = Math.floor(Date.parse(b.date) / 1000);
+    const bars = [];
+    // 24h of 30-min bars (48 bars) — enough for a 00:00–06:00 Asia window (12
+    // bars) + a post-Asia path. Price wanders around the D1 open→close line.
+    for (let k = 0; k < 48; k++) {
+      const frac = k / 47;
+      const mid = b.open + (b.close - b.open) * frac;
+      const wobble = Math.sin(k * 0.9) * (b.high - b.low) * 0.35;
+      const o = mid, c = mid + wobble * 0.2;
+      const hi = Math.max(o, c) + (b.high - b.low) * 0.15;
+      const lo = Math.min(o, c) - (b.high - b.low) * 0.15;
+      bars.push({ time: dayEpoch + k * 1800, open: +o.toFixed(5), high: +hi.toFixed(5), low: +lo.toFixed(5), close: +c.toFixed(5) });
+    }
+    map.set(b.date, bars);
+  }
+  return map;
+}
+
+// 6) Asia extension family: M1-only, built from the session window via the bricks.
+{
+  const dayEpoch = Math.floor(Date.parse(d1[0].date) / 1000);
+  const asiaBars = synthM1([d1[0]]).get(d1[0].date).filter(x => x.time < dayEpoch + 6 * 3600);
+  const res = asiaExtensionLevels(asiaBars, 5, ASIA_EXT_RATIOS);
+  ok(res && res.levels.length === ASIA_EXT_RATIOS.length, `asiaExtensionLevels emits ${res?.levels.length} levels from M1 range`);
+  ok(res.levels.every(l => l.source === 'asia_ext' && Number.isFinite(l.price)), 'Asia levels tagged asia_ext with finite prices');
+  ok(res.range.high > res.range.low, 'Asia session range high>low from bodyRange');
+  ok(asiaExtensionLevels([], 5) === null, 'no Asia bars → null (weekend/holiday → skip the day)');
+}
+
+// 7) Asia-anchored mode trades ONLY the post-Asia path, includes asia_ext, no lookahead.
+{
+  const m1 = synthM1(d1);
+  const recs = runZoneMode(d1, m1, 'fx', 'EURUSD', 'zone', { minLookback: 80, asiaAnchor: true, minSources: 2 });
+  ok(recs.length > 0, `asiaAnchor zone mode produced trades (${recs.length})`);
+  ok(recs.some(r => r.sources.includes('asia_ext')), 'at least one asia-anchored zone used the asia_ext family');
+  // causality: truncating the D1 series at a trade's date can't change it.
+  const probe = recs[Math.floor(recs.length / 2)];
+  const cutIdx = d1.findIndex(b => b.date === probe.date);
+  const m1cut = synthM1(d1.slice(0, cutIdx + 1));
+  const same = runZoneMode(d1.slice(0, cutIdx + 1), m1cut, 'fx', 'EURUSD', 'zone', { minLookback: 80, asiaAnchor: true, minSources: 2 })
+    .find(r => r.date === probe.date);
+  ok(same && Math.abs(same.pnl_pct - probe.pnl_pct) < 1e-9 && same.side === probe.side,
+     'asia-anchored trade identical when future bars removed → no lookahead');
+  // asiaAnchor requires M1: with none, zero trades.
+  const noM1 = runZoneMode(d1, null, 'fx', 'EURUSD', 'zone', { minLookback: 80, asiaAnchor: true });
+  ok(noM1.length === 0, 'asiaAnchor with no M1 → no trades (Asia range needs intraday)');
 }
 
 console.log(`\n${passed} checks passed.`);

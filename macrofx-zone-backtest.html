@@ -58,6 +58,12 @@
     <code>dayTypeCore</code> (market state), <code>walkBars</code> (fills),
     <code>summarizeSplit</code> (IS/OOS). Costs on, true later-period OOS split,
     no lookahead. The verdict rows are deliberately harsh.
+    <br><b>Asia extensions (M1)</b> = the Ch 4 spatial framework, built from the
+    real Asian-session (00:00–06:00 UTC) high/low via the shared brick and
+    projected as a fib ladder — an <b>intraday-only</b> family (never from D1).
+    With it on, each session anchors at Asia close and only the post-06:00 path
+    is traded (no lookahead onto the Asia window); the Asia family joins the
+    confluence as independent evidence.
   </div>
 </header>
 <main>
@@ -87,6 +93,14 @@
       <div><label>Cost % (opt)</label><input id="costPct" type="number" placeholder="auto" step="0.001"></div>
       <div><label>Account size ($)</label><input id="accountSize" type="number" value="10000" step="1000"></div>
       <div><label>Risk per trade (%)</label><input id="riskPct" type="number" value="1" step="0.25"></div>
+      <div>
+        <label>Asia extensions (M1)</label>
+        <select id="asiaAnchor">
+          <option value="">Off (D1-open anchor)</option>
+          <option value="1">On (anchor at Asia close)</option>
+        </select>
+        <div class="hint">adds the Ch 4 Asia-range family</div>
+      </div>
     </div>
     <div style="margin-top:14px"><button id="run">Run zone backtest</button></div>
     <div id="status"></div>
@@ -111,7 +125,8 @@
       <br><br><b>Deferred, honestly.</b> The spec's Options/Gamma (Ch 9), Macro
       (Ch 11) and order-book Liquidity (Ch 8) engines need data that can't be
       sourced honestly here (OANDA mids only), so they are <i>not</i> faked in.
-      This is the price-only core: volatility + structural confluence + state.
+      This is the price-only core: volatility + structural + Asia-range (M1)
+      confluence + state.
     </div>
   </div>
 </main>
@@ -231,7 +246,7 @@ $('run').onclick = async () => {
     pair:$('pair').value, oosFrac:$('oosFrac').value, minSources:$('minSources').value,
     clusterPips:$('clusterPips').value, fadeMax:$('fadeMax').value, reachMult:$('reachMult').value,
     slMult:$('slMult').value, rr:$('rr').value, erWindow:$('erWindow').value, costPct:$('costPct').value,
-    accountSize:$('accountSize').value, riskPct:$('riskPct').value,
+    accountSize:$('accountSize').value, riskPct:$('riskPct').value, asiaAnchor:$('asiaAnchor').value,
   };
   $('run').disabled=true; $('results').innerHTML=''; $('legendCard').style.display='none';
   $('status').textContent='Submitting…';
