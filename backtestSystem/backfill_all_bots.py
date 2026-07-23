@@ -1,55 +1,49 @@
 """
-Fleet-wide trade-history backfill: pulls closed-deal history for EVERY MT5 bot
-straight from MT5's own deal history and pushes each bot's round trips into the
-dashboard's `trade_hist_<bot_key>_<date>` KV buckets (bucketed by each trade's
-own close date), so they show up in bot-config.html -> Positions -> Trade History.
+Fleet-wide trade-history backfill: for EVERY MT5 bot, connects to that bot's OWN
+MT5 terminal + account (path/login pulled from its dashboard KV credentials),
+pulls its closed-deal history straight from MT5, reconstructs round-trip trades
+and pushes them into the dashboard's `trade_hist_<bot_key>_<date>` KV buckets
+(bucketed by each trade's own close date) so they show up in bot-config.html ->
+Positions -> Trade History.
 
-This is the generalised sibling of `backfill_trade_history.py` (which only ever
-handled the Backtest bot, magic 20260099). Use this when you've closed trades in
-MetaTrader across many bots and none of them are showing on the dashboard — the
-live status-push path only records a close if the bot process happened to be up
-and its KV push succeeded at that exact moment; MT5's deal history has no such
-gap and is the authoritative source for a catch-up backfill.
+This is the generalised sibling of `backfill_trade_history.py` (which only
+handled the Backtest bot). Use it when you've closed trades in MetaTrader across
+many bots and none are showing on the dashboard — the live status-push path only
+records a close if the bot process was up and its KV push succeeded at that exact
+moment; MT5's deal history has no such gap and is the authoritative catch-up source.
 
-HOW IT WORKS
-  1. Connects to the MT5 terminal on THIS machine (one terminal = one account).
-  2. Pulls the whole deal history for the date range ONCE.
-  3. Splits deals by their `magic` number (the per-bot tag) and reconstructs
-     round-trip trades per bot.
-  4. Maps each magic -> the bot's dashboard `bot_key` via the BOTS registry
-     below, and POSTs each bot's trades to /api/trade-history/backfill.
+WHY PER-BOT CONNECT (the key design point)
+  Each bot runs on its OWN MT5 account in its OWN MetaTrader installation, and its
+  login + terminal PATH live in its own KV credentials blob
+  (<bot>_credentials: mt5_account / mt5_password / mt5_server / mt5_path — saved
+  from the bot-config page). So the script can't just read one terminal and split
+  by magic (that only ever sees the bots sharing that one terminal — the original
+  bug this rewrite fixes). Instead it walks the roster, connects to each bot's own
+  terminal in turn, filters that account's deals by the bot's magic, and pushes.
+  A side benefit: shared magics (20260005 GoldV2/RegimeV2, 20260099 Volatility/
+  Backtest) can never cross-contaminate, because each bot is read from its own
+  account.
 
 WHERE TO RUN IT
-  On the machine with the bot's MT5 terminal installed + logged in (the MetaTrader5
-  Python package only works there). It will NOT run in the cloud sandbox.
+  On a machine where the bots' MT5 terminals are installed (the MetaTrader5 Python
+  package only works there). If your terminals are spread across several machines,
+  run it on each — bots whose terminal isn't present just get skipped with a note.
+  It is READ-ONLY against MT5 (history only) — it never sends an order, so it's
+  safe to run while the live bots are running.
 
-MAGIC COLLISIONS (read this)
-  Some bots deliberately share a magic because they normally run on SEPARATE MT5
-  accounts / terminals:
-     20260005  -> Gold V2  AND  Regime V2
-     20260006  -> Confluence  (also Regime V4, which the dashboard doesn't aggregate)
-     20260099  -> Volatility  AND  Backtest
-  On any single terminal only ONE of a colliding pair is really trading, but the
-  script can't know which — so by default it SKIPS a colliding magic and asks you
-  to disambiguate. Resolve it either by naming the bot(s) actually on this
-  terminal with `--only`, or by forcing the mapping with `--map`:
-     python backfill_all_bots.py --only volatility_bot          # 20260099 -> volatility_bot_status
-     python backfill_all_bots.py --map 20260099=backtestsystem_status
-
-CREDENTIALS  (same resolution order as the bots)
-  1. --creds-key <kv_key>  -> pull MT5 login from the dashboard KV (e.g.
-     volatility_bot_credentials, gold_bot_credentials, backtestsystem_credentials).
-  2. else MT5_ACCOUNT / MT5_PASSWORD / MT5_SERVER / MT5_PATH env vars (or .env).
-  3. else a bare mt5.initialize() — works when the terminal is already open and
-     logged into the right account (the common case).
+CREDENTIALS
+  Read from the dashboard KV (needs --dashboard-url / $DASHBOARD_URL, which is also
+  the push target). Each bot's login+path come from its <bot>_credentials key. A
+  bot with no saved credentials (or unreachable terminal) is skipped, not failed.
+  For a single bot with env-only creds (e.g. Gold V1) you can override with
+  --only gold --path "C:\\...\\terminal64.exe" --account 123 --password ... --server ...
 
 USAGE
-  python backfill_all_bots.py                                   # every unambiguous bot, since --from
-  python backfill_all_bots.py --dry-run                         # inspect, push nothing
-  python backfill_all_bots.py --only volatility_bot,gold_bot    # just these
+  python backfill_all_bots.py --dry-run                        # inspect every bot, push nothing
+  python backfill_all_bots.py                                  # backfill every bot, since --from
+  python backfill_all_bots.py --only oi,gold                   # just these bots
   python backfill_all_bots.py --from 2026-06-01
   python backfill_all_bots.py --days 30
-  python backfill_all_bots.py --map 20260099=backtestsystem_status
 """
 import argparse
 import json
@@ -65,9 +59,6 @@ except ImportError:                              # dotenv is optional
     def load_dotenv(*_a, **_kw):
         return False
 
-sys.path.insert(0, os.path.dirname(__file__))
-import mt5_utils
-
 log = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s  %(levelname)-7s  %(message)s', datefmt='%H:%M:%S')
 
@@ -78,32 +69,33 @@ load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
 # name       : short handle for --only / logs
 # magic      : the MT5 magic number the bot tags its trades with (pylego/magics.py)
 # bot_key    : the dashboard status key -> trade_hist_<bot_key>_<date> bucket
+# creds_key  : KV key holding this bot's MT5 login + terminal path
 #
 # Only bots the dashboard actually AGGREGATES into Trade History are listed (the
 # 15 keys scanned by /api/trade-history in _worker.js). hedge/pos-hedge and the
 # *_qmr bots are intentionally omitted — their live positions show, but the
 # reader does not scan their history buckets, so a backfill wouldn't appear.
 BOTS = [
-    {'name': 'macrofx',        'magic': 20260001, 'bot_key': 'bot_status'},
-    {'name': 'regime_v1',      'magic': 20260002, 'bot_key': 'regime_bot_status'},
-    {'name': 'gold',           'magic': 20260004, 'bot_key': 'gold_bot_status'},
-    {'name': 'gold_v2',        'magic': 20260005, 'bot_key': 'gold_v2_status'},        # ⚠ 20260005 also regime_v2
-    {'name': 'regime_v2',      'magic': 20260005, 'bot_key': 'regime_bot_v2_status'},  # ⚠ 20260005 also gold_v2
-    {'name': 'confluence',     'magic': 20260006, 'bot_key': 'confluence_bot_status'},  # ⚠ 20260006 also Regime V4 (not aggregated)
-    {'name': 'regime_v7',      'magic': 20260007, 'bot_key': 'regime_bot_v7_status'},
-    {'name': 'dyn_anchor',     'magic': 20260009, 'bot_key': 'dyn_anchor_status'},
-    {'name': 'macro_equity',   'magic': 20260010, 'bot_key': 'macro_equity_bot_status'},
-    {'name': 'yield_spread',   'magic': 20260012, 'bot_key': 'yield_spread_status'},
-    {'name': 'volatility_ride', 'magic': 20260098, 'bot_key': 'volatility_ride_status'},
-    {'name': 'volatility_bot', 'magic': 20260099, 'bot_key': 'volatility_bot_status'},  # ⚠ 20260099 also backtest
-    {'name': 'backtest',       'magic': 20260099, 'bot_key': 'backtestsystem_status'},  # ⚠ 20260099 also volatility_bot
-    {'name': 'range_line',     'magic': 20260131, 'bot_key': 'range_line_bot_status'},
-    {'name': 'oi',             'magic': 20260714, 'bot_key': 'oi_bot_status'},
+    {'name': 'macrofx',        'magic': 20260001, 'bot_key': 'bot_status',              'creds_key': 'bot_credentials'},
+    {'name': 'regime_v1',      'magic': 20260002, 'bot_key': 'regime_bot_status',       'creds_key': 'regime_bot_credentials'},
+    {'name': 'gold',           'magic': 20260004, 'bot_key': 'gold_bot_status',         'creds_key': 'gold_bot_credentials'},
+    {'name': 'gold_v2',        'magic': 20260005, 'bot_key': 'gold_v2_status',          'creds_key': 'gold_v2_credentials'},
+    {'name': 'regime_v2',      'magic': 20260005, 'bot_key': 'regime_bot_v2_status',    'creds_key': 'regime_bot_v2_credentials'},
+    {'name': 'confluence',     'magic': 20260006, 'bot_key': 'confluence_bot_status',   'creds_key': 'confluence_bot_credentials'},
+    {'name': 'regime_v7',      'magic': 20260007, 'bot_key': 'regime_bot_v7_status',    'creds_key': 'regime_bot_v7_credentials'},
+    {'name': 'dyn_anchor',     'magic': 20260009, 'bot_key': 'dyn_anchor_status',       'creds_key': 'dyn_anchor_credentials'},
+    {'name': 'macro_equity',   'magic': 20260010, 'bot_key': 'macro_equity_bot_status', 'creds_key': 'macro_equity_credentials'},
+    {'name': 'yield_spread',   'magic': 20260012, 'bot_key': 'yield_spread_status',     'creds_key': 'yield_spread_credentials'},
+    {'name': 'volatility_ride', 'magic': 20260098, 'bot_key': 'volatility_ride_status', 'creds_key': 'volatility_ride_credentials'},
+    {'name': 'volatility_bot', 'magic': 20260099, 'bot_key': 'volatility_bot_status',   'creds_key': 'volatility_bot_credentials'},
+    {'name': 'backtest',       'magic': 20260099, 'bot_key': 'backtestsystem_status',   'creds_key': 'backtestsystem_credentials'},
+    {'name': 'range_line',     'magic': 20260131, 'bot_key': 'range_line_bot_status',   'creds_key': 'range_line_bot_credentials'},
+    {'name': 'oi',             'magic': 20260714, 'bot_key': 'oi_bot_status',           'creds_key': 'oi_bot_credentials'},
 ]
 
 
 def _load_creds_from_kv(dashboard_url: str, creds_key: str) -> dict | None:
-    """Fetch a bot's MT5 credentials from the dashboard KV API (mirrors main.py)."""
+    """Fetch a bot's MT5 credentials from the dashboard KV API (mirrors the bots)."""
     try:
         url = f'{dashboard_url.rstrip("/")}/api/kv/get?key={creds_key}'
         with urllib.request.urlopen(url, timeout=8) as resp:
@@ -112,44 +104,59 @@ def _load_creds_from_kv(dashboard_url: str, creds_key: str) -> dict | None:
             return None
         return data['data']
     except Exception as exc:
-        log.warning(f'Could not load credentials from KV ({creds_key}): {exc}')
+        log.warning(f'    KV read failed ({creds_key}): {exc}')
         return None
 
 
-def _connect(dashboard_url: str, creds_key: str | None) -> None:
-    account, password, server, path = 0, '', '', os.getenv('MT5_PATH', '')
-    kv_creds = _load_creds_from_kv(dashboard_url, creds_key) if (creds_key and dashboard_url) else None
-    if kv_creds:
-        log.info(f'Loaded MT5 credentials from dashboard KV ({creds_key})')
-        account  = int(kv_creds.get('mt5_account') or 0)
-        password = kv_creds.get('mt5_password', '')
-        server   = kv_creds.get('mt5_server',   '')
-        path     = kv_creds.get('mt5_path',     '') or path
-    elif os.getenv('MT5_ACCOUNT'):
-        account  = int(os.getenv('MT5_ACCOUNT', '0'))
-        password = os.getenv('MT5_PASSWORD', '')
-        server   = os.getenv('MT5_SERVER', '')
-        path     = os.getenv('MT5_PATH', '') or path
-    else:
-        log.info('No --creds-key and no MT5_ACCOUNT env — using bare initialize() '
-                 '(terminal must already be open and logged in).')
+def _connect_bot(creds: dict) -> tuple[bool, str]:
+    """Attach to the bot's own terminal + account. Shuts down any prior connection
+    first (so we can switch terminals within one process). Verifies the connected
+    account matches the credentials before returning True, so we never read one
+    account's deals and push them under another bot's key.
 
-    if not mt5_utils.connect(account, password, server, path):
-        log.error('MT5 connection failed — is the terminal open/logged in? check --creds-key / .env')
-        sys.exit(1)
+    Returns (ok, message)."""
+    import MetaTrader5 as mt5
+    try:
+        mt5.shutdown()
+    except Exception:
+        pass
+
+    want_account = int(creds.get('mt5_account') or 0)
+    password     = creds.get('mt5_password', '')
+    server       = creds.get('mt5_server', '')
+    path         = creds.get('mt5_path', '')
+
+    kw: dict = {}
+    if path:
+        kw['path'] = path
+    if want_account and password and server:
+        kw.update({'login': want_account, 'password': password, 'server': server})
+
+    if not mt5.initialize(**kw):
+        return False, f'initialize() failed: {mt5.last_error()}'
+
+    info = mt5.account_info()
+    if info is None:
+        return False, 'connected but account_info() is None'
+    if want_account and int(info.login) != want_account:
+        return False, (f'connected to account {info.login} but credentials say '
+                       f'{want_account} — refusing (terminal on the wrong account?)')
+    return True, f'account={info.login}  server={info.server}  balance={info.balance:.2f} {info.currency}'
 
 
-def _fetch_deals(date_from: datetime, date_to: datetime) -> list:
+def _fetch_deals(date_from: datetime, date_to: datetime, magic: int) -> list:
     import MetaTrader5 as mt5
     deals = mt5.history_deals_get(date_from, date_to)
-    return list(deals) if deals else []
+    if not deals:
+        return []
+    return [d for d in deals if d.magic == magic]
 
 
 def _build_trades(deals: list) -> tuple[list, int]:
-    """Group deals (already filtered to a single magic) by position_id into
-    round-trip trades. Volume-weights price across partial entries/exits. Skips
-    positions with no matching IN+OUT pair in the window (still open, or the entry
-    predates the range). Identical reconstruction to backfill_trade_history.py."""
+    """Group deals (already filtered to one magic on one account) by position_id
+    into round-trip trades. Volume-weights price across partial entries/exits.
+    Skips positions with no IN+OUT pair in the window (still open, or entry
+    predates the range). Same reconstruction as backfill_trade_history.py."""
     import MetaTrader5 as mt5
     by_position: dict = {}
     for d in deals:
@@ -196,139 +203,124 @@ def _push(dashboard_url: str, bot_key: str, trades: list) -> dict:
         return json.loads(resp.read())
 
 
-def _resolve_targets(only: set[str], overrides: dict[int, str]) -> tuple[dict[int, dict], list[str]]:
-    """Return (magic -> {bot_key, name}) for magics we can push unambiguously,
-    plus a list of human-readable notes about skipped/collided magics.
-
-    --only  narrows the registry to the named bots (by name OR bot_key) first —
-            which is itself a way to break a collision.
-    --map   forces magic -> bot_key, overriding everything (wins any collision)."""
-    notes: list[str] = []
-    candidates: dict[int, list[dict]] = {}
-    for b in BOTS:
-        if only and b['name'] not in only and b['bot_key'] not in only:
-            continue
-        candidates.setdefault(b['magic'], []).append(b)
-
-    targets: dict[int, dict] = {}
-    for magic, bots in candidates.items():
-        if magic in overrides:
-            targets[magic] = {'bot_key': overrides[magic], 'name': f'--map:{overrides[magic]}'}
-        elif len(bots) == 1:
-            targets[magic] = {'bot_key': bots[0]['bot_key'], 'name': bots[0]['name']}
-        else:
-            names = ', '.join(f"{b['name']} ({b['bot_key']})" for b in bots)
-            notes.append(f'magic {magic}: COLLISION between {names} — skipped. '
-                         f'Disambiguate with --only <name> or --map {magic}=<bot_key>.')
-    # --map for a magic that --only filtered out (or isn't in the registry at all)
-    for magic, bot_key in overrides.items():
-        if magic not in targets:
-            targets[magic] = {'bot_key': bot_key, 'name': f'--map:{bot_key}'}
-    return targets, notes
-
-
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--from', dest='date_from', default='2026-05-01',
                     help='UTC date (YYYY-MM-DD) to backfill from (default: 2026-05-01)')
     ap.add_argument('--days', type=int, default=None, help='Backfill the last N days instead of --from')
-    ap.add_argument('--only', default='', help='Comma-separated bot names or bot_keys to restrict to (also breaks collisions)')
-    ap.add_argument('--map', dest='maps', action='append', default=[],
-                    help='Force a magic->bot_key mapping, e.g. --map 20260099=backtestsystem_status (repeatable)')
-    ap.add_argument('--creds-key', default=None, help='KV key to load MT5 creds from (e.g. gold_bot_credentials)')
-    ap.add_argument('--dashboard-url', default=os.getenv('DASHBOARD_URL', ''), help='Dashboard base URL (else $DASHBOARD_URL)')
-    ap.add_argument('--dry-run', action='store_true', help='Print what would be pushed, without pushing')
+    ap.add_argument('--only', default='', help='Comma-separated bot names or bot_keys to restrict to')
+    ap.add_argument('--dashboard-url', default=os.getenv('DASHBOARD_URL', ''),
+                    help='Dashboard base URL (else $DASHBOARD_URL) — used to READ creds and PUSH trades')
+    ap.add_argument('--dry-run', action='store_true', help='Connect + reconstruct, but push nothing')
+    # Single-bot manual credential override (for env-only bots, e.g. Gold V1):
+    ap.add_argument('--path', default=None, help='Override MT5 terminal path (only valid with a single --only bot)')
+    ap.add_argument('--account', type=int, default=None, help='Override MT5 account (with a single --only bot)')
+    ap.add_argument('--password', default=None, help='Override MT5 password (with a single --only bot)')
+    ap.add_argument('--server', default=None, help='Override MT5 server (with a single --only bot)')
     args = ap.parse_args()
 
     only = {s.strip() for s in args.only.split(',') if s.strip()}
-    overrides: dict[int, str] = {}
-    for m in args.maps:
-        if '=' not in m:
-            log.error(f'--map expects MAGIC=bot_key, got: {m}'); sys.exit(1)
-        magic_s, bot_key = m.split('=', 1)
-        overrides[int(magic_s.strip())] = bot_key.strip()
+    targets = [b for b in BOTS if not only or b['name'] in only or b['bot_key'] in only]
+    if not targets:
+        log.error('No bots matched --only. Registry names: ' + ', '.join(b['name'] for b in BOTS))
+        sys.exit(1)
 
-    known_keys = {b['bot_key'] for b in BOTS}
-    for bk in overrides.values():
-        if bk not in known_keys:
-            log.warning(f'--map target "{bk}" is not one of the dashboard-aggregated bot keys — '
-                        f'it will be stored but may not appear in Trade History.')
+    manual_override = any(v is not None for v in (args.path, args.account, args.password, args.server))
+    if manual_override and len(targets) != 1:
+        log.error('--path/--account/--password/--server require exactly one --only bot.')
+        sys.exit(1)
 
     dashboard_url = args.dashboard_url
-    if not dashboard_url and not args.dry_run:
-        log.error('No dashboard URL — set $DASHBOARD_URL or pass --dashboard-url (or use --dry-run).')
+    if not dashboard_url:
+        log.error('No dashboard URL — set $DASHBOARD_URL or pass --dashboard-url '
+                  '(needed to read each bot\'s KV credentials, and to push).')
         sys.exit(1)
 
-    targets, notes = _resolve_targets(only, overrides)
-    for n in notes:
-        log.warning(n)
-    if not targets:
-        log.error('No bots to backfill (everything filtered out or collided). '
-                  'Use --only or --map to pick bots. Registry names: '
-                  + ', '.join(b['name'] for b in BOTS))
+    try:
+        import MetaTrader5  # noqa: F401
+    except ImportError:
+        log.error('MetaTrader5 package not installed — run this on the machine with the MT5 terminals.')
         sys.exit(1)
-
-    _connect(dashboard_url, args.creds_key)
 
     date_from = (datetime.now(timezone.utc) - timedelta(days=args.days)) if args.days \
         else datetime.strptime(args.date_from, '%Y-%m-%d').replace(tzinfo=timezone.utc)
     date_to = datetime.now(timezone.utc) + timedelta(hours=1)
+    log.info(f'Backfill window {date_from.date()} -> {date_to.date()}   ({len(targets)} bots)')
 
-    log.info(f'Fetching MT5 deal history {date_from.date()} -> {date_to.date()}  '
-             f'for magics {sorted(targets)}')
-    all_deals = _fetch_deals(date_from, date_to)
-    log.info(f'{len(all_deals)} raw deals in range')
-
-    # Split deals by magic once
-    by_magic: dict[int, list] = {}
-    for d in all_deals:
-        if d.magic in targets:
-            by_magic.setdefault(d.magic, []).append(d)
-
-    summary = []
+    summary = []          # (name, bot_key, status, n_trades, added)
     grand_added = 0
-    for magic, tgt in sorted(targets.items()):
-        deals = by_magic.get(magic, [])
+
+    for b in targets:
+        label = f"{b['name']} [{b['bot_key']}] magic={b['magic']}"
+        log.info(f'── {label} ' + '─' * max(0, 50 - len(label)))
+
+        # Resolve credentials: manual override > KV
+        if manual_override:
+            creds = {
+                'mt5_account':  args.account,
+                'mt5_password': args.password,
+                'mt5_server':   args.server,
+                'mt5_path':     args.path,
+            }
+        else:
+            creds = _load_creds_from_kv(dashboard_url, b['creds_key'])
+        if not creds or not creds.get('mt5_account'):
+            log.warning(f'    no MT5 credentials ({b["creds_key"]}) — skipped')
+            summary.append((b['name'], b['bot_key'], 'no-creds', 0, 0))
+            continue
+
+        ok, msg = _connect_bot(creds)
+        if not ok:
+            log.warning(f'    connect skipped: {msg}')
+            summary.append((b['name'], b['bot_key'], 'no-connect', 0, 0))
+            continue
+        log.info(f'    connected: {msg}')
+
+        deals = _fetch_deals(date_from, date_to, b['magic'])
         trades, skipped = _build_trades(deals)
-        label = f"{tgt['name']} [{tgt['bot_key']}] magic={magic}"
         if not trades:
-            log.info(f'{label}: 0 round-trip trades ({len(deals)} deals, {skipped} skipped) — nothing to push')
-            summary.append((label, 0, 0))
+            log.info(f'    {len(deals)} deals, 0 round-trip trades ({skipped} skipped) — nothing to push')
+            summary.append((b['name'], b['bot_key'], 'empty', 0, 0))
             continue
 
         net = sum(t['profit'] + t['swap'] for t in trades)
         dates = sorted({datetime.fromtimestamp(t['time_close'], tz=timezone.utc).strftime('%Y-%m-%d') for t in trades})
-        log.info(f'{label}: {len(trades)} trades across {len(dates)} days '
+        log.info(f'    {len(trades)} trades across {len(dates)} days '
                  f'({dates[0]} -> {dates[-1]})  net P&L: {net:+.2f}  ({skipped} skipped)')
 
         if args.dry_run:
             for t in trades[:3]:
-                log.info(f'    sample: {t}')
-            summary.append((label, len(trades), 0))
+                log.info(f'      sample: {t}')
+            summary.append((b['name'], b['bot_key'], 'dry', len(trades), 0))
             continue
 
         try:
-            result = _push(dashboard_url, tgt['bot_key'], trades)
+            result = _push(dashboard_url, b['bot_key'], trades)
             added = result.get('added', 0)
             grand_added += added
             log.info(f'    pushed -> {result}')
-            summary.append((label, len(trades), added))
+            summary.append((b['name'], b['bot_key'], 'ok', len(trades), added))
         except Exception as exc:
-            log.error(f'    push failed for {tgt["bot_key"]}: {exc}')
-            summary.append((label, len(trades), -1))
+            log.error(f'    push failed: {exc}')
+            summary.append((b['name'], b['bot_key'], 'push-err', len(trades), -1))
+
+    try:
+        import MetaTrader5 as mt5
+        mt5.shutdown()
+    except Exception:
+        pass
 
     # ── Summary ────────────────────────────────────────────────────────────────
-    log.info('─' * 72)
-    log.info(f'{"BOT":<48}{"TRADES":>8}{"ADDED":>10}')
-    for label, n_trades, added in summary:
-        added_s = 'DRY' if args.dry_run else ('ERR' if added < 0 else str(added))
-        log.info(f'{label:<48}{n_trades:>8}{added_s:>10}')
-    log.info('─' * 72)
+    log.info('═' * 78)
+    log.info(f'{"BOT":<26}{"STATUS":<12}{"TRADES":>8}{"ADDED":>10}')
+    for name, bot_key, status, n_trades, added in summary:
+        added_s = 'DRY' if args.dry_run and status == 'dry' else ('ERR' if added < 0 else str(added))
+        log.info(f'{name:<26}{status:<12}{n_trades:>8}{added_s:>10}')
+    log.info('═' * 78)
     if args.dry_run:
         log.info('--dry-run: nothing pushed. Re-run without --dry-run to backfill.')
     else:
-        log.info(f'Done — {grand_added} new trades added. '
-                 f'Check Positions -> Trade History on the dashboard.')
+        log.info(f'Done — {grand_added} new trades added. Check Positions -> Trade History.')
 
 
 if __name__ == '__main__':
