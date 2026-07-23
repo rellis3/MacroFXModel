@@ -1,6 +1,6 @@
 # COG Replay — standalone isolated service
 
-A **fully self-sufficient** service that exposes ONLY the COG Forecast Replay page
+A **fully self-sufficient** service that exposes ONLY the COG Forecast Replay pagex
 (`cog-replay.html`) and the four API endpoints it needs. Deploy this folder on its own
 so you can share the COG replay URL publicly **without exposing the rest of the
 dashboard** — no other page, no other `/api` route, and none of the main app's code
