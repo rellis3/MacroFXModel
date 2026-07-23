@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COG Forecast Replay — Reference Data</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root {
+    --bg: #0b0d14; --panel: #12141d; --s1: #0c0e15; --s2: #12141d; --border: #23262f;
+    --text: #e5e7eb; --text2: #9ca3af; --text3: #6b7280;
+    --blue: #3b82f6; --blue-bg: rgba(59,130,246,.12);
+    --green: #34d399; --amber: #fbbf24; --red: #f87171;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font-family: 'DM Sans', system-ui, sans-serif; }
+  body { display: flex; flex-direction: column; }
+  .bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 8px 14px; border-bottom: 1px solid var(--border); background: var(--panel); }
+  .bar h1 { font-size: 14px; font-weight: 600; margin: 0 8px 0 0; letter-spacing: .3px; }
+  .bar label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .5px; margin-right: 3px; }
+  select, input[type="date"] {
+    background: var(--s1); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 4px 8px; font-size: 12px; font-family: 'DM Mono', monospace;
+  }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .seg button { background: none; border: none; color: var(--text2); padding: 4px 10px;
+    font-size: 11px; cursor: pointer; font-family: 'DM Mono', monospace; }
+  .seg button.on { background: var(--blue-bg); color: var(--blue); }
+  .go { background: var(--blue); color: #fff; border: none; border-radius: 6px;
+    padding: 5px 16px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .go:disabled { opacity: .5; cursor: not-allowed; }
+  .btn { background: var(--s1); color: var(--text2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 5px 12px; font-size: 11px; cursor: pointer; font-family: 'DM Mono', monospace; }
+  .btn:hover { color: var(--text); border-color: var(--text3); }
+  .btn.active { color: var(--blue); border-color: var(--blue); background: var(--blue-bg); }
+  .status { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; margin-left: auto; }
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; padding: 5px 14px; font-size: 10px;
+    color: var(--text2); font-family: 'DM Mono', monospace; border-bottom: 1px solid var(--border); background: var(--panel); }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend i { width: 16px; height: 0; border-top-width: 2px; border-top-style: dashed; display: inline-block; }
+
+  /* Reference-data write-back panel */
+  #refPanel { display: none; border-bottom: 1px solid var(--border); background: var(--panel); padding: 10px 14px; }
+  #refPanel .rp-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  #refPanel .rp-title { font-size: 12px; font-weight: 600; letter-spacing: .3px; }
+  #refPanel .rp-sub { font-size: 10px; color: var(--text3); }
+  #refPanel .rp-age { font-size: 9px; color: var(--text3); font-family: 'DM Mono', monospace; margin-left: auto; }
+  #refPanel textarea { background: var(--s1); border: 1px solid var(--border); color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 10px; padding: 8px; border-radius: 4px;
+    resize: vertical; height: 150px; width: 100%; }
+  #refPanel .rp-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  #refStatus { font-size: 10px; color: var(--text3); min-height: 14px; margin-top: 6px; }
+
+  #chartWrap { position: relative; flex: 1; min-height: 0; }
+  #chart { position: absolute; inset: 0; }
+  #overlay { position: absolute; inset: 0; pointer-events: none; }
+  #hint { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color: var(--text3); font-size: 13px; font-family: 'DM Mono', monospace; text-align:center; padding: 20px; }
+</style>
+</head>
+<body>
+  <div class="bar">
+    <h1>📊 COG Forecast Replay</h1>
+    <label>Pair</label><select id="pair"></select>
+    <label>From</label><input type="date" id="from">
+    <label>To</label><input type="date" id="to">
+    <label>TF</label>
+    <div class="seg" id="tf">
+      <button data-g="M15" class="on">15m</button>
+      <button data-g="M30">30m</button>
+      <button data-g="H1">1h</button>
+    </div>
+    <button class="go" id="go">Generate</button>
+    <button class="btn" id="refToggle" title="Paste / save COG's reference export for a day — stored in KV so anyone can update the store in your absence.">✎ Ref Data</button>
+    <span class="status" id="status"></span>
+  </div>
+
+  <!-- REFERENCE DATA WRITE-BACK PANEL (ported from vol-forecast-v2) -->
+  <div id="refPanel">
+    <div class="rp-head">
+      <span class="rp-title">Reference Forecast Data</span>
+      <span class="rp-sub">Paste COG's export for a day — stored in KV so others can keep the store current.</span>
+      <span class="rp-age" id="refAge"></span>
+    </div>
+    <div class="rp-row">
+      <label style="font-size:10px;color:var(--text3)">Date</label>
+      <input type="date" id="refDate">
+      <button class="btn" id="refLoad">📂 Load</button>
+      <button class="btn" id="refSave">💾 Save</button>
+      <button class="btn" id="refUse" title="Set the chart's date range to include this day and redraw from the freshly-saved data.">↧ Use on chart</button>
+    </div>
+    <textarea id="refText" placeholder="Paste COG reference export here…
+&#10;──── NQ ────&#10;Volatility (annualized) : 18.42%&#10;High to Low range       : 1.15% median · 1.52% 75th&#10;Open to Close move      : 0.55% median · 0.92% 75th&#10;&#10;──── EURUSD ────&#10;..."></textarea>
+    <div id="refStatus"></div>
+  </div>
+
+  <div class="legend" id="legend"></div>
+  <div id="chartWrap">
+    <div id="chart"></div>
+    <canvas id="overlay"></canvas>
+    <div id="hint">Loading COG reference data from KV…</div>
+  </div>
+
+<script>
+// ── API base ─────────────────────────────────────────────────────────────────
+// Same-origin by default. Override with ?api=https://host so the page can be
+// hosted on a standalone container that talks to the main app's API (that host
+// carries the OANDA + KV env). Cross-origin use requires the target to send CORS.
+const API = (new URLSearchParams(location.search).get('api') || '').replace(/\/+$/, '');
+const api = p => API + p;
+
+// COG's export instrument names → OANDA symbol for candle fetches. Same underscore
+// form the /api/ohlc-range endpoint expects (it also accepts EUR/USD; underscore is
+// left untouched by its own '/'→'_' normalisation).
+const INST_OANDA = {
+  EURUSD:'EUR_USD', GBPUSD:'GBP_USD', USDJPY:'USD_JPY', EURJPY:'EUR_JPY',
+  GBPJPY:'GBP_JPY', AUDUSD:'AUD_USD', USDCAD:'USD_CAD', USDCHF:'USD_CHF',
+  NZDUSD:'NZD_USD', EURGBP:'EUR_GBP', EURAUD:'EUR_AUD', EURCHF:'EUR_CHF',
+  EURCAD:'EUR_CAD', EURNZD:'EUR_NZD', GBPAUD:'GBP_AUD', GBPCHF:'GBP_CHF',
+  GBPCAD:'GBP_CAD', GBPNZD:'GBP_NZD', AUDJPY:'AUD_JPY', AUDNZD:'AUD_NZD',
+  AUDCAD:'AUD_CAD', AUDCHF:'AUD_CHF', NZDJPY:'NZD_JPY', CADJPY:'CAD_JPY',
+  CHFJPY:'CHF_JPY', GOLD:'XAU_USD', XAUUSD:'XAU_USD',
+  NQ:'NAS100_USD', SPX500:'SPX500_USD', US30:'US30_USD',
+  US2000:'US2000_USD', UK100:'UK100_GBP', DE30:'DE30_EUR',
+};
+function priceFmt(name) {
+  const n = (name || '').toUpperCase();
+  if (n === 'GOLD' || n.startsWith('XAU')) return { precision: 2, minMove: 0.01 };
+  if (['NQ','SPX500','US30','US2000','UK100','DE30'].includes(n)) return { precision: 1, minMove: 0.1 };
+  if (n.endsWith('JPY')) return { precision: 3, minMove: 0.001 };
+  return { precision: 5, minMove: 0.00001 };
+}
+
+// COG's published band %s per instrument per day — already in the shape we draw.
+// { hl_med, hl_75, oc_med, oc_75, vol }. null if that day/instrument is missing.
+function bandsFor(f) {
+  if (!f) return null;
+  const hasAny = ['hl_med','hl_75','oc_med','oc_75'].some(k => f[k] != null);
+  return hasAny ? f : null;
+}
+
+// Forecast level definitions. side +1 = above open, -1 = below. med = dashed, p75 = dotted.
+const LEVELS = [
+  { key: 'hl_med', side:  1, label: 'H med',  color: '#34d399', dash: [7,4] },
+  { key: 'hl_75',  side:  1, label: 'H p75',  color: '#10b981', dash: [2,4] },
+  { key: 'oc_med', side:  1, label: 'C+ med', color: '#60a5fa', dash: [7,4] },
+  { key: 'oc_75',  side:  1, label: 'C+ p75', color: '#3b82f6', dash: [2,4] },
+  { key: 'oc_med', side: -1, label: 'C- med', color: '#fbbf24', dash: [7,4] },
+  { key: 'oc_75',  side: -1, label: 'C- p75', color: '#f59e0b', dash: [2,4] },
+  { key: 'hl_med', side: -1, label: 'L med',  color: '#f87171', dash: [7,4] },
+  { key: 'hl_75',  side: -1, label: 'L p75',  color: '#ef4444', dash: [2,4] },
+];
+
+const $ = id => document.getElementById(id);
+
+// Normalise an instrument name so 'EUR/USD', 'eurusd', 'EURUSD' all collide.
+const NI = s => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+// ── COG reference dump — all dates, all instruments, parsed from KV ───────────
+let COG = {};          // { 'YYYY-MM-DD': { INST: { vol, hl_med, hl_75, oc_med, oc_75 } } }
+let COG_DATES = [];    // sorted ascending
+let COG_INSTS = [];    // normalised instrument names present in the dump AND OANDA-mappable
+
+async function loadDump() {
+  const j = await fetch(api('/api/vol-forecast/reference-dump')).then(r => r.json()).catch(e => ({ ok:false, error:e.message }));
+  if (!j.ok) { setStatus('dump error: ' + (j.error || 'failed')); return false; }
+  COG = j.ref || {};
+  COG_DATES = Object.keys(COG).sort();
+  const seen = new Set();
+  for (const d of COG_DATES) for (const inst of Object.keys(COG[d] || {})) seen.add(NI(inst));
+  COG_INSTS = [...seen].filter(i => INST_OANDA[i]).sort();
+  return true;
+}
+
+// COG's record for a normalised instrument on a date (keys in the dump are COG's
+// own header names, which may or may not carry a slash).
+function cogRec(date, inst) {
+  const day = COG[date]; if (!day) return null;
+  const want = NI(inst);
+  for (const k of Object.keys(day)) if (NI(k) === want) return day[k];
+  return null;
+}
+
+function fillPairSelect() {
+  const sel = $('pair');
+  const prev = sel.value;
+  sel.innerHTML = '';
+  for (const i of COG_INSTS) {
+    const o = document.createElement('option'); o.value = i; o.textContent = i; sel.appendChild(o);
+  }
+  if (prev && COG_INSTS.includes(prev)) sel.value = prev;
+}
+
+// ── UI setup ─────────────────────────────────────────────────────────────────
+(function initUI() {
+  const now = new Date();
+  const iso = d => d.toISOString().slice(0, 10);
+  $('to').value   = iso(now);
+  $('from').value = iso(new Date(now.getTime() - 30 * 864e5));   // provisional; reset to first-tracked once dump loads
+  $('refDate').value = iso(now);
+
+  const leg = $('legend');
+  leg.innerHTML = LEVELS.map(l =>
+    `<span><i style="border-top-color:${l.color};border-top-style:${l.dash[0] > 3 ? 'dashed' : 'dotted'}"></i>${l.label}</span>`
+  ).join('') +
+    `<span><i style="border-top-color:#e5e7eb;border-top-style:solid"></i>Realized High/Low</span>` +
+    `<span><i style="border-top-color:#6b7280;border-top-style:dashed"></i>Open</span>`;
+
+  $('tf').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    $('tf').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  });
+  $('go').addEventListener('click', loadReplay);
+
+  // Reference panel toggle + actions
+  $('refToggle').addEventListener('click', () => {
+    const p = $('refPanel');
+    const willShow = p.style.display === 'none' || p.style.display === '';
+    p.style.display = willShow ? 'block' : 'none';
+    $('refToggle').classList.toggle('active', willShow);
+    if (willShow) { if (!$('refDate').value) $('refDate').value = new Date().toISOString().slice(0,10); loadRefData(); }
+  });
+  $('refDate').addEventListener('change', loadRefData);
+  $('refLoad').addEventListener('click', loadRefData);
+  $('refSave').addEventListener('click', saveRefData);
+  $('refUse').addEventListener('click', useRefOnChart);
+})();
+
+function tfGran() { return $('tf').querySelector('button.on')?.dataset.g || 'M15'; }
+function setStatus(t) { $('status').textContent = t; }
+let _meta = null;
+function updateStatus() {
+  if (!_meta) return;
+  setStatus(`${_meta.name} · ${_meta.gran} · COG reference · ${_meta.candles} candles · ${_meta.sessions} sessions (${_meta.withFc} with COG data)`);
+}
+
+// ── Chart + overlay state ─────────────────────────────────────────────────────
+let chart = null, series = null, overlayCanvas = null, octx = null;
+let days = [];
+let dpr = window.devicePixelRatio || 1;
+
+function ensureChart(name) {
+  if (chart) { try { chart.remove(); } catch (_) {} chart = null; }
+  const el = $('chart');
+  el.innerHTML = '';
+  chart = LightweightCharts.createChart(el, {
+    layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#9ca3af', fontSize: 11, fontFamily: "'DM Mono', monospace" },
+    grid: { vertLines: { color: 'rgba(255,255,255,0.04)' }, horzLines: { color: 'rgba(255,255,255,0.05)' } },
+    timeScale: { borderColor: 'rgba(255,255,255,0.12)', timeVisible: true, secondsVisible: false, rightOffset: 6 },
+    rightPriceScale: { borderColor: 'rgba(255,255,255,0.12)', scaleMargins: { top: 0.12, bottom: 0.12 } },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
+    handleScale:  { mouseWheel: true, pinch: true, axisPressedMouseMove: true },
+  });
+  const pf = priceFmt(name);
+  series = chart.addCandlestickSeries({
+    upColor: '#26a69a', downColor: '#ef5350', borderUpColor: '#26a69a', borderDownColor: '#ef5350',
+    wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+    priceFormat: { type: 'price', precision: pf.precision, minMove: pf.minMove },
+  });
+  chart.timeScale().subscribeVisibleTimeRangeChange(scheduleDraw);
+}
+
+function setupOverlay() {
+  overlayCanvas = $('overlay');
+  octx = overlayCanvas.getContext('2d');
+  const ro = new ResizeObserver(() => { sizeOverlay(); scheduleDraw(); });
+  ro.observe($('chartWrap'));
+  sizeOverlay();
+  requestAnimationFrame(syncLoop);
+}
+function sizeOverlay() {
+  const w = $('chartWrap').clientWidth, h = $('chartWrap').clientHeight;
+  dpr = window.devicePixelRatio || 1;
+  overlayCanvas.width = w * dpr; overlayCanvas.height = h * dpr;
+  overlayCanvas.style.width = w + 'px'; overlayCanvas.style.height = h + 'px';
+}
+
+let _lastSig = '';
+function syncLoop() {
+  if (chart && series && days.length) {
+    const r = chart.timeScale().getVisibleLogicalRange();
+    const refY = days[0] ? series.priceToCoordinate(days[0].open) : null;
+    const sig = r ? `${r.from.toFixed(2)}_${r.to.toFixed(2)}_${refY}` : 'x';
+    if (sig !== _lastSig) { _lastSig = sig; drawOverlay(); }
+  }
+  requestAnimationFrame(syncLoop);
+}
+let _drawPending = false;
+function scheduleDraw() { if (!_drawPending) { _drawPending = true; requestAnimationFrame(() => { _drawPending = false; _lastSig = ''; drawOverlay(); }); } }
+
+// ── Data load ─────────────────────────────────────────────────────────────────
+async function loadReplay() {
+  const name = $('pair').value;
+  const sym  = INST_OANDA[name];
+  const from = $('from').value, to = $('to').value;
+  const gran = tfGran();
+  if (!sym) { setStatus('no OANDA symbol for ' + name); return; }
+  if (!from || !to) { setStatus('pick dates'); return; }
+  $('go').disabled = true; setStatus('loading candles…'); $('hint').style.display = 'none';
+  try {
+    const candlesRes = await fetch(api(`/api/ohlc-range?symbol=${encodeURIComponent(sym)}&from=${from}&to=${to}&granularity=${gran}`)).then(r => r.json());
+    if (candlesRes.error || !candlesRes.values?.length) { setStatus(candlesRes.error || 'no candles for that range'); $('go').disabled = false; return; }
+    // COG bands for this instrument, keyed by date, over the full dump (no extra fetch).
+    const fcDays = {};
+    for (const d of COG_DATES) {
+      const rec = cogRec(d, name);
+      if (rec) fcDays[d] = rec;
+    }
+    buildDays(candlesRes.values, fcDays);
+    ensureChart(name);
+    if (!overlayCanvas) setupOverlay();
+    const cdata = candlesRes.values.map(c => ({
+      time: Math.floor(new Date(c.datetime.replace(' ', 'T') + 'Z').getTime() / 1000),
+      open: +c.open, high: +c.high, low: +c.low, close: +c.close,
+    })).filter(b => b.open && !isNaN(b.time));
+    series.setData(cdata);
+    chart.timeScale().fitContent();
+    sizeOverlay();
+    _meta = { name, gran, candles: cdata.length, sessions: days.length, withFc: days.filter(d => d.f).length };
+    updateStatus();
+    scheduleDraw();
+  } catch (e) {
+    setStatus('error: ' + e.message);
+  } finally {
+    $('go').disabled = false;
+  }
+}
+
+function buildDays(values, fcDays) {
+  const byDate = new Map();
+  for (const c of values) {
+    const date = c.datetime.slice(0, 10);
+    const t = Math.floor(new Date(c.datetime.replace(' ', 'T') + 'Z').getTime() / 1000);
+    let d = byDate.get(date);
+    if (!d) { d = { date, open: +c.open, high: -Infinity, low: Infinity, close: +c.close, tStart: t, tEnd: t }; byDate.set(date, d); }
+    d.high = Math.max(d.high, +c.high);
+    d.low  = Math.min(d.low, +c.low);
+    d.close = +c.close;
+    d.tEnd = t;
+  }
+  days = [...byDate.values()].sort((a, b) => a.tStart - b.tStart).map(d => ({ ...d, f: fcDays[d.date] || null }));
+}
+
+// ── Overlay draw ──────────────────────────────────────────────────────────────
+function fmtPct(v) { return (v >= 0 ? '+' : '') + v.toFixed(2) + '%'; }
+function drawOverlay() {
+  if (!octx || !chart || !series) return;
+  const ts = chart.timeScale();
+  octx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  octx.clearRect(0, 0, overlayCanvas.width / dpr, overlayCanvas.height / dpr);
+  octx.font = "13px 'DM Mono', monospace";
+  octx.textBaseline = 'middle';
+  const pf = priceFmt($('pair').value);
+
+  for (const d of days) {
+    const x1 = ts.timeToCoordinate(d.tStart);
+    const x2 = ts.timeToCoordinate(d.tEnd);
+    if (x1 == null && x2 == null) continue;
+    const xa = x1 == null ? 0 : x1;
+    const xb = x2 == null ? overlayCanvas.width / dpr : x2;
+    if (xb < 0 || xa > overlayCanvas.width / dpr) continue;
+    const wide = (xb - xa) > 54;
+    const labelX = Math.min(xb, overlayCanvas.width / dpr - 4);
+
+    const draw = (price, color, dash, text, solid) => {
+      const y = series.priceToCoordinate(price);
+      if (y == null) return;
+      octx.save();
+      octx.strokeStyle = color;
+      octx.lineWidth = solid ? 1.4 : 1;
+      octx.setLineDash(solid ? [] : dash);
+      octx.globalAlpha = solid ? 0.95 : 0.8;
+      octx.beginPath(); octx.moveTo(xa, y); octx.lineTo(xb, y); octx.stroke();
+      if (wide && text) {
+        octx.setLineDash([]);
+        octx.globalAlpha = 1;
+        octx.fillStyle = color;
+        octx.textAlign = 'right';
+        octx.fillText(text, labelX, y - 8);
+      }
+      octx.restore();
+    };
+
+    draw(d.open, '#8b93a1', [4,4], wide ? 'Open ' + d.open.toFixed(pf.precision) : '', false);
+
+    const bands = bandsFor(d.f);
+    if (bands) {
+      for (const L of LEVELS) {
+        const pct = bands[L.key];
+        if (pct == null) continue;
+        const price = d.open * (1 + L.side * pct / 100);
+        const text = `${L.label} ${fmtPct(L.side * pct)} ${price.toFixed(pf.precision)}`;
+        draw(price, L.color, L.dash, text, false);
+      }
+    }
+
+    const hiPct = (d.high - d.open) / d.open * 100;
+    const loPct = (d.low - d.open) / d.open * 100;
+    draw(d.high, '#e5e7eb', [], wide ? `High ${fmtPct(hiPct)} ${d.high.toFixed(pf.precision)}` : '', true);
+    draw(d.low,  '#e5e7eb', [], wide ? `Low ${fmtPct(loPct)} ${d.low.toFixed(pf.precision)}` : '', true);
+  }
+}
+
+// ── Reference-data write-back (KV) ────────────────────────────────────────────
+async function loadRefData() {
+  const date = $('refDate').value, st = $('refStatus'), age = $('refAge');
+  if (!date) return;
+  try {
+    const res = await fetch(api(`/api/vol-forecast/reference/${date}`));
+    if (res.status === 404) { $('refText').value = ''; st.style.color = 'var(--text3)'; st.textContent = 'No saved reference for this date — paste and Save.'; age.textContent = ''; return; }
+    const j = await res.json();
+    $('refText').value = j.text ?? '';
+    st.style.color = 'var(--green)'; st.textContent = `✓ Loaded saved reference for ${date}`;
+    age.textContent = j.saved_at ? `saved ${new Date(j.saved_at).toLocaleString()}` : '';
+  } catch (e) { st.style.color = 'var(--red)'; st.textContent = `Error: ${e.message}`; }
+}
+
+async function saveRefData() {
+  const date = $('refDate').value, text = $('refText').value.trim(), st = $('refStatus');
+  if (!date) { st.style.color = 'var(--amber)'; st.textContent = '⚠ Select a date first'; return; }
+  if (!text) { st.style.color = 'var(--amber)'; st.textContent = '⚠ Paste reference data first'; return; }
+  const btn = $('refSave'); btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const j = await fetch(api(`/api/vol-forecast/reference/${date}`), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }),
+    }).then(r => r.json());
+    if (j.ok) {
+      st.style.color = 'var(--green)'; st.textContent = `✓ Saved reference for ${date}`;
+      await refreshDump();               // pull the new day into the replay dataset + pair list
+    } else {
+      st.style.color = 'var(--red)'; st.textContent = `Error: ${j.error}`;
+    }
+  } catch (e) { st.style.color = 'var(--red)'; st.textContent = `Error: ${e.message}`; }
+  finally { btn.disabled = false; btn.textContent = '💾 Save'; }
+}
+
+// Reload the dump after a save so a newly-added date/instrument is immediately
+// selectable and drawable without a page refresh.
+async function refreshDump() {
+  await loadDump();
+  fillPairSelect();
+  if (COG_DATES.length && $('from').dataset.userset !== '1') $('from').value = COG_DATES[0];
+}
+
+// Extend the chart range to include the ref date and redraw from the just-saved data.
+async function useRefOnChart() {
+  const date = $('refDate').value; if (!date) return;
+  await refreshDump();
+  if (date < $('from').value) $('from').value = date;
+  if (date > $('to').value)   $('to').value   = date;
+  $('from').dataset.userset = '1';
+  loadReplay();
+}
+
+window.addEventListener('resize', () => { if (overlayCanvas) { sizeOverlay(); scheduleDraw(); } });
+
+// Manual range edits mark the range as user-set so refreshDump won't stomp it.
+$('from').addEventListener('change', () => { $('from').dataset.userset = '1'; });
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+(async function boot() {
+  const ok = await loadDump();
+  if (!ok) { $('hint').textContent = 'Could not load COG reference data. Is the API reachable?'; return; }
+  fillPairSelect();
+  if (!COG_INSTS.length) {
+    $('hint').innerHTML = 'No COG reference data stored yet.<br>Open <b>✎ Ref Data</b>, paste COG\'s export for a day and Save to start tracking.';
+    setStatus('0 instruments · 0 dates');
+    $('refPanel').style.display = 'block'; $('refToggle').classList.add('active');
+    if (!$('refDate').value) $('refDate').value = new Date().toISOString().slice(0,10);
+    loadRefData();
+    return;
+  }
+  if (COG_DATES.length) $('from').value = COG_DATES[0];   // back to the first tracked day
+  setStatus(`${COG_INSTS.length} instrument(s) · ${COG_DATES.length} date(s) · ${COG_DATES[0]}→${COG_DATES.at(-1)}`);
+  $('hint').innerHTML = 'COG reference data loaded.<br>Pick a pair and hit <b>Generate</b> — each day draws COG\'s H/C±/L median &amp; 75th lines anchored on that day\'s open, vs the realized High/Low.';
+})();
+</script>
+</body>
+</html>
