@@ -612,7 +612,7 @@ If a third consumer appears (or the QMR engine gets versioned out of `server.js`
 |---|---|---|---|---|
 | **Session ranges** | `js/sessionRanges.js` | canonical London-DST + Asia/Monday session-range helpers — `dayStartEpoch`, `londonOffsetHours`, `dowOf`, `isoDate`, `eachDate`, `buildAsiaSessions`, `buildMondayRanges`, `prevSession`, `mondayForDay`, `prevMonday`. Bodies via `barUtils.bodyRange` (closes, not wicks). Pure/synthetic-tested. **Extraction target:** the identical private copies still living in `rangeFibEngine.js` and `asiaRangeEngine.js` (flagged §2) — new code imports this; those two are the un-migrated copies to retire next. | `rangeExtEngine` ✅; **un-migrated copies:** `rangeFibEngine` 🔲, `asiaRangeEngine` 🔲 | 🟡 |
 | **Range-ext confidence brain** | `js/rangeExtConfidence.js` | the `score → choice` selector — `dayContext` (state → trendiness → fade/follow), `scoreLevel` (level confidence from multiple/alignment/regime-fit), `selectLevels` (top-N above floor), `DEFAULT_WEIGHTS`. Pure; every constant a prior, ablatable, none fit to trade outcomes. | `rangeExtEngine` ✅ | ✅ built |
-| **Range-ext engine** | `js/rangeExtEngine.js` | Asia range-extension backtest with the brain — `runPairRangeExt`, `runRangeExtBacktest`, `summarizeRangeExt` (IS/OOS), A/B (all-fade baseline vs brain). Imports the baseplate wholesale (`barUtils`, `fibProjection`, `sessionRanges`, `forecastCore.walkBars`, `dayTypeCore`, `indicatorCore.atrWilder`, `statsCore.rollingPercentile`, `metricsCore.summarizeTrades`, `instrumentRegistry`). Costs on; no-lookahead (state features use data < D). | `server.js` `/api/range-ext/*` → `range-ext-backtest.html`; tests `js/rangeExt.test.mjs` | ✅ built |
+| **Range-ext engine** | `js/rangeExtEngine.js` | Asia range-extension backtest with the brain — `runPairRangeExt`, `runRangeExtBacktest`, `summarizeRangeExt` (IS/OOS), A/B (all-fade baseline vs brain). **2026-07-24:** optional `levelSource: asia\|monday\|both` (Monday-weekly levels off `sessionRanges.buildMondayRanges`, stop scaled to each source's own range) + `holdDays` (multi-day swing hold). Monday levels are **decisively worse INTRADAY** (−0.37 R) BUT a **~3-day SWING hold of the top-1 Monday level/week is the SURVIVOR** — +0.117 R OOS (t 8), 21/26 pairs positive both IS & OOS under a pessimistic 1 pip/day swap (spreads-only +0.19 R). See `RANGE_EXTENSION_FINDINGS.md` "Weekly swing variant"; open risk = real carry/swap. Imports the baseplate wholesale (`barUtils`, `fibProjection`, `sessionRanges`, `forecastCore.walkBars`, `dayTypeCore`, `indicatorCore.atrWilder`, `statsCore.rollingPercentile`, `metricsCore.summarizeTrades`, `instrumentRegistry`). Costs on; no-lookahead (state features use data < D). | `server.js` `/api/range-ext/*` → `range-ext-backtest.html`; tests `js/rangeExt.test.mjs` | ✅ built |
 
 > **What it found (10y × 26 FX + gold, M1, costed OOS — full write-up
 > `RANGE_EXTENSION_STRATEGY.md` / `RANGE_EXTENSION_FINDINGS.md`): NULL for
@@ -629,7 +629,11 @@ If a third consumer appears (or the QMR engine gets versioned out of `server.js`
 > selector orders levels correctly; the raw method has **no edge to concentrate**.
 > Kept as a costed harness + the brain, ready to test the data-gated mechanistic
 > conditioners (OI/gamma walls, rate-spread, catalyst calendar) that the sandbox
-> can't source.
+> can't source. **UPDATE 2026-07-24: the INTRADAY story above is the null, but the
+> WEEKLY-level SWING variant (Monday levels, top-1/week, ~3-day hold) is a
+> validated survivor** — +0.117 R OOS (t 8), 21/26 pairs both IS & OOS at a
+> pessimistic 1 pip/day swap; clears the pre-registered bar. Timeframe-match was
+> the unlock (weekly level → swing hold). Open risk: real per-pair carry.
 
 ---
 
