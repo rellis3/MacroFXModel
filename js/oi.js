@@ -1,6 +1,7 @@
 import { S } from './state.js';
 import { kvGet, kvSet } from './utils.js';
 import { wallStrengthTier, oiSkew, oiConcentration, clusterStrikes } from './oiConfluence.js';
+import { gammaFlip } from './gammaFlow.js';
 
 // ── Storage ──────────────────────────────────────────────────────────────────
 
@@ -965,6 +966,7 @@ export function processOIData() {
   const inst = {
     pair, spot, futures: futuresUsed, basis: basis || null,
     maxPain, exposures, topLevels, gexProfile,
+    gammaFlip: gammaFlip(gexProfile),   // zero-GEX crossing (regime boundary) — one source for brief/export/bot/dashboard
     callWall: _cwHead?.strike ?? 0, putWall: _pwHead?.strike ?? 0,
     callWallOI: _cwHead?.oi ?? 0,   putWallOI: _pwHead?.oi ?? 0,
     callWalls, putWalls, skew, volumeMagnets, concentration, clusters,

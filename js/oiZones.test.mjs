@@ -123,6 +123,17 @@ console.log('[Fallback TP — a wall-less breakout gets a measured-move target]'
   ok('wall-based TP kept (fallback does not override it)', hasWall && hasWall.tp1 === 4350, `${hasWall?.tp1}`);
 }
 
+console.log('[Gamma-flow wiring — near-flip size haircut + regime-change warning]');
+{
+  const inst = { ...base, exposures: { gex: 5000 } };
+  const baseZone = buildOIZones(inst, 4200, cfg).find(z => z.side === 'sell');
+  const hair = buildOIZones(inst, 4200, { ...cfg, nearFlip: true }).find(z => z.side === 'sell');
+  ok('nearFlip trims size (×0.85 vs baseline)', hair.sizeFactor < baseZone.sizeFactor, `${hair.sizeFactor} < ${baseZone.sizeFactor}`);
+  const warn = buildOIZones(inst, 4200, { ...cfg, regimeWarning: 'flip migrating toward spot — regime change loading' }).find(z => z.side === 'sell');
+  ok('regimeWarning appended to rationale', /⚠ flip migrating toward spot/.test(warn.rationale), warn.rationale);
+  ok('no warning by default', !/⚠/.test(baseZone.rationale));
+}
+
 console.log('[Guards]');
 ok('no inst / bad price → []', buildOIZones(null, 4200, cfg).length === 0 && buildOIZones(base, 0, cfg).length === 0);
 ok('NEUTRAL gex (flat) → no fade/break zones', buildOIZones({ ...base, exposures: { gex: 0 } }, 4200, cfg).every(z => z.mode === 'maxpain'));

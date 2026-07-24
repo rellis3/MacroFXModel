@@ -33,6 +33,7 @@
 // appear (the store simply has no entry for them) — no invented numbers.
 
 import { oiStoreToLevels } from './oiConfluence.js';
+import { gammaFlip, distanceToFlip, rolloffSummary } from './gammaFlow.js';
 
 // Canonical chart-ticker per oi_store key. Mirrors the Confluence-Zones indicator's
 // normalisation targets so the same chart symbols the user already uses resolve here
@@ -104,6 +105,16 @@ export function buildOILevelText(store, { topWalls = 2, generated = null } = {})
     lines.push(canon);
     const ctx = fmtSaved(inst);
     if (ctx) lines.push(ctx);
+    // Gamma-flow context (human-only — the indicator ignores non-"OI " lines):
+    // distance-to-flip vol read + a per-expiry roll-off block. No new data.
+    const flip = Number.isFinite(inst.gammaFlip) ? inst.gammaFlip : gammaFlip(inst.gexProfile);
+    const dist = distanceToFlip(inst.spot, flip);          // no ATR here → % based
+    if (dist) lines.push(`· flip ${flip.toFixed(dp)} · spot ${dist.pct >= 0 ? '+' : ''}${dist.pct}% → ${dist.side === 'positive' ? '+gamma (pin/dampen)' : dist.side === 'negative' ? '−gamma (breakout)' : 'at flip'}${dist.near ? ' · NEAR flip (unstable)' : ''}`);
+    const roll = rolloffSummary(inst.termStructure);
+    if (roll && roll.nExpiries > 1) {
+      const ts = (inst.termStructure || []).slice().sort((a, b) => a.dte - b.dte).slice(0, 4);
+      lines.push(`· term: ${ts.map(e => `${e.dte}DTE mp${Number(e.maxPain).toFixed(dp)}`).join('  ')}${roll.rollingSoon ? ' · near rolls off soon' : ''}`);
+    }
     for (const l of levels) {
       const tier = Number.isFinite(l.tier) && l.tier > 0 ? ` t${l.tier}` : '';
       lines.push(`OI ${l.price.toFixed(dp)} : ${l.type}${tier}`);

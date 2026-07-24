@@ -100,6 +100,7 @@
     <span style="color:var(--gold)">▬ spot</span>
   </div>
   <div class="chips" id="chips"></div>
+  <div class="card" id="gammaFlow" style="margin-top:10px;display:none"></div>
 
   <!-- Active running trades — the reason this page exists -->
   <div class="sec">
@@ -246,8 +247,37 @@ function render(){
   renderOpen(allOpens, d);
   renderZones(zones, entered, opens, inst.spot, d);
   renderClosed(allClosed, d);
+  renderGammaFlow(inst, d);
   _ctx = { m, inst, zones, entered, opens, d };
   drawChart();
+}
+
+// Gamma-flow readout: flip level, distance-to-flip (vol read), flip-drift warning,
+// and the per-expiry term structure (OpEx roll-off). All from the producer's
+// inst.gammaFlow / inst.termStructure — hidden if an old artifact lacks them.
+function renderGammaFlow(inst, d){
+  const el = $('gammaFlow'), gf = inst.gammaFlow, ts = inst.termStructure;
+  if((!gf || gf.flip==null) && !(Array.isArray(ts) && ts.length>1)){ el.style.display='none'; return; }
+  el.style.display='';
+  const bits = [];
+  if(gf?.flip!=null){
+    bits.push(`<span class="chip"><b>⚡ flip ${fmt(gf.flip,d)}</b></span>`);
+    const dd = gf.dist;
+    if(dd){
+      const sideTxt = dd.side==='positive'?'+gamma (dampen/pin)':dd.side==='negative'?'−gamma (breakout)':'at flip';
+      const col = dd.near?'var(--amber)':dd.side==='positive'?'var(--green)':'var(--red)';
+      bits.push(`<span class="chip" style="color:${col}">spot ${dd.pct>=0?'+':''}${dd.pct}%${dd.atr!=null?` (${dd.atr} ATR)`:''} → ${sideTxt}${dd.near?' · NEAR flip (unstable)':''}</span>`);
+    }
+  }
+  if(gf?.drift?.toward) bits.push(`<span class="chip" style="color:var(--amber)">⚠ flip migrating toward spot — regime change loading</span>`);
+  if(gf?.rolloff) bits.push(`<span class="chip">${gf.rolloff.nearDTE}DTE = ${Math.round(gf.rolloff.nearShare*100)}% OI${gf.rolloff.rollingSoon?' · rolls off soon':''}</span>`);
+  let term='';
+  if(Array.isArray(ts) && ts.length>1){
+    const rows = ts.slice().sort((a,b)=>a.dte-b.dte).slice(0,6).map(e =>
+      `<tr><td class="mono">${e.dte}DTE</td><td class="mono">${fmt(e.maxPain,d)}</td><td class="mono">${e.callWall!=null?fmt(e.callWall,d):'—'}</td><td class="mono">${e.putWall!=null?fmt(e.putWall,d):'—'}</td></tr>`).join('');
+    term = `<table style="margin-top:8px"><thead><tr><th>Expiry</th><th>Max pain</th><th>Call wall</th><th>Put wall</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+  el.innerHTML = `<div class="sec-h" style="margin-bottom:6px">⚡ Gamma flow <span class="n">flip · distance · drift · roll-off</span></div><div class="chips" style="margin:0">${bits.join('')}</div>${term}`;
 }
 
 // Which plan instrument does a position belong to? Scan every instrument's aliases
@@ -400,6 +430,8 @@ function drawOverlays(){
     if(focus && z.tp2!=null) line(z.tp2, '#34d399', 1, 2, `TP2 ${fmt(z.tp2,d)}`);
   }
   if(inst.maxPain!=null) line(inst.maxPain, '#c084fc', 1, 1, `max pain ${fmt(inst.maxPain,d)}`);
+  const _flip = inst.gammaFlow?.flip;
+  if(_flip!=null) line(_flip, '#e879f9', 2, 2, `⚡flip ${fmt(_flip,d)}`);   // gamma flip = regime boundary
   if(inst.spot!=null)   line(inst.spot,   '#facc15', 1, 1, `spot ${fmt(inst.spot,d)}`);
 
   const markers = [];
