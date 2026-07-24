@@ -421,24 +421,72 @@ function _matrixRows(raw) {
   return rows.length ? { futures, dtes, rows } : null;
 }
 
-// Derive a strike/call/put list from the matrix. mode 'near' (default) = the
-// near-dated expiry (first column — strongest gamma, avoids tail hedges); mode
-// 'aggregate' = summed across ALL expiries (used for volume, where today's
-// activity is spread across expiries and there's no tail-hedge distortion).
-export function parseOIMatrix(raw, { signed = false, mode = 'near' } = {}) {
+// Pick the PRIMARY expiry column from the parsed matrix — the education's
+// "nearest expiration with significant liquidity" (Lesson 5: near-dated gamma
+// dominates, but the front weekly/0-DTE is often thin and the OI really lives in
+// the monthly). We DELIBERATELY do NOT pick the biggest-total-OI column: a
+// far-dated expiry stuffed with deep-OTM tail hedges would win that, which is the
+// exact distortion Lesson 6 pitfall 4 warns against. Instead liquidity is scored
+// as NEAR-THE-MONEY OI (within bandFrac of the anchor price) so tail hedges don't
+// count. The expiry with the greatest near-money OI wins; ties break to the
+// nearest DTE. If every column is all-far (no anchor / no near strikes) we fall
+// back to total OI. rows: [{strike, cp:[[c,p]…per expiry]}], dtes aligned to the
+// expiry columns, anchor = futures price (pre-basis, same space as the strikes).
+export function pickPrimaryExpiry(rows, dtes = [], anchor = null, { bandFrac = 0.03 } = {}) {
+  if (!Array.isArray(rows) || !rows.length) return { index: 0, dte: dtes?.[0] ?? null, nearOI: 0, totalOI: 0 };
+  const nExp = Math.max(0, ...rows.map(r => (Array.isArray(r.cp) ? r.cp.length : 0)));
+  if (nExp <= 1) return { index: 0, dte: dtes?.[0] ?? null, nearOI: 0, totalOI: 0 };
+  let anc = Number.isFinite(anchor) ? anchor : null;
+  if (anc == null) {
+    const ss = rows.map(r => r.strike).filter(Number.isFinite).sort((a, b) => a - b);
+    anc = ss.length ? ss[Math.floor(ss.length / 2)] : null;   // median strike as ATM proxy
+  }
+  const band = anc != null ? Math.abs(anc) * bandFrac : Infinity;
+  const nearOI = new Array(nExp).fill(0), totOI = new Array(nExp).fill(0);
+  for (const r of rows) {
+    const near = anc == null || Math.abs(r.strike - anc) <= band;
+    for (let e = 0; e < nExp; e++) {
+      const oi = Math.abs(r.cp[e]?.[0] ?? 0) + Math.abs(r.cp[e]?.[1] ?? 0);
+      totOI[e] += oi;
+      if (near) nearOI[e] += oi;
+    }
+  }
+  const score = nearOI.some(v => v > 0) ? nearOI : totOI;   // fall back to total if nothing near money
+  let best = 0;
+  for (let e = 1; e < nExp; e++) {
+    if (score[e] > score[best]) best = e;
+    else if (score[e] === score[best] && Number.isFinite(dtes?.[e]) && Number.isFinite(dtes?.[best]) && dtes[e] < dtes[best]) best = e;
+  }
+  return { index: best, dte: dtes?.[best] ?? null, nearOI: Math.round(nearOI[best]), totalOI: Math.round(totOI[best]) };
+}
+
+// Derive a strike/call/put list from the matrix.
+//   mode 'primary'   (DEFAULT) = the education's "nearest expiry with significant
+//                    liquidity" — auto-selected by pickPrimaryExpiry (near-money OI),
+//                    NOT the literal first column (which is often an empty 0-DTE weekly).
+//   mode 'near'      = the literal first (near-dated) column — kept for back-compat/tests.
+//   mode 'aggregate' = summed across ALL expiries (used for volume, where today's
+//                      activity is spread across expiries and there's no tail-hedge distortion).
+export function parseOIMatrix(raw, { signed = false, mode = 'primary' } = {}) {
   const parsed = _matrixRows(raw);
   if (!parsed) return null;
+  let primary = null, exprIdx = 0;
+  if (mode === 'primary') { primary = pickPrimaryExpiry(parsed.rows, parsed.dtes, parsed.futures); exprIdx = primary.index; }
   const strikes = [], calls = [], puts = [];
   for (const r of parsed.rows) {
     let c, p;
     if (mode === 'aggregate') { c = r.cp.reduce((a, x) => a + x[0], 0); p = r.cp.reduce((a, x) => a + x[1], 0); }
-    else { c = r.cp[0]?.[0] ?? 0; p = r.cp[0]?.[1] ?? 0; }
+    else if (mode === 'primary') { c = r.cp[exprIdx]?.[0] ?? 0; p = r.cp[exprIdx]?.[1] ?? 0; }
+    else { c = r.cp[0]?.[0] ?? 0; p = r.cp[0]?.[1] ?? 0; }   // 'near' = literal first column
     if (!signed && c === 0 && p === 0) continue;
     strikes.push(r.strike);
     calls.push(signed ? c : Math.abs(c));
     puts.push(signed ? p : Math.abs(p));
   }
-  return strikes.length >= 2 ? { strikes, calls, puts, futures: parsed.futures } : null;
+  return strikes.length >= 2
+    ? { strikes, calls, puts, futures: parsed.futures,
+        primaryExpiry: primary ? { dte: primary.dte, index: primary.index, nearOI: primary.nearOI, totalOI: primary.totalOI } : null }
+    : null;
 }
 
 // Wall persistence: how many expiries carry a real position (call+put ≥ minOI) at
@@ -481,7 +529,8 @@ export function oiParseTable(raw) {
   if (!raw || !raw.trim()) return null;
   const m = parseOIMatrix(raw);
   if (m) return { strikes: m.strikes, calls: m.calls, puts: m.puts,
-    callChg: m.strikes.map(() => 0), putChg: m.strikes.map(() => 0), futures: m.futures };
+    callChg: m.strikes.map(() => 0), putChg: m.strikes.map(() => 0), futures: m.futures,
+    primaryExpiry: m.primaryExpiry };
   const strikes=[], calls=[], puts=[], callChg=[], putChg=[];
   const rows = raw.split('\n');
   for (let i = 0; i < Math.min(700, rows.length); i++) {
@@ -726,6 +775,14 @@ export function processOIData() {
   const parsed = oiParseTable(rawOI);
   if (!parsed || parsed.strikes.length < 2) { oiToast('Could not parse — check data format', true); return; }
 
+  // Which expiry column the walls/max-pain were actually computed from. For a full
+  // multi-expiry matrix paste this is auto-selected (nearest expiry with significant
+  // near-money OI — the education's rule), NOT the literal front column. Surfaced so
+  // the read is transparent, and used to auto-tag the DTE field when left blank.
+  const primaryExpiry = parsed.primaryExpiry || null;
+  let dteEff = dteRaw;
+  if (!Number.isFinite(dteEff) && Number.isFinite(primaryExpiry?.dte)) dteEff = primaryExpiry.dte;
+
   // The CME matrix header carries the futures price — auto-fill the basis anchor
   // if the field is blank (so the basis is measured, not estimated).
   let futuresEff = futuresRaw;
@@ -912,6 +969,8 @@ export function processOIData() {
     callWallOI: _cwHead?.oi ?? 0,   putWallOI: _pwHead?.oi ?? 0,
     callWalls, putWalls, skew, volumeMagnets, concentration, clusters,
     termStructure,   // per-expiry max pain / walls / DTE — for the daily brief & analysis (not the bot)
+    primaryExpiry,   // the expiry the walls/max-pain were auto-selected from (DTE + near-money OI)
+    dte: Number.isFinite(dteEff) ? dteEff : (primaryExpiry?.dte ?? null),
     totalCallOI, totalPutOI, pcRatio, totalCallChg, totalPutChg,
     callChgAbove, callChgBelow, putChgAbove, putChgBelow,
     numRows: parsed.strikes.length, numLevels, minOI,
@@ -927,8 +986,8 @@ export function processOIData() {
   // (near-dated = strongest gamma/pin — Lesson 5). The top-level inst stays the
   // primary/combined view; `expiries` builds up a DTE-keyed sub-view over saves.
   const priorExpiries = store[pair]?.expiries || {};
-  if (expiryLabel && Number.isFinite(dteRaw)) {
-    priorExpiries[expiryLabel] = { dte: dteRaw, savedAtMs: Date.now(),
+  if (expiryLabel && Number.isFinite(dteEff)) {
+    priorExpiries[expiryLabel] = { dte: dteEff, savedAtMs: Date.now(),
       maxPain, callWall: inst.callWall, putWall: inst.putWall,
       callWalls: callWalls.slice(0, 8), putWalls: putWalls.slice(0, 8), pcRatio };
   }
@@ -950,7 +1009,11 @@ export function processOIData() {
   const basisNote = basisClamped ? ' · basis ignored (implausible — no shift applied)'
     : basis ? ` · basis ${basis >= 0 ? '+' : ''}${basis.toFixed(pair.includes('JPY') ? 2 : isIndexFutures(pair) ? 2 : 5)}` : '';
   const pairLabel = OI_FRIENDLY[pair] || pair;
-  oiToast(`${pairLabel} OI saved · ${parsed.strikes.length} strikes · max pain ${oiFmtStrike(maxPain,pair)}${basisNote}`, basisClamped);
+  // Show which expiry drove the walls when it was auto-selected from a multi-expiry
+  // matrix (so a full-table paste never silently reads the wrong/empty column).
+  const expiryNote = Number.isFinite(primaryExpiry?.dte)
+    ? ` · walls from ${primaryExpiry.dte} DTE expiry (${primaryExpiry.nearOI.toLocaleString()} near-money OI)` : '';
+  oiToast(`${pairLabel} OI saved · ${parsed.strikes.length} strikes · max pain ${oiFmtStrike(maxPain,pair)}${expiryNote}${basisNote}`, basisClamped);
 
   // Push updated entry data to Railway bot AFTER the KV merge lands so the sync
   // reads the freshly-merged store (not a half-written one).

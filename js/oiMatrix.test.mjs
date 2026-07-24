@@ -2,7 +2,7 @@
 // mis-read: strikes × expiries, tab-separated with empty cells).
 //   node js/oiMatrix.test.mjs
 import { parseOIMatrix, oiParseTable, oiParseChangeTable, oiParseVolume, oiCalcMaxPain,
-  oiMatrixPersistence, oiMatrixTermStructure } from './oi.js';
+  oiMatrixPersistence, oiMatrixTermStructure, pickPrimaryExpiry } from './oi.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) fails++; };
@@ -89,6 +89,54 @@ console.log('[term structure — per-expiry max pain / walls / DTE]');
   ok('near-dated tagged 0 DTE', ts[0].dte === 0, `${ts[0]?.dte}`);
   ok('each entry carries a max pain', Number.isFinite(ts[0].maxPain), JSON.stringify(ts[0]));
   ok('simple 3-col format → null term structure', oiMatrixTermStructure('4200 1 2\n4300 3 4') === null);
+}
+
+console.log('[primary expiry — nearest expiry with significant near-money liquidity]');
+{
+  // Screenshot shape: a thin front 0-DTE weekly (EU4N6) and a fat 14-DTE monthly
+  // (EUUQ6) where the real OI (12,039 at 1.14 etc.) lives. The walls must come from
+  // the MONTHLY, not the literal front column.
+  const SHOT = [
+    '6EU6', 'STRIKE\tEU4N6\tEUUQ6', '0 DTE\t14 DTE', 'C\tP\tC\tP',
+    '1.1375\t524\t18\t159\t364',
+    '1.14\t28\t154\t289\t12039',
+    '1.145\t3128\t1868\t1071\t8174',
+    '1.15\t876\t3\t3518\t1796',
+    '1.16\t2265\t1\t6866\t917',
+  ].join('\n');
+  const t = oiParseTable(SHOT);
+  ok('auto-selects the 14-DTE monthly (not the empty front weekly)', t.primaryExpiry?.dte === 14,
+    JSON.stringify(t.primaryExpiry));
+  ok('1.14 reads the monthly PUT OI 12,039 (not the front weekly 154)',
+    t.puts[t.strikes.indexOf(1.14)] === 12039, `${t.puts[t.strikes.indexOf(1.14)]}`);
+  ok('call wall = 1.16 from the monthly column', (() => {
+    const w = t.strikes.map((s,i)=>({s,oi:t.calls[i]})).sort((a,b)=>b.oi-a.oi)[0];
+    return w.s === 1.16 && w.oi === 6866;
+  })());
+  ok('put wall = 1.14 from the monthly column', (() => {
+    const w = t.strikes.map((s,i)=>({s,oi:t.puts[i]})).sort((a,b)=>b.oi-a.oi)[0];
+    return w.s === 1.14 && w.oi === 12039;
+  })());
+
+  // The existing OI fixture: near-dated (0 DTE) is the near-money leader; the fat
+  // 36k lives in a far expiry as a DEEP-OTM tail hedge. Primary must stay near-dated.
+  ok('tail-hedge expiry is NOT selected — primary stays 0 DTE', oiParseTable(OI).primaryExpiry?.dte === 0,
+    JSON.stringify(oiParseTable(OI).primaryExpiry));
+}
+
+console.log('[pickPrimaryExpiry — near-money beats total when a far tail dominates]');
+{
+  // TOTAL OI points at exp1 (a 90k deep-OTM tail); NEAR-money OI points at exp0
+  // (the real liquidity around 1.14). The near-money rule must win → index 0.
+  const rows = [
+    { strike: 1.14,  cp: [[100, 8000], [50, 60]] },
+    { strike: 1.145, cp: [[200, 100],  [30, 20]] },
+    { strike: 3.00,  cp: [[0, 0],      [90000, 0]] },   // far tail in exp1
+  ];
+  const pe = pickPrimaryExpiry(rows, [0, 14], 1.14);
+  ok('picks exp0 by near-money despite exp1 having far more TOTAL OI', pe.index === 0 && pe.dte === 0,
+    JSON.stringify(pe));
+  ok('single-expiry matrix → index 0', pickPrimaryExpiry([{ strike: 1.1, cp: [[5, 5]] }], [7]).index === 0);
 }
 
 console.log('[backward compat — the simple 3-column format still parses]');
