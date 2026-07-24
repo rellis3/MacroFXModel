@@ -1033,10 +1033,21 @@ export function processOIData() {
   const _cwHead = callWalls.filter(w => w.strike >= spot).sort((a,b) => a.strike - b.strike)[0] ?? callWalls[0] ?? null;
   const _pwHead = putWalls.filter(w => w.strike <= spot).sort((a,b) => b.strike - a.strike)[0] ?? putWalls[0] ?? null;
 
+  // Mis-scale / stale guard: if spot sits well OUTSIDE the option strike range, the
+  // paste is at the wrong price level (futures price not detected → basis not
+  // subtracted, wrong expiry, or stale). Same check the bot producer uses — surfaced
+  // here so the card/brief flag it instead of silently analysing broken data.
+  const _loK = parsed.strikes.length ? Math.min(...parsed.strikes) : 0;
+  const _hiK = parsed.strikes.length ? Math.max(...parsed.strikes) : 0;
+  const dataWarning = (spot > 0 && parsed.strikes.length >= 3 && (spot < _loK * 0.9 || spot > _hiK * 1.1))
+    ? `spot ${oiFmtStrike(spot, pair)} is outside the option strike range ${oiFmtStrike(_loK, pair)}–${oiFmtStrike(_hiK, pair)} — likely stale or mis-scaled (check the futures price / expiry and re-paste)`
+    : null;
+
   const inst = {
     pair, spot, futures: futuresUsed, basis: basis || null,
     maxPain, exposures, topLevels, gexProfile,
     gammaFlip: gammaFlip(gexProfile),   // zero-GEX crossing (regime boundary) — one source for brief/export/bot/dashboard
+    dataWarning,   // ⚠ set when spot is far outside the strike range (stale/mis-scaled paste) — flag, don't silently analyse
     greeksFlow,   // charm/vanna exposure from a pasted IV surface (null unless the IV box is filled)
     expectedMove: expMove,   // ATM straddle → option-implied ± range to expiry
     ivDynamics: ivDyn,       // ATM IV change + skew steepening (tail-hedge demand)
