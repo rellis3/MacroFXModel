@@ -35,16 +35,22 @@
 | D6 | **Verdict = NULL for tradeable edge**, kept as a costed harness + brain. Alignment zones & follow-direction refuted; base loses on all 26 pairs. | Honest result; ranker works, no edge to concentrate. |
 | D7 | **Wired Monday-weekly as an optional 2nd level source** (`levelSource: asia\|monday\|both`), stop scaled to each source's own range, tagged per trade. **Tested the user's "weekly levels are stronger" hypothesis — decisively refuted for THIS intraday engine:** Monday levels pooled **−0.367 R** vs Asia −0.119 R (t −96), **worse on 0/26 pairs, positive on 0/26**, and top-1 selection can't rescue them (Monday −0.072 R vs Asia +0.05 R). Mechanistic reason: this engine resolves every trade **within the same day** (06:00–20:00), but weekly levels sit far from price and are *swing-timeframe* levels that react over days — an intraday fade of them mostly EOD-marks or stops out before any weekly reaction. Kept the capability (default `asia`); "weekly levels are stronger" may hold for a **multi-day hold** (a different engine, G4). | User asked 2026-07-24; tested rather than guessed. |
 
+| D8 | **Built multi-day hold (`holdDays`) and found the survivor.** Weekly (Monday) levels traded on their native SWING timeframe (~3-day hold), top-1 per pair-week, fade RR 1.5 → **+0.117 R OOS (t 8), 21/26 pairs positive in BOTH IS & OOS** even under a pessimistic 1 pip/day always-pay swap; +0.19 R at spreads-only. Clears the pre-registered bar. 3-day is the carry-robust sweet spot (5/10-day accumulate too much swap); Asia daily levels get no benefit (still −0.12 R); the edge is the top-1 selection (pooled all-Monday-levels still −0.06 R). **Open risk: real per-pair carry/swap** (modelled pessimistically as always-pay; true net likely lower). See `RANGE_EXTENSION_FINDINGS.md` "Weekly swing variant". | Tested the timeframe-match hypothesis → first real survivor. |
+
 ## C. Known gaps / open items
 
 - **G1 — Monday–Monday weekly range: DONE + tested (see D7).** Now wired as
   `levelSource: asia | monday | both`. Result: Monday levels are decisively worse
   intraday (−0.367 R, 0/26 pairs). Default stays `asia`.
-- **G4 — the fair test of "weekly levels are stronger" is a MULTI-DAY HOLD.** This
-  engine is single-day (fills+exit inside 06:00–20:00). Weekly levels are swing
-  levels; testing them properly means letting a trade live for days with a
-  weekly-scale stop/target — a different exit engine. Not built. No evidence yet
-  it would be positive (the base is a null), but it's the honest way to test the
-  belief.
+- **G4 — DONE (see D8): multi-day hold built (`holdDays`) and it found the
+  survivor.** Weekly levels held ~3 days ARE positive (the intuition was right on
+  the right timeframe). Remaining: this is where the live work goes.
+- **G5 — nail the carry/swap (the survivor's one open risk).** The +0.117 R uses
+  a pessimistic flat always-pay swap; the real thing is directional (earned ~half
+  the time). Need per-pair broker swap tables (or FRED-implied differentials),
+  applied by trade direction, to price it properly. Then forward-validate.
+- **G6 — position management for the live swing version.** One trade/pair/week,
+  ~3-day hold → overlapping positions across pairs; needs vol-based sizing + a
+  correlation/cluster cap (26 FX are not 26 independent bets).
 - **G2 — Macro/OI conditioners not sourced** (sandbox has OANDA mids only): CME OI/gamma walls, rate-spread compass, catalyst calendar, COT. These are the only honest path to a *positive* version; harness is ready to test them.
 - **G3 — Session-range brick copies not migrated** — `rangeFibEngine`/`asiaRangeEngine` still carry private copies (LEGO drift #10).

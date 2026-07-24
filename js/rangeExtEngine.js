@@ -213,6 +213,7 @@ export async function runPairRangeExt(pairKey, opts = {}, m1Dir = BT_M1_DIR) {
     alignTolPips = null,       // default per-instrument below
     tightPct = 10.0,
     levelSource = 'asia',      // 'asia' | 'monday' | 'both'
+    holdDays = 1,              // 1 = intraday (single session); >1 = multi-day swing hold
     mondayTfMin = 15,
     weights = DEFAULT_WEIGHTS,
     sessionTz = 'utc',
@@ -263,8 +264,13 @@ export async function runPairRangeExt(pairKey, opts = {}, m1Dir = BT_M1_DIR) {
     const dayFeat = { volRegimePct: df.volRegimePct, dayTypeT: df.dayTypeT, asiaRangeRatio };
 
     // Monday-weekly range for this day (this week's Monday; prev-Monday for its
-    // alignment). Only used when levelSource includes 'monday'.
-    const monday = (levelSource !== 'asia') ? mondayForDay(mondayRanges, asia.epoch) : null;
+    // alignment). Only used when levelSource includes 'monday'. For a MULTI-DAY
+    // hold we must form each weekly level set ONCE (on its Monday) and hold it
+    // forward — otherwise Tue–Fri each re-generate the identical week's levels and
+    // trade them 5× with overlapping windows. Intraday (holdDays=1) keeps the
+    // platform's behaviour (Tue–Fri trade this week's Monday range each day).
+    let monday = (levelSource !== 'asia') ? mondayForDay(mondayRanges, asia.epoch) : null;
+    if (holdDays > 1 && monday && monday.date !== asia.date) monday = null;
     const prevMon = monday ? prevMonday(mondayRanges, monday.epoch) : null;
 
     // Candidate levels (Asia and/or Monday), each tagged with its source + range
@@ -302,8 +308,14 @@ export async function runPairRangeExt(pairKey, opts = {}, m1Dir = BT_M1_DIR) {
     for (const k in ladderBySource) ladderBySource[k].sort((a, b) => a - b);
 
     // ── Trade window bars (resampled) ────────────────────────────────────────
+    // holdDays > 1 = a MULTI-DAY SWING hold: the window spans `holdDays` calendar
+    // days from the trade start, so a level can be reached and resolve over days
+    // (the honest way to test swing-timeframe / weekly levels — an intraday
+    // window structurally can't). holdDays = 1 keeps the original single-session
+    // window (06:00→tradeHourTo). Carry/swap on multi-day FX holds is NOT modelled
+    // (no rates in-sandbox) — a small optimism flagged in the findings.
     const from = asia.epoch + tradeHourFrom * 3600;
-    const to = asia.epoch + tradeHourTo * 3600;
+    const to = holdDays > 1 ? from + holdDays * 86400 : asia.epoch + tradeHourTo * 3600;
     const m1win = extractBars(packed, from, to);
     if (m1win.length < 5) { processed++; continue; }
     const win = walkTfMin > 1 ? resampleTo(m1win, walkTfMin) : m1win;
