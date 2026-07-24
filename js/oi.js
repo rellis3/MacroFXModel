@@ -1,6 +1,8 @@
 import { S } from './state.js';
 import { kvGet, kvSet } from './utils.js';
 import { wallStrengthTier, oiSkew, oiConcentration, clusterStrikes } from './oiConfluence.js';
+import { gammaFlip } from './gammaFlow.js';
+import { charmVannaExposure } from './gammaGreeks.js';
 
 // ── Storage ──────────────────────────────────────────────────────────────────
 
@@ -29,7 +31,7 @@ function _trimStoreForLocal(store, { rawText = false, profile = false } = {}) {
   const out = {};
   for (const [k, v] of Object.entries(store)) {
     const c = { ...v };
-    if (rawText) { delete c.rawOI; delete c.rawChg; delete c.rawVol; }
+    if (rawText) { delete c.rawOI; delete c.rawChg; delete c.rawVol; delete c.rawIV; }
     if (profile) delete c.gexProfile;
     if (c.expiries) {
       const ex = {};
@@ -114,6 +116,7 @@ async function _backfillRawFromKV(sym) {
     fill('oiRawData', e.rawOI);
     fill('oiChangeData', e.rawChg);
     fill('oiVolumeData', e.rawVol);
+    fill('oiIVData', e.rawIV);
     const fe = document.getElementById('oiFuturesPrice');
     if (fe && !fe.value && e.futures) fe.value = e.futures;
     updateOIBasis();
@@ -160,6 +163,8 @@ export function openOIModal() {
   document.getElementById('oiChangeData').value = existing ? (existing.rawChg || '') : '';
   const volEl = document.getElementById('oiVolumeData');
   if (volEl) volEl.value = existing ? (existing.rawVol || '') : '';
+  const ivEl = document.getElementById('oiIVData');
+  if (ivEl) ivEl.value = existing ? (existing.rawIV || '') : '';
   updateOIBasis();
   // localStorage may have been trimmed to fit its ~5MB quota (raw pastes dropped
   // locally to survive a big multi-pair store) — in that case the boxes above are
@@ -604,6 +609,35 @@ export function oiParseVolume(raw) {
   return out.sort((a, b) => b.volume - a.volume);
 }
 
+// Parse the CME QuikStrike "Option Settlement Tool" table (the per-strike IMPLIED VOL
+// source charm/vanna need). Tab-separated, two header rows, 14 data columns:
+//   CallChg CallPrior CallSettle | Strike | PutSettle PutPrior PutChg |
+//   VolSettle VolPrior VolChg | OI-Call OI-CallChg OI-Put OI-PutChg
+// → { strikes, iv (decimal), calls, puts } for one expiry. Header/blank rows fail the
+// numeric-strike test and are skipped. IV is quoted in percent (39.49) → /100; a `>1`
+// guard also accepts an already-decimal source. Rows with no settle vol are dropped.
+export function parseIVSettlement(raw) {
+  if (!raw || !raw.trim()) return null;
+  const out = { strikes: [], iv: [], calls: [], puts: [], dte: null };
+  // Auto-read DTE from the QuikStrike title line "… OG4N6 (0.11 DTE) vs 4057.3 …"
+  // (fractional allowed) so the expiry's time-to-expiry needs no manual entry.
+  const dm = raw.match(/(-?\d*\.?\d+)\s*DTE/i);
+  if (dm) { const d = parseFloat(dm[1]); if (Number.isFinite(d)) out.dte = d; }
+  for (const line of raw.split('\n')) {
+    const c = line.replace(/\r$/, '').split('\t');
+    if (c.length < 8) continue;                                  // needs at least through VolSettle
+    const num = j => parseFloat(String(c[j] ?? '').replace(/,/g, ''));
+    const strike = num(3), ivRaw = num(7);
+    if (!Number.isFinite(strike) || strike <= 0) continue;       // skips the two header rows
+    if (!Number.isFinite(ivRaw) || ivRaw <= 0) continue;         // no settle vol at this strike
+    out.strikes.push(strike);
+    out.iv.push(ivRaw > 1 ? ivRaw / 100 : ivRaw);                // 39.49% → 0.3949 (decimal source passes through)
+    out.calls.push(Number.isFinite(num(10)) ? num(10) : 0);
+    out.puts.push(Number.isFinite(num(12)) ? num(12) : 0);
+  }
+  return out.strikes.length >= 2 ? out : null;
+}
+
 // ── Calculations ─────────────────────────────────────────────────────────────
 
 export function oiCalcMaxPain(strikes, calls, puts) {
@@ -763,6 +797,7 @@ export function processOIData() {
   const rawOI = document.getElementById('oiRawData').value;
   const rawChg = document.getElementById('oiChangeData').value;
   const rawVol = document.getElementById('oiVolumeData')?.value || '';
+  const rawIV = document.getElementById('oiIVData')?.value || '';   // optional QuikStrike settlement paste (implied vol → charm/vanna)
   const expiryLabel = (document.getElementById('oiExpiryLabel')?.value || '').trim();
   const dteRaw = parseFloat(document.getElementById('oiDTE')?.value);
   const spotRaw    = parseFloat(document.getElementById('oiSpotPrice').value);
@@ -874,6 +909,26 @@ export function processOIData() {
   const cs = isNQ(pair) ? 20 : isES(pair) ? 50 : isYM(pair) ? 5 : isRTY(pair) ? 50
            : isFDAX(pair) ? 25 : isFTSE(pair) ? 10 : pair.includes('XAU') ? 100 : 125000;
 
+  // Charm/vanna exposure from a pasted implied-vol surface (CME QuikStrike settlement
+  // table). Optional — only when the IV box is filled. Self-consistent: uses the IV
+  // paste's OWN strike/OI (one expiry) + the DTE field for T + the real per-strike
+  // smile. Absent IV → no greeksFlow (charm/vanna simply not shown).
+  let greeksFlow = null;
+  if (rawIV && rawIV.trim()) {
+    const ivp = parseIVSettlement(rawIV);
+    // DTE is auto-read: the IV paste's own header (its exact expiry) wins, then the OI
+    // heatmap's known primary-expiry DTE, then the manual field as a last-resort override.
+    const dteDays = (ivp && Number.isFinite(ivp.dte)) ? ivp.dte
+      : (primaryExpiry?.dte ?? (Number.isFinite(dteEff) ? dteEff : (Number.isFinite(dteRaw) ? dteRaw : null)));
+    const dteYrs = dteDays > 0 ? dteDays / 365 : null;
+    if (ivp && dteYrs > 0) {
+      const ivBy = new Map(ivp.strikes.map((s, i) => [s, ivp.iv[i]]));
+      const ex = charmVannaExposure(ivp.strikes, ivp.calls, ivp.puts, spot, { sigmaFn: k => ivBy.get(k), T: dteYrs, mult: cs });
+      if (ex) greeksFlow = { cex: ex.cex, vex: ex.vex, charmFlip: ex.charmFlip, vannaFlip: ex.vannaFlip,
+        source: 'iv', ivStrikes: ivp.strikes.length, dteDays };
+    }
+  }
+
   const withOI = parsed.strikes.map((s,i) => {
     const {gamma, callDelta, putDelta} = oiGreeks(s, spot, pair);
     const callGex = parsed.calls[i] * gamma * cs * spot;
@@ -965,6 +1020,8 @@ export function processOIData() {
   const inst = {
     pair, spot, futures: futuresUsed, basis: basis || null,
     maxPain, exposures, topLevels, gexProfile,
+    gammaFlip: gammaFlip(gexProfile),   // zero-GEX crossing (regime boundary) — one source for brief/export/bot/dashboard
+    greeksFlow,   // charm/vanna exposure from a pasted IV surface (null unless the IV box is filled)
     callWall: _cwHead?.strike ?? 0, putWall: _pwHead?.strike ?? 0,
     callWallOI: _cwHead?.oi ?? 0,   putWallOI: _pwHead?.oi ?? 0,
     callWalls, putWalls, skew, volumeMagnets, concentration, clusters,
@@ -978,7 +1035,8 @@ export function processOIData() {
     savedAtMs: Date.now(),
     rawOI: _compactOI,
     rawChg: _compactChg,
-    rawVol: _compactVol
+    rawVol: _compactVol,
+    rawIV: rawIV && rawIV.trim() ? rawIV : null   // QuikStrike IV settlement paste (for charm/vanna re-parse on reopen)
   };
 
   const store = oiLoadStore();

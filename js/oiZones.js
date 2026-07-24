@@ -54,6 +54,9 @@ export function buildOIZones(inst, price, cfg = {}) {
                                    // outermost wall — common on FX where CME OI is partial), give it
                                    // a measured-move TP at this R-multiple of the stop distance.
                                    // 0 = leave it SL-only (unchanged). The producer sets it for FX.
+    nearFlip = false,              // spot sits within ~0.5 ATR of the gamma flip → regime is at the
+                                   // boundary and less reliable; trim size (distance-to-flip vol read).
+    regimeWarning = null,          // flip-drift note (regime change loading) — appended to rationale.
     stability = null,              // oiWallStability(...) output (server-injected from oi_history)
     change = null,                 // classifyOIChange(...) output (server-injected)
   } = cfg;
@@ -88,6 +91,7 @@ export function buildOIZones(inst, price, cfg = {}) {
     let s = _rank(w?.tier) >= 3 ? 1.5 : _rank(w?.tier) >= 2 ? 1.0 : 0.6;
     if (conc === 'concentrated') s *= 1.2; else if (conc === 'dispersed') s *= 0.8;
     if (isDurable(w)) s *= 1.15;
+    if (nearFlip) s *= 0.85;   // spot near the gamma flip → regime unstable, trade smaller
     return +Math.min(s, 2.0).toFixed(2);
   };
   const persNote = w => (w?.persistence > 1 ? ` · durable ${w.persistence}exp` : '');
@@ -106,6 +110,7 @@ export function buildOIZones(inst, price, cfg = {}) {
         rationale = `${rationale} · TP ${fallbackTpR}R measured move (no wall ahead)`;
       }
     }
+    if (regimeWarning) rationale = `${rationale} · ⚠ ${regimeWarning}`;
     zones.push({ ...z, entry: +z.entry.toFixed(6), sl: +z.sl.toFixed(6),
       tp1: tp1 != null ? +tp1.toFixed(6) : null, tp2: tp2 != null ? +tp2.toFixed(6) : null, rationale, regime });
   };
