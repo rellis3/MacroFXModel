@@ -1,6 +1,6 @@
 // Synthetic test for the OI forward-test tagging brick (no network).
 //   node js/oiConfluence.test.mjs
-import { parseOILevels, normOIType, nearRoundNumber, tagTradeOI, tradePctReturn, oiAudit, oiStoreToLevels, oiBias, oiDeltas, wallStrengthTier, oiSkew, classifyOIChange, oiConcentration, clusterStrikes, oiWallStability } from './oiConfluence.js';
+import { parseOILevels, normOIType, nearRoundNumber, tagTradeOI, tradePctReturn, oiAudit, oiStoreToLevels, oiBias, oiDeltas, wallStrengthTier, oiSkew, classifyOIChange, oiConcentration, clusterStrikes, oiWallStability, wallFreshness, volumePCRatio } from './oiConfluence.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -223,6 +223,20 @@ console.log('[oiWallStability — days a current wall has persisted]');
   const w300 = st.find(w => w.strike === 4300), w500 = st.find(w => w.strike === 4500);
   ok('4300 established 3 days', w300.daysPresent === 3 && w300.established === false, JSON.stringify(w300));
   ok('4500 is fresh (1 day)', w500.daysPresent === 1 && w500.fresh === true);
+}
+
+console.log('[wallFreshness — volume vs resting OI]');
+{
+  ok('volume ≥ OI → fresh', wallFreshness(1000, 1200).tag === 'fresh' && wallFreshness(1000, 1200).ratio === 1.2);
+  ok('~half OI → active', wallFreshness(1000, 500).tag === 'active');
+  ok('little volume → stale', wallFreshness(1000, 100).tag === 'stale');
+  ok('no OI → null', wallFreshness(0, 500) === null);
+}
+console.log('[volumePCRatio — today flow]');
+{
+  ok('put-heavy flow → ratio > 1', volumePCRatio(1000, 2500) === 2.5);
+  ok('call-heavy → < 1', volumePCRatio(2000, 800) === 0.4);
+  ok('no call volume → null', volumePCRatio(0, 500) === null);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' FAILED ✗'}`);

@@ -2578,12 +2578,17 @@ function storyOptions(r) {
   const dp = r.d.dp;
   const bits = [];
   // Wall strength (3× rule) badge — strong walls are the high-probability ones.
-  const cwTier = (o.inst?.callWalls || []).find(w => w.strike === o.callWall)?.tier;
-  const pwTier = (o.inst?.putWalls || []).find(w => w.strike === o.putWall)?.tier;
+  const cwW = (o.inst?.callWalls || []).find(w => w.strike === o.callWall);
+  const pwW = (o.inst?.putWalls || []).find(w => w.strike === o.putWall);
+  const cwTier = cwW?.tier, pwTier = pwW?.tier;
   const tierTag = t => t === 'strong' ? ' <span class="chip" style="font-size:9px;color:var(--green)">3×+ strong</span>' : t === 'moderate' ? ' <span class="chip" style="font-size:9px">2× mod</span>' : '';
+  // Fresh vs stale: today's volume at the wall vs its resting OI (new money vs old).
+  const freshTag = f => f?.tag === 'fresh' ? ' <span class="chip" style="font-size:9px;color:var(--amber)">fresh</span>' : f?.tag === 'stale' ? ' <span class="muted" style="font-size:9px">stale</span>' : '';
   if (o.maxPain) bits.push(`max pain <b>${fmtN(o.maxPain, dp)}</b> (magnet)`);
-  if (o.callWall) bits.push(`call wall ${fmtN(o.callWall, dp)} (cap${o.callWallOI ? `, ${(o.callWallOI / 1000).toFixed(0)}k` : ''})${tierTag(cwTier)}`);
-  if (o.putWall) bits.push(`put wall ${fmtN(o.putWall, dp)} (floor${o.putWallOI ? `, ${(o.putWallOI / 1000).toFixed(0)}k` : ''})${tierTag(pwTier)}`);
+  if (o.callWall) bits.push(`call wall ${fmtN(o.callWall, dp)} (cap${o.callWallOI ? `, ${(o.callWallOI / 1000).toFixed(0)}k` : ''})${tierTag(cwTier)}${freshTag(cwW?.fresh)}`);
+  if (o.putWall) bits.push(`put wall ${fmtN(o.putWall, dp)} (floor${o.putWallOI ? `, ${(o.putWallOI / 1000).toFixed(0)}k` : ''})${tierTag(pwTier)}${freshTag(pwW?.fresh)}`);
+  const vf = o.inst?.volFlow;
+  if (vf && vf.volPcRatio != null) bits.push(`<span class="${vf.divergence ? '' : 'muted'}">flow P/C ${vf.volPcRatio} vs OI ${vf.oiPcRatio}${vf.divergence ? ` <b>(today ${vf.volPcRatio > vf.oiPcRatio ? 'leaning puts' : 'leaning calls'})</b>` : ''}</span>`);
   if (o.inst?.skew?.read && o.inst.skew.read !== 'balanced') bits.push(`<span class="muted">${o.inst.skew.read}</span>`);
   const vm = (o.inst?.volumeMagnets || []).slice(0, 3);
   if (vm.length) bits.push(`vol magnets ${vm.map(v => fmtN(v.strike, dp)).join('/')}`);
@@ -2747,6 +2752,7 @@ function assembleSnapshot(r) {
     // where each horizon pins, for the analytical brief. Supersedes manual `expiries`.
     termStructure: (oi.inst?.termStructure || []).slice(0, 8),
     dataWarning: oi.inst?.dataWarning ?? null,   // mis-scaled/stale flag → the AI down-weights it
+    volFlow: oi.inst?.volFlow ?? null,           // today's volume P/C flow vs resting OI P/C
     expiries: Object.entries(oi.inst?.expiries || {}).map(([label, e]) => ({ label, dte: e.dte, maxPain: e.maxPain, callWall: e.callWall, putWall: e.putWall })).sort((a, b) => (a.dte ?? 999) - (b.dte ?? 999)).slice(0, 4) };
   // COT positioning (the shape the prompt reads) — real spec/leveraged-fund data
   const ct = cotFor(r.name), rawCot = cot?.[COT_MAP[r.name]?.sym];

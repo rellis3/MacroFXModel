@@ -211,6 +211,24 @@ export function classifyOIChange(deltas, { freshPct = 40 } = {}) {
 // Concentration (ChatGPT layer 5): top-N strikes as a % of total OI. Concentrated
 // positioning → sharper reactions at those strikes; dispersed → weaker influence.
 // `strikeOIs` = per-strike total OI (call+put). Pure.
+// Today's option VOLUME vs resting OI — the "fresh positioning" read. A wall with
+// high volume relative to its resting OI is being defended/built TODAY (new money),
+// not stale positioning. ratio ≥ 1 = today's volume matched/exceeded the whole
+// resting OI (very fresh); < 0.4 = quiet/stale. Pure.
+export function wallFreshness(oi, volume) {
+  if (!(oi > 0)) return null;
+  const r = (+volume || 0) / oi;
+  return { ratio: +r.toFixed(2), tag: r >= 1 ? 'fresh' : r >= 0.4 ? 'active' : 'stale' };
+}
+
+// Volume put/call ratio = today's directional FLOW (vs the OI P/C = resting
+// positioning). A divergence — resting balanced but today heavily one side — is the
+// tell. Returns null if no call volume. Pure.
+export function volumePCRatio(callVol, putVol) {
+  const c = +callVol || 0, p = +putVol || 0;
+  return c > 0 ? +(p / c).toFixed(3) : null;
+}
+
 export function oiConcentration(strikeOIs, totalOI = null) {
   const arr = (Array.isArray(strikeOIs) ? strikeOIs : []).filter(n => Number.isFinite(n) && n >= 0).sort((a, b) => b - a);
   const tot = totalOI > 0 ? totalOI : arr.reduce((a, b) => a + b, 0);

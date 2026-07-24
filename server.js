@@ -1843,7 +1843,8 @@ P/C Ratio: ${s.oi.pcRatio}  ->  ${s.oi.pcBias}${s.oi.skew ? `
 OI skew: ${s.oi.skew.read} (${s.oi.skew.score >= 0 ? '+' : ''}${s.oi.skew.score}) — where positioning sits vs spot` : ''}${(s.oi.callWalls || []).some(w => w.tier) || (s.oi.putWalls || []).some(w => w.tier) ? `
 Wall strength (3× rule): ${[...(s.oi.callWalls || []).filter(w => w.tier).map(w => `C${w.strike} ${w.tier}(${w.mult}×)`), ...(s.oi.putWalls || []).filter(w => w.tier).map(w => `P${w.strike} ${w.tier}(${w.mult}×)`)].join(', ') || 'none strong'}` : ''}
 Total Call OI: ${s.oi.totalCallOI}  |  Total Put OI: ${s.oi.totalPutOI}
-OI Flow  -  calls: ${s.oi.totalCallChg ?? 'N/A'}  puts: ${s.oi.totalPutChg ?? 'N/A'}
+OI Flow  -  calls: ${s.oi.totalCallChg ?? 'N/A'}  puts: ${s.oi.totalPutChg ?? 'N/A'}${s.oi.volFlow?.volPcRatio != null ? `
+Today's VOLUME flow: put/call ${s.oi.volFlow.volPcRatio} vs resting OI put/call ${s.oi.volFlow.oiPcRatio}${s.oi.volFlow.divergence ? ` — DIVERGENCE: today's activity is leaning ${s.oi.volFlow.volPcRatio > s.oi.volFlow.oiPcRatio ? 'puts (fresh downside flow vs balanced positioning)' : 'calls (fresh upside flow)'}, a directional tell` : ' (flow ≈ positioning)'}` : ''}
 Aggregate GEX: ${s.oi.gex ?? 'N/A'}  |  DEX: ${s.oi.dex ?? 'N/A'}  ->  ${s.oi.gexRead ?? 'N/A'}
 Gamma flip level: ${s.oiGamma?.flip ?? s.oi.gammaFlip ?? 'N/A'}${s.oiGamma?.dist ? `
 Distance to flip (vol read): spot ${s.oiGamma.dist.side === 'positive' ? 'ABOVE' : s.oiGamma.dist.side === 'negative' ? 'BELOW' : 'AT'} the flip by ${s.oiGamma.dist.atr != null ? `${Math.abs(s.oiGamma.dist.atr)} ATR` : `${Math.abs(s.oiGamma.dist.pct)}%`} → ${s.oiGamma.dist.side === 'positive' ? '+gamma (dampening / pin regime)' : s.oiGamma.dist.side === 'negative' ? '−gamma (amplifying / breakout regime)' : 'at the boundary'}${s.oiGamma.dist.near ? ' · NEAR the flip — regime unstable, one push from flipping' : ' — deeper = stronger regime'}` : ''}${s.oiGamma?.drift?.toward ? `
