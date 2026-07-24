@@ -41,6 +41,12 @@ import { atrWilder } from './indicatorCore.js';
 import { rollingPercentile } from './statsCore.js';
 import { summarizeTrades } from './metricsCore.js';
 import { instrument } from './instrumentRegistry.js';
+import { createTouchFeatures } from './touchFeatures.js';
+
+// At-touch approach-velocity feature (the platform's OOS-proven discriminator:
+// a fast/climactic drive INTO a level → exhaustion → better fade; a slow grind →
+// skip). See ENTRY_ZONE_CONFIDENCE.md. Shared instance, default cfg.
+const _touchFeat = createTouchFeatures();
 
 export const RANGE_EXT_INSTRUMENTS = [
   'eurusd', 'gbpusd', 'usdjpy', 'audusd', 'nzdusd', 'usdcad', 'usdchf', 'gbpjpy',
@@ -87,10 +93,14 @@ function buildDailyBars(packed) {
 // Per-date state features (all computed from data STRICTLY BEFORE that date):
 //   volRegimePct — percentile of yesterday's ATR vs its trailing 252-day history
 //   dayTypeT     — dayTypeScore on daily closes through yesterday
-function buildDailyFeatures(daily, { atrPeriod = 14, regimeWindow = 252, dtWindow = 14 } = {}) {
+function buildDailyFeatures(daily, { atrPeriod = 14, regimeWindow = 252, dtWindow = 14, sigWin = 20 } = {}) {
   const atr = atrWilder(daily, atrPeriod);                 // aligned to `daily`
   const atrPct = rollingPercentile(atr, regimeWindow);     // aligned, NaN until warm
   const closes = daily.map((d) => d.close);
+  // daily log-returns → rolling σ (as a FRACTION of price), for approach-velocity
+  // normalisation (touchFeatures wants σ in daily-σ units). Value at day i uses
+  // returns strictly before i (no lookahead).
+  const ret = closes.map((c, i) => (i > 0 && closes[i - 1] > 0 ? Math.log(c / closes[i - 1]) : 0));
   const feat = new Map();
   for (let i = 0; i < daily.length; i++) {
     // features for trading day i use index i-1 (no lookahead onto day i).
@@ -98,7 +108,13 @@ function buildDailyFeatures(daily, { atrPeriod = 14, regimeWindow = 252, dtWindo
     const j = i - 1;
     const volRegimePct = j >= 0 && Number.isFinite(atrPct[j]) ? atrPct[j] / 100 : 0.5;
     const dayTypeT = j >= dtWindow ? (dayTypeScore(closes, j, dtWindow) ?? 0) : 0;
-    feat.set(daily[i].date, { volRegimePct, dayTypeT });
+    let dailySigma = 0;
+    if (j >= sigWin) {
+      const w = ret.slice(j - sigWin + 1, j + 1);
+      const m = w.reduce((a, b) => a + b, 0) / w.length;
+      dailySigma = Math.sqrt(w.reduce((a, b) => a + (b - m) ** 2, 0) / w.length);
+    }
+    feat.set(daily[i].date, { volRegimePct, dayTypeT, dailySigma });
   }
   return feat;
 }
@@ -214,6 +230,7 @@ export async function runPairRangeExt(pairKey, opts = {}, m1Dir = BT_M1_DIR) {
     tightPct = 10.0,
     levelSource = 'asia',      // 'asia' | 'monday' | 'both'
     holdDays = 1,              // 1 = intraday (single session); >1 = multi-day swing hold
+    touchGate = 'none',        // 'none' | 'spike' (only fast approaches) | 'nogrind'
     mondayTfMin = 15,
     weights = DEFAULT_WEIGHTS,
     sessionTz = 'utc',
@@ -316,11 +333,21 @@ export async function runPairRangeExt(pairKey, opts = {}, m1Dir = BT_M1_DIR) {
     // (no rates in-sandbox) — a small optimism flagged in the findings.
     const from = asia.epoch + tradeHourFrom * 3600;
     const to = holdDays > 1 ? from + holdDays * 86400 : asia.epoch + tradeHourTo * 3600;
-    const m1win = extractBars(packed, from, to);
-    if (m1win.length < 5) { processed++; continue; }
-    const win = walkTfMin > 1 ? resampleTo(m1win, walkTfMin) : m1win;
+    // Pre-roll: extract velWin+ bars BEFORE the trade start so approach-velocity
+    // has history even for an early fill. Fills only happen in `win` (from `from`
+    // onward); the pre-roll is context only.
+    const preRoll = (18) * walkTfMin * 60;
+    const m1all = extractBars(packed, from - preRoll, to);
+    if (m1all.length < 5) { processed++; continue; }
+    const approachBars = walkTfMin > 1 ? resampleTo(m1all, walkTfMin) : m1all;
+    let winStartIdx = 0;
+    while (winStartIdx < approachBars.length && approachBars[winStartIdx].time < from) winStartIdx++;
+    const win = approachBars.slice(winStartIdx);
     if (win.length < 3) { processed++; continue; }
     const refOpen = win[0].open;
+    const approachIdx = new Map();
+    for (let bi = 0; bi < approachBars.length; bi++) approachIdx.set(approachBars[bi].time, bi);
+    const dailySigma = df.dailySigma ?? 0;
 
     for (const c of chosen) {
       const slDist = Math.max((c.srcRange ?? asia.range) * slMult, minSlPips * pip);
@@ -329,6 +356,20 @@ export async function runPairRangeExt(pairKey, opts = {}, m1Dir = BT_M1_DIR) {
       if (!ord) continue;
       const res = walkBars(win, ord.entry, ord.tp, ord.sl, ord.isBuy, ord.entryType, refOpen);
       if (!res || !res.filled) continue;
+
+      // At-touch approach velocity (spike/med/grind) at the fill bar — recorded on
+      // every trade (no gating here). Optional `touchGate` skips non-qualifying
+      // approaches INSIDE the engine (honest selection, no fill-conditioning).
+      let approachVel = null, approachBucket = null;
+      const ti = res.fillTime != null ? approachIdx.get(res.fillTime) : null;
+      if (ti != null && refOpen > 0 && dailySigma > 0) {
+        const f = _touchFeat.compute({ bars: approachBars, touchIdx: ti, open: refOpen,
+          sigma: dailySigma, side: ord.isBuy ? 'dn' : 'up' });
+        approachVel = f.approachVel.value;
+        approachBucket = f.approachVel.bucket;
+      }
+      if (touchGate === 'spike' && approachBucket !== '3·spike') continue;
+      if (touchGate === 'nogrind' && approachBucket === '1·grind') continue;
 
       // pnl in R: gross price move / risk, minus cost (round-trip + stop slip)
       const grossMove = (res.pnlPct / 100) * refOpen;   // signed price move
@@ -366,6 +407,8 @@ export async function runPairRangeExt(pairKey, opts = {}, m1Dir = BT_M1_DIR) {
         alignment: c.alignment,
         align_dist_pips: c.alignDistPips,
         confidence: +(c.confidence ?? 0).toFixed(4),
+        approach_vel: approachVel,
+        approach_bucket: approachBucket,
         vol_regime_pct: +df.volRegimePct.toFixed(3),
         day_type_t: +df.dayTypeT.toFixed(4),
         asia_range_ratio: +asiaRangeRatio.toFixed(3),

@@ -635,6 +635,12 @@ If a third consumer appears (or the QMR engine gets versioned out of `server.js`
 > selection look-ahead (see the engine row + `RANGE_EXTENSION_FINDINGS.md`). The
 > confidence brain ranks levels but there is no edge to concentrate. Lesson
 > recorded: never select "best-among-filled" offline from a fill-only trade dump.
+> **Also 2026-07-24: wired the at-touch `approachVel` (`touchFeatures` + `touchGate`),
+> the platform's strongest discriminator. Biggest effect in the study (grind fade
+> +0.003 R vs spike fade −0.23 R) so "some touches are far better" is TRUE — but no
+> pole is tradeable (grind = breakeven; spike-fade −0.23; spike-follow −0.29), and
+> the polarity is REVERSED vs σ-band lines (structural range-multiple → spike =
+> continuation). Selection reaches breakeven, not profit; verdict stays null.**
 
 ---
 

@@ -161,4 +161,7 @@ test('buildDailyFeatures: no-lookahead (day i uses ≤ i-1)', () => {
   const warm = feat.get(daily[290].date);
   assert.ok(warm.volRegimePct >= 0 && warm.volRegimePct <= 1);
   assert.notEqual(warm.volRegimePct, 0.5);   // actually computed, not the default
+  // daily σ (for approach-velocity normalisation) is finite & non-negative once warm
+  assert.ok(Number.isFinite(warm.dailySigma) && warm.dailySigma >= 0);
+  assert.equal(feat.get(daily[0].date).dailySigma, 0);   // no history → 0
 });
