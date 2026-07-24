@@ -13442,6 +13442,9 @@ app.post('/api/range-ext/run', (req, res) => {
     maxTradeMult: parseFloat(b.maxTradeMult) || 4.0,
     levelSource: ['asia', 'monday', 'both'].includes(b.levelSource) ? b.levelSource : 'asia',
     holdDays: Math.max(1, Math.min(20, parseInt(b.holdDays) || 1)),
+    // multi-day holds walk a much bigger window → default to 30m bars for speed
+    // (matches the validation run); intraday stays 5m. Overridable.
+    walkTfMin: parseInt(b.walkTfMin) || ((parseInt(b.holdDays) || 1) > 1 ? 30 : 5),
     tradeHourFrom: parseInt(b.tradeHourFrom) || 6,
     tradeHourTo: parseInt(b.tradeHourTo) || 20,
     sessionTz: b.sessionTz === 'london' ? 'london' : 'utc',

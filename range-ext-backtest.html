@@ -39,29 +39,41 @@
   <p class="sub">Asia (00:00–06:00) range extensions as entries; a state-conditioned brain ranks the day's ~14 levels and
      trades the top-N, choosing fade vs follow from regime. Baseline = every level, framework-fade. Costs on. Spec:
      <code>RANGE_EXTENSION_STRATEGY.md</code> · result: <code>RANGE_EXTENSION_FINDINGS.md</code>.<br>
-     <b style="color:var(--amber)">Honest result:</b> a NULL for tradeable edge — the ranker orders levels correctly (top-1 ≫ top-3 ≫ all)
-     but even the best level is ~breakeven after realistic costs; alignment zones &amp; follow-direction are refuted. This is a costed harness, not a signal to trade.</p>
+     <b style="color:var(--amber)">Honest result:</b> a NULL for tradeable edge, intraday and swing. The confidence ranking is mildly ordinal
+     (top-1 is less-bad than top-3) but every honest selection is ≤ breakeven at spreads-only; alignment zones &amp; follow-direction are refuted. Costed harness, not a signal to trade.</p>
 
   <div class="panel">
     <div class="grid">
       <div><label>Pair (blank = all 26)</label><select id="pair"><option value="">All pairs</option></select></div>
+      <div><label>Level source</label><select id="levelSource">
+        <option value="asia">Asia daily (00:00–06:00)</option>
+        <option value="monday">Monday weekly</option>
+        <option value="both">both</option></select></div>
+      <div><label>Hold days (1 = intraday)</label><input id="holdDays" value="1" type="number" min="1" max="20"></div>
       <div><label>Date from</label><input id="dateFrom" placeholder="2016-01-01"></div>
       <div><label>Date to</label><input id="dateTo" placeholder="2025-12-31"></div>
       <div><label>Direction</label><select id="direction">
         <option value="auto">auto (day-type selector)</option>
         <option value="fade">fade only</option>
         <option value="follow">follow only</option></select></div>
-      <div><label>Top-N / day</label><input id="topN" value="3" type="number" min="1" max="10"></div>
+      <div><label>Top-N / period</label><input id="topN" value="3" type="number" min="1" max="10"></div>
       <div><label>Min confidence</label><input id="minConfidence" value="0.5" type="number" step="0.05" min="0" max="1"></div>
-      <div><label>SL × Asia range</label><input id="slMult" value="0.75" type="number" step="0.05"></div>
+      <div><label>SL × source range</label><input id="slMult" value="0.75" type="number" step="0.05"></div>
       <div><label>TP mode</label><select id="tpMode"><option value="structural">structural</option><option value="rr">fixed R</option></select></div>
       <div><label>TP R (if fixed)</label><input id="tpR" value="1.5" type="number" step="0.1"></div>
       <div><label>Max trade multiple</label><input id="maxTradeMult" value="4.0" type="number" step="0.5"></div>
     </div>
     <div class="row2">
       <button id="run">Run A/B backtest</button>
+      <button class="ghost" id="preset">Load Monday-swing config</button>
       <span class="status" id="status"></span>
     </div>
+    <p class="note" style="margin-top:8px"><b>Result of this whole study: a NULL</b> — no tradeable edge, intraday or swing
+      (see <code>RANGE_EXTENSION_FINDINGS.md</code>). The "Monday-swing config" button sets the most-tested variant
+      (Monday-weekly levels, hold 3 days, fade, top-1/week, RR 1.5); run it and the <b>Treatment</b> (top-1) column reads
+      ≈ −0.006R OOS — breakeven at spreads-only, negative after carry. The <b>Treatment</b> column is the engine's honest
+      selection (choose first, then fill — <i>not</i> the fill-conditioned offline number that was retracted). Costs = spreads
+      only (no multi-day carry). Multi-day runs use 30m bars; all-26 takes a few minutes.</p>
   </div>
 
   <div class="panel" id="results" style="display:none">
@@ -79,7 +91,7 @@
       <button class="ghost" data-csv="ccy">Export Currency P&amp;L CSV</button>
     </div>
     <p class="note">CSV exports are the <b>treatment</b> trade log. Account = <b>$10,000</b>, risk = <b>1%/trade</b>.
-       R-unit = the trade's <b>Asia-range-based stop distance</b> (vol-varying, so R and % Return differ per trade —
+       R-unit = the trade's <b>source-range-based stop distance</b> (Asia or Monday range × SL mult; vol-varying, so R and % Return differ per trade —
        not the degenerate fixed-% case). MAE is read from the realised intra-trade path.</p>
   </div>
 </div>
@@ -130,6 +142,7 @@ async function run() {
   $('run').disabled = true; $('status').textContent = 'starting…'; $('results').style.display = 'none';
   const body = {
     pair: $('pair').value, dateFrom: $('dateFrom').value, dateTo: $('dateTo').value,
+    levelSource: $('levelSource').value, holdDays: $('holdDays').value,
     direction: $('direction').value, topN: $('topN').value, minConfidence: $('minConfidence').value,
     slMult: $('slMult').value, tpMode: $('tpMode').value, tpR: $('tpR').value, maxTradeMult: $('maxTradeMult').value,
   };
@@ -148,6 +161,19 @@ async function run() {
   poll();
 }
 $('run').addEventListener('click', run);
+
+// One-click Monday-swing config: Monday-weekly levels, 3-day hold, fade, top-1/week, RR 1.5.
+$('preset').addEventListener('click', () => {
+  $('levelSource').value = 'monday';
+  $('holdDays').value = '3';
+  $('direction').value = 'fade';
+  $('topN').value = '1';
+  $('minConfidence').value = '0';
+  $('tpMode').value = 'rr';
+  $('tpR').value = '1.5';
+  $('slMult').value = '0.75';
+  $('status').textContent = 'survivor preset loaded — press Run';
+});
 
 // ── CSV exports (treatment trade log, 3 house schemas) ──
 const ACCT = 10000, RISK_FRAC = 0.01;
