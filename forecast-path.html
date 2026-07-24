@@ -211,6 +211,7 @@
       <button id="tEventCone" class="on" title="Widen the cone into scheduled-release windows (multiplier learned causally from this pair's history; A/B-graded in the calibration card)">Event σ</button>
       <button id="tImpliedCone" title="Scale the day's cone by implied vol (EVZ/GVZ/VIX) vs its own trailing baseline. Measured-first, default OFF — the A/B card shows whether it beats the realized σ already in the cone. EUR/USD, GOLD, indices only." style="display:none">Implied σ</button>
       <button id="tBudgetCone" title="Widen the cone on quiet-so-far sessions, slightly narrow on busy ones (a pre-registered vol-mean-reversion hypothesis from the gold calibration). Measured-first, default OFF — the A/B card judges it.">Budget σ</button>
+      <button id="tOiMove" title="Overlay the CME option-implied expected move (ATM straddle ± range to expiry) for this pair from your latest OI/IV paste — the option MARKET's own range vs the model cone. EOD, sky dotted. Only shows if IV was pasted for this instrument.">OI exp-move</button>
       <button id="tLevels">Levels</button>
       <button id="tBands">Day forecast</button>
       <button id="tTrail" class="on">Hindcast trail</button>
@@ -418,7 +419,19 @@ const view = createLevelChart($('chart'), { height: 480 });
 const chart = view.chart;
 
 let bars = [], ctx = null, i = 0, extraSeries = [], actualSeries = null, events = [], d1History = [], ivByDate = null;
-const toggles = { cone: true, paths: false, consensus: false, trendLine: false, actual: true, news: true, levels: false, bands: false, trail: true, eventCone: true, impliedCone: false, budgetCone: false };
+const toggles = { cone: true, paths: false, consensus: false, trendLine: false, actual: true, news: true, levels: false, bands: false, trail: true, eventCone: true, impliedCone: false, budgetCone: false, oiMove: false };
+
+// CME option-implied expected move per pair (from the OI/IV paste in oi_store) — for
+// the OI exp-move overlay. Fetched best-effort; refreshed each load. Key-normalised.
+let _oiStore = null;
+async function loadOiStore() { try { const j = await (await fetch('/api/kv/get?key=oi_store')).json(); _oiStore = (!j.miss && j.data) ? j.data : null; } catch { _oiStore = null; } }
+function oiMoveFor(pair) {
+  if (!_oiStore) return null;
+  const norm = x => String(x).toUpperCase().replace(/[/_ ]/g, '');
+  const k = Object.keys(_oiStore).find(kk => norm(kk) === norm(pair));
+  return k ? (_oiStore[k]?.expectedMove ?? null) : null;
+}
+loadOiStore();
 const eng = () => ENGINES[$('gran').value];
 const isIntraday = () => $('gran').value !== 'D1';
 // Major releases as epoch seconds — the event-aware cone's input.
@@ -512,6 +525,18 @@ function render() {
     line('rgba(52,211,153,.9)', 1, 2).setData(mk('p50Dn'));
     line('rgba(251,191,36,.8)', 1, 3).setData(mk('p75Up'));
     line('rgba(251,191,36,.8)', 1, 3).setData(mk('p75Dn'));
+  }
+
+  // OI expected-move band — the option market's implied ± range to expiry (ATM
+  // straddle), anchored on the cone anchor. Model cone vs market-implied range.
+  if (toggles.oiMove) {
+    const em = oiMoveFor(pairSel.value);
+    if (em && em.move > 0) {
+      const lastT = e.stepT(cone.steps[cone.steps.length - 1]);
+      const flat = v => [{ time: t0.time, value: v }, { time: lastT, value: v }];
+      line('rgba(56,189,248,.9)', 1, 2).setData(flat(cone.anchor + em.move));
+      line('rgba(56,189,248,.9)', 1, 2).setData(flat(cone.anchor - em.move));
+    }
   }
 
   if (toggles.paths || toggles.consensus) {
@@ -1058,7 +1083,7 @@ async function loadForward() {
   } catch { el.innerHTML = '<span class="muted">Forward record unavailable.</span>'; }
 }
 
-$('load').onclick = load;
+$('load').onclick = () => { loadOiStore(); load(); };
 pairSel.onchange = () => { load(); loadForward(); };
 $('helpBtn').onclick = () => { $('helpOverlay').style.display = 'block'; };
 $('gran').onchange = () => { fillHorizons(); load(); };
@@ -1073,7 +1098,7 @@ $('calc').onchange = () => {   // bandsFn is captured in the D1 context — rebu
   if (ctx) ctx = eng().build(bars, ASSET_CLASS(pairSel.value));
   render(); renderCalib();
 };
-for (const [id, key] of [['tCone','cone'],['tPaths','paths'],['tConsensus','consensus'],['tTrendLine','trendLine'],['tActual','actual'],['tNews','news'],['tLevels','levels'],['tBands','bands'],['tTrail','trail']])
+for (const [id, key] of [['tCone','cone'],['tPaths','paths'],['tConsensus','consensus'],['tTrendLine','trendLine'],['tActual','actual'],['tNews','news'],['tLevels','levels'],['tBands','bands'],['tTrail','trail'],['tOiMove','oiMove']])
   $(id).onclick = () => { toggles[key] = !toggles[key]; $(id).classList.toggle('on', toggles[key]); render(); };
 $('tEventCone').onclick = () => {   // eventAware lives in the context — rebuild it
   toggles.eventCone = !toggles.eventCone;

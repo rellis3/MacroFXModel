@@ -257,7 +257,8 @@ function render(){
 // inst.gammaFlow / inst.termStructure — hidden if an old artifact lacks them.
 function renderGammaFlow(inst, d){
   const el = $('gammaFlow'), gf = inst.gammaFlow, ts = inst.termStructure;
-  if((!gf || gf.flip==null) && !(Array.isArray(ts) && ts.length>1)){ el.style.display='none'; return; }
+  const hasIV = inst.expectedMove || inst.greeksFlow || inst.ivDynamics || inst.riskReversal;
+  if((!gf || gf.flip==null) && !(Array.isArray(ts) && ts.length>1) && !hasIV){ el.style.display='none'; return; }
   el.style.display='';
   const bits = [];
   if(gf?.flip!=null){
@@ -271,10 +272,17 @@ function renderGammaFlow(inst, d){
   }
   if(gf?.drift?.toward) bits.push(`<span class="chip" style="color:var(--amber)">⚠ flip migrating toward spot — regime change loading</span>`);
   if(gf?.rolloff) bits.push(`<span class="chip">${gf.rolloff.nearDTE}DTE = ${Math.round(gf.rolloff.nearShare*100)}% OI${gf.rolloff.rollingSoon?' · rolls off soon':''}</span>`);
+  const em = inst.expectedMove;
+  if(em) bits.push(`<span class="chip" style="color:var(--cyan)" title="option-implied ± range to expiry (ATM straddle); targets beyond it are low-probability by expiry">exp move ±${em.move} (${em.pct}%)${em.dte!=null?` · ${em.dte}DTE`:''}</span>`);
+  const dyn = inst.ivDynamics;
+  if(dyn && dyn.atmChg!=null) bits.push(`<span class="chip" style="color:${dyn.rising?'var(--red)':'var(--green)'}" title="ATM implied-vol change today + skew steepening (tail-hedge demand)">IV ${dyn.atmIV}% ${dyn.atmChg>=0?'+':''}${dyn.atmChg}${dyn.skewSteepening!=null?` · skew ${dyn.skewSteepening>0?'steepening':'flattening'}`:''}</span>`);
+  const rr = inst.riskReversal;
+  if(rr) bits.push(`<span class="chip" style="color:${rr.tilt==='downside'?'var(--red)':rr.tilt==='upside'?'var(--green)':'var(--text3)'}" title="OTM put−call IV skew — directional sentiment tilt">RR ${rr.rr>=0?'+':''}${rr.rr} (${rr.tilt})</span>`);
   const gk = inst.greeksFlow;
   if(gk){
     bits.push(`<span class="chip" title="charm = dDelta/dtime — the clock/OpEx hedging (pin tightens into expiry, releases after)">charm CEX ${gk.cex>=0?'+':''}${gk.cex}${gk.charmFlip!=null?` · flip ${fmt(gk.charmFlip,d)}`:''}</span>`);
-    bits.push(`<span class="chip" title="vanna = dDelta/dvol — vol-conditional bias; as IV falls, +VEX ⇒ mechanical bid">vanna VEX ${gk.vex>=0?'+':''}${gk.vex}${gk.vannaFlip!=null?` · flip ${fmt(gk.vannaFlip,d)}`:''}</span>`);
+    const vn = gk.vanna;
+    bits.push(`<span class="chip" title="vanna = dDelta/dvol — vol-conditional bias; as IV falls, +VEX ⇒ mechanical bid">vanna VEX ${gk.vex>=0?'+':''}${gk.vex}${vn?` · ${vn.state}${vn.firing?' ⚡firing':''}`:''}${gk.vannaFlip!=null?` · flip ${fmt(gk.vannaFlip,d)}`:''}</span>`);
     bits.push(`<span class="chip" style="color:var(--text3)">greeks: real IV · ${gk.dteDays}DTE · ${gk.ivStrikes} strikes</span>`);
   }
   let term='';
@@ -438,6 +446,10 @@ function drawOverlays(){
   if(inst.maxPain!=null) line(inst.maxPain, '#c084fc', 1, 1, `max pain ${fmt(inst.maxPain,d)}`);
   const _flip = inst.gammaFlow?.flip;
   if(_flip!=null) line(_flip, '#e879f9', 2, 2, `⚡flip ${fmt(_flip,d)}`);   // gamma flip = regime boundary
+  // Expected-move band (option-implied ± range to expiry) — the implied range price
+  // should stay within by expiry. Dotted sky-blue edges.
+  const _em = inst.expectedMove;
+  if(_em && _em.upper!=null){ line(_em.upper, '#38bdf8', 1, 3, `exp+ ${fmt(_em.upper,d)}`); line(_em.lower, '#38bdf8', 1, 3, `exp− ${fmt(_em.lower,d)}`); }
   if(inst.spot!=null)   line(inst.spot,   '#facc15', 1, 1, `spot ${fmt(inst.spot,d)}`);
 
   const markers = [];

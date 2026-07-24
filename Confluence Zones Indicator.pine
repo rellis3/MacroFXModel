@@ -18,6 +18,7 @@ indicator("C.og - Confluence Zones + OI v2", overlay=true, max_lines_count=500, 
 //      • max_pain   → YELLOW (pin / magnet, dashed)
 //      • gamma_flip → PURPLE (regime boundary, dotted)
 //      • oi_volume  → BLUE   (today's heaviest option volume)
+//      • exp_move_hi/lo → SKY (option-implied ± range to expiry, EOD, dotted)
 //    OI wall thickness scales with strength tier (t1..t3).
 // 4. The gamma REGIME (PIN vs BREAKOUT) tints the chart
 //    background + shows a label (from net-GEX sign):
@@ -51,6 +52,7 @@ indicator("C.og - Confluence Zones + OI v2", overlay=true, max_lines_count=500, 
 //   max_pain             — option max-pain strike (price-pinning magnet)
 //   gamma_flip           — dealer gamma sign change (regime boundary)
 //   oi_volume            — heaviest TODAY's option volume (transient)
+//   exp_move_hi/lo       — option-implied expected-move band edges (± range to expiry, EOD)
 
 // =====================================================
 // INPUTS — TICKER MAPPING (match your chart symbols)
@@ -129,6 +131,7 @@ col_put     = input.color(color.new(color.green,  0), "Put Wall Colour (support)
 col_pain    = input.color(color.new(color.yellow, 0), "Max Pain Colour (magnet)",      group="OI Walls & Gamma")
 col_gamma   = input.color(color.new(color.purple, 0), "Gamma Flip Colour (regime)",    group="OI Walls & Gamma")
 col_vol     = input.color(color.new(color.aqua,   0), "Volume Magnet Colour (today)",  group="OI Walls & Gamma")
+col_expmv   = input.color(color.new(#38bdf8, 20),     "Expected-Move Band Colour (EOD)", group="OI Walls & Gamma")
 oi_base_w   = input.int(2, "OI Base Line Width", minval=1, maxval=4, group="OI Walls & Gamma",
      tooltip="Walls with a higher strength tier (t2, t3) draw thicker than this base.")
 show_oi_lbl = input.bool(true, "Show OI Labels", group="OI Walls & Gamma")
@@ -390,11 +393,15 @@ f_oiColour(typ) =>
      typ == "put_wall"   ? col_put   :
      typ == "max_pain"   ? col_pain  :
      typ == "gamma_flip" ? col_gamma :
-     typ == "oi_volume"  ? col_vol   : color.gray
+     typ == "oi_volume"  ? col_vol   :
+     typ == "charm_flip" ? color.new(color.orange, 30) :
+     typ == "vanna_flip" ? color.new(color.fuchsia, 30) :
+     (typ == "exp_move_hi" or typ == "exp_move_lo") ? col_expmv : color.gray
 
 f_oiStyle(typ) =>
     typ == "max_pain"    ? line.style_dashed :
-     typ == "gamma_flip" ? line.style_dotted : line.style_solid
+     typ == "gamma_flip" or typ == "charm_flip" or typ == "vanna_flip" ? line.style_dotted :
+     (typ == "exp_move_hi" or typ == "exp_move_lo") ? line.style_dotted : line.style_solid
 
 if barstate.islast
     // ── Cleanup (inline, proven pattern) ──────────────────────────────────────

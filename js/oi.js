@@ -3,6 +3,7 @@ import { kvGet, kvSet } from './utils.js';
 import { wallStrengthTier, oiSkew, oiConcentration, clusterStrikes } from './oiConfluence.js';
 import { gammaFlip } from './gammaFlow.js';
 import { charmVannaExposure } from './gammaGreeks.js';
+import { expectedMove, ivDynamics, riskReversal, vannaState } from './ivMetrics.js';
 
 // ── Storage ──────────────────────────────────────────────────────────────────
 
@@ -32,7 +33,7 @@ function _trimStoreForLocal(store, { rawText = false, profile = false } = {}) {
   for (const [k, v] of Object.entries(store)) {
     const c = { ...v };
     if (rawText) { delete c.rawOI; delete c.rawChg; delete c.rawVol; delete c.rawIV; }
-    if (profile) delete c.gexProfile;
+    if (profile) { delete c.gexProfile; delete c.ivSmile; }
     if (c.expiries) {
       const ex = {};
       for (const [el, ev] of Object.entries(c.expiries)) {
@@ -618,7 +619,9 @@ export function oiParseVolume(raw) {
 // guard also accepts an already-decimal source. Rows with no settle vol are dropped.
 export function parseIVSettlement(raw) {
   if (!raw || !raw.trim()) return null;
-  const out = { strikes: [], iv: [], calls: [], puts: [], dte: null };
+  // callPx/putPx = settle option PRICES (for the ATM straddle → expected move);
+  // ivPrior = yesterday's IV (for the per-strike IV change / skew dynamics).
+  const out = { strikes: [], iv: [], ivPrior: [], calls: [], puts: [], callPx: [], putPx: [], dte: null };
   // Auto-read DTE from the QuikStrike title line "… OG4N6 (0.11 DTE) vs 4057.3 …"
   // (fractional allowed) so the expiry's time-to-expiry needs no manual entry.
   const dm = raw.match(/(-?\d*\.?\d+)\s*DTE/i);
@@ -630,8 +633,12 @@ export function parseIVSettlement(raw) {
     const strike = num(3), ivRaw = num(7);
     if (!Number.isFinite(strike) || strike <= 0) continue;       // skips the two header rows
     if (!Number.isFinite(ivRaw) || ivRaw <= 0) continue;         // no settle vol at this strike
+    const ivpRaw = num(8);
     out.strikes.push(strike);
     out.iv.push(ivRaw > 1 ? ivRaw / 100 : ivRaw);                // 39.49% → 0.3949 (decimal source passes through)
+    out.ivPrior.push(Number.isFinite(ivpRaw) && ivpRaw > 0 ? (ivpRaw > 1 ? ivpRaw / 100 : ivpRaw) : null);
+    out.callPx.push(Number.isFinite(num(2)) ? num(2) : null);    // call settle price
+    out.putPx.push(Number.isFinite(num(4)) ? num(4) : null);     // put settle price
     out.calls.push(Number.isFinite(num(10)) ? num(10) : 0);
     out.puts.push(Number.isFinite(num(12)) ? num(12) : 0);
   }
@@ -913,7 +920,7 @@ export function processOIData() {
   // table). Optional — only when the IV box is filled. Self-consistent: uses the IV
   // paste's OWN strike/OI (one expiry) + the DTE field for T + the real per-strike
   // smile. Absent IV → no greeksFlow (charm/vanna simply not shown).
-  let greeksFlow = null;
+  let greeksFlow = null, expMove = null, ivDyn = null, ivRR = null, ivSmile = null;
   if (rawIV && rawIV.trim()) {
     const ivp = parseIVSettlement(rawIV);
     // DTE is auto-read: the IV paste's own header (its exact expiry) wins, then the OI
@@ -921,11 +928,20 @@ export function processOIData() {
     const dteDays = (ivp && Number.isFinite(ivp.dte)) ? ivp.dte
       : (primaryExpiry?.dte ?? (Number.isFinite(dteEff) ? dteEff : (Number.isFinite(dteRaw) ? dteRaw : null)));
     const dteYrs = dteDays > 0 ? dteDays / 365 : null;
-    if (ivp && dteYrs > 0) {
-      const ivBy = new Map(ivp.strikes.map((s, i) => [s, ivp.iv[i]]));
-      const ex = charmVannaExposure(ivp.strikes, ivp.calls, ivp.puts, spot, { sigmaFn: k => ivBy.get(k), T: dteYrs, mult: cs });
-      if (ex) greeksFlow = { cex: ex.cex, vex: ex.vex, charmFlip: ex.charmFlip, vannaFlip: ex.vannaFlip,
-        source: 'iv', ivStrikes: ivp.strikes.length, dteDays };
+    if (ivp) {
+      // Expected move (ATM straddle) + IV dynamics + risk reversal — off the SAME paste.
+      expMove = expectedMove(ivp.strikes, ivp.callPx, ivp.putPx, spot, { dte: dteDays });
+      ivDyn = ivDynamics(ivp.strikes, ivp.iv, ivp.ivPrior, spot);
+      ivRR = riskReversal(ivp.strikes, ivp.iv, spot);
+      ivSmile = { strikes: ivp.strikes, iv: ivp.iv, ivPrior: ivp.ivPrior };   // for the smile-curve viz
+
+      if (dteYrs > 0) {
+        const ivBy = new Map(ivp.strikes.map((s, i) => [s, ivp.iv[i]]));
+        const ex = charmVannaExposure(ivp.strikes, ivp.calls, ivp.puts, spot, { sigmaFn: k => ivBy.get(k), T: dteYrs, mult: cs });
+        if (ex) greeksFlow = { cex: ex.cex, vex: ex.vex, charmFlip: ex.charmFlip, vannaFlip: ex.vannaFlip,
+          source: 'iv', ivStrikes: ivp.strikes.length, dteDays,
+          vanna: vannaState(ex.vex, ivDyn?.atmChg != null ? ivDyn.atmChg / 100 : null) };
+      }
     }
   }
 
@@ -1022,6 +1038,10 @@ export function processOIData() {
     maxPain, exposures, topLevels, gexProfile,
     gammaFlip: gammaFlip(gexProfile),   // zero-GEX crossing (regime boundary) — one source for brief/export/bot/dashboard
     greeksFlow,   // charm/vanna exposure from a pasted IV surface (null unless the IV box is filled)
+    expectedMove: expMove,   // ATM straddle → option-implied ± range to expiry
+    ivDynamics: ivDyn,       // ATM IV change + skew steepening (tail-hedge demand)
+    riskReversal: ivRR,      // OTM put−call IV skew (directional sentiment tilt)
+    ivSmile,                 // per-strike IV (+ prior) for the smile-curve viz — render-only
     callWall: _cwHead?.strike ?? 0, putWall: _pwHead?.strike ?? 0,
     callWallOI: _cwHead?.oi ?? 0,   putWallOI: _pwHead?.oi ?? 0,
     callWalls, putWalls, skew, volumeMagnets, concentration, clusters,
@@ -1162,6 +1182,43 @@ export function renderGammaChart(gexProfile, spot, pair, maxPain) {
     </div>
     ${rows}
     ${flipNote}
+  </div>`;
+}
+
+// IV-smile curve: per-strike implied vol (today vs prior) as a compact SVG line
+// chart — the shape shows the SKEW (asymmetry), the gap between curves shows which
+// strikes' IV moved (steepening). ATM + flip references drawn. render-only.
+export function renderSmileChart(smile, spot, pair) {
+  const S = smile?.strikes, IV = smile?.iv, IVp = smile?.ivPrior;
+  if (!Array.isArray(S) || S.length < 3) return '';
+  const order = S.map((s, i) => i).sort((a, b) => S[a] - S[b]);
+  const xs = order.map(i => S[i]);
+  const today = order.map(i => IV[i]);
+  const prior = order.map(i => (Number.isFinite(IVp?.[i]) ? IVp[i] : null));
+  const allV = today.concat(prior.filter(Number.isFinite));
+  const vmin = Math.min(...allV), vmax = Math.max(...allV);
+  const W = 320, H = 120, pad = 6;
+  const xmin = xs[0], xmax = xs[xs.length - 1];
+  const px = s => pad + (xmax === xmin ? 0 : (s - xmin) / (xmax - xmin)) * (W - 2 * pad);
+  const py = v => (H - pad) - (vmax === vmin ? 0 : (v - vmin) / (vmax - vmin)) * (H - 2 * pad);
+  const path = (vals) => vals.map((v, k) => v == null ? null : `${px(xs[k]).toFixed(1)},${py(v).toFixed(1)}`)
+    .filter(Boolean).join(' ');
+  const atmX = spot > 0 ? px(Math.max(xmin, Math.min(xmax, spot))) : null;
+  const fmtV = v => (v * 100).toFixed(1);
+  return `
+  <div class="oi-gamma-section">
+    <div class="oi-gamma-hd">IV Smile (implied vol per strike)
+      <div class="oi-gamma-hd-right">
+        <div class="oi-gamma-legend"><div class="oi-gamma-legend-dot" style="background:var(--teal)"></div>today</div>
+        <div class="oi-gamma-legend"><div class="oi-gamma-legend-dot" style="background:var(--text3)"></div>prior</div>
+      </div>
+    </div>
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;background:var(--s2);border-radius:6px">
+      ${atmX != null ? `<line x1="${atmX.toFixed(1)}" y1="${pad}" x2="${atmX.toFixed(1)}" y2="${H - pad}" stroke="var(--gold)" stroke-width="1" stroke-dasharray="3 3"/>` : ''}
+      ${prior.some(Number.isFinite) ? `<polyline points="${path(prior)}" fill="none" stroke="var(--text3)" stroke-width="1.2" stroke-dasharray="3 2"/>` : ''}
+      <polyline points="${path(today)}" fill="none" stroke="var(--teal)" stroke-width="1.6"/>
+    </svg>
+    <div style="font-size:9px;color:var(--text3);margin-top:4px">IV ${fmtV(vmin)}%–${fmtV(vmax)}% · strikes ${oiFmtStrike(xmin, pair)}–${oiFmtStrike(xmax, pair)} · gold line = spot. Curve asymmetry = skew; gap to the prior curve = which strikes' IV moved (steepening).</div>
   </div>`;
 }
 
@@ -1343,6 +1400,7 @@ export function renderOICard(inst) {
   </div>
 
   ${renderGammaChart(gexProfile, spot, pair, maxPain)}
+  ${inst.ivSmile ? renderSmileChart(inst.ivSmile, spot, pair) : ''}
 
   <div class="oi-skew">
     <div class="oi-skew-hd">
