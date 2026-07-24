@@ -116,7 +116,12 @@ export function buildOILevelText(store, { topWalls = 2, generated = null } = {})
       lines.push(`· term: ${ts.map(e => `${e.dte}DTE mp${Number(e.maxPain).toFixed(dp)}`).join('  ')}${roll.rollingSoon ? ' · near rolls off soon' : ''}`);
     }
     const gk = inst.greeksFlow;
-    if (gk) lines.push(`· charm/vanna (IV ${gk.dteDays}DTE): CEX ${gk.cex >= 0 ? '+' : ''}${gk.cex}${gk.charmFlip != null ? ` cflip${Number(gk.charmFlip).toFixed(dp)}` : ''} · VEX ${gk.vex >= 0 ? '+' : ''}${gk.vex}${gk.vannaFlip != null ? ` vflip${Number(gk.vannaFlip).toFixed(dp)}` : ''}${gk.vanna ? ` · vanna ${gk.vanna.state}${gk.vanna.firing ? ' firing' : ''}` : ''}`);
+    if (gk) {
+      lines.push(`· charm/vanna (IV ${gk.dteDays}DTE): CEX ${gk.cex >= 0 ? '+' : ''}${gk.cex} · VEX ${gk.vex >= 0 ? '+' : ''}${gk.vex}${gk.vanna ? ` · vanna ${gk.vanna.state}${gk.vanna.firing ? ' firing' : ''}` : ''}`);
+      // charm/vanna flip levels as drawable OI lines (the regime boundaries for each).
+      if (gk.charmFlip != null) lines.push(`OI ${Number(gk.charmFlip).toFixed(dp)} : charm_flip`);
+      if (gk.vannaFlip != null) lines.push(`OI ${Number(gk.vannaFlip).toFixed(dp)} : vanna_flip`);
+    }
     // Expected-move band as two OI-parseable levels so the indicator can draw the
     // option-implied range live; plus the directional risk-reversal tilt (EOD data).
     const em = inst.expectedMove;
