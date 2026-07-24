@@ -45,6 +45,21 @@ OI/gamma walls (the *why* a level holds), the rate-differential compass, the
 catalyst calendar — and re-run this exact A/B harness. Those are separate claims
 to be proven on their own data.
 
+## Follow-up: Monday-weekly levels (tested 2026-07-24)
+
+Hypothesis (user): higher-timeframe **Monday–Monday weekly** range levels are
+"usually stronger" — would they help? Wired as `levelSource: asia|monday|both`
+(stop scaled to each source's own range) and re-ran the 26-pair A/B.
+
+**Decisively no, for this intraday engine.** Monday levels pooled **−0.367 R** vs
+Asia **−0.119 R** (OOS t = −96), **worse on 0/26 pairs, positive on 0/26**; top-1
+selection can't rescue them (−0.072 R vs Asia +0.05 R); every multiple bucket
+≈ −0.35 R. Mechanistic reason: the engine resolves every trade **within the same
+day** (06:00–20:00), but weekly levels sit far from price and are *swing-timeframe*
+levels that react over days — an intraday fade of them mostly marks-to-close or
+stops out before any weekly reaction. The belief may still hold for a **multi-day
+hold** (a different exit engine, not built). Capability kept; default `asia`.
+
 ## Reproduce
 
 ```

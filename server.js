@@ -13389,6 +13389,7 @@ app.post('/api/range-ext/run', (req, res) => {
     tpMode: b.tpMode === 'rr' ? 'rr' : 'structural',
     tpR: parseFloat(b.tpR) || 1.5,
     maxTradeMult: parseFloat(b.maxTradeMult) || 4.0,
+    levelSource: ['asia', 'monday', 'both'].includes(b.levelSource) ? b.levelSource : 'asia',
     tradeHourFrom: parseInt(b.tradeHourFrom) || 6,
     tradeHourTo: parseInt(b.tradeHourTo) || 20,
     sessionTz: b.sessionTz === 'london' ? 'london' : 'utc',

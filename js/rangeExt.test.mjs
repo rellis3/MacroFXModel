@@ -108,15 +108,31 @@ test('selectLevels: floor + top-N ranking (14 → few)', () => {
 const ASIA = { low: 1.1000, high: 1.1030, range: 0.0030 };   // 30-pip Asia range
 const PIP = 0.0001;
 
-test('buildCandidates: extensions only, mult cap, zone + alignment', () => {
+test('buildLadder: extensions only, mult cap, zone + alignment + source tag', () => {
   const prev = { low: 1.0998, high: 1.1030, range: 0.0032 };  // prior Asia for alignment
-  const cands = ENG.buildCandidates(ASIA, prev, PIP, { maxTradeMult: 4, alignTolPips: 2, tightPct: 10 });
+  const cands = ENG.buildLadder(ASIA, prev, PIP, 'asia', { maxTradeMult: 4, alignTolPips: 2, tightPct: 10 });
   assert.ok(cands.length > 0);
   assert.ok(cands.every((c) => c.zone !== 'inside'));          // extensions only
   assert.ok(cands.every((c) => c.mult >= 0.25 && c.mult <= 4));// tradeable window
   // a level above the range is zone 'above'; below is 'below'
   assert.ok(cands.some((c) => c.zone === 'above') && cands.some((c) => c.zone === 'below'));
   assert.ok(cands.every((c) => ['tight', 'strong', 'none'].includes(c.alignment)));
+  assert.ok(cands.every((c) => c.source === 'asia' && c.srcRange === ASIA.range));
+});
+
+test('buildCandidates: levelSource asia|monday|both tags sources, scales stop to own range', () => {
+  const asia = ASIA, prevAsia = { low: 1.0998, high: 1.1030, range: 0.0032 };
+  const monday = { low: 1.0900, high: 1.1100, range: 0.0200 };   // weekly range ≫ daily
+  const prevMon = { low: 1.0880, high: 1.1090, range: 0.0210 };
+  const both = ENG.buildCandidates({ asia, prevAsia, monday, prevMonday: prevMon }, PIP,
+    { levelSource: 'both', maxTradeMult: 4, alignTolPips: 2, tightPct: 10 });
+  assert.ok(both.some((c) => c.source === 'asia') && both.some((c) => c.source === 'monday'));
+  // Monday-sourced levels carry the (much larger) weekly range for stop scaling
+  assert.ok(both.filter((c) => c.source === 'monday').every((c) => c.srcRange === monday.range));
+  // 'asia' only → no monday levels
+  const asiaOnly = ENG.buildCandidates({ asia, prevAsia, monday, prevMonday: prevMon }, PIP,
+    { levelSource: 'asia', maxTradeMult: 4, alignTolPips: 2, tightPct: 10 });
+  assert.ok(asiaOnly.every((c) => c.source === 'asia'));
 });
 
 test('buildOrder: fade = limit toward range; follow = stop through level', () => {

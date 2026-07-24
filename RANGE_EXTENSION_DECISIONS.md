@@ -33,9 +33,18 @@
 | D4 | **Weights are priors, exposed & ablatable — none fit to trade outcomes.** | Avoid overfitting the selector. |
 | D5 | **Cost realism matters more than the headline.** Flat-cost top-1 looked positive; realistic per-pair spreads killed it (survivors only in wide-spread crosses). | The decisive honesty test — reported as the verdict. |
 | D6 | **Verdict = NULL for tradeable edge**, kept as a costed harness + brain. Alignment zones & follow-direction refuted; base loses on all 26 pairs. | Honest result; ranker works, no edge to concentrate. |
+| D7 | **Wired Monday-weekly as an optional 2nd level source** (`levelSource: asia\|monday\|both`), stop scaled to each source's own range, tagged per trade. **Tested the user's "weekly levels are stronger" hypothesis — decisively refuted for THIS intraday engine:** Monday levels pooled **−0.367 R** vs Asia −0.119 R (t −96), **worse on 0/26 pairs, positive on 0/26**, and top-1 selection can't rescue them (Monday −0.072 R vs Asia +0.05 R). Mechanistic reason: this engine resolves every trade **within the same day** (06:00–20:00), but weekly levels sit far from price and are *swing-timeframe* levels that react over days — an intraday fade of them mostly EOD-marks or stops out before any weekly reaction. Kept the capability (default `asia`); "weekly levels are stronger" may hold for a **multi-day hold** (a different engine, G4). | User asked 2026-07-24; tested rather than guessed. |
 
 ## C. Known gaps / open items
 
-- **G1 — Monday–Monday weekly range NOT included.** The engine uses only today's + yesterday's **Asia** session. The `sessionRanges` brick already exports `buildMondayRanges`/`mondayForDay`/`prevMonday` (ported from the existing engines, which support `levelSource: asia | monday | both`) but the range-ext engine doesn't wire it in. The education doesn't mention it; the rest of the platform does. **Small add if we want Monday-weekly levels + Monday-vs-Asia / week-over-week confluence as extra level sources.** ← *raised by user 2026-07-24.*
+- **G1 — Monday–Monday weekly range: DONE + tested (see D7).** Now wired as
+  `levelSource: asia | monday | both`. Result: Monday levels are decisively worse
+  intraday (−0.367 R, 0/26 pairs). Default stays `asia`.
+- **G4 — the fair test of "weekly levels are stronger" is a MULTI-DAY HOLD.** This
+  engine is single-day (fills+exit inside 06:00–20:00). Weekly levels are swing
+  levels; testing them properly means letting a trade live for days with a
+  weekly-scale stop/target — a different exit engine. Not built. No evidence yet
+  it would be positive (the base is a null), but it's the honest way to test the
+  belief.
 - **G2 — Macro/OI conditioners not sourced** (sandbox has OANDA mids only): CME OI/gamma walls, rate-spread compass, catalyst calendar, COT. These are the only honest path to a *positive* version; harness is ready to test them.
 - **G3 — Session-range brick copies not migrated** — `rangeFibEngine`/`asiaRangeEngine` still carry private copies (LEGO drift #10).

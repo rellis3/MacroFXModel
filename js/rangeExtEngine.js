@@ -32,6 +32,7 @@ import { FIB_LEVELS, KEY_LEVELS, calcFibs } from './fibProjection.js';
 import {
   dayStartEpoch, isoDate, eachDate,
   buildAsiaSessions, prevSession,
+  buildMondayRanges, mondayForDay, prevMonday,
 } from './sessionRanges.js';
 import { dayContext, scoreLevel, selectLevels, DEFAULT_WEIGHTS } from './rangeExtConfidence.js';
 import { walkBars } from './forecastCore.js';
@@ -108,22 +109,28 @@ function buildDailyFeatures(daily, { atrPeriod = 14, regimeWindow = 252, dtWindo
 // the TRADEABLE ladder to |mult| ≤ maxTradeMult (a 4× Asia extension already ≈ a
 // full expected daily range; beyond that is un-hittable intraday noise — and
 // dropping it is the first cut of the "14 levels is too many" problem).
-function buildCandidates(asia, prevAsia, pip, opts) {
+// Build the extension ladder off ONE range (`rng`), tagged with `source`, with
+// two-session alignment vs the prior same-source range (`prevRng`). Each cand
+// carries `srcRange` so the caller can scale its stop to the range it came from
+// (Monday-weekly ranges are far bigger than daily Asia — a shared stop would be
+// unfair). Emits only genuine extensions (outside the range), |mult| in window.
+function buildLadder(rng, prevRng, pip, source, opts) {
   const { maxTradeMult = 4.0, alignTolPips = 2.0, tightPct = 10.0, fibLevels = FIB_LEVELS } = opts;
-  const above = asia.high + pip, below = asia.low - pip;
-  const tol = (asia === null ? 0 : alignTolPips) * pip;
+  if (!rng || !(rng.range > pip * 5)) return [];
+  const above = rng.high + pip, below = rng.low - pip;
+  const tol = alignTolPips * pip;
   const tightTol = tol * (tightPct / 100);
-  const prevPrices = prevAsia ? fibLevels.map((lv) => prevAsia.low + prevAsia.range * lv) : [];
+  const prevPrices = prevRng ? fibLevels.map((lv) => prevRng.low + prevRng.range * lv) : [];
 
   const cands = [];
-  for (const f of calcFibs(asia.low, asia.range, fibLevels)) {
+  for (const f of calcFibs(rng.low, rng.range, fibLevels)) {
     const mult = Math.abs(f.level);
     if (mult < 0.25 || mult > maxTradeMult) continue;   // tradeable window only
     const price = f.price;
     const zone = price >= above ? 'above' : price <= below ? 'below' : 'inside';
     if (zone === 'inside') continue;                     // extensions only
 
-    // two-session alignment (today's level vs nearest previous-Asia level)
+    // two-session alignment (this level vs nearest prior same-source level)
     let alignment = 'none', alignDistPips = null;
     if (prevPrices.length) {
       let best = Infinity;
@@ -131,9 +138,23 @@ function buildCandidates(asia, prevAsia, pip, opts) {
       alignDistPips = +(best / pip).toFixed(2);
       alignment = best <= tightTol ? 'tight' : best <= tol ? 'strong' : 'none';
     }
-    cands.push({ level: f.level, mult, price, zone, isKey: f.isKey, alignment, alignDistPips });
+    cands.push({ level: f.level, mult, price, zone, isKey: f.isKey, alignment, alignDistPips,
+                 source, srcRange: rng.range });
   }
   return cands;
+}
+
+// Orchestrate the requested level source(s). `levelSource` = 'asia' | 'monday' |
+// 'both'. Asia levels align vs the previous Asia session; Monday levels vs the
+// previous Monday.
+function buildCandidates(sources, pip, opts) {
+  const { levelSource = 'asia' } = opts;
+  const out = [];
+  if (levelSource === 'asia' || levelSource === 'both')
+    out.push(...buildLadder(sources.asia, sources.prevAsia, pip, 'asia', opts));
+  if ((levelSource === 'monday' || levelSource === 'both') && sources.monday)
+    out.push(...buildLadder(sources.monday, sources.prevMonday, pip, 'monday', opts));
+  return out;
 }
 
 // ── Build one trade's order geometry (fade or follow) ─────────────────────────
@@ -191,22 +212,25 @@ export async function runPairRangeExt(pairKey, opts = {}, m1Dir = BT_M1_DIR) {
     maxTradeMult = 4.0,
     alignTolPips = null,       // default per-instrument below
     tightPct = 10.0,
+    levelSource = 'asia',      // 'asia' | 'monday' | 'both'
+    mondayTfMin = 15,
     weights = DEFAULT_WEIGHTS,
     sessionTz = 'utc',
     progressCb = null,
   } = opts;
 
   const cached = _pairCache.get(pairKey);
-  let packed, asiaSessions, daily, dailyFeat;
+  let packed, asiaSessions, daily, dailyFeat, mondayRanges;
   if (cached && opts._reuse !== false) {
-    ({ packed, asiaSessions, daily, dailyFeat } = cached);
+    ({ packed, asiaSessions, daily, dailyFeat, mondayRanges } = cached);
   } else {
     packed = await loadM1ForPair(pairKey, m1Dir);
     if (!packed) throw new Error(`No M1 data for ${pairKey}`);
     asiaSessions = buildAsiaSessions(packed, sessionTz, 6, 5);
+    mondayRanges = buildMondayRanges(packed, sessionTz, mondayTfMin);
     daily = buildDailyBars(packed);
     dailyFeat = buildDailyFeatures(daily);
-    _pairCache.set(pairKey, { packed, asiaSessions, daily, dailyFeat });
+    _pairCache.set(pairKey, { packed, asiaSessions, daily, dailyFeat, mondayRanges });
   }
 
   const inst = instrument(pairKey);
@@ -238,8 +262,15 @@ export async function runPairRangeExt(pairKey, opts = {}, m1Dir = BT_M1_DIR) {
     const df = dailyFeat.get(asia.date) ?? { volRegimePct: 0.5, dayTypeT: 0 };
     const dayFeat = { volRegimePct: df.volRegimePct, dayTypeT: df.dayTypeT, asiaRangeRatio };
 
-    // Candidate levels
-    const cands = buildCandidates(asia, prevAsia, pip, { maxTradeMult, alignTolPips: alignTol, tightPct });
+    // Monday-weekly range for this day (this week's Monday; prev-Monday for its
+    // alignment). Only used when levelSource includes 'monday'.
+    const monday = (levelSource !== 'asia') ? mondayForDay(mondayRanges, asia.epoch) : null;
+    const prevMon = monday ? prevMonday(mondayRanges, monday.epoch) : null;
+
+    // Candidate levels (Asia and/or Monday), each tagged with its source + range
+    const cands = buildCandidates(
+      { asia, prevAsia, monday, prevMonday: prevMon }, pip,
+      { levelSource, maxTradeMult, alignTolPips: alignTol, tightPct });
     if (!cands.length) { processed++; continue; }
 
     // ── SELECTION ──────────────────────────────────────────────────────────
@@ -262,9 +293,13 @@ export async function runPairRangeExt(pairKey, opts = {}, m1Dir = BT_M1_DIR) {
     }
     if (!chosen.length) { processed++; continue; }
 
-    // ── Geometry (SL + ladder for structural TP) ─────────────────────────────
-    const slDist = Math.max(asia.range * slMult, minSlPips * pip);
-    const ladderPrices = cands.map((c) => c.price).sort((a, b) => a - b);
+    // ── Geometry (SL + ladder for structural TP), per source ─────────────────
+    // Each trade's stop scales to the range it came from (Monday-weekly ≫ daily
+    // Asia), so R is comparable across sources. Structural TP targets the next
+    // level from the SAME source's ladder.
+    const ladderBySource = {};
+    for (const c of cands) (ladderBySource[c.source] ??= []).push(c.price);
+    for (const k in ladderBySource) ladderBySource[k].sort((a, b) => a - b);
 
     // ── Trade window bars (resampled) ────────────────────────────────────────
     const from = asia.epoch + tradeHourFrom * 3600;
@@ -276,6 +311,8 @@ export async function runPairRangeExt(pairKey, opts = {}, m1Dir = BT_M1_DIR) {
     const refOpen = win[0].open;
 
     for (const c of chosen) {
+      const slDist = Math.max((c.srcRange ?? asia.range) * slMult, minSlPips * pip);
+      const ladderPrices = ladderBySource[c.source] ?? [];
       const ord = buildOrder(c, c.direction, { asia, slDist, pip, tpMode, tpR, tpBufPix: tpBufPips * pip, ladderPrices });
       if (!ord) continue;
       const res = walkBars(win, ord.entry, ord.tp, ord.sl, ord.isBuy, ord.entryType, refOpen);
@@ -308,6 +345,8 @@ export async function runPairRangeExt(pairKey, opts = {}, m1Dir = BT_M1_DIR) {
         side: ord.side,
         strategy_dir: c.direction,
         outcome: res.outcome,
+        source: c.source,
+        src_range_pips: +((c.srcRange ?? asia.range) / pip).toFixed(1),
         fib_level: c.level,
         mult: +c.mult.toFixed(3),
         is_key: c.isKey,
@@ -372,4 +411,4 @@ export async function runRangeExtBacktest(opts = {}, pairs = RANGE_EXT_INSTRUMEN
   return { trades: all, log };
 }
 
-export const _test = { buildCandidates, buildOrder, buildDailyFeatures, buildDailyBars, median };
+export const _test = { buildLadder, buildCandidates, buildOrder, buildDailyFeatures, buildDailyBars, median };
