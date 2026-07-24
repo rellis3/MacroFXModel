@@ -271,6 +271,12 @@ function renderGammaFlow(inst, d){
   }
   if(gf?.drift?.toward) bits.push(`<span class="chip" style="color:var(--amber)">⚠ flip migrating toward spot — regime change loading</span>`);
   if(gf?.rolloff) bits.push(`<span class="chip">${gf.rolloff.nearDTE}DTE = ${Math.round(gf.rolloff.nearShare*100)}% OI${gf.rolloff.rollingSoon?' · rolls off soon':''}</span>`);
+  const gk = inst.greeksFlow;
+  if(gk){
+    bits.push(`<span class="chip" title="charm = dDelta/dtime — the clock/OpEx hedging (pin tightens into expiry, releases after)">charm CEX ${gk.cex>=0?'+':''}${gk.cex}${gk.charmFlip!=null?` · flip ${fmt(gk.charmFlip,d)}`:''}</span>`);
+    bits.push(`<span class="chip" title="vanna = dDelta/dvol — vol-conditional bias; as IV falls, +VEX ⇒ mechanical bid">vanna VEX ${gk.vex>=0?'+':''}${gk.vex}${gk.vannaFlip!=null?` · flip ${fmt(gk.vannaFlip,d)}`:''}</span>`);
+    bits.push(`<span class="chip" style="color:var(--text3)">greeks: real IV · ${gk.dteDays}DTE · ${gk.ivStrikes} strikes</span>`);
+  }
   let term='';
   if(Array.isArray(ts) && ts.length>1){
     const rows = ts.slice().sort((a,b)=>a.dte-b.dte).slice(0,6).map(e =>

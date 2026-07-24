@@ -1798,7 +1798,7 @@ async function _injectServerContext(pair, s) {
           const per = hk ? hist[hk] : null;
           if (per) drift = flipDrift(Object.keys(per).sort().slice(-10).map(dt => ({ date: dt, flip: per[dt]?.gammaFlip, spot: per[dt]?.spot })));
         } catch {}
-        if (flip != null || rolloff) s.oiGamma = { flip: flip ?? null, dist, drift, rolloff };
+        if (flip != null || rolloff) s.oiGamma = { flip: flip ?? null, dist, drift, rolloff, greeks: inst.greeksFlow ?? null };
       }
     } catch { /* left absent — prompt tolerates it */ }
   }
@@ -1845,7 +1845,8 @@ Aggregate GEX: ${s.oi.gex ?? 'N/A'}  |  DEX: ${s.oi.dex ?? 'N/A'}  ->  ${s.oi.ge
 Gamma flip level: ${s.oiGamma?.flip ?? s.oi.gammaFlip ?? 'N/A'}${s.oiGamma?.dist ? `
 Distance to flip (vol read): spot ${s.oiGamma.dist.side === 'positive' ? 'ABOVE' : s.oiGamma.dist.side === 'negative' ? 'BELOW' : 'AT'} the flip by ${s.oiGamma.dist.atr != null ? `${Math.abs(s.oiGamma.dist.atr)} ATR` : `${Math.abs(s.oiGamma.dist.pct)}%`} → ${s.oiGamma.dist.side === 'positive' ? '+gamma (dampening / pin regime)' : s.oiGamma.dist.side === 'negative' ? '−gamma (amplifying / breakout regime)' : 'at the boundary'}${s.oiGamma.dist.near ? ' · NEAR the flip — regime unstable, one push from flipping' : ' — deeper = stronger regime'}` : ''}${s.oiGamma?.drift?.toward ? `
 Flip drift: migrating TOWARD spot (${s.oiGamma.drift.fromDate}→${s.oiGamma.drift.toDate}, gap ${s.oiGamma.drift.gapPrev}→${s.oiGamma.drift.gapNow}) — a regime change may be loading` : ''}${s.oiGamma?.rolloff ? `
-OpEx roll-off: nearest expiry ${s.oiGamma.rolloff.nearDTE}DTE holds ${Math.round(s.oiGamma.rolloff.nearShare * 100)}% of OI${s.oiGamma.rolloff.rollingSoon ? ' — rolls off SOON, the near pin releases after' : ''}${s.oiGamma.rolloff.pinShift != null ? ` · next expiry (${s.oiGamma.rolloff.nextDTE}DTE) pins ${s.oiGamma.rolloff.nextMaxPain} (shift ${s.oiGamma.rolloff.pinShift >= 0 ? '+' : ''}${s.oiGamma.rolloff.pinShift})` : ''}` : ''}${s.oi.concentration ? `
+OpEx roll-off: nearest expiry ${s.oiGamma.rolloff.nearDTE}DTE holds ${Math.round(s.oiGamma.rolloff.nearShare * 100)}% of OI${s.oiGamma.rolloff.rollingSoon ? ' — rolls off SOON, the near pin releases after' : ''}${s.oiGamma.rolloff.pinShift != null ? ` · next expiry (${s.oiGamma.rolloff.nextDTE}DTE) pins ${s.oiGamma.rolloff.nextMaxPain} (shift ${s.oiGamma.rolloff.pinShift >= 0 ? '+' : ''}${s.oiGamma.rolloff.pinShift})` : ''}` : ''}${s.oiGamma?.greeks ? `
+Charm/vanna (from pasted IV surface, ${s.oiGamma.greeks.dteDays}DTE): net CEX ${s.oiGamma.greeks.cex >= 0 ? '+' : ''}${s.oiGamma.greeks.cex} (charm = the clock/OpEx hedging — pin tightens into expiry, releases after)${s.oiGamma.greeks.charmFlip != null ? ` · charm flip ${s.oiGamma.greeks.charmFlip}` : ''}; net VEX ${s.oiGamma.greeks.vex >= 0 ? '+' : ''}${s.oiGamma.greeks.vex} (vanna = vol-conditional bias — as IV falls, +VEX ⇒ mechanical bid)${s.oiGamma.greeks.vannaFlip != null ? ` · vanna flip ${s.oiGamma.greeks.vannaFlip}` : ''}` : ''}${s.oi.concentration ? `
 Concentration: top-5 strikes = ${s.oi.concentration.top5Pct}% of OI (${s.oi.concentration.read}) — ${s.oi.concentration.read === 'concentrated' ? 'expect sharper reactions at the walls' : 'positioning dispersed, weaker wall influence'}` : ''}${(s.oi.clusters || []).length ? `
 Institutional cluster zones: ${s.oi.clusters.map(c => `${c.low}-${c.high} (${Math.round(c.totalOI / 1000)}k)`).join(', ')}` : ''}${(s.oi.volumeMagnets || []).length ? `
 Volume magnets (today's activity, distinct from OI): ${s.oi.volumeMagnets.map(v => v.strike).join(', ')}` : ''}${(s.oi.expiries || []).length ? `
@@ -7187,7 +7188,8 @@ async function _refreshOIBotZones() {
       const gex = inst.exposures?.gex ?? 0;
       instruments[key] = { spot: inst.spot ?? null, maxPain: inst.maxPain ?? null,
         regime: gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : 'NEUTRAL', zones, zoneCount: zones.length, stale,
-        gammaFlow, termStructure: Array.isArray(inst.termStructure) ? inst.termStructure : null };
+        gammaFlow, termStructure: Array.isArray(inst.termStructure) ? inst.termStructure : null,
+        greeksFlow: inst.greeksFlow ?? null };
       if (stale) console.warn(`[oi-bot] ${key}: ${stale} — skipping (no zones)`);
     }
     await kv.put('oi_bot_zones', JSON.stringify({ data: { strategy: 'oi-bot', generatedAt: new Date().toISOString(), instruments }, timestamp: Date.now() }));

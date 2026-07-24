@@ -115,6 +115,8 @@ export function buildOILevelText(store, { topWalls = 2, generated = null } = {})
       const ts = (inst.termStructure || []).slice().sort((a, b) => a.dte - b.dte).slice(0, 4);
       lines.push(`· term: ${ts.map(e => `${e.dte}DTE mp${Number(e.maxPain).toFixed(dp)}`).join('  ')}${roll.rollingSoon ? ' · near rolls off soon' : ''}`);
     }
+    const gk = inst.greeksFlow;
+    if (gk) lines.push(`· charm/vanna (IV ${gk.dteDays}DTE): CEX ${gk.cex >= 0 ? '+' : ''}${gk.cex}${gk.charmFlip != null ? ` cflip${Number(gk.charmFlip).toFixed(dp)}` : ''} · VEX ${gk.vex >= 0 ? '+' : ''}${gk.vex}${gk.vannaFlip != null ? ` vflip${Number(gk.vannaFlip).toFixed(dp)}` : ''}`);
     for (const l of levels) {
       const tier = Number.isFinite(l.tier) && l.tier > 0 ? ` t${l.tier}` : '';
       lines.push(`OI ${l.price.toFixed(dp)} : ${l.type}${tier}`);
