@@ -39,7 +39,9 @@
   .sec-h{font-weight:700;font-size:14px;margin-bottom:8px;display:flex;align-items:baseline;gap:8px}
   .sec-h .n{font-family:'DM Mono',monospace;color:var(--text3);font-size:12px;font-weight:500}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
-  .zone{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:12px 13px;position:relative}
+  .zone{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:12px 13px;position:relative;cursor:pointer;transition:box-shadow .12s,border-color .12s}
+  .zone:hover{border-color:var(--border2)}
+  .zone.sel{box-shadow:0 0 0 2px var(--cyan);border-color:var(--cyan)}
   .zone.buy{border-left:3px solid var(--green)}
   .zone.sell{border-left:3px solid var(--red)}
   .zone.fired{opacity:.62}
@@ -123,6 +125,8 @@ const $ = id => document.getElementById(id);
 let _zones = null, _status = null, _trades = null, _cfg = null;
 let _inst = localStorage.getItem('oiInst') || null;
 let _chart = null, _series = null, _lines = [];
+let _focusZid = null;   // zone card the user clicked → highlighted on the chart
+let _ctx = null;        // last render context, so a card click can redraw overlays without a candle refetch
 
 // instrument → chart metadata (mirrors gold-zones _OI_INST; canonical resolveKey keys).
 const _OI_INST = {
@@ -242,7 +246,8 @@ function render(){
   renderOpen(allOpens, d);
   renderZones(zones, entered, opens, inst.spot, d);
   renderClosed(allClosed, d);
-  drawChart(m, inst, zones, entered, opens, d);
+  _ctx = { m, inst, zones, entered, opens, d };
+  drawChart();
 }
 
 // Which plan instrument does a position belong to? Scan every instrument's aliases
@@ -289,10 +294,10 @@ function renderZones(zones, entered, opens, spot, d){
   $('zones').innerHTML = zones.map(z => {
     const zid = zoneZid(z);
     const fired = entered.has(zid), isOpen = openZids.has(zid);
-    const cls = ['zone', z.side, fired?'fired':'', isOpen?'open':''].join(' ');
+    const cls = ['zone', z.side, fired?'fired':'', isOpen?'open':'', zid===_focusZid?'sel':''].join(' ');
     const dist = spot ? `${z.entry>spot?'+':''}${((z.entry-spot)).toFixed(d)}` : '';
     const mb = z.mode==='fade'?'b-fade':z.mode==='break'?'b-break':'b-maxpain';
-    return `<div class="${cls}">
+    return `<div class="${cls}" data-zid="${zid.replace(/"/g,'')}" onclick="focusZone(this)">
       <div class="zrow">
         <span class="zlabel">${z.side.toUpperCase()} <span class="badge ${mb}">${z.mode}</span></span>
         <span class="zlevel">${fmt(z.level,d)}</span>
@@ -336,7 +341,11 @@ function renderClosed(closed, dSel){
     </tr></thead><tbody>${rows}</tbody></table>`;
 }
 
-async function drawChart(m, inst, zones, entered, opens, d){
+// Fetch candles for the current instrument, then draw the overlays. Split from the
+// overlay draw so a card click can re-highlight without a candle refetch.
+async function drawChart(){
+  if(!_ctx) return;
+  const { m, inst, d } = _ctx;
   const el = $('chart');
   if(!_chart){
     _chart = LightweightCharts.createChart(el, { layout:{background:{color:'#141922'},textColor:'#9fb0c6'},
@@ -346,6 +355,11 @@ async function drawChart(m, inst, zones, entered, opens, d){
       wickUpColor:'#34d399',wickDownColor:'#f87171' });
   }
   _series.applyOptions({ priceFormat:{ type:'price', precision:d, minMove:1/Math.pow(10,d) } });
+  // Clear markers from the PREVIOUS instrument BEFORE setData. Stale markers whose times
+  // aren't in the new candles make LightweightCharts throw mid-update and leave the chart
+  // half-drawn — the "switch pair → broken candles until F5" bug. Cleared here, re-set in
+  // drawOverlays for the new instrument.
+  try{ _series.setMarkers([]); }catch{}
 
   let candles = [];
   try{
@@ -359,26 +373,35 @@ async function drawChart(m, inst, zones, entered, opens, d){
   }catch(e){}
   if(!candles.length && inst.spot){ const now=Math.floor(Date.now()/1000), buf=inst.spot*0.002;
     for(let i=80;i>=0;i--) candles.push({time:now-i*900,open:inst.spot,high:inst.spot+buf,low:inst.spot-buf,close:inst.spot}); }
-  if(candles.length) _series.setData(candles);
+  if(candles.length) try{ _series.setData(candles); }catch(e){}
 
+  drawOverlays();
+}
+
+// Draw the price lines + open-trade markers for _ctx. A clicked (focused) zone is
+// emphasised: thicker entry line, and its SL/TP become solid + LABELLED on the axis.
+function drawOverlays(){
+  if(!_ctx || !_series) return;
+  const { inst, zones, entered, opens, d } = _ctx;
   _lines.forEach(pl => { try{ _series.removePriceLine(pl); }catch{} });
   _lines = [];
   const line = (price,color,width,style,title) => { if(price!=null && isFinite(price))
-    _lines.push(_series.createPriceLine({price:+price,color,lineWidth:width,lineStyle:style,axisLabelVisible:true,title})); };
+    _lines.push(_series.createPriceLine({price:+price,color,lineWidth:width,lineStyle:style,axisLabelVisible:true,title:title||''})); };
 
-  // Planned zones — entry solid (green buy / red sell), dim if fired; SL/TP dashed.
   const openZids = new Set(opens.map(p => zidOf(p.comment)).filter(Boolean));
   for(const z of zones){
-    const fired = entered.has(zoneZid(z));
+    const zid = zoneZid(z), focus = zid===_focusZid, fired = entered.has(zid);
     const col = z.side==='buy' ? (fired?'#1f6b4f':'#34d399') : (fired?'#7a3636':'#f87171');
-    line(z.entry, col, openZids.has(zoneZid(z))?2:1, 0, `${z.side[0].toUpperCase()}·${z.mode[0]} ${fmt(z.entry,d)}`);
-    line(z.sl, '#f87171', 1, 2, null);
-    if(z.tp1!=null) line(z.tp1, '#34d399', 1, 2, null);
+    line(z.entry, col, focus?3:(openZids.has(zid)?2:1), 0, `${z.side[0].toUpperCase()}·${z.mode[0]} ${fmt(z.entry,d)}`);
+    // SL/TP: labelled + solid when the card is CLICKED (focused), else thin dashed + unlabelled
+    // so the chart isn't a wall of labels when every zone's stops are drawn.
+    line(z.sl, '#f87171', focus?2:1, focus?0:2, focus?`SL ${fmt(z.sl,d)}`:'');
+    if(z.tp1!=null) line(z.tp1, '#34d399', focus?2:1, focus?0:2, focus?`TP1 ${fmt(z.tp1,d)}`:'');
+    if(focus && z.tp2!=null) line(z.tp2, '#34d399', 1, 2, `TP2 ${fmt(z.tp2,d)}`);
   }
   if(inst.maxPain!=null) line(inst.maxPain, '#c084fc', 1, 1, `max pain ${fmt(inst.maxPain,d)}`);
   if(inst.spot!=null)   line(inst.spot,   '#facc15', 1, 1, `spot ${fmt(inst.spot,d)}`);
 
-  // Active trades — bright amber entry lines + entry markers on the chart.
   const markers = [];
   for(const p of opens){
     line(p.open_price, '#f59e0b', 2, 0, `OPEN ${p.direction} ${fmt(p.open_price,d)}`);
@@ -389,8 +412,18 @@ async function drawChart(m, inst, zones, entered, opens, d){
   try{ _series.setMarkers(markers.sort((a,b)=>a.time-b.time)); }catch{}
 }
 
-$('instSel').addEventListener('change', e => { _inst = e.target.value; try{localStorage.setItem('oiInst',_inst);}catch{} render(); });
-$('gran').addEventListener('change', () => render());
+// Click a zone card → highlight that zone (and its SL/TP, labelled) on the chart.
+// Click again to clear. No candle refetch — just redraw the overlays.
+function focusZone(el){
+  const zid = el?.dataset?.zid;
+  _focusZid = (_focusZid === zid) ? null : zid;
+  document.querySelectorAll('#zones .zone').forEach(c => c.classList.toggle('sel', c.dataset.zid === _focusZid));
+  drawOverlays();
+  $('chart')?.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+$('instSel').addEventListener('change', e => { _inst = e.target.value; _focusZid = null; try{localStorage.setItem('oiInst',_inst);}catch{} render(); });
+$('gran').addEventListener('change', () => drawChart());
 load();
 setInterval(load, 60_000);
 </script>
