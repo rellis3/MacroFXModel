@@ -1,16 +1,21 @@
 # Range-Extension Strategy — Findings (honest result)
 
-**TL;DR — the INTRADAY idea is a null, BUT a WEEKLY-level SWING variant is a
-validated survivor.** Tested on **2016–2025, 26 FX pairs + gold, real OANDA M1,
-costs on, chronological IS/OOS**. Full spec: `RANGE_EXTENSION_STRATEGY.md`. Engine:
-`js/rangeExtEngine.js`. Brain: `js/rangeExtConfidence.js`.
+**TL;DR — NULL, intraday AND swing.** Tested on **2016–2025, 26 FX pairs + gold,
+real OANDA M1, costs on, chronological IS/OOS**. Full spec:
+`RANGE_EXTENSION_STRATEGY.md`. Engine: `js/rangeExtEngine.js`. Brain:
+`js/rangeExtConfidence.js`.
 
-> **The survivor (see §"Weekly swing variant" below):** Monday-weekly range
-> extensions, top-1 level per pair-week, faded with a ~3-day hold — **+0.117 R
-> OOS (t 8), positive in BOTH IS & OOS on 21/26 pairs** even under a pessimistic
-> always-pay 1 pip/day swap. Clears the pre-registered bar. The one unquantified
-> risk is real per-pair carry/swap (needs broker data). Everything below is the
-> INTRADAY version, which is the null.
+> **⚠️ CORRECTION (2026-07-24).** An earlier version of this doc claimed a
+> "weekly swing survivor" (+0.117 R OOS). **That was WRONG — a selection-bias
+> artifact, now retracted.** The offline analysis selected the best-confidence
+> level *among the levels that FILLED*, which conditions the pick on whether price
+> reached the level over the following days — a look-ahead not available at
+> decision time. Measured honestly through the engine's own selection (rank
+> levels, commit to the top-N limit orders Monday morning, trade whatever fills),
+> the Monday-swing config is **−0.006 R OOS at top-1 (spreads only), negative at
+> top-2/3/5, and negative after any carry.** The whole range-extension family —
+> intraday and swing — is a null. See §"Weekly swing variant" for the corrected
+> numbers and the lesson.
 
 ## The bar (pre-registered)
 
@@ -66,48 +71,43 @@ levels that react over days — an intraday fade of them mostly marks-to-close o
 stops out before any weekly reaction. The belief may still hold for a **multi-day
 hold** (a different exit engine, not built). Capability kept; default `asia`.
 
-## Weekly swing variant — the survivor (validated 2026-07-24)
+## Weekly swing variant — RETRACTED (was a selection-bias artifact)
 
-The intraday nulls all shared one assumption: trades resolve inside one day. That
-structurally mismatches a **weekly** (Monday) level, which is a *swing* reaction
-point. Adding a multi-day hold (`holdDays`) and testing weekly levels on their
-native timeframe changed the result.
+The multi-day hold (`holdDays`) was added to test weekly (Monday) levels on their
+native swing timeframe. An **offline analysis** appeared to show a strong edge
+(Monday levels, top-1/pair-week, ~3-day fade: +0.19 R OOS spreads-only, +0.117 R
+under pessimistic carry, 21/26 pairs). **This was wrong and is retracted.**
 
-**Strategy:** each Monday, project fib extensions off the **Monday-weekly range**;
-score with the confidence brain; **take the single best level per pair-week**;
-**fade** it (limit → target back toward range, RR 1.5, stop 0.75× weekly range);
-**hold ~3 days**. One trade per pair per week (non-overlapping → clean stats).
+**The bug (a look-ahead).** The engine's `mode:'all'` records only trades that
+**filled**. The offline script then picked "the highest-confidence level per week
+**among those filled**." Requiring the chosen level to have filled conditions the
+selection on a *future* fact — whether price reached that extension over the next
+3 days — which you don't know when you place the order Monday morning. It also
+biases toward the favourable subset (a fade only fills if price reached the
+extreme, where mean-reversion is more likely). Classic conditioning-on-outcome.
 
-**Result (top-1/pair-week, chronological IS/OOS):**
+**The honest measure** is the engine's own `mode:'gated'` selection: rank levels
+by (no-lookahead) confidence, commit to the top-N limit orders, trade whatever
+fills. Monday levels, 3-day hold, fade, RR 1.5, **spreads only**:
 
-| cost assumption | OOS exp | OOS t | pairs +ve both IS&OOS |
-|---|---:|---:|---:|
-| spreads only | +0.19 R | 13.1 | 25/26 |
-| + 1 pip/day swap (pessimistic, always-pay) | **+0.117 R** | 8.2 | **21/26** |
-| + 2 pip/day swap | +0.047 R | 3.3 | 12/26 |
-| + 3 pip/day swap | −0.02 R | — | 6/26 |
+| selection | OOS exp | note |
+|---|---:|---|
+| top-1 / week | **−0.006 R** | breakeven; negative after any carry |
+| top-2 / week | −0.022 R | |
+| top-3 / week | −0.052 R | |
+| top-5 / week | −0.043 R | |
 
-Win rate 54–56% at RR 1.5 (breakeven 40%). Positive across **every currency
-bloc**, not one group. Robustness: the **3-day** hold is the sweet spot — 5-day
-and 10-day holds accumulate more carry and die at 1–2 pip/day; RR 1.0 works at
-zero carry but is less carry-robust than RR 1.5. **Asia (daily) levels get NO
-benefit from the hold** (still −0.12 R) — it's specifically the *weekly* levels
-that want the swing timeframe. Selection matters: pooled all-Monday-levels is
-still −0.06 R; the edge is in the **top-1 per week**, so the brain earns its keep
-here (top-1 ≫ all).
+Every size is ≤ 0 **before** carry. So carry (G5) is moot — the edge is gone at
+spreads. The multi-day hold DID help the raw Monday number (−0.37 R intraday →
+−0.03 R swing), i.e. the timeframe-match intuition was directionally right, but it
+lands at breakeven, not profit.
 
-**Why it clears the bar where the intraday version didn't:** IS-consistent
-(21–25/26 pairs both halves — vs 1/26 intraday), |t| ≫ 3, ≥30 OOS trades, beats
-baseline, and has a mechanism (weekly level traded on weekly timeframe; short
-hold minimises carry). This is not a lucky slice.
-
-**The one open risk — carry/swap.** Modelled here as a flat *always-pay* drag
-(pessimistic: a mean-reversion book earns swap ~half the time, so true net carry
-is likely lower). Real per-pair broker swap rates aren't sourceable in-sandbox.
-The edge survives to ~2 pip/day of always-pay drag; it needs real swap data +
-forward validation before it's a live strategy. **Verdict: a real, broad,
-IS-consistent backtest edge, conditional on carry — the first survivor in this
-family.**
+**Lesson (kept):** when a per-level engine records only filled trades, never
+select "the best among filled" offline — that's a fill-conditioned look-ahead.
+Selection must be measured through the engine (choose first, then fill), exactly
+as here. The same bias also inflated the *intraday* top-1 numbers elsewhere in
+this doc (they were already ≤ breakeven, so the null verdict there only
+strengthens). **Net: the range-extension family is a null, intraday and swing.**
 
 ## Reproduce
 
