@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Desk — one-page market read</title>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+:root{
+  --bg:#0b0e14; --panel:#11151f; --panel2:#161b27; --line:#1f2937;
+  --txt:#d7dce6; --dim:#8b93a5; --green:#10b981; --red:#f87171; --amber:#fbbf24;
+  --blue:#5b9dff; --purple:#c084fc;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.45 -apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}
+a{color:var(--blue);text-decoration:none} a:hover{text-decoration:underline}
+.wrap{max-width:1420px;margin:0 auto;padding:14px 18px 60px}
+header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+header h1{font-size:20px;margin:0;letter-spacing:.3px}
+header .sub{color:var(--dim);font-size:12px}
+header .nav{margin-left:auto;font-size:12px;color:var(--dim)}
+section{margin-top:16px}
+.sec-hd{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--dim);margin:0 0 6px 2px;display:flex;align-items:center;gap:8px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:10px}
+.card-hd{padding:8px 12px;border-bottom:1px solid var(--line);font-weight:600;font-size:13px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--panel2)}
+.card-hd a{font-weight:400}
+.pad{padding:10px 12px}
+.dim{color:var(--dim)} .sm{font-size:12px}
+.pos{color:var(--green)} .neg{color:var(--red)}
+.btn{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:6px;padding:3px 10px;cursor:pointer;font-size:12px}
+.btn:hover{border-color:var(--blue)}
+/* chips */
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:5px;background:var(--panel2);border:1px solid var(--line);
+  border-radius:20px;padding:2px 10px;font-size:12px;white-space:nowrap;margin:2px 3px 2px 0}
+.chip.big{font-size:14px;padding:4px 14px;font-weight:600}
+.chip small{font-weight:400;color:var(--dim)}
+.c-green{color:var(--green);border-color:rgba(16,185,129,.4)}
+.c-red{color:var(--red);border-color:rgba(248,113,113,.4)}
+.c-amber{color:var(--amber);border-color:rgba(251,191,36,.4)}
+.c-blue{color:var(--blue);border-color:rgba(91,157,255,.4)}
+.c-purple{color:var(--purple);border-color:rgba(192,132,252,.4)}
+.c-dim{color:var(--dim)}
+/* weather */
+#weather{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+#calendar{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px}
+/* story */
+.story-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.story-tldr{margin-top:6px;font-size:15px}
+.story-more{margin-top:6px}
+.story-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin:8px 0}
+.story-assets{margin-top:6px}
+/* tables */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{color:var(--dim);font-weight:500;text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);font-size:11px;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap}
+.tbl td{padding:6px 10px;border-bottom:1px solid rgba(31,41,55,.5);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tbl.sm{font-size:12px} .tbl.sm td{padding:5px 10px}
+tr.grp td{background:var(--panel2);color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:1px;padding:4px 10px}
+tr.rowi{cursor:pointer} tr.rowi:hover td{background:rgba(91,157,255,.06)}
+.sym .held{color:var(--green)}
+/* range-used bar */
+.ub{position:relative;width:130px;height:16px;background:var(--panel2);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.ub-fill{height:100%;opacity:.75}
+.ub-ok{background:var(--green)} .ub-hot{background:var(--amber)} .ub-over{background:var(--red)}
+.ub-med{position:absolute;top:0;bottom:0;left:76.9%;width:1px;background:rgba(215,220,230,.6)}
+.ub-txt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;text-shadow:0 0 3px #000}
+.pbar{width:110px;height:10px;background:var(--panel2);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.pbar-f{height:100%;opacity:.75}
+/* two-col areas */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:1000px){.cols{grid-template-columns:1fr}}
+.ctx-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px}
+/* exceptions */
+.ex-list{list-style:none;margin:0;padding:6px 12px}
+.ex-list li{padding:4px 0;border-bottom:1px solid rgba(31,41,55,.4);font-size:13px}
+.ex-list li:last-child{border-bottom:none}
+/* drill drawer */
+#drill{display:none;margin-top:10px}
+#drill.open{display:block}
+#drillChart{min-height:380px}
+#drillHd{display:flex;align-items:center;gap:12px}
+#drillHd .x{margin-left:auto}
+/* scroll containers for wide tables on mobile */
+.scroll{overflow-x:auto}
+footer{margin-top:28px;color:var(--dim);font-size:11px;border-top:1px solid var(--line);padding-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>🖥 The Desk</h1>
+  <div class="sub">one-page market read · weather → expectations → zones → book → exceptions → context</div>
+  <div class="nav"><a href="index.html">Command Centre ↗</a> · <a href="today.html" target="_blank">Daily Brief ↗</a> · <a href="bot-config.html" target="_blank">Bots ↗</a></div>
+</header>
+
+<!-- A. weather -->
+<section>
+  <div id="weather"><span class="dim">loading…</span></div>
+  <div id="calendar"></div>
+</section>
+
+<!-- B. story -->
+<section>
+  <div class="sec-hd">The story <span class="chip c-dim sm">🧪 AI narrative — colour, not signal</span></div>
+  <div class="card"><div class="pad" id="story"><span class="dim">loading…</span></div></div>
+</section>
+
+<!-- C. board -->
+<section>
+  <div class="sec-hd">Market board <span class="chip c-green sm">✅ range vs the validated σ forecast</span><span class="dim sm">· click a row for the chart</span></div>
+  <div class="card scroll" id="board"><div class="dim pad">loading…</div></div>
+  <div class="card" id="drill">
+    <div class="card-hd" id="drillHd"><span id="drillTitle"></span><span id="drillLinks" class="sm"></span><button class="btn x" id="drillClose">✕ close</button></div>
+    <div id="drillChart"></div>
+  </div>
+</section>
+
+<!-- D. zones -->
+<section>
+  <div class="sec-hd">Today's zones</div>
+  <div class="cols" id="zones"><div class="dim pad">loading…</div></div>
+</section>
+
+<!-- E. book -->
+<section>
+  <div class="sec-hd">My book</div>
+  <div id="book"><div class="dim pad">loading…</div></div>
+</section>
+
+<!-- F. exceptions -->
+<section>
+  <div class="sec-hd">Exceptions — only what's notable</div>
+  <div class="card" id="except"><div class="dim pad">loading…</div></div>
+</section>
+
+<!-- G. context -->
+<section>
+  <details>
+    <summary class="sec-hd" style="cursor:pointer">Context drawer <span class="chip c-dim sm">🧪 macro context — explicitly not signals</span></summary>
+    <div class="ctx-grid" id="context"><div class="dim pad">loading…</div></div>
+  </details>
+</section>
+
+<footer>
+  Trust legend: <b>✅ validated</b> = OOS-proven (range-line book, σ range estimate) ·
+  <b>📈 forward record</b> = evidence accruing live ·
+  <b>🧪 context</b> = information, not a signal.
+  Nulls (MVE, econ-trend, strategy-lab…) are deliberately absent — see <code>BACKTEST_INDEX.md</code>.
+  Design: <code>MARKET_DESK_PROPOSAL.md</code>.
+</footer>
+
+</div>
+<script type="module" src="js/deskApp.js"></script>
+</body>
+</html>
