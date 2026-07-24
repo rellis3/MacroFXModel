@@ -2610,7 +2610,10 @@ function storyOptions(r) {
   if (cz.length) bits.push(`zones ${cz.map(c => `${fmtN(c.low, dp)}-${fmtN(c.high, dp)}`).join(', ')}`);
   const reg = o.regime ? ` · <b>${o.regime}</b> ${o.regime === 'PIN' ? '(positive GEX — mean-revert)' : '(negative GEX — breakout)'}` : '';
   const age = o.stale ? ` <span class="chip warn" style="font-size:9px">stale ${Math.round(o.ageH)}h</span>` : ` <span class="muted">${o.ageH < 1 ? 'fresh' : Math.round(o.ageH) + 'h old'}</span>`;
-  return `${bits.join(' · ')}${reg}.${age}${oiChangeLine(o, dp)}`;
+  // Prominent mis-scale/stale banner — a bad paste is flagged, not silently shown.
+  const warn = o.inst?.dataWarning
+    ? `<div style="color:var(--red);font-weight:600;font-size:11px;margin-bottom:3px">⚠ OI data looks mis-scaled: ${o.inst.dataWarning}</div>` : '';
+  return `${warn}${bits.join(' · ')}${reg}.${age}${oiChangeLine(o, dp)}`;
 }
 
 // Day-over-day OI dynamics line — what MOVED vs the prior paste (walls firming /
@@ -2743,6 +2746,7 @@ function assembleSnapshot(r) {
     // Auto-derived per-expiry term structure (from the pasted multi-expiry matrix) —
     // where each horizon pins, for the analytical brief. Supersedes manual `expiries`.
     termStructure: (oi.inst?.termStructure || []).slice(0, 8),
+    dataWarning: oi.inst?.dataWarning ?? null,   // mis-scaled/stale flag → the AI down-weights it
     expiries: Object.entries(oi.inst?.expiries || {}).map(([label, e]) => ({ label, dte: e.dte, maxPain: e.maxPain, callWall: e.callWall, putWall: e.putWall })).sort((a, b) => (a.dte ?? 999) - (b.dte ?? 999)).slice(0, 4) };
   // COT positioning (the shape the prompt reads) — real spec/leveraged-fund data
   const ct = cotFor(r.name), rawCot = cot?.[COT_MAP[r.name]?.sym];

@@ -1836,7 +1836,8 @@ ${s.confluences && s.confluences.length > 0
   ? s.confluences.map(c => `  ${c.stars}* @ ${c.price}  [${c.sources}]  ${c.tight ? 'TIGHT' : 'NORMAL'}${(c.density || 1) >= 2 ? ` CLUSTER×${c.density}` : ''}  dist: ${c.distPips}p  dir: ${c.direction ?? 'AT LEVEL'}  ${c.aligned ? 'v bias-aligned' : ''}  ${c.pivotMatch ? ` near ${c.pivotMatch}` : ''}`).join('\n')
   : '  None detected in current display mode'}
 
-CME OI / OPTIONS POSITIONING
+CME OI / OPTIONS POSITIONING${s.oi?.dataWarning ? `
+⚠ DATA QUALITY WARNING: ${s.oi.dataWarning}. The OI/options numbers below look mis-scaled or stale — DO NOT build a confident options narrative on them; note the issue briefly and lean on the non-OI evidence instead.` : ''}
 ${s.oi ? `Max Pain: ${s.oi.maxPain}  |  Call Wall: ${s.oi.callWall} (${s.oi.callWallOI} OI)  |  Put Wall: ${s.oi.putWall} (${s.oi.putWallOI} OI)
 P/C Ratio: ${s.oi.pcRatio}  ->  ${s.oi.pcBias}${s.oi.skew ? `
 OI skew: ${s.oi.skew.read} (${s.oi.skew.score >= 0 ? '+' : ''}${s.oi.skew.score}) — where positioning sits vs spot` : ''}${(s.oi.callWalls || []).some(w => w.tier) || (s.oi.putWalls || []).some(w => w.tier) ? `
