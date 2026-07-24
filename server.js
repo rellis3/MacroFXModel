@@ -1798,7 +1798,9 @@ async function _injectServerContext(pair, s) {
           const per = hk ? hist[hk] : null;
           if (per) drift = flipDrift(Object.keys(per).sort().slice(-10).map(dt => ({ date: dt, flip: per[dt]?.gammaFlip, spot: per[dt]?.spot })));
         } catch {}
-        if (flip != null || rolloff) s.oiGamma = { flip: flip ?? null, dist, drift, rolloff, greeks: inst.greeksFlow ?? null };
+        if (flip != null || rolloff || inst.expectedMove) s.oiGamma = { flip: flip ?? null, dist, drift, rolloff,
+          greeks: inst.greeksFlow ?? null, expectedMove: inst.expectedMove ?? null,
+          ivDynamics: inst.ivDynamics ?? null, riskReversal: inst.riskReversal ?? null };
       }
     } catch { /* left absent — prompt tolerates it */ }
   }
@@ -1846,7 +1848,10 @@ Gamma flip level: ${s.oiGamma?.flip ?? s.oi.gammaFlip ?? 'N/A'}${s.oiGamma?.dist
 Distance to flip (vol read): spot ${s.oiGamma.dist.side === 'positive' ? 'ABOVE' : s.oiGamma.dist.side === 'negative' ? 'BELOW' : 'AT'} the flip by ${s.oiGamma.dist.atr != null ? `${Math.abs(s.oiGamma.dist.atr)} ATR` : `${Math.abs(s.oiGamma.dist.pct)}%`} → ${s.oiGamma.dist.side === 'positive' ? '+gamma (dampening / pin regime)' : s.oiGamma.dist.side === 'negative' ? '−gamma (amplifying / breakout regime)' : 'at the boundary'}${s.oiGamma.dist.near ? ' · NEAR the flip — regime unstable, one push from flipping' : ' — deeper = stronger regime'}` : ''}${s.oiGamma?.drift?.toward ? `
 Flip drift: migrating TOWARD spot (${s.oiGamma.drift.fromDate}→${s.oiGamma.drift.toDate}, gap ${s.oiGamma.drift.gapPrev}→${s.oiGamma.drift.gapNow}) — a regime change may be loading` : ''}${s.oiGamma?.rolloff ? `
 OpEx roll-off: nearest expiry ${s.oiGamma.rolloff.nearDTE}DTE holds ${Math.round(s.oiGamma.rolloff.nearShare * 100)}% of OI${s.oiGamma.rolloff.rollingSoon ? ' — rolls off SOON, the near pin releases after' : ''}${s.oiGamma.rolloff.pinShift != null ? ` · next expiry (${s.oiGamma.rolloff.nextDTE}DTE) pins ${s.oiGamma.rolloff.nextMaxPain} (shift ${s.oiGamma.rolloff.pinShift >= 0 ? '+' : ''}${s.oiGamma.rolloff.pinShift})` : ''}` : ''}${s.oiGamma?.greeks ? `
-Charm/vanna (from pasted IV surface, ${s.oiGamma.greeks.dteDays}DTE): net CEX ${s.oiGamma.greeks.cex >= 0 ? '+' : ''}${s.oiGamma.greeks.cex} (charm = the clock/OpEx hedging — pin tightens into expiry, releases after)${s.oiGamma.greeks.charmFlip != null ? ` · charm flip ${s.oiGamma.greeks.charmFlip}` : ''}; net VEX ${s.oiGamma.greeks.vex >= 0 ? '+' : ''}${s.oiGamma.greeks.vex} (vanna = vol-conditional bias — as IV falls, +VEX ⇒ mechanical bid)${s.oiGamma.greeks.vannaFlip != null ? ` · vanna flip ${s.oiGamma.greeks.vannaFlip}` : ''}` : ''}${s.oi.concentration ? `
+Charm/vanna (from pasted IV surface, ${s.oiGamma.greeks.dteDays}DTE): net CEX ${s.oiGamma.greeks.cex >= 0 ? '+' : ''}${s.oiGamma.greeks.cex} (charm = the clock/OpEx hedging — pin tightens into expiry, releases after)${s.oiGamma.greeks.charmFlip != null ? ` · charm flip ${s.oiGamma.greeks.charmFlip}` : ''}; net VEX ${s.oiGamma.greeks.vex >= 0 ? '+' : ''}${s.oiGamma.greeks.vex} (vanna = vol-conditional bias — as IV falls, +VEX ⇒ mechanical bid)${s.oiGamma.greeks.vannaFlip != null ? ` · vanna flip ${s.oiGamma.greeks.vannaFlip}` : ''}${s.oiGamma.greeks.vanna ? ` · vanna read: ${s.oiGamma.greeks.vanna.state}${s.oiGamma.greeks.vanna.firing ? ' FIRING' : ''} (IV ${s.oiGamma.greeks.vanna.ivFalling ? 'falling' : 'rising'}) — indices strong, gold/FX weak` : ''}` : ''}${s.oiGamma?.expectedMove ? `
+Option-implied expected move: ±${s.oiGamma.expectedMove.move} (${s.oiGamma.expectedMove.pct}%) to ${s.oiGamma.expectedMove.dte}DTE [range ${s.oiGamma.expectedMove.lower}–${s.oiGamma.expectedMove.upper}]${s.oiGamma.expectedMove.daily != null && Number.isFinite(s.atr) ? ` · implied daily ≈ ${s.oiGamma.expectedMove.daily} vs ATR ${s.atr} → options ${s.oiGamma.expectedMove.daily > s.atr * 1.1 ? 'RICH (fade-leaning, market pricing more than recent realized)' : s.oiGamma.expectedMove.daily < s.atr * 0.9 ? 'CHEAP (breakout risk under-priced)' : 'fair vs realized'}` : ''} — this is the option market's own range; targets beyond it are low-probability by expiry` : ''}${s.oiGamma?.ivDynamics?.atmChg != null ? `
+IV dynamics: ATM IV ${s.oiGamma.ivDynamics.atmIV}% (${s.oiGamma.ivDynamics.atmChg >= 0 ? '+' : ''}${s.oiGamma.ivDynamics.atmChg} today, ${s.oiGamma.ivDynamics.rising ? 'rising' : 'falling'})${s.oiGamma.ivDynamics.skewSteepening != null ? ` · skew ${s.oiGamma.ivDynamics.skewSteepening > 0 ? 'STEEPENING' : 'flattening'} (${s.oiGamma.ivDynamics.skewSteepening >= 0 ? '+' : ''}${s.oiGamma.ivDynamics.skewSteepening}, tail-hedge demand ${s.oiGamma.ivDynamics.skewSteepening > 0 ? 'up' : 'down'})` : ''}` : ''}${s.oiGamma?.riskReversal ? `
+Risk reversal: ${s.oiGamma.riskReversal.rr >= 0 ? '+' : ''}${s.oiGamma.riskReversal.rr} vol (${s.oiGamma.riskReversal.tilt}-skewed: ${s.oiGamma.riskReversal.tilt === 'downside' ? 'puts bid, downside protection demand → bearish tilt' : s.oiGamma.riskReversal.tilt === 'upside' ? 'calls bid, upside chase → bullish tilt' : 'balanced'}) [positioning context, not a validated signal]` : ''}${s.oi.concentration ? `
 Concentration: top-5 strikes = ${s.oi.concentration.top5Pct}% of OI (${s.oi.concentration.read}) — ${s.oi.concentration.read === 'concentrated' ? 'expect sharper reactions at the walls' : 'positioning dispersed, weaker wall influence'}` : ''}${(s.oi.clusters || []).length ? `
 Institutional cluster zones: ${s.oi.clusters.map(c => `${c.low}-${c.high} (${Math.round(c.totalOI / 1000)}k)`).join(', ')}` : ''}${(s.oi.volumeMagnets || []).length ? `
 Volume magnets (today's activity, distinct from OI): ${s.oi.volumeMagnets.map(v => v.strike).join(', ')}` : ''}${(s.oi.expiries || []).length ? `
@@ -7183,13 +7188,17 @@ async function _refreshOIBotZones() {
       const rolloff = rolloffSummary(inst.termStructure);
       const gammaFlow = { flip: flip ?? null, dist, drift, rolloff };
 
+      const _vn = inst.greeksFlow?.vanna;
       const zones = stale ? [] : buildOIZones(inst, inst.spot, { ...cfg, pip, stability, change, fallbackTpR,
-        nearFlip: !!dist?.near, regimeWarning: drift?.toward ? `flip migrating toward spot (${drift.fromDate}→${drift.toDate}) — regime change loading` : null });
+        nearFlip: !!dist?.near, regimeWarning: drift?.toward ? `flip migrating toward spot (${drift.fromDate}→${drift.toDate}) — regime change loading` : null,
+        expMove: inst.expectedMove ? { upper: inst.expectedMove.upper, lower: inst.expectedMove.lower } : null,
+        vannaNote: _vn && _vn.firing ? `vanna ${_vn.state} firing (IV ${_vn.ivFalling ? 'falling' : 'rising'}) — indices strong, gold/FX weak` : null });
       const gex = inst.exposures?.gex ?? 0;
       instruments[key] = { spot: inst.spot ?? null, maxPain: inst.maxPain ?? null,
         regime: gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : 'NEUTRAL', zones, zoneCount: zones.length, stale,
         gammaFlow, termStructure: Array.isArray(inst.termStructure) ? inst.termStructure : null,
-        greeksFlow: inst.greeksFlow ?? null };
+        greeksFlow: inst.greeksFlow ?? null, expectedMove: inst.expectedMove ?? null,
+        ivDynamics: inst.ivDynamics ?? null, riskReversal: inst.riskReversal ?? null };
       if (stale) console.warn(`[oi-bot] ${key}: ${stale} — skipping (no zones)`);
     }
     await kv.put('oi_bot_zones', JSON.stringify({ data: { strategy: 'oi-bot', generatedAt: new Date().toISOString(), instruments }, timestamp: Date.now() }));

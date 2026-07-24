@@ -2595,6 +2595,14 @@ function storyOptions(r) {
   const ts = (o.inst?.termStructure || []).filter(e => Number.isFinite(e.maxPain));
   if (!exps.length && ts.length >= 2)
     bits.push(`<span class="muted">term: ${ts.slice(0, 3).map(e => `${e.dte != null ? e.dte + 'D' : '?'}→${fmtN(e.maxPain, dp)}`).join(' ')}</span>`);
+  // IV-surface reads (only when the QuikStrike IV settlement is pasted): the
+  // option-implied expected move, ATM IV change + skew, and the risk-reversal tilt.
+  const em = o.inst?.expectedMove;
+  if (em && em.move != null) bits.push(`<b>exp move</b> ±${fmtN(em.move, dp)} (${em.pct}%)${em.dte != null ? ` ${em.dte}D` : ''}`);
+  const dyn = o.inst?.ivDynamics;
+  if (dyn && dyn.atmChg != null) bits.push(`<span class="muted">IV ${dyn.atmIV}% ${dyn.atmChg >= 0 ? '+' : ''}${dyn.atmChg}${dyn.skewSteepening != null ? ` · skew ${dyn.skewSteepening > 0 ? 'steepening' : 'flattening'}` : ''}</span>`);
+  const rr = o.inst?.riskReversal;
+  if (rr) bits.push(`<span class="muted">RR ${rr.rr >= 0 ? '+' : ''}${rr.rr} (${rr.tilt})</span>`);
   // Concentration + institutional cluster zones.
   const con = o.inst?.concentration;
   if (con && con.read !== 'moderate') bits.push(`<span class="muted">${con.read} (top5 ${con.top5Pct}%)</span>`);

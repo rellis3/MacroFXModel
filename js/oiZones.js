@@ -57,6 +57,9 @@ export function buildOIZones(inst, price, cfg = {}) {
     nearFlip = false,              // spot sits within ~0.5 ATR of the gamma flip → regime is at the
                                    // boundary and less reliable; trim size (distance-to-flip vol read).
     regimeWarning = null,          // flip-drift note (regime change loading) — appended to rationale.
+    expMove = null,                // {upper,lower} option-implied range to expiry — a TP beyond it is
+                                   // low-probability by expiry (flagged in the rationale, not blocked).
+    vannaNote = null,              // vanna-state note (firing tailwind/headwind) — appended to rationale.
     stability = null,              // oiWallStability(...) output (server-injected from oi_history)
     change = null,                 // classifyOIChange(...) output (server-injected)
   } = cfg;
@@ -111,6 +114,11 @@ export function buildOIZones(inst, price, cfg = {}) {
       }
     }
     if (regimeWarning) rationale = `${rationale} · ⚠ ${regimeWarning}`;
+    if (vannaNote) rationale = `${rationale} · ${vannaNote}`;
+    // A take-profit sitting beyond the option-implied expected-move band is a
+    // low-probability target by expiry — flag it (don't block the trade).
+    if (expMove && tp1 != null && (tp1 > expMove.upper || tp1 < expMove.lower))
+      rationale = `${rationale} · ⚠ TP beyond implied move (low-prob by expiry)`;
     zones.push({ ...z, entry: +z.entry.toFixed(6), sl: +z.sl.toFixed(6),
       tp1: tp1 != null ? +tp1.toFixed(6) : null, tp2: tp2 != null ? +tp2.toFixed(6) : null, rationale, regime });
   };
