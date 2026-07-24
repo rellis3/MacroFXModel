@@ -618,7 +618,11 @@ export function oiParseVolume(raw) {
 // guard also accepts an already-decimal source. Rows with no settle vol are dropped.
 export function parseIVSettlement(raw) {
   if (!raw || !raw.trim()) return null;
-  const out = { strikes: [], iv: [], calls: [], puts: [] };
+  const out = { strikes: [], iv: [], calls: [], puts: [], dte: null };
+  // Auto-read DTE from the QuikStrike title line "… OG4N6 (0.11 DTE) vs 4057.3 …"
+  // (fractional allowed) so the expiry's time-to-expiry needs no manual entry.
+  const dm = raw.match(/(-?\d*\.?\d+)\s*DTE/i);
+  if (dm) { const d = parseFloat(dm[1]); if (Number.isFinite(d)) out.dte = d; }
   for (const line of raw.split('\n')) {
     const c = line.replace(/\r$/, '').split('\t');
     if (c.length < 8) continue;                                  // needs at least through VolSettle
@@ -912,7 +916,10 @@ export function processOIData() {
   let greeksFlow = null;
   if (rawIV && rawIV.trim()) {
     const ivp = parseIVSettlement(rawIV);
-    const dteDays = Number.isFinite(dteRaw) ? dteRaw : (primaryExpiry?.dte ?? (Number.isFinite(dteEff) ? dteEff : null));
+    // DTE is auto-read: the IV paste's own header (its exact expiry) wins, then the OI
+    // heatmap's known primary-expiry DTE, then the manual field as a last-resort override.
+    const dteDays = (ivp && Number.isFinite(ivp.dte)) ? ivp.dte
+      : (primaryExpiry?.dte ?? (Number.isFinite(dteEff) ? dteEff : (Number.isFinite(dteRaw) ? dteRaw : null)));
     const dteYrs = dteDays > 0 ? dteDays / 365 : null;
     if (ivp && dteYrs > 0) {
       const ivBy = new Map(ivp.strikes.map((s, i) => [s, ivp.iv[i]]));

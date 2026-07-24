@@ -33,6 +33,15 @@ ok('475 call OI 8981', p.calls[p.strikes.indexOf(475)] === 8981, `${p.calls[p.st
 ok('all IVs in a sane decimal range (0.05–1.0)', p.iv.every(v => v > 0.05 && v < 1.0), JSON.stringify(p.iv));
 ok('strikes ascending as pasted', p.strikes[0] === 449 && p.strikes[p.strikes.length-1] === 479);
 
+console.log('[auto-DTE from the QuikStrike title line]');
+{
+  const withHdr = 'Gold (OG|GC) OG4N6 (0.11 DTE) vs 4057.3 (+7.1) - Settles\n' + SETTLE;
+  ok('reads fractional DTE 0.11 from the header', parseIVSettlement(withHdr).dte === 0.11, `${parseIVSettlement(withHdr).dte}`);
+  const monthly = 'Gold (OG|GC) OGQ6 (28 DTE) vs 4057.3\n' + SETTLE;
+  ok('reads integer DTE 28', parseIVSettlement(monthly).dte === 28, `${parseIVSettlement(monthly).dte}`);
+  ok('no title line → dte null (falls back downstream)', parseIVSettlement(SETTLE).dte === null, `${parseIVSettlement(SETTLE).dte}`);
+}
+
 console.log('[guards]');
 ok('empty → null', parseIVSettlement('') === null && parseIVSettlement(null) === null);
 ok('non-settlement text → null', parseIVSettlement('foo bar\nbaz') === null);

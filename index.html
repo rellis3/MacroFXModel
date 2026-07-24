@@ -734,7 +734,7 @@ Example:
       <textarea class="oi-textarea" id="oiIVData" placeholder="Paste the whole QuikStrike Option Settlement table for the LIQUID expiry (the one holding your walls). It carries Strike + Volatility (implied vol) + Open Interest. Set DTE below to that expiry's days-to-expiry.
 
 Columns: CallChg CallPrior CallSettle | Strike | PutSettle PutPrior PutChg | VolSettle VolPrior VolChg | OI-Call OI-CallChg OI-Put OI-PutChg" style="min-height:90px"></textarea>
-      <div class="oi-hint">Implied vol per strike (the smile) → real charm (∂Δ/∂time) &amp; vanna (∂Δ/∂vol) exposures. Uses this table's own strikes/OI + the DTE field. Volatility ≠ Volume.</div>
+      <div class="oi-hint">Implied vol per strike (the smile) → real charm (∂Δ/∂time) &amp; vanna (∂Δ/∂vol) exposures. Include the title line (<code>… (0.11 DTE) …</code>) and the DTE is read automatically (else falls back to the OI expiry). Volatility ≠ Volume.</div>
     </div>
 
     <div class="oi-form-row" style="margin-bottom:14px">
