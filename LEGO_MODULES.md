@@ -763,6 +763,18 @@ a *mechanical proxy* of a discretionary method, judged OOS. The swing-fractal +
 value-area logic is engine-local glue for now; if a second consumer wants it, it
 becomes a §2 candidate to extract.
 
+### 1aa. Information-theory brick (2026-07-24) — analytics-engine Phase 1
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Entropy core** | `js/entropyCore.js` | the information-theory Tier-1 family (nothing in the codebase computed any of it before — audited 2026-07-24): `histProbs` (clamping equal-width histogram), `shannonEntropy` (bits), `normalizedEntropy` (the [0,1] "market disorder" gauge), `klDivergence` (honest +∞ on unshared support), `jsDivergence` (symmetric, finite, bounded [0,1] bits — the practical histogram distance), `mutualInformation` (binned, catches nonlinear dependence correlation misses), `regimeShiftSeries` (rolling JS divergence of trailing window vs prior reference window; **bin edges from the reference window only** — the data being judged never defines its own ruler; NaN until warm, no lookahead, proven by a truncation test). Pure, no DOM/network. Tested `js/entropyCore.test.mjs` (27 asserts, every number hand-calculated; deterministic vol-break series: pre-break JS 0.006 → post-break 0.650). | none wired yet — built as Phase 1 of `ANALYTICS_ENGINE_DESIGN.md`: the desk-view disorder panel + the pre-registered A/B vs HMM/BOCPD regime flips (lead/lag + agreement on historical breaks) are the named consumers | ✅ built · **measurement brick, no edge claim** |
+
+The first genuinely missing engine from the institutional analytics map
+(`ANALYTICS_ENGINE_DESIGN.md` §2, engine #6/#14 gap). Measurement-class: its
+bar is correctness (hand-calc unit tests), not OOS — it describes
+distributional change, it doesn't trade it. Any promotion to a filter/sizer
+goes through the harness with a pre-registered win condition first.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
