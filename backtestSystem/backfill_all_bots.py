@@ -144,31 +144,57 @@ def _connect_bot(creds: dict) -> tuple[bool, str]:
     return True, f'account={info.login}  server={info.server}  balance={info.balance:.2f} {info.currency}'
 
 
-def _fetch_deals(date_from: datetime, date_to: datetime, magic: int) -> list:
+def _fetch_deals(date_from: datetime, date_to: datetime) -> list:
+    """ALL deals in the window — NOT filtered by magic. Ownership is resolved
+    per-position in _build_trades from the ENTRY deal's magic, because a MANUAL
+    close in the terminal writes its OUT deal with magic 0; a per-deal magic
+    filter here would drop that OUT and silently lose the whole trade."""
     import MetaTrader5 as mt5
     deals = mt5.history_deals_get(date_from, date_to)
-    if not deals:
-        return []
-    return [d for d in deals if d.magic == magic]
+    return list(deals) if deals else []
 
 
-def _build_trades(deals: list) -> tuple[list, int]:
-    """Group deals (already filtered to one magic on one account) by position_id
-    into round-trip trades. Volume-weights price across partial entries/exits.
-    Skips positions with no IN+OUT pair in the window (still open, or entry
-    predates the range). Same reconstruction as backfill_trade_history.py."""
+def _build_trades(deals: list, magic: int) -> tuple[list, int, int]:
+    """Group deals by position_id into round-trip trades for the given magic.
+
+    Ownership is keyed on the ENTRY deal's magic (always the bot's), then the
+    trade is reconstructed from ALL of that position's deals — including a
+    magic-0 OUT deal left by a manual terminal close, or a partial EA close.
+    That is the fix for manually-closed trades never reaching the dashboard.
+
+    When a position's entry deal predates the window (multi-day hold), it's
+    looked up directly by position id so ownership + open price still resolve.
+    Returns (trades, skipped_open, manual_closed) — manual_closed counts trades
+    whose close was NOT done by the EA (magic differs on an exit deal)."""
     import MetaTrader5 as mt5
     by_position: dict = {}
     for d in deals:
         by_position.setdefault(d.position_id, []).append(d)
 
-    trades, skipped = [], 0
+    trades, skipped, manual = [], 0, 0
     for position_id, group in by_position.items():
         entries = [d for d in group if d.entry == mt5.DEAL_ENTRY_IN]
         exits   = [d for d in group if d.entry == mt5.DEAL_ENTRY_OUT]
-        if not entries or not exits:
-            skipped += 1
+        if not exits:
+            if any(e.magic == magic for e in entries):
+                skipped += 1               # our position, still open (no close in window)
             continue
+
+        # Entry deal may be outside the window (position opened on an earlier
+        # day). Look it up by position id so the trade still resolves.
+        if not entries:
+            try:
+                pos_deals = mt5.history_deals_get(position=position_id) or []
+                entries = [d for d in pos_deals if d.entry == mt5.DEAL_ENTRY_IN]
+            except Exception:
+                entries = []
+        if not entries:
+            continue                       # can't establish owner / open price
+
+        if entries[0].magic != magic:
+            continue                       # not this bot's position
+        if any(x.magic != magic for x in exits):
+            manual += 1                    # closed manually (or by another actor), not the EA
 
         entry_vol = sum(d.volume for d in entries) or 1.0
         exit_vol  = sum(d.volume for d in exits) or 1.0
@@ -176,11 +202,13 @@ def _build_trades(deals: list) -> tuple[list, int]:
         close_price = sum(d.price * d.volume for d in exits) / exit_vol
         direction   = 'BUY' if entries[0].type == mt5.DEAL_TYPE_BUY else 'SELL'
 
+        # profit/swap from every deal that actually happened in the window
+        # (the OUT deal carries the realised P&L, incl. a magic-0 manual close).
         trades.append({
             'position_id': position_id,
-            'symbol':      group[0].symbol,
+            'symbol':      exits[0].symbol,
             'direction':   direction,
-            'lots':        round(entry_vol, 2),
+            'lots':        round(exit_vol, 2),
             'open_price':  round(open_price, 5),
             'close_price': round(close_price, 5),
             'profit':      round(sum(d.profit for d in group), 2),
@@ -190,7 +218,7 @@ def _build_trades(deals: list) -> tuple[list, int]:
         })
 
     trades.sort(key=lambda t: t['time_close'])
-    return trades, skipped
+    return trades, skipped, manual
 
 
 def _push(dashboard_url: str, bot_key: str, trades: list) -> dict:
@@ -276,17 +304,19 @@ def main():
             continue
         log.info(f'    connected: {msg}')
 
-        deals = _fetch_deals(date_from, date_to, b['magic'])
-        trades, skipped = _build_trades(deals)
+        deals = _fetch_deals(date_from, date_to)
+        trades, skipped, manual = _build_trades(deals, b['magic'])
         if not trades:
-            log.info(f'    {len(deals)} deals, 0 round-trip trades ({skipped} skipped) — nothing to push')
+            log.info(f'    {len(deals)} deals on account, 0 round-trip trades for this magic '
+                     f'({skipped} still-open) — nothing to push')
             summary.append((b['name'], b['bot_key'], 'empty', 0, 0))
             continue
 
         net = sum(t['profit'] + t['swap'] for t in trades)
         dates = sorted({datetime.fromtimestamp(t['time_close'], tz=timezone.utc).strftime('%Y-%m-%d') for t in trades})
+        manual_s = f'  incl. {manual} manual-closed' if manual else ''
         log.info(f'    {len(trades)} trades across {len(dates)} days '
-                 f'({dates[0]} -> {dates[-1]})  net P&L: {net:+.2f}  ({skipped} skipped)')
+                 f'({dates[0]} -> {dates[-1]})  net P&L: {net:+.2f}{manual_s}')
 
         if args.dry_run:
             for t in trades[:3]:
