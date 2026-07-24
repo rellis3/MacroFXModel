@@ -109,6 +109,45 @@ as here. The same bias also inflated the *intraday* top-1 numbers elsewhere in
 this doc (they were already ≤ breakeven, so the null verdict there only
 strengthens). **Net: the range-extension family is a null, intraday and swing.**
 
+## At-touch approach velocity — the biggest discriminator, but still no edge (2026-07-24)
+
+My confidence brain used only **pre-day static** features (vol regime, day-type,
+alignment) — which the platform already knew are dead for this (AUC≈0.50,
+`ENTRY_ZONE_CONFIDENCE.md`). The signal with real OOS evidence there is the
+**at-touch approach velocity** (speed of the drive INTO the level, in daily-σ
+units; `touchFeatures.approachVel`, buckets grind / med / spike). Wired it into
+`rangeExtEngine` (recorded on every fade at the fill bar — no lookahead, velocity
+is known when price arrives) and disaggregated (26 pairs, Asia intraday fades,
+RR 1.5, after cost):
+
+| approach into the level | OOS exp (fade) |
+|---|---:|
+| **grind (slow)** | **+0.003 R** (breakeven — best bucket) |
+| med | −0.097 R |
+| **spike (fast)** | **−0.23 R** (t −38, worst, 0/26 pairs) |
+
+**This is the largest single feature effect in the whole study — a 0.23 R spread**
+— so the user's intuition ("some touches are far better than others") is *correct*:
+confidence CAN rank the touches. Two honest but decisive catches:
+
+1. **The polarity is REVERSED vs the platform's σ-band finding.** There "spike →
+   fade" (a fast move to a *statistical* extreme = overextension → reverts). Here
+   a fast spike into a *structural* range-multiple = a trending day expanding →
+   **continues**, so fading it gets run over. Mechanistically sensible; the level
+   *type* flips the sign. (Recorded so the next build doesn't assume spike→fade.)
+2. **No pole is tradeable.** grind-fade is breakeven (→ negative after realistic
+   spreads); spike-**fade** −0.23 R; spike-**follow** −0.29 R (tested — following
+   the breakout loses too; a spike is a "don't trade," not a "trade the other
+   side"). So the best conditioned outcome is ≈ 0, not profit.
+
+**What this means for the whole idea.** Every conditioner tested — geometry,
+alignment, regime, day-type, timeframe/hold, and now the platform's strongest
+at-touch signal — does the same thing: it isolates which levels to *avoid*, and
+avoiding the worst lands at breakeven, never at a positive subset. Range-extension
+levels do not contain a positive-expectancy fade for a selector to concentrate.
+The `approachVel`/`touchGate` wiring is kept (a real capability + a genuine
+"avoid spike-approach" insight); the strategic verdict is unchanged: **null.**
+
 ## Reproduce
 
 ```
