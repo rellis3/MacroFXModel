@@ -605,6 +605,31 @@ export function oiParseVolume(raw) {
   return out.sort((a, b) => b.volume - a.volume);
 }
 
+// Parse the CME QuikStrike "Option Settlement Tool" table (the per-strike IMPLIED VOL
+// source charm/vanna need). Tab-separated, two header rows, 14 data columns:
+//   CallChg CallPrior CallSettle | Strike | PutSettle PutPrior PutChg |
+//   VolSettle VolPrior VolChg | OI-Call OI-CallChg OI-Put OI-PutChg
+// → { strikes, iv (decimal), calls, puts } for one expiry. Header/blank rows fail the
+// numeric-strike test and are skipped. IV is quoted in percent (39.49) → /100; a `>1`
+// guard also accepts an already-decimal source. Rows with no settle vol are dropped.
+export function parseIVSettlement(raw) {
+  if (!raw || !raw.trim()) return null;
+  const out = { strikes: [], iv: [], calls: [], puts: [] };
+  for (const line of raw.split('\n')) {
+    const c = line.replace(/\r$/, '').split('\t');
+    if (c.length < 8) continue;                                  // needs at least through VolSettle
+    const num = j => parseFloat(String(c[j] ?? '').replace(/,/g, ''));
+    const strike = num(3), ivRaw = num(7);
+    if (!Number.isFinite(strike) || strike <= 0) continue;       // skips the two header rows
+    if (!Number.isFinite(ivRaw) || ivRaw <= 0) continue;         // no settle vol at this strike
+    out.strikes.push(strike);
+    out.iv.push(ivRaw > 1 ? ivRaw / 100 : ivRaw);                // 39.49% → 0.3949 (decimal source passes through)
+    out.calls.push(Number.isFinite(num(10)) ? num(10) : 0);
+    out.puts.push(Number.isFinite(num(12)) ? num(12) : 0);
+  }
+  return out.strikes.length >= 2 ? out : null;
+}
+
 // ── Calculations ─────────────────────────────────────────────────────────────
 
 export function oiCalcMaxPain(strikes, calls, puts) {
