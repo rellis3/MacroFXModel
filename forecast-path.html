@@ -305,7 +305,7 @@
 // module script silently — dead buttons, nothing loads. Bump when this page
 // starts importing something new from a brick.
 import { createLevelChart } from './js/levelChart.js?v=17';
-import { priceDigits, assetClass as instrAssetClass } from './js/instrumentRegistry.js?v=17';
+import { priceDigits, assetClass as instrAssetClass, resolveKey } from './js/instrumentRegistry.js?v=17';
 import { bisect, resampleTo } from './js/barUtils.js?v=17';
 import { collectLevels } from './js/levelSources.js?v=17';
 import {
@@ -428,7 +428,10 @@ async function loadOiStore() { try { const j = await (await fetch('/api/kv/get?k
 function oiMoveFor(pair) {
   if (!_oiStore) return null;
   const norm = x => String(x).toUpperCase().replace(/[/_ ]/g, '');
-  const k = Object.keys(_oiStore).find(kk => norm(kk) === norm(pair));
+  const rk = x => { try { return String(resolveKey(x)).toUpperCase(); } catch { return norm(x); } };
+  const target = rk(pair), npair = norm(pair);
+  // Match by canonical key (GOLD ↔ XAU/USD) OR normalised string.
+  const k = Object.keys(_oiStore).find(kk => rk(kk) === target || norm(kk) === npair);
   return k ? (_oiStore[k]?.expectedMove ?? null) : null;
 }
 loadOiStore();
@@ -724,6 +727,7 @@ function render() {
     trendHtml +
     (cone.eventSteps > 0 ? `<div class="kv"><span>news σ widening</span><b class="warn">${cone.eventSteps} of ${H} steps in a release window</b></div>` : '') +
     `<div class="kv"><span>P75 range @ ${e.fmtStep(H)}</span><b>${lastS.p75Dn.toFixed(dg)} – ${lastS.p75Up.toFixed(dg)}</b></div>` +
+    (toggles.oiMove ? `<div class="kv"><span>OI exp-move</span><b>${(() => { const em = oiMoveFor(pairSel.value); return (em && em.move > 0) ? `± ${em.move} (${em.pct}%)${em.dte != null ? ' ' + em.dte + 'DTE' : ''}` : (_oiStore === null ? 'loading…' : `<span class="warn">no IV pasted for ${pairSel.value} — paste the QuikStrike settlement in the OI modal</span>`); })()}</b></div>` : '') +
     surpriseHtml + evHtml +
     `<div class="muted" style="margin-top:6px">Direction is the weak claim (≈ coin flip); the envelopes are the strong one. See calibration.</div>`;
 
