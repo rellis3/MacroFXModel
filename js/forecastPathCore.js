@@ -104,14 +104,18 @@ const _dateOf = b => (typeof b.time === 'string' ? b.time : b.date);
 // ── The cone at index i (1 ≤ i ≤ bars.length) ────────────────────────────────
 // Steps h=1..H forecast bars[i], bars[i+1], … Anchor = close of bar i-1.
 // i === bars.length is the LIVE cone (past the end of history, σ via nextSigma).
-export function coneFromContext(ctx, i, horizonDays) {
+export function coneFromContext(ctx, i, horizonDays, { sigmaOverride = null } = {}) {
   const { bars, sigma, drift, trend, opts } = ctx;
   const H = horizonDays ?? opts.horizonDays;
   const n = bars.length;
   if (i < 2 || i > n) return null;
 
   const anchor = bars[i - 1].close;
-  const sig = i < n ? sigma[i] : nextSigma(bars, opts.assetClass);
+  // sigmaOverride (a per-day σ) lets a caller run the cone/paths on OPTION-IMPLIED vol
+  // instead of the realized/GARCH σ — the market's forward view. NB implied carries a
+  // variance-risk-premium (usually > realized) so it's a risk-neutral scenario, not a
+  // realized-outcome forecast — label it as such at the call site. Default = realized.
+  const sig = (sigmaOverride > 0) ? sigmaOverride : (i < n ? sigma[i] : nextSigma(bars, opts.assetClass));
   if (!(sig > 0)) return null;
   const mu = _driftMu(ctx, i, sig);
 
@@ -191,7 +195,9 @@ function gauss(rng) {
 // top and bottom wick. Deterministic for a given seed.
 // Returns { paths: [ [ {h,date,open,high,low,close} … ] ], consensus: [ {h,date,close} … ] }.
 export function samplePaths(ctx, i, horizonDays, opts = {}) {
-  const cone = coneFromContext(ctx, i, horizonDays);
+  // opts.sigmaOverride → run the MC on option-implied vol (a risk-neutral scenario,
+  // not a realized forecast — see coneFromContext). Omit for the realized-vol paths.
+  const cone = coneFromContext(ctx, i, horizonDays, { sigmaOverride: opts.sigmaOverride ?? null });
   if (!cone) return { paths: [], consensus: [] };
   const o = { ...ctx.opts, ...opts };
   const { anchor, sigma, mu, steps } = cone;

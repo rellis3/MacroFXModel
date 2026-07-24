@@ -86,6 +86,14 @@ const bars = syntheticBars(1200);
     ok(s.p50Dn < s.center && s.center < s.p50Up, `center inside envelope at h=${s.h}`);
     prevW50 = w50; prevW75 = w75;
   }
+  // sigmaOverride (e.g. option-implied vol) replaces the realized σ — a bigger σ
+  // ⇒ a wider cone (the implied-vol Monte-Carlo scenario).
+  const baseSig = cone.sigma;
+  const wide = coneFromContext(ctx, 800, 10, { sigmaOverride: baseSig * 2 });
+  ok(wide.sigma === baseSig * 2, 'sigmaOverride sets the cone σ');
+  ok((wide.steps[0].p50Up - wide.steps[0].p50Dn) > (cone.steps[0].p50Up - cone.steps[0].p50Dn), 'sigmaOverride widens the cone');
+  ok(coneFromContext(ctx, 800, 10, { sigmaOverride: 0 }).sigma === baseSig, 'sigmaOverride 0/absent → realized σ (backward compatible)');
+
   const live = coneFromContext(ctx, bars.length, 5);
   ok(live && live.steps.length === 5 && live.anchor === bars[bars.length - 1].close, 'live cone (i = n) anchors on last close');
   ok(live.steps.every(s => /^\d{4}-\d{2}-\d{2}$/.test(s.date)), 'live cone dates are YYYY-MM-DD');
