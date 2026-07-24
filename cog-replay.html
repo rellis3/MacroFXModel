@@ -38,7 +38,12 @@
   .status { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; margin-left: auto; }
   .legend { display: flex; gap: 12px; flex-wrap: wrap; padding: 5px 14px; font-size: 10px;
     color: var(--text2); font-family: 'DM Mono', monospace; border-bottom: 1px solid var(--border); background: var(--panel); }
-  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; user-select: none; }
+  .legend span:hover { color: var(--text); }
+  .legend span.off { opacity: .32; }
+  .legend span.off i { opacity: .5; }
+  .legend .leg-hint { cursor: default; color: var(--text3); }
+  .legend .leg-hint:hover { color: var(--text3); }
   .legend i { width: 16px; height: 0; border-top-width: 2px; border-top-style: dashed; display: inline-block; }
 
   /* Reference-data write-back panel */
@@ -73,6 +78,11 @@
       <button data-g="H1">1h</button>
     </div>
     <button class="go" id="go">Generate</button>
+    <label>Touch</label>
+    <div class="seg" id="touch">
+      <button data-t="markers" title="Mark with a coloured dot where price first reached each forecast level that day">● Markers</button>
+      <button data-t="only" title="Each day, draw only the levels price actually touched — hide the untouched ones">◱ Touched only</button>
+    </div>
     <button class="btn" id="refToggle" title="Paste / save COG's reference export for a day — stored in KV so anyone can update the store in your absence.">✎ Ref Data</button>
     <span class="status" id="status"></span>
   </div>
@@ -155,6 +165,11 @@ const LEVELS = [
 
 const $ = id => document.getElementById(id);
 
+// Per-line visibility (click a key entry to toggle) + touch-point view state.
+const levelVis = LEVELS.map(() => true);
+let showOpen = true, showReal = true;
+let touchMarkers = false, touchedOnly = false;
+
 // Normalise an instrument name so 'EUR/USD', 'eurusd', 'EURUSD' all collide.
 const NI = s => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
@@ -202,15 +217,34 @@ function fillPairSelect() {
   $('refDate').value = iso(now);
 
   const leg = $('legend');
-  leg.innerHTML = LEVELS.map(l =>
-    `<span><i style="border-top-color:${l.color};border-top-style:${l.dash[0] > 3 ? 'dashed' : 'dotted'}"></i>${l.label}</span>`
+  leg.innerHTML = LEVELS.map((l, i) =>
+    `<span data-leg="${i}"><i style="border-top-color:${l.color};border-top-style:${l.dash[0] > 3 ? 'dashed' : 'dotted'}"></i>${l.label}</span>`
   ).join('') +
-    `<span><i style="border-top-color:#e5e7eb;border-top-style:solid"></i>Realized High/Low</span>` +
-    `<span><i style="border-top-color:#6b7280;border-top-style:dashed"></i>Open</span>`;
+    `<span data-leg="real"><i style="border-top-color:#e5e7eb;border-top-style:solid"></i>Realized High/Low</span>` +
+    `<span data-leg="open"><i style="border-top-color:#6b7280;border-top-style:dashed"></i>Open</span>` +
+    `<span class="leg-hint">· click a key to hide/show its line</span>`;
+  // Click a key entry to toggle that line on/off.
+  leg.addEventListener('click', e => {
+    const s = e.target.closest('[data-leg]'); if (!s) return;
+    const k = s.dataset.leg;
+    if (k === 'open')      { showOpen = !showOpen; s.classList.toggle('off', !showOpen); }
+    else if (k === 'real') { showReal = !showReal; s.classList.toggle('off', !showReal); }
+    else { const i = +k; levelVis[i] = !levelVis[i]; s.classList.toggle('off', !levelVis[i]); }
+    scheduleDraw();
+  });
 
   $('tf').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     $('tf').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  });
+
+  // Touch-point view toggles — independent; both can be on at once.
+  $('touch').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    b.classList.toggle('on');
+    touchMarkers = $('touch').querySelector('[data-t="markers"]').classList.contains('on');
+    touchedOnly  = $('touch').querySelector('[data-t="only"]').classList.contains('on');
+    scheduleDraw();
   });
   $('go').addEventListener('click', loadReplay);
 
@@ -335,13 +369,28 @@ function buildDays(values, fcDays) {
     const date = c.datetime.slice(0, 10);
     const t = Math.floor(new Date(c.datetime.replace(' ', 'T') + 'Z').getTime() / 1000);
     let d = byDate.get(date);
-    if (!d) { d = { date, open: +c.open, high: -Infinity, low: Infinity, close: +c.close, tStart: t, tEnd: t }; byDate.set(date, d); }
+    if (!d) { d = { date, open: +c.open, high: -Infinity, low: Infinity, close: +c.close, tStart: t, tEnd: t, bars: [] }; byDate.set(date, d); }
     d.high = Math.max(d.high, +c.high);
     d.low  = Math.min(d.low, +c.low);
     d.close = +c.close;
     d.tEnd = t;
+    d.bars.push({ t, h: +c.high, l: +c.low });
   }
-  days = [...byDate.values()].sort((a, b) => a.tStart - b.tStart).map(d => ({ ...d, f: fcDays[d.date] || null }));
+  days = [...byDate.values()].sort((a, b) => a.tStart - b.tStart).map(d => {
+    const f = fcDays[d.date] || null;
+    // Precompute per level: its price + the time price FIRST reached it (null = never
+    // touched). Done once here so the overlay draw (every frame) doesn't rescan bars.
+    const touch = LEVELS.map(L => {
+      if (!f) return null;
+      const pct = f[L.key];
+      if (pct == null) return null;
+      const price = d.open * (1 + L.side * pct / 100);
+      let tt = null;
+      for (const b of d.bars) { if (L.side > 0 ? b.h >= price : b.l <= price) { tt = b.t; break; } }
+      return { price, t: tt };
+    });
+    return { ...d, f, touch };
+  });
 }
 
 // ── Overlay draw ──────────────────────────────────────────────────────────────
@@ -384,23 +433,40 @@ function drawOverlay() {
       octx.restore();
     };
 
-    draw(d.open, '#8b93a1', [4,4], wide ? 'Open ' + d.open.toFixed(pf.precision) : '', false);
+    if (showOpen) draw(d.open, '#8b93a1', [4,4], wide ? 'Open ' + d.open.toFixed(pf.precision) : '', false);
 
     const bands = bandsFor(d.f);
     if (bands) {
-      for (const L of LEVELS) {
+      for (let i = 0; i < LEVELS.length; i++) {
+        if (!levelVis[i]) continue;                      // hidden via the key
+        const L = LEVELS[i];
         const pct = bands[L.key];
         if (pct == null) continue;
         const price = d.open * (1 + L.side * pct / 100);
+        const tp = d.touch?.[i];                          // { price, t } precomputed
+        const touched = !!(tp && tp.t != null);
+        if (touchedOnly && !touched) continue;            // "touched only" hides untouched levels
         const text = `${L.label} ${fmtPct(L.side * pct)} ${price.toFixed(pf.precision)}`;
         draw(price, L.color, L.dash, text, false);
+        if (touchMarkers && touched) {                    // dot where price first reached the level
+          const mx = ts.timeToCoordinate(tp.t), my = series.priceToCoordinate(price);
+          if (mx != null && my != null) {
+            octx.save();
+            octx.beginPath(); octx.arc(mx, my, 5, 0, 2 * Math.PI);
+            octx.fillStyle = L.color; octx.globalAlpha = 0.95; octx.fill();
+            octx.globalAlpha = 1; octx.lineWidth = 1.5; octx.strokeStyle = 'rgba(11,13,20,0.9)'; octx.stroke();
+            octx.restore();
+          }
+        }
       }
     }
 
-    const hiPct = (d.high - d.open) / d.open * 100;
-    const loPct = (d.low - d.open) / d.open * 100;
-    draw(d.high, '#e5e7eb', [], wide ? `High ${fmtPct(hiPct)} ${d.high.toFixed(pf.precision)}` : '', true);
-    draw(d.low,  '#e5e7eb', [], wide ? `Low ${fmtPct(loPct)} ${d.low.toFixed(pf.precision)}` : '', true);
+    if (showReal) {
+      const hiPct = (d.high - d.open) / d.open * 100;
+      const loPct = (d.low - d.open) / d.open * 100;
+      draw(d.high, '#e5e7eb', [], wide ? `High ${fmtPct(hiPct)} ${d.high.toFixed(pf.precision)}` : '', true);
+      draw(d.low,  '#e5e7eb', [], wide ? `Low ${fmtPct(loPct)} ${d.low.toFixed(pf.precision)}` : '', true);
+    }
   }
 }
 
