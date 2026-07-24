@@ -21,6 +21,12 @@
 
 import { createLevelChart } from './levelChart.js';
 import { resolveKey, pipSize, priceDigits } from './instrumentRegistry.js';
+// The macro tier score is index.html's brick, imported — NOT re-implemented.
+// We feed its shared state (IX) the same payloads index.html loads, then call
+// calculateTierScores() per pair. Missing feeds degrade tiers to "n/a" honestly.
+import { S as IX } from './state.js';
+import { PAIRS } from './config.js';
+import { calculateTierScores } from './macro.js';
 
 /* ───────────────────────── state ───────────────────────── */
 
@@ -37,6 +43,8 @@ const S = {
   bots: {},            // key → {label, ageMin, blob}
   fwd: null, coneFwd: null, giveback: null,
   fred: null, cot: null, sentiment: null, hedge: null, credit: null, liq: null,
+  macroScores: null,   // { [NAME]: calculateTierScores() result }
+  macroScoresAt: null,
   chart: null,         // levelChart handle for the drill-in
   drillName: null,
 };
@@ -491,6 +499,109 @@ function renderExceptions() {
     : '<div class="dim pad">Nothing unusual — calm tape. ☕</div>';
 }
 
+/* ─────────────── G½. macro tier scores + currency strength ─────────────── */
+
+// Today's currency strength, derived from the session tracker's open→current
+// moves (S.live): for pair XXXYYY moving +0.3%, XXX gets +0.3 and YYY −0.3;
+// average per currency across its pairs. Display arithmetic only — no new math.
+function currencyStrength() {
+  const acc = {};
+  for (const [name, lv] of Object.entries(S.live?.instruments || {})) {
+    if (!/^[A-Z]{6}$/.test(name) || lv?.error || !Number.isFinite(lv?.oc)) continue;
+    const base = name.slice(0, 3), quote = name.slice(3);
+    (acc[base] ??= { sum: 0, n: 0 }); acc[base].sum += lv.oc; acc[base].n++;
+    (acc[quote] ??= { sum: 0, n: 0 }); acc[quote].sum -= lv.oc; acc[quote].n++;
+  }
+  return Object.entries(acc).filter(([, v]) => v.n >= 2)
+    .map(([cur, v]) => ({ cur, avg: v.sum / v.n, n: v.n }))
+    .sort((a, b) => b.avg - a.avg);
+}
+
+function strengthCard() {
+  const rows = currencyStrength();
+  if (!rows.length) return '';
+  const maxAbs = Math.max(0.05, ...rows.map(r => Math.abs(r.avg)));
+  const body = rows.map((r, i) => {
+    const w = Math.abs(r.avg) / maxAbs * 50;
+    const note = i === 0 ? 'strongest today' : i === rows.length - 1 ? 'weakest today' : '';
+    return `<tr><td><b>${esc(r.cur)}</b></td>
+      <td><div class="zbar" title="average of today's %-moves across its ${r.n} pairs"><div class="zbar-f ${r.avg >= 0 ? 'zb-pos' : 'zb-neg'}" style="${r.avg >= 0 ? 'left:50%' : 'right:50%'};width:${w.toFixed(0)}%"></div></div></td>
+      <td class="num ${r.avg > 0 ? 'pos' : 'neg'}">${(r.avg > 0 ? '+' : '') + fmt(r.avg)}%</td>
+      <td class="dim sm">${note}</td></tr>`;
+  }).join('');
+  return `<div class="card"><div class="card-hd">Currency strength today ${TRUST.ctx}</div>
+    <div class="scroll"><table class="tbl sm"><tbody>${body}</tbody></table></div>
+    <div class="dim sm pad">= each currency's average % move across its pairs since the session open (from the live session tracker). A quick "who's bid, who's offered" read — not a signal.</div></div>`;
+}
+
+// Plain-English verdict from the tier total — same thresholds index.html uses
+// to set macroBias (>4 LONG, <−4 SHORT).
+function tierVerdict(t) {
+  const s = t.totalScore;
+  if (s > 4) return { txt: s >= 10 ? 'strong macro tailwind for longs' : 'macro leans with longs', cls: 'c-green' };
+  if (s < -4) return { txt: s <= -10 ? 'strong macro headwind — favours shorts' : 'macro leans with shorts', cls: 'c-red' };
+  return { txt: 'no clear macro edge either way', cls: 'c-dim' };
+}
+
+function tierScoreCard() {
+  const ms = S.macroScores;
+  if (!ms || !Object.keys(ms).length) return '';
+  const rows = Object.entries(ms).sort((a, b) => Math.abs(b[1].totalScore) - Math.abs(a[1].totalScore));
+  const body = rows.map(([name, t]) => {
+    const v = tierVerdict(t);
+    const w = Math.min(50, Math.abs(t.totalScore) / t.maxScore * 50);
+    const live = t.tiers.filter(x => !x.na);
+    const top = live.filter(x => Math.abs(x.score) >= 1).sort((a, b) => Math.abs(b.score) - Math.abs(a.score))[0];
+    const detail = t.tiers.map(x => `<tr class="${x.na ? 'dim' : ''}">
+        <td class="dim">${esc(x.tier)}</td><td>${esc(x.name)}</td>
+        <td class="num ${x.score > 0 ? 'pos' : x.score < 0 ? 'neg' : 'dim'}">${x.na ? 'n/a' : (x.score > 0 ? '+' : '') + x.score}</td>
+        <td class="sm">${esc(x.reading || '')} ${x.val && x.val !== '—' ? `<span class="dim">(${esc(String(x.val))})</span>` : ''}</td></tr>`).join('');
+    return `<details class="tier-det"><summary class="tier-sum">
+        <b class="tier-name">${esc(name)}</b>
+        <span class="zbar"><span class="zbar-f ${t.totalScore >= 0 ? 'zb-pos' : 'zb-neg'}" style="${t.totalScore >= 0 ? 'left:50%' : 'right:50%'};width:${w.toFixed(0)}%"></span></span>
+        <span class="num sm" style="min-width:52px">${(t.totalScore > 0 ? '+' : '') + t.totalScore} / ±${t.maxScore}</span>
+        ${chip(v.txt, v.cls)}
+        <span class="dim sm">${t.agreeCount} of ${live.length} drivers agree${top ? ` · biggest: ${esc(top.name)}` : ''}</span>
+      </summary>
+      ${top ? `<div class="pad sm" style="padding-top:2px">${esc(top.reading || '')}</div>` : ''}
+      <div class="scroll"><table class="tbl sm"><thead><tr><th></th><th>Driver</th><th>Score</th><th>What it's saying right now</th></tr></thead><tbody>${detail}</tbody></table></div>
+    </details>`;
+  }).join('');
+  return `<div class="card" style="grid-column:1/-1"><div class="card-hd">Macro tier score by pair ${TRUST.ctx}
+      <span class="dim sm">the 8-driver composite index.html uses (rates · VIX · USD · credit · carry · conditions · momentum · session flow), ±18 with coherence bonus · ${S.macroScoresAt ? agoTxt(ageMin(S.macroScoresAt)) + ' ago' : ''}</span></div>
+    <div class="pad dim sm" style="padding-bottom:4px">Positive = macro backdrop favours longs on that pair, negative favours shorts. Scores between −4 and +4 mean the drivers disagree — treat as no edge. Click a pair to see each driver's plain-English reading. Heuristic context, not a validated signal.</div>
+    ${body}</div>`;
+}
+
+// Feed index.html's shared state the same payloads it normally loads, then run
+// the imported calculateTierScores() per pair. ~2 fetches per pair, KV/served
+// from server caches; refreshed every 30 min.
+async function loadMacroScores() {
+  IX.fredData = S.fred || await safe(j('/api/fred'));
+  IX.ecbData = await safe(j('/api/ecbsdw'));
+  IX.ifoData = await safe(j('/ifo.json'));
+  const wanted = Object.keys(S.brief?.instruments || S.forecast?.instruments || {});
+  const targets = wanted.map(name => ({ name, pair: PAIRS.find(p => p.symbol === hmmSym(name)) })).filter(t => t.pair);
+  const out = {};
+  const CHUNK = 5;
+  for (let i = 0; i < targets.length; i += CHUNK) {
+    await Promise.all(targets.slice(i, i + CHUNK).map(async ({ name, pair }) => {
+      const [d1, m5] = await Promise.all([
+        safe(j(`/api/ohlc?symbol=${encodeURIComponent(pair.symbol)}`)),
+        safe(j(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(pair.symbol)}`)),
+      ]);
+      if (d1?.values) IX.ohlcData[pair.symbol] = d1;
+      if (m5?.values) IX.ohlc5m[pair.symbol] = m5;
+      try {
+        IX.currentPair = pair;
+        out[name] = calculateTierScores();
+      } catch (e) { console.warn('[desk] tier score', name, e.message || e); }
+    }));
+  }
+  if (Object.keys(out).length) { S.macroScores = out; S.macroScoresAt = Date.now(); }
+  renderContext();
+}
+
 /* ───────────────────────── G. context ───────────────────────── */
 
 function fredRow(label, o, d = 2, inv = false) {
@@ -514,6 +625,9 @@ function renderContext() {
       ${fredRow('DXY', F.dxy, 1)}${fredRow('HY spread', F.hy, 2, true)}${fredRow('10Y TIPS', F.tips)}
       ${fredRow('NFCI', F.nfci, 2, true)}${fredRow('WTI', F.wti, 1)}
     </tbody></table></div>`);
+
+  const sc = strengthCard();
+  if (sc) cards.push(sc);
 
   const liq = S.liq;
   if (liq && !liq.error) {
@@ -549,6 +663,9 @@ function renderContext() {
     cards.push(`<div class="card"><div class="card-hd">Correlation clusters ${TRUST.ctx} <a class="dim sm" href="correlations.html" target="_blank">↗</a></div>
       <table class="tbl sm"><tbody>${top.map(([k, v]) => `<tr><td class="dim">${esc(k)}</td><td class="num ${Math.abs(v) > 0.85 ? 'neg' : ''}">${fmt(v, 2)}</td></tr>`).join('')}</tbody></table></div>`);
   }
+
+  const tc = tierScoreCard();
+  if (tc) cards.push(tc);
 
   el.innerHTML = cards.join('');
 }
@@ -613,10 +730,12 @@ async function boot() {
   [S.forecast, S.brief] = await Promise.all([safe(j('/api/vol-forecast')), safe(j('/api/daily-brief'))]);
   renderBoard();
   await Promise.all([loadFast(), loadMedium(), loadBook(), loadSlow()]);
+  loadMacroScores();               // after loadSlow so S.fred is warm
   setInterval(loadFast, 60e3);
   setInterval(loadMedium, 5 * 60e3);
   setInterval(loadBook, 2 * 60e3);
   setInterval(loadSlow, 10 * 60e3);
+  setInterval(loadMacroScores, 30 * 60e3);
   setInterval(() => { // re-fetch the forecast itself hourly (it changes once a day)
     safe(j('/api/vol-forecast')).then(f => { if (f && !f.__computing) S.forecast = f; });
     safe(j('/api/daily-brief')).then(b => { if (b?.ok) S.brief = b; });

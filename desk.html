@@ -68,6 +68,17 @@ tr.rowi{cursor:pointer} tr.rowi:hover td{background:rgba(91,157,255,.06)}
 .ub-txt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;text-shadow:0 0 3px #000}
 .pbar{width:110px;height:10px;background:var(--panel2);border:1px solid var(--line);border-radius:4px;overflow:hidden}
 .pbar-f{height:100%;opacity:.75}
+/* centred zero-bar (currency strength, macro tier score) */
+.zbar{position:relative;display:inline-block;width:130px;height:12px;background:var(--panel2);border:1px solid var(--line);border-radius:4px;overflow:hidden;vertical-align:middle}
+.zbar::after{content:'';position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(215,220,230,.45)}
+.zbar-f{position:absolute;top:0;bottom:0;opacity:.8}
+.zb-pos{background:var(--green)} .zb-neg{background:var(--red)}
+/* macro tier per-pair rows */
+.tier-det{border-top:1px solid rgba(31,41,55,.5)}
+.tier-sum{display:flex;align-items:center;gap:10px;padding:6px 12px;cursor:pointer;flex-wrap:wrap;list-style:none}
+.tier-sum::-webkit-details-marker{display:none}
+.tier-sum:hover{background:rgba(91,157,255,.06)}
+.tier-name{min-width:64px}
 /* two-col areas */
 .cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media(max-width:1000px){.cols{grid-template-columns:1fr}}
