@@ -34,6 +34,8 @@ import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/
 import { runBench as runVolBench, sigmaSeriesForExport, benchCtx, realizedVarSeries as _realizedVarSeries }   from './js/volForecastBench.js';
 import { coverageFromBars }                                          from './js/forecastCoverage.js';
 import { deskSnapshot }                                              from './js/analyticsDesk.js';
+import { benchInstrument as hurstBenchInstrument, poolBench as hurstPoolBench } from './js/hurstBench.js';
+import { stressReplay, allocationCompare, STRESS_WINDOWS }           from './js/bookStress.js';
 import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
 import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
 import { runRankICSuite, RANKIC_INSTRUMENTS }                       from './js/rankICEngine.js';
@@ -10199,6 +10201,118 @@ app.get('/api/forecast-coverage/status/:jobId', (req, res) => {
   }
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Hurst estimator A/B (LEGO_MODULES §3 drift #11) ─────────────────────────
+// Measures the claim "the live range-bias Hurst feature is saturated" on real
+// D1: reading distribution, the vote each estimator produces at the LIVE
+// thresholds, how often they disagree, and — the question that decides it —
+// whether either reading predicts forward trend character (rank IC, IS/OOS).
+// Pure scoring in hurstBench.js; this route fetches D1 and loops.
+const hbJobs = new Map();
+function _purgeStaleHbJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of hbJobs) if (job.startedAt < cutoff) hbJobs.delete(id);
+}
+
+app.post('/api/hurst-bench/run', express.json({ limit: '256kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch D1 data' });
+  const b = req.body ?? {};
+  const num = (v, d) => (v === undefined || v === '' || isNaN(+v) ? d : +v);
+  const window  = Math.min(Math.max(num(b.window, 250), 60), 1000);
+  const forward = Math.min(Math.max(num(b.forward, 20), 5), 120);
+  const step    = Math.min(Math.max(num(b.step, 5), 1), 20);
+  const oosFrac = Math.min(Math.max(num(b.oosFrac, 0.4), 0.1), 0.6);
+  const instFilter = b.pair
+    ? BT_INSTRUMENTS.filter(i => i.name === String(b.pair).toUpperCase())
+    : BT_INSTRUMENTS;
+
+  const jobId = `hb_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleHbJobs();
+  hbJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    try {
+      const results = [], log = [];
+      for (const inst of instFilter) {
+        try {
+          const bars = await _btFetchD1(inst.oanda);
+          if (!bars || bars.length < 400) { log.push(`${inst.name}: too few bars (${bars?.length ?? 0})`); continue; }
+          const r = hurstBenchInstrument(bars, { window, forward, step, oosFrac });
+          if (!r) { log.push(`${inst.name}: insufficient rows after windowing`); continue; }
+          results.push({ name: inst.name, assetClass: inst.assetClass, ...r });
+          log.push(`${inst.name}: incumbent med=${r.incumbent.dist.median.toFixed(3)} (dominant vote ${(r.incumbent.votes.dominantShare * 100).toFixed(0)}%), dfa med=${r.dfa.dist.median.toFixed(3)}, disagree ${(r.disagreeShare * 100).toFixed(0)}%`);
+        } catch (e) { log.push(`${inst.name}: ${e?.message || e}`); }
+      }
+      if (!results.length) { hbJobs.set(jobId, { status: 'error', error: 'No results generated', log, startedAt }); return; }
+      hbJobs.set(jobId, { status: 'done', result: { results, pooled: hurstPoolBench(results), log, opts: { window, forward, step, oosFrac } }, startedAt });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[hurst-bench/run]', msg, e?.stack ?? '');
+      hbJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/hurst-bench/status/:jobId', (req, res) => {
+  const job = hbJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Book stress + allocation (Phase 4; SYSTEM_ASSESSMENT §2.4 / #6) ──────────
+// POST sleeve return series → crisis-window replay (does diversification
+// evaporate exactly when needed?) + allocation geometry. Pure engine in
+// bookStress.js. Synchronous: the math is cheap, the caller supplies the data.
+app.post('/api/book-stress/run', express.json({ limit: '8mb' }), (req, res) => {
+  try {
+    const b = req.body ?? {};
+    const sleeves = b.sleeves;
+    if (!sleeves || typeof sleeves !== 'object' || !Object.keys(sleeves).length) {
+      return res.status(400).json({ ok: false, error: 'body.sleeves required: { name: { dates: [], returns: [] } }' });
+    }
+    const periodsPerYear = Number.isFinite(+b.periodsPerYear) ? +b.periodsPerYear : 252;
+    const replay = stressReplay(sleeves, { periodsPerYear });
+    const alloc  = allocationCompare(sleeves, { periodsPerYear });
+    res.json({ ok: true, replay, alloc, windows: STRESS_WINDOWS });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
+});
+
+// Market-backdrop sleeves for the stress page when no strategy series is at
+// hand: per-instrument BUY-AND-HOLD D1 returns. Clearly labelled as the market
+// backdrop, NOT strategy performance — it answers "were these instruments
+// correlated in the crisis", not "did the book make money".
+app.get('/api/book-stress/market-sleeves', async (req, res) => {
+  try {
+    if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+    const names = String(req.query.pairs || 'EURUSD,GBPUSD,USDJPY,AUDUSD,GOLD,NQ')
+      .split(',').map(s => s.trim().toUpperCase()).filter(Boolean).slice(0, 12);
+    const sleeves = {};
+    for (const nm of names) {
+      const inst = BT_INSTRUMENTS.find(i => i.name === nm);
+      if (!inst) continue;
+      const bars = await _btFetchD1(inst.oanda);
+      if (!bars || bars.length < 200) continue;
+      const dates = [], returns = [];
+      for (let i = 1; i < bars.length; i++) {
+        if (!(bars[i - 1].close > 0) || !(bars[i].close > 0)) continue;
+        dates.push(bars[i].date);
+        returns.push(bars[i].close / bars[i - 1].close - 1);
+      }
+      sleeves[nm] = { dates, returns };
+    }
+    if (!Object.keys(sleeves).length) return res.status(404).json({ ok: false, error: 'no instruments resolved' });
+    res.json({ ok: true, sleeves, note: 'buy-and-hold market backdrop, NOT strategy returns' });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
 });
 
 // ── Analytics Desk (per-instrument desk-view snapshot) ───────────────────────

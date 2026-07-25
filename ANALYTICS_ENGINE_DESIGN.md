@@ -101,12 +101,41 @@ passed the harness — which is what lets us build all of it now.
   plus `analyticsDesk.js` / `analytics-desk.html`, the Desk View assembling §3
   from existing bricks with every panel labelled *validated input* or
   *context*. Registered `LEGO_MODULES.md` §1ac.
-- **Phase 4:** the liquidity-contraction **stress replay** (#17) + book-level
-  allocation study (#18) for the live book.
+- **Phase 4 (DELIVERED 2026-07-25):** `bookStress.js` / `book-stress.html` —
+  the liquidity-contraction **stress replay** (#17) over six declared crisis
+  windows, measuring whether effective bets collapse in-crisis vs calm, plus
+  the allocation-geometry compare (#18: equal / inverse-vol / risk-parity ERC,
+  trailing-window weights). Takes real sleeve return series; a clearly-labelled
+  buy-and-hold "market backdrop" mode exists for when none is at hand.
+  Registered `LEGO_MODULES.md` §1ad.
+- **Drift #11 evidence (2026-07-25):** `hurstBench.js` / `hurst-bench.html` —
+  the estimator A/B that decides whether the live range-bias Hurst feature is
+  swapped, kept or dropped. Pre-registered outcomes below.
 - **In parallel, the whole time:** engine #19 — live wiring + forward
   fill-quality log for the range-line/US-index book. This is the highest-value
   thread in the repo and it *is* one of the twenty engines, not a detour from
   them.
+
+### Pre-registered: the Hurst estimator decision (drift #11)
+
+Run `hurst-bench.html` on all 26 instruments. **Both outcomes named before
+the run**, so a null cannot be re-narrated into a maybe:
+
+- **DROP the feature** if *neither* estimator's median OOS |IC| vs forward
+  efficiency ratio reaches 0.10. A calibrated metric that predicts nothing is
+  still nothing — in that case the correct action is to remove `featureHurst`
+  from the range-bias score, not to swap its estimator. This is the outcome to
+  expect if Hurst is simply not informative on daily FX.
+- **SWAP to DFA** only if DFA's median OOS |IC| exceeds the incumbent's by
+  ≥0.05 *and* clears 0.10 in absolute terms. Even then the swap does not go
+  live until the range-bias A/B is re-run OOS on the Asia-range book — a
+  better *measurement* is not a better *result*.
+- **KEEP as-is** if the incumbent somehow predicts and DFA does not.
+
+Note what is NOT at stake: `perLineStrategy` (the confirmed range-line edge)
+does not use Hurst at all. The affected consumers are the live `levels.js`
+range-bias grading and the `asiaRangeEngine` confluence backtest. Whatever
+the verdict, the confirmed book is untouched.
 
 A/B hooks pre-registered as each phase lands (win/lose named before running):
 - **Entropy vs HMM (Phase 1→3):** does `regimeShiftSeries` flag the same regime

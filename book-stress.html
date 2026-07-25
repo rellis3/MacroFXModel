@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Book Stress — does diversification survive a liquidity contraction?</title>
+<style>
+  :root{
+    --bg:#0e1016; --panel:#161a24; --panel2:#1d222e; --line:#2a3140;
+    --text:#e6e9ef; --text2:#aab2c0; --text3:#6f7889;
+    --accent:#a06bff; --green:#3fb27f; --red:#e5604d; --amber:#e0a93b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  header{padding:20px 24px;border-bottom:1px solid var(--line);background:var(--panel)}
+  h1{margin:0 0 4px;font-size:19px;font-weight:650}
+  .sub{color:var(--text2);font-size:13px;max-width:980px}
+  main{padding:22px 24px;max-width:1300px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:18px}
+  h2{margin:0 0 4px;font-size:14px;font-weight:650}
+  .q{color:var(--text3);font-size:11.5px;font-style:italic;margin-bottom:10px}
+  label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+  input,select,textarea{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:7px 9px;font-size:13px}
+  textarea{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;min-height:90px}
+  button{background:var(--accent);color:#fff;border:0;border-radius:7px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .hint{color:var(--text3);font-size:11px;margin-top:3px}
+  #status{margin:14px 0;color:var(--text2);font-size:13px;min-height:18px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{padding:6px 9px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  thead th{color:var(--text3);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+  .pos{color:var(--green)} .neg{color:var(--red)} .amb{color:var(--amber)} .mut{color:var(--text3)}
+  .badge{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600}
+  .b-good{background:rgba(63,178,127,.18);color:var(--green)}
+  .b-bad{background:rgba(229,96,77,.18);color:var(--red)}
+  .warn{background:rgba(224,169,59,.12);border:1px solid rgba(224,169,59,.35);border-radius:8px;padding:10px 12px;color:var(--amber);font-size:12px;margin-bottom:14px}
+  .legend{color:var(--text3);font-size:11.5px;margin-top:10px;line-height:1.7}
+  code{background:var(--panel2);padding:1px 5px;border-radius:4px;color:var(--text2)}
+  .row{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Book Stress <span class="mut" style="font-size:13px">· does diversification survive a liquidity contraction?</span></h1>
+  <div class="sub">
+    A book of N sleeves is only N bets if they stay independent. The claim under test
+    (<code>SYSTEM_ASSESSMENT.md</code> §2.4): correlations converge exactly when it matters, so
+    drawdowns that look independent in the full sample arrive <b>together</b> in a crisis. This
+    recomputes the <b>effective number of bets inside each declared crisis window</b> and compares
+    it to the calm-period baseline. Windows are <b>declared constants</b>, not picked after seeing
+    the returns. <b>Risk diagnostic, not a signal</b> — no allocation mode "winning" on past data
+    is evidence it will keep winning.
+  </div>
+</header>
+<main>
+  <div class="card">
+    <div class="row">
+      <div style="flex:1;min-width:280px">
+        <label>Sleeve source</label>
+        <select id="src">
+          <option value="market">Market backdrop (buy-and-hold D1) — NOT strategy returns</option>
+          <option value="paste">Paste sleeve returns JSON</option>
+        </select>
+        <div class="hint">paste <code>{"name":{"dates":["YYYY-MM-DD"],"returns":[0.01]}}</code> to stress a real book</div>
+      </div>
+      <div style="flex:1;min-width:240px">
+        <label>Instruments (market mode)</label>
+        <input id="pairs" value="EURUSD,GBPUSD,USDJPY,AUDUSD,GOLD,NQ">
+      </div>
+      <button id="run">Run stress</button>
+    </div>
+    <div id="pasteWrap" style="display:none"><label>Sleeve returns JSON</label><textarea id="paste"></textarea></div>
+    <div id="status"></div>
+  </div>
+  <div id="out"></div>
+  <div class="card" id="legendCard" style="display:none">
+    <div class="legend">
+      <b>Effective bets</b> is the inverse participation ratio of the correlation matrix' eigenvalues —
+      N uncorrelated sleeves give N, perfectly correlated sleeves give 1. The number to read is
+      <b>crisis vs calm</b>: if it collapses in the crisis rows, the book's diversification is
+      an illusion precisely when it is needed, and per-sleeve drawdowns should not be treated as
+      independent when sizing. <b>sleeves −</b> counts how many sleeves lost money in that window
+      (all of them = one bet wearing N hats). <b>Uncovered</b> windows are outside the data range and
+      are reported as such rather than filled in. Allocation modes are compared on realized geometry
+      only; weights are computed on trailing windows (no lookahead).
+    </div>
+  </div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const pc = (x,d=1) => Number.isFinite(x) ? (x*100).toFixed(d)+'%' : '—';
+const f2 = x => Number.isFinite(x) ? x.toFixed(2) : '—';
+const sgn = x => Number.isFinite(x) ? (x>0?'pos':x<0?'neg':'') : '';
+
+$('src').onchange = () => { $('pasteWrap').style.display = $('src').value==='paste' ? '' : 'none'; };
+
+function renderReplay(r){
+  if(!r?.ok) return `<div class="card neg">Stress replay failed: ${r?.error||'unknown'}</div>`;
+  const calm = r.calm;
+  const rows = r.windows.map(w => {
+    if(!w.covered) return `<tr><td>${w.label}</td><td colspan="8" class="mut">uncovered — outside the data range (${w.from} → ${w.to})</td></tr>`;
+    const collapse = Number.isFinite(w.effectiveBets) && Number.isFinite(calm.effectiveBets) && w.effectiveBets < calm.effectiveBets;
+    return `<tr>
+      <td>${w.label} <span class="mut">${w.n}d</span></td>
+      <td class="${sgn(w.book.total)}">${pc(w.book.total)}</td>
+      <td class="neg">${pc(w.book.maxDD)}</td>
+      <td class="neg">${pc(w.book.worst,2)}</td>
+      <td>${w.sleevesNegative}/${r.nSleeves}</td>
+      <td>${f2(w.avgCorr)}</td>
+      <td><b class="${collapse?'neg':''}">${f2(w.effectiveBets)}</b></td>
+      <td class="mut">${f2(calm.effectiveBets)}</td>
+      <td>${collapse ? '<span class="badge b-bad">collapses</span>' : '<span class="badge b-good">holds</span>'}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="card">
+    <h2>Crisis replay</h2>
+    <div class="q">does diversification evaporate exactly when it is needed?</div>
+    <table><thead><tr><th>Window</th><th>book return</th><th>book maxDD</th><th>worst day</th>
+      <th>sleeves −</th><th>avg ρ</th><th>eff. bets</th><th>calm bets</th><th></th></tr></thead>
+      <tbody>${rows}</tbody></table>
+    <div class="hint" style="margin-top:8px">
+      ${r.nSleeves} sleeves · ${r.dates.first} → ${r.dates.last} (${r.dates.n} obs) ·
+      calm baseline: ${pc(calm.book.total)} total, avg ρ ${f2(calm.avgCorr)}, ${f2(calm.effectiveBets)} of ${r.nSleeves} bets
+    </div>
+  </div>`;
+}
+
+function renderAlloc(a){
+  if(!a?.ok) return `<div class="card mut">Allocation compare unavailable: ${a?.error||'—'}</div>`;
+  const modes = Object.entries(a.modes);
+  return `<div class="card">
+    <h2>Allocation geometry</h2>
+    <div class="q">how much does the weighting scheme change realized risk? (measurement, not a recommendation)</div>
+    <table><thead><tr><th>Mode</th><th>ann. vol</th><th>Sharpe</th><th>maxDD</th><th>total</th><th>eff. bets (weighted)</th><th>eff. bets (PCA)</th></tr></thead>
+    <tbody>${modes.map(([m,v])=>`<tr>
+      <td><b>${m}</b></td><td>${pc(v.vol)}</td><td class="${sgn(v.sharpe)}">${f2(v.sharpe)}</td>
+      <td class="neg">${pc(v.maxDD)}</td><td class="${sgn(v.total)}">${pc(v.total)}</td>
+      <td>${f2(v.effectiveBetsWeighted)}</td><td>${f2(v.effectiveBetsPCA)}</td></tr>`).join('')}</tbody></table>
+    <div class="hint" style="margin-top:8px">${a.n} obs after the ${a.nBets}-sleeve trailing-window warmup · weights rebalanced on trailing data only</div>
+  </div>`;
+}
+
+$('run').onclick = async () => {
+  $('run').disabled=true; $('out').innerHTML=''; $('legendCard').style.display='none';
+  $('status').textContent='Loading sleeves…';
+  try{
+    let sleeves, marketMode = $('src').value==='market';
+    if(marketMode){
+      const res = await fetch(`/api/book-stress/market-sleeves?pairs=${encodeURIComponent($('pairs').value)}`).then(r=>r.json());
+      if(!res.ok) throw new Error(res.error||'failed to load market sleeves');
+      sleeves = res.sleeves;
+    } else {
+      sleeves = JSON.parse($('paste').value);
+    }
+    $('status').textContent='Running stress…';
+    const out = await fetch('/api/book-stress/run',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({sleeves})}).then(r=>r.json());
+    if(!out.ok) throw new Error(out.error||'stress failed');
+    $('status').textContent = `Done — ${Object.keys(sleeves).length} sleeve(s).`;
+    $('out').innerHTML =
+      (marketMode ? `<div class="warn">⚠ <b>Market backdrop mode.</b> These are buy-and-hold instrument returns, <b>not</b> strategy returns. It answers "were these markets correlated in the crisis", not "what did the book earn". Paste real sleeve returns to stress an actual book.</div>` : '')
+      + renderReplay(out.replay) + renderAlloc(out.alloc);
+    $('legendCard').style.display='';
+  }catch(e){ $('status').innerHTML = `<span class="neg">Error: ${e.message}</span>`; }
+  finally{ $('run').disabled=false; }
+};
+</script>
+</body>
+</html>
