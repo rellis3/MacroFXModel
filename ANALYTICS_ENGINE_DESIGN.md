@@ -96,8 +96,11 @@ passed the harness — which is what lets us build all of it now.
   today get" number) + `forecastCoverage.js` / `forecast-coverage.html`
   (engine #13): the bands graded as the frequencies they promise, per year,
   with GPD break-severity. Registered `LEGO_MODULES.md` §1ab.
-- **Phase 3:** `ouCore.js` extraction (half-life, free of `js/mve/`) + the
-  **Desk View page** assembling §3 from existing bricks.
+- **Phase 3 (DELIVERED 2026-07-25):** `ouCore.js` — the OU family promoted out
+  of `js/mve/` (which is now a re-export shim; MVE numerically untouched) —
+  plus `analyticsDesk.js` / `analytics-desk.html`, the Desk View assembling §3
+  from existing bricks with every panel labelled *validated input* or
+  *context*. Registered `LEGO_MODULES.md` §1ac.
 - **Phase 4:** the liquidity-contraction **stress replay** (#17) + book-level
   allocation study (#18) for the live book.
 - **In parallel, the whole time:** engine #19 — live wiring + forward

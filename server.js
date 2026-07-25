@@ -33,6 +33,7 @@ import { computeHitRates, isHitRatesComputing, HR_INSTRUMENTS } from './js/hitRa
 import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
 import { runBench as runVolBench, sigmaSeriesForExport, benchCtx, realizedVarSeries as _realizedVarSeries }   from './js/volForecastBench.js';
 import { coverageFromBars }                                          from './js/forecastCoverage.js';
+import { deskSnapshot }                                              from './js/analyticsDesk.js';
 import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
 import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
 import { runRankICSuite, RANKIC_INSTRUMENTS }                       from './js/rankICEngine.js';
@@ -10198,6 +10199,24 @@ app.get('/api/forecast-coverage/status/:jobId', (req, res) => {
   }
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Analytics Desk (per-instrument desk-view snapshot) ───────────────────────
+// One live GET per instrument (same shape as /api/forecast-drift/:pair):
+// fetches D1 and composes the existing bricks — bands, regime, day-type T,
+// Hurst, OU half-life, range z, entropy shift, EVT tail — via analyticsDesk.js.
+// Everything except the bands is CONTEXT; the page renders the labels.
+app.get('/api/analytics-desk/:pair', async (req, res) => {
+  try {
+    if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+    const inst = BT_INSTRUMENTS.find(i => i.name === String(req.params.pair || '').toUpperCase());
+    if (!inst) return res.status(404).json({ ok: false, error: `Unknown instrument: ${req.params.pair}` });
+    const bars = await _btFetchD1(inst.oanda);
+    const snap = deskSnapshot(bars ?? [], inst.assetClass);
+    res.json({ ok: snap.ok, name: inst.name, ...snap });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
 });
 
 // ── Vol/Range Forecast Backtester v2 (adaptive selector) ─────────────────────
