@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Hurst Estimator A/B — is the live feature a signal or a constant?</title>
+<style>
+  :root{
+    --bg:#0e1016; --panel:#161a24; --panel2:#1d222e; --line:#2a3140;
+    --text:#e6e9ef; --text2:#aab2c0; --text3:#6f7889;
+    --accent:#a06bff; --green:#3fb27f; --red:#e5604d; --amber:#e0a93b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  header{padding:20px 24px;border-bottom:1px solid var(--line);background:var(--panel)}
+  h1{margin:0 0 4px;font-size:19px;font-weight:650}
+  .sub{color:var(--text2);font-size:13px;max-width:980px}
+  main{padding:22px 24px;max-width:1300px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:18px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+  label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+  input,select{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:7px 9px;font-size:13px}
+  button{background:var(--accent);color:#fff;border:0;border-radius:7px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .hint{color:var(--text3);font-size:11px;margin-top:3px}
+  #status{margin:14px 0;color:var(--text2);font-size:13px;min-height:18px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{padding:6px 9px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  thead th{color:var(--text3);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+  .pos{color:var(--green)} .neg{color:var(--red)} .amb{color:var(--amber)} .mut{color:var(--text3)}
+  .badge{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600}
+  .b-good{background:rgba(63,178,127,.18);color:var(--green)}
+  .b-bad{background:rgba(229,96,77,.18);color:var(--red)}
+  .b-meh{background:rgba(224,169,59,.18);color:var(--amber)}
+  .verdict{font-size:15px;font-weight:650;margin:4px 0 10px}
+  .legend{color:var(--text3);font-size:11.5px;margin-top:10px;line-height:1.7}
+  code{background:var(--panel2);padding:1px 5px;border-radius:4px;color:var(--text2)}
+  .big{font-size:22px;font-weight:650}
+  .kpi{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:6px}
+  .kpi div{background:var(--panel2);border-radius:8px;padding:10px 12px}
+  .kpi .k{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.03em}
+</style>
+</head>
+<body>
+<header>
+  <h1>Hurst Estimator A/B <span class="mut" style="font-size:13px">· is the live range-bias feature a signal or a constant?</span></h1>
+  <div class="sub">
+    The live range-bias conviction score includes a Hurst feature that votes
+    <b>mean-reverting &lt;0.45</b> / <b>trending &gt;0.55</b>. The incumbent estimator
+    (R/S over lags 2–16, applied to <b>price levels</b>) reads ~0.9 on synthetics regardless of
+    market character. This measures that on real data, and answers the question that actually
+    decides whether to swap it: <b>does either reading predict anything?</b> Forward character is
+    the efficiency ratio (|net move| ÷ path) over the next N days — scored as rank IC with a true
+    IS/OOS split. <b>Benchmark is IC = 0.</b> Being better calibrated does not entitle DFA to win:
+    if both OOS ICs are ≈0, the honest conclusion is that the feature carries no information and
+    should be <i>dropped</i>, not swapped.
+  </div>
+</header>
+<main>
+  <div class="card">
+    <div class="grid">
+      <div>
+        <label>Instrument</label>
+        <select id="pair">
+          <option value="">All instruments</option>
+          <option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option>
+          <option>AUDUSD</option><option>NZDUSD</option><option>USDCAD</option>
+          <option>USDCHF</option><option>GBPJPY</option><option>GOLD</option><option>NQ</option>
+        </select>
+      </div>
+      <div><label>Estimator window (days)</label><input id="window" type="number" value="250" min="60" max="1000"></div>
+      <div><label>Forward horizon (days)</label><input id="forward" type="number" value="20" min="5" max="120">
+           <div class="hint">character being predicted</div></div>
+      <div><label>Step (days)</label><input id="step" type="number" value="5" min="1" max="20"></div>
+      <div><label>OOS fraction</label><input id="oosFrac" type="number" value="0.4" step="0.05" min="0.1" max="0.6"></div>
+    </div>
+    <div style="margin-top:14px"><button id="run">Run A/B</button></div>
+    <div id="status"></div>
+  </div>
+  <div id="verdict"></div>
+  <div id="results"></div>
+  <div class="card" id="legendCard" style="display:none">
+    <div class="legend">
+      <b>dominant vote %</b> is the share taken by the estimator's most common vote. <b>100% means the
+      feature is a constant</b> — it emits the same verdict every single day, so it adds nothing to the
+      conviction score no matter how sensible the threshold looks. <b>disagree %</b> is how often the two
+      estimators would produce a different vote — the "would swapping actually change the bot" number.
+      <b>OOS IC</b> is the Spearman rank correlation between the reading and the forward efficiency ratio,
+      out of sample; |IC| ≳ 0.2 with a real n is a usable relationship, ≈0 is none. Read the OOS column,
+      not the IS one. <b>n</b> travels with every claim.
+    </div>
+  </div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const f3 = x => Number.isFinite(x) ? x.toFixed(3) : '—';
+const pc = (x,d=0) => Number.isFinite(x) ? (x*100).toFixed(d)+'%' : '—';
+const icCell = ic => {
+  if (!ic || !Number.isFinite(ic.ic)) return '—';
+  const a = Math.abs(ic.ic), cls = a>=0.2 ? 'b-good' : a>=0.1 ? 'b-meh' : 'b-bad';
+  return `<span class="badge ${cls}">${ic.ic>=0?'+':''}${ic.ic.toFixed(3)}</span> <span class="mut">n=${ic.n}</span>`;
+};
+const voteCell = v => {
+  const cls = v.dominantShare >= 0.95 ? 'neg' : v.dominantShare >= 0.8 ? 'amb' : 'pos';
+  return `<span class="${cls}">${pc(v.dominantShare)}</span>`;
+};
+
+function renderVerdict(p, opts){
+  if(!p) return '';
+  // State the conclusion the numbers support, including the null case.
+  const incConst = p.incumbent.meanDominantVoteShare >= 0.95;
+  const anyPredicts = Math.max(Math.abs(p.incumbent.medianOosIC||0), Math.abs(p.dfa.medianOosIC||0)) >= 0.1;
+  let verdict, cls;
+  if (!anyPredicts) {
+    verdict = 'NEITHER estimator predicts forward character (both median OOS |IC| < 0.10). The honest read: this feature carries no information — drop it rather than swap it.';
+    cls = 'neg';
+  } else if (Math.abs(p.dfa.medianOosIC) > Math.abs(p.incumbent.medianOosIC) + 0.05) {
+    verdict = 'DFA carries more forward information than the incumbent. A swap is justified — but it still needs the range-bias A/B re-run before the live path changes.';
+    cls = 'pos';
+  } else {
+    verdict = 'No decisive predictiveness gap between the estimators. Calibration alone is not a reason to change a live path.';
+    cls = 'amb';
+  }
+  return `<div class="card">
+    <div class="verdict ${cls}">${verdict}</div>
+    <div class="kpi">
+      <div><div class="k">Incumbent median reading</div><div class="big">${f3(p.incumbent.medianReading)}</div></div>
+      <div><div class="k">DFA median reading</div><div class="big">${f3(p.dfa.medianReading)}</div></div>
+      <div><div class="k">Incumbent dominant vote</div><div class="big ${p.incumbent.meanDominantVoteShare>=0.95?'neg':''}">${pc(p.incumbent.meanDominantVoteShare,1)}</div><div class="mut" style="font-size:11px">${incConst?'= a constant, not a signal':''}</div></div>
+      <div><div class="k">DFA dominant vote</div><div class="big">${pc(p.dfa.meanDominantVoteShare,1)}</div></div>
+      <div><div class="k">Incumbent median OOS IC</div><div class="big">${f3(p.incumbent.medianOosIC)}</div><div class="mut" style="font-size:11px">${p.incumbent.instrumentsWithOosICabs02}/${p.instruments} clear |IC|≥0.2</div></div>
+      <div><div class="k">DFA median OOS IC</div><div class="big">${f3(p.dfa.medianOosIC)}</div><div class="mut" style="font-size:11px">${p.dfa.instrumentsWithOosICabs02}/${p.instruments} clear |IC|≥0.2</div></div>
+      <div><div class="k">Votes would differ</div><div class="big">${pc(p.meanDisagreeShare,1)}</div><div class="mut" style="font-size:11px">of observations</div></div>
+      <div><div class="k">Instruments</div><div class="big">${p.instruments}</div><div class="mut" style="font-size:11px">win ${opts.window}d · fwd ${opts.forward}d</div></div>
+    </div>
+  </div>`;
+}
+
+function renderTable(rs){
+  return `<div class="card"><table>
+    <thead><tr><th>Instrument</th><th>n</th>
+      <th>Incumbent median</th><th>Inc. p10–p90</th><th>Inc. dominant vote</th><th>Inc. OOS IC</th>
+      <th>DFA median</th><th>DFA p10–p90</th><th>DFA dominant vote</th><th>DFA OOS IC</th>
+      <th>disagree</th></tr></thead>
+    <tbody>${rs.map(r=>`<tr>
+      <td><b>${r.name}</b> <span class="mut">${r.assetClass}</span></td>
+      <td>${r.n}</td>
+      <td>${f3(r.incumbent.dist.median)}</td>
+      <td class="mut">${f3(r.incumbent.dist.p10)}–${f3(r.incumbent.dist.p90)}</td>
+      <td>${voteCell(r.incumbent.votes)}</td>
+      <td>${icCell(r.incumbent.ic.oos)}</td>
+      <td>${f3(r.dfa.dist.median)}</td>
+      <td class="mut">${f3(r.dfa.dist.p10)}–${f3(r.dfa.dist.p90)}</td>
+      <td>${voteCell(r.dfa.votes)}</td>
+      <td>${icCell(r.dfa.ic.oos)}</td>
+      <td>${pc(r.disagreeShare)}</td>
+    </tr>`).join('')}</tbody></table></div>`;
+}
+
+async function poll(jobId){
+  for(let i=0;i<180;i++){
+    await new Promise(r=>setTimeout(r,2000));
+    const res = await fetch(`/api/hurst-bench/status/${jobId}`).then(r=>r.json()).catch(()=>null);
+    if(!res) continue;
+    if(res.status==='running'){ $('status').textContent = `Running… ${res.elapsed||0}s`; continue; }
+    if(res.status==='done') return res;
+    if(res.status==='error') throw new Error(res.error||'engine error');
+  }
+  throw new Error('timed out');
+}
+
+$('run').onclick = async () => {
+  const body = { pair:$('pair').value, window:$('window').value, forward:$('forward').value, step:$('step').value, oosFrac:$('oosFrac').value };
+  $('run').disabled=true; $('results').innerHTML=''; $('verdict').innerHTML=''; $('legendCard').style.display='none';
+  $('status').textContent='Submitting…';
+  try{
+    const start = await fetch('/api/hurst-bench/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json());
+    if(!start.ok) throw new Error(start.error||'failed to start');
+    const out = await poll(start.jobId);
+    $('status').textContent = `Done — ${out.results.length} instrument(s).`;
+    $('verdict').innerHTML = renderVerdict(out.pooled, out.opts);
+    $('results').innerHTML = renderTable(out.results);
+    $('legendCard').style.display='';
+  }catch(e){ $('status').innerHTML = `<span class="neg">Error: ${e.message}</span>`; }
+  finally{ $('run').disabled=false; }
+};
+</script>
+</body>
+</html>
