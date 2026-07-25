@@ -32,6 +32,7 @@ import { getSessionStats, computeSessionStats, isSessionStatsComputing } from '.
 import { computeHitRates, isHitRatesComputing, HR_INSTRUMENTS } from './js/hitRateBackfill.js';
 import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
 import { runBench as runVolBench, sigmaSeriesForExport, benchCtx, realizedVarSeries as _realizedVarSeries }   from './js/volForecastBench.js';
+import { coverageFromBars }                                          from './js/forecastCoverage.js';
 import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
 import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
 import { runRankICSuite, RANKIC_INSTRUMENTS }                       from './js/rankICEngine.js';
@@ -10125,6 +10126,72 @@ app.post('/api/vol-forecast-bench/run', express.json({ limit: '256kb' }), (req, 
 
 app.get('/api/vol-forecast-bench/status/:jobId', (req, res) => {
   const job = vfbJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Forecast Interval Coverage (does HL75 hold ~75% of days?) ────────────────
+// Grades the live band math as the frequencies it promises: realized range vs
+// hl50/hl75 and |close−open| vs ocMed/oc75, no-lookahead, per instrument and
+// per year, plus a GPD read on how hard hl75 breaks when it breaks. Pure
+// scoring lives in forecastCoverage.js (imports the forecaster's own
+// computeBands — never a copy); this route only fetches D1 and loops.
+const fcvJobs = new Map();
+function _purgeStaleFcvJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of fcvJobs) if (job.startedAt < cutoff) fcvJobs.delete(id);
+}
+
+app.post('/api/forecast-coverage/run', express.json({ limit: '256kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) {
+    return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch D1 data' });
+  }
+  const b = req.body ?? {};
+  const num = (v, d) => (v === undefined || v === '' || isNaN(+v) ? d : +v);
+  const warmup     = Math.min(Math.max(num(b.warmup, 60), 20), 250);
+  const rollWindow = Math.min(Math.max(num(b.rollWindow, 250), 60), 1000);
+  const instFilter = b.pair
+    ? BT_INSTRUMENTS.filter(i => i.name === String(b.pair).toUpperCase())
+    : BT_INSTRUMENTS;
+  const includeRolling = !!b.pair;   // the drift trace is per-pair detail, too heavy for all-26
+
+  const jobId     = `fcv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleFcvJobs();
+  fcvJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    try {
+      const results = [], log = [];
+      for (const inst of instFilter) {
+        try {
+          const bars = await _btFetchD1(inst.oanda);
+          if (!bars || bars.length < 200) { log.push(`${inst.name}: too few bars (${bars?.length ?? 0})`); continue; }
+          const { rolling, ...cov } = coverageFromBars(bars, inst.assetClass, { warmup, rollWindow });
+          results.push({ name: inst.name, assetClass: inst.assetClass, ...cov, ...(includeRolling ? { rolling } : {}) });
+          log.push(`${inst.name}: n=${cov.n} hl75=${(cov.bands.hl75.cov * 100).toFixed(1)}% (z=${cov.bands.hl75.z.toFixed(2)})`);
+        } catch (e) {
+          log.push(`${inst.name}: ${e?.message || e}`);
+        }
+      }
+      if (!results.length) { fcvJobs.set(jobId, { status: 'error', error: 'No results generated', log, startedAt }); return; }
+      fcvJobs.set(jobId, { status: 'done', result: { results, log, opts: { warmup, rollWindow } }, startedAt });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[forecast-coverage/run]', msg, e?.stack ?? '');
+      fcvJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/forecast-coverage/status/:jobId', (req, res) => {
+  const job = fcvJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') {
     return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
