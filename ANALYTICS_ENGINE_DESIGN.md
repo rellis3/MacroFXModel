@@ -91,9 +91,11 @@ passed the harness — which is what lets us build all of it now.
   information, and a no-lookahead rolling regime-shift series
   (`regimeShiftSeries`). Registered in `LEGO_MODULES.md`; unit-tested with
   hand calcs in `js/entropyCore.test.mjs`.
-- **Phase 2:** `extremesCore.js` (EVT/GPD: tail index, return levels — the
-  honest "how bad can today get" number) + the forecaster **interval-coverage
-  card** (engine #13) on the vol pages.
+- **Phase 2 (DELIVERED 2026-07-25):** `extremesCore.js` (EVT/GPD: Hill tail
+  index, PWM GPD fit, POT, VaR/ES/return levels — the honest "how bad can
+  today get" number) + `forecastCoverage.js` / `forecast-coverage.html`
+  (engine #13): the bands graded as the frequencies they promise, per year,
+  with GPD break-severity. Registered `LEGO_MODULES.md` §1ab.
 - **Phase 3:** `ouCore.js` extraction (half-life, free of `js/mve/`) + the
   **Desk View page** assembling §3 from existing bricks.
 - **Phase 4:** the liquidity-contraction **stress replay** (#17) + book-level

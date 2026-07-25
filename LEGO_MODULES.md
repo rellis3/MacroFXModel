@@ -781,6 +781,19 @@ bar is correctness (hand-calc unit tests), not OOS — it describes
 distributional change, it doesn't trade it. Any promotion to a filter/sizer
 goes through the harness with a pre-registered win condition first.
 
+### 1ab. EVT + interval-coverage bricks (2026-07-25) — analytics-engine Phase 2
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Extremes core** | `js/extremesCore.js` | EVT Tier-1 family (engine #7 gap — `metricsCore.histVaR/CVaR` read the EMPIRICAL tail and cannot see past the worst observed point; a GPD fit extrapolates the tail honestly): `quantileSorted` (type-7, matches `histVaR`'s interpolation), `hillEstimator` (Pareto tail index, null on infeasible k), `fitGPD` (Hosking–Wallis PWM — closed-form, deterministic, no optimizer; recovers exp(β)→ξ=0 and GPD(ξ=.3)→ξ=.298 on inverse-CDF grids), `potFit` (peaks-over-threshold; null when the tail is too thin — an honest "not enough tail", not a 0), `gpdQuantile` (ξ=0 branch included), `gpdES` (NaN for ξ≥1 rather than a fake number), `returnLevel` (the 1-in-m-days move), `evtVaR`/`evtES` convenience. Pure, no DOM/network. Tested `js/extremesCore.test.mjs` (26 asserts, analytic hand checks incl. exponential memorylessness through POT). | `forecastCoverage.js` (GPD on band-break severity). Next named consumer: the pre-registered EVT-stop-vs-chandelier A/B (design doc §4 — win = higher OOS Sharpe on ≥30 trades at 2–3× cost, else chandelier stays) | ✅ built · **measurement brick, no edge claim** |
+| **Forecast coverage** | `js/forecastCoverage.js` | the interval-coverage card (engine #13 gap): scores the bands as the FREQUENCIES they promise — realized range ≤ hl50/hl75 on ~50%/75% of days, \|close−open\| vs ocMed/oc75 likewise — no-lookahead (σ from `volSigmaSeries`, bars < i), **imports `computeBands` from `forecastCore` (never copies)** so what's graded is byte-identical to what the forecaster and every backtest use. Emits per-band `coverageStats` (cov, binomial SE, z vs nominal — n travels with every claim), per-year hl75/oc75 split (the drifted-ruler catch), trailing rolling-coverage trace, ratio medians (med(range/hl50) ≈ 1.0 if calibrated — a PIT-style location check), and `tail75` break severity (mean excess + `fitGPD` shape on overshoots). σ injectable (`seriesFn`) mirroring `nextSigma`'s DI. Tested `js/forecastCoverage.test.mjs` (24 asserts, coverage exact-by-construction bars). | `server.js` `POST /api/forecast-coverage/run` + `GET /status/:jobId` (async-job Map, OANDA D1 via `_btFetchD1`) + `forecast-coverage.html` (linked from `index.html`) | ✅ built |
+
+Phase 2 of `ANALYTICS_ENGINE_DESIGN.md` §4. Both measurement-class. The
+coverage card is the cheap honest grade of the platform's core input: if hl75
+holds ~75% per year, the ruler is calibrated; if the per-year split drifts
+(the ifo/DAX failure mode — a full-sample average hiding decay), that's now
+visible in one click instead of assumed away.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
