@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Analytics Desk — the institutional questions, per instrument</title>
+<style>
+  :root{
+    --bg:#0e1016; --panel:#161a24; --panel2:#1d222e; --line:#2a3140;
+    --text:#e6e9ef; --text2:#aab2c0; --text3:#6f7889;
+    --accent:#a06bff; --green:#3fb27f; --red:#e5604d; --amber:#e0a93b; --blue:#5b9dd9;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  header{padding:20px 24px;border-bottom:1px solid var(--line);background:var(--panel)}
+  h1{margin:0 0 4px;font-size:19px;font-weight:650}
+  .sub{color:var(--text2);font-size:13px;max-width:940px}
+  main{padding:22px 24px;max-width:1240px}
+  .bar{display:flex;gap:12px;align-items:flex-end;margin-bottom:18px;flex-wrap:wrap}
+  label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+  select{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:7px 9px;font-size:13px}
+  button{background:var(--accent);color:#fff;border:0;border-radius:7px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  #status{color:var(--text2);font-size:13px;min-height:18px;margin-bottom:12px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .card h2{margin:0 0 2px;font-size:13px;font-weight:650}
+  .q{color:var(--text3);font-size:11.5px;margin-bottom:10px;font-style:italic}
+  .kv{display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0;border-bottom:1px dashed var(--line)}
+  .kv:last-child{border-bottom:0}
+  .kv .k{color:var(--text2)} .kv .v{font-variant-numeric:tabular-nums}
+  .big{font-size:20px;font-weight:650;margin:2px 0 6px}
+  .badge{display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+  .b-ctx{background:rgba(91,157,217,.16);color:var(--blue)}
+  .b-val{background:rgba(63,178,127,.18);color:var(--green)}
+  .pos{color:var(--green)} .neg{color:var(--red)} .amb{color:var(--amber)} .mut{color:var(--text3)}
+  .legend{color:var(--text3);font-size:11.5px;margin-top:16px;line-height:1.7;max-width:1000px}
+  code{background:var(--panel2);padding:1px 5px;border-radius:4px;color:var(--text2)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Analytics Desk <span class="mut" style="font-size:13px">· the institutional questions, one instrument at a time</span></h1>
+  <div class="sub">
+    Is this move statistically normal? Which regime? Trending or reverting? Has the
+    distribution changed? How fat is the tail right now? Every panel is an existing
+    brick <b>imported</b> — the same numbers the backtests and the forecaster use.
+    <span class="badge b-val">validated input</span> = the band math the platform runs on.
+    <span class="badge b-ctx">context</span> = measurement, <b>no edge claim</b> — nothing
+    here becomes a filter or sizer without a pre-registered harness run
+    (<code>ANALYTICS_ENGINE_DESIGN.md</code>).
+  </div>
+</header>
+<main>
+  <div class="bar">
+    <div>
+      <label>Instrument</label>
+      <select id="pair">
+        <option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option>
+        <option>AUDUSD</option><option>NZDUSD</option><option>USDCAD</option>
+        <option>USDCHF</option><option>GBPJPY</option><option>GOLD</option><option>NQ</option>
+      </select>
+    </div>
+    <button id="load">Load desk</button>
+  </div>
+  <div id="status"></div>
+  <div class="grid" id="panels"></div>
+  <div class="legend" id="legend" style="display:none">
+    <b>Reading it:</b> <b>T</b> is trend-day-ness (drift ÷ diffusion) — |T| high = directional day-character.
+    <b>Hurst</b> &gt; 0.5 persistent, &lt; 0.5 anti-persistent (window read, noisy — context).
+    <b>OU half-life</b> is how many days a stretch takes to close half the gap to the fitted mean — shown only when
+    the fit says reverting (κ &gt; 0); <b>z</b> is the current stretch in stationary-σ units.
+    <b>Range z</b> is yesterday's range vs its trailing 60 days.
+    <b>Entropy</b> ∈ [0,1]: disorder of the last 60 days' returns; <b>shift</b> is the JS-divergence of the recent
+    window vs the 250 days before it, located as a percentile of this instrument's own history — high percentile =
+    "the distribution has changed", to be read NEXT TO the HMM/day-type regime, not instead of it (the pre-registered
+    A/B). <b>Tail</b>: GPD on daily losses — ξ &gt; 0 fat-tailed; VaR/ES 99% and the 1-in-250-day loss are log-return
+    units shown as %. Dealer walls come from the OI store when one is saved for the pair.
+  </div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const fx = (x, d=4) => x==null ? '—' : (+x).toFixed(d);
+const pc = (x, d=2) => x==null ? '—' : (x*100).toFixed(d)+'%';
+const cls = x => x==null ? 'mut' : x>0 ? 'pos' : x<0 ? 'neg' : 'mut';
+
+function kv(k, v, c=''){ return `<div class="kv"><span class="k">${k}</span><span class="v ${c}">${v}</span></div>`; }
+function card(title, q, badge, body){
+  return `<div class="card"><h2>${title} <span class="badge ${badge==='validated'?'b-val':'b-ctx'}">${badge}</span></h2><div class="q">${q}</div>${body}</div>`;
+}
+
+function render(s, oi){
+  const digits = s.lastClose > 100 ? 2 : s.lastClose > 20 ? 3 : 5;
+  const p = [];
+  if (s.bands) p.push(card('Expected range', 'how much should price move?', 'validated', [
+    `<div class="big">±${pc(s.bands.hl75,2)} <span class="mut" style="font-size:12px">HL75</span></div>`,
+    kv('σ (next session)', pc(s.sigma,2)),
+    kv('HL50 lines', `${fx(s.bands.dn50,digits)} / ${fx(s.bands.up50,digits)}`),
+    kv('HL75 lines', `${fx(s.bands.dn75,digits)} / ${fx(s.bands.up75,digits)}`),
+    kv('OC med / 75', `${pc(s.bands.ocMed,2)} / ${pc(s.bands.oc75,2)}`),
+    kv('ref close', `${fx(s.lastClose,digits)} <span class="mut">(${s.lastDate})</span>`),
+  ].join('')));
+  p.push(card('Regime', 'which state is the market in?', 'context', [
+    `<div class="big">${s.regime ?? '—'}</div>`,
+    kv('day-type T (drift ÷ diffusion)', fx(s.dayTypeT,2), cls(s.dayTypeT)),
+    kv('entropy shift pctile', s.entropy?.shiftPctile==null ? '—' : pc(s.entropy.shiftPctile,0), (s.entropy?.shiftPctile ?? 0) > 0.9 ? 'amb' : ''),
+    kv('read side-by-side', '<span class="mut">HMM vs entropy — the A/B</span>'),
+  ].join('')));
+  p.push(card('Trend vs reversion', 'is price stretched, and does it snap back?', 'context', [
+    kv('Hurst (120d)', fx(s.hurst,3), s.hurst>0.55?'pos':s.hurst<0.45?'neg':''),
+    kv('OU verdict (250d)', s.ou ? (s.ou.ok ? 'reverting' : 'not reverting') : '—', s.ou?.ok ? 'pos' : 'mut'),
+    kv('OU half-life', s.ou?.halfLifeDays==null ? '—' : fx(s.ou.halfLifeDays,1)+'d'),
+    kv('OU stretch z', fx(s.ou?.z,2), cls(-(s.ou?.z ?? 0))),
+    kv('OU t-stat', fx(s.ou?.tStat,2)),
+  ].join('')));
+  p.push(card('Normality', 'is this move statistically normal?', 'context', [
+    kv('range z (60d)', fx(s.rangeZ,2), Math.abs(s.rangeZ ?? 0) > 2 ? 'amb' : ''),
+    kv('entropy (60d returns)', fx(s.entropy?.normalized,3)),
+    kv('entropy shift (JS bits)', fx(s.entropy?.shiftNow,4)),
+    kv('shift history n', s.entropy?.n ?? '—'),
+  ].join('')));
+  if (s.tail) p.push(card('Tail (EVT on daily losses)', 'how bad can today get?', 'context', [
+    kv('GPD ξ', fx(s.tail.xi,3), s.tail.xi>0.15?'amb':''),
+    kv('VaR 99%', pc(s.tail.var99,2), 'neg'),
+    kv('ES 99%', pc(s.tail.es99,2), 'neg'),
+    kv('1-in-250-day loss', pc(s.tail.loss1in250,2), 'neg'),
+    kv('tail sample', `${s.tail.nExc} exceedances of ${s.n}`),
+  ].join('')));
+  const walls = oi ?? [];
+  p.push(card('Dealer positioning (OI)', 'where are the option walls?', 'context',
+    walls.length
+      ? walls.slice(0, 6).map(l => kv(l.type + (l.tier ? ` <span class="mut">t${l.tier}</span>` : ''), fx(l.price, digits))).join('')
+      : `<div class="mut" style="font-size:12px">no OI data saved for this pair — paste a matrix in the OI analyser to populate</div>`));
+  return p.join('');
+}
+
+$('load').onclick = async () => {
+  const pair = $('pair').value;
+  $('load').disabled = true; $('panels').innerHTML=''; $('legend').style.display='none';
+  $('status').textContent = `Loading ${pair}…`;
+  try {
+    const [snap, oiRes] = await Promise.all([
+      fetch(`/api/analytics-desk/${pair}`).then(r=>r.json()),
+      fetch('/api/oi-levels').then(r=>r.json()).catch(()=>null),
+    ]);
+    if (!snap.ok) throw new Error(snap.error || 'no snapshot');
+    const oiKey = pair.toLowerCase();
+    const oi = oiRes?.byInstrument?.[oiKey] ?? null;
+    $('status').textContent = `${snap.name} · ${snap.n} D1 bars · last ${snap.lastDate}`;
+    $('panels').innerHTML = render(snap, oi);
+    $('legend').style.display='';
+  } catch(e) {
+    $('status').innerHTML = `<span class="neg">Error: ${e.message}</span>`;
+  } finally { $('load').disabled = false; }
+};
+</script>
+</body>
+</html>
