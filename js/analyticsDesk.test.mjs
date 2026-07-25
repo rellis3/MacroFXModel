@@ -35,7 +35,10 @@ console.log('[shape & units]');
      s.lastClose > s.bands.dn50 && s.bands.dn50 > s.bands.dn75);
   ok('regime is a string', typeof s.regime === 'string' && s.regime.length > 0, s.regime);
   ok('dayType T finite', Number.isFinite(s.dayTypeT));
-  ok('Hurst ∈ [0,1]', s.hurst >= 0 && s.hurst <= 1, `H=${s.hurst?.toFixed(3)}`);
+  // DFA α is not bounded by 1: ~0.5 = independent increments, >1 = the
+  // increments themselves look integrated (a very smooth series; a random
+  // walk's LEVELS read ~1.5). Real return series land ~0.4–0.8.
+  ok('Hurst finite and in the DFA range [0,2]', s.hurst >= 0 && s.hurst <= 2, `H=${s.hurst?.toFixed(3)}`);
   ok('entropy normalized ∈ [0,1]', s.entropy.normalized >= 0 && s.entropy.normalized <= 1);
   ok('shift percentile ∈ [0,1] with history n', s.entropy.shiftPctile >= 0 && s.entropy.shiftPctile <= 1 && s.entropy.n > 20);
   ok('rangeZ finite', Number.isFinite(s.rangeZ));
@@ -49,7 +52,38 @@ console.log('\n[regime-appropriate readings]');
   const tr  = deskSnapshot(trendBars, 'fx');
   ok('oscillating market: OU says reverting with finite half-life', rev.ou?.ok === true && rev.ou.halfLifeDays > 0, `hl=${rev.ou?.halfLifeDays?.toFixed(1)}d`);
   ok('trend market: OU does NOT claim reversion', !tr.ou?.ok, `ok=${tr.ou?.ok}`);
-  ok('trend Hurst > oscillating Hurst', tr.hurst > rev.hurst, `${tr.hurst.toFixed(2)} vs ${rev.hurst.toFixed(2)}`);
+
+  // Hurst must DISCRIMINATE, not just differ in the 3rd decimal. The old
+  // levels-based estimator returned ~0.93 for both of these (measured
+  // 2026-07-25) — a passing "trend > osc" assert on a 0.01 gap was the test
+  // failing to notice a degenerate metric. Random-walk returns must read near
+  // 0.5, which is what makes the number interpretable at all.
+  let seed = 12345;
+  const rnd = () => { seed = (1103515245 * seed + 12345) % 2147483648; return seed / 2147483648 - 0.5; };
+  const walkBars = [];
+  let pw = 1.10;
+  for (let i = 0; i < 600; i++) {
+    const o = pw; pw *= 1 + 0.004 * rnd();
+    walkBars.push({ date: `w${i}`, open: o, high: Math.max(o, pw) * 1.001, low: Math.min(o, pw) * 0.999, close: pw });
+  }
+  const walk = deskSnapshot(walkBars, 'fx');
+  ok('random-walk market: Hurst ≈ 0.5 (metric is calibrated, not saturated)',
+     Math.abs(walk.hurst - 0.5) < 0.12, `H=${walk.hurst.toFixed(3)}`);
+
+  // A market whose RETURNS are positively autocorrelated — the thing a Hurst
+  // reading is meant to detect. (A constant-drift curve is not: its returns
+  // are a constant, so any correct estimator reads ≈0 there.)
+  const persBars = [];
+  let pp = 1.10, pr = 0;
+  for (let i = 0; i < 600; i++) {
+    pr = 0.85 * pr + 0.004 * rnd();
+    const o = pp; pp *= 1 + pr;
+    persBars.push({ date: `p${i}`, open: o, high: Math.max(o, pp) * 1.001, low: Math.min(o, pp) * 0.999, close: pp });
+  }
+  const pers = deskSnapshot(persBars, 'fx');
+  ok('persistent-increment market reads > 0.6', pers.hurst > 0.6, `H=${pers.hurst.toFixed(3)}`);
+  ok('persistent separated from random walk by a real margin (≥0.2)',
+     pers.hurst - walk.hurst >= 0.2, `${pers.hurst.toFixed(3)} vs ${walk.hurst.toFixed(3)}`);
 }
 
 console.log('\n[graceful degradation]');

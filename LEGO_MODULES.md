@@ -793,7 +793,8 @@ goes through the harness with a pre-registered win condition first.
 | Brick | File | Owns | Consumers | Status |
 |---|---|---|---|---|
 | **OU core** | `js/ouCore.js` | the Ornstein-Uhlenbeck family (engine #4 gap): `ouFit` (discrete OU by OLS of Δz on z₍ₜ₋₁₎ → κ, μ, σ, **half-life = ln2/κ**, t-stat vs random walk, `ok` only when κ > 0), `ouConvergence` (closed-form convergence distribution for a current deviation — expected z, fraction of gap closed, P(revert inside band), 68/95 CIs), `empiricalSnapback` (the model-free base rate the OU probability must BEAT — the benchmark discipline in code), `normCdf`. **PROMOTED verbatim from `js/mve/ou.js`** — the math was always pure, but living inside the retired MVE engine (null verdict, wired to nothing) made every new consumer look MVE-dependent. `js/mve/ou.js` is now a **re-export shim** (no second copy; `js/mve/mve.test.mjs` still 93/93). Tested `js/ouCore.test.mjs` (22 asserts: noiseless AR(1) recovers κ=1−φ and half-life exactly, trend → not-reverting, closed-form convergence hand checks, hand-counted snapback, shim-identity check). | `js/mve/*` (via the shim), `js/analyticsDesk.js`. Next named consumer: any half-life read on a spread/deviation — import here, never re-derive | ✅ built · **measurement brick, no edge claim** |
-| **Analytics desk** | `js/analyticsDesk.js` | `deskSnapshot(bars, assetClass)` — the per-instrument desk view (`ANALYTICS_ENGINE_DESIGN.md` §3). Pure **assembly**: computes nothing novel, COMPOSES the bricks so every desk number is the same number the backtests use — `nextSigma`+`computeBands` (expected range), `classifyRegime` (regime), `dayTypeScore` (trend-day-ness T), `computeHurst` + `ouFit` (trending vs reverting + half-life + stretch z), `rollingZAt` on the daily range (is this move normal), `normalizedEntropy` + `regimeShiftSeries` with a percentile-of-own-history locator (has the distribution changed), `potFit`/`gpdQuantile`/`gpdES`/`returnLevel` on daily LOSSES (tail geometry: ξ, VaR/ES 99%, the 1-in-250-day loss). Returns `{ok:false, error}` under 320 bars and `null` per field for "can't say" — never a fake 0. Tested `js/analyticsDesk.test.mjs` (17 asserts: field/unit shape, band ordering, oscillating market → OU reverting w/ finite half-life vs trend market → not reverting, all three asset classes, graceful degradation). | `server.js` `GET /api/analytics-desk/:pair` (live D1) + `analytics-desk.html` (linked from `index.html`); the page also overlays `/api/oi-levels` dealer walls | ✅ built |
+| **Hurst (DFA)** | `js/statsCore.js` → `hurstDFA` | calibrated long-memory of an **increment** series (pass returns, not levels): integrate → detrend per window → RMS → slope of log F(s) on log s. Recovers 0.5 on white noise, 1.5 on a random walk's levels, <0.5 anti-persistent, >0.5 persistent. Added 2026-07-25 because the incumbent short-lag R/S on levels is degenerate (§3 drift #11). Tested `js/hurstDfa.test.mjs` (15 asserts incl. scale-invariance, null-not-fake-0.5 on short input, and asserts pinning the incumbent's saturation so the defect can't silently return). | `js/analyticsDesk.js`. **Not** wired into the live range-bias path — see §3 #11 | ✅ built |
+| **Analytics desk** | `js/analyticsDesk.js` | `deskSnapshot(bars, assetClass)` — the per-instrument desk view (`ANALYTICS_ENGINE_DESIGN.md` §3). Pure **assembly**: computes nothing novel, COMPOSES the bricks so every desk number is the same number the backtests use — `nextSigma`+`computeBands` (expected range), `classifyRegime` (regime), `dayTypeScore` (trend-day-ness T), `statsCore.hurstDFA` on returns + `ouFit` (trending vs reverting + half-life + stretch z), `rollingZAt` on the daily range (is this move normal), `normalizedEntropy` + `regimeShiftSeries` with a percentile-of-own-history locator (has the distribution changed), `potFit`/`gpdQuantile`/`gpdES`/`returnLevel` on daily LOSSES (tail geometry: ξ, VaR/ES 99%, the 1-in-250-day loss). Returns `{ok:false, error}` under 320 bars and `null` per field for "can't say" — never a fake 0. Tested `js/analyticsDesk.test.mjs` (17 asserts: field/unit shape, band ordering, oscillating market → OU reverting w/ finite half-life vs trend market → not reverting, all three asset classes, graceful degradation). | `server.js` `GET /api/analytics-desk/:pair` (live D1) + `analytics-desk.html` (linked from `index.html`); the page also overlays `/api/oi-levels` dealer walls | ✅ built |
 
 Phase 3 of `ANALYTICS_ENGINE_DESIGN.md` §4. The desk page labels every panel
 **validated input** (the bands) or **context** (everything else) — the
@@ -946,6 +947,28 @@ unifying them changes existing numbers, so adopt deliberately with an OOS re-run
     **not yet migrated** (asiaRangeEngine is production/range-line-bot path → highest
     caution; rangeFibEngine has no test). Retire by pointing both at `sessionRanges`
     with an equivalence check — behaviour must stay byte-identical.
+11. **🔴 Hurst estimator is saturated in the LIVE range-bias feature (found
+    2026-07-25 from the live Analytics Desk).** `rangeBiasCore.computeHurst`
+    runs R/S over lags `[2,4,8,16]` on **price levels**. Two independent
+    defects compound: (a) R/S over windows that short is severely
+    small-sample-biased upward, and (b) a non-stationary level series returns
+    ≈H+1 by construction. Measured on synthetics: trend **0.935**, oscillator
+    **0.938**, random walk **0.862/0.921** — it cannot separate a trend from a
+    coin flip. Live evidence: the Desk showed GOLD 0.903 and EURUSD 0.882 —
+    two opposite markets, effectively the same number. **Consequence:**
+    `featureHurst` thresholds at 0.45/0.55, so with readings pinned near 0.9 it
+    returns "trending" essentially always — i.e. that feature is a constant,
+    not a signal, inside `computeRangeBiasServer` (live `levels.js` + the
+    `asiaRangeEngine` backtest, which at least share the same copy, so live and
+    backtest agree *on the degenerate value*). Duplicate copies of the same
+    function also exist in `js/range-bias.js` and `js/backtest-engine.js`.
+    **Fix built, not applied:** `statsCore.hurstDFA` (DFA on returns —
+    calibrated: white noise 0.499, random walk 1.522, anti-persistent 0.366,
+    persistent 0.826; `js/hurstDfa.test.mjs` pins BOTH the correct values and
+    the incumbent's saturation). `analyticsDesk` uses it. **Not swapped into
+    the live path** — that changes range-bias conviction on a live bot and its
+    banked results, so it needs a deliberate A/B + OOS re-run, not a silent
+    substitution.
 
 ---
 

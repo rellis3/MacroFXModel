@@ -23,17 +23,16 @@
 import { nextSigma, computeBands } from './forecastCore.js';
 import { classifyRegime } from './volBacktestEngine.js';
 import { dayTypeScore } from './dayTypeCore.js';
-import { computeHurst } from './rangeBiasCore.js';
 import { ouFit } from './ouCore.js';
 import { normalizedEntropy, regimeShiftSeries } from './entropyCore.js';
 import { potFit, gpdQuantile, gpdES, returnLevel } from './extremesCore.js';
-import { rollingZAt } from './statsCore.js';
+import { rollingZAt, hurstDFA } from './statsCore.js';
 
 const finiteOrNull = (x) => (Number.isFinite(x) ? x : null);
 
 // bars: oldest-first D1 [{date, open, high, low, close}].
 export function deskSnapshot(bars, assetClass, {
-  ouWindow = 250, hurstWindow = 120, entropyWindow = 60,
+  ouWindow = 250, hurstWindow = 500, entropyWindow = 60,
   shiftWindow = 60, shiftRef = 250, rangeZWindow = 60,
 } = {}) {
   const n = bars?.length ?? 0;
@@ -54,8 +53,10 @@ export function deskSnapshot(bars, assetClass, {
   const regime = classifyRegime(closes, n - 1);
   const T = dayTypeScore(closes, n - 1, 14);
 
-  // Trending or reverting: Hurst on recent closes; OU on the log-price level.
-  const hurst = computeHurst(closes.slice(-hurstWindow));
+  // Trending or reverting: Hurst on RETURNS (the increment series — passing
+  // price levels returns ≈H+1 and makes every instrument look "trending";
+  // measured 2026-07-25, see statsCore.hurstDFA); OU on the log-price level.
+  const hurst = hurstDFA(rets.slice(-hurstWindow));
   const ou = ouFit(logs.slice(-ouWindow));
   let ouRead = null;
   if (ou) {

@@ -68,7 +68,9 @@
   <div class="grid" id="panels"></div>
   <div class="legend" id="legend" style="display:none">
     <b>Reading it:</b> <b>T</b> is trend-day-ness (drift ÷ diffusion) — |T| high = directional day-character.
-    <b>Hurst</b> &gt; 0.5 persistent, &lt; 0.5 anti-persistent (window read, noisy — context).
+    <b>Hurst</b> is DFA on <b>returns</b> (not price levels — levels read ≈H+1 and make everything look
+    "trending"): ≈0.5 independent increments, &gt;0.5 persistent, &lt;0.5 mean-reverting; real series
+    land ~0.4–0.8. Context, and noisy on short windows.
     <b>OU half-life</b> is how many days a stretch takes to close half the gap to the fitted mean — shown only when
     the fit says reverting (κ &gt; 0); <b>z</b> is the current stretch in stationary-σ units.
     <b>Range z</b> is yesterday's range vs its trailing 60 days.
@@ -108,7 +110,7 @@ function render(s, oi){
     kv('read side-by-side', '<span class="mut">HMM vs entropy — the A/B</span>'),
   ].join('')));
   p.push(card('Trend vs reversion', 'is price stretched, and does it snap back?', 'context', [
-    kv('Hurst (120d)', fx(s.hurst,3), s.hurst>0.55?'pos':s.hurst<0.45?'neg':''),
+    kv('Hurst (DFA, returns)', fx(s.hurst,3), s.hurst>0.55?'pos':s.hurst<0.45?'neg':''),
     kv('OU verdict (250d)', s.ou ? (s.ou.ok ? 'reverting' : 'not reverting') : '—', s.ou?.ok ? 'pos' : 'mut'),
     kv('OU half-life', s.ou?.halfLifeDays==null ? '—' : fx(s.ou.halfLifeDays,1)+'d'),
     kv('OU stretch z', fx(s.ou?.z,2), cls(-(s.ou?.z ?? 0))),
@@ -127,10 +129,19 @@ function render(s, oi){
     kv('1-in-250-day loss', pc(s.tail.loss1in250,2), 'neg'),
     kv('tail sample', `${s.tail.nExc} exceedances of ${s.n}`),
   ].join('')));
-  const walls = oi ?? [];
+  // Dealer walls, each shown with its DISTANCE FROM SPOT — a wall 15% away is
+  // stale or irrelevant OI, and that has to be visible rather than implied.
+  const walls = (oi ?? []).map(l => ({ ...l, dist: (l.price - s.lastClose) / s.lastClose }))
+                          .sort((a, b) => Math.abs(a.dist) - Math.abs(b.dist));
+  const far = walls.filter(l => Math.abs(l.dist) > 0.10).length;
   p.push(card('Dealer positioning (OI)', 'where are the option walls?', 'context',
     walls.length
-      ? walls.slice(0, 6).map(l => kv(l.type + (l.tier ? ` <span class="mut">t${l.tier}</span>` : ''), fx(l.price, digits))).join('')
+      ? walls.slice(0, 6).map(l => kv(
+          `${l.type}${l.tier ? ` <span class="mut">${l.tier}</span>` : ''}`,
+          `${fx(l.price, digits)} <span class="${Math.abs(l.dist) > 0.10 ? 'amb' : 'mut'}">${l.dist >= 0 ? '+' : ''}${(l.dist*100).toFixed(1)}%</span>`
+        )).join('') + (far
+          ? `<div class="amb" style="font-size:11px;margin-top:8px">⚠ ${far} wall(s) &gt;10% from spot — likely stale OI or a different contract; re-paste the matrix</div>`
+          : '')
       : `<div class="mut" style="font-size:12px">no OI data saved for this pair — paste a matrix in the OI analyser to populate</div>`));
   return p.join('');
 }

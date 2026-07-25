@@ -158,3 +158,71 @@ export function rankIC(scores, forwards) {
   const tStat = (n > 2 && Math.abs(ic) < 1) ? ic * Math.sqrt((n - 2) / (1 - ic * ic)) : 0;
   return { ic: +ic.toFixed(4), n, tStat: +tStat.toFixed(2) };
 }
+
+// ── Hurst exponent via DFA (detrended fluctuation analysis) ──────────────────
+// Long-memory of an INCREMENT series (pass returns, not price levels):
+//   H ≈ 0.5  independent increments (random walk price)  — no memory
+//   H > 0.5  persistent / trending increments
+//   H < 0.5  anti-persistent / mean-reverting increments
+// Passing a non-stationary LEVEL series instead returns ≈ H+1 (a random walk's
+// levels give ~1.5), which is the classic misuse that makes every instrument
+// look "trending" — hence the explicit contract here.
+//
+// Why DFA rather than short-lag R/S: R/S over small windows is severely biased
+// upward in small samples, so a lag set like [2,4,8,16] saturates near 0.9 for
+// ANY series and stops discriminating (measured 2026-07-25: trend 0.935 vs
+// oscillator 0.938 vs random walk 0.921 — indistinguishable). DFA detrends each
+// window, so it recovers 0.5 on white noise and 1.5 on a random walk.
+//
+// Method: integrate (cumulative sum of deviations from the mean), split into
+// non-overlapping windows of length s from BOTH ends (so a partial tail is not
+// discarded), fit and remove a linear trend per window, take the RMS residual
+// F(s), then H = slope of log F(s) on log s. Returns null when too short.
+export function hurstDFA(series, { minScale = 8, maxScaleDiv = 4, growth = 1.25 } = {}) {
+  const x = (series ?? []).filter(Number.isFinite);
+  const n = x.length;
+  if (n < 32) return null;
+  const m0 = mean(x);
+  const Y = new Array(n);
+  let cum = 0;
+  for (let i = 0; i < n; i++) { cum += x[i] - m0; Y[i] = cum; }
+
+  const maxScale = Math.floor(n / maxScaleDiv);
+  if (maxScale < minScale) return null;
+  const scales = [];
+  for (let s = minScale; s <= maxScale; s = Math.max(s + 1, Math.round(s * growth))) scales.push(s);
+  if (scales.length < 3) return null;
+
+  const lx = [], ly = [];
+  for (const s of scales) {
+    const nb = Math.floor(n / s);
+    if (nb < 1) continue;
+    let sumVar = 0, cnt = 0;
+    for (let dir = 0; dir < 2; dir++) {
+      for (let b = 0; b < nb; b++) {
+        const off = dir === 0 ? b * s : n - (b + 1) * s;
+        let sx = 0, sy = 0, sxx = 0, sxy = 0;
+        for (let i = 0; i < s; i++) { const yi = Y[off + i]; sx += i; sy += yi; sxx += i * i; sxy += i * yi; }
+        const den = s * sxx - sx * sx;
+        if (den === 0) continue;
+        const slope = (s * sxy - sx * sy) / den;
+        const icpt  = (sy - slope * sx) / s;
+        let ss = 0;
+        for (let i = 0; i < s; i++) { const r = Y[off + i] - (icpt + slope * i); ss += r * r; }
+        sumVar += ss / s; cnt++;
+      }
+    }
+    if (!cnt) continue;
+    const F = Math.sqrt(sumVar / cnt);
+    if (!(F > 0)) continue;
+    lx.push(Math.log(s)); ly.push(Math.log(F));
+  }
+  if (lx.length < 3) return null;
+  // Explicit OLS of log F on log s — the scales are geometric, so the
+  // index-based linregSlope (which assumes evenly spaced x) does not apply.
+  const k = lx.length;
+  const mx = mean(lx), my = mean(ly);
+  let num = 0, den = 0;
+  for (let i = 0; i < k; i++) { const dx = lx[i] - mx; num += dx * (ly[i] - my); den += dx * dx; }
+  return den > 0 ? num / den : null;
+}
