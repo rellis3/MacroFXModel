@@ -326,12 +326,18 @@ async function openDrill(name) {
 
   const b = S.brief?.instruments?.[name];
   const sym = b?.sym || (name.length === 6 ? name.slice(0, 3) + '_' + name.slice(3) : name);
-  const res = await safe(j(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(sym)}&granularity=M15`));
+  // M5 is the only intraday granularity /api/oanda_ohlc5m serves (M5|H1|D —
+  // M15 is rejected with a 400). 2000 M5 bars ≈ a week; show the last ~24h.
+  const res = await safe(j(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(sym)}`));
   const vals = res?.values;
-  if (!Array.isArray(vals) || !vals.length) { cEl.innerHTML = '<div class="dim pad">no candles</div>'; return; }
-  // Server returns strings, newest first, with UTC epoch `t`.
-  const bars = vals.map(v => ({ time: v.t, open: +v.open, high: +v.high, low: +v.low, close: +v.close }))
-    .filter(v => Number.isFinite(v.time)).sort((a, x) => a.time - x.time).slice(-192);
+  if (!Array.isArray(vals) || !vals.length) { cEl.innerHTML = `<div class="dim pad">no candle data${res?.error ? ` — ${esc(res.error)}` : ''}</div>`; return; }
+  // Server returns strings, newest first, with UTC epoch `t`. The worker
+  // variant of this route omits `t` — fall back to the London-wall-clock
+  // `datetime` stamped as UTC (axis then reads London time; fine for display).
+  const bars = vals.map(v => ({
+    time: Number.isFinite(v.t) ? v.t : Math.floor(Date.parse(String(v.datetime || '').replace(' ', 'T') + 'Z') / 1000),
+    open: +v.open, high: +v.high, low: +v.low, close: +v.close,
+  })).filter(v => Number.isFinite(v.time)).sort((a, x) => a.time - x.time).slice(-288);
 
   const levels = [];
   const lv = S.live?.instruments?.[name];
