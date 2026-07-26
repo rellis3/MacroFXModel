@@ -369,6 +369,37 @@ is **index/gold, snapshot, not FX-backtestable** (`js/gammaFlow.js`/`ivMetrics.j
 say so), so it's a forward/live NQ effort, not a historical FX backtest. Run `python3
 median_follow_conditioned.py`.
 
+## Phase 9 — multi-timeframe VuManChu divergence agreement (`mtf_divergence.py`)
+
+The owner's question: does a WaveTrend regular divergence that AGREES on a lower AND higher
+timeframe beat the single-TF divergence? Faithful to the operator's TradingView VuManChu —
+**wt2 at 9/12/3, OB/OS 45/−65, 5-bar fractal, regular (reversal/fade) divergences** — and
+the WaveTrend port is **cross-checked bit-for-bit against `js/vumanchuCore.computeWaveTrend`**
+(max |Py−JS| = 6e-13; `mtf_divergence.py crosscheck` + `wt_crosscheck.mjs`). Standalone
+divergence fade (entry at the confirmable bar r+reach, SL=swing, TP=2·risk, costed,
+first-touch, IS/OOS, one position at a time; a min-stop filter drops degenerate tiny-risk
+setups whose cost-in-R explodes). MTF gate = require a same-bias regular divergence active
+on the HTF within a 5-HTF-bar window.
+
+**Result — NULL (pre-registered bar: MTF exp(R) > 0 OOS AND beats single-TF):**
+
+| pooled FX | single-TF OOS | MTF (LTF+HTF) OOS |
+|---|---|---|
+| M5 + M15 | −0.158R (n=5532) | −0.234R (n=106) |
+| M15 + H1 | −0.162R (n=2316) | −0.462R (n=41) |
+
+The single-TF divergence fade is a consistent modest loser — win ~33% = exactly the RR-2
+break-even, i.e. the divergence carries ~**zero directional edge**, cost tips it negative.
+MTF agreement **fails the bar on both pairings**: negative OOS, worse than single-TF, on
+samples that collapse to ~40–100 trades (strict two-TF agreement is rare). M5+M15 IS looked
+near-breakeven (−0.03R) but OOS was −0.23R — IS/OOS disagree = small-sample noise, not edge.
+
+Consistent with the rest of the VuManChu work (single-TF gate null in `poiReactionV1Engine`
+Stage 3 / `vumanchuFadeEngine`; the operator's own docs say the scripted auto-divergence
+isn't the edge; money-flow — a VuManChu leg — is unreliable on FX with no real volume).
+**Untested variant left:** HIDDEN divergence (continuation/follow) MTF agreement — a
+different signal, but the sample would be similarly thin. Run `python3 mtf_divergence.py`.
+
 ## Analysis book
 `analysis-book.html` — a dark-theme page with every key chart and a plain-English *what it shows /
 what it means* under each, ending in the scoreboard and honest conclusion. Open it with `charts/`

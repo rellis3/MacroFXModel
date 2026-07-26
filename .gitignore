@@ -108,3 +108,5 @@ logs/confluence_dax_journal.jsonl
 logs/confluence_dax_state.json
 logs/confluence_spx_journal.jsonl
 logs/confluence_spx_state.json
+volatilityExhaustion/_wt_bars.json
+volatilityExhaustion/_wt_js.json
