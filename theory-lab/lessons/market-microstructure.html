@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Market Microstructure — Kyle's Lambda &amp; Glosten-Milgrom — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Advanced Portfolio &amp; Market Structure / Market Microstructure</div>
+  <div class="tl-kicker">Advanced Portfolio &amp; Market Structure · Lesson 3 of 5</div>
+  <h1 class="tl-title">Market Microstructure: Price Impact &amp; the Bid-Ask Spread</h1>
+  <p class="tl-dek">A market maker facing an anonymous order never knows whether it comes from someone who knows something they don't, or someone who simply needs to trade — and that single piece of uncertainty is the formal origin of both the bid-ask spread and the fact that trading a bigger size moves the price against you.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — the theory behind this repo's fill-realism assumptions</span>
+    <span>~17 min read</span>
+    <span>Prereqs: none required — Correlation &amp; Linear Regression primer helpful</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    This repo already behaves as if trading costs real money in a way that
+    varies with circumstance, not just a flat commission. The house rules in
+    this project's own memory file are explicit about it: "costs on by
+    default... plus slippage on stop/breakout entries. Free fills are not
+    honest," and a standing anti-pattern warns against "assuming the intrabar
+    take-profit was hit on a daily bar (path is unknown) — prefer M1 fills."
+    <code>fill-realism.html</code> goes further and empirically tests whether
+    a strategy's headline Sharpe survives being re-priced through
+    progressively more realistic, finer-grained fills. All of that is sound
+    practical discipline. None of it, as currently written anywhere in this
+    repo, explains <em>why</em> a spread exists in the first place, or
+    <em>why</em> slippage should be modeled as getting systematically worse
+    with order size and worse still in thin liquidity — as opposed to just
+    being a fixed friction you subtract off the top.
+  </p>
+  <p>
+    Market microstructure theory answers both questions with two results from
+    the same year, 1985, that between them are the formal foundation under
+    almost every practical execution rule a trading desk follows. Glosten and
+    Milgrom explain why a bid-ask spread exists at all — not as an arbitrary
+    fee, but as a market maker's rational, calculated defense against
+    systematically losing money to counterparties who know more than they do.
+    Kyle explains why the <em>size</em> of an order matters — why trading
+    twice as much moves the price roughly twice as far, and why that
+    relationship is steeper in a thin market than a deep one. Together they
+    are the rigorous "why" behind a rule this repo already enforces as pure
+    practical hygiene: that fills are not free, that they get worse with size,
+    and that they get worse still exactly when liquidity is thin.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>The market maker's dilemma: who am I actually trading against?</h3>
+    <p>
+      Picture yourself as a market maker in some FX pair. Someone submits an
+      order to buy from you. You have no idea who they are or why they're
+      trading. Maybe they are a corporate treasury converting export revenue
+      back to their home currency — a reason completely unrelated to whether
+      the "true" value of the pair is about to move. Or maybe they are a
+      trader who, for whatever reason (a faster news feed, a better model, an
+      order flow signal, in the extreme case genuine inside information about
+      an imminent central bank action) actually knows the fair price is higher
+      than where you're currently quoting it. Call the first kind a
+      <strong>noise trader</strong> (also called a liquidity trader — they
+      trade for reasons orthogonal to value) and the second kind an
+      <strong>informed trader</strong>.
+    </p>
+    <p>
+      If you quote a single "best guess" price and trade with anyone who shows
+      up at it, you will do fine, on average, against noise traders — their
+      buys and sells are unrelated to where the price is really headed, so
+      you win as often as you lose. But you will systematically <em>lose</em>
+      against informed traders: they only show up on the side of the trade
+      that is bad for you, by construction, precisely because they know
+      something you don't. If informed traders make up any meaningful share
+      of your flow, quoting at your single best-guess price is a losing
+      strategy over time — you are, without realizing it, giving free options
+      to anyone with better information.
+    </p>
+    <p>
+      The fix is to not quote a single price at all. Quote <em>two</em> prices
+      — a bid (where you buy) below your best-guess fair value, and an ask
+      (where you sell) above it — and set them far enough apart that the
+      money you make, on average, from noise traders passing through that gap
+      is enough to cover the money you expect to lose, on average, to informed
+      traders trading against you. The width of that gap — the spread — is
+      not an arbitrary fee. It is calibrated <em>specifically</em> to survive
+      adverse selection: the structural fact that the people most likely to
+      trade with you when it's bad for you are exactly the people who know
+      something you don't. The more of your flow you suspect is informed, the
+      wider that protective gap has to be. This is the whole idea behind
+      Glosten-Milgrom, made precise below.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    Two separate results are covered here, in the order they build on each
+    other conceptually: (1) Glosten-Milgrom, a discrete, one-order-at-a-time
+    model that derives the bid-ask spread from adverse selection using
+    nothing but Bayes' theorem, and (2) Kyle's Lambda, a continuous model of
+    order <em>size</em> that generalizes the same adverse-selection logic into
+    a linear price-impact relationship. Glosten-Milgrom explains why there is
+    a gap between bid and ask even for a single share; Kyle explains why that
+    gap effectively widens further, and keeps widening, the more you try to
+    trade at once.
+  </p>
+
+  <h3>1. Setting up the market maker's problem</h3>
+  <p>
+    Assume there is some "true" (fundamental, fully-informed) value of the
+    asset, \(V\), which for tractability takes one of two possible values
+    with equal prior probability: a high value \(V_H\) or a low value
+    \(V_L\), with \(V_H > V_L\). The market maker does not know which is true
+    — only that each is equally likely going in. A stream of orders arrives
+    one at a time, and each order is either a buy or a sell. Crucially, each
+    order comes from one of two types of trader, and the market maker cannot
+    tell which type is in front of them:
+  </p>
+  <div class="tl-symbols"><table>
+    <tr><td>Informed trader</td><td>Occurs with probability \(\alpha\) for any given order. Knows \(V\) exactly. Always trades in the direction that is profitable given that knowledge: buys if \(V=V_H\) (the asset is worth more than it looks), sells if \(V=V_L\).</td></tr>
+    <tr><td>Noise (liquidity) trader</td><td>Occurs with probability \(1-\alpha\). Trades for reasons unrelated to \(V\) — buys or sells with equal probability regardless of what \(V\) actually is.</td></tr>
+    <tr><td>\(\alpha\)</td><td>The market maker's belief about the <strong>proportion of order flow that is informed</strong>. This single number is the whole story: it is exogenous here (assumed known or estimated from context — a busy pre-news session, a name with a history of informed trading, and so on), and everything about the resulting spread is driven by it.</td></tr>
+  </table></div>
+  <p>
+    The market maker is assumed to be risk-neutral and competitive — free
+    entry from other market makers drives expected profit on each quote to
+    exactly zero. That zero-expected-profit condition is what pins down the
+    bid and ask: each one must equal the market maker's <em>best updated
+    estimate</em> of \(V\), conditional on having just observed a buy (for
+    the ask) or a sell (for the bid). "Best updated estimate conditional on
+    new evidence" is exactly a job for Bayes' theorem.
+  </p>
+
+  <h3>2. Bayesian updating: why a trade is itself evidence</h3>
+  <p>
+    This is a direct application of the machinery from the Bayesian Inference
+    lesson in this Theory Lab, and it is worth stating the callback plainly:
+    <strong>every order the market maker sees is a piece of evidence that
+    updates their belief about \(V\)</strong>, in exactly the same
+    prior-times-likelihood-over-evidence sense as any other Bayesian update.
+    This is the deep reason prices move on trades at all, even absent any new
+    public news — the trade itself is informative, because it is more likely
+    to have come from an informed trader who knows something, than not.
+  </p>
+  <p>
+    Let \(H\) be the hypothesis "\(V=V_H\)" and \(E\) be the evidence "the
+    order just observed was a buy." First, the two likelihoods — how likely a
+    buy order is, under each possible true value:
+  </p>
+  <div class="tl-math">
+    \[ P(\text{buy}\mid V_H) = \alpha\cdot 1 + (1-\alpha)\cdot\tfrac12 = \frac{1+\alpha}{2} \]
+  </div>
+  <div class="tl-math">
+    \[ P(\text{buy}\mid V_L) = \alpha\cdot 0 + (1-\alpha)\cdot\tfrac12 = \frac{1-\alpha}{2} \]
+  </div>
+  <p>
+    Read the first line: if \(V\) is truly high, a buy order arrives either
+    because an informed trader showed up (probability \(\alpha\), and they
+    always buy in this case) or because a noise trader showed up and happened
+    to buy (probability \((1-\alpha)\times\tfrac12\)). The second line is the
+    mirror image: if \(V\) is truly low, a buy order can <em>only</em> come
+    from a noise trader who happened to buy — an informed trader would never
+    buy when they know the asset is overvalued. This asymmetry — a buy is
+    more likely when \(V_H\) is true than when \(V_L\) is true, and by exactly
+    how much more depends on \(\alpha\) — is the entire engine of the model.
+  </p>
+  <p>
+    Apply Bayes' theorem exactly as derived in the Bayesian Inference lesson,
+    \(P(H\mid E) = P(E\mid H)P(H)/P(E)\), with the equal \(\tfrac12\) prior on
+    each state (the two \(\tfrac12\) priors cancel with the \(P(\text{buy})\)
+    normalizer, which itself works out to exactly \(\tfrac12\) — noise-trader
+    symmetry means a buy and a sell are unconditionally equally likely):
+  </p>
+  <div class="tl-math">
+    \[ P(V_H \mid \text{buy}) = \frac{P(\text{buy}\mid V_H)\,P(V_H)}{P(\text{buy})} = \frac{1+\alpha}{2} \]
+  </div>
+  <p>
+    Before the order, the market maker's belief was a flat 50/50 on \(V_H\)
+    versus \(V_L\). After observing a single buy order, that belief shifts to
+    \(\tfrac{1+\alpha}{2}\) in favor of \(V_H\) — strictly above 50%, and by
+    <em>more</em> the larger \(\alpha\) is. If \(\alpha=0\) (nobody is ever
+    informed), the posterior stays at exactly 50% — a buy tells you nothing,
+    because it's exactly as likely to come from a noise trader regardless of
+    \(V\). If \(\alpha\) is large, a buy is strong evidence for \(V_H\),
+    because a large share of buys are coming from people who know it's true.
+    This is the formal version of "prices move on trades even without public
+    news": the trade itself is the news, filtered through how much of the
+    market's flow the market maker believes is informed.
+  </p>
+
+  <h3>3. From the posterior to the quoted spread</h3>
+  <p>
+    The zero-expected-profit condition says the ask must equal the market
+    maker's expected value of \(V\) <em>given a buy just arrived</em> — set
+    the ask any lower and informed buyers eat you alive; any higher and a
+    competing market maker undercuts you. Using the posterior above:
+  </p>
+  <div class="tl-math">
+    \[ \text{Ask} = E[V\mid\text{buy}] = \frac{1+\alpha}{2}V_H + \frac{1-\alpha}{2}V_L \]
+  </div>
+  <p>
+    By the exact mirror-image argument (a sell order shifts belief toward
+    \(V_L\) by the same logic), the bid is:
+  </p>
+  <div class="tl-math">
+    \[ \text{Bid} = E[V\mid\text{sell}] = \frac{1+\alpha}{2}V_L + \frac{1-\alpha}{2}V_H \]
+  </div>
+  <p>
+    Subtract one from the other and almost everything cancels, leaving a
+    remarkably clean result:
+  </p>
+  <div class="tl-math">
+    \[ \text{Spread} = \text{Ask} - \text{Bid} = \alpha\,(V_H - V_L) \]
+  </div>
+  <p>
+    The spread is exactly the fraction of informed trading, \(\alpha\), times
+    the total uncertainty about fundamental value, \((V_H-V_L)\). Two
+    consequences worth sitting with: first, the <strong>midpoint</strong> of
+    the bid and ask, \(\tfrac{\text{Ask}+\text{Bid}}{2}\), works out to exactly
+    \(\tfrac{V_H+V_L}{2}\) — the unconditional prior mean, unaffected by
+    \(\alpha\). The market maker isn't shading their central estimate up or
+    down; they're widening symmetrically around it. Second, and this is the
+    headline result: <strong>the spread scales linearly with \(\alpha\)</strong>
+    holding value-uncertainty fixed. Double the market maker's belief that
+    flow is informed, and the spread they need to quote to survive doubles
+    with it. A spread is not an administrative fee — it is the price of
+    protection against adverse selection, sized exactly to the perceived risk
+    of it.
+  </p>
+
+  <h3>4. Kyle's Lambda: the same logic for a continuum of order sizes</h3>
+  <p>
+    Glosten-Milgrom prices one indivisible order at a time — a single buy or
+    sell, no notion of "how much." Real order flow has a size, and the same
+    adverse-selection logic implies something practically more important for
+    execution: <strong>the price concession a market maker demands should
+    grow with the size of the order</strong>, not just with whether it's a
+    buy or a sell. This is Kyle's (1985) contribution, and its headline
+    object is a single linear equation:
+  </p>
+  <div class="tl-math">
+    \[ \Delta p = \lambda\, Q \]
+  </div>
+  <div class="tl-symbols"><table>
+    <tr><td>\(Q\)</td><td>The <strong>signed order flow</strong> — positive for net buying, negative for net selling, and larger in magnitude for a bigger order (or a bigger net imbalance of orders over some window).</td></tr>
+    <tr><td>\(\Delta p\)</td><td>The resulting <strong>price impact</strong> — how far the price moves away from where it was, as a direct consequence of that order flow.</td></tr>
+    <tr><td>\(\lambda\)</td><td>(lambda) <strong>Kyle's Lambda</strong> — the price-impact coefficient, in price-units-moved per unit of order flow. This is the object the whole model exists to explain.</td></tr>
+  </table></div>
+  <p>
+    Kyle's original setup swaps Glosten-Milgrom's binary informed/noise-order
+    sequence for a continuous, one-period version: an insider who knows the
+    asset's true liquidation value \(v\) (drawn from a distribution with
+    standard deviation \(\sigma_v\) — how much uncertainty there is about
+    fundamental value) chooses an order size to submit; simultaneously, noise
+    traders submit an aggregate random order flow with standard deviation
+    \(\sigma_u\) (how much random, value-unrelated trading volume the market
+    naturally has). The market maker sees only the <em>total</em> combined
+    order flow — insider plus noise, indistinguishable from one another — and
+    sets a single linear price rule \(p = \bar v + \lambda\,Q\) to break even
+    in expectation, exactly the same zero-expected-profit discipline as
+    Glosten-Milgrom, just solved as a continuous equilibrium instead of a
+    single Bayesian update. Solving that equilibrium (a fixed point: the
+    insider's optimal trade size depends on \(\lambda\), and \(\lambda\) in
+    turn depends on how aggressively the insider is expected to trade — the
+    full derivation is a Bayesian Nash equilibrium and is outside this
+    lesson's scope) yields:
+  </p>
+  <div class="tl-math">
+    \[ \lambda = \frac{\sigma_v}{2\,\sigma_u} \]
+  </div>
+  <p>
+    Read this the way the model intends: \(\lambda\) rises when \(\sigma_v\)
+    is large (a lot of fundamental uncertainty — there's more for an insider
+    to potentially know, so the market maker must protect against it harder)
+    and falls when \(\sigma_u\) is large (a deep pool of noise/liquidity
+    trading — any given order is more likely to just be noise, diluting the
+    informed share, so it can be absorbed with less price concession). Kyle
+    himself defined <strong>market depth</strong> as \(1/\lambda\) — literally
+    "how much order flow it takes to move the price by one unit." A market
+    with many potentially-informed participants and thin noise-trading volume
+    has a small \(\sigma_u\) relative to \(\sigma_v\), hence a <strong>high
+    \(\lambda\)</strong> and shallow depth: the same-size order moves the
+    price a lot. A deep, mostly-noise-trader-dominated market has a
+    <strong>low \(\lambda\)</strong> and can absorb size with barely a ripple.
+    This is the formal object underneath the everyday trading intuition that
+    "slippage gets worse the bigger you trade, especially in a thin or
+    illiquid moment" — that intuition <em>is</em> \(\lambda\), just not
+    usually named as such.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>Computing a spread and a price impact by hand</h3>
+    <p>
+      <strong>Part 1 — Glosten-Milgrom spread.</strong> Suppose value
+      uncertainty puts \(V_H = 101\) and \(V_L = 99\) (a symmetric \(\pm 1\)
+      band around a par value of 100 — think of this in pip-scaled FX terms).
+      Compare two beliefs about informed-trading share, \(\alpha=0.3\) versus
+      \(\alpha=0.6\):
+    </p>
+    <div class="tl-math">
+      \[ \alpha=0.3:\quad \text{Ask}=0.65(101)+0.35(99)=100.30,\quad \text{Bid}=0.35(101)+0.65(99)=99.70,\quad \text{Spread}=0.60 \]
+    </div>
+    <div class="tl-math">
+      \[ \alpha=0.6:\quad \text{Ask}=0.80(101)+0.20(99)=100.60,\quad \text{Bid}=0.20(101)+0.80(99)=99.40,\quad \text{Spread}=1.20 \]
+    </div>
+    <p>
+      Exactly as the formula \(\text{Spread}=\alpha(V_H-V_L)\) predicts:
+      \(0.3\times 2=0.60\) and \(0.6\times 2=1.20\). Doubling the market
+      maker's belief about informed-trading share exactly doubles the spread
+      they need to quote to stay at zero expected profit — with the midpoint
+      pinned at 100.00 in both cases.
+    </p>
+    <p>
+      <strong>Part 2 — Kyle's Lambda price impact.</strong> Take value
+      uncertainty \(\sigma_v = 2\) (price units) as fixed, and compare two
+      liquidity regimes via the noise-trading volume \(\sigma_u\): a normal,
+      liquid session with \(\sigma_u=100\) (units of order flow), versus a
+      thin, illiquid session with \(\sigma_u=20\):
+    </p>
+    <div class="tl-math">
+      \[ \text{Liquid: } \lambda = \frac{2}{2(100)} = 0.01 \qquad\qquad \text{Thin: } \lambda' = \frac{2}{2(20)} = 0.05 \]
+    </div>
+    <p>
+      Now push the <em>same</em> order, \(Q=500\) units, through both
+      regimes:
+    </p>
+    <div class="tl-math">
+      \[ \text{Liquid: } \Delta p = 0.01 \times 500 = \$5 \qquad\qquad \text{Thin: } \Delta p' = 0.05 \times 500 = \$25 \]
+    </div>
+    <p>
+      Identical order, five times the price impact, purely because the thin
+      session has a fifth as much noise-trading volume to absorb it into.
+      Nothing about the order itself changed — only the depth of the market
+      it landed in. This is precisely the chart below, and precisely the
+      mechanism behind the real-world trading scenario that follows it.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Price impact vs. order size, at two liquidity levels</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Price impact chart. X-axis is order size Q from 0 to 1000 contracts, y-axis is price impact in dollars from 0 to 50. A blue straight line through the origin with slope lambda equal to 0.01 represents a deep, liquid market, reaching about 10 dollars of impact at 1000 contracts. A steeper red straight line through the origin with slope lambda-prime equal to 0.05 represents a thin, illiquid market, reaching 50 dollars of impact at 1000 contracts. A dashed vertical guide at order size 500 shows the same order producing 5 dollars of impact on the blue line versus 25 dollars of impact on the red line.">
+      <line x1="40" y1="250" x2="620" y2="250" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="40" y1="250" x2="40" y2="20" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="330" y1="250" x2="330" y2="20" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+      <text x="14" y="135" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 14 135)">Price impact &Delta;p ($)</text>
+      <text x="620" y="270" text-anchor="end" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Order size Q (contracts) &rarr;</text>
+      <text x="34" y="254" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+      <text x="330" y="267" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">500</text>
+      <text x="618" y="267" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">1000</text>
+      <line x1="40" y1="250" x2="620" y2="204" style="stroke:var(--blue);stroke-width:2.5"/>
+      <line x1="40" y1="250" x2="620" y2="20" style="stroke:var(--red);stroke-width:2.5"/>
+      <circle cx="330" cy="227" r="4" style="fill:var(--blue)"/>
+      <circle cx="330" cy="135" r="4" style="fill:var(--red)"/>
+      <text x="340" y="224" font-size="11" font-family="'DM Mono',monospace" fill="var(--blue)">$5</text>
+      <text x="340" y="132" font-size="11" font-family="'DM Mono',monospace" fill="var(--red)">$25</text>
+      <text x="600" y="196" text-anchor="end" font-size="12" font-family="'DM Mono',monospace" fill="var(--blue)">&lambda; (deep, liquid)</text>
+      <text x="600" y="38" text-anchor="end" font-size="12" font-family="'DM Mono',monospace" fill="var(--red)">&lambda;&prime; (thin, illiquid)</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>&lambda; = 0.01 — normal session liquidity</span>
+      <span><i style="background:var(--red)"></i>&lambda;&prime; = 0.05 — thin session liquidity</span>
+    </div>
+    <div class="tl-chart-caption">
+      Both lines pass through the origin — no order, no impact — and both are
+      straight, which is Kyle's linear price-impact assumption: impact is
+      proportional to size, not a step function or a curve. The steeper red
+      line is a strictly thinner market by the same 500-contract order: five
+      times the impact, from a market with a fifth as much noise-trading
+      volume to absorb it. Real markets deviate from perfect linearity at very
+      large sizes (empirical microstructure research finds impact grows
+      somewhat sub-linearly, closer to a square-root law, for the biggest
+      orders) — Kyle's linear model is the tractable first-order
+      approximation, not a claim that the line never bends.
+    </div>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Nobody at a real trading desk solves the Glosten-Milgrom Bayesian update
+    or Kyle's fixed-point equilibrium by hand before placing an order. What
+    both models motivate, and what desks do use constantly, is a small set of
+    execution habits that only make sense once you understand adverse
+    selection and price impact are real, quantifiable forces rather than
+    vague folklore: (1) <strong>widening quoted spreads mechanically around
+    scheduled information events</strong> — a market maker quoting FX pairs
+    ahead of a central bank rate decision or a jobs report widens because they
+    know \(\alpha\), the informed-trading share, is about to spike as
+    participants trade on leaked or fast-processed information; (2)
+    <strong>slicing large orders over time</strong> (algorithms like TWAP,
+    VWAP, and implementation-shortfall schedules exist specifically to avoid
+    dumping one large \(Q\) into the market at once, since \(\Delta p = \lambda
+    Q\) says a single big clip costs more, in total, than the same size spread
+    across many smaller clips that each let the market partially absorb and
+    recover); and (3) <strong>estimating \(\lambda\) empirically</strong> —
+    the microstructure literature runs exactly the regression the formula
+    suggests, \(\Delta p_t = \lambda\, Q_t + \varepsilon_t\), on real trade or
+    bar data, to get a live, asset- and regime-specific estimate of price
+    impact rather than relying on a textbook constant. All three habits are
+    the same underlying idea in different clothes: informed-trading risk and
+    thin liquidity both raise the true cost of demanding immediacy, and a
+    disciplined desk prices that cost in rather than discovering it the hard
+    way in a bad fill.
+  </p>
+
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>The same order, twice — why the London/Asia session gap is where slippage bites</h3>
+    <p>
+      A retail trader places a moderately large market order in a
+      thinly-traded pair right around the low-liquidity transition between
+      the Asia and London sessions — a window with materially fewer active
+      participants on both sides of the book than during peak London/New York
+      overlap hours. The fill comes back meaningfully worse than the quoted
+      price at the moment the order was sent.
+    </p>
+    <p>
+      This is not a broken platform, a scam broker, or bad luck. It is Kyle's
+      Lambda, exactly as derived above, playing out in real time: \(\lambda =
+      \sigma_v/(2\sigma_u)\) is <strong>high</strong> in that thin window
+      specifically because \(\sigma_u\) — the depth of ordinary, value-
+      unrelated liquidity trading available to absorb the order — has
+      collapsed. The identical order size that would barely move the price
+      during peak overlap liquidity (a low-\(\lambda\) regime, plenty of
+      noise-trader depth to absorb it) produces real, structural slippage
+      during the thin session (a high-\(\lambda\) regime), for the same
+      structural reason the worked example above showed a five-fold gap in
+      impact from the same 500-unit order in a liquid versus a thin market.
+      Nothing about the trader's order was unusual; the market it landed in
+      was thin, and thin markets have high \(\lambda\) by construction.
+    </p>
+    <p>
+      The practical, actionable takeaway is not "avoid the market" — it's
+      <strong>size down, or avoid market/stop orders specifically, during
+      known thin-liquidity windows</strong> (session transitions, pre-market
+      gaps, illiquid pairs generally). The same order that is cheap to execute
+      at 9am London is not cheap to execute at 5am, purely as a function of
+      how much depth is available to trade against — a fact this lesson gives
+      you the formal vocabulary to reason about explicitly, rather than only
+      as an anecdotal "it always seems to fill worse around then."
+    </p>
+  </div>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>The theory underneath a rule this repo already enforces without citing it</h3>
+    <p>
+      This repo's own project memory states, as a hard rule for every new
+      strategy: <strong>"Costs on by default. Round-trip spread + commission,
+      plus slippage on stop/breakout entries. Free fills are not honest,"</strong>
+      and separately flags, as an explicit anti-pattern to avoid: <strong>
+      "Assuming the intrabar take-profit was hit on a daily bar (path is
+      unknown) — prefer M1 fills or mark-to-window-close."</strong> Until now,
+      both rules have stood purely as practical discipline, learned the hard
+      way, with no formal citation behind the "why." Glosten-Milgrom and
+      Kyle's Lambda are that "why": the spread every backtest here pays on
+      entry and exit is, in theory, exactly the adverse-selection premium
+      derived in section 3 above — a cost that exists because whoever is
+      quoting the other side of the trade cannot tell an informed order from
+      a noise one, and prices accordingly. And the additional slippage this
+      repo specifically flags for <em>stop and breakout</em> entries — orders
+      that, by design, fire during fast, directional moves, exactly the
+      moments when momentary liquidity thins out and suspected informed flow
+      spikes — is precisely a high-\(\lambda\) event: the same order size that
+      would be cheap in calm, deep conditions costs more exactly when a stop
+      is triggering, because \(\lambda\) is elevated in exactly that instant.
+    </p>
+    <p>
+      The engineering already reflects this even without naming it. This
+      repo's realistic fill walker — <code>walkBars</code> in
+      <code>js/forecastCore.js</code>, the shared Tier-1 primitive every
+      forecast-family strategy imports per the Lego Principle's core-modules
+      table (never copy it; the vol-sigma series and band constants it works
+      alongside live in <code>js/volBacktestEngine.js</code>) — exists
+      specifically to avoid assuming a fill happened at a clean, frictionless
+      price on an unknown intrabar path. <code>fill-realism.html</code> is the
+      empirical version of the same question this lesson answers
+      theoretically: it re-prices the per-line volatility tearsheet at a
+      ladder of bar resolutions and checks whether the reported edge survives
+      being repriced through progressively more honest — that is, more
+      microstructure-realistic — fills, or whether it was a fill artifact all
+      along (its own framing: "if OOS Sharpe collapses as bars get finer
+      toward 1-min truth, the edge is a fill artifact"). Kyle's Lambda is the
+      formal parameter that predicts exactly this kind of collapse should be
+      expected wherever a strategy's simulated fills understate how thin
+      liquidity actually was on the path between entry and exit. Nothing about
+      the code changes as a result of reading this lesson — the fill walker
+      and the cost discipline are already correct. What changes is having a
+      rigorous, citable reason for a rule that was previously enforced purely
+      as hard-earned practical caution.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where these models are misread or over-applied</h3>
+    <p>
+      <strong>Treating \(\lambda\) as a fixed constant of an instrument.</strong>
+      \(\lambda = \sigma_v/(2\sigma_u)\) depends on time-varying inputs — how
+      much fundamental uncertainty exists right now, and how much noise-
+      trading depth is currently available — not on some permanent property
+      of "EUR/USD" as an instrument. The same pair has a low \(\lambda\)
+      during London/NY overlap and a high \(\lambda\) at a thin session
+      transition, exactly as the scenario box above describes. A single
+      "typical slippage" number for an instrument, applied at every hour of
+      the day, throws away the single most useful implication of the model.
+    </p>
+    <p>
+      <strong>Confusing the spread with the total transaction cost.</strong>
+      Glosten-Milgrom isolates one specific component of the spread —
+      compensation for adverse selection. Real quoted spreads also bake in
+      order-processing costs and inventory-risk compensation (a market maker
+      holding an unwanted position also charges for the risk of carrying it,
+      a separate strand of the microstructure literature associated with
+      Ho-Stoll-style inventory models, not covered in this lesson). Treating
+      the whole observed spread as pure adverse-selection premium overstates
+      how much of it is really about informed-trading risk specifically.
+    </p>
+    <p>
+      <strong>Assuming price impact is purely linear at every size.</strong>
+      Kyle's \(\Delta p = \lambda Q\) is a first-order, tractable
+      approximation, deliberately simple to make the equilibrium solvable.
+      Empirical market-impact research generally finds impact grows somewhat
+      sub-linearly for very large orders relative to typical daily volume
+      (often described as closer to a square-root relationship) — the straight
+      lines in the chart above are the model's assumption, not a guarantee
+      that doubling an already-enormous order exactly doubles its cost.
+    </p>
+    <p>
+      <strong>Treating Kyle's Lambda as only permanent impact.</strong>
+      The model's \(\lambda\) is a single-period, permanent price-impact
+      coefficient — the new price stays there because the market maker has
+      permanently updated their belief about \(V\). Real executed trades also
+      incur <em>temporary</em> impact (price concessions that partially revert
+      once the immediate liquidity demand is satisfied) layered on top of the
+      permanent component. Conflating "the price moved while I was trading"
+      with "the price permanently repriced by that amount" overstates how
+      much of an observed intrabar move a single order's impact actually
+      explains.
+    </p>
+    <p>
+      <strong>Reading a wide spread as proof of informed trading, full stop.</strong>
+      A wide spread is consistent with a market maker's belief that \(\alpha\)
+      is high, but that belief can be wrong, stale, or driven by generic
+      uncertainty (a scheduled event with unknown outcome) rather than any
+      specific informed trader actually being present. The model describes
+      the market maker's rational defensive posture given their belief, not a
+      guarantee that informed traders are in fact currently active.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why does a market maker widen the bid-ask spread when they believe a larger fraction of incoming order flow is informed rather than noise?</summary>
+    <div class="tl-answer">
+      Because the market maker's quotes are set by a zero-expected-profit
+      condition: the ask must equal the expected value of the asset
+      conditional on a buy order having just arrived, and the bid the mirror
+      image for a sell. Informed traders only ever trade in the direction
+      that's unprofitable for the market maker, so any informed share
+      \(\alpha\) creates a systematic expected loss on every trade unless it's
+      priced in. The derivation shows this precisely: Spread \(=
+      \alpha(V_H-V_L)\) — the spread is exactly the informed-trading
+      probability times the total fundamental-value uncertainty. A wider
+      spread isn't greed; it's the exact protective gap needed so that
+      profits earned from noise traders (who trade both directions equally,
+      regardless of the truth) offset expected losses to informed traders on
+      average, leaving zero expected profit overall.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. In the Glosten-Milgrom model, why does observing a single buy order shift the market maker's belief about \(V\) from a 50/50 prior to \(\tfrac{1+\alpha}{2} : \tfrac{1-\alpha}{2}\) — and why does that shift grow as \(\alpha\) increases?</summary>
+    <div class="tl-answer">
+      A buy order is more likely to occur when \(V=V_H\) than when \(V=V_L\),
+      because an informed trader always buys when they know the value is
+      high, adding to the noise-trader baseline of a 50/50 buy/sell split. The
+      likelihood of a buy under \(V_H\) is \(\tfrac{1+\alpha}{2}\) and under
+      \(V_L\) is \(\tfrac{1-\alpha}{2}\) — an asymmetry entirely caused by the
+      informed traders. Bayes' theorem converts that asymmetric likelihood
+      into an updated (posterior) belief, and because the size of the
+      asymmetry between the two likelihoods is controlled directly by
+      \(\alpha\), a larger \(\alpha\) means a buy order is stronger evidence
+      for \(V_H\), producing a bigger belief shift. At \(\alpha=0\) there is no
+      asymmetry at all (both likelihoods collapse to \(\tfrac12\)) and a buy
+      order is uninformative — the posterior stays at 50/50.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why is Kyle's Lambda higher in a thin/illiquid market than in a deep, liquid one, holding fundamental-value uncertainty fixed?</summary>
+    <div class="tl-answer">
+      \(\lambda = \sigma_v/(2\sigma_u)\): with \(\sigma_v\) (value
+      uncertainty) held fixed, \(\lambda\) is inversely proportional to
+      \(\sigma_u\), the standard deviation of noise/liquidity trading volume —
+      Kyle's proxy for how much value-unrelated order flow is available to
+      "hide" informed trades inside and absorb size generally. A thin market
+      has a small \(\sigma_u\): little ordinary trading volume to dilute or
+      absorb any given order, so the market maker must assume a larger share
+      of any order they see is potentially informed, and price a bigger
+      concession accordingly. A deep market has a large \(\sigma_u\), diluting
+      the informed share and letting size move through with much less price
+      concession. Kyle's own term for \(1/\lambda\) is market depth — precisely
+      "how much order flow it takes to move the price by one unit," which is
+      small (shallow) exactly when \(\lambda\) is large.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What is the practical difference between the bid-ask spread (Glosten-Milgrom) and price impact (Kyle's Lambda) as sources of trading cost?</summary>
+    <div class="tl-answer">
+      The spread is a roughly fixed, per-trade cost that you pay once by
+      crossing from bid to ask (or ask to bid), largely independent of how
+      large your order is, at least for small orders relative to typical
+      depth. Price impact, \(\Delta p = \lambda Q\), is a cost that scales
+      with the size of the order itself — it captures the fact that a bigger
+      order moves the price further against you as you execute it, on top of
+      whatever the quoted spread already costs. A small retail order mostly
+      pays the spread; a large institutional order can pay far more in price
+      impact than in spread, which is exactly why execution algorithms
+      (TWAP/VWAP/implementation-shortfall) exist specifically to manage
+      \(\lambda Q\) by slicing size over time, rather than to manage the
+      spread, which slicing doesn't materially change.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In the worked example, the same 500-unit order produced $5 of impact in one session and $25 in another. What changed, and what didn't?</summary>
+    <div class="tl-answer">
+      The order itself didn't change — same size, \(Q=500\), same asset,
+      same fundamental-value uncertainty \(\sigma_v=2\). What changed was
+      \(\sigma_u\), the depth of ordinary noise/liquidity trading available to
+      absorb the order: 100 units in the "normal" session versus 20 units in
+      the "thin" session, a fifth as much. Because \(\lambda=\sigma_v/(2\sigma_u)\)
+      is inversely proportional to \(\sigma_u\), the thin session's \(\lambda\)
+      is five times larger (0.05 versus 0.01), and since impact is \(\lambda\)
+      times the (unchanged) order size, the impact is five times larger too
+      ($25 versus $5). This is the formal mechanism behind the real-world
+      scenario in this lesson: the same order costs more, structurally, when
+      it lands in a thinner market, with nothing about the trader's decision
+      needing to have been wrong.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why does CLAUDE.md's rule to model extra slippage specifically on stop and breakout entries reflect Kyle's Lambda, rather than being an arbitrary conservative padding?</summary>
+    <div class="tl-answer">
+      Stop and breakout entries fire, by design, during fast, directional
+      price moves — exactly the moments when momentary liquidity tends to
+      thin out (other participants pull quotes or step back rather than
+      absorb a fast move) and when the market is most likely to be responding
+      to genuine new information rather than routine noise trading. Both of
+      those are precisely the conditions that raise \(\lambda\): lower
+      \(\sigma_u\) (thinner momentary depth) and effectively higher perceived
+      \(\sigma_v\)/informed-trading share (a fast move is more likely to be
+      information-driven). So the same order size that would be cheap during
+      calm, orderly trading costs more exactly at the instant a stop or
+      breakout order triggers — which is exactly why the repo's fill
+      discipline singles those entry types out for extra slippage rather than
+      applying a flat cost model uniformly to every order type.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Lawrence R. Glosten &amp; Paul R. Milgrom, "Bid, Ask and Transaction Prices in a Specialist Market with Heterogeneously Informed Traders," <em>Journal of Financial Economics</em>, 1985 — the original adverse-selection derivation of the bid-ask spread.</li>
+    <li>Albert S. "Pete" Kyle, "Continuous Auctions and Insider Trading," <em>Econometrica</em>, 1985 — the original paper defining the linear price-impact coefficient now universally called Kyle's Lambda.</li>
+    <li>Maureen O'Hara, <em>Market Microstructure Theory</em>, Blackwell, 1995 — the standard textbook synthesis of both models and the broader microstructure literature built on them.</li>
+    <li><code>theory-lab/lessons/bayesian-inference.html</code> in this repo — the Bayesian-updating machinery the Glosten-Milgrom derivation above applies directly.</li>
+    <li><code>fill-realism.html</code> in this repo — the empirical, bar-resolution-ladder test of whether a strategy's edge survives realistic fills, the practical counterpart to the theory in this lesson.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="fractional-brownian-motion.html">← Fractional Brownian Motion</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="markowitz-black-litterman.html">Markowitz &amp; Black-Litterman Portfolio Theory →</a>
+  </div>
+</div>
+</body>
+</html>

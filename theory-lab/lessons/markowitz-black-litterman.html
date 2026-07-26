@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Markowitz &amp; Black-Litterman — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Advanced Portfolio &amp; Market Structure / Markowitz &amp; Black-Litterman</div>
+  <div class="tl-kicker">Advanced Portfolio &amp; Market Structure · Lesson 4 of 5</div>
+  <h1 class="tl-title">Markowitz &amp; Black-Litterman</h1>
+  <p class="tl-dek">Harry Markowitz gave portfolio construction its first real mathematics — and, almost immediately, practitioners discovered the mathematics was so sensitive to its own inputs that it was barely usable as written. Black-Litterman is the fix everyone actually uses: start from what the market already believes, and nudge it, rather than trying to specify the whole truth yourself.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — the theory behind this repo's diversification tooling</span>
+    <span>~18 min read</span>
+    <span>Prereqs: Linear Algebra &amp; Matrices, Correlation &amp; Linear Regression primer</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    Every strategy in this repo, so far, answers a single-instrument question:
+    given this pair, this level, this regime, what's the edge? Nothing in the
+    codebase currently answers the next question up — given a basket of
+    positions across many instruments, how much of each should you actually
+    hold at once? That second question is portfolio construction, and it has
+    had a formal mathematical answer since 1952: Harry Markowitz's mean-variance
+    framework, the theory that a portfolio's risk is not the average of its
+    holdings' individual risks but a function of how they move <em>together</em>,
+    and that there's a mathematically identifiable "best" trade-off between
+    expected return and risk for any given set of assets and beliefs about them.
+  </p>
+  <p>
+    This repo already has real infrastructure one layer below this question:
+    <code>js/diversificationCore.js</code> computes correlation matrices and
+    their eigenvalue structure to answer "how many genuinely independent bets
+    does this basket have" (the subject of the PCA &amp; Factor Regimes lesson).
+    Markowitz's framework is the natural next layer on top of exactly that
+    correlation matrix — instead of just describing how concentrated a basket
+    is, it would prescribe <em>what weights to hold</em>. This lesson builds
+    that framework from the ground up, is honest about the well-documented
+    practical flaw that kept it from being used naively for decades, and
+    explains the fix — Black-Litterman — that turned it into something real
+    asset managers actually run. None of this is built here yet; this lesson
+    is the theory a future portfolio-construction layer would sit on.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Not "how much do I own," but "how much do I own <em>together</em>"</h3>
+    <p>
+      Imagine you're told two currency pairs each have the same expected
+      return and the same volatility, and asked which is the better portfolio
+      holding. The question as posed is unanswerable — it depends entirely on
+      what else is already in the portfolio. If the rest of your book is long
+      commodity currencies and short-dollar, and pair A tends to move with
+      that book while pair B tends to move against it, then B is doing real
+      work — it's dampening the swings of everything else — even though, in
+      isolation, A and B look identical. Markowitz's core insight, in one
+      sentence, is that <strong>a position's risk contribution to a portfolio
+      is not its own volatility — it's its volatility filtered through how it
+      co-moves with everything else you hold.</strong> A portfolio's variance
+      is not a weighted average of its parts' variances; it's a weighted sum
+      that also depends on every pairwise covariance between those parts,
+      and that second term is where diversification benefit — or its absence
+      — actually lives.
+    </p>
+    <p>
+      The practical punch line follows immediately: for any target level of
+      expected return, there is one specific combination of weights across
+      your available instruments that achieves it with the <em>least possible
+      risk</em> — because some combinations happen to cancel more of each
+      other's noise than others. Find that combination for every possible
+      target return, and you've traced out a curve: the <strong>efficient
+      frontier</strong>. Everything below and to the right of that curve is a
+      portfolio someone could improve — more return for the same risk, or
+      less risk for the same return — just by reweighting. Everything on the
+      curve is, given your inputs, as good as it gets.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    This builds directly on the matrix-vector notation from the Linear
+    Algebra &amp; Matrices lesson — a portfolio's risk and return are both,
+    quite literally, a vector and a matrix acting on that vector, and nothing
+    more exotic than that.
+  </p>
+
+  <h3>Step 1 — portfolio expected return</h3>
+  <p>
+    Say you're choosing weights across \(N\) instruments — \(w_i\) is the
+    fraction of the portfolio (as a share of capital, or of risk budget) held
+    in instrument \(i\), and \(E[R_i]\) is your belief about instrument
+    \(i\)'s expected return over the horizon you care about. A portfolio's
+    expected return is simply the weighted average of its parts:
+  </p>
+  <div class="tl-math">
+    \[ E[R_p] = \sum_{i=1}^{N} w_i\, E[R_i] \]
+  </div>
+  <p>
+    Nothing subtle here — if you're 60% long EURUSD with an expected return of
+    2% and 40% long AUDJPY with an expected return of 5%, the portfolio's
+    expected return is \(0.6(2\%) + 0.4(5\%) = 3.2\%\). Written as a matrix
+    expression, with \(w\) the column vector of weights and \(\mu\) the column
+    vector of expected returns, this is just \(E[R_p] = w^\top \mu\) — a dot
+    product, the simplest possible matrix-vector operation.
+  </p>
+
+  <h3>Step 2 — portfolio variance (the part that isn't just an average)</h3>
+  <p>
+    Portfolio <em>risk</em> does not work the same simple way, and this is the
+    entire reason Markowitz's paper mattered. Let \(\Sigma\) be the covariance
+    matrix of the instruments' returns (the same object built in the PCA
+    lesson: an \(N \times N\) grid whose diagonal holds each instrument's own
+    variance and whose off-diagonal entries hold the pairwise covariances).
+    Portfolio variance is the quadratic form:
+  </p>
+  <div class="tl-math">
+    \[ \text{Var}(R_p) = w^\top \Sigma w \]
+  </div>
+  <p>
+    Read this the same way the Linear Algebra lesson reads \(Av\): first
+    \(\Sigma w\) is the covariance matrix acting on the weight vector — a new
+    vector describing how much each instrument's variance-and-covariance
+    exposure gets scaled by the weights — and then \(w^\top(\cdot)\) takes the
+    dot product of that result with the weights again, folding everything
+    into one number. Expand it for two instruments and the two-term structure
+    becomes visible directly:
+  </p>
+  <div class="tl-math">
+    \[ \text{Var}(R_p) = w_1^2 \sigma_1^2 + w_2^2 \sigma_2^2 + 2 w_1 w_2\, \text{Cov}(R_1, R_2) \]
+  </div>
+  <p>
+    The first two terms are exactly what you'd expect — each instrument's own
+    variance, scaled by its weight squared. The third term is the one a naive
+    "risk is just a weighted average" intuition misses entirely: it can be
+    zero (uncorrelated instruments, no interaction), positive (correlated
+    instruments amplifying each other's risk), or <em>negative</em> — if
+    \(\text{Cov}(R_1,R_2)\) is negative, that cross term actively
+    <em>subtracts</em> from total portfolio variance, meaning the combined
+    position can genuinely be less risky than either instrument held alone.
+    That's diversification benefit, made numerically explicit rather than
+    asserted qualitatively — and it's precisely the same covariance matrix
+    machinery <code>diversificationCore.js</code> already builds and
+    eigen-decomposes for its effective-bets metrics.
+  </p>
+
+  <h3>Step 3 — the efficient frontier</h3>
+  <p>
+    Fix a target expected return and ask: among every combination of weights
+    that achieves it, which one has the smallest \(w^\top \Sigma w\)? Solve
+    that question for every achievable target return in turn (this is a
+    constrained optimization — minimize variance subject to hitting a given
+    return and the weights summing to 1 — whose full derivation isn't needed
+    to use the result, so it's not repeated here) and the collection of
+    answers traces a curve in expected-return-versus-risk space: the
+    <strong>efficient frontier</strong>.
+  </p>
+  <p>
+    The frontier has a characteristic shape: it curves, rather than forming a
+    straight line, because of exactly the cross-covariance term from Step
+    2 — diversification benefit means you can often get <em>more</em> expected
+    return for a given increase in risk than a naive linear trade-off would
+    suggest, especially near the low-risk end. The single leftmost point on
+    the curve — the portfolio with the lowest possible variance achievable
+    from any combination of the available instruments, full stop, regardless
+    of what return it happens to deliver — is called the
+    <strong>minimum-variance portfolio</strong>. Every point on the curve
+    above and to the right of it is "efficient" (more return, deliberately
+    accepting more risk to get it); the mirror-image lower branch of the same
+    curve (same risk, but lower return than the minimum-variance point already
+    achieves at that risk) is mathematically reachable but never rational to
+    hold — it's strictly dominated by the minimum-variance point itself, which
+    gets the same risk for a better return.
+  </p>
+
+  <h3>Step 4 — Markowitz's famous practical flaw</h3>
+  <p>
+    Everything above is clean, correct mathematics, and for decades it was
+    also, in practice, close to unusable — for a specific, well-documented
+    reason that is worth stating plainly rather than glossing over: the
+    optimizer is <strong>extremely sensitive to the expected-return inputs</strong>,
+    \(E[R_i]\), far more sensitive than to the covariance matrix \(\Sigma\).
+    Covariances can be estimated reasonably stably from historical data (that's
+    exactly the correlation-matrix machinery this repo already has); expected
+    returns cannot — a return forecast is inherently the least reliable, most
+    opinion-laden number in the whole model, yet it's the input the optimizer's
+    output depends on most violently.
+  </p>
+  <p>
+    Concretely: nudge one instrument's expected-return forecast by a fraction
+    of a percentage point — well within any honest forecaster's margin of
+    error — and the "optimal" weights can swing from a modest long position to
+    an enormous long, or flip sign entirely into a large short, often paired
+    with an equally extreme offsetting position elsewhere to keep the target
+    return and budget constraints satisfied. The optimizer isn't malfunctioning;
+    it's doing exactly what it was asked to do — find the corner of the
+    feasible region that squeezes the most return-per-unit-of-variance out of
+    whatever numbers it was given, taken as if they were exact. But because
+    real return forecasts are never exact, the result is a portfolio that
+    looks like a confident, extreme bet built on top of what was actually a
+    vague, low-conviction estimate. This isn't a minor footnote — it's the
+    single most cited practical criticism of mean-variance optimization
+    (sometimes called the optimizer's "error-maximization" property: it doesn't
+    just fail to filter out estimation error, it actively concentrates the
+    portfolio in exactly the assets where your errors happen to look most
+    favorable), and it's the reason "just run Markowitz" was, for a long time,
+    something academics recommended and desks quietly avoided doing literally.
+  </p>
+
+  <h3>Step 5 — Black-Litterman: start from the market, not from a blank page</h3>
+  <p>
+    Fischer Black and Robert Litterman's 1992 fix does not abandon
+    mean-variance optimization — the frontier, the covariance matrix, the
+    quadratic-form variance are all still exactly what's described above. What
+    changes is <em>where the expected-return vector comes from</em>. Instead
+    of asking an investor to specify a precise expected return for every
+    single instrument (the step that made the optimizer so fragile), Black-
+    Litterman starts from the assumption that <strong>current market prices
+    already embed a reasonable estimate of expected returns</strong> — a
+    direct extension of the same "take the market seriously as a strong
+    prior, unless you have a specific reason not to" framing from the EMH
+    lesson. If everyone's capital, in aggregate, is currently allocated
+    according to today's market-cap (or, in an FX context, position/flow)
+    weights, then those weights themselves imply a specific vector of expected
+    returns — the returns that would make the current allocation the
+    mean-variance-optimal one. That implied vector, called \(\Pi\) (capital
+    pi), is recovered by literally reversing the optimization:
+  </p>
+  <div class="tl-math">
+    \[ \Pi = \delta\, \Sigma\, w_{mkt} \]
+  </div>
+  <p>
+    where \(w_{mkt}\) is the vector of current market-equilibrium weights and
+    \(\delta\) is a single risk-aversion scalar calibrated from the market
+    portfolio's own observed return and variance. Note the right-hand side:
+    it's the covariance matrix acting on a weight vector, the exact same
+    \(\Sigma w\) operation from Step 2 — reverse-engineering equilibrium
+    returns from equilibrium weights uses nothing more exotic than the
+    forward calculation run backwards.
+  </p>
+  <p>
+    This equilibrium vector \(\Pi\) becomes the <strong>prior</strong>. The
+    investor is then asked for something far smaller and more honest than "the
+    expected return of every asset in the basket": a handful of specific
+    <strong>views</strong>, each with its own stated confidence — for example,
+    "I believe EURUSD will outperform GBPUSD by 2% over the next quarter, and
+    I hold that view with moderate confidence." A view like that is the
+    <strong>likelihood</strong>. Black-Litterman then <strong>blends</strong>
+    the equilibrium prior with the investor's views to produce a posterior
+    expected-return vector — the number that actually gets fed into the
+    optimizer from Step 3, in place of raw, unmoderated forecasts.
+  </p>
+  <p>
+    That blend is explicitly Bayesian, in exactly the sense built up in the
+    Bayesian Inference lesson: prior belief, updated by new evidence, in
+    proportion to how confident each side is, produces a posterior belief.
+    The cleanest way to see the mechanics is the two-normal-distributions case
+    that Bayesian updating reduces to when both the prior and the "evidence"
+    are treated as noisy estimates of the same unknown quantity: if the prior
+    estimate is \(\mu_0\) with variance \(\sigma_0^2\), and a new, independent
+    estimate comes in at \(\mu_1\) with variance \(\sigma_1^2\), the standard
+    result for combining them (precision-weighted averaging, precision being
+    the inverse of variance) is:
+  </p>
+  <div class="tl-math">
+    \[ \mu_{\text{post}} = \frac{\mu_0/\sigma_0^2 + \mu_1/\sigma_1^2}{1/\sigma_0^2 + 1/\sigma_1^2}, \qquad \sigma_{\text{post}}^2 = \frac{1}{1/\sigma_0^2 + 1/\sigma_1^2} \]
+  </div>
+  <p>
+    Each side's pull on the posterior mean is weighted by its own precision —
+    a low-uncertainty estimate (small variance, large \(1/\sigma^2\)) pulls
+    the blended answer strongly toward itself; a high-uncertainty estimate
+    barely moves it. This is precisely the logic Black-Litterman applies at
+    portfolio scale: the equilibrium prior \(\Pi\) carries an uncertainty
+    (scaled by a parameter usually called \(\tau\), applied to \(\Sigma\)
+    itself), and each investor view carries its own stated uncertainty (the
+    matrix \(\Omega\), literally the numerical expression of "moderate
+    confidence" versus "very confident"). The full multi-asset,
+    multi-view version of the same precision-weighting idea is the model's
+    published master formula:
+  </p>
+  <div class="tl-math">
+    \[ E[R]_{BL} = \left[(\tau\Sigma)^{-1} + P^\top \Omega^{-1} P\right]^{-1} \left[(\tau\Sigma)^{-1}\Pi + P^\top \Omega^{-1} Q\right] \]
+  </div>
+  <p>
+    where \(Q\) is the vector of view returns ("EURUSD outperforms GBPUSD by
+    2%"), \(P\) is a "pick matrix" that encodes which instruments each view
+    touches, and \(\Omega\) is the confidence matrix for those views. It looks
+    more intimidating than it is: it is the exact matrix generalization of the
+    scalar precision-weighted average two equations above — the equilibrium
+    prior and the investor's views, each weighted by how much uncertainty is
+    attached to it, blended into one posterior expected-return vector. That
+    posterior — never the raw, unmoderated \(\Pi\) alone, and never the raw
+    view alone — is what gets handed to the Step 3 optimizer.
+  </p>
+  <p>
+    This is exactly what tames the Step 4 instability. A single strong view on
+    one pair no longer gets fed to the optimizer as if it were an exact,
+    isolated fact about that one instrument in a vacuum — it gets blended with
+    the market's own equilibrium belief about that instrument <em>and</em>
+    everything correlated with it, moderated by exactly how confident the
+    investor said they were. A modest-confidence view produces a modest pull
+    away from equilibrium; the market prior, not the investor's raw forecast,
+    still dominates unless the view is both large and stated with high
+    confidence. The corner-solution, wildly-extreme-weight failure mode of
+    naive Markowitz largely disappears, not because the underlying
+    optimization math changed, but because the input feeding it is no longer
+    a fragile, ungrounded guess — it's a market-anchored belief nudged by a
+    small, explicitly-quantified amount of genuinely new information.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(w\)</td><td>The portfolio weight vector — one entry per instrument, the fraction of capital (or risk budget) allocated to each. What the optimizer solves for.</td></tr>
+    <tr><td>\(\Sigma\)</td><td>(capital sigma) The \(N \times N\) covariance matrix of instrument returns — same object built and eigen-decomposed in the PCA lesson and in <code>diversificationCore.js</code>.</td></tr>
+    <tr><td>\(E[R_p] = w^\top \mu\)</td><td>Portfolio expected return — the weighted average of each instrument's expected return \(E[R_i]\), collected into the vector \(\mu\).</td></tr>
+    <tr><td>\(\text{Var}(R_p) = w^\top \Sigma w\)</td><td>Portfolio variance — a quadratic form, not a weighted average; the cross-covariance terms are where diversification benefit (or concentration risk) actually lives.</td></tr>
+    <tr><td>Efficient frontier</td><td>The curve of (risk, return) pairs achieved by the minimum-variance weight combination for every achievable target return.</td></tr>
+    <tr><td>Minimum-variance portfolio</td><td>The single point on the frontier with the lowest possible variance of any achievable combination, regardless of its return — the frontier's leftmost point.</td></tr>
+    <tr><td>\(\Pi\)</td><td>(capital pi) The Black-Litterman equilibrium expected-return vector, reverse-engineered from current market weights via \(\Pi = \delta \Sigma w_{mkt}\). The Bayesian <strong>prior</strong>.</td></tr>
+    <tr><td>\(\delta\)</td><td>(delta) The market-implied risk-aversion scalar used to build \(\Pi\), calibrated from the market portfolio's own realized return and variance.</td></tr>
+    <tr><td>View (\(Q\), \(P\), \(\Omega\))</td><td>An investor's specific, limited belief ("asset X will outperform asset Y by such-and-such"), which assets it touches (\(P\)), and how confident the investor is in it (\(\Omega\)). The Bayesian <strong>likelihood</strong>.</td></tr>
+    <tr><td>\(E[R]_{BL}\)</td><td>The Black-Litterman posterior expected-return vector — the precision-weighted blend of the equilibrium prior and the investor's views. This, not a raw forecast, is what's actually fed into the Step 3 optimizer.</td></tr>
+  </table></div>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>How small an input change it takes to flip the optimizer's answer</h3>
+    <p>
+      Take a simplified two-instrument portfolio — a "safe" pair with expected
+      return 3% and a "risky" pair with expected return 4%, annualized
+      volatilities of 8% and 15%, and a modest positive correlation of 0.3
+      between them. Solving for the maximum-return-per-unit-of-variance
+      portfolio (the tangency portfolio, the standard mean-variance target)
+      with these exact inputs might come back with something intuitively
+      sensible — say, roughly 65% in the safe pair and 35% in the risky one.
+    </p>
+    <p>
+      Now nudge only the risky pair's expected return from 4% to 4.5% — a
+      half-percentage-point change, easily within the noise of any realistic
+      forecasting process, and arguably not even a meaningfully different
+      belief about the asset. Because the optimizer is solving a ratio
+      (expected excess return divided by risk contribution) rather than an
+      absolute comparison, that small change can be enough to swing the
+      optimal weight in the risky pair sharply higher — plausibly past 60-70%,
+      sometimes further if a short position on the safe leg is permitted, in
+      order to squeeze more of the now-slightly-more-attractive risky return
+      into the portfolio. Nothing about the real-world relationship between
+      these two instruments changed; a rounding-level adjustment to one input
+      the investor was never confident about to begin with produced a
+      dramatically different "optimal" allocation. Scale this up to a basket
+      of eight or ten correlated FX pairs, where small return forecasts differ
+      from each other by fractions of a percent and the covariance structure
+      has several near-offsetting relationships, and the instability compounds
+      — this is exactly the mechanism behind the notorious extreme long/short
+      corner solutions naive Markowitz optimization is known to produce.
+    </p>
+    <p>
+      Black-Litterman defuses exactly this failure mode by construction: if
+      that same "risky pair, +4.5%" belief is expressed as a single, explicit
+      view with moderate (not absolute) confidence, and blended with an
+      equilibrium prior built from the whole basket's actual market weights,
+      the posterior expected return for the risky pair moves only partway
+      from its equilibrium value toward 4.5% — precision-weighted by how
+      confident the view was stated to be — rather than being taken as exact.
+      The resulting weight shift is a moderate tilt, not a corner solution.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The efficient frontier — raw Markowitz vs. Black-Litterman-blended</div>
+    <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Chart showing expected return on the vertical axis and risk (standard deviation) on the horizontal axis, with a blue curved efficient frontier bowing out to reach extreme high-return, high-risk corner points, a highlighted minimum-variance portfolio marker at its leftmost tip, and a more moderate green curve representing the Black-Litterman-blended frontier that stays tucked in closer to the origin">
+      <line x1="90" y1="290" x2="600" y2="290" style="stroke:var(--border)"/>
+      <line x1="90" y1="290" x2="90" y2="30" style="stroke:var(--border)"/>
+      <text x="345" y="312" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:11px" text-anchor="middle">Risk (standard deviation, σ)</text>
+      <text x="70" y="160" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:11px" text-anchor="middle" transform="rotate(-90 70 160)">Expected Return E[R]</text>
+
+      <!-- inefficient lower branch (dashed, muted) -->
+      <path id="mvo-lower-path" d="M 130,200 Q 130,260 380,278" style="fill:none;stroke:var(--text3);stroke-width:1.5;stroke-dasharray:4 4;opacity:.6"/>
+      <!-- raw Markowitz frontier (upper / efficient branch) -->
+      <path id="mvo-blue-path" d="M 130,200 Q 130,90 520,55" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+      <!-- Black-Litterman-blended frontier -->
+      <path id="mvo-green-path" d="M 150,195 Q 150,140 430,110" style="fill:none;stroke:var(--green);stroke-width:2.5"/>
+
+      <circle id="mvo-minvar-point" cx="130" cy="200" r="6" style="fill:var(--red);stroke:var(--bg);stroke-width:2"/>
+      <text x="112" y="222" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:11px;font-weight:600" text-anchor="end">min-variance</text>
+
+      <circle id="mvo-blue-end" cx="520" cy="55" r="4" style="fill:var(--blue)"/>
+      <text id="mvo-blue-label" x="524" y="48" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:12px;font-weight:600">raw Markowitz</text>
+      <circle id="mvo-green-end" cx="430" cy="110" r="4" style="fill:var(--green)"/>
+      <text id="mvo-green-label" x="434" y="103" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:12px;font-weight:600">Black-Litterman</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--red)"></i>Minimum-variance portfolio — the frontier's leftmost point</span>
+      <span><i style="background:var(--blue)"></i>Raw Markowitz frontier — the full reachable set given point-estimate inputs</span>
+      <span><i style="background:var(--green)"></i>Black-Litterman-blended frontier — tucked in around the equilibrium prior</span>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head">
+          <span>Assumed extremity of the raw expected-return inputs</span>
+          <span class="tl-live" id="mvo-slider-val">moderate</span>
+        </div>
+        <input type="range" id="mvo-slider" min="0" max="100" step="5" value="40">
+        <div class="tl-hint">Drag right to simulate feeding the optimizer more aggressive, less-hedged return forecasts. The raw Markowitz frontier (blue) reaches noticeably further into extreme corner territory; the Black-Litterman frontier (green) — anchored to the market-equilibrium prior — moves only a little, because each view is precision-weighted against that prior rather than taken as exact.</div>
+      </div>
+    </div>
+    <div class="tl-readout">
+      Farthest reachable point — raw Markowitz: <b id="mvo-blue-readout">E[R] ≈ 11.0%, σ ≈ 17.9%</b> &nbsp;|&nbsp; Black-Litterman-blended: <b id="mvo-green-readout">E[R] ≈ 8.4%, σ ≈ 13.6%</b>
+      <div class="tl-hint">Illustrative schematic, not a fit to real return/risk data — the point is the relative shape and damping, not the exact numbers.</div>
+    </div>
+    <div class="tl-chart-caption">
+      The efficient frontier's leftmost point (red) is the minimum-variance
+      portfolio — lowest achievable risk, whatever return it happens to carry.
+      Moving up and to the right trades additional risk for additional
+      expected return. The blue curve is the frontier the raw Markowitz
+      optimizer can reach given its point-estimate inputs — as those inputs
+      are treated more aggressively (drag the slider), it bows out further
+      into corner-solution territory. The green curve, anchored around the
+      Black-Litterman equilibrium prior and only nudged by explicitly
+      confidence-weighted views, stays comparatively tucked in throughout —
+      the visual expression of "moderated by the market prior, not taken as
+      exact."
+    </div>
+    <script>
+    (function(){
+      var slider = document.getElementById('mvo-slider');
+      var sliderVal = document.getElementById('mvo-slider-val');
+      var bluePath = document.getElementById('mvo-blue-path');
+      var greenPath = document.getElementById('mvo-green-path');
+      var blueEnd = document.getElementById('mvo-blue-end');
+      var blueLabel = document.getElementById('mvo-blue-label');
+      var greenEnd = document.getElementById('mvo-green-end');
+      var greenLabel = document.getElementById('mvo-green-label');
+      var blueReadout = document.getElementById('mvo-blue-readout');
+      var greenReadout = document.getElementById('mvo-green-readout');
+
+      // Fixed anchors (pixel space).
+      var blueVx = 130, blueVy = 200; // Markowitz minimum-variance vertex
+      var greenVx = 150, greenVy = 195; // BL's own (very similar) min-variance vertex
+      var axisX0 = 90, axisY0 = 290; // origin in pixel space (risk=0, return=0)
+      var pxPerRisk = 1400;  // pixels per unit-sigma, purely for the readout's illustrative %
+      var pxPerReturn = 1400;
+
+      function pxToPct(px, axisPx, perUnit, invert){
+        var d = invert ? (axisPx - px) : (px - axisPx);
+        return (d / perUnit * 100);
+      }
+
+      function update(){
+        var s = parseInt(slider.value, 10) / 100; // 0..1 "extremity"
+        sliderVal.textContent = s < 0.3 ? 'conservative' : (s < 0.65 ? 'moderate' : 'aggressive');
+
+        // Blue (raw Markowitz) endpoint bows out further as s grows.
+        var blueEx = 470 + s * 110;   // 470 -> 580
+        var blueEy = 80 - s * 45;     // 80 -> 35 (higher return, smaller y)
+        bluePath.setAttribute('d', 'M ' + blueVx + ',' + blueVy + ' Q ' + blueVx + ',90 ' + blueEx.toFixed(1) + ',' + blueEy.toFixed(1));
+        blueEnd.setAttribute('cx', blueEx.toFixed(1));
+        blueEnd.setAttribute('cy', blueEy.toFixed(1));
+        blueLabel.setAttribute('x', (blueEx + 4).toFixed(1));
+        blueLabel.setAttribute('y', (blueEy - 7).toFixed(1));
+
+        // Green (BL-blended) endpoint moves at roughly a third of the rate —
+        // damped by the equilibrium prior, per the lesson's blending logic.
+        var greenEx = 400 + s * 36;
+        var greenEy = 122 - s * 15;
+        greenPath.setAttribute('d', 'M ' + greenVx + ',' + greenVy + ' Q ' + greenVx + ',140 ' + greenEx.toFixed(1) + ',' + greenEy.toFixed(1));
+        greenEnd.setAttribute('cx', greenEx.toFixed(1));
+        greenEnd.setAttribute('cy', greenEy.toFixed(1));
+        greenLabel.setAttribute('x', (greenEx + 4).toFixed(1));
+        greenLabel.setAttribute('y', (greenEy - 7).toFixed(1));
+
+        var blueRisk = pxToPct(blueEx, axisX0, pxPerRisk, false);
+        var blueRet = pxToPct(blueEy, axisY0, pxPerReturn, true);
+        var greenRisk = pxToPct(greenEx, axisX0, pxPerRisk, false);
+        var greenRet = pxToPct(greenEy, axisY0, pxPerReturn, true);
+        blueReadout.textContent = 'E[R] ≈ ' + blueRet.toFixed(1) + '%, σ ≈ ' + blueRisk.toFixed(1) + '%';
+        greenReadout.textContent = 'E[R] ≈ ' + greenRet.toFixed(1) + '%, σ ≈ ' + greenRisk.toFixed(1) + '%';
+      }
+
+      slider.addEventListener('input', update);
+      update();
+    })();
+    </script>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>One modest AUD/NZD view, two very different portfolios</h3>
+    <p>
+      Suppose a trader holds a specific, limited view: "I think AUD will
+      outperform NZD by about 1.5% over the next quarter, with moderate
+      confidence" — a perfectly ordinary, realistic piece of conviction, the
+      kind any G10-macro desk forms routinely. Now consider two different ways
+      of turning that single view into a portfolio.
+    </p>
+    <p>
+      <strong>Fed into a raw Markowitz optimizer</strong> — with every other
+      instrument's expected return left at zero, or at a naive historical
+      average, since the trader has no other specific views — that one
+      modest, hedged-sounding statement can produce startlingly immoderate
+      output: a large long AUD position, a large offsetting short NZD
+      position, sized far beyond what "moderate confidence in a 1.5%
+      difference" should imply. This isn't a bug in the arithmetic; it's
+      exactly the Step 4 sensitivity problem playing out on a single-view
+      basket — with almost nothing else in the input vector to compete
+      against it, the optimizer treats the one specific number it was given
+      as if it were certain, and sizes the position to fully exploit it,
+      unconstrained by anything resembling the trader's actual, moderate
+      conviction.
+    </p>
+    <p>
+      <strong>Fed into Black-Litterman instead</strong>, the same view is
+      blended with the market-implied equilibrium returns for the
+      <em>whole</em> currency basket — not just AUD and NZD in isolation — and
+      the blend is weighted by the confidence the trader actually stated. The
+      result is a materially more moderate tilt: a real, directional lean
+      toward long AUD / short NZD, appropriately larger than doing nothing,
+      but nowhere near the raw optimizer's extreme corner solution — because
+      the view was treated as one moderately-confident update to a reasonable
+      market-anchored starting point, not as the entire, exact truth about the
+      world. The size of the resulting position scales sensibly with the
+      stated confidence: a "high confidence" version of the same view would
+      produce a larger tilt than a "low confidence" version, in a way the raw
+      optimizer — which has no native concept of "confidence," only point
+      estimates — cannot represent at all.
+    </p>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    In institutional asset management, essentially nobody runs unconstrained
+    naive Markowitz mean-variance optimization on raw analyst forecasts and
+    trades the output directly — the extreme-weight problem from Step 4 is
+    too well known and too easily demonstrated for that to survive a risk
+    committee. What actually gets used is some combination of: Black-Litterman
+    or a similar Bayesian-shrinkage approach to moderate the expected-return
+    inputs; hard position and turnover constraints layered on top of the
+    optimizer (capping any single position's weight, capping how far the
+    optimizer can move from a benchmark or from last period's holdings); and,
+    very commonly, simply not optimizing on expected returns at all — running
+    "risk parity" or minimum-variance-only portfolios that use just the
+    (comparatively stable) covariance matrix and skip the fragile
+    expected-return vector entirely, accepting a less "optimal" but far more
+    robust allocation.
+  </p>
+  <p>
+    Black-Litterman specifically is widely used at multi-asset and
+    macro-overlay desks for exactly the reason built up above: it lets a
+    portfolio manager express a small number of genuine, specific
+    convictions — the two or three trades they actually have a view on this
+    quarter — without being forced to fabricate a precise, false-precision
+    forecast for every other instrument in the universe just to make the
+    optimizer run. Everything the manager has no view on simply stays at its
+    market-implied equilibrium value, which is a far more defensible default
+    than an arbitrary "flat" or "zero" assumption. The confidence parameter
+    (\(\Omega\)) is also a genuine, separate lever from the view itself — the
+    same directional belief, stated with low versus high confidence, produces
+    a smaller versus larger tilt away from equilibrium, which maps naturally
+    onto how position sizing already ought to scale with conviction (the same
+    theme the Kelly Criterion lesson develops from a different angle — sizing
+    should track how sure you actually are, not just the sign of your view).
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+    <h3>A real, currently-missing formal portfolio-construction layer</h3>
+    <p>
+      To be direct about the current state of this repo: <strong>nothing here
+      runs a Markowitz or Black-Litterman-style optimizer to set position
+      weights</strong>. Every strategy — the reversion/continuation engine,
+      the range and confluence engines, the volatility-band forecasters —
+      operates on one instrument at a time and outputs a signal or a plan for
+      that instrument in isolation. There is no layer that takes several such
+      signals across a basket and asks "given everything I currently believe
+      about these instruments, and how they co-move, what's the actual
+      capital allocation that makes sense across all of them at once."
+    </p>
+    <p>
+      The pieces this lesson depends on are, encouragingly, already partly
+      built: <code>js/diversificationCore.js</code>'s <code>correlationMatrix</code>
+      and <code>symmetricEigenvalues</code> compute exactly the \(\Sigma\)
+      (or its correlation-normalized cousin) this lesson's variance formula
+      and Black-Litterman's \(\Pi = \delta \Sigma w_{mkt}\) both need, and the
+      existing "effective number of bets" metrics (<code>effectiveBetsPCA</code>,
+      <code>effectiveBetsEntropy</code>, <code>effectiveBetsWeighted</code>,
+      surfaced on <code>diversification.html</code>) are already answering a
+      closely related — but distinctly narrower — question: "how concentrated
+      is this basket's risk," not "what weights should I hold." Wiring an
+      actual optimizer on top would mean: sourcing or estimating an expected-
+      return vector (the hard, fragile part, which is exactly why Black-
+      Litterman's equilibrium-prior-plus-views approach is the more honest
+      starting point than raw Markowitz); deciding what "market-equilibrium
+      weights" even means in an FX context, where there's no obvious
+      market-cap analogue the way there is for equities (position/flow data,
+      or simply equal-weight, would need to stand in, each with real
+      trade-offs); and building the actual constrained-optimization solver
+      (a small, well-understood numerical problem, but not one this repo
+      currently has any code for).
+    </p>
+    <p>
+      <strong>This would be a meaningfully large, genuinely new piece of
+      infrastructure</strong> — not a quick extension of the existing
+      diversification tooling, even though it builds directly on that
+      tooling's covariance-matrix foundation. It is the natural formal
+      portfolio-construction layer <em>if and when</em> this repo moves from
+      single-instrument signals toward true multi-instrument portfolio
+      construction, but that "if" is doing real work: until there's an actual
+      need to allocate capital jointly across several live signals at once,
+      building this optimizer would be infrastructure in search of a use
+      case. Per this repo's standard discipline, were it built, it would still
+      need its own honest validation — a portfolio-construction layer doesn't
+      get to skip the IS/OOS split just because its inputs (the individual
+      signals) were separately validated; the way those signals get
+      <em>combined</em> is itself a claim that needs testing on its own terms
+      (Lego Principle 5).
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where Markowitz/Black-Litterman goes wrong in practice</h3>
+    <p>
+      <strong>Trusting the raw optimizer's output as if the inputs were
+      exact.</strong> This is Step 4 restated as a warning rather than a
+      description: an unconstrained Markowitz optimization is, by
+      construction, maximally exploiting whatever estimation error is hiding
+      in your expected-return inputs. If the output allocation looks
+      surprisingly extreme or concentrated, the correct read is almost always
+      "the inputs were more uncertain than the model was told," not "the
+      model found a hidden edge."
+    </p>
+    <p>
+      <strong>Treating Black-Litterman's moderation as a free pass on the
+      view quality.</strong> Blending with an equilibrium prior tames the
+      <em>optimizer's</em> instability — it does not validate the
+      <em>view</em> itself. A confidently-stated but wrong view still pulls
+      the posterior in the wrong direction; Black-Litterman just prevents
+      that pull from being amplified into an absurd position size. The model
+      is honest about uncertainty in the blending step, not about whether the
+      view is correct in the first place.
+    </p>
+    <p>
+      <strong>Getting the confidence matrix (\(\Omega\)) wrong in either
+      direction.</strong> Set view confidence too high (\(\Omega\) too small)
+      and Black-Litterman degenerates back toward raw Markowitz's instability
+      for that view; set it too low and the view barely moves the portfolio
+      at all, making the whole exercise pointless. There's no universal
+      "correct" \(\Omega\) — it has to reflect the investor's genuine
+      conviction, and different reasonable choices of \(\tau\) and \(\Omega\)
+      can produce meaningfully different posteriors from the same stated
+      view, a real practical calibration burden the model doesn't remove.
+    </p>
+    <p>
+      <strong>Ignoring transaction costs and turnover.</strong> Both
+      frameworks, as derived above, are single-period and frictionless — they
+      say nothing about how expensive it is to trade from today's actual
+      holdings to the newly "optimal" weights. Re-optimizing every period on
+      updated inputs, without a turnover penalty or rebalancing band, can
+      produce a portfolio that chases small, noisy shifts in the frontier at
+      real cost, eroding exactly the theoretical edge the optimization was
+      meant to capture.
+    </p>
+    <p>
+      <strong>An FX-specific wrinkle: there is no obvious "market portfolio"
+      to reverse-engineer \(\Pi\) from.</strong> Black-Litterman's equilibrium
+      step leans on equity markets' natural market-cap weighting — a real,
+      observable, economically meaningful quantity. FX has no equivalent
+      single number; net global positioning, central-bank reserve
+      composition, or simple equal-weighting across a chosen basket are all
+      workable stand-ins, but each embeds its own assumption about what
+      "equilibrium" means for currencies, and that choice should be made
+      deliberately and stated, not treated as a solved, off-the-shelf input
+      the way it effectively is in equities.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why does portfolio variance, \(w^\top \Sigma w\), depend on more than just each instrument's own variance and its weight?</summary>
+    <div class="tl-answer">
+      Because the quadratic form \(w^\top \Sigma w\) includes cross terms —
+      \(2 w_i w_j \text{Cov}(R_i, R_j)\) for every pair of instruments — that
+      capture how the instruments move together, not just how much each moves
+      on its own. Those cross terms can be positive (correlated instruments
+      compounding each other's variance), negative (anti-correlated
+      instruments partially canceling each other's variance, i.e. genuine
+      diversification benefit), or near zero (independent instruments,
+      variances simply add). A weighted average of individual variances would
+      miss all of this — it's exactly the covariance structure, not just the
+      individual risks, that determines whether a combination of positions is
+      more or less risky than its parts.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why is the raw Markowitz optimizer so sensitive to the expected-return inputs specifically, more than to the covariance matrix?</summary>
+    <div class="tl-answer">
+      Covariances can be estimated with reasonable stability from historical
+      return data — that's exactly the kind of matrix this repo's
+      <code>diversificationCore.js</code> already builds. Expected returns
+      cannot be estimated nearly as reliably; a forecast of future return is
+      inherently the least certain input in the model, often little more than
+      an informed guess with a wide error band. Yet the optimizer is solving
+      for the combination that maximizes return-per-unit-of-risk, a ratio that
+      is acutely sensitive to small changes in the numerator (expected
+      return) whenever assets have similar risk characteristics. The result
+      is that a fraction-of-a-percent nudge to an uncertain, low-conviction
+      number can flip the "optimal" weights dramatically — the model is
+      amplifying noise in exactly the input that has the most noise to begin
+      with.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What role does the "market equilibrium prior" play in Black-Litterman, and why is that a genuinely Bayesian idea rather than just a convenient default?</summary>
+    <div class="tl-answer">
+      The equilibrium prior \(\Pi\) — the expected returns reverse-engineered
+      from current market weights via \(\Pi = \delta \Sigma w_{mkt}\) — plays
+      the role of the starting belief that gets updated, exactly as a prior
+      does in Bayesian inference: it's the answer you'd give before
+      incorporating any new, specific information. It's genuinely Bayesian,
+      not just a convenient placeholder, because the model then combines it
+      with new evidence (the investor's views) via precision weighting —
+      each side pulling the posterior in proportion to how confident it is —
+      which is the same structural logic as combining a prior probability
+      with new evidence via Bayes' rule. Using market prices as that starting
+      belief is also a direct application of the EMH lesson's framing: taking
+      the market as a reasonable prior, worth deviating from only when you
+      have a specific, evidenced reason to (a stated view), not by default.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. In the AUD/NZD scenario, why does the raw Markowitz optimizer produce an extreme position from a "moderate confidence" view, while Black-Litterman produces a moderate one?</summary>
+    <div class="tl-answer">
+      The raw optimizer has no way to represent "moderate confidence" at all —
+      it only accepts a point estimate (AUD outperforms NZD by 1.5%) and,
+      with little else in the input vector to compete against that number, it
+      treats it as exact and sizes the position to fully exploit it. Black-
+      Litterman, by contrast, requires the view to come with an explicit
+      confidence (\(\Omega\)), and blends it with the market-equilibrium prior
+      for the whole basket via precision weighting — a moderate-confidence
+      view pulls the posterior only partway from equilibrium toward the
+      view's stated number, producing a real but proportionate tilt rather
+      than a corner solution. The size of the resulting position scales with
+      the stated confidence in a way the raw optimizer structurally cannot
+      represent.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. What, specifically, would need to be built for this repo to go from its current correlation/eigenvalue diversification tooling to an actual Black-Litterman-style portfolio optimizer, and why is that a large step rather than a small one?</summary>
+    <div class="tl-answer">
+      The covariance-matrix piece — <code>correlationMatrix</code> and
+      <code>symmetricEigenvalues</code> in <code>diversificationCore.js</code>
+      — is already there and is exactly the \(\Sigma\) both the variance
+      formula and the equilibrium-return formula need. What's missing is
+      substantial: a source for expected-return views (or a principled way to
+      source/estimate them per instrument), a defensible definition of
+      "market-equilibrium weights" in an FX context (which has no natural
+      market-cap analogue the way equities do), the actual constrained-
+      optimization solver, and — per this repo's standard discipline — a real
+      IS/OOS validation of whatever the combined portfolio-construction layer
+      produces, since the way signals get combined is its own claim, separate
+      from whether the underlying signals individually have edge. It's a new,
+      meaningfully sized piece of infrastructure sitting on top of an
+      existing foundation, not a small extension of it.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why does the efficient frontier's lower branch (same risk as the minimum-variance portfolio's neighborhood, but lower return) never actually get held, even though it's mathematically reachable?</summary>
+    <div class="tl-answer">
+      For any given level of risk on that lower branch, the minimum-variance
+      portfolio (or a nearby point on the upper branch) achieves the same
+      risk with a strictly higher expected return — the lower branch is
+      "dominated" in the sense that there's always a reachable alternative
+      that's at least as good on risk and strictly better on return. Rational
+      portfolio choice, by definition, never accepts a dominated option when
+      an equal-risk, higher-return alternative is available, which is exactly
+      why only the upper branch of the curve is called the "efficient"
+      frontier — the lower branch is mathematically part of the same curve
+      but economically irrelevant.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Harry Markowitz, "Portfolio Selection," <em>Journal of Finance</em>, 1952 — the founding paper of modern portfolio theory; part of the body of work for which Markowitz shared the 1990 Nobel Memorial Prize in Economic Sciences.</li>
+    <li>Harry Markowitz, <em>Portfolio Selection: Efficient Diversification of Investments</em>, Wiley, 1959 — Markowitz's own full-length elaboration of the 1952 paper's framework.</li>
+    <li>Fischer Black &amp; Robert Litterman, "Global Portfolio Optimization," <em>Financial Analysts Journal</em>, 1992 — the original Black-Litterman paper, developed at Goldman Sachs, explicitly framed around fixing mean-variance optimization's practical instability.</li>
+    <li>Richard Michaud, "The Markowitz Optimization Enigma: Is 'Optimized' Optimal?," <em>Financial Analysts Journal</em>, 1989 — the widely cited paper naming and formalizing the "error-maximization" critique of naive mean-variance optimization referenced in Step 4.</li>
+    <li>Thomas Idzorek, "A Step-by-Step Guide to the Black-Litterman Model," 2005 (widely circulated practitioner working paper) — a commonly used, more implementation-oriented walkthrough of the master formula's terms and calibration.</li>
+    <li><code>js/diversificationCore.js</code> and <code>diversification.html</code> in this repo — the existing correlation-matrix and eigenvalue-based "effective number of bets" tooling this lesson's repo box builds on, and the natural foundation for the missing optimizer layer described above.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="market-microstructure.html">← Market Microstructure</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="merton-portfolio-problem.html">The Merton Portfolio Problem →</a>
+  </div>
+</div>
+</body>
+</html>
