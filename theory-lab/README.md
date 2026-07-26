@@ -1,11 +1,11 @@
 # Theory Lab
 
 A from-scratch, math-explained curriculum in the quantitative concepts behind
-this repo's FX/macro research — 33 numbered theory lessons, 8 background
+this repo's FX/macro research — 34 numbered theory lessons, 8 background
 primers, 10 applied Course Notes lessons, and 2 lessons documenting this
 repo's own COG case study. Covers everything from standard deviation to the
 Heston model, Random Matrix Theory, Merton's continuous-time portfolio
-problem, and a real reverse-engineered trading system.
+problem, alpha/beta separation, and a real reverse-engineered trading system.
 
 **Start at [`hub.html`](./hub.html)** (also linked from the dashboard's
 **Learn ▾** nav menu on `index.html`).
@@ -57,9 +57,10 @@ problem, and a real reverse-engineered trading system.
   Monte Carlo.
 - **8 · Advanced Stochastic Calculus & Derivatives** (4) — Itô's Lemma,
   Girsanov's theorem & the risk-neutral measure, the Heston model, SABR.
-- **9 · Advanced Portfolio & Market Structure** (5) — Random Matrix Theory,
+- **9 · Advanced Portfolio & Market Structure** (6) — Random Matrix Theory,
   fractional Brownian motion & long memory, market microstructure,
-  Markowitz & Black-Litterman, Merton's continuous-time portfolio problem.
+  Markowitz & Black-Litterman, alpha vs. beta separation (portable alpha),
+  Merton's continuous-time portfolio problem.
 - **10 · Course Notes — Applied Practice** (10) — practitioner-workflow
   lessons converted from this repo's own raw study notes (`education/*.md`)
   into the same format as everything else here: data foundations,
@@ -91,6 +92,6 @@ theory-lab/
   glossary.html        — searchable notation glossary
   assets/theory.css   — shared stylesheet (dark theme, MathJax, interactive-
                          chart, real-world-scenario, and skim-path classes)
-  lessons/*.html       — 53 lesson files (8 primers/foundations + 33
+  lessons/*.html       — 54 lesson files (8 primers/foundations + 34
                          numbered theory lessons + 10 Course Notes + 2 COG)
 ```

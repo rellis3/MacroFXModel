@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alpha vs. Beta Separation — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Advanced Portfolio &amp; Market Structure / Alpha vs. Beta Separation</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Advanced Portfolio &amp; Market Structure · Lesson 5 of 6</div>
+  <h1 class="tl-title">Alpha vs. Beta Separation</h1>
+  <p class="tl-dek">Every return stream is secretly two things added together — a bet on the market (beta) and everything left over after that bet is removed (alpha). Telling them apart is what lets you size, hedge, and judge a strategy honestly.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not yet computed for any strategy in this repo</span>
+    <span>~16 min read</span>
+    <span>Prereqs: Correlation &amp; Linear Regression primer, Markowitz &amp; Black-Litterman</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Any return stream can be decomposed as \(r_i - r_f = \alpha + \beta(r_m - r_f) + \varepsilon\) — a regression of excess returns on a market/factor's excess returns. \(\beta\) is the slope (how much of the move is just riding the market); \(\alpha\) is the intercept (what's left after removing that ride).</li>
+      <li>Beta is a bet you can buy for almost nothing (an index future, an ETF). Alpha is the part that's actually hard to get — and the part an allocator is really paying a manager for.</li>
+      <li>"Alpha-beta separation" (portable alpha) means hedging OUT the beta — shorting an index/futures position sized to the estimated \(\beta\) — so what's left is a purer alpha stream that can be transported onto any other beta exposure you actually want.</li>
+      <li>Worked example: a strategy regressed against the S&amp;P shows \(\beta=1.2\), \(\alpha\approx2\%\)/yr. Hedging away the 1.2 beta leaves roughly that 2%/yr, before hedging costs — not more, not a new source of return.</li>
+      <li>This is a repackaging technique, not a source of edge — it only works once a genuine, statistically real alpha already exists (the same dependency the Kelly Criterion lesson has on an already-proven edge).</li>
+    </ul>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    Ask a trader "how did you do this year?" and the honest answer is almost
+    never a single number worth judging. A long-only equity strategy that
+    returned 18% in a year the market itself returned 16% didn't necessarily
+    show any skill — it may have just held a slightly more aggressive version
+    of "the market," and the market happened to go up. A macro strategy that
+    lost money in a risk-off quarter didn't necessarily fail — it may have
+    simply been carrying the same directional exposure every other risk asset
+    was carrying that quarter. Neither number, on its own, tells you whether
+    there is a real, transportable edge underneath.
+  </p>
+  <p>
+    Alpha-beta separation is the discipline of asking that question properly:
+    strip out the part of a return stream that's just "exposure to something
+    you could have bought directly and cheaply" (beta), and see what's left
+    (alpha). It's the single most important lens for judging whether a
+    strategy is doing anything a passive position couldn't, and — once you
+    trust the alpha is real — for repackaging it so it can sit on top of
+    <em>any</em> beta exposure you actually want, or none at all.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>The rising-tide test</h3>
+    <p>
+      "A rising tide lifts all boats" — if the tide (the market) rises 10%
+      and your boat (your strategy) rises 12%, was that your rowing, or just
+      a slightly leakier boat sitting a bit higher on the same tide? Beta is
+      the tide's contribution — measurable, and available to literally
+      anyone who buys the tide directly. Alpha is whatever's left after you
+      honestly subtract the tide's effect: the actual rowing. Most of what
+      looks like skill in a rising market is beta wearing a costume.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    Start from the single-index / market model — the same linear-regression
+    machinery from the Correlation &amp; Linear Regression primer, just
+    applied to excess returns (return minus the risk-free rate, so both
+    sides are measuring compensation for risk, not raw return):
+  </p>
+  <div class="tl-math">\[ r_{i,t} - r_f = \alpha_i + \beta_i (r_{m,t} - r_f) + \varepsilon_t \]</div>
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(r_{i,t}\)</td><td>The strategy/asset's return in period \(t\).</td></tr>
+      <tr><td>\(r_{m,t}\)</td><td>The market (or factor) benchmark's return in period \(t\) — e.g. the S&amp;P 500, or (for an FX book) the dominant "risk-on/risk-off" factor a PCA/RMT read would surface.</td></tr>
+      <tr><td>\(r_f\)</td><td>The risk-free rate, from the Time Value of Money lesson — both sides are excess returns, compensation for risk taken above the safe rate.</td></tr>
+      <tr><td>\(\beta_i\)</td><td>The regression slope — literally \(Cov(r_i,r_m)/Var(r_m)\), the exact formula from the Correlation &amp; Regression primer. Interpreted here as market/systematic exposure: how many units of market risk one unit of the strategy carries.</td></tr>
+      <tr><td>\(\alpha_i\)</td><td>The regression intercept — the average return left over once the market's contribution (\(\beta_i\) times the market's move) has been subtracted out, period by period. This is Jensen's alpha.</td></tr>
+      <tr><td>\(\varepsilon_t\)</td><td>The idiosyncratic noise/residual — whatever the market factor alone doesn't explain, period to period.</td></tr>
+    </table>
+  </div>
+  <p>
+    Two things fall out of this immediately. First, <strong>beta is cheap</strong>:
+    once you know \(\beta_i\), you can replicate that entire component of the
+    return with a position of size \(\beta_i\) in the market itself (an index
+    future, a cheap ETF) — no skill required, no manager fee justified.
+    Second, <strong>beta is hedgeable</strong>: if you're long the strategy and
+    short \(\beta_i\) units of the market, the two \(\beta(r_m-r_f)\) terms
+    cancel and what remains, in expectation, is \(\alpha_i\) plus noise — a
+    "market-neutral" version of the exact same strategy.
+  </p>
+  <p>
+    This is precisely the idea behind <strong>portable alpha</strong>: once a
+    genuine alpha stream has been isolated (hedged market-neutral), it no
+    longer has to sit on top of the original market's beta. You can leave it
+    beta-neutral, or overlay a completely different beta on top of it (e.g.
+    keep the isolated alpha stream and separately buy whatever beta exposure
+    you actually want — bonds, a different equity index, cash) — the alpha is
+    "portable" precisely because hedging severed it from any one specific
+    market.
+  </p>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Hedging out beta to isolate alpha</div>
+    <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter plot of strategy excess returns vs market excess returns with a fitted regression line, showing beta as the slope and alpha as the intercept, plus a bar comparison of gross vs net beta exposure">
+      <line x1="60" y1="270" x2="600" y2="270" style="stroke:var(--border)" stroke-width="1"/>
+      <line x1="330" y1="20" x2="330" y2="270" style="stroke:var(--border)" stroke-width="1"/>
+      <text x="600" y="290" fill="var(--text3)" font-size="11" text-anchor="end">Market excess return</text>
+      <text x="50" y="20" fill="var(--text3)" font-size="11" text-anchor="start" transform="rotate(-90 50 20)" style="display:none"></text>
+      <text x="40" y="30" fill="var(--text3)" font-size="11" text-anchor="middle">Strategy</text>
+      <text x="40" y="42" fill="var(--text3)" font-size="11" text-anchor="middle">excess</text>
+      <text x="40" y="54" fill="var(--text3)" font-size="11" text-anchor="middle">return</text>
+      <g id="ab-points">
+        <circle cx="120" cy="230" r="4" style="fill:var(--blue);opacity:.75"/>
+        <circle cx="160" cy="205" r="4" style="fill:var(--blue);opacity:.75"/>
+        <circle cx="200" cy="195" r="4" style="fill:var(--blue);opacity:.75"/>
+        <circle cx="230" cy="180" r="4" style="fill:var(--blue);opacity:.75"/>
+        <circle cx="270" cy="165" r="4" style="fill:var(--blue);opacity:.75"/>
+        <circle cx="300" cy="150" r="4" style="fill:var(--blue);opacity:.75"/>
+        <circle cx="330" cy="140" r="4" style="fill:var(--blue);opacity:.75"/>
+        <circle cx="360" cy="122" r="4" style="fill:var(--blue);opacity:.75"/>
+        <circle cx="390" cy="110" r="4" style="fill:var(--blue);opacity:.75"/>
+        <circle cx="420" cy="95" r="4" style="fill:var(--blue);opacity:.75"/>
+        <circle cx="460" cy="75" r="4" style="fill:var(--blue);opacity:.75"/>
+        <circle cx="500" cy="60" r="4" style="fill:var(--blue);opacity:.75"/>
+        <circle cx="540" cy="45" r="4" style="fill:var(--blue);opacity:.75"/>
+      </g>
+      <line id="ab-fit-line" x1="90" y1="234.5" x2="570" y2="43.5" style="stroke:var(--red);stroke-width:2.5"/>
+      <circle cx="330" cy="139" r="5" style="fill:var(--red)"/>
+      <line x1="330" y1="139" x2="330" y2="270" style="stroke:var(--red);stroke-dasharray:3,3" stroke-width="1.5"/>
+      <text x="340" y="132" fill="var(--red)" font-size="12" font-weight="600">α (intercept, at r_m=0)</text>
+      <text id="ab-slope-label" x="480" y="80" fill="var(--red)" font-size="12" font-weight="600">slope = β</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Hedge fraction of β</span><span class="tl-live" id="ab-hedge-val">0%</span></div>
+        <input type="range" id="ab-hedge-slider" min="0" max="100" step="5" value="0">
+        <div class="tl-hint">0% = fully exposed to the market's beta. 100% = beta fully hedged, only the alpha stream (and noise) remains.</div>
+      </div>
+    </div>
+    <div class="tl-readout">
+      Net portfolio β = <b id="ab-netbeta-val">1.20</b> · isolated α retained ≈ <b id="ab-alpha-val">2.0</b>%/yr
+    </div>
+    <div class="tl-chart-caption">Illustrative, not real data. The dots are (market return, strategy return) pairs; the red line is the fitted regression. Slide the hedge fraction toward 100% and picture shorting more and more index exposure against the position — the strategy's realized returns would increasingly reflect only the vertical gap above/below the line (α), not the line's slope (β).</div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>A long-only strategy, decomposed</h3>
+    <p>
+      A manager's strategy returned 20% over a year in which the S&amp;P 500
+      returned 15%, with the risk-free rate at 4%. Regressing the strategy's
+      monthly excess returns against the S&amp;P's monthly excess returns
+      gives \(\hat\beta = 1.2\) and \(\hat\alpha \approx 2\%\) annualized
+      (the regression's intercept, scaled to a yearly figure). Sanity-check
+      the beta-only piece: \(1.2 \times (15\%-4\%) = 13.2\%\) of excess
+      return explained purely by carrying 1.2x the market's risk; add back
+      the risk-free rate and the alpha and you get roughly \(4\% + 13.2\% +
+      2\% = 19.2\%\), close to the observed 20% (the gap is residual noise,
+      \(\varepsilon\), for that specific year). The manager's genuine,
+      hard-won contribution was the 2%, not the 20%.
+    </p>
+    <p>
+      To isolate it: short S&amp;P futures notional equal to \(1.2\times\)
+      the position size. The combined position's expected beta is now
+      \(1.2 - 1.2 = 0\); what's left, in expectation, is the \(\approx2\%\)
+      alpha stream (before financing/borrow costs on the short) — a
+      market-neutral version of the same skill, that can now be paired with
+      any other beta exposure the allocator actually wants.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A discretionary FX macro trader, decomposed</h3>
+    <p>
+      A discretionary trader's EUR/USD book returned strongly over a
+      volatile, broadly risk-off quarter — but so did a simple "short
+      risk-on currencies, long the dollar" factor over the same window (the
+      kind of dominant common factor a PCA/Random Matrix Theory read on a
+      cross-pair basket would surface as PC1). Regressing the trader's
+      period returns against that risk factor reveals a large beta to it and
+      only a small alpha on top. That's the honest read an allocator needs:
+      most of the quarter's "great performance" was exposure to a factor
+      anyone could have bought directly and cheaply with a basket trade — not
+      unique skill. The small alpha residual is the part actually worth
+      paying for, and the part that should be judged (and sized) on its own,
+      hedged against the dominant factor rather than left riding on top of it.
+    </p>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Institutional allocators run exactly this regression on every manager in
+    a portfolio before deciding how much to pay for what — a manager whose
+    "outperformance" is mostly beta in disguise is, in effect, an expensive
+    way to buy an index. Portable alpha overlays (isolating a proven alpha
+    stream and layering a separately-chosen beta on top, often via cheap
+    futures/swaps for the beta leg) let an allocator hold, say, bond-market
+    beta while still capturing an equity manager's genuine stock-picking
+    alpha, instead of being forced to accept the equity manager's equity
+    beta as a package deal. None of this works, though, unless the estimated
+    \(\alpha\) is a real, statistically defensible number and not an
+    accident of a lucky sample — which is exactly what the next section is
+    about.
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+    <h3>An honest, currently-missing decomposition</h3>
+    <p>
+      No strategy in this repo currently has its returns regressed against a
+      market/risk factor to separate beta from alpha — every backtest card
+      reports a strategy's raw Sharpe/return, not how much of it is exposure
+      to a common factor. The regression machinery already exists:
+      <code>js/statsCore.js</code>'s <code>linregSlope</code> is exactly the
+      \(\beta\) estimator this lesson uses, and <code>pca-factors.html</code> /
+      <code>random-matrix-theory.html</code>'s eigenvalue work is exactly how
+      you'd identify what the dominant "market factor" even is for a
+      multi-pair FX book (PC1 of the correlation matrix, filtered against the
+      Marchenko-Pastur noise band). Wiring these together — regress each
+      strategy's trade-level or daily returns against that dominant factor,
+      report \(\hat\alpha\)/\(\hat\beta\)/its standard error alongside the
+      existing Sharpe card — would be a genuine, currently-unbuilt candidate
+      that this repo's own tooling already has every ingredient for. Like
+      everything else in this Theory Lab, it would need the same OOS
+      discipline before the resulting \(\hat\alpha\) is trusted as real.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where alpha-beta separation goes wrong</h3>
+    <ul>
+      <li><strong>Treating a noisy intercept as proven skill.</strong> A
+      positive \(\hat\alpha\) with a wide standard error (short sample, high
+      residual volatility) can easily be indistinguishable from zero — check
+      it the same way the Regression Diagnostics lesson insists on, before
+      believing it's real, and remember the Multiple Testing lesson's
+      warning if you screened many managers/strategies to find this one.</li>
+      <li><strong>Beta instability.</strong> The \(\hat\beta\) estimated over
+      the last two years may not be today's true exposure — markets and
+      strategies both drift. A hedge sized to a stale beta under- or
+      over-hedges; the Kalman Filter lesson's adaptive-estimate idea is the
+      principled fix, not re-running the same fixed-window regression forever.</li>
+      <li><strong>Survivorship/backtest inflation.</strong> A strategy's
+      historical "alpha" measured only over its own backtest, on the data it
+      was built on, is exactly the in-sample-vs-OOS trap this whole site's
+      house discipline exists to catch.</li>
+      <li><strong>Hedging isn't free.</strong> Shorting the beta leg carries
+      real financing/borrow costs and slippage — the "pure alpha" stream
+      that's actually deliverable is the theoretical alpha minus those
+      costs, not the raw regression intercept.</li>
+    </ul>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz"><summary>Q1. Why is beta described as "cheap" and alpha as "the part worth paying for"?</summary><div class="tl-answer">Beta is exposure to something you could buy directly yourself, at low cost, with an index future or ETF — no manager skill required to obtain it. Alpha is the residual return left over after that easily-purchased exposure has been subtracted out; if it's real, it represents something a passive position couldn't have given you, which is what a fee is actually paying for.</div></details>
+  <details class="tl-quiz"><summary>Q2. In the market-model regression, what does the slope represent and what does the intercept represent?</summary><div class="tl-answer">The slope (β) represents systematic/market exposure — how many units of the market's risk one unit of the strategy carries. The intercept (α) represents the average return left over after that market exposure's contribution has been subtracted out period by period — the "Jensen's alpha."</div></details>
+  <details class="tl-quiz"><summary>Q3. How would you actually hedge out a strategy's beta in practice?</summary><div class="tl-answer">Take a short position in the market/factor (e.g. an index future) sized to the estimated β times the strategy's notional. If β=1.2, short 1.2 units of market notional per unit of the strategy — the two β(r_m − r_f) terms cancel in expectation, leaving roughly the alpha plus noise.</div></details>
+  <details class="tl-quiz"><summary>Q4. Why does the worked example's 20% return NOT mean the manager showed 20% worth of skill?</summary><div class="tl-answer">Because 13.2 percentage points of that return are explained purely by carrying 1.2x the market's own excess return (β × market excess return) — exposure anyone could buy directly and cheaply. Only the roughly 2% left over after removing that market contribution (and the risk-free rate) is the manager's own, harder-to-replicate contribution.</div></details>
+  <details class="tl-quiz"><summary>Q5. What makes portable alpha "portable"?</summary><div class="tl-answer">Once a genuine alpha stream is hedged market-neutral (its beta removed), it is no longer tied to any one specific market's exposure — it can be paired with a completely different, separately-chosen beta exposure (or none at all), which is what "portable" means here.</div></details>
+  <details class="tl-quiz"><summary>Q6. Why is beta instability a real practical problem, not just a theoretical footnote?</summary><div class="tl-answer">A hedge is sized using an estimated β from historical data, but the true exposure can drift over time as markets or the strategy itself change. If the hedge is sized to a stale β, the position ends up under- or over-hedged relative to its actual current market exposure, reintroducing exactly the beta risk the hedge was meant to remove.</div></details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>William F. Sharpe "Capital Asset Prices: A Theory of Market Equilibrium under Conditions of Risk" (1964) — the CAPM, the theoretical foundation for the market-model regression used throughout this lesson.</li>
+    <li>Michael C. Jensen "The Performance of Mutual Funds in the Period 1945-1964" (1968, <em>Journal of Finance</em>) — the paper that introduced the regression-intercept measure now universally called "Jensen's alpha."</li>
+    <li>Eugene Fama &amp; Kenneth French's multi-factor extensions of the single-index model (size, value, and later factors) — a natural next step once a single market factor isn't enough to explain a strategy's beta exposure; not covered in depth here, but the same regression logic generalizes directly to a multiple-regression factor model, as in the Regression Analysis Course Notes' Lesson 05.</li>
+    <li>Portable alpha as an institutional overlay technique is widely documented in practitioner asset-allocation literature; treat any specific implementation's track record with the same OOS skepticism this whole site applies to everything else.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="markowitz-black-litterman.html">← Markowitz &amp; Black-Litterman</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="merton-portfolio-problem.html">Merton's Continuous-Time Portfolio Problem →</a>
+  </div>
+</div>
+
+<script>
+(function(){
+  var slider = document.getElementById('ab-hedge-slider');
+  var hedgeVal = document.getElementById('ab-hedge-val');
+  var netBetaVal = document.getElementById('ab-netbeta-val');
+  var alphaVal = document.getElementById('ab-alpha-val');
+  var fitLine = document.getElementById('ab-fit-line');
+  var slopeLabel = document.getElementById('ab-slope-label');
+  var GROSS_BETA = 1.20;
+  var GROSS_ALPHA = 2.0; // %/yr, before hedging cost drag
+  var HEDGE_COST_PER_100PCT = 0.3; // illustrative annual financing/borrow drag at a full 100% hedge
+  var PIVOT_X = 330, PIVOT_Y = 139, LEFT_X = 90, RIGHT_X = 570, HALF_SPAN_Y = 95.5;
+
+  function update(){
+    var hedgeFrac = parseInt(slider.value, 10) / 100;
+    var slopeFactor = 1 - hedgeFrac; // 1 = full original beta slope, 0 = flat (fully hedged)
+    var netBeta = GROSS_BETA * slopeFactor;
+    var alphaRetained = GROSS_ALPHA - hedgeFrac * HEDGE_COST_PER_100PCT;
+    hedgeVal.textContent = Math.round(hedgeFrac * 100) + '%';
+    netBetaVal.textContent = netBeta.toFixed(2);
+    alphaVal.textContent = alphaRetained.toFixed(1);
+
+    var leftY = PIVOT_Y + HALF_SPAN_Y * slopeFactor;
+    var rightY = PIVOT_Y - HALF_SPAN_Y * slopeFactor;
+    fitLine.setAttribute('y1', leftY.toFixed(1));
+    fitLine.setAttribute('y2', rightY.toFixed(1));
+    slopeLabel.setAttribute('y', (rightY - 8).toFixed(1));
+    slopeLabel.textContent = hedgeFrac >= 0.98 ? 'β ≈ 0 (fully hedged)' : 'slope = β (net)';
+  }
+
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
+</body>
+</html>
