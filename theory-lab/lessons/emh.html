@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Efficient Market Hypothesis — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Foundations &amp; Epistemics / Efficient Market Hypothesis</div>
+  <div class="tl-kicker">Foundations &amp; Epistemics · Lesson 1 of 14</div>
+  <h1 class="tl-title">The Efficient Market Hypothesis</h1>
+  <p class="tl-dek">Prices already reflect what's knowable — so before you believe you've found an edge, you should first ask why the market left it there.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not a signal, the baseline every signal must beat</span>
+    <span>~12 min read</span>
+    <span>Prereqs: none — start here</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+  Every lesson after this one in the Theory Lab describes a way to look at price data and try to
+  extract an edge — a momentum effect, a mean-reversion pattern, a volatility risk premium, a
+  macro-driven signal. Before any of that is useful, you need to understand the thing all of it is
+  arguing against: the <strong>Efficient Market Hypothesis</strong> (EMH). EMH is not a rule you
+  either "believe in" or "reject." It's the default assumption — the null hypothesis — that a price
+  already incorporates all relevant, available information, so there is no free, riskless way to
+  profit from information you already have access to. Nobody in quantitative finance treats EMH as
+  literally, perfectly true. But almost everyone treats it as the thing you have to argue your way
+  past, with evidence, before you trust a new strategy. That's the posture this entire repo is built
+  around, and this lesson is where that posture comes from.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>If a $20 bill is lying on a busy sidewalk, why is it still there?</h3>
+    <p>
+    This is the classic "efficient markets" joke, and it's worth taking seriously rather than
+    dismissing as glib. If someone really did drop a $20 bill on a crowded sidewalk, the honest
+    answer is: it probably wouldn't stay there long. Someone would pick it up within seconds. The
+    same logic applies to financial markets, which are about as crowded and well-incentivized a
+    sidewalk as exists — thousands of professional traders, each financially rewarded for spotting
+    free money, are staring at the same prices you are. If a pattern in price data reliably predicted
+    future returns and cost nothing to exploit, it would already be traded away: the buying or
+    selling pressure from people exploiting it would push the price to the point where the edge
+    disappears. EMH is the formal statement of that intuition — not "the market is always right about
+    fundamental value," but "the market has already priced in everything that's cheap and available
+    to know, so a costless edge sitting in plain sight is unlikely to survive." The interesting
+    question — and the subject of the rest of this course — is what happens when exploiting the edge
+    is <em>not</em> free: when it requires capital, patience, leverage, career risk, or tolerance for
+    a kind of risk other participants are structurally unwilling to bear. Those frictions are exactly
+    where real, persistent effects tend to live, and exactly why EMH is a starting prior rather than
+    a wall.
+    </p>
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Today's return vs. tomorrow's return (illustrative)</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter plot of today's return against tomorrow's return for a currency pair, showing a shapeless, uncorrelated cloud of points centered near zero with no visible diagonal trend">
+      <line x1="60" y1="150" x2="600" y2="150" style="stroke:var(--border)" stroke-width="1.5"/>
+      <line x1="330" y1="20" x2="330" y2="280" style="stroke:var(--border)" stroke-width="1.5"/>
+      <circle id="emh-pt-0" cx="390" cy="150" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-1" cx="436" cy="178" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-2" cx="399" cy="190" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-3" cx="413" cy="250" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-4" cx="347" cy="197" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-5" cx="321" cy="250" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-6" cx="289" cy="263" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-7" cx="285" cy="204" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-8" cx="235" cy="205" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-9" cx="241" cy="166" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-10" cx="202" cy="127" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-11" cx="278" cy="120" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-12" cx="266" cy="73" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-13" cx="289" cy="37" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-14" cx="330" cy="70" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-15" cx="367" cy="47" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-16" cx="375" cy="96" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-17" cx="443" cy="85" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-18" cx="419" cy="134" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-19" cx="358" cy="160" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-20" cx="337" cy="190" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-21" cx="310" cy="166" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-22" cx="297" cy="138" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-23" cx="327" cy="130" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-24" cx="365" cy="122" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-25" cx="345" cy="163" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-26" cx="292" cy="164" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-27" cx="307" cy="131" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-28" cx="336" cy="116" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-29" cx="379" cy="159" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-30" cx="325" cy="180" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-31" cx="310" cy="147" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-32" cx="313" cy="103" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-33" cx="363" cy="138" r="4" style="fill:var(--blue);opacity:.7"/>
+      <text x="336" y="146" fill="var(--text3)" font-size="10">0</text>
+      <text x="562" y="170" fill="var(--text3)" font-size="11">Return(t)</text>
+      <text x="336" y="30" fill="var(--text3)" font-size="11">Return(t+1)</text>
+      <text x="392" y="228" fill="var(--text3)" font-size="11" font-style="italic">no visible relationship</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-btnrow">
+        <button id="emh-regen-btn" type="button" class="tl-btn">🔀 Regenerate</button>
+      </div>
+    </div>
+    <div class="tl-chart-caption">Illustrative, not real market data. If today's return told you anything reliable about tomorrow's, this scatter would show a visible slope — a diagonal cloud instead of a shapeless one. Weak-form efficiency predicts exactly this shapeless cloud; consistently finding a slope here (net of costs, out of sample) is what a real anomaly would look like. Click "Regenerate" as many times as you like — the points re-scatter to new random positions, but the cloud stays shapeless every time. That's the point: there's no pattern to eventually stumble onto.</div>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Five simulated random-walk price paths, same starting point</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart of five simulated random walk price paths that all start from the same point and fan out to visibly different endpoints, some higher and some lower than the start, with a dashed reference line at the starting level">
+      <line x1="60" y1="150" x2="600" y2="150" style="stroke:var(--border);stroke-dasharray:3,3" stroke-width="1.5"/>
+      <polyline points="60,150 114,130 168,145 222,110 276,125 330,95 384,105 438,80 492,90 546,75 600,70" style="fill:none;stroke:var(--blue);stroke-width:1.8;opacity:.85"/>
+      <polyline points="60,150 114,165 168,140 222,155 276,130 330,140 384,120 438,130 492,115 546,105 600,110" style="fill:none;stroke:var(--green);stroke-width:1.8;opacity:.85"/>
+      <polyline points="60,150 114,140 168,160 222,150 276,170 330,155 384,175 438,160 492,150 546,160 600,155" style="fill:none;stroke:var(--amber);stroke-width:1.8;opacity:.85"/>
+      <polyline points="60,150 114,160 168,175 222,165 276,185 330,175 384,195 438,180 492,200 546,190 600,205" style="fill:none;stroke:var(--purple);stroke-width:1.8;opacity:.85"/>
+      <polyline points="60,150 114,170 168,185 222,200 276,190 330,210 384,195 438,220 492,210 546,230 600,245" style="fill:none;stroke:var(--red);stroke-width:1.8;opacity:.85"/>
+      <circle cx="60" cy="150" r="4" style="fill:var(--text)"/>
+      <text x="40" y="176" fill="var(--text3)" font-size="10">t = 0</text>
+      <text x="564" y="290" fill="var(--text3)" font-size="10">t = T</text>
+      <text x="392" y="30" fill="var(--text3)" font-size="11" font-style="italic">same start, no shared destination</text>
+    </svg>
+    <div class="tl-chart-caption">All five paths begin at the exact same price and are generated by the exact same random-walk process — yet by the end they've drifted to five different levels, some above the dashed starting line and some below it, with no systematic push in either direction. Nothing about the process changed mid-path; the divergence is purely the accumulation of unpredictable, zero-mean shocks (\(\epsilon_t\)) compounding step by step. There was no single "true path" anyone could have forecast from the starting point — under EMH's random-walk implication, identical starting information still produces genuinely different outcomes, which is the practical, visual meaning of unpredictability.</div>
+  </div>
+
+  <script>
+    (function () {
+      var EMH_POINT_COUNT = 34;
+      var EMH_CX_CENTER = 330, EMH_CX_SPREAD = 260;
+      var EMH_CY_CENTER = 150, EMH_CY_SPREAD = 230;
+
+      function regenerate() {
+        for (var i = 0; i < EMH_POINT_COUNT; i++) {
+          var pt = document.getElementById('emh-pt-' + i);
+          if (!pt) continue;
+          var cx = EMH_CX_CENTER + (Math.random() - 0.5) * EMH_CX_SPREAD;
+          var cy = EMH_CY_CENTER + (Math.random() - 0.5) * EMH_CY_SPREAD;
+          pt.setAttribute('cx', cx.toFixed(1));
+          pt.setAttribute('cy', cy.toFixed(1));
+        }
+      }
+
+      document.getElementById('emh-regen-btn').addEventListener('click', regenerate);
+    })();
+  </script>
+
+  <h2>The math, step by step</h2>
+  <p>
+  EMH itself is a qualitative claim about information, but it has a precise, testable mathematical
+  consequence: if a market is efficient, prices should behave like a <strong>random walk</strong>
+  (or more generally, a <strong>martingale</strong>). Let's build that up term by term.
+  </p>
+
+  <p>
+  Let \(P_t\) denote the price of an asset at time \(t\) (say, today's closing price). Consider the
+  simplest possible model of how price evolves from one period to the next:
+  </p>
+
+  <div class="tl-math">\[ P_t = P_{t-1} + \epsilon_t \]</div>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(P_t\)</td><td>The price of the asset at time \(t\) — e.g. today's close.</td></tr>
+      <tr><td>\(P_{t-1}\)</td><td>The price one period earlier — e.g. yesterday's close.</td></tr>
+      <tr><td>\(\epsilon_t\)</td><td>The price <em>innovation</em> (or "shock") realized during period \(t\) — the part of today's price change that was genuinely unknown as of yesterday's close. Read the Greek letter as "epsilon."</td></tr>
+      <tr><td>\(E[\cdot]\)</td><td>The <em>expectation</em> ("mean" or "average") operator. \(E[X]\) means "the average value of \(X\), weighted by how likely each outcome is." It's a prediction made before you know the outcome.</td></tr>
+      <tr><td>\(E[\epsilon_t]=0\)</td><td>The average value of the shock, before it happens, is zero — you have no way to predict its <em>sign</em> or <em>size</em> in advance using currently available information.</td></tr>
+      <tr><td>\(\mathcal{F}_{t-1}\)</td><td>The <em>information set</em> — everything that is knowable and public as of time \(t-1\): past prices, news, filings, macro data, order flow, all of it. Read as "the filtration" or just "everything known so far."</td></tr>
+    </table>
+  </div>
+
+  <p>
+  Read the equation in words: tomorrow's price equals today's price, plus a surprise. That's it. The
+  entire content of the model is in what we assume about \(\epsilon_t\). Specifically, EMH's weak
+  form requires:
+  </p>
+
+  <div class="tl-math">\[ E[\epsilon_t \mid \mathcal{F}_{t-1}] = 0 \]</div>
+
+  <p>
+  This says: <em>conditional on</em> everything you knew at time \(t-1\) — including the entire
+  history of past prices — your best forecast of tomorrow's shock is zero. Not "the shock is always
+  exactly zero" (it isn't; that's exactly why prices move and risk exists) but "you cannot use what
+  you already know to predict its direction." A process with this property is called a
+  <strong>martingale</strong>: formally, \(E[P_t \mid \mathcal{F}_{t-1}] = P_{t-1}\) — your best
+  forecast of tomorrow's price, given everything you know today, is simply today's price. Notice a
+  martingale is a slightly weaker and more general statement than "pure random walk with i.i.d.
+  shocks" — it only pins down the <em>conditional mean</em>, and says nothing about the variance of
+  \(\epsilon_t\) needing to be constant over time (in real markets it isn't: this is exactly what
+  volatility clustering and GARCH-type models capture, and it's why this repo's vol engine
+  (<code>volBacktestEngine.js</code>) exists as a separate, honest piece of machinery from any
+  directional signal). A martingale in price is the object EMH actually predicts; "random walk" is
+  the popular, slightly stronger shorthand for it.
+  </p>
+
+  <p>
+  Why does this matter for trading? Because it has a sharp, checkable implication for
+  <strong>autocorrelation</strong> — whether today's price change helps predict tomorrow's. Define
+  the one-period return as \(r_t = P_t - P_{t-1} = \epsilon_t\) (in this simple additive model; in
+  practice you'd typically use log returns, \(r_t = \ln P_t - \ln P_{t-1}\), for reasons covered in
+  a later lesson on return construction). The lag-1 autocorrelation of returns is:
+  </p>
+
+  <div class="tl-math">\[ \rho_1 = \mathrm{Corr}(r_t,\, r_{t-1}) \]</div>
+
+  <p>
+  If the weak-form martingale property holds, \(\rho_1\) (and every \(\rho_k\) for \(k \ge 1\))
+  should be statistically indistinguishable from zero — knowing yesterday's return tells you nothing
+  about today's. This is directly testable: you can compute the sample autocorrelation of a return
+  series and run a formal test (a Ljung–Box test, a variance-ratio test, or simply a t-test on
+  \(\hat\rho_1\)) to check whether it differs from zero by more than sampling noise would produce.
+  This is precisely the kind of test that underlies decades of empirical market-efficiency research,
+  and it's the mathematical core of the "weak form" described below.
+  </p>
+
+  <h3>The three forms of EMH</h3>
+  <p>
+  Eugene Fama's original 1970 formulation split the hypothesis into three nested forms, distinguished
+  by <em>what information</em> is assumed to already be reflected in price. Each form is a stronger
+  claim than the one before it, and each rules out a different category of strategy:
+  </p>
+  <ul>
+    <li>
+      <strong>Weak form.</strong> Current prices reflect all information contained in the
+      <em>history of past prices and volumes</em>. If true, this rules out
+      <strong>technical analysis</strong> — chart patterns, moving-average crossovers, momentum
+      signals built purely from price history — as a source of riskless, cost-free edge, because any
+      predictable pattern in past prices would already be arbitraged away. This is the form the
+      random-walk math above directly tests.
+    </li>
+    <li>
+      <strong>Semi-strong form.</strong> Current prices reflect all <em>publicly available</em>
+      information — not just past prices, but earnings reports, macro releases, news, analyst
+      research, everything anyone can legally read. If true, this rules out
+      <strong>fundamental analysis</strong> on public data as a source of riskless edge: by the time
+      you've read the earnings report and formed a view, the price has already moved to reflect it.
+      This is tested differently — classically via <em>event studies</em>, which check how fast and
+      how completely prices adjust after a public information release (e.g. an earnings surprise or a
+      central bank announcement).
+    </li>
+    <li>
+      <strong>Strong form.</strong> Current prices reflect <em>all</em> information, public
+      <em>and private</em> — including material non-public information. If true, even corporate
+      insiders trading on undisclosed information could not systematically outperform. This form is
+      essentially never taken as literally true; well-documented cases of profitable insider trading
+      show private information does have value the market hasn't priced in. Strong-form EMH is
+      included mainly as the logical extreme of the framework, and as the reason insider-trading law
+      exists in the first place — regulators implicitly agree the strong form is false and act to
+      limit its exploitation.
+    </li>
+  </ul>
+
+  <h3>The joint-hypothesis problem</h3>
+  <p>
+  Here is the single most important epistemological point in this lesson, and the reason EMH is
+  unusually hard to pin down scientifically. Fama himself pointed this out (in his 1970 review and
+  again explicitly in his 1991 update, "Efficient Capital Markets II"): <strong>you cannot test market
+  efficiency in isolation.</strong> To test whether "prices reflect available information," you first
+  need a model of what the price <em>should</em> be given that information — an asset-pricing or
+  equilibrium model (CAPM, a multi-factor model, a discounted-cash-flow model, whatever). Every test
+  of EMH is therefore secretly a <em>joint test</em> of two things at once:
+  </p>
+  <ol>
+    <li>Is the market efficient (given the assumed pricing model)?</li>
+    <li>Is the assumed pricing model itself correct?</li>
+  </ol>
+  <p>
+  If you run a test and find "abnormal" returns — returns your model didn't predict — you cannot tell
+  which of the two failed. Maybe the market really is inefficient and you found a genuine mispricing.
+  Or maybe the market is fine and your pricing model is simply missing a risk factor, so what looks
+  like "alpha" is actually compensation for a risk your model didn't account for (this is exactly how
+  the size and value factors were eventually absorbed into asset-pricing models that started as
+  single-factor CAPM and grew into multi-factor models). There is no experiment that cleanly separates
+  these two possibilities — you're always testing a bundle. This is why professional researchers are
+  reluctant to declare "EMH is false" from a single anomaly: the anomaly might just mean the pricing
+  model used to define "normal" was wrong, and a better model would swallow it.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>A back-of-envelope autocorrelation check</h3>
+    <p>
+    Suppose you have 500 daily returns for a currency pair and you compute the lag-1 sample
+    autocorrelation and get \(\hat\rho_1 = 0.03\). Is that evidence against weak-form efficiency? By
+    itself, no — you need to know if 0.03 is distinguishable from the noise you'd expect even if the
+    true \(\rho_1\) were exactly zero. Under the null of no autocorrelation, the standard error of a
+    sample autocorrelation with \(n\) observations is approximately \(1/\sqrt{n}\). With
+    \(n = 500\), that's \(1/\sqrt{500} \approx 0.045\). Your estimate of 0.03 is smaller than one
+    standard error — nowhere near the roughly two-standard-error threshold usually used for
+    "statistically significant" — so this is exactly the kind of small, noisy wobble a genuinely
+    efficient, unpredictable series produces routinely. It would be a mistake to build a strategy on
+    it.
+    </p>
+    <p>
+    Now suppose instead \(\hat\rho_1 = 0.15\) on the same 500 observations — more than three standard
+    errors from zero. That's a real statistical signal: past returns do appear to help predict future
+    ones, in this sample. But notice what you still don't have: you don't know if it will hold
+    out-of-sample, you don't know if it survives realistic transaction costs and slippage, and — per
+    the joint-hypothesis problem above — you don't know if it reflects a genuine informational
+    inefficiency or just compensation for a risk factor your simple model of "normal" didn't include.
+    A statistically significant autocorrelation is the <em>start</em> of a research question, not the
+    end of one. This is exactly the gap between "found a pattern in historical data" and "found an
+    edge" that the rest of this Theory Lab, and this repo's backtest discipline, exists to close.
+    </p>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+  Nobody at a real trading desk spends their day debating whether EMH is "true." It's used as a
+  working tool in three concrete ways:
+  </p>
+  <ul>
+    <li>
+      <strong>As a prior, not a verdict.</strong> When a new pattern shows up in a backtest, the
+      default assumption is that it's noise, overfitting, or a known risk premium in disguise — not
+      a genuine new discovery — until proven otherwise. The burden of proof sits on the new idea, not
+      on the market's efficiency. This inverts how a naive researcher instinctively treats a
+      backtest: "if the equity curve goes up, it works" gets replaced with "if the equity curve goes
+      up, what would have to be true about market structure for this to be real, and can I find
+      supporting evidence for that beyond the curve itself?"
+    </li>
+    <li>
+      <strong>As a filter for economic plausibility.</strong> A durable inefficiency generally needs
+      a <em>reason</em> it survives being arbitraged away — some friction that stops the "$20 bill"
+      from being picked up instantly. Common survival reasons: funding constraints (an edge requires
+      leverage or capital that most participants can't or won't deploy), information asymmetry
+      (genuinely hard-to-observe or hard-to-interpret data), structural/forced flows (rebalancing
+      flows, hedging flows, central bank operations that aren't profit-seeking and therefore don't
+      get arbitraged away by pure profit-seekers), regulatory constraints (position limits, capital
+      requirements that stop certain players from taking the other side), or a genuine risk premium
+      (the "edge" is really compensation for bearing a risk — tail risk, illiquidity, career risk —
+      that most participants avoid). If you can't articulate why the effect you found should exist
+      and persist, that's a reason for skepticism, not a decisive kill — but it raises the bar for
+      what evidence would convince you.
+    </li>
+    <li>
+      <strong>As the benchmark, always.</strong> Any claimed edge is judged against what a
+      no-skill, EMH-consistent baseline would have done — usually buy-and-hold, or a simple fixed
+      exposure. "Beat a bad strategy" and "beat efficient-market pricing" are different bars; only
+      the second one is meaningful.
+    </li>
+  </ul>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>The house discipline in <code>CLAUDE.md</code> is EMH turned into engineering practice</h3>
+    <p>
+    This repo's build discipline — spelled out in <code>CLAUDE.md</code> — is not an arbitrary
+    process checklist. It is what taking EMH seriously as a prior looks like in code. A few direct
+    lines:
+    </p>
+    <ul>
+      <li>
+      <strong>The in-sample / out-of-sample split, and the "≥30 OOS trades" gate</strong>
+      (<code>js/honestForecastEngine.js</code>'s <code>summarizeSplit</code>, and the OOS Sharpe gate
+      referenced throughout the repo's strategy-validation rules) exist because an in-sample result
+      is exactly the kind of thing the joint-hypothesis problem warns about: you fit a rule to a
+      known history, and the history you fit to no longer has any power to distinguish "found a
+      genuine, persistent edge" from "found the specific noise pattern that happened to occur in this
+      sample." Only performance on data the rule never saw is evidence against the null that "this is
+      just noise the fitting process found."
+      </li>
+      <li>
+      <strong>"Name the benchmark before claiming improvement"</strong> is the buy-and-hold /
+      no-skill floor from the bullet above, made a hard rule rather than a suggestion. An equity
+      curve that looks good in isolation is not evidence of anything until it's shown next to what a
+      passive, EMH-consistent baseline would have produced over the same period with the same costs.
+      </li>
+      <li>
+      <strong>"Costs on by default"</strong> and the requirement for realistic fills (the fill walker
+      in <code>js/forecastCore.js</code>, never a zero-cost backtest) matter because EMH's prediction
+      is specifically about <em>costless</em>, riskless arbitrage. A pattern that only "works" before
+      spread and slippage isn't a counterexample to EMH at all — it's consistent with it. EMH doesn't
+      claim markets are efficient net of frictions it never promised to overcome; it claims the free
+      lunch isn't there. Charging real costs is what makes the test actually about the free lunch.
+      </li>
+    </ul>
+    <p>
+    None of this says any particular strategy in this repo does or doesn't beat efficient pricing —
+    that's an empirical question answered per-strategy by its own OOS card, not by this lesson. What
+    this lesson explains is <em>why the discipline exists at all</em>: because the default,
+    working assumption going in is that markets are efficient enough that a real edge is the
+    exception, not the expectation, and the entire validation harness is built to make that a hard
+    bar to clear rather than an easy one.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Ways people misuse or misunderstand EMH</h3>
+    <ul>
+      <li>
+      <strong>Treating EMH as "no strategy can ever make money."</strong> It doesn't say that. It says
+      riskless, information-free profit shouldn't persist. Strategies that earn a return by bearing a
+      genuine, priced risk (equity risk premium, carry, illiquidity) are entirely consistent with
+      efficient markets — that's compensation for risk, not a free lunch. Confusing "EMH forbids all
+      profitable strategies" with what it actually claims is one of the most common misreadings.
+      </li>
+      <li>
+      <strong>Treating a single backtest anomaly as falsification.</strong> Because of the
+      joint-hypothesis problem, one profitable-looking backtest can never single-handedly refute
+      market efficiency — it's equally consistent with "the pricing model used to judge 'abnormal'
+      was incomplete." Refuting EMH convincingly requires an effect that's robust across time periods,
+      markets, and specifications, and ideally has a plausible economic mechanism.
+      </li>
+      <li>
+      <strong>Conflating "efficient" with "correctly priced" or "rational."</strong> EMH says prices
+      reflect available information quickly — it does not require that the information itself, or the
+      participants processing it, are rational, unbiased, or free of behavioral quirks. A market can
+      be highly efficient at incorporating information and still occasionally price things at levels
+      that look absurd in hindsight (bubbles), if the information available at the time didn't clearly
+      distinguish the bubble from a justified re-rating.
+      </li>
+      <li>
+      <strong>Ignoring Andrew Lo's Adaptive Markets refinement.</strong> A newer, less absolutist
+      view — the <em>Adaptive Markets Hypothesis</em> — reframes efficiency as something that varies
+      with the competitive/ecological conditions of a market rather than a fixed on/off property:
+      markets are "more or less efficient" depending on the population of participants, how much
+      capital is chasing a given effect, and how the environment is changing. This doesn't overturn
+      the core "no easy free lunch" logic, but it explains why some inefficiencies can appear, get
+      arbitraged away, and reappear as conditions shift — rather than treating EMH as a single
+      permanent verdict.
+      </li>
+      <li>
+      <strong>Forgetting weak-form and semi-strong-form violations are different claims.</strong> A
+      violation of the weak form means past <em>prices alone</em> predict future prices — a much
+      narrower, more surprising claim than a semi-strong violation, which just means some public
+      information (an earnings report, a macro release) takes time to be fully priced in. Confusing
+      the two overstates how strong a given piece of evidence actually is.
+      </li>
+    </ul>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why can't EMH ever be conclusively falsified by a single empirical test?</summary>
+    <div class="tl-answer">
+    Because of the joint-hypothesis problem: testing whether prices reflect available information
+    requires assuming some model of what the "correctly reflected" price should be. Any test that
+    finds abnormal returns can't distinguish between "the market is inefficient" and "the assumed
+    pricing model is wrong." Both explanations are always available, so no single test result can
+    cleanly refute market efficiency on its own — you're always testing the pair together.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Does EMH forbid all profitable trading strategies?</summary>
+    <div class="tl-answer">
+    No. EMH forbids <em>riskless, information-free</em> profit that persists after costs — a genuine
+    free lunch. It does not forbid earning returns by bearing real, priced risk (market risk, carry
+    risk, illiquidity risk, tail risk) or by having a genuine informational or structural advantage
+    that isn't available to the market as a whole. Strategies that work because they're compensated
+    for risk are entirely compatible with efficient markets.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What's the difference between a weak-form violation and a semi-strong-form violation?</summary>
+    <div class="tl-answer">
+    A weak-form violation means future price movements can be predicted from <em>past price/volume
+    history alone</em> — e.g. a reliable technical pattern. A semi-strong-form violation means prices
+    don't fully and immediately incorporate <em>publicly available non-price information</em> — e.g.
+    an earnings report or macro release that keeps moving the price for days after release rather
+    than being priced in instantly. Semi-strong violations are the broader, more commonly-documented
+    category (post-earnings-announcement drift is a well-known example); weak-form violations are the
+    narrower and, if genuinely found, more surprising claim, since price history is the cheapest,
+    most universally available data there is.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. If a backtest shows a strategy with a statistically significant positive Sharpe ratio in-sample, has it beaten EMH?</summary>
+    <div class="tl-answer">
+    Not by itself. In-sample significance only shows the rule fits the specific historical sample it
+    was built or tuned on — which is exactly what curve-fitting to noise would also produce. It says
+    nothing about whether the pattern generalizes to data the rule never saw, whether it survives
+    realistic transaction costs, or whether — per the joint-hypothesis problem — it reflects a real
+    inefficiency versus an incomplete benchmark model. Only a genuinely out-of-sample result, with
+    costs, evaluated against a stated no-skill benchmark, and ideally with a plausible economic
+    reason to persist, counts as real evidence.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. What kinds of frictions or structural features let a market inefficiency persist despite profit-seeking arbitrageurs?</summary>
+    <div class="tl-answer">
+    Common candidates: funding/capital constraints (the trade needs leverage or capital most
+    participants can't deploy), information asymmetry (the relevant data is hard to obtain or
+    interpret), structural or forced flows (rebalancing, hedging, or policy-driven flows that aren't
+    profit-motivated and therefore don't get arbitraged away), regulatory limits (position caps,
+    capital rules that keep certain players from taking the other side), and genuine risk premia
+    (what looks like "alpha" is compensation for a risk — illiquidity, tail risk, career risk — that
+    most capital avoids bearing). An apparent edge with none of these plausible is more likely to be
+    overfitting or noise than a real, durable finding.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. How does the Adaptive Markets Hypothesis (Andrew Lo) differ from the classical EMH framing?</summary>
+    <div class="tl-answer">
+    Classical EMH treats efficiency as close to a fixed property a market either has or lacks.
+    Adaptive Markets reframes efficiency as a variable, ecological outcome: how efficient a market is
+    at any moment depends on the population of participants, how much capital and competition is
+    chasing a given effect, and how conditions are changing (an evolutionary/competitive analogy
+    rather than a physics-style equilibrium one). This explains, without abandoning the "no easy free
+    lunch" core logic, why effects can appear, attract capital, get arbitraged away, and later
+    reappear as the competitive landscape shifts.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Eugene F. Fama, "Efficient Capital Markets: A Review of Theory and Empirical Work," <em>Journal of Finance</em>, 1970 — the paper that formalized the weak/semi-strong/strong taxonomy used throughout this lesson.</li>
+    <li>Eugene F. Fama, "Efficient Capital Markets II," <em>Journal of Finance</em>, 1991 — Fama's own update and restatement of the joint-hypothesis problem after two more decades of empirical anomaly literature.</li>
+    <li>Burton G. Malkiel, <em>A Random Walk Down Wall Street</em> — the accessible, book-length popularization of the random-walk view of markets and its implications for individual investors.</li>
+    <li>Andrew W. Lo, "The Adaptive Markets Hypothesis: Market Efficiency from an Evolutionary Perspective," <em>Journal of Portfolio Management</em>, 2004, and his later book <em>Adaptive Markets: Financial Evolution at the Speed of Thought</em> — the modern reframing of efficiency as ecological/competitive rather than binary.</li>
+    <li>Andrei Shleifer, <em>Inefficient Markets: An Introduction to Behavioral Finance</em> — a counterweight literature covering the limits-to-arbitrage arguments (funding constraints, noise-trader risk) for why some inefficiencies can persist.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="bayesian-inference.html">Bayesian Inference &amp; Updating →</a>
+  </div>
+</div>
+</body>
+</html>

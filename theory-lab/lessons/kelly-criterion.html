@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kelly Criterion &amp; Position Sizing — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Risk &amp; Sizing / Kelly Criterion</div>
+  <div class="tl-kicker">Risk &amp; Sizing · Lesson 13 of 14</div>
+  <h1 class="tl-title">The Kelly Criterion &amp; Position Sizing</h1>
+  <p class="tl-dek">The formula for the bet size that maximizes long-run growth rate — and why betting exactly that size, on purpose, is usually a mistake.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — a sizing framework, only valid once a real edge exists</span>
+    <span>~16 min read</span>
+    <span>Prereqs: Bayesian Inference</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    Every strategy in this repo eventually produces the same two outputs: a
+    direction (fade or follow, long or short) and a size. Fourteen lessons in
+    this series — dozens of pages of code — are almost entirely about the
+    first output. This page is about the second, and it deserves the same
+    rigor, because sizing is not a footnote to a strategy — it is a
+    mathematical decision with its own optimum, its own failure modes, and
+    its own literature, independent of whatever entry signal is feeding it.
+  </p>
+  <p>
+    The question the Kelly criterion answers is deceptively narrow: if you
+    have a bet with a genuine, known edge that you can repeat many times, what
+    fraction of your current bankroll should you risk on each repetition to
+    grow your bankroll <em>as fast as possible over the long run</em>? Not "as
+    fast as possible on this one bet" (that would usually mean betting
+    everything) — as fast as possible <em>compounded over many bets</em>,
+    which turns out to be a different, smaller, and more interesting number.
+    The gap between those two questions — expected value of one bet versus
+    long-run compounded growth — is the entire subject of this lesson, and it
+    is the same gap that separates arithmetic returns from geometric returns
+    anywhere in finance.
+  </p>
+  <p>
+    This lesson sits under "Risk &amp; Sizing" rather than "Signals" on
+    purpose. Kelly sizing cannot manufacture an edge that isn't there, and
+    used carelessly it will happily size up a fake or overestimated edge into
+    a ruinous bet. It is a formalization of a question this repo's own
+    working philosophy already raises — CLAUDE.md states plainly that
+    "volatility-based position sizing, cutting losers and letting winners run
+    are powerful drivers of results — worth building and validating alongside
+    an entry signal." Kelly is the textbook version of the first half of that
+    sentence. Read this lesson as "how to size a real edge correctly," never
+    as "how to make a mediocre signal look better."
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Why "always bet everything" is wrong even with a real edge</h3>
+    <p>
+      Suppose someone offers you a coin that lands heads 55% of the time, and
+      pays even money — bet $1, win $1 on heads, lose your $1 on tails. This
+      is a genuine edge: on average you make money every time you play. So
+      how much of your bankroll should you bet each round?
+    </p>
+    <p>
+      Betting everything, every time, feels aggressive but tempting — more
+      money at risk means more expected profit per round, right? It's also a
+      guaranteed way to go broke. Bet 100% of your bankroll and the very first
+      tails (which happens 45% of the time) wipes you out completely — you
+      have $0, and $0 stays $0 forever no matter how good the coin is. Betting
+      too little is safe but leaves growth on the table: bet 1% per round and
+      you'll basically never go broke, but you'll also barely benefit from a
+      genuinely strong edge. Somewhere between "bet nothing" and "bet
+      everything" there is a size that grows your bankroll <em>the fastest,
+      compounded over many rounds</em> — not the size that maximizes the
+      expected dollar profit of a single round. That size is the Kelly
+      fraction, and the reason it isn't "bet everything" is that a single
+      catastrophic loss doesn't just cost you money — it costs you a
+      percentage of everything you have left to compound with, and there is
+      no coming back from losing 100%. The math below makes this trade-off
+      exact instead of just intuitive.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    <strong>Setting up the objective — why maximize the log of wealth, not
+    wealth itself.</strong> Call your current bankroll \(W_0\). If you bet a
+    fraction \(f\) of it on a favorable coin and win, your new bankroll is
+    \(W_0(1+f)\); if you lose, it's \(W_0(1-f)\). Play this game \(n\) times
+    in a row, and because each round multiplies your bankroll by a factor
+    (rather than adding a fixed amount), your wealth after \(n\) rounds is a
+    <em>product</em> of all those per-round factors, not a sum:
+  </p>
+  <div class="tl-math">\[ W_n = W_0 \prod_{i=1}^{n} (1 + f X_i) \]</div>
+  <p>
+    where each \(X_i\) is \(+1\) on a win and \(-1\) on a loss for that round.
+    Maximizing the plain <em>expected value</em> of \(W_n\) is exactly the
+    trap from the intuition box: since each winning round multiplies wealth
+    by \((1+f)\) and the expected value of a product of independent factors
+    grows fastest the larger \(f\) is (up to \(f=1\)), naively maximizing
+    \(E[W_n]\) pushes you toward betting everything, every round — and a
+    strategy that bets everything hits \(f=1\) and a single loss eventually,
+    with probability approaching 1 over enough rounds, which sends \(W_n\) to
+    zero. Expected value doesn't "see" that a single wipeout is
+    catastrophic and irreversible; it just averages over all paths, including
+    the astronomically lucky all-wins path that pulls the average up while
+    contributing nothing to what almost every actual realized path looks
+    like. This is the core reason Kelly's insight had to reach for a
+    different objective function entirely.
+  </p>
+  <p>
+    Because wealth compounds <em>multiplicatively</em>, the natural quantity
+    to maximize is not wealth itself but the <strong>growth rate</strong> — and
+    logarithms turn products into sums, which is exactly the tool for
+    analyzing a multiplicative process. Take the log of both sides of the
+    wealth equation:
+  </p>
+  <div class="tl-math">\[ \ln W_n = \ln W_0 + \sum_{i=1}^{n} \ln(1 + f X_i) \]</div>
+  <p>
+    Dividing by \(n\), the average per-round log-growth is
+    \(\frac{1}{n}\sum \ln(1+fX_i)\), and by the law of large numbers this
+    converges, as \(n\) grows, to its expected value \(E[\ln(1+fX)]\). This
+    quantity is called the bet's <strong>expected log-growth rate</strong>,
+    and it is what Kelly (1956) proved is the right thing to maximize if your
+    goal is to grow a repeatedly-compounded bankroll as fast as possible in
+    the long run — not because "log" is an arbitrary preference, but because
+    it is the unique quantity whose expectation, maximized round by round,
+    also maximizes the bankroll's actual long-run compounded growth rate with
+    probability 1. (In economics language: log wealth is the utility function
+    under which maximizing expected utility is provably equivalent to
+    maximizing long-run geometric growth — this is a mathematical fact about
+    compounding, not a subjective preference for log-shaped utility.)
+  </p>
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(W_0, W_n\)</td><td>Starting bankroll, and bankroll after \(n\) bets.</td></tr>
+      <tr><td>\(f\)</td><td>The fraction of current bankroll risked on each bet — the thing we're solving for.</td></tr>
+      <tr><td>\(X_i\)</td><td>The outcome of round \(i\): \(+1\) on a win, \(-1\) on a loss (even-money case).</td></tr>
+      <tr><td>\(p, q\)</td><td>Win probability and loss probability, \(q = 1-p\).</td></tr>
+      <tr><td>\(b\)</td><td>The payoff odds — you win \(b\) units per unit staked on a win (even money is \(b=1\)).</td></tr>
+      <tr><td>\(f^*\)</td><td>The Kelly-optimal fraction — the value of \(f\) that maximizes expected log-growth.</td></tr>
+      <tr><td>\(g(f)\)</td><td>The expected log-growth rate as a function of \(f\): \(E[\ln(1+fX)]\).</td></tr>
+      <tr><td>\(\mu, \sigma^2\)</td><td>Expected return (drift) and variance of a continuous return stream, in the trading form of Kelly.</td></tr>
+    </table>
+  </div>
+  <p>
+    <strong>Deriving the even-money formula.</strong> For the simple coin
+    (win probability \(p\), lose probability \(q=1-p\), even-money payoff),
+    the expected log-growth as a function of \(f\) is:
+  </p>
+  <div class="tl-math">\[ g(f) = p \ln(1+f) + q \ln(1-f) \]</div>
+  <p>
+    This says: with probability \(p\) your bankroll multiplies by \((1+f)\)
+    and contributes \(\ln(1+f)\) to the expected log-growth; with probability
+    \(q\) it multiplies by \((1-f)\) and contributes \(\ln(1-f)\). To find the
+    \(f\) that maximizes \(g(f)\), take the derivative with respect to \(f\)
+    and set it to zero — the standard calculus move for finding a maximum of
+    a smooth, single-peaked function (and \(g(f)\) is single-peaked here,
+    concave on \((-1,1)\), so this really does find the maximum, not just a
+    flat spot):
+  </p>
+  <div class="tl-math">\[ g'(f) = \frac{p}{1+f} - \frac{q}{1-f} = 0 \]</div>
+  <p>
+    Cross-multiply to clear the denominators — \(p(1-f) = q(1+f)\) — then
+    expand and collect the \(f\) terms:
+  </p>
+  <div class="tl-math">\[ p - pf = q + qf \quad\Longrightarrow\quad p - q = pf + qf = f(p+q) \]</div>
+  <p>
+    Since \(p+q=1\) by definition (win and lose are the only two outcomes),
+    this collapses immediately to:
+  </p>
+  <div class="tl-math">\[ f^* = p - q = p - (1-p) = 2p - 1 \]</div>
+  <p>
+    This is the classic even-money Kelly formula: bet a fraction equal to
+    your <strong>edge</strong> (\(p-q\), how far your win probability sits
+    above the 50/50 breakeven point). At \(p=0.5\) (no edge), \(f^*=0\) — bet
+    nothing, correctly. As \(p \to 1\), \(f^* \to 1\) — bet everything, also
+    correctly, because a certain win has no downside to protect against.
+  </p>
+  <p>
+    <strong>The general-odds version.</strong> Real bets rarely pay even
+    money. If a win pays \(b\) units per unit staked (so \(b=1\) recovers the
+    coin-flip case) and a loss costs the full stake, the same derivative-and-set-to-zero
+    procedure on \(g(f) = p\ln(1+bf) + q\ln(1-f)\) yields:
+  </p>
+  <div class="tl-math">\[ f^* = \frac{bp - q}{b} = p - \frac{q}{b} \]</div>
+  <p>
+    Read this as "edge over odds": the numerator \(bp-q\) is the bet's
+    expected value per unit staked (win \(b\) with probability \(p\), lose 1
+    with probability \(q\)) — if this is negative, there is no edge and
+    \(f^*\) is negative, meaning don't take the bet at all (or bet the other
+    side, if that's available). Dividing by \(b\) rescales the edge by how
+    big the payoff swings are, which is the bridge to the continuous form
+    below: a bet with a larger payoff-to-risk ratio needs a <em>smaller</em>
+    fraction of bankroll to extract the same growth, because each unit
+    staked already buys more upside.
+  </p>
+  <p>
+    <strong>The continuous-time / Sharpe-ratio form.</strong> Markets don't
+    offer discrete win/lose coin flips — they offer a continuous stream of
+    returns with some expected excess return (drift) \(\mu\) and some
+    variance \(\sigma^2\) per period. Applying the same log-growth-maximization
+    logic to a position sized at fraction \(f\) of capital in an asset with
+    return distribution \((\mu, \sigma^2)\), and using a second-order (Taylor)
+    approximation of the log around the mean — valid when per-period returns
+    are not too large, which is standard for a diversified continuous-return
+    setting — gives the continuous-time Kelly fraction:
+  </p>
+  <div class="tl-math">\[ f^* = \frac{\mu}{\sigma^2} \]</div>
+  <p>
+    This is the form actually used in trading and portfolio theory: the
+    optimal leverage is <strong>expected excess return divided by
+    variance</strong>. It has a direct, important relationship to the Sharpe
+    ratio, \(S = \mu/\sigma\) (excess return divided by <em>standard
+    deviation</em>, not variance). Substitute \(\mu = S\sigma\):
+  </p>
+  <div class="tl-math">\[ f^* = \frac{S\sigma}{\sigma^2} = \frac{S}{\sigma} \]</div>
+  <p>
+    In words: the Kelly-optimal leverage on a strategy is its Sharpe ratio
+    divided by its volatility. A higher Sharpe ratio justifies more leverage;
+    a higher-volatility instrument, at the same Sharpe ratio, justifies
+    <em>less</em> leverage, because variance sits in the denominator of the
+    fraction and enters it squared relative to \(\mu\)'s linear term — doubling
+    volatility while holding the edge \(\mu\) fixed cuts the optimal size by
+    a factor of four, not two. This is the same reason a vol-targeting
+    position-sizing rule (scale position size inversely with recent realized
+    volatility, exactly the kind of thing CLAUDE.md calls out as worth
+    building) is, in substance, a rolling approximation of Kelly sizing even
+    when nobody explicitly names it that.
+  </p>
+  <p>
+    <strong>Volatility drag: why the geometric mean is always below the
+    arithmetic mean.</strong> Take that same second-order approximation one
+    step further and it produces one of the most important, most
+    underappreciated facts in return compounding: for a return stream with
+    mean \(\mu\) and variance \(\sigma^2\), the long-run <em>compounded</em>
+    (geometric) growth rate is approximately:
+  </p>
+  <div class="tl-math">\[ g \approx \mu - \frac{\sigma^2}{2} \]</div>
+  <p>
+    The arithmetic mean \(\mu\) is what you'd compute by averaging returns
+    directly — it answers "what's the average return per period?" The
+    geometric mean \(g\) is what actually determines how your compounded
+    wealth grows over many periods — it answers "what constant per-period
+    return would have produced the same ending wealth?" These are different
+    numbers whenever there is any variance at all, and the gap between them —
+    the \(\sigma^2/2\) term — is called <strong>volatility drag</strong> (or
+    variance drag). It is a real, mechanical cost of variance on compounded
+    wealth, not a pessimistic adjustment or a modeling artifact: a return
+    stream that averages +10% per period but swings wildly compounds slower
+    than a steadier stream averaging the same +10%, because a −50% period
+    followed by a +50% period does not net to zero on a compounding base — it
+    nets to a 25% loss (\(0.5 \times 1.5 = 0.75\)). This single fact is why
+    "more leverage always means more expected profit" is true for arithmetic
+    expectation and false for what a levered account actually experiences
+    over time.
+  </p>
+  <p>
+    Volatility drag is also the mechanism behind full Kelly's most
+    counterintuitive property: <strong>overbetting past \(f^*\) doesn't just
+    reduce growth, it can make growth negative even on a genuinely
+    positive-expectancy bet.</strong> Position size scales \(\mu\) linearly
+    (bet twice as big, your drift roughly doubles) but scales \(\sigma^2\)
+    quadratically (bet twice as big, your variance roughly quadruples,
+    because variance scales with the square of position size). So the
+    growth-rate function \(g(f) \approx f\mu - \frac{f^2\sigma^2}{2}\) is an
+    inverted parabola in \(f\) — it rises from zero, peaks exactly at
+    \(f^*=\mu/\sigma^2\) (the same formula derived above, from setting this
+    quadratic's derivative to zero), and then <em>falls back down</em>,
+    crossing zero again at \(f = 2f^*\) and going negative for any \(f\)
+    beyond that. At exactly double the Kelly-optimal size, the drag term
+    exactly cancels the drift term — the growth rate that reaches zero even
+    though the underlying bet's edge never changed. Bet larger still and the
+    compounded account shrinks toward zero over time despite every individual
+    bet still having positive expected value. This is the mathematically
+    precise version of "more size is not always better," and it is why the
+    curve's shape — not just its peak — matters for the next topic.
+  </p>
+  <p>
+    <strong>Fractional Kelly.</strong> Because \(g(f)\) is a smooth peaked
+    curve (a parabola in the approximation above, and single-peaked exactly
+    in the discrete derivation too), it is <em>flat near its own peak</em> —
+    a basic property of any smooth maximum, where the first derivative is
+    zero right at \(f^*\). That means betting slightly less than \(f^*\)
+    costs you very little growth rate, because you're moving along a nearly
+    horizontal part of the curve. But your bet-to-bet variance, and therefore
+    your realized drawdowns, keep shrinking roughly linearly as you scale
+    \(f\) down — no flat spot, just steady reduction. That asymmetry — growth
+    given up is small and second-order near the peak, risk given up is large
+    and first-order everywhere — is the entire argument for
+    <strong>fractional Kelly</strong>: deliberately betting some fraction
+    \(c \in (0,1)\) of the full Kelly size, most commonly \(c=0.5\)
+    ("half-Kelly"). It is the standard practical response across the
+    literature (Thorp's writing on this is the canonical source) precisely
+    because full Kelly is growth-optimal only under the assumption that you
+    know \(p\), \(b\), \(\mu\), and \(\sigma^2\) exactly — and in any real
+    application those are estimated, not given, which means full Kelly is
+    also the size most exposed to estimation error. Sizing down trades a
+    little bit of theoretical best-case growth for a large amount of
+    protection against both realized variance and the near-certainty that
+    your edge estimate is at least somewhat wrong.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>A 55%-edge coin flip: full Kelly, half-Kelly, and what half-Kelly buys you</h3>
+    <p>
+      Take the coin from the intuition box: win probability \(p=0.55\), even
+      money (\(b=1\)). Using the derived formula:
+    </p>
+    <div class="tl-math">\[ f^* = 2p - 1 = 2(0.55) - 1 = 0.10 \]</div>
+    <p>
+      Full Kelly says bet <strong>10% of your current bankroll</strong> on
+      each flip. Note "current bankroll," not "starting bankroll" — Kelly
+      sizing is inherently a percentage-of-equity rule, resized after every
+      win and loss, which is itself the reason it can never fully bankrupt
+      you (you can never bet more than 100% of what's currently there, and
+      \(f^*<1\) whenever there's a real chance of losing) but also why a long
+      losing streak still shrinks your stake precipitously in dollar terms,
+      even though it never literally reaches zero.
+    </p>
+    <p>
+      <strong>Half-Kelly</strong> is simply \(c=0.5\) applied to \(f^*\):
+    </p>
+    <div class="tl-math">\[ f_{half} = 0.5 \times 0.10 = 0.05 \]</div>
+    <p>
+      Bet 5% instead of 10%. What does that trade away, and what does it buy?
+      Using the quadratic approximation from above, \(g(f) \approx f\mu -
+      f^2\sigma^2/2\), and noting that at the true optimum \(g(f^*) =
+      \mu^2/(2\sigma^2)\), a standard result for this family of problems is
+      that betting a fraction \(c\) of full Kelly captures a fraction
+      \(2c - c^2\) of the maximum achievable growth rate. At \(c=0.5\):
+    </p>
+    <div class="tl-math">\[ 2(0.5) - (0.5)^2 = 1 - 0.25 = 0.75 \]</div>
+    <p>
+      Half-Kelly captures roughly <strong>75% of full Kelly's growth
+      rate</strong> — giving up about a quarter of the theoretical best-case
+      compounding — while cutting bet size, and therefore per-bet variance,
+      in half. Because typical drawdown depth for a Kelly-family betting
+      scheme scales with bet size in a way that's considerably worse than
+      linear (it's driven by the variance of cumulative log-wealth, which
+      scales with \(f^2\)), halving the bet size does not just halve typical
+      drawdown — it is well known in the Kelly literature (Thorp's applied
+      writing on this, and the "Kelly and drawdown" folklore that grew out of
+      it) that it roughly halves it <em>or more</em>, a very favorable
+      trade: give up about a quarter of the best-case growth rate, get back
+      roughly half (or better) of the typical peak-to-trough drawdown pain.
+      That asymmetry — a modest, disciplined haircut to growth in exchange
+      for a large cut to variance and drawdown — is exactly why half-Kelly
+      (or even quarter-Kelly) is the practitioner default rather than a
+      compromise nobody actually uses.
+    </p>
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">The growth-rate curve: why past f*, more size is less growth</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart of geometric growth rate g(f) against bet fraction f. The curve starts at zero, rises to a peak at f-star (full Kelly), then falls back through zero at 2f-star and continues into negative territory beyond that. A marked point on the rising part of the curve, below and left of the peak, shows half-Kelly still solidly positive.">
+      <line x1="70" y1="30" x2="70" y2="270" style="stroke:var(--border)"/>
+      <line x1="70" y1="270" x2="610" y2="270" style="stroke:var(--border)"/>
+      <line x1="70" y1="170" x2="610" y2="170" style="stroke:var(--border)"/>
+      <text x="614" y="174" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">g = 0</text>
+
+      <line id="kelly-fstar-line" x1="250" y1="80" x2="250" y2="270" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+      <text id="kelly-fstar-label" x="250" y="20" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">f* (full Kelly)</text>
+
+      <line id="kelly-2fstar-line" x1="430" y1="170" x2="430" y2="270" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+      <text id="kelly-2fstar-label" x="430" y="288" text-anchor="middle" fill="var(--text2)" font-size="10.5" font-family="'DM Mono',monospace">2f* — growth rate hits zero</text>
+
+      <path id="kelly-curve-path" d="M70.0,170.0 L88.0,152.9 L106.0,137.6 L124.0,124.1 L142.0,112.4 L160.0,102.5 L178.0,94.4 L196.0,88.1 L214.0,83.6 L232.0,80.9 L250.0,80.0 L268.0,80.9 L286.0,83.6 L304.0,88.1 L322.0,94.4 L340.0,102.5 L358.0,112.4 L376.0,124.1 L394.0,137.6 L412.0,152.9 L430.0,170.0 L448.0,188.9 L466.0,209.6 L484.0,232.1 L502.0,256.4" style="stroke:var(--blue);stroke-width:2.5;fill:none;stroke-linecap:round"/>
+
+      <circle id="kelly-fstar-dot" cx="250" cy="80" r="3.5" fill="var(--blue)"/>
+      <circle id="kelly-halfkelly-dot" cx="160" cy="102.5" r="3.5" fill="var(--amber)"/>
+      <text id="kelly-halfkelly-label" x="160" y="118" text-anchor="middle" fill="var(--amber)" font-size="10.5" font-family="'DM Mono',monospace">½f* (half-Kelly)</text>
+      <circle id="kelly-2fstar-dot" cx="430" cy="170" r="3.5" fill="var(--text2)"/>
+
+      <text x="340" y="296" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">bet fraction f</text>
+      <text x="26" y="150" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 26 150)">growth rate g(f)</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Win probability p (even-money bet)</span><span class="tl-live" id="kelly-p-val">p = 0.55</span></div>
+        <input type="range" id="kelly-p-slider" min="51" max="90" step="1" value="55">
+      </div>
+    </div>
+    <div class="tl-readout">
+      Full Kelly f* = 2p−1 = <b id="kelly-fstar-val">10%</b> of bankroll · Half-Kelly = <b id="kelly-half-val">5%</b>
+    </div>
+    <div class="tl-hint">Drag the slider to change the win probability. The curve's shape never changes — it always peaks at f* and crosses zero at 2f* — only what f* is worth as a percentage of bankroll (above) changes with the edge.</div>
+    <div class="tl-chart-caption">
+      Growth rate rises with bet size only up to <strong>f*</strong> — betting
+      more than that doesn't just add risk, it actively makes the long-run
+      growth rate <em>worse</em>, hitting zero at exactly <strong>2f*</strong>
+      and going negative beyond it, even though every individual bet still has
+      positive expected value. <strong>Half-Kelly</strong> sits on the
+      flatter part of the rising curve: it gives up only a little growth (the
+      curve is nearly flat near the peak) in exchange for a much smaller bet
+      size, and therefore much shallower drawdowns.
+    </div>
+  </div>
+  <script>
+  (function(){
+    var slider = document.getElementById('kelly-p-slider');
+    var pVal = document.getElementById('kelly-p-val');
+    var fstarVal = document.getElementById('kelly-fstar-val');
+    var halfVal = document.getElementById('kelly-half-val');
+    var curvePath = document.getElementById('kelly-curve-path');
+    var fstarLine = document.getElementById('kelly-fstar-line');
+    var fstarLabel = document.getElementById('kelly-fstar-label');
+    var fstarDot = document.getElementById('kelly-fstar-dot');
+    var twoFstarLine = document.getElementById('kelly-2fstar-line');
+    var twoFstarLabel = document.getElementById('kelly-2fstar-label');
+    var twoFstarDot = document.getElementById('kelly-2fstar-dot');
+    var halfDot = document.getElementById('kelly-halfkelly-dot');
+    var halfLabel = document.getElementById('kelly-halfkelly-label');
+
+    // x-axis mapping, read off the chart's own geometry: the plot area runs
+    // from X0=70 to 610 (AXIS_WIDTH=540px). We treat that axis as spanning
+    // "0 to 3*f*" so f*, 2f* and the curve always rescale together as p
+    // changes (this is what keeps 3*f* from ever running past the drawn
+    // axis, even at p=0.90 where f*=80%). Expressed in u = f/f* units, one
+    // f*-unit is always AXIS_WIDTH/3 px, so the f*/2f*/half-Kelly pixel
+    // positions come out identical for every p — only the % values in the
+    // readout (what that fixed position is actually worth) move with p.
+    var X0 = 70, AXIS_WIDTH = 540, PX_PER_FSTAR = AXIS_WIDTH / 3;
+    // y-axis mapping, read off the original curve/dots: g=0 sits at Y0=170,
+    // and the peak (normalized g=1 at u=1) sits Y_SCALE=90px above that.
+    var Y0 = 170, Y_SCALE = 90, U_MAX = 2.4, STEPS = 24;
+
+    function yAt(u){ return Y0 - Y_SCALE * (2 * u - u * u); }
+
+    function update(){
+      var p = parseInt(slider.value, 10) / 100;
+      var fStar = 2 * p - 1;
+      var fStarPct = Math.round(fStar * 100);
+      var halfPct = fStarPct / 2;
+
+      pVal.textContent = 'p = ' + p.toFixed(2);
+      fstarVal.textContent = fStarPct + '%';
+      halfVal.textContent = halfPct + '%';
+
+      var xFstar = X0 + PX_PER_FSTAR;
+      var x2Fstar = X0 + 2 * PX_PER_FSTAR;
+      var xHalf = X0 + 0.5 * PX_PER_FSTAR;
+
+      fstarLine.setAttribute('x1', xFstar);
+      fstarLine.setAttribute('x2', xFstar);
+      fstarLabel.setAttribute('x', xFstar);
+      fstarDot.setAttribute('cx', xFstar);
+      fstarDot.setAttribute('cy', yAt(1));
+
+      twoFstarLine.setAttribute('x1', x2Fstar);
+      twoFstarLine.setAttribute('x2', x2Fstar);
+      twoFstarLabel.setAttribute('x', x2Fstar);
+      twoFstarDot.setAttribute('cx', x2Fstar);
+      twoFstarDot.setAttribute('cy', yAt(2));
+
+      halfDot.setAttribute('cx', xHalf);
+      halfDot.setAttribute('cy', yAt(0.5));
+      halfLabel.setAttribute('x', xHalf);
+
+      var pts = [];
+      for (var i = 0; i <= STEPS; i++){
+        var u = U_MAX * i / STEPS;
+        var x = X0 + u * PX_PER_FSTAR;
+        var y = yAt(u);
+        pts.push(x.toFixed(1) + ',' + y.toFixed(1));
+      }
+      curvePath.setAttribute('d', 'M' + pts.join(' L'));
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+  </script>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Kelly's original 1956 paper wasn't about gambling or investing at all —
+    John Kelly, working at Bell Labs, was solving a problem in information
+    theory: how fast could a gambler with a private information channel (a
+    "noisy" edge over the true odds) grow their bankroll, framed in terms of
+    the channel's bit rate. Ed Thorp is the figure who carried it from theory
+    into practice twice over: first into blackjack (using card-counting to
+    estimate a real, computable edge and applying fractional-Kelly-style
+    sizing to it — the subject of <em>Beat the Dealer</em>), and later into
+    quantitative investing at Princeton/Newport Partners, where he argued
+    explicitly for fractional Kelly as a practical risk control, not just a
+    theoretical nicety.
+  </p>
+  <p>
+    In institutional trading and portfolio management today, full Kelly is
+    almost never used directly — it is treated as a theoretical
+    <em>ceiling</em>, not a target. Position sizes at most systematic desks
+    are set well below the Kelly-implied level, both because \(\mu\) and
+    \(\sigma^2\) are estimated with real uncertainty (an overestimated
+    \(\mu\) or underestimated \(\sigma^2\) makes the Kelly formula recommend
+    a size that is too large for the true, unobservable edge) and because
+    institutions face constraints Kelly's math doesn't model at all —
+    mark-to-market drawdown limits, investor redemption risk, margin calls,
+    correlation across positions that a single-bet Kelly derivation ignores
+    entirely. The Sharpe-ratio form \(f^*=\mu/\sigma^2\) is genuinely useful
+    even outside strict Kelly betting, though, because it's the cleanest
+    available answer to "how much leverage does this strategy's own risk-adjusted
+    return justify" — and vol targeting (scaling a position inversely with a
+    rolling estimate of realized volatility, so that dollar risk stays roughly
+    constant as market volatility rises and falls) is the practical, robust
+    cousin of full Kelly sizing that most systematic desks actually run,
+    trading some of Kelly's precision for much greater robustness to
+    estimation error and regime change.
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+    <h3>Formalizes a principle CLAUDE.md already states — but it needs an honestly-estimated edge as input, and there isn't one built yet</h3>
+    <p>
+      This repo's own CLAUDE.md already names the target: "volatility-based
+      position sizing, cutting losers and letting winners run are powerful
+      drivers of results — worth building and validating alongside an entry
+      signal." Kelly and fractional Kelly are the textbook formalization of
+      exactly the first half of that sentence — a principled way to turn "how
+      volatile is this instrument, and how good is my edge" into "how much
+      capital should this specific trade risk," instead of a flat,
+      hand-picked percentage-of-equity risk-per-trade rule. The continuous
+      form, \(f^*=\mu/\sigma^2\), maps directly onto quantities this repo
+      already computes per-instrument and per-horizon — the vol-sigma series
+      in <code>js/volBacktestEngine.js</code> and the OOS Sharpe/return
+      statistics that <code>js/metricsCore.js</code>'s
+      <code>summarizeTrades</code> already produces for every strategy that
+      goes through the standard IS/OOS harness.
+    </p>
+    <p>
+      <code>book-stress.html</code> ("does diversification survive a
+      liquidity contraction?") and <code>diversification.html</code> (the
+      combined-book explorer) are the closest existing pieces of
+      infrastructure, and the connection is direct: both already look at
+      <em>portfolio-level</em> risk across multiple lines/instruments held
+      together, which is precisely the level at which Kelly sizing should
+      actually be applied in a multi-strategy book — not line-by-line in
+      isolation, but jointly, because Kelly's variance term is supposed to be
+      the variance of the <em>combined</em> position, and two correlated
+      lines sized independently by their own standalone Kelly fractions will
+      systematically overstate the combined book's safe aggregate size (the
+      same correlated-signal double-counting problem this series' Bayesian
+      Inference lesson raises for confluence scoring, here showing up as
+      correlated-return double-counting instead of correlated-evidence
+      double-counting). A book-level Kelly or fractional-Kelly sizing layer
+      sitting on top of <code>book-stress.html</code>'s existing
+      cross-instrument view would be the natural extraction point.
+    </p>
+    <p>
+      To be explicit about where this stands: <strong>none of this is built
+      as a sizing engine in the repo today</strong> — there is no
+      <code>kellySizing.js</code>, no Kelly-fraction column on any backtest
+      card, nothing wired into a live bot's position-size calculation. This
+      is a genuine, unbuilt design candidate, not a claim that the repo
+      already does this. And per CLAUDE.md's own method-vs-edge distinction
+      — "a method is not a strategy... state the dependency up front, not
+      after the primary signal tests empty" — Kelly sizing has a hard
+      dependency this page has stressed throughout: it needs an
+      <strong>honestly-estimated</strong> win probability/edge (\(p\), or
+      \(\mu\)) and variance (\(\sigma^2\)) as inputs, sourced from true
+      out-of-sample performance, not from an in-sample backtest's optimistic
+      numbers. Plugging an in-sample Sharpe or win rate directly into the
+      Kelly formula is a textbook way to compute a confidently wrong,
+      oversized bet — the formula does exactly what it's told, and what it's
+      told matters enormously. The correct sequencing, consistent with the
+      Lego Principle's OOS-Sharpe bar (Lego Principle #5), is: a signal
+      clears the repo's real IS/OOS split with a non-trivial OOS trade count
+      first, on its own merits — <em>then</em> Kelly or fractional Kelly is
+      layered on as a sizing decision for that already-validated edge.
+      Applying it earlier, to make a weak or null signal's equity curve look
+      more aggressive, would be using the sizing math to paper over a signal
+      problem rather than solve a sizing problem.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where Kelly sizing quietly goes wrong</h3>
+    <p>
+      <strong>Plugging in a backtested win rate or Sharpe ratio as if it were
+      the true, known \(p\) or \(\mu\).</strong> The Kelly formula assumes you
+      know your edge exactly. A backtested edge is an <em>estimate</em>, with
+      its own sampling error, and — as this project's own OOS discipline
+      exists specifically to catch — a backtested in-sample number is
+      systematically optimistic relative to what a strategy will actually
+      realize going forward. Kelly amplifies whatever number you feed it into
+      a bet size; feeding it an inflated edge produces an inflated,
+      overconfident bet size, and the resulting overbetting is exactly the
+      regime, derived above, where growth can turn negative even though the
+      true underlying edge (smaller than the backtest suggested, but still
+      real) is positive.
+    </p>
+    <p>
+      <strong>Treating \(f^*\) as a single number for a book, not a single
+      bet.</strong> The classic Kelly derivation is for one repeated,
+      independent bet. Real portfolios hold multiple positions
+      simultaneously, often correlated. Sizing each one to its own
+      standalone Kelly fraction, then holding all of them at once, ignores
+      the shared variance between them and can push the combined book's
+      effective risk well past what any single-position Kelly calculation
+      intended — the same "correlated evidence gets double-counted" failure
+      mode this series flags for naive multi-signal confluence scoring shows
+      up here as correlated risk getting double-counted.
+    </p>
+    <p>
+      <strong>Forgetting that "optimal growth rate" is not the same objective
+      as "acceptable drawdown."</strong> Full Kelly is growth-optimal by
+      construction, but growth-optimal paths still routinely include
+      drawdowns of 50% or worse purely from the ordinary variance of a
+      winning strategy — this is not a bug, it is what the geometric-growth-maximizing
+      path actually looks like along the way. An investor, a fund with
+      redemption risk, or a trader who will simply stop following the system
+      after a large loss is optimizing for something Kelly's objective
+      function doesn't include at all. Fractional Kelly narrows this gap; it
+      doesn't eliminate the tension between "fastest compounding" and
+      "survivable to a human."
+    </p>
+    <p>
+      <strong>Using variance/volatility inputs that don't reflect the fat
+      tails real return distributions have.</strong> Both the derivation of
+      \(f^*=\mu/\sigma^2\) and the volatility-drag approximation
+      \(g\approx\mu-\sigma^2/2\) rest on a Gaussian-like second-order
+      approximation. Real FX and macro returns have fatter tails and
+      occasional regime shocks that a plain historical \(\sigma\) understates
+      — a reason to size meaningfully below whatever the formula outputs,
+      not just to trust the point estimate, and a direct link forward to
+      Extreme Value Theory (the next lesson), which is specifically about
+      quantifying that tail risk the Gaussian approximation here misses.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why does betting exactly full Kelly, repeatedly, still produce large, painful drawdowns even though it's growth-optimal?</summary>
+    <div class="tl-answer">
+      Growth-optimal means fastest expected <em>compounded</em> growth over
+      the long run — it says nothing about the smoothness of the path getting
+      there. Kelly sizing still risks a real fraction of bankroll on every
+      bet, so ordinary variance in outcomes (a losing streak, which will
+      happen with a real, computable probability even under a genuine edge)
+      still produces large percentage drawdowns. Full Kelly is simply the
+      largest bet size for which the growth rate is still positive and
+      maximal — it is not a claim that the ride there is gentle, and in fact
+      it's typically one of the roughest growth-optimal sizes you could
+      choose, since any smaller size gives up little expected growth (the
+      curve is flat near the peak) while noticeably reducing variance.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What happens to the geometric growth rate if you bet exactly 2× the full-Kelly fraction on a genuinely positive-edge bet?</summary>
+    <div class="tl-answer">
+      The growth rate falls to zero. In the continuous approximation
+      \(g(f)\approx f\mu - f^2\sigma^2/2\), the drift term scales linearly
+      with \(f\) but the variance-drag term scales with \(f^2\); at
+      \(f=2f^*=2\mu/\sigma^2\) the two terms exactly cancel. Bet any larger
+      than \(2f^*\) and the compounded growth rate goes negative — the
+      account shrinks toward zero over time on average — even though every
+      individual bet still has positive expected value in isolation. This is
+      the sharpest illustration in the lesson of why "more size" is not
+      automatically "more profit" once compounding is accounted for.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why is a backtested win rate a risky number to plug directly into the Kelly formula?</summary>
+    <div class="tl-answer">
+      The Kelly formula assumes \(p\) (or \(\mu\)) is known exactly; a
+      backtested win rate is an estimate with sampling error, and in-sample
+      backtest performance is systematically optimistic relative to true
+      forward performance — exactly the gap this repo's IS/OOS split exists
+      to expose. Feeding an inflated edge estimate into Kelly produces an
+      inflated, overconfident bet size, which is precisely the overbetting
+      regime where growth rate can turn negative even though the smaller,
+      true edge is still positive.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What does fractional (e.g. half) Kelly actually trade away, and what does it buy in return?</summary>
+    <div class="tl-answer">
+      Because the growth-rate curve \(g(f)\) is flat near its own peak (a
+      basic property of any smooth maximum), betting somewhat below \(f^*\)
+      gives up only a modest amount of theoretical growth rate — half-Kelly
+      captures roughly 75% of full Kelly's growth rate in the standard
+      approximation. In exchange, per-bet variance falls linearly with bet
+      size and typical drawdown depth falls by roughly half or more, since
+      drawdown severity is driven by the variance of cumulative log-wealth,
+      which scales with \(f^2\). The trade is a modest, controlled haircut to
+      best-case growth for a large reduction in realized risk and estimation-error
+      exposure.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why does the continuous form \(f^*=\mu/\sigma^2\) imply that a higher-volatility instrument should be traded with less leverage, at the same Sharpe ratio?</summary>
+    <div class="tl-answer">
+      Rewrite \(f^*=\mu/\sigma^2\) using the Sharpe ratio \(S=\mu/\sigma\):
+      substituting \(\mu=S\sigma\) gives \(f^*=S/\sigma\). At a fixed Sharpe
+      ratio, \(f^*\) is inversely proportional to volatility \(\sigma\), not
+      to \(\sigma^2\) directly, but the deeper reason is that variance enters
+      the original formula's denominator as \(\sigma^2\) while drift \(\mu\)
+      enters linearly — so doubling volatility while holding the edge itself
+      fixed cuts the safe optimal position size by four, not by two. This is
+      the same logic underlying volatility-targeted position sizing: scale
+      exposure down as realized volatility rises to keep dollar risk roughly
+      constant.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why is it wrong to size every position in a multi-instrument book to its own standalone Kelly fraction and simply hold all of them at once?</summary>
+    <div class="tl-answer">
+      The Kelly derivation assumes the variance term reflects the actual bet
+      being sized. In a book of several correlated positions, each sized
+      independently, the combined portfolio's true variance is understated by
+      treating each position's risk as if it existed in isolation — correlated
+      positions move together, so the book's realized risk is larger than the
+      sum of each position's standalone-Kelly-implied risk would suggest.
+      Kelly sizing at the portfolio level needs to account for the covariance
+      structure across positions, not just each position's own \((\mu,\sigma^2)\)
+      in isolation — otherwise the combined book ends up overbet relative to
+      what any single position's Kelly calculation intended.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>John L. Kelly Jr., <em>"A New Interpretation of Information Rate"</em>, Bell System Technical Journal, 1956 — the original paper, framed in information-theory terms (channel capacity and a gambler's optimal growth rate) rather than as investment advice; the source of the formula's name.</li>
+    <li>Edward O. Thorp, <em>"The Kelly Criterion in Blackjack, Sports Betting, and the Stock Market"</em>, in <em>Handbook of Asset and Liability Management</em>, 2008 (widely circulated earlier as a standalone paper) — the applied bridge from Kelly's information-theory result to real betting and investing, including the case for fractional Kelly in practice.</li>
+    <li>Edward O. Thorp, <em>Beat the Dealer</em>, Random House, 1962 — the first rigorous application of a computable edge (blackjack card counting) combined with Kelly-style bankroll management, the origin story for taking this math out of the lab and into practice.</li>
+    <li>William Poundstone, <em>Fortune's Formula</em>, Hill and Wang, 2005 — an accessible narrative history of the Kelly criterion, from Bell Labs through Thorp's blackjack and Wall Street careers; a good on-ramp before returning to the primary sources above.</li>
+    <li>Leonard C. MacLean, Edward O. Thorp, and William T. Ziemba (eds.), <em>The Kelly Capital Growth Investment Criterion: Theory and Practice</em>, World Scientific, 2011 — the comprehensive academic anthology, including the drawdown-versus-fractional-Kelly analysis referenced in the worked example above.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="merton-jump-diffusion.html">← Merton Jump-Diffusion Model</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="extreme-value-theory.html">Extreme Value Theory &amp; Tail Risk →</a>
+  </div>
+</div>
+</body>
+</html>

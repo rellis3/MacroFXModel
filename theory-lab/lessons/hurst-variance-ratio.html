@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hurst Exponent &amp; Variance Ratio Test — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Time Series &amp; Regimes / Hurst &amp; Variance Ratio</div>
+  <div class="tl-kicker">Time Series &amp; Regimes · Lesson 5 of 14</div>
+  <h1 class="tl-title">The Hurst Exponent &amp; Variance Ratio Test</h1>
+  <p class="tl-dek">Two different ways to ask the same question of a price series — is it wandering randomly, drifting with momentum, or snapping back toward a mean? — and why the second, less famous method is the one to trust more.</p>
+  <div class="tl-meta">
+    <span class="tl-status candidate">ALREADY IN USE — js/rangeBiasCore.js computes a live Hurst feature</span>
+    <span>~15 min read</span>
+    <span>Prereqs: Ornstein-Uhlenbeck &amp; Mean Reversion</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    Almost every trading decision in this repo boils down to one binary question asked over and over: at this level,
+    right now, should the system <strong>fade</strong> the move (bet on reversion) or <strong>follow</strong> it (bet on
+    continuation)? <code>js/dayTypeCore.js</code> answers a version of this with a drift-vs-diffusion score; this lesson
+    covers a different, older, and in some ways more fundamental way to answer it: measure how "persistent" the recent
+    path itself has been, independent of any particular price model. That is what the Hurst exponent and the variance
+    ratio test are for. Neither one predicts direction — both measure a property of the <em>path</em>: does the series
+    have memory that reinforces past moves (trending), memory that undoes past moves (mean-reverting), or no memory at
+    all (random walk)? That property changes which family of strategy — fade or follow — has any right to work in the
+    current regime.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A drunk person's walk vs. a drunk person on a leash</h3>
+    <p>
+      Picture three people leaving a bar. The first is a textbook random walker: each step is an independent coin flip,
+      left or right, with no memory of the last step. Given enough time, they could end up anywhere — their distance
+      from the bar door grows with the <em>square root</em> of the number of steps, and that's it, that's the whole
+      story. The second person is drunk in a way that reinforces itself: stumble left, and the next stumble is more
+      likely to also go left — momentum, overcorrection into overcorrection. They wander further, faster, than pure
+      chance would predict; their distance from the door grows <em>faster</em> than the square root of time. The third
+      person is drunk but tied to a leash held by a very patient friend standing at the door: stumble left, and the
+      leash tension makes the next stumble more likely to go right, back toward center. They stay closer to the door
+      than pure chance would predict; their distance grows <em>slower</em> than the square root of time. The Hurst
+      exponent is a single number, extracted purely from the historical wandering pattern, that tells you which of the
+      three people you are watching — no model of "why," just a measurement of how the distance-from-start has scaled
+      with time in the past.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    We'll build this in three passes: (1) the rescaled-range statistic and how it's used to estimate <em>H</em>, the
+    Hurst exponent; (2) what values of <em>H</em> mean; (3) the variance ratio test, a statistically cleaner way to ask
+    the identical question.
+  </p>
+
+  <h3>1. Rescaled range (R/S) analysis</h3>
+  <p>
+    Take a series of <em>n</em> observations — say, daily price changes or daily log returns,
+    \(X_1, X_2, \ldots, X_n\). The R/S method asks: if I track the cumulative sum of deviations from the mean of this
+    chunk of data, how wide a range does that cumulative path swing through, relative to how volatile the chunk was?
+    Concretely, for a chunk of length <em>n</em>:
+  </p>
+  <div class="tl-math">
+    \[ \bar{X} = \frac{1}{n}\sum_{i=1}^{n} X_i \]
+  </div>
+  <div class="tl-math">
+    \[ Y_t = \sum_{i=1}^{t} (X_i - \bar{X}), \quad t = 1, \ldots, n \]
+  </div>
+  <div class="tl-math">
+    \[ R(n) = \max_{1 \le t \le n} Y_t \;-\; \min_{1 \le t \le n} Y_t \]
+  </div>
+  <div class="tl-math">
+    \[ S(n) = \sqrt{\frac{1}{n}\sum_{i=1}^{n} (X_i - \bar{X})^2} \]
+  </div>
+  <div class="tl-math">
+    \[ \left(\frac{R}{S}\right)_n = \frac{R(n)}{S(n)} \]
+  </div>
+  <p>
+    \(Y_t\) is a "detrended cumulative walk" built from the chunk — start at zero, and at each step add that day's
+    deviation from the chunk's own mean. \(R(n)\) is simply the highest point that walk reaches minus the lowest point
+    it reaches — its total swing. \(S(n)\) is the ordinary (population) standard deviation of the same chunk, used to
+    put the swing on a scale-free footing: a chunk of 1% daily moves and a chunk of 0.1% daily moves should give
+    comparable R/S values once you divide out their own volatility. Hurst's empirical finding, and the reason this
+    procedure exists, is that for a huge range of natural time series (river flood heights, in his original work),
+    \(\left(R/S\right)_n\) scales as a power law in <em>n</em>:
+  </p>
+  <div class="tl-math">
+    \[ \left(\frac{R}{S}\right)_n \approx c \cdot n^{H} \]
+  </div>
+  <p>
+    where <em>c</em> is some constant and <em>H</em> is the Hurst exponent, a number typically between 0 and 1. Taking
+    logs turns the power law into a straight line, which is the practical way <em>H</em> is estimated:
+  </p>
+  <div class="tl-math">
+    \[ \log\left(\frac{R}{S}\right)_n = \log c + H \log n \]
+  </div>
+  <p>
+    In practice you don't estimate this from one chunk. You split the series into windows of several different lengths
+    <em>n</em> (say 8, 16, 32, 64 bars), compute the average \((R/S)_n\) across all windows of each length, plot
+    \(\log(R/S)_n\) against \(\log n\), and fit a straight line through those points. The slope of that line is your
+    estimate of <em>H</em>. This is exactly what the ordinary-least-squares step at the bottom of
+    <code>computeHurst</code> in this repo does — more on that in the repo box below.
+  </p>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(X_i\)</td><td>the <em>i</em>-th observation in the chunk being analyzed — typically a daily price change or log return, not the raw price level</td></tr>
+      <tr><td>\(n\)</td><td>the length (number of observations) of the chunk / window / "lag" being tested</td></tr>
+      <tr><td>\(\bar{X}\)</td><td>the mean of the chunk of length <em>n</em></td></tr>
+      <tr><td>\(Y_t\)</td><td>the cumulative sum of mean-deviations up through time <em>t</em> within the chunk — a "detrended random walk" built from the chunk's own data</td></tr>
+      <tr><td>\(R(n)\)</td><td>the range of that cumulative walk: its running maximum minus its running minimum, over the whole chunk</td></tr>
+      <tr><td>\(S(n)\)</td><td>the standard deviation of the chunk's raw observations — the volatility scale used to rescale <em>R</em></td></tr>
+      <tr><td>\((R/S)_n\)</td><td>the rescaled range statistic for window length <em>n</em>, averaged across all non-overlapping windows of that length in the full series</td></tr>
+      <tr><td>\(H\)</td><td>the Hurst exponent — the slope of \(\log(R/S)_n\) regressed on \(\log n\); the single number this whole procedure exists to estimate</td></tr>
+      <tr><td>\(c\)</td><td>a proportionality constant absorbed by the regression intercept; not itself of interest</td></tr>
+    </table>
+  </div>
+
+  <h3>2. Reading H</h3>
+  <p>
+    <em>H</em> is a statement about how a series' variability scales with the length of the window you measure it over,
+    and it partitions into three regimes:
+  </p>
+  <ul>
+    <li><strong>\(H = 0.5\)</strong>: this is the pure random walk / Brownian motion case. Increments are independent of
+      each other, and the classic result that a random walk's range grows with \(\sqrt{n}\) (not <em>n</em>, not
+      \(n^{0.3}\)) is exactly \(n^{0.5}\) — matching the R/S power law with \(H=0.5\). This is the "no edge to be
+      found in the path shape" baseline.</li>
+    <li><strong>\(H < 0.5\)</strong>: <strong>anti-persistent / mean-reverting.</strong> An up-move is, on average,
+      more likely to be followed by a down-move than pure chance would predict. The series' range grows more slowly
+      than \(\sqrt{n}\) — it keeps "coming back." This is the drunk person on the leash. \(H\) near 0 is strongly
+      mean-reverting.</li>
+    <li><strong>\(H > 0.5\)</strong>: <strong>persistent / trending.</strong> An up-move is, on average, more likely to
+      be followed by another up-move than pure chance predicts. The range grows faster than \(\sqrt{n}\) — momentum
+      reinforcing itself. \(H\) near 1 is strongly trending (in the limit, a straight line).</li>
+  </ul>
+  <p>
+    This is worth pausing on because it's the same fade/follow question that Ornstein-Uhlenbeck mean reversion and
+    trend-day classification ask from different angles — <em>H</em> is a third, model-free lens on it: it doesn't
+    assume any particular generative process (no OU equation, no drift/diffusion decomposition), it just measures how
+    the empirical range has scaled historically.
+  </p>
+  <p>
+    Two historical notes worth knowing, because they explain both the name and why this shows up in finance at all.
+    Harold Edwin Hurst was a British hydrologist who spent decades studying the Nile river's flood and drought records
+    while working on dam design for the Aswan reservoir; he needed to know how large a reservoir had to be to smooth
+    out runs of unusually wet or dry years, and found empirically that the Nile's annual flood records had
+    \(H \approx 0.9\) — strong long-run persistence, wet years clustering with wet years — very much not a random walk,
+    which had real engineering consequences for how much storage capacity a dam needed. Decades later, Benoit
+    Mandelbrot picked up Hurst's rescaled-range method and applied it to financial time series as part of his broader
+    argument (developed further in fractal geometry and his critique of the standard Gaussian/random-walk finance
+    models) that market returns show long-range dependence and "wild" statistical behavior that a pure random walk
+    understates — this is the direct lineage from a Nile River engineering problem to a line of code in a forex
+    entry-bias feature.
+  </p>
+
+  <h3>3. The variance ratio test — the cleaner alternative</h3>
+  <p>
+    R/S analysis has real statistical weaknesses (detailed in the pitfalls box below), which motivated Andrew Lo and A.
+    Craig MacKinlay to formalize a more direct, testable version of the exact same underlying question in their 1988
+    paper. Their insight: a defining, precisely falsifiable property of a true random walk is that the
+    <strong>variance of its returns scales exactly linearly with the time horizon</strong>. If one-day returns have
+    variance \(\sigma^2\), then non-overlapping <em>q</em>-day returns — being the sum of <em>q</em> independent
+    one-day returns — must have variance exactly \(q\sigma^2\), because variance is additive across independent
+    increments. No stronger assumption than "increments are uncorrelated" is required. So define the variance ratio:
+  </p>
+  <div class="tl-math">
+    \[ VR(q) = \frac{\operatorname{Var}(r_t^{(q)})}{q \cdot \operatorname{Var}(r_t^{(1)})} \]
+  </div>
+  <p>
+    where \(r_t^{(q)}\) is the <em>q</em>-period return (e.g. the 5-day return) and \(r_t^{(1)}\) is the 1-period
+    return (the daily return). Under the random-walk null hypothesis, \(VR(q) = 1\) for every <em>q</em>, exactly.
+    Deviations from 1 are directly interpretable:
+  </p>
+  <ul>
+    <li><strong>\(VR(q) > 1\)</strong>: <em>q</em>-day variance is larger than the random-walk prediction — returns are
+      positively autocorrelated — <strong>trending</strong>, the same story as \(H>0.5\).</li>
+    <li><strong>\(VR(q) < 1\)</strong>: <em>q</em>-day variance is smaller than the random-walk prediction — returns
+      are negatively autocorrelated — <strong>mean-reverting</strong>, the same story as \(H<0.5\).</li>
+  </ul>
+  <p>
+    Lo &amp; MacKinlay also derived the statistic's asymptotic distribution under the null, which is what makes this
+    "more statistically rigorous" than R/S: you get an actual standard error and a z-statistic for how far \(VR(q)\)
+    is from 1, so you can ask "is this deviation statistically significant, or noise?" rather than eyeballing a
+    log-log regression slope. In practice, with finite samples and possible heteroskedasticity in returns (which real
+    FX and equity returns have — see <code>GARCH &amp; Volatility Clustering</code>, the next lesson in this series),
+    a heteroskedasticity-robust version of the test statistic is preferred over the simple homoskedastic one.
+  </p>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">R/S scaling on log-log axes — the slope IS the Hurst exponent</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Log-log plot of log(n) versus log(R/S) showing three straight reference lines from a common origin at different slopes: a steep red line for H greater than 0.5, a slider-driven amber line whose slope tracks the chosen H, and a shallow blue line for H less than 0.5">
+      <line x1="60" y1="20" x2="60" y2="250" style="stroke:var(--border)" />
+      <line x1="60" y1="250" x2="610" y2="250" style="stroke:var(--border)" />
+      <line x1="100" y1="240" x2="220" y2="40" style="stroke:var(--red);stroke-width:2" />
+      <line id="hurst-active-line" x1="100" y1="240" x2="300" y2="40" style="stroke:var(--amber);stroke-width:2.5" />
+      <line x1="100" y1="240" x2="580" y2="40" style="stroke:var(--blue);stroke-width:2" />
+      <text x="214" y="34" font-size="12" text-anchor="end" fill="var(--red)">H &gt; 0.5 (trending)</text>
+      <text id="hurst-active-label" x="306" y="58" font-size="12" fill="var(--amber)">H = 0.50 (random walk)</text>
+      <text x="430" y="95" font-size="12" fill="var(--blue)">H &lt; 0.5 (mean-reverting)</text>
+      <text x="560" y="272" font-size="12" fill="var(--text3)">log(n)</text>
+      <text x="20" y="140" font-size="12" fill="var(--text3)" transform="rotate(-90 20 140)">log(R/S)</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Hurst exponent H</span><span class="tl-live" id="hurst-h-val">H = 0.50</span></div>
+        <input type="range" id="hurst-h-slider" min="10" max="90" step="1" value="50">
+        <div class="tl-hint">Drag to move the middle line's slope — steeper toward H=0.9 (trending), shallower toward H=0.1 (mean-reverting), bounded by the two static reference lines.</div>
+      </div>
+    </div>
+    <div class="tl-chart-caption">
+      Because \((R/S)_n \approx c \cdot n^H\), taking logs of both sides turns the power law into a straight line —
+      and the <strong>slope</strong> of that line is the Hurst exponent \(H\) itself, which is exactly why the
+      log-log regression is how \(H\) gets estimated in practice. A steeper slope means a stronger trending
+      tendency, a shallower slope means stronger mean reversion, and a slope of exactly 0.5 (45° here) is
+      statistically indistinguishable from a random walk. This is a schematic of the three regimes, not a fit to
+      real data.
+    </div>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">What each Hurst regime actually looks like as a price path</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three side-by-side sample price paths illustrating what different Hurst exponent regimes look like: a tightly oscillating mean-reverting path for H around 0.3, a moderately wandering random-walk path for H around 0.5, and a smoothly drifting trending path for H around 0.7">
+      <line x1="220" y1="20" x2="220" y2="240" style="stroke:var(--border)" />
+      <line x1="430" y1="20" x2="430" y2="240" style="stroke:var(--border)" />
+      <line x1="20" y1="130" x2="210" y2="130" style="stroke:var(--border);stroke-dasharray:3,3" />
+      <text x="20" y="20" font-size="12" fill="var(--blue)">H &#8776; 0.3 (mean-reverting)</text>
+      <polyline points="20,130 35,110 50,145 65,120 80,150 95,115 110,140 125,118 140,148 155,122 170,138 185,115 200,135 210,128" fill="none" style="stroke:var(--blue);stroke-width:2" />
+      <text x="230" y="20" font-size="12" fill="var(--text3)">H &#8776; 0.5 (random walk)</text>
+      <polyline points="230,130 248,115 266,150 284,135 302,160 320,140 338,165 356,145 374,120 392,150 410,125 420,140" fill="none" style="stroke:var(--text3);stroke-width:2" />
+      <text x="440" y="20" font-size="12" fill="var(--red)">H &#8776; 0.7 (trending)</text>
+      <polyline points="440,190 460,185 480,170 500,150 520,155 540,130 560,110 580,115 600,90 620,70 630,60" fill="none" style="stroke:var(--red);stroke-width:2" />
+    </svg>
+    <div class="tl-chart-caption">
+      Same underlying idea as the log-log chart above, just seen as a chart instead of a regression slope. The
+      left panel snaps back toward a flat level over and over (small, frequent reversals) — that tight snapping
+      is what a low, anti-persistent \(H\) looks like on a screen, not just a shallow line in log-log space. The
+      middle panel wanders with no consistent tendency to reverse or extend — the visual signature of \(H
+      \approx 0.5\). The right panel shows fewer, longer, smoother swings that persist in one direction before
+      eventually reversing — that's what a high, persistent \(H\) looks like: momentum that keeps compounding
+      instead of getting undone. The abstract slope above and the path shape here are the same measurement,
+      described two different ways.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>A tiny variance-ratio calculation by hand</h3>
+    <p>
+      Suppose we have 10 daily log returns (in percent, for readability): 0.4, -0.2, 0.6, 0.1, -0.5, 0.3, -0.1, 0.5,
+      -0.4, 0.2. Mean is 0.09%, close enough to zero that we'll treat deviations as the returns themselves for this toy
+      example.
+    </p>
+    <p>
+      <strong>Step 1 — variance of 1-day returns.</strong> Sample variance (population variance, using the 10 raw
+      values mean-centered on their mean of 0.09) is \(\operatorname{Var}(r^{(1)}) = 0.1289\) (in \(\%^2\)).
+    </p>
+    <p>
+      <strong>Step 2 — build 5-day returns.</strong> Split into two non-overlapping 5-day blocks and sum each block's
+      returns: block 1 = 0.4 - 0.2 + 0.6 + 0.1 - 0.5 = 0.4; block 2 = 0.3 - 0.1 + 0.5 - 0.4 + 0.2 = 0.5. (In a real
+      test you'd want dozens of non-overlapping 5-day blocks, not two — this toy example only has 10 days to work
+      with, so treat it as illustrating the arithmetic, not a real test.)
+    </p>
+    <p>
+      <strong>Step 3 — compare.</strong> If daily returns were independent, the variance of a 5-day sum should be
+      \(5 \times \operatorname{Var}(r^{(1)}) = 5 \times 0.1289 = 0.6445\). Suppose the actual sample variance of 5-day
+      block returns, computed from many such blocks in a longer real dataset, comes out to \(0.45\) instead. Then:
+    </p>
+    <div class="tl-math">
+      \[ VR(5) = \frac{0.45}{0.6445} \approx 0.70 \]
+    </div>
+    <p>
+      A ratio of 0.70 — meaningfully below 1 — says 5-day variance is <em>smaller</em> than 5× the 1-day variance:
+      the series is damping itself over a 5-day horizon relative to what independence would predict. That's the
+      signature of mean reversion — down days are, on net, being partly offset by up days within the same week more
+      often than chance alone would produce. If instead the 5-day sample variance came out to \(0.95\), giving
+      \(VR(5) = 0.95/0.6445 \approx 1.47\), that would say the opposite: 5-day variance is 47% larger than
+      independence predicts, i.e. daily moves are reinforcing each other within the week — trending. Whether either of
+      these hypothetical numbers is <em>statistically</em> different from 1, rather than sampling noise from a true
+      random walk, is exactly what Lo &amp; MacKinlay's asymptotic standard error answers — with only 10 raw
+      observations behind it, this toy example has nowhere near enough data to make that call.
+    </p>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Neither the Hurst exponent nor the variance ratio is, by itself, a trading signal — both are diagnostic /
+    classification tools that sit upstream of a strategy choice. The most common real use is as a <strong>regime
+    gate</strong>: compute \(H\) or \(VR(q)\) on a rolling window of recent price history, and use the reading to
+    decide which strategy family is even allowed to trade right now — mean-reversion strategies (fading extremes,
+    range trades) are switched on when the reading says anti-persistent, and trend/breakout strategies are switched on
+    when the reading says persistent, with the strategy standing aside (or reducing size) near \(H \approx 0.5\) /
+    \(VR \approx 1\) where the path is statistically indistinguishable from noise and neither family has a
+    demonstrated edge. This is precisely the same "score → choice" selector pattern this repo's own
+    <code>dayTypeScore → selectStrategy</code> brick implements, just computed a different mathematical way. A second
+    common use is diagnostic rather than tactical: some practitioners compute \(H\) across different asset classes or
+    across different multi-year periods purely to characterize how "random-walk-like" a market has been, independent
+    of any specific strategy, as part of general market-structure research (this is closer to Mandelbrot's original
+    use than to a live trading rule).
+  </p>
+  <p>
+    A crucial caveat that shows up repeatedly in the literature and is worth internalizing before trusting either
+    statistic: both are estimated from a finite, noisy, non-stationary sample of history, and — like every regime
+    read discussed in this series — they say something about the recent past, with no guarantee the same persistence
+    or mean-reversion property holds going forward. A window that measured \(H = 0.35\) last month can measure
+    \(H = 0.55\) this month with no structural change in the market at all, just estimation noise on a short window.
+    Treat a rolling \(H\) or \(VR\) reading as a noisy, decaying prior about the current regime, not a fact about the
+    market's permanent nature.
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>This is the one lesson describing a feature already running here</h3>
+    <p>
+      Unlike most of the other lessons in this series, which introduce concepts as background theory, the Hurst
+      exponent is already computed and consumed in production in this codebase. <code>js/rangeBiasCore.js</code>
+      implements <code>computeHurst(closes)</code> — R/S analysis over lags of 2, 4, 8, and 16 bars, exactly the
+      log-log-regression procedure derived above — as one of five entry-bias features (alongside ADX, swing
+      CHoCH/BOS, TWAP, and EMA-RSI) that grade conviction on a candidate entry. Its interpretation thresholds match
+      the theory precisely: <code>featureHurst</code> treats \(H &lt; 0.45\) as "mean-reverting" (confirms a fade
+      entry), \(H &gt; 0.55\) as "trending" (confirms a follow/continuation entry, i.e. conflicts with a fade), and
+      the band in between as neutral / abstaining — a direct, if slightly widened, application of the
+      \(H \lessgtr 0.5\) split covered above. This one brick is shared by both <code>levels.js</code> (the live
+      engine that writes alerts) and the <code>asiaRangeEngine</code> backtest, per the shared brick table in
+      <code>CLAUDE.md</code> — the same design discipline (one implementation, imported everywhere, never copied)
+      that this whole series keeps stressing.
+    </p>
+    <p>
+      Recent git history in this repo shows a dedicated "Hurst A/B harness (drift #11 evidence)" was built
+      specifically to validate this feature out-of-sample against the incumbent without it. That is exactly the
+      right instinct, and it's worth being explicit about why: everything explained above is a correct, well-founded
+      statistical property of price paths, but a theoretically elegant statistic is not automatically an edge — per
+      the Lego Principle's validation discipline (rule 5 in <code>CLAUDE.md</code>), a change to what a live feature
+      confirms or conflicts with only counts as an improvement if it beats the incumbent on out-of-sample Sharpe with
+      a non-trivial trade count. This lesson does not have access to what that A/B harness found, and doesn't claim
+      to — treat the Hurst feature's mathematical basis (sound) and its demonstrated live edge (a separate, empirical
+      question that the harness, not this document, is positioned to answer) as two different claims.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where R/S and variance-ratio estimates go wrong</h3>
+    <ul>
+      <li><strong>R/S is biased in small samples.</strong> The classical R/S estimator is known (from simulation
+        studies going back to the 1990s, notably by Lo himself) to be biased toward finding \(H > 0.5\) even on data
+        generated by a true random walk when the sample is short, because the max-minus-min range statistic has
+        heavy-tailed small-sample behavior. A handful of windows of length 8–16, as used in a live feature computed
+        on maybe 20–60 daily bars, is exactly the small-sample regime where this bias is largest — a reading of
+        \(H = 0.55\) from a short window carries much less evidence than the same number from thousands of
+        observations.</li>
+      <li><strong>Both statistics are sensitive to short-term autocorrelation you didn't intend to measure.</strong>
+        Bid-ask bounce, stale/asynchronous quotes, or a single large jump inside the window can inject spurious
+        autocorrelation that has nothing to do with genuine trending or mean-reverting behavior in the underlying
+        price process.</li>
+      <li><strong>Overlapping windows understate the true sampling variance.</strong> A variance ratio test computed
+        with overlapping <em>q</em>-day windows (common because it uses more of the data) needs the Lo–MacKinlay
+        overlapping-sample correction to its standard error — using the non-overlapping formula's standard error on
+        overlapping data will overstate statistical significance.</li>
+      <li><strong>H near 0.5 does not mean "definitely a random walk."</strong> It means the sample gave no strong
+        evidence against a random walk — absence of evidence, not evidence of absence, especially given the
+        small-sample bias above. Likewise a single point estimate of 0.6 without a confidence interval or a
+        significance test says less than it sounds like it says.</li>
+      <li><strong>Neither statistic tells you the sign of the next move.</strong> A high \(H\) says "moves have
+        recently reinforced each other," not "the market is going up." It licenses a trend-following approach to
+        whatever direction is already in motion — it does not forecast a direction.</li>
+      <li><strong>Regime instability.</strong> Both statistics are computed on rolling historical windows and will
+        drift as the window rolls forward, sometimes flipping sides of 0.5 / 1.0 on estimation noise alone rather
+        than a genuine regime change — see the caveat above.</li>
+    </ul>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What Hurst exponent would a pure, noiseless sine wave have, versus pure white noise?</summary>
+    <div class="tl-answer">
+      A pure sine wave is maximally persistent in the sense that matters to R/S: it has strong, deterministic
+      autocorrelation over any window shorter than its period, so its rescaled range grows very fast with window
+      length and its estimated \(H\) is close to 1 (in the idealized deterministic limit, R/S analysis on a smooth
+      periodic signal tends toward the top of the range, often reported near 1). Pure white noise — independent draws
+      with no memory at all — is the textbook random-walk-increment case, giving \(H \approx 0.5\) when you accumulate
+      it into a walk (note: white noise itself, un-accumulated, isn't quite the R/S setup; R/S is normally applied to
+      a series whose cumulative sum is the object of interest, matching \(H=0.5\) for a driftless random walk built
+      from i.i.d. increments).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why is R/S analysis known to be biased in small samples, and what does that mean for a Hurst feature computed on a few dozen daily bars?</summary>
+    <div class="tl-answer">
+      The range statistic \(R(n)\) (max minus min of a cumulative walk) has a skewed, heavy-tailed small-sample
+      distribution, and simulation studies (including Lo's own 1991 work motivating the variance ratio test) show the
+      classical R/S estimator systematically overestimates \(H\) — finds spurious persistence — even on data
+      simulated from a true random walk, when the window is short. A feature computed with lags of only 2–16 bars on
+      a rolling window of daily bars is squarely in this small-sample regime, so an individual reading should be
+      treated as noisier and more biased toward "trending" than the same math would suggest on a long, clean sample —
+      exactly the kind of claim an out-of-sample A/B test, not the formula alone, needs to settle.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What's the practical advantage of the variance ratio test over Hurst / R-S analysis?</summary>
+    <div class="tl-answer">
+      The variance ratio test has a rigorously derived asymptotic distribution under the random-walk null (Lo &amp;
+      MacKinlay 1988), so a computed \(VR(q)\) comes with an actual standard error and z-statistic — you can say "this
+      deviation from 1 is statistically significant at the 5% level" rather than just eyeballing how far a log-log
+      regression slope sits from 0.5. R/S analysis gives you a point estimate of \(H\) with a much less
+      well-behaved (and small-sample-biased) sampling distribution, making formal significance testing on it harder
+      to trust.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why does variance scale exactly linearly with horizon under the random-walk null — where does the \(q\sigma^2\) come from?</summary>
+    <div class="tl-answer">
+      Variance is additive across independent random variables: if \(r^{(1)}_1, r^{(1)}_2, \ldots, r^{(1)}_q\) are
+      \(q\) independent one-period returns each with variance \(\sigma^2\), then their sum \(r^{(q)} = \sum r^{(1)}_i\)
+      has variance \(\operatorname{Var}(r^{(q)}) = \sum \operatorname{Var}(r^{(1)}_i) = q\sigma^2\), because the
+      covariance cross-terms in the variance-of-a-sum formula are all zero under independence. This is a direct
+      consequence of the random-walk assumption (independent, identically distributed increments), which is exactly
+      why any measured deviation of \(VR(q)\) from 1 is direct evidence against that assumption.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. If a rolling 20-day Hurst reading flips from 0.4 to 0.6 between yesterday and today with no major news, has the market's fundamental character actually changed?</summary>
+    <div class="tl-answer">
+      Not necessarily, and often not at all. Both \(H\) and \(VR(q)\) are estimated from a short, overlapping-ish
+      rolling window, and both are known to have meaningful sampling variance on realistic sample sizes — a single new
+      bar entering the window (and an old one leaving it) can shift the estimate noticeably even when the underlying
+      data-generating process hasn't changed. Per the "regime instability" pitfall above, a single-day flip across the
+      0.5 boundary is much more likely to be estimation noise than a genuine regime shift; it should raise the bar
+      for confirming evidence, not be acted on alone.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why is it inappropriate to run R/S or variance-ratio analysis directly on raw price levels instead of returns?</summary>
+    <div class="tl-answer">
+      Price levels are generally non-stationary and trend upward or downward over long stretches for reasons (interest
+      rate differentials, secular economic trends) that have nothing to do with short-horizon persistence or reversion
+      in the return-generating process. Feeding raw levels into R/S will pick up that long-run drift and mechanically
+      report high persistence regardless of the actual microstructure of returns. Both techniques are properly applied
+      to returns (or mean-deviations within a window, as the R/S procedure explicitly does), which strips out the
+      trend and isolates the increment-to-increment dependence structure that \(H\) and \(VR(q)\) are meant to
+      measure.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Harold Edwin Hurst, "Long-Term Storage Capacity of Reservoirs," <em>Transactions of the American Society of
+      Civil Engineers</em>, 1951 — the original Nile-flood rescaled-range analysis this whole method is named for.</li>
+    <li>Benoit Mandelbrot &amp; Richard L. Hudson, <em>The (Mis)Behavior of Markets: A Fractal View of Financial
+      Turbulence</em>, 2004 — the popular-audience case for long-range dependence and fat tails in financial data,
+      building on Mandelbrot's earlier academic application of Hurst's method to cotton prices and other markets.</li>
+    <li>Andrew W. Lo &amp; A. Craig MacKinlay, "Stock Market Prices Do Not Follow Random Walks: Evidence from a Simple
+      Specification Test," <em>The Review of Financial Studies</em>, 1988 — the original variance ratio test paper.</li>
+    <li>Andrew W. Lo, "Long-Term Memory in Stock Market Prices," <em>Econometrica</em>, 1991 — the paper documenting
+      classical R/S analysis's small-sample bias and proposing a modified R/S statistic to correct for it.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="ou-mean-reversion.html">← Ornstein-Uhlenbeck &amp; Mean Reversion</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="garch-volatility.html">GARCH &amp; Volatility Clustering →</a>
+  </div>
+</div>
+<script>
+(function () {
+  var slider = document.getElementById('hurst-h-slider');
+  var readout = document.getElementById('hurst-h-val');
+  var line = document.getElementById('hurst-active-line');
+  var label = document.getElementById('hurst-active-label');
+  if (!slider || !readout || !line || !label) return;
+
+  var originX = 100, originY = 240, topY = 40;
+  // dx (screen x-delta from the shared origin) at the three anchor points —
+  // dxBlue/dxRed match the two static reference lines' endpoints exactly, and
+  // dxMid reproduces the original 45-degree "random walk" line at H = 0.5.
+  var dxBlue = 580 - originX; // 480 — H=0.1 anchor, matches the shallow blue H<0.5 line
+  var dxMid  = 300 - originX; // 200 — H=0.5 anchor, the classic 45-degree position
+  var dxRed  = 220 - originX; // 120 — H=0.9 anchor, matches the steep red H>0.5 line
+
+  function dxForH(h) {
+    if (h <= 0.5) {
+      var t = (h - 0.1) / 0.4; // 0 at H=0.1 .. 1 at H=0.5
+      return dxBlue + (dxMid - dxBlue) * t;
+    }
+    var t2 = (h - 0.5) / 0.4; // 0 at H=0.5 .. 1 at H=0.9
+    return dxMid + (dxRed - dxMid) * t2;
+  }
+
+  function regimeWord(h) {
+    if (h > 0.55) return 'trending';
+    if (h < 0.45) return 'mean-reverting';
+    return 'random walk';
+  }
+
+  function update() {
+    var h = parseInt(slider.value, 10) / 100;
+    var x2 = originX + dxForH(h);
+    var y2 = topY;
+    line.setAttribute('x2', x2);
+    line.setAttribute('y2', y2);
+    label.setAttribute('x', x2 + 6);
+    label.setAttribute('y', y2 + 18);
+    label.textContent = 'H = ' + h.toFixed(2) + ' (' + regimeWord(h) + ')';
+    readout.textContent = 'H = ' + h.toFixed(2);
+  }
+
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
+</body>
+</html>

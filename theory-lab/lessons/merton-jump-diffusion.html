@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Merton Jump-Diffusion Model — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Options &amp; Derivatives / Merton Jump-Diffusion</div>
+  <div class="tl-kicker">Options &amp; Derivatives · Lesson 12 of 14</div>
+  <h1 class="tl-title">The Merton Jump-Diffusion Model</h1>
+  <p class="tl-dek">Black-Scholes assumes price paths never tear — Merton's 1976 fix bolts a random-jump process onto ordinary diffusion so a model can finally admit that FX gaps on NFP day.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not yet built in this repo</span>
+    <span>~16 min read</span>
+    <span>Prereqs: Black-Scholes-Merton Option Pricing, Extreme Value Theory helpful</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    The Black-Scholes-Merton model (the previous lesson) prices options by assuming
+    the underlying follows <strong>geometric Brownian motion</strong> — a
+    continuous-path random process. "Continuous" is doing a lot of work in that
+    sentence: it means that over any short enough interval of time, price can only
+    move by a small amount. Zoom in far enough on a GBM path and it never has a
+    literal break in it — no teleporting, no instantaneous double-digit-pip
+    vertical line. Mathematically, this is exactly why Black-Scholes assigns
+    <em>vanishingly small probability</em> to a large move happening in an
+    infinitesimally short window of time.
+  </p>
+  <p>
+    Real FX markets do not respect that assumption, and they violate it in a very
+    specific, very predictable way: <strong>scheduled macro releases.</strong>
+    Non-Farm Payrolls (NFP), CPI prints, and central bank rate decisions are
+    calendar events, known in advance down to the second, after which price can
+    — and routinely does — move 50, 100, even 200+ pips in a handful of seconds,
+    with no meaningful trading in between the pre-release price and the
+    post-release price. That is not "high volatility diffusion happening very
+    fast." It is a genuine discontinuity: the market re-prices to new information
+    essentially instantaneously, skipping over the intermediate price levels a
+    continuous process would have to pass through. A pure Black-Scholes world has
+    no mechanism to represent this at all — every path in that world is
+    continuous by construction, full stop.
+  </p>
+  <p>
+    Robert C. Merton's 1976 extension is the textbook fix: keep the continuous
+    Brownian motion for "normal" trading, and <em>add</em> a separate,
+    independent random process whose entire job is to occasionally inject a
+    sudden, discrete jump. The result is a model that can tell two different
+    stories about the same underlying at once — "most of the time, this diffuses
+    quietly" and "once in a while, without warning, it jumps" — and that
+    combination turns out to explain two things a flat-sigma Black-Scholes model
+    cannot: fat-tailed (leptokurtic) return distributions, and the volatility
+    smile actually observed in option markets.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A calm river with the occasional flash flood</h3>
+    <p>
+      Picture a river's water level. Most days it just drifts up and down a
+      little with rainfall and evaporation — small, smooth, continuous changes,
+      the kind you could plot as an unbroken wiggly line. That's the diffusion
+      part: Brownian motion, the same \(\sigma\,dW_t\) noise term from the
+      Black-Scholes and Ornstein-Uhlenbeck lessons.
+    </p>
+    <p>
+      Now suppose that river also has a dam upstream, and every so often — rarely,
+      unpredictably, but not never — the dam operators release a burst of water
+      without warning. The level doesn't drift up to the new height over an hour;
+      it jumps there in the space of the release. If you only ever modeled the
+      river with the "smooth drift" description, you would be shocked every time
+      a release happened and, worse, you would have priced any bet that depended
+      on the water level as if those releases could never occur.
+    </p>
+    <p>
+      FX price around a scheduled data release is exactly this river. Between
+      releases, EUR/USD mostly diffuses — the ordinary tick-by-tick noise of a
+      liquid, continuously-traded market. At 8:30am ET on NFP Friday, the "dam"
+      opens: a number hits the wire, algos and humans reprice in an instant, and
+      the pair can gap through several pips of quoted spread and dozens of pips
+      of "normal" range before the next real two-sided market forms. Merton's
+      model is the formal acknowledgment that both of these regimes are real and
+      coexist in the same instrument — it doesn't replace the smooth-diffusion
+      story, it adds the flash-flood story on top of it.
+    </p>
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Same start, one calendar shock</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two simulated price paths starting at the same point: a pure-diffusion GBM path that wiggles smoothly with no breaks, and a jump-diffusion path that tracks it closely until a marked NFP release, then steps sharply down and resumes smooth wiggling at the new, lower level.">
+      <line id="jump-marker-line" x1="340" y1="24" x2="340" y2="250" style="stroke:var(--amber);stroke-dasharray:3,3"/>
+      <text id="jump-marker-label" x="346" y="34" font-size="11" font-family="'DM Mono',monospace" fill="var(--amber)">NFP release</text>
+      <polyline points="40,140 80,130 120,145 160,125 200,135 240,150 280,130 320,140 360,128 400,142 440,122 480,138 520,118 560,132 600,115" style="stroke:var(--blue);stroke-width:2" fill="none"/>
+      <polyline id="jump-path-line" points="40,140 80,132 120,143 160,127 200,137 240,148 280,132 320,138 340,138 340,220 360,225 400,210 440,230 480,215 520,235 560,220 600,230" style="stroke:var(--red);stroke-width:2.5" fill="none"/>
+      <circle cx="40" cy="140" r="3.5" fill="var(--text2)"/>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-btnrow">
+        <button class="tl-btn" id="jump-trigger-btn">⚡ Trigger a jump</button>
+        <span class="tl-hint">Click to resimulate — the jump lands at a new random point and direction each time.</span>
+      </div>
+    </div>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>Pure diffusion (GBM)</span>
+      <span><i style="background:var(--red)"></i>Jump-diffusion</span>
+    </div>
+    <div class="tl-chart-caption">
+      Both paths start at the same point and wiggle almost identically at first.
+      The blue path is what Black-Scholes assumes — continuous by construction,
+      so it can wiggle endlessly but never break, no matter how far you zoom in.
+      The red path shows what actually happens around a scheduled release like
+      NFP: a real discontinuity (the vertical step at the dashed line) that a
+      continuous-path model treats as effectively impossible — exactly the gap
+      jump-diffusion adds back in. Click "Trigger a jump" to resimulate: the
+      red path resets to track the blue one with no gap at all, then a new
+      jump — random location, random direction, random size — lands a moment
+      later, exactly the "when" and "how big" randomness \(\lambda\) and
+      \(Y_i\) describe above.
+    </div>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">What jump risk does to the return distribution's tails</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two overlaid return-distribution curves centered at zero: a smooth dashed normal bell curve with thin tails that flattens out near the baseline, and a solid red jump-diffusion curve with a taller, narrower peak in the middle and small elevated bumps out in both tails.">
+      <line x1="40" y1="250" x2="600" y2="250" style="stroke:var(--border)"/>
+      <line x1="320" y1="20" x2="320" y2="250" style="stroke:var(--border);stroke-dasharray:2,3"/>
+      <text x="320" y="266" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0 (mean daily return)</text>
+      <polyline points="40,250.0 48,250.0 56,250.0 64,250.0 72,250.0 80,249.9 88,249.9 96,249.8 104,249.7 112,249.5 120,249.2 128,248.8 136,248.3 144,247.5 152,246.4 160,245.0 168,243.1 176,240.6 184,237.4 192,233.4 200,228.5 208,222.6 216,215.7 224,207.8 232,198.9 240,189.1 248,178.7 256,167.8 264,156.9 272,146.3 280,136.3 288,127.5 296,120.1 304,114.6 312,111.2 320,110.0 328,111.2 336,114.6 344,120.1 352,127.5 360,136.3 368,146.3 376,156.9 384,167.8 392,178.7 400,189.1 408,198.9 416,207.8 424,215.7 432,222.6 440,228.5 448,233.4 456,237.4 464,240.6 472,243.1 480,245.0 488,246.4 496,247.5 504,248.3 512,248.8 520,249.2 528,249.5 536,249.7 544,249.8 552,249.9 560,249.9 568,250.0 576,250.0 584,250.0 592,250.0 600,250.0" style="stroke:var(--text3);stroke-width:2;stroke-dasharray:4,3" fill="none"/>
+      <polyline points="40,248.7 48,247.9 56,246.7 64,245.1 72,242.9 80,240.3 88,237.1 96,233.6 104,230.0 112,226.5 120,223.5 128,221.3 136,220.1 144,220.1 152,221.3 160,223.4 168,226.3 176,229.5 184,232.6 192,235.3 200,237.1 208,237.6 216,236.4 224,233.1 232,227.3 240,218.5 248,206.7 256,191.6 264,173.7 272,153.6 280,132.4 288,111.6 296,92.9 304,77.9 312,68.3 320,65.0 328,68.3 336,77.9 344,92.9 352,111.6 360,132.4 368,153.6 376,173.7 384,191.6 392,206.7 400,218.5 408,227.3 416,233.1 424,236.4 432,237.6 440,237.1 448,235.3 456,232.6 464,229.5 472,226.3 480,223.4 488,221.3 496,220.1 504,220.1 512,221.3 520,223.5 528,226.5 536,230.0 544,233.6 552,237.1 560,240.3 568,242.9 576,245.1 584,246.7 592,247.9 600,248.7" style="stroke:var(--red);stroke-width:2.5" fill="none"/>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--text3)"></i>Pure diffusion (GBM) — thin tails</span>
+      <span><i style="background:var(--red)"></i>Jump-diffusion — peaked center + fat tails</span>
+    </div>
+    <div class="tl-chart-caption">
+      Mixing a low-probability jump component into ordinary daily diffusion
+      produces exactly this shape. The center is <strong>taller and
+      narrower</strong> than the normal curve, because most days have no jump
+      at all and cluster tighter around zero than a single flat-\(\sigma\)
+      model would predict. Out in both wings, the jump-diffusion curve sits
+      visibly <strong>above</strong> the normal curve — small bumps built from
+      the rare days a jump actually lands. High center, fat tails: that
+      combination is <strong>excess kurtosis</strong> (leptokurtosis), the
+      same signature this lesson's repo box above already covers — see it for
+      how <code>skewness</code>/<code>excessKurtosis</code> in
+      <code>js/metricsCore.js</code> catch this empirically in a real return
+      series without ever fitting \(\lambda, \mu_J, \sigma_J\).
+    </div>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    Recall the Black-Scholes world describes the underlying's price as geometric
+    Brownian motion — in words, "a constant drift plus continuous random noise,
+    both scaled by the current price level." Written as a stochastic differential
+    equation (an equation for how a random quantity changes over an
+    infinitesimally small instant of time \(dt\)):
+  </p>
+  <div class="tl-math">
+    \[ \frac{dS_t}{S_t} = \mu\,dt + \sigma\,dW_t \]
+  </div>
+  <p>
+    Merton's move is to add one more term to the right-hand side — a jump term
+    \(dJ_t\) — that is zero almost all the time and occasionally, at random
+    moments, adds a sudden percentage jump to the return:
+  </p>
+  <div class="tl-math">
+    \[ \frac{dS_t}{S_{t^-}} = \mu\,dt + \sigma\,dW_t + dJ_t \]
+  </div>
+  <p>
+    The only new object here is \(dJ_t\), and everything about the model's added
+    power lives in how that term is constructed. It is built from two separate
+    random ingredients stacked together: <strong>a process that decides
+    <em>when</em> jumps happen</strong>, and <strong>a distribution that decides
+    <em>how big</em> each jump is</strong> once it happens. Every symbol in the
+    full model, spelled out:
+  </p>
+  <div class="tl-symbols"><table>
+    <tr><td>\(S_t\)</td><td>The underlying's price at time \(t\).</td></tr>
+    <tr><td>\(S_{t^-}\)</td><td>The price the instant <em>just before</em> \(t\) — written this way (rather than plain \(S_t\)) specifically because at a jump instant, the price right before and right after are different by construction; the return is measured relative to the pre-jump level.</td></tr>
+    <tr><td>\(\mu\)</td><td>(mu) The ordinary continuous drift rate — the deterministic "average direction" of the diffusion part alone, same role as in plain Black-Scholes.</td></tr>
+    <tr><td>\(\sigma\)</td><td>(sigma) The diffusion volatility — how large the continuous, everyday random wiggles are, same role as in plain Black-Scholes and the same conceptual quantity computed throughout this repo's vol math.</td></tr>
+    <tr><td>\(dW_t\)</td><td>The infinitesimal increment of a Wiener process (standard Brownian motion) — pure continuous random noise, mean zero, variance \(dt\). Covered in the OU lesson.</td></tr>
+    <tr><td>\(N_t\)</td><td>A <strong>Poisson process</strong>: a counting process that ticks up by exactly 1 at each random jump arrival. \(N_t\) counts "how many jumps have happened by time \(t\)."</td></tr>
+    <tr><td>\(\lambda\)</td><td>(lambda) The <strong>jump intensity</strong> — the average <em>rate</em> of jump arrivals per unit time (e.g. "0.05 jumps per trading day" on an average day). This is the single parameter of the Poisson process: over a short interval of length \(dt\), the probability of exactly one jump occurring is \(\lambda\,dt\), and the probability of more than one is negligible for small \(dt\). A bigger \(\lambda\) means jumps are more frequent.</td></tr>
+    <tr><td>\(Y_i\)</td><td>The (random) percentage size of the \(i\)-th jump, drawn independently each time a jump occurs. Merton's original choice: \(\ln(1+Y_i) \sim \mathcal{N}(\mu_J, \sigma_J^2)\) — i.e. the jump's log-size is normally distributed, so the jump size itself is <strong>lognormally distributed</strong>, the same distributional family Black-Scholes already uses for the diffusion part. This choice is analytically convenient, not physically forced — later models (Kou's, mentioned below) swap in other jump-size distributions.</td></tr>
+    <tr><td>\(\mu_J\)</td><td>(mu-sub-J) The mean of the log-jump-size — controls whether jumps are, on average, upward or downward, and roughly how large. For a symmetric "could gap either way" model, \(\mu_J = 0\); for an instrument where surprise releases skew one direction (e.g. a currency more prone to selling off hard on bad news than rallying on good news), \(\mu_J\) could be set negative.</td></tr>
+    <tr><td>\(\sigma_J\)</td><td>(sigma-sub-J) The standard deviation of the log-jump-size — controls how <em>variable</em> jump sizes are from one jump to the next. A small \(\sigma_J\) means jumps are roughly the same size every time; a large \(\sigma_J\) means some releases barely move price while others are violent, which matches how NFP surprises actually behave (a print near consensus barely moves the pair; a huge beat or miss can move it many times as far).</td></tr>
+    <tr><td>\(dJ_t\)</td><td>The full jump term: \(dJ_t = \left(\prod_{i=N_{t^-}+1}^{N_t} (1+Y_i)\right) - 1\) in exact compound form, or more intuitively, "zero on almost every instant \(dt\), and equal to \(Y_i\) on the rare instant a jump numbered \(i\) actually occurs." This is what makes \(dJ_t\) a <strong>compound Poisson process</strong>: "compound" because each event carries its own random size (\(Y_i\)), not just a fixed unit increment like plain \(N_t\).</td></tr>
+  </table></div>
+  <p>
+    Put in one sentence: <em>the return over the next instant is the usual
+    Black-Scholes drift-plus-diffusion, plus — on the rare instants a Poisson
+    clock ticks — an extra multiplicative jolt of random size drawn from a
+    separate distribution.</em> Three independent sources of randomness are now
+    stacked together: <em>whether</em> a jump happens this instant (Poisson,
+    governed by \(\lambda\)), <em>how big</em> it is given that it happens
+    (lognormal, governed by \(\mu_J,\sigma_J\)), and the ordinary continuous
+    noise that's running the whole time regardless (\(\sigma\,dW_t\)).
+  </p>
+
+  <h3>Why this produces fat tails</h3>
+  <p>
+    Under plain Black-Scholes, log-returns over any fixed interval are exactly
+    normally distributed — that is a direct consequence of GBM having only the
+    diffusion term. A normal distribution has thin tails: the probability of a
+    return many standard deviations from the mean is astronomically small and
+    shrinks off a cliff the further out you go.
+  </p>
+  <p>
+    Add the jump term, and the return over a fixed interval is no longer a single
+    normal distribution. It is, informally, a <strong>mixture</strong>: with
+    probability roughly \((1-\lambda\,\Delta t)\) no jump occurred over an
+    interval of length \(\Delta t\) and the return is (approximately) the usual
+    normal diffusion outcome; with the remaining small probability
+    \(\lambda\,\Delta t\) one or more jumps occurred, and the return is the usual
+    normal diffusion outcome <em>plus</em> a jump drawn from a distribution with
+    its own, typically wider, spread. A mixture of "mostly a narrow normal" with
+    "occasionally a wider, shifted normal" is no longer normal at all — it has
+    extra mass out in the tails relative to a single normal with the same overall
+    variance. That extra tail mass is precisely what <strong>excess kurtosis</strong>
+    (a fatter-than-normal tail, also called leptokurtosis) measures: a kurtosis
+    number above the normal distribution's baseline of 3 (or, in "excess" form,
+    above 0). This is the direct mathematical reason jump-diffusion models
+    produce leptokurtic returns while pure GBM cannot, by construction, produce
+    anything but a normal one.
+  </p>
+
+  <h3>Why this produces the volatility smile</h3>
+  <p>
+    In a pure Black-Scholes world, there is exactly one \(\sigma\) for a given
+    underlying and expiry, and it is supposed to price every strike consistently
+    — plug the same \(\sigma\) into the formula for a deep out-of-the-money put,
+    an at-the-money call, and a deep out-of-the-money call, and each gets a
+    theoretically consistent price. If you instead observe real option market
+    prices and back out the \(\sigma\) that would have produced each one (the
+    "implied volatility"), you do not get a flat line across strikes — you get a
+    curve, usually higher at the wings than at the money, called the
+    <strong>volatility smile</strong> (or, when asymmetric, the volatility
+    <strong>skew</strong>).
+  </p>
+  <p>
+    Jump risk is one of the two classical explanations for why (the other being
+    stochastic volatility, a different repair to Black-Scholes not covered in
+    this lesson). Deep out-of-the-money options are exactly the payoffs that
+    only pay off if a <em>large, sudden</em> move happens before expiry — the
+    kind of move a pure diffusion process considers almost impossible over
+    typical horizons, but that jump risk explicitly assigns real probability to.
+    If the true underlying process has jump risk and you price it with plain
+    Black-Scholes at one flat \(\sigma\), you will systematically
+    <strong>underprice</strong> those far-out-of-the-money strikes relative to a
+    market that correctly prices in the chance of a jump — because the flat-sigma
+    model has no jump channel at all, only ordinary diffusion stretched thin. The
+    market corrects for this by demanding a higher implied volatility at the
+    wings to make the flat-sigma formula spit out the "correct," jump-aware
+    price. The smile is, in this reading, the options market's fingerprint of a
+    jump-diffusion (or similar fat-tailed) reality being forced through a
+    Black-Scholes-shaped pricing formula.
+  </p>
+
+  <h3>The pricing formula, conceptually</h3>
+  <p>
+    Merton's key result (not derived in full here — this is a conceptual
+    summary, and the original derivation relies on the diversifiability
+    assumption discussed in the pitfalls below) is that, when jump sizes are
+    lognormal and jump risk is idiosyncratic, the fair option price is a
+    <strong>Poisson-weighted mixture of ordinary Black-Scholes prices</strong>,
+    one for each possible number of jumps \(n = 0, 1, 2, \dots\) between now and
+    expiry, each computed at its own adjusted volatility:
+  </p>
+  <div class="tl-math">
+    \[ C_{\text{Merton}} = \sum_{n=0}^{\infty} \frac{e^{-\lambda' T}(\lambda' T)^n}{n!} \; C_{\text{BS}}\!\left(S, K, T, r, \sigma_n\right) \]
+  </div>
+  <p>
+    Reading this without grinding through the derivation: the term
+    \(\frac{e^{-\lambda' T}(\lambda' T)^n}{n!}\) is just the ordinary Poisson
+    probability of exactly \(n\) jumps occurring over the option's remaining life
+    \(T\) (\(\lambda'\) is \(\lambda\) adjusted for the jump-risk premium — a
+    detail of Merton's original derivation, not something to re-derive here).
+    For each possible jump count \(n\), \(C_{\text{BS}}(\cdot,\sigma_n)\) is just
+    the plain, familiar Black-Scholes call price, but computed at a volatility
+    \(\sigma_n\) that has been bumped up to also account for the extra variance
+    those \(n\) jumps would have contributed. The Merton price is the
+    <em>probability-weighted average</em> of "what would Black-Scholes say if
+    exactly \(n\) jumps happen" over every possible \(n\), weighted by how likely
+    that many jumps actually is. The practical takeaway, without the algebra: a
+    jump-diffusion price is <em>always at least as expensive</em> as the
+    zero-jump Black-Scholes price for the same \(\sigma\), because it is
+    explicitly paying for extra scenarios (jump paths) that the flat model
+    ignores entirely — and that extra payment is concentrated exactly where those
+    scenarios matter most: far out-of-the-money strikes, which is the smile
+    again from a different angle.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>NFP Friday versus an average Tuesday</h3>
+    <p>
+      Consider two ways of thinking about the same pair, say GBP/USD, and how
+      \(\lambda\) — the jump intensity — should differ between them if you tried
+      to fit a jump-diffusion model honestly rather than assume one constant
+      \(\lambda\) all month.
+    </p>
+    <p>
+      <strong>An average Tuesday with no major scheduled release.</strong> Price
+      moves are dominated by ordinary order flow, position adjustment, and
+      cross-market spillover — the diffusion term. Genuinely discontinuous
+      moves (a real gap through the spread with no intervening trades) are rare
+      enough that a jump-diffusion fit on this kind of day alone would want a
+      \(\lambda\) close to zero: jumps essentially don't happen, and the
+      diffusion-only Black-Scholes assumption is a reasonably honest description
+      of the day.
+    </p>
+    <p>
+      <strong>The two-minute window around 8:30am ET on NFP Friday.</strong> The
+      calendar makes the timing of the news itself certain — everyone knows
+      <em>when</em> the number lands, down to the second — but the number's
+      value, and therefore the market's reaction, is genuinely unknown until it
+      prints. In the handful of seconds after release, a very large share of the
+      day's total realized variance can be concentrated into that one window,
+      often accompanied by a real, tradeable-liquidity-gap in price rather than a
+      smooth series of small ticks. A jump-diffusion model that is honest about
+      this reality would not treat \(\lambda\) as a single constant for the
+      whole day; it would want \(\lambda\) to spike sharply for the few minutes
+      around the release and sit near zero the rest of the time — an intensity
+      that is itself a (deterministic, calendar-driven) function of time rather
+      than a flat constant, sometimes called a time-inhomogeneous or
+      "self-exciting near known events" extension of the base model.
+    </p>
+    <p>
+      This is exactly the intuition behind why option desks price
+      <strong>"event vol"</strong> differently from ordinary daily vol, and why
+      a one-week option that happens to straddle an NFP print trades at a
+      noticeably higher implied volatility than a one-week option over a quiet
+      week with no scheduled releases — the market is pricing in the elevated
+      \(\lambda\) concentrated in that specific two-minute window, not smearing
+      the same expected jump risk evenly across all seven days. "Vol crush"
+      after the print — implied volatility dropping sharply right after the
+      release — is the mirror image: once the jump has either happened or the
+      window has passed without one, the near-term event risk is resolved, and
+      \(\lambda\) for the option's remaining life drops back toward its quiet,
+      no-event baseline, so the option is repriced accordingly cheaper.
+    </p>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Full closed-form Merton jump-diffusion pricing shows up less often in modern
+    practice than the underlying idea it stands for. In production option
+    desks, the two much more common tools that carry the same insight forward
+    are: (1) <strong>local/stochastic volatility models</strong> and
+    <strong>Lévy-process models</strong> (of which Merton's is the earliest and
+    simplest example — a jump-diffusion process is a specific member of the
+    broader family of Lévy processes, which allow both continuous and jump
+    components) that are calibrated directly to the observed volatility
+    smile/skew rather than assumed from theory, and (2) simply
+    <strong>quoting and trading implied volatility itself</strong> as the
+    primary object — desks routinely mark separate implied vols for the days
+    surrounding known releases ("event vol") distinct from the base term
+    structure, which is a purely empirical, model-light way of respecting the
+    same jump-risk reality without ever fitting \(\lambda, \mu_J, \sigma_J\)
+    explicitly.
+  </p>
+  <p>
+    Where the explicit jump-diffusion machinery is used directly: single-name
+    equity and index options around known binary events (earnings, drug-trial
+    results, court rulings) where a jump-diffusion or a related pure-jump model
+    gives a principled way to separate "ordinary daily variance" from "the
+    variance attributable to the specific event," which matters for pricing an
+    option that spans the event correctly rather than blending the two regimes
+    into one flat number. Kou's (2002) double-exponential jump model is a widely
+    cited refinement that replaced Merton's lognormal jump-size distribution
+    with an asymmetric double-exponential one, giving separate, independently
+    tunable parameters for the size of up-jumps versus down-jumps — useful
+    because many real markets (equities crashing harder than they melt up;
+    certain FX pairs selling off harder on bad news than they rally on good
+    news) are not symmetric the way Merton's original lognormal jump assumption
+    implies.
+  </p>
+  <p>
+    More broadly, jump-diffusion and Lévy-process thinking underpins the
+    academic and practitioner literature on <strong>tail risk and fat-tailed
+    return modeling</strong> generally — value-at-risk and expected-shortfall
+    estimation, stress testing, and risk-margin/haircut setting for leveraged
+    positions all draw on the same "returns are not normal, and the excess is
+    concentrated in occasional large jumps" framing, whether or not a full
+    option-pricing formula is ever fit.
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+    <h3>The theory behind fat tails this repo already measures — and a very concrete practical echo</h3>
+    <p>
+      This repo does not fit a jump-diffusion model anywhere, does not price
+      options, and has no \(\lambda, \mu_J, \sigma_J\) estimator. Say that
+      plainly: this is unbuilt here, a theory lesson, not a description of
+      existing code.
+    </p>
+    <p>
+      What the repo <em>does</em> already have, built and tested, is the honest
+      empirical way to respect exactly the risk this lesson describes without
+      needing to fit a full parametric jump model. Per <code>CLAUDE.md</code>,
+      <code>js/metricsCore.js</code> ships Tier-1 fat-tail primitives —
+      <code>skewness</code>, <code>excessKurtosis</code>, <code>histVaR</code>,
+      <code>histCVaR</code> — built 2026-07-21 and hand-checked in
+      <code>legoBricks.test.mjs</code>. <code>summarizeTrades</code> (the shared
+      trade-log summarizer used across the platform's backtest report cards)
+      emits <code>skew</code>, <code>excessKurt</code>, <code>var95</code>, and
+      <code>cvar95</code> on every trade-return series it summarizes. Jump-diffusion
+      is the theoretical <em>story</em> for exactly why a real FX return series
+      should have nonzero excess kurtosis and a heavier left tail than a Gaussian
+      model would predict — a sudden macro-release gap is a literal, observable
+      instance of the \(dJ_t\) term this lesson defines. <code>excessKurtosis</code>
+      and <code>histCVaR</code> are the empirical, model-free way this codebase
+      already catches that reality in a trade-return series, without ever having
+      to estimate a jump intensity or a jump-size distribution. This is a real,
+      already-built connection — not a proposal.
+    </p>
+    <p>
+      There is a second, very concrete practical echo, unrelated to option
+      pricing: <code>CLAUDE.md</code>'s own anti-pattern list warns against
+      "assuming the intrabar take-profit was hit on a daily bar (path is
+      unknown) — prefer M1 fills or mark-to-window-close," and
+      <code>fill-realism.html</code> documents a real instance of this exact
+      failure mode in the Per-Line Volatility tearsheet (~44% zero-duration
+      trades where TP is unknowable on the fill bar, so the walker marks to
+      close and hides real outer-line stop losses on continuation days). That
+      bug and Merton's jump term are the same underlying risk wearing two
+      different hats: a fill walker that assumes a limit or stop was touched at
+      its exact quoted price implicitly assumes the path between bars was
+      continuous — that price had to pass through every intermediate level to
+      get from the open to the close. A genuine gap (a jump) can blow straight
+      through a resting limit or stop without ever trading at the assumed price,
+      the same way Merton's \(dJ_t\) term skips over the intermediate price
+      levels a pure-diffusion path would have been forced to cross. A
+      backtest's fill assumption and an option-pricing model's path assumption
+      are answering the same underlying question — "can price teleport?" — for
+      two different purposes.
+    </p>
+    <p>
+      Building an actual jump-diffusion estimator or option-pricing engine here
+      would be a new, unvalidated undertaking — it would need synthetic-data
+      unit tests that recover known \(\lambda,\mu_J,\sigma_J\) parameters before
+      touching real prices, and, per the Lego Principle, a clear reason two or
+      more callers would use it rather than building it because the math is
+      elegant. Nothing here proposes that. The honest summary is: the fat-tail
+      metrics already in <code>metricsCore.js</code> are the built, tested,
+      empirical answer to "does this repo respect jump/gap risk" — a full
+      parametric jump-diffusion model is not built, and is not needed to get
+      that empirical honesty.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where jump-diffusion thinking is misused or overextended</h3>
+    <p>
+      <strong>Treating \(\lambda\) as a single flat constant.</strong> Real jump
+      risk is not uniformly distributed across the calendar. A model that fits
+      one average \(\lambda\) across a whole month averages away exactly the
+      structure that matters — the NFP-Friday spike and the quiet-Tuesday
+      baseline blur into one number that describes neither day well. The worked
+      example above is deliberately built around this: naive constant-\(\lambda\)
+      fitting is the single most common misuse of the base model in practice.
+    </p>
+    <p>
+      <strong>Parameter identifiability is genuinely hard.</strong> Separating
+      "a lot of small jumps" from "high diffusion volatility" from "a few large
+      jumps" using only a historical return series is a notoriously
+      ill-conditioned estimation problem — multiple very different
+      \((\sigma, \lambda, \mu_J, \sigma_J)\) combinations can produce
+      statistically similar-looking return distributions over realistic sample
+      sizes. Don't trust a single point-estimate fit of jump parameters without
+      checking stability across sub-periods and estimation methods.
+    </p>
+    <p>
+      <strong>The original derivation leans on a diversifiability assumption
+      that doesn't obviously hold for FX event risk.</strong> Merton's original
+      1976 pricing formula assumes jump risk is idiosyncratic — uncorrelated
+      with the broader market, and therefore diversifiable away in a large
+      portfolio, which is why it doesn't need its own risk premium in the
+      simplest version of the formula. A scheduled macro release moving one
+      currency pair is not obviously idiosyncratic in this sense — the same NFP
+      print that jolts EUR/USD can simultaneously move equity indices, rates,
+      and other pairs, i.e. it's closer to systematic than idiosyncratic. This
+      matters for whether the simplest version of the pricing formula is even
+      theoretically appropriate for FX event risk versus a single stock's
+      earnings surprise.
+    </p>
+    <p>
+      <strong>A discrete jump model is still an approximation of something
+      more continuous.</strong> Real post-release price action is often not one
+      clean instantaneous jump but a burst of extremely fast, wide-ranging
+      trading over a few seconds — a blur that a single discrete jump
+      approximates reasonably well at longer horizons but not perfectly at
+      sub-second resolution. Don't over-interpret a fitted jump size as "the
+      exact price the market teleported to."
+    </p>
+    <p>
+      <strong>Fat tails in a trade-return series are not proof a jump-diffusion
+      model would improve pricing or sizing.</strong> Seeing high
+      <code>excessKurtosis</code> or a large <code>histCVaR</code> in this
+      repo's metrics confirms the empirical symptom jump risk would predict; it
+      is not, by itself, evidence that building a parametric jump model and
+      layering it into a strategy would improve anything OOS. Per the Lego
+      Principle and this repo's validation discipline, that would need to be
+      tested, not assumed from the theory being a good story.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why does a pure Black-Scholes model systematically underprice deep out-of-the-money options relative to a market that has genuine jump risk?</summary>
+    <div class="tl-answer">
+      Deep out-of-the-money options only pay off on a large, sudden move before
+      expiry. A pure Black-Scholes world has only continuous diffusion — no
+      mechanism for a large move to happen in a short window, since paths must
+      pass through every intermediate price level. It therefore assigns those
+      large-move scenarios a near-vanishing probability under any single flat
+      \(\sigma\). A market that correctly prices in real jump risk assigns those
+      scenarios meaningfully more probability (and hence more value) than the
+      flat-diffusion model does, so the flat-sigma Black-Scholes price for that
+      strike comes out too low relative to the market. This gap is exactly what
+      forces implied volatility higher at the wings when you back it out of
+      market prices — the volatility smile.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What does each of \(\lambda\), \(\mu_J\), and \(\sigma_J\) control in the jump term, and what would it mean for one of them to be near zero?</summary>
+    <div class="tl-answer">
+      \(\lambda\) is the jump intensity — how frequently jumps arrive on average
+      (jumps per unit time). \(\lambda \to 0\) means jumps essentially never
+      happen, and the model collapses back to plain Black-Scholes (no jump
+      term contributes anything). \(\mu_J\) is the mean of the log-jump-size —
+      the average direction and rough magnitude of a jump when one occurs;
+      \(\mu_J = 0\) means jumps are unbiased in direction on average (as likely
+      to be a gap up as a gap down). \(\sigma_J\) is the standard deviation of
+      the log-jump-size — how variable jump sizes are from one jump to the
+      next; \(\sigma_J \to 0\) means every jump, when it happens, is
+      approximately the same fixed size, while a large \(\sigma_J\) means jump
+      sizes range from negligible to violent.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why does mixing a normal diffusion outcome with an occasional jump produce a fat-tailed (leptokurtic) distribution instead of just a wider normal distribution?</summary>
+    <div class="tl-answer">
+      The return over a fixed interval is a probability-weighted mixture: mostly
+      "no jump happened, return is approximately normal with the base variance,"
+      and rarely "a jump happened, return is that normal outcome plus an extra
+      jump-sized shift." A mixture of a narrow normal with a wider, shifted one
+      is not itself a single normal distribution — it has more probability mass
+      out in the tails than any single normal distribution with the same overall
+      variance would, because the rare-but-large jump scenarios pile extra mass
+      far from the center while the vast majority of ordinary (no-jump) outcomes
+      stay clustered near the mean. That combination — a tall, narrow center from
+      the frequent no-jump case plus extra far-out mass from the rare jump case —
+      is precisely what excess kurtosis measures.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why should a jump-diffusion model in principle let \(\lambda\) vary through a trading day around a known scheduled release, rather than treating it as one flat constant for the whole day?</summary>
+    <div class="tl-answer">
+      \(\lambda\) is meant to represent the true rate at which discontinuous
+      moves occur, and that rate is not remotely uniform across a day that
+      contains a scheduled macro release. In the minutes around NFP, CPI, or a
+      central bank decision, the chance of a genuine gap is far higher than
+      during an ordinary quiet stretch of trading, because the news itself is
+      concentrated at a known, calendar-fixed instant even though its content is
+      unknown until it prints. A single flat \(\lambda\) fit across the whole
+      day would either overstate jump risk on quiet stretches or understate it
+      around the release, misrepresenting both regimes. This is exactly why
+      option desks quote separate "event vol" for the specific window around a
+      known release rather than smearing the same implied jump risk evenly
+      across the full week.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why does a fill-walker that assumes an intrabar take-profit was hit, without checking the actual bar's real path, risk exactly the same kind of error as ignoring jump risk in option pricing?</summary>
+    <div class="tl-answer">
+      Both mistakes rest on the same false assumption: that price moved
+      continuously through every intermediate level between two known points
+      (the bar's open and close, or the pre- and post-jump price). Assuming a
+      resting limit or stop was filled at its exact quoted level on a coarse bar
+      implicitly assumes price had to pass through that level on its way from
+      open to close — exactly the continuity assumption a pure-diffusion
+      Black-Scholes path makes and a genuine jump violates. A real gap (a jump)
+      can skip straight over a resting order's price without ever trading there,
+      the same way Merton's \(dJ_t\) term lets the underlying skip over
+      intermediate price levels a continuous path would have been forced to
+      cross. This repo's own anti-pattern warning against assuming intrabar TP
+      fills on a daily bar, and the fill-realism findings on the Per-Line
+      Volatility tearsheet's zero-duration trades, are a concrete, practical
+      instance of ignoring exactly this risk.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Does this repo currently fit a jump-diffusion model or price options with one? If not, what does it have instead, and why does that still count as respecting jump/gap risk?</summary>
+    <div class="tl-answer">
+      No — there is no \(\lambda, \mu_J, \sigma_J\) estimator and no option
+      pricing engine anywhere in this codebase; this lesson is a theory
+      background page, not a description of a built feature. What the repo does
+      have is the empirical, model-free alternative: <code>js/metricsCore.js</code>'s
+      Tier-1 fat-tail primitives (<code>skewness</code>, <code>excessKurtosis</code>,
+      <code>histVaR</code>, <code>histCVaR</code>), which <code>summarizeTrades</code>
+      already computes on every trade-return series it summarizes. These
+      directly measure the empirical symptom jump risk predicts — a heavier
+      left tail and higher-than-Gaussian kurtosis — without requiring anyone to
+      first estimate a parametric jump process. That's a legitimate, already-built
+      way to respect the risk this lesson describes, even without a full Merton
+      model anywhere in the code.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Robert C. Merton, "Option Pricing When Underlying Stock Returns Are Discontinuous," <em>Journal of Financial Economics</em>, 1976 — the original paper defining the jump-diffusion model covered in this lesson.</li>
+    <li>S. G. Kou, "A Jump-Diffusion Model for Option Pricing," <em>Management Science</em>, 2002 — the widely cited double-exponential jump-size refinement, allowing separate, asymmetric parameters for up-jumps and down-jumps.</li>
+    <li>Rama Cont &amp; Peter Tankov, <em>Financial Modelling with Jump Processes</em>, Chapman &amp; Hall/CRC, 2004 — the standard modern graduate textbook treatment of Lévy processes, jump-diffusion, and the broader family of models this lesson's is the simplest member of.</li>
+    <li><code>js/metricsCore.js</code> in this repo — the built, tested Tier-1 fat-tail primitives (<code>skewness</code>, <code>excessKurtosis</code>, <code>histVaR</code>, <code>histCVaR</code>) this lesson's repo box connects to.</li>
+    <li><code>fill-realism.html</code> and <code>CLAUDE.md</code>'s anti-pattern list in this repo — the concrete intrabar-fill instance of the same continuity assumption discussed above.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="black-scholes.html">← Black-Scholes-Merton Option Pricing</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="kelly-criterion.html">Kelly Criterion &amp; Position Sizing →</a>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var X_POINTS = [40, 80, 120, 160, 200, 240, 280, 320, 360, 400, 440, 480, 520, 560, 600];
+    var BASE_Y   = [140, 130, 145, 125, 135, 150, 130, 140, 128, 142, 122, 138, 118, 132, 115];
+    var OFFSETS  = [0, 2, -2, 2, 2, -2, 2, -2, -2, 2, -2, 2, 2, -2, 2];
+
+    function smoothPoints() {
+      var pts = [];
+      for (var i = 0; i < X_POINTS.length; i++) {
+        pts.push(X_POINTS[i] + ',' + (BASE_Y[i] + OFFSETS[i]));
+      }
+      return pts.join(' ');
+    }
+
+    function jumpPoints(jumpIdx, dir, mag) {
+      var pts = [];
+      for (var i = 0; i < X_POINTS.length; i++) {
+        var x = X_POINTS[i];
+        if (i < jumpIdx) {
+          pts.push(x + ',' + (BASE_Y[i] + OFFSETS[i]));
+        } else if (i === jumpIdx) {
+          var preY = BASE_Y[i] + OFFSETS[i];
+          var postY = Math.max(25, Math.min(255, preY + dir * mag));
+          pts.push(x + ',' + preY.toFixed(1));
+          pts.push(x + ',' + postY.toFixed(1));
+        } else {
+          var y = Math.max(25, Math.min(255, BASE_Y[i] + OFFSETS[i] + dir * mag));
+          pts.push(x + ',' + y.toFixed(1));
+        }
+      }
+      return pts.join(' ');
+    }
+
+    var line = document.getElementById('jump-path-line');
+    var markerLine = document.getElementById('jump-marker-line');
+    var markerLabel = document.getElementById('jump-marker-label');
+    var btn = document.getElementById('jump-trigger-btn');
+    if (!line || !markerLine || !markerLabel || !btn) return;
+
+    function triggerJump() {
+      btn.disabled = true;
+      // Reset: track the GBM path closely, no visible gap, for the full length.
+      line.setAttribute('points', smoothPoints());
+
+      setTimeout(function () {
+        // Randomize where along the path the jump lands, which way it goes,
+        // and roughly how big it is — a fresh draw of (jump time, Y_i) each click.
+        var jumpIdx = 2 + Math.floor(Math.random() * 12); // index 2..13
+        var dir = Math.random() < 0.5 ? 1 : -1;            // +1 = gaps down, -1 = gaps up
+        var mag = 45 + Math.random() * 50;                 // 45..95px jump size
+        var x = X_POINTS[jumpIdx];
+
+        line.setAttribute('points', jumpPoints(jumpIdx, dir, mag));
+        markerLine.setAttribute('x1', x);
+        markerLine.setAttribute('x2', x);
+        markerLabel.setAttribute('x', x + 6);
+
+        btn.disabled = false;
+      }, 600);
+    }
+
+    btn.addEventListener('click', triggerJump);
+  })();
+</script>
+</body>
+</html>

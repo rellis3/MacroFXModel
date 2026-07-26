@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Extreme Value Theory &amp; Tail Risk — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Risk &amp; Sizing / Extreme Value Theory</div>
+  <div class="tl-kicker">Risk &amp; Sizing · Lesson 14 of 14 (final)</div>
+  <h1 class="tl-title">Extreme Value Theory &amp; Tail Risk</h1>
+  <p class="tl-dek">Your worst historical day is not your worst possible day — EVT is the theory of how to say something honest about the losses you haven't seen yet, without pretending a handful of data points can tell you the whole story.</p>
+  <div class="tl-meta">
+    <span class="tl-status candidate">EXTENDS AN EXISTING BRICK — js/metricsCore.js's histVaR/histCVaR</span>
+    <span>~16 min read</span>
+    <span>Prereqs: Merton Jump-Diffusion Model, Kelly Criterion &amp; Position Sizing</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+  Every risk number this repo already computes — <code>histVaR</code>, <code>histCVaR</code>,
+  <code>maxDrawdown</code>, the skew/kurtosis pair in <code>summarizeTrades</code> — is built from
+  whatever trades or returns actually happened to occur in the sample you have. That is the right way
+  to start (per this project's own working agreement: report the honest number off the real path, don't
+  approximate it), but it has a specific, structural blind spot. A sample of, say, 500 daily returns
+  can tell you a lot about the <em>middle</em> of the distribution — the everyday chop, the typical
+  win/loss — because you have hundreds of observations to average over. It can tell you almost nothing
+  reliable about the <em>1-in-2,000-day</em> event, because by definition your 500-day sample probably
+  doesn't contain one, and even if it does, it contains at most one or two, which is not enough to
+  estimate anything with statistical stability. Yet the 1-in-2,000-day event — the flash crash, the
+  surprise central-bank decision, the liquidity air-pocket — is exactly the one that determines whether
+  a leveraged systematic strategy survives or blows up. <strong>Extreme Value Theory</strong> (EVT) is
+  the branch of statistics built specifically for this mismatch: it doesn't try to model the whole
+  distribution of returns well (that's what the rest of statistics is for); it asks a narrower, sharper
+  question — "given that we're already looking at an extreme observation, what shape does the tail
+  beyond it take, and can I use that shape to say something honest about outcomes worse than anything
+  I've actually observed?" This lesson explains the theory behind that question, is explicit about what
+  it can and can't buy you, and is honest that this repo's current tail-risk metrics are deliberately
+  the simpler, sample-bound version of the idea — not a gap to be embarrassed about, but a conscious
+  choice to only claim what the data actually supports.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>You don't need to see a 9.5-magnitude earthquake to model one</h3>
+    <p>
+    Seismologists studying earthquake risk face the identical problem traders face with crashes: the
+    events that matter most for planning purposes (an 8.5+ magnitude earthquake somewhere on a given
+    fault) are, almost by definition, rare enough that no single region's recorded history contains
+    many of them — sometimes none at all. And yet insurers and engineers still need a defensible number
+    for "what's the chance of a catastrophic quake in the next 50 years," not just a shrug. The
+    intellectual move that makes this tractable is this: instead of trying to model the entire
+    distribution of every tremor ever recorded — most of which are tiny, uninteresting, and behave
+    completely differently from a catastrophic one — you throw away everything below some high
+    threshold and look <em>only</em> at what happens among the events that already cleared it. It turns
+    out that the pattern of "how much do things overshoot a very high bar, given that they clear it at
+    all" settles into one of a small, well-understood family of shapes, almost regardless of what the
+    full underlying distribution looked like — much like how averages of almost anything tend toward a
+    bell curve (the Central Limit Theorem), extremes of almost anything tend toward one of a small
+    family of extreme-value shapes. That's the whole idea of EVT in one sentence: don't model
+    everything; model only the shape of "how bad does it get, given that it's already bad," using the
+    handful of worst observations you do have, and let that fitted shape extrapolate a little further
+    out than your raw data alone could honestly reach. It is not magic — you are still, unavoidably,
+    extrapolating past what you've observed — but it is a principled way to extrapolate rather than an
+    arbitrary one.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+  We'll build this in the order a practitioner actually uses it: first define VaR and CVaR precisely
+  (the two numbers you're ultimately trying to estimate), then show exactly why the plain historical
+  method for estimating them breaks down far out in the tail, then introduce the peaks-over-threshold
+  method and the Generalized Pareto Distribution that EVT uses to patch that gap.
+  </p>
+
+  <h3>VaR and CVaR, defined precisely</h3>
+  <p>
+  Let \(L\) be a random variable representing a <em>loss</em> (positive \(L\) = you lost money; this
+  lesson follows the convention of working in loss units so "bigger is worse" reads naturally — flip
+  the sign if you'd rather work directly with returns, where losses are negative). Fix a confidence
+  level \(p\), typically 0.95 or 0.99.
+  </p>
+  <div class="tl-math">\[ \text{VaR}_p(L) = \inf\{ \ell : P(L > \ell) \le 1-p \} \]</div>
+  <p>
+  Read this as: "the smallest loss threshold \(\ell\) such that the probability of losing <em>more</em>
+  than \(\ell\) is at most \(1-p\)." In plainer words, \(\text{VaR}_{0.99}\) is the loss level you
+  expect to exceed only 1% of the time — equivalently, it's the 99th percentile of the loss
+  distribution. VaR answers exactly one question: <em>where</em> is the bad-outcome cutoff. It says
+  nothing at all about how bad things get once you're past that cutoff — a distribution where losses
+  beyond the 99th percentile are all just barely past \(\text{VaR}_{0.99}\), and one where they
+  occasionally run ten times larger, can have the <em>identical</em> \(\text{VaR}_{0.99}\). That
+  blindness is VaR's best-known and most consequential weakness, which is exactly what CVaR (also
+  called Expected Shortfall, ES) is built to fix:
+  </p>
+  <div class="tl-math">\[ \text{CVaR}_p(L) = E[\, L \mid L > \text{VaR}_p(L) \,] \]</div>
+  <p>
+  Read this as: "the <em>average</em> loss, given that you're already in the bad tail beyond
+  VaR." Where VaR only marks the threshold, CVaR asks "and once I'm past it, how bad does it typically
+  get?" This is why CVaR is called a <strong>coherent</strong> risk measure and VaR is not, in the
+  technical sense economists and risk theorists use the word: a coherent risk measure has to satisfy a
+  short list of sane properties, and the one VaR specifically fails is <em>subadditivity</em> — the
+  requirement that the risk of a combined portfolio can never be worse than the sum of the risks of its
+  parts taken separately (diversification should never look like it makes things worse). VaR can, in
+  constructed examples, actually go <em>up</em> when you combine two positions that individually looked
+  fine, because it only cares about a single quantile cutoff and ignores everything about the shape
+  beyond it; CVaR, being an average over the whole tail rather than a single point on it, doesn't have
+  this failure mode. This is not a purely academic distinction — it's the reason banking regulation
+  (the Basel Committee's market-risk framework) shifted its standard tail-risk measure from VaR toward
+  Expected Shortfall after the 2008 crisis specifically exposed VaR's tail-blindness in practice.
+  </p>
+
+  <h3>Why the plain historical (empirical) method breaks down far into the tail</h3>
+  <p>
+  The most direct way to estimate VaR or CVaR from data — and exactly what this repo's
+  <code>histVaR</code>/<code>histCVaR</code> do — is to sort your observed sample and read the answer
+  straight off it: <em>empirical VaR</em> at confidence \(p\) is just the \((1-p)\) sample quantile (the
+  value such that a fraction \(1-p\) of your observed data falls below it), and <em>empirical CVaR</em>
+  is the average of every observation at or beyond that point. This is honest, assumption-free, and
+  exactly right — as long as the quantile you're asking for is comfortably <em>inside</em> the range
+  your sample actually explores. The problem is entirely about what happens as \(p\) moves toward the
+  edge of, or past, what your sample size can support. With \(n\) observations, the empirical
+  \((1-p)\)-quantile is built from roughly \(n(1-p)\) data points sitting at or beyond that level. Set
+  \(n=500\) (roughly two years of daily data) and \(p=0.99\): you're estimating a threshold from
+  \(500 \times 0.01 = 5\) observations. Push to \(p=0.995\) — a "1-in-200-day" event — and you're down to
+  \(2.5\) observations, meaning the 99.5th percentile is being read off <em>between your single worst
+  and second-worst historical observation</em>, interpolated. Push further to the "1-in-2,000-day"
+  event this lesson's title alludes to, and you would need roughly \(2{,}000/252 \approx 8\) years of
+  daily data just to see <em>one</em> such event on average — and one occurrence tells you almost
+  nothing about the shape of the distribution beyond it, any more than one coin flip tells you a coin's
+  bias. Empirical VaR/CVaR at that quantile isn't really "estimating" anything at that point; it's
+  reporting the identity of your single worst historical day and calling it a statistic. That's the
+  precise problem EVT exists to address.
+  </p>
+
+  <h3>The Fisher-Tippett-Gnedenko theorem, stated conceptually</h3>
+  <p>
+  EVT's foundational result concerns the distribution of the <em>maximum</em> of many observations —
+  informally: if you take a large number of independent draws from some distribution and record only
+  the biggest one, then take another batch and record its biggest, and so on, what does the
+  distribution of "the biggest of a batch" converge to as the batch size grows? The
+  <strong>Fisher-Tippett-Gnedenko theorem</strong> (Ronald Fisher and Leonard Tippett, 1928; put on
+  rigorous footing by Boris Gnedenko, 1943) says that — under fairly general conditions on the
+  underlying distribution — that limiting distribution, suitably rescaled, can only ever take one of
+  three shapes, unified into a single family called the <strong>Generalized Extreme Value (GEV)</strong>
+  distribution. This is the direct tail-behavior analogue of the Central Limit Theorem: the CLT says
+  sums/averages of almost anything converge to a Gaussian regardless of the underlying distribution;
+  Fisher-Tippett-Gnedenko says <em>maxima</em> of almost anything converge to one of the GEV shapes,
+  regardless of the underlying distribution. This lesson won't derive that theorem, but it's the reason
+  EVT gets to make a strong, distribution-agnostic claim at all: you don't need to know or assume the
+  full shape of daily FX returns to say something principled about their extremes — the extremes
+  themselves are constrained to a small family of possible shapes by a general theorem, not by an
+  assumption you bolted on.
+  </p>
+
+  <h3>Peaks-over-threshold and the Generalized Pareto Distribution</h3>
+  <p>
+  The GEV theorem is about block maxima (the single worst day out of each month, say), which is a
+  legitimate approach but wastes data — it throws away every observation in a block except the single
+  worst one. The more data-efficient and more commonly used approach in modern risk work is
+  <strong>peaks-over-threshold (POT)</strong>, built on a companion theorem due to A. A. Balkema and
+  Laurens de Haan, and independently James Pickands (both 1974/1975): fix a sufficiently high threshold
+  \(u\), and look at every observation that exceeds it. For each such observation \(X\), define the
+  <em>exceedance</em> as \(Y = X - u\) — how far past the threshold it landed. The
+  Balkema-de Haan-Pickands theorem says that, as the threshold \(u\) is pushed high enough, the
+  distribution of these exceedances converges to the <strong>Generalized Pareto Distribution
+  (GPD)</strong>, essentially regardless of what distribution the original data came from — this is the
+  POT-specific counterpart to Fisher-Tippett-Gnedenko, and it's the theorem that actually underwrites
+  the practical fitting procedure below.
+  </p>
+  <div class="tl-math">\[
+  P(Y > y \mid X > u) = \left(1 + \xi \frac{y}{\beta}\right)^{-1/\xi}, \qquad y \ge 0
+  \]</div>
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(u\)</td><td>The threshold — a high loss level you choose (e.g. "the 95th percentile of historical losses"). Everything below it is discarded; only the exceedances above it are used to fit the tail.</td></tr>
+      <tr><td>\(X\)</td><td>An individual observation from the original data (e.g. one day's loss) that exceeds the threshold \(u\).</td></tr>
+      <tr><td>\(Y = X - u\)</td><td>The <em>exceedance</em> — how far past the threshold \(u\) that observation landed. This is the quantity the GPD actually models, not \(X\) itself.</td></tr>
+      <tr><td>\(\xi\)</td><td>The Greek letter "xi" — the GPD's <strong>shape parameter</strong>, the single most important number in this lesson. It controls how heavy the tail is (full interpretation below).</td></tr>
+      <tr><td>\(\beta\)</td><td>The Greek letter "beta" — the GPD's <strong>scale parameter</strong> (\(\beta>0\)), controlling the spread/magnitude of exceedances, analogous to a standard deviation but for this specific distribution family.</td></tr>
+      <tr><td>\(P(Y>y \mid X>u)\)</td><td>"The probability the exceedance is bigger than \(y\), given that the threshold was already exceeded" — a conditional probability. This is exactly the "given that it's already bad, how much worse" framing from the intuition box above, made precise.</td></tr>
+      <tr><td>\(p\)</td><td>The confidence level for VaR/CVaR (e.g. 0.99), distinct from the exceedance probability above — context makes clear which is meant.</td></tr>
+      <tr><td>\(n\), \(n_u\)</td><td>\(n\) = total sample size; \(n_u\) = number of observations exceeding the threshold \(u\) (the count actually used to fit the GPD). \(n_u/n\) estimates \(P(X>u)\), the probability of exceeding the threshold at all.</td></tr>
+    </table>
+  </div>
+  <p>
+  The shape parameter \(\xi\) is the payload of the whole method — it tells you the qualitative
+  <em>kind</em> of tail you're dealing with, not just its scale:
+  </p>
+  <ul>
+    <li>
+    <strong>\(\xi > 0\):</strong> a genuinely <strong>heavy, Pareto-type tail</strong> — the probability
+    of exceeding \(y\) decays only <em>polynomially</em> as \(y\) grows (like \(y^{-1/\xi}\)), not
+    exponentially. This is the "fat tail" regime associated with financial returns, insurance losses,
+    and other domains where truly extreme outcomes are rare but not vanishingly, negligibly rare the
+    way they'd be under a Gaussian. The distribution in this regime technically has no finite variance
+    at all once \(\xi \ge 0.5\), and no finite mean once \(\xi \ge 1\) — a formal way of saying "the tail
+    is so heavy that ordinary summary statistics stop being well-defined."
+    </li>
+    <li>
+    <strong>\(\xi = 0\):</strong> the boundary case, where the GPD formula reduces to a simple
+    exponential distribution — exceedances decay at a constant proportional rate, a "medium," textbook
+    tail with no special heaviness.
+    </li>
+    <li>
+    <strong>\(\xi < 0\):</strong> a <strong>bounded tail</strong> — there's a hard finite upper limit to
+    how large an exceedance can get (the distribution has a finite endpoint), regardless of how much
+    data you collect. This shape shows up for physically bounded quantities but is the least common case
+    for financial losses, where there's no structural reason to believe losses are capped at some fixed
+    number.
+    </li>
+  </ul>
+  <p>
+  Fitting a GPD means estimating \(\xi\) and \(\beta\) from the observed exceedances \(Y_1, \ldots,
+  Y_{n_u}\) — typically via maximum likelihood, choosing the \((\xi, \beta)\) pair that makes the
+  observed exceedances most probable under the GPD formula. This lesson won't derive the maximum-
+  likelihood equations, but conceptually it's the same fitting philosophy as anywhere else in
+  statistics: pick the parameters that make what you actually saw as unsurprising as possible under the
+  model.
+  </p>
+
+  <h3>From a fitted GPD back to VaR and CVaR</h3>
+  <p>
+  Once \((\xi, \beta)\) are fitted, there's a closed-form way to convert them into a VaR estimate at
+  <em>any</em> confidence level \(p\) — including levels beyond what your raw sample could support
+  directly, which is the entire point:
+  </p>
+  <div class="tl-math">\[
+  \widehat{\text{VaR}}_p = u + \frac{\beta}{\xi}\left[ \left(\frac{n}{n_u}(1-p)\right)^{-\xi} - 1 \right]
+  \]</div>
+  <p>
+  Don't worry about memorizing this formula — the important structural point is what it's built from:
+  the threshold \(u\) you already crossed, plus a correction term built entirely from the <em>fitted
+  tail shape</em> \((\xi,\beta)\) and how far past \(p\) sits relative to the exceedance rate
+  \(n_u/n\). Because that correction term is a smooth function of \(p\), it can be evaluated at a \(p\)
+  more extreme than anything in your sample — that's the "extrapolation" this lesson keeps returning
+  to, made mechanically concrete. And once you have \(\widehat{\text{VaR}}_p\) from the GPD, there's a
+  similarly closed-form CVaR estimate built on top of it (valid for \(\xi < 1\), where the tail has a
+  finite mean):
+  </p>
+  <div class="tl-math">\[
+  \widehat{\text{CVaR}}_p = \frac{\widehat{\text{VaR}}_p}{1-\xi} + \frac{\beta - \xi u}{1-\xi}
+  \]</div>
+  <p>
+  The key honesty check, stated plainly and repeated because it's the whole crux of this lesson: every
+  quantity in both formulas above is either something you observed (\(u\), \(n\), \(n_u\)) or something
+  you <em>fitted</em> (\(\xi\), \(\beta\)) from a necessarily small number of tail observations. The
+  further \(p\) sits beyond your data, the more the answer is determined by the fitted shape parameters
+  rather than by anything directly observed — which is exactly the tradeoff explored in the worked
+  example below.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>Estimating a 1-in-2,000-day loss from two years of daily data</h3>
+    <p>
+    Suppose you have \(n=500\) daily P&amp;L observations (roughly two trading years) and you want a
+    99.5% VaR — the loss level exceeded only about 1 in 200 days, i.e. the "1-in-200-day" quantile —
+    <em>and</em> you're curious what a 1-in-2,000-day loss might look like, ten times rarer still.
+    </p>
+    <p>
+    <strong>The plain historical method.</strong> \(1-p = 0.005\), so the empirical VaR is read off
+    around the \(500 \times 0.005 = 2.5\)th-worst observation — interpolated between your single worst
+    and second-worst historical day. That number is not a stable statistical estimate; it is, almost
+    literally, "whatever your worst day or two happened to be." Re-run the same backtest with a
+    slightly different two-year window and that number can swing enormously, because it's driven by
+    one or two data points rather than by an underlying pattern estimated across many. And the
+    1-in-2,000-day quantile is entirely out of reach by this method — with only 500 observations, you
+    would need on average <strong>four separate two-year samples</strong> just to expect to see one
+    such event at all; empirical VaR at that level is mathematically undefined for this sample size (the
+    quantile formula is asking for data past the edge of what you have).
+    </p>
+    <p>
+    <strong>The EVT/POT method.</strong> Instead of trying to nail the exact 99.5th or 99.95th
+    percentile directly, set a more moderate threshold \(u\) — say the 90th percentile of losses, which
+    with \(n=500\) gives you roughly \(n_u = 50\) exceedances to work with, a far more workable sample
+    size than "2.5 observations." Fit a GPD to those 50 exceedances, obtaining estimates of \(\xi\) and
+    \(\beta\) (in practice these are checked with a diagnostic plot — a "mean excess plot" — and by
+    testing sensitivity to the threshold choice, not accepted blindly from one fit). Plug the fitted
+    \((\xi, \beta)\) into the VaR formula above at \(p=0.995\), or even \(p=0.9995\) (the 1-in-2,000-day
+    level) — the formula produces an answer either way, because it's extrapolating the fitted smooth
+    curve rather than reading off a specific data point.
+    </p>
+    <p>
+    <strong>The honest tradeoff.</strong> The EVT estimate is <em>smoother and more stable</em> than the
+    single-worst-observation empirical number — it's built from the pattern across 50 tail observations
+    rather than the identity of one or two, so it doesn't swing wildly if your single worst day happens
+    to fall out of the sample. But it is <strong>not more "true."</strong> It is a model-based
+    extrapolation, conditional entirely on the assumption that the GPD shape fitted from the 90th–99th
+    percentile region continues to describe the distribution's behavior all the way out to the
+    1-in-2,000-day level — a region you have, by construction, never actually observed. If the real
+    world has a structural break out there (a circuit breaker, a central bank intervention, a
+    fundamentally different mechanism that only kicks in at true crisis scale), the fitted GPD has no
+    way of knowing that, because nothing in the 90th–99th percentile data could tell it. The honest
+    summary: EVT trades "wildly noisy but assumption-free" for "smooth but conditional on an
+    extrapolation assumption you cannot directly verify at the level you're extrapolating to." Both
+    numbers are worth having, and they should be reported <em>together</em>, with the gap between them
+    itself treated as information about how much you're really relying on the model.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Illustrative — normal fit vs. GPD tail fit on a fat-tailed return histogram</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Schematic histogram of returns with a fat left tail, overlaid with a normal-distribution curve that undershoots the tail and a Generalized Pareto Distribution curve that tracks it closely beyond a threshold u">
+      <line x1="40" y1="250" x2="626" y2="250" style="stroke:var(--border);stroke-width:1"></line>
+      <rect x="40"  y="242" width="28" height="8"   style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="71"  y="236" width="28" height="14"  style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="102" y="228" width="28" height="22"  style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="133" y="218" width="28" height="32"  style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="164" y="204" width="28" height="46"  style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="195" y="188" width="28" height="62"  style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="226" y="165" width="28" height="85"  style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="257" y="120" width="28" height="130" style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="288" y="65"  width="28" height="185" style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="319" y="40"  width="28" height="210" style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="350" y="65"  width="28" height="185" style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="381" y="123" width="28" height="127" style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="412" y="182" width="28" height="68"  style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="443" y="222" width="28" height="28"  style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="474" y="241" width="28" height="9"   style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="505" y="242" width="28" height="8"   style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="536" y="244" width="28" height="6"   style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="567" y="246" width="28" height="4"   style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="598" y="247" width="28" height="3"   style="fill:var(--s3);stroke:var(--border)"></rect>
+      <line id="evt-threshold-line" x1="257" y1="18" x2="257" y2="250" style="stroke:var(--amber);stroke-width:1.5;stroke-dasharray:3,3"></line>
+      <text id="evt-threshold-label" x="262" y="30" style="font:10px 'DM Mono',monospace;fill:var(--amber)">threshold u</text>
+      <path d="M 54,249 C 59.17,249 74.67,249.17 85,249 C 95.33,248.83 105.67,248.33 116,248 C 126.33,247.67 136.67,248.33 147,247 C 157.33,245.67 167.67,244.33 178,240 C 188.33,235.67 198.67,230.83 209,221 C 219.33,211.17 229.67,197.5 240,181 C 250.33,164.5 260.67,141.5 271,122 C 281.33,102.5 291.67,77.67 302,64 C 312.33,50.33 322.67,40 333,40 C 343.33,40 353.67,50.33 364,64 C 374.33,77.67 384.67,102.5 395,122 C 405.33,141.5 415.67,164.5 426,181 C 436.33,197.5 446.67,211.17 457,221 C 467.33,230.83 477.67,235.67 488,240 C 498.33,244.33 508.67,245.67 519,247 C 529.33,248.33 539.67,247.67 550,248 C 560.33,248.33 570.67,248.83 581,249 C 591.33,249.17 606.83,249 612,249" style="fill:none;stroke:var(--text3);stroke-width:2;stroke-dasharray:4,3"></path>
+      <path id="evt-gpd-curve" d="M 54,243 C 59.17,242.17 74.67,240.17 85,238 C 95.33,235.83 105.67,233 116,230 C 126.33,227 136.67,224 147,220 C 157.33,216 167.67,211 178,206 C 188.33,201 198.67,196.5 209,190 C 219.33,183.5 232,175 240,167 C 248,159 254.17,146.17 257,142" style="fill:none;stroke:var(--red);stroke-width:2.5"></path>
+      <text x="40" y="270" style="font:10px 'DM Mono',monospace;fill:var(--text3)">← larger losses</text>
+      <text x="626" y="270" text-anchor="end" style="font:10px 'DM Mono',monospace;fill:var(--text3)">larger gains →</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head">
+          <span>Threshold u (percentile)</span>
+          <span class="tl-live" id="evt-u-val">90th percentile</span>
+        </div>
+        <input type="range" id="evt-u-slider" min="80" max="98" step="1" value="90">
+        <div class="tl-hint">Higher threshold = fewer exceedances feed the GPD fit (more noise, but a purer tail) · lower threshold = more data (smoother fit, but risks contaminating the tail with 'ordinary' observations).</div>
+      </div>
+    </div>
+    <div class="tl-legend">
+      <span><i style="background:var(--s3);border:1px solid var(--border)"></i>Return histogram</span>
+      <span><i style="background:var(--text3)"></i>Normal distribution fit</span>
+      <span><i style="background:var(--red)"></i>GPD tail fit (beyond u)</span>
+    </div>
+    <div class="tl-chart-caption">
+    Schematic, not fitted to real data. Near the center, the thin dashed normal-distribution curve
+    tracks the histogram reasonably well — but out in the left tail (large losses), it drops toward
+    zero much faster than the bars actually do, badly underestimating how much probability mass sits
+    out there. The red curve is a Generalized Pareto Distribution fitted <em>only</em> to the
+    exceedances beyond the threshold \(u\) (amber dashed line) — restricting the fit to just that
+    region lets it track the fat tail far more closely than the normal curve does, which is the whole
+    point of peaks-over-threshold.
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    var PEAK_X = 319;      // x of the tallest bar (bin containing the histogram mode)
+    var EDGE_X = 54;        // fixed far-left extent of the drawn tail curve (matches the static chart)
+    var BASELINE_Y = 250;   // x-axis
+    var H_MAX = 210;        // height (px) of the tallest bar, used to scale the curve's envelope
+    var K_DECAY = 0.0107254; // decay rate, fit so the curve passes through the default u=90 anchor
+    var D0 = 10.9058, LAMBDA = 0.1737898; // threshold-position mapping constants (fit so p=90 -> x=257)
+    var NUM_SAMPLES = 24;
+
+    // Original static path (p=90 / u at x=257) — used verbatim so the default render is pixel-exact.
+    var DEFAULT_CURVE_D = "M 54,243 C 59.17,242.17 74.67,240.17 85,238 C 95.33,235.83 105.67,233 116,230 C 126.33,227 136.67,224 147,220 C 157.33,216 167.67,211 178,206 C 188.33,201 198.67,196.5 209,190 C 219.33,183.5 232,175 240,167 C 248,159 254.17,146.17 257,142";
+
+    var slider = document.getElementById('evt-u-slider');
+    var uVal = document.getElementById('evt-u-val');
+    var thresholdLine = document.getElementById('evt-threshold-line');
+    var thresholdLabel = document.getElementById('evt-threshold-label');
+    var gpdCurve = document.getElementById('evt-gpd-curve');
+
+    function ordinalSuffix(n) {
+      var d = n % 10;
+      if (d === 1) return 'st';
+      if (d === 2) return 'nd';
+      if (d === 3) return 'rd';
+      return 'th';
+    }
+
+    // Maps percentile (80-98) to an x-position on the LEFT/loss side of the histogram.
+    // Higher percentile = more extreme loss = further left (smaller x, deeper into the tail),
+    // matching this chart's "← larger losses" / "larger gains →" axis labels. Exponential so the
+    // threshold accelerates toward the sparse left edge near the top of the range, the way a
+    // heavy-tailed quantile function does — and it lands exactly on x=257 at p=90 by construction.
+    function thresholdX(p) {
+      var d = D0 * Math.exp(LAMBDA * (p - 80));
+      return PEAK_X - d;
+    }
+
+    // Height (px above baseline) of the smoothed tail-fit envelope at a given x — same exponential
+    // "family" as the threshold mapping above, just re-anchored so it sweeps up toward the peak.
+    function envelopeHeight(x) {
+      return H_MAX * Math.exp(-K_DECAY * (PEAK_X - x));
+    }
+
+    function buildCurvePath(toX) {
+      var pts = [];
+      for (var i = 0; i < NUM_SAMPLES; i++) {
+        var x = EDGE_X + (toX - EDGE_X) * (i / (NUM_SAMPLES - 1));
+        var y = BASELINE_Y - envelopeHeight(x);
+        pts.push((i === 0 ? 'M ' : 'L ') + x.toFixed(1) + ',' + y.toFixed(1));
+      }
+      return pts.join(' ');
+    }
+
+    function update() {
+      var p = parseInt(slider.value, 10);
+      uVal.textContent = p + ordinalSuffix(p) + ' percentile';
+
+      var tx = thresholdX(p);
+      thresholdLine.setAttribute('x1', tx.toFixed(1));
+      thresholdLine.setAttribute('x2', tx.toFixed(1));
+      thresholdLabel.setAttribute('x', (tx + 5).toFixed(1));
+
+      // At the default (u=90th), reuse the original hand-tuned path exactly so the chart matches
+      // the file's static default pixel-for-pixel; every other threshold redraws the same
+      // exponential-envelope curve family, just clipped between the fixed left edge and the new u.
+      gpdCurve.setAttribute('d', p === 90 ? DEFAULT_CURVE_D : buildCurvePath(tx));
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+  </script>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+  EVT shows up in a fairly specific, disciplined set of roles in real risk management — it is a
+  specialist tool for a specific job, not a general-purpose replacement for empirical statistics:
+  </p>
+  <ul>
+    <li>
+    <strong>Regulatory and internal tail-capital calculations.</strong> Insurers (where EVT has some of
+    its deepest roots — modeling catastrophic claims) and banks use POT/GPD fits to set capital reserves
+    against extreme, rarely-observed loss scenarios, precisely because regulators require an answer at
+    confidence levels (99.5%+, sometimes 99.9%+ for insurance solvency regimes) that raw historical data
+    cannot support directly.
+    </li>
+    <li>
+    <strong>Threshold selection is itself a live judgment call, not a solved problem.</strong> Set \(u\)
+    too low and you violate the theorem's premise (the GPD approximation is only asymptotically valid
+    for a <em>sufficiently high</em> threshold, and low-threshold exceedances still carry "bulk of the
+    distribution" behavior that biases the fit); set it too high and you're back to having too few
+    exceedances to fit reliably. Practitioners typically fit across a range of candidate thresholds and
+    look for a stretch where the fitted \(\xi\) and \(\beta\) stay roughly stable — a "plateau" in
+    parameter estimates as a function of threshold — as the practical sign that the threshold is high
+    enough for the theorem's approximation to have kicked in, but not so high that too little data
+    remains.
+    </li>
+    <li>
+    <strong>Stress testing and scenario design, alongside — not instead of — historical scenarios.</strong>
+    EVT-fitted tails are commonly used to generate "what would a 1-in-N-year loss plausibly look like"
+    scenarios that complement, rather than replace, actual historical stress events (2008, 2020, a
+    specific flash crash) — the fitted number and the realized worst historical case are triangulated
+    against each other, not treated as substitutes.
+    </li>
+    <li>
+    <strong>Never treated as a single point estimate with false precision.</strong> Serious practitioners
+    report EVT-based extreme quantiles with confidence intervals around \(\xi\) and the resulting VaR/
+    CVaR (these can be wide, given how few data points anchor the fit), and routinely check sensitivity
+    to threshold choice, estimation window, and even which parametric family was assumed — treating the
+    headline number as one point in a range of plausible extrapolations, not a fact.
+    </li>
+  </ul>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>The empirical half is already a Tier-1 brick; the EVT half is a described-not-built next layer</h3>
+    <p>
+    <code>js/metricsCore.js</code> already has exactly the honest, sample-bound version of this lesson's
+    core question, built 2026-07-21 per <code>CLAUDE.md</code>'s output-analysis discipline
+    ("report distributional shape, not just Sharpe"). <code>skewness(xs)</code> and
+    <code>excessKurtosis(xs)</code> compute the sample skew and excess kurtosis of a pnl series — cheap
+    diagnostics that catch a fat or asymmetric tail a lone Sharpe ratio hides. <code>histVaR(xs, p)</code>
+    and <code>histCVaR(xs, p)</code> are, precisely, the "plain historical method" section of this
+    lesson: <code>histVaR</code> takes the \((1-p)\) empirical quantile of the series (via linear-
+    interpolated sample quantiles — the standard type-7/numpy-default method, no distributional
+    assumption at all), and <code>histCVaR</code> averages every observation at or beyond that
+    quantile — exactly the VaR and CVaR definitions given above, computed the fully honest, assumption-
+    free way. <code>summarizeTrades</code> wires these into every performance card as <code>skew</code>,
+    <code>excessKurt</code>, <code>var95</code>, <code>cvar95</code>, and — worth repeating from
+    <code>CLAUDE.md</code> because it's an easy thing to misread — these are <strong>per-trade</strong>
+    tail statistics computed on a per-trade pnl series, not portfolio VaR over a fixed time horizon; the
+    two are related but not interchangeable, and nothing in this repo currently claims otherwise.
+    </p>
+    <p>
+    The GPD-fitting, peaks-over-threshold layer this lesson covers is genuinely the <strong>next rung up
+    the same ladder</strong> — a natural extension if this repo ever needs to answer "what does a
+    worse-than-anything-I've-seen-yet drawdown plausibly look like," which <code>histVaR</code>/
+    <code>histCVaR</code> structurally cannot answer once you ask for a quantile beyond what the sample
+    itself supports (exactly the "2.5th-worst observation" problem in the worked example above). But it
+    is important to say plainly: <strong>this is not built here, and building it right now would not be
+    a good idea.</strong> Most strategies in this repo have well under 1,000 closed trades — several
+    have well under 100. Fitting a GPD needs a reasonable number of tail exceedances to be remotely
+    stable (the worked example used 50, itself on the low side of common practice), and a strategy with,
+    say, 150 trades might offer 10–15 exceedances above a sensible threshold — nowhere near enough to
+    trust a fitted \(\xi\) at all, let alone extrapolate it out to a rarer quantile than the sample can
+    even weakly support. Fitting a GPD to a sample that small would trade a data-point problem for a
+    tinier, harder-to-detect version of the same data-point problem, dressed up in more sophisticated
+    machinery — precisely the kind of overreach the pitfalls section below and this project's honest-
+    teammate contract both warn against. The correct read of this lesson for this repo, today, is: the
+    empirical version already built is the right tool for the trade-count this repo actually has: know
+    the theory exists, know exactly what it would extend, and don't reach for it until the sample sizes
+    justify it.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Ways EVT gets over-trusted or misapplied</h3>
+    <ul>
+      <li>
+      <strong>Forgetting the extrapolation is a modeling assumption, not a measurement.</strong> A
+      fitted GPD tail is a statement of the form "if the exceedance pattern observed near the threshold
+      continues in the same shape further out, then the extrapolated quantile is X." That "if" is doing
+      real work and is fundamentally unverifiable at the exact quantile you're extrapolating to — by
+      definition, you have no data there to check against. Presenting an EVT-derived 1-in-10,000-day
+      number with the same confidence as an empirical 1-in-20-day number (which you can actually check
+      against dozens of realized observations) conflates two very different epistemic situations.
+      </li>
+      <li>
+      <strong>Fitting a GPD on too small a tail sample and trusting \(\xi\) anyway.</strong> As the repo
+      box above makes concrete, a handful of exceedances produces a fitted shape parameter with wide,
+      often-unreported uncertainty. A small change in which observations happen to sit above the
+      threshold can swing \(\xi\) from "moderately heavy" to "extremely heavy" tail behavior. Always ask
+      how many exceedances the fit is actually built from before trusting the headline number.
+      </li>
+      <li>
+      <strong>Threshold instability treated as a footnote instead of a diagnostic.</strong> If the fitted
+      \(\xi\) and \(\beta\) change substantially as you nudge the threshold \(u\) up or down, that
+      instability is itself the most important piece of information the exercise produced — it's telling
+      you the "sufficiently high threshold" condition the underlying theorem needs may not yet hold, or
+      that the tail genuinely isn't well-described by a single GPD across that range. Reporting only the
+      number from one threshold choice, without the stability check, hides the exact uncertainty EVT is
+      supposed to be honest about.
+      </li>
+      <li>
+      <strong>Assuming i.i.d. when returns cluster.</strong> The classical POT/GPD machinery assumes
+      exceedances behave like independent draws. Financial returns violate this routinely — volatility
+      clusters (the GARCH lesson's core point), so extreme days tend to arrive in clumps around the same
+      macro event rather than being scattered independently through time. Extensions exist (declustering
+      the exceedances, or explicitly modeling time-varying tail behavior), but a naive i.i.d. GPD fit on
+      raw daily data quietly assumes away exactly the clustering this project's own volatility-regime
+      work says is real.
+      </li>
+      <li>
+      <strong>Using EVT to launder an in-sample-only tail number into something that sounds validated.</strong>
+      Per this project's own working agreement, a fitted model number is not evidence of anything until
+      it's checked against what actually happens next — an EVT tail estimate is no exception. A GPD fit
+      that hasn't been checked against subsequent realized extremes (to whatever extent that's even
+      possible, given how rare they are) is a hypothesis about the tail's shape, not a validated fact
+      about it — the same in-sample-versus-OOS discipline this repo applies everywhere else applies
+      here too, even though "OOS-testing a tail estimate" is inherently slow and data-hungry by nature.
+      </li>
+    </ul>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why can't you reliably estimate a 1-in-2,000-day VaR from two years (about 500 days) of daily data using the plain historical (empirical quantile) method?</summary>
+    <div class="tl-answer">
+    A 1-in-2,000-day event happens, on average, about once every 8 years. In a 500-day (roughly 2-year)
+    sample you'd expect to see well under one such event on average — the empirical quantile formula is
+    effectively asking for a data point past the edge of what the sample contains. Even the much milder
+    1-in-200-day (99.5%) quantile is only supported by about 2.5 observations in a 500-day sample,
+    meaning the "estimate" is really just an interpolation between your single worst and second-worst
+    historical day — a number driven by one or two data points, not a stable statistical pattern.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What does a positive Generalized Pareto shape parameter (\(\xi>0\)) tell you about the tail, and how is that different from \(\xi<0\)?</summary>
+    <div class="tl-answer">
+    \(\xi>0\) means a genuinely heavy, Pareto-type tail: the probability of exceeding a given loss level
+    decays only polynomially as that level grows, not exponentially — extreme outcomes stay meaningfully
+    possible far out, and once \(\xi \ge 0.5\) the distribution doesn't even have a finite variance.
+    \(\xi<0\) means the opposite qualitative behavior: a <em>bounded</em> tail with a hard finite upper
+    limit on how large an exceedance can get, no matter how much data you collect — a shape financial
+    losses have no strong structural reason to exhibit, unlike some physically capped quantities.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why is CVaR (Expected Shortfall) considered a "coherent" risk measure in a way plain VaR is not?</summary>
+    <div class="tl-answer">
+    VaR only marks a threshold — the loss level exceeded with probability \(1-p\) — and says nothing
+    about how bad things get once you're past it; two distributions with identical VaR can have very
+    different behavior beyond that point (one barely exceeds it, another runs far past it). CVaR is the
+    average loss <em>given</em> you're already beyond VaR, so it captures the shape of the tail, not just
+    its starting point. Technically, VaR can fail subadditivity (combining two positions can, in
+    constructed examples, make VaR look worse even when each position was individually fine), which
+    violates one of the properties a coherent risk measure must satisfy; CVaR, as an average over the
+    whole tail, doesn't have this failure mode — which is part of why post-2008 banking regulation moved
+    its standard tail-risk measure toward Expected Shortfall.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What is the peaks-over-threshold (POT) method doing, conceptually, and what theorem justifies fitting a GPD to the result?</summary>
+    <div class="tl-answer">
+    POT picks a high threshold \(u\), discards everything below it, and looks only at how far the
+    remaining observations exceed \(u\) (the exceedances \(Y=X-u\)). The Balkema-de Haan-Pickands
+    theorem (1974/1975) says that, as the threshold is pushed high enough, the distribution of these
+    exceedances converges to a Generalized Pareto Distribution essentially regardless of what
+    distribution the original data came from — the POT-specific counterpart to the Fisher-Tippett-
+    Gnedenko theorem for block maxima. That general theorem is what licenses fitting a single GPD family
+    to the tail rather than needing to know or assume the shape of the whole underlying distribution.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In the worked example, why is the EVT-based estimate described as "smoother but not more true" than the empirical estimate?</summary>
+    <div class="tl-answer">
+    The EVT estimate is smoother because it's built from a pattern fitted across many tail exceedances
+    (e.g. 50) rather than read off one or two extreme data points, so it's less sensitive to exactly
+    which observations happened to land in the sample. But it is not more "true" because it is a model-
+    based extrapolation: it assumes the GPD shape fitted from the observed exceedances (say, the 90th–
+    99th percentile region) continues to hold all the way out to a quantile you've never actually
+    observed (e.g. 1-in-2,000-day). If reality has a structural break out there that the observed region
+    couldn't reveal, the fitted tail has no way of knowing — the smoothness comes from a genuine
+    assumption, not from additional evidence.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why would fitting a GPD to most of this repo's actual strategy trade logs (often well under 1,000 trades, sometimes well under 100) be a low-power, easily-overfit exercise right now?</summary>
+    <div class="tl-answer">
+    A GPD fit needs a reasonable number of exceedances above the chosen threshold to be even weakly
+    stable — the worked example used 50, already on the low end of typical practice. A strategy with a
+    few hundred trades might offer only a handful of exceedances above a sensible threshold, nowhere
+    near enough to trust the fitted shape parameter \(\xi\), let alone extrapolate it to a rarer quantile
+    than the sample can support. Fitting EVT machinery on that little data doesn't solve the small-sample
+    problem the empirical method already has — it just hides it behind more sophisticated-looking math,
+    which is precisely why this repo currently uses the honest empirical histVaR/histCVaR rather than a
+    GPD fit.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Ronald A. Fisher and Leonard H. C. Tippett, "Limiting Forms of the Frequency Distribution of the Largest or Smallest Member of a Sample," <em>Proceedings of the Cambridge Philosophical Society</em>, 1928 — the original statement of the extreme-value limiting shapes.</li>
+    <li>Boris V. Gnedenko, "Sur la distribution limite du terme maximum d'une série aléatoire," <em>Annals of Mathematics</em>, 1943 — the rigorous proof completing what is now called the Fisher-Tippett-Gnedenko theorem.</li>
+    <li>A. A. Balkema and Laurens de Haan, "Residual Life Time at Great Age," <em>Annals of Probability</em>, 1974, and James Pickands III, "Statistical Inference Using Extreme Order Statistics," <em>Annals of Statistics</em>, 1975 — the two independent papers establishing that threshold exceedances converge to the Generalized Pareto Distribution, the theoretical basis of the peaks-over-threshold method.</li>
+    <li>Paul Embrechts, Claudia Klüppelberg, and Thomas Mikosch, <em>Modelling Extremal Events for Insurance and Finance</em>, Springer, 1997 — the standard, comprehensive EVT-for-risk textbook; the reference practitioners reach for once they need to actually implement any of this.</li>
+  </ul>
+
+  <h2>You've finished the Theory Lab curriculum</h2>
+  <div class="tl-callout">
+  That's fourteen lessons — Efficient Markets to Multiple Testing to Hidden Markov Models to, now, the
+  tail. If there's one thread that should have run through all of them, it's this: theory is the map,
+  not the territory. Every lesson in this series explains <em>why</em> a technique might matter and what
+  it would cost to get wrong — none of it, on its own, is evidence that any specific idea produces edge
+  in this specific repo, on this specific data, after real costs. That question only gets answered the
+  way <code>CLAUDE.md</code>'s Lego Principle 5 insists on: a true out-of-sample split, realistic fills,
+  real costs, and a non-trivial OOS trade count — not a clean derivation and not an in-sample curve. The
+  honest next move from here isn't to read a fifteenth lesson. It's to open <code>LEGO_MODULES.md</code>,
+  see what bricks already exist so you're not rebuilding one, look through <code>education/</code> for
+  this repo's own course notes and prior write-ups, and pick <em>one</em> idea from this series — GARCH
+  regimes, a Kelly-scaled position size, an OU mean-reversion filter, or the tail diagnostics this lesson
+  just covered — and actually build and test it against the incumbent, OOS. Most ideas here, tested
+  honestly, will come back null or marginal; that's not a failure of the lesson, it's what the test is
+  for. Thanks for working through all fourteen — now go find out which of them, if any, actually earns
+  its place.
+  </div>
+
+  <div class="tl-footer-nav">
+    <a href="kelly-criterion.html">← Kelly Criterion &amp; Position Sizing</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="../hub.html">Back to hub →</a>
+  </div>
+</div>
+</body>
+</html>

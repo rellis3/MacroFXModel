@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Probability &amp; Random Variables — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Math Primer / Probability &amp; Random Variables</div>
+  <div class="tl-kicker">Math Primer · Primer 2 of 4</div>
+  <h1 class="tl-title">Probability &amp; Random Variables</h1>
+  <p class="tl-dek">The formal machinery for talking about uncertain numbers — and the reason so many things you sum or average, in finance or anywhere else, end up looking approximately bell-shaped even when none of the ingredients are.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">PRIMER — foundational background</span>
+    <span>~14 min read</span>
+    <span>Prereqs: Descriptive Statistics &amp; the Normal Distribution</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    The Bayesian Inference lesson in this series talks about "the probability
+    that today is a trend day" and updates that probability as evidence
+    arrives. That lesson never stops to define what a probability formally
+    <em>is</em>, or what it means to attach one to a number that changes from
+    day to day — it assumes you already have the vocabulary. This primer
+    supplies that vocabulary. It is the layer underneath almost everything
+    else in this repo: a return, a P&amp;L outcome, a volatility estimate, and
+    a classifier's flag are all <strong>random variables</strong> — numbers
+    whose value isn't known in advance but whose long-run behavior can still
+    be described precisely. Expectation and variance are the two numbers used
+    constantly to summarize that behavior (they are, respectively, the formal
+    versions of "average" and "spread" you already met informally in the
+    Descriptive Statistics primer). Independence, the Law of Large Numbers,
+    and the Central Limit Theorem are the three ideas that explain
+    <em>why</em> averaging and summing behave the way they do — and why "assume
+    returns are roughly normal, then correct for fat tails" is a defensible
+    starting point rather than an arbitrary one.
+  </p>
+  <p>
+    None of this is trading-specific. It is the same mathematics used in
+    insurance, physics, polling, and quality control. Reading it as general
+    literacy — not as a repo module — is the right frame; the payoff is that
+    every later lesson that says "assume normality" or "the sample mean
+    converges" is now a claim you can evaluate instead of a phrase you take on
+    faith.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A random variable is just a number you don't know yet, attached to rules you do</h3>
+    <p>
+      Before you roll a die, you don't know what number will come up — but you
+      know a lot about it anyway: it will be 1 through 6, each equally likely,
+      and if you rolled it a thousand times the average would land close to
+      3.5. That's the whole idea of a random variable in one sentence: an
+      unknown value with a known set of rules governing how it behaves.
+      Tomorrow's EUR/USD daily return is the same kind of object — you don't
+      know its exact value today, but you can describe its rules (roughly,
+      typically small, centered near zero, occasionally large). Expectation is
+      the formal name for "the average you'd see if you could repeat this many
+      times." Variance is the formal name for "how spread out those repeats
+      typically are around that average." The Law of Large Numbers is the
+      promise that if you actually do repeat something many times, the
+      observed average gets arbitrarily close to the true expectation — it's
+      why a casino is confident in its edge even though any single hand is
+      pure luck. The Central Limit Theorem is a stranger, more useful fact: if
+      you add up (or average) a large number of roughly independent random
+      quantities, the <em>sum itself</em> starts looking normally
+      distributed — bell-shaped — almost no matter what the individual pieces
+      looked like. That is why bell curves show up constantly in nature and
+      in markets: not because every underlying process is secretly normal,
+      but because so many observed quantities are themselves sums of many
+      smaller, mostly-independent pieces.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    Start from the ground up. A <strong>sample space</strong>, written
+    \(\Omega\) (the Greek letter omega), is the set of every possible outcome
+    of some uncertain process — for a single die roll, \(\Omega = \{1, 2, 3,
+    4, 5, 6\}\); for a coin flip, \(\Omega = \{\text{heads}, \text{tails}\}\).
+    An <strong>event</strong> is any subset of the sample space you care about
+    — "the die shows an even number" is the event \(\{2, 4, 6\}\). A
+    <strong>probability</strong> \(P(\cdot)\) is a function that assigns each
+    event a number between 0 and 1, following three rules (Kolmogorov's
+    axioms, discussed in Further Reading): every probability is non-negative,
+    the probability of the whole sample space is exactly 1 (something in
+    \(\Omega\) always happens), and the probability of two non-overlapping
+    events happening is the sum of their individual probabilities. Everything
+    in probability theory, including Bayes' theorem in the previous lesson, is
+    built from those three rules and nothing more.
+  </p>
+  <p>
+    A <strong>random variable</strong>, conventionally written with a capital
+    letter like \(X\), is a function that assigns a number to every outcome in
+    the sample space. For a die roll, the simplest random variable just
+    returns the face value itself: \(X(\omega) = \omega\). But a random
+    variable doesn't have to be that direct — you could define \(X\) as "1 if
+    the die shows an even number, 0 otherwise," or, in a trading context, "the
+    close-to-close percentage return of EUR/USD tomorrow." The random variable
+    is the bridge between an abstract outcome (which day-type occurs, which
+    face lands up) and an actual number you can do arithmetic on (a return, a
+    payoff, a P&amp;L). Random variables come in two flavors that matter for
+    which formulas apply: <strong>discrete</strong> (a countable list of
+    possible values, like a die face or a win/loss outcome) and
+    <strong>continuous</strong> (any value in a range, like a percentage
+    return). This primer works mostly with the discrete case because the
+    arithmetic is transparent; the ideas carry over to the continuous case by
+    replacing sums with integrals.
+  </p>
+  <p>
+    <strong>Expectation.</strong> The expectation (also called the expected
+    value, or the mean of the random variable) is a weighted average of every
+    possible value \(X\) can take, where each value is weighted by how likely
+    it is:
+  </p>
+  <div class="tl-math">\[ E[X] = \sum_i x_i \, P(X = x_i) \]</div>
+  <p>
+    Read the right-hand side literally: for every possible outcome \(x_i\),
+    multiply it by the probability of that outcome, then add up all those
+    products. This is exactly the same operation as a weighted average you'd
+    compute in any other context — a student's weighted GPA, a portfolio's
+    weighted return — except here the "weights" are probabilities instead of
+    credit-hours or position sizes, and they are guaranteed by the axioms
+    above to sum to exactly 1. If every outcome is equally likely (probability
+    \(1/n\) each, for \(n\) outcomes), \(E[X]\) collapses to the ordinary
+    arithmetic mean \(\frac{1}{n}\sum_i x_i\) — the sample mean from the
+    Descriptive Statistics primer is the special, equally-weighted case of
+    this more general definition.
+  </p>
+  <p>
+    <strong>Variance of a random variable.</strong> Expectation tells you the
+    center; variance tells you the spread — specifically, the expected value
+    of the squared distance between \(X\) and its own mean:
+  </p>
+  <div class="tl-math">\[ Var(X) = E\big[(X - E[X])^2\big] \]</div>
+  <p>
+    This is the direct population-level counterpart of the sample-variance
+    formula from the Descriptive Statistics primer — \(\frac{1}{n}\sum_i (x_i
+    - \bar{x})^2\) (or \(\frac{1}{n-1}\sum_i(x_i-\bar x)^2\) with Bessel's
+    correction). The sample formula estimates variance from a finite, observed
+    batch of data by averaging squared deviations from the <em>sample</em>
+    mean \(\bar{x}\); the definition here is the same idea applied to the
+    full, theoretical probability distribution, averaging squared deviations
+    from the <em>true</em> mean \(E[X]\), weighted by probability instead of
+    by \(1/n\). One is what you compute from a dataset; the other is the fact
+    about the underlying random variable that the dataset is trying to
+    estimate. A useful algebraic shortcut, derived by expanding the square,
+    is:
+  </p>
+  <div class="tl-math">\[ Var(X) = E[X^2] - \big(E[X]\big)^2 \]</div>
+  <p>
+    "The expectation of the square, minus the square of the expectation." This
+    is usually the faster way to compute variance by hand, and it's the
+    formula the worked example below uses. As with the Descriptive Statistics
+    primer, the <strong>standard deviation</strong> \(\sigma = \sqrt{Var(X)}\)
+    is the square root of variance, brought back into the original units (a
+    variance of "return-percent squared" isn't directly interpretable; its
+    square root, in return-percent, is).
+  </p>
+  <p>
+    <strong>Independence.</strong> Two events \(A\) and \(B\) are
+    <strong>independent</strong> if knowing one happened tells you nothing
+    about whether the other happened — formally, if:
+  </p>
+  <div class="tl-math">\[ P(A \cap B) = P(A)\,P(B) \]</div>
+  <p>
+    Compare this to the conditional-probability definition from the Bayesian
+    Inference lesson, \(P(A \mid B) = P(A \cap B)/P(B)\). Substitute the
+    independence condition in and you get \(P(A \mid B) = P(A)\) — observing
+    \(B\) leaves your belief about \(A\) completely unchanged, which is the
+    plain-English meaning of "independent." Two successive fair coin flips are
+    independent (the first flip has zero bearing on the second); two
+    consecutive days of market volatility, importantly, generally are
+    <strong>not</strong> — a point the pitfalls section below returns to,
+    because it is exactly where naive use of the ideas on this page breaks
+    down for financial data.
+  </p>
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(\Omega\)</td><td>The <strong>sample space</strong> — the set of every possible outcome of an uncertain process.</td></tr>
+      <tr><td>\(X\)</td><td>A <strong>random variable</strong> — a function assigning a number to each outcome in \(\Omega\).</td></tr>
+      <tr><td>\(x_i\)</td><td>One specific possible value that \(X\) can take (e.g. a die face, 1 through 6).</td></tr>
+      <tr><td>\(P(X = x_i)\)</td><td>The probability that \(X\) takes the specific value \(x_i\).</td></tr>
+      <tr><td>\(E[X]\)</td><td>The <strong>expectation</strong> (expected value / population mean) of \(X\) — a probability-weighted average of its possible values.</td></tr>
+      <tr><td>\(Var(X)\)</td><td>The <strong>variance</strong> of \(X\) — the expected squared distance between \(X\) and \(E[X]\), i.e. its typical spread.</td></tr>
+      <tr><td>\(\sigma = \sqrt{Var(X)}\)</td><td>The <strong>standard deviation</strong> of \(X\) — variance brought back into the original units.</td></tr>
+      <tr><td>\(A \cap B\)</td><td>The event "\(A\) and \(B\) both happen" (set intersection).</td></tr>
+      <tr><td>\(\bar{X}_n\)</td><td>The <strong>sample average</strong> of \(n\) independent draws of \(X\): \(\frac{1}{n}\sum_{i=1}^n X_i\).</td></tr>
+      <tr><td>\(n\)</td><td>The number of independent draws or trials — sample size.</td></tr>
+    </table>
+  </div>
+  <p>
+    <strong>The Law of Large Numbers (LLN).</strong> Suppose you draw \(n\)
+    independent copies of a random variable \(X\) (\(n\) independent die
+    rolls, \(n\) independent trades from the same underlying process) and
+    compute their sample average \(\bar{X}_n = \frac{1}{n}\sum_{i=1}^n X_i\).
+    The Law of Large Numbers states that as \(n\) grows, this sample average
+    converges to the true expectation:
+  </p>
+  <div class="tl-math">\[ \bar{X}_n \xrightarrow{\;n \to \infty\;} E[X] \]</div>
+  <p>
+    In plain words: the more times you repeat an uncertain process and
+    average the results, the closer that observed average gets to the true,
+    theoretical mean — and the gap shrinks reliably, not just optimistically.
+    This is the formal justification for "the house always wins in the long
+    run" and for why a backtest's average trade outcome is meaningful only
+    once it's built from enough trades — a five-trade sample average can sit
+    far from the true expectation; the LLN says nothing about how fast
+    convergence happens at any particular \(n\), only that it happens
+    eventually (a point returned to in the pitfalls section).
+  </p>
+  <p>
+    <strong>The Central Limit Theorem (CLT).</strong> The LLN says the sample
+    average converges to a single number, \(E[X]\). The CLT goes further and
+    describes the <em>shape</em> of the sample average's own distribution
+    along the way. Take \(n\) independent copies of a random variable \(X\)
+    (any distribution — it does not need to be normal, or even close to it —
+    provided it has a finite mean and finite variance), and look at their
+    average \(\bar{X}_n\). As \(n\) grows, the distribution of \(\bar{X}_n\)
+    itself approaches a normal distribution, centered at \(E[X]\) with
+    variance \(Var(X)/n\):
+  </p>
+  <div class="tl-math">\[ \bar{X}_n \;\approx\; \mathcal{N}\!\left(E[X],\; \frac{Var(X)}{n}\right) \quad \text{for large } n \]</div>
+  <p>
+    This is a genuinely surprising claim: the individual \(X_i\) can be
+    lopsided, skewed, bounded, discrete, or shaped nothing like a bell curve
+    — a single die roll is flat, not bell-shaped — and yet the
+    <em>average</em> of many independent copies of it converges toward a bell
+    curve anyway. The chart below makes this concrete with the simplest
+    possible example: a single die roll. Note the variance of the average
+    shrinks as \(1/n\) — averaging more independent draws doesn't just make
+    the shape more normal, it also tightens the spread around the true mean,
+    which is the CLT and the LLN reinforcing each other from two different
+    angles (one converges the center, the other converges the shape and
+    narrows the spread around that center).
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The Central Limit Theorem in action</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three histograms showing distributions of sample averages becoming more normal-shaped as sample size increases">
+      <!-- panel 1: n=1, flat/uniform histogram (single die roll) -->
+      <line x1="0" y1="200" x2="190" y2="200" stroke="var(--border)" stroke-width="1.5"/>
+      <rect x="8"   y="140" width="22" height="60" style="fill:var(--blue)"/>
+      <rect x="38"  y="138" width="22" height="62" style="fill:var(--blue)"/>
+      <rect x="68"  y="142" width="22" height="58" style="fill:var(--blue)"/>
+      <rect x="98"  y="140" width="22" height="60" style="fill:var(--blue)"/>
+      <rect x="128" y="144" width="22" height="56" style="fill:var(--blue)"/>
+      <rect x="158" y="139" width="22" height="61" style="fill:var(--blue)"/>
+      <text x="95" y="222" text-anchor="middle" font-size="12" fill="var(--text3)">n = 1 (one die roll)</text>
+      <text x="95" y="238" text-anchor="middle" font-size="10" fill="var(--text3)">flat — every face equally likely</text>
+
+      <!-- panel 2: n=5, more bell-shaped -->
+      <line x1="225" y1="200" x2="415" y2="200" stroke="var(--border)" stroke-width="1.5"/>
+      <rect x="230" y="188" width="16" height="12" style="fill:var(--blue)"/>
+      <rect x="248" y="168" width="16" height="32" style="fill:var(--blue)"/>
+      <rect x="266" y="138" width="16" height="62" style="fill:var(--blue)"/>
+      <rect x="284" y="112" width="16" height="88" style="fill:var(--blue)"/>
+      <rect x="302" y="100" width="16" height="100" style="fill:var(--blue)"/>
+      <rect x="320" y="112" width="16" height="88" style="fill:var(--blue)"/>
+      <rect x="338" y="138" width="16" height="62" style="fill:var(--blue)"/>
+      <rect x="356" y="168" width="16" height="32" style="fill:var(--blue)"/>
+      <rect x="374" y="188" width="16" height="12" style="fill:var(--blue)"/>
+      <text x="320" y="222" text-anchor="middle" font-size="12" fill="var(--text3)">n = 5 (average of 5 rolls)</text>
+      <text x="320" y="238" text-anchor="middle" font-size="10" fill="var(--text3)">visibly more bell-shaped</text>
+
+      <!-- panel 3: n=30, clearly bell-shaped, tall narrow peak -->
+      <line x1="450" y1="200" x2="640" y2="200" stroke="var(--border)" stroke-width="1.5"/>
+      <rect x="454" y="197" width="12" height="3"  style="fill:var(--blue)"/>
+      <rect x="468" y="190" width="12" height="10" style="fill:var(--blue)"/>
+      <rect x="482" y="172" width="12" height="28" style="fill:var(--blue)"/>
+      <rect x="496" y="140" width="12" height="60" style="fill:var(--blue)"/>
+      <rect x="510" y="100" width="12" height="100" style="fill:var(--blue)"/>
+      <rect x="524" y="66"  width="12" height="134" style="fill:var(--blue)"/>
+      <rect x="538" y="46"  width="12" height="154" style="fill:var(--blue)"/>
+      <rect x="552" y="66"  width="12" height="134" style="fill:var(--blue)"/>
+      <rect x="566" y="100" width="12" height="100" style="fill:var(--blue)"/>
+      <rect x="580" y="140" width="12" height="60" style="fill:var(--blue)"/>
+      <rect x="594" y="172" width="12" height="28" style="fill:var(--blue)"/>
+      <rect x="608" y="190" width="12" height="10" style="fill:var(--blue)"/>
+      <rect x="622" y="197" width="12" height="3"  style="fill:var(--blue)"/>
+      <text x="545" y="222" text-anchor="middle" font-size="12" fill="var(--text3)">n = 30 (average of 30 rolls)</text>
+      <text x="545" y="238" text-anchor="middle" font-size="10" fill="var(--text3)">tall, narrow, clearly bell-shaped</text>
+    </svg>
+    <div class="tl-chart-caption">Schematic, not simulated data. Average one die roll and you get a flat distribution (1 through 6, equally likely). Average 30 independent die rolls and the distribution of that average is already close to normal — this is the Central Limit Theorem, and it's why so many aggregated financial quantities (a day's return summed from many small trades, a portfolio's return summed from many positions) end up looking roughly normal even though no single ingredient is.</div>
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Watch the distribution of the average converge as n grows</div>
+    <svg viewBox="0 0 640 260" id="clt-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Interactive histogram morphing from a flat distribution at n=1 to a narrow bell shape at n=30">
+      <line x1="40" y1="200" x2="594" y2="200" stroke="var(--border)" stroke-width="1.5"/>
+      <rect id="clt-bar-0"  x="50"  y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-1"  x="86"  y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-2"  x="122" y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-3"  x="158" y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-4"  x="194" y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-5"  x="230" y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-6"  x="266" y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-7"  x="302" y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-8"  x="338" y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-9"  x="374" y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-10" x="410" y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-11" x="446" y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-12" x="482" y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-13" x="518" y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-14" x="554" y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <text x="65"  y="216" text-anchor="middle" font-size="11" fill="var(--text3)">1</text>
+      <text x="317" y="216" text-anchor="middle" font-size="11" fill="var(--text3)">3.5</text>
+      <text x="569" y="216" text-anchor="middle" font-size="11" fill="var(--text3)">6</text>
+      <text x="317" y="234" text-anchor="middle" font-size="10" fill="var(--text3)">value of the average of n dice</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Number of dice averaged (n)</span><span class="tl-live" id="clt-n-val">1</span></div>
+        <input type="range" id="clt-n-slider" min="1" max="30" step="1" value="1">
+      </div>
+    </div>
+    <div class="tl-chart-caption">Not a literal Monte Carlo simulation — the bars are a discretized normal approximation, \(\mathcal{N}(3.5,\, \sigma_{die}^2/n)\), using \(\sigma_{die} \approx 1.708\) from the worked example below. As \(n\) grows the spread narrows in proportion to \(1/\sqrt{n}\) while the shape sharpens from the die's near-uniform flatness (\(n=1\)) toward a tall, narrow bell centered on 3.5 (\(n=30\)) — the same convergence pictured schematically in the three static panels above, now continuous.</div>
+    <script>
+      (function(){
+        var SIGMA_DIE = 1.708;
+        var BIN_COUNT = 15;
+        var X_MIN = 1, X_MAX = 6;
+        var BASELINE_Y = 200;
+        var MAX_BAR_H = 150;
+        var MIN_BAR_H = 2;
+
+        function normalPDF(x, mean, sigma) {
+          var z = (x - mean) / sigma;
+          return Math.exp(-0.5 * z * z) / (sigma * Math.sqrt(2 * Math.PI));
+        }
+
+        var binCenters = [];
+        for (var i = 0; i < BIN_COUNT; i++) {
+          binCenters.push(X_MIN + (i + 0.5) * (X_MAX - X_MIN) / BIN_COUNT);
+        }
+
+        // Calibrate the height scale so the n=30 peak (bin 7, centered on 3.5)
+        // fills MAX_BAR_H — this is what makes the histogram visibly grow
+        // taller and narrower (not just narrower) as n increases, matching
+        // how a normal PDF's peak height must rise as its variance shrinks.
+        var sigma30 = SIGMA_DIE / Math.sqrt(30);
+        var peakPdf30 = normalPDF(3.5, 3.5, sigma30);
+        var SCALE = MAX_BAR_H / peakPdf30;
+
+        function updateChart(n) {
+          var sigma = SIGMA_DIE / Math.sqrt(n);
+          for (var i = 0; i < BIN_COUNT; i++) {
+            var pdf = normalPDF(binCenters[i], 3.5, sigma);
+            var h = pdf * SCALE;
+            if (h < MIN_BAR_H) h = MIN_BAR_H;
+            if (h > MAX_BAR_H) h = MAX_BAR_H;
+            var bar = document.getElementById('clt-bar-' + i);
+            bar.setAttribute('height', h.toFixed(2));
+            bar.setAttribute('y', (BASELINE_Y - h).toFixed(2));
+          }
+          document.getElementById('clt-n-val').textContent = n;
+        }
+
+        var slider = document.getElementById('clt-n-slider');
+        slider.addEventListener('input', function() {
+          updateChart(parseInt(slider.value, 10));
+        });
+        updateChart(parseInt(slider.value, 10));
+      })();
+    </script>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>Expectation and variance of a fair six-sided die, computed by hand</h3>
+    <p>
+      Let \(X\) be the outcome of one roll of a fair six-sided die, so
+      \(X \in \{1,2,3,4,5,6\}\), each with probability \(1/6\). By the
+      definition of expectation:
+    </p>
+    <div class="tl-math">\[ E[X] = \frac{1}{6}(1) + \frac{1}{6}(2) + \frac{1}{6}(3) + \frac{1}{6}(4) + \frac{1}{6}(5) + \frac{1}{6}(6) = \frac{1+2+3+4+5+6}{6} = \frac{21}{6} = 3.5 \]</div>
+    <p>
+      The expected value of a single die roll is 3.5 — notice this is not
+      itself a possible outcome of any single roll (you can never actually
+      roll a 3.5), which is a useful reminder that "expectation" means
+      long-run average, not "most likely single result."
+    </p>
+    <p>
+      Now compute the variance using the shortcut formula
+      \(Var(X) = E[X^2] - (E[X])^2\). First, \(E[X^2]\), the expectation of
+      the squared outcome:
+    </p>
+    <div class="tl-math">\[ E[X^2] = \frac{1}{6}(1^2) + \frac{1}{6}(2^2) + \frac{1}{6}(3^2) + \frac{1}{6}(4^2) + \frac{1}{6}(5^2) + \frac{1}{6}(6^2) = \frac{1+4+9+16+25+36}{6} = \frac{91}{6} \approx 15.1667 \]</div>
+    <p>Now subtract \((E[X])^2 = 3.5^2 = 12.25\):</p>
+    <div class="tl-math">\[ Var(X) = \frac{91}{6} - 3.5^2 \approx 15.1667 - 12.25 = 2.9167 \]</div>
+    <p>
+      So \(Var(X) \approx 2.9167\) (in "die-face-squared" units, which is why
+      variance alone is awkward to interpret directly). Taking the square root
+      gives the standard deviation:
+    </p>
+    <div class="tl-math">\[ \sigma = \sqrt{2.9167} \approx 1.71 \]</div>
+    <p>
+      A single die roll has expected value 3.5 and typically deviates from
+      that expected value by about 1.71. This is the exact random variable
+      used in the chart above: the "n = 1" panel is this flat distribution
+      over \(\{1,...,6\}\); the "n = 5" and "n = 30" panels are the
+      distributions of the <em>average</em> of 5 and 30 independent draws of
+      this same \(X\), each of which (by the CLT formula above) has
+      expectation still 3.5 but variance shrinking to \(2.9167/5 \approx
+      0.583\) and \(2.9167/30 \approx 0.097\) respectively — narrower and
+      more normal-shaped as \(n\) grows, exactly as pictured.
+    </p>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    <strong>Insurance and actuarial pricing</strong> is the oldest applied use
+    of expectation: an insurer prices a policy near the expected payout (a
+    probability-weighted average of claim sizes) plus a margin, and relies on
+    the Law of Large Numbers across thousands of independent policyholders to
+    make that average payout highly predictable in aggregate, even though any
+    single policyholder's outcome is not. <strong>Quality control and
+    manufacturing</strong> use the CLT directly: a sample of \(n\) parts is
+    measured, the sample average is assumed approximately normal by the CLT
+    regardless of how any single part's measurement error is distributed, and
+    that normality is what makes standard control-chart thresholds (like
+    "flag anything more than 3 standard deviations from target") statistically
+    meaningful. <strong>Polling and survey statistics</strong> lean on the
+    same fact — a poll's margin of error is a CLT-derived confidence interval
+    around a sample proportion, which is itself an average of many independent
+    0/1 random variables (one per respondent). <strong>Quantitative
+    finance</strong> uses expectation and variance as the literal building
+    blocks of portfolio theory (expected return and variance of return are
+    the two inputs to mean-variance optimization) and leans on the CLT as the
+    justification for treating an aggregated return — a day's return built
+    from many intraday trades, a portfolio's return built from many
+    positions — as approximately normal as a starting assumption, before
+    layering on corrections (fat tails, skew, volatility clustering) that
+    account for where the CLT's assumptions don't fully hold. GARCH models,
+    covered elsewhere in this series, exist specifically because that
+    "approximately normal" starting point needs those corrections.
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>Background literacy, not a specific module</h3>
+    <p>
+      This primer doesn't map onto one file the way a Tier-1 brick does — it's
+      the formal vocabulary that other lessons and modules already assume.
+      Two direct connections are worth being explicit about. First, the
+      <strong>Bayesian Inference</strong> lesson in this series defines
+      \(P(H)\), \(P(E \mid H)\), and the posterior \(P(H \mid E)\) without
+      ever pausing to define what a probability or a random variable formally
+      is — \(H\) and \(E\) are events, and any signal built from real data
+      (a return, a classifier score, a day-type flag) is a random variable in
+      the sense defined above; Bayes' theorem is a rule for combining
+      probabilities of events, and this primer is the object-level layer
+      underneath it. Second, this repo's vol-forecasting and GARCH-family
+      work (documented in <code>js/volBacktestEngine.js</code> and the GARCH
+      lesson) assumes a distribution shape for returns — often approximately
+      normal, or a fatter-tailed alternative like Student's t — as a modeling
+      choice, not an arbitrary one. The CLT is part of why "start from
+      approximately normal" is defensible: a day's return is, informally, an
+      aggregation of many smaller order-flow and price-formation events, and
+      aggregation of many roughly-independent pieces is exactly the setting
+      the CLT describes. It is equally important to state the limit of that
+      justification honestly: the CLT's guarantee depends on independence and
+      finite variance, and daily financial returns visibly violate the
+      independence assumption (volatility clustering — big moves cluster in
+      time, they are not scattered independently), which is precisely why raw
+      normality is a starting point that gets corrected, not a settled fact
+      that gets assumed. This is background literacy for reading those later
+      lessons critically, not a claim that any specific module here needs to
+      change.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where these ideas quietly get misapplied</h3>
+    <p>
+      <strong>Assuming financial returns are independent because the CLT
+      needs independence and you want to use the CLT.</strong> The CLT's
+      guarantee is conditional on its assumptions — roughly independent
+      inputs with finite variance — holding. Daily and intraday financial
+      returns are well documented to exhibit <strong>volatility
+      clustering</strong>: a large move today makes a large move tomorrow more
+      likely, which is a direct violation of independence (this is the entire
+      motivation for GARCH-family models, covered elsewhere in this series).
+      Applying CLT-based normality assumptions to a return series that
+      violates independence doesn't make the math wrong in the abstract — it
+      makes the <em>application</em> wrong, and it breaks down worst exactly
+      where it matters most: during volatility spikes and crisis periods,
+      which is when tail risk is actually being priced.
+    </p>
+    <p>
+      <strong>Confusing "the average of many draws looks normal" with "the
+      underlying process is normal."</strong> The die-roll example above is
+      the clearest possible illustration of the difference: a single die roll
+      is uniformly flat, not remotely bell-shaped, yet the <em>average of
+      many</em> independent die rolls is close to normal. The CLT is a
+      statement about sums and averages, not a statement that the original
+      random variable itself must be, or even resembles, a normal
+      distribution. A single day's return being roughly normal-shaped (if it
+      even is) is a separate empirical question from whether the
+      microstructure events that produced it are individually normal — they
+      almost certainly aren't.
+    </p>
+    <p>
+      <strong>Expecting Law of Large Numbers convergence at a small, fixed
+      \(n\).</strong> The LLN promises the sample average converges to the
+      true expectation <em>as \(n \to \infty\)</em> — it makes no promise
+      about how close \(\bar{X}_n\) is to \(E[X]\) at any specific, finite
+      \(n\) you happen to have. A 20-trade backtest's average return can sit
+      meaningfully far from the strategy's true expected return; treating a
+      small-sample average as if it already equaled the true mean is a direct
+      misreading of what the LLN guarantees. This is the same concern behind
+      this repo's Lego Principle requirement of a "non-trivial OOS trade
+      count (≥30)" before trusting an out-of-sample Sharpe number — 30 is not
+      a magic number that suddenly invokes the LLN or CLT, it's a practical
+      floor meant to keep the sample average from being dominated by a
+      handful of lucky or unlucky trades.
+    </p>
+    <p>
+      <strong>Treating variance as risk without asking whether the
+      distribution is symmetric.</strong> \(Var(X)\) penalizes upside and
+      downside deviations from the mean identically. For a return
+      distribution with meaningful skew — many option payoffs, trend-following
+      strategies with rare large wins, or reversion strategies with rare large
+      losses — the variance can understate the risk that actually matters
+      (the size and likelihood of the bad tail specifically). Skewness and
+      kurtosis, covered in the Descriptive Statistics primer and used directly
+      in this repo's <code>metricsCore.js</code>, exist precisely to capture
+      what variance alone misses.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What is a random variable, formally — and why is "the outcome of a die roll" itself not quite a precise enough answer?</summary>
+    <div class="tl-answer">
+      A random variable is a function that assigns a numeric value to every
+      outcome in a sample space. "The outcome of a die roll" describes the
+      sample space \(\Omega = \{1,...,6\}\) — the set of possible outcomes —
+      but a random variable is the mapping from those outcomes to numbers you
+      can compute with. For a plain die roll the mapping is the identity
+      function (the outcome and the number happen to be the same), but a
+      random variable can just as easily be a derived quantity, like "1 if the
+      roll is even, 0 otherwise," or "tomorrow's percentage return of
+      EUR/USD" — the underlying outcome (which physical event occurs) and the
+      random variable (the number you assign to it) are conceptually distinct
+      even when, in the simplest examples, they look identical.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why does the Central Limit Theorem matter even if you never explicitly compute a sum of random variables?</summary>
+    <div class="tl-answer">
+      Because many quantities you observe directly — a day's return, a
+      portfolio's P&amp;L, a sample average in a backtest report — are
+      themselves, implicitly, sums or averages of many smaller, roughly
+      independent contributions (individual trades, individual positions,
+      individual price ticks), even though you never see or compute those
+      smaller pieces separately. The CLT is the reason those aggregated
+      quantities tend to look approximately normal on inspection, without
+      anyone having deliberately summed anything — the aggregation already
+      happened upstream, in how the quantity was generated.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What's a concrete example of financial data violating the CLT's independence assumption?</summary>
+    <div class="tl-answer">
+      Volatility clustering: large price moves tend to be followed by more
+      large price moves, and calm periods tend to be followed by more calm
+      periods, rather than each day's volatility being an independent draw
+      unrelated to the previous day's. This is a direct violation of the
+      independence the CLT requires between the pieces being aggregated, and
+      it's the empirical fact that GARCH-family models are built specifically
+      to capture — modeling today's variance as depending on recent variance
+      and recent shocks, rather than assuming each day's return is an
+      independent draw from a fixed, unchanging distribution.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What's the difference between the Law of Large Numbers and the Central Limit Theorem — what does each one actually promise?</summary>
+    <div class="tl-answer">
+      The Law of Large Numbers promises that a sample average converges to a
+      single number, the true expectation \(E[X]\), as the sample size grows
+      — it's a statement about where the average ends up. The Central Limit
+      Theorem promises something about the shape of the sample average's
+      distribution along the way — that it approaches a normal distribution,
+      centered at \(E[X]\) with variance \(Var(X)/n\), regardless of the
+      original distribution's shape. The LLN tells you convergence happens;
+      the CLT tells you approximately what the remaining uncertainty around
+      that convergence looks like at a given, finite sample size. Neither
+      promises anything about how close you are at any one specific, small
+      \(n\) — both are statements about the limit as \(n\) grows.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In the fair-die worked example, why is Var(X) computed as E[X²] − (E[X])² instead of directly from E[(X − E[X])²]?</summary>
+    <div class="tl-answer">
+      Both formulas are mathematically identical — E[X²] − (E[X])² is derived
+      by algebraically expanding the square in the definition
+      E[(X − E[X])²] and simplifying, so they always give the same answer.
+      The shortcut is used because it's usually faster to compute by hand or
+      in code: you only need two separate expectations (of X and of X²)
+      rather than first computing E[X], then re-looping through every value
+      to compute the squared deviation from it. For the die example, this
+      meant computing E[X²] = 91/6 once, then a single subtraction, rather
+      than computing (1−3.5)², (2−3.5)², and so on individually.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Andrey Kolmogorov, <em>Grundbegriffe der Wahrscheinlichkeitsrechnung</em> ("Foundations of the Theory of Probability"), 1933 — the axiomatic foundation (the three rules referenced above) that put probability theory on rigorous mathematical footing for the first time.</li>
+    <li>Jacob Bernoulli, <em>Ars Conjectandi</em> ("The Art of Conjecturing"), published posthumously 1713 — contains the first proof of a Law of Large Numbers (Bernoulli's "Golden Theorem"), establishing that observed frequencies converge to true probabilities as trials increase.</li>
+    <li>Pierre-Simon Laplace, <em>Théorie analytique des probabilités</em>, 1812, and Aleksandr Lyapunov's rigorous convergence conditions (1901) — the historical development of the Central Limit Theorem from Laplace's early, more restrictive versions to the general conditions used today.</li>
+    <li>Sheldon Ross, <em>A First Course in Probability</em>, 10th ed., Pearson, 2019 — the standard university textbook covering sample spaces, random variables, expectation, variance, and both limit theorems in far more depth and rigor than this primer.</li>
+    <li>Nassim Nicholas Taleb, <em>The Black Swan</em>, Random House, 2007 — an accessible, deliberately provocative critique of over-relying on CLT-flavored normality assumptions in finance, useful as a counterweight to reading this primer as "returns are basically normal, done."</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="primer-stats-normal.html">← Descriptive Statistics &amp; the Normal Distribution</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="primer-correlation-regression.html">Correlation &amp; Linear Regression →</a>
+  </div>
+</div>
+</body>
+</html>

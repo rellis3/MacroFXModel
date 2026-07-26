@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/theory.css">
+</head>
+<body>
+<div id="page">
+
+  <div class="tl-crumb"><a href="../index.html">MacroFX Dashboard</a> / Theory Lab</div>
+
+  <div class="tl-hub-hero">
+    <div class="tl-kicker">Education · New Section</div>
+    <h1>Theory Lab</h1>
+    <p>A from-scratch, math-explained curriculum in the ideas behind quantitative FX/macro research — not a course transcript, but a teaching series written to sit alongside the existing <a href="../education/">course notes</a> in this repo. Every lesson explains a concept the way you'd want it explained if you'd never seen the notation before: plain-English intuition first, then the math step by step with every symbol defined, then a worked numeric example, then how the idea connects to what's actually built in MacroFXModel.</p>
+    <div class="tl-callout">
+      <strong>How to read the status badge on each lesson.</strong> <span class="tl-status concept" style="margin-right:6px">CONCEPT</span> means the idea is explained here but not built or tested anywhere in this repo — treat it as background knowledge, not a claim. <span class="tl-status candidate" style="margin-right:6px">ALREADY IN USE</span> means this repo has a real, running brick that this lesson is the math behind (e.g. the Hurst feature in <code>rangeBiasCore.js</code>, or the GARCH estimator in <code>volBacktestEngine.js</code>). Nothing on this page is a trading signal, and nothing here has cleared this repo's out-of-sample bar just by being explained well — see <a href="../CLAUDE.md">CLAUDE.md</a>'s Lego Principle #5 and the "how we talk about results" discipline. A method is not a strategy until it's tested.
+    </div>
+  </div>
+
+  <div class="tl-cat primer">
+    <h2>0 · Math Primer</h2>
+    <div class="tl-cat-sub">New to statistics? Start here — four short lessons covering everything the other 14 lessons assume you already know: standard deviation, probability, correlation/regression, and returns math.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="lessons/primer-stats-normal.html">
+        <div class="tl-card-num">Primer 1</div>
+        <h3>Descriptive Statistics &amp; the Normal Distribution</h3>
+        <p>Mean, variance, standard deviation — and why it's not just "average distance from the mean" — z-scores, and the 68/95/99.7 rule.</p>
+      </a>
+      <a class="tl-card" href="lessons/primer-probability.html">
+        <div class="tl-card-num">Primer 2</div>
+        <h3>Probability &amp; Random Variables</h3>
+        <p>Expectation, independence, and the Central Limit Theorem — why so much in finance ends up looking roughly normal.</p>
+      </a>
+      <a class="tl-card" href="lessons/primer-correlation-regression.html">
+        <div class="tl-card-num">Primer 3</div>
+        <h3>Correlation &amp; Linear Regression</h3>
+        <p>Covariance, r, OLS, R² — the toolkit Cointegration, PCA and the Kalman Filter lessons all lean on.</p>
+      </a>
+      <a class="tl-card" href="lessons/primer-returns-compounding.html">
+        <div class="tl-card-num">Primer 4</div>
+        <h3>Returns, Log-Returns &amp; Compounding</h3>
+        <p>Simple vs. log returns, volatility drag, and why volatility scales with √time — the exact scaling this repo's own vol math depends on.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>1 · Foundations &amp; Epistemics</h2>
+    <div class="tl-cat-sub">Start here. How to think about evidence, priors, and the null hypothesis before touching any market-specific math.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="lessons/emh.html">
+        <div class="tl-card-num">Lesson 1</div>
+        <h3>The Efficient Market Hypothesis</h3>
+        <p>The null hypothesis every trading idea has to beat — weak/semi-strong/strong forms, the random walk model, and why EMH can never be tested in isolation.</p>
+      </a>
+      <a class="tl-card" href="lessons/bayesian-inference.html">
+        <div class="tl-card-num">Lesson 2</div>
+        <h3>Bayesian Inference &amp; Updating</h3>
+        <p>Prior, likelihood, posterior — derived from scratch, plus the base-rate fallacy that makes an "80% accurate" classifier much less useful than it sounds.</p>
+      </a>
+      <a class="tl-card" href="lessons/multiple-testing.html">
+        <div class="tl-card-num">Lesson 3</div>
+        <h3>Multiple Testing &amp; the Look-Elsewhere Effect</h3>
+        <p>Why testing 70 pair/regime slices at once makes finding a few "winners" almost guaranteed by chance alone — Bonferroni, FDR, and the math behind this repo's own house rule.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>2 · Time Series &amp; Regimes</h2>
+    <div class="tl-cat-sub">The math of how a single price series behaves over time — mean reversion, volatility clustering, and inferring an unobserved regime.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="lessons/ou-mean-reversion.html">
+        <div class="tl-card-num">Lesson 4</div>
+        <h3>Ornstein-Uhlenbeck &amp; Mean Reversion</h3>
+        <p>The stochastic differential equation behind "reversion," and how to convert a fitted AR(1) coefficient into an actual half-life in days.</p>
+      </a>
+      <a class="tl-card" href="lessons/hurst-variance-ratio.html">
+        <div class="tl-card-num">Lesson 5</div>
+        <h3>Hurst Exponent &amp; Variance Ratio Test</h3>
+        <p>Rescaled-range analysis and the variance-ratio test — the math behind a feature already computed live in <code>js/rangeBiasCore.js</code>.</p>
+      </a>
+      <a class="tl-card" href="lessons/garch-volatility.html">
+        <div class="tl-card-num">Lesson 6</div>
+        <h3>GARCH &amp; Volatility Clustering</h3>
+        <p>Why big moves cluster, ARCH → GARCH(1,1), and the math behind one of the three sigma estimators <code>js/volBacktestEngine.js</code> already runs.</p>
+      </a>
+      <a class="tl-card" href="lessons/hidden-markov-models.html">
+        <div class="tl-card-num">Lesson 7</div>
+        <h3>Hidden Markov Models &amp; Regime Detection</h3>
+        <p>Transition matrices, emission distributions, and inferring a latent regime — a statistically principled alternative to a hand-set threshold rule.</p>
+      </a>
+      <a class="tl-card" href="lessons/kalman-filter.html">
+        <div class="tl-card-num">Lesson 8</div>
+        <h3>Kalman Filter &amp; Adaptive Relationships</h3>
+        <p>Predict/update recursion and the Kalman gain — letting a relationship (like a hedge ratio) drift smoothly instead of assuming it's fixed.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>3 · Cross-Asset &amp; Structure</h2>
+    <div class="tl-cat-sub">Moving from one series to many — when a relationship between two markets is real, and how to summarize a whole basket's shared risk.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="lessons/cointegration.html">
+        <div class="tl-card-num">Lesson 9</div>
+        <h3>Cointegration &amp; Statistical Arbitrage</h3>
+        <p>Why two random walks can show a spuriously high correlation, and the Engle-Granger test for telling a real equilibrium relationship from noise.</p>
+      </a>
+      <a class="tl-card" href="lessons/pca-factors.html">
+        <div class="tl-card-num">Lesson 10</div>
+        <h3>Principal Component Analysis &amp; Factor Regimes</h3>
+        <p>Eigenvectors and eigenvalues explained from scratch — how much of a basket's move is one shared risk factor, extending <code>js/diversificationCore.js</code>.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>4 · Options &amp; Derivatives</h2>
+    <div class="tl-cat-sub">The pricing theory underneath open interest, gamma walls, and why FX gaps around scheduled data releases.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="lessons/black-scholes.html">
+        <div class="tl-card-num">Lesson 11</div>
+        <h3>Black-Scholes-Merton Option Pricing</h3>
+        <p>The no-arbitrage replication argument, the closed-form formula, and the Greeks — the foundation underneath the existing Open Interest course notes.</p>
+      </a>
+      <a class="tl-card" href="lessons/merton-jump-diffusion.html">
+        <div class="tl-card-num">Lesson 12</div>
+        <h3>Merton Jump-Diffusion Model</h3>
+        <p>Adding sudden gaps to Black-Scholes' smooth diffusion — why NFP/CPI risk produces fat tails, and the theory behind this repo's skew/kurtosis metrics.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>5 · Risk &amp; Sizing</h2>
+    <div class="tl-cat-sub">Once an edge exists — sizing it correctly, and honestly estimating how bad the tail can get.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="lessons/kelly-criterion.html">
+        <div class="tl-card-num">Lesson 13</div>
+        <h3>Kelly Criterion &amp; Position Sizing</h3>
+        <p>The growth-optimal bet size, derived from expected log-wealth — and why over-betting a real edge can still ruin you.</p>
+      </a>
+      <a class="tl-card" href="lessons/extreme-value-theory.html">
+        <div class="tl-card-num">Lesson 14</div>
+        <h3>Extreme Value Theory &amp; Tail Risk</h3>
+        <p>Why 500 daily returns can't tell you a 1-in-2000-day loss — the Generalized Pareto Distribution, and the theory one level up from this repo's histVaR/histCVaR.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>Where this sits next to what's already here</h2>
+    <div class="tl-cat-sub"></div>
+    <p style="color:var(--text2);max-width:760px">This folder is deliberately separate from <a href="../education/">education/</a>, which holds raw lecture notes from an external course (Colez Trades) — read those for the applied trading frameworks and case studies. Theory Lab is the from-scratch math underneath: read a course-notes lesson, then come here when a formula or term needs unpacking. Once a concept from either place turns into an actual hypothesis worth testing, it belongs in code that follows the repo's own discipline — one shared core, a real out-of-sample split, and a registered entry in <a href="../LEGO_MODULES.md">LEGO_MODULES.md</a> if it becomes a reusable brick.</p>
+  </div>
+
+</div>
+</body>
+</html>

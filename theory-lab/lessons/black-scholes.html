@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Black-Scholes-Merton Option Pricing — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Options &amp; Derivatives / Black-Scholes-Merton</div>
+  <div class="tl-kicker">Options &amp; Derivatives · Lesson 11 of 14</div>
+  <h1 class="tl-title">Black-Scholes-Merton Option Pricing</h1>
+  <p class="tl-dek">A single replication argument turns "what should this option cost?" into an equation that needs no forecast of where price is going — and the same equation, differentiated a second time, is the reason dealer hedging around big open-interest strikes behaves the way it does.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — foundational reading for the OI/gamma material</span>
+    <span>~18 min read</span>
+    <span>Prereqs: GARCH &amp; Volatility Clustering</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    Two things in this repo already talk about options without deriving where
+    their behavior comes from. <code>education/open-interest-course-notes.md</code>
+    teaches, as an empirical/operational fact, that dealers who are short gamma
+    must buy as price rises and sell as it falls, and that this mechanical
+    hedging is what makes high-open-interest strikes act like magnets and walls.
+    <code>book-stress.html</code> asks whether a portfolio's claimed
+    diversification survives a liquidity contraction — a question that, for any
+    book holding options, is inseparable from how those options' hedge ratios
+    change as markets move. Neither page derives <em>why</em> an option's
+    hedge ratio changes with price at all, or what "gamma" formally is beyond a
+    word for "the hedge needs constant adjusting."
+  </p>
+  <p>
+    Black-Scholes-Merton is where that word comes from. It is a 1973 pricing
+    model built on a genuinely elegant argument: you don't need to know which
+    way a stock is going to price an option on it, because you can build a
+    portfolio of the stock and a bond that behaves <em>exactly</em> like the
+    option, and if two things behave identically they must cost the same or
+    an arbitrageur eats a free lunch. That argument is worth understanding on
+    its own terms, independent of whether the model's assumptions hold
+    perfectly in real FX/equity markets (they don't — the next lesson,
+    Merton's own jump-diffusion extension, exists precisely because they
+    don't). It is also the direct mathematical ancestor of every "gamma wall,"
+    "dealer hedging," and "0DTE pinning" concept in the OI course notes:
+    delta and gamma are not empirical folklore, they are literally the first
+    and second partial derivatives of this formula with respect to the
+    underlying's price. Understanding Black-Scholes is what turns "dealers
+    have to rehedge, apparently" into "here is exactly why, and here is the
+    equation that tells you how much."
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Cloning the option out of stock and cash</h3>
+    <p>
+      Imagine you've sold someone a call option — you've promised to sell them
+      100 shares of a stock at $100 any time over the next year, no matter how
+      high the stock goes. That sounds like an open-ended risk: if the stock
+      rockets to $200, you're on the hook to deliver $100 shares for $100
+      each, a $100-per-share loss. How much should you have charged for that
+      promise?
+    </p>
+    <p>
+      The Black-Scholes insight is that you don't have to just guess and hope,
+      or forecast where the stock is going. Instead, you can <strong>build
+      your own copy of the option's payoff</strong> using only the stock
+      itself and a risk-free bond (cash earning interest), and continuously
+      adjust how much stock you hold as the price moves. Hold more stock when
+      the option is deep in-the-money (behaving almost exactly like owning
+      100 shares outright), hold less — down toward zero — when it's deep
+      out-of-the-money (behaving like it's worthless). If you rebalance this
+      stock/cash mix constantly and correctly, at expiration your homemade
+      portfolio's value matches the option's payoff in <em>every</em> possible
+      future — whether the stock went to $50 or $500. Two things that produce
+      an identical payoff in every scenario must have the same price today, or
+      anyone could buy the cheap one and sell the expensive one for a riskless
+      profit. That "replicating portfolio" is what pins down a single fair
+      price for the option — and building it requires knowing only how
+      <em>volatile</em> the stock is, never which direction you expect it to
+      go. That absence of "which direction" is the single most surprising and
+      most important fact about the model, and it's worth sitting with before
+      moving to the algebra: your personal opinion about whether EUR/USD is
+      going up or down next year has, formally, zero effect on the fair price
+      of an option on it. Only how <em>much</em> it moves around matters.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    The model has three layers: (1) an assumption about how the underlying's
+    price moves, (2) the replication/no-arbitrage argument that turns that
+    assumption into a pricing equation, and (3) the closed-form solution to
+    that equation for a European call or put. Take them in order.
+  </p>
+
+  <h3>1. Geometric Brownian motion — the assumed model of the underlying</h3>
+  <p>
+    Black-Scholes-Merton assumes the underlying's price \(S_t\) (its value at
+    time \(t\)) follows <strong>geometric Brownian motion</strong> (GBM), a
+    stochastic differential equation — an equation describing how a random
+    quantity changes over an infinitesimally small instant of time \(dt\):
+  </p>
+  <div class="tl-math">
+    \[ dS_t = \mu S_t\,dt + \sigma S_t\,dW_t \]
+  </div>
+  <div class="tl-symbols"><table>
+    <tr><td>\(S_t\)</td><td>The underlying's price at time \(t\) — the spot FX rate, the stock price, the index level. This is the quantity the whole model is built around.</td></tr>
+    <tr><td>\(dS_t\)</td><td>The infinitesimal change in \(S_t\) over the next tiny instant of time — "how much the price moves in the next tick."</td></tr>
+    <tr><td>\(\mu\)</td><td>(mu) The underlying's expected (real-world) rate of return per unit time — e.g. "8% per year." This is exactly the quantity everyone argues about when they forecast a market. Keep an eye on it: it appears here, in the assumed model of the world, but — remarkably — it is about to disappear from the pricing formula entirely.</td></tr>
+    <tr><td>\(\sigma\)</td><td>(sigma) The underlying's volatility — the standard deviation of its returns per unit time (annualized, e.g. "20% per year"). This is the same conceptual quantity as the \(\sigma\) used throughout this repo's vol math (<code>volSigmaSeries</code>, <code>volBacktestEngine.js</code>), just expressed in continuous-time SDE units. GBM assumes \(\sigma\) is <strong>constant</strong> — flat across time and across strike. That is the model's single biggest simplifying assumption, and it is false in every real options market (implied volatility famously varies by strike — the "volatility smile/skew" — and by time). It's flagged here because the next lesson's jump-diffusion extension exists specifically to relax it.</td></tr>
+    <tr><td>\(dW_t\)</td><td>The infinitesimal increment of a Wiener process (standard Brownian motion) — pure random-walk noise: mean zero, variance \(dt\), no memory of the past, normally distributed. Same object introduced in the Ornstein-Uhlenbeck lesson.</td></tr>
+    <tr><td>\(\mu S_t\,dt\)</td><td>The <strong>drift term</strong>: the predictable part of the next instant's price change — the expected return rate times the current price times the length of the instant. Proportional to \(S_t\) itself, which is what makes this "geometric" rather than "arithmetic" Brownian motion — a $1 move means something different at $10 than at $1000, exactly like compounding percentage returns.</td></tr>
+    <tr><td>\(\sigma S_t\,dW_t\)</td><td>The <strong>diffusion term</strong>: the random shock, also scaled by the current price, so volatility is expressed as a <em>percentage</em> of price rather than a fixed dollar amount.</td></tr>
+  </table></div>
+  <p>
+    Solving this SDE (a standard but non-trivial step using Itô's Lemma,
+    which is outside this lesson's scope) shows that \(\ln S_t\) — the
+    <em>log</em> of the price — is normally distributed. Equivalently,
+    \(S_t\) itself is <strong>lognormally</strong> distributed: it can never
+    go negative (a crucial, realistic property for a stock or FX price),
+    its percentage returns are normally distributed, and large percentage
+    moves compound multiplicatively rather than adding linearly. This is the
+    concrete content of "GBM": constant percentage volatility, a
+    log-normal price distribution, no jumps, no fat tails beyond what a
+    normal distribution of log-returns produces. Every one of those
+    properties is a simplification worth remembering as you read empirical
+    option-pricing critiques — real FX and equity returns have fatter tails
+    and time-varying volatility (see the GARCH lesson) than constant-\(\sigma\)
+    GBM predicts.
+  </p>
+
+  <h3>2. The replication argument and the no-arbitrage PDE</h3>
+  <p>
+    Here is the core insight from the intuition box, stated precisely.
+    Suppose you hold a portfolio consisting of a short position in one option
+    (you sold it) plus a carefully chosen number of shares of the underlying,
+    \(\Delta\) shares, financed partly by borrowing or lending at the
+    risk-free rate \(r\). Black, Scholes, and Merton showed that if
+    \(\Delta\) is set equal to the option's own sensitivity to the
+    underlying's price (formally \(\Delta = \partial C/\partial S\), the
+    option's price change per $1 move — you'll meet this again below as "the
+    Greek delta") and continuously rebalanced as \(S\) and \(t\) change, the
+    combined portfolio's value becomes momentarily <strong>insensitive to the
+    random term \(dW_t\)</strong> — the random shock in the stock cancels
+    against the random shock in the option, because the option's own price
+    change is (to first order) exactly \(\Delta\) times the stock's price
+    change. What's left over is a portfolio whose value changes only
+    predictably, deterministically, instant by instant.
+  </p>
+  <p>
+    A portfolio with a certain (riskless) return, under the assumption that
+    markets don't allow risk-free arbitrage profit, must earn exactly the
+    risk-free rate \(r\) — otherwise anyone could borrow at \(r\) to buy it
+    (if it earned more) or short it and lend the proceeds (if it earned
+    less), for free money. Setting "this hedged portfolio's return" equal to
+    "the risk-free rate" and working through the calculus produces the
+    <strong>Black-Scholes partial differential equation (PDE)</strong> —
+    conceptually, an equation that any correctly-priced option's value
+    \(V(S,t)\) must satisfy at every instant:
+  </p>
+  <div class="tl-math">
+    \[ \frac{\partial V}{\partial t} + rS\frac{\partial V}{\partial S} + \tfrac{1}{2}\sigma^2 S^2\frac{\partial^2 V}{\partial S^2} - rV = 0 \]
+  </div>
+  <p>
+    You do not need to be able to derive or solve this PDE to use the model —
+    it's included here because it is the precise mathematical statement of
+    "no free lunch given continuous rebalancing," and because its terms are
+    literally named after the Greeks introduced below (\(\partial V/\partial
+    S\) is delta, \(\partial^2 V/\partial S^2\) is gamma, \(\partial V/
+    \partial t\) is (minus) theta). The single most important fact to take
+    from it: <strong>\(\mu\), the underlying's real-world expected return,
+    does not appear anywhere in this equation.</strong> It canceled out
+    during the hedging step, because the replicating portfolio's return
+    depends only on how the option's value moves relative to the stock's
+    move (governed by \(\sigma\), through the shape of the payoff), not on
+    which direction the stock is expected to drift. This is the formal
+    version of the intuition-box claim: <strong>pricing an option requires
+    knowing volatility, not a forecast.</strong> The risk-free rate \(r\)
+    takes over the role \(\mu\) would otherwise have played — this is often
+    described as "pricing under the risk-neutral measure": for the purpose
+    of pricing (never for the purpose of predicting what will actually
+    happen), it is mathematically consistent to price as if every asset
+    drifted at the risk-free rate, because that's the drift rate implied by
+    the no-arbitrage replication argument itself.
+  </p>
+
+  <h3>3. The closed-form solution — the Black-Scholes formula</h3>
+  <p>
+    Solving that PDE, subject to the boundary condition that at expiration
+    a call is worth \(\max(S_T - K, 0)\) (its payoff — the stock price minus
+    the strike, or zero if that's negative), gives the famous closed-form
+    price for a European call option (one that can only be exercised exactly
+    at expiration, not early):
+  </p>
+  <div class="tl-math">
+    \[ C = S_0 N(d_1) - Ke^{-rT}N(d_2) \]
+  </div>
+  <div class="tl-math">
+    \[ d_1 = \frac{\ln(S_0/K) + \left(r + \frac{\sigma^2}{2}\right)T}{\sigma\sqrt{T}}, \qquad d_2 = d_1 - \sigma\sqrt{T} \]
+  </div>
+  <div class="tl-symbols"><table>
+    <tr><td>\(C\)</td><td>The fair price of a European call option today — the number the whole derivation has been aiming at.</td></tr>
+    <tr><td>\(S_0\)</td><td>The underlying's price right now (time zero) — e.g. today's spot EUR/USD rate.</td></tr>
+    <tr><td>\(K\)</td><td>The strike price — the fixed price at which the option holder can buy the underlying. This is the same "strike" the OI course's CME heatmap plots on its vertical axis.</td></tr>
+    <tr><td>\(r\)</td><td>The (continuously-compounded) risk-free interest rate over the option's life — for FX options this is more precisely the domestic/foreign interest-rate differential, since you're pricing the right to exchange one currency for another, each of which earns its own rate; the plain single-\(r\) formula above is the equity/single-currency textbook version.</td></tr>
+    <tr><td>\(T\)</td><td>Time to expiration, in years (e.g. 30 days = \(30/365 \approx 0.082\)). Together with \(\sigma\), \(T\) controls how much the underlying could plausibly move before expiry — this is exactly the "DTE" (days to expiration) the OI course flags as intensifying gamma effects as it shrinks.</td></tr>
+    <tr><td>\(\sigma\)</td><td>Volatility, same as in the GBM model above — the single most important, and single hardest to know in advance, input to the whole formula. (In practice, the market quotes options in terms of the \(\sigma\) that makes this formula match the traded price — "implied volatility" — rather than the other way around.)</td></tr>
+    <tr><td>\(\ln(S_0/K)\)</td><td>The natural log of "how far in or out of the money the option currently is," expressed as a ratio. Positive when \(S_0 > K\) (spot above strike, call already in-the-money), negative when below.</td></tr>
+    <tr><td>\(N(\cdot)\)</td><td>The <strong>standard normal cumulative distribution function (CDF)</strong> — for any input \(x\), \(N(x)\) is the probability that a standard normal random variable (mean 0, standard deviation 1) is less than or equal to \(x\). It always outputs a number between 0 and 1. This is the same bell-curve object from any introductory statistics course; you'd look up \(N(x)\) in a z-table or compute it with a `norm.cdf` function.</td></tr>
+    <tr><td>\(d_1, d_2\)</td><td>Intermediate quantities — normalized measures of "moneyness adjusted for time and volatility" — that feed into \(N(\cdot)\). They fall directly out of solving the PDE; there isn't a simpler one-sentence derivation, but their outputs have a clean interpretation, given next.</td></tr>
+    <tr><td>\(Ke^{-rT}\)</td><td>The strike price discounted back to today at the risk-free rate — "what \(K\) dollars paid at expiration is worth today." \(e^{-rT}\) is the continuous-compounding discount factor (the inverse of continuous compound growth \(e^{rT}\)).</td></tr>
+  </table></div>
+  <p>
+    The formula has a clean economic reading once you know what \(N(d_1)\)
+    and \(N(d_2)\) represent. <strong>\(N(d_2)\) is (under the risk-neutral
+    pricing measure introduced above) the probability that the option
+    finishes in-the-money</strong> — that \(S_T > K\) at expiration. So the
+    second term, \(Ke^{-rT}N(d_2)\), is "the strike price, discounted to
+    today, weighted by the probability you'll actually have to pay it" — the
+    expected cost of exercising, discounted. <strong>\(N(d_1)\)</strong> plays
+    a closely related role, weighting the expected value you'd receive
+    conditional on the option finishing in the money (it also happens to
+    equal the option's delta, met again below). The whole formula can be read
+    as: <em>the call's value is what you'd expect to receive if it finishes
+    in the money, minus what you'd expect to pay to exercise it, each
+    correctly probability-weighted and discounted back to today under the
+    risk-neutral measure.</em> Note this is <strong>not</strong> the
+    real-world probability of finishing in the money — it's the probability
+    implied by pricing everything as if it drifted at the risk-free rate, the
+    same substitution that fell out of the replication argument. The
+    corresponding formula for a European put, derivable either by the same
+    PDE argument or via the shortcut "put-call parity" (a no-arbitrage
+    relationship between a call and put on the same strike/expiry, not
+    derived here), is:
+  </p>
+  <div class="tl-math">
+    \[ P = Ke^{-rT}N(-d_2) - S_0N(-d_1) \]
+  </div>
+
+  <h3>The Greeks — the formula's sensitivities</h3>
+  <p>
+    A "Greek" is simply a partial derivative of the option price with respect
+    to one of the formula's inputs — how much the price changes per unit
+    change in that input, everything else held fixed. They matter because a
+    dealer who has sold an option is not exposed to "the option price" in the
+    abstract; they're exposed to <em>how</em> that price will move as the
+    world moves, and the Greeks are the precise, formula-derived answer.
+  </p>
+  <p>
+    <strong>Delta (\(\Delta = \partial C/\partial S\)), equal to \(N(d_1)\)
+    for a call:</strong> how much the option's value changes per $1 move in
+    the underlying. A delta of 0.50 means the option behaves, for small
+    moves, like holding 50 shares of stock (per 100-share contract, in
+    equity-option convention). Delta is also, loosely, the option's "moneyness
+    gauge" — near 0 for deep out-of-the-money options, near 1.0 (calls) or
+    −1.0 (puts) for deep in-the-money ones, near 0.5/−0.5 for at-the-money
+    ones — and it is exactly the hedge ratio \(\Delta\) the replication
+    argument constructed above: a dealer who sold a call and wants to be
+    hedged against small price moves buys \(\Delta\) shares of the
+    underlying.
+  </p>
+  <p>
+    <strong>Gamma (\(\Gamma = \partial^2 C/\partial S^2 = \partial\Delta/
+    \partial S\)):</strong> how fast delta itself changes per $1 move in the
+    underlying — the second derivative, or "the curvature" of the option's
+    value with respect to price. This is the Greek the OI course notes lean
+    on most heavily. High gamma means delta swings a lot for a small price
+    move, which means a dealer's hedge ratio is constantly, urgently out of
+    date and must be rebalanced often. Gamma is highest for at-the-money
+    options close to expiration — exactly matching the course notes'
+    observation that gamma effects "intensify" as DTE shrinks and peak in the
+    final 48 hours before expiry. A trader cares about gamma because it
+    measures how much <em>rehedging activity</em> — and therefore how much
+    mechanical, price-insensitive buying or selling pressure — a given option
+    position will generate as the market moves.
+  </p>
+  <p>
+    <strong>Theta (\(\Theta = \partial C/\partial t\)):</strong> how much the
+    option's value changes per unit of time passing, all else held fixed —
+    "time decay." An option is a wasting asset: holding everything else
+    constant, an option loses value simply because less time remains for it
+    to move into the money. A trader who is <em>long</em> options bleeds
+    theta every day they're wrong about timing (even if eventually right
+    about direction); a trader who is <em>short</em> options collects it, in
+    exchange for taking on the gamma risk described above — this
+    gamma-versus-theta trade-off is the central tension of options
+    market-making.
+  </p>
+  <p>
+    <strong>Vega (\(\mathcal{V} = \partial C/\partial \sigma\), not actually
+    a Greek letter, but the market's name for it anyway):</strong> how much
+    the option's value changes per unit change in implied volatility. Because
+    \(\sigma\) is the one input to the formula nobody directly observes (it
+    has to be inferred or forecast), an option position's vega exposure is a
+    bet on volatility itself rising or falling, independent of which
+    direction the underlying moves — this is the sense in which options let
+    you trade "volatility as an asset," which is exactly the connective
+    tissue back to this repo's GARCH/vol-forecasting material: a good
+    \(\sigma\) forecast is directly a view on vega-exposed positions'
+    expected value.
+  </p>
+  <p>
+    <strong>Rho (\(\rho = \partial C/\partial r\)):</strong> how much the
+    option's value changes per unit change in the risk-free rate. Usually the
+    least important Greek for short-dated equity/index options, but far from
+    negligible for FX options specifically, since — as noted above — the
+    relevant "rate" for an FX option is really an interest-rate
+    <em>differential</em> between two currencies, and that differential can
+    move meaningfully and is a first-order input to carry-sensitive FX
+    option pricing.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>Pricing a one-year at-the-money call by hand</h3>
+    <p>
+      Take round numbers: spot \(S_0 = 100\), strike \(K = 100\) (so the
+      option is exactly at-the-money — struck at today's price), risk-free
+      rate \(r = 0.02\) (2%), volatility \(\sigma = 0.20\) (20% annualized),
+      and time to expiry \(T = 1\) year.
+    </p>
+    <p>Step 1 — compute \(d_1\):</p>
+    <div class="tl-math">
+      \[ d_1 = \frac{\ln(100/100) + (0.02 + 0.20^2/2)(1)}{0.20\sqrt{1}} = \frac{0 + (0.02 + 0.02)}{0.20} = \frac{0.04}{0.20} = 0.20 \]
+    </div>
+    <p>
+      Walking through the arithmetic: \(\ln(100/100) = \ln(1) = 0\), since
+      spot exactly equals strike (that's what "at-the-money" means here).
+      \(\sigma^2/2 = 0.20^2/2 = 0.04/2 = 0.02\). Add the rate: \(r + \sigma^2/2
+      = 0.02 + 0.02 = 0.04\). Multiply by \(T=1\): still \(0.04\). The
+      denominator \(\sigma\sqrt{T} = 0.20 \times \sqrt{1} = 0.20\). Dividing,
+      \(d_1 = 0.04 / 0.20 = 0.20\).
+    </p>
+    <p>Step 2 — compute \(d_2\):</p>
+    <div class="tl-math">
+      \[ d_2 = d_1 - \sigma\sqrt{T} = 0.20 - 0.20 = 0.00 \]
+    </div>
+    <p>Step 3 — look up \(N(d_1)\) and \(N(d_2)\) (standard normal CDF values, e.g. from a z-table):</p>
+    <div class="tl-math">
+      \[ N(0.20) \approx 0.5793, \qquad N(0.00) = 0.5000 \]
+    </div>
+    <p>
+      \(N(0.00) = 0.5\) exactly, because the standard normal distribution is
+      symmetric around zero — half its probability mass lies below the mean.
+      \(N(0.20) \approx 0.5793\) is a standard, table-lookupable value
+      slightly above 0.5, consistent with 0.20 being a small positive number
+      (a bit of extra probability mass between 0 and 0.20 above the mean).
+    </p>
+    <p>Step 4 — assemble the call price:</p>
+    <div class="tl-math">
+      \[ C = S_0N(d_1) - Ke^{-rT}N(d_2) = 100(0.5793) - 100\,e^{-0.02}(0.5000) \]
+    </div>
+    <p>
+      \(e^{-0.02} \approx 0.9802\) (the one-year discount factor at a 2% rate
+      — a dollar received in a year is worth about 98 cents today). So the
+      second term is \(100 \times 0.9802 \times 0.5000 \approx 49.01\), and
+      the first term is \(100 \times 0.5793 = 57.93\). Subtracting:
+    </p>
+    <div class="tl-math">
+      \[ C \approx 57.93 - 49.01 = 8.92 \]
+    </div>
+    <p>
+      A one-year, at-the-money call on a $100 underlying with 20% annual
+      volatility and a 2% risk-free rate is worth roughly <strong>$8.92</strong>
+      — about 8.9% of spot. Sanity check the direction of that number: it's
+      well above the option's intrinsic value (zero, since \(S_0 = K\)
+      exactly) purely because of <strong>time value</strong> — over the next
+      year, with 20% annualized volatility, there's substantial chance the
+      stock ends up meaningfully above 100, and the payoff is capped at zero
+      loss on the downside, so the asymmetric payoff has real value even
+      though today's expected outcome (under real-world drift, not even
+      considered here) is unknown. This example deliberately used
+      "textbook-clean" \(N(\cdot)\) values consistent with a standard normal
+      table rather than deriving them from scratch — that derivation (the
+      normal CDF has no closed form and is computed numerically) is outside
+      this lesson's scope.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Payoff at expiry vs. value today</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Call option payoff diagram. The payoff-at-expiry line is flat at zero below the strike K and rises 1:1 above it, forming a hockey-stick shape. A smooth current-value curve sits above the hockey stick everywhere, closest to it far out of the money and far in the money, and furthest above it right around the strike.">
+      <line x1="40" y1="250" x2="620" y2="250" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="40" y1="250" x2="40" y2="20" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="330" y1="20" x2="330" y2="250" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+      <text x="330" y="267" text-anchor="middle" font-size="12" font-family="'DM Mono',monospace" fill="var(--text3)">K</text>
+      <text x="620" y="270" text-anchor="end" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Underlying price at expiry →</text>
+      <text x="14" y="135" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 14 135)">Option value</text>
+      <text x="34" y="254" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+      <polyline points="40,250 330,250 620,50" style="stroke:var(--text2);stroke-width:2" fill="none"/>
+      <polyline id="bs-current-value-curve" points="40.00,250.00 70.53,250.00 101.05,249.99 131.58,249.91 162.11,249.59 192.63,248.62 223.16,246.39 253.68,242.20 284.21,235.51 314.74,226.05 345.26,213.86 375.79,199.28 406.32,182.74 436.84,164.71 467.37,145.62 497.89,125.80 528.42,105.50 558.95,84.89 589.47,64.11 620.00,43.21" style="stroke:var(--blue);stroke-width:2.5" fill="none"/>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Volatility &sigma;</span><span class="tl-live" id="bs-sigma-val">20%</span></div>
+        <input type="range" id="bs-sigma-slider" min="5" max="60" step="1" value="20">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Time to expiry T</span><span class="tl-live" id="bs-T-val">1.00y</span></div>
+        <input type="range" id="bs-T-slider" min="1" max="100" step="1" value="100">
+      </div>
+    </div>
+    <div class="tl-readout">Call price (S=K=100, r=2%) &asymp; $<b id="bs-price-val">8.92</b></div>
+    <div class="tl-legend">
+      <span><i style="background:var(--text2)"></i>Payoff at expiry</span>
+      <span><i style="background:var(--blue)"></i>Current value (includes time value)</span>
+    </div>
+    <div class="tl-chart-caption">
+      The grey "hockey stick" is only what the call is worth on its actual
+      expiry date: nothing below the strike \(K\), dollar-for-dollar above it.
+      <strong>Before</strong> expiry the option is always worth more than
+      that — the blue curve sitting above it — because there's still time
+      left for the underlying to move further in the money. That extra
+      cushion, largest right around \(K\) where the outcome is least certain,
+      is <strong>time value</strong>, and it's exactly what the \(N(d_1)\),
+      \(N(d_2)\) formula above prices.
+    </div>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Almost nobody at a real options desk uses the raw Black-Scholes formula
+    to decide whether an option is "cheap" or "expensive" in the sense of
+    predicting future stock moves — that's not what it's for, and the
+    section above should make clear why: \(\mu\) isn't in the formula, so
+    there's no view of direction to disagree with. What the formula
+    <em>is</em> used for, constantly, industry-wide: (1) as a
+    <strong>quoting convention</strong> — market makers quote and traders
+    think in "implied volatility" (the \(\sigma\) that makes the formula
+    match the traded price) rather than in dollar premiums, because implied
+    vol is comparable across strikes, expiries, and underlyings in a way raw
+    prices aren't; (2) as a <strong>hedging engine</strong> — the Greeks
+    computed from the formula tell a market maker exactly how much
+    underlying to buy or sell to stay delta-neutral, and how fast that hedge
+    will need to change (gamma), which is the entire mechanical basis of
+    dealer-hedging flows; and (3) as a <strong>common language and starting
+    point</strong> — every more sophisticated model used in practice (local
+    volatility, stochastic volatility like Heston, jump-diffusion like the
+    next lesson) is explicitly built as a correction to Black-Scholes, not a
+    replacement of its logic; understanding where the base model's
+    assumptions break is how those extensions get motivated and explained.
+    The famous "volatility smile" — implied vol varying systematically by
+    strike, something plain Black-Scholes (constant \(\sigma\)) cannot
+    produce — is itself evidence, visible in every live options market, that
+    the model's constant-volatility assumption is wrong; the market prices
+    around that known flaw rather than pretending it isn't there.
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>The pricing theory underneath the OI course's applied gamma-wall material</h3>
+    <p>
+      <code>education/open-interest-course-notes.md</code> Lesson 05 ("Gamma
+      &amp; Dealer Dynamics") teaches, as operational fact, that a dealer who
+      is short gamma from selling options must buy as the underlying rises
+      and sell as it falls to stay hedged — and that this mechanical,
+      price-agnostic rehedging is the actual mechanism behind call walls
+      acting as resistance, put walls acting as support, and the "gamma
+      squeeze" that follows a wall breaking. This lesson is the pricing
+      theory that produces that fact rather than just asserting it: delta
+      (\(N(d_1)\) above) is the hedge ratio the course notes describe a
+      dealer maintaining, and gamma (\(\partial^2C/\partial S^2\)) is
+      precisely the rate at which that hedge ratio must change as price
+      moves — which is why the course notes' claim that gamma effects
+      intensify as expiry approaches is not an empirical curiosity but a
+      direct, derivable consequence of the Black-Scholes formula: gamma for
+      an at-the-money option provably rises as \(T \to 0\). The "why call
+      walls are resistance" mechanism the course notes trace through step by
+      step (dealers buy to hedge rising delta as price approaches a big call
+      strike, then stop buying once delta saturates near 1.0 at/through the
+      strike, so the rally loses its fuel) is exactly the shape of \(N(d_1)\)
+      as a function of \(S_0/K\): it rises steeply near the strike and
+      flattens out toward 1.0 once deep in-the-money. Reading this lesson
+      does not replace that course's applied trading framework — the OI
+      notes' treatment of walls, max pain, magnetism, and daily trading
+      process is the practical, tested-against-a-real-heatmap layer this
+      repo actually uses; this page is the theoretical foundation underneath
+      it, for understanding <em>why</em> the mechanism works rather than only
+      <em>that</em> it does. For the applied trading framework, read
+      <code>open-interest-course-notes.md</code> directly.
+    </p>
+    <p>
+      <code>book-stress.html</code> asks whether a portfolio's diversification
+      survives a liquidity contraction. Any book that includes options carries
+      Greek exposures on top of its raw directional exposures, and those Greek
+      exposures are themselves the derivatives derived in this lesson — a
+      "diversified" book of options across several underlyings can still have
+      a concentrated, correlated gamma exposure that only becomes visible once
+      you compute the Greeks explicitly, which is a natural extension of that
+      page's stress-testing logic once options enter the picture. No such
+      Greek-aware stress logic is built into <code>book-stress.html</code>
+      today — this is a conceptual link for future work, not a description of
+      an existing feature.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where the model is misused or over-trusted</h3>
+    <p>
+      <strong>Treating the formula's output as a market forecast.</strong>
+      Because \(\mu\) isn't in the formula, a Black-Scholes price says
+      nothing about whether the underlying will go up or down — it says what
+      the option is worth <em>given</em> a volatility assumption, under
+      no-arbitrage logic. Reading a rising call price as "the market thinks
+      the stock will go up" confuses a hedging-consistent valuation with a
+      directional prediction; the correct reading is closer to "the market's
+      current volatility expectation, run through this formula, implies this
+      price."
+    </p>
+    <p>
+      <strong>Forgetting \(\sigma\) is constant in this model but not in
+      reality.</strong> The volatility smile/skew observed in every real
+      options market — implied vol differing by strike and by expiry — is
+      direct evidence against the model's core assumption. Practitioners
+      handle this by quoting a different implied \(\sigma\) per strike
+      (effectively patching the model empirically) rather than by taking the
+      formula literally as a description of how volatility behaves. Treating
+      a single flat \(\sigma\) as truth rather than a convenient
+      approximation is the most common beginner mistake.
+    </p>
+    <p>
+      <strong>Ignoring that continuous rebalancing is an idealization.</strong>
+      The replication argument requires <em>continuous, frictionless</em>
+      rehedging with no transaction costs and infinitely divisible trade
+      sizes. Real dealers rehedge in discrete steps, pay spread and
+      commission on every rebalance, and face position limits — which is
+      exactly why real dealer hedging flows create visible, laggy price
+      pressure (the "walls" and "squeezes" of the OI course) rather than the
+      perfectly smooth, invisible hedging the theoretical derivation assumes.
+      The gap between the idealized model and discrete real-world rehedging
+      is itself a source of the very market structure the OI course studies.
+    </p>
+    <p>
+      <strong>Confusing risk-neutral probability with real-world
+      probability.</strong> \(N(d_2)\) is <em>not</em> "the market's actual
+      probability that the stock ends above the strike." It's the probability
+      under the mathematically convenient risk-neutral measure that falls out
+      of the no-arbitrage replication argument, which prices as if every
+      asset drifted at the risk-free rate. Real-world probabilities (what
+      you'd actually bet on) differ from risk-neutral ones by a risk
+      premium — conflating the two is a classic source of "the option looks
+      mispriced" claims that are really just this confusion.
+    </p>
+    <p>
+      <strong>American vs. European exercise.</strong> The closed-form
+      formula above prices a <em>European</em> option — exercisable only at
+      expiry. Most retail-traded equity and index options are
+      <em>American</em> — exercisable any time up to expiry — which can be
+      worth more (an early-exercise premium exists, particularly for puts, or
+      for calls on dividend-paying stocks around ex-dividend dates) and
+      generally has no simple closed-form solution; American options are
+      priced with numerical methods (binomial trees, finite differences) that
+      build on the same replication logic but don't reduce to the tidy
+      \(N(d_1), N(d_2)\) formula.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why doesn't the underlying's real-world expected return \(\mu\) appear anywhere in the Black-Scholes formula, even though it's part of the assumed GBM model of the underlying?</summary>
+    <div class="tl-answer">
+      \(\mu\) cancels out during the replication/hedging derivation. The
+      argument constructs a portfolio (short the option, long \(\Delta\)
+      shares of the underlying) whose random component exactly cancels
+      instant by instant, leaving a riskless portfolio that, by no-arbitrage,
+      must earn exactly the risk-free rate \(r\). That condition pins down
+      the option's price using only how the option's value co-moves with the
+      stock's random shocks (governed by \(\sigma\)) — the stock's own
+      expected drift \(\mu\) never enters the hedging condition, because the
+      hedge is rebalanced continuously and locally, not held as a static
+      directional bet. Practically: pricing an option this way requires an
+      estimate of volatility, never a forecast of direction.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What does it mean, precisely, that \(N(d_2)\) is "the risk-neutral probability the option finishes in the money" — and why is that different from the real-world probability?</summary>
+    <div class="tl-answer">
+      \(N(d_2)\) is the probability, computed under the mathematically
+      convenient risk-neutral measure, that the underlying ends up above the
+      strike at expiration. "Risk-neutral" means the probability is computed
+      as if every asset in the economy drifted at the risk-free rate \(r\)
+      rather than at its true expected return \(\mu\) — a substitution that
+      falls directly out of the no-arbitrage replication argument, not out of
+      any belief about what will actually happen. The real-world probability
+      of finishing in the money depends on the stock's actual expected return
+      \(\mu\) (which is generally higher than \(r\) for a risky asset, since
+      investors demand a risk premium) and is therefore higher than the
+      risk-neutral probability for typical assets. The two coincide only in
+      the special case \(\mu = r\).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why is a dealer who is short gamma forced to buy as price rises and sell as price falls — and why is that described as "destabilizing"?</summary>
+    <div class="tl-answer">
+      A dealer who sold options is short gamma: as the underlying's price
+      rises, the calls they sold gain delta (move closer to behaving like the
+      stock itself), so to stay hedged the dealer must buy more of the
+      underlying — buying into a rally. As price falls, delta on those calls
+      shrinks (or, for puts sold, delta magnitude grows on the downside),
+      forcing the dealer to sell into the decline. This is "buy high, sell
+      low" by construction, not by choice — it is a mechanical consequence of
+      maintaining a delta-neutral hedge on a short-gamma book. It's
+      destabilizing because it adds directional, momentum-following flow to
+      the market precisely when price is already moving: the hedging itself
+      amplifies the move rather than dampening it, in contrast to a
+      long-gamma dealer, whose hedging (sell into rallies, buy into dips) is
+      stabilizing.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. In the worked example (\(S_0=K=100\), \(r=0.02\), \(\sigma=0.20\), \(T=1\)), why is \(d_2\) exactly zero, and what would happen to \(d_1\) and \(d_2\) if \(\sigma\) were doubled to 0.40 with everything else unchanged?</summary>
+    <div class="tl-answer">
+      \(d_2 = d_1 - \sigma\sqrt{T}\), and in the example \(d_1\) happened to
+      equal \(\sigma\sqrt{T} = 0.20\), so \(d_2 = 0.20 - 0.20 = 0\) — a
+      coincidence of the chosen round numbers (specifically that \(\ln(S_0/K)
+      = 0\) and \(r = \sigma^2/2\)), not a general property. If \(\sigma\)
+      doubled to 0.40 with \(S_0, K, r, T\) unchanged: the numerator of
+      \(d_1\) becomes \(0 + (0.02 + 0.40^2/2)(1) = 0.02 + 0.08 = 0.10\), and
+      the denominator becomes \(0.40\sqrt{1} = 0.40\), giving \(d_1 = 0.10 /
+      0.40 = 0.25\). Then \(d_2 = 0.25 - 0.40 = -0.15\), so \(N(d_2)\) falls
+      from \(0.50\) to roughly \(0.44\) — the risk-neutral probability of
+      finishing in the money actually goes <em>down</em> as volatility rises,
+      because \(d_2\)'s numerator contains \(-\sigma^2/2\), which drags the
+      risk-neutral drift of \(\ln S_T\) lower as \(\sigma\) grows (higher
+      variance pulls the median of a lognormal distribution down even when
+      its mean is held fixed). That looks paradoxical next to "higher
+      volatility makes the call more valuable," but it isn't: the call's
+      value depends on the whole probability-weighted payoff, including the
+      fatter right tail that higher \(\sigma\) creates, not on the bare
+      probability of finishing above the strike. This is exactly why vega
+      (sensitivity to \(\sigma\)) is always positive for a plain call or put
+      even though \(N(d_2)\) alone can move either way.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. What is the practical difference between what delta tells you and what gamma tells you, and why do options market makers care more about gamma near expiration specifically?</summary>
+    <div class="tl-answer">
+      Delta tells you the hedge you need <em>right now</em> — how many shares
+      of the underlying offset the option's current price sensitivity. Gamma
+      tells you how fast that hedge requirement itself is changing — how
+      urgently and how often the hedge needs to be revisited as price moves.
+      A position can have a modest delta but a large gamma, meaning the
+      current hedge looks fine but will be stale again after a small price
+      move. Gamma for at-the-money options rises as time to expiration
+      shrinks (mathematically, gamma is inversely related to
+      \(\sigma\sqrt{T}\) in a way that blows up as \(T \to 0\) for
+      near-the-money strikes), so near expiry a market maker's hedge can go
+      stale within minutes rather than days, forcing far more frequent
+      rehedging — exactly the mechanism the OI course notes point to when
+      explaining why gamma-wall and pinning effects intensify in the final
+      48 hours before expiry.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. The model assumes constant volatility \(\sigma\) and a lognormal price distribution with no jumps. Name one piece of real-market evidence that contradicts each assumption, and why that matters for anyone using the formula in practice.</summary>
+    <div class="tl-answer">
+      Against constant volatility: the volatility smile/skew — implied
+      volatility (the \(\sigma\) that makes the formula match observed
+      prices) systematically differs across strikes and expiries for the
+      same underlying on the same day, which plain Black-Scholes (one flat
+      \(\sigma\)) cannot produce; the market is effectively pricing in a
+      richer volatility structure than the model assumes. Against no jumps /
+      lognormal returns: real asset prices exhibit sudden discontinuous
+      moves (earnings surprises, central bank announcements, flash crashes)
+      that produce fatter tails in the realized return distribution than a
+      lognormal model predicts — exactly the gap the next lesson's
+      jump-diffusion model is built to address. Practically, this means
+      Black-Scholes prices (with a single flat \(\sigma\)) are a useful
+      first-order approximation and a common quoting language, but a trader
+      relying on it without adjustment will systematically misprice
+      far-out-of-the-money options and underestimate tail risk.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Fischer Black &amp; Myron Scholes, "The Pricing of Options and Corporate Liabilities," <em>Journal of Political Economy</em>, 1973 — the original paper.</li>
+    <li>Robert C. Merton, "Theory of Rational Option Pricing," <em>Bell Journal of Economics and Management Science</em>, 1973 — the contemporaneous, more rigorous derivation (including the continuous-time replication argument in its modern form) that is why the model is properly credited as Black-Scholes-<strong>Merton</strong>; Merton and Scholes received the 1997 Nobel Memorial Prize in Economic Sciences for this work, Black having died in 1995 and thus been ineligible (the Nobel is not awarded posthumously).</li>
+    <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson — the standard textbook treatment of the derivation, the Greeks, and their extensions; the reference most quant/trading desks point newcomers to first.</li>
+    <li><code>education/open-interest-course-notes.md</code> Lesson 05 in this repo — the applied gamma/dealer-hedging framework this lesson provides the pricing-theory foundation for.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="pca-factors.html">← Principal Component Analysis &amp; Factor Regimes</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="merton-jump-diffusion.html">Merton Jump-Diffusion Model →</a>
+  </div>
+</div>
+<script>
+(function(){
+  // Standard normal CDF via the Abramowitz & Stegun erf approximation
+  // (max error ~1.5e-7 — plenty for this diagram).
+  function erf(x){
+    var sign = x < 0 ? -1 : 1;
+    x = Math.abs(x);
+    var a1=0.254829592, a2=-0.284496736, a3=1.421413741, a4=-1.453152027, a5=1.061405429, p=0.3275911;
+    var t = 1/(1+p*x);
+    var y = 1 - (((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+    return sign*y;
+  }
+  function normCDF(x){ return 0.5*(1+erf(x/Math.SQRT2)); }
+
+  // Black-Scholes European call: C = S*N(d1) - K*e^(-rT)*N(d2)
+  function bsCall(S,K,r,sigma,T){
+    if (T<=0) return Math.max(S-K,0);
+    if (sigma<=0) return Math.max(S-K*Math.exp(-r*T),0);
+    var d1 = (Math.log(S/K) + (r+sigma*sigma/2)*T) / (sigma*Math.sqrt(T));
+    var d2 = d1 - sigma*Math.sqrt(T);
+    return S*normCDF(d1) - K*Math.exp(-r*T)*normCDF(d2);
+  }
+
+  var K = 100, r = 0.02;
+  // SVG coordinate scale, read off the static axes/hockey-stick in the chart
+  // above: x=40..620 spans underlying price S=40..160 (K=100 sits at x=330),
+  // y=250 is option value 0, and the hockey stick's K->620 leg (330,250) to
+  // (620,50) spans a $60 payoff over 200px, i.e. 200/60 px per dollar.
+  var S_LEFT = 40, S_RIGHT = 160, X_LEFT = 40, X_RIGHT = 620;
+  var Y_ZERO = 250, PX_PER_DOLLAR = 200/60;
+  function sToX(S){ return X_LEFT + (S-S_LEFT)/(S_RIGHT-S_LEFT)*(X_RIGHT-X_LEFT); }
+  function valToY(v){ return Y_ZERO - v*PX_PER_DOLLAR; }
+
+  var sigmaSlider = document.getElementById('bs-sigma-slider');
+  var tSlider = document.getElementById('bs-T-slider');
+  var sigmaVal = document.getElementById('bs-sigma-val');
+  var tVal = document.getElementById('bs-T-val');
+  var priceVal = document.getElementById('bs-price-val');
+  var curve = document.getElementById('bs-current-value-curve');
+
+  function updateChart(){
+    var sigma = parseFloat(sigmaSlider.value)/100;
+    var T = parseFloat(tSlider.value)/100;
+    sigmaVal.textContent = sigmaSlider.value + '%';
+    tVal.textContent = T.toFixed(2) + 'y';
+
+    var price = bsCall(100, K, r, sigma, T);
+    priceVal.textContent = price.toFixed(2);
+
+    var N = 20, pts = [];
+    for (var i=0; i<N; i++){
+      var S = S_LEFT + (i/(N-1))*(S_RIGHT-S_LEFT);
+      var v = bsCall(S, K, r, sigma, T);
+      pts.push(sToX(S).toFixed(2) + ',' + valToY(v).toFixed(2));
+    }
+    curve.setAttribute('points', pts.join(' '));
+  }
+
+  sigmaSlider.addEventListener('input', updateChart);
+  tSlider.addEventListener('input', updateChart);
+  updateChart();
+})();
+</script>
+</body>
+</html>

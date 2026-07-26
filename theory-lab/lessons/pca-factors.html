@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Principal Component Analysis &amp; Factor Regimes — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Cross-Asset &amp; Structure / PCA &amp; Factor Regimes</div>
+  <div class="tl-kicker">Cross-Asset &amp; Structure · Lesson 10 of 14</div>
+  <h1 class="tl-title">Principal Component Analysis &amp; Factor Regimes</h1>
+  <p class="tl-dek">A basket of currency pairs looks like many separate bets, but most days it's really one bet — "risk-on or risk-off" — wearing several costumes; PCA is the tool that measures exactly how true that is, and when.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — partially built (eigenvalues only) in this repo</span>
+    <span>~16 min read</span>
+    <span>Prereqs: Cointegration &amp; Statistical Arbitrage</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    Open any multi-pair FX dashboard on a day the market moves and a familiar
+    pattern shows up: EURUSD up, GBPUSD up, AUDUSD up, USDJPY down, USDCHF down —
+    six or seven "different" pairs that all just told you the same thing,
+    dollar weakness (or strength), at the same time. If you hold positions in
+    all of them thinking you have seven independent views, you don't; you have
+    one large, leveraged bet on a single common factor and some small residual
+    noise around it. The opposite can also be true: most days the basket looks
+    coordinated, and then one pair — say, a pair with an idiosyncratic domestic
+    story, a central bank surprise, a commodity shock — decouples and moves on
+    its own reasons. Knowing which situation you're in, quantitatively rather
+    than by eyeballing a heatmap, is the entire point of this lesson.
+  </p>
+  <p>
+    Principal Component Analysis (PCA) is the standard statistical tool for
+    exactly this question: given a basket of correlated series, how many
+    genuinely independent sources of variation are actually driving them, and
+    how much of today's move is the shared one versus the pair-specific one?
+    This repo already has a foot in this door — <code>js/diversificationCore.js</code>
+    computes the <em>eigenvalues</em> of a correlation matrix to build an
+    "effective number of bets" metric on <code>diversification.html</code>. This
+    lesson explains the full machinery those eigenvalues come from, including
+    the piece that isn't built yet: the <em>eigenvectors</em>, which tell you not
+    just "how concentrated is the basket" but "concentrated around what — which
+    pairs, in which direction, make up the dominant factor."
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Finding the camera angle that shows the most motion</h3>
+    <p>
+      Imagine filming a swarm of fireflies at night from many possible camera
+      angles. Most angles show a confusing tangle of dots moving in every
+      direction. But there's usually one specific angle — one specific line of
+      sight — from which the swarm's motion looks the biggest and clearest:
+      maybe the fireflies are mostly drifting left-to-right together, and if you
+      point your camera straight down that left-right axis, almost all of the
+      apparent motion is captured in that single dimension. Point the camera
+      90 degrees off that axis and you'd barely see anything move at all — you'd
+      have picked the angle with the <em>least</em> information.
+    </p>
+    <p>
+      PCA is the mathematical procedure for finding that best camera angle
+      automatically, except instead of fireflies in physical space it works on
+      a cloud of data points — in our case, each point is one day's return
+      across several currency pairs, so a 3-pair basket produces a cloud of
+      points in 3-dimensional space (one axis per pair). PCA finds the
+      direction through that cloud along which the data is most spread out
+      (the "first principal component," PC1), then the next-best direction
+      that's perpendicular to the first and captures most of what's left (PC2),
+      and so on. "Spread out" here is a direct stand-in for "variance" — a
+      direction along which the cloud is spread out wide is a direction that
+      explains a lot of the day-to-day movement; a direction along which the
+      cloud is thin is a direction that barely matters. If most of the cloud's
+      spread lives along one single direction, that means most of what's
+      "moving" in your basket is really one underlying thing, viewed from
+      several angles (several currency pairs) at once.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    Start from data you already know how to build: daily (or hourly, or
+    weekly — PCA doesn't care about the horizon) returns for \(N\) instruments
+    over \(T\) time periods. Arrange that as a table with \(T\) rows (one per
+    day) and \(N\) columns (one per instrument) — call this matrix \(R\).
+    Everything below builds up from that table.
+  </p>
+
+  <h3>Step 1 — the covariance matrix</h3>
+  <p>
+    Before you can ask "what's the shared factor," you need a precise way to
+    describe how every pair of instruments in the basket co-moves. That's the
+    covariance matrix. For two return series \(x\) and \(y\), covariance is the
+    average product of their simultaneous deviations from their own means:
+  </p>
+  <div class="tl-math">
+    \[ \text{Cov}(x,y) = \frac{1}{T-1}\sum_{t=1}^{T} (x_t - \bar{x})(y_t - \bar{y}) \]
+  </div>
+  <p>
+    Read this as: on each day \(t\), take how far \(x\) was from its own average
+    that day, take how far \(y\) was from its own average that day, and multiply
+    the two. If \(x\) and \(y\) tend to be above-average on the same days and
+    below-average on the same days, most of those products are positive
+    (positive times positive, or negative times negative), so the sum — and the
+    covariance — comes out positive: they co-move. If one tends to be
+    above-average exactly when the other is below-average, the products are
+    mostly negative: they move opposite each other. If there's no consistent
+    relationship, positive and negative products roughly cancel and covariance
+    comes out near zero. (Covariance's units are messy — return-of-\(x\)
+    times return-of-\(y\) — which is why the more familiar correlation,
+    covariance divided by the product of the two standard deviations, is
+    usually reported instead; correlation is the same idea rescaled to always
+    sit in \([-1, 1]\). PCA can be run on either the covariance matrix or the
+    correlation matrix — on a correlation matrix every instrument is
+    automatically put on the same footing regardless of how volatile it is
+    individually, which is usually what you want across a mixed FX basket
+    where, say, GBPJPY is naturally noisier day-to-day than EURCHF.)
+  </p>
+  <p>
+    For an \(N\)-instrument basket, you compute this pairwise number for every
+    combination and arrange the results in an \(N \times N\) grid — the
+    covariance matrix \(\Sigma\) (capital sigma). Its diagonal entries are each
+    instrument's own variance (covariance of a series with itself); its
+    off-diagonal entries are the pairwise covariances. This is exactly the same
+    object <code>correlations.html</code> already renders as a heatmap for you
+    (using correlation instead of raw covariance) — PCA is the next step
+    <em>after</em> you have that grid, not a replacement for it.
+  </p>
+
+  <h3>Step 2 — what an eigenvector and eigenvalue actually are</h3>
+  <p>
+    This is the one piece of linear algebra this lesson needs, and it's worth
+    building from scratch rather than waving at "diagonalize the matrix." A
+    matrix like \(\Sigma\) can be thought of as a machine that takes any
+    direction (a vector) and transforms it — stretching it, squishing it,
+    rotating it. Feed the matrix almost any starting direction and the output
+    direction usually points somewhere different from the input.
+  </p>
+  <p>
+    An <strong>eigenvector</strong> of \(\Sigma\) is special: it's one of the
+    (very few) directions where the matrix's transformation doesn't rotate the
+    vector at all — it only stretches or shrinks it, leaving it pointing along
+    the exact same line. The amount of stretching is the corresponding
+    <strong>eigenvalue</strong>. Formally, \(v\) is an eigenvector of \(\Sigma\)
+    with eigenvalue \(\lambda\) (lambda) if:
+  </p>
+  <div class="tl-math">
+    \[ \Sigma v = \lambda v \]
+  </div>
+  <p>
+    Read this literally: multiplying the matrix \(\Sigma\) by the vector \(v\)
+    gives back the same vector \(v\), just scaled by the number \(\lambda\) —
+    nothing about \(v\)'s direction changed, only its length. For a covariance
+    matrix specifically (which is always symmetric and, for real data,
+    "positive semi-definite" — a technical guarantee that its eigenvalues are
+    never negative), there's a beautiful, guaranteed result: an
+    \(N \times N\) covariance matrix always has exactly \(N\) eigenvectors,
+    and — this is the key fact for everything below — those \(N\) eigenvectors
+    are <em>mutually perpendicular</em> (technically: orthogonal) to each other.
+    They form a complete, non-overlapping set of directions that together
+    span the whole space the data lives in.
+  </p>
+  <p>
+    That last property is what makes eigenvectors of a covariance matrix so
+    useful as "factors": because they're mutually perpendicular by
+    construction, the amount the data varies along one eigenvector is
+    completely uninformative about how much it varies along another. They are,
+    by the geometry alone, <em>uncorrelated</em> with each other — not because
+    you asked for that, but because perpendicular directions in the data cloud
+    can't share variance with each other by definition. This is exactly the
+    "best camera angle" from the intuition box, generalized: instead of one
+    best angle, a covariance matrix gives you a whole set of mutually
+    perpendicular best angles, ranked by how much of the data's spread each one
+    captures.
+  </p>
+
+  <h3>Step 3 — principal components, ranked by eigenvalue</h3>
+  <p>
+    Each eigenvector \(v_i\) of \(\Sigma\), paired with its eigenvalue
+    \(\lambda_i\), defines one <strong>principal component</strong>. Sort them
+    by eigenvalue from largest to smallest: \(\lambda_1 \geq \lambda_2 \geq
+    \dots \geq \lambda_N\). The eigenvector with the largest eigenvalue is
+    <strong>PC1</strong> — the single direction along which the basket's daily
+    returns vary the most, i.e. the direction that best explains "what
+    happened today" in the fewest dimensions. PC2 is the next-largest
+    eigenvalue's eigenvector — the direction, perpendicular to PC1, that best
+    explains whatever variance PC1 didn't. And so on down to PC\(_N\), which by
+    the time you get there is usually mopping up scraps of noise.
+  </p>
+  <p>
+    Each day's actual return vector can then be re-expressed not as "3.2 pips
+    on EURUSD, -1.1 pips on GBPUSD, ..." but as "this many units along PC1,
+    this many along PC2, ..." — a re-description of the exact same information
+    in a rotated coordinate system chosen so that the first few axes carry as
+    much of the story as possible. A day's score on PC1 (its coordinate along
+    that eigenvector) is called its <strong>PC1 score</strong>; it is a single
+    number that stands in for "how much did the common factor move today."
+  </p>
+
+  <h3>Step 4 — explained variance ratio</h3>
+  <p>
+    The eigenvalues themselves tell you exactly how much of the basket's total
+    variance each component accounts for, because the sum of all \(N\)
+    eigenvalues equals the total variance in the system (the sum of the
+    diagonal of \(\Sigma\), a fact called the trace being preserved). The
+    <strong>explained variance ratio</strong> of component \(i\) is simply its
+    eigenvalue's share of that total:
+  </p>
+  <div class="tl-math">
+    \[ \text{EVR}_i = \frac{\lambda_i}{\sum_{j=1}^{N} \lambda_j} \]
+  </div>
+  <p>
+    If \(\text{EVR}_1 = 0.72\), that means 72% of the total variance across
+    every instrument in the basket, every day, is captured by a single
+    direction — PC1. The remaining 28% is spread across PC2 through PC\(_N\),
+    the more idiosyncratic structure. This single number is the headline
+    output of a PCA-on-a-basket exercise: it directly answers "how much of
+    what moves in this basket is one thing."
+  </p>
+
+  <h3>Step 5 — loadings</h3>
+  <p>
+    An eigenvector \(v_i\) is itself a list of \(N\) numbers — one per
+    instrument in the basket — because it's a direction in the same
+    \(N\)-dimensional space the return data lives in. Those numbers are called
+    the component's <strong>loadings</strong>: how much, and in which
+    direction (sign), each original instrument contributes to that component.
+    A loading close to zero means that instrument barely participates in this
+    component; a large-magnitude loading means it's a dominant contributor.
+  </p>
+  <div class="tl-symbols"><table>
+    <tr><td>\(R\)</td><td>The \(T \times N\) return matrix — \(T\) days of history down the rows, \(N\) instruments across the columns. The raw data everything below is computed from.</td></tr>
+    <tr><td>\(\Sigma\)</td><td>(capital sigma) The \(N \times N\) covariance matrix (or correlation matrix, its rescaled cousin) built from \(R\) — entry \((i,j)\) is the covariance between instrument \(i\)'s and instrument \(j\)'s returns.</td></tr>
+    <tr><td>\(v_i\)</td><td>The \(i\)-th eigenvector of \(\Sigma\) — a direction (a list of \(N\) numbers, one weight per instrument) along which the return data varies without being rotated by \(\Sigma\). This is principal component \(i\); its entries are that component's <strong>loadings</strong>.</td></tr>
+    <tr><td>\(\lambda_i\)</td><td>(lambda) The eigenvalue paired with \(v_i\) — how much variance in the data lies along that direction. Always \(\geq 0\) for a covariance/correlation matrix. Components are ordered so \(\lambda_1 \geq \lambda_2 \geq \dots\), i.e. PC1 has the largest eigenvalue.</td></tr>
+    <tr><td>PC1, PC2, …</td><td>The principal components themselves, i.e. the eigenvectors ranked by eigenvalue. PC1 is "the direction that explains the most variance"; each subsequent PC explains the most of what's left, subject to being perpendicular to every PC before it.</td></tr>
+    <tr><td>PC1 score (for day \(t\))</td><td>Day \(t\)'s actual return vector re-expressed as a coordinate along the PC1 direction — a single number summarizing "how much of the common factor happened today," positive or negative depending on direction.</td></tr>
+    <tr><td>\(\text{EVR}_i\)</td><td>Explained variance ratio of component \(i\): \(\lambda_i \big/ \sum_j \lambda_j\), the fraction of total basket variance that component alone accounts for. Ranges 0 to 1; all \(\text{EVR}_i\) sum to exactly 1.</td></tr>
+    <tr><td>loading (of instrument \(k\) on PC\(_i\))</td><td>The \(k\)-th entry of eigenvector \(v_i\) — how strongly, and in which sign direction, instrument \(k\) participates in component \(i\). Read across a component's loadings to see which instruments define it; read down a single instrument's loadings across PC1, PC2, … to see which components that instrument shows up in.</td></tr>
+  </table></div>
+  <p>
+    One sign-convention wrinkle worth flagging before the worked example:
+    eigenvectors are only defined up to an overall sign flip — \(v\) and
+    \(-v\) satisfy \(\Sigma v = \lambda v\) equally well, since \(\Sigma(-v) =
+    -\Sigma v = -\lambda v = \lambda(-v)\). Different PCA implementations may
+    hand you PC1 with all-positive loadings or all-negative loadings for the
+    exact same underlying factor — the direction is the same, only the
+    labeling of "which end is positive" is arbitrary. What's never arbitrary
+    is the <em>relative</em> sign and magnitude between instruments within one
+    component — that's the actual content.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>Three FX pairs, one common driver and one holdout</h3>
+    <p>
+      Suppose you take daily returns on three pairs — EURUSD, GBPUSD, and
+      AUDJPY — over some historical window, and their pairwise correlation
+      matrix (a stand-in for a normalized covariance matrix, so PCA can be run
+      directly on it) comes back looking like this — plausible numbers, not
+      pulled from real data, but internally consistent with a market where the
+      first two pairs share a strong dollar-driven common factor and the third
+      is more independent:
+    </p>
+    <div class="tl-math">
+      \[
+      \Sigma \approx
+      \begin{pmatrix}
+      1.00 & 0.75 & 0.20 \\
+      0.75 & 1.00 & 0.15 \\
+      0.20 & 0.15 & 1.00
+      \end{pmatrix}
+      \quad
+      \begin{array}{l}
+      \text{row/col 1: EURUSD} \\
+      \text{row/col 2: GBPUSD} \\
+      \text{row/col 3: AUDJPY}
+      \end{array}
+      \]
+    </div>
+    <p>
+      Read the off-diagonal entries as ordinary correlations: EURUSD and
+      GBPUSD move together strongly (0.75) — unsurprising, both are "USD on
+      one side" majors that share a lot of dollar-flow-driven variance. AUDJPY
+      is only weakly linked to either (0.20 and 0.15) — it has its own
+      commodity/risk-sentiment/carry drivers that don't fully overlap with the
+      EUR/GBP dollar-bloc story.
+    </p>
+    <p>
+      Running PCA on this matrix (the eigen-decomposition itself is mechanical
+      — this is exactly what <code>symmetricEigenvalues</code> in
+      <code>js/diversificationCore.js</code> already computes via a Jacobi
+      rotation, described below) would produce three eigenvalues summing to 3
+      (the trace of a 3×3 correlation matrix, since every diagonal entry is
+      1). Given the structure above, expect something like
+      \(\lambda_1 \approx 1.85\), \(\lambda_2 \approx 0.95\),
+      \(\lambda_3 \approx 0.20\) — so \(\text{EVR}_1 \approx 1.85/3 \approx
+      62\%\). PC1's loadings would come out roughly
+      \((0.63,\ 0.61,\ 0.48)\) — EURUSD and GBPUSD loading almost equally and
+      strongly (they're the pair driving the shared factor), AUDJPY loading in
+      the same direction but noticeably smaller, since some, but not all, of
+      its variance is shared with the other two.
+    </p>
+    <p>
+      Contrast that with a basket where AUDJPY were <em>fully</em> idiosyncratic
+      (correlations of 0.02 and -0.03 instead of 0.20 and 0.15): PC1 would then
+      load almost entirely on EURUSD and GBPUSD alone — something like
+      \((0.71, 0.70, 0.05)\) — with \(\text{EVR}_1\) closer to 50% (just the
+      two-pair pair's shared variance, out of three pairs' worth of total
+      variance) rather than 62%, and a separate component (likely PC2 or PC3)
+      would load almost entirely on AUDJPY by itself, since a fully
+      idiosyncratic instrument can't be "explained" by any shared direction —
+      it needs its own dimension. That contrast is the whole diagnostic in
+      miniature: a high loading on PC1 for every instrument, with a high
+      \(\text{EVR}_1\), says "this basket is really one trade in several
+      costumes"; a pair sitting near-zero on PC1 and picking up its own later
+      component says "this one is actually doing something different."
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The classic PCA picture — a correlated cloud, rotated into its own best axes</div>
+    <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter plot of a two-instrument return cloud that is elongated and tilted diagonally, with a long red PC1 arrow drawn along the cloud's long axis and a much shorter amber PC2 arrow drawn perpendicular to it">
+      <line x1="40" y1="160" x2="600" y2="160" style="stroke:var(--border)"/>
+      <line x1="320" y1="20" x2="320" y2="300" style="stroke:var(--border)"/>
+      <g id="pca-points-group">
+      <circle cx="142.0" cy="250.4" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="153.5" cy="225.2" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="178.2" cy="243.5" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="184.9" cy="218.0" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="205.8" cy="223.2" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="207.7" cy="192.5" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="229.6" cy="204.6" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="238.2" cy="183.3" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="265.8" cy="207.6" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="263.9" cy="178.7" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="286.7" cy="187.9" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="290.5" cy="156.4" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="312.4" cy="168.5" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="319.0" cy="158.0" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="335.2" cy="167.8" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="335.2" cy="143.0" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="361.9" cy="160.3" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="365.7" cy="133.7" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="383.8" cy="137.7" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="387.6" cy="106.1" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="415.2" cy="125.6" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="419.9" cy="101.0" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="446.6" cy="118.4" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="450.4" cy="91.8" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="470.4" cy="94.9" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="476.1" cy="72.3" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="498.9" cy="86.5" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="505.6" cy="71.0" r="4" style="fill:var(--blue);opacity:.7"/>
+      </g>
+      <line id="pca-pc1-line" x1="120.2" y1="253.2" x2="519.8" y2="66.8" style="stroke:var(--red);stroke-width:2.5"/>
+      <polygon id="pca-pc1-head" points="519.8,66.8 509.6,78.1 504.6,67.3" style="fill:var(--red)"/>
+      <text x="524" y="60" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:13px;font-weight:600">PC1</text>
+      <line id="pca-pc2-line" x1="296.8" y1="110.2" x2="343.2" y2="209.8" style="stroke:var(--amber);stroke-width:2"/>
+      <polygon id="pca-pc2-head" points="343.2,209.8 342.7,194.6 331.9,199.6" style="fill:var(--amber)"/>
+      <text x="350" y="224" style="fill:var(--amber);font-family:'DM Mono',monospace;font-size:13px;font-weight:600">PC2</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--red)"></i>PC1 — direction of maximum variance</span>
+      <span><i style="background:var(--amber)"></i>PC2 — perpendicular, much smaller remaining variance</span>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head">
+          <span>Correlation strength between the two series</span>
+          <span class="tl-live" id="pca-corr-val">r ≈ 0.75</span>
+        </div>
+        <input type="range" id="pca-corr-slider" min="0" max="95" step="5" value="75">
+        <div class="tl-hint">Drag to change how tightly the two series co-move — the point cloud and the PC1/PC2 arrows below update live.</div>
+      </div>
+    </div>
+    <div class="tl-readout">
+      PC1 explains ≈ <b id="pca-var-val">87.5%</b> of total variance.
+      <div class="tl-hint">Illustrative simplification for this teaching example only, not a general PCA formula for baskets of more than two instruments. For the true 2-variable case (two equally-volatile series with correlation r) the exact relationship is PC1's variance share = (1+|r|)/2 — e.g. r = 0.75 gives (1+0.75)/2 = 87.5%. That exact formula is what's computed live here.</div>
+    </div>
+    <div class="tl-chart-caption">
+      Each blue dot is one day's return pair for two correlated instruments; the cloud is
+      elongated because the two mostly move together. PC1 (red) is the direction the cloud
+      is actually spread out along the most — for a basket of correlated FX pairs this is
+      very often "everything moving together," a shared risk factor. PC2 (amber), perpendicular
+      to PC1 and much shorter, is what's left over: the smaller slice of variance PC1 doesn't
+      explain. This is a schematic 2-variable illustration; a real basket has as many
+      components as instruments, but in practice only the first few ever matter.
+    </div>
+    <script>
+    (function(){
+      var pc1Line = document.getElementById('pca-pc1-line');
+      var pc2Line = document.getElementById('pca-pc2-line');
+      var pc2Head = document.getElementById('pca-pc2-head');
+      var pointsGroup = document.getElementById('pca-points-group');
+      var slider = document.getElementById('pca-corr-slider');
+      var rLabel = document.getElementById('pca-corr-val');
+      var varLabel = document.getElementById('pca-var-val');
+
+      var p1x1 = parseFloat(pc1Line.getAttribute('x1'));
+      var p1y1 = parseFloat(pc1Line.getAttribute('y1'));
+      var p1x2 = parseFloat(pc1Line.getAttribute('x2'));
+      var p1y2 = parseFloat(pc1Line.getAttribute('y2'));
+      var cx0 = (p1x1 + p1x2) / 2;
+      var cy0 = (p1y1 + p1y2) / 2;
+      var dx1 = p1x2 - p1x1, dy1 = p1y2 - p1y1;
+      var len1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+      var uMajorX = dx1 / len1, uMajorY = dy1 / len1;
+      // PC2 is perpendicular to PC1 by construction (eigenvectors of a symmetric
+      // matrix are orthogonal) — rotate PC1's unit vector 90°, matching the
+      // original PC2 arrow's down-right orientation.
+      var uMinorX = -uMajorY, uMinorY = uMajorX;
+
+      var A_PX = 130;      // fixed semi-major axis of the generated cloud, in SVG px
+      var N_POINTS = 28;   // matches the original static cloud's point count
+
+      function arrowHeadPoints(tipX, tipY, dirX, dirY, size){
+        var backX = tipX - dirX * size, backY = tipY - dirY * size;
+        var perpX = -dirY, perpY = dirX;
+        var w = size * 0.55;
+        var p1x = backX + perpX * w, p1y = backY + perpY * w;
+        var p2x = backX - perpX * w, p2y = backY - perpY * w;
+        return tipX.toFixed(1) + ',' + tipY.toFixed(1) + ' ' +
+               p1x.toFixed(1) + ',' + p1y.toFixed(1) + ' ' +
+               p2x.toFixed(1) + ',' + p2y.toFixed(1);
+      }
+
+      function regeneratePoints(r){
+        // Semi-minor axis shrinks toward 0 as |r| -> 1 (thin ellipse) and grows
+        // to equal the semi-major axis at r = 0 (circular cloud, no dominant
+        // direction) — proportional to sqrt(1 - r^2), scaled by the same A_PX
+        // used for the semi-major axis.
+        var b = A_PX * Math.sqrt(1 - r * r);
+        var html = '';
+        for (var i = 0; i < N_POINTS; i++){
+          var t = -1 + 2 * i / (N_POINTS - 1);
+          t += (Math.random() - 0.5) * 0.15;
+          var s = (Math.random() + Math.random() - 1); // triangular, range -1..1
+          var px = cx0 + t * A_PX * uMajorX + s * b * uMinorX;
+          var py = cy0 + t * A_PX * uMajorY + s * b * uMinorY;
+          html += '<circle cx="' + px.toFixed(1) + '" cy="' + py.toFixed(1) +
+                  '" r="4" style="fill:var(--blue);opacity:.7"/>';
+        }
+        pointsGroup.innerHTML = html;
+      }
+
+      function updatePC2(r){
+        // PC2's length shrinks toward 0 as r -> 1 and grows to match PC1's
+        // length as r -> 0 (no dominant axis when uncorrelated); PC1 itself
+        // stays fixed length (its direction doesn't change meaningfully).
+        var len2 = len1 * Math.sqrt(1 - r * r);
+        if (len2 < 14) len2 = 14; // keep a visible stub + arrowhead near r_max
+        var half = len2 / 2;
+        var x1 = cx0 - uMinorX * half, y1 = cy0 - uMinorY * half;
+        var x2 = cx0 + uMinorX * half, y2 = cy0 + uMinorY * half;
+        pc2Line.setAttribute('x1', x1.toFixed(1));
+        pc2Line.setAttribute('y1', y1.toFixed(1));
+        pc2Line.setAttribute('x2', x2.toFixed(1));
+        pc2Line.setAttribute('y2', y2.toFixed(1));
+        pc2Head.setAttribute('points', arrowHeadPoints(x2, y2, uMinorX, uMinorY, 14));
+      }
+
+      function updatePCA(){
+        var r = parseInt(slider.value, 10) / 100;
+        rLabel.textContent = 'r ≈ ' + r.toFixed(2);
+        var evr1 = (1 + Math.abs(r)) / 2; // exact 2-variable formula
+        varLabel.textContent = (evr1 * 100).toFixed(1) + '%';
+        regeneratePoints(r);
+        updatePC2(r);
+      }
+
+      slider.addEventListener('input', updatePCA);
+      updatePCA(); // sync to default r = 0.75 -> (1+0.75)/2 = 87.5% on load
+    })();
+    </script>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    In FX and rates specifically, running PCA across the G10 majors (or across
+    a curve of interest-rate tenors, where it's an even older and more
+    standard tool) very reliably produces a PC1 that is intuitively readable
+    as a broad "dollar factor" or "risk sentiment factor" — most major pairs
+    load onto it with the same sign relative to USD strength/weakness, because
+    a large share of daily FX variance really is driven by shared macro
+    inputs: global risk appetite, US rate expectations, broad dollar flows.
+    PC2 and beyond typically pick up more regional or idiosyncratic structure
+    — a euro-area-specific factor, a commodity-bloc factor, and so on. On rate
+    curves, the classic and extremely well-documented result (going back
+    decades in the fixed-income literature) is that the first three principal
+    components of a yield curve's covariance matrix map almost exactly onto
+    "level" (parallel shifts), "slope" (steepening/flattening), and
+    "curvature" (butterfly) — a result stable enough that many trading desks
+    quote curve risk directly in level/slope/curvature units rather than raw
+    tenor-by-tenor exposure.
+  </p>
+  <p>
+    Two concrete uses fall out of this. First, <strong>risk aggregation</strong>:
+    a portfolio with positions across many correlated instruments can have its
+    total risk decomposed into "how much exposure do I have to PC1 (the common
+    factor) versus PC2, PC3, …" — this is a cleaner way to see true
+    concentration than staring at a large pairwise correlation grid, because a
+    correlation matrix that's mostly medium-to-high numbers everywhere doesn't
+    by itself tell you whether that's one dominant factor or several
+    moderate ones; the eigenvalue spectrum does. This is exactly the
+    motivation behind an "effective number of bets" metric — how many
+    genuinely independent risks does a book actually have, as opposed to how
+    many position tickets it has. Second, <strong>anomaly / regime
+    detection</strong>: watching each day's PC1 score (and how much of that
+    day's total variance PC1 alone explained) over time lets you flag unusual
+    days — a day where an instrument that normally loads heavily on PC1 barely
+    moves with it, or where a normally-idiosyncratic instrument suddenly
+    co-moves tightly with the pack, is often a sign something instrument-
+    specific happened (a central bank surprise, an index rebalance, a
+    liquidity event) rather than a shared macro move. A caution belongs right
+    alongside this: PCA is a descriptive/summarization tool, not a forecast —
+    it tells you cleanly what the historical covariance structure looked like
+    over the window you fed it, not what tomorrow's structure will be, and
+    that structure can and does shift across regimes (calm markets versus
+    crisis markets famously show very different PC1 dominance — correlations,
+    and therefore \(\text{EVR}_1\), tend to spike toward 1 in a crisis, the
+    well-known "correlations go to 1 in a crash" phenomenon).
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+    <h3>Extending eigenvalues (already built) to eigenvectors/loadings (not yet built)</h3>
+    <p>
+      This repo is not starting from zero on PCA. <code>js/diversificationCore.js</code>
+      already implements <code>symmetricEigenvalues</code> — a cyclic Jacobi
+      rotation that computes the eigenvalues of a correlation matrix from
+      scratch, no external linear-algebra library — and feeds those eigenvalues
+      into <code>effectiveBetsPCA(corr)</code>, which computes
+      \((\sum_i \lambda_i)^2 \big/ \sum_i \lambda_i^2\), the "inverse
+      participation ratio." That formula is a compact summary statistic built
+      directly from the eigenvalue spectrum this lesson derives: it equals
+      \(N\) (the number of instruments) when every eigenvalue is equal — no
+      dominant factor, every instrument is its own independent bet — and
+      shrinks toward 1 as one eigenvalue comes to dominate the rest — one
+      factor, many costumes. This is wired live into <code>diversification.html</code>
+      alongside <code>effectiveBetsEntropy</code> (a Meucci-style entropy
+      version of the same idea) and <code>effectiveBetsWeighted</code>
+      (allocation-aware). <code>correlations.html</code> is the pairwise view
+      one level below this — the raw correlation heatmap PCA is built on top
+      of, useful for eyeballing individual pair relationships but, as the
+      basket grows past a handful of instruments, hard to read as a whole in a
+      way a single \(\text{EVR}_1\) number isn't.
+    </p>
+    <p>
+      What's genuinely missing is the <strong>eigenvector</strong> side.
+      <code>symmetricEigenvalues</code> currently returns only the eigenvalues
+      (a deliberate, documented simplification — see the "eigenvalues are
+      rotation-invariant" comment in that file — because the effective-bets
+      metrics only ever needed the spectrum, not the directions). Extracting
+      the eigenvectors from the same Jacobi sweep (they fall out as the
+      accumulated rotation matrix, a small, well-understood addition to the
+      existing algorithm rather than a new one) would unlock exactly the piece
+      this lesson emphasizes: <em>which instruments load on PC1, and by how
+      much</em> — turning "your basket's effective number of bets is 1.6 out of
+      4" into "your basket's dominant factor is basically EURUSD and GBPUSD
+      moving together; AUDJPY and USDCAD are your genuinely separate bets."
+      That is a materially more actionable diagnostic for someone deciding
+      what to trim from an over-concentrated book, and it would sit as a
+      natural addition to the existing <code>diversification.html</code> page
+      rather than a new one — same data, same eigen-decomposition, one more
+      output surfaced.
+    </p>
+    <p>
+      <strong>To be explicit about what this is and isn't:</strong> everything
+      above is a description of an unbuilt extension to existing, working code
+      — not a claim that loadings are already displayed anywhere, and
+      absolutely not a claim that "PC1 dominance" by itself is a trading
+      signal. This is a data-summarization and risk-visibility tool: it tells
+      you how concentrated your current basket's variance is and around what,
+      today, on historical data. Any trading rule built on top of it — for
+      example, sizing down when \(\text{EVR}_1\) is unusually high, on the
+      theory that a market dominated by one factor is a market where
+      diversification benefits have temporarily evaporated — is a genuinely
+      separate claim that would need its own honest OOS validation per this
+      repo's standard discipline (Lego Principle 5), built as a proper Tier-1
+      or Tier-2 brick and registered in <code>LEGO_MODULES.md §2</code> as a
+      candidate before it's assumed to help.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where PCA on a market basket goes wrong in practice</h3>
+    <p>
+      <strong>Treating the loadings/eigenvalues as fixed.</strong> A covariance
+      matrix — and therefore its eigenvectors and eigenvalues — is estimated
+      over whatever window of history you feed it, and market correlation
+      structure genuinely changes across regimes (the crisis-correlations-go-
+      to-1 effect mentioned above is the sharpest version of this). A PCA run
+      on the last two years might describe a materially different factor
+      structure than one run on the last two months. Report the estimation
+      window explicitly, and treat PC1/EVR as regime-dependent readings, not
+      permanent properties of a basket.
+    </p>
+    <p>
+      <strong>Not rescaling instruments with very different volatility before
+      running PCA on raw covariance.</strong> Covariance (unlike correlation)
+      is scale-dependent — an instrument with much larger absolute daily moves
+      (say, a volatile emerging-market cross next to a stable G10 pair)
+      mechanically dominates a raw-covariance-based PCA regardless of how
+      correlated it actually is with anything else, simply because its
+      variance term is bigger. Running PCA on the <em>correlation</em> matrix
+      (equivalent to standardizing every series to unit variance first) is the
+      standard fix, and the one used throughout this lesson and in
+      <code>diversificationCore.js</code>.
+    </p>
+    <p>
+      <strong>Reading "uncorrelated by construction" as "economically
+      independent."</strong> PC2, PC3, … are mathematically guaranteed to be
+      uncorrelated with PC1 over the exact sample used to fit them — that's a
+      property of eigenvectors, not evidence about the real world. It does not
+      mean PC2 represents some clean, interpretable economic story ("the euro-
+      specific factor") — later components increasingly mix genuine
+      idiosyncratic signal with plain estimation noise, especially past the
+      first two or three when the basket isn't huge. Don't over-interpret
+      every component's loadings as meaningful; PC1 (and often PC2, on a large
+      liquid basket) is usually the only one worth naming.
+    </p>
+    <p>
+      <strong>Small \(N\), unstable eigenvectors.</strong> With only 3-5
+      instruments and a modest sample size, eigenvector directions — especially
+      for the smaller, later components — can be noisy and sensitive to which
+      exact days are in the sample. Eigenvalues are comparatively more stable
+      than eigenvectors under sampling noise, particularly when two eigenvalues
+      are close together (the corresponding eigenvector directions become
+      poorly determined and can rotate into each other with small data
+      perturbations — a classic numerical-linear-algebra caveat, not specific
+      to finance). Don't over-read a precise-looking loading number to two
+      decimal places from a small basket over a short window.
+    </p>
+    <p>
+      <strong>PCA is not causal.</strong> A high loading tells you an
+      instrument co-moves strongly with the dominant statistical direction —
+      it does not tell you <em>why</em>, and doesn't distinguish "this pair is
+      driven by the same macro cause as the others" from "this pair happens to
+      be correlated with the others over this window for reasons that won't
+      persist." Same caution as correlation itself, one layer up.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. If PC1 explains 70% of the variance across your FX basket, what does that imply about the diversification benefit of holding all those pairs at once?</summary>
+    <div class="tl-answer">
+      It implies the diversification benefit is much smaller than the number
+      of positions suggests. Holding, say, 6 pairs where PC1 explains 70% of
+      variance means roughly 70% of what moves your combined book on any given
+      day is really one common factor moving through all 6 positions at once —
+      not 6 independent sources of risk. The "effective number of bets" is
+      much closer to 1-2 than to 6. This doesn't mean the positions are
+      literally the same trade, but it does mean a shock to that common factor
+      (e.g. a broad dollar move) will hit most of the book in the same
+      direction simultaneously, which is exactly the concentration a naive
+      position count hides.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why are principal components always uncorrelated with each other, by construction, rather than as an empirical finding?</summary>
+    <div class="tl-answer">
+      Because principal components are the eigenvectors of a covariance
+      (or correlation) matrix, and for a symmetric matrix like that, distinct
+      eigenvectors are mathematically guaranteed to be mutually perpendicular
+      (orthogonal) to each other. Perpendicular directions in a data cloud
+      cannot share variance with each other by geometric definition — the
+      amount the data spreads along one such direction says nothing about how
+      much it spreads along a direction at 90 degrees to it. So "uncorrelated"
+      here isn't a pattern you discovered in the data; it's a structural
+      consequence of how the components were constructed in the first place.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What is the difference between a loading and an eigenvalue — what question does each one answer?</summary>
+    <div class="tl-answer">
+      An eigenvalue (\(\lambda_i\)) answers "how much total variance does this
+      component capture" — it's a single number per component, describing the
+      component's overall importance across the whole basket. A loading is a
+      per-instrument number within a component — one entry of the eigenvector
+      \(v_i\) — answering "how much, and in which direction, does this
+      specific instrument contribute to this specific component." A component
+      can have a large eigenvalue (it explains a lot of variance overall)
+      while a particular instrument still has a small loading on it (that
+      instrument barely participates in that particular shared factor, even
+      though the factor itself is important for the basket as a whole).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. In the worked example, why did AUDJPY's PC1 loading shrink (and a new component pick it up) when its correlations to EURUSD/GBPUSD were lowered from 0.20/0.15 to 0.02/-0.03?</summary>
+    <div class="tl-answer">
+      PC1 is the direction of maximum shared variance — it's built to capture
+      whatever moves multiple instruments together. When AUDJPY's correlation
+      with the other two pairs dropped toward zero, there was less shared
+      movement left for PC1 to capture from that instrument, so PC1's
+      "camera angle" tilted to point more purely along the EURUSD/GBPUSD
+      shared direction, and AUDJPY's loading on it shrank correspondingly. But
+      AUDJPY's own variance didn't disappear — it still moves, just not in sync
+      with the others — so that variance has to show up somewhere in the
+      eigen-decomposition (the total must still sum correctly). It shows up as
+      its own, separate component, because a fully idiosyncratic instrument's
+      variance can't be explained by any direction shared with something else;
+      it needs a dimension of its own.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why does running PCA on the raw covariance matrix (instead of the correlation matrix) risk giving misleading results across a mixed basket of, say, a stable G10 pair and a volatile EM cross?</summary>
+    <div class="tl-answer">
+      Covariance carries the units and scale of the underlying series — an
+      instrument with much larger absolute daily moves has a mechanically
+      larger variance term, regardless of how correlated it actually is with
+      the rest of the basket. PCA on raw covariance will tend to let that
+      high-variance instrument dominate the top component simply because it
+      contributes the most raw variance, not because it shares the most
+      structure with the others. Running PCA on the correlation matrix instead
+      (equivalent to standardizing every series to unit variance first)
+      removes that scale effect, so the components reflect actual co-movement
+      structure rather than which instrument happens to be loudest.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. This repo's <code>diversificationCore.js</code> already computes eigenvalues via <code>symmetricEigenvalues</code>, feeding an "effective number of bets" metric. What specifically would need to be added to get from that to a usable "what does PC1 look like today" diagnostic, and why isn't the eigenvalue number alone enough?</summary>
+    <div class="tl-answer">
+      The eigenvalues alone tell you how concentrated the basket's variance is
+      overall (a single summary number — the effective number of bets) but
+      not around <em>what</em>. To answer "what does PC1 look like," you need
+      the eigenvectors — the loadings — which the current
+      <code>symmetricEigenvalues</code> implementation deliberately doesn't
+      return (it only needed the eigenvalue spectrum for the effective-bets
+      formulas). The eigenvectors fall out of the same Jacobi-rotation
+      algorithm as the accumulated rotation matrix, so extracting them is an
+      extension of existing code rather than a new algorithm — but until
+      that's built, the existing tooling can tell you "your book is
+      concentrated" without being able to tell you "concentrated in EURUSD and
+      GBPUSD specifically."
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Karl Pearson, "On Lines and Planes of Closest Fit to Systems of Points in Space," <em>Philosophical Magazine</em>, 1901 — the original geometric formulation PCA is built on (finding the best-fitting line/plane through a cloud of points), predating its statistical/finance use by decades.</li>
+    <li>Harold Hotelling, "Analysis of a Complex of Statistical Variables into Principal Components," <em>Journal of Educational Psychology</em>, 1933 — the paper that formalized PCA in its modern statistical form and coined "principal components."</li>
+    <li>Ruey S. Tsay, <em>Analysis of Financial Time Series</em>, Wiley — the standard financial-econometrics textbook treatment of PCA/factor models applied to asset returns and yield curves, including the level/slope/curvature result referenced above.</li>
+    <li>Barra (now part of MSCI) multi-factor risk model methodology — the commercial template for statistical/fundamental factor risk models built on this exact eigen-decomposition idea, widely used across equity and multi-asset risk management; general methodology overviews are publicly available from MSCI.</li>
+    <li>Robert Litterman &amp; José Scheinkman, "Common Factors Affecting Bond Returns," <em>Journal of Fixed Income</em>, 1991 — the classic empirical demonstration of the level/slope/curvature PCA decomposition on yield curves referenced in the practitioner-use section.</li>
+    <li><code>js/diversificationCore.js</code> and <code>diversification.html</code> in this repo — the existing eigenvalue-based "effective number of bets" implementation this lesson's repo box builds on and extends.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="cointegration.html">← Cointegration &amp; Statistical Arbitrage</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="black-scholes.html">Black-Scholes-Merton Option Pricing →</a>
+  </div>
+</div>
+</body>
+</html>

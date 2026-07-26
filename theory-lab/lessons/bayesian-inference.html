@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bayesian Inference &amp; Updating — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Foundations &amp; Epistemics / Bayesian Inference</div>
+  <div class="tl-kicker">Foundations &amp; Epistemics · Lesson 2 of 14</div>
+  <h1 class="tl-title">Bayesian Inference &amp; Updating</h1>
+  <p class="tl-dek">A rule for turning "here is what I believed" plus "here is what I just observed" into "here is what I should believe now" — and the reason a positive signal is almost never as strong as it feels.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — a reasoning framework, not a signal</span>
+    <span>~14 min read</span>
+    <span>Prereqs: Efficient Market Hypothesis (helpful, not required)</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    Every strategy in this repo eventually asks the same question in disguise:
+    "given what just happened, how much should I believe X?" X might be "this is
+    a trend day, not a reversion day," or "this level will hold," or "this
+    regime classifier's BUY flag is real." The honest answer to that question is
+    never just "yes" or "no" — it is a number between 0 and 1, and that number
+    depends on two separate things: how rare X was <em>before</em> you saw the
+    new evidence, and how strong the new evidence actually is. Bayesian
+    inference is the formal, provably-correct procedure for combining those two
+    things. It is not a trading indicator; it is the logic that should sit
+    underneath any indicator that claims to update your belief in something.
+  </p>
+  <p>
+    The reason this is lesson 2 and not lesson 12 is that almost every mistake
+    described later in this series — p-hacking, overfitting a classifier,
+    trusting a backtest's win rate at face value — is, underneath, a failure to
+    account for a prior. If you only remember one thing from this page, make it
+    this: <strong>a piece of evidence is not the same thing as the probability
+    it implies.</strong> How much a piece of evidence should move your belief
+    depends on how likely the thing was to begin with.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Updating a belief, not replacing it</h3>
+    <p>
+      Imagine you think there's a 20% chance it will rain today (your prior —
+      what you believed before checking anything). You glance outside and see
+      dark clouds. Dark clouds are more common on days it rains than on days it
+      doesn't, so seeing them should raise your belief in rain. But it
+      shouldn't send it straight to 100% — dark clouds sometimes pass without
+      rain, and it's still true that most days, of any cloud cover, it doesn't
+      rain in most climates. Bayesian inference is the arithmetic for exactly
+      how much to move your belief: not all the way to certainty, and not by
+      some vague gut-feel amount, but by a precise quantity that depends on (a)
+      how rare rain was to start with and (b) how much more common dark clouds
+      are on rainy days than on dry ones. Do this again tomorrow — today's
+      updated belief becomes tomorrow's starting point — and you have
+      <em>sequential</em> Bayesian updating, which is what a well-built
+      classifier or filter is implicitly supposed to be doing every time new
+      data arrives.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    Everything here is built from one definition: the definition of
+    <strong>conditional probability</strong>. Nothing is assumed beyond that —
+    Bayes' theorem is not a separate axiom, it is an algebraic rearrangement of
+    this one definition, discovered by noticing that a shared quantity can be
+    written two different ways.
+  </p>
+  <p>
+    Let <code>H</code> stand for a hypothesis (a claim you're not sure is true
+    — "this is a trend day") and <code>E</code> stand for evidence (something
+    you actually observed — "the classifier fired BUY"). <code>P(H)</code>
+    means "the probability that H is true," a number between 0 (definitely
+    false) and 1 (definitely true). <code>P(H \cap E)</code> means "the
+    probability that both H and E are true" (∩ is set-intersection notation:
+    "and"). The conditional probability <code>P(H \mid E)</code> — read "the
+    probability of H, given E" — is <em>defined</em> as the probability of both
+    happening, divided by the probability of the condition happening at all:
+  </p>
+  <div class="tl-math">\[ P(H \mid E) = \frac{P(H \cap E)}{P(E)} \]</div>
+  <p>
+    This is just restricting your universe: out of all the times E happens,
+    what fraction of those times does H also happen? Rearranging this
+    definition (multiply both sides by <code>P(E)</code>) gives the
+    "multiplication rule":
+  </p>
+  <div class="tl-math">\[ P(H \cap E) = P(H \mid E)\, P(E) \]</div>
+  <p>
+    But <code>P(H \cap E)</code> is symmetric — "H and E" is the same event as
+    "E and H" — so by the exact same definition applied the other way around:
+  </p>
+  <div class="tl-math">\[ P(H \cap E) = P(E \mid H)\, P(H) \]</div>
+  <p>
+    Both expressions equal the same quantity, <code>P(H \cap E)</code>, so they
+    equal each other:
+  </p>
+  <div class="tl-math">\[ P(H \mid E)\, P(E) = P(E \mid H)\, P(H) \]</div>
+  <p>
+    Divide both sides by <code>P(E)</code> and you have derived Bayes'
+    theorem — not assumed it, derived it, from nothing but "and" being
+    symmetric:
+  </p>
+  <div class="tl-math">\[ P(H \mid E) = \frac{P(E \mid H)\, P(H)}{P(E)} \]</div>
+  <p>
+    Every term in that equation has a name, because in practice you compute
+    them from different sources and it matters which is which:
+  </p>
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(H\)</td><td>The <strong>hypothesis</strong> — the thing you want to know the truth of (e.g. "today is a trend day").</td></tr>
+      <tr><td>\(E\)</td><td>The <strong>evidence</strong> — what you actually observed (e.g. "the classifier flagged trend-day").</td></tr>
+      <tr><td>\(P(H)\)</td><td>The <strong>prior</strong> — your belief in H <em>before</em> seeing this evidence. Usually the base rate: how often is H true in general?</td></tr>
+      <tr><td>\(P(E \mid H)\)</td><td>The <strong>likelihood</strong> — if H were true, how probable is this exact evidence? (Not "how probable is H" — a common confusion, addressed below.)</td></tr>
+      <tr><td>\(P(E)\)</td><td>The <strong>evidence</strong> / <strong>marginal likelihood</strong> — the overall probability of observing E at all, averaged over every way H could be true or false.</td></tr>
+      <tr><td>\(P(H \mid E)\)</td><td>The <strong>posterior</strong> — your updated belief in H <em>after</em> seeing E. This is the answer.</td></tr>
+    </table>
+  </div>
+  <p>
+    <code>P(E)</code> is the term people usually get stuck computing, because
+    it isn't handed to you directly — it has to be built from every way E could
+    happen. If H is binary (true or false), the <strong>law of total
+    probability</strong> expands it as:
+  </p>
+  <div class="tl-math">\[ P(E) = P(E \mid H)\,P(H) \;+\; P(E \mid \lnot H)\,P(\lnot H) \]</div>
+  <p>
+    where <code>¬H</code> ("not H") is the complement of H, and
+    <code>P(\lnot H) = 1 - P(H)</code>. In words: the total chance of seeing
+    the evidence is the chance of seeing it when H is true, weighted by how
+    often H is true, plus the chance of seeing it when H is false, weighted by
+    how often H is false. This is the step that most intuitive, non-Bayesian
+    reasoning skips entirely — people anchor on <code>P(E \mid H)</code> (how
+    good the test is) and quietly forget <code>P(E \mid \lnot H)</code> (how
+    often you'd see the same evidence for the wrong reason). The worked example
+    below makes that skip concrete and shows exactly how much it costs you.
+  </p>
+  <p>
+    <strong>Sequential updating.</strong> Bayes' theorem doesn't care whether
+    <code>P(H)</code> came from a textbook base rate or from yesterday's
+    posterior. That's the whole trick of doing this repeatedly: today's
+    posterior <code>P(H \mid E_1)</code> becomes tomorrow's prior when new
+    evidence <code>E_2</code> arrives, and you apply the theorem again:
+  </p>
+  <div class="tl-math">\[ P(H \mid E_1, E_2) = \frac{P(E_2 \mid H, E_1)\, P(H \mid E_1)}{P(E_2 \mid E_1)} \]</div>
+  <p>
+    If <code>E_2</code> is independent of <code>E_1</code> given H (a common,
+    simplifying but not automatic assumption), this collapses to just plugging
+    the old posterior in as the new prior and multiplying by the new
+    likelihood ratio. This is what "the market updates on news" or "a
+    classifier updates on each new bar" formally means: not "throw out the old
+    belief and start over," but "multiply the old belief by how much more (or
+    less) likely the new data makes it."
+  </p>
+  <p>
+    <strong>Bayes factors.</strong> Sometimes you don't want the raw posterior
+    probability — you want to compare two competing hypotheses directly (e.g.
+    "trend day" vs. "reversion day") and ask how strongly the evidence favors
+    one over the other, independent of how you felt about them beforehand. Take
+    the ratio of the two posteriors:
+  </p>
+  <div class="tl-math">\[ \frac{P(H_1 \mid E)}{P(H_2 \mid E)} = \underbrace{\frac{P(E \mid H_1)}{P(E \mid H_2)}}_{\text{Bayes factor, } K} \times \underbrace{\frac{P(H_1)}{P(H_2)}}_{\text{prior odds}} \]</div>
+  <p>
+    The term <code>K</code> is the <strong>Bayes factor</strong>: it says
+    exactly how many times more likely the evidence was under \(H_1\) than
+    under \(H_2\), with the prior completely factored out. That separation is
+    the point — <code>K</code> tells you what the <em>evidence itself</em> is
+    worth, so two people with different priors can agree on <code>K</code> and
+    still (correctly) land on different posteriors. A rough, widely used
+    convention (Harold Jeffreys, 1961) for interpreting <code>K</code>:
+    1–3 is "barely worth mentioning," 3–10 is "substantial" evidence, 10–30 is
+    "strong," and above 100 is "decisive." A Bayes factor of 3 means the data
+    is 3× more consistent with \(H_1\) than \(H_2\) — worth noting, not worth
+    betting the account on. A Bayes factor of 30 is a different order of
+    claim entirely.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>A trend-day classifier's "80% accurate" is not the probability it's right</h3>
+    <p>
+      Suppose a regime classifier is built to flag "trend day" vs. "reversion
+      day," and its validation report says it's <strong>80% accurate</strong>:
+      when a day really is a trend day, it fires the trend-day flag 80% of the
+      time (and correspondingly, when a day really is a reversion day, it
+      correctly stays quiet 80% of the time — treat both error rates as equal
+      for simplicity). Separately, suppose only <strong>20% of days</strong>
+      are actually trend days in this market — most days revert. The
+      classifier fires the flag today. What is the actual probability that
+      today really is a trend day?
+    </p>
+    <p>
+      The intuitive, wrong answer is "80%," because that's the number that got
+      quoted. The correct answer requires the prior. Define:
+    </p>
+    <p>
+      \(H\) = "today is a trend day," so \(P(H) = 0.20\) (the base rate) and
+      \(P(\lnot H) = 0.80\).<br>
+      \(E\) = "the classifier fires the trend-day flag."<br>
+      \(P(E \mid H) = 0.80\) — true positive rate (fires correctly when it really is a trend day).<br>
+      \(P(E \mid \lnot H) = 0.20\) — false positive rate (fires anyway when it's actually a reversion day, since accuracy is symmetric at 80%).
+    </p>
+    <p>First, compute the total probability of the flag firing at all, over both cases:</p>
+    <div class="tl-math">\[ P(E) = P(E\mid H)P(H) + P(E\mid\lnot H)P(\lnot H) = (0.80)(0.20) + (0.20)(0.80) = 0.16 + 0.16 = 0.32 \]</div>
+    <p>Now apply Bayes' theorem:</p>
+    <div class="tl-math">\[ P(H \mid E) = \frac{P(E\mid H)\,P(H)}{P(E)} = \frac{0.16}{0.32} = 0.50 \]</div>
+    <p>
+      When the classifier flags trend-day, the real probability it's right is
+      only <strong>50%</strong> — a coin flip — not 80%. This is the
+      <strong>base-rate fallacy</strong>: the classifier's 80% accuracy applies
+      to <em>each class separately</em>, but because trend days are rare (20%
+      of days) relative to reversion days (80% of days), the pool of false
+      positives generated from the much larger reversion-day population
+      (0.20 × 0.80 = 0.16) is exactly as large as the pool of true positives
+      from the small trend-day population (0.80 × 0.20 = 0.16). The flag alone
+      can't distinguish which pool you're in. Note what drove the answer:
+      when \(P(E\mid H)\) and \(P(E\mid\lnot H)\) happen to be complements of
+      each other (0.80 and 0.20) the posterior collapses to exactly
+      \(P(H\mid E)=P(H)/[P(H)+P(\lnot H)P(E\mid\lnot H)/P(E\mid H)]\) — plug in
+      the numbers and see for yourself that a rarer prior always pulls the
+      posterior further from the quoted accuracy. If trend days were 50% of
+      days instead of 20%, the same 80%-accurate classifier would yield a
+      posterior of 80% — matching the quoted accuracy exactly, because a 50/50
+      prior contributes no distortion. The lesson is not "the classifier is
+      useless" — a jump from a 20% prior to a 50% posterior is real evidence,
+      a Bayes factor of \(0.80/0.20 = 4\), squarely in Jeffreys' "substantial"
+      band. The lesson is that <strong>the flag moved your belief, it didn't
+      resolve it</strong>, and reporting "80% accurate" without the base rate
+      badly overstates how confident you should be in any single flagged day.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Worked example, visualized</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart comparing the 20% prior probability of a trend day to the 50% posterior probability after the classifier flags trend-day">
+      <line x1="60" y1="20" x2="580" y2="20" style="stroke:var(--border);stroke-dasharray:2,2" />
+      <line x1="60" y1="65" x2="580" y2="65" style="stroke:var(--border);stroke-dasharray:2,2" />
+      <line x1="60" y1="110" x2="580" y2="110" style="stroke:var(--border);stroke-dasharray:2,2" />
+      <line x1="60" y1="155" x2="580" y2="155" style="stroke:var(--border);stroke-dasharray:2,2" />
+      <line x1="60" y1="200" x2="580" y2="200" style="stroke:var(--border);stroke-dasharray:2,2" />
+      <text x="50" y="24" fill="var(--text3)" font-size="10" text-anchor="end">100%</text>
+      <text x="50" y="69" fill="var(--text3)" font-size="10" text-anchor="end">75%</text>
+      <text x="50" y="114" fill="var(--text3)" font-size="10" text-anchor="end">50%</text>
+      <text x="50" y="159" fill="var(--text3)" font-size="10" text-anchor="end">25%</text>
+      <text x="50" y="204" fill="var(--text3)" font-size="10" text-anchor="end">0%</text>
+      <rect id="bayes-bar-prior" x="160" y="164" width="120" height="36" style="fill:var(--purple)" rx="2" />
+      <text id="bayes-bar-prior-label" x="220" y="150" fill="var(--text)" font-size="16" font-weight="700" text-anchor="middle">20%</text>
+      <text x="220" y="222" fill="var(--text3)" font-size="12" text-anchor="middle">Prior</text>
+      <text x="220" y="237" fill="var(--text3)" font-size="11" text-anchor="middle">P(trend day)</text>
+      <rect id="bayes-bar-posterior" x="360" y="110" width="120" height="90" style="fill:var(--blue)" rx="2" />
+      <text id="bayes-bar-posterior-label" x="420" y="96" fill="var(--text)" font-size="16" font-weight="700" text-anchor="middle">50%</text>
+      <text x="420" y="222" fill="var(--text3)" font-size="12" text-anchor="middle">Posterior</text>
+      <text x="420" y="237" fill="var(--text3)" font-size="11" text-anchor="middle">P(trend day | flagged)</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Prior P(trend day)</span><span class="tl-live" id="bayes-prior-val">20%</span></div>
+        <input type="range" id="bayes-prior" min="5" max="50" step="1" value="20">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Classifier accuracy</span><span class="tl-live" id="bayes-accuracy-val">80%</span></div>
+        <input type="range" id="bayes-accuracy" min="50" max="99" step="1" value="80">
+      </div>
+    </div>
+    <div class="tl-chart-caption">
+      The classifier's headline "80% accurate" sounds like it should mean an 80% chance any flagged day really is a trend day. It doesn't. Because trend days are rare to begin with (the <strong>20% prior</strong>, purple bar), the false alarms drawn from the much larger population of reversion days catch up to the true alarms from the small trend-day population, and the number that actually describes your confidence in a flagged day is the <strong>50% posterior</strong> (blue bar) — a coin flip, not the quoted accuracy figure.
+    </div>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The same math as natural frequencies (out of 1,000 days)</div>
+    <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tree diagram splitting 1,000 days into 200 trend days and 800 non-trend days, then each into flagged and not-flagged counts using an 80% accurate classifier, showing 160 true-positive flags and 160 false-positive flags out of 320 total flags">
+      <rect x="250" y="10" width="140" height="40" rx="2" style="fill:var(--s2);stroke:var(--border)" />
+      <text x="320" y="30" fill="var(--text)" font-size="13" font-weight="700" text-anchor="middle" dominant-baseline="middle">1,000 days</text>
+
+      <line x1="320" y1="50" x2="160" y2="80" style="stroke:var(--border)" />
+      <line x1="320" y1="50" x2="480" y2="80" style="stroke:var(--border)" />
+
+      <rect x="70" y="80" width="180" height="40" rx="2" style="fill:var(--s2);stroke:var(--border)" />
+      <text x="160" y="100" fill="var(--text)" font-size="13" font-weight="700" text-anchor="middle" dominant-baseline="middle">200 trend days</text>
+      <rect x="390" y="80" width="180" height="40" rx="2" style="fill:var(--s2);stroke:var(--border)" />
+      <text x="480" y="100" fill="var(--text)" font-size="13" font-weight="700" text-anchor="middle" dominant-baseline="middle">800 non-trend days</text>
+
+      <line x1="160" y1="120" x2="80" y2="170" style="stroke:var(--border)" />
+      <line x1="160" y1="120" x2="240" y2="170" style="stroke:var(--border)" />
+      <line x1="480" y1="120" x2="400" y2="170" style="stroke:var(--border)" />
+      <line x1="480" y1="120" x2="560" y2="170" style="stroke:var(--border)" />
+
+      <rect id="bayes-tree-tp" x="5" y="170" width="150" height="46" rx="2" style="fill:var(--s2);stroke:var(--blue);stroke-width:2" />
+      <text x="80" y="188" fill="var(--text)" font-size="13" font-weight="700" text-anchor="middle">160 flagged</text>
+      <text x="80" y="204" fill="var(--text3)" font-size="10.5" text-anchor="middle">(true positive)</text>
+
+      <rect x="165" y="170" width="150" height="46" rx="2" style="fill:var(--s2);stroke:var(--border)" />
+      <text x="240" y="188" fill="var(--text)" font-size="13" font-weight="700" text-anchor="middle">40 not flagged</text>
+      <text x="240" y="204" fill="var(--text3)" font-size="10.5" text-anchor="middle">(missed)</text>
+
+      <rect id="bayes-tree-fp" x="325" y="170" width="150" height="46" rx="2" style="fill:var(--s2);stroke:var(--blue);stroke-width:2" />
+      <text x="400" y="188" fill="var(--text)" font-size="13" font-weight="700" text-anchor="middle">160 flagged</text>
+      <text x="400" y="204" fill="var(--text3)" font-size="10.5" text-anchor="middle">(false positive)</text>
+
+      <rect x="485" y="170" width="150" height="46" rx="2" style="fill:var(--s2);stroke:var(--border)" />
+      <text x="560" y="188" fill="var(--text)" font-size="13" font-weight="700" text-anchor="middle">640 not flagged</text>
+      <text x="560" y="204" fill="var(--text3)" font-size="10.5" text-anchor="middle">(correct)</text>
+
+      <line x1="80" y1="216" x2="320" y2="252" style="stroke:var(--blue);stroke-dasharray:2,2" />
+      <line x1="400" y1="216" x2="320" y2="252" style="stroke:var(--blue);stroke-dasharray:2,2" />
+
+      <rect x="110" y="256" width="420" height="44" rx="2" style="fill:var(--blue-bg);stroke:var(--blue)" />
+      <text x="320" y="273" fill="var(--text)" font-size="12.5" font-weight="700" text-anchor="middle">160 of 320 flagged days are real trend days</text>
+      <text x="320" y="290" fill="var(--blue)" font-size="12.5" font-weight="700" text-anchor="middle">= 50%</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Same arithmetic as the bar chart above, but as counts instead of percentages — the way most people find easiest to reason about (Gigerenzer's "natural frequencies" technique). Out of 1,000 days, 200 are really trend days and 800 aren't. The 80%-accurate classifier correctly flags 160 of the 200 real trend days, but also incorrectly flags 160 of the 800 non-trend days — the two highlighted <strong>flagged</strong> boxes are the same size. So of the 320 total days that get flagged, only 160 — half — are actually trend days.
+    </div>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Three places this shows up constantly, outside of pure statistics:
+  </p>
+  <p>
+    <strong>Medical and diagnostic testing</strong> is the textbook version of
+    the example above, and it's not academic — real screening-test debates
+    (mammography, HIV testing, COVID testing) turn on exactly this arithmetic,
+    because a rare condition plus an imperfect test almost always means a
+    positive result is less certain than it feels. <strong>Spam filters and
+    fraud detection</strong> are built as literal Bayesian classifiers (naive
+    Bayes): each word or feature is evidence that updates the posterior
+    probability of "spam" versus "not spam," multiplicatively, one feature at
+    a time — which is precisely the sequential-updating idea above. <strong>A/B
+    testing and Bayesian statistics more broadly</strong> use this to report
+    "there is an 87% probability variant B is better" instead of a p-value,
+    because that statement is what people actually want to know and a
+    frequentist p-value does not say it (more on that distinction directly
+    below). In quantitative finance specifically, Bayesian updating underlies
+    Kalman filters (used for rolling estimates of parameters like beta or
+    volatility that drift over time), and it is the formal justification for
+    "don't trust a signal in isolation — weight it by how rare/common the
+    regime it's claiming to detect actually is."
+  </p>
+  <p>
+    <strong>Bayesian vs. frequentist — the actual philosophical difference.</strong>
+    This is not just two toolkits for the same job; the two schools disagree
+    about what the word "probability" <em>means</em>.
+  </p>
+  <ul>
+    <li>
+      <strong>Frequentist:</strong> probability is a long-run frequency —
+      "if I repeated this exact experiment infinitely many times, what
+      fraction of trials would show this outcome?" Under this view a
+      hypothesis is either true or false (a fixed, unknown fact about the
+      world) — it doesn't have a "probability" at all, only data generated
+      under it does. A frequentist confidence interval or p-value is a
+      statement about the <em>procedure's</em> long-run behavior, not a
+      direct probability statement about your specific hypothesis. This is
+      why "there's a 95% chance the true mean is in this interval" is,
+      strictly, a misstatement of what a 95% confidence interval means — the
+      true mean is fixed and either is or isn't in the interval; the 95% refers
+      to how often the procedure would capture it across repeated
+      experiments.
+    </li>
+    <li>
+      <strong>Bayesian:</strong> probability is a degree of belief — a
+      number that quantifies your uncertainty about a specific claim, and it
+      is perfectly coherent to say "there is an 87% probability today is a
+      trend day" about a single, particular, never-to-be-repeated day. A
+      hypothesis can have a probability, updated as evidence arrives, because
+      probability here describes the state of your knowledge, not a
+      frequency over an ensemble of repeated trials.
+    </li>
+  </ul>
+  <p>
+    Practically, this cashes out as a difference in what question each
+    approach is built to answer. A frequentist significance test answers "if
+    the null hypothesis were true, how surprising is data this extreme?"
+    (the p-value) — it never directly states the probability the null is
+    true. A Bayesian posterior answers "given this data, what should I
+    believe about the hypothesis?" directly — but the price is that it
+    requires you to state a prior, which is an extra, sometimes contestable
+    input a frequentist test doesn't need. Neither approach is "more
+    rigorous" in the abstract; they are answering different questions, and a
+    lot of confusion in casual data analysis comes from silently treating a
+    p-value as if it were a posterior probability, which — as the worked
+    example above shows for a classifier's "accuracy" — is exactly the
+    base-rate fallacy in a different costume.
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+    <h3>Confluence scoring is currently additive, not Bayesian — and that's a genuine, unbuilt design question</h3>
+    <p>
+      <code>js/levelSources.js</code> emits a <code>Level[]</code> from several
+      independent sources (daily open, prior hi/lo, pivots, volume profile,
+      swing S&amp;R, round numbers, VWAP), and <code>collectLevels</code> /
+      <code>clusterLevels</code> group nearby levels from different sources
+      into a confluence cluster. Separately, <code>js/entryGradeCore.js</code>'s
+      <code>computeSignalScore</code> combines several component scores
+      (<code>hmmScore</code>, <code>momScore</code>, <code>rbScore</code>,
+      <code>structScore</code>, optionally <code>macroScore</code>) into a
+      single 0–100 signal score via a fixed weighted sum — 25/25/20/20/10 with
+      macro data on, 38/25/25/12 without.
+    </p>
+    <p>
+      A weighted sum treats each confirming signal as contributing a fixed,
+      independent slice of "confidence," regardless of how correlated that
+      signal is with the others already counted, and regardless of how common
+      or rare the situation it's flagging actually is. A Bayesian alternative
+      is a genuinely different design: treat "fade" vs. "follow" as two
+      competing hypotheses with a prior (e.g. the historical base rate of fade
+      vs. follow outcomes at this kind of level, the way the worked example
+      above used the 20% base rate of trend days), and treat each additional
+      confirming signal (structural confluence, momentum alignment, range-bias
+      conviction, macro alignment) as evidence that updates the posterior via
+      its own likelihood ratio — sequential updating exactly as derived above,
+      each new signal multiplying in a Bayes factor rather than adding a fixed
+      point weight. The structural appeal, in principle, is that this can
+      naturally down-weight <strong>correlated</strong> signals (two features
+      that are mostly saying the same thing shouldn't each buy a full,
+      independent slice of confidence the way a linear sum lets them) and it
+      would produce an actual calibrated probability ("62% likely to fade")
+      instead of an unitless 0–100 score.
+    </p>
+    <p>
+      To be explicit about where this stands: <strong>this is not built,
+      not prototyped, and not validated</strong> — it is a candidate reframing
+      of an existing brick, described honestly as a hypothesis about design,
+      not a claim of improvement. Building it would require estimating real
+      likelihood ratios per signal from historical data (not guessed weights),
+      handling the correlation-between-signals problem explicitly rather than
+      just asserting Bayes handles it gracefully, and — per this repo's Lego
+      Principle #5 — proving it beats the incumbent additive
+      <code>computeSignalScore</code> on true out-of-sample Sharpe with a
+      non-trivial OOS trade count before it would replace anything live. A
+      more "principled-sounding" formula is not evidence by itself; only the
+      OOS comparison is.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where Bayesian reasoning quietly goes wrong</h3>
+    <p>
+      <strong>Confusing \(P(E \mid H)\) with \(P(H \mid E)\).</strong> "The
+      classifier is 80% accurate" is a statement about \(P(E \mid H)\) — how
+      likely the flag is, given the truth. It is routinely misread as
+      \(P(H \mid E)\) — how likely the truth is, given the flag. These are
+      only equal when \(P(H) = P(E)\), which is essentially never the case for
+      a rare event. This single confusion is the entire mechanism behind the
+      worked example above (this error even has a name: the "prosecutor's
+      fallacy," from its history in courtroom misuse of forensic-match
+      statistics).
+    </p>
+    <p>
+      <strong>Ignoring the prior entirely, or picking one that quietly does
+      all the work.</strong> A prior that's too confident makes new evidence
+      nearly irrelevant to the posterior (you'll barely update no matter what
+      you observe); a "flat" or uninformative prior can hide the fact that
+      you're implicitly still asserting something — there's no such thing as
+      an assumption-free starting point. State the prior and where it came
+      from (a real historical base rate, ideally) rather than letting a
+      default sit there unexamined.
+    </p>
+    <p>
+      <strong>Chaining updates on evidence that isn't actually independent.</strong>
+      The simplified sequential-updating formula above assumed each new piece
+      of evidence is conditionally independent of the others given H. Two
+      correlated signals — e.g. two level sources that are both really just
+      re-detecting the same daily pivot — will get double-counted as if they
+      were two separate confirmations, inflating the posterior further than
+      the evidence actually warrants. This is precisely the concern raised in
+      the repo box above about a naive multi-signal Bayesian score.
+    </p>
+    <p>
+      <strong>Treating a Bayes factor as a posterior probability.</strong> A
+      Bayes factor of 30 is strong evidence in favor of \(H_1\) over \(H_2\) —
+      it is not a statement that \(P(H_1 \mid E) = 30/31\). The final
+      posterior still depends on the prior odds; a large Bayes factor applied
+      to a very unlikely prior can still land at a modest posterior.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why does a positive test result not mean what most people intuitively think it means?</summary>
+    <div class="tl-answer">
+      Because people read a test's accuracy figure — \(P(E \mid H)\), the
+      chance of a positive result given the condition is real — as if it were
+      the answer to a different question: \(P(H \mid E)\), the chance the
+      condition is real given a positive result. Those are only the same
+      number when the base rate of the condition equals the base rate of a
+      positive test overall, which is essentially never true for anything
+      rare. The true posterior also depends on the prior \(P(H)\) and the
+      false-positive rate \(P(E \mid \lnot H)\), both of which get ignored by
+      the intuitive reading.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What's the difference between "updating" a belief and "re-deriving it from scratch"?</summary>
+    <div class="tl-answer">
+      Updating means using your current posterior as the new prior and
+      multiplying in the new evidence's likelihood ratio — the old belief is
+      preserved and adjusted, not discarded. Re-deriving from scratch would
+      mean throwing away everything you'd learned and computing a fresh
+      posterior using only the newest piece of evidence and some generic
+      default prior. Sequential Bayesian updating is specifically the
+      mathematical justification for why it's correct to keep carrying
+      forward accumulated belief rather than resetting on every new
+      observation — as long as each new piece of evidence is properly
+      conditioned on what came before.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What does a Bayes factor of 3 mean, versus a Bayes factor of 30?</summary>
+    <div class="tl-answer">
+      A Bayes factor of 3 means the observed evidence is 3 times more
+      probable under \(H_1\) than under \(H_2\) — on Jeffreys' scale that's
+      "barely worth mentioning" to "substantial," a modest nudge. A Bayes
+      factor of 30 means the evidence is 30 times more probable under
+      \(H_1\) — "strong" evidence, a much bigger nudge to the posterior odds.
+      Neither number alone tells you the final posterior probability — you
+      still have to multiply by the prior odds \(P(H_1)/P(H_2)\) to get
+      there.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. In the trend-day classifier example, why did an "80% accurate" classifier only give a 50% posterior?</summary>
+    <div class="tl-answer">
+      Because trend days were rare to begin with (20% prior), the pool of
+      false alarms generated from the much larger population of reversion
+      days (80% of days × 20% false-positive rate = 0.16) ended up exactly
+      as large as the pool of correct alarms generated from the small
+      population of real trend days (20% of days × 80% true-positive rate =
+      0.16). The flag alone can't tell you which pool a given alarm came
+      from, so the posterior split 50/50 between them. A rarer prior always
+      pulls the posterior further away from the raw accuracy figure.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. What's the core philosophical disagreement between Bayesian and frequentist statistics — not just the different formulas, but what "probability" means to each?</summary>
+    <div class="tl-answer">
+      Frequentists define probability as a long-run frequency over repeated
+      trials — under that definition, a fixed but unknown hypothesis doesn't
+      itself have a probability, only the data generated under repeated
+      experiments does. Bayesians define probability as a degree of belief, a
+      number that can meaningfully attach to a single, non-repeatable claim
+      ("this specific day is a trend day"), updated coherently as evidence
+      arrives. This is why a frequentist p-value answers "how surprising is
+      this data if the null were true?" while a Bayesian posterior answers
+      "what should I now believe about the hypothesis?" — genuinely different
+      questions, not two routes to the same number.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why is a weighted additive score (like computeSignalScore's 25/25/20/20/10 blend) not automatically "wrong" just because a Bayesian alternative exists?</summary>
+    <div class="tl-answer">
+      Because "more principled-sounding" is not the same as "better" — per the
+      Lego Principle in this repo's CLAUDE.md, an idea only earns adoption by
+      beating the incumbent on true out-of-sample Sharpe with a non-trivial
+      OOS trade count, not by sounding more theoretically justified. A naive
+      Bayesian version also introduces its own failure mode — treating
+      correlated signals as independent evidence and double-counting them —
+      that a fixed weighted sum with hand-tuned weights doesn't automatically
+      have. Neither approach is assumption-free; both need to be tested, not
+      asserted.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Thomas Bayes (posthumously, via Richard Price), <em>"An Essay towards solving a Problem in the Doctrine of Chances"</em>, Philosophical Transactions of the Royal Society, 1763 — the original source, on inferring an unknown probability from observed trials.</li>
+    <li>Pierre-Simon Laplace, <em>Théorie analytique des probabilités</em>, 1812 — developed the general theorem (independently of, and in more usable form than, Bayes' original essay) and applied it broadly; much of what's taught as "Bayes' theorem" today owes as much to Laplace.</li>
+    <li>E.T. Jaynes, <em>Probability Theory: The Logic of Science</em>, Cambridge University Press, 2003 — the rigorous case for probability as extended logic / degree of belief, and the deepest single treatment of why the Bayesian framework is the consistent one.</li>
+    <li>Nate Silver, <em>The Signal and the Noise</em>, Penguin Press, 2012 — an accessible, practitioner-facing tour of Bayesian reasoning applied to forecasting (weather, elections, poker, markets), a good bridge from the math here to real-world judgment calls.</li>
+    <li>Harold Jeffreys, <em>Theory of Probability</em>, 3rd ed., Oxford University Press, 1961 — origin of the Bayes-factor interpretation scale referenced above.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="emh.html">← Efficient Market Hypothesis</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="multiple-testing.html">Multiple Testing &amp; the Look-Elsewhere Effect →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var priorSlider = document.getElementById('bayes-prior');
+  var accSlider = document.getElementById('bayes-accuracy');
+  var priorVal = document.getElementById('bayes-prior-val');
+  var accVal = document.getElementById('bayes-accuracy-val');
+  var priorBar = document.getElementById('bayes-bar-prior');
+  var priorLabel = document.getElementById('bayes-bar-prior-label');
+  var postBar = document.getElementById('bayes-bar-posterior');
+  var postLabel = document.getElementById('bayes-bar-posterior-label');
+
+  var CHART_TOP = 20;              // svg y for 100%
+  var CHART_BOTTOM = 200;          // svg y for 0%
+  var CHART_RANGE = CHART_BOTTOM - CHART_TOP; // 180px spans 0%-100%
+  var LABEL_OFFSET = 14;           // value text sits 14px above its bar top
+
+  function update(){
+    var prior = parseFloat(priorSlider.value) / 100;
+    var accuracy = parseFloat(accSlider.value) / 100;
+    // Symmetric sensitivity/specificity: P(flag|trend) = accuracy, P(flag|no trend) = 1-accuracy
+    var posterior = (accuracy * prior) / (accuracy * prior + (1 - accuracy) * (1 - prior));
+
+    priorVal.textContent = Math.round(prior * 100) + '%';
+    accVal.textContent = Math.round(accuracy * 100) + '%';
+
+    var priorH = prior * CHART_RANGE;
+    var priorY = CHART_BOTTOM - priorH;
+    priorBar.setAttribute('y', priorY);
+    priorBar.setAttribute('height', priorH);
+    priorLabel.setAttribute('y', priorY - LABEL_OFFSET);
+    priorLabel.textContent = Math.round(prior * 100) + '%';
+
+    var postH = posterior * CHART_RANGE;
+    var postY = CHART_BOTTOM - postH;
+    postBar.setAttribute('y', postY);
+    postBar.setAttribute('height', postH);
+    postLabel.setAttribute('y', postY - LABEL_OFFSET);
+    postLabel.textContent = Math.round(posterior * 100) + '%';
+  }
+
+  priorSlider.addEventListener('input', update);
+  accSlider.addEventListener('input', update);
+  update();
+})();
+</script>
+</body>
+</html>

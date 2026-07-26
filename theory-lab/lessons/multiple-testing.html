@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multiple Testing &amp; the Look-Elsewhere Effect — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Foundations &amp; Epistemics / Multiple Testing</div>
+  <div class="tl-kicker">Foundations &amp; Epistemics · Lesson 3 of 14</div>
+  <h1 class="tl-title">Multiple Testing &amp; the Look-Elsewhere Effect</h1>
+  <p class="tl-dek">If you run 70 statistical tests at the usual 5% threshold, you should expect several to look "significant" even when nothing real is happening — this lesson is about why, and what to do instead.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — a validation discipline, not a signal</span>
+    <span>~13 min read</span>
+    <span>Prereqs: Bayesian Inference (helpful for the FDR section)</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+  Every statistical test you run has some chance of being wrong even when it is done correctly.
+  That is not a flaw in the method — it is the price of using probability at all. A single
+  well-designed test with a 5% false-positive rate is a reasonable, disciplined thing to run.
+  The problem starts when you don't run one test. You run seventy: one per currency pair, one
+  per regime, one per parameter combination, one per session-of-day, one per year. Each one
+  individually still carries only a 5% chance of a false alarm. But the chance that <em>at least
+  one</em> of the seventy false-alarms compounds fast — and by the time you've run seventy tests,
+  finding a "significant" result is no longer surprising. It is close to guaranteed, whether or
+  not there is anything real to find.
+  </p>
+  <p>
+  This matters here specifically because the natural way to explore an FX/macro idea is exactly
+  the shape that breaks naive significance testing: slice by pair, slice by regime, slice by
+  session, slice by holding period, slice by day-of-week. Each slice is a separate look at the
+  data, and each look is a separate roll of the dice. If you don't account for how many looks you
+  took, you will regularly convince yourself that noise is signal — and you will do it with a
+  clean, defensible-looking p-value in hand. This lesson gives you the machinery to tell the
+  difference: how fast the false-positive rate grows with the number of tests, and the two
+  standard corrections (Bonferroni and False Discovery Rate) for keeping it under control.
+  </p>
+
+  <div class="tl-box intuition"><div class="tl-box-label">Plain-English intuition</div>
+    <h3>The lottery-ticket analogy</h3>
+    <p>
+    Imagine a lottery where each ticket has a 5% chance of winning, purely by chance, with no
+    skill involved. If you buy one ticket, a win would be a small surprise — 1-in-20 odds. If you
+    buy seventy tickets, a win is not a surprise at all; in fact you'd be a little unlucky
+    <em>not</em> to get at least one winner. Now suppose someone hands you a folder of seventy
+    tickets, only shows you the one winning ticket, and says "look, I found a winner — this
+    system works." You'd rightly ask: how many tickets did you buy in total, and how many of
+    them won? Backtesting many pair/regime/parameter slices and reporting only the ones that
+    cleared your significance bar is functionally the same move. The "winning ticket" (the
+    significant slice) is not evidence of skill unless you can also show it survives after
+    accounting for how many tickets you bought.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+  Start with a single hypothesis test. You have a <strong>null hypothesis</strong> — call it
+  \(H_0\) — which represents "nothing interesting is happening" (e.g. "this strategy's mean
+  return is zero," or "this slice has no edge"). You compute a <strong>p-value</strong>: the
+  probability, <em>if</em> \(H_0\) were actually true, of seeing a result at least as extreme as
+  the one you observed, purely from sampling noise. You then compare that p-value to a
+  significance threshold \(\alpha\) (commonly 0.05). If \(p < \alpha\), you call the result
+  "statistically significant" and reject \(H_0\).
+  </p>
+  <p>
+  Crucially, \(\alpha\) is <em>defined</em> as the false-positive rate of a single test: if \(H_0\)
+  is really true, the test will still incorrectly reject it with probability exactly \(\alpha\),
+  by construction. A 5% threshold means a 5% chance of a false alarm on any one test where there
+  is genuinely nothing there. That is an acceptable, well-understood risk for one test. The
+  question this lesson answers is: what happens to that risk when you run many tests at once?
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(H_0\)</td><td>the null hypothesis for one test — "no real effect / no edge in this slice"</td></tr>
+    <tr><td>\(\alpha\)</td><td>the significance threshold for a single test (the false-positive rate you accept per test, e.g. 0.05)</td></tr>
+    <tr><td>\(p\)</td><td>the p-value of a single test — probability of a result this extreme under \(H_0\)</td></tr>
+    <tr><td>\(m\)</td><td>the number of independent hypothesis tests run (pairs × regimes × parameter sets × …)</td></tr>
+    <tr><td>FWER</td><td>family-wise error rate — probability of <em>at least one</em> false positive across all \(m\) tests</td></tr>
+    <tr><td>\(\alpha_{\text{Bonf}}\)</td><td>the Bonferroni-corrected per-test threshold, \(\alpha / m\)</td></tr>
+    <tr><td>FDR</td><td>false discovery rate — the expected <em>proportion</em> of "discoveries" (rejections) that are actually false positives</td></tr>
+    <tr><td>\(p_{(1)}, \dots, p_{(m)}\)</td><td>the \(m\) p-values sorted from smallest to largest (rank 1 = smallest)</td></tr>
+    <tr><td>\(k\)</td><td>the rank of a p-value in the sorted (Benjamini-Hochberg) list — used to compute its critical threshold</td></tr>
+    <tr><td>\(q\)</td><td>the target FDR level (the BH analogue of \(\alpha\), e.g. 0.10 for "allow 10% of discoveries to be false")</td></tr>
+  </table></div>
+
+  <h3>Deriving the family-wise error rate</h3>
+  <p>
+  Suppose you run \(m\) tests, each independently testing a true null hypothesis (nothing real,
+  by construction, in every single one) at threshold \(\alpha\). For any one test, the probability
+  of <em>not</em> producing a false positive is \(1-\alpha\) (95% of the time, at \(\alpha=0.05\),
+  it correctly stays below the significance bar). If the tests are independent, the probability
+  that <em>all \(m\)</em> of them avoid a false positive is the product of each individual
+  "avoid it" probability:
+  </p>
+  <div class="tl-math">\[ P(\text{no false positives in } m \text{ tests}) = (1-\alpha)^m \]</div>
+  <p>
+  The family-wise error rate (FWER) is the complement — the probability that <em>at least one</em>
+  of the \(m\) tests produces a false positive purely by chance:
+  </p>
+  <div class="tl-math">\[ \text{FWER} = 1-(1-\alpha)^m \]</div>
+  <p>
+  This function grows toward 1 quickly as \(m\) increases, even though each individual test is
+  still exactly as reliable as it was on its own — \(\alpha\) per test never changed. What changed
+  is that you gave chance more opportunities to produce a fluke, and the probability that
+  <em>none</em> of those opportunities pays off shrinks fast. This is the mathematical core of
+  the "look-elsewhere effect" — a phrase from particle physics, where searching across many bins
+  of a histogram (many possible masses a new particle could appear at) for a bump inflates the
+  chance of finding a "significant" bump somewhere purely from statistical fluctuation, even with
+  no new particle present. The 2012 Higgs boson discovery announcement is well known partly
+  <em>because</em> physicists were explicit about correcting for exactly this effect before
+  claiming a discovery — the same look-elsewhere correction this lesson describes for FX slices.
+  </p>
+
+  <h3>The Bonferroni correction</h3>
+  <p>
+  The simplest fix is to shrink the per-test threshold so that the <em>family-wise</em> error
+  rate, not the per-test error rate, is held at \(\alpha\). The Bonferroni correction sets the
+  per-test threshold to:
+  </p>
+  <div class="tl-math">\[ \alpha_{\text{Bonf}} = \frac{\alpha}{m} \]</div>
+  <p>
+  and only calls a test significant if \(p < \alpha_{\text{Bonf}}\). This is derived from a
+  simple inequality (Boole's inequality / the union bound): the probability of at least one
+  false positive across \(m\) tests is at most the sum of the individual probabilities, so
+  \(\text{FWER} \le m \cdot \alpha_{\text{Bonf}} = \alpha\) by construction — this bound holds
+  regardless of whether the tests are independent, which is Bonferroni's real virtue. The cost is
+  conservatism: as \(m\) grows, the bar for any single test to count as significant becomes very
+  high, and Bonferroni can be needlessly strict when the tests are <strong>correlated</strong>
+  rather than independent — as they usually are in FX. Seventy pair/regime slices are not seventy
+  independent draws: EURUSD, GBPUSD and AUDUSD all move partly off a shared USD factor, so a
+  macro surprise that moves the dollar can make several "slices" light up together. That shared
+  variation means the tests carry less independent information than \(m\) implies, so Bonferroni's
+  worst-case correction (built for the independent case) ends up over-punishing real, correlated
+  effects — treating seventy correlated looks as if they were seventy independent ones.
+  </p>
+
+  <h3>False Discovery Rate (Benjamini-Hochberg)</h3>
+  <p>
+  Bonferroni controls the probability of <em>any</em> false positive at all, which is a very
+  strict bar once \(m\) is large. In many practical settings — including exploratory research
+  across many slices — a more useful control target is the <strong>false discovery rate</strong>
+  (FDR): not "never have a false positive," but "keep the <em>proportion</em> of my discoveries
+  that are false positives below some target \(q\)." If you flag 10 slices as significant and your
+  FDR is controlled at 10%, the guarantee is that on average roughly 1 of those 10 flagged slices
+  is expected to be a false positive — not that any specific one is safe, and not that <em>zero</em>
+  false positives will occur across your whole research program.
+  </p>
+  <p>
+  The standard procedure, from Benjamini &amp; Hochberg (1995), works like this:
+  </p>
+  <ol>
+    <li>Run all \(m\) tests and collect their p-values.</li>
+    <li>Sort them from smallest to largest: \(p_{(1)} \le p_{(2)} \le \dots \le p_{(m)}\), so rank
+        \(k\) is the position of \(p_{(k)}\) in that sorted order.</li>
+    <li>Find the largest rank \(k\) such that:</li>
+  </ol>
+  <div class="tl-math">\[ p_{(k)} \le \frac{k}{m} \, q \]</div>
+  <ol start="4">
+    <li>Declare every test with rank \(1, 2, \dots, k\) (i.e. every p-value at or below that
+        cutoff p-value) significant. Everything ranked above \(k\) is not.</li>
+  </ol>
+  <p>
+  Intuitively, the threshold each p-value has to clear scales up with its rank: the smallest
+  p-value only has to beat \(q/m\) (close to Bonferroni's strictness), but the tenth-smallest gets
+  to beat the more lenient \(10q/m\), and so on. This staircase is what lets BH flag more true
+  effects than Bonferroni while still keeping the <em>proportion</em> of false flags under control
+  — it trades "zero tolerance for any false positive" for "a bounded, known rate of false positives
+  among what I call a discovery," which is usually the more useful guarantee for exploratory,
+  many-slice research.
+  </p>
+
+  <div class="tl-box example"><div class="tl-box-label">Worked example</div>
+    <h3>Seventy slices, one significance threshold</h3>
+    <p>
+    Suppose you slice your data 70 ways — say 7 pairs × 5 regimes × 2 holding periods, or any
+    similar breakdown — and for each slice you run a test of "does this slice have non-zero mean
+    return" at the standard \(\alpha = 0.05\). Assume, for the sake of the calculation, that in
+    truth <em>none</em> of the 70 slices has any real edge — every one of them is pure noise
+    around zero. Using the FWER formula from above with \(m=70\):
+    </p>
+    <div class="tl-math">\[ \text{FWER} = 1-(1-0.05)^{70} = 1 - (0.95)^{70} \approx 1 - 0.0275 \approx 0.972 \]</div>
+    <p>
+    That is a <strong>97.2% chance</strong> that at least one of the 70 slices comes back
+    "statistically significant" at the 5% level, purely from noise, even though nothing real is
+    there. If you expect a false positive rate of roughly \(\alpha\) per slice, the <em>expected
+    number</em> of false positives across 70 pure-noise slices is \(70 \times 0.05 = 3.5\) — so
+    finding "3 out of 70 slices look significant" is not a discovery. It is almost exactly what
+    you'd expect to see if there were no edge anywhere at all. This is the numeric backbone of the
+    house rule already written into this repo's own project memory: <em>"finding a few 'winners'
+    among 70 slices is what noise does."</em> The math above is why that sentence is true, not just
+    a cautious-sounding guess.
+    </p>
+    <p>
+    Now apply the corrections. Bonferroni: \(\alpha_{\text{Bonf}} = 0.05 / 70 \approx 0.000714\) —
+    a slice's raw p-value would need to be below roughly 0.07% (about 70× stricter than the
+    uncorrected 5%) to count as significant. That is a demanding bar, and given that FX pairs
+    share common factors (a correlated, not independent, set of 70 tests), it is probably stricter
+    than it needs to be. Benjamini-Hochberg is more forgiving: if, say, your smallest p-value among
+    the 70 slices is \(p_{(1)} = 0.0009\), it needs to beat \(\frac{1}{70}(0.10) \approx 0.00143\)
+    to survive at a 10% target FDR — a rank-1 test almost matches Bonferroni's strictness — but a
+    slice ranked 10th only needs to beat \(\frac{10}{70}(0.10) \approx 0.0143\), roughly 20× more
+    lenient than Bonferroni's flat bar for every rank. That staircase is the entire mechanical
+    difference between the two corrections.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">70 tests on pure noise — schematic p-value histogram</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Histogram of p-values from 70 hypothesis tests run on pure noise, roughly uniform across 0 to 1, with the bin below the alpha equals 0.05 threshold highlighted in red">
+      <line x1="60" y1="20" x2="60" y2="200" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="60" y1="200" x2="620" y2="200" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="88" y1="20" x2="88" y2="200" style="stroke:var(--red);stroke-width:1;stroke-dasharray:4,3"/>
+      <text x="92" y="16" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px">&#945;=0.05</text>
+      <rect x="62" y="104" width="24" height="96" style="fill:var(--red)"/>
+      <rect x="90" y="72" width="24" height="128" style="fill:var(--blue)"/>
+      <rect x="118" y="40" width="24" height="160" style="fill:var(--blue)"/>
+      <rect x="146" y="104" width="24" height="96" style="fill:var(--blue)"/>
+      <rect x="174" y="72" width="24" height="128" style="fill:var(--blue)"/>
+      <rect x="202" y="104" width="24" height="96" style="fill:var(--blue)"/>
+      <rect x="230" y="40" width="24" height="160" style="fill:var(--blue)"/>
+      <rect x="258" y="72" width="24" height="128" style="fill:var(--blue)"/>
+      <rect x="286" y="104" width="24" height="96" style="fill:var(--blue)"/>
+      <rect x="314" y="72" width="24" height="128" style="fill:var(--blue)"/>
+      <rect x="342" y="72" width="24" height="128" style="fill:var(--blue)"/>
+      <rect x="370" y="104" width="24" height="96" style="fill:var(--blue)"/>
+      <rect x="398" y="40" width="24" height="160" style="fill:var(--blue)"/>
+      <rect x="426" y="72" width="24" height="128" style="fill:var(--blue)"/>
+      <rect x="454" y="104" width="24" height="96" style="fill:var(--blue)"/>
+      <rect x="482" y="72" width="24" height="128" style="fill:var(--blue)"/>
+      <rect x="510" y="104" width="24" height="96" style="fill:var(--blue)"/>
+      <rect x="538" y="40" width="24" height="160" style="fill:var(--blue)"/>
+      <rect x="566" y="72" width="24" height="128" style="fill:var(--blue)"/>
+      <rect x="594" y="104" width="24" height="96" style="fill:var(--blue)"/>
+      <text x="52" y="203" text-anchor="end" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">0</text>
+      <text x="52" y="44" text-anchor="end" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">5</text>
+      <text x="22" y="114" text-anchor="middle" transform="rotate(-90 22 114)" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">count</text>
+      <text x="60" y="218" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">0</text>
+      <text x="340" y="218" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">0.5</text>
+      <text x="620" y="218" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">1</text>
+      <text x="340" y="234" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">p-value</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head">Number of tests (m) <span class="tl-live" id="mt-m-val">70</span></div>
+        <input type="range" id="mt-m-slider" min="5" max="200" step="5" value="70">
+        <div class="tl-hint">Drag to see how fast the chance of at least one false positive grows with the number of tests.</div>
+      </div>
+    </div>
+    <div class="tl-readout">
+    FWER = 1 &minus; (1&minus;0.05)<sup>m</sup> = <b id="mt-fwer-val">97.2%</b> &mdash; expected false positives &approx; <b id="mt-expected-val">3.5</b>
+    </div>
+    <div class="tl-legend">
+      <span><i style="background:var(--red)"></i>p &lt; 0.05 (~<span id="mt-legend-count">3-4</span> of <span id="mt-legend-m">70</span>, by chance)</span>
+      <span><i style="background:var(--blue)"></i>p &#8805; 0.05</span>
+    </div>
+    <div class="tl-chart-caption">
+    This is what 70 tests of <strong>nothing</strong> look like — pure noise, no real edge anywhere.
+    Under the null, p-values are uniformly distributed across 0 to 1, so each bin gets roughly the
+    same count; purely by chance, about 3-4 of the 70 land below \(\alpha=0.05\) and would read as
+    "significant" if reported alone. That's exactly the "few winners among 70 slices" this repo's
+    own house rule warns about. The histogram is illustrative/schematic, not drawn from an actual run.
+    Use the slider above to see how the family-wise error rate and expected false-positive count
+    change as \(m\) changes.
+    </div>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Family-wise error rate climbs fast as you add more tests</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Curve of family-wise error rate, 1 minus 0.95 to the power m, rising steeply from 0 at m=1 toward 100% as m approaches 100, with m=70 marked at approximately 97%">
+      <line x1="60" y1="20" x2="60" y2="200" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="60" y1="200" x2="620" y2="200" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="452" y1="200" x2="452" y2="20" style="stroke:var(--amber);stroke-dasharray:3,3"/>
+      <path d="M 60.00,200.00 L 65.60,191.00 L 71.20,182.45 L 76.80,174.33 L 82.40,166.61 L 88.00,159.28 L 93.60,152.32 L 99.20,145.70 L 104.80,139.42 L 110.40,133.44 L 116.00,127.77 L 121.60,122.38 L 127.20,117.26 L 132.80,112.40 L 138.40,107.78 L 144.00,103.39 L 149.60,99.22 L 155.20,95.26 L 160.80,91.50 L 166.40,87.92 L 172.00,84.53 L 177.60,81.30 L 183.20,78.24 L 188.80,75.32 L 194.40,72.56 L 200.00,69.93 L 205.60,67.43 L 211.20,65.06 L 216.80,62.81 L 222.40,60.67 L 228.00,58.63 L 233.60,56.70 L 239.20,54.87 L 244.80,53.12 L 250.40,51.47 L 256.00,49.90 L 261.60,48.40 L 267.20,46.98 L 272.80,45.63 L 278.40,44.35 L 284.00,43.13 L 289.60,41.98 L 295.20,40.88 L 300.80,39.83 L 306.40,38.84 L 312.00,37.90 L 317.60,37.00 L 323.20,36.15 L 328.80,35.35 L 334.40,34.58 L 340.00,33.85 L 345.60,33.16 L 351.20,32.50 L 356.80,31.87 L 362.40,31.28 L 368.00,30.72 L 373.60,30.18 L 379.20,29.67 L 384.80,29.19 L 390.40,28.73 L 396.00,28.29 L 401.60,27.88 L 407.20,27.48 L 412.80,27.11 L 418.40,26.75 L 424.00,26.42 L 429.60,26.10 L 435.20,25.79 L 440.80,25.50 L 446.40,25.23 L 452.00,24.97 L 457.60,24.72 L 463.20,24.48 L 468.80,24.26 L 474.40,24.04 L 480.00,23.84 L 485.60,23.65 L 491.20,23.47 L 496.80,23.29 L 502.40,23.13 L 508.00,22.97 L 513.60,22.82 L 519.20,22.68 L 524.80,22.55 L 530.40,22.42 L 536.00,22.30 L 541.60,22.19 L 547.20,22.08 L 552.80,21.97 L 558.40,21.87 L 564.00,21.78 L 569.60,21.69 L 575.20,21.61 L 580.80,21.53 L 586.40,21.45 L 592.00,21.38 L 597.60,21.31 L 603.20,21.24 L 608.80,21.18 L 614.40,21.12 L 620.00,21.07" fill="none" style="stroke:var(--red);stroke-width:2.5"/>
+      <circle cx="452" cy="24.97" r="4" style="fill:var(--amber)"/>
+      <text x="456" y="17" style="fill:var(--amber);font-family:'DM Mono',monospace;font-size:10px">m=70 &#8594; 97%</text>
+      <text x="52" y="203" text-anchor="end" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">0%</text>
+      <text x="52" y="114" text-anchor="end" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">50%</text>
+      <text x="52" y="24" text-anchor="end" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">100%</text>
+      <text x="22" y="110" text-anchor="middle" transform="rotate(-90 22 110)" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">P(at least one false positive)</text>
+      <text x="60" y="218" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">0</text>
+      <text x="340" y="218" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">50</text>
+      <text x="620" y="218" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">100</text>
+      <text x="340" y="234" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">number of tests m</text>
+    </svg>
+    <div class="tl-chart-caption">
+    The FWER curve, \(1-(0.95)^m\), for \(m\) from 1 to 100. It rises steeply at first — even a
+    handful of tests already carries meaningful false-positive risk — then flattens as it approaches
+    100%, because once a false positive is nearly certain, adding more tests can't push the
+    probability past 1. The dashed amber line marks \(m=70\), the worked example above: at that
+    point the curve has already climbed to roughly 97%, matching the interactive readout when the
+    slider above is set to 70.
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    var slider = document.getElementById('mt-m-slider');
+    var mVal = document.getElementById('mt-m-val');
+    var fwerVal = document.getElementById('mt-fwer-val');
+    var expVal = document.getElementById('mt-expected-val');
+    var legendCount = document.getElementById('mt-legend-count');
+    var legendM = document.getElementById('mt-legend-m');
+    function update(){
+      var m = parseInt(slider.value, 10);
+      var fwer = 1 - Math.pow(0.95, m);
+      var expected = m * 0.05;
+      mVal.textContent = m;
+      fwerVal.textContent = (fwer * 100).toFixed(1) + '%';
+      expVal.textContent = expected.toFixed(1);
+      if (legendCount) legendCount.textContent = Math.round(expected);
+      if (legendM) legendM.textContent = m;
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+  </script>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+  In quantitative finance this problem has its own well-developed vocabulary, most notably
+  <strong>backtest overfitting</strong>: trying many strategy variants (parameter sets, entry
+  rules, universes) against the same historical data and reporting only the ones that looked
+  good. Marcos López de Prado and collaborators formalized this with the
+  <strong>Probability of Backtest Overfitting (PBO)</strong> and the
+  <strong>Deflated Sharpe Ratio (DSR)</strong> — a Sharpe ratio adjustment that explicitly
+  discounts for the number of trials run and the variance across them, conceptually the same move
+  as Bonferroni/BH but tailored to Sharpe ratios instead of p-values. The practical habits that
+  follow from this literature, and from the physics/biostatistics multiple-testing tradition more
+  broadly, are: (1) <strong>log every test you run</strong>, including the ones that failed — a
+  file of "here are the 70 slices I checked" is what lets you compute \(m\) honestly later; (2)
+  <strong>pre-register</strong> what counts as a discovery before looking at results, so you can't
+  quietly redefine "significant" after seeing which slice happened to win; (3) treat the single
+  best-performing slice out of many with real suspicion — its rank alone (being #1 of 70) tells
+  you almost nothing, because the best of many noise draws is expected to look good by
+  construction, regardless of whether any of the draws contain real signal; and (4) prefer
+  <strong>out-of-sample</strong> confirmation on data that had no part in the slicing/selection
+  process over any post-hoc statistical correction — corrections manage the false-positive rate
+  of the searches you already ran, they do not manufacture the OOS evidence a real effect would
+  produce on fresh data.
+  </p>
+
+  <div class="tl-box repo"><div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>The theory behind a rule this repo already writes in prose</h3>
+    <p>
+    This lesson is the mathematics behind a working agreement already stated in this repo's own
+    <code>CLAUDE.md</code>: <em>"Pooled nulls hide subset edges — disaggregate before declaring
+    null. But count the cells and state the chance-baseline (multiple testing): finding a few
+    'winners' among 70 slices is what noise does. Survivors must beat chance and be
+    IS-consistent."</em> That sentence is asking you to do, in your head, exactly the FWER
+    calculation worked through above: count \(m\) (the number of cells you sliced the data into),
+    compute or at least estimate what noise alone would produce at that \(m\), and only treat a
+    slice as a real survivor if it clears that chance-baseline <em>and</em> holds up in-sample
+    consistently <em>and</em>, per Lego Principle 5, on a genuine out-of-sample split.
+    </p>
+    <p>
+    Pages like <code>cross-pair-research.html</code> and <code>correlations.html</code> are
+    exactly the kind of surface where this applies: any workflow that slices results across many
+    pairs, regimes, sessions or parameter values is running many implicit hypothesis tests, one
+    per slice, even if no p-value or correction is ever literally computed. To be clear about what
+    is and isn't built here: there is currently no coded Bonferroni or Benjamini-Hochberg step
+    anywhere in this codebase — this is a mental-discipline correction, not a software feature. The
+    honest use of this lesson is to keep the count-the-cells habit active whenever you're reading
+    a multi-slice results table on those pages (or any future one like them), and to be
+    specifically suspicious of a report that surfaces only the "winning" slices without saying how
+    many were checked in total.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall"><div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this goes wrong in practice</h3>
+    <p>
+    <strong>Reporting only the winners.</strong> The single most common failure is simply not
+    disclosing \(m\) — showing the 3 significant slices out of a study without mentioning it
+    checked 70. Without \(m\), a reader (including future-you) cannot tell a real finding from an
+    expected noise artifact.
+    </p>
+    <p>
+    <strong>Treating "best of many" as "significant."</strong> The slice with the lowest p-value
+    out of 70 is, definitionally, expected to have an unusually low p-value even under pure
+    noise — someone has to be the minimum of 70 draws. A low p-value on your single best slice,
+    considered alone and out of context of the other 69, is close to uninformative.
+    </p>
+    <p>
+    <strong>Applying Bonferroni honestly to correlated tests and getting nothing.</strong>
+    Bonferroni assumes worst-case independence; FX slices sharing USD, EUR, risk-sentiment or a
+    volatility regime are far from independent. Applying Bonferroni naively to 70 heavily
+    correlated slices can suppress real effects along with the noise — it is a safe but blunt
+    instrument, not the uniquely correct answer. This is precisely why BH/FDR, or slice-count
+    reduction via grouping correlated slices together first, is usually the more practical tool
+    in FX work than literal Bonferroni.
+    </p>
+    <p>
+    <strong>Re-running the same test after seeing the data ("p-hacking").</strong> Multiple
+    testing isn't only about slicing by pair or regime — trying several lookback windows,
+    thresholds, or filters on the <em>same</em> slice until one clears significance is the same
+    problem in disguise, and it inflates \(m\) just as surely as adding more pairs does, even
+    though it can feel like "refining one idea."
+    </p>
+    <p>
+    <strong>Confusing statistical significance with economic significance.</strong> Even a
+    correctly-FDR-controlled discovery only tells you the effect is unlikely to be pure noise — it
+    says nothing about whether the effect size survives realistic costs, is large enough to trade,
+    or remains stable outside the sample it was found in. This correction is necessary, not
+    sufficient (see Lego Principle 5's cost/OOS discipline).
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz"><summary>Q1. In your own words, what does \(\alpha = 0.05\) promise you for a single hypothesis test — and what does it NOT promise once you've run many tests?</summary>
+    <div class="tl-answer">It promises that <em>if</em> the null hypothesis is actually true, there is a 5% chance this one test will incorrectly reject it — a false-positive rate of 5% <em>per test</em>. It does not promise anything about the chance of a false positive across a whole batch of tests: run enough tests at \(\alpha=0.05\) and a false "significant" result becomes likely, even though each individual test is still exactly as reliable as advertised (5% per test never changed). The mistake is applying the single-test guarantee to a multi-test situation.</div>
+  </details>
+  <details class="tl-quiz"><summary>Q2. Derive, don't just state: why is the family-wise error rate \(1-(1-\alpha)^m\) rather than simply \(m\alpha\)?</summary>
+    <div class="tl-answer">For independent tests, the probability that all \(m\) tests avoid a false positive is the product of each one avoiding it: \((1-\alpha)^m\), since each test's outcome doesn't affect the others. FWER is "at least one false positive," which is the complement of "zero false positives," so \(\text{FWER} = 1-(1-\alpha)^m\). The simpler \(m\alpha\) is actually the Bonferroni union-bound approximation — it's an upper bound on the true FWER (via \(P(A \cup B) \le P(A)+P(B)\)) that holds even when tests are correlated, and it's close to \(1-(1-\alpha)^m\) when \(\alpha\) is small and \(m\) isn't huge, but they are not the same quantity and \(m\alpha\) can exceed 1 while a true probability cannot.</div>
+  </details>
+  <details class="tl-quiz"><summary>Q3. Why is Bonferroni often too strict when your 70 tests are correlated — for instance, when all your slices are FX pairs that share USD exposure?</summary>
+    <div class="tl-answer">Bonferroni's \(\alpha/m\) threshold is derived to guarantee FWER \(\le \alpha\) in the <em>worst case</em>, which is when all \(m\) tests are independent and therefore each one carries the maximum possible amount of unique information. When tests are correlated — as EURUSD, GBPUSD and AUDUSD are, sharing a common USD factor — a single macro shock can move several "independent-looking" slices together, so the effective number of independent pieces of information is less than \(m\). Bonferroni still divides by the full \(m\), producing a stricter (smaller) threshold than the correlation structure actually requires, which can bury a real, shared effect along with the noise.</div>
+  </details>
+  <details class="tl-quiz"><summary>Q4. What does controlling the False Discovery Rate at \(q=0.10\) actually guarantee — and what does it NOT guarantee?</summary>
+    <div class="tl-answer">It guarantees that, on average, no more than about 10% of the tests you flag as "significant" (your discoveries) are expected to be false positives — a bound on the expected <em>proportion</em> of false discoveries among your discoveries. It does NOT guarantee that any specific flagged slice is real, does not bound the absolute number of false positives (a large batch can still produce several false discoveries even at 10%), and does not say anything about tests you didn't flag. It's a rate guarantee over the discovered set, not a certificate on any individual result.</div>
+  </details>
+  <details class="tl-quiz"><summary>Q5. Why doesn't a single very low p-value on your BEST slice out of 70 tell you anything on its own?</summary>
+    <div class="tl-answer">Even if all 70 slices are pure noise with no real effect, one of them has to be the minimum p-value of the batch — that's simple order statistics, not evidence. The expected minimum p-value among 70 independent noise draws is already fairly small purely by chance (roughly on the order of \(1/(m+1) \approx 0.014\) for the smallest of 70 uniform p-values under the null). Reporting only that one number, without disclosing it was chosen as the best of 70 candidates, hides exactly the information (the value of \(m\), and where this p-value ranked) needed to judge whether it's a real finding or the expected extreme of a noise distribution.</div>
+  </details>
+  <details class="tl-quiz"><summary>Q6. You test 70 slices and find the smallest p-value is 0.0009. Using the worked example's Benjamini-Hochberg numbers, would this survive at rank 1 with a target FDR of \(q=0.10\)? What has to also be true for you to trust it beyond the statistics?</summary>
+    <div class="tl-answer">Rank 1's BH critical value is \(\frac{1}{70}(0.10) \approx 0.00143\). Since \(0.0009 < 0.00143\), it passes the BH cutoff at rank 1 (and, for reference, it also clears Bonferroni's flat \(0.000714\) bar only if it's below that — 0.0009 is actually just above Bonferroni's 0.000714, so it would fail the stricter Bonferroni test while passing BH, illustrating exactly how the two corrections can disagree). Passing either correction only means the result is unlikely to be pure multiple-testing noise. To actually trust it as a tradeable edge you still need it to be in-sample consistent (not carried by one lucky sub-period), to hold up on a genuine out-of-sample split with realistic costs, and to have an economically sensible mechanism — statistical survival is necessary, not sufficient.</div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Yoav Benjamini &amp; Yosef Hochberg (1995), "Controlling the False Discovery Rate: A Practical and Powerful Approach to Multiple Testing," <em>Journal of the Royal Statistical Society, Series B</em> — the original BH procedure.</li>
+    <li>Carlo Emilio Bonferroni (1936), "Teoria statistica delle classi e calcolo delle probabilità" — the original inequality underlying the Bonferroni correction (the union bound applied to multiple comparisons).</li>
+    <li>Marcos López de Prado, <em>Advances in Financial Machine Learning</em> (Wiley, 2018) — chapters on backtest overfitting, the Probability of Backtest Overfitting (PBO), and the Deflated Sharpe Ratio; the standard finance-specific treatment of this problem.</li>
+    <li>David H. Bailey &amp; Marcos López de Prado, "The Deflated Sharpe Ratio: Correcting for Selection Bias, Backtest Overfitting, and Non-Normality," <em>Journal of Portfolio Management</em> (2014).</li>
+    <li>David H. Bailey, Jonathan Borwein, Marcos López de Prado &amp; Qiji Jim Zhu, "Pseudo-Mathematics and Financial Charlatanism: The Effects of Backtest Overfitting on Out-of-Sample Performance," <em>Notices of the AMS</em> (2014) — a readable, non-technical entry point into PBO.</li>
+    <li>ATLAS &amp; CMS Collaborations' Higgs boson discovery papers (2012, <em>Physics Letters B</em>) — the canonical applied example of "look-elsewhere effect" correction in a real many-bins search.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="bayesian-inference.html">← Bayesian Inference &amp; Updating</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="ou-mean-reversion.html">Ornstein-Uhlenbeck &amp; Mean Reversion →</a>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GARCH &amp; Volatility Clustering — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Time Series &amp; Regimes / GARCH</div>
+  <div class="tl-kicker">Time Series &amp; Regimes · Lesson 6 of 14</div>
+  <h1 class="tl-title">GARCH &amp; Volatility Clustering</h1>
+  <p class="tl-dek">Big moves cluster together even though the direction of the next move stays unpredictable — GARCH is the model that turns "volatility has memory" into a number you can forecast one day ahead.</p>
+  <div class="tl-meta">
+    <span class="tl-status candidate">ALREADY IN USE — js/volBacktestEngine.js's sigma series</span>
+    <span>~16 min read</span>
+    <span>Prereqs: Ornstein-Uhlenbeck &amp; Mean Reversion</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    Stare at almost any daily return chart for a currency pair, an index, or a commodity and one pattern jumps
+    out even before you compute anything: calm stretches and turbulent stretches come in runs. A 2% daily move
+    doesn't show up in isolation surrounded by 0.2% days — it shows up next to other 1–3% days, clustered around
+    a news shock, a central bank surprise, or a liquidity event. Then, days or weeks later, the market goes quiet
+    again. This is called <strong>volatility clustering</strong>, and it is one of the most robust empirical
+    regularities in financial time series — documented across essentially every liquid asset class, going back
+    to Mandelbrot's observation in 1963 that "large changes tend to be followed by large changes, of either sign,
+    and small changes tend to be followed by small changes."
+  </p>
+  <p>
+    That last clause — <em>of either sign</em> — is the key thing that makes this a statement about volatility and
+    not about direction. A big up day and a big down day both raise the odds that tomorrow is also a big day,
+    regardless of which way it goes. So the <em>returns</em> themselves are close to unpredictable from their own
+    past (this is the efficient-markets / random-walk-ish behavior you may already associate with prices), but the
+    <em>size</em> of the returns — the volatility — is highly predictable from its own recent past. That distinction
+    is the whole reason GARCH exists: it is a model of the second moment (variance) built on top of a process whose
+    first moment (mean/direction) is assumed to be roughly unforecastable.
+  </p>
+  <p>
+    Why does a builder working on this repo need to care? Because every strategy here that expresses a level as
+    "price ± some multiple of σ" — the daily/weekly/20-day forecast bands, the entry-zone confidence engine, the
+    regime classifier's day-type score — is only as good as the σ estimate feeding it. If σ is estimated as a flat
+    trailing average that doesn't know volatility clusters, it will be systematically <em>too narrow</em> right
+    after a shock (when the market is actually still hot) and <em>too wide</em> long after a shock has faded (when
+    the old big day is still sitting in the trailing window, artificially inflating the estimate). GARCH exists to
+    fix exactly this lag.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Volatility has momentum; returns (mostly) don't</h3>
+    <p>
+      Think of market volatility like weather rather than like a coin flip. A coin flip has no memory — knowing
+      today's flip was heads tells you nothing about tomorrow's. But "how stormy is it" absolutely has memory: a
+      stormy day is followed by an elevated chance of another stormy day, and a long calm spell tends to stay calm
+      for a while. Nobody can predict tomorrow's wind <em>direction</em> from today's, but the <em>intensity</em> of
+      the weather is forecastable in a way that compounds day to day. GARCH treats volatility exactly like that
+      storminess variable: it doesn't try to predict which way price goes tomorrow, only how large the swing is
+      likely to be, and it lets today's storminess directly inform tomorrow's forecast — the way a meteorologist
+      updates a forecast the instant a new storm forms rather than waiting for a 20-day average to catch up.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    We need a bit of notation before writing any model down. Let \(P_t\) be the closing price on day \(t\), and
+    define the daily log return \(r_t = \ln(P_t / P_{t-1})\) — the day's percentage move, expressed in
+    log form because log returns are additive across time and (approximately) symmetric for small moves. We split
+    the return into a mean part and a shock part:
+  </p>
+  <div class="tl-math">\[ r_t = \mu + \epsilon_t \]</div>
+  <p>
+    \(\mu\) is the (usually assumed-small, sometimes assumed-zero) average daily drift, and \(\epsilon_t\) is the
+    day's unpredictable shock — the residual, the part of the return not explained by a constant drift. For a
+    return series that's close to a random walk, \(\mu\) is small enough that people often just treat
+    \(\epsilon_t \approx r_t\) directly. The entire question GARCH answers is: <em>how large do we expect
+    \(\epsilon_t\) to be today, given everything we know up to yesterday?</em> We formalize "how large" as a
+    <strong>conditional variance</strong>:
+  </p>
+  <div class="tl-math">\[ \sigma_t^2 = \mathrm{Var}(\epsilon_t \mid \mathcal{F}_{t-1}) \]</div>
+  <p>
+    Read this as: "\(\sigma_t^2\) is the variance of today's shock, conditional on \(\mathcal{F}_{t-1}\)" — where
+    \(\mathcal{F}_{t-1}\) (a standard notation in time-series stats, the "filtration" or information set) just means
+    "everything observable up through the close of day \(t-1\)." The word <em>conditional</em> is doing all the
+    work here: this is not "the variance of returns over history," it's "the best variance forecast given what
+    happened right up to now" — a number that is allowed to change every single day as new information arrives.
+    Contrast that with a flat historical-volatility window (e.g. an HV20 estimate):
+  </p>
+  <div class="tl-math">\[ \hat\sigma_{HV20}^2 = \frac{1}{20}\sum_{i=1}^{20} \epsilon_{t-i}^2 \]</div>
+  <p>
+    HV20 gives the last 20 days <strong>equal weight</strong> — day \(t{-}1\) counts exactly as much as day
+    \(t{-}20\) — and it has no concept of "conditional on what just happened." It also has a well-known
+    artifact: when a big shock day rolls out of the 20-day window (21 days later), the estimate drops abruptly even
+    though nothing new happened in the market that day — it's purely an artifact of the rolling window's edge. This
+    is sometimes called the "ghosting" effect. GARCH replaces the flat window with a model that (a) reacts to new
+    shocks immediately and (b) decays their influence smoothly over time instead of dropping them off a cliff.
+  </p>
+
+  <h3>Step 1 — ARCH(1): let variance react to the last shock</h3>
+  <p>
+    Robert Engle's original 1982 ARCH model (AutoRegressive Conditional Heteroskedasticity — "heteroskedasticity"
+    just means "non-constant variance") proposed the simplest possible version of this idea: make today's variance
+    a function of yesterday's <em>squared</em> shock.
+  </p>
+  <div class="tl-math">\[ \sigma_t^2 = \omega + \alpha\,\epsilon_{t-1}^2 \]</div>
+  <p>
+    Squaring is not cosmetic — it's the load-bearing idea. A raw shock \(\epsilon_{t-1}\) can be positive or
+    negative, but "how much variance should this generate" doesn't care about sign: a −2% day and a +2% day should
+    both raise tomorrow's expected variance by the same amount, since both are evidence of an active, turbulent
+    market. Squaring converts "a shock of either sign" into "a magnitude," which is exactly the quantity a variance
+    (itself always non-negative) should respond to. If you didn't square it, a small positive and small negative
+    shock could cancel out and the model would learn nothing about the market's actual turbulence.
+  </p>
+  <p>
+    For this recursion to always produce a valid (non-negative) variance, the parameters must satisfy
+    \(\omega > 0\) and \(\alpha \ge 0\). \(\omega\) sets a floor — the variance never falls below what a
+    quiet, shock-free market would produce — and \(\alpha\) controls how strongly one big day pushes tomorrow's
+    forecast up.
+  </p>
+
+  <h3>Step 2 — GARCH(1,1): let variance also carry its own momentum</h3>
+  <p>
+    ARCH(1) has a limitation: it only remembers <em>yesterday's</em> shock, and it forgets everything about how
+    elevated variance itself has already been running. Tim Bollerslev's 1986 generalization (the "G" in GARCH)
+    fixes this by adding a second input — <em>yesterday's own variance forecast</em> — so the model has memory of
+    its own recent level, not just of the last shock:
+  </p>
+  <div class="tl-math">\[ \sigma_t^2 = \omega + \alpha\,\epsilon_{t-1}^2 + \beta\,\sigma_{t-1}^2 \]</div>
+  <p>
+    This is <strong>GARCH(1,1)</strong> — "(1,1)" meaning one lag of the squared shock and one lag of the variance
+    itself; higher-order GARCH(p,q) variants exist but (1,1) is by far the most widely used in practice and is
+    what this repo implements. Every symbol, defined explicitly:
+  </p>
+  <div class="tl-symbols"><table>
+    <tr><td>\(\sigma_t^2\)</td><td>Today's <strong>conditional variance</strong> — the model's forecast of how large today's squared shock is expected to be, made using only information available through yesterday's close. \(\sigma_t = \sqrt{\sigma_t^2}\) is the corresponding volatility (in the same units as returns).</td></tr>
+    <tr><td>\(\epsilon_{t-1}\)</td><td>Yesterday's realized shock (approximately yesterday's return, \(r_{t-1}\), once the small drift \(\mu\) is netted out). \(\epsilon_{t-1}^2\) is the "news" term — the fresh, single-day evidence of how turbulent the market just was.</td></tr>
+    <tr><td>\(\sigma_{t-1}^2\)</td><td>Yesterday's own conditional-variance forecast, i.e. the model applied to itself one step back. This is what gives GARCH its "memory of its own level," distinct from just reacting to the newest shock.</td></tr>
+    <tr><td>\(\omega\)</td><td>The constant ("baseline") term, \(\omega>0\). It anchors the recursion so variance always has a positive floor and pins down the long-run average level (derived below).</td></tr>
+    <tr><td>\(\alpha\)</td><td>The <strong>ARCH coefficient</strong> — how much weight goes on yesterday's fresh squared shock. Larger \(\alpha\) means the model reacts more sharply to a single big news day. Typical estimated values for daily FX/equity returns are roughly 0.03–0.12.</td></tr>
+    <tr><td>\(\beta\)</td><td>The <strong>GARCH coefficient</strong> — how much weight carries over from yesterday's variance level itself. Larger \(\beta\) means an elevated-volatility regime is stickier and decays more slowly. Typical estimated values are roughly 0.85–0.95 — usually much larger than \(\alpha\), meaning most of today's forecast is inherited persistence, with the newest shock only nudging it.</td></tr>
+    <tr><td>\(\alpha+\beta\)</td><td>The <strong>persistence</strong> of the process — see below. It governs how quickly a volatility spike decays back toward normal.</td></tr>
+  </table></div>
+  <p>
+    Read the recursion as three additive pieces: a baseline floor (\(\omega\)), a reaction to the newest piece of
+    evidence (\(\alpha \epsilon_{t-1}^2\)), and inertia from wherever variance already was
+    (\(\beta \sigma_{t-1}^2\)). That third term is precisely what a flat trailing-window average like HV20 does not
+    have: HV20 re-derives its estimate from scratch out of the raw window every day, with no explicit sense of "the
+    variance process itself has momentum." GARCH's \(\beta\) term encodes that momentum directly into the model.
+  </p>
+
+  <h3>Stationarity: \(\alpha + \beta < 1\)</h3>
+  <p>
+    For this recursion to describe a <em>mean-reverting</em> variance process — one that, absent new shocks, settles
+    down toward a stable long-run level rather than wandering off to infinity or zero — the parameters must satisfy
+  </p>
+  <div class="tl-math">\[ \alpha + \beta < 1 \]</div>
+  <p>
+    Intuitively: each day, a fraction \(\alpha+\beta\) of "how far variance currently is from its long-run
+    average" carries forward into tomorrow (proof of that exact statement is the persistence derivation two
+    paragraphs down). If \(\alpha+\beta \ge 1\), that fraction never shrinks — a variance shock either persists
+    forever (the borderline \(\alpha+\beta=1\) case, called <strong>IGARCH</strong>, integrated GARCH) or compounds
+    explosively (\(\alpha+\beta>1\), which is not a valid model — variance forecasts blow up). Any legitimate
+    GARCH(1,1) fit on real return data needs \(\alpha+\beta<1\), and it's a sanity check worth running on any fitted
+    or hand-set parameters before trusting them.
+  </p>
+
+  <h3>The unconditional (long-run) variance</h3>
+  <p>
+    Given stationarity holds, the recursion has a well-defined long-run average variance — the level the forecast
+    reverts to when there's been no unusual news for a long time. We can derive it directly from the recursion.
+    Take expectations of both sides of \(\sigma_t^2 = \omega + \alpha \epsilon_{t-1}^2 + \beta \sigma_{t-1}^2\).
+    Because \(\epsilon_t = \sigma_t z_t\) for a standardized shock \(z_t\) with \(E[z_t^2]=1\), we have
+    \(E[\epsilon_{t-1}^2] = E[\sigma_{t-1}^2]\) — the average squared shock equals the average variance. In a
+    stationary process, \(E[\sigma_t^2]\) and \(E[\sigma_{t-1}^2]\) both equal the same constant, call it
+    \(\bar\sigma^2\):
+  </p>
+  <div class="tl-math">\[ \bar\sigma^2 = \omega + \alpha\bar\sigma^2 + \beta\bar\sigma^2 \;\;\Longrightarrow\;\; \bar\sigma^2(1-\alpha-\beta) = \omega \;\;\Longrightarrow\;\; \bar\sigma^2 = \frac{\omega}{1-\alpha-\beta} \]</div>
+  <p>
+    This is the number the model would forecast on an infinitely quiet day with no recent shocks to react to — the
+    steady-state variance. Every GARCH(1,1) forecast can be read as "the long-run variance, nudged up or down by
+    however far the most recent shock and the most recent variance level were from that long-run value."
+  </p>
+
+  <h3>Persistence and the volatility "half-life"</h3>
+  <p>
+    Subtract \(\bar\sigma^2\) from both sides of the recursion and use \(\omega = \bar\sigma^2(1-\alpha-\beta)\) to
+    substitute out \(\omega\); a few lines of algebra collapse to:
+  </p>
+  <div class="tl-math">\[ \sigma_t^2 - \bar\sigma^2 \;=\; \alpha\big(\epsilon_{t-1}^2-\bar\sigma^2\big) + \beta\big(\sigma_{t-1}^2 - \bar\sigma^2\big) \]</div>
+  <p>
+    Taking expectations forward (using \(E[\epsilon_{t-1}^2]=E[\sigma_{t-1}^2]\) again) shows that the
+    <em>expected deviation from the long-run level decays geometrically, at rate \(\alpha+\beta\) per day</em>:
+    a deviation today implies an expected deviation of \((\alpha+\beta)\) times as large tomorrow, \((\alpha+\beta)^2\)
+    times as large in two days, and so on. That's why \(\alpha+\beta\) is called the <strong>persistence</strong>
+    of the process — it's literally the day-over-day decay rate of a volatility shock's excess over normal. From a
+    geometric decay rate, the standard half-life formula falls straight out — the number of days for a shock's
+    excess variance to fall to half its initial size:
+  </p>
+  <div class="tl-math">\[ n_{1/2} = \frac{\ln(0.5)}{\ln(\alpha+\beta)} \]</div>
+  <p>
+    When \(\alpha+\beta\) is close to 1 (say 0.97–0.99, common for daily equity/index data), the half-life stretches
+    to weeks — a volatility spike from a single event lingers in the forecast for a long time. When \(\alpha+\beta\)
+    is more moderate (say 0.85–0.90), the half-life shrinks to a handful of days — the model "forgets" a shock
+    quickly. This single number, \(\alpha+\beta\), is usually the first thing worth checking when someone hands you
+    a fitted GARCH model: it tells you, at a glance, how sticky the volatility regime the model is describing
+    actually is.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>Forecasting tomorrow's σ after a shock day, then watching it decay</h3>
+    <p>
+      Take illustrative parameters: \(\alpha = 0.08\), \(\beta = 0.90\), so persistence
+      \(\alpha+\beta = 0.98\), and set \(\omega = 1.0\times10^{-6}\) (variance units, i.e. \((\text{daily
+      return})^2\)). First, the long-run daily volatility this implies:
+    </p>
+    <div class="tl-math">\[ \bar\sigma^2 = \frac{\omega}{1-\alpha-\beta} = \frac{1.0\times10^{-6}}{0.02} = 5.0\times10^{-5} \quad\Rightarrow\quad \bar\sigma = \sqrt{5.0\times10^{-5}} \approx 0.00707 \approx 0.71\% \]</div>
+    <p>
+      So on a quiet day with no recent shocks, this model expects roughly a 0.71% daily move — a plausible order
+      of magnitude for a major FX pair. Now suppose yesterday's variance forecast was sitting right at that
+      long-run level, \(\sigma_{t-1}^2 = 5.0\times10^{-5}\), but yesterday's <em>realized</em> shock was a large
+      2.5% move: \(\epsilon_{t-1} = 0.025 \Rightarrow \epsilon_{t-1}^2 = 0.000625\). Plug into the GARCH(1,1)
+      recursion to get today's forecast:
+    </p>
+    <div class="tl-math">\[ \sigma_t^2 = \omega + \alpha\epsilon_{t-1}^2 + \beta\sigma_{t-1}^2 = 1.0\times10^{-6} + 0.08(0.000625) + 0.90(5.0\times10^{-5}) \]</div>
+    <div class="tl-math">\[ \sigma_t^2 = 0.000001 + 0.00005 + 0.000045 = 0.000096 \quad\Rightarrow\quad \sigma_t \approx 0.0098 \approx 0.98\% \]</div>
+    <p>
+      One 2.5% shock day pushed the next-day forecast from 0.71% up to 0.98% — roughly 38% higher than the
+      long-run level. A flat HV20 estimate, by contrast, would barely move: adding a single 2.5% day into a
+      20-day equal-weighted average nudges the mean up only modestly, and it would keep contributing that same
+      fixed weight for the next twenty days regardless of what happens next, then vanish abruptly on day 21. GARCH
+      reacted to the shock immediately and in full on day one.
+    </p>
+    <p>
+      Now trace the decay. With no further shocks, the excess over the long-run variance
+      (\(0.000096 - 0.00005 = 0.000046\)) shrinks by a factor of \(\alpha+\beta = 0.98\) every day. Ten trading
+      days later:
+    </p>
+    <div class="tl-math">\[ \sigma^2_{t+10} \approx \bar\sigma^2 + 0.000046 \times (0.98)^{10} \approx 5.0\times10^{-5} + 0.0000376 = 0.0000876 \;\Rightarrow\; \sigma_{t+10}\approx 0.94\% \]</div>
+    <p>
+      Still visibly elevated after two trading weeks. The half-life here is
+      \(n_{1/2} = \ln(0.5)/\ln(0.98) \approx 34\) trading days — about a month and a half — before the excess
+      from that single shock has decayed by half. That's the practical meaning of a persistence near 0.98: one
+      sharp news day leaves a slowly-fading fingerprint on the volatility forecast for a long time, which is
+      exactly the "big moves cluster" stylized fact translated into a number.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Volatility clustering, visualized: shock cluster → sigma reacts → slow decay</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two-panel chart. Top: daily returns that are small in the first third, spike into a cluster of large up and down moves in the middle third, then calm down but not fully. Bottom: a GARCH conditional volatility line that jumps up sharply as the spike cluster begins, then decays gradually, not instantly, back toward its long-run level.">
+      <text x="20" y="14" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">Daily returns</text>
+      <line x1="20" y1="80" x2="620" y2="80" style="stroke:var(--border);stroke-width:1"/>
+      <rect x="18" y="80" width="4" height="4" style="fill:var(--text2)"/>
+      <rect x="33" y="74" width="4" height="6" style="fill:var(--text2)"/>
+      <rect x="48" y="80" width="4" height="5" style="fill:var(--text2)"/>
+      <rect x="63" y="77" width="4" height="3" style="fill:var(--text2)"/>
+      <rect x="78" y="80" width="4" height="7" style="fill:var(--text2)"/>
+      <rect x="93" y="75" width="4" height="5" style="fill:var(--text2)"/>
+      <rect x="108" y="80" width="4" height="3" style="fill:var(--text2)"/>
+      <rect x="123" y="72" width="4" height="8" style="fill:var(--text2)"/>
+      <rect x="138" y="80" width="4" height="6" style="fill:var(--text2)"/>
+      <rect x="153" y="76" width="4" height="4" style="fill:var(--text2)"/>
+      <rect x="168" y="80" width="4" height="5" style="fill:var(--text2)"/>
+      <rect x="183" y="73" width="4" height="7" style="fill:var(--text2)"/>
+      <rect x="198" y="80" width="4" height="4" style="fill:var(--text2)"/>
+      <rect x="213" y="80" width="4" height="15" style="fill:var(--text2)"/>
+      <rect x="228" y="48" width="4" height="32" style="fill:var(--text2)"/>
+      <rect x="243" y="80" width="4" height="45" style="fill:var(--text2)"/>
+      <rect x="258" y="30" width="4" height="50" style="fill:var(--text2)"/>
+      <rect x="273" y="80" width="4" height="38" style="fill:var(--text2)"/>
+      <rect x="288" y="25" width="4" height="55" style="fill:var(--text2)"/>
+      <rect x="303" y="80" width="4" height="58" style="fill:var(--text2)"/>
+      <rect x="318" y="38" width="4" height="42" style="fill:var(--text2)"/>
+      <rect x="333" y="80" width="4" height="50" style="fill:var(--text2)"/>
+      <rect x="348" y="32" width="4" height="48" style="fill:var(--text2)"/>
+      <rect x="363" y="80" width="4" height="35" style="fill:var(--text2)"/>
+      <rect x="378" y="40" width="4" height="40" style="fill:var(--text2)"/>
+      <rect x="393" y="80" width="4" height="28" style="fill:var(--text2)"/>
+      <rect x="408" y="60" width="4" height="20" style="fill:var(--text2)"/>
+      <rect x="423" y="80" width="4" height="14" style="fill:var(--text2)"/>
+      <rect x="438" y="64" width="4" height="16" style="fill:var(--text2)"/>
+      <rect x="453" y="80" width="4" height="10" style="fill:var(--text2)"/>
+      <rect x="468" y="62" width="4" height="18" style="fill:var(--text2)"/>
+      <rect x="483" y="80" width="4" height="12" style="fill:var(--text2)"/>
+      <rect x="498" y="71" width="4" height="9" style="fill:var(--text2)"/>
+      <rect x="513" y="80" width="4" height="15" style="fill:var(--text2)"/>
+      <rect x="528" y="69" width="4" height="11" style="fill:var(--text2)"/>
+      <rect x="543" y="80" width="4" height="8" style="fill:var(--text2)"/>
+      <rect x="558" y="67" width="4" height="13" style="fill:var(--text2)"/>
+      <rect x="573" y="80" width="4" height="9" style="fill:var(--text2)"/>
+      <rect x="588" y="73" width="4" height="7" style="fill:var(--text2)"/>
+      <rect x="603" y="80" width="4" height="6" style="fill:var(--text2)"/>
+
+      <text x="20" y="164" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">GARCH conditional volatility σₜ</text>
+      <line x1="20" y1="255" x2="620" y2="255" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+      <text x="590" y="250" fill="var(--text3)" font-size="9" font-family="'DM Mono',monospace" text-anchor="end">long-run σ</text>
+      <polyline id="garch-vol-line" points="20,255 65,253 110,256 155,254 200,255 215,250 230,200 245,155 260,132 275,128 290,125 305,130 320,135 350,148 380,165 410,180 440,195 470,207 500,217 530,225 560,231 590,236 620,240" style="fill:none;stroke:var(--blue);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round"/>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head">
+          <span>α (shock sensitivity)</span>
+          <span class="tl-live" id="garch-alpha-val">0.08</span>
+        </div>
+        <input type="range" id="garch-alpha-slider" min="1" max="30" step="1" value="8">
+        <div class="tl-hint">Weight on yesterday's squared shock — higher α means a bigger initial spike in σₜ.</div>
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head">
+          <span>β (persistence)</span>
+          <span class="tl-live" id="garch-beta-val">0.90</span>
+        </div>
+        <input type="range" id="garch-beta-slider" min="50" max="97" step="1" value="90">
+        <div class="tl-hint">Weight carried over from yesterday's variance — higher β means a slower decay back to the long-run level.</div>
+      </div>
+    </div>
+    <div class="tl-readout">α+β = <b id="garch-persist-val">0.98</b> · half-life ≈ <b id="garch-halflife-val">34</b> days</div>
+    <div class="tl-chart-caption">
+      The bottom panel's σ<sub>t</sub> estimate reacts immediately to the cluster of large returns in the top
+      panel, then decays gradually — not instantly — back toward the dashed long-run level rather than
+      snapping back the moment the market goes quiet. That gradual, slower-than-a-cliff decay <em>is</em> the
+      persistence (\(\alpha+\beta\) close to 1) the math above describes, and it's exactly the shape a flat
+      trailing HV20 average can't replicate: HV20 would barely move on the shock day and then only fully
+      "forget" it once the shock rolls off the window 20 days later, not smoothly in between. Drag the sliders
+      above to see how α and β each reshape the post-shock curve.
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    var VBAR = 5.0e-5;             // fixed long-run variance, matches the worked example's σ̄ ≈ 0.71%
+    var SIGMA_BAR = Math.sqrt(VBAR);
+    var SHOCK_SQ = 0.000625;       // fixed 2.5% shock, matches the worked example
+    var Y_BASE = 255;              // dashed long-run σ line, unchanged
+    var Y_MIN = 45;                // clamp so an extreme spike stays inside the panel
+    var X_START = 20, X_END = 620;
+    var PRE_SHOCK_STEPS = 5;       // flat lead-in points before the shock
+    var DECAY_STEPS = 20;          // discrete GARCH recursion steps (shock step + 19 decay steps)
+    var K = 46500;                 // px-per-unit-of-σ scale, tuned to match the static chart's peak
+
+    var alphaSlider = document.getElementById('garch-alpha-slider');
+    var betaSlider = document.getElementById('garch-beta-slider');
+    var alphaVal = document.getElementById('garch-alpha-val');
+    var betaVal = document.getElementById('garch-beta-val');
+    var persistVal = document.getElementById('garch-persist-val');
+    var halflifeVal = document.getElementById('garch-halflife-val');
+    var volLine = document.getElementById('garch-vol-line');
+
+    function updateGarchChart() {
+      var alpha = parseFloat(alphaSlider.value) / 100;
+      var beta = parseFloat(betaSlider.value) / 100;
+      var persistence = alpha + beta;
+
+      alphaVal.textContent = alpha.toFixed(2);
+      betaVal.textContent = beta.toFixed(2);
+      persistVal.textContent = persistence.toFixed(2);
+
+      if (persistence >= 1) {
+        halflifeVal.textContent = '∞ (non-stationary)';
+      } else {
+        halflifeVal.textContent = String(Math.round(Math.log(0.5) / Math.log(persistence)));
+      }
+
+      // Illustrative-decay clamp only — keeps the drawn curve well-behaved at slider
+      // extremes where α+β can exceed 1 (max 0.30+0.97=1.27). The readout above still
+      // reports the true, unclamped persistence and half-life.
+      var decayRate = Math.min(persistence, 0.995);
+
+      var variances = [alpha * (SHOCK_SQ - VBAR) + VBAR];
+      for (var r = 1; r < DECAY_STEPS; r++) {
+        variances.push(VBAR + decayRate * (variances[r - 1] - VBAR));
+      }
+
+      var totalPoints = PRE_SHOCK_STEPS + DECAY_STEPS;
+      var dx = (X_END - X_START) / (totalPoints - 1);
+      var pts = [];
+      var i;
+      for (i = 0; i < PRE_SHOCK_STEPS; i++) {
+        pts.push((X_START + i * dx).toFixed(1) + ',' + Y_BASE);
+      }
+      for (r = 0; r < DECAY_STEPS; r++) {
+        var sigma = Math.sqrt(Math.max(variances[r], 0));
+        var y = Y_BASE - K * (sigma - SIGMA_BAR);
+        y = Math.max(Y_MIN, Math.min(Y_BASE, y));
+        var x = X_START + (PRE_SHOCK_STEPS + r) * dx;
+        pts.push(x.toFixed(1) + ',' + y.toFixed(1));
+      }
+
+      volLine.setAttribute('points', pts.join(' '));
+    }
+
+    alphaSlider.addEventListener('input', updateGarchChart);
+    betaSlider.addEventListener('input', updateGarchChart);
+    updateGarchChart();
+  })();
+  </script>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    GARCH(1,1) and its many variants are estimated in practice by maximum likelihood — choosing
+    \(\omega,\alpha,\beta\) to make the observed sequence of returns as probable as possible under the model's
+    implied variance path, typically on a rolling or expanding window of historical daily returns, re-fit
+    periodically as new data arrives. The forecast \(\sigma_t\) it produces feeds directly into things a desk cares
+    about every day: scaling position size inversely to expected volatility ("vol targeting," so a fixed-dollar-risk
+    position gets smaller automatically when the market gets choppier), setting stop distances and option-implied
+    fair-value comparisons, computing Value-at-Risk, and — the use case most directly relevant here — setting the
+    width of a probabilistic price band around a forecast level. A model that reacts to a shock the same day
+    (rather than 20 days later, on a lag, the way a flat trailing window does) is the entire point when the band
+    needs to be honest the day after a surprise, not three weeks after.
+  </p>
+  <p>
+    In practice GARCH(1,1) is rarely the last word — desks commonly extend it to
+    <strong>asymmetric</strong> variants (EGARCH, GJR-GARCH) that let a negative shock raise volatility more than a
+    positive shock of the same size (the empirical "leverage effect": bad news tends to spook markets more than
+    equally-sized good news calms them), or swap in range-based estimators (built from the day's High, Low, Open,
+    Close rather than just the close-to-close return) that use more of the day's actual information. This repo
+    already runs one such range-based alternative side by side with GARCH — see below.
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>One of three sigma estimators feeding the live forecaster's bands</h3>
+    <p>
+      Per <code>CLAUDE.md</code>'s core-modules table, <code>js/volBacktestEngine.js</code> owns the
+      "vol-sigma series (HV20 / GARCH / Yang-Zhang), <code>ASSET_PARAMS</code>, <code>classifyRegime</code>, band
+      constants... <code>fetchD1</code>" — this lesson's math is exactly what powers the middle one of those three
+      estimators. Concretely, the engine's <code>garchSigmas(bars, omega)</code> function implements the same
+      recursion derived above:
+    </p>
+    <div class="tl-math">\[ v \leftarrow \omega + \alpha\, r_{i-1}^2 + \beta\, v,\qquad \sigma_i = \sqrt{v} \]</div>
+    <p>
+      with the series initialized at the unconditional variance \(\omega/(1-\alpha-\beta)\) for the first two bars
+      (rather than at zero) — precisely the long-run-variance formula derived above, used as a sane starting point
+      before any history has accumulated. The repo's actual constants,
+      <code>G_ALPHA = 0.06</code> and <code>G_BETA = 0.91</code>, give a persistence of \(\alpha+\beta = 0.97\) —
+      a half-life of \(\ln(0.5)/\ln(0.97) \approx 23\) trading days, meaning a shock's imprint on this engine's
+      variance forecast takes roughly a month to decay by half. Per <code>ASSET_PARAMS.index</code>
+      (<code>garch_omega: 4.76e-6</code>), GARCH(1,1) is applied as the index-asset-class estimator (currently
+      NQ), alongside HV20 for the commodity class and Yang-Zhang(30) for the fx class — three different sigma
+      estimators computed and compared under one walk-forward harness, not three redundant copies of the same idea.
+      This lesson does not take a position on which of the three performs best out-of-sample for any given
+      instrument — that's an empirical question the repo's own walk-forward comparison is built to answer, not
+      something to assume from the math alone (Lego Principle 5: OOS evidence, not a prior about the method).
+    </p>
+    <p>
+      Whichever \(\sigma\) estimator is selected feeds forward into <code>js/forecastCore.js</code>'s
+      <code>computeBands</code>, which builds the actual tradable price band from it using the Feller
+      driftless-Brownian-range construction that <code>CLAUDE.md</code> flags as load-bearing:
+      \(HL = BM\_const \times corr \times \sigma\). In other words, GARCH's job in this system is narrowly scoped
+      but consequential — it is one candidate answer to "what is \(\sigma\) today," and everything downstream
+      (band width, regime classification thresholds, entry-zone confidence) inherits whatever that answer says.
+      Note also that <code>classifyRegime</code> (BULL/BEAR/RANGE via EMA-20 slope) is a separate, directional
+      classifier — it answers "which way," not "how big" — so it should not be confused with, or substituted for,
+      the volatility-clustering question GARCH answers here.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where GARCH gets misread or misused</h3>
+    <p>
+      <strong>Treating one spike as a permanent regime change.</strong> A single large \(\sigma_t\) jump after a
+      shock is exactly what the model is supposed to do — it does not mean the market has permanently repriced;
+      check the persistence \(\alpha+\beta\) to see how fast that spike is expected to fade before reacting to it
+      as a structural shift.
+    </p>
+    <p>
+      <strong>Confusing the conditional forecast with realized truth.</strong> \(\sigma_t^2\) is a forecast made
+      with data through \(t{-}1\); it should be evaluated out-of-sample against what actually happened on day
+      \(t\) (e.g. via a proper scoring rule like QLIKE), never treated as ground truth just because it came out of
+      a formula.
+    </p>
+    <p>
+      <strong>Ignoring the stationarity condition when hand-setting or re-parameterizing.</strong> If
+      \(\alpha+\beta \ge 1\) slips in (easy to do if parameters are tuned loosely rather than properly estimated),
+      the variance forecast stops mean-reverting and can compound toward absurd values; always sanity-check
+      \(\alpha+\beta<1\) on any parameter set before trusting it.
+    </p>
+    <p>
+      <strong>Small-sample instability.</strong> Maximum-likelihood GARCH fits need a reasonably long, ideally
+      regime-varied history to pin down \(\omega,\alpha,\beta\) reliably; fitting on a short or unusually calm/wild
+      window can produce parameters that look fine in-sample and generalize poorly, the same overfitting risk this
+      repo's OOS-split discipline exists to catch generally.
+    </p>
+    <p>
+      <strong>Basic GARCH(1,1) is symmetric.</strong> It responds identically to a same-sized up shock and down
+      shock, even though real markets often show a leverage effect (down moves raise volatility more). That's a
+      known simplification, not a bug — just don't assume the base model captures every empirical asymmetry it
+      could; asymmetric variants exist specifically to address this and were left out of the derivation above for
+      clarity.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why does ARCH square the shock, \(\epsilon_{t-1}^2\), instead of just using \(\epsilon_{t-1}\) directly?</summary>
+    <div class="tl-answer">
+      Because variance measures magnitude of dispersion, not direction, and it must always be non-negative. A raw
+      shock can be positive or negative; using it unsquared would let a big up-day and a big down-day partially
+      cancel in the running average, which is exactly backwards — both should raise the volatility forecast by a
+      similar amount. Squaring converts sign-carrying shocks into a pure magnitude measure that a variance term can
+      sensibly respond to, and guarantees the contribution to \(\sigma_t^2\) is always \(\ge 0\).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What does \(\alpha+\beta\) being close to 1 (e.g. 0.97–0.99) imply, and what happens if it reaches or exceeds 1?</summary>
+    <div class="tl-answer">
+      \(\alpha+\beta\) is the day-over-day decay rate of a volatility shock's excess over the long-run level — the
+      persistence. Close to 1 means a spike decays very slowly (a long half-life, weeks to months), i.e. volatility
+      regimes are sticky. At exactly 1 (IGARCH) a shock never decays — it permanently shifts the variance level.
+      Above 1 the recursion is no longer mean-reverting at all and variance forecasts can grow without bound; this
+      is not a valid stationary GARCH model and signals a parameter or estimation problem.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why can a GARCH forecast for tomorrow diverge sharply from a simple trailing HV20 average right after a big news day?</summary>
+    <div class="tl-answer">
+      GARCH reacts to yesterday's shock immediately — the \(\alpha\epsilon_{t-1}^2\) term injects the full new
+      squared shock into the very next forecast. HV20 gives that same shock only 1/20th of the weight in an
+      equal-weighted average, so the visible move in the trailing average is much smaller on day one, then that
+      1/20th weight sits unchanged for 20 days before disappearing abruptly (the "ghosting" effect) regardless of
+      what the market does next. Right after a shock, GARCH has already moved a lot; HV20 has barely moved and
+      won't fully reflect that day's impact (or stop reflecting it) until its rolling window catches up.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Derive (in words) why the unconditional variance is \(\omega/(1-\alpha-\beta)\).</summary>
+    <div class="tl-answer">
+      In a stationary process, the expected variance today equals the expected variance yesterday — call it
+      \(\bar\sigma^2\). Because the average squared shock equals the average variance
+      (\(E[\epsilon_{t-1}^2]=E[\sigma_{t-1}^2]\)), taking expectations of the recursion gives
+      \(\bar\sigma^2 = \omega + \alpha\bar\sigma^2 + \beta\bar\sigma^2\). Collecting the \(\bar\sigma^2\) terms:
+      \(\bar\sigma^2(1-\alpha-\beta)=\omega\), so \(\bar\sigma^2 = \omega/(1-\alpha-\beta)\) — which is only
+      well-defined (positive and finite) when \(\alpha+\beta<1\), the same stationarity condition from Q2.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Basic GARCH(1,1) responds the same way to a +2% day as to a −2% day. Is that realistic, and what's the usual fix?</summary>
+    <div class="tl-answer">
+      Not fully — empirically, negative shocks (bad news, risk-off moves) tend to raise subsequent volatility more
+      than equally-sized positive shocks, sometimes called the leverage effect. Plain GARCH(1,1) is symmetric in
+      \(\epsilon_{t-1}^2\) and can't capture that asymmetry. Practitioners address it with asymmetric extensions
+      like EGARCH or GJR-GARCH, which add a term that activates specifically when the prior shock was negative.
+      This repo's engine uses plain GARCH(1,1); that's a known simplification, not an oversight to "fix" without a
+      reason to.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. In <code>js/volBacktestEngine.js</code>'s <code>garchSigmas()</code>, the first two entries of the output series are set to \(\sqrt{\omega/(1-\alpha-\beta)}\) rather than to zero or to the first observed return. Why?</summary>
+    <div class="tl-answer">
+      Because the recursion needs a starting value for \(\sigma_{t-1}^2\) before there is any prior GARCH output to
+      recurse on, and starting at zero (or at one noisy single-day return) would bias the earliest forecasts. The
+      unconditional/long-run variance \(\omega/(1-\alpha-\beta)\) is the model's own best "no information yet"
+      guess — exactly the steady-state level derived in the lesson — so initializing there gives the walk-forward
+      series a sensible, bias-free starting point rather than an arbitrary one.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Robert F. Engle, "Autoregressive Conditional Heteroskedasticity with Estimates of the Variance of United Kingdom Inflation," <em>Econometrica</em>, 1982 — the original ARCH paper; part of the body of work cited in Engle's 2003 Nobel Memorial Prize in Economic Sciences.</li>
+    <li>Tim Bollerslev, "Generalized Autoregressive Conditional Heteroskedasticity," <em>Journal of Econometrics</em>, 1986 — introduces the GARCH generalization (the \(\beta\sigma_{t-1}^2\) term) used throughout this lesson.</li>
+    <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em> — the chapter on estimating volatility (EWMA and GARCH(1,1)) is a standard, widely-used practitioner-level treatment with worked numerical examples similar in spirit to the one above.</li>
+    <li>Dan Yang &amp; Qiang Zhang, "Drift-Independent Volatility Estimation Based on High, Low, Open, and Close Prices," <em>Journal of Business</em>, 2000 — the range-based estimator this repo runs as its third sigma series (Yang-Zhang), an OHLC-range alternative to close-to-close GARCH/HV.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="hurst-variance-ratio.html">← Hurst Exponent &amp; Variance Ratio Test</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="hidden-markov-models.html">Hidden Markov Models &amp; Regime Detection →</a>
+  </div>
+</div>
+</body>
+</html>

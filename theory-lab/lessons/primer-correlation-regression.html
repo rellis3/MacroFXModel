@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Correlation &amp; Linear Regression — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Math Primer / Correlation &amp; Linear Regression</div>
+  <div class="tl-kicker">Math Primer · Primer 3 of 4</div>
+  <h1 class="tl-title">Correlation &amp; Linear Regression</h1>
+  <p class="tl-dek">Before you can ask whether two prices are cointegrated, whether a Kalman filter's hedge ratio is drifting, or whether a factor explains a return — you need the tool that measures "moves together" in the first place, and the tool that fits the best straight line through that relationship; this primer builds both from the ground up.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">PRIMER — foundational background</span>
+    <span>~15 min read</span>
+    <span>Prereqs: Probability &amp; Random Variables</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    Nearly every piece of quantitative reasoning in this repo eventually rests
+    on one of two questions: "do these two things move together?" and "if I
+    had to draw one straight line through this relationship, what would it
+    be?" The Cointegration lesson asks whether two price <em>levels</em> share
+    a stable equilibrium — and its entire first step is an ordinary least
+    squares regression. The Kalman Filter lesson tracks a hedge ratio that
+    drifts over time — and that hedge ratio is a regression slope, just one
+    that's allowed to update bar by bar instead of being fit once on a fixed
+    window. Principal Component Analysis decomposes a basket of correlated
+    return series into independent factors — and the correlation matrix it
+    operates on is built from exactly the covariance and correlation formulas
+    below. None of those three lessons re-derive this machinery; they assume
+    it. This primer is where it gets derived, once, so it can be imported by
+    reference everywhere else.
+  </p>
+  <p>
+    The two ideas are also easy to reach for carelessly, which is precisely
+    why they need a careful foundation. A correlation coefficient is a single
+    number that looks authoritative — "r = 0.87" sounds like a fact about the
+    world — but it silently assumes the relationship it's summarizing is
+    linear, and it says nothing whatsoever about which variable, if either,
+    is causing the other. A regression line looks like it's revealing a
+    structural truth, but it is, mechanically, nothing more than the line
+    that minimizes one particular measure of vertical distance to a cloud of
+    points — a description of a dataset, not a law of nature. Understanding
+    exactly what these tools compute, and exactly what they don't claim, is
+    what keeps the more advanced lessons that lean on them from being
+    misapplied.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Covariance is "do they move together," correlation is that idea rescaled to fit between -1 and 1</h3>
+    <p>
+      Imagine plotting two variables against each other, day by day — say a
+      stock's daily return and the broad market's daily return. On a day when
+      the market is up, is the stock usually also up? On a day the market is
+      down, is the stock usually also down? If the answer is "usually yes,"
+      the two variables tend to be <em>above their own averages together</em>
+      and <em>below their own averages together</em>. Covariance is just that
+      idea turned into arithmetic: for each day, multiply how far the stock
+      was from its own average by how far the market was from its own
+      average, then average that product across all the days. When both
+      variables tend to be on the same side of their average at the same
+      time, most of those products are positive (positive times positive, or
+      negative times negative, both give positive), so the average comes out
+      positive — positive covariance. When they tend to be on opposite sides,
+      the products are usually negative — negative covariance.
+    </p>
+    <p>
+      The problem with covariance as a report card is that its size depends
+      on the units of whatever you're measuring — covariance between two
+      variables measured in basis points is a different-looking number than
+      the same relationship measured in percent, even though nothing about
+      the underlying relationship changed. Correlation fixes that: it takes
+      covariance and divides it by each variable's own standard deviation,
+      which cancels the units out and rescales the result to always live
+      between -1 (perfectly, linearly opposite) and +1 (perfectly, linearly
+      together), with 0 meaning no <em>linear</em> tendency either way. That
+      unitless, bounded number is what lets you compare "how related are
+      these two FX pairs" against "how related are these two equity indices"
+      on the same scale.
+    </p>
+    <p>
+      Regression answers a related but different question: not just "do they
+      move together," but "if I know today's value of X, what's my single
+      best straight-line guess for Y?" It draws one line through the cloud of
+      points, chosen by a specific rule — minimize the total squared vertical
+      distance from every point to the line — and that line's slope becomes
+      the practical, tradeable number: for every one-unit move in X, how many
+      units does Y tend to move.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    Everything here builds on the variance and expectation machinery from the
+    Probability &amp; Random Variables primer. The order is: covariance, then
+    correlation as covariance rescaled, then the OLS regression line derived
+    from minimizing squared residuals, then R² as the fraction of variance
+    that line explains.
+  </p>
+
+  <p><strong>1. Covariance.</strong> For two random variables \(X\) and \(Y\)
+  with means \(\mu_X = E[X]\) and \(\mu_Y = E[Y]\), covariance measures the
+  average tendency of the two variables to deviate from their own means in
+  the same direction at the same time:</p>
+  <div class="tl-math">\[ \mathrm{Cov}(X,Y) = E\big[(X-\mu_X)(Y-\mu_Y)\big] \]</div>
+  <p>
+    Notice this is a direct generalization of variance, not a new idea
+    bolted on next to it: variance is just the covariance of a variable with
+    itself, \(\mathrm{Var}(X) = \mathrm{Cov}(X,X) = E[(X-\mu_X)(X-\mu_X)] =
+    E[(X-\mu_X)^2]\). Everything the earlier primer said about variance —
+    that it's built from squared/paired deviations from a mean, that it's
+    estimated from a finite sample by averaging over observed deviations — is
+    the same machinery here, just applied to two variables' deviations
+    multiplied together instead of one variable's deviation squared. Given a
+    finite sample of \(n\) paired observations \((x_i, y_i)\), the sample
+    covariance is estimated the same way the sample variance is:
+  </p>
+  <div class="tl-math">\[ \widehat{\mathrm{Cov}}(X,Y) = \frac{1}{n}\sum_{i=1}^{n}(x_i-\bar{x})(y_i-\bar{y}) \]</div>
+  <p>
+    (Exactly as with sample variance, some software divides by \(n-1\) rather
+    than \(n\) — the "Bessel's correction" for using an estimated mean rather
+    than the true one. It matters for small-sample bias, not for the concept;
+    this primer uses \(n\) throughout for arithmetic simplicity and because
+    it cancels out of every ratio built below.)
+  </p>
+  <p>
+    The sign of covariance is meaningful — positive means "tend to move the
+    same direction," negative means "tend to move opposite directions," zero
+    means no linear tendency either way — but its <em>magnitude</em> is not,
+    on its own, interpretable. A covariance of 4.0 between two variables
+    measured in one unit and a covariance of 0.0004 between the same two
+    variables rescaled to a different unit describe exactly the same
+    underlying relationship. That's the problem correlation exists to solve.
+  </p>
+
+  <p><strong>2. The correlation coefficient.</strong> Divide covariance by
+  the product of each variable's own standard deviation:</p>
+  <div class="tl-math">\[ r = \frac{\mathrm{Cov}(X,Y)}{\sigma_X\,\sigma_Y} \]</div>
+  <p>
+    Dividing by \(\sigma_X\) and \(\sigma_Y\) cancels the units of \(X\) and
+    \(Y\) out of the result entirely — \(r\) is a pure, unitless number. It
+    is also provably bounded, \(-1 \le r \le 1\), a direct consequence of the
+    Cauchy-Schwarz inequality applied to the deviations \((X-\mu_X)\) and
+    \((Y-\mu_Y)\); this is why \(r=1\) (perfect positive linear relationship)
+    and \(r=-1\) (perfect negative linear relationship) are the mathematical
+    ceiling and floor, not just empirically rare extremes. \(r=0\) means no
+    <em>linear</em> relationship — a qualifier this primer returns to
+    explicitly in the pitfalls section below, because it is the single most
+    common misreading of a correlation coefficient. This specific
+    formalization — covariance rescaled by the two standard deviations — is
+    due to Karl Pearson in the 1890s, which is why it is formally called the
+    <strong>Pearson correlation coefficient</strong> to distinguish it from
+    rank-based alternatives (Spearman's, Kendall's) that measure a broader
+    "moves together" notion without assuming linearity.
+  </p>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(X, Y\)</td><td>The two variables being related — e.g. two return series, or a return series and a candidate explanatory factor.</td></tr>
+      <tr><td>\(\mu_X, \mu_Y\)</td><td>The population means of \(X\) and \(Y\); estimated in a sample by \(\bar{x}, \bar{y}\).</td></tr>
+      <tr><td>\(\sigma_X, \sigma_Y\)</td><td>The standard deviations of \(X\) and \(Y\) — the square roots of their variances.</td></tr>
+      <tr><td>\(\mathrm{Cov}(X,Y)\)</td><td>Covariance — the average product of \(X\) and \(Y\)'s deviations from their own means.</td></tr>
+      <tr><td>\(r\)</td><td>The Pearson correlation coefficient — covariance rescaled to \([-1, 1]\), unitless.</td></tr>
+      <tr><td>\(\alpha, \beta\)</td><td>The regression intercept and slope: \(Y = \alpha + \beta X + \epsilon\).</td></tr>
+      <tr><td>\(\epsilon\)</td><td>The true, unobserved regression error term.</td></tr>
+      <tr><td>\(\hat\alpha, \hat\beta\)</td><td>The OLS-estimated intercept and slope, fit from a sample.</td></tr>
+      <tr><td>\(\hat{y}_i\)</td><td>The fitted value for observation \(i\): \(\hat{y}_i = \hat\alpha + \hat\beta x_i\).</td></tr>
+      <tr><td>\(e_i\)</td><td>The residual for observation \(i\): \(e_i = y_i - \hat{y}_i\) — the part of \(y_i\) the fitted line does not explain.</td></tr>
+      <tr><td>SSR</td><td>Sum of squared residuals, \(\sum_i e_i^2\) — the quantity OLS minimizes.</td></tr>
+      <tr><td>SST</td><td>Total sum of squares, \(\sum_i (y_i-\bar y)^2\) — the total variation in \(Y\) around its mean.</td></tr>
+      <tr><td>\(R^2\)</td><td>Coefficient of determination — the fraction of SST explained by the regression, \(1 - \mathrm{SSR}/\mathrm{SST}\).</td></tr>
+    </table>
+  </div>
+
+  <p><strong>3. Ordinary least squares (OLS) regression.</strong> Correlation
+  tells you how strongly two variables move together; regression goes one
+  step further and gives you a specific, usable line — a rule for predicting
+  \(Y\) from \(X\). The model is:</p>
+  <div class="tl-math">\[ Y = \alpha + \beta X + \epsilon \]</div>
+  <p>
+    \(\alpha\) is the intercept (the predicted \(Y\) when \(X=0\)), \(\beta\)
+    is the slope (the predicted change in \(Y\) per one-unit change in
+    \(X\)), and \(\epsilon\) is the error term — everything about \(Y\) this
+    simple straight-line model does not capture. Given a sample of paired
+    observations \((x_i, y_i)\), fitting the model means choosing specific
+    numbers \(\hat\alpha\) and \(\hat\beta\) for the intercept and slope. The
+    <strong>residual</strong> for each observation is the vertical gap
+    between the actual data point and the line's prediction for it:
+  </p>
+  <div class="tl-math">\[ e_i = y_i - \hat{y}_i = y_i - (\hat\alpha + \hat\beta x_i) \]</div>
+  <p>
+    "Ordinary least squares" names the specific rule used to pick \(\hat\alpha\)
+    and \(\hat\beta\): choose the values that minimize the <em>sum of squared
+    residuals</em> across every observation in the sample —
+  </p>
+  <div class="tl-math">\[ \mathrm{SSR}(\hat\alpha, \hat\beta) = \sum_{i=1}^{n} e_i^2 = \sum_{i=1}^{n}\big(y_i - \hat\alpha - \hat\beta x_i\big)^2 \]</div>
+  <p>
+    Two things are worth being explicit about before minimizing this.
+    <em>Why squared</em>, rather than just summing the raw (signed) residuals
+    or their absolute values? Summing raw residuals is a dead end — a line
+    with huge positive and huge negative residuals that happen to cancel
+    would score as "perfect," which is clearly wrong. Minimizing squared
+    residuals instead of absolute residuals is a deliberate choice with
+    consequences: squaring is smooth and differentiable everywhere (absolute
+    value has a kink at zero, making the minimization harder to solve in
+    closed form), and it penalizes large residuals disproportionately more
+    than small ones — a residual twice as large contributes four times the
+    penalty, which pulls the fitted line to avoid being far off on any single
+    point, at the cost of being more sensitive to outliers than an
+    absolute-error fit would be (a real trade-off, not a free lunch).
+  </p>
+  <p>
+    To actually minimize SSR, treat it as a function of \(\hat\alpha\) and
+    \(\hat\beta\) and use ordinary calculus: take the partial derivative with
+    respect to each, and set both to zero (the condition for a minimum of a
+    smooth bowl-shaped function — and SSR, being a sum of squares of linear
+    terms, is exactly that kind of function, so this always has a unique
+    minimum). Differentiating with respect to \(\hat\alpha\):
+  </p>
+  <div class="tl-math">\[ \frac{\partial \mathrm{SSR}}{\partial \hat\alpha} = -2\sum_{i=1}^{n}\big(y_i - \hat\alpha - \hat\beta x_i\big) = 0 \quad\Longrightarrow\quad \sum_i e_i = 0 \]</div>
+  <p>
+    This first condition says the residuals must sum to exactly zero — the
+    line has to run through the "center of mass" of the data. Dividing
+    through by \(n\) and rearranging gives the intercept directly once
+    \(\hat\beta\) is known:
+  </p>
+  <div class="tl-math">\[ \hat\alpha = \bar{y} - \hat\beta\,\bar{x} \]</div>
+  <p>
+    Differentiating with respect to \(\hat\beta\):
+  </p>
+  <div class="tl-math">\[ \frac{\partial \mathrm{SSR}}{\partial \hat\beta} = -2\sum_{i=1}^{n} x_i\big(y_i - \hat\alpha - \hat\beta x_i\big) = 0 \]</div>
+  <p>
+    Substituting \(\hat\alpha = \bar y - \hat\beta \bar x\) from the first
+    condition into this second condition and rearranging (the algebra
+    consists of expanding the product and regrouping terms into deviations
+    from the means — mechanical but not illuminating to spell out
+    line-by-line here) collapses to a remarkably clean result:
+  </p>
+  <div class="tl-math">\[ \hat\beta = \frac{\sum_i (x_i-\bar x)(y_i-\bar y)}{\sum_i (x_i - \bar x)^2} = \frac{\mathrm{Cov}(X,Y)}{\mathrm{Var}(X)} \]</div>
+  <p>
+    This is the payoff of the whole derivation: the least-squares slope is
+    exactly the covariance between \(X\) and \(Y\), divided by the variance
+    of \(X\) alone. It is also exactly why this primer had to build
+    covariance and variance first — the OLS slope is not a separate concept
+    from correlation, it <em>is</em> covariance, just normalized by \(X\)'s
+    own spread instead of by both variables' spreads (which is what
+    correlation does). This is the identical formula
+    <code>js/statsCore.js</code>'s <code>linregSlope</code> implements in
+    this repo (see the repo box below) — there the "\(X\)" is simply the bar
+    index (0, 1, 2, …), so the fitted slope is a per-bar drift/trend rate
+    rather than a slope against another price series, but the underlying
+    least-squares arithmetic is identical.
+  </p>
+
+  <p><strong>4. R² — the fraction of variance explained.</strong> Once a
+  line is fit, a natural question is how good the fit actually is. Split the
+  total variation in \(Y\) around its own mean, SST \(= \sum_i (y_i-\bar
+  y)^2\), into two pieces: the part the regression line explains (how far
+  the fitted values \(\hat y_i\) themselves vary) and the part left over in
+  the residuals (SSR). \(R^2\) is the explained fraction:</p>
+  <div class="tl-math">\[ R^2 = 1 - \frac{\mathrm{SSR}}{\mathrm{SST}} = 1 - \frac{\sum_i (y_i-\hat y_i)^2}{\sum_i (y_i-\bar y)^2} \]</div>
+  <p>
+    \(R^2 = 1\) means the line passes through every point exactly (zero
+    residual variance); \(R^2 = 0\) means the line explains nothing beyond
+    just always guessing \(\bar y\) (the regression's residual variance
+    equals the raw variance of \(Y\)). For the specific case of <strong>simple
+    linear regression</strong> (one predictor \(X\)), there's a direct
+    algebraic identity connecting this back to the correlation coefficient
+    from step 2:
+  </p>
+  <div class="tl-math">\[ R^2 = r^2 \]</div>
+  <p>
+    This is not a coincidence or an approximation — it falls directly out of
+    substituting the OLS formulas for \(\hat\alpha\) and \(\hat\beta\) back
+    into the SST/SSR decomposition above; the algebra is mechanical once you
+    have \(\hat\beta = \mathrm{Cov}(X,Y)/\mathrm{Var}(X)\) in hand; it is
+    stated here as a fact to use, and revisited concretely in the worked
+    example below. The identity only holds for <em>simple</em> regression
+    (a single \(X\)); once a second predictor is added, \(R^2\) and any one
+    predictor's correlation with \(Y\) come apart — which is exactly the
+    mechanism behind the "R² only ever goes up" pitfall discussed later in
+    this lesson.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">OLS regression: fitting a line by minimizing squared residuals</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter plot with fitted regression line and residuals shown as vertical segments">
+      <line x1="60" y1="20" x2="60" y2="260" style="stroke:var(--border)"></line>
+      <line x1="60" y1="260" x2="600" y2="260" style="stroke:var(--border)"></line>
+      <text x="330" y="288" fill="var(--text3)" font-size="13" text-anchor="middle">X</text>
+      <text x="26" y="140" fill="var(--text3)" font-size="13" text-anchor="middle" transform="rotate(-90 26 140)">Y</text>
+
+      <line id="reg-ols-line" x1="80" y1="235" x2="580" y2="55" style="stroke:var(--amber);stroke-width:2"></line>
+
+      <g id="reg-residuals-group">
+      <line x1="118" y1="225" x2="118" y2="205" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"></line>
+      <line x1="182" y1="165" x2="182" y2="197" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"></line>
+      <line x1="278" y1="188" x2="278" y2="164" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"></line>
+      <line x1="374" y1="105" x2="374" y2="132" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"></line>
+      <line x1="502" y1="70" x2="502" y2="93" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"></line>
+      </g>
+
+      <g id="reg-points-group">
+      <circle cx="118" cy="225" r="4" style="fill:var(--blue)"></circle>
+      <circle cx="150" cy="210" r="4" style="fill:var(--blue)"></circle>
+      <circle cx="182" cy="165" r="4" style="fill:var(--blue)"></circle>
+      <circle cx="214" cy="188" r="4" style="fill:var(--blue)"></circle>
+      <circle cx="246" cy="178" r="4" style="fill:var(--blue)"></circle>
+      <circle cx="278" cy="188" r="4" style="fill:var(--blue)"></circle>
+      <circle cx="310" cy="150" r="4" style="fill:var(--blue)"></circle>
+      <circle cx="342" cy="140" r="4" style="fill:var(--blue)"></circle>
+      <circle cx="374" cy="105" r="4" style="fill:var(--blue)"></circle>
+      <circle cx="406" cy="122" r="4" style="fill:var(--blue)"></circle>
+      <circle cx="438" cy="108" r="4" style="fill:var(--blue)"></circle>
+      <circle cx="470" cy="95" r="4" style="fill:var(--blue)"></circle>
+      <circle cx="502" cy="70" r="4" style="fill:var(--blue)"></circle>
+      <circle cx="534" cy="75" r="4" style="fill:var(--blue)"></circle>
+      <circle cx="566" cy="60" r="4" style="fill:var(--blue)"></circle>
+      </g>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Noise level (lower = tighter fit)</span><span class="tl-live" id="reg-noise-val">30%</span></div>
+        <input type="range" id="reg-noise-slider" min="0" max="100" step="5" value="30">
+        <div class="tl-hint">Drag right to add scatter around the fitted line; drag left to tighten it.</div>
+      </div>
+    </div>
+    <div class="tl-readout">R&sup2; &approx; <b id="reg-r2-val">0.91</b></div>
+    <div class="tl-chart-caption">Illustrative data. OLS picks the line that minimizes the sum of the squared vertical distances (the red dashed segments, the residuals) from each point to the line — not the line that looks closest by eye, and not the line minimizing absolute distance.</div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>Covariance, r, β, α, and R² by hand for five points</h3>
+    <p>
+      Take five paired observations that roughly follow \(y \approx 2x\) with
+      a little noise:
+    </p>
+    <div class="tl-math">\[ x = [1,2,3,4,5] \qquad y = [2.1,\ 3.9,\ 6.2,\ 7.8,\ 10.1] \]</div>
+    <p><strong>Means.</strong> \(\bar x = (1+2+3+4+5)/5 = 3\). \(\bar y =
+    (2.1+3.9+6.2+7.8+10.1)/5 = 30.1/5 = 6.02\).</p>
+    <p><strong>Deviations.</strong> \(x_i - \bar x = [-2,-1,0,1,2]\).
+    \(y_i - \bar y = [-3.92,\ -2.12,\ 0.18,\ 1.78,\ 4.08]\).</p>
+    <p><strong>Covariance.</strong> Multiply each pair of deviations and
+    average:</p>
+    <div class="tl-math">\[ (-2)(-3.92)+(-1)(-2.12)+(0)(0.18)+(1)(1.78)+(2)(4.08) = 7.84+2.12+0+1.78+8.16 = 19.9 \]</div>
+    <div class="tl-math">\[ \mathrm{Cov}(x,y) = 19.9 / 5 = 3.98 \]</div>
+    <p><strong>Variance of x.</strong> Square and average the x-deviations:
+    \((4+1+0+1+4)/5 = 10/5 = 2\), so \(\mathrm{Var}(x) = 2\), and
+    \(\sigma_x = \sqrt{2} \approx 1.4142\).</p>
+    <p><strong>Variance of y (needed for r).</strong> Square and average the
+    y-deviations: \(15.3664+4.4944+0.0324+3.1684+16.6464 = 39.708\), so
+    \(\mathrm{Var}(y) = 39.708/5 = 7.9416\) and \(\sigma_y = \sqrt{7.9416}
+    \approx 2.8181\).</p>
+    <p><strong>Correlation.</strong></p>
+    <div class="tl-math">\[ r = \frac{3.98}{(1.4142)(2.8181)} = \frac{3.98}{3.9854} \approx 0.9986 \]</div>
+    <p>A correlation of about 0.999 — very close to a perfect straight-line
+    relationship, exactly as expected from data built as \(2x\) plus a small
+    amount of noise.</p>
+    <p><strong>OLS slope and intercept.</strong></p>
+    <div class="tl-math">\[ \hat\beta = \frac{\mathrm{Cov}(x,y)}{\mathrm{Var}(x)} = \frac{3.98}{2} = 1.99 \qquad \hat\alpha = \bar y - \hat\beta\,\bar x = 6.02 - (1.99)(3) = 0.05 \]</div>
+    <p>So the fitted line is \(\hat y = 0.05 + 1.99x\) — close to the "true"
+    \(y=2x\) the data was built around, as it should be with only a little
+    noise added.</p>
+    <p><strong>Residuals and R² (cross-checking the \(R^2=r^2\) identity).</strong>
+    Fitted values: \(\hat y = [2.04,\ 4.03,\ 6.02,\ 8.01,\ 10.00]\). Residuals
+    \(e_i = y_i-\hat y_i = [0.06,\ -0.13,\ 0.18,\ -0.21,\ 0.10]\) (these sum
+    to 0.00, confirming the first OLS condition derived above). Squared and
+    summed: \(\mathrm{SSR} = 0.0036+0.0169+0.0324+0.0441+0.0100 = 0.107\).
+    SST is \(n\cdot\mathrm{Var}(y) = 5 \times 7.9416 = 39.708\) (the same sum
+    of squared y-deviations computed above). So:</p>
+    <div class="tl-math">\[ R^2 = 1 - \frac{0.107}{39.708} \approx 1 - 0.0027 = 0.9973 \]</div>
+    <p>
+    Compare against \(r^2 = (0.9986)^2 \approx 0.9973\) — the two routes to
+    \(R^2\) agree, confirming the identity from step 4 rather than just
+    asserting it. About 99.7% of the variation in \(y\) is explained by its
+    linear relationship with \(x\); the remaining 0.3% is noise the line
+    doesn't capture.
+    </p>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    <strong>Beta and factor exposure.</strong> The single most common use of
+    this exact machinery in finance is estimating a "beta" — regress an
+    asset's returns on a benchmark's returns (the market, a sector index, a
+    macro factor) and the OLS slope \(\hat\beta\) is the asset's sensitivity
+    to that factor: for every 1% the benchmark moves, the asset tends to move
+    \(\hat\beta\)%. This is literally the CAPM beta, and it's the same
+    identity as the trend slope computed for a single price series against
+    time.
+  </p>
+  <p>
+    <strong>Hedge ratios.</strong> If you want to hedge a long position in
+    one instrument with a short position in a correlated one, the regression
+    slope of the instrument you're hedging against the hedge instrument tells
+    you the ratio of units to use — regress \(Y\) on \(X\) and \(\hat\beta\)
+    units of \(X\) offset one unit of \(Y\), on average, over the fitted
+    sample. This is exactly Step 1 of the Engle-Granger cointegration
+    procedure covered in the Cointegration lesson, and exactly the quantity
+    the Kalman Filter lesson tracks as a <em>time-varying</em> version of the
+    same idea, once a single fixed-window \(\hat\beta\) stops being good
+    enough.
+  </p>
+  <p>
+    <strong>Risk/return decomposition.</strong> Regressing a strategy's or
+    portfolio's returns on a set of known factors (value, momentum, carry,
+    market beta) splits realized performance into an explained part (the
+    factor exposures times the factor returns) and an unexplained residual —
+    the part attributable to something other than the named factors,
+    sometimes optimistically labeled "alpha." A high \(R^2\) means the named
+    factors are doing most of the explanatory work; a low one means most of
+    what's happening is not captured by that factor set.
+  </p>
+  <p>
+    <strong>Screening and pair discovery.</strong> A rolling correlation
+    matrix across a universe of instruments is the standard first pass for
+    finding candidate relationships worth investigating further — which
+    pairs of currencies, or which currency and which macro series, tend to
+    move together. It is a cheap, fast filter, and precisely because it's
+    cheap and fast, it is also easy to over-trust; the next section on
+    pitfalls, and the Cointegration lesson in full, exist because "correlated
+    in returns" is a necessary but far from sufficient condition for a
+    tradeable relationship.
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>The primer behind an existing brick, an existing course note, and three upcoming lessons</h3>
+    <p>
+      <code>js/statsCore.js</code>'s <code>linregSlope</code> — listed in
+      this repo's shared-utility-bricks table as owning "\(\text{rollingZScore}\)/
+      \(\text{rollingZAt}\), \(\text{rollingPercentile}\), \(\text{linregSlope}\),
+      \(\text{ewma}\), moments" — is a direct implementation of the
+      \(\hat\beta = \mathrm{Cov}(X,Y)/\mathrm{Var}(X)\) formula derived above,
+      specialized to the case where \(X\) is simply the bar index \(0,1,2,\dots\).
+      Reading the source confirms it line for line: it computes the mean of
+      the values, sums \((i - \bar{i})(v_i - \bar v)\) over the window for the
+      numerator and \((i-\bar i)^2\) for the denominator, and divides — the
+      exact numerator/denominator pair this primer's derivation ends on. That
+      is why the CLAUDE.md brick registry's instruction to import
+      <code>linregSlope</code> rather than re-deriving a trend slope inline
+      is not just a style preference — every "trend strength" or "per-bar
+      drift" number computed anywhere in this repo should be running through
+      this one formula, not a second copy of it.
+    </p>
+    <p>
+      <code>education/regression-analysis-course-notes.md</code> already
+      states the applied version of exactly this idea — "Regression
+      decomposes variation in returns into an explained part (factor
+      exposures, the β's) and an unexplained part (the residual ε, where
+      alpha — and noise — live). OLS finds the line minimizing squared
+      residuals." This primer is the from-scratch derivation underneath that
+      sentence: where \(\hat\beta\) actually comes from, why "minimizing
+      squared residuals" produces that specific formula and not some other
+      one, and why \(R^2\) is the number that quantifies "explained."
+    </p>
+    <p>
+      Finally, this is deliberately the toolkit the next three lessons in
+      this track build on directly, not incidentally. The
+      <a href="cointegration.html">Cointegration</a> lesson's Engle-Granger
+      Step 1 is literally the OLS regression derived above, run on two price
+      levels instead of two abstract variables — its Step 2 only exists
+      because that Step 1 regression's ordinary R² can't be trusted on
+      non-stationary inputs, a distinction that presupposes knowing what R²
+      normally means. The <strong>PCA &amp; Factor Regimes</strong> lesson
+      operates on a correlation matrix built entirely from the \(r\) formula
+      above, applied pairwise across a whole basket of series at once. And
+      the <strong>Kalman Filter</strong> lesson's adaptive hedge ratio is this
+      primer's \(\hat\beta\), re-estimated recursively bar by bar instead of
+      once on a fixed window. None of those three lessons re-derive
+      covariance, correlation, or the OLS normal equations — they assume this
+      primer and move straight to what's new.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where correlation and regression get misread</h3>
+    <p>
+      <strong>Correlation is not causation.</strong> The classic textbook
+      example: across cities and months, ice cream sales and drowning deaths
+      are strongly positively correlated. Ice cream does not cause drowning,
+      and drowning does not cause ice cream sales — both are driven by a
+      third, unmeasured variable (warm weather: more people swim, and more
+      people buy ice cream). This is called <strong>confounding</strong>, and
+      it is the default explanation to rule out, not a rare edge case, any
+      time a correlation is found between two variables without a clear
+      mechanical or economic reason one should drive the other. In markets,
+      two currencies can be correlated because one causes the other to move,
+      because both are driven by a shared factor (broad USD strength, global
+      risk sentiment), or by pure coincidence over the sample window looked
+      at — the correlation coefficient itself cannot distinguish between
+      these, and treating a high \(r\) as proof of a causal or structural
+      link is the single most common misuse of this tool.
+    </p>
+    <p>
+      <strong>Correlation only captures linear relationships.</strong> A
+      variable can depend on another extremely strongly and predictably while
+      still showing \(r \approx 0\), if that dependence isn't linear. A
+      textbook case: let \(x\) range symmetrically from \(-a\) to \(a\) and
+      set \(y = x^2\) — every value of \(y\) is perfectly, deterministically
+      determined by \(x\), yet because \(y\) is exactly as large for negative
+      \(x\) as for the corresponding positive \(x\), the positive and
+      negative deviation-products cancel out almost exactly, and the Pearson
+      \(r\) comes out near zero. \(r=0\) means "no <em>linear</em> tendency,"
+      not "no relationship" — always look at a scatter plot, not just the
+      coefficient, before concluding two variables are unrelated.
+    </p>
+    <p>
+      <strong>Adding predictors always weakly increases R², even if they're
+      useless.</strong> \(R^2\) can never go down when you add another
+      predictor to a regression, because OLS is free to set that predictor's
+      coefficient to exactly zero if it adds nothing — so the fit can only
+      improve or stay flat, never worsen, purely as a matter of the
+      minimization having more freedom, regardless of whether the new
+      predictor has any real relationship to \(Y\). A regression with twenty
+      near-random predictors will report a deceptively high in-sample \(R^2\)
+      for reasons that have nothing to do with any of them actually
+      explaining \(Y\). This is exactly why a suspiciously high \(R^2\), on
+      its own, should raise scrutiny rather than confidence — check the
+      number of predictors relative to the sample size, and prefer an
+      <em>adjusted</em> \(R^2\) (which penalizes added predictors) or true
+      out-of-sample performance over the raw in-sample number, consistent
+      with this repo's broader discipline of never trusting an in-sample
+      metric as evidence of anything by itself.
+    </p>
+    <p>
+      <strong>Standard OLS inference assumes well-behaved errors.</strong>
+      The textbook formulas for a regression's standard errors, t-statistics,
+      and p-values are derived assuming the residuals are homoskedastic
+      (constant variance across the whole sample) and not autocorrelated
+      (one period's residual doesn't help predict the next period's). Financial
+      return series routinely violate both — volatility clusters
+      (heteroskedasticity), and residuals from a poorly specified model can
+      trend in stretches (autocorrelation). When either assumption breaks,
+      the standard errors the software reports are simply wrong (usually too
+      small, making a relationship look more statistically significant than
+      it is), even though the point estimate \(\hat\beta\) itself can still
+      be a reasonable estimate. This repo's own build discipline calls for
+      checking exactly this before trusting a regression coefficient's
+      significance — Durbin-Watson for autocorrelation, Breusch-Pagan for
+      heteroskedasticity — rather than reading a low p-value at face value.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why does \(R^2 = r^2\) hold for simple linear regression (one predictor), and why does that identity break once a second predictor is added?</summary>
+    <div class="tl-answer">
+      It holds because \(R^2\)'s SST/SSR decomposition, once you substitute
+      in the OLS formulas \(\hat\beta = \mathrm{Cov}(X,Y)/\mathrm{Var}(X)\)
+      and \(\hat\alpha = \bar y - \hat\beta\bar x\), algebraically reduces
+      exactly to the square of the Pearson correlation coefficient between
+      \(X\) and \(Y\) — both quantities are, underneath, built from the same
+      covariance-over-variances ratio, just normalized differently (\(r\)
+      divides by both standard deviations; \(\beta\), and by extension
+      \(R^2\), effectively normalizes only by \(X\)'s variance in a way that
+      collapses back to \(r^2\) in the one-predictor case). With a second
+      predictor, \(R^2\) becomes a joint statement about how much of \(Y\)'s
+      variance the whole set of predictors together explains, which is no
+      longer reducible to any single predictor's pairwise correlation with
+      \(Y\) — the identity is a special case of the one-variable model, not a
+      general law.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Give an example of two variables with a strong, deterministic relationship but a correlation coefficient near zero.</summary>
+    <div class="tl-answer">
+      \(y = x^2\) with \(x\) ranging symmetrically around zero (e.g.
+      \(x \in [-5, 5]\)). Every value of \(y\) is completely determined by
+      \(x\) — there is no noise at all — but because \(y\) is identical for
+      \(x\) and \(-x\), the positive and negative deviation-products that
+      make up the covariance largely cancel, leaving \(\mathrm{Cov}(x,y)\),
+      and therefore Pearson's \(r\), close to zero. This is the standard
+      illustration that \(r\) measures only <em>linear</em> association;
+      strong nonlinear (quadratic, cyclical, threshold-based) relationships
+      can hide from it entirely.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why does adding more predictor variables to a regression always weakly increase R², even if the new predictors are pure noise with no real relationship to Y?</summary>
+    <div class="tl-answer">
+      Because OLS minimizes the sum of squared residuals over all available
+      coefficients simultaneously, and it always has the option of setting a
+      new, useless predictor's coefficient to exactly zero, which reproduces
+      the old fit exactly. Since the minimization is free to do at least that
+      well, and is sometimes able to do slightly better by finding some small
+      spurious in-sample pattern in the new predictor purely by chance, SSR
+      can only stay the same or fall as predictors are added — it can never
+      rise. Since \(R^2 = 1 - \mathrm{SSR}/\mathrm{SST}\) and SST doesn't
+      change, \(R^2\) can only stay the same or rise. This mechanical fact —
+      not any real explanatory power — is why a raw in-sample \(R^2\) with
+      many predictors is untrustworthy on its own, and why adjusted \(R^2\)
+      or out-of-sample validation exist.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. In the OLS derivation, why does setting the partial derivative of the sum of squared residuals with respect to the intercept to zero imply the residuals must sum to exactly zero?</summary>
+    <div class="tl-answer">
+      \(\partial \mathrm{SSR}/\partial\hat\alpha = -2\sum_i (y_i - \hat\alpha -
+      \hat\beta x_i) = -2\sum_i e_i\). Setting this equal to zero and
+      dividing by \(-2\) directly gives \(\sum_i e_i = 0\) — it's the same
+      expression, just relabeled as the residual definition. Intuitively,
+      this is the condition that makes the intercept optimal: if the
+      residuals summed to something other than zero, you could shift the
+      whole line up or down by that average amount and strictly reduce the
+      total squared error, so the minimum can only be at the point where
+      that's no longer possible — where the positive and negative residuals
+      exactly balance.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. A friend says "our regression found a very significant relationship, p &lt; 0.01" but the residuals turned out to be strongly autocorrelated. Why is that a problem, and what should you check for before trusting the coefficient?</summary>
+    <div class="tl-answer">
+      The standard formula for a regression's t-statistics and p-values
+      assumes the residuals are independent of each other (no
+      autocorrelation) and of constant variance (homoskedastic). When
+      residuals are autocorrelated, the effective amount of independent
+      information in the sample is smaller than the raw observation count
+      suggests — nearby residuals are echoing the same information rather
+      than each contributing something new — so the standard formula
+      understates the true uncertainty around \(\hat\beta\), producing
+      standard errors, t-statistics, and p-values that look far more
+      confident than they should. The point estimate \(\hat\beta\) itself can
+      still be a reasonable estimate of the slope; it's the significance
+      claim built on top of it that's unreliable. The fix is not to trust the
+      p-value at face value — run a Durbin-Watson test for autocorrelation
+      and a Breusch-Pagan test for heteroskedasticity on the residuals first,
+      and use heteroskedasticity/autocorrelation-robust standard errors (or a
+      different model specification) if either comes back flagged.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Francis Galton, <em>"Regression Towards Mediocrity in Hereditary Stature,"</em> Journal of the Anthropological Institute, 1886 — Galton's original height-inheritance study; the source of both the term "regression" (tall parents' children tend to be shorter than their parents, "regressing" toward the population mean, and vice versa) and an early empirical treatment of what would become the correlation coefficient.</li>
+    <li>Karl Pearson, <em>"Notes on Regression and Inheritance in the Case of Two Parents,"</em> Proceedings of the Royal Society of London, 1895 — Pearson's formalization of the correlation coefficient into the precise covariance-over-standard-deviations form used throughout this primer and universally today.</li>
+    <li>Jeffrey M. Wooldridge, <em>Introductory Econometrics: A Modern Approach</em> — the standard textbook treatment of OLS, its assumptions (including the homoskedasticity/no-autocorrelation conditions discussed in the pitfalls section), and formal statistical inference for regression; a natural next step for anyone wanting the full derivation with proofs.</li>
+    <li>Francis Anscombe, <em>"Graphs in Statistical Analysis,"</em> The American Statistician, 1973 — the origin of "Anscombe's quartet," four datasets with nearly identical means, variances, correlations, and regression lines despite looking completely different when plotted; the canonical illustration of why a scatter plot, not just the summary statistics, always belongs in the analysis.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="primer-probability.html">← Probability &amp; Random Variables</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="primer-returns-compounding.html">Returns, Log-Returns &amp; Compounding →</a>
+  </div>
+</div>
+<script>
+(function(){
+  // Fixed underlying trend: same slope/intercept as the static chart's OLS
+  // line (80,235) -> (580,55), i.e. y = 235 + slope*(x-80).
+  var X0 = 80, Y0 = 235, SLOPE = (55 - 235) / (580 - 80); // -0.36
+  function trendY(x){ return Y0 + SLOPE * (x - X0); }
+
+  // Same 15 x-positions as the original static scatter (118..566 step 32).
+  var XS = [];
+  for (var i = 0; i < 15; i++) XS.push(118 + 32 * i);
+
+  var Y_MIN = 22, Y_MAX = 258; // keep points inside the axes
+
+  var noiseSlider = document.getElementById('reg-noise-slider');
+  var noiseVal = document.getElementById('reg-noise-val');
+  var r2Val = document.getElementById('reg-r2-val');
+  var pointsGroup = document.getElementById('reg-points-group');
+  var residualsGroup = document.getElementById('reg-residuals-group');
+
+  function updateReg(){
+    var noise = parseFloat(noiseSlider.value); // 0..100
+    noiseVal.textContent = noise + '%';
+
+    // Illustrative mapping only (not re-fit each draw): R^2 falls smoothly
+    // from ~1 at noise=0 to ~0 at noise=100, clamped to [0,1].
+    var r2 = 1 - Math.pow(noise / 100, 1.5);
+    r2 = Math.max(0, Math.min(1, r2));
+    r2Val.textContent = r2.toFixed(2);
+
+    // Jitter amplitude scales with the noise slider; at noise=30 this lands
+    // close to the original static chart's residual sizes (~20-30px).
+    var jitterAmp = (noise / 100) * 90;
+
+    var ys = [];
+    var pointsHTML = '';
+    for (var i = 0; i < XS.length; i++){
+      var x = XS[i];
+      var y = trendY(x) + (Math.random() * 2 - 1) * jitterAmp;
+      y = Math.max(Y_MIN, Math.min(Y_MAX, y));
+      ys.push(y);
+      pointsHTML += '<circle cx="' + x + '" cy="' + y.toFixed(1) + '" r="4" style="fill:var(--blue)"></circle>';
+    }
+    pointsGroup.innerHTML = pointsHTML;
+
+    // A handful of residual segments (every 3rd point) so they visibly
+    // lengthen as noise increases, drawn from the fixed trend line.
+    var residualsHTML = '';
+    for (var j = 0; j < XS.length; j++){
+      if (j % 3 !== 0) continue;
+      var rx = XS[j];
+      var lineY = trendY(rx);
+      residualsHTML += '<line x1="' + rx + '" y1="' + ys[j].toFixed(1) + '" x2="' + rx + '" y2="' + lineY.toFixed(1) + '" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"></line>';
+    }
+    residualsGroup.innerHTML = residualsHTML;
+  }
+
+  noiseSlider.addEventListener('input', updateReg);
+  updateReg();
+})();
+</script>
+</body>
+</html>

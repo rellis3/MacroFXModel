@@ -240,6 +240,14 @@
     </div>
   </div>
 
+  <!-- Education -->
+  <div class="chub-dd" id="chubDDedu">
+    <button class="chub-btn" style="color:#a78bfa;border-color:rgba(167,139,250,.35)" onclick="chubToggleDD(event,'chubDDedu')">Learn ▾</button>
+    <div class="chub-menu">
+      <a class="chub-item" href="theory-lab/hub.html" target="_blank" data-href="theory-lab/hub.html"><span class="ci-txt">🎓 Theory Lab</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('theory-lab/hub.html')" data-href="theory-lab/hub.html">☆</button></a>
+    </div>
+  </div>
+
   <!-- WIP -->
   <div class="chub-dd" id="chubDDwip">
     <button class="chub-btn" style="color:#64748b;border-color:rgba(100,116,139,.35)" onclick="chubToggleDD(event,'chubDDwip')">WIP ▾</button>
@@ -336,7 +344,7 @@
   // categories via "Edit Nav"; the resulting {category -> [href,...]} map is
   // saved to KV (server.js /api/nav-layout) so it follows the user across
   // browsers/devices, with a localStorage copy for instant paint + offline use.
-  var CATS=['chubDDlive','chubDDvol','chubDDfxbt','chubDDresearch','chubDDequity','chubDDgold','chubDDsystems','chubDDwip'];
+  var CATS=['chubDDlive','chubDDvol','chubDDfxbt','chubDDresearch','chubDDequity','chubDDgold','chubDDsystems','chubDDedu','chubDDwip'];
   var CAT_META={
     chubDDlive:{label:'Live',color:'#10b981'},
     chubDDvol:{label:'Vol',color:'#4f7df0'},
@@ -345,6 +353,7 @@
     chubDDequity:{label:'Equity',color:'#06b6d4'},
     chubDDgold:{label:'Gold',color:'#eab308'},
     chubDDsystems:{label:'Systems',color:'#14b8a6'},
+    chubDDedu:{label:'Learn',color:'#a78bfa'},
     chubDDwip:{label:'WIP',color:'#64748b'}
   };
   var registry={};       // href -> {text}

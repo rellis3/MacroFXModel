@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kalman Filter &amp; Adaptive Relationships — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Time Series &amp; Regimes / Kalman Filter</div>
+  <div class="tl-kicker">Time Series &amp; Regimes · Lesson 8 of 14</div>
+  <h1 class="tl-title">The Kalman Filter &amp; Adaptive Relationships</h1>
+  <p class="tl-dek">A recursive rule for tracking a hidden quantity — like a hedge ratio that drifts slowly rather than staying fixed — that blends yesterday's estimate with today's noisy observation in exactly the proportion each one deserves.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not yet built in this repo</span>
+    <span>~17 min read</span>
+    <span>Prereqs: Bayesian Inference, Ornstein-Uhlenbeck &amp; Mean Reversion</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    Suppose you believe two assets move together — a currency pair and a rate
+    spread, a stock and its sector ETF, an equity index and a related futures
+    contract — and you want a number that describes how much: "a 1-unit move in
+    A tends to come with a \(\beta\)-unit move in B." The standard way to get
+    that number is ordinary least squares (OLS) regression over some lookback
+    window, say the last 60 days. That gives you one \(\beta\), estimated once,
+    treated as if it were a fixed physical constant until you re-run the
+    regression tomorrow on a new 60-day window.
+  </p>
+  <p>
+    Two things are quietly wrong with that. First, a fixed-window regression
+    weights every point inside the window <em>equally</em> and every point
+    outside it <em>zero</em> — day 61 counts exactly as much as yesterday, and
+    day 61 disappears completely the moment it rolls out of the window, even
+    though nothing about the world changed at that exact boundary. That produces
+    a real artifact: your estimated \(\beta\) can jump when an old, unremarkable
+    data point falls off the back of the window, a discontinuity that has
+    nothing to do with the market and everything to do with your choice of
+    window length. Second, and more fundamentally, real relationships between
+    assets are rarely constant. A hedge ratio between two related instruments
+    can drift as the underlying economics change — correlations widen and
+    narrow with the macro regime, a company's sensitivity to its sector shifts
+    as its business mix shifts, a spread's lead-lag relationship to a currency
+    pair strengthens or weakens with volatility (a pattern the yield-spread
+    lessons in this repo's macro notes document directly — more in the repo box
+    below). If the true relationship is genuinely moving, you don't want a
+    number that's either "frozen for 60 days" (too slow to react) or "re-fit
+    from scratch on a totally different window" (too jumpy and throws away
+    everything you'd learned).
+  </p>
+  <p>
+    The Kalman filter solves a different, better-posed version of this problem:
+    instead of assuming \(\beta\) is a constant to be estimated, assume it is a
+    hidden, slowly-drifting quantity you can never observe directly — and use
+    every new noisy observation to update your best running estimate of it,
+    automatically weighing "trust what I already believed" against "trust what
+    I just saw" based on how uncertain each one currently is. It does this with
+    a simple, exact, closed-form recursion — no window to choose, no re-fitting
+    from scratch, and (as this lesson will show explicitly) it is nothing more
+    than the Bayesian updating from the previous lesson, applied one time step
+    at a time to a quantity that moves.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A GPS for a number you can't see directly</h3>
+    <p>
+      Imagine trying to track a boat at night using only a noisy radar ping
+      once a minute. You never see the boat directly — you only get blips with
+      error in them. But you're not starting from zero each minute either: you
+      know roughly where the boat was a minute ago, and boats don't teleport,
+      so you have a good guess of where it probably is <em>now</em>, before the
+      new ping even arrives — it drifted a little, and your uncertainty about
+      its position grew a little, simply because time passed and you haven't
+      checked. That's the <strong>predict</strong> step. Then the new radar
+      ping arrives. You don't throw away your prediction and trust the ping
+      alone (radar is noisy — a single ping could be a fluke). You don't ignore
+      the ping either (that's the only new information you have). You blend
+      them: pull your estimate part of the way toward the new ping, by an
+      amount that depends on how confident you were in your prediction versus
+      how noisy the radar sensor is known to be. That's the
+      <strong>update</strong> step, and the blending weight is called the
+      <strong>Kalman gain</strong>. Do this once per minute, forever, and you
+      get a smooth, continuously-updated track of the boat that's better than
+      either "trust only my last guess" or "trust only the latest ping" alone.
+      A hedge ratio that drifts over time is exactly the same tracking problem
+      with the boat's position replaced by an unobservable number.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    A Kalman filter is built on a <strong>state-space model</strong> — two
+    equations that separate "the thing you actually care about but can't see"
+    from "the thing you can see but is corrupted by noise." Both equations
+    below are written for the simplest possible case: a single hidden number
+    (not a vector) evolving in one dimension. This is exactly the case you need
+    for tracking a single hedge ratio or beta, and it's the cleanest way to see
+    every piece of the machinery before it gets dressed up in matrix notation
+    for more general problems.
+  </p>
+  <p>
+    <strong>The state equation</strong> describes how the hidden, unobservable
+    quantity evolves from one time step to the next:
+  </p>
+  <div class="tl-math">\[ x_t = x_{t-1} + w_t, \qquad w_t \sim \mathcal{N}(0, Q) \]</div>
+  <p>
+    Read this as: "the true hedge ratio today equals the true hedge ratio
+    yesterday, plus a small random nudge." The nudge \(w_t\) is drawn from a
+    Normal (Gaussian) distribution centered at 0 with variance \(Q\) — meaning
+    the drift has no predictable direction (it's equally likely to nudge the
+    ratio up or down) but it does have a typical <em>size</em>, controlled by
+    \(Q\). A larger \(Q\) says "I believe this relationship can genuinely
+    change quickly"; a smaller \(Q\) says "I believe it's nearly constant, only
+    creeping very slowly." This particular form — today equals yesterday plus
+    noise, with no other term — is called a <strong>random walk</strong> state
+    equation, and it is a modeling choice, not a law of nature (see the
+    pitfalls box for what that choice does and doesn't assume).
+  </p>
+  <p>
+    <strong>The observation equation</strong> describes how the hidden state
+    connects to something you can actually measure:
+  </p>
+  <div class="tl-math">\[ y_t = H_t\, x_t + v_t, \qquad v_t \sim \mathcal{N}(0, R) \]</div>
+  <p>
+    Read this as: "what I actually observe today, \(y_t\) — say, today's price
+    move in asset B — is approximately \(H_t\) times the hidden true ratio,
+    plus observation noise." In the hedge-ratio use case, \(H_t\) is typically
+    the day's move in asset A (so \(H_t x_t\) is "how much B should have moved
+    if the true ratio were exactly \(x_t\) and there were no noise"), and
+    \(y_t\) is the day's actual move in B. The gap between them, \(v_t\), is
+    everything that isn't explained by the linear relationship — idiosyncratic
+    noise, microstructure, unrelated news — modeled as Gaussian with variance
+    \(R\). A larger \(R\) says "a single day's observed ratio is a noisy,
+    unreliable read on the truth"; a smaller \(R\) says "today's reading is
+    quite trustworthy on its own."
+  </p>
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(x_t\)</td><td>The hidden <strong>true state</strong> at time \(t\) — e.g. the true, unobservable hedge ratio. You never see this directly, only estimate it.</td></tr>
+      <tr><td>\(w_t\)</td><td><strong>Process noise</strong> — the random drift added to the state each step, \(w_t \sim \mathcal{N}(0,Q)\).</td></tr>
+      <tr><td>\(Q\)</td><td><strong>Process (state) variance</strong> — how much the true state is believed to drift per step. A modeling input you choose, not something observed directly.</td></tr>
+      <tr><td>\(y_t\)</td><td>The <strong>observation</strong> at time \(t\) — the noisy, measurable quantity you actually have data for.</td></tr>
+      <tr><td>\(H_t\)</td><td>The <strong>observation matrix</strong> (here, a scalar) linking the hidden state to the observation. In the hedge-ratio example, this is the day's move in the reference asset.</td></tr>
+      <tr><td>\(v_t\)</td><td><strong>Observation noise</strong> — the gap between the linear model's prediction and what's actually observed, \(v_t \sim \mathcal{N}(0,R)\).</td></tr>
+      <tr><td>\(R\)</td><td><strong>Observation (measurement) variance</strong> — how noisy a single observation is believed to be. Also a chosen modeling input.</td></tr>
+      <tr><td>\(\hat{x}_{t\mid t-1}\)</td><td>The <strong>a priori (predicted) state estimate</strong> — the best guess of \(x_t\) using only information through \(t-1\), before seeing \(y_t\).</td></tr>
+      <tr><td>\(P_{t\mid t-1}\)</td><td>The <strong>a priori error variance</strong> — how uncertain that predicted estimate is.</td></tr>
+      <tr><td>\(e_t\)</td><td>The <strong>innovation</strong> (prediction error / residual) — the gap between what was actually observed and what the predicted state said should be observed: \(e_t = y_t - H_t\hat{x}_{t\mid t-1}\). This is literally "the surprise."</td></tr>
+      <tr><td>\(S_t\)</td><td>The <strong>innovation variance</strong> — the total uncertainty in that surprise, combining prediction uncertainty and observation noise.</td></tr>
+      <tr><td>\(K_t\)</td><td>The <strong>Kalman gain</strong> — the weight (between 0 and 1, in this scalar case) given to the new observation's surprise when updating the estimate.</td></tr>
+      <tr><td>\(\hat{x}_{t\mid t}\)</td><td>The <strong>a posteriori (updated) state estimate</strong> — the best guess of \(x_t\) after folding in \(y_t\). This is the answer you actually use, e.g. as today's hedge ratio.</td></tr>
+      <tr><td>\(P_{t\mid t}\)</td><td>The <strong>a posteriori error variance</strong> — the updated uncertainty, after the observation has (typically) sharpened it.</td></tr>
+    </table>
+  </div>
+  <p>
+    With those defined, the filter is exactly two steps, run once per new
+    observation, forever.
+  </p>
+  <p>
+    <strong>Predict step.</strong> Before you look at today's data at all,
+    project yesterday's belief forward using the state equation. Because the
+    state equation here is a pure random walk (no deterministic drift term),
+    the best guess for today is simply yesterday's estimate — but your
+    <em>uncertainty</em> about it must grow, because time has passed and the
+    state may have wandered:
+  </p>
+  <div class="tl-math">\[ \hat{x}_{t\mid t-1} = \hat{x}_{t-1\mid t-1} \qquad\qquad P_{t\mid t-1} = P_{t-1\mid t-1} + Q \]</div>
+  <p>
+    The left equation says "predict no change." The right equation is the
+    important one: it <em>inflates</em> the uncertainty by exactly \(Q\), the
+    process variance — the longer you go without checking, or the more that
+    process noise is believed to be, the less confident the predicted estimate
+    becomes. This inflation is what makes the filter willing to move when new
+    data arrives, instead of becoming permanently over-confident.
+  </p>
+  <p>
+    <strong>Update step.</strong> Now the new observation \(y_t\) arrives.
+    First compute the innovation — the gap between what was actually seen and
+    what the prediction implied should have been seen — and its variance:
+  </p>
+  <div class="tl-math">\[ e_t = y_t - H_t\hat{x}_{t\mid t-1} \qquad\qquad S_t = H_t^2 P_{t\mid t-1} + R \]</div>
+  <p>
+    Then compute the Kalman gain — the heart of the whole method:
+  </p>
+  <div class="tl-math">\[ K_t = \frac{P_{t\mid t-1}\, H_t}{S_t} = \frac{P_{t\mid t-1}\, H_t}{H_t^2 P_{t\mid t-1} + R} \]</div>
+  <p>
+    Finally, blend the prediction with the observation, weighted by that gain,
+    and shrink the uncertainty accordingly:
+  </p>
+  <div class="tl-math">\[ \hat{x}_{t\mid t} = \hat{x}_{t\mid t-1} + K_t\, e_t \qquad\qquad P_{t\mid t} = (1 - K_t H_t)\, P_{t\mid t-1} \]</div>
+  <p>
+    Look closely at what the gain formula is actually doing. \(K_t\) is a
+    ratio: the uncertainty in the <em>prediction</em>, \(P_{t\mid t-1}H_t\), over
+    the <em>total</em> uncertainty in the innovation, \(S_t\), which combines
+    both prediction uncertainty and observation noise \(R\). If \(R\) is tiny
+    relative to \(P_{t\mid t-1}\) — the new observation is very trustworthy
+    relative to how unsure you currently are — \(K_t\) approaches 1, and the
+    update step moves the estimate almost all the way to what the new data
+    implies. If \(R\) is huge relative to \(P_{t\mid t-1}\) — the observation is
+    mostly noise, and you're already fairly confident — \(K_t\) approaches 0,
+    and the new, noisy data point is nearly ignored. Between those extremes,
+    the filter finds the exact proportional blend, recomputed fresh at every
+    single step, because \(P_{t\mid t-1}\) itself changes every step (it grows
+    during predict, shrinks during update). This is precisely why a Kalman
+    filter is not just "an exponential moving average with a fancy name": an
+    EMA uses one fixed smoothing constant chosen in advance; the Kalman gain is
+    <em>derived</em>, and adapts on its own as the filter's confidence changes.
+  </p>
+  <p>
+    <strong>This update step is a Bayesian update — not "similar to," identical
+    to.</strong> Recall from the Bayesian Inference lesson: a prior belief plus
+    new evidence combine, via Bayes' theorem, into a posterior belief. Here,
+    the predicted state distribution \(\mathcal{N}(\hat{x}_{t\mid t-1},
+    P_{t\mid t-1})\) — your belief about \(x_t\) <em>before</em> seeing today's
+    data — is exactly the <strong>prior</strong>. The observation model
+    \(y_t \mid x_t \sim \mathcal{N}(H_t x_t, R)\) — how probable the observed
+    \(y_t\) is, for each possible value of the hidden state — is exactly the
+    <strong>likelihood</strong>. And the updated state distribution
+    \(\mathcal{N}(\hat{x}_{t\mid t}, P_{t\mid t})\) is exactly the
+    <strong>posterior</strong>: what you should believe about \(x_t\) once you
+    fold in the new evidence, by Bayes' theorem, precisely as derived in that
+    lesson. The reason the Kalman filter gets to skip the messy integral that
+    Bayes' theorem usually requires (recall \(P(E)\), the marginal likelihood,
+    is often the hard term to compute) is a special mathematical fact: when the
+    prior is Gaussian and the likelihood is Gaussian with a linear relationship
+    to the state, the posterior is <em>exactly</em> Gaussian too, and its mean
+    and variance have the simple closed forms above. This property — Gaussian
+    prior in, Gaussian posterior out, same family — is called
+    <strong>conjugacy</strong>, and it's the entire reason the Kalman filter is
+    a clean formula instead of a numerical simulation. Every predict/update
+    cycle is one full pass of "prior → likelihood → posterior," then that
+    posterior becomes tomorrow's prior — sequential Bayesian updating, exactly
+    as described in that lesson, applied to a state that moves between
+    updates.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>Tracking a drifting hedge ratio through two updates</h3>
+    <p>
+      Suppose you're estimating the true hedge ratio \(x_t\) between two
+      related instruments — how many units of asset A you'd need to hedge one
+      unit of asset B. You don't observe this ratio directly; each day you get
+      a noisy read on it (e.g. from that day's realized price moves). Set up
+      the filter with these chosen inputs:
+    </p>
+    <p>
+      Initial estimate \(\hat{x}_{0\mid 0} = 1.20\), initial uncertainty
+      \(P_{0\mid 0} = 0.0400\) (a standard deviation of 0.20 — deliberately wide,
+      since you're not yet confident). Process variance \(Q = 0.0009\) (std dev
+      0.03 — you believe the true ratio drifts only slightly per day). Observation
+      variance \(R = 0.0100\) (std dev 0.10 — a single day's observed ratio is
+      fairly noisy). For simplicity take \(H_t = 1\) (the observation is a direct,
+      if noisy, read on the ratio itself).
+    </p>
+    <p><strong>Day 1: observation \(y_1 = 1.35\).</strong></p>
+    <p><em>Predict:</em></p>
+    <div class="tl-math">\[ \hat{x}_{1\mid 0} = 1.20 \qquad P_{1\mid 0} = 0.0400 + 0.0009 = 0.0409 \]</div>
+    <p><em>Update:</em></p>
+    <div class="tl-math">\[ e_1 = 1.35 - 1.20 = 0.15 \qquad S_1 = 0.0409 + 0.0100 = 0.0509 \]</div>
+    <div class="tl-math">\[ K_1 = \frac{0.0409}{0.0509} \approx 0.804 \]</div>
+    <div class="tl-math">\[ \hat{x}_{1\mid 1} = 1.20 + 0.804 \times 0.15 \approx 1.321 \qquad P_{1\mid 1} = (1-0.804)\times 0.0409 \approx 0.0080 \]</div>
+    <p>
+      Notice the gain is large — 0.804 — because the prior uncertainty
+      (\(P_{1\mid 0}=0.0409\)) was still larger than the observation noise
+      (\(R=0.0100\)); this early in the tracking process, the filter isn't very
+      confident yet, so it leans heavily on the new data. The updated estimate,
+      1.321, sits 80% of the way from the old estimate (1.20) toward the new
+      observation (1.35) — arithmetically exactly \(1.20 + 0.804(1.35-1.20)\).
+    </p>
+    <p><strong>Day 2: observation \(y_2 = 1.30\).</strong></p>
+    <p><em>Predict</em> (carry forward Day 1's posterior as today's prior):</p>
+    <div class="tl-math">\[ \hat{x}_{2\mid 1} = 1.321 \qquad P_{2\mid 1} = 0.0080 + 0.0009 = 0.0089 \]</div>
+    <p><em>Update:</em></p>
+    <div class="tl-math">\[ e_2 = 1.30 - 1.321 = -0.021 \qquad S_2 = 0.0089 + 0.0100 = 0.0189 \]</div>
+    <div class="tl-math">\[ K_2 = \frac{0.0089}{0.0189} \approx 0.471 \]</div>
+    <div class="tl-math">\[ \hat{x}_{2\mid 2} = 1.321 + 0.471\times(-0.021) \approx 1.311 \qquad P_{2\mid 2} = (1-0.471)\times 0.0089 \approx 0.0047 \]</div>
+    <p>
+      The gain dropped from 0.804 to 0.471 in a single step, with no manual
+      adjustment — it fell purely because \(P\) shrank after Day 1's update, so
+      the prior is now more trustworthy relative to a single noisy observation.
+      Keep running this recursion and the gain keeps settling, approaching a
+      <strong>steady-state value</strong> governed entirely by the ratio
+      \(Q/R\) (here \(Q/R = 0.09\), a small ratio, so the steady-state gain
+      settles low — the filter trusts its running estimate much more than any
+      single new reading, once it has enough history behind it). That
+      steady-state gain is the filter's <em>implicit, self-chosen "effective
+      window length"</em> — nobody set an \(N\)-day lookback anywhere; it fell
+      out of two variance inputs.
+    </p>
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Kalman-filtered hedge ratio vs. noisy daily observations</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter plot of noisy hedge-ratio observations over time, with a smooth Kalman-filtered estimate line threading through them and a shaded uncertainty band that starts wide on the left and narrows toward the right as more observations accumulate">
+      <line x1="60" y1="20" x2="60" y2="230" style="stroke:var(--border2);stroke-width:1"/>
+      <line x1="60" y1="230" x2="610" y2="230" style="stroke:var(--border2);stroke-width:1"/>
+      <polygon id="kf-uncertainty-band" points="70,105 114,106 158,105 203,105 247,103 291,104 335,104 379,103 423,103 468,101 512,100 556,99 600,98 600,110 556,115 512,120 468,125 423,131 379,137 335,144 291,150 247,157 203,167 158,175 114,186 70,195" style="fill:var(--blue);opacity:.15"/>
+      <circle cx="70" cy="126" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="70" cy="169" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="114" cy="166" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="114" cy="131" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="158" cy="124" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="158" cy="161" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="203" cy="158" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="203" cy="118" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="247" cy="111" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="247" cy="144" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="291" cy="142" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="291" cy="105" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="335" cy="101" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="335" cy="140" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="379" cy="138" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="379" cy="107" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="423" cy="103" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="423" cy="137" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="468" cy="134" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="468" cy="97" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="512" cy="93" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="512" cy="122" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="556" cy="126" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="556" cy="87" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="600" cy="82" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="600" cy="119" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <polyline id="kf-filtered-line" points="70,150 114,146 158,140 203,136 247,130 291,127 335,124 379,120 423,117 468,113 512,110 556,107 600,104" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+      <text x="335" y="255" text-anchor="middle" font-size="11" fill="var(--text3)">time</text>
+      <text x="18" y="125" text-anchor="middle" font-size="11" fill="var(--text3)" transform="rotate(-90 18 125)">hedge ratio</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Trust in new data (R⁻¹ relative to Q)</span><span class="tl-live" id="kf-gain-val">K ≈ 0.50</span></div>
+        <input type="range" id="kf-gain-slider" min="1" max="99" step="1" value="50">
+        <div class="tl-hint">Low = smoother but slower to react. High = reacts fast but tracks noise.</div>
+      </div>
+    </div>
+    <div class="tl-legend">
+      <span><i style="background:var(--text3);opacity:.6"></i>Noisy observations</span>
+      <span><i style="background:var(--blue)"></i>Filtered estimate</span>
+      <span><i style="background:var(--blue);opacity:.15"></i>Uncertainty band</span>
+    </div>
+    <div class="tl-chart-caption">
+      Each new noisy observation (grey dots) nudges the filtered estimate (blue
+      line) toward it — by an amount set at that step by the Kalman gain, exactly
+      as the update equation \(\hat{x}_{t\mid t} = \hat{x}_{t\mid t-1} + K_t
+      e_t\) describes. The shaded band is the estimate's uncertainty
+      \(P_{t\mid t}\): wide on the left, when few observations have accumulated,
+      and visibly narrower on the right, as the predict/update recursion keeps
+      folding in evidence and the filter grows more confident in its running
+      estimate. Drag the slider above to see the trade-off directly: it
+      re-runs the same blend recursion, \(\hat{x}_t = (1-K)\hat{x}_{t-1} + K
+      y_t\), over the fixed noisy observations with a chosen gain \(K\) instead
+      of the derived per-step Kalman gain.
+    </div>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    The Kalman filter was developed by Rudolf Kálmán in 1960 for control and
+    guidance engineering, and its first famous application was tracking a
+    genuinely moving physical object under noisy sensors — it became the
+    on-board navigation algorithm for the Apollo program's guidance computer,
+    fusing noisy inertial-sensor readings into a reliable real-time estimate of
+    the spacecraft's position and velocity. That "fuse a noisy stream of
+    readings into a smooth estimate of a hidden, moving quantity" problem shows
+    up everywhere control theory and estimation touch: GPS receivers, robotics
+    and self-driving vehicle localization (often paired with radar/lidar in a
+    broader sensor-fusion stack), and any tracking problem where you get
+    periodic noisy measurements of something that moves continuously in
+    between them.
+  </p>
+  <p>
+    In quantitative finance specifically, the dominant use case is exactly the
+    one this lesson builds: <strong>time-varying parameter estimation</strong>
+    — treating a coefficient that's conventionally estimated by static OLS
+    regression (a hedge ratio, a market beta, a factor loading, a
+    cointegrating relationship's slope) as a hidden state that drifts, and
+    letting the Kalman filter track it online instead of re-running a
+    fixed-window regression. This is the standard alternative to rolling-window
+    OLS in statistical arbitrage and pairs trading — Ernest Chan's
+    practitioner literature (cited below) documents this directly: track the
+    hedge ratio between two cointegrated instruments with a Kalman filter
+    instead of a rolling regression, because the filter reacts smoothly to
+    genuine drift instead of exhibiting the "equal weight inside the window,
+    zero weight outside it" discontinuity described at the top of this lesson.
+    The same idea extends to tracking a time-varying beta of a security to a
+    factor or index, a time-varying volatility level (in more elaborate
+    state-space formulations), or the parameters of a broader dynamic linear
+    model in macro-econometrics, where "time-varying parameter regression" is
+    a standard, named technique built on exactly this recursion.
+  </p>
+  <p>
+    It's worth being precise about the boundary of the plain (linear-Gaussian)
+    Kalman filter covered here: it is the mathematically <em>optimal</em>
+    estimator only when the state truly follows a linear equation and both
+    noise sources are genuinely Gaussian. When the relationship between state
+    and observation is nonlinear, practitioners reach for extensions —
+    the Extended Kalman Filter (EKF, which linearizes locally at each step) or
+    the Unscented Kalman Filter (UKF, which propagates a small set of
+    representative points through the true nonlinear function instead of
+    linearizing). Those are out of scope here, but worth knowing by name, since
+    "Kalman filter" in a job posting or a paper often silently means one of
+    these variants.
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+    <h3>An adaptive coefficient for a lead-lag relationship whose strength already varies with regime</h3>
+    <p>
+      Two places in this repo already describe exactly the kind of relationship
+      a Kalman filter is built for: one whose <em>strength</em>, not just its
+      level, seems to change with market conditions. <code>education/macro-deep-dives-notes.md</code>'s
+      Lesson 2 ("The Transatlantic Yield Spread") documents that the lead time
+      between a US–German yield-spread move and the EUR/USD reaction is not
+      constant — its own table (§2.4) states the lead runs "hours to 1–2 days"
+      in high-volatility/news-driven conditions but "2–4 weeks" in range-bound,
+      low-vol conditions, and "1–3 months" around a regime change. Lesson 3's
+      live case study (17–18 Feb 2026) is a single concrete instance of that
+      relationship firing with a ~24-hour lead. That is, in plain language,
+      "the coefficient connecting spread-momentum to the FX/vol response is not
+      fixed — it moves with the regime," which is precisely the premise a
+      state-space model with a drifting \(x_t\) is designed to capture, instead
+      of hand-coding regime buckets with fixed thresholds.
+    </p>
+    <p>
+      <code>credit-leadlag.html</code> (backed by <code>js/creditCore.js</code> +
+      <code>js/creditHmm.js</code>, spec in <code>docs/CREDIT_SIGNAL_SPEC.md</code>)
+      is the closer, already-built analog: it computes a lead-lag
+      <strong>correlation</strong> between credit velocity (from ICE BofA US HY
+      OAS) and a risk instrument's forward realized vol, scanning a fixed grid
+      of lags over a fixed sample and reporting an out-of-sample information
+      coefficient. That's a static, single-number characterization of the
+      relationship's strength at each lag, refit over whatever window the job
+      is run on — the same "frozen until you re-run it" property the OLS
+      hedge-ratio example above has. A Kalman-filtered version would instead
+      model the coefficient linking credit velocity to forward vol (at a chosen
+      best lag) as a hidden state \(x_t\) that drifts smoothly, observed each
+      day through the noisy realized relationship — letting the filter's own
+      gain slow down when the relationship has been stable for a while and
+      speed back up right after a genuine regime shift (when innovations
+      \(e_t\) start coming in larger than \(S_t\) expects), without anyone
+      hand-tuning a regime switch.
+    </p>
+    <p>
+      To be explicit about where this stands: <strong>this is not built, not
+      prototyped, and not validated.</strong> It is a genuine candidate, not a
+      claim of improvement. Choosing \(Q\) and \(R\) is itself a real modeling
+      decision — as the pitfalls box below makes concrete, grid-searching them
+      against a backtest is just overfitting the window-length problem in a
+      different, more opaque parameterization, which is exactly the anti-pattern
+      this repo's Lego Principle warns against (principle 4: a selector, not more
+      knobs to optimize). Per Lego Principle 5, any Kalman-filtered version of
+      this relationship would need to beat the incumbent fixed-lag correlation
+      approach on true out-of-sample Sharpe or information coefficient, with a
+      non-trivial OOS sample, before it replaced anything live — a more
+      theoretically elegant estimator is not evidence of an improvement by
+      itself.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where "adaptive" quietly stops meaning "principled"</h3>
+    <p>
+      <strong>Treating \(Q\) and \(R\) as free parameters to grid-search until
+      the backtest looks good.</strong> This is the single most important
+      pitfall to internalize. The whole appeal of the Kalman filter is that it
+      replaces an arbitrary choice (window length \(N\)) with a principled
+      recursion — but \(Q\) and \(R\) are themselves chosen inputs, and if
+      they're tuned by scanning for whichever pair produces the best in-sample
+      equity curve, you have not escaped overfitting, you have relocated it
+      into a less legible parameterization. A window length of 60 days is at
+      least an honest, auditable knob; a \((Q, R)\) pair optimized post hoc is
+      the same overfitting risk wearing a more sophisticated disguise.
+    </p>
+    <p>
+      <strong>Confusing "adaptive" with "reactive to noise."</strong> If \(Q\)
+      is set too large relative to \(R\), the steady-state Kalman gain
+      approaches 1 and the filter starts tracking each new noisy observation
+      almost exactly — which defeats the entire purpose of estimating a stable
+      underlying relationship in the first place. An estimate that whipsaws
+      with every noisy print is not "more adaptive," it is simply under-damped.
+    </p>
+    <p>
+      <strong>A Kalman-filtered beta is not the same object as a rolling-window
+      OLS beta, even though casual language calls both "adaptive."</strong> A
+      rolling window gives every point inside it identical weight and every
+      point outside it exactly zero weight — a sharp cutoff you chose directly
+      as an \(N\)-day parameter. The Kalman filter instead discounts old
+      information through the recursive predict/update cycle, and its
+      "effective memory" is not a parameter you set directly at all — it
+      emerges from the \(Q/R\) ratio, and (as the worked example shows) it can
+      even change step to step depending on how confident the filter currently
+      is. Don't assume the two methods will produce visually similar output on
+      the same data; they can diverge meaningfully, especially right after a
+      genuine regime break.
+    </p>
+    <p>
+      <strong>The state equation \(x_t = x_{t-1} + w_t\) is a modeling
+      assumption, not an observed fact.</strong> A pure random walk assumes the
+      true relationship has no tendency to revert toward any particular
+      structural value and no deterministic trend — it can wander arbitrarily
+      far given enough time. If the quantity you're tracking is plausibly
+      mean-reverting instead (a cointegrating relationship's slope arguably has
+      more structure than an unconstrained random walk), a different state
+      equation — closer to the Ornstein-Uhlenbeck mean-reverting form from this
+      series' prerequisite lesson — may be the more honest specification, and
+      that choice needs to be tested, not assumed by default because it's the
+      textbook example.
+    </p>
+    <p>
+      <strong>The linear-Gaussian assumption can be wrong in ways that matter.</strong>
+      The closed-form recursion here is exactly optimal only if the process and
+      observation noise are truly Gaussian. Real financial return series
+      routinely show fat left tails (this repo's <code>metricsCore.js</code>
+      section of <code>CLAUDE.md</code> exists precisely because Sharpe alone
+      hides that) — a standard Kalman filter run on such data is still a
+      reasonable linear estimator, but it is no longer provably optimal, and
+      its uncertainty estimates (\(P_{t\mid t}\)) can understate real tail risk.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What happens to the Kalman gain \(K_t\) if the observation noise \(R\) is huge relative to the process noise \(Q\)?</summary>
+    <div class="tl-answer">
+      \(K_t\) approaches 0. A large \(R\) means each new observation is mostly
+      noise and shouldn't be trusted much; a small \(Q\) means the underlying
+      state barely drifts, so the existing estimate stays reliable across
+      steps. With \(K_t \approx 0\), the update step barely moves the estimate
+      toward the new observation — the filter effectively keeps carrying
+      forward its prior belief and treats fresh, noisy readings as close to
+      uninformative.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What happens to the Kalman gain if \(Q\) is huge relative to \(R\)?</summary>
+    <div class="tl-answer">
+      \(K_t\) approaches 1. A large \(Q\) means the true state is believed to
+      move a lot between observations, so any prior estimate goes stale fast;
+      a small \(R\) means each new observation is quite trustworthy. With
+      \(K_t \approx 1\), the updated estimate moves almost all the way to the
+      new observation each step — the filter essentially tracks the raw
+      observations directly, discounting its own accumulated history.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why is a Kalman-filtered beta not the same as a rolling-window OLS beta, even though both are called "adaptive"?</summary>
+    <div class="tl-answer">
+      A rolling-window OLS beta weights every observation inside a fixed
+      \(N\)-day window identically and every observation outside it exactly
+      zero — a hard cutoff, chosen directly as the parameter \(N\). A
+      Kalman-filtered beta instead discounts older information gradually
+      through the recursive predict step (which inflates uncertainty by \(Q\)
+      every step) and the update step (whose gain depends on current
+      confidence). Its effective "memory" is not a chosen window length at
+      all — it emerges from the ratio \(Q/R\) and can even change over time as
+      the filter's own uncertainty \(P\) evolves, as shown in the worked
+      example where the gain dropped from 0.804 to 0.471 across two steps with
+      no parameter changed.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What is actually being assumed by the state equation \(x_t = x_{t-1} + w_t\)?</summary>
+    <div class="tl-answer">
+      It assumes the hidden state follows a random walk: no deterministic
+      trend (no term pulling it consistently up or down over time) and no
+      mean reversion (nothing pulling it back toward a structural "home"
+      value) — just an unbiased random nudge of typical size \(\sqrt{Q}\)
+      each step. This is a real modeling choice, not a neutral default. If the
+      true quantity being tracked is plausibly mean-reverting instead (as a
+      cointegrating slope might be), a random-walk state equation is
+      mis-specified and a different formulation, closer to an
+      Ornstein-Uhlenbeck process, may fit better — that needs to be tested,
+      not assumed.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In what precise sense is the Kalman update step "Bayesian updating"?</summary>
+    <div class="tl-answer">
+      The predicted state distribution \(\mathcal{N}(\hat{x}_{t\mid t-1},
+      P_{t\mid t-1})\), computed in the predict step before seeing today's
+      data, is the prior. The observation model \(y_t \mid x_t \sim
+      \mathcal{N}(H_t x_t, R)\) — how likely the observed \(y_t\) is for each
+      possible hidden state value — is the likelihood. The updated
+      distribution \(\mathcal{N}(\hat{x}_{t\mid t}, P_{t\mid t})\) is the
+      posterior, obtained by combining prior and likelihood exactly as Bayes'
+      theorem prescribes. Because both the prior and the likelihood are
+      Gaussian and linearly related, the posterior comes out exactly Gaussian
+      too (conjugacy), which is why the update has a simple closed-form
+      formula instead of requiring the numerical integration general Bayesian
+      updating often needs.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why does choosing \(Q\) and \(R\) by grid-searching against backtest performance reintroduce the exact overfitting risk that "going adaptive" was supposed to avoid?</summary>
+    <div class="tl-answer">
+      The appeal of the Kalman filter over a rolling-window regression is that
+      it replaces an arbitrary chosen parameter (the window length \(N\)) with
+      a principled recursion. But \(Q\) and \(R\) are themselves chosen inputs
+      that fully determine the filter's behavior (via the steady-state gain).
+      Tuning them by scanning for whichever pair produces the best in-sample
+      result is functionally identical to tuning \(N\) by scanning for the
+      best-looking window — the overfitting risk hasn't been removed, it has
+      just moved into a parameterization that looks more sophisticated and is
+      therefore easier to mistake for something principled. Per this repo's
+      Lego Principle, any such choice still needs genuine out-of-sample
+      validation before being trusted.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Rudolf E. Kálmán, <em>"A New Approach to Linear Filtering and Prediction Problems,"</em> Journal of Basic Engineering, 1960 — the original paper deriving the recursion covered in this lesson.</li>
+    <li>Greg Welch &amp; Gary Bishop, <em>"An Introduction to the Kalman Filter,"</em> UNC Chapel Hill Technical Report TR 95-041 (updated periodically) — a widely used, accessible tutorial derivation, closer in spirit and notation to this lesson than the original 1960 paper.</li>
+    <li>NASA / Apollo program guidance-computer history (e.g. Stanley F. Schmidt's account of adapting Kálmán's work for the Apollo mission) — the classic real-world proving ground for the filter, fusing noisy inertial navigation data for spacecraft position estimation.</li>
+    <li>Ernest P. Chan, <em>Algorithmic Trading: Winning Strategies and Their Rationale</em>, Wiley, 2013 — an accessible, practitioner-facing chapter applying the Kalman filter to online hedge-ratio estimation for pairs trading, the direct finance analog of the worked example above.</li>
+    <li>Robert H. Shumway &amp; David S. Stoffer, <em>Time Series Analysis and Its Applications: With R Examples</em>, Springer — the rigorous state-space and dynamic linear model treatment, including multivariate generalizations beyond the scalar case covered here.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="hidden-markov-models.html">← Hidden Markov Models &amp; Regime Detection</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="cointegration.html">Cointegration &amp; Statistical Arbitrage →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var slider = document.getElementById('kf-gain-slider');
+  var gainVal = document.getElementById('kf-gain-val');
+  var line = document.getElementById('kf-filtered-line');
+  var band = document.getElementById('kf-uncertainty-band');
+
+  // Fixed noisy observations — read directly off the static SVG's <circle>
+  // points, in the order they appear (13 time-ticks, 2 observations each).
+  var OBS = [
+    {x:70,  y:126}, {x:70,  y:169},
+    {x:114, y:166}, {x:114, y:131},
+    {x:158, y:124}, {x:158, y:161},
+    {x:203, y:158}, {x:203, y:118},
+    {x:247, y:111}, {x:247, y:144},
+    {x:291, y:142}, {x:291, y:105},
+    {x:335, y:101}, {x:335, y:140},
+    {x:379, y:138}, {x:379, y:107},
+    {x:423, y:103}, {x:423, y:137},
+    {x:468, y:134}, {x:468, y:97},
+    {x:512, y:93},  {x:512, y:122},
+    {x:556, y:126}, {x:556, y:87},
+    {x:600, y:82},  {x:600, y:119}
+  ];
+
+  // Original static band's half-width at each of the 13 x-ticks (px), and
+  // the x-ticks themselves — read off the original polygon. The band is
+  // centered on the filtered line and shrinks left-to-right in the static
+  // chart; that shrinking-over-time shape is kept, and only its width is
+  // rescaled by the slider (see update() below).
+  var TICK_X = [70,114,158,203,247,291,335,379,423,468,512,556,600];
+  var BASE_HALF_WIDTH = [45,40,35,31,27,23,20,17,14,12,10,8,6];
+
+  function update(){
+    var pct = parseFloat(slider.value);
+    var K = pct / 100; // 0.01..0.99
+    gainVal.textContent = 'K ≈ ' + K.toFixed(2);
+
+    // Recompute the filtered line: simple exponential-smoothing recursion
+    // estimate_i = (1-K)*estimate_{i-1} + K*obs_i, seeded at the first
+    // observation, run over the FIXED observation array above (not the
+    // Kalman P/Q/R machinery — an illustrative single-parameter blend).
+    var estimates = new Array(OBS.length);
+    estimates[0] = OBS[0].y;
+    for (var i = 1; i < OBS.length; i++){
+      estimates[i] = (1 - K) * estimates[i - 1] + K * OBS[i].y;
+    }
+    var linePts = [];
+    for (var i = 0; i < OBS.length; i++){
+      linePts.push(OBS[i].x + ',' + estimates[i].toFixed(1));
+    }
+    line.setAttribute('points', linePts.join(' '));
+
+    // Uncertainty band: keep the original shrinking-over-time shape (the
+    // per-tick half-widths in BASE_HALF_WIDTH), but scale that half-width by
+    // (0.5 + K) — a simple, illustrative choice, not a derived Kalman P.
+    // At K=0.50 the scale factor is exactly 1.0, so the band's WIDTH at each
+    // tick matches the original static chart's; the band narrows toward
+    // K=0.01 (smoother line reads as a more confident average) and widens
+    // toward K=0.99 (jagged line tracking noise reads as a less confident
+    // running estimate). It is recentered on the recomputed filtered value
+    // at each tick (the estimate after both observations at that tick have
+    // been folded in), so its on-screen position also shifts with K, not
+    // just its width.
+    var scale = 0.5 + K;
+    var top = [];
+    var bottom = [];
+    for (var t = 0; t < TICK_X.length; t++){
+      var center = estimates[2 * t + 1];
+      var hw = BASE_HALF_WIDTH[t] * scale;
+      top.push(TICK_X[t] + ',' + (center - hw).toFixed(1));
+      bottom.push(TICK_X[t] + ',' + (center + hw).toFixed(1));
+    }
+    bottom.reverse();
+    band.setAttribute('points', top.concat(bottom).join(' '));
+  }
+
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
+</body>
+</html>
