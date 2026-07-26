@@ -41,6 +41,22 @@ ul,ol{margin:0 0 14px 22px;color:var(--text2)}
 li{margin-bottom:6px}
 code{font-family:'DM Mono',monospace;background:var(--s2);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:.9em;color:var(--amber)}
 
+/* TL;DR — a skim path so the full lesson is opt-in, not mandatory */
+.tl-tldr{background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:var(--rl);padding:16px 20px;margin:4px 0 28px}
+.tl-tldr-label{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--blue);margin-bottom:10px}
+.tl-tldr ul{margin:0 0 0 20px}
+.tl-tldr li{margin-bottom:6px;color:var(--text)}
+.tl-tldr li:last-child{margin-bottom:0}
+
+/* collapsible section — same disclosure pattern as .tl-quiz, sized for a whole section */
+details.tl-section-collapse{margin:36px 0 18px}
+details.tl-section-collapse summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;padding-top:4px}
+details.tl-section-collapse summary::-webkit-details-marker{display:none}
+details.tl-section-collapse summary::before{content:"▸";color:var(--blue);font-size:15px;flex-shrink:0}
+details.tl-section-collapse[open] summary::before{content:"▾"}
+details.tl-section-collapse summary h2{display:inline;margin:0}
+details.tl-section-collapse[open] summary{margin-bottom:10px}
+
 /* boxes */
 .tl-box{background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);padding:16px 18px;margin:18px 0}
 .tl-box.intuition{border-left:3px solid var(--blue)}

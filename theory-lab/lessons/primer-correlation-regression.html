@@ -21,6 +21,17 @@
     <span>Prereqs: Probability &amp; Random Variables</span>
   </div>
 
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Covariance measures whether two variables tend to sit above/below their own means <em>together</em> (positive) or on opposite sides (negative) — the same deviation-product machinery as variance, just applied to two variables.</li>
+      <li>Correlation \(r\) rescales covariance by both variables' standard deviations into a unitless number bounded \([-1,1]\) — but \(r=0\) only means no <em>linear</em> tendency, not "no relationship" (\(y=x^2\) is a deterministic relationship with \(r\approx 0\)).</li>
+      <li>OLS regression fits \(Y=\alpha+\beta X+\epsilon\) by minimizing the sum of squared residuals; the calculus collapses to \(\hat\beta=\mathrm{Cov}(X,Y)/\mathrm{Var}(X)\) — the exact formula this repo's <code>linregSlope</code> implements.</li>
+      <li>\(R^2 = 1-\mathrm{SSR}/\mathrm{SST}\) is the fraction of \(Y\)'s variance the fitted line explains, and equals \(r^2\) exactly for simple (one-predictor) regression — but \(R^2\) only ever weakly increases as predictors are added, even useless ones, so a high in-sample \(R^2\) alone proves nothing.</li>
+      <li>Correlation is never proof of causation (ice cream sales and drowning deaths correlate because both follow warm weather, not each other); the interactive chart's noise slider shows \(r\) and \(R^2\) degrading as scatter widens around a fixed true slope.</li>
+    </ul>
+  </div>
+
   <h2>Why this matters</h2>
   <p>
     Nearly every piece of quantitative reasoning in this repo eventually rests
@@ -640,13 +651,15 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Francis Galton, <em>"Regression Towards Mediocrity in Hereditary Stature,"</em> Journal of the Anthropological Institute, 1886 — Galton's original height-inheritance study; the source of both the term "regression" (tall parents' children tend to be shorter than their parents, "regressing" toward the population mean, and vice versa) and an early empirical treatment of what would become the correlation coefficient.</li>
     <li>Karl Pearson, <em>"Notes on Regression and Inheritance in the Case of Two Parents,"</em> Proceedings of the Royal Society of London, 1895 — Pearson's formalization of the correlation coefficient into the precise covariance-over-standard-deviations form used throughout this primer and universally today.</li>
     <li>Jeffrey M. Wooldridge, <em>Introductory Econometrics: A Modern Approach</em> — the standard textbook treatment of OLS, its assumptions (including the homoskedasticity/no-autocorrelation conditions discussed in the pitfalls section), and formal statistical inference for regression; a natural next step for anyone wanting the full derivation with proofs.</li>
     <li>Francis Anscombe, <em>"Graphs in Statistical Analysis,"</em> The American Statistician, 1973 — the origin of "Anscombe's quartet," four datasets with nearly identical means, variances, correlations, and regression lines despite looking completely different when plotted; the canonical illustration of why a scatter plot, not just the summary statistics, always belongs in the analysis.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="primer-probability.html">← Probability &amp; Random Variables</a>

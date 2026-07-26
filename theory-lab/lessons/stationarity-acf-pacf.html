@@ -21,6 +21,17 @@
     <span>Prereqs: Correlation &amp; Linear Regression primer</span>
   </div>
 
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Stationarity means a series' mean, variance, and autocovariance stay constant through time (depend only on lag \(k\), never on the calendar date); most modeling — AR/ARIMA, GARCH, the Cointegration residual test — quietly assumes it.</li>
+      <li>The ACF at lag \(k\) is the total correlation between a series and its \(k\)-lagged self, mixing direct dependence with everything carried indirectly through intervening lags; a slowly-decaying ACF (still elevated 20-30 lags out) is the classic visual tell of non-stationarity (a unit root).</li>
+      <li>The PACF at lag \(k\) strips out that indirect chain, measuring only what lag \(k\) adds beyond what closer lags already explain — which is exactly what lets it identify an AR model's order \(p\).</li>
+      <li>The Box-Jenkins signature of an AR(\(p\)) process: the ACF decays gradually (never cleanly stops) while the PACF cuts off sharply after lag \(p\) — for AR(1) specifically, PACF is large at lag 1 and near-zero from lag 2 on, even though the ACF stays visibly nonzero for several more lags.</li>
+      <li>Practically, reading where the PACF cuts off tells you how far back a series' own history is genuinely informative — a principled alternative to guessing a lookback window or grid-searching one.</li>
+    </ul>
+  </div>
+
   <h2>Why this matters</h2>
   <p>
     Almost every piece of time-series machinery in this repo and in
@@ -589,13 +600,15 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>George E.P. Box and Gwilym M. Jenkins, <em>"Time Series Analysis: Forecasting and Control,"</em> Holden-Day, 1970 (subsequent editions with Gregory C. Reinsel and Greta M. Ljung) — the foundational text defining the ACF/PACF-based model identification methodology this lesson's Box-Jenkins rule is named for.</li>
     <li>James D. Hamilton, <em>"Time Series Analysis,"</em> Princeton University Press, 1994 — the standard graduate-level treatment of stationarity, autocorrelation, and ARIMA/VAR modeling; Chapters 3-4 cover the material in this lesson rigorously.</li>
     <li>Peter J. Brockwell and Richard A. Davis, <em>"Introduction to Time Series and Forecasting,"</em> Springer, 2nd ed. 2002 — a more applied, practitioner-accessible treatment of the same ACF/PACF identification methodology, with worked examples.</li>
     <li>David A. Dickey and Wayne A. Fuller, <em>"Distribution of the Estimators for Autoregressive Time Series with a Unit Root,"</em> Journal of the American Statistical Association, 1979 — the formal unit-root (stationarity) test referenced above and used directly in this repo's Cointegration lesson.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="calculus-for-finance.html">← Calculus for Finance</a>

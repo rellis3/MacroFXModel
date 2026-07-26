@@ -21,6 +21,16 @@
     <span>Prereqs: none</span>
   </div>
 
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A derivative is the instantaneous rate of change (the tangent-line slope at a point); an integral is the accumulated area under a curve — and the Fundamental Theorem of Calculus proves they're exact inverse operations, worked here from the limit definition \(f'(x)=\lim_{h\to0}[f(x+h)-f(x)]/h\) through a full first-principles derivation of \(d/dx(x^2)=2x\).</li>
+      <li>A Taylor series estimates \(f(x+h)\) from what you know at \(x\) alone: the zeroth-order guess is just \(f(x)\), the first-order term \(f'(x)h\) adds the tangent line, and the second-order term \(\tfrac{1}{2}f''(x)h^2\) corrects for curvature — that second-order version is the workhorse used throughout the rest of this lesson.</li>
+      <li>The lesson's payoff: \(\ln(1+R)\approx R-R^2/2\) (from the Returns/Log-Returns primer) and \(g\approx\mu-\sigma^2/2\) (the volatility-drag formula from the Kelly Criterion lesson) are not two separate finance shortcuts — both fall out of the identical second-order Taylor expansion of \(\ln(1+x)\) around \(x=0\), just relabeled once per-period and once again after averaging across periods.</li>
+      <li>Option delta and gamma are literally the first- and second-order Taylor terms of the option-price function \(C(S)\) with respect to the underlying — the same \(f(x)+f'(x)h+\tfrac12f''(x)h^2\) machinery, not a separate options-specific idea.</li>
+    </ul>
+  </div>
+
   <h2>Why this matters</h2>
   <p>
     Three lessons already in this Theory Lab lean on calculus without pausing
@@ -664,13 +674,15 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>James Stewart, <em>Calculus</em>, Cengage Learning (any recent edition) — the standard, widely-used introductory calculus textbook; covers limits, derivatives, integrals, and Taylor series in far more depth and generality than this lesson needs, with extensive worked problems.</li>
     <li>Isaac Newton and Gottfried Wilhelm Leibniz independently developed the core ideas of calculus in the late 1600s, working from different starting problems (Newton from physics and motion, Leibniz from geometry and his own notation) and arriving at equivalent results; their near-simultaneous, independent development led to a well-documented priority dispute between English and Continental mathematicians in the decades that followed. Much of the standard notation used in this lesson (\(dx\), \(\int\)) comes from Leibniz.</li>
     <li>Marek Capiński and Tomasz Zastawniak, <em>Mathematics for Finance: An Introduction to Financial Engineering</em>, Springer, 2nd edition, 2011 — a finance-first treatment that builds up exactly the calculus tools (derivatives, Taylor expansions, and their stochastic extensions) this lesson introduces, in the specific context of option pricing and portfolio theory the rest of this Theory Lab uses them for.</li>
     <li>This Theory Lab's own <a href="ou-mean-reversion.html">Ornstein-Uhlenbeck</a>, <a href="black-scholes.html">Black-Scholes</a>, and <a href="kelly-criterion.html">Kelly Criterion</a> lessons — the three places in this series this page's vocabulary is used without being re-derived; worth rereading once this lesson's definitions are fresh.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="linear-algebra-matrices.html">← Linear Algebra &amp; Matrices</a>

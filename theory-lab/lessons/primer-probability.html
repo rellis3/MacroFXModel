@@ -21,6 +21,17 @@
     <span>Prereqs: Descriptive Statistics &amp; the Normal Distribution</span>
   </div>
 
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A random variable maps outcomes to numbers; expectation \(E[X]=\sum_i x_i P(X=x_i)\) is its probability-weighted average, and variance \(Var(X)=E[X^2]-(E[X])^2\) measures the typical squared spread around that average (worked example: a fair die has \(E[X]=3.5\), \(Var(X)\approx2.92\), \(\sigma\approx1.71\)).</li>
+      <li>Two events are independent when \(P(A\cap B)=P(A)P(B)\) — knowing one tells you nothing about the other. Consecutive coin flips qualify; consecutive days of market volatility generally do not (volatility clustering).</li>
+      <li>The Law of Large Numbers guarantees a sample average converges to the true \(E[X]\) as \(n\to\infty\), but says nothing about how close it is at any small, fixed \(n\) — the reasoning behind this repo's "≥30 OOS trades" floor.</li>
+      <li>The Central Limit Theorem: the average of many independent copies of <em>any</em> random variable with finite mean/variance approaches a normal distribution as \(n\) grows — even a flat, uniform die roll's average becomes bell-shaped by \(n=30\) — which is why so many aggregated financial quantities look roughly normal even when no individual ingredient is.</li>
+      <li>That CLT justification depends on independence, and daily financial returns visibly violate it via volatility clustering — so "assume returns are approximately normal" is a defensible starting point that gets corrected (e.g. by GARCH), not a settled fact.</li>
+    </ul>
+  </div>
+
   <h2>Why this matters</h2>
   <p>
     The Bayesian Inference lesson in this series talks about "the probability
@@ -613,7 +624,8 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Andrey Kolmogorov, <em>Grundbegriffe der Wahrscheinlichkeitsrechnung</em> ("Foundations of the Theory of Probability"), 1933 — the axiomatic foundation (the three rules referenced above) that put probability theory on rigorous mathematical footing for the first time.</li>
     <li>Jacob Bernoulli, <em>Ars Conjectandi</em> ("The Art of Conjecturing"), published posthumously 1713 — contains the first proof of a Law of Large Numbers (Bernoulli's "Golden Theorem"), establishing that observed frequencies converge to true probabilities as trials increase.</li>
@@ -621,6 +633,7 @@
     <li>Sheldon Ross, <em>A First Course in Probability</em>, 10th ed., Pearson, 2019 — the standard university textbook covering sample spaces, random variables, expectation, variance, and both limit theorems in far more depth and rigor than this primer.</li>
     <li>Nassim Nicholas Taleb, <em>The Black Swan</em>, Random House, 2007 — an accessible, deliberately provocative critique of over-relying on CLT-flavored normality assumptions in finance, useful as a counterweight to reading this primer as "returns are basically normal, done."</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="primer-stats-normal.html">← Descriptive Statistics &amp; the Normal Distribution</a>
