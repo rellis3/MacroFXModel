@@ -27,6 +27,12 @@ repo's own "built ≠ works ≠ has edge" discipline.
 **Start at [`hub.html`](./hub.html)** (also linked from the dashboard's
 **Learn ▾** nav menu on `index.html`, alongside Theory Lab).
 
+Building or restyling a lesson? See
+[`../education/LESSON_STYLE_GUIDE.md`](../education/LESSON_STYLE_GUIDE.md) —
+every component in `theory-lab/assets/theory.css`, when to use it,
+copy-pasteable markup, the house content order, and a verification
+checklist. Both `cog/` and `theory-lab/` share the exact same component set.
+
 Nothing in this folder is a trading signal — the Course Notes are
 practitioner frameworks, not validated edge, and COG's own tested result is
 an honest null. Per `CLAUDE.md`'s Lego Principle #5, any idea here only
