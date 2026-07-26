@@ -227,8 +227,8 @@
   martingale is a slightly weaker and more general statement than "pure random walk with i.i.d.
   shocks" — it only pins down the <em>conditional mean</em>, and says nothing about the variance of
   \(\epsilon_t\) needing to be constant over time (in real markets it isn't: this is exactly what
-  volatility clustering and GARCH-type models capture, and it's why this repo's vol engine
-  (<code>volBacktestEngine.js</code>) exists as a separate, honest piece of machinery from any
+  volatility clustering and GARCH-type models capture, and it's why this repo's own volatility
+  research exists as a separate, honest piece of machinery from any
   directional signal). A martingale in price is the object EMH actually predicts; "random walk" is
   the popular, slightly stronger shorthand for it.
   </p>
@@ -379,51 +379,6 @@
       the second one is meaningful.
     </li>
   </ul>
-
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this connects to MacroFXModel</div>
-    <h3>The house discipline in <code>CLAUDE.md</code> is EMH turned into engineering practice</h3>
-    <p>
-    This repo's build discipline — spelled out in <code>CLAUDE.md</code> — is not an arbitrary
-    process checklist. It is what taking EMH seriously as a prior looks like in code. A few direct
-    lines:
-    </p>
-    <ul>
-      <li>
-      <strong>The in-sample / out-of-sample split, and the "≥30 OOS trades" gate</strong>
-      (<code>js/honestForecastEngine.js</code>'s <code>summarizeSplit</code>, and the OOS Sharpe gate
-      referenced throughout the repo's strategy-validation rules) exist because an in-sample result
-      is exactly the kind of thing the joint-hypothesis problem warns about: you fit a rule to a
-      known history, and the history you fit to no longer has any power to distinguish "found a
-      genuine, persistent edge" from "found the specific noise pattern that happened to occur in this
-      sample." Only performance on data the rule never saw is evidence against the null that "this is
-      just noise the fitting process found."
-      </li>
-      <li>
-      <strong>"Name the benchmark before claiming improvement"</strong> is the buy-and-hold /
-      no-skill floor from the bullet above, made a hard rule rather than a suggestion. An equity
-      curve that looks good in isolation is not evidence of anything until it's shown next to what a
-      passive, EMH-consistent baseline would have produced over the same period with the same costs.
-      </li>
-      <li>
-      <strong>"Costs on by default"</strong> and the requirement for realistic fills (the fill walker
-      in <code>js/forecastCore.js</code>, never a zero-cost backtest) matter because EMH's prediction
-      is specifically about <em>costless</em>, riskless arbitrage. A pattern that only "works" before
-      spread and slippage isn't a counterexample to EMH at all — it's consistent with it. EMH doesn't
-      claim markets are efficient net of frictions it never promised to overcome; it claims the free
-      lunch isn't there. Charging real costs is what makes the test actually about the free lunch.
-      </li>
-    </ul>
-    <p>
-    None of this says any particular strategy in this repo does or doesn't beat efficient pricing —
-    that's an empirical question answered per-strategy by its own OOS card, not by this lesson. What
-    this lesson explains is <em>why the discipline exists at all</em>: because the default,
-    working assumption going in is that markets are efficient enough that a real edge is the
-    exception, not the expectation, and the entire validation harness is built to make that a hard
-    bar to clear rather than an easy one.
-    </p>
-  </div>
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>

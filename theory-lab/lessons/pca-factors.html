@@ -28,7 +28,7 @@
       <li>PCA finds the direction (eigenvector) through a basket's return data along which it varies the most — the "eigenvalue" measures how much variance lies along that direction, and the explained variance ratio (\(\lambda_i / \sum_j \lambda_j\)) turns that into a headline percentage, e.g. "PC1 explains 72% of the basket's variance."</li>
       <li>Because eigenvectors of a covariance/correlation matrix are mutually perpendicular, the principal components they define are uncorrelated by construction, not by empirical coincidence — PC1 captures the most shared variance, PC2 the next-most orthogonal to it, and so on.</li>
       <li>A component's loadings (the entries of its eigenvector, one per instrument) show which pairs actually make up that shared factor — a large loading means that instrument drives the component; a near-zero loading means it barely participates.</li>
-      <li>This repo is partially built here already: <code>js/diversificationCore.js</code>'s <code>symmetricEigenvalues</code> already computes the eigenvalues of a correlation matrix (feeding <code>effectiveBetsPCA</code>'s "effective number of bets" metric on <code>diversification.html</code>), but it deliberately doesn't return the eigenvectors/loadings — the "which instruments drive PC1" piece this lesson covers is not yet built.</li>
+      <li>This repo is partially built here already: this project already computes the eigenvalues of a correlation matrix (feeding an "effective number of bets" metric in this project's own diversification research), but it deliberately doesn't return the eigenvectors/loadings — the "which instruments drive PC1" piece this lesson covers is not yet built.</li>
       <li>PCA is a descriptive/risk-visibility tool, not a trading signal by itself — correlation structure (and PC1 dominance) shifts across regimes, famously spiking toward 1 in a crisis, so any rule built on top of it needs its own OOS validation.</li>
     </ul>
   </div>
@@ -53,9 +53,9 @@
     exactly this question: given a basket of correlated series, how many
     genuinely independent sources of variation are actually driving them, and
     how much of today's move is the shared one versus the pair-specific one?
-    This repo already has a foot in this door — <code>js/diversificationCore.js</code>
+    This repo already has a foot in this door — this project already
     computes the <em>eigenvalues</em> of a correlation matrix to build an
-    "effective number of bets" metric on <code>diversification.html</code>. This
+    "effective number of bets" metric in this project's own diversification research. This
     lesson explains the full machinery those eigenvalues come from, including
     the piece that isn't built yet: the <em>eigenvectors</em>, which tell you not
     just "how concentrated is the basket" but "concentrated around what — which
@@ -146,7 +146,7 @@
     covariance matrix \(\Sigma\) (capital sigma). Its diagonal entries are each
     instrument's own variance (covariance of a series with itself); its
     off-diagonal entries are the pairwise covariances. This is exactly the same
-    object <code>correlations.html</code> already renders as a heatmap for you
+    object this project's own pair-ranking tooling already renders as a heatmap for you
     (using correlation instead of raw covariance) — PCA is the next step
     <em>after</em> you have that grid, not a replacement for it.
   </p>
@@ -337,8 +337,7 @@
     </p>
     <p>
       Running PCA on this matrix (the eigen-decomposition itself is mechanical
-      — this is exactly what <code>symmetricEigenvalues</code> in
-      <code>js/diversificationCore.js</code> already computes via a Jacobi
+      — this is exactly what this project already computes via a Jacobi
       rotation, described below) would produce three eigenvalues summing to 3
       (the trace of a 3×3 correlation matrix, since every diagonal entry is
       1). Given the structure above, expect something like
@@ -567,68 +566,6 @@
     well-known "correlations go to 1 in a crash" phenomenon).
   </div>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
-    <h3>Extending eigenvalues (already built) to eigenvectors/loadings (not yet built)</h3>
-    <p>
-      This repo is not starting from zero on PCA. <code>js/diversificationCore.js</code>
-      already implements <code>symmetricEigenvalues</code> — a cyclic Jacobi
-      rotation that computes the eigenvalues of a correlation matrix from
-      scratch, no external linear-algebra library — and feeds those eigenvalues
-      into <code>effectiveBetsPCA(corr)</code>, which computes
-      \((\sum_i \lambda_i)^2 \big/ \sum_i \lambda_i^2\), the "inverse
-      participation ratio." That formula is a compact summary statistic built
-      directly from the eigenvalue spectrum this lesson derives: it equals
-      \(N\) (the number of instruments) when every eigenvalue is equal — no
-      dominant factor, every instrument is its own independent bet — and
-      shrinks toward 1 as one eigenvalue comes to dominate the rest — one
-      factor, many costumes. This is wired live into <code>diversification.html</code>
-      alongside <code>effectiveBetsEntropy</code> (a Meucci-style entropy
-      version of the same idea) and <code>effectiveBetsWeighted</code>
-      (allocation-aware). <code>correlations.html</code> is the pairwise view
-      one level below this — the raw correlation heatmap PCA is built on top
-      of, useful for eyeballing individual pair relationships but, as the
-      basket grows past a handful of instruments, hard to read as a whole in a
-      way a single \(\text{EVR}_1\) number isn't.
-    </p>
-    <p>
-      What's genuinely missing is the <strong>eigenvector</strong> side.
-      <code>symmetricEigenvalues</code> currently returns only the eigenvalues
-      (a deliberate, documented simplification — see the "eigenvalues are
-      rotation-invariant" comment in that file — because the effective-bets
-      metrics only ever needed the spectrum, not the directions). Extracting
-      the eigenvectors from the same Jacobi sweep (they fall out as the
-      accumulated rotation matrix, a small, well-understood addition to the
-      existing algorithm rather than a new one) would unlock exactly the piece
-      this lesson emphasizes: <em>which instruments load on PC1, and by how
-      much</em> — turning "your basket's effective number of bets is 1.6 out of
-      4" into "your basket's dominant factor is basically EURUSD and GBPUSD
-      moving together; AUDJPY and USDCAD are your genuinely separate bets."
-      That is a materially more actionable diagnostic for someone deciding
-      what to trim from an over-concentrated book, and it would sit as a
-      natural addition to the existing <code>diversification.html</code> page
-      rather than a new one — same data, same eigen-decomposition, one more
-      output surfaced.
-    </p>
-    <p>
-      <strong>To be explicit about what this is and isn't:</strong> everything
-      above is a description of an unbuilt extension to existing, working code
-      — not a claim that loadings are already displayed anywhere, and
-      absolutely not a claim that "PC1 dominance" by itself is a trading
-      signal. This is a data-summarization and risk-visibility tool: it tells
-      you how concentrated your current basket's variance is and around what,
-      today, on historical data. Any trading rule built on top of it — for
-      example, sizing down when \(\text{EVR}_1\) is unusually high, on the
-      theory that a market dominated by one factor is a market where
-      diversification benefits have temporarily evaporated — is a genuinely
-      separate claim that would need its own honest OOS validation per this
-      repo's standard discipline (Lego Principle 5), built as a proper Tier-1
-      or Tier-2 brick and registered in <code>LEGO_MODULES.md §2</code> as a
-      candidate before it's assumed to help.
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
@@ -654,7 +591,7 @@
       variance term is bigger. Running PCA on the <em>correlation</em> matrix
       (equivalent to standardizing every series to unit variance first) is the
       standard fix, and the one used throughout this lesson and in
-      <code>diversificationCore.js</code>.
+      this project's own implementation.
     </p>
     <p>
       <strong>Reading "uncorrelated by construction" as "economically
@@ -696,7 +633,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A basket of correlated pairs often really is one bet.</strong> If PC1 explains 72% of variance, most of what moves your book on any given day is a single shared factor wearing several costumes.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Eigenvectors of a covariance matrix are perpendicular by construction.</strong> Principal components are uncorrelated because of the geometry, not because you found something — PC1 captures the most shared variance, PC2 the next-most orthogonal to it, and so on.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Loadings tell you which instruments make up a factor.</strong> A large loading means that instrument drives the component; a near-zero loading means it barely participates — the diagnostic eigenvalues alone can't give you.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo has eigenvalues, not eigenvectors, yet.</strong> <code>symmetricEigenvalues</code> feeds "effective number of bets" but deliberately doesn't return loadings — the "which instruments drive PC1" piece is a documented, unbuilt extension.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo has eigenvalues, not eigenvectors, yet.</strong> This project's own eigenvalue computation feeds "effective number of bets" but deliberately doesn't return loadings — the "which instruments drive PC1" piece is a documented, unbuilt extension.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Factor structure shifts across regimes.</strong> Correlations — and PC1 dominance — famously spike toward 1 in a crisis; a PCA fit on calm markets can describe a very different structure than one fit during stress.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>PCA is descriptive, not causal, and not a forecast.</strong> High loadings tell you co-movement, not why, and don't predict tomorrow's structure — any trading rule built on top still needs its own honest OOS validation.</span></div>
   </div>
@@ -780,13 +717,13 @@
     </div>
   </details>
   <details class="tl-quiz">
-    <summary>Q6. This repo's <code>diversificationCore.js</code> already computes eigenvalues via <code>symmetricEigenvalues</code>, feeding an "effective number of bets" metric. What specifically would need to be added to get from that to a usable "what does PC1 look like today" diagnostic, and why isn't the eigenvalue number alone enough?</summary>
+    <summary>Q6. This project already computes eigenvalues from a correlation matrix, feeding an "effective number of bets" metric. What specifically would need to be added to get from that to a usable "what does PC1 look like today" diagnostic, and why isn't the eigenvalue number alone enough?</summary>
     <div class="tl-answer">
       The eigenvalues alone tell you how concentrated the basket's variance is
       overall (a single summary number — the effective number of bets) but
       not around <em>what</em>. To answer "what does PC1 look like," you need
       the eigenvectors — the loadings — which the current
-      <code>symmetricEigenvalues</code> implementation deliberately doesn't
+      implementation deliberately doesn't
       return (it only needed the eigenvalue spectrum for the effective-bets
       formulas). The eigenvectors fall out of the same Jacobi-rotation
       algorithm as the accumulated rotation matrix, so extracting them is an
@@ -805,7 +742,6 @@
     <li>Ruey S. Tsay, <em>Analysis of Financial Time Series</em>, Wiley — the standard financial-econometrics textbook treatment of PCA/factor models applied to asset returns and yield curves, including the level/slope/curvature result referenced above.</li>
     <li>Barra (now part of MSCI) multi-factor risk model methodology — the commercial template for statistical/fundamental factor risk models built on this exact eigen-decomposition idea, widely used across equity and multi-asset risk management; general methodology overviews are publicly available from MSCI.</li>
     <li>Robert Litterman &amp; José Scheinkman, "Common Factors Affecting Bond Returns," <em>Journal of Fixed Income</em>, 1991 — the classic empirical demonstration of the level/slope/curvature PCA decomposition on yield curves referenced in the practitioner-use section.</li>
-    <li><code>js/diversificationCore.js</code> and <code>diversification.html</code> in this repo — the existing eigenvalue-based "effective number of bets" implementation this lesson's repo box builds on and extends.</li>
   </ul>
   </details>
 

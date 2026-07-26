@@ -473,52 +473,6 @@
     above works through concretely.
   </p>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
-    <h3>Background literacy for choices this repo already makes, and the step before Cointegration</h3>
-    <p>
-      This lesson is framed as foundational reading rather than a proposed
-      new module, but the connection to existing code is real and specific,
-      not decorative. <code>js/statsCore.js</code>'s
-      <code>rollingZScore(arr, period, clipAt, ddof)</code> and
-      <code>linregSlope(values)</code> are both, structurally, "look back over
-      a window of length <code>period</code> and summarize it" functions —
-      exactly the family of lookback-window choice this lesson's trading
-      scenario is about. Neither function, nor most of the places that call
-      them across the regime classifiers and day-type estimators built on
-      top of <code>statsCore.js</code>, currently derives its window length
-      from an ACF/PACF read of the underlying series; the window is chosen
-      the ordinary way most of this codebase chooses windows — by convention,
-      by what a related published estimator uses, or by what back-tested
-      acceptably. That is not a defect being flagged here — it is simply the
-      literacy gap this lesson exists to close: any such window is an
-      implicit claim about how much of a series' own history is genuinely
-      informative, and the ACF/PACF pair is the tool that would let that
-      claim be checked against data rather than asserted by convention, the
-      next time a lookback parameter in this family is revisited.
-    </p>
-    <p>
-      The tighter, more concrete connection is to the Cointegration lesson
-      that immediately follows this one in the reading order. Its Step 2 asks
-      whether a spread's residual \(\hat\epsilon_t\) is stationary, and does
-      so with the Augmented Dickey-Fuller test — which is not a separate,
-      unrelated piece of machinery. The ADF test <em>is</em> a stationarity
-      test built directly from the ideas in this lesson: it regresses the
-      series' change on its own lagged level (asking, in effect, "does this
-      series revert, the way a stationary series with a decaying ACF would,
-      or does it wander, the way a series with a slowly-decaying ACF would")
-      plus enough lagged difference terms to absorb the residual's own
-      short-run autocorrelation — the same \(p\) that a PACF read of the
-      differenced residual would help choose, as noted above. Anyone reading
-      the Cointegration lesson's Step 2 without having first internalized
-      what "testing a series for stationarity" concretely means, and what an
-      autocorrelation structure looks like when it's present versus absent,
-      is taking that step largely on faith. This lesson is meant to remove
-      that faith requirement before it's needed.
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>

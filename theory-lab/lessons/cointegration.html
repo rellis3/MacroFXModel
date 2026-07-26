@@ -29,7 +29,7 @@
       <li>Regressing one non-stationary price series on another in levels can produce a striking R² even when the two are completely unrelated random walks (Granger &amp; Newbold's spurious-regression result) — a high R² alone proves nothing.</li>
       <li>The Engle-Granger two-step method fixes this: regress the levels to get a hedge ratio β (Step 1), then run an ADF test — with stricter Engle-Granger/MacKinnon critical values, not plain Dickey-Fuller — on the residual spread to check it's actually stationary (Step 2).</li>
       <li>Johansen's test generalizes this to a basket of three or more series at once, avoiding Engle-Granger's arbitrary Y-vs-X choice and finding how many independent cointegrating relationships exist simultaneously.</li>
-      <li>The worked AUD/USD-vs-NZD/USD example shows the same high Step-1 R² can hide either a real mean-reverting spread or a spurious one — only the Step-2 ADF test tells them apart; the repo box notes <code>correlations.html</code> and <code>cross-pair-research.html</code> currently rank pairs on return correlation, not a levels cointegration test.</li>
+      <li>The worked AUD/USD-vs-NZD/USD example shows the same high Step-1 R² can hide either a real mean-reverting spread or a spurious one — only the Step-2 ADF test tells them apart; this project's own pair-ranking tooling currently ranks pairs on return correlation, not a levels cointegration test.</li>
     </ul>
   </div>
 
@@ -602,84 +602,6 @@
     top.
   </p>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
-    <h3>The repo already flags this exact gap in its own notes — it just hasn't been built</h3>
-    <p>
-      This isn't a hypothetical extension — <code>education/macro-deep-dives-notes.md</code>
-      names the gap directly. Its stat-arb entry-model section states the
-      requirement plainly: <em>"Key requirements: cointegration (not just
-      correlation), an economic linkage explaining the relationship,
-      sufficient liquidity in both legs"</em>; its quick-revision sheet
-      repeats it as a bare fact to remember — <em>"Stat arb needs
-      cointegration, not correlation. Lead-lag needs Granger causality"</em>;
-      and its own "areas of interest to read deeper on" list ends with
-      <em>"Cointegration vs correlation — the formal tests (Engle-Granger,
-      Johansen) that stat arb requires."</em> This lesson is, in effect, the
-      deep dive that item was asking for.
-    </p>
-    <p>
-      Three existing tools in this repo currently answer adjacent but
-      different questions, and it's worth being precise about which question
-      each one answers so a future extension doesn't conflate them:
-    </p>
-    <p>
-      <code>correlations.html</code> (the Correlation Lab) computes a
-      rolling Pearson correlation on <em>log returns</em> over a 60-bar
-      window, and its "hedge score" blends that correlation with a beta
-      spread to rank pairs as hedge candidates. That is a well-posed answer
-      to "do these two pairs' short-term moves tend to offset each other" —
-      it is not a test of whether either pair's <em>level</em> relationship
-      to the other is stationary. A pair the tool ranks as a strong hedge on
-      return correlation could still have a spread, in levels, that is a
-      pure random walk with no equilibrium to revert to.
-    </p>
-    <p>
-      <code>cross-pair-research.html</code> already states the principle in
-      its own UI copy — <em>"Correlation ≠ edge"</em> — and runs an
-      independent-bets gate off the participation ratio of the
-      return-correlation matrix plus a fade/follow sign-test between pairs.
-      That's a sound check for a different failure mode (treating correlated
-      bets as independent bets), but it is, again, working from a
-      return-correlation matrix, not a cointegration test on levels.
-    </p>
-    <p>
-      <code>credit-leadlag.html</code> is the closest of the three in spirit
-      — it deliberately does not run a naive level correlation, and instead
-      tests whether credit-spread <em>velocity</em> (a differenced,
-      largely-stationary transform) leads risk-instrument forward volatility
-      out-of-sample, reporting a genuine IS/OOS information coefficient. That
-      is squarely a <strong>lead-lag / Granger-causality-style</strong>
-      question, which macro-deep-dives-notes.md correctly separates from the
-      cointegration question — different tool, for a different family of
-      relationship (does A's <em>change</em> predict B's future
-      <em>change</em>, versus does A and B's combined <em>level</em> have a
-      stable equilibrium).
-    </p>
-    <p>
-      The suggested validation check, to be explicit: before any of this
-      repo's cross-asset pages (or the Transatlantic Yield Spread lesson in
-      <code>macro-deep-dives-notes.md</code>, which currently reasons about
-      the US-Germany yield spread leading EUR/USD narratively and via
-      cross-correlation) treats a relationship as tradeable mean-reversion
-      rather than a shared-trend coincidence, running the actual
-      Engle-Granger (or, for a basket, Johansen) test on the levels would be
-      the correct next check — the honest reading of "is there an
-      equilibrium here" that a rolling correlation coefficient cannot
-      provide by itself. This is a statement about what a rigorous next step
-      would look like, not a claim that any of these three pages is currently
-      wrong or incomplete for what it's built to do — each already does its
-      own stated job. And per this repo's Lego Principle 5, none of that
-      would be worth anything without the usual discipline: build it as a
-      shared brick (not a bespoke test bolted onto one page), and prove any
-      cointegration-filtered pair selection beats the incumbent approach on
-      true out-of-sample Sharpe with a non-trivial OOS trade count before
-      treating it as an improvement, not just a more theoretically satisfying
-      story.
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
@@ -752,7 +674,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Johansen generalizes to baskets of three or more series.</strong> It avoids Engle-Granger's arbitrary Y-vs-X choice and finds how many independent cointegrating relationships exist at once, via a jointly-fit VAR/VECM.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A high Step-1 R² proves nothing on its own.</strong> Only the Step-2 ADF test on the residual actually discriminates a real equilibrium relationship from two series that merely trended together over one convenient window.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Passing a cointegration test is not itself a trading edge.</strong> It only clears the first bar — a real statistical relationship — and still needs this repo's full honest-harness discipline (real costs, true OOS split, ≥30 trades) before being treated as validated.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo's own notes already flag the gap.</strong> <code>correlations.html</code>, <code>cross-pair-research.html</code> and <code>credit-leadlag.html</code> all currently work from return correlation or lead-lag, not a levels cointegration test — a named, not-yet-built extension.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo's own notes already flag the gap.</strong> this project's existing pair-ranking and lead-lag tooling all currently work from return correlation or lead-lag, not a levels cointegration test — a named, not-yet-built extension.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

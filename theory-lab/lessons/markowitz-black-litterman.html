@@ -25,11 +25,11 @@
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
-      <li>Portfolio variance is a quadratic form \(w^\top \Sigma w\), not a weighted average — the cross-covariance terms are exactly where diversification benefit lives, the same idea <code>diversification.html</code> measures via effective-bets metrics rather than prescribes weights for.</li>
+      <li>Portfolio variance is a quadratic form \(w^\top \Sigma w\), not a weighted average — the cross-covariance terms are exactly where diversification benefit lives, the same idea this project's own diversification research measures via effective-bets metrics rather than prescribes weights for.</li>
       <li>Solving for the minimum-variance combination at every target return traces the <strong>efficient frontier</strong>; its leftmost point is the minimum-variance portfolio.</li>
       <li>Markowitz's optimizer is extremely sensitive to the expected-return inputs specifically (far more than to the covariance matrix) — small forecast nudges can flip "optimal" weights into extreme long/short corner solutions, the "error-maximization" flaw that kept it from being used naively for decades.</li>
       <li>Black-Litterman fixes this by starting from a market-equilibrium prior \(\Pi = \delta\Sigma w_{mkt}\) and Bayesian-blending it with a handful of confidence-weighted investor views, rather than asking for a precise forecast for every instrument.</li>
-      <li>Nothing in this repo currently runs either optimizer — every strategy here is single-instrument; this is the theory a future multi-instrument portfolio-construction layer, built on <code>diversificationCore.js</code>'s existing covariance machinery, would sit on.</li>
+      <li>Nothing in this repo currently runs either optimizer — every strategy here is single-instrument; this is the theory a future multi-instrument portfolio-construction layer, built on this project's own existing covariance machinery, would sit on.</li>
     </ul>
   </div>
 
@@ -49,7 +49,7 @@
   </p>
   <p>
     This repo already has real infrastructure one layer below this question:
-    <code>js/diversificationCore.js</code> computes correlation matrices and
+    this project already computes correlation matrices and
     their eigenvalue structure to answer "how many genuinely independent bets
     does this basket have" (the subject of the PCA &amp; Factor Regimes lesson).
     Markowitz's framework is the natural next layer on top of exactly that
@@ -176,7 +176,7 @@
     position can genuinely be less risky than either instrument held alone.
     That's diversification benefit, made numerically explicit rather than
     asserted qualitatively — and it's precisely the same covariance matrix
-    machinery <code>diversificationCore.js</code> already builds and
+    machinery this project already builds and
     eigen-decomposes for its effective-bets metrics.
   </p>
 
@@ -383,7 +383,7 @@
 
   <div class="tl-symbols"><table>
     <tr><td>\(w\)</td><td>The portfolio weight vector — one entry per instrument, the fraction of capital (or risk budget) allocated to each. What the optimizer solves for.</td></tr>
-    <tr><td>\(\Sigma\)</td><td>(capital sigma) The \(N \times N\) covariance matrix of instrument returns — same object built and eigen-decomposed in the PCA lesson and in <code>diversificationCore.js</code>.</td></tr>
+    <tr><td>\(\Sigma\)</td><td>(capital sigma) The \(N \times N\) covariance matrix of instrument returns — same object built and eigen-decomposed in the PCA lesson.</td></tr>
     <tr><td>\(E[R_p] = w^\top \mu\)</td><td>Portfolio expected return — the weighted average of each instrument's expected return \(E[R_i]\), collected into the vector \(\mu\).</td></tr>
     <tr><td>\(\text{Var}(R_p) = w^\top \Sigma w\)</td><td>Portfolio variance — a quadratic form, not a weighted average; the cross-covariance terms are where diversification benefit (or concentration risk) actually lives.</td></tr>
     <tr><td>Efficient frontier</td><td>The curve of (risk, return) pairs achieved by the minimum-variance weight combination for every achievable target return.</td></tr>
@@ -654,62 +654,6 @@
     should track how sure you actually are, not just the sign of your view).
   </p>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
-    <h3>A real, currently-missing formal portfolio-construction layer</h3>
-    <p>
-      To be direct about the current state of this repo: <strong>nothing here
-      runs a Markowitz or Black-Litterman-style optimizer to set position
-      weights</strong>. Every strategy — the reversion/continuation engine,
-      the range and confluence engines, the volatility-band forecasters —
-      operates on one instrument at a time and outputs a signal or a plan for
-      that instrument in isolation. There is no layer that takes several such
-      signals across a basket and asks "given everything I currently believe
-      about these instruments, and how they co-move, what's the actual
-      capital allocation that makes sense across all of them at once."
-    </p>
-    <p>
-      The pieces this lesson depends on are, encouragingly, already partly
-      built: <code>js/diversificationCore.js</code>'s <code>correlationMatrix</code>
-      and <code>symmetricEigenvalues</code> compute exactly the \(\Sigma\)
-      (or its correlation-normalized cousin) this lesson's variance formula
-      and Black-Litterman's \(\Pi = \delta \Sigma w_{mkt}\) both need, and the
-      existing "effective number of bets" metrics (<code>effectiveBetsPCA</code>,
-      <code>effectiveBetsEntropy</code>, <code>effectiveBetsWeighted</code>,
-      surfaced on <code>diversification.html</code>) are already answering a
-      closely related — but distinctly narrower — question: "how concentrated
-      is this basket's risk," not "what weights should I hold." Wiring an
-      actual optimizer on top would mean: sourcing or estimating an expected-
-      return vector (the hard, fragile part, which is exactly why Black-
-      Litterman's equilibrium-prior-plus-views approach is the more honest
-      starting point than raw Markowitz); deciding what "market-equilibrium
-      weights" even means in an FX context, where there's no obvious
-      market-cap analogue the way there is for equities (position/flow data,
-      or simply equal-weight, would need to stand in, each with real
-      trade-offs); and building the actual constrained-optimization solver
-      (a small, well-understood numerical problem, but not one this repo
-      currently has any code for).
-    </p>
-    <p>
-      <strong>This would be a meaningfully large, genuinely new piece of
-      infrastructure</strong> — not a quick extension of the existing
-      diversification tooling, even though it builds directly on that
-      tooling's covariance-matrix foundation. It is the natural formal
-      portfolio-construction layer <em>if and when</em> this repo moves from
-      single-instrument signals toward true multi-instrument portfolio
-      construction, but that "if" is doing real work: until there's an actual
-      need to allocate capital jointly across several live signals at once,
-      building this optimizer would be infrastructure in search of a use
-      case. Per this repo's standard discipline, were it built, it would still
-      need its own honest validation — a portfolio-construction layer doesn't
-      get to skip the IS/OOS split just because its inputs (the individual
-      signals) were separately validated; the way those signals get
-      <em>combined</em> is itself a claim that needs testing on its own terms
-      (Lego Principle 5).
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
@@ -803,8 +747,8 @@
     <summary>Q2. Why is the raw Markowitz optimizer so sensitive to the expected-return inputs specifically, more than to the covariance matrix?</summary>
     <div class="tl-answer">
       Covariances can be estimated with reasonable stability from historical
-      return data — that's exactly the kind of matrix this repo's
-      <code>diversificationCore.js</code> already builds. Expected returns
+      return data — that's exactly the kind of matrix this project
+      already builds. Expected returns
       cannot be estimated nearly as reliably; a forecast of future return is
       inherently the least certain input in the model, often little more than
       an informed guess with a wide error band. Yet the optimizer is solving
@@ -855,8 +799,8 @@
   <details class="tl-quiz">
     <summary>Q5. What, specifically, would need to be built for this repo to go from its current correlation/eigenvalue diversification tooling to an actual Black-Litterman-style portfolio optimizer, and why is that a large step rather than a small one?</summary>
     <div class="tl-answer">
-      The covariance-matrix piece — <code>correlationMatrix</code> and
-      <code>symmetricEigenvalues</code> in <code>diversificationCore.js</code>
+      The covariance-matrix piece — the correlation-matrix and
+      eigenvalue computation this project already has
       — is already there and is exactly the \(\Sigma\) both the variance
       formula and the equilibrium-return formula need. What's missing is
       substantial: a source for expected-return views (or a principled way to
@@ -895,7 +839,6 @@
     <li>Fischer Black &amp; Robert Litterman, "Global Portfolio Optimization," <em>Financial Analysts Journal</em>, 1992 — the original Black-Litterman paper, developed at Goldman Sachs, explicitly framed around fixing mean-variance optimization's practical instability.</li>
     <li>Richard Michaud, "The Markowitz Optimization Enigma: Is 'Optimized' Optimal?," <em>Financial Analysts Journal</em>, 1989 — the widely cited paper naming and formalizing the "error-maximization" critique of naive mean-variance optimization referenced in Step 4.</li>
     <li>Thomas Idzorek, "A Step-by-Step Guide to the Black-Litterman Model," 2005 (widely circulated practitioner working paper) — a commonly used, more implementation-oriented walkthrough of the master formula's terms and calibration.</li>
-    <li><code>js/diversificationCore.js</code> and <code>diversification.html</code> in this repo — the existing correlation-matrix and eigenvalue-based "effective number of bets" tooling this lesson's repo box builds on, and the natural foundation for the missing optimizer layer described above.</li>
   </ul>
   </details>
 

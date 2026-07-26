@@ -27,7 +27,7 @@
     <ul>
       <li>Covariance measures whether two variables tend to sit above/below their own means <em>together</em> (positive) or on opposite sides (negative) — the same deviation-product machinery as variance, just applied to two variables.</li>
       <li>Correlation \(r\) rescales covariance by both variables' standard deviations into a unitless number bounded \([-1,1]\) — but \(r=0\) only means no <em>linear</em> tendency, not "no relationship" (\(y=x^2\) is a deterministic relationship with \(r\approx 0\)).</li>
-      <li>OLS regression fits \(Y=\alpha+\beta X+\epsilon\) by minimizing the sum of squared residuals; the calculus collapses to \(\hat\beta=\mathrm{Cov}(X,Y)/\mathrm{Var}(X)\) — the exact formula this repo's <code>linregSlope</code> implements.</li>
+      <li>OLS regression fits \(Y=\alpha+\beta X+\epsilon\) by minimizing the sum of squared residuals; the calculus collapses to \(\hat\beta=\mathrm{Cov}(X,Y)/\mathrm{Var}(X)\) — the exact formula this project's own regression code implements.</li>
       <li>\(R^2 = 1-\mathrm{SSR}/\mathrm{SST}\) is the fraction of \(Y\)'s variance the fitted line explains, and equals \(r^2\) exactly for simple (one-predictor) regression — but \(R^2\) only ever weakly increases as predictors are added, even useless ones, so a high in-sample \(R^2\) alone proves nothing.</li>
       <li>Correlation is never proof of causation (ice cream sales and drowning deaths correlate because both follow warm weather, not each other); the interactive chart's noise slider shows \(r\) and \(R^2\) degrading as scatter widens around a fixed true slope.</li>
     </ul>
@@ -292,7 +292,7 @@
     <div class="tl-fp purple">
       <div class="tl-fp-term">β̂</div>
       <div class="tl-fp-name">The OLS slope</div>
-      <div class="tl-fp-desc">The exact formula js/statsCore.js's linregSlope implements</div>
+      <div class="tl-fp-desc">The exact formula this project's own regression code implements</div>
     </div>
   </div>
 
@@ -304,8 +304,7 @@
     from correlation, it <em>is</em> covariance, just normalized by \(X\)'s
     own spread instead of by both variables' spreads (which is what
     correlation does). This is the identical formula
-    <code>js/statsCore.js</code>'s <code>linregSlope</code> implements in
-    this repo (see the repo box below) — there the "\(X\)" is simply the bar
+    this project's own regression code implements — there the "\(X\)" is simply the bar
     index (0, 1, 2, …), so the fitted slope is a per-bar drift/trend rate
     rather than a slope against another price series, but the underlying
     least-squares arithmetic is identical.
@@ -517,57 +516,6 @@
     tradeable relationship.
   </p>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this connects to MacroFXModel</div>
-    <h3>The primer behind an existing brick, an existing course note, and three upcoming lessons</h3>
-    <p>
-      <code>js/statsCore.js</code>'s <code>linregSlope</code> — listed in
-      this repo's shared-utility-bricks table as owning "\(\text{rollingZScore}\)/
-      \(\text{rollingZAt}\), \(\text{rollingPercentile}\), \(\text{linregSlope}\),
-      \(\text{ewma}\), moments" — is a direct implementation of the
-      \(\hat\beta = \mathrm{Cov}(X,Y)/\mathrm{Var}(X)\) formula derived above,
-      specialized to the case where \(X\) is simply the bar index \(0,1,2,\dots\).
-      Reading the source confirms it line for line: it computes the mean of
-      the values, sums \((i - \bar{i})(v_i - \bar v)\) over the window for the
-      numerator and \((i-\bar i)^2\) for the denominator, and divides — the
-      exact numerator/denominator pair this primer's derivation ends on. That
-      is why the CLAUDE.md brick registry's instruction to import
-      <code>linregSlope</code> rather than re-deriving a trend slope inline
-      is not just a style preference — every "trend strength" or "per-bar
-      drift" number computed anywhere in this repo should be running through
-      this one formula, not a second copy of it.
-    </p>
-    <p>
-      <code>education/regression-analysis-course-notes.md</code> already
-      states the applied version of exactly this idea — "Regression
-      decomposes variation in returns into an explained part (factor
-      exposures, the β's) and an unexplained part (the residual ε, where
-      alpha — and noise — live). OLS finds the line minimizing squared
-      residuals." This primer is the from-scratch derivation underneath that
-      sentence: where \(\hat\beta\) actually comes from, why "minimizing
-      squared residuals" produces that specific formula and not some other
-      one, and why \(R^2\) is the number that quantifies "explained."
-    </p>
-    <p>
-      Finally, this is deliberately the toolkit the next three lessons in
-      this track build on directly, not incidentally. The
-      <a href="cointegration.html">Cointegration</a> lesson's Engle-Granger
-      Step 1 is literally the OLS regression derived above, run on two price
-      levels instead of two abstract variables — its Step 2 only exists
-      because that Step 1 regression's ordinary R² can't be trusted on
-      non-stationary inputs, a distinction that presupposes knowing what R²
-      normally means. The <strong>PCA &amp; Factor Regimes</strong> lesson
-      operates on a correlation matrix built entirely from the \(r\) formula
-      above, applied pairwise across a whole basket of series at once. And
-      the <strong>Kalman Filter</strong> lesson's adaptive hedge ratio is this
-      primer's \(\hat\beta\), re-estimated recursively bar by bar instead of
-      once on a fixed window. None of those three lessons re-derive
-      covariance, correlation, or the OLS normal equations — they assume this
-      primer and move straight to what's new.
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
@@ -651,7 +599,7 @@
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Covariance measures co-movement; correlation rescales it to [-1, 1].</strong> Dividing by \(\sigma_X\sigma_Y\) cancels the units out, making \(r\) comparable across any two series regardless of what they're measured in.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The OLS slope IS covariance, just normalized differently.</strong> \(\hat\beta = \mathrm{Cov}(X,Y)/\mathrm{Var}(X)\) — the exact formula <code>js/statsCore.js</code>'s <code>linregSlope</code> implements.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The OLS slope IS covariance, just normalized differently.</strong> \(\hat\beta = \mathrm{Cov}(X,Y)/\mathrm{Var}(X)\) — the exact formula this project's own regression code implements.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(R^2 = r^2\) only for simple (one-predictor) regression.</strong> The identity breaks the moment a second predictor is added — that's exactly why R² can't be trusted blindly with more predictors in the model.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>\(r=0\) means no linear relationship, not "no relationship."</strong> \(y=x^2\) is a perfect deterministic relationship with \(r\approx0\) — always look at a scatter plot, not just the coefficient.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Adding predictors always weakly increases R², even useless ones.</strong> OLS can always set a new coefficient to zero, so the fit never gets worse — a high in-sample R² with many predictors proves nothing on its own.</span></div>

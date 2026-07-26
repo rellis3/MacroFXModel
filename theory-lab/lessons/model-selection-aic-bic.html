@@ -391,35 +391,6 @@
     </p>
   </div>
 
-  <div class="tl-box repo"><div class="tl-icon-badge green">🧩</div><div class="tl-box-label">Where this connects to MacroFXModel</div>
-    <h3>The formal version of a rule this repo already states in prose</h3>
-    <p>
-    To be direct about what is and isn't built here: <strong>there is currently no coded AIC/BIC
-    step anywhere in this codebase</strong> — no engine here formally computes and compares
-    information criteria across candidate model orders. That is a genuine, currently-missing formal
-    step, not a solved problem being merely under-documented. This lesson exists to make the theory
-    available before that gap gets filled, not to claim it already has been.
-    </p>
-    <p>
-    What already exists is the house instinct AIC/BIC would formalize. <code>CLAUDE.md</code>'s own
-    backtest-build-discipline section says it plainly: <em>"only add tunable parameters after,
-    knowing each one you add is overfit risk you're buying"</em> — that is, in prose, exactly what
-    the AIC/BIC penalty terms (\(2k\) and \(k\ln n\)) price numerically. And the
-    <a href="multiple-testing.html">Multiple Testing lesson</a>'s discipline of "count the cells"
-    before declaring a slice a real survivor is the same instinct applied to a different axis of
-    the same problem: multiple testing counts how many <em>looks</em> at the data you took before
-    calling one significant, while AIC/BIC count how many <em>parameters</em> a single model was
-    allowed before calling its fit meaningful. Both are answers to the same underlying question —
-    "how much of what I'm seeing is the price of giving myself more chances to find something?" —
-    aimed at two different places a model builder can quietly buy overfitting without noticing:
-    too many slices, or too many knobs on one model. Any future engine here that searches over lag
-    length, HMM state count, or GARCH order — anywhere a "how much complexity" choice currently
-    relies on eyeballing in-sample fit — is a legitimate candidate for a real AIC/BIC (or AICc)
-    step, logged the same honest way the rest of this repo's validation is: reported alongside, not
-    instead of, a true out-of-sample check.
-    </p>
-  </div>
-
   <div class="tl-box pitfall"><div class="tl-icon-badge red">⚠️</div><div class="tl-box-label">Common pitfalls</div>
     <h3>Where this goes wrong in practice</h3>
     <p>

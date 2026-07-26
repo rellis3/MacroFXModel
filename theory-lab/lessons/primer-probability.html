@@ -538,41 +538,6 @@
     "approximately normal" starting point needs those corrections.
   </p>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this connects to MacroFXModel</div>
-    <h3>Background literacy, not a specific module</h3>
-    <p>
-      This primer doesn't map onto one file the way a Tier-1 brick does — it's
-      the formal vocabulary that other lessons and modules already assume.
-      Two direct connections are worth being explicit about. First, the
-      <strong>Bayesian Inference</strong> lesson in this series defines
-      \(P(H)\), \(P(E \mid H)\), and the posterior \(P(H \mid E)\) without
-      ever pausing to define what a probability or a random variable formally
-      is — \(H\) and \(E\) are events, and any signal built from real data
-      (a return, a classifier score, a day-type flag) is a random variable in
-      the sense defined above; Bayes' theorem is a rule for combining
-      probabilities of events, and this primer is the object-level layer
-      underneath it. Second, this repo's vol-forecasting and GARCH-family
-      work (documented in <code>js/volBacktestEngine.js</code> and the GARCH
-      lesson) assumes a distribution shape for returns — often approximately
-      normal, or a fatter-tailed alternative like Student's t — as a modeling
-      choice, not an arbitrary one. The CLT is part of why "start from
-      approximately normal" is defensible: a day's return is, informally, an
-      aggregation of many smaller order-flow and price-formation events, and
-      aggregation of many roughly-independent pieces is exactly the setting
-      the CLT describes. It is equally important to state the limit of that
-      justification honestly: the CLT's guarantee depends on independence and
-      finite variance, and daily financial returns visibly violate the
-      independence assumption (volatility clustering — big moves cluster in
-      time, they are not scattered independently), which is precisely why raw
-      normality is a starting point that gets corrected, not a settled fact
-      that gets assumed. This is background literacy for reading those later
-      lessons critically, not a claim that any specific module here needs to
-      change.
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
@@ -629,7 +594,7 @@
       losses — the variance can understate the risk that actually matters
       (the size and likelihood of the bad tail specifically). Skewness and
       kurtosis, covered in the Descriptive Statistics primer and used directly
-      in this repo's <code>metricsCore.js</code>, exist precisely to capture
+      in this project's own performance-metrics code, exist precisely to capture
       what variance alone misses.
     </p>
   </div>

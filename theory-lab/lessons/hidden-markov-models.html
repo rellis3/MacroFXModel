@@ -459,61 +459,6 @@
     </div>
   </div>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
-    <h3>A statistically fitted alternative to the existing threshold rules — genuinely unbuilt, not a plan</h3>
-    <p>
-    This repo already has two regime/state classifiers, and it's worth being precise about how an HMM
-    would differ from each, rather than treating "regime detection" as one undifferentiated idea:
-    </p>
-    <ul>
-      <li>
-      <strong><code>js/volBacktestEngine.js</code>'s <code>classifyRegime</code></strong> is a
-      hand-set <strong>threshold rule</strong>: it looks at a rolling slope of closes over a fixed
-      window and compares it against a fixed numeric cutoff (<code>thresh</code>) to call a period
-      bullish, bearish, or neutral. The threshold, window, and slope parameters are chosen by the
-      person writing the code, not estimated from the data's own transition/persistence structure.
-      </li>
-      <li>
-      <strong><code>js/dayTypeCore.js</code>'s <code>classifyDayType</code> / <code>dayTypeScore</code></strong>
-      is a step up in sophistication — a weighted, score-based <em>selector</em> (per this repo's
-      Lego Principle 4, "the brain is a selector, not more knobs") that combines several estimators
-      from an <code>ESTIMATORS</code> registry into a single trend-day-ness score \(T\) = drift ÷
-      diffusion, which then drives fade-vs-follow strategy choice. It's principled in the sense that
-      it's a composed score rather than one raw threshold, but the weights in <code>DAYTYPE_PRESETS</code>
-      are still chosen, not fitted, and there's no explicit model of regime <em>persistence</em> or
-      state-transition dynamics — each bar's score is computed fresh, not conditioned on "how long have
-      we already been in this apparent regime."
-      </li>
-    </ul>
-    <p>
-    An HMM would be a genuinely different kind of object from both: instead of a fixed cutoff or a
-    fixed weighting, you'd fit \(A\) and the emission parameters directly from historical return data
-    via Baum-Welch, letting the data itself tell you how persistent each regime actually is (the
-    \(1/(1-A_{ii})\) expected-duration number from the worked example above, but estimated rather than
-    assumed) and how differently returns actually behave in each state, rather than encoding that as a
-    hand-picked threshold or weight. That is a real, substantive advantage in principle: it replaces a
-    guessed constant with an estimated one, and it gives you a probabilistic confidence (the filtered
-    state probability) rather than a hard binary flag.
-    </p>
-    <p>
-    It would also add real complexity and real estimation risk, and none of that should be
-    understated. Fitting an HMM well requires enough data and enough genuine regime-switching behavior
-    for Baum-Welch to converge to a sensible, non-degenerate solution — a real risk given how few FX
-    regimes are cleanly, stably Markov-stationary over any window long enough to fit on (regimes in
-    practice drift, macro backdrops change, and a 2-state or 3-state model is a strong
-    simplification of a much messier reality — this is expanded on in the pitfalls below). And per
-    this repo's Lego Principle 5 — no change counts as an improvement without beating the incumbent on
-    out-of-sample Sharpe with a non-trivial OOS trade count — an HMM-based regime classifier would need
-    to actually outperform <code>classifyRegime</code> or <code>dayTypeScore</code> OOS before it would
-    be worth the added complexity, not merely be more statistically sophisticated in the abstract.
-    Sophistication is not the bar; OOS performance is. This lesson describes the concept and the
-    honest tradeoff — it is <strong>not</strong> a claim that an HMM would improve this repo's regime
-    detection, and nothing here has been built or tested.
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>

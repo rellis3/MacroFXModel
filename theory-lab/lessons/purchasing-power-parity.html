@@ -310,32 +310,6 @@
     </p>
   </div>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this connects to MacroFXModel</div>
-    <h3>This repo has no PPP-based signal or price-level data pipeline today</h3>
-    <p>
-    To be direct about it: nothing in this codebase currently ingests CPI or price-level data, computes
-    a real exchange rate, or builds a PPP-based fair-value estimate for any pair. This is a genuine gap,
-    not a built brick with caveats — there is no <code>pppCore.js</code> or equivalent to point to, and
-    this lesson is not describing something already wired into the forecaster or any backtest engine.
-    </p>
-    <p>
-    If a PPP-based fair-value view were ever built here, the natural data feed already exists as a
-    named environment variable in <code>CLAUDE.md</code>'s data-source table: <code>FRED_KEY</code>,
-    which is listed for "macro / quotes / news data feeds" and is the standard source for national CPI
-    series. Building it properly would mean pulling CPI for each side of a pair from FRED, resampling
-    to a common release frequency (per this repo's data-modeling discipline — never hold a monthly CPI
-    print "live" against daily bars), constructing the real exchange rate above, and — per Lego
-    Principle 5 and this project's honest-teammate contract — proving any resulting signal on a true
-    out-of-sample split with a non-trivial trade count before calling it anything more than a candidate.
-    Given the multi-year half-lives documented above, an honest OOS test of a PPP-based signal would
-    also need a matching multi-year evaluation horizon and a will to accept that most trading-frequency
-    backtests simply cannot validate a signal this slow — a scope/data limitation to state plainly
-    rather than paper over with a lookalike fast-horizon test.
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>

@@ -39,7 +39,7 @@
     at different timescales: <em>if price is away from "normal," does it tend to come
     back, and if so how fast?</em> "Fade the move" and "follow the move" are opposite
     bets on the answer. Right now in this codebase that question is answered by a
-    same-day heuristic — <code>dayTypeCore.js</code>'s trend-day-ness score
+    same-day heuristic — this project's own trend-day-ness score
     <code>T</code> = drift ÷ diffusion, blended from several rolling-window
     estimators (efficiency ratio, variance ratio, Hurst exponent, and friends).
     Those are all reasonable proxies, but none of them produce a number you can
@@ -200,7 +200,7 @@
     <tr><td>\(\theta\)</td><td>(theta) The mean-reversion speed, a positive number. Larger \(\theta\) = stiffer pull back to \(\mu\) = faster reversion. \(\theta = 0\) means no pull at all — see the random-walk comparison below. \(\theta\) has units of "1 / time" (e.g. "per day"), which is exactly why it converts cleanly into a half-life measured in days.</td></tr>
     <tr><td>\((\mu - X_t)\)</td><td>The current deviation from the mean, with its sign. If price is above \(\mu\), this term is negative, pulling \(X\) down; if below \(\mu\), it's positive, pulling \(X\) up. This is the "restoring force," structurally identical to Hooke's law for a spring — the further you are from equilibrium, the harder you're pulled back, and the pull is always toward equilibrium, never away.</td></tr>
     <tr><td>\(\theta(\mu - X_t)\,dt\)</td><td>The <strong>drift term</strong>: the deterministic, predictable part of the next instant's move — restoring speed \(\times\) current deviation \(\times\) the length of the instant.</td></tr>
-    <tr><td>\(\sigma\)</td><td>(sigma) The volatility (diffusion) coefficient — how large the random shocks are. This is the same conceptual quantity as the \(\sigma\) used throughout this repo's vol math (<code>volSigmaSeries</code>, <code>volBacktestEngine.js</code>), just in continuous-time SDE units rather than daily-bar HV/GARCH units.</td></tr>
+    <tr><td>\(\sigma\)</td><td>(sigma) The volatility (diffusion) coefficient — how large the random shocks are. This is the same conceptual quantity as the \(\sigma\) used throughout this repo's vol math, just in continuous-time SDE units rather than daily-bar HV/GARCH units.</td></tr>
     <tr><td>\(W_t\)</td><td>A Wiener process (standard Brownian motion) — the formal name for "pure random-walk noise with independent, normally distributed increments and no memory." \(dW_t\) is its infinitesimal increment: mean zero, variance \(dt\), unpredictable direction.</td></tr>
     <tr><td>\(\sigma\,dW_t\)</td><td>The <strong>diffusion term</strong>: the random, unpredictable part of the next instant's move, scaled by how volatile the process is.</td></tr>
   </table></div>
@@ -341,8 +341,8 @@
     "regress today's value on yesterday's value" coefficient you'd get from a
     linear regression of \(X_t\) on \(X_{t-1}\) — and \(\epsilon_t\) is the
     regression's noise term (the discrete-time stand-in for \(\sigma\,dW_t\)).
-    This equation should look familiar: it's exactly the AR(1) form referenced in
-    <code>REVERSION_CONTINUATION_CONCEPT.md</code>'s framing of drift versus
+    This equation should look familiar: it's exactly the AR(1) form behind
+    this project's own framing of drift versus
     diffusion, just written out with the mean term made explicit. The relationship
     \(\phi = e^{-\theta \Delta t}\) is the bridge between "a regression
     coefficient you can estimate from data" and "a mean-reversion speed with
@@ -467,49 +467,6 @@
     in-sample fit.
   </p>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
-    <h3>An unbuilt candidate next to <code>dayTypeCore.js</code>'s drift/diffusion score</h3>
-    <p>
-      <code>js/dayTypeCore.js</code> already estimates something conceptually
-      adjacent to \(\theta\): its <code>dayTypeScore</code> blends several
-      rolling-window estimators (efficiency ratio, variance ratio, Hurst
-      exponent, etc.) into a single \(T \in [0,1]\) trend-day-ness score — high
-      \(T\) meaning drift-dominated (follow), low \(T\) meaning diffusion-dominated
-      / mean-reverting (fade), all computed fresh within each day's window with
-      no explicit reversion-speed or half-life concept. It answers "is today more
-      trend or more chop," not "if this reverts, how many bars until it's halfway
-      back."
-    </p>
-    <p>
-      A fitted OU half-life is a different, complementary kind of number: instead
-      of a same-window relative score, it is an estimable, physically-interpretable
-      quantity — actual trading days — that could in principle be computed
-      per-instrument (e.g. rolling AR(1) fits on daily closes or on a
-      deviation-from-moving-average series) and compared against what
-      <code>dayTypeScore</code>'s low-T / fade regime implicitly assumes about how
-      fast reversion happens. If an instrument's fitted half-life is very long
-      (say 30+ days) even when <code>dayTypeScore</code> currently flags it as
-      low-\(T\)/fade-favoring, that would be worth knowing — the "fade" bet might
-      be directionally right but too slow for the exit logic the fade legs
-      actually use.
-    </p>
-    <p>
-      <strong>To be explicit about what this is and isn't:</strong> this is a
-      candidate connection, not a claim that <code>dayTypeCore.js</code> already
-      does OU fitting, and not a claim that layering an OU half-life on top of it
-      would improve anything. Per the Lego Principle, that would need to be built
-      as a proper Tier-1 estimator (a pure function, unit-tested on synthetic
-      OU-generated data so you can verify the fit recovers a known \(\theta\),
-      before ever touching real prices), then validated OOS with a non-trivial
-      trade count against the existing selector — not assumed to help because the
-      math is elegant. It is currently unbuilt and untested here; treat it as a
-      research candidate for <code>LEGO_MODULES.md §2</code>, not as a described
-      feature.
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
@@ -570,7 +527,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Fit it via AR(1), not the raw SDE.</strong> Regress \(X_t\) on \(X_{t-1}\) to get \(\phi\), then convert with \(\theta=-\ln(\phi)/\Delta t\) — the worked example's \(\phi=0.90\) implies a ≈6.6-day half-life.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>φ ≥ 1 means the model doesn't apply, not "very slow reversion."</strong> The half-life formula breaks down (undefined or negative θ) — that's the algebra telling you to stop, not to force a number.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>θ, μ and σ are all assumed constant — real markets don't cooperate.</strong> A drifting "true" mean, small-sample bias toward φ≈1, and regime-dependent reversion speed can all distort a single full-sample fit.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Nothing here is built or validated in this repo.</strong> This is a research candidate for <code>LEGO_MODULES.md §2</code>, not a described feature — it would need synthetic-data unit tests and a real OOS trade count before touching real prices.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Nothing here is built or validated in this repo.</strong> This is a research candidate, not a described feature — it would need synthetic-data unit tests and a real OOS trade count before touching real prices.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -670,7 +627,6 @@
     <li>James D. Hamilton, <em>Time Series Analysis</em>, Princeton University Press, 1994 — the standard graduate econometrics reference covering AR(1) estimation, unit roots, and the discrete/continuous-time mapping used in this lesson.</li>
     <li>Evan Gatev, William N. Goetzmann &amp; K. Geert Rouwenhorst, "Pairs Trading: Performance of a Relative-Value Arbitrage Rule," <em>Review of Financial Studies</em>, 2006 — the widely-cited empirical study of distance-based pairs trading that the OU-based approach is often contrasted with.</li>
     <li>Marco Avellaneda &amp; Jeong-Hyun Lee, "Statistical Arbitrage in the U.S. Equities Market," <em>Quantitative Finance</em>, 2010 — explicitly fits an OU process to cointegration-residual spreads and uses the half-life as a trading-horizon filter; the direct template for the "fit OU, use the half-life" workflow described above.</li>
-    <li><code>REVERSION_CONTINUATION_CONCEPT.md</code> and <code>js/dayTypeCore.js</code> in this repo — the existing drift/diffusion classifier this lesson's repo box contrasts with.</li>
   </ul>
   </details>
 

@@ -28,7 +28,7 @@
     <li>Merton (1976) bolts a Poisson-driven jump term \(dJ_t\) onto ordinary geometric Brownian motion, so a price process can admit genuine discontinuities (like an NFP gap) instead of only continuous wiggling.</li>
     <li>Three parameters drive the jump: \(\lambda\) (jump intensity — how often jumps arrive), and \(\mu_J,\sigma_J\) (the mean and standard deviation of the lognormal jump size once one occurs).</li>
     <li>Mixing rare, wider jump outcomes into ordinary diffusion produces a taller, narrower center plus fatter tails than a single normal distribution — that's excess kurtosis (leptokurtosis) — and is one of the two classical explanations for the volatility smile in option markets.</li>
-    <li>This repo doesn't fit a jump-diffusion model anywhere, but <code>js/metricsCore.js</code>'s Tier-1 primitives (<code>skewness</code>, <code>excessKurtosis</code>, <code>histVaR</code>, <code>histCVaR</code>) already catch the same fat-tail symptom empirically in a trade-return series, without ever estimating \(\lambda, \mu_J, \sigma_J\).</li>
+    <li>This repo doesn't fit a jump-diffusion model anywhere, but this project's own Tier-1 primitives for skewness, excess kurtosis, and historical VaR/CVaR already catch the same fat-tail symptom empirically in a trade-return series, without ever estimating \(\lambda, \mu_J, \sigma_J\).</li>
   </ul>
 </div>
 
@@ -160,9 +160,8 @@
       visibly <strong>above</strong> the normal curve — small bumps built from
       the rare days a jump actually lands. High center, fat tails: that
       combination is <strong>excess kurtosis</strong> (leptokurtosis), the
-      same signature this lesson's repo box above already covers — see it for
-      how <code>skewness</code>/<code>excessKurtosis</code> in
-      <code>js/metricsCore.js</code> catch this empirically in a real return
+      same signature this project's own skewness/excess-kurtosis primitives
+      already catch empirically in a real return
       series without ever fitting \(\lambda, \mu_J, \sigma_J\).
     </div>
   </div>
@@ -464,71 +463,6 @@
     option-pricing formula is ever fit.
   </p>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
-    <h3>The theory behind fat tails this repo already measures — and a very concrete practical echo</h3>
-    <p>
-      This repo does not fit a jump-diffusion model anywhere, does not price
-      options, and has no \(\lambda, \mu_J, \sigma_J\) estimator. Say that
-      plainly: this is unbuilt here, a theory lesson, not a description of
-      existing code.
-    </p>
-    <p>
-      What the repo <em>does</em> already have, built and tested, is the honest
-      empirical way to respect exactly the risk this lesson describes without
-      needing to fit a full parametric jump model. Per <code>CLAUDE.md</code>,
-      <code>js/metricsCore.js</code> ships Tier-1 fat-tail primitives —
-      <code>skewness</code>, <code>excessKurtosis</code>, <code>histVaR</code>,
-      <code>histCVaR</code> — built 2026-07-21 and hand-checked in
-      <code>legoBricks.test.mjs</code>. <code>summarizeTrades</code> (the shared
-      trade-log summarizer used across the platform's backtest report cards)
-      emits <code>skew</code>, <code>excessKurt</code>, <code>var95</code>, and
-      <code>cvar95</code> on every trade-return series it summarizes. Jump-diffusion
-      is the theoretical <em>story</em> for exactly why a real FX return series
-      should have nonzero excess kurtosis and a heavier left tail than a Gaussian
-      model would predict — a sudden macro-release gap is a literal, observable
-      instance of the \(dJ_t\) term this lesson defines. <code>excessKurtosis</code>
-      and <code>histCVaR</code> are the empirical, model-free way this codebase
-      already catches that reality in a trade-return series, without ever having
-      to estimate a jump intensity or a jump-size distribution. This is a real,
-      already-built connection — not a proposal.
-    </p>
-    <p>
-      There is a second, very concrete practical echo, unrelated to option
-      pricing: <code>CLAUDE.md</code>'s own anti-pattern list warns against
-      "assuming the intrabar take-profit was hit on a daily bar (path is
-      unknown) — prefer M1 fills or mark-to-window-close," and
-      <code>fill-realism.html</code> documents a real instance of this exact
-      failure mode in the Per-Line Volatility tearsheet (~44% zero-duration
-      trades where TP is unknowable on the fill bar, so the walker marks to
-      close and hides real outer-line stop losses on continuation days). That
-      bug and Merton's jump term are the same underlying risk wearing two
-      different hats: a fill walker that assumes a limit or stop was touched at
-      its exact quoted price implicitly assumes the path between bars was
-      continuous — that price had to pass through every intermediate level to
-      get from the open to the close. A genuine gap (a jump) can blow straight
-      through a resting limit or stop without ever trading at the assumed price,
-      the same way Merton's \(dJ_t\) term skips over the intermediate price
-      levels a pure-diffusion path would have been forced to cross. A
-      backtest's fill assumption and an option-pricing model's path assumption
-      are answering the same underlying question — "can price teleport?" — for
-      two different purposes.
-    </p>
-    <p>
-      Building an actual jump-diffusion estimator or option-pricing engine here
-      would be a new, unvalidated undertaking — it would need synthetic-data
-      unit tests that recover known \(\lambda,\mu_J,\sigma_J\) parameters before
-      touching real prices, and, per the Lego Principle, a clear reason two or
-      more callers would use it rather than building it because the math is
-      elegant. Nothing here proposes that. The honest summary is: the fat-tail
-      metrics already in <code>metricsCore.js</code> are the built, tested,
-      empirical answer to "does this repo respect jump/gap risk" — a full
-      parametric jump-diffusion model is not built, and is not needed to get
-      that empirical honesty.
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
@@ -578,7 +512,7 @@
     <p>
       <strong>Fat tails in a trade-return series are not proof a jump-diffusion
       model would improve pricing or sizing.</strong> Seeing high
-      <code>excessKurtosis</code> or a large <code>histCVaR</code> in this
+      excess kurtosis or a large historical CVaR in this
       repo's metrics confirms the empirical symptom jump risk would predict; it
       is not, by itself, evidence that building a parametric jump model and
       layering it into a strategy would improve anything OOS. Per the Lego
@@ -594,9 +528,9 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Three parameters drive the jump.</strong> \(\lambda\) is jump intensity (how often), \(\mu_J\) and \(\sigma_J\) are the mean and spread of the lognormal jump size (how big, once one happens).</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Mixing jumps into diffusion produces excess kurtosis.</strong> A taller, narrower center (most days have no jump) plus fatter tails (the rare days that do) — leptokurtosis, not just a wider normal curve.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Jump risk is one of the two classical explanations for the volatility smile.</strong> A flat-\(\sigma\) Black-Scholes model underprices deep out-of-the-money strikes that only pay off on a genuine jump; the market corrects with higher implied vol at the wings.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo already catches the empirical symptom.</strong> <code>js/metricsCore.js</code>'s <code>skewness</code>, <code>excessKurtosis</code>, <code>histVaR</code>, and <code>histCVaR</code> measure fat tails in a real trade-return series without ever fitting a parametric jump model.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo already catches the empirical symptom.</strong> This project's own skewness, excess-kurtosis, and historical VaR/CVaR primitives measure fat tails in a real trade-return series without ever fitting a parametric jump model.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This repo does not fit a jump-diffusion model or price options anywhere.</strong> This lesson is concept-only — a theory background page, not a description of existing code.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Fat tails alone are not proof a jump model would help.</strong> High <code>excessKurtosis</code> in a trade-return series confirms the symptom jump risk predicts; it is not, by itself, evidence that building a parametric jump model would improve anything OOS.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Fat tails alone are not proof a jump model would help.</strong> High excess kurtosis in a trade-return series confirms the symptom jump risk predicts; it is not, by itself, evidence that building a parametric jump model would improve anything OOS.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -691,10 +625,10 @@
       No — there is no \(\lambda, \mu_J, \sigma_J\) estimator and no option
       pricing engine anywhere in this codebase; this lesson is a theory
       background page, not a description of a built feature. What the repo does
-      have is the empirical, model-free alternative: <code>js/metricsCore.js</code>'s
-      Tier-1 fat-tail primitives (<code>skewness</code>, <code>excessKurtosis</code>,
-      <code>histVaR</code>, <code>histCVaR</code>), which <code>summarizeTrades</code>
-      already computes on every trade-return series it summarizes. These
+      have is the empirical, model-free alternative: this project's own
+      Tier-1 fat-tail primitives (skewness, excess kurtosis,
+      historical VaR, historical CVaR), already computed
+      on every trade-return series it summarizes. These
       directly measure the empirical symptom jump risk predicts — a heavier
       left tail and higher-than-Gaussian kurtosis — without requiring anyone to
       first estimate a parametric jump process. That's a legitimate, already-built
@@ -709,8 +643,6 @@
     <li>Robert C. Merton, "Option Pricing When Underlying Stock Returns Are Discontinuous," <em>Journal of Financial Economics</em>, 1976 — the original paper defining the jump-diffusion model covered in this lesson.</li>
     <li>S. G. Kou, "A Jump-Diffusion Model for Option Pricing," <em>Management Science</em>, 2002 — the widely cited double-exponential jump-size refinement, allowing separate, asymmetric parameters for up-jumps and down-jumps.</li>
     <li>Rama Cont &amp; Peter Tankov, <em>Financial Modelling with Jump Processes</em>, Chapman &amp; Hall/CRC, 2004 — the standard modern graduate textbook treatment of Lévy processes, jump-diffusion, and the broader family of models this lesson's is the simplest member of.</li>
-    <li><code>js/metricsCore.js</code> in this repo — the built, tested Tier-1 fat-tail primitives (<code>skewness</code>, <code>excessKurtosis</code>, <code>histVaR</code>, <code>histCVaR</code>) this lesson's repo box connects to.</li>
-    <li><code>fill-realism.html</code> and <code>CLAUDE.md</code>'s anti-pattern list in this repo — the concrete intrabar-fill instance of the same continuity assumption discussed above.</li>
   </ul>
   </details>
 

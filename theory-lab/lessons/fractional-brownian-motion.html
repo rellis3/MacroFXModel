@@ -384,35 +384,6 @@
     </p>
   </div>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this connects to MacroFXModel</div>
-    <h3>A descriptive statistic already in production, a generative model not yet built</h3>
-    <p>
-      <code>js/rangeBiasCore.js</code>'s <code>computeHurst</code>, covered in the previous lesson, is exactly the
-      R/S-regression-based estimator this lesson gives a formal home to — it produces an empirical \(H\) but does
-      not, and was never designed to, fit an underlying generative model like fBm or ARFIMA to the data. That is a
-      reasonable scope for a live entry-bias feature: it needs a fast, robust regime read, not a full model fit. It
-      does mean the live feature's \(H\) is a description of the recent past's scaling behavior, not a forecast
-      derived from a fitted long-memory process — a distinction worth keeping straight given how easily "the Hurst
-      exponent is 0.85" can be misread as "and therefore the model predicts continued persistence for N more days,"
-      which computeHurst's descriptive R/S procedure does not, by itself, license.
-    </p>
-    <p>
-      Separately, <code>js/volBacktestEngine.js</code>'s GARCH-family sigma estimator is a genuinely short-memory
-      model by construction — its volatility persistence decays geometrically, exactly the AR(1)-style curve in the
-      chart above. Long memory in realized volatility is a widely documented empirical regularity in the academic
-      literature (not a claim specific to this repo's data), distinct from and additional to the short-memory
-      clustering GARCH already captures. If this repo ever needs to forecast volatility meaningfully further out
-      than a short-memory GARCH model can honestly support — which it does not currently attempt to do — fitting a
-      genuine long-memory volatility model (ARFIMA on log-realized-vol, or a long-memory GARCH variant such as
-      FIGARCH) would be the natural, currently-unbuilt next step, and it would need the same OOS validation
-      discipline (Lego Principle 5) as any other model before being trusted over the existing GARCH sigma series.
-      Nothing described in this lesson is wired into any live forecaster today; it is background theory for a
-      future extension, not a description of current behavior.
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>

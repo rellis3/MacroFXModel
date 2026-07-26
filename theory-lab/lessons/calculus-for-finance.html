@@ -581,49 +581,6 @@
     error that a purely analytical derivative never has.
   </p>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this connects to MacroFXModel</div>
-    <h3>Vocabulary, not a module — but it's already load-bearing in three lessons and in real code</h3>
-    <p>
-      This lesson is not describing a specific brick or a buildable feature —
-      it is math literacy this Theory Lab's own lessons already lean on
-      without deriving. Three concrete places it shows up: the Ornstein-Uhlenbeck
-      lesson's half-life derivation solves the drift-only ODE
-      \(\frac{d}{dt}\mathbb{E}[X_t-\mu] = -\theta\,\mathbb{E}[X_t-\mu]\) — a
-      statement written entirely in derivative notation, whose solution is
-      an exponential decay curve; the Black-Scholes lesson's option-pricing
-      formula comes from a partial differential equation built out of
-      \(\partial C/\partial t\), \(\partial C/\partial S\), and
-      \(\partial^2 C/\partial S^2\) — three of the derivatives introduced
-      above, just with a partial-derivative notation for a function of more
-      than one variable; and the Kelly Criterion lesson's entire derivation
-      of \(f^*\), and its volatility-drag formula \(g \approx \mu -
-      \sigma^2/2\), are respectively an optimization (set a derivative to
-      zero) and a second-order Taylor expansion, both built directly on this
-      page's machinery.
-    </p>
-    <p>
-      In actual repo code, the closest analogs are <code>js/statsCore.js</code>'s
-      <code>linregSlope</code> and <code>ewma</code>. <code>linregSlope</code>
-      is, in substance, a discrete estimate of a derivative — it fits a
-      straight line through a rolling window of data and reports its slope,
-      which is exactly the finite-difference stand-in for an instantaneous
-      rate of change described in the practitioner section above, applied
-      over a short window instead of an infinitesimal one. <code>ewma</code>
-      (exponentially weighted moving average) is the discrete-time cousin of
-      the exponential-decay solution that falls out of a simple
-      differential equation — the same \(e^{-\theta t}\)-shaped decay the
-      Ornstein-Uhlenbeck lesson derives continuously, recomputed step by step
-      on discrete bars instead of solved once in closed form. Neither
-      function is described here as "an implementation of calculus" in any
-      formal sense — they are ordinary statistics/smoothing utilities — but
-      the concepts underneath them (a rate of change over a window, a
-      recursive smoothing rule shaped like exponential decay) are the same
-      concepts this lesson just built from scratch.
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>

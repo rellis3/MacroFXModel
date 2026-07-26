@@ -509,10 +509,9 @@
       two-thirds of your daily P&amp;L variance from this pair of trades is
       coming from one shared factor (call it "long the dollar bloc"), and only
       about one-third is coming from the pairs actually behaving differently
-      from each other. Using the same effective-bets formula this repo already
+      from each other. Using the same effective-bets formula this project already
       computes for a strategy book
-      (<code>effectiveBetsPCA = (&#931;&#955;)&#178; / &#931;&#955;&#178;</code> in
-      <code>js/diversificationCore.js</code>): \((\Sigma\lambda)^2/\Sigma\lambda^2 = 6^2/(4^2+2^2) = 36/20 = 1.8\).
+      (\(\text{effectiveBets} = (\Sigma\lambda)^2/\Sigma\lambda^2\)): \((\Sigma\lambda)^2/\Sigma\lambda^2 = 6^2/(4^2+2^2) = 36/20 = 1.8\).
       Two nominal positions, but only about 1.8 <em>effective</em>, independent
       bets — not the dramatic "really just one big bet" story a much higher
       correlation would tell (that would need \(\lambda_1\) much closer to 6 and
@@ -566,50 +565,6 @@
     "idiosyncratic" variance) and of statistical factor-risk models like Barra's
     (covered in more depth in the PCA lesson's further reading).
   </p>
-
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this is actually used in MacroFXModel</div>
-    <h3><code>symmetricEigenvalues</code> in <code>js/diversificationCore.js</code></h3>
-    <p>
-      This is not a hypothetical connection — <code>js/diversificationCore.js</code>
-      already runs exactly the eigenvalue math from this lesson on a real
-      correlation matrix. Its <code>symmetricEigenvalues(mat)</code> function is a
-      cyclic Jacobi rotation: a numerical algorithm that repeatedly applies small
-      rotations to zero out a symmetric matrix's off-diagonal entries, converging
-      on its eigenvalues without ever writing down a characteristic equation
-      (the by-hand approach above is fine for a \(2\times2\), but becomes
-      impractical past 3&#215;3 or 4&#215;4 — Jacobi rotation, QR algorithms, and
-      similar iterative methods are how real software finds eigenvalues of
-      larger matrices). Those eigenvalues feed directly into
-      <code>effectiveBetsPCA</code> and <code>effectiveBetsEntropy</code>, the
-      "how many independent bets do I actually have" metrics wired into
-      <code>diversification.html</code> — the exact \((\Sigma\lambda)^2/\Sigma\lambda^2\)
-      formula used in the scenario box above, on this repo's own strategy
-      correlation matrix rather than a two-pair toy example.
-    </p>
-    <p>
-      One honest gap, noted here and covered in more depth in the PCA lesson's
-      own repo box: <code>symmetricEigenvalues</code> currently returns
-      <em>only</em> the eigenvalues, not the eigenvectors — sufficient for the
-      effective-bets metrics, which only need "how much variance," not "in
-      which combination of instruments." The eigenvectors (the accumulated
-      rotation matrix from the same Jacobi sweeps) are a documented, unbuilt
-      candidate in <code>LEGO_MODULES.md §2</code> for anyone who wants the
-      "which strategies actually make up this dominant risk factor" loadings,
-      not just its size.
-    </p>
-    <p>
-      This lesson is Lesson 1 of the Deeper Foundations tier specifically
-      because the PCA lesson (<code>pca-factors.html</code>), the Kalman Filter
-      lesson (<code>kalman-filter.html</code>), and the Hidden Markov Model
-      lesson (<code>hidden-markov-models.html</code>) each build directly on
-      top of the vocabulary here — vectors, matrices, matrix multiplication,
-      and eigenvectors/eigenvalues — without re-deriving any of it. If a term
-      in one of those three lessons is unclear, it is very likely defined
-      properly here rather than there.
-    </p>
-  </div>
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
@@ -791,8 +746,7 @@
     <li>Gilbert Strang, <em>Introduction to Linear Algebra</em>, Wellesley-Cambridge Press — the standard accessible textbook for exactly this material, built around the same geometric intuition (matrices as transformations) used in this lesson; Strang's freely available MIT OpenCourseWare lectures cover the same ground.</li>
     <li>David C. Lay, Steven R. Lay &amp; Judi J. McDonald, <em>Linear Algebra and Its Applications</em>, Pearson — another widely used undergraduate reference, with a strong applications focus that includes finance-adjacent examples.</li>
     <li>Harry M. Markowitz, "Portfolio Selection," <em>Journal of Finance</em>, 1952 — the origin of modern portfolio theory; its diversification argument is, underneath the notation, exactly the eigen-decomposition of a covariance matrix separating shared from idiosyncratic variance, formalized generally decades later.</li>
-    <li>The PCA lesson in this Theory Lab (<code>pca-factors.html</code>) — the direct continuation of this lesson's eigenvector/eigenvalue material, applied specifically to a covariance matrix of FX returns and connected to <code>js/diversificationCore.js</code>.</li>
-    <li><code>js/diversificationCore.js</code> and <code>diversification.html</code> in this repo — the existing eigenvalue-based "effective number of bets" implementation this lesson's repo box builds on.</li>
+    <li>The PCA lesson in this Theory Lab (<code>pca-factors.html</code>) — the direct continuation of this lesson's eigenvector/eigenvalue material, applied specifically to a covariance matrix of FX returns.</li>
   </ul>
   </details>
 

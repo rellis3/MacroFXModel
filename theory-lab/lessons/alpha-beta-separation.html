@@ -249,30 +249,6 @@
     about.
   </p>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
-    <h3>An honest, currently-missing decomposition</h3>
-    <p>
-      No strategy in this repo currently has its returns regressed against a
-      market/risk factor to separate beta from alpha — every backtest card
-      reports a strategy's raw Sharpe/return, not how much of it is exposure
-      to a common factor. The regression machinery already exists:
-      <code>js/statsCore.js</code>'s <code>linregSlope</code> is exactly the
-      \(\beta\) estimator this lesson uses, and <code>pca-factors.html</code> /
-      <code>random-matrix-theory.html</code>'s eigenvalue work is exactly how
-      you'd identify what the dominant "market factor" even is for a
-      multi-pair FX book (PC1 of the correlation matrix, filtered against the
-      Marchenko-Pastur noise band). Wiring these together — regress each
-      strategy's trade-level or daily returns against that dominant factor,
-      report \(\hat\alpha\)/\(\hat\beta\)/its standard error alongside the
-      existing Sharpe card — would be a genuine, currently-unbuilt candidate
-      that this repo's own tooling already has every ingredient for. Like
-      everything else in this Theory Lab, it would need the same OOS
-      discipline before the resulting \(\hat\alpha\) is trusted as real.
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>

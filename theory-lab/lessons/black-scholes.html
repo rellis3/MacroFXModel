@@ -37,11 +37,11 @@
   <h2>Why this matters</h2>
   <p>
     Two things in this repo already talk about options without deriving where
-    their behavior comes from. <code>education/open-interest-course-notes.md</code>
-    teaches, as an empirical/operational fact, that dealers who are short gamma
+    their behavior comes from. This project's own prior research notes
+    teach, as an empirical/operational fact, that dealers who are short gamma
     must buy as price rises and sell as it falls, and that this mechanical
     hedging is what makes high-open-interest strikes act like magnets and walls.
-    <code>book-stress.html</code> asks whether a portfolio's claimed
+    This project's own stress-testing tooling asks whether a portfolio's claimed
     diversification survives a liquidity contraction — a question that, for any
     book holding options, is inseparable from how those options' hedge ratios
     change as markets move. Neither page derives <em>why</em> an option's
@@ -132,7 +132,7 @@
     <tr><td>\(S_t\)</td><td>The underlying's price at time \(t\) — the spot FX rate, the stock price, the index level. This is the quantity the whole model is built around.</td></tr>
     <tr><td>\(dS_t\)</td><td>The infinitesimal change in \(S_t\) over the next tiny instant of time — "how much the price moves in the next tick."</td></tr>
     <tr><td>\(\mu\)</td><td>(mu) The underlying's expected (real-world) rate of return per unit time — e.g. "8% per year." This is exactly the quantity everyone argues about when they forecast a market. Keep an eye on it: it appears here, in the assumed model of the world, but — remarkably — it is about to disappear from the pricing formula entirely.</td></tr>
-    <tr><td>\(\sigma\)</td><td>(sigma) The underlying's volatility — the standard deviation of its returns per unit time (annualized, e.g. "20% per year"). This is the same conceptual quantity as the \(\sigma\) used throughout this repo's vol math (<code>volSigmaSeries</code>, <code>volBacktestEngine.js</code>), just expressed in continuous-time SDE units. GBM assumes \(\sigma\) is <strong>constant</strong> — flat across time and across strike. That is the model's single biggest simplifying assumption, and it is false in every real options market (implied volatility famously varies by strike — the "volatility smile/skew" — and by time). It's flagged here because the next lesson's jump-diffusion extension exists specifically to relax it.</td></tr>
+    <tr><td>\(\sigma\)</td><td>(sigma) The underlying's volatility — the standard deviation of its returns per unit time (annualized, e.g. "20% per year"). This is the same conceptual quantity as the \(\sigma\) used throughout this repo's own volatility research, just expressed in continuous-time SDE units. GBM assumes \(\sigma\) is <strong>constant</strong> — flat across time and across strike. That is the model's single biggest simplifying assumption, and it is false in every real options market (implied volatility famously varies by strike — the "volatility smile/skew" — and by time). It's flagged here because the next lesson's jump-diffusion extension exists specifically to relax it.</td></tr>
     <tr><td>\(dW_t\)</td><td>The infinitesimal increment of a Wiener process (standard Brownian motion) — pure random-walk noise: mean zero, variance \(dt\), no memory of the past, normally distributed. Same object introduced in the Ornstein-Uhlenbeck lesson.</td></tr>
     <tr><td>\(\mu S_t\,dt\)</td><td>The <strong>drift term</strong>: the predictable part of the next instant's price change — the expected return rate times the current price times the length of the instant. Proportional to \(S_t\) itself, which is what makes this "geometric" rather than "arithmetic" Brownian motion — a $1 move means something different at $10 than at $1000, exactly like compounding percentage returns.</td></tr>
     <tr><td>\(\sigma S_t\,dW_t\)</td><td>The <strong>diffusion term</strong>: the random shock, also scaled by the current price, so volatility is expressed as a <em>percentage</em> of price rather than a fixed dollar amount.</td></tr>
@@ -533,55 +533,6 @@
     around that known flaw rather than pretending it isn't there.
   </p>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this connects to MacroFXModel</div>
-    <h3>The pricing theory underneath the OI course's applied gamma-wall material</h3>
-    <p>
-      <code>education/open-interest-course-notes.md</code> Lesson 05 ("Gamma
-      &amp; Dealer Dynamics") teaches, as operational fact, that a dealer who
-      is short gamma from selling options must buy as the underlying rises
-      and sell as it falls to stay hedged — and that this mechanical,
-      price-agnostic rehedging is the actual mechanism behind call walls
-      acting as resistance, put walls acting as support, and the "gamma
-      squeeze" that follows a wall breaking. This lesson is the pricing
-      theory that produces that fact rather than just asserting it: delta
-      (\(N(d_1)\) above) is the hedge ratio the course notes describe a
-      dealer maintaining, and gamma (\(\partial^2C/\partial S^2\)) is
-      precisely the rate at which that hedge ratio must change as price
-      moves — which is why the course notes' claim that gamma effects
-      intensify as expiry approaches is not an empirical curiosity but a
-      direct, derivable consequence of the Black-Scholes formula: gamma for
-      an at-the-money option provably rises as \(T \to 0\). The "why call
-      walls are resistance" mechanism the course notes trace through step by
-      step (dealers buy to hedge rising delta as price approaches a big call
-      strike, then stop buying once delta saturates near 1.0 at/through the
-      strike, so the rally loses its fuel) is exactly the shape of \(N(d_1)\)
-      as a function of \(S_0/K\): it rises steeply near the strike and
-      flattens out toward 1.0 once deep in-the-money. Reading this lesson
-      does not replace that course's applied trading framework — the OI
-      notes' treatment of walls, max pain, magnetism, and daily trading
-      process is the practical, tested-against-a-real-heatmap layer this
-      repo actually uses; this page is the theoretical foundation underneath
-      it, for understanding <em>why</em> the mechanism works rather than only
-      <em>that</em> it does. For the applied trading framework, read
-      <code>open-interest-course-notes.md</code> directly.
-    </p>
-    <p>
-      <code>book-stress.html</code> asks whether a portfolio's diversification
-      survives a liquidity contraction. Any book that includes options carries
-      Greek exposures on top of its raw directional exposures, and those Greek
-      exposures are themselves the derivatives derived in this lesson — a
-      "diversified" book of options across several underlyings can still have
-      a concentrated, correlated gamma exposure that only becomes visible once
-      you compute the Greeks explicitly, which is a natural extension of that
-      page's stress-testing logic once options enter the picture. No such
-      Greek-aware stress logic is built into <code>book-stress.html</code>
-      today — this is a conceptual link for future work, not a description of
-      an existing feature.
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
@@ -781,7 +732,6 @@
     <li>Fischer Black &amp; Myron Scholes, "The Pricing of Options and Corporate Liabilities," <em>Journal of Political Economy</em>, 1973 — the original paper.</li>
     <li>Robert C. Merton, "Theory of Rational Option Pricing," <em>Bell Journal of Economics and Management Science</em>, 1973 — the contemporaneous, more rigorous derivation (including the continuous-time replication argument in its modern form) that is why the model is properly credited as Black-Scholes-<strong>Merton</strong>; Merton and Scholes received the 1997 Nobel Memorial Prize in Economic Sciences for this work, Black having died in 1995 and thus been ineligible (the Nobel is not awarded posthumously).</li>
     <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson — the standard textbook treatment of the derivation, the Greeks, and their extensions; the reference most quant/trading desks point newcomers to first.</li>
-    <li><code>education/open-interest-course-notes.md</code> Lesson 05 in this repo — the applied gamma/dealer-hedging framework this lesson provides the pricing-theory foundation for.</li>
   </ul>
   </details>
 

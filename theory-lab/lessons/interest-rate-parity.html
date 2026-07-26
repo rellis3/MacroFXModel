@@ -501,61 +501,11 @@
   <p>
     <strong>Rate-differential signals more broadly</strong> underlie a huge
     amount of discretionary and systematic FX macro reasoning — central bank
-    divergence trades, "dollar smile" framing, and this repo's own empirical
-    work on the US-Germany yield spread leading EUR/USD (see the repo box
-    below) all start from the same interest-differential intuition IRP
-    formalizes, whether or not the practitioner ever writes down the CIP/UIP
-    equations explicitly.
+    divergence trades, "dollar smile" framing, and this project's own
+    empirical work on the US-Germany yield spread leading EUR/USD all start
+    from the same interest-differential intuition IRP formalizes, whether or
+    not the practitioner ever writes down the CIP/UIP equations explicitly.
   </p>
-
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
-    <h3>A genuine gap — no file here computes CIP, UIP, or a carry signal</h3>
-    <p>
-      Said plainly: nothing in this codebase currently computes a
-      CIP-implied fair forward, checks a UIP-implied expected depreciation
-      against realized FX moves, or scores a carry-trade signal from rate
-      differentials. That is a real missing piece of the theory base, not a
-      gap this lesson is inventing to have something to write about.
-    </p>
-    <p>
-      The closest existing material is <code>education/macro-deep-dives-notes.md</code>'s
-      Lesson 2, "The Transatlantic Yield Spread (US 10Y vs. German Bund)" —
-      it studies, empirically, whether the US-Germany yield spread leads
-      EUR/USD, tracking the spread's level and regime (narrowing/widening)
-      against subsequent EUR/USD direction. That is valuable, real empirical
-      work, but it is answering a different question than IRP does. IRP is
-      about the no-arbitrage relationship between <em>interest rates and the
-      forward rate</em> today (CIP), and the theoretical expectation of
-      <em>future spot movement</em> implied by that relationship (UIP) — a
-      structural, no-arbitrage-anchored claim. The yield-spread lesson is a
-      reduced-form, lead-lag empirical check on whether spread changes
-      historically preceded EUR/USD moves, without reference to whether the
-      relationship it's finding is consistent with (or a violation of) UIP in
-      the formal sense. The honest framing is that formal IRP math is the
-      theoretical foundation any such empirical rates-FX work should
-      eventually be checked against — does the yield-spread lead-lag
-      relationship look like a UIP-consistent adjustment, or does it look
-      like the forward-premium-puzzle pattern this lesson describes? That
-      question hasn't been asked in this repo yet.
-    </p>
-    <p>
-      Building this for real would need real interest-rate data (FRED for
-      sovereign/policy rates, or OANDA's forward/swap points directly, which
-      embed the interest differential per the CIP identity) matched carefully
-      to actual tradeable tenors — and, per this repo's Lego Principle 5 and
-      the working agreement above, it would need the same honest harness
-      discipline as anything else here: a true in-sample/out-of-sample split,
-      realistic costs, and a non-trivial OOS trade count before a carry or
-      UIP-deviation signal could be treated as anything more than a
-      historically interesting pattern. The forward premium puzzle is a real,
-      well-replicated empirical finding in the broader literature — that is
-      not the same claim as "a carry signal built on this repo's data would
-      show a validated OOS edge," and until that test is actually run here,
-      it should not be described as one.
-    </p>
-  </div>
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>

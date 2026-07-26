@@ -37,7 +37,7 @@
   <h2>Why this matters</h2>
   <p>
     Every "rates drive FX" story — carry trades, yield-spread momentum, hawkish/dovish repricing, the whole
-    apparatus this repo's own <code>education/macro-deep-dives-notes.md</code> spends two lessons on — takes one
+    apparatus this project's own prior research notes spend two lessons on — takes one
     thing as given: that a central bank sets its policy rate in response to inflation and the state of the real
     economy. That response is not just a vague tendency traders intuit from experience; economists have a specific,
     almost embarrassingly simple formula for it, published by the Stanford economist John B. Taylor in 1993, that
@@ -48,7 +48,7 @@
   </p>
   <p>
     The reason a builder on this repo should care is specific: the Transatlantic Yield Spread lesson
-    (<code>education/macro-deep-dives-notes.md</code>, Lesson 2) treats the US 10-year vs Bund spread — and the Fed
+    (this project's own prior research notes, Lesson 2) treats the US 10-year vs Bund spread — and the Fed
     vs ECB rate paths behind it — as an observed input, something you read off a screen and trade the lead-lag
     relationship of. It never asks the prior question: what actually generates a central bank's rate path in the
     first place? The Taylor Rule is the textbook answer to that prior question. It is the mechanism underneath the
@@ -347,7 +347,7 @@
       <div class="tl-step">
         <div class="tl-step-num">5</div>
         <div class="tl-step-body"><h4>Connect it to the currency</h4><p>Per the same rate-differential mechanism the
-        Transatlantic Yield Spread lesson documents (education/macro-deep-dives-notes.md, Lesson 2, §2.2–2.3):
+        Transatlantic Yield Spread lesson documents (this project's own prior research notes, Lesson 2, §2.2–2.3):
         capital flows toward the higher, or the higher-<em>expected</em>, yield. If the front end is under-pricing
         how much tightening the data justify, the trader's view is that yields here are more likely to rise than
         fall from current levels relative to a peer currency whose own Taylor gap didn't just move — which, all
@@ -363,37 +363,6 @@
       money, reserve managers). What the Taylor Rule gives the trader is a fast, mechanical way to size <em>how
       large</em> the unresolved gap just became, the moment the data changed — before waiting for the yield
       spread itself to visibly move.
-    </p>
-  </div>
-
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this connects to MacroFXModel</div>
-    <h3>The theory behind two existing lessons — not yet a built calculator</h3>
-    <p>
-      This repo has <strong>no Taylor-Rule-implied-rate calculator</strong> anywhere in the codebase today. What it
-      does have is <code>education/macro-deep-dives-notes.md</code>'s Lesson 1, "Macro Drivers, Regime Detection
-      &amp; Validation," and Lesson 2, "The Transatlantic Yield Spread" — both of which study rate expectations and
-      the US-German yield spread empirically, as observed market data, without deriving what actually generates a
-      central bank's rate path. This lesson is that missing derivation. Lesson 2's own §2.8 ("What moves the spread
-      itself") lists "monetary policy — Fed vs ECB rate paths" and "inflation gap ... inflation surprise = spread
-      move" as upstream drivers of the spread — in the vocabulary of this lesson, that is precisely the
-      \(a(\pi-\pi^{*})\) term (plus the growth-differential language in the same section echoing the
-      \(b(y-y^{*})\) term) doing the work behind an applied trading lesson's own bullet points.
-    </p>
-    <p>
-      That makes a Taylor-Rule-implied-rate tracker a natural, currently-missing companion piece to the existing
-      yield-spread machinery: computing an implied-minus-actual policy gap for both economies side by side would
-      let a future version of this repo test whether that gap <em>leads</em> the yield spread's own moves, rather
-      than only trading the spread once it has already shifted. It is not, however, a small addition to bolt on
-      casually. Building it honestly needs FRED-sourced inflation data (headline/core CPI or PCE, per the
-      currency's central bank convention) and an output-gap proxy (CBO potential GDP, Okun's-law unemployment gap,
-      or an HP-filtered GDP series — each a real, debatable choice, not a single obvious number), the same
-      "boring parsing done correctly and visibly" discipline <code>CLAUDE.md</code> calls out for macro data
-      (currency/whitespace stripping, explicit date formats, matching resample frequency to each series' true
-      release cadence), and — per this repo's Lego Principle 5 — a genuine walk-forward out-of-sample test with a
-      non-trivial trade count before any implied-minus-actual gap is trusted as an FX signal rather than an
-      interesting number on a chart.
     </p>
   </div>
 

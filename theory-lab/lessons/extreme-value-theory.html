@@ -17,7 +17,7 @@
   <h1 class="tl-title">Extreme Value Theory &amp; Tail Risk</h1>
   <p class="tl-dek">Your worst historical day is not your worst possible day — EVT is the theory of how to say something honest about the losses you haven't seen yet, without pretending a handful of data points can tell you the whole story.</p>
   <div class="tl-meta">
-    <span class="tl-status candidate">EXTENDS AN EXISTING BRICK — js/metricsCore.js's histVaR/histCVaR</span>
+    <span class="tl-status concept">CONCEPT — extends the empirical VaR/CVaR statistics used elsewhere in this project</span>
     <span>~16 min read</span>
     <span>Prereqs: Merton Jump-Diffusion Model, Kelly Criterion &amp; Position Sizing</span>
   </div>
@@ -25,19 +25,19 @@
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
-      <li>Historical VaR/CVaR (this repo's <code>histVaR</code>/<code>histCVaR</code>) read the answer straight off your sample, so far out in the tail (99.5%+) they're really just reporting the identity of your worst day or two, not a stable estimate.</li>
+      <li>Historical VaR/CVaR read the answer straight off your sample, so far out in the tail (99.5%+) they're really just reporting the identity of your worst day or two, not a stable estimate.</li>
       <li>Peaks-over-threshold (POT) fixes this by discarding everything below a high threshold \(u\) and fitting only the exceedances beyond it — using more of the tail data than a block-maxima approach, while still isolating tail-specific behavior.</li>
       <li>The Generalized Pareto Distribution (GPD) is the shape those exceedances converge to (Balkema-de Haan-Pickands theorem); its shape parameter \(\xi\) tells you whether the tail is heavy/Pareto-type (\(\xi>0\)), exponential (\(\xi=0\)), or bounded (\(\xi<0\)).</li>
       <li>A fitted GPD lets you extrapolate VaR/CVaR past what the raw sample supports — but that's a modeling assumption, not a measurement, and it's unverifiable at the exact quantile you're extrapolating to.</li>
-      <li>This repo's <code>js/metricsCore.js</code> already ships the honest empirical half (<code>histVaR</code>/<code>histCVaR</code>/skew/kurtosis); the GPD/POT layer is deliberately not built here because most strategies' trade counts are far too small to fit \(\xi\) reliably.</li>
+      <li>This project's own empirical risk statistics already ship the honest half (historical VaR/CVaR, skew/kurtosis); the GPD/POT layer is deliberately not built here because most strategies' trade counts are far too small to fit \(\xi\) reliably.</li>
     </ul>
   </div>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
-  Every risk number this repo already computes — <code>histVaR</code>, <code>histCVaR</code>,
-  <code>maxDrawdown</code>, the skew/kurtosis pair in <code>summarizeTrades</code> — is built from
+  Every risk number this repo already computes — historical VaR, historical CVaR,
+  max drawdown, the skew/kurtosis pair — is built from
   whatever trades or returns actually happened to occur in the sample you have. That is the right way
   to start (per this project's own working agreement: report the honest number off the real path, don't
   approximate it), but it has a specific, structural blind spot. A sample of, say, 500 daily returns
@@ -142,7 +142,7 @@
   <h3>Why the plain historical (empirical) method breaks down far into the tail</h3>
   <p>
   The most direct way to estimate VaR or CVaR from data — and exactly what this repo's
-  <code>histVaR</code>/<code>histCVaR</code> do — is to sort your observed sample and read the answer
+  own historical VaR/CVaR implementation does — is to sort your observed sample and read the answer
   straight off it: <em>empirical VaR</em> at confidence \(p\) is just the \((1-p)\) sample quantile (the
   value such that a fraction \(1-p\) of your observed data falls below it), and <em>empirical CVaR</em>
   is the average of every observation at or beyond that point. This is honest, assumption-free, and
@@ -524,49 +524,6 @@
     </li>
   </ul>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this connects to MacroFXModel</div>
-    <h3>The empirical half is already a Tier-1 brick; the EVT half is a described-not-built next layer</h3>
-    <p>
-    <code>js/metricsCore.js</code> already has exactly the honest, sample-bound version of this lesson's
-    core question, built 2026-07-21 per <code>CLAUDE.md</code>'s output-analysis discipline
-    ("report distributional shape, not just Sharpe"). <code>skewness(xs)</code> and
-    <code>excessKurtosis(xs)</code> compute the sample skew and excess kurtosis of a pnl series — cheap
-    diagnostics that catch a fat or asymmetric tail a lone Sharpe ratio hides. <code>histVaR(xs, p)</code>
-    and <code>histCVaR(xs, p)</code> are, precisely, the "plain historical method" section of this
-    lesson: <code>histVaR</code> takes the \((1-p)\) empirical quantile of the series (via linear-
-    interpolated sample quantiles — the standard type-7/numpy-default method, no distributional
-    assumption at all), and <code>histCVaR</code> averages every observation at or beyond that
-    quantile — exactly the VaR and CVaR definitions given above, computed the fully honest, assumption-
-    free way. <code>summarizeTrades</code> wires these into every performance card as <code>skew</code>,
-    <code>excessKurt</code>, <code>var95</code>, <code>cvar95</code>, and — worth repeating from
-    <code>CLAUDE.md</code> because it's an easy thing to misread — these are <strong>per-trade</strong>
-    tail statistics computed on a per-trade pnl series, not portfolio VaR over a fixed time horizon; the
-    two are related but not interchangeable, and nothing in this repo currently claims otherwise.
-    </p>
-    <p>
-    The GPD-fitting, peaks-over-threshold layer this lesson covers is genuinely the <strong>next rung up
-    the same ladder</strong> — a natural extension if this repo ever needs to answer "what does a
-    worse-than-anything-I've-seen-yet drawdown plausibly look like," which <code>histVaR</code>/
-    <code>histCVaR</code> structurally cannot answer once you ask for a quantile beyond what the sample
-    itself supports (exactly the "2.5th-worst observation" problem in the worked example above). But it
-    is important to say plainly: <strong>this is not built here, and building it right now would not be
-    a good idea.</strong> Most strategies in this repo have well under 1,000 closed trades — several
-    have well under 100. Fitting a GPD needs a reasonable number of tail exceedances to be remotely
-    stable (the worked example used 50, itself on the low side of common practice), and a strategy with,
-    say, 150 trades might offer 10–15 exceedances above a sensible threshold — nowhere near enough to
-    trust a fitted \(\xi\) at all, let alone extrapolate it out to a rarer quantile than the sample can
-    even weakly support. Fitting a GPD to a sample that small would trade a data-point problem for a
-    tinier, harder-to-detect version of the same data-point problem, dressed up in more sophisticated
-    machinery — precisely the kind of overreach the pitfalls section below and this project's honest-
-    teammate contract both warn against. The correct read of this lesson for this repo, today, is: the
-    empirical version already built is the right tool for the trade-count this repo actually has: know
-    the theory exists, know exactly what it would extend, and don't reach for it until the sample sizes
-    justify it.
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
@@ -625,7 +582,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Peaks-over-threshold (POT) fixes this efficiently.</strong> It discards everything below a high threshold u and fits only the exceedances beyond it — more data-efficient than block maxima, while still isolating tail behavior.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The GPD shape parameter ξ is the payload.</strong> Heavy/Pareto-type (ξ&gt;0), exponential (ξ=0), or bounded (ξ&lt;0) — it tells you the qualitative kind of tail, not just its scale.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A fitted GPD extrapolates — it doesn't measure.</strong> Past your sample, the answer is the fitted shape talking, not anything directly observed, and it's unverifiable at the exact quantile you're extrapolating to.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The empirical half is already a real, tested Tier-1 brick.</strong> <code>js/metricsCore.js</code>'s <code>histVaR</code>/<code>histCVaR</code>/skew/kurtosis ship the honest, assumption-free version of this lesson's core question today.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The empirical half is already a real, tested piece of this project's own risk tooling.</strong> This project's own empirical risk statistics already ship the honest, assumption-free version of this lesson's core question today.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The GPD/POT layer is deliberately not built here.</strong> Most strategies' trade counts (often under 1,000, some under 100) are far too small to fit ξ reliably — building it now would hide a data-point problem behind fancier math.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Report both numbers together, not one alone.</strong> The gap between the empirical and EVT-extrapolated estimate is itself information about how much you're relying on the model.</span></div>
   </div>
@@ -702,7 +659,7 @@
     near enough to trust the fitted shape parameter \(\xi\), let alone extrapolate it to a rarer quantile
     than the sample can support. Fitting EVT machinery on that little data doesn't solve the small-sample
     problem the empirical method already has — it just hides it behind more sophisticated-looking math,
-    which is precisely why this repo currently uses the honest empirical histVaR/histCVaR rather than a
+    which is precisely why this repo currently uses the honest empirical historical VaR/CVaR rather than a
     GPD fit.
     </div>
   </details>
@@ -725,11 +682,10 @@
   not the territory. Every lesson in this series explains <em>why</em> a technique might matter and what
   it would cost to get wrong — none of it, on its own, is evidence that any specific idea produces edge
   in this specific repo, on this specific data, after real costs. That question only gets answered the
-  way <code>CLAUDE.md</code>'s Lego Principle 5 insists on: a true out-of-sample split, realistic fills,
+  way this project's own validation rule insists on: a true out-of-sample split, realistic fills,
   real costs, and a non-trivial OOS trade count — not a clean derivation and not an in-sample curve. The
-  honest next move from here isn't to read a fifteenth lesson. It's to open <code>LEGO_MODULES.md</code>,
-  see what bricks already exist so you're not rebuilding one, look through <code>education/</code> for
-  this repo's own course notes and prior write-ups, and pick <em>one</em> idea from this series — GARCH
+  honest next move from here isn't to read a fifteenth lesson. It's to check what's already built so you're not rebuilding one, look through this project's own prior
+  research notes and write-ups, and pick <em>one</em> idea from this series — GARCH
   regimes, a Kelly-scaled position size, an OU mean-reversion filter, or the tail diagnostics this lesson
   just covered — and actually build and test it against the incumbent, OOS. Most ideas here, tested
   honestly, will come back null or marginal; that's not a failure of the lesson, it's what the test is

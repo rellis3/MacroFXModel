@@ -59,9 +59,8 @@
     can drift as the underlying economics change — correlations widen and
     narrow with the macro regime, a company's sensitivity to its sector shifts
     as its business mix shifts, a spread's lead-lag relationship to a currency
-    pair strengthens or weakens with volatility (a pattern the yield-spread
-    lessons in this repo's macro notes document directly — more in the repo box
-    below). If the true relationship is genuinely moving, you don't want a
+    pair strengthens or weakens with volatility (a pattern this project's own
+    macro research documents directly). If the true relationship is genuinely moving, you don't want a
     number that's either "frozen for 60 days" (too slow to react) or "re-fit
     from scratch on a totally different window" (too jumpy and throws away
     everything you'd learned).
@@ -507,62 +506,6 @@
     these variants.
   </p>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
-    <h3>An adaptive coefficient for a lead-lag relationship whose strength already varies with regime</h3>
-    <p>
-      Two places in this repo already describe exactly the kind of relationship
-      a Kalman filter is built for: one whose <em>strength</em>, not just its
-      level, seems to change with market conditions. <code>education/macro-deep-dives-notes.md</code>'s
-      Lesson 2 ("The Transatlantic Yield Spread") documents that the lead time
-      between a US–German yield-spread move and the EUR/USD reaction is not
-      constant — its own table (§2.4) states the lead runs "hours to 1–2 days"
-      in high-volatility/news-driven conditions but "2–4 weeks" in range-bound,
-      low-vol conditions, and "1–3 months" around a regime change. Lesson 3's
-      live case study (17–18 Feb 2026) is a single concrete instance of that
-      relationship firing with a ~24-hour lead. That is, in plain language,
-      "the coefficient connecting spread-momentum to the FX/vol response is not
-      fixed — it moves with the regime," which is precisely the premise a
-      state-space model with a drifting \(x_t\) is designed to capture, instead
-      of hand-coding regime buckets with fixed thresholds.
-    </p>
-    <p>
-      <code>credit-leadlag.html</code> (backed by <code>js/creditCore.js</code> +
-      <code>js/creditHmm.js</code>, spec in <code>docs/CREDIT_SIGNAL_SPEC.md</code>)
-      is the closer, already-built analog: it computes a lead-lag
-      <strong>correlation</strong> between credit velocity (from ICE BofA US HY
-      OAS) and a risk instrument's forward realized vol, scanning a fixed grid
-      of lags over a fixed sample and reporting an out-of-sample information
-      coefficient. That's a static, single-number characterization of the
-      relationship's strength at each lag, refit over whatever window the job
-      is run on — the same "frozen until you re-run it" property the OLS
-      hedge-ratio example above has. A Kalman-filtered version would instead
-      model the coefficient linking credit velocity to forward vol (at a chosen
-      best lag) as a hidden state \(x_t\) that drifts smoothly, observed each
-      day through the noisy realized relationship — letting the filter's own
-      gain slow down when the relationship has been stable for a while and
-      speed back up right after a genuine regime shift (when innovations
-      \(e_t\) start coming in larger than \(S_t\) expects), without anyone
-      hand-tuning a regime switch.
-    </p>
-    <p>
-      To be explicit about where this stands: <strong>this is not built, not
-      prototyped, and not validated.</strong> It is a genuine candidate, not a
-      claim of improvement. Choosing \(Q\) and \(R\) is itself a real modeling
-      decision — as the pitfalls box below makes concrete, grid-searching them
-      against a backtest is just overfitting the window-length problem in a
-      different, more opaque parameterization, which is exactly the anti-pattern
-      this repo's Lego Principle warns against (principle 4: a selector, not more
-      knobs to optimize). Per Lego Principle 5, any Kalman-filtered version of
-      this relationship would need to beat the incumbent fixed-lag correlation
-      approach on true out-of-sample Sharpe or information coefficient, with a
-      non-trivial OOS sample, before it replaced anything live — a more
-      theoretically elegant estimator is not evidence of an improvement by
-      itself.
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
@@ -618,9 +561,9 @@
       <strong>The linear-Gaussian assumption can be wrong in ways that matter.</strong>
       The closed-form recursion here is exactly optimal only if the process and
       observation noise are truly Gaussian. Real financial return series
-      routinely show fat left tails (this repo's <code>metricsCore.js</code>
-      section of <code>CLAUDE.md</code> exists precisely because Sharpe alone
-      hides that) — a standard Kalman filter run on such data is still a
+      routinely show fat left tails (this project's own working discipline
+      calls for reporting skew/kurtosis and tail-risk stats precisely because
+      Sharpe alone hides that) — a standard Kalman filter run on such data is still a
       reasonable linear estimator, but it is no longer provably optimal, and
       its uncertainty estimates (\(P_{t\mid t}\)) can understate real tail risk.
     </p>

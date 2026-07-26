@@ -17,7 +17,7 @@
   <h1 class="tl-title">Bootstrapping &amp; Monte Carlo Simulation</h1>
   <p class="tl-dek">Two ways to manufacture "many possible outcomes" out of a single dataset — and the one, easy-to-miss reason neither one tells you whether a signal will work on data it has never seen.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — formalizes a rule this repo's CLAUDE.md already states in prose</span>
+    <span class="tl-status concept">CONCEPT — formalizes a validation discipline used throughout this project</span>
     <span>~15 min read</span>
     <span>Prereqs: Probability &amp; Random Variables primer</span>
   </div>
@@ -29,7 +29,7 @@
       <li>For time series (volatility clustering, serial correlation), a plain bootstrap shuffles that structure away and understates uncertainty — the block bootstrap resamples contiguous blocks instead, so short-term dependence survives in the resample.</li>
       <li>Monte Carlo simulation is a different move: fit a parametric model (GARCH, GBM) to the data and generate brand-new synthetic paths from it, rather than resampling real observations.</li>
       <li>Both tools only describe what's plausible given what you already have — the one sample, or a model fitted to that sample — never what would happen against market conditions that sample never contained.</li>
-      <li>As CLAUDE.md states: "Don't let Monte Carlo stand in for OOS. Resampling from a strategy's own realized return distribution shows the range of outcomes consistent with that mean/std — it says nothing about whether the signal generalizes to data it hasn't seen. It's a legitimate expectation-setting tool; label it as that, not as robustness evidence."</li>
+      <li>As this project's own working philosophy states: "Don't let Monte Carlo stand in for OOS. Resampling from a strategy's own realized return distribution shows the range of outcomes consistent with that mean/std — it says nothing about whether the signal generalizes to data it hasn't seen. It's a legitimate expectation-setting tool; label it as that, not as robustness evidence."</li>
     </ul>
   </div>
 
@@ -45,7 +45,7 @@
     standard tools for answering variants of that question without needing a
     second, independent dataset. They are genuinely useful, widely used in
     finance, and completely legitimate techniques. They are also, this
-    project's own <code>CLAUDE.md</code> states plainly, not a substitute for
+    project's own house discipline states plainly, not a substitute for
     testing whether a signal generalizes:
   </p>
   <p>
@@ -314,8 +314,8 @@
     for tomorrow's regime, every synthetic path inherits that same
     mis-specification, no matter how many thousands of paths you generate.
     Neither procedure has any mechanism for learning about data outside the
-    sample it started from. That is exactly why this repo's <code>CLAUDE.md</code>
-    states the rule quoted at the top of this lesson, and the rest of this
+    sample it started from. That is exactly why this repo's own house
+    discipline states the rule quoted at the top of this lesson, and the rest of this
     page exists to make precisely why that rule is true, not just asserted,
     fully explicit.
   </p>
@@ -465,7 +465,7 @@
     outside trading proper: simulating thousands of possible future market
     paths to show a saver the range of retirement-portfolio outcomes
     consistent with an assumed return and volatility — a legitimate
-    expectation-setting exercise that, just as CLAUDE.md's rule states, is
+    expectation-setting exercise that, just as this project's own rule states, is
     never sold as a guarantee the future will resemble any one simulated path.
   </p>
 
@@ -504,60 +504,6 @@
       strategy is robust" — is a documented, easy-to-fall-into way backtests
       mislead their own authors. The fix is not to distrust the bootstrap; the
       fix is to be precise about which of the two questions it just answered.
-    </p>
-  </div>
-
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this connects to MacroFXModel</div>
-    <h3>The rule this lesson formalizes, and the tool that actually tests generalization</h3>
-    <p>
-      This repo's <code>CLAUDE.md</code> states, in the "Backtest build
-      discipline" section:
-    </p>
-    <p>
-      <em>"Don't let Monte Carlo stand in for OOS. Resampling from a strategy's
-      own realized return distribution shows the range of outcomes consistent
-      with that mean/std — it says nothing about whether the signal
-      generalizes to data it hasn't seen. It's a legitimate expectation-setting
-      tool; label it as that, not as robustness evidence."</em>
-    </p>
-    <p>
-      Everything above this box is the from-scratch statistical justification
-      for why that sentence is true rather than merely asserted: a bootstrap
-      resample and a Monte Carlo path are both, mechanically, incapable of
-      containing information the original sample or its fitted model didn't
-      already have. Neither can substitute for what this repo's Lego Principle
-      #5 actually requires — judging a strategy against a <strong>true
-      in-sample / out-of-sample split</strong>, with a non-trivial OOS trade
-      count, on data the signal was never fit to. This tier's Walk-Forward
-      Validation &amp; Purged Cross-Validation lesson is the tool built to test
-      exactly that different question — repeatedly re-fitting on one stretch
-      of real history and testing, un-touched, on a later stretch it never
-      saw, with a purge gap to prevent leakage across the split. Bootstrapping
-      and Monte Carlo cannot stand in for that, no matter how many replicates
-      are run, because they were never built to touch data outside the
-      original sample in the first place. Use them for exactly what they're
-      good at — an honest confidence interval, an expectation-setting
-      distribution of outcomes given what you already believe — and reach for
-      walk-forward validation, not a bigger \(B\), whenever the actual question
-      is generalization.
-    </p>
-    <p>
-      Zooming out: this is the seventh and final lesson in this Applied
-      Statistics &amp; Validation tier, and read in order the seven lessons
-      trace one continuous validation toolkit rather than seven unrelated
-      topics — checking a fitted model's residuals for autocorrelation and
-      heteroskedasticity, choosing between competing models honestly rather
-      than by in-sample fit alone, modeling a time series' own dynamics with
-      ARIMA/VAR, capturing how markets move together beyond a single
-      correlation number with copulas, judging a strategy's risk-adjusted
-      return with a Sharpe ratio corrected for multiple testing (the Deflated
-      Sharpe Ratio), testing whether a signal survives on data it never saw
-      with walk-forward and purged cross-validation, and — here — being
-      precise about what resampling your own results can and cannot tell you
-      once that OOS test is done. None of the seven replaces the others; each
-      one closes a different way a backtest can quietly lie to its author.
     </p>
   </div>
 
@@ -698,7 +644,7 @@
     </div>
   </details>
   <details class="tl-quiz">
-    <summary>Q6. Given CLAUDE.md's rule, what tool should actually be used to test whether a signal generalizes, and how does it differ structurally from bootstrapping or Monte Carlo?</summary>
+    <summary>Q6. Given this project's own validation rule, what tool should actually be used to test whether a signal generalizes, and how does it differ structurally from bootstrapping or Monte Carlo?</summary>
     <div class="tl-answer">
       Walk-forward validation with a purged cross-validation split (this
       tier's previous lesson) is the tool built for that question. It differs
