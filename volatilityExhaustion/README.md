@@ -297,6 +297,52 @@ the edge is ~4× cost, unlike the 75th fade; (4) uses STATIC lines off the open,
 DYNAMIC (trailing) geometry. Next step: a properly-costed, dynamic-line, fat-tail-controlled
 follow-the-median engine with the 77% null as benchmark. Run `python3 median_tag_decision.py`.
 
+## Phase 7 — the COSTED median follow, + the placebo that proves it's momentum (`costed_median_follow.py`)
+
+Turns the Phase-6 lead into a costed trade on the LIVE dynamic (trailing) line geometry —
+a faithful port of `forecastCore.js simulateEntry` dynamic-HL (not a fresh re-derivation),
+real fills, round-trip spread + breakout slippage, IS/OOS, 6 majors. Tests the exit design
+(the Phase-6 race caps winners at the 75th — a bad follow structure), plus a shuffled-returns
+placebo. NULL benchmark: a driftless walk has 0 net expectancy on any barrier bet.
+
+**Costed result (pooled FX OOS, per-trade):**
+
+| config | OOS mean | OOS Sharpe |
+|---|---|---|
+| follow · TP 75th · SL≈open (Phase-6 race) | −0.012% | −0.74 |
+| follow · TP 75th · SL 1.5 | −0.009% | −0.53 |
+| follow · run-to-close · SL 1.0 | −0.010% | −0.39 |
+| **fade · OC-median (textbook)** | **−0.042%** | **−2.7** |
+
+Every follow config lands slightly negative after cost; the textbook FADE is clearly negative.
+
+**The placebo is the real finding.** Shuffling each day's 1-min returns destroys serial
+correlation but keeps the fat-tailed marginal. Real vs placebo (OOS mean/trade):
+
+| config | REAL | PLACEBO | Δ |
+|---|---|---|---|
+| follow·75th·slOpen | −0.012% | −0.022% | **+0.010%** |
+| follow·75th·sl1.5  | −0.009% | −0.022% | **+0.013%** |
+
+The real path beats the shuffle by ~+0.01%/trade, consistently IS+OOS → **the median
+continuation is genuine serial MOMENTUM, not a fat-tail artifact** (Phase-6 caveat #1
+resolved in the signal's favour). Also a lookahead sanity check: a leaky engine would
+inflate the placebo too; instead real cleanly beats placebo by a sensible small margin.
+
+**Honest conclusion (not null, not standalone-tradeable):** the continuation is REAL and
+FOLLOW beats FADE decisively — so the median's directional answer is unambiguous: continue,
+never fade. But the ~+0.01%/trade momentum edge is ≈ the transaction cost, so as a standalone
+intraday breakout scalp it nets slightly negative — the entry slippage eats it. Its honest
+use is a **directional filter / confidence input** (bias continuation at the median, don't
+fade) applied where you're NOT paying fresh breakout slippage (an existing position / the
+trend book), NOT a standalone entry.
+
+**Pivot — to lift a real-but-sub-cost edge over costs:** (1) an **OU half-life** estimator
+to isolate the subset of median tags with low reversion speed (strong drift) that clears
+cost; (2) **dealer gamma** (the actual fade-vs-extend mechanism — negative γ extends,
+positive γ pins) as the regime selector, options-data-gated. Run `python3
+costed_median_follow.py` (add `placebo` for the shuffle control).
+
 ## Analysis book
 `analysis-book.html` — a dark-theme page with every key chart and a plain-English *what it shows /
 what it means* under each, ending in the scoreboard and honest conclusion. Open it with `charts/`
@@ -316,5 +362,6 @@ alongside.
 - `tier1_state_conditioning.py` / `tier2_time_adjusted.py` / `tier3_budget_vov_cone.py` / `tier4_state_composite.py` — the four Phase-4 tests (each prints a pre-registered verdict).
 - `conditioners.py` — Phase-5 richer at-the-moment conditioners (VWAP-stretch/σ + time-normalized path) on the fresh-extreme race, distance-controlled, IS/OOS, pre-registered cross-sectional verdict → `conditioners_summary.json`. Run `python3 conditioners.py` (6 majors + NQ) or `... EURUSD` (one pair).
 - `median_tag_decision.py` — Phase-6 fade-vs-follow DECISION at the median line: race to the 75th (follow) vs back to open (fade) with σ-expectancy, budget-at-tag buckets, IS/OOS, 6 majors, vs the 77% gambler's-ruin null. Run `python3 median_tag_decision.py`.
+- `costed_median_follow.py` — Phase-7 the COSTED follow-vs-fade on dynamic lines (real fills + spread + slippage, exit grid, IS/OOS) + a shuffled-returns placebo proving the continuation is momentum not fat-tail. Run `python3 costed_median_follow.py` (add `placebo`).
 - `analysis-book.html` — human-readable write-up of every phase with charts + explanations.
 - `summary.json` / `forecast_vs_fade_summary.json` — headline stats.
