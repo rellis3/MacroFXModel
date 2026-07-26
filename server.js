@@ -190,7 +190,7 @@ const AUTH_PASSWORDS     = {
   education: process.env.EDUCATION_PASSWORD  || '',
 };
 const AUTH_ENABLED = !!AUTH_SECRET && !!AUTH_PASSWORDS.main && !!AUTH_PASSWORDS.education;
-const AUTH_EDU_PREFIXES = ['/education', '/theory-lab'];
+const AUTH_EDU_PREFIXES = ['/education', '/theory-lab', '/cog'];
 
 function authZoneForPath(pathName) {
   return AUTH_EDU_PREFIXES.some(p => pathName === p || pathName.startsWith(p + '/'))
