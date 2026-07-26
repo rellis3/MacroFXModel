@@ -259,6 +259,44 @@ daily feeds wired in and must respect the release-cadence rule — a deliberate 
 a bolt-on. The evidence continues to point at *magnitude/state → environment → execution*,
 not direction-at-exhaustion.
 
+## Phase 6 — the DECISION at the median line: fade or follow? (`median_tag_decision.py`)
+
+The owner's real question, stated plainly: *the forecast lines are good, trading them
+blindly isn't — at the median line do I fade (→open) or follow (→75th), and does the
+range-budget consumed getting there add confidence?* Measured directly: first bar the
+one-sided excursion reaches the median line (1.289σ fx), then a two-barrier race to
+session close — FOLLOW = reach the 75th line (+0.385σ) vs FADE = back to open (−1.289σ).
+Causal, IS/OOS, 6 majors, expectancy in σ (the asymmetric barriers make a raw win-rate
+misleading, so we net the distances and subtract a rough 0.03σ cost).
+
+**The benchmark FIRST (or 86% lies):** the follow barrier is far closer, so a *driftless
+random walk* reaches the 75th before the open **77%** of the time (gambler's ruin
+1.289÷1.674), with **zero** expectancy on either side. So the honest read is vs 77%, not 50%.
+
+**Finding — at the median these majors CONTINUE, they don't exhaust.**
+
+| | P(follow to 75th) | E[fade→open] | E[follow→75th] |
+|---|---|---|---|
+| IS  | 88.0% | −0.215σ | **+0.155σ** |
+| OOS | 85.8% | −0.177σ | **+0.117σ** |
+
+Observed 85.8% vs the 77% null = ~9pp of genuine continuation → **positive FOLLOW
+expectancy, negative FADE expectancy, OOS, on all 6 majors.** This is the *opposite* of
+the textbook "fade the median exhaustion" — the median is mid-distribution, price walks
+through it. (Coheres with the 75th being the exhaustion zone where fades die to overshoot,
+Phase 1–2.)
+
+**The owner's budget hypothesis (clean/low-budget tag → more follow) is NULL: 0/6** — the
+sign is if anything backwards. Budget-at-tag does not sharpen the fade/follow call.
+
+**Not an edge yet — a real LEAD needing the costed test.** Caveats before belief:
+(1) the 9pp over null may just be the documented fat right tail (EVT, Phase 0) re-measured,
+not a separate signal; (2) R:R is 0.30:1 so it rides entirely on the ~86% win rate holding
+(break-even 77%); (3) the 0.03σ cost is a guess and entry is a breakout (slippage) — though
+the edge is ~4× cost, unlike the 75th fade; (4) uses STATIC lines off the open, not the live
+DYNAMIC (trailing) geometry. Next step: a properly-costed, dynamic-line, fat-tail-controlled
+follow-the-median engine with the 77% null as benchmark. Run `python3 median_tag_decision.py`.
+
 ## Analysis book
 `analysis-book.html` — a dark-theme page with every key chart and a plain-English *what it shows /
 what it means* under each, ending in the scoreboard and honest conclusion. Open it with `charts/`
@@ -277,5 +315,6 @@ alongside.
 - `budget_research_lib.py` — shared baseplate for Phase 4 (TSMOM reproduction of `js/trendFollowEngine.js` + causal state features on the σ contract).
 - `tier1_state_conditioning.py` / `tier2_time_adjusted.py` / `tier3_budget_vov_cone.py` / `tier4_state_composite.py` — the four Phase-4 tests (each prints a pre-registered verdict).
 - `conditioners.py` — Phase-5 richer at-the-moment conditioners (VWAP-stretch/σ + time-normalized path) on the fresh-extreme race, distance-controlled, IS/OOS, pre-registered cross-sectional verdict → `conditioners_summary.json`. Run `python3 conditioners.py` (6 majors + NQ) or `... EURUSD` (one pair).
+- `median_tag_decision.py` — Phase-6 fade-vs-follow DECISION at the median line: race to the 75th (follow) vs back to open (fade) with σ-expectancy, budget-at-tag buckets, IS/OOS, 6 majors, vs the 77% gambler's-ruin null. Run `python3 median_tag_decision.py`.
 - `analysis-book.html` — human-readable write-up of every phase with charts + explanations.
 - `summary.json` / `forecast_vs_fade_summary.json` — headline stats.
