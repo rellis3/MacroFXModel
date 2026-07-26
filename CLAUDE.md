@@ -324,6 +324,7 @@ var is set in Railway first.
 | `ANT_KEY` | Claude API (AI analysis) |
 | `CF_ACCOUNT_ID`, `CF_API_TOKEN` | Cloudflare API (worker/KV ops) |
 | `KV_WRITE_SECRET` | **opt-in** auth for credential/config KV writes — if set, the dashboard write path must present it (server.js injects it when proxying). Unset ⇒ writes allowed (see `_worker.js`) |
+| `DASHBOARD_PASSWORD`, `EDUCATION_PASSWORD`, `COOKIE_SIGNING_SECRET` | site login gate (`server.js`, `requireAuth`) — two independent zones, each its own password + signed 30-day cookie; a zone's cookie never unlocks the other. `education/*` and `theory-lab/*` require `EDUCATION_PASSWORD`; every other page requires `DASHBOARD_PASSWORD`. `/api/*` stays unauthenticated (Railway healthcheck hits `/api/config`). Gate is fully disabled unless **all three** vars are set |
 | `ANALYSER_ADMIN_PASSWORD` | forecast-analyser admin/refresh gate |
 | `VOL_PLAN_UTC_HOUR` / `VOL_PLAN_UTC_MIN` | when the volatility-bot daily plan refreshes (default 23:05 UTC) |
 | `VOL_FORECAST_UTC` | when the vol-forecast recompute runs |
