@@ -33,6 +33,7 @@
   </ul>
 </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     Two things in this repo already talk about options without deriving where
@@ -67,6 +68,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>Cloning the option out of stock and cash</h3>
     <p>
@@ -102,6 +104,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     The model has three layers: (1) an assumption about how the underlying's
@@ -119,6 +122,11 @@
   </p>
   <div class="tl-math">
     \[ dS_t = \mu S_t\,dt + \sigma S_t\,dW_t \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>dSₜ</code><span>the next instant's price change</span></div>
+    <div class="tl-eq-chip c2"><code>μSₜdt</code><span>drift — the predictable part</span></div>
+    <div class="tl-eq-chip c4"><code>σSₜdWₜ</code><span>diffusion — the random shock</span></div>
   </div>
   <div class="tl-symbols"><table>
     <tr><td>\(S_t\)</td><td>The underlying's price at time \(t\) — the spot FX rate, the stock price, the index level. This is the quantity the whole model is built around.</td></tr>
@@ -178,6 +186,17 @@
   <div class="tl-math">
     \[ \frac{\partial V}{\partial t} + rS\frac{\partial V}{\partial S} + \tfrac{1}{2}\sigma^2 S^2\frac{\partial^2 V}{\partial S^2} - rV = 0 \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>∂V/∂S</code><span>delta — named directly in this PDE's terms</span></div>
+    <div class="tl-eq-chip c2"><code>∂²V/∂S²</code><span>gamma — the curvature term</span></div>
+    <div class="tl-eq-chip c4"><code>∂V/∂t</code><span>(minus) theta — time decay</span></div>
+  </div>
+  <div class="tl-solid blue">
+    <strong>The single most important fact:</strong> \(\mu\), the underlying's
+    real-world expected return, does not appear anywhere in this equation —
+    it canceled out during hedging. Pricing an option requires knowing
+    volatility, not a forecast of direction.
+  </div>
   <p>
     You do not need to be able to derive or solve this PDE to use the model —
     it's included here because it is the precise mathematical statement of
@@ -212,8 +231,32 @@
   <div class="tl-math">
     \[ C = S_0 N(d_1) - Ke^{-rT}N(d_2) \]
   </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">S₀N(d₁)</div>
+      <div class="tl-fp-name">What you'd receive</div>
+      <div class="tl-fp-desc">Expected value if the option finishes in the money</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">Ke⁻ʳᵀN(d₂)</div>
+      <div class="tl-fp-name">What you'd pay</div>
+      <div class="tl-fp-desc">Discounted strike, weighted by the risk-neutral probability of exercise</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">C</div>
+      <div class="tl-fp-name">The call's fair value</div>
+      <div class="tl-fp-desc">The difference — receive minus pay, both probability-weighted</div>
+    </div>
+  </div>
+
   <div class="tl-math">
     \[ d_1 = \frac{\ln(S_0/K) + \left(r + \frac{\sigma^2}{2}\right)T}{\sigma\sqrt{T}}, \qquad d_2 = d_1 - \sigma\sqrt{T} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>ln(S₀/K)</code><span>how far in/out of the money, on a log scale</span></div>
+    <div class="tl-eq-chip c2"><code>σ√T</code><span>volatility scaled to the option's time horizon</span></div>
+    <div class="tl-eq-chip c3"><code>N(d₁), N(d₂)</code><span>feed into the standard normal CDF</span></div>
   </div>
   <div class="tl-symbols"><table>
     <tr><td>\(C\)</td><td>The fair price of a European call option today — the number the whole derivation has been aiming at.</td></tr>
@@ -252,6 +295,9 @@
   </p>
   <div class="tl-math">
     \[ P = Ke^{-rT}N(-d_2) - S_0N(-d_1) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>N(−d₂)</code><span>risk-neutral probability the put finishes in the money</span></div>
   </div>
 
   <h3>The Greeks — the formula's sensitivities</h3>
@@ -328,6 +374,7 @@
   </p>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Pricing a one-year at-the-money call by hand</h3>
     <p>
@@ -339,6 +386,9 @@
     <p>Step 1 — compute \(d_1\):</p>
     <div class="tl-math">
       \[ d_1 = \frac{\ln(100/100) + (0.02 + 0.20^2/2)(1)}{0.20\sqrt{1}} = \frac{0 + (0.02 + 0.02)}{0.20} = \frac{0.04}{0.20} = 0.20 \]
+    </div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>d₁ = 0.20</code><span>at-the-money, so ln(S₀/K) drops out entirely</span></div>
     </div>
     <p>
       Walking through the arithmetic: \(\ln(100/100) = \ln(1) = 0\), since
@@ -352,9 +402,15 @@
     <div class="tl-math">
       \[ d_2 = d_1 - \sigma\sqrt{T} = 0.20 - 0.20 = 0.00 \]
     </div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c2"><code>d₂ = 0.00</code><span>coincidence of these particular round numbers, not general</span></div>
+    </div>
     <p>Step 3 — look up \(N(d_1)\) and \(N(d_2)\) (standard normal CDF values, e.g. from a z-table):</p>
     <div class="tl-math">
       \[ N(0.20) \approx 0.5793, \qquad N(0.00) = 0.5000 \]
+    </div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c3"><code>N(0.00)=0.5</code><span>exact, by symmetry of the standard normal around zero</span></div>
     </div>
     <p>
       \(N(0.00) = 0.5\) exactly, because the standard normal distribution is
@@ -367,6 +423,9 @@
     <div class="tl-math">
       \[ C = S_0N(d_1) - Ke^{-rT}N(d_2) = 100(0.5793) - 100\,e^{-0.02}(0.5000) \]
     </div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c4"><code>e⁻⁰·⁰²≈0.9802</code><span>the one-year discount factor at 2%</span></div>
+    </div>
     <p>
       \(e^{-0.02} \approx 0.9802\) (the one-year discount factor at a 2% rate
       — a dollar received in a year is worth about 98 cents today). So the
@@ -375,6 +434,9 @@
     </p>
     <div class="tl-math">
       \[ C \approx 57.93 - 49.01 = 8.92 \]
+    </div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c3"><code>$8.92</code><span>all time value — intrinsic value is zero at S₀=K</span></div>
     </div>
     <p>
       A one-year, at-the-money call on a $100 underlying with 20% annual
@@ -434,6 +496,7 @@
     </div>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Almost nobody at a real options desk uses the raw Black-Scholes formula
@@ -441,21 +504,28 @@
     predicting future stock moves — that's not what it's for, and the
     section above should make clear why: \(\mu\) isn't in the formula, so
     there's no view of direction to disagree with. What the formula
-    <em>is</em> used for, constantly, industry-wide: (1) as a
-    <strong>quoting convention</strong> — market makers quote and traders
-    think in "implied volatility" (the \(\sigma\) that makes the formula
-    match the traded price) rather than in dollar premiums, because implied
-    vol is comparable across strikes, expiries, and underlyings in a way raw
-    prices aren't; (2) as a <strong>hedging engine</strong> — the Greeks
-    computed from the formula tell a market maker exactly how much
-    underlying to buy or sell to stay delta-neutral, and how fast that hedge
-    will need to change (gamma), which is the entire mechanical basis of
-    dealer-hedging flows; and (3) as a <strong>common language and starting
-    point</strong> — every more sophisticated model used in practice (local
-    volatility, stochastic volatility like Heston, jump-diffusion like the
-    next lesson) is explicitly built as a correction to Black-Scholes, not a
-    replacement of its logic; understanding where the base model's
-    assumptions break is how those extensions get motivated and explained.
+    <em>is</em> used for, constantly, industry-wide:
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🏷️</div>
+      <h4>Quoting convention</h4>
+      <p>Market makers quote and think in "implied volatility" rather than dollar premiums, because it's comparable across strikes, expiries, and underlyings.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">⚙️</div>
+      <h4>Hedging engine</h4>
+      <p>The Greeks tell a market maker exactly how much underlying to buy or sell to stay delta-neutral, and how fast that hedge will need to change.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📚</div>
+      <h4>Common language &amp; starting point</h4>
+      <p>Every more sophisticated model (local vol, Heston, jump-diffusion) is built as a correction to Black-Scholes, not a replacement of its logic.</p>
+    </div>
+  </div>
+
+  <p>
     The famous "volatility smile" — implied vol varying systematically by
     strike, something plain Black-Scholes (constant \(\sigma\)) cannot
     produce — is itself evidence, visible in every live options market, that
@@ -464,6 +534,7 @@
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
     <h3>The pricing theory underneath the OI course's applied gamma-wall material</h3>
     <p>
@@ -512,6 +583,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where the model is misused or over-trusted</h3>
     <p>
@@ -573,6 +645,19 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A replication argument prices the option, no forecast needed.</strong> A continuously rebalanced stock/bond portfolio that clones the option's payoff pins down its price using no-arbitrage logic alone.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Only volatility σ matters — the expected return μ cancels out entirely.</strong> Pricing an option requires an estimate of how much the underlying moves, never a directional forecast of where it's going.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The Greeks are just this formula's partial derivatives.</strong> Delta = N(d₁) is the hedge ratio, gamma is how fast that hedge goes stale, theta is time decay, vega is sensitivity to σ.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Gamma is why dealer hedging creates market structure.</strong> Rebalancing a short-gamma book means buying into rallies and selling into declines — a mechanical, price-agnostic flow, not a directional bet.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Constant volatility is the model's biggest simplification — and it's false in every real market.</strong> The volatility smile/skew is direct evidence, which is exactly why the next lesson's jump-diffusion extension exists.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>N(d₂) is a risk-neutral probability, not a real-world one.</strong> It's computed as if every asset drifted at the risk-free rate — conflating the two is a classic source of "mispriced option" claims that are really just this confusion.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Continuous, frictionless rebalancing is an idealization.</strong> Real dealers rehedge in discrete steps and pay costs — the gap between the model and real rehedging is itself a source of the walls and squeezes the OI course studies.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why doesn't the underlying's real-world expected return \(\mu\) appear anywhere in the Black-Scholes formula, even though it's part of the assumed GBM model of the underlying?</summary>

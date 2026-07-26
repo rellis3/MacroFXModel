@@ -32,6 +32,7 @@
   </ul>
 </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     The Black-Scholes-Merton model (the previous lesson) prices options by assuming
@@ -71,6 +72,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>A calm river with the occasional flash flood</h3>
     <p>
@@ -165,6 +167,7 @@
     </div>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     Recall the Black-Scholes world describes the underlying's price as geometric
@@ -176,6 +179,11 @@
   <div class="tl-math">
     \[ \frac{dS_t}{S_t} = \mu\,dt + \sigma\,dW_t \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>μdt</code><span>the ordinary continuous drift — a deterministic average direction</span></div>
+    <div class="tl-eq-chip c2"><code>σdW_t</code><span>continuous Brownian noise — smooth, never a break in the path</span></div>
+    <div class="tl-eq-chip c3"><code>dS_t/S_t</code><span>the instantaneous percentage return over \(dt\)</span></div>
+  </div>
   <p>
     Merton's move is to add one more term to the right-hand side — a jump term
     \(dJ_t\) — that is zero almost all the time and occasionally, at random
@@ -184,6 +192,31 @@
   <div class="tl-math">
     \[ \frac{dS_t}{S_{t^-}} = \mu\,dt + \sigma\,dW_t + dJ_t \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>dJ_t</code><span>the jump term — zero almost always, a sudden jolt rarely</span></div>
+    <div class="tl-eq-chip c2"><code>λ</code><span>jump intensity — how often jumps arrive</span></div>
+    <div class="tl-eq-chip c3"><code>μ_J, σ_J</code><span>mean and spread of the lognormal jump size</span></div>
+    <div class="tl-eq-chip c4"><code>S_t⁻</code><span>the price just before a jump — returns measure off the pre-jump level</span></div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">μdt + σdW_t</div>
+      <div class="tl-fp-name">Ordinary diffusion</div>
+      <div class="tl-fp-desc">The exact same continuous drift-plus-noise Black-Scholes already assumes — smooth, never a break</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">dJ_t</div>
+      <div class="tl-fp-name">The new jump term</div>
+      <div class="tl-fp-desc">Zero on almost every instant; a sudden multiplicative jolt on the rare instant a jump lands</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">λ, μ_J, σ_J</div>
+      <div class="tl-fp-name">What controls the jump</div>
+      <div class="tl-fp-desc">How often a jump arrives (λ), and its average size and variability once it does (μ_J, σ_J)</div>
+    </div>
+  </div>
+
   <p>
     The only new object here is \(dJ_t\), and everything about the model's added
     power lives in how that term is constructed. It is built from two separate
@@ -288,6 +321,12 @@
   <div class="tl-math">
     \[ C_{\text{Merton}} = \sum_{n=0}^{\infty} \frac{e^{-\lambda' T}(\lambda' T)^n}{n!} \; C_{\text{BS}}\!\left(S, K, T, r, \sigma_n\right) \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>e^{-λ'T}(λ'T)^n/n!</code><span>Poisson probability of exactly n jumps before expiry</span></div>
+    <div class="tl-eq-chip c2"><code>C_BS(·,σ_n)</code><span>the ordinary Black-Scholes price, at a volatility bumped up for n jumps</span></div>
+    <div class="tl-eq-chip c3"><code>λ'</code><span>λ adjusted for the jump-risk premium in Merton's derivation</span></div>
+    <div class="tl-eq-chip c4"><code>Σ over n</code><span>a probability-weighted average across every possible jump count</span></div>
+  </div>
   <p>
     Reading this without grinding through the derivation: the term
     \(\frac{e^{-\lambda' T}(\lambda' T)^n}{n!}\) is just the ordinary Poisson
@@ -310,6 +349,7 @@
   </p>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>NFP Friday versus an average Tuesday</h3>
     <p>
@@ -360,6 +400,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Full closed-form Merton jump-diffusion pricing shows up less often in modern
@@ -378,6 +419,25 @@
     same jump-risk reality without ever fitting \(\lambda, \mu_J, \sigma_J\)
     explicitly.
   </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📐</div>
+      <h4>Local / stochastic-vol &amp; Lévy models</h4>
+      <p>Calibrated directly to the observed smile/skew rather than assumed from theory — Merton's is the earliest, simplest member of the broader Lévy-process family that mixes continuous and jump components.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🗣️</div>
+      <h4>Quoting "event vol" directly</h4>
+      <p>Desks mark separate implied vols for the days around known releases versus the base term structure — a purely empirical, model-light way to respect jump risk without ever fitting \(\lambda,\mu_J,\sigma_J\).</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">↕️</div>
+      <h4>Kou's double-exponential model</h4>
+      <p>A widely cited 2002 refinement swapping Merton's symmetric lognormal jump size for an asymmetric double-exponential one — separate, independently tunable up-jump and down-jump parameters.</p>
+    </div>
+  </div>
+
   <p>
     Where the explicit jump-diffusion machinery is used directly: single-name
     equity and index options around known binary events (earnings, drug-trial
@@ -405,6 +465,7 @@
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this could plug into MacroFXModel</div>
     <h3>The theory behind fat tails this repo already measures — and a very concrete practical echo</h3>
     <p>
@@ -469,6 +530,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where jump-diffusion thinking is misused or overextended</h3>
     <p>
@@ -525,6 +587,19 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Merton bolts a jump onto GBM.</strong> A Poisson-driven jump term \(dJ_t\) is added to ordinary geometric Brownian motion so the model can finally admit real discontinuities — like an NFP gap — that a continuous-path process assigns near-zero probability.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Three parameters drive the jump.</strong> \(\lambda\) is jump intensity (how often), \(\mu_J\) and \(\sigma_J\) are the mean and spread of the lognormal jump size (how big, once one happens).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Mixing jumps into diffusion produces excess kurtosis.</strong> A taller, narrower center (most days have no jump) plus fatter tails (the rare days that do) — leptokurtosis, not just a wider normal curve.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Jump risk is one of the two classical explanations for the volatility smile.</strong> A flat-\(\sigma\) Black-Scholes model underprices deep out-of-the-money strikes that only pay off on a genuine jump; the market corrects with higher implied vol at the wings.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo already catches the empirical symptom.</strong> <code>js/metricsCore.js</code>'s <code>skewness</code>, <code>excessKurtosis</code>, <code>histVaR</code>, and <code>histCVaR</code> measure fat tails in a real trade-return series without ever fitting a parametric jump model.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This repo does not fit a jump-diffusion model or price options anywhere.</strong> This lesson is concept-only — a theory background page, not a description of existing code.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Fat tails alone are not proof a jump model would help.</strong> High <code>excessKurtosis</code> in a trade-return series confirms the symptom jump risk predicts; it is not, by itself, evidence that building a parametric jump model would improve anything OOS.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does a pure Black-Scholes model systematically underprice deep out-of-the-money options relative to a market that has genuine jump risk?</summary>

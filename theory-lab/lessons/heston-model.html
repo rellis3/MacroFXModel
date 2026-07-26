@@ -33,6 +33,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     The Black-Scholes-Merton model prices an option by assuming the underlying
@@ -72,6 +73,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>Weather that has its own weather</h3>
     <p>
@@ -100,6 +102,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     Recall plain Black-Scholes describes the underlying with one stochastic
@@ -117,6 +120,10 @@
   <div class="tl-math">
     \[ dS_t = \mu S_t\,dt + \sqrt{v_t}\,S_t\,dW_t^{1} \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>√v_t</code><span>replaces the constant σ — now itself a random process</span></div>
+    <div class="tl-eq-chip c2"><code>dW_t¹</code><span>the Brownian shock driving price</span></div>
+  </div>
   <p>
     That one change of notation — \(\sigma \to \sqrt{v_t}\) — is the entire
     conceptual leap. Volatility is no longer a parameter you plug in once; it is
@@ -127,12 +134,32 @@
   <div class="tl-math">
     \[ dv_t = \kappa(\theta - v_t)\,dt + \xi\sqrt{v_t}\,dW_t^{2} \]
   </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">κ(θ − v_t)</div>
+      <div class="tl-fp-name">Mean reversion</div>
+      <div class="tl-fp-desc">Pulls variance back toward its long-run level θ at speed κ</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">ξ√v_t</div>
+      <div class="tl-fp-name">Vol of vol</div>
+      <div class="tl-fp-desc">How large variance's own random wiggles are, scaled by √v_t (CIR)</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">dW_t²</div>
+      <div class="tl-fp-name">Variance's own shock</div>
+      <div class="tl-fp-desc">Separate randomness from price's dW_t¹ — but correlated via ρ</div>
+    </div>
+  </div>
   <p>
     and, tying the two equations together, specifies that the two Brownian
     motions driving them are correlated:
   </p>
   <div class="tl-math">
     \[ \mathrm{Corr}(dW_t^{1}, dW_t^{2}) = \rho \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>ρ</code><span>the leverage-effect parameter — usually negative in FX/equities</span></div>
   </div>
   <p>
     Every symbol, spelled out:
@@ -166,6 +193,10 @@
   </p>
   <div class="tl-math">
     \[ dX_t = \kappa(\mu - X_t)\,dt + \sigma\,dW_t \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>κ(μ−X_t)</code><span>same "rubber band" pull toward a long-run mean μ</span></div>
+    <div class="tl-eq-chip c3"><code>X_t</code><span>here a generic price/spread — variance is just a different X_t</span></div>
   </div>
   <p>
     The structure is identical: a term that pulls the process back toward a
@@ -300,6 +331,7 @@
   </p>
 
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
     <h3>Why out-of-the-money puts are structurally more expensive than a flat-σ model says they should be</h3>
     <p>
@@ -345,6 +377,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Heston is one of the most widely implemented stochastic-volatility models
@@ -379,6 +412,7 @@
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this could plug into MacroFXModel</div>
     <h3>Continuous-time cousin of the GARCH sigma this repo already runs — and no options module to connect it to</h3>
     <p>
@@ -437,6 +471,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where Heston-style thinking is misused or overextended</h3>
     <p>
@@ -488,6 +523,19 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Heston replaces one constant σ with a second random process \(v_t\).</strong> Instantaneous variance mean-reverts toward θ at speed κ, with its own noise \(\xi\sqrt{v_t}\,dW_t^2\) — a CIR-type process.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The variance SDE is OU mean-reversion, just pointed at variance.</strong> Same "rubber band" drift as the Ornstein-Uhlenbeck lesson, with one tweak (√v_t scaling) that keeps variance non-negative.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The correlation ρ is the whole story behind the smile.</strong> A negative ρ (the leverage effect) makes down-moves disproportionately likely to coincide with a vol spike, fattening the left tail and pricing OTM puts higher than at-the-money.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Set ρ=0 and ξ→0 and Heston collapses back to flat Black-Scholes.</strong> The smile is earned specifically by ξ≠0 (variance actually moves) combined with ρ≠0 (that movement is linked to price direction).</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Prices need a semi-closed-form numerical step, not simple algebra.</strong> Naive characteristic-function implementations are known to hit branch-cut discontinuities that silently misprice for some parameter combinations.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A good smile fit is curve-fitting by construction, not a validated edge.</strong> Calibrating Heston to today's option prices says nothing, by itself, about whether a strategy built on it would show real edge out-of-sample.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This repo has no options-pricing module at all.</strong> This lesson is pure theory background — a continuous-time cousin of the GARCH sigma already running in <code>js/volBacktestEngine.js</code>, not a description of existing code.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why can constant-σ Black-Scholes never generate a volatility smile at all, structurally, regardless of what σ value is chosen?</summary>

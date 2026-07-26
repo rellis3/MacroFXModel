@@ -33,6 +33,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     Every strategy in this repo, so far, answers a single-instrument question:
@@ -62,6 +63,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>Not "how much do I own," but "how much do I own <em>together</em>"</h3>
     <p>
@@ -95,6 +97,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     This builds directly on the matrix-vector notation from the Linear
@@ -113,6 +116,11 @@
   </p>
   <div class="tl-math">
     \[ E[R_p] = \sum_{i=1}^{N} w_i\, E[R_i] \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>wᵢ</code><span>the fraction of the portfolio held in instrument i</span></div>
+    <div class="tl-eq-chip c2"><code>E[Rᵢ]</code><span>your belief about instrument i's expected return</span></div>
+    <div class="tl-eq-chip c3"><code>E[R_p] = w^T μ</code><span>portfolio expected return — a dot product of weights and the expected-return vector</span></div>
   </div>
   <p>
     Nothing subtle here — if you're 60% long EURUSD with an expected return of
@@ -135,6 +143,11 @@
   <div class="tl-math">
     \[ \text{Var}(R_p) = w^\top \Sigma w \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>w</code><span>portfolio weight vector</span></div>
+    <div class="tl-eq-chip c2"><code>Σ</code><span>covariance matrix of instrument returns</span></div>
+    <div class="tl-eq-chip c3"><code>w^T Σ w</code><span>portfolio variance — a quadratic form, not an average</span></div>
+  </div>
   <p>
     Read this the same way the Linear Algebra lesson reads \(Av\): first
     \(\Sigma w\) is the covariance matrix acting on the weight vector — a new
@@ -146,6 +159,11 @@
   </p>
   <div class="tl-math">
     \[ \text{Var}(R_p) = w_1^2 \sigma_1^2 + w_2^2 \sigma_2^2 + 2 w_1 w_2\, \text{Cov}(R_1, R_2) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>w₁²σ₁², w₂²σ₂²</code><span>each instrument's own variance, scaled by its weight squared</span></div>
+    <div class="tl-eq-chip c2"><code>2w₁w₂Cov(R₁,R₂)</code><span>the cross term — where diversification benefit actually lives</span></div>
+    <div class="tl-eq-chip c4"><code>sign</code><span>can be negative — a negative covariance actively subtracts from portfolio variance</span></div>
   </div>
   <p>
     The first two terms are exactly what you'd expect — each instrument's own
@@ -247,6 +265,31 @@
   <div class="tl-math">
     \[ \Pi = \delta\, \Sigma\, w_{mkt} \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Π</code><span>(capital pi) the equilibrium expected-return vector — the Bayesian prior</span></div>
+    <div class="tl-eq-chip c2"><code>δ</code><span>risk-aversion scalar, calibrated from the market portfolio's own return/variance</span></div>
+    <div class="tl-eq-chip c3"><code>Σ w_mkt</code><span>the same covariance-acting-on-weights operation from Step 2, run in reverse</span></div>
+    <div class="tl-eq-chip c4"><code>w_mkt</code><span>current market-equilibrium (or flow/position) weights</span></div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">Σ w_mkt</div>
+      <div class="tl-fp-name">The market's own risk</div>
+      <div class="tl-fp-desc">Covariance acting on today's equilibrium weights, same operation as Step 2's w^TΣw</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">δ</div>
+      <div class="tl-fp-name">The risk-aversion scalar</div>
+      <div class="tl-fp-desc">One number, calibrated from the market portfolio's realized return and variance</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">Π</div>
+      <div class="tl-fp-name">The result</div>
+      <div class="tl-fp-desc">The implied equilibrium expected-return vector — the prior everything else updates</div>
+    </div>
+  </div>
+
   <p>
     where \(w_{mkt}\) is the vector of current market-equilibrium weights and
     \(\delta\) is a single risk-aversion scalar calibrated from the market
@@ -283,6 +326,12 @@
   <div class="tl-math">
     \[ \mu_{\text{post}} = \frac{\mu_0/\sigma_0^2 + \mu_1/\sigma_1^2}{1/\sigma_0^2 + 1/\sigma_1^2}, \qquad \sigma_{\text{post}}^2 = \frac{1}{1/\sigma_0^2 + 1/\sigma_1^2} \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>μ₀, σ₀²</code><span>the prior estimate and its variance (uncertainty)</span></div>
+    <div class="tl-eq-chip c2"><code>μ₁, σ₁²</code><span>the new estimate — the view — and its own variance</span></div>
+    <div class="tl-eq-chip c3"><code>1/σ²</code><span>precision — inverse variance; each side pulls in proportion to it</span></div>
+    <div class="tl-eq-chip c4"><code>μ_post</code><span>the precision-weighted blended posterior mean</span></div>
+  </div>
   <p>
     Each side's pull on the posterior mean is weighted by its own precision —
     a low-uncertainty estimate (small variance, large \(1/\sigma^2\)) pulls
@@ -298,6 +347,12 @@
   </p>
   <div class="tl-math">
     \[ E[R]_{BL} = \left[(\tau\Sigma)^{-1} + P^\top \Omega^{-1} P\right]^{-1} \left[(\tau\Sigma)^{-1}\Pi + P^\top \Omega^{-1} Q\right] \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>τΣ</code><span>the prior's uncertainty — a scaling of the covariance matrix</span></div>
+    <div class="tl-eq-chip c2"><code>P, Q</code><span>the pick matrix (which instruments each view touches) and the view-return vector</span></div>
+    <div class="tl-eq-chip c3"><code>Ω</code><span>(capital omega) the confidence matrix — how sure the investor is in each view</span></div>
+    <div class="tl-eq-chip c4"><code>E[R]_BL</code><span>the posterior expected-return vector actually fed to the optimizer</span></div>
   </div>
   <p>
     where \(Q\) is the vector of view returns ("EURUSD outperforms GBPUSD by
@@ -340,6 +395,7 @@
   </table></div>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>How small an input change it takes to flip the optimizer's answer</h3>
     <p>
@@ -501,6 +557,7 @@
   </div>
 
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
     <h3>One modest AUD/NZD view, two very different portfolios</h3>
     <p>
@@ -543,6 +600,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     In institutional asset management, essentially nobody runs unconstrained
@@ -560,6 +618,24 @@
     expected-return vector entirely, accepting a less "optimal" but far more
     robust allocation.
   </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🧭</div>
+      <h4>Black-Litterman / Bayesian shrinkage</h4>
+      <p>Moderate the expected-return inputs themselves before they ever reach the optimizer — the fix this lesson builds in detail above.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🔒</div>
+      <h4>Hard position &amp; turnover constraints</h4>
+      <p>Cap any single position's weight, or how far the optimizer can move from a benchmark or last period's holdings, regardless of what the raw math wants.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">⚖️</div>
+      <h4>Risk-parity / minimum-variance-only</h4>
+      <p>Skip the fragile expected-return vector entirely and optimize only on the comparatively stable covariance matrix — less "optimal," far more robust.</p>
+    </div>
+  </div>
   <p>
     Black-Litterman specifically is widely used at multi-asset and
     macro-overlay desks for exactly the reason built up above: it lets a
@@ -579,6 +655,7 @@
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this could plug into MacroFXModel</div>
     <h3>A real, currently-missing formal portfolio-construction layer</h3>
     <p>
@@ -634,6 +711,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where Markowitz/Black-Litterman goes wrong in practice</h3>
     <p>
@@ -691,6 +769,19 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Portfolio variance is a quadratic form, \(w^\top \Sigma w\), not a weighted average.</strong> The cross-covariance terms are exactly where diversification benefit — or its absence — actually lives.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The efficient frontier traces the minimum-variance combination at every target return.</strong> Its leftmost point, the minimum-variance portfolio, is the lowest achievable risk regardless of what return it happens to carry.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Markowitz's optimizer is extremely sensitive to the expected-return inputs specifically.</strong> A fraction-of-a-percent forecast nudge can flip "optimal" weights into extreme long/short corners — the well-documented "error-maximization" flaw.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Black-Litterman fixes this by starting from a market-equilibrium prior.</strong> \(\Pi = \delta\Sigma w_{mkt}\), Bayesian-blended with a handful of confidence-weighted investor views, replaces the fragile raw forecast vector.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Nobody runs unconstrained naive Markowitz in practice.</strong> Real desks use Black-Litterman or similar shrinkage, hard position/turnover constraints, or skip expected returns entirely with risk-parity/min-variance-only portfolios.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>None of this is built in this repo yet.</strong> Every strategy here is single-instrument; a portfolio-construction layer would be genuinely new infrastructure, not a quick extension of the existing diversification tooling.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Black-Litterman moderates the optimizer's instability — it does not validate the view.</strong> A confidently-stated but wrong view still pulls the posterior in the wrong direction; the model just prevents that pull from becoming an absurd position size.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does portfolio variance, \(w^\top \Sigma w\), depend on more than just each instrument's own variance and its weight?</summary>

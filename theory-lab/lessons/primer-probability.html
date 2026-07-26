@@ -33,6 +33,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     The Bayesian Inference lesson in this series talks about "the probability
@@ -63,6 +64,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>A random variable is just a number you don't know yet, attached to rules you do</h3>
     <p>
@@ -91,6 +93,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     Start from the ground up. A <strong>sample space</strong>, written
@@ -133,6 +136,23 @@
     it is:
   </p>
   <div class="tl-math">\[ E[X] = \sum_i x_i \, P(X = x_i) \]</div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">xᵢ</div>
+      <div class="tl-fp-name">Each possible value</div>
+      <div class="tl-fp-desc">Every outcome X could take</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">P(X=xᵢ)</div>
+      <div class="tl-fp-name">Its weight</div>
+      <div class="tl-fp-desc">How likely that value is</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">E[X]</div>
+      <div class="tl-fp-name">The result</div>
+      <div class="tl-fp-desc">The probability-weighted average — "the long-run typical value"</div>
+    </div>
+  </div>
   <p>
     Read the right-hand side literally: for every possible outcome \(x_i\),
     multiply it by the probability of that outcome, then add up all those
@@ -152,6 +172,11 @@
     of the squared distance between \(X\) and its own mean:
   </p>
   <div class="tl-math">\[ Var(X) = E\big[(X - E[X])^2\big] \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>X − E[X]</code><span>a value's distance from the true mean</span></div>
+    <div class="tl-eq-chip c3"><code>E[·]</code><span>weight each squared distance by its probability</span></div>
+    <div class="tl-eq-chip c4"><code>Var(X)</code><span>the resulting typical squared spread</span></div>
+  </div>
   <p>
     This is the direct population-level counterpart of the sample-variance
     formula from the Descriptive Statistics primer — \(\frac{1}{n}\sum_i (x_i
@@ -167,6 +192,10 @@
     is:
   </p>
   <div class="tl-math">\[ Var(X) = E[X^2] - \big(E[X]\big)^2 \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>E[X²]</code><span>the expectation of the squared value</span></div>
+    <div class="tl-eq-chip c4"><code>(E[X])²</code><span>the square of the plain expectation</span></div>
+  </div>
   <p>
     "The expectation of the square, minus the square of the expectation." This
     is usually the faster way to compute variance by hand, and it's the
@@ -182,6 +211,10 @@
     about whether the other happened — formally, if:
   </p>
   <div class="tl-math">\[ P(A \cap B) = P(A)\,P(B) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>A ∩ B</code><span>the event "A and B both happen"</span></div>
+    <div class="tl-eq-chip c2"><code>P(A)P(B)</code><span>their individual probabilities, simply multiplied</span></div>
+  </div>
   <p>
     Compare this to the conditional-probability definition from the Bayesian
     Inference lesson, \(P(A \mid B) = P(A \cap B)/P(B)\). Substitute the
@@ -194,6 +227,14 @@
     because it is exactly where naive use of the ideas on this page breaks
     down for financial data.
   </p>
+  <div class="tl-solid amber">
+    <strong>The trap:</strong> the Law of Large Numbers and the Central Limit
+    Theorem below both quietly assume independence. Volatility clustering
+    means financial returns routinely violate that assumption — so borrowing
+    CLT-flavored "returns are approximately normal" reasoning is a defensible
+    starting point, not a guarantee, and it breaks down worst exactly during
+    the volatility spikes where getting it right matters most.
+  </div>
   <div class="tl-symbols">
     <table>
       <tr><td>\(\Omega\)</td><td>The <strong>sample space</strong> — the set of every possible outcome of an uncertain process.</td></tr>
@@ -217,6 +258,11 @@
     converges to the true expectation:
   </p>
   <div class="tl-math">\[ \bar{X}_n \xrightarrow{\;n \to \infty\;} E[X] \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>X̄ₙ</code><span>the sample average of n independent draws</span></div>
+    <div class="tl-eq-chip c3"><code>n → ∞</code><span>as the number of draws grows without bound</span></div>
+    <div class="tl-eq-chip c4"><code>E[X]</code><span>the true, theoretical mean it converges to</span></div>
+  </div>
   <p>
     In plain words: the more times you repeat an uncertain process and
     average the results, the closer that observed average gets to the true,
@@ -240,6 +286,11 @@
     variance \(Var(X)/n\):
   </p>
   <div class="tl-math">\[ \bar{X}_n \;\approx\; \mathcal{N}\!\left(E[X],\; \frac{Var(X)}{n}\right) \quad \text{for large } n \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>N(·,·)</code><span>a normal distribution, regardless of X's own shape</span></div>
+    <div class="tl-eq-chip c2"><code>E[X]</code><span>where the resulting bell curve centers</span></div>
+    <div class="tl-eq-chip c4"><code>Var(X)/n</code><span>its variance — shrinking as n grows</span></div>
+  </div>
   <p>
     This is a genuinely surprising claim: the individual \(X_i\) can be
     lopsided, skewed, bounded, discrete, or shaped nothing like a bell curve
@@ -385,6 +436,7 @@
   </div>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Expectation and variance of a fair six-sided die, computed by hand</h3>
     <p>
@@ -426,7 +478,38 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
+  <p>
+    Expectation, variance, the LLN and the CLT are not abstractions confined
+    to a textbook — they're the working vocabulary behind four entirely
+    different fields, each leaning on a different piece of the same
+    machinery:
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🏦</div>
+      <h4>Insurance &amp; actuarial pricing</h4>
+      <p>Prices a policy near the expected payout plus a margin, relying on the LLN across thousands of independent policyholders to make the average payout predictable in aggregate.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🏭</div>
+      <h4>Quality control &amp; manufacturing</h4>
+      <p>Uses the CLT directly: a sample of n parts is measured, and the sample average is assumed approximately normal regardless of any single part's error distribution.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🗳️</div>
+      <h4>Polling &amp; survey statistics</h4>
+      <p>A poll's margin of error is a CLT-derived confidence interval around a sample proportion — itself an average of many independent 0/1 random variables.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📈</div>
+      <h4>Quantitative finance</h4>
+      <p>Expectation and variance are the literal inputs to mean-variance optimization; the CLT justifies treating an aggregated return as approximately normal before GARCH-style corrections.</p>
+    </div>
+  </div>
+
   <p>
     <strong>Insurance and actuarial pricing</strong> is the oldest applied use
     of expectation: an insurer prices a policy near the expected payout (a
@@ -456,6 +539,7 @@
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
     <h3>Background literacy, not a specific module</h3>
     <p>
@@ -490,6 +574,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where these ideas quietly get misapplied</h3>
     <p>
@@ -549,6 +634,19 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A random variable is a rule-governed unknown.</strong> It maps outcomes in a sample space to numbers — a return, a P&amp;L, a day-type flag are all random variables in this precise sense.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Expectation is a probability-weighted average.</strong> \(E[X]=\sum_i x_i P(X=x_i)\) generalizes the plain sample mean to the case where outcomes aren't equally likely.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Variance is the same spread idea, at the population level.</strong> \(Var(X)=E[X^2]-(E[X])^2\) is the theoretical counterpart of the sample-variance formula from the Descriptive Statistics primer.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The Law of Large Numbers guarantees convergence, eventually.</strong> A sample average approaches the true \(E[X]\) as \(n\to\infty\) — but says nothing about how close it is at any small, fixed \(n\), which is exactly why this repo requires ≥30 OOS trades before trusting a Sharpe number.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The CLT explains why sums look normal.</strong> The average of many independent copies of almost any random variable — even a flat die roll — approaches a normal distribution as \(n\) grows, which is why so many aggregated financial quantities look roughly bell-shaped.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The CLT's guarantee depends on independence.</strong> Daily financial returns violate it via volatility clustering — big moves cluster in time rather than scattering independently — which is exactly why "assume normal, then correct" (GARCH) is the honest framing, not "assume normal, done."</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Variance alone hides skew.</strong> It penalizes upside and downside deviations identically, which understates the risk that actually matters for a strategy with a lopsided return distribution.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. What is a random variable, formally — and why is "the outcome of a die roll" itself not quite a precise enough answer?</summary>

@@ -32,6 +32,7 @@
   </ul>
 </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     This repo already behaves as if trading costs real money in a way that
@@ -65,6 +66,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>The market maker's dilemma: who am I actually trading against?</h3>
     <p>
@@ -109,6 +111,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     Two separate results are covered here, in the order they build on each
@@ -167,8 +170,18 @@
   <div class="tl-math">
     \[ P(\text{buy}\mid V_H) = \alpha\cdot 1 + (1-\alpha)\cdot\tfrac12 = \frac{1+\alpha}{2} \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>P(buy | V_H)</code><span>chance of seeing a buy if the asset is really worth more</span></div>
+    <div class="tl-eq-chip c2"><code>α·1</code><span>informed traders always buy in this state</span></div>
+    <div class="tl-eq-chip c3"><code>(1−α)·½</code><span>noise traders buy half the time regardless of value</span></div>
+  </div>
   <div class="tl-math">
     \[ P(\text{buy}\mid V_L) = \alpha\cdot 0 + (1-\alpha)\cdot\tfrac12 = \frac{1-\alpha}{2} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>P(buy | V_L)</code><span>chance of seeing a buy if the asset is really worth less</span></div>
+    <div class="tl-eq-chip c1"><code>α·0</code><span>an informed trader never buys when they know it's overvalued</span></div>
+    <div class="tl-eq-chip c2"><code>(1−α)·½</code><span>only noise traders can produce this buy</span></div>
   </div>
   <p>
     Read the first line: if \(V\) is truly high, a buy order arrives either
@@ -190,6 +203,11 @@
   </p>
   <div class="tl-math">
     \[ P(V_H \mid \text{buy}) = \frac{P(\text{buy}\mid V_H)\,P(V_H)}{P(\text{buy})} = \frac{1+\alpha}{2} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>P(V_H | buy)</code><span>the posterior — updated belief that value is high, after seeing a buy</span></div>
+    <div class="tl-eq-chip c1"><code>P(V_H)</code><span>the flat 50% prior before any order arrives</span></div>
+    <div class="tl-eq-chip c4"><code>P(buy)</code><span>the normalizer, which works out to exactly ½</span></div>
   </div>
   <p>
     Before the order, the market maker's belief was a flat 50/50 on \(V_H\)
@@ -215,6 +233,10 @@
   <div class="tl-math">
     \[ \text{Ask} = E[V\mid\text{buy}] = \frac{1+\alpha}{2}V_H + \frac{1-\alpha}{2}V_L \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Ask</code><span>the price a market maker will sell at, set by zero-expected-profit</span></div>
+    <div class="tl-eq-chip c2"><code>E[V | buy]</code><span>expected fundamental value, given a buy just arrived</span></div>
+  </div>
   <p>
     By the exact mirror-image argument (a sell order shifts belief toward
     \(V_L\) by the same logic), the bid is:
@@ -222,12 +244,21 @@
   <div class="tl-math">
     \[ \text{Bid} = E[V\mid\text{sell}] = \frac{1+\alpha}{2}V_L + \frac{1-\alpha}{2}V_H \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>Bid</code><span>the price a market maker will buy at, the mirror image of the Ask</span></div>
+    <div class="tl-eq-chip c4"><code>E[V | sell]</code><span>expected fundamental value, given a sell just arrived</span></div>
+  </div>
   <p>
     Subtract one from the other and almost everything cancels, leaving a
     remarkably clean result:
   </p>
   <div class="tl-math">
     \[ \text{Spread} = \text{Ask} - \text{Bid} = \alpha\,(V_H - V_L) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Spread</code><span>Ask minus Bid — the protective gap that survives adverse selection</span></div>
+    <div class="tl-eq-chip c2"><code>α</code><span>share of order flow believed informed</span></div>
+    <div class="tl-eq-chip c3"><code>V_H − V_L</code><span>total fundamental-value uncertainty</span></div>
   </div>
   <p>
     The spread is exactly the fraction of informed trading, \(\alpha\), times
@@ -258,6 +289,30 @@
   <div class="tl-math">
     \[ \Delta p = \lambda\, Q \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Δp</code><span>price impact — how far the price moves as a result</span></div>
+    <div class="tl-eq-chip c2"><code>λ</code><span>Kyle's Lambda — price moved per unit of order flow</span></div>
+    <div class="tl-eq-chip c3"><code>Q</code><span>signed order flow — bigger and more one-sided moves price more</span></div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">Δp</div>
+      <div class="tl-fp-name">Price impact</div>
+      <div class="tl-fp-desc">How far the price moves as a direct result of the order</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">λ</div>
+      <div class="tl-fp-name">Kyle's Lambda</div>
+      <div class="tl-fp-desc">Price-impact coefficient — the object the whole model exists to explain</div>
+    </div>
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">Q</div>
+      <div class="tl-fp-name">Signed order flow</div>
+      <div class="tl-fp-desc">Positive for net buying, negative for net selling, bigger for a bigger order</div>
+    </div>
+  </div>
+
   <div class="tl-symbols"><table>
     <tr><td>\(Q\)</td><td>The <strong>signed order flow</strong> — positive for net buying, negative for net selling, and larger in magnitude for a bigger order (or a bigger net imbalance of orders over some window).</td></tr>
     <tr><td>\(\Delta p\)</td><td>The resulting <strong>price impact</strong> — how far the price moves away from where it was, as a direct consequence of that order flow.</td></tr>
@@ -285,6 +340,11 @@
   <div class="tl-math">
     \[ \lambda = \frac{\sigma_v}{2\,\sigma_u} \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>λ</code><span>Kyle's Lambda — price-impact coefficient, and inverse of market depth</span></div>
+    <div class="tl-eq-chip c4"><code>σ_v</code><span>fundamental-value uncertainty — more of it means more for an insider to know</span></div>
+    <div class="tl-eq-chip c1"><code>σ_u</code><span>noise-trading depth — more of it dilutes the informed share</span></div>
+  </div>
   <p>
     Read this the way the model intends: \(\lambda\) rises when \(\sigma_v\)
     is large (a lot of fundamental uncertainty — there's more for an insider
@@ -306,6 +366,7 @@
   </p>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Computing a spread and a price impact by hand</h3>
     <p>
@@ -318,8 +379,14 @@
     <div class="tl-math">
       \[ \alpha=0.3:\quad \text{Ask}=0.65(101)+0.35(99)=100.30,\quad \text{Bid}=0.35(101)+0.65(99)=99.70,\quad \text{Spread}=0.60 \]
     </div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>α=0.3</code><span>lower informed-trading belief → narrower spread, 0.60</span></div>
+    </div>
     <div class="tl-math">
       \[ \alpha=0.6:\quad \text{Ask}=0.80(101)+0.20(99)=100.60,\quad \text{Bid}=0.20(101)+0.80(99)=99.40,\quad \text{Spread}=1.20 \]
+    </div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c3"><code>α=0.6</code><span>double the informed-trading belief → spread exactly doubles, to 1.20</span></div>
     </div>
     <p>
       Exactly as the formula \(\text{Spread}=\alpha(V_H-V_L)\) predicts:
@@ -338,12 +405,20 @@
     <div class="tl-math">
       \[ \text{Liquid: } \lambda = \frac{2}{2(100)} = 0.01 \qquad\qquad \text{Thin: } \lambda' = \frac{2}{2(20)} = 0.05 \]
     </div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>σ_u=100</code><span>liquid session — deep noise-trading volume → low λ=0.01</span></div>
+      <div class="tl-eq-chip c4"><code>σ_u=20</code><span>thin session — a fifth the depth → λ five times higher, 0.05</span></div>
+    </div>
     <p>
       Now push the <em>same</em> order, \(Q=500\) units, through both
       regimes:
     </p>
     <div class="tl-math">
       \[ \text{Liquid: } \Delta p = 0.01 \times 500 = \$5 \qquad\qquad \text{Thin: } \Delta p' = 0.05 \times 500 = \$25 \]
+    </div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c2"><code>Q=500 (both)</code><span>the exact same order size in both regimes</span></div>
+      <div class="tl-eq-chip c1"><code>$5 vs $25</code><span>same order, five-fold cost gap — purely a function of λ</span></div>
     </div>
     <p>
       Identical order, five times the price impact, purely because the thin
@@ -392,6 +467,7 @@
     </div>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Nobody at a real trading desk solves the Glosten-Milgrom Bayesian update
@@ -399,28 +475,36 @@
     both models motivate, and what desks do use constantly, is a small set of
     execution habits that only make sense once you understand adverse
     selection and price impact are real, quantifiable forces rather than
-    vague folklore: (1) <strong>widening quoted spreads mechanically around
-    scheduled information events</strong> — a market maker quoting FX pairs
-    ahead of a central bank rate decision or a jobs report widens because they
-    know \(\alpha\), the informed-trading share, is about to spike as
-    participants trade on leaked or fast-processed information; (2)
-    <strong>slicing large orders over time</strong> (algorithms like TWAP,
-    VWAP, and implementation-shortfall schedules exist specifically to avoid
-    dumping one large \(Q\) into the market at once, since \(\Delta p = \lambda
-    Q\) says a single big clip costs more, in total, than the same size spread
-    across many smaller clips that each let the market partially absorb and
-    recover); and (3) <strong>estimating \(\lambda\) empirically</strong> —
-    the microstructure literature runs exactly the regression the formula
-    suggests, \(\Delta p_t = \lambda\, Q_t + \varepsilon_t\), on real trade or
-    bar data, to get a live, asset- and regime-specific estimate of price
-    impact rather than relying on a textbook constant. All three habits are
-    the same underlying idea in different clothes: informed-trading risk and
-    thin liquidity both raise the true cost of demanding immediacy, and a
-    disciplined desk prices that cost in rather than discovering it the hard
-    way in a bad fill.
+    vague folklore:
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📅</div>
+      <h4>1. Widen quoted spreads around scheduled information events</h4>
+      <p>A market maker quoting FX pairs ahead of a central bank rate decision or a jobs report widens mechanically because they know \(\alpha\), the informed-trading share, is about to spike as participants trade on leaked or fast-processed information.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">✂️</div>
+      <h4>2. Slice large orders over time</h4>
+      <p>Algorithms like TWAP, VWAP, and implementation-shortfall schedules exist specifically to avoid dumping one large \(Q\) into the market at once, since \(\Delta p = \lambda Q\) says a single big clip costs more, in total, than the same size spread across many smaller clips that each let the market partially absorb and recover.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📐</div>
+      <h4>3. Estimate \(\lambda\) empirically</h4>
+      <p>The microstructure literature runs exactly the regression the formula suggests, \(\Delta p_t = \lambda\, Q_t + \varepsilon_t\), on real trade or bar data, to get a live, asset- and regime-specific estimate of price impact rather than relying on a textbook constant.</p>
+    </div>
+  </div>
+
+  <p>
+    All three habits are the same underlying idea in different clothes:
+    informed-trading risk and thin liquidity both raise the true cost of
+    demanding immediacy, and a disciplined desk prices that cost in rather
+    than discovering it the hard way in a bad fill.
   </p>
 
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
     <h3>The same order, twice — why the London/Asia session gap is where slippage bites</h3>
     <p>
@@ -459,6 +543,7 @@
   </div>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
     <h3>The theory underneath a rule this repo already enforces without citing it</h3>
     <p>
@@ -509,6 +594,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where these models are misread or over-applied</h3>
     <p>
@@ -566,6 +652,19 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The spread exists because of adverse selection, not as a fee.</strong> \(\text{Spread}=\alpha(V_H-V_L)\) — the exact gap a competitive market maker needs to quote so that profits from noise traders offset expected losses to informed traders, leaving zero expected profit.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A trade is itself Bayesian evidence.</strong> Observing a buy shifts the market maker's belief about fundamental value from a flat 50/50 prior toward \(V_H\), even with no public news at all — the order flow is the news.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Kyle's Lambda formalizes why size and depth both matter.</strong> \(\Delta p=\lambda Q\) with \(\lambda=\sigma_v/(2\sigma_u)\) says price impact scales with order size, and the rate it scales at depends on how much noise-trading depth is available to absorb it.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Thin markets mean high \(\lambda\), and high \(\lambda\) means the same order costs more.</strong> A 500-unit order that costs \$5 of impact in a deep market can cost \$25 in a market with a fifth the noise-trading depth — nothing about the order changed, only the depth it landed in.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This is the theoretical "why" behind this repo's cost/fill-realism discipline.</strong> The round-trip spread every backtest pays is, in theory, the adverse-selection premium of Glosten-Milgrom; the extra slippage modeled on stop/breakout entries is a high-\(\lambda\) event — the rules in <code>CLAUDE.md</code> and <code>fill-realism.html</code> were already correct, this lesson just supplies the citation.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>\(\lambda\) is not a fixed constant of an instrument.</strong> It depends on time-varying fundamental uncertainty and time-varying noise-trading depth — the same pair has a low \(\lambda\) at London/NY overlap and a high \(\lambda\) at a thin session transition. A single "typical slippage" number applied at every hour throws that away.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Price impact is not purely linear or purely permanent in reality.</strong> Kyle's straight-line \(\Delta p=\lambda Q\) is a tractable first-order approximation; empirical impact grows sub-linearly at large size (closer to a square-root law), and real trades also carry temporary impact that partially reverts, on top of the model's permanent component.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does a market maker widen the bid-ask spread when they believe a larger fraction of incoming order flow is informed rather than noise?</summary>

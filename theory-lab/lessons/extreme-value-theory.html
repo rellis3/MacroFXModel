@@ -33,6 +33,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
   Every risk number this repo already computes — <code>histVaR</code>, <code>histCVaR</code>,
@@ -58,6 +59,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>You don't need to see a 9.5-magnitude earthquake to model one</h3>
     <p>
@@ -83,6 +85,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
   We'll build this in the order a practitioner actually uses it: first define VaR and CVaR precisely
@@ -99,6 +102,11 @@
   level \(p\), typically 0.95 or 0.99.
   </p>
   <div class="tl-math">\[ \text{VaR}_p(L) = \inf\{ \ell : P(L > \ell) \le 1-p \} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>p</code><span>the confidence level — e.g. 0.99</span></div>
+    <div class="tl-eq-chip c2"><code>ℓ</code><span>the smallest loss threshold satisfying the probability condition</span></div>
+    <div class="tl-eq-chip c4"><code>1−p</code><span>the tail probability you're willing to tolerate exceeding</span></div>
+  </div>
   <p>
   Read this as: "the smallest loss threshold \(\ell\) such that the probability of losing <em>more</em>
   than \(\ell\) is at most \(1-p\)." In plainer words, \(\text{VaR}_{0.99}\) is the loss level you
@@ -111,6 +119,10 @@
   called Expected Shortfall, ES) is built to fix:
   </p>
   <div class="tl-math">\[ \text{CVaR}_p(L) = E[\, L \mid L > \text{VaR}_p(L) \,] \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>E[·]</code><span>the average, not just a single cutoff</span></div>
+    <div class="tl-eq-chip c3"><code>L &gt; VaR_p(L)</code><span>conditioning on already being in the bad tail</span></div>
+  </div>
   <p>
   Read this as: "the <em>average</em> loss, given that you're already in the bad tail beyond
   VaR." Where VaR only marks the threshold, CVaR asks "and once I'm past it, how bad does it typically
@@ -188,6 +200,23 @@
   <div class="tl-math">\[
   P(Y > y \mid X > u) = \left(1 + \xi \frac{y}{\beta}\right)^{-1/\xi}, \qquad y \ge 0
   \]</div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">u, Y</div>
+      <div class="tl-fp-name">Threshold &amp; exceedance</div>
+      <div class="tl-fp-desc">u is the high bar you set; Y = X − u is how far past it an observation lands</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">ξ</div>
+      <div class="tl-fp-name">The shape parameter</div>
+      <div class="tl-fp-desc">The single most important number here — heavy, exponential, or bounded tail</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">β</div>
+      <div class="tl-fp-name">The scale parameter</div>
+      <div class="tl-fp-desc">Controls the spread/magnitude of exceedances, like a standard deviation</div>
+    </div>
+  </div>
   <div class="tl-symbols">
     <table>
       <tr><td>\(u\)</td><td>The threshold — a high loss level you choose (e.g. "the 95th percentile of historical losses"). Everything below it is discarded; only the exceedances above it are used to fit the tail.</td></tr>
@@ -204,29 +233,23 @@
   The shape parameter \(\xi\) is the payload of the whole method — it tells you the qualitative
   <em>kind</em> of tail you're dealing with, not just its scale:
   </p>
-  <ul>
-    <li>
-    <strong>\(\xi > 0\):</strong> a genuinely <strong>heavy, Pareto-type tail</strong> — the probability
-    of exceeding \(y\) decays only <em>polynomially</em> as \(y\) grows (like \(y^{-1/\xi}\)), not
-    exponentially. This is the "fat tail" regime associated with financial returns, insurance losses,
-    and other domains where truly extreme outcomes are rare but not vanishingly, negligibly rare the
-    way they'd be under a Gaussian. The distribution in this regime technically has no finite variance
-    at all once \(\xi \ge 0.5\), and no finite mean once \(\xi \ge 1\) — a formal way of saying "the tail
-    is so heavy that ordinary summary statistics stop being well-defined."
-    </li>
-    <li>
-    <strong>\(\xi = 0\):</strong> the boundary case, where the GPD formula reduces to a simple
-    exponential distribution — exceedances decay at a constant proportional rate, a "medium," textbook
-    tail with no special heaviness.
-    </li>
-    <li>
-    <strong>\(\xi < 0\):</strong> a <strong>bounded tail</strong> — there's a hard finite upper limit to
-    how large an exceedance can get (the distribution has a finite endpoint), regardless of how much
-    data you collect. This shape shows up for physically bounded quantities but is the least common case
-    for financial losses, where there's no structural reason to believe losses are capped at some fixed
-    number.
-    </li>
-  </ul>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge red">📉</div>
+      <h4>ξ &gt; 0 — heavy, Pareto-type tail</h4>
+      <p>The probability of exceeding \(y\) decays only <em>polynomially</em> as \(y\) grows, not exponentially — the "fat tail" regime of financial returns and insurance losses. No finite variance once \(\xi \ge 0.5\), no finite mean once \(\xi \ge 1\) — ordinary summary statistics stop being well-defined.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">➖</div>
+      <h4>ξ = 0 — exponential (boundary)</h4>
+      <p>The GPD formula reduces to a simple exponential distribution — exceedances decay at a constant proportional rate, a "medium," textbook tail with no special heaviness.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🧱</div>
+      <h4>ξ &lt; 0 — bounded tail</h4>
+      <p>A hard finite upper limit to how large an exceedance can get, no matter how much data you collect. Shows up for physically bounded quantities, but is the least common case for financial losses.</p>
+    </div>
+  </div>
   <p>
   Fitting a GPD means estimating \(\xi\) and \(\beta\) from the observed exceedances \(Y_1, \ldots,
   Y_{n_u}\) — typically via maximum likelihood, choosing the \((\xi, \beta)\) pair that makes the
@@ -245,6 +268,11 @@
   <div class="tl-math">\[
   \widehat{\text{VaR}}_p = u + \frac{\beta}{\xi}\left[ \left(\frac{n}{n_u}(1-p)\right)^{-\xi} - 1 \right]
   \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>u</code><span>the threshold you already crossed</span></div>
+    <div class="tl-eq-chip c3"><code>ξ, β</code><span>the fitted tail shape, doing the extrapolating</span></div>
+    <div class="tl-eq-chip c4"><code>n_u/n</code><span>the observed exceedance rate</span></div>
+  </div>
   <p>
   Don't worry about memorizing this formula — the important structural point is what it's built from:
   the threshold \(u\) you already crossed, plus a correction term built entirely from the <em>fitted
@@ -258,6 +286,9 @@
   <div class="tl-math">\[
   \widehat{\text{CVaR}}_p = \frac{\widehat{\text{VaR}}_p}{1-\xi} + \frac{\beta - \xi u}{1-\xi}
   \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>1 − ξ</code><span>valid only for ξ &lt; 1, where the tail has a finite mean</span></div>
+  </div>
   <p>
   The key honesty check, stated plainly and repeated because it's the whole crux of this lesson: every
   quantity in both formulas above is either something you observed (\(u\), \(n\), \(n_u\)) or something
@@ -267,7 +298,14 @@
   example below.
   </p>
 
+  <div class="tl-solid amber">
+    <strong>The honesty check:</strong> everything in these formulas is either observed (\(u\), \(n\),
+    \(n_u\)) or fitted (\(\xi\), \(\beta\)) from a small number of tail points. The further \(p\) sits
+    beyond your data, the more the answer is the fitted shape talking, not anything you actually saw.
+  </div>
+
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Estimating a 1-in-2,000-day loss from two years of daily data</h3>
     <p>
@@ -445,6 +483,7 @@
   })();
   </script>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
   EVT shows up in a fairly specific, disciplined set of roles in real risk management — it is a
@@ -486,6 +525,7 @@
   </ul>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
     <h3>The empirical half is already a Tier-1 brick; the EVT half is a described-not-built next layer</h3>
     <p>
@@ -528,6 +568,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Ways EVT gets over-trusted or misapplied</h3>
     <ul>
@@ -577,6 +618,19 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Historical VaR/CVaR break down far in the tail.</strong> Beyond roughly the 99.5th percentile they're really just reporting the identity of your worst day or two, not a stable estimate.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Peaks-over-threshold (POT) fixes this efficiently.</strong> It discards everything below a high threshold u and fits only the exceedances beyond it — more data-efficient than block maxima, while still isolating tail behavior.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The GPD shape parameter ξ is the payload.</strong> Heavy/Pareto-type (ξ&gt;0), exponential (ξ=0), or bounded (ξ&lt;0) — it tells you the qualitative kind of tail, not just its scale.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A fitted GPD extrapolates — it doesn't measure.</strong> Past your sample, the answer is the fitted shape talking, not anything directly observed, and it's unverifiable at the exact quantile you're extrapolating to.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The empirical half is already a real, tested Tier-1 brick.</strong> <code>js/metricsCore.js</code>'s <code>histVaR</code>/<code>histCVaR</code>/skew/kurtosis ship the honest, assumption-free version of this lesson's core question today.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The GPD/POT layer is deliberately not built here.</strong> Most strategies' trade counts (often under 1,000, some under 100) are far too small to fit ξ reliably — building it now would hide a data-point problem behind fancier math.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Report both numbers together, not one alone.</strong> The gap between the empirical and EVT-extrapolated estimate is itself information about how much you're relying on the model.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why can't you reliably estimate a 1-in-2,000-day VaR from two years (about 500 days) of daily data using the plain historical (empirical quantile) method?</summary>
@@ -663,6 +717,7 @@
   </ul>
   </details>
 
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>You've finished the Theory Lab curriculum</h2>
   <div class="tl-callout">
   That's fourteen lessons — Efficient Markets to Multiple Testing to Hidden Markov Models to, now, the

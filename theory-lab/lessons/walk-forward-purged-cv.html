@@ -33,6 +33,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
   Every lesson in the Applied Statistics &amp; Validation track eventually runs into the same
@@ -60,6 +61,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>Grading a weather forecaster with tomorrow's newspaper already on the desk</h3>
     <p>
@@ -157,6 +159,7 @@
     </div>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
 
   <h3>Why random k-fold CV is wrong for time series</h3>
@@ -202,6 +205,10 @@
   by time:
   </p>
   <div class="tl-math">\[ \text{Train}_k = \{\, i : i < T_k \,\}, \qquad \text{Test}_k = \{\, i : T_k \le i < T_k + h \,\} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Train_k</code><span>every index strictly before the boundary \(T_k\)</span></div>
+    <div class="tl-eq-chip c2"><code>Test_k</code><span>the strict future — indices from \(T_k\) up to \(T_k+h\)</span></div>
+  </div>
   <p>
   Fit the model (or compute the score/selector) using only \(\text{Train}_k\), evaluate it only on
   \(\text{Test}_k\), then roll the boundary forward — \(T_{k+1} = T_k + h\) for a rolling
@@ -236,12 +243,18 @@
   Write the feature computed at index \(i\) as depending on the backward window
   </p>
   <div class="tl-math">\[ \text{Feature}(i) = f\big(\text{bars}[\,i-w+1,\; i\,]\big) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>[i−w+1, i]</code><span>the backward-looking window a feature is built from</span></div>
+  </div>
   <p>
   and, symmetrically, write a forward-looking training <em>label</em> — the outcome the model is
   actually being fit to predict, such as "did a trade opened at \(i\) win over the next \(H\)
   periods" — as depending on a forward window:
   </p>
   <div class="tl-math">\[ \text{Label}(i) = g\big(\text{bars}[\,i,\; i+H\,]\big) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>[i, i+H]</code><span>the forward-looking window a training label is built from</span></div>
+  </div>
   <p>
   Now look at what happens right at a chronological boundary \(T_k\). A training row \(i\) that is,
   by the letter of the rule, "strictly before" the test set (\(i < T_k\)) can still have a
@@ -258,6 +271,13 @@
   respects "\(<\)" or "\(\ge\)" the split date on paper.
   </p>
 
+  <div class="tl-solid amber">
+    <strong>The trap:</strong> a clean chronological split date is necessary
+    but not sufficient. The split date can be perfectly respected on paper
+    while the feature/label windows straddling it still leak test-period
+    information into training — the leak lives in the window, not the index.
+  </div>
+
   <h3>Purging: removing the contaminated training rows</h3>
   <p>
   <strong>Purging</strong> (the term and the formal treatment are Marcos López de Prado's, in
@@ -266,6 +286,29 @@
   dropped from the training set entirely, in both directions:
   </p>
   <div class="tl-math">\[ \text{Purge}_k = \Big\{\, i \in \text{Train}_k \;:\; \big[\,i-w+1,\; i+H\,\big] \,\cap\, \big[\,T_k,\; T_k+h\,\big) \ne \varnothing \,\Big\} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>[i−w+1, i+H]</code><span>a training row's combined feature+label window</span></div>
+    <div class="tl-eq-chip c2"><code>[T_k, T_k+h)</code><span>the test interval it's checked against</span></div>
+    <div class="tl-eq-chip c4"><code>Purge_k</code><span>every training row whose window overlaps the test period — dropped</span></div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">[i−w+1, i+H]</div>
+      <div class="tl-fp-name">The window at risk</div>
+      <div class="tl-fp-desc">A training row's combined backward feature + forward label reach</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">∩ [T_k, T_k+h)</div>
+      <div class="tl-fp-name">The overlap test</div>
+      <div class="tl-fp-desc">Does that window touch any part of the test interval at all?</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">Purge_k</div>
+      <div class="tl-fp-name">The result</div>
+      <div class="tl-fp-desc">Every contaminated row — computable exactly, not eyeballed</div>
+    </div>
+  </div>
   <p>
   and the actually-usable training set for fold \(k\) is \(\text{Train}_k \setminus \text{Purge}_k\).
   This is a mechanical, checkable criterion — for a given \(w\), \(H\), and boundary, you can compute
@@ -283,6 +326,10 @@
   back into training:
   </p>
   <div class="tl-math">\[ \text{Embargo}_k = \big[\, T_k + h,\; T_k + h + e \,\big) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>e</code><span>embargo length — a deliberate, conservative buffer</span></div>
+    <div class="tl-eq-chip c4"><code>Embargo_k</code><span>the extra window held back after test, beyond the mechanical purge</span></div>
+  </div>
   <p>
   Training on the next fold only resumes strictly after this embargo period ends. López de Prado's
   own guidance sizes \(e\) as a small fraction of the total sample (on the order of 1% of \(n\)) or
@@ -293,6 +340,7 @@
   </p>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Counting the exact rows a purge/embargo scheme removes</h3>
     <p>
@@ -329,6 +377,7 @@
   </div>
 
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">A real-world trading scenario</div>
     <h3>The backtest that "looked" out-of-sample but wasn't</h3>
     <p>
@@ -360,14 +409,16 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
   Two overlapping traditions converge on the same discipline from different directions:
   </p>
-  <ul>
-    <li>
-      <strong>Algorithmic trading's "walk-forward optimization."</strong> Robert Pardo's treatment
-      (<em>The Evaluation and Optimization of Trading Strategies</em>) popularized rolling the
+
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Algorithmic trading — "walk-forward optimization"</h4>
+      <p>Robert Pardo's treatment (<em>The Evaluation and Optimization of Trading Strategies</em>) popularized rolling the
       train/test boundary forward repeatedly across a price history and comparing in-sample
       performance to out-of-sample performance on each roll. A commonly cited diagnostic is the
       <strong>walk-forward efficiency</strong> — roughly, OOS performance divided by IS performance
@@ -375,28 +426,55 @@
       training window rather than genuinely robust. This tradition emphasizes rolling repeatedly
       (many folds, not one lucky split) over any one fold's result in isolation, for the same reason
       the multiple-testing lesson warns against trusting a single best-of-many slice: one good fold
-      out of several is a weaker claim than a rule that holds up fold after fold.
-    </li>
-    <li>
-      <strong>Machine-learning-in-finance's "purged k-fold CV."</strong> López de Prado's treatment
+      out of several is a weaker claim than a rule that holds up fold after fold.</p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>ML-in-finance — "purged k-fold CV"</h4>
+      <p>López de Prado's treatment
       formalizes the purge/embargo mechanics above as a drop-in replacement for scikit-learn-style
       k-fold CV specifically for finance, where cross-sectional ML models (not just single-series
       backtests) are common and the temptation to reach for standard, off-the-shelf k-fold tooling is
       strongest. His point is that the mechanical fix (purge the overlap, embargo a further buffer)
       is what lets you keep the statistical efficiency benefits of k-fold-style validation — using
       more of the data, running more folds — without reintroducing the lookahead that made random
-      k-fold wrong for time series in the first place.
-    </li>
-  </ul>
+      k-fold wrong for time series in the first place.</p>
+    </div>
+  </div>
+
   <p>
-  In practice, both traditions agree on the same checklist: never assign folds at random for
-  time-ordered data; know the window length of every feature and label your model touches; compute
-  (don't eyeball) which rows near a boundary need to be purged; add an embargo buffer rather than
-  trusting the mechanical purge formula to be perfectly complete; and judge a rule by its behavior
-  across many rolled folds, not by one favorable-looking split.
+  In practice, both traditions agree on the same checklist:
   </p>
 
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🚫</div>
+      <h4>Never shuffle</h4>
+      <p>Never assign folds at random for time-ordered data.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📏</div>
+      <h4>Know the windows</h4>
+      <p>Know the window length of every feature and label your model touches.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧮</div>
+      <h4>Compute, don't eyeball</h4>
+      <p>Compute exactly which rows near a boundary need to be purged.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🛡️</div>
+      <h4>Embargo on top</h4>
+      <p>Add an embargo buffer rather than trusting the mechanical purge formula to be perfectly complete.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🔁</div>
+      <h4>Judge across many folds</h4>
+      <p>Judge a rule by its behavior across many rolled folds, not by one favorable-looking split.</p>
+    </div>
+  </div>
+
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
     <h3>This is the formal name for a rule <code>CLAUDE.md</code> already enforces — and a refinement worth checking against</h3>
     <p>
@@ -430,6 +508,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Ways this goes wrong in practice</h3>
     <ul>
@@ -475,6 +554,19 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Random k-fold CV is mechanically broken for time series.</strong> Shuffling can put day \(i+1\) in training while day \(i\) is the test row — literal lookahead, not a subtle statistical nuance.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Walk-forward validation trains strictly on the past.</strong> \(\text{Train}_k=\{i:i<T_k\}\), \(\text{Test}_k=\{i:T_k\le i<T_k+h\}\) — the same "no lookahead" rule CLAUDE.md states, applied to the whole train/evaluate cycle.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A clean split date alone still leaks.</strong> Rolling feature/label windows straddling the boundary can carry test-period information into training even when every index technically respects the split.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Purging removes the mechanically computable overlap.</strong> Any training row whose combined feature+label window touches the test interval is dropped — exact, checkable, not eyeballed.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Embargo buffers what purging can't formula-ize.</strong> Real serial correlation runs beyond any window length — embargo is a deliberate, conservative extra margin on top of the mechanical purge.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This repo's own <code>summarizeSplit</code> has no purge/embargo yet.</strong> An honest gap, not a bug — a checkable refinement worth applying to strategies whose features lean on multi-day rolling windows near the split date.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Passing a purged test is not proof of edge.</strong> It only makes the OOS number honest — it says nothing about costs, economic mechanism, or whether the result clears the multiple-testing chance baseline.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why is random k-fold cross-validation wrong for time series even if you never literally look at a "future" row directly?</summary>

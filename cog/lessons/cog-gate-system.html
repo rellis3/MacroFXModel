@@ -31,6 +31,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
   Most trading systems are one model: a single function (or one large ML pipeline) that takes in
@@ -60,6 +61,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>Four specialists who are only allowed to answer their own question</h3>
     <p>
@@ -80,6 +82,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The architecture, gate by gate</h2>
   <p>
   This maps directly onto real files in <code>js/</code>. Every threshold, weight, sign convention and
@@ -91,6 +94,39 @@
   directly, but keep every COG-specific threshold and decision rule local to the <code>cog*.js</code>
   files, so this system and its sibling can evolve independently.
   </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🌊</div>
+      <h4>Gate 1A — slow liquidity</h4>
+      <p>Daily macro balance-sheet/credit panel. Never touches Nasdaq price.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">⚡</div>
+      <h4>Gate 1B — fast flow</h4>
+      <p>5-minute intraday cross-asset flow. Never touches Nasdaq price either.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🛡️</div>
+      <h4>Gate 2 — risk / vol</h4>
+      <p>Reads NQ/QQQ OHLC, but only for volatility/correlation regime — never direction.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🧭</div>
+      <h4>Gate 3 — direction</h4>
+      <p>Cross-asset macro only (DXY, yields, credit, commodities, ES/RTY). No NQ/QQQ.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">✅</div>
+      <h4>Gate 4 — execution</h4>
+      <p>Only gate reading NQ price for the trade decision itself — combines Gates 1–3.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🔁</div>
+      <h4>Exit Engine</h4>
+      <p>Continuously re-scores an open trade against its entry-bar snapshot.</p>
+    </div>
+  </div>
 
   <h3>Gate 1A — slow macro liquidity regime</h3>
   <p>
@@ -129,6 +165,12 @@
   too many independent hard gates stacked — not a threshold-calibration problem where you'd just loosen
   a cutoff.
   </p>
+  <div class="tl-solid red">
+    <strong>The lesson:</strong> zero trades over a 2-year synthetic backtest was not evidence the
+    underlying signals were bad — it was evidence that four independent hard AND-conditions, each one
+    multiplying down the probability the others also agree at the same moment, is nearly impossible to
+    satisfy by construction. The fix was architectural (one blended score), not a threshold tweak.
+  </div>
   <p>
   <code>cogThreshold1Gate.js</code> replaces the Gate1A+Gate1B hard AND with a single blended score: a
   "slow leg" (the same daily balance-sheet/credit panel and ROC-z + level-percentile blend as Gate 1A,
@@ -265,6 +307,7 @@
     </div>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>The state machine: why V2 replaced V1</h2>
   <p>
   V1 (<code>cogBacktestEngine.js</code> and the intraday sibling <code>cogEventBacktestEngine.js</code>)
@@ -304,6 +347,7 @@
   </p>
 
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Illustrative scenario — not a real historical trade</div>
     <h3>One hypothetical day, walked through gate by gate</h3>
     <p>
@@ -329,6 +373,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Trade Journal and Explainability — "no black boxes" as an actual contract</h2>
   <p>
   <code>cogTradeJournal.js</code> builds trade records that satisfy <code>nasdaqPerformance.js</code>'s
@@ -355,6 +400,7 @@
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this lives in the repo</div>
     <h3>Every claim above traces to a real file</h3>
     <ul>
@@ -383,6 +429,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Ways a gated architecture like this can go wrong</h3>
     <ul>
@@ -414,6 +461,18 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Information isolation is the design's whole point.</strong> Gate 1 (liquidity) and Gate 3 (direction) never touch NQ/QQQ price at all; Gate 2 (risk) reads it only for vol/correlation regime, never direction; Gate 4 is the single point where NQ price meets the trade decision.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The original hard 4-way conjunction produced zero trades.</strong> A 2-year synthetic backtest under Gate1A∩Gate1B∩Gate2∩Gate3 (every gate independently required to agree) fired no trades at all — diagnosed as an architectural problem (too many independent hard AND-conditions stacked), not a threshold-calibration problem.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The fix was one blended score, not a looser threshold.</strong> <code>cogThreshold1Gate.js</code> replaced the Gate1A+Gate1B hard AND with a slow-leg/fast-leg blended score — the math is deliberately duplicated, not imported, so the original Gate1A/1B files stay untouched and independently usable.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>V2's state machine exists because of a real observed behavior.</strong> Gate-validation timing genuinely varies day to day (23:30 the night before vs. 11:30am same day), so V2 persists a VALID state until explicitly invalidated instead of snapshotting a fixed window.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Every gate exposes raw inputs and contributions, never just a composite score.</strong> That's the concrete mechanism behind "no black boxes" — it feeds the Trade Journal and Explainability layer directly, without inventing new interpretation.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Explainable ≠ proven to work.</strong> This lesson documents architecture that exists in code today — it is explicitly not a claim of validated performance. A perfectly auditable system can still have zero or negative expectancy; those are separate questions.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Which gate is allowed to read the traded instrument's (NQ/QQQ) own price, and for what purpose specifically — and which two gates are structurally never shown it at all?</summary>

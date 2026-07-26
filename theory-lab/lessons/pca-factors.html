@@ -33,6 +33,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     Open any multi-pair FX dashboard on a day the market moves and a familiar
@@ -62,6 +63,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>Finding the camera angle that shows the most motion</h3>
     <p>
@@ -94,6 +96,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     Start from data you already know how to build: daily (or hourly, or
@@ -112,6 +115,10 @@
   </p>
   <div class="tl-math">
     \[ \text{Cov}(x,y) = \frac{1}{T-1}\sum_{t=1}^{T} (x_t - \bar{x})(y_t - \bar{y}) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>xₜ − x̄, yₜ − ȳ</code><span>each series' deviation from its own mean, on the same day</span></div>
+    <div class="tl-eq-chip c4"><code>Cov(x,y)</code><span>positive if they tend to co-move, negative if they move opposite, ≈0 if unrelated</span></div>
   </div>
   <p>
     Read this as: on each day \(t\), take how far \(x\) was from its own average
@@ -164,6 +171,25 @@
   <div class="tl-math">
     \[ \Sigma v = \lambda v \]
   </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">Σ</div>
+      <div class="tl-fp-name">The covariance matrix</div>
+      <div class="tl-fp-desc">The "machine" that transforms any direction you feed it</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">v</div>
+      <div class="tl-fp-name">The eigenvector</div>
+      <div class="tl-fp-desc">A special direction Σ only stretches, never rotates — a principal component</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">λ</div>
+      <div class="tl-fp-name">The eigenvalue</div>
+      <div class="tl-fp-desc">How much variance lies along that direction — ranks the components</div>
+    </div>
+  </div>
+
   <p>
     Read this literally: multiplying the matrix \(\Sigma\) by the vector \(v\)
     gives back the same vector \(v\), just scaled by the number \(\lambda\) —
@@ -226,6 +252,11 @@
   <div class="tl-math">
     \[ \text{EVR}_i = \frac{\lambda_i}{\sum_{j=1}^{N} \lambda_j} \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>λᵢ</code><span>component i's own eigenvalue</span></div>
+    <div class="tl-eq-chip c3"><code>Σⱼλⱼ</code><span>the total variance across all N components</span></div>
+    <div class="tl-eq-chip c4"><code>EVRᵢ</code><span>component i's share of the total — sums to 1 across all components</span></div>
+  </div>
   <p>
     If \(\text{EVR}_1 = 0.72\), that means 72% of the total variance across
     every instrument in the basket, every day, is captured by a single
@@ -268,6 +299,7 @@
   </p>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Three FX pairs, one common driver and one holdout</h3>
     <p>
@@ -492,6 +524,7 @@
     </script>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     In FX and rates specifically, running PCA across the G10 majors (or across
@@ -511,35 +544,31 @@
     quote curve risk directly in level/slope/curvature units rather than raw
     tenor-by-tenor exposure.
   </p>
-  <p>
-    Two concrete uses fall out of this. First, <strong>risk aggregation</strong>:
-    a portfolio with positions across many correlated instruments can have its
-    total risk decomposed into "how much exposure do I have to PC1 (the common
-    factor) versus PC2, PC3, …" — this is a cleaner way to see true
-    concentration than staring at a large pairwise correlation grid, because a
-    correlation matrix that's mostly medium-to-high numbers everywhere doesn't
-    by itself tell you whether that's one dominant factor or several
-    moderate ones; the eigenvalue spectrum does. This is exactly the
-    motivation behind an "effective number of bets" metric — how many
-    genuinely independent risks does a book actually have, as opposed to how
-    many position tickets it has. Second, <strong>anomaly / regime
-    detection</strong>: watching each day's PC1 score (and how much of that
-    day's total variance PC1 alone explained) over time lets you flag unusual
-    days — a day where an instrument that normally loads heavily on PC1 barely
-    moves with it, or where a normally-idiosyncratic instrument suddenly
-    co-moves tightly with the pack, is often a sign something instrument-
-    specific happened (a central bank surprise, an index rebalance, a
-    liquidity event) rather than a shared macro move. A caution belongs right
-    alongside this: PCA is a descriptive/summarization tool, not a forecast —
+  <p>Two concrete uses fall out of this:</p>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Risk aggregation</h4>
+      <p>A portfolio across many correlated instruments can have its total risk decomposed into "how much exposure do I have to PC1 (the common factor) versus PC2, PC3, …" — a cleaner view of true concentration than a large pairwise correlation grid, because a grid full of medium-to-high numbers doesn't tell you whether that's one dominant factor or several moderate ones; the eigenvalue spectrum does. This is exactly the motivation behind an "effective number of bets" metric.</p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>Anomaly / regime detection</h4>
+      <p>Watching each day's PC1 score, and how much of that day's variance PC1 alone explained, flags unusual days — an instrument that normally loads heavily on PC1 suddenly barely moving with it, or a normally-idiosyncratic instrument suddenly co-moving tightly with the pack, is often a sign something instrument-specific happened rather than a shared macro move.</p>
+    </div>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>The caveat:</strong> PCA is a descriptive/summarization tool, not a forecast —
     it tells you cleanly what the historical covariance structure looked like
     over the window you fed it, not what tomorrow's structure will be, and
     that structure can and does shift across regimes (calm markets versus
     crisis markets famously show very different PC1 dominance — correlations,
     and therefore \(\text{EVR}_1\), tend to spike toward 1 in a crisis, the
     well-known "correlations go to 1 in a crash" phenomenon).
-  </p>
+  </div>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this could plug into MacroFXModel</div>
     <h3>Extending eigenvalues (already built) to eigenvectors/loadings (not yet built)</h3>
     <p>
@@ -601,6 +630,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where PCA on a market basket goes wrong in practice</h3>
     <p>
@@ -660,6 +690,18 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A basket of correlated pairs often really is one bet.</strong> If PC1 explains 72% of variance, most of what moves your book on any given day is a single shared factor wearing several costumes.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Eigenvectors of a covariance matrix are perpendicular by construction.</strong> Principal components are uncorrelated because of the geometry, not because you found something — PC1 captures the most shared variance, PC2 the next-most orthogonal to it, and so on.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Loadings tell you which instruments make up a factor.</strong> A large loading means that instrument drives the component; a near-zero loading means it barely participates — the diagnostic eigenvalues alone can't give you.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo has eigenvalues, not eigenvectors, yet.</strong> <code>symmetricEigenvalues</code> feeds "effective number of bets" but deliberately doesn't return loadings — the "which instruments drive PC1" piece is a documented, unbuilt extension.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Factor structure shifts across regimes.</strong> Correlations — and PC1 dominance — famously spike toward 1 in a crisis; a PCA fit on calm markets can describe a very different structure than one fit during stress.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>PCA is descriptive, not causal, and not a forecast.</strong> High loadings tell you co-movement, not why, and don't predict tomorrow's structure — any trading rule built on top still needs its own honest OOS validation.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. If PC1 explains 70% of the variance across your FX basket, what does that imply about the diversification benefit of holding all those pairs at once?</summary>

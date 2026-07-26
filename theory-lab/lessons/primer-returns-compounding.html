@@ -49,6 +49,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     Every lesson from here on describes a price series with a mean and a
@@ -79,6 +80,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>"Average return" is a trap if you don't say which average</h3>
     <p>
@@ -100,6 +102,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     <strong>Two definitions of return.</strong> Let \(P_t\) be a price (or
@@ -109,11 +112,20 @@
     percentage change:
   </p>
   <div class="tl-math">\[ R_t = \frac{P_t - P_{t-1}}{P_{t-1}} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Pₜ</code><span>price at the end of the period</span></div>
+    <div class="tl-eq-chip c2"><code>Pₜ₋₁</code><span>price one period earlier</span></div>
+    <div class="tl-eq-chip c4"><code>Rₜ</code><span>the plain percentage change</span></div>
+  </div>
   <p>
     The <strong>log return</strong> is the natural logarithm of the price
     ratio instead:
   </p>
   <div class="tl-math">\[ r_t = \ln\!\left(\frac{P_t}{P_{t-1}}\right) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>ln(·)</code><span>natural logarithm of the price ratio</span></div>
+    <div class="tl-eq-chip c4"><code>rₜ</code><span>the log return — additive across time, derived below</span></div>
+  </div>
   <p>
     These are related by a simple identity worth holding onto:
     \(1+R_t = P_t/P_{t-1} = e^{r_t}\), so \(r_t = \ln(1+R_t)\) and
@@ -154,6 +166,10 @@
     \(P_2/P_0 = (P_1/P_0)\cdot(P_2/P_1)\), taking the log of both sides gives:
   </p>
   <div class="tl-math">\[ \ln\!\left(\frac{P_2}{P_0}\right) = \ln\!\left(\frac{P_1}{P_0}\right) + \ln\!\left(\frac{P_2}{P_1}\right) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>ln(P₂/P₀)</code><span>the whole two-period log return</span></div>
+    <div class="tl-eq-chip c4"><code>= sum of legs</code><span>each one-period log return, added exactly — no cross term</span></div>
+  </div>
   <p>
     which is exactly \(r_{0\to 2} = r_{0\to 1} + r_{1\to 2}\): the log return
     over the whole two-period stretch is simply the <em>sum</em> of the log
@@ -181,6 +197,11 @@
     it solves \((1+g)^T = \prod_t (1+R_t)\), so:
   </p>
   <div class="tl-math">\[ g = \left(\prod_{t=1}^{T}(1+R_t)\right)^{1/T} - 1 \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>∏(1+Rₜ)</code><span>chain-multiply every period's wealth factor</span></div>
+    <div class="tl-eq-chip c3"><code>^(1/T)</code><span>take the T-th root to get a per-period rate</span></div>
+    <div class="tl-eq-chip c4"><code>g</code><span>the constant rate that reproduces actual ending wealth</span></div>
+  </div>
   <p>
     The geometric mean is the number that actually describes compounded
     performance; the arithmetic mean is the number that describes the
@@ -202,6 +223,10 @@
     simple return:
   </p>
   <div class="tl-math">\[ r_t = \ln(1+R_t) \approx R_t - \frac{R_t^2}{2} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>Rₜ</code><span>the period's simple return</span></div>
+    <div class="tl-eq-chip c4"><code>−Rₜ²/2</code><span>the second-order correction term — the seed of volatility drag</span></div>
+  </div>
   <p>
     Average both sides over many periods. The average of \(R_t\) is just the
     arithmetic mean \(\bar{R}\). The average of \(R_t^2\) is, by the standard
@@ -212,6 +237,10 @@
     leaving a clean, useful approximation:
   </p>
   <div class="tl-math">\[ \bar{r} \approx \bar{R} - \frac{\sigma^2}{2} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>R̄</code><span>the arithmetic mean return</span></div>
+    <div class="tl-eq-chip c4"><code>σ²/2</code><span>the drag subtracted off it</span></div>
+  </div>
   <p>
     And because log returns are additive across time, the average log return
     over many periods <em>is</em> the compounded per-period growth rate — so
@@ -219,6 +248,23 @@
     formula that also anchors the Kelly Criterion lesson:
   </p>
   <div class="tl-math">\[ g \approx \bar{R} - \frac{\sigma^2}{2} \]</div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">R̄</div>
+      <div class="tl-fp-name">Arithmetic mean</div>
+      <div class="tl-fp-desc">The typical single-period return, naively averaged</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">σ²/2</div>
+      <div class="tl-fp-name">Volatility drag</div>
+      <div class="tl-fp-desc">Grows quadratically with σ — the cost of compounding through variance</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">g</div>
+      <div class="tl-fp-name">Geometric growth rate</div>
+      <div class="tl-fp-desc">What your money actually experiences, compounded</div>
+    </div>
+  </div>
   <p>
     Read this literally: the compounded growth rate you actually experience
     is approximately the average per-period return you'd naively compute,
@@ -234,6 +280,15 @@
     real growth, and the choppier one gives a chunk of it back to its own
     variance before it ever reaches the compounding investor.
   </p>
+
+  <div class="tl-solid amber">
+    <strong>The trap:</strong> a gain and an equal-sized loss are not opposites
+    once you're compounding. +50% then −50% is a 0% arithmetic average and a
+    real 25% loss, because the loss is taken off a bigger base than the gain
+    was added to. "Average return" without saying which average — arithmetic
+    or geometric — is close to meaningless for anything you actually held
+    through.
+  </div>
 
   <p>
     <strong>Why volatility scales with the square root of time.</strong> Log
@@ -251,11 +306,19 @@
     quantity). If every period has the same variance \(\sigma^2\):
   </p>
   <div class="tl-math">\[ \text{Var}(r_{0\to T}) = \sum_{t=1}^{T}\text{Var}(r_t) = T\sigma^2 \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>ΣVar(rₜ)</code><span>variances of independent periods simply add</span></div>
+    <div class="tl-eq-chip c4"><code>Tσ²</code><span>T periods of equal variance σ², summed</span></div>
+  </div>
   <p>
     Standard deviation is the square root of variance, so the \(T\)-period
     volatility is:
   </p>
   <div class="tl-math">\[ \sigma_T = \sqrt{T\sigma^2} = \sigma\sqrt{T} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>σ</code><span>one-period volatility</span></div>
+    <div class="tl-eq-chip c3"><code>√T</code><span>volatility scales by the square root of the horizon, not the horizon itself</span></div>
+  </div>
   <p>
     This is the famous "square-root-of-time" rule. It is not an empirical
     regularity someone noticed in market data — it's a direct algebraic
@@ -299,6 +362,7 @@
   </div>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>+50% then −50%: a 0% average return that loses you 25%</h3>
     <p>
@@ -332,7 +396,27 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🧮</div>
+      <h4>Quant modeling</h4>
+      <p>Defaults to log returns for volatility, GARCH, regression, and price-path simulation — additivity across time and unbounded range make normality far more defensible.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📑</div>
+      <h4>Performance reporting</h4>
+      <p>Almost always uses simple returns and the geometric mean — a fund's "annualized return" is CAGR, because that's what reconciles with the dollars in the account.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📏</div>
+      <h4>Risk desks &amp; VaR scaling</h4>
+      <p>Scale a 1-day VaR to a 10-day VaR by multiplying by √10 rather than re-estimating — a convenience that collapses if the independence assumption breaks.</p>
+    </div>
+  </div>
+
   <p>
     Quant desks default to log returns for almost any modeling task —
     computing historical volatility, fitting a GARCH model, feeding a return
@@ -374,6 +458,7 @@
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
     <h3>The literal design rule behind the forecast engine's horizons</h3>
     <p>
@@ -407,6 +492,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where returns-and-compounding reasoning quietly goes wrong</h3>
     <p>
@@ -457,6 +543,19 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Log returns add across time; simple returns don't.</strong> \(\ln(P_2/P_0)=\ln(P_1/P_0)+\ln(P_2/P_1)\) is exact for any size of move, while chaining simple returns picks up a cross term.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Arithmetic mean ≠ geometric mean.</strong> They coincide only at zero variance; the gap between them, \(g\approx\bar{R}-\sigma^2/2\), is volatility drag, and it grows with variance, not with the mean.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>+50% then −50% is a real 25% loss, not a wash.</strong> A 0% arithmetic average return can still lose real money once you're compounding — the whole primer in one trade.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Volatility scales with √T, not T.</strong> \(\sigma_T=\sigma\sqrt{T}\) falls directly out of variances adding for independent periods — the exact reason this repo scales daily σ by ×1/×√5/×√20 for daily/weekly/20-day horizons.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Drag grows quadratically with σ.</strong> Doubling volatility quadruples the drag (σ², not σ) — which is why two strategies with identical average returns can compound to very different real outcomes.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>√T scaling assumes independence.</strong> Volatility clustering violates it in real markets, and under positive serial correlation, naive √T scaling understates true multi-period risk.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>An unlabeled "average return" is ambiguous.</strong> A headline figure that doesn't say arithmetic or geometric should be treated as potentially the more flattering of the two numbers.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why can two return series have the same arithmetic mean but wildly different compounded outcomes?</summary>
@@ -538,6 +637,7 @@
   </ul>
   </details>
 
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>You're ready for Lesson 1</h2>
   <div class="tl-callout">
     That's the full primer sequence. You now have the statistical vocabulary

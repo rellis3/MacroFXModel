@@ -33,6 +33,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     Say this plainly up front: this is the most mathematically demanding
@@ -64,6 +65,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>A coastline that never gets straighter, no matter how far you zoom in</h3>
     <p>
@@ -95,6 +97,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     Four steps: (1) recall exactly what the ordinary chain rule assumes, by
@@ -114,12 +117,20 @@
   <div class="tl-math">
     \[ \frac{d}{dt}f(x(t)) = f'(x(t))\,\frac{dx}{dt} \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>f'(x(t))</code><span>ordinary derivative of f, evaluated at the current point</span></div>
+    <div class="tl-eq-chip c4"><code>dx/dt</code><span>how fast x itself is changing — nothing stochastic yet</span></div>
+  </div>
   <p>
     Here is where that comes from. Taylor-expand \(f\) around the current
     point \(x\), for a small change \(\Delta x\):
   </p>
   <div class="tl-math">
     \[ f(x+\Delta x) = f(x) + f'(x)\Delta x + \tfrac{1}{2}f''(x)(\Delta x)^2 + O(\Delta x^3) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>f'(x)Δx</code><span>first-order term — order Δt, survives the limit</span></div>
+    <div class="tl-eq-chip c2"><code>½f''(x)(Δx)²</code><span>second-order term — order Δt² for a smooth x(t), vanishes</span></div>
   </div>
   <p>
     Now let \(\Delta x\) be the change in \(x(t)\) over a small time step
@@ -181,6 +192,10 @@
   </p>
   <div class="tl-math">
     \[ (dW_t)^2 = dt \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>(dW_t)²</code><span>squared Brownian increment — not negligible, unlike ordinary calculus</span></div>
+    <div class="tl-eq-chip c4"><code>= dt</code><span>quadratic variation accumulates at exactly this rate — "Itô's multiplication table"</span></div>
   </div>
   <p>
     Read this carefully for what it is and isn't. It is <strong>not</strong> a
@@ -300,6 +315,9 @@
   <div class="tl-math">
     \[ (dX_t)^2 = \sigma^2\,dt \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>(dX_t)²</code><span>order dt — the same order as the drift term, not negligible</span></div>
+  </div>
   <p>
     Substitute that back into the Taylor expansion:
   </p>
@@ -312,6 +330,23 @@
   </p>
   <div class="tl-math">
     \[ df = \left(f'(X_t)\mu + \tfrac{1}{2}f''(X_t)\sigma^2\right)dt + f'(X_t)\sigma\,dW_t \]
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">f'(X_t)μ</div>
+      <div class="tl-fp-name">Ordinary drift term</div>
+      <div class="tl-fp-desc">Exactly what the ordinary chain rule would have produced</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">½f''(X_t)σ²</div>
+      <div class="tl-fp-name">The Itô correction</div>
+      <div class="tl-fp-desc">The one extra term ordinary calculus is entitled to drop — this lesson's entire content</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">f'(X_t)σ dW_t</div>
+      <div class="tl-fp-name">Diffusion term</div>
+      <div class="tl-fp-desc">Also exactly what the ordinary chain rule would have produced</div>
+    </div>
   </div>
   <div class="tl-symbols"><table>
     <tr><td>\(X_t\)</td><td>The underlying random (Itô) process — a variable that evolves partly predictably (drift) and partly randomly (diffusion). In the Black-Scholes context this is the asset price \(S_t\); Itô's Lemma is stated generally because it applies to a function of <em>any</em> Itô process, not just GBM.</td></tr>
@@ -353,6 +388,10 @@
   </p>
   <div class="tl-math">
     \[ d(\ln S_t) = \left(\mu - \frac{\sigma^2}{2}\right)dt + \sigma\,dW_t \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>μ − σ²/2</code><span>the drift of ln S_t — not μ itself</span></div>
+    <div class="tl-eq-chip c4"><code>σ dW_t</code><span>the diffusion term, unchanged from ordinary calculus</span></div>
   </div>
   <p>
     <strong>There it is.</strong> The instantaneous drift of \(\ln S_t\) is
@@ -414,6 +453,7 @@
   </p>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Reprising the Black-Scholes worked example, now with the algebra shown</h3>
     <p>
@@ -450,6 +490,7 @@
   </div>
 
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
     <h3>The correction term shows up three times in this curriculum — that's not a coincidence</h3>
     <p>
@@ -494,38 +535,36 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     No trading desk re-derives Itô's Lemma from scratch before pricing a
     trade — it is baked, permanently, into every derivatives pricing library
     in use anywhere, the way ordinary calculus is baked into a physics
     simulation without anyone re-deriving \(F=ma\) each time. Where it matters
-    directly, constantly, to a working quant: (1) <strong>deriving the
-    governing PDE for a new payoff.</strong> Every exotic option's pricing PDE
-    — barriers, Asians, lookbacks, anything beyond a plain European call/put —
-    is derived the same way the Black-Scholes PDE was: apply Itô's Lemma to
-    the payoff's value function, build the hedged (locally riskless)
-    portfolio, and set its return equal to the risk-free rate. Itô's Lemma is
-    the mechanical step that appears in literally every one of those
-    derivations, not a special case. (2) <strong>Multivariate and correlated
-    extensions.</strong> The version derived in this lesson covers one Itô
-    process; pricing a basket option, a spread option, or anything involving
-    two correlated underlyings requires the multivariate form of Itô's Lemma
-    (sometimes called Itô-Doeblin), which adds a covariance cross-term
-    \(\rho\sigma_1\sigma_2\) alongside each asset's own \(\sigma^2/2\) term —
-    the same one-extra-term logic, generalized to more than one source of
-    randomness. That extension is not covered in this lesson but is a direct,
-    mechanical generalization of the same Taylor-expansion argument. (3)
-    <strong>Convexity adjustments.</strong> Anywhere a desk needs the expected
-    value, not just the value, of a nonlinear function of a random rate or
-    price — futures-vs-forward convexity, CMS convexity adjustments, XVA
-    calculations — Itô's Lemma (via its close cousin, Itô's formula for
-    computing expectations, sometimes packaged as the Feynman-Kac theorem) is
-    the standard tool for making that adjustment rigorous rather than
-    heuristic.
+    directly, constantly, to a working quant:
   </p>
 
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📐</div>
+      <h4>Deriving the governing PDE for a new payoff</h4>
+      <p>Every exotic option's pricing PDE — barriers, Asians, lookbacks — is derived the same way as Black-Scholes: apply Itô's Lemma to the payoff's value function, build the hedged portfolio, set its return to the risk-free rate.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🔗</div>
+      <h4>Multivariate and correlated extensions</h4>
+      <p>Pricing a basket or spread option needs the multivariate form (Itô-Doeblin), adding a covariance cross-term \(\rho\sigma_1\sigma_2\) alongside each asset's own \(\sigma^2/2\) term.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📊</div>
+      <h4>Convexity adjustments</h4>
+      <p>Futures-vs-forward convexity, CMS convexity, XVA — anywhere a desk needs the expected value of a nonlinear function of a random rate, Itô's Lemma (via Feynman-Kac) makes the adjustment rigorous.</p>
+    </div>
+  </div>
+
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
     <h3>Pure mathematical foundation — no direct repo module, and that's the honest answer</h3>
     <p>
@@ -554,6 +593,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where this result is misunderstood or misapplied</h3>
     <p>
@@ -602,6 +642,19 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The ordinary chain rule drops a term that isn't negligible for Brownian motion.</strong> A smooth function's increment is order Δt, so its square vanishes; a Brownian increment is order √dt, so its square, \((dW_t)^2\), is order dt — not negligible.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\((dW_t)^2=dt\) is a quadratic-variation statement, not a single-draw fact.</strong> Summed over a partition, squared increments converge to a fixed number — with no randomness surviving in the limit.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Itô's Lemma is the same Taylor expansion, plus one extra term.</strong> \(df = (f'\mu+\tfrac12f''\sigma^2)dt+f'\sigma\,dW_t\) — everything but the \(\tfrac12f''\sigma^2\) correction is what ordinary calculus would have produced.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Applying it to ln S_t derives Black-Scholes's σ²/2, mechanically.</strong> \(d(\ln S_t)=(\mu-\sigma^2/2)dt+\sigma\,dW_t\) — not asserted, not a fudge factor, a direct consequence of \(f''(x)=-1/x^2\) being negative.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The same σ²/2 term appears three times in this curriculum</strong> — Black-Scholes's \(d_1\)/\(d_2\), Kelly Criterion's volatility drag, and Returns &amp; Compounding's log-return approximation — one piece of mathematics, not three coincidences.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>σ²/2 shrinks the drift of the log, not the mean of the price.</strong> \(E[S_T]\) under GBM is unaffected by σ — the gap exists because \(E[e^X]\ne e^{E[X]}\) (Jensen's inequality), not because volatility literally destroys expected value.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The single-variable formula doesn't cover correlated processes.</strong> A basket, spread, or ratio of two correlated underlyings needs the multivariate Itô-Doeblin form with a covariance cross-term — using the plain version silently drops correlation risk.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why doesn't the ordinary calculus chain rule work for a function of Brownian motion, in precise terms?</summary>

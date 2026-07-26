@@ -33,6 +33,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     Every trading desk eventually runs into the same problem from the other
@@ -67,6 +68,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>Guessing a recipe by tasting the dish, twenty times</h3>
     <p>
@@ -91,6 +93,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     Three stages, each with a different amount of fitting risk attached to
@@ -138,6 +141,30 @@
   the implied constant on each day:
   </p>
   <div class="tl-math">\[ C_t = \frac{\text{hl\_med}_t / 100}{\sigma_t}, \qquad \text{Feller expects } C_t \approx BM_{P50} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Cₜ</code><span>implied range constant on day t — what should be near-constant if σₜ is the right estimator</span></div>
+    <div class="tl-eq-chip c2"><code>hl_medₜ</code><span>COG's published median High-Low range that day, as % of price</span></div>
+    <div class="tl-eq-chip c3"><code>σₜ</code><span>the candidate volatility estimator (HV20 / GARCH / Yang-Zhang) on day t</span></div>
+    <div class="tl-eq-chip c4"><code>BM_P50</code><span>Feller's theoretical constant — the benchmark Cₜ is compared against</span></div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">C</div>
+      <div class="tl-fp-name">The implied constant</div>
+      <div class="tl-fp-desc">What you're solving for — should be near-stable across days if the σ guess is right</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">hl_med / σ</div>
+      <div class="tl-fp-name">The back-solve</div>
+      <div class="tl-fp-desc">Divide COG's own published number by a candidate daily vol estimator</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">CV</div>
+      <div class="tl-fp-name">The stability tell</div>
+      <div class="tl-fp-desc">Low coefficient of variation across days = strong evidence σ is the right input</div>
+    </div>
+  </div>
   <p>
     The candidate σ whose implied \(C_t\) is the <strong>most stable</strong>
     (lowest CV across days) <em>and</em> whose raw value correlates well with
@@ -260,6 +287,7 @@
   </div>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Reading a ratio-diagnostic result</h3>
     <p>
@@ -298,6 +326,7 @@
   </div>
 
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Scenario</div>
     <h3>25 days, three instruments: formula or discretion?</h3>
     <p>
@@ -347,6 +376,7 @@
   </div>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this lives in MacroFXModel</div>
     <h3>Built, reproduced, and honestly tested — not the same thing as "works"</h3>
     <p>
@@ -374,6 +404,13 @@
       numbers, so the bot's live lines and the reverse-engineered constants
       can never silently drift apart (Lego Principle 1).
     </p>
+    <div class="tl-solid red">
+      <strong>The tested result:</strong> reproducing COG's line perfectly is
+      not the same claim as it being a good trade — and this repo already ran
+      that second test. COG's reproduced line is <strong>not</strong> a
+      better tradeable fade than this repo's own Feller-based bands, out of
+      sample. A genuine tested null, not an unbuilt candidate.
+    </div>
     <p>
       <strong>The tested result, stated plainly: reproducing COG's line is
       not the same as it being a good trade, and this repo already ran that
@@ -403,6 +440,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where black-box reverse-engineering quietly goes wrong</h3>
     <p>
@@ -448,6 +486,18 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Two steps, two different fitting-risk levels.</strong> Ratio diagnostics (dividing COG's own published numbers) cost zero overfit risk; estimator fitting (picking the best σ) carries real fitting risk — keep them separate and don't let a fitted result masquerade as arithmetic.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>COG's median High-Low is essentially raw Feller theory.</strong> BM_P50 = 1.56 vs Feller's 1.572 — near-identical. His central forecast number isn't a proprietary tweak.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>But his tail and Open-Close numbers run consistently tighter.</strong> BM_P75 (5.8% tighter), HN_P50 (7.3% tighter), and HN_P75 (3.4% tighter) all deviate from pure theory in the same direction — a real, characterizable finding, not noise.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The blend test guards against a specific overfit trap.</strong> A weighted blend of estimators will find some mixing weight that fits a small sample better purely by chance — <code>cogReverseEngineer.js</code> only accepts a blend as a genuine win if it clears a wide, pre-set margin and its weight isn't at a degenerate extreme.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Reproducing the line is not the same as it being a good trade — and this repo tested that directly.</strong> The paired, costed, out-of-sample A/B (<code>cogFadeEngine.js</code>, <code>cogLevelPoc.js</code>) found COG's reproduced line is <strong>not</strong> a better tradeable fade than this repo's own Feller-based bands. A genuine tested null, not an unbuilt candidate.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">i</span><span><strong>"Built ≠ works ≠ has edge" in one case study.</strong> The reverse-engineering infrastructure is sound and useful (removes a manual-paste dependency, lets the line be checked programmatically) — that soundness does not, by itself, imply the strategy built on top of it has edge.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does the ratio-diagnostics step (dividing COG's published numbers by each other) carry essentially zero overfitting risk, unlike the estimator-fitting step?</summary>

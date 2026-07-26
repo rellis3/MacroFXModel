@@ -32,6 +32,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     Half of trading-strategy design boils down to one question asked over and over
@@ -57,6 +58,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>A rubber band attached to a moving average</h3>
     <p>
@@ -153,6 +155,7 @@
     </div>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     The OU process is defined by a stochastic differential equation (SDE) — an
@@ -165,6 +168,25 @@
   <div class="tl-math">
     \[ dX_t = \theta(\mu - X_t)\,dt + \sigma\,dW_t \]
   </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">θ(μ − Xₜ)</div>
+      <div class="tl-fp-name">The drift</div>
+      <div class="tl-fp-desc">The predictable pull back toward μ, stronger the further away you are</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">σ dWₜ</div>
+      <div class="tl-fp-name">The diffusion</div>
+      <div class="tl-fp-desc">The random, unpredictable jostle — same σ as everywhere else in this repo's vol math</div>
+    </div>
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">dXₜ</div>
+      <div class="tl-fp-name">The result</div>
+      <div class="tl-fp-desc">The next tiny move — predictable nudge plus random shock</div>
+    </div>
+  </div>
+
   <p>
     Read this left to right: <code>dX_t</code> is the tiny change in the process's
     value \(X\) that happens over the next tiny instant of time. The right-hand
@@ -192,6 +214,18 @@
   <div class="tl-math">
     \[ dX_t = \sigma\,dW_t \quad (\text{random walk: no drift term, no memory of } \mu) \]
   </div>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>OU process (θ &gt; 0)</h4>
+      <p>Has both a drift term pulling back toward \(\mu\) and a diffusion term. Bounded variance over time — settles into a stable, stationary distribution.</p>
+    </div>
+    <div class="tl-compare-card amber">
+      <h4>Random walk (θ = 0)</h4>
+      <p>Diffusion only, no drift — nothing "knows" where \(\mu\) is. Variance grows without bound as \(t\to\infty\); the process can wander arbitrarily far from any starting point.</p>
+    </div>
+  </div>
+
   <p>
     With no drift term, there is nothing in the equation that "knows" where \(\mu\)
     is or pulls back toward it. A random walk can wander arbitrarily far from any
@@ -214,6 +248,10 @@
   </p>
   <div class="tl-math">
     \[ X_\infty \sim \mathcal{N}\!\left(\mu,\ \frac{\sigma^2}{2\theta}\right) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>μ</code><span>the settled-in distribution's center — same long-run mean as before</span></div>
+    <div class="tl-eq-chip c2"><code>σ²/2θ</code><span>the stationary variance — how wide the resting spread is</span></div>
   </div>
   <p>
     The stationary variance \(\sigma^2/(2\theta)\) tells you how far \(X\)
@@ -239,6 +277,10 @@
   <div class="tl-math">
     \[ \mathbb{E}[X_t - \mu] = (X_0 - \mu)\,e^{-\theta t} \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>X₀ − μ</code><span>the deviation you start with, right now</span></div>
+    <div class="tl-eq-chip c4"><code>e^(−θt)</code><span>exponential decay factor — shrinks toward 0 as t grows</span></div>
+  </div>
   <p>
     This says: whatever the initial deviation \((X_0 - \mu)\) is, its expected
     size shrinks exponentially over time, at rate \(\theta\). To find the
@@ -248,6 +290,10 @@
   </p>
   <div class="tl-math">
     \[ e^{-\theta\,t_{1/2}} = \frac{1}{2} \quad\Longrightarrow\quad -\theta\,t_{1/2} = \ln\!\left(\frac{1}{2}\right) = -\ln(2) \quad\Longrightarrow\quad t_{1/2} = \frac{\ln(2)}{\theta} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>ln(2) ≈ 0.693</code><span>a fixed constant — same one in radioactive-decay half-life formulas</span></div>
+    <div class="tl-eq-chip c2"><code>t₁/₂ = ln(2)/θ</code><span>time for the expected deviation to shrink by half</span></div>
   </div>
   <p>
     Walking through that: take the natural log of both sides of
@@ -286,6 +332,10 @@
   <div class="tl-math">
     \[ X_t = \mu(1-\phi) + \phi\,X_{t-1} + \epsilon_t, \qquad \phi = e^{-\theta \Delta t} \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>φ</code><span>the AR(1) coefficient — an ordinary regression estimate</span></div>
+    <div class="tl-eq-chip c3"><code>ε_t</code><span>the regression's noise term — discrete-time stand-in for σdWₜ</span></div>
+  </div>
   <p>
     Here \(\phi\) (phi) is the AR(1) autoregressive coefficient — the ordinary
     "regress today's value on yesterday's value" coefficient you'd get from a
@@ -302,6 +352,10 @@
   <div class="tl-math">
     \[ \theta = -\frac{\ln(\phi)}{\Delta t} \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>−ln(φ)</code><span>negative log of the fitted persistence coefficient</span></div>
+    <div class="tl-eq-chip c4"><code>Δt</code><span>the sampling interval — e.g. 1 day for daily bars</span></div>
+  </div>
   <p>
     Reading the map between the two worlds: \(\phi\) close to 1 means today's
     value is almost entirely explained by yesterday's value with little pull back
@@ -314,7 +368,15 @@
     apply.
   </p>
 
+  <div class="tl-solid red">
+    <strong>The trap:</strong> a fitted \(\phi \ge 1\) doesn't mean "very slow mean
+    reversion" — it means the OU model doesn't apply at all. Forcing a half-life
+    number out of an undefined or negative \(\theta\) produces a meaningless
+    result, not a conservative one.
+  </div>
+
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>From a fitted AR(1) coefficient to a half-life in days</h3>
     <p>
@@ -365,6 +427,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     OU fitting shows up most visibly in <strong>statistical arbitrage / pairs
@@ -405,6 +468,7 @@
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this could plug into MacroFXModel</div>
     <h3>An unbuilt candidate next to <code>dayTypeCore.js</code>'s drift/diffusion score</h3>
     <p>
@@ -447,6 +511,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where OU fitting goes wrong in practice</h3>
     <p>
@@ -496,6 +561,19 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The OU equation is drift plus diffusion.</strong> \(dX_t = \theta(\mu-X_t)dt + \sigma dW_t\) — a predictable pull back toward \(\mu\), sized by \(\theta\), plus unpredictable noise sized by \(\sigma\).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A random walk is the special case θ = 0.</strong> Cut the "rubber band" entirely and OU collapses to plain Brownian motion — the weak-form EMH's baseline model.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Half-life turns θ into a number you can say out loud.</strong> \(t_{1/2}=\ln(2)/\theta\) — the time for an expected deviation to shrink by half, comparable across instruments and horizons.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Fit it via AR(1), not the raw SDE.</strong> Regress \(X_t\) on \(X_{t-1}\) to get \(\phi\), then convert with \(\theta=-\ln(\phi)/\Delta t\) — the worked example's \(\phi=0.90\) implies a ≈6.6-day half-life.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>φ ≥ 1 means the model doesn't apply, not "very slow reversion."</strong> The half-life formula breaks down (undefined or negative θ) — that's the algebra telling you to stop, not to force a number.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>θ, μ and σ are all assumed constant — real markets don't cooperate.</strong> A drifting "true" mean, small-sample bias toward φ≈1, and regime-dependent reversion speed can all distort a single full-sample fit.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Nothing here is built or validated in this repo.</strong> This is a research candidate for <code>LEGO_MODULES.md §2</code>, not a described feature — it would need synthetic-data unit tests and a real OOS trade count before touching real prices.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. What happens to the OU process, and to its half-life, as \(\theta \to 0\)?</summary>

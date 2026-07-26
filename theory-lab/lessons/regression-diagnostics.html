@@ -33,6 +33,7 @@
   </ul>
 </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     Ordinary least squares gives you two different kinds of output, and it is
@@ -85,6 +86,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>All three tests are asking the same underlying question about the leftovers</h3>
     <p>
@@ -136,6 +138,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     Each test below follows the same shape: state what "well-behaved" would
@@ -143,12 +146,49 @@
     say what a bad value implies about the p-value you were about to trust.
   </p>
 
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📈</div>
+      <h4>Durbin-Watson</h4>
+      <p>Does today's residual predict tomorrow's? Catches serial correlation — "sticky" errors.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🔀</div>
+      <h4>Breusch-Pagan</h4>
+      <p>Does the size of the typical residual depend on where you are in the data? Catches a fanning variance.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📊</div>
+      <h4>Jarque-Bera</h4>
+      <p>Does the residual distribution's overall shape look normal? Matters most in small samples.</p>
+    </div>
+  </div>
+
   <p><strong>1. Durbin-Watson — testing for autocorrelation.</strong> Take the
   residuals from a fitted regression, in their natural time order,
   \(e_1, e_2, \dots, e_n\). The Durbin-Watson statistic compares the size of
   the changes between consecutive residuals to the size of the residuals
   themselves:</p>
   <div class="tl-math">\[ DW = \frac{\sum_{t=2}^{n}(e_t - e_{t-1})^2}{\sum_{t=1}^{n} e_t^2} \]</div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">Σ(eₜ−eₜ₋₁)²</div>
+      <div class="tl-fp-name">Consecutive-change sum</div>
+      <div class="tl-fp-desc">How much residuals move step to step</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">Σeₜ²</div>
+      <div class="tl-fp-name">Total residual variance</div>
+      <div class="tl-fp-desc">The overall spread of the residuals</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">DW</div>
+      <div class="tl-fp-name">The ratio</div>
+      <div class="tl-fp-desc">≈2 no autocorrelation, →0 positive, →4 negative</div>
+    </div>
+  </div>
+
   <p>
     To see why this measures autocorrelation, consider the two extremes.
     If consecutive residuals are <em>independent</em> — no relationship
@@ -173,6 +213,10 @@
     its upper bound of 4.
   </p>
   <div class="tl-math">\[ DW \approx 2(1-\hat\rho), \qquad \hat\rho = \text{lag-1 autocorrelation of the residuals} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>ρ̂</code><span>estimated lag-1 autocorrelation of the residuals</span></div>
+    <div class="tl-eq-chip c4"><code>DW</code><span>≈2 at ρ̂=0, →0 as ρ̂→1, →4 as ρ̂→−1</span></div>
+  </div>
   <p>
     That approximation makes the whole scale readable at a glance: \(\hat\rho
     \approx 0\) (no autocorrelation) gives \(DW \approx 2\); \(\hat\rho
@@ -213,6 +257,16 @@
     actually contains.
   </p>
 
+  <div class="tl-solid blue">
+    <strong>The key distinction:</strong> a diagnostic failure means the
+    classical standard error is wrong — it does not mean \(\hat\beta\) itself
+    is meaningless. The point estimate is derived purely from minimizing
+    squared residuals and doesn't assume anything about their serial
+    structure, variance pattern, or shape. What breaks is specifically the
+    machinery that translates "spread of residuals" into "confidence about
+    \(\hat\beta\)."
+  </div>
+
   <div class="tl-symbols">
     <table>
       <tr><td>\(e_t\)</td><td>The residual at time \(t\): \(e_t = y_t - \hat y_t\), the part of \(y_t\) the fitted regression doesn't explain.</td></tr>
@@ -242,6 +296,11 @@
     <li>Takes that auxiliary regression's \(R^2_{aux}\) and forms the test statistic \(LM = n \cdot R^2_{aux}\), which under the null hypothesis of homoskedasticity follows a \(\chi^2\) distribution with degrees of freedom equal to the number of predictors in the auxiliary regression.</li>
   </ol>
   <div class="tl-math">\[ e_i^2 = \gamma_0 + \gamma_1 X_i + v_i \qquad LM = n \cdot R^2_{aux} \ \sim\ \chi^2_{k} \text{ under } H_0 \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>eᵢ²</code><span>squared residuals — the auxiliary regression's dependent variable</span></div>
+    <div class="tl-eq-chip c2"><code>R²_aux</code><span>how much of eᵢ² the predictors X can explain</span></div>
+    <div class="tl-eq-chip c4"><code>LM</code><span>n·R²_aux, tested against χ² — large means heteroskedastic</span></div>
+  </div>
   <p>
     The logic is exactly the same OLS machinery from the primer, just pointed
     at a different dependent variable. If the true residual variance is
@@ -267,6 +326,11 @@
   distribution. It combines two moments beyond mean and variance — skewness
   and kurtosis — into a single statistic:</p>
   <div class="tl-math">\[ JB = \frac{n}{6}\left(S^2 + \frac{K^2}{4}\right) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>S</code><span>sample skewness — asymmetry, 0 if symmetric</span></div>
+    <div class="tl-eq-chip c2"><code>K</code><span>sample excess kurtosis — fatter tails than normal if positive</span></div>
+    <div class="tl-eq-chip c4"><code>JB</code><span>tested against χ²₂ — large means non-normal</span></div>
+  </div>
   <p>
     \(S\) is sample skewness (a measure of lopsidedness — a long tail
     stretching out to one side of the mean while the bulk of the mass sits on
@@ -383,6 +447,7 @@
   </div>
 
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
     <h3>A p-value of 0.01 that isn't what it looks like</h3>
     <p>
@@ -437,6 +502,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     <strong>As a pre-trust gate, not a post-mortem.</strong> The standard
@@ -481,6 +547,7 @@
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
     <h3>The from-scratch math behind an existing house rule</h3>
     <p>
@@ -532,6 +599,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where these three diagnostics get misread</h3>
     <p>
@@ -590,6 +658,19 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A p-value depends on assumptions the point estimate doesn't need.</strong> \(\hat\beta\) is robust to residual misbehavior; the standard error, t-stat, and p-value are not.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Durbin-Watson checks autocorrelation.</strong> \(DW\approx2\) means no lag-1 autocorrelation; toward 0 means positive (p-values look too good), toward 4 means negative.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Breusch-Pagan checks heteroskedasticity.</strong> It regresses squared residuals on the predictors — if they predict e², the single "one std error fits all" number is wrong.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Jarque-Bera checks normality, and matters most in small samples.</strong> With enough data the CLT bails you out regardless of residual shape.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked scenario: DW=0.6 implies ρ̂≈0.7</strong>, shrinking an effective sample of ~500 days to ~88 — enough to push a 0.01 p-value back toward noise once corrected.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A failure doesn't kill the coefficient — it means fix the inference.</strong> Recompute with HAC/Newey-West or robust standard errors rather than discarding \(\hat\beta\).</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Passing all three is not out-of-sample evidence.</strong> Clean diagnostics only certify the in-sample significance claim is honestly computed — Lego Principle 5 still applies.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does positive residual autocorrelation make a regression's p-value look better (more significant) than it actually is?</summary>

@@ -51,6 +51,7 @@
     <strong>A note on the numbers in this file.</strong> The specific correlations, percentages and figures throughout these lessons are <em>exemplar data</em> representing typical historical ranges, as the lesson material itself states. Actual values vary by time period, market regime and measurement methodology. The relationships and mechanisms described are well-established; treat exact figures as illustrative until verified against current data.
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Lesson 1 — Repositioning Your Approach to Financial Markets</h2>
 
   <h3>1.1 Market microstructure &amp; noise</h3>
@@ -62,6 +63,11 @@
     fundamentally random and carry no predictive signal.
   </p>
   <div class="tl-math">\[ SNR = \frac{\text{Signal Power}}{\text{Noise Power}} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Signal Power</code><span>the part of the move that's genuinely predictive</span></div>
+    <div class="tl-eq-chip c2"><code>Noise Power</code><span>the part that's random and carries no edge</span></div>
+    <div class="tl-eq-chip c3"><code>SNR</code><span>their ratio — rises with holding period</span></div>
+  </div>
   <ul>
     <li><strong>SNR &lt; 1 (low):</strong> noise dominates; random fluctuations overwhelm signal.</li>
     <li><strong>SNR ≈ 1 (neutral):</strong> signal and noise roughly equal; edge uncertain.</li>
@@ -85,6 +91,7 @@
 
   <h3>1.3 Two approaches to strategy development</h3>
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Systematic practitioner (data-driven)</div>
     <ul>
       <li>Hypothesis generation from empirical observation</li>
@@ -96,6 +103,7 @@
     </ul>
   </div>
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Retail trader (intuition-based, no validation)</div>
     <ul>
       <li>Hypothesis from intuition or narrative</li>
@@ -199,10 +207,12 @@
   <h3>1.8 The blindfold problem — interpreting a drawdown</h3>
   <p>Same −15% drawdown, completely different decision quality:</p>
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">With backtest data</div>
     <p>Historical max DD −22%; avg DD duration 47 days; current DD 31 days; 8 similar historical drawdowns, 8/8 recovered → <em>within expected parameters; continue executing; this is normal variance.</em></p>
   </div>
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Without backtest data</div>
     <p>Historical max ???, expected duration ???, is this normal ???, will it recover ??? → <em>no framework for the decision; likely abandons the strategy at the worst possible time, locking in losses.</em></p>
   </div>
@@ -214,6 +224,7 @@
 
   <h3>1.9 Lesson 1 key takeaways (as given)</h3>
   <div class="tl-box">
+    <div class="tl-icon-badge green">✅</div>
     <div class="tl-box-label">Key takeaways</div>
     <ul>
       <li><strong>Signal vs noise:</strong> at short horizons noise dominates; extend holding periods to improve signal extraction.</li>
@@ -223,6 +234,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>Lesson 2 — Understanding What Moves Markets</h2>
 
   <h3>2.1 The capital flow hierarchy</h3>
@@ -232,6 +244,7 @@
     what pushed the first (central bank policy).
   </p>
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Weather-system analogy</div>
     <p>Central banks are the pressure systems; watching only stocks is looking out the window instead of at the weather map.</p>
   </div>
@@ -263,6 +276,7 @@
     <li>Crowding: the lower the hierarchy level, the more participants, the more crowded the information, the smaller the edge.</li>
   </ul>
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Worked example — rate hike transmission</div>
     <ol>
       <li>Fed announces +0.25%. (The original signal.)</li>
@@ -338,6 +352,7 @@
     <tr><td>OIS–SOFR</td><td>Funding stress</td><td>Widening → liquidity strain / bank nervousness</td></tr>
   </table></div>
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Case study — the 2022 rate shock</div>
     <p>Fed pivoted hawkish late 2021, fastest hiking cycle in 40 years; the hierarchy transmitted predictably:</p>
     <ul>
@@ -393,6 +408,7 @@
     <tr><td>VIX</td><td>−0.82</td><td>0.28</td><td>0.20</td><td>0.22</td><td>−0.38</td><td>−0.78</td><td>1.00</td></tr>
   </table></div>
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Critical warning (from the lesson)</div>
     <p>
       Correlations are NOT stable. March 2020: correlations spiked to 0.9+
@@ -417,6 +433,7 @@
     "Don't fight the Fed" isn't wisdom — it's mathematics.
   </p>
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Bathtub analogy</div>
     <p>
       Liquidity = amount of money in the financial system. More money = higher
@@ -456,6 +473,7 @@
   </table></div>
   <p><em>Why QE weakens the currency:</em> more dollars in circulation → supply/demand → dollar falls vs other currencies.</p>
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Case study — the 2020 liquidity firehose</div>
     <ul>
       <li>Mar 23: Fed announces unlimited QE → S&amp;P bottoms within hours.</li>
@@ -504,6 +522,7 @@
     bearish depending on existing positioning. Positioning is potential energy.
   </p>
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Room analogy</div>
     <p>
       Everyone leaning on one wall → any shout of "fire" causes a violent
@@ -522,6 +541,13 @@
     predictive value. Pros ask: <em>"How is the market positioned, and will
     this news force repositioning?"</em> — not "what does this news mean?"
   </p>
+  <div class="tl-solid red">
+    <strong>The trap:</strong> a news headline explains a move only after the
+    fact — it has zero predictive value on its own, because the same headline
+    gets written as bullish or bearish depending on how the market was already
+    positioned before it hit. Trading the headline instead of the positioning
+    behind it means reacting to the story, not the mechanism.
+  </div>
   <p><strong>Key positioning data sources:</strong></p>
   <ul>
     <li><strong>CFTC COT report (Fridays):</strong> futures positioning by trader type (commercial hedgers vs speculators); extreme spec long/short often precedes reversals.</li>
@@ -536,6 +562,7 @@
     <li><strong>Extreme short:</strong> crowded short, vulnerable to squeeze — forced covering accelerates rallies.</li>
   </ul>
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Case study — GameStop (2021), a textbook positioning unwind</div>
     <ul>
       <li>Setup: 140% short interest (more shares short than existed) — extreme crowding.</li>
@@ -555,6 +582,7 @@
 
   <h3>2.7 Lesson 2 key takeaways (as given)</h3>
   <div class="tl-box">
+    <div class="tl-icon-badge green">✅</div>
     <div class="tl-box-label">Key takeaways</div>
     <ul>
       <li><strong>The hierarchy is not optional:</strong> CBs → bonds → FX → equities → credit; information degrades at each level; check the levels above before any position.</li>
@@ -566,6 +594,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>Lesson 3 — Central Bank Policy Deep Dive</h2>
   <p><em>(Course note: structural knowledge that stays relevant across cycles; specific stances, rates and committee compositions change — verify current data.)</em></p>
 
@@ -654,6 +683,7 @@
     <li>Q&amp;A: less scripted; hesitation/deflection; repetition of a theme = strong conviction; "we'll see"/"it depends" = genuine uncertainty.</li>
   </ul>
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Warning</div>
     <p>Initial market reaction to the presser often reverses — the first move is algorithmic (keyword-based); real positioning comes in following hours/days as humans digest nuance.</p>
   </div>
@@ -688,6 +718,7 @@
     <li><strong>Longer-run dots:</strong> the neutral rate estimate (r*); rising longer-run dots = structurally higher rate environment.</li>
   </ul>
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">The dot plot's dirty secret</div>
     <p>Poor track record — 2021 dots showed zero rates through 2024; by 2022 rates were 4%+. Don't treat dots as commitments.</p>
   </div>
@@ -746,6 +777,7 @@
   </table></div>
   <p>Key: when they say "data dependent," ask <strong>which data</strong> — inflation, employment, or financial conditions? The emphasis tells you the trigger.</p>
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Language shifts precede policy shifts — example (2021–22 pivot)</div>
     <ul>
       <li>Early 2021: "inflation is transitory" (no concern)</li>
@@ -793,6 +825,7 @@
     assets.
   </p>
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">QT risk</div>
     <p>
       QE effects are gradual; QT can cause <strong>sudden stress when reserves
@@ -802,6 +835,23 @@
   </div>
   <p><strong>The net liquidity equation:</strong></p>
   <div class="tl-math">\[ \text{Net Liquidity} \approx \text{Fed Balance Sheet} - \text{TGA} - \text{RRP} \]</div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">Fed Balance Sheet</div>
+      <div class="tl-fp-name">Total assets held</div>
+      <div class="tl-fp-desc">Grows under QE (injection), shrinks under QT (withdrawal)</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">− TGA</div>
+      <div class="tl-fp-name">Treasury's checking account</div>
+      <div class="tl-fp-desc">Rising = Treasury hoarding cash (drains liquidity); falling = spending it (adds)</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">− RRP</div>
+      <div class="tl-fp-name">Reverse repo</div>
+      <div class="tl-fp-desc">Cash parked overnight at the Fed; rising = idle excess cash; falling = flowing back to markets</div>
+    </div>
+  </div>
   <div class="tl-table"><table>
     <tr><th>Component</th><th>What it is</th><th>Liquidity effect</th></tr>
     <tr><td>Fed balance sheet</td><td>Total assets (bonds held)</td><td>Growing = adding; shrinking = draining</td></tr>
@@ -861,6 +911,7 @@
     <li><strong>Phase 2 — human digestion (2:05–4:00 PM):</strong> full statement + presser processed in context; can reverse Phase 1.</li>
   </ul>
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Warning</div>
     <p>Don't chase the first spike; wait until the presser finishes before committing to directional trades.</p>
   </div>
@@ -886,6 +937,7 @@
 
   <h3>3.8 Lesson 3 key takeaways (as given)</h3>
   <div class="tl-box">
+    <div class="tl-icon-badge green">✅</div>
     <div class="tl-box-label">Key takeaways</div>
     <ul>
       <li><strong>Know the players:</strong> committee composition, hawk/dove leanings, dissents; the Chair dominates but a unified committee is more predictable than a divided one.</li>
@@ -897,6 +949,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Lesson 4 — Fixed Income Fundamentals for Traders</h2>
   <p><em>(Course note: bond math is mathematical fact; bond↔FX/equity relationships are well-established but vary in strength by regime.)</em></p>
 
@@ -929,6 +982,11 @@
     2Y Treasury ≈ 2; 10Y ≈ 8; 30Y ≈ 18; long-duration (growth) stocks ≈ 25+.
   </p>
   <div class="tl-math">\[ \text{Price change} \approx -\text{Duration} \times \text{Yield change} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Duration</code><span>the bond's rate sensitivity (≈2 for a 2Y, ≈8 for a 10Y, ≈18 for a 30Y)</span></div>
+    <div class="tl-eq-chip c2"><code>Yield change</code><span>how much yields moved, in the same units</span></div>
+    <div class="tl-eq-chip c4"><code>−</code><span>the minus sign: yields up means price down, always</span></div>
+  </div>
   <div class="tl-table"><table>
     <tr><th>Bond</th><th>Duration</th><th>Yields +0.5%</th><th>Yields −0.5%</th></tr>
     <tr><td>2Y</td><td>~2</td><td>≈ −1%</td><td>≈ +1%</td></tr>
@@ -1020,6 +1078,7 @@
     <li><strong>Classic pattern:</strong> spreads start widening → equities ignore it for days/weeks → equities eventually sell off. Watching credit = advance warning.</li>
   </ul>
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">2008 example</div>
     <p>HY spreads began widening significantly in summer 2007; equities made new highs in October 2007 — credit warned for months.</p>
   </div>
@@ -1062,6 +1121,11 @@
   <p><strong>The gold relationship:</strong> gold performs well when real yields are falling or negative; struggles when they rise — documented over decades.</p>
   <p><strong>TIPS:</strong> principal adjusts with inflation; TIPS yield ≈ the real yield directly.</p>
   <div class="tl-math">\[ \text{Breakeven Inflation} = \text{Nominal Yield} - \text{TIPS Yield} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Nominal Yield</code><span>the quoted Treasury yield, no inflation adjustment</span></div>
+    <div class="tl-eq-chip c2"><code>TIPS Yield</code><span>the real (inflation-protected) yield on the same maturity</span></div>
+    <div class="tl-eq-chip c3"><code>Breakeven</code><span>the market's implied average inflation over that horizon</span></div>
+  </div>
   <p>= the market's expected average inflation over that horizon. Example: 10Y at 4.5%, 10Y TIPS at 2.0% → 10Y breakeven 2.5%.</p>
   <p><strong>Real-yield environments:</strong></p>
   <div class="tl-table"><table>
@@ -1105,6 +1169,7 @@
     <tr><td>Extreme positioning</td><td>FX reverses despite rates</td><td>Unwind mechanics dominate</td></tr>
   </table></div>
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Case study — USD/JPY 2021–2024 (textbook rate-differential story)</div>
     <ul>
       <li>Start: US and Japan both near zero; small differential.</li>
@@ -1166,6 +1231,7 @@
   </ol>
   <p><em>Time: 5 minutes. This context shapes the entire trading day.</em></p>
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Case study — putting it together, the 2022 bear market</div>
     <ul>
       <li>10Y surged ~1.5% → ~4.2% (historic move).</li>
@@ -1181,6 +1247,7 @@
 
   <h3>4.8 Lesson 4 key takeaways (as given)</h3>
   <div class="tl-box">
+    <div class="tl-icon-badge green">✅</div>
     <div class="tl-box-label">Key takeaways</div>
     <ul>
       <li><strong>Price &amp; yield are opposites</strong> — master this or nothing else makes sense.</li>
@@ -1194,6 +1261,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Lesson 5 — Currency Markets &amp; Global Flows</h2>
   <p><em>(Course note: FX relationships are well-established but regime-varying; dynamics can shift rapidly during intervention, crisis, or regime change.)</em></p>
 
@@ -1319,6 +1387,10 @@
     peso drop exceeds a year's carry. "Pennies in front of a steamroller."
   </p>
   <div class="tl-math">\[ \text{Carry Return} = \text{Interest Rate Differential} - \text{Hedging Cost} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Interest Rate Differential</code><span>the yield gap you're collecting by holding the high-yielder</span></div>
+    <div class="tl-eq-chip c4"><code>Hedging Cost</code><span>what you give up (or lose to spot moves) protecting the position</span></div>
+  </div>
   <p>
     Components in practice: interest differential + spot return + roll yield
     (forward points). Calm markets → differential dominates (steady yield);
@@ -1353,6 +1425,7 @@
     <li>Cascade — JPY can rally 5–10% in days; years of carry wiped out.</li>
   </ol>
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Reflexivity</div>
     <p>JPY strength → more stops hit → more forced JPY buying → more strength. This is why JPY moves are explosive in risk-off.</p>
   </div>
@@ -1387,6 +1460,7 @@
   </table></div>
   <p>Direction and speed matter more than levels; the structure has evolved with regulation.</p>
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Case study — March 2020 dollar squeeze</div>
     <ul>
       <li>Basis blew out ~−20 → beyond −100bps in days.</li>
@@ -1408,6 +1482,7 @@
     intervenes.
   </p>
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Case study — Japan 2022–2024</div>
     <ul>
       <li>Pattern: verbal warnings → rate checks → actual intervention.</li>
@@ -1449,6 +1524,7 @@
 
   <h3>5.9 Lesson 5 key takeaways (as given)</h3>
   <div class="tl-box">
+    <div class="tl-icon-badge green">✅</div>
     <div class="tl-box-label">Key takeaways</div>
     <ul>
       <li><strong>FX is the transmission mechanism</strong> — policy divergence flows through currencies to global assets.</li>
@@ -1462,6 +1538,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Lesson 6 — Cross-Asset Synthesis</h2>
   <p><em>(Course framing: this is the structural framework for institutional cross-asset analysis — how global macro funds and multi-asset allocators actually think. Understanding the framework is the first step; systematic implementation through data infrastructure and quantitative testing is where edge is built.)</em></p>
 
@@ -1517,6 +1594,12 @@
     accelerating or decelerating (ISM, employment, GDP). Inflation: rising or
     falling (CPI, PCE, breakevens).
   </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard"><div class="tl-icon-badge green">🌤️</div><h4>Goldilocks</h4><p>Growth ↑, inflation ↓ — the best of all worlds; CBs stay accommodative; risk assets thrive.</p></div>
+    <div class="tl-icard"><div class="tl-icon-badge amber">🔥</div><h4>Reflation</h4><p>Growth ↑, inflation ↑ — economy running hot; CB tightening bias; value and real assets outperform.</p></div>
+    <div class="tl-icard"><div class="tl-icon-badge red">🌪️</div><h4>Stagflation</h4><p>Growth ↓, inflation ↑ — the worst outcome; CBs trapped; nowhere to hide except real assets and cash.</p></div>
+    <div class="tl-icard"><div class="tl-icon-badge blue">❄️</div><h4>Deflation</h4><p>Growth ↓, inflation ↓ — risk-off; CBs ease aggressively; flight to quality dominates.</p></div>
+  </div>
   <ul>
     <li><strong>Goldilocks (growth ↑, inflation ↓)</strong> — the best of all worlds; CBs stay accommodative; risk assets thrive. Duration neutral; credit overweight; equities overweight (growth style); commodities selective; volatility: sell. Historical examples: 2017, mid-2019, late 2023.</li>
     <li><strong>Reflation (growth ↑, inflation ↑)</strong> — economy running hot; CB tightening bias; value and real assets outperform. Duration underweight; credit neutral; equities overweight (value style); commodities overweight; TIPS overweight. Examples: 2021 reopening, 2004–2006.</li>
@@ -1632,6 +1715,7 @@
 
   <h3>6.6 Case study — the 2022 cross-asset bear market</h3>
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Case study</div>
     <p><strong>Setup (late 2021):</strong> 5Y breakeven hit 3.2% (multi-decade high); 10Y TIPS at −1.0% (unsustainably stimulative); Fed rhetoric shifting off "transitory"; bear flattening as the front end priced hikes. Regime: Goldilocks → Reflation, with rising stagflation risk.</p>
     <p><strong>The cascade:</strong></p>
@@ -1660,6 +1744,7 @@
 
   <h3>6.7 Case study — the Q4 2023 "everything rally" (peak coherence)</h3>
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Case study</div>
     <p><strong>Setup (summer–fall 2023):</strong> CPI falling 9% → ~3% (core sticky); labor market resilient; Fed paused after July 2023 (higher-for-longer messaging); curve deeply inverted but no recession materialising. Debate: soft landing (Goldilocks) vs delayed hard landing (Deflation) — <strong>coherence low</strong>.</p>
     <p><strong>October trough:</strong> 10Y spiked to 5% (term premium + supply + resilient data); S&amp;P −10% from July highs; credit spreads only modestly wider; VIX ~20 (elevated, not panicked). Crucially a <strong>rates-driven selloff, not credit-driven</strong> — HY didn't blow out; credit was NOT confirming a hard landing. That divergence was informative.</p>
@@ -1687,6 +1772,7 @@
 
   <h3>6.8 Case study — March 2023 banking stress (SVB)</h3>
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Case study</div>
     <p><strong>Setup:</strong> Fed still hiking (25–50bps expected in March); 2Y near 5%, 10Y near 4%; bank held-to-maturity bond portfolios carrying massive unrealized losses from the 2022 rate surge; regional banks vulnerable (concentrated deposits, duration mismatch).</p>
     <p><strong>The 5-day cascade:</strong></p>
@@ -1746,6 +1832,11 @@
   </ul>
   <p><strong>Systematic implementation (from the lesson):</strong> weight multiple expressions by signal strength, risk contribution (vol-adjusted sizing), correlation between expressions, and costs.</p>
   <div class="tl-math">\[ \text{Position Size} = \frac{\text{Target Risk}}{\text{Instrument Volatility} \times \text{Correlation to View}} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Target Risk</code><span>how much you want this expression to contribute to book risk</span></div>
+    <div class="tl-eq-chip c2"><code>Instrument Volatility</code><span>how much that instrument moves on its own</span></div>
+    <div class="tl-eq-chip c3"><code>Correlation to View</code><span>how directly the instrument's moves track the thesis</span></div>
+  </div>
 
   <h3>6.10 Implementation reality — where edge actually lives</h3>
   <div class="tl-callout">
@@ -1782,6 +1873,7 @@
 
   <h3>6.11 Lesson 6 key takeaways (as given)</h3>
   <div class="tl-box">
+    <div class="tl-icon-badge green">✅</div>
     <div class="tl-box-label">Key takeaways</div>
     <ul>
       <li><strong>Trade the capital structure, not single assets</strong> — one view, many expressions, different risk/reward.</li>
@@ -1795,6 +1887,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>Appendix A — Master reference: formulas from the course</h2>
   <div class="tl-table"><table>
     <tr><th>Formula</th><th>Context</th></tr>
@@ -1810,6 +1903,7 @@
     <tr><td><code>Position Size = Target Risk / (Instrument Vol × Correlation to View)</code></td><td>L6 — vol-adjusted sizing</td></tr>
   </table></div>
 
+  <div class="tl-section-mark"><span>Section 08</span></div>
   <h2>Appendix B — Master reference: data sources &amp; tools named in the course</h2>
   <div class="tl-table"><table>
     <tr><th>Source / tool</th><th>What for</th></tr>
@@ -1834,11 +1928,24 @@
     <tr><td>Put/call ratio, short interest, fund flows</td><td>Positioning/sentiment</td></tr>
   </table></div>
 
+  <div class="tl-section-mark"><span>Section 09</span></div>
   <h2>Appendix C — Master reference: the daily scans (as taught)</h2>
   <p><strong>Risk dashboard (L2):</strong> VIX level &amp; term structure → CDX HY day change → JPY vs high-beta FX → stock-bond correlation check → if 3+ warn, cut gross first.</p>
   <p><strong>Fixed income scan, 5 min (L4):</strong> 10Y level/change → 2s10s → 2Y → HY spreads → MOVE → 10Y TIPS → key rate differentials.</p>
   <p><strong>FX scan, 5 min (L5):</strong> DXY direction &amp; why → USD/JPY (JPY strength = risk-off) → EUR/USD → AUD/USD (risk + China) → EM FX breadth → cross-currency basis if available.</p>
   <p><strong>Pre-trade checks:</strong> levels above you in the hierarchy (L2) → positioning (who's in, what forces them out, am I early or late, what's my edge) (L2) → bond-first framework (L4) → regime &amp; coherence context (L6).</p>
+
+  <div class="tl-section-mark"><span>Section 10</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Systematic validation decouples time from capital.</strong> Hypothesis → in-sample → out-of-sample → walk-forward → small live size fails most ideas before any money is at risk; ad-hoc/intuition-based trading fails ideas with capital already deployed — the "double negative" of lost time and lost capital (Lesson 1).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Check the levels above you before any position.</strong> Policy cascades central banks → government bonds → currencies → equities → credit, with information degrading and lag increasing at each step down; most retail activity happens at the noisiest, most crowded bottom rungs (Lesson 2).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Fed communication is precise, not vague — but it's conditional, not a commitment.</strong> Statement word-diffs, press-conference tone, and dot-plot shifts telegraph policy before it happens; the dot plot itself has a documented poor track record and should never be read as a promise (Lesson 3).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Bond math is mechanical and it leads the other asset classes.</strong> Price and yield move inversely by definition; duration converts yield moves into price moves; an inverted yield curve has preceded every US recession in 50+ years (6–24 month variable lead); credit spreads and real yields (TIPS) often explain equity/gold/FX moves before the equity tape does (Lesson 4).</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Rate differentials drive FX medium-term, but risk sentiment overrides in stress.</strong> Haven flows (JPY, CHF, USD) and carry-trade unwinds can swamp the rate-differential logic entirely — a sharp JPY rally on a "risk-off" day is a mechanical unwind signal to read, not a rate-based forecast to fight (Lesson 5).</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Understanding the cross-asset framework is not the same as having an edge.</strong> The lesson material's own verdict: markets are efficient at short horizons, and daily discretionary macro trading is documented to be extremely difficult even for professionals — the institutional edge is data infrastructure, systematic implementation, longer time horizons, and the discipline to test before trading, not discretionary daily macro calls (Lesson 6).</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">✓</span><span><strong>These are course notes, not a validated trading system.</strong> The specific correlations, percentages and figures throughout are exemplar data representing typical historical ranges, as the lesson material itself states — the mechanisms are well-established, but exact numbers should be treated as illustrative until verified against current data, and none of this framework has been backtested or proven out-of-sample on this platform.</span></div>
+  </div>
 
   <details class="tl-section-collapse">
   <summary><h2>Appendix D — Topics flagged for future investigation</h2></summary>

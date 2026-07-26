@@ -32,6 +32,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     Three lessons already in this Theory Lab lean on calculus without pausing
@@ -66,6 +67,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>The speedometer and the odometer</h3>
     <p>
@@ -136,6 +138,7 @@
     </div>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <div class="tl-symbols"><table>
     <tr><td>\(f(x)\)</td><td>A function of \(x\) — a price, an option value, a wealth level, anything that depends smoothly on some input \(x\).</td></tr>
@@ -157,6 +160,10 @@
   <div class="tl-math">
     \[ \text{average rate of change} = \frac{f(x+h) - f(x)}{h} \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>f(x+h)−f(x)</code><span>rise — the change in f over the gap</span></div>
+    <div class="tl-eq-chip c4"><code>h</code><span>run — the size of the gap</span></div>
+  </div>
   <p>
     Geometrically, this is the slope of the <strong>secant line</strong> — the
     straight line connecting the two points \((x, f(x))\) and
@@ -176,6 +183,10 @@
   <div class="tl-math">
     \[ f'(x) = \lim_{h \to 0} \frac{f(x+h) - f(x)}{h} \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>f'(x)</code><span>the derivative — instantaneous rate of change at x</span></div>
+    <div class="tl-eq-chip c3"><code>lim h→0</code><span>shrink the gap to a single instant</span></div>
+  </div>
   <p>
     As \(h\) shrinks, the secant line connecting \(x\) and \(x+h\) rotates
     and approaches the single line that just <em>touches</em> the curve at
@@ -192,11 +203,18 @@
   <div class="tl-math">
     \[ f(x+h) = (x+h)^2 = x^2 + 2xh + h^2 \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>2xh</code><span>the term linear in h</span></div>
+    <div class="tl-eq-chip c4"><code>h²</code><span>the term quadratic in h — carries the curvature</span></div>
+  </div>
   <p>
     Subtract \(f(x) = x^2\):
   </p>
   <div class="tl-math">
     \[ f(x+h) - f(x) = (x^2 + 2xh + h^2) - x^2 = 2xh + h^2 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>2xh+h²</code><span>the x² term cancels exactly, leaving only the h terms</span></div>
   </div>
   <p>
     Divide by \(h\). Because both remaining terms in the numerator share a
@@ -207,6 +225,9 @@
   <div class="tl-math">
     \[ \frac{f(x+h)-f(x)}{h} = \frac{2xh + h^2}{h} = \frac{h(2x+h)}{h} = 2x + h \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>2x+h</code><span>the shared factor of h cancels cleanly</span></div>
+  </div>
   <p>
     Finally, take the limit as \(h \to 0\). The \(2x\) term doesn't involve
     \(h\) at all, so it's untouched; the remaining \(h\) term shrinks to
@@ -214,6 +235,9 @@
   </p>
   <div class="tl-math">
     \[ f'(x) = \lim_{h\to 0}(2x+h) = 2x \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>2x</code><span>the h term vanishes exactly at the limit — not approximately</span></div>
   </div>
   <p>
     So \(\dfrac{d}{dx}(x^2) = 2x\), exactly — not approximately. This is the
@@ -246,6 +270,9 @@
   <div class="tl-math">
     \[ \int_a^b f(x)\,dx = \lim_{\Delta x \to 0} \sum_{i} f(x_i)\,\Delta x \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>Σf(xᵢ)Δx</code><span>sum of thin rectangle areas — the raw definition</span></div>
+  </div>
   <p>
     Computing that limit of a sum directly, slice by slice, is tedious.
     The single most important fact in calculus — the
@@ -257,6 +284,16 @@
   </p>
   <div class="tl-math">
     \[ \int_a^b f(x)\,dx = F(b) - F(a) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>F</code><span>any antiderivative of f — F'(x)=f(x)</span></div>
+    <div class="tl-eq-chip c4"><code>F(b)−F(a)</code><span>just evaluate at the two endpoints and subtract</span></div>
+  </div>
+  <div class="tl-solid green">
+    <strong>The payoff:</strong> integration and differentiation are exact
+    inverses. You almost never have to sum infinitely many rectangular
+    slices by hand — find an antiderivative, evaluate it at the two
+    endpoints, and subtract.
   </div>
   <p>
     Read plainly: to find the accumulated area under a rate-of-change curve
@@ -281,6 +318,9 @@
   <div class="tl-math">
     \[ f(x+h) \approx f(x) + f'(x)\,h \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>f'(x)h</code><span>the tangent line's rise over the step h</span></div>
+  </div>
   <p>
     This says: to estimate \(f\) a small step \(h\) away from a known point
     \(x\), start at the known value \(f(x)\) and add the tangent line's rise
@@ -300,6 +340,25 @@
   <div class="tl-math">
     \[ f(x+h) \approx f(x) + f'(x)\,h + \frac{f''(x)}{2}\,h^2 \]
   </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">f(x)</div>
+      <div class="tl-fp-name">Zeroth order</div>
+      <div class="tl-fp-desc">Flat guess — assumes nothing changes at all</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">f'(x)h</div>
+      <div class="tl-fp-name">First order</div>
+      <div class="tl-fp-desc">The tangent-line correction — accounts for slope</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">½f''(x)h²</div>
+      <div class="tl-fp-name">Second order</div>
+      <div class="tl-fp-desc">Corrects for the curve bending away from the tangent line</div>
+    </div>
+  </div>
+
   <p>
     Each added term is a correction for something the previous term missed:
     \(f(x)\) alone assumes nothing changes at all (a flat, zeroth-order
@@ -334,6 +393,9 @@
   <div class="tl-math">
     \[ f(0+h) \approx f(0) + f'(0)h + \frac{f''(0)}{2}h^2 = 0 + (1)h + \frac{-1}{2}h^2 = h - \frac{h^2}{2} \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>h − h²/2</code><span>the same Taylor shape, three numbers plugged in</span></div>
+  </div>
   <p>
     Relabel the step \(h\) as a return \(R\), and this is exactly
     \(\ln(1+R) \approx R - R^2/2\) — not a separate approximation someone
@@ -356,6 +418,9 @@
   <div class="tl-math">
     \[ g \approx \mu - \frac{\sigma^2}{2} \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>σ²/2</code><span>volatility drag — the same second-order Taylor correction, averaged</span></div>
+  </div>
   <p>
     Same Taylor expansion, same \(h - h^2/2\) shape, just relabeled twice —
     once per period as \(\ln(1+R)\approx R - R^2/2\), and once again after
@@ -365,6 +430,7 @@
   </p>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>How good is the second-order approximation, numerically?</h3>
     <p>
@@ -396,6 +462,7 @@
   </div>
 
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
     <h3>Delta is a derivative you're already trading with</h3>
     <p>
@@ -439,7 +506,32 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📐</div>
+      <h4>The Greeks are a Taylor expansion</h4>
+      <p>Delta, gamma, theta, vega are first- and second-order derivatives of the option-pricing function — a "delta-gamma" approximation is the second-order expansion applied variable by variable.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🎯</div>
+      <h4>Optimization = set the derivative to zero</h4>
+      <p>Kelly's growth-optimal fraction, a regression's least-squares coefficients — both found by differentiating an objective and solving where it vanishes.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">∫</div>
+      <h4>Integrals as probability &amp; cumulative performance</h4>
+      <p>A CDF is the integral of a density; an equity curve is the integral of a P&amp;L rate over time — the odometer-from-speedometer idea, applied to trading.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📊</div>
+      <h4>Rates of change are estimated, not exact</h4>
+      <p>Real price series only exist at discrete points, so practitioners use a finite difference as a working stand-in for the theoretical limit.</p>
+    </div>
+  </div>
+
   <p>
     <strong>The Greeks are a Taylor expansion of an option's price.</strong>
     Delta (\(\partial C/\partial S\)), gamma (\(\partial^2 C/\partial S^2\)),
@@ -490,6 +582,7 @@
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
     <h3>Vocabulary, not a module — but it's already load-bearing in three lessons and in real code</h3>
     <p>
@@ -532,6 +625,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where calculus reasoning goes wrong in practice</h3>
     <p>
@@ -581,6 +675,18 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A derivative is the tangent-line slope; an integral is the area under a curve.</strong> The Fundamental Theorem of Calculus proves they're exact inverse operations — you almost never have to sum infinitely many slices by hand.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A Taylor series builds an estimate one correction at a time.</strong> Zeroth order is a flat guess, first order adds the tangent line, second order corrects for curvature — each term fixes what the previous one missed.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(\ln(1+R)\approx R-R^2/2\) and \(g\approx\mu-\sigma^2/2\) are the same formula, twice.</strong> Both fall out of the identical second-order Taylor expansion of \(\ln(1+x)\) around zero — not two separate finance shortcuts.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Delta and gamma are literally Taylor terms.</strong> Delta is the first-order derivative of the option price with respect to the underlying; gamma is the second-order correction for how delta itself changes.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Every Taylor approximation is local.</strong> It's accurate near the expansion point and degrades — sometimes sharply — as the step size grows, exactly as the worked example's roughly 200-fold jump in error shows.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Real market data gives you a finite difference, never the true limit.</strong> Practitioners approximate a derivative with \(\Delta f/\Delta x\) over the smallest available step, which carries its own noise and window-choice tradeoff.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why is the derivative defined as a limit, \(\lim_{h\to 0}\), rather than just picking some small, fixed \(h\) and computing \([f(x+h)-f(x)]/h\)?</summary>
