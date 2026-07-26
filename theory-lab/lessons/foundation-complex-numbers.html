@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Complex Numbers — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Foundation Mathematics / Complex Numbers</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Foundation Mathematics · Lesson 3 of 6</div>
+  <h1 class="tl-title">Complex Numbers</h1>
+  <p class="tl-dek">\(i=\sqrt{-1}\), the complex plane, and Euler's formula — the number system that quietly powers Fourier analysis and characteristic-function option pricing later in this curriculum.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span>~13 min read</span>
+    <span>Prereqs: Trigonometry, Logarithms &amp; Exponentials</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>\(i\) is defined as a number satisfying \(i^2=-1\) — nothing more mysterious than extending the number system so that "the square root of a negative number" has an answer.</li>
+      <li>A complex number \(z=a+bi\) has a <strong>real part</strong> \(a\) and an <strong>imaginary part</strong> \(b\) (both ordinary real numbers) and can be plotted as a point \((a,b)\) on the <strong>complex plane</strong> — horizontal axis real, vertical axis imaginary.</li>
+      <li>The <strong>modulus</strong> \(|z|=\sqrt{a^2+b^2}\) is the point's distance from the origin (just Pythagoras); the <strong>argument</strong> \(\theta\) is the angle that point makes with the positive real axis — exactly the polar coordinates from the previous lesson's unit circle.</li>
+      <li><strong>Euler's formula</strong>, \(e^{i\theta}=\cos\theta+i\sin\theta\), fuses the natural exponential with sine and cosine into one identity — it can be motivated by plugging \(i\theta\) into the (infinite-series) definition of \(e^x\) and watching it split cleanly into the separate series for \(\cos\theta\) and \(\sin\theta\).</li>
+      <li>Setting \(\theta=\pi\) gives <strong>Euler's identity</strong>, \(e^{i\pi}+1=0\) — routinely called the most beautiful equation in mathematics for linking five fundamental constants (\(0,1,e,i,\pi\)) in one line.</li>
+      <li>Complex numbers matter in quantitative finance chiefly through <strong>characteristic functions</strong> (used in Fourier-based option pricing) and the <strong>Fourier Transform</strong> itself, both covered properly in later lessons this one sets up.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Complex numbers can look like a detour — a made-up number whose square is
+    negative, introduced for no obvious reason. The honest reason to learn
+    them here is entirely forward-looking: several genuinely important tools
+    later in this curriculum are built directly on top of the machinery this
+    page introduces. Characteristic-function methods for pricing options
+    (a major alternative to solving a pricing formula directly) work by
+    transforming a probability distribution into a complex-valued function and
+    manipulating that instead — a technique that is opaque without this page's
+    vocabulary. The Fourier Transform, covered properly in a later Signal
+    Processing lesson, decomposes a signal into a sum of oscillations using
+    exactly the sine/cosine-and-exponential fusion this page derives. Neither
+    of those tools makes sense read cold; both make sense immediately once
+    \(i\), the complex plane, and Euler's formula are already comfortable.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📡</div>
+      <h4>The Fourier Transform, later in this curriculum</h4>
+      <p>Decomposes a signal into oscillating components using \(e^{i\theta}\) directly — this page's Euler's formula is the notation that makes that decomposition compact.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">💹</div>
+      <h4>Characteristic-function option pricing</h4>
+      <p>A major family of option-pricing techniques transforms a return distribution into a complex-valued "characteristic function" and prices options by manipulating that function instead of the distribution directly.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">〰️</div>
+      <h4>The previous lesson's unit circle</h4>
+      <p>The complex plane's polar form, \(re^{i\theta}\), is literally the unit-circle picture from the previous lesson, generalized to any radius \(r\), not just 1.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">➗</div>
+      <h4>Taylor series, covered in Calculus for Finance</h4>
+      <p>Euler's formula is properly derived by substituting \(i\theta\) into the Taylor series for \(e^x\) — this curriculum's Calculus for Finance lesson (Deeper Foundations) builds that machinery from scratch; this page previews the destination.</p>
+    </div>
+  </div>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A number system extended so that every equation has an answer</h3>
+    <p>
+      Ordinary ("real") numbers can't answer the question "what number, squared,
+      gives \(-1\)?" — every real number squared is zero or positive, no
+      exceptions. Rather than declaring the question unanswerable and moving
+      on, mathematicians did what's done throughout the history of number
+      systems whenever an operation has no answer within the current system:
+      invent a new kind of number that has one, and check that the new system
+      still behaves sensibly. Negative numbers were invented so subtraction
+      always has an answer (\(3-5\) needed one); fractions were invented so
+      division always has an answer. \(i\), defined by \(i^2=-1\), is the same
+      move applied to square roots of negative numbers.
+    </p>
+    <p>
+      Once \(i\) exists, a whole new family of numbers exists alongside it:
+      combinations like \(3+4i\), with an ordinary ("real") part and an "\(i\)"
+      ("imaginary") part. These aren't abstract nonsense with no
+      representation — they plot perfectly naturally as points on a
+      two-dimensional plane, the real part along one axis and the imaginary
+      part along the other, the exact same way an ordered pair \((x,y)\)
+      plots on an ordinary graph. "Imaginary" is a historical label, not a
+      judgment that these numbers are less real or less useful than the
+      numbers you already knew — they turn out to be exactly the right tool
+      for describing rotation, oscillation, and waves, which is precisely why
+      they show up in Fourier analysis and option pricing later on.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>Defining \(i\), and real vs. imaginary parts</h3>
+  <p>
+    Define \(i\) as a number satisfying:
+  </p>
+  <div class="tl-math">
+    \[ i^2 = -1 \qquad\text{equivalently}\qquad i = \sqrt{-1} \]
+  </div>
+  <p>
+    A <strong>complex number</strong> \(z\) is written \(z = a + bi\), where
+    \(a\) and \(b\) are ordinary real numbers. \(a\) is called the <strong>real
+    part</strong> of \(z\), written \(\text{Re}(z)\); \(b\) is the
+    <strong>imaginary part</strong>, written \(\text{Im}(z)\) — note \(b\)
+    itself is a real number; it's the coefficient multiplying \(i\), not "an
+    imaginary number" in its own right.
+  </p>
+  <div class="tl-math">
+    \[ z = a + bi \qquad \text{Re}(z) = a \qquad \text{Im}(z) = b \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>a</code><span>the real part — an ordinary real number</span></div>
+    <div class="tl-eq-chip c2"><code>b</code><span>the imaginary part — also an ordinary real number, multiplying \(i\)</span></div>
+    <div class="tl-eq-chip c3"><code>i</code><span>the imaginary unit, satisfying \(i^2=-1\)</span></div>
+  </div>
+  <p>
+    Complex numbers add and multiply like ordinary algebraic expressions, with
+    one extra rule: whenever \(i^2\) appears, replace it with \(-1\).
+  </p>
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Addition</h4>
+        <p>Add real parts together and imaginary parts together, separately:</p>
+        <div class="tl-math">\[ (a+bi) + (c+di) = (a+c) + (b+d)i \]</div>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>Multiplication</h4>
+        <p>Expand like any two brackets, then simplify \(i^2\) to \(-1\):</p>
+        <div class="tl-math">\[ (a+bi)(c+di) = ac + adi + bci + bdi^2 = (ac-bd) + (ad+bc)i \]</div>
+      </div>
+    </div>
+  </div>
+
+  <h3>The complex plane, modulus, and argument</h3>
+  <p>
+    Plot a complex number \(z=a+bi\) as the point \((a,b)\) on a
+    two-dimensional plane — the horizontal axis is the real part, the vertical
+    axis is the imaginary part. This is the <strong>complex plane</strong> (or
+    Argand plane). Two natural quantities describe that point using the same
+    polar-coordinate idea as the unit circle in the previous lesson:
+  </p>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">|z| = √(a²+b²)</div><div class="tl-fp-name">Modulus</div><div class="tl-fp-desc">The point's straight-line distance from the origin — Pythagoras' theorem</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">θ = arg(z)</div><div class="tl-fp-name">Argument</div><div class="tl-fp-desc">The angle the point makes with the positive real axis, measured counterclockwise</div></div>
+  </div>
+  <div class="tl-math">
+    \[ |z| = \sqrt{a^2+b^2} \qquad\qquad \theta = \arg(z) = \tan^{-1}\!\left(\frac{b}{a}\right)\ \text{(adjusted for the correct quadrant)} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>|z|</code><span>modulus — always a non-negative real number, the "size" of \(z\)</span></div>
+    <div class="tl-eq-chip c2"><code>θ</code><span>argument — an angle, usually in radians, describing \(z\)'s direction from the origin</span></div>
+    <div class="tl-eq-chip c4"><code>tan⁻¹</code><span>the inverse tangent — needs a quadrant check since \(\tan\) repeats every \(\pi\), not \(2\pi\)</span></div>
+  </div>
+  <p>
+    This gives two equivalent ways to describe the same complex number:
+    <strong>rectangular form</strong> \(a+bi\) (real and imaginary parts), or
+    <strong>polar form</strong>, describing the same point by its distance
+    \(|z|\) and direction \(\theta\) from the origin instead. Converting
+    between them uses exactly the unit-circle relationship from the previous
+    lesson, scaled by the modulus:
+  </p>
+  <div class="tl-math">
+    \[ a = |z|\cos\theta \qquad\qquad b = |z|\sin\theta \]
+  </div>
+
+  <h3>Euler's formula</h3>
+  <p>
+    <strong>Euler's formula</strong> states that raising \(e\) to an imaginary
+    power produces exactly a point on a circle:
+  </p>
+  <div class="tl-math">
+    \[ e^{i\theta} = \cos\theta + i\sin\theta \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>e^{iθ}</code><span>\(e\) raised to a purely imaginary power \(i\theta\)</span></div>
+    <div class="tl-eq-chip c2"><code>cos θ + i sin θ</code><span>a complex number of modulus exactly 1, at angle \(\theta\) — a point on the unit circle</span></div>
+  </div>
+  <p>
+    This is a genuinely surprising fusion: the left side is built from the
+    natural exponential (continuous growth, from the previous lesson); the
+    right side is built from sine and cosine (rotation around a circle, also
+    from the previous lesson). Euler's formula says these are, in a precise
+    sense, the same object.
+  </p>
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Where it comes from — the Taylor-series sketch</div>
+    <p>
+      A fuller treatment lives in this curriculum's Calculus for Finance
+      lesson (Deeper Foundations), but the shape of the argument is worth previewing now. \(e^x\),
+      \(\cos\theta\), and \(\sin\theta\) can each be written as an infinite sum
+      of powers of their input (a <strong>Taylor series</strong> — a way of
+      building any sufficiently smooth function out of nothing but additions,
+      multiplications, and powers):
+    </p>
+    <div class="tl-math">
+      \[ e^x = 1 + x + \frac{x^2}{2!} + \frac{x^3}{3!} + \frac{x^4}{4!} + \cdots \]
+    </div>
+    <p>
+      Substitute \(x = i\theta\) into that series. Because \(i^2=-1\),
+      \(i^3=-i\), \(i^4=1\), and then the pattern repeats every four powers,
+      every <em>even</em>-numbered term in the resulting series comes out real
+      (no leftover \(i\)), and every <em>odd</em>-numbered term comes out
+      purely imaginary (one leftover factor of \(i\)). Collecting the real
+      terms reproduces, term for term, the Taylor series for \(\cos\theta\);
+      collecting the imaginary terms (after factoring out the shared \(i\))
+      reproduces, term for term, the Taylor series for \(\sin\theta\). That
+      split is exactly Euler's formula, \(e^{i\theta} =
+      \cos\theta+i\sin\theta\) — not an arbitrary coincidence, but a direct
+      consequence of what happens when \(i\)'s repeating powers are substituted
+      into the same series that defines \(e^x\) for ordinary real inputs.
+    </p>
+  </div>
+
+  <h3>Euler's identity</h3>
+  <p>
+    Set \(\theta = \pi\) in Euler's formula. Since \(\cos\pi = -1\) and
+    \(\sin\pi = 0\):
+  </p>
+  <div class="tl-math">
+    \[ e^{i\pi} = \cos\pi + i\sin\pi = -1 + i(0) = -1 \]
+  </div>
+  <p>Rearranged by adding 1 to both sides, this becomes <strong>Euler's identity</strong>:</p>
+  <div class="tl-math">
+    \[ e^{i\pi} + 1 = 0 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>e</code><span>Euler's number ≈ 2.71828 — from continuous growth</span></div>
+    <div class="tl-eq-chip c2"><code>i</code><span>the imaginary unit, \(i^2=-1\)</span></div>
+    <div class="tl-eq-chip c3"><code>π</code><span>pi ≈ 3.14159 — from circles and rotation</span></div>
+    <div class="tl-eq-chip c4"><code>1, 0</code><span>the multiplicative and additive identities of ordinary arithmetic</span></div>
+  </div>
+  <div class="tl-solid blue">
+    Five of the most important constants in mathematics — \(0\), \(1\), \(e\),
+    \(i\), and \(\pi\) — each arising from a completely separate area (counting,
+    growth, imaginary numbers, circles) appear together in one short, exact
+    equation. That's the entire reason it's so often singled out as
+    remarkable: not that it's useful on its own for this curriculum's purposes,
+    but that it's a genuine, surprising confirmation that these apparently
+    unrelated ideas are deeply connected underneath.
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(i\)</td><td>The imaginary unit, defined by \(i^2=-1\).</td></tr>
+    <tr><td>\(z\)</td><td>A generic complex number, \(z=a+bi\).</td></tr>
+    <tr><td>\(a, b\)</td><td>The real and imaginary parts of \(z\) — both ordinary real numbers.</td></tr>
+    <tr><td>\(\text{Re}(z), \text{Im}(z)\)</td><td>Notation for "the real part of \(z\)" and "the imaginary part of \(z\)."</td></tr>
+    <tr><td>\(|z|\)</td><td>The modulus of \(z\) — its distance from the origin on the complex plane, \(\sqrt{a^2+b^2}\).</td></tr>
+    <tr><td>\(\theta, \arg(z)\)</td><td>(theta) The argument of \(z\) — the angle it makes with the positive real axis.</td></tr>
+    <tr><td>\(e^{i\theta}\)</td><td>Euler's formula's left side — \(e\) raised to a purely imaginary power; equals \(\cos\theta+i\sin\theta\).</td></tr>
+    <tr><td>\(e^{i\pi}+1=0\)</td><td>Euler's identity — the special case \(\theta=\pi\) of Euler's formula.</td></tr>
+    <tr><td>rectangular form</td><td>Writing a complex number as \(a+bi\) — real and imaginary parts.</td></tr>
+    <tr><td>polar form</td><td>Writing a complex number as \(re^{i\theta}\) (or \(r(\cos\theta+i\sin\theta)\)) — modulus and argument.</td></tr>
+  </table></div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">A complex number on the complex plane, in rectangular and polar form</div>
+    <svg viewBox="0 0 500 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Complex plane with a point, its real and imaginary components, its modulus line, and its argument angle, all controlled by a slider">
+      <line x1="40" y1="190" x2="460" y2="190" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="250" y1="20" x2="250" y2="360" style="stroke:var(--border);stroke-width:1"/>
+      <text x="452" y="205" text-anchor="end" style="fill:var(--text3);font-size:11px">Re</text>
+      <text x="260" y="30" text-anchor="start" style="fill:var(--text3);font-size:11px">Im</text>
+      <circle cx="250" cy="190" r="120" style="fill:none;stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
+      <line id="cn-modulus-line" x1="250" y1="190" x2="350" y2="190" style="stroke:var(--blue);stroke-width:2"/>
+      <line id="cn-real-line" x1="250" y1="190" x2="350" y2="190" style="stroke:var(--purple);stroke-width:2;stroke-dasharray:4,3"/>
+      <line id="cn-imag-line" x1="350" y1="190" x2="350" y2="190" style="stroke:var(--amber);stroke-width:2;stroke-dasharray:4,3"/>
+      <path id="cn-arc" style="fill:none;stroke:var(--green);stroke-width:2" d="M 285 190 A 35 35 0 0 0 285 190"/>
+      <circle id="cn-point" cx="350" cy="190" r="6" style="fill:var(--blue);stroke:var(--s1);stroke-width:1.5"/>
+      <text id="cn-label" x="358" y="180" text-anchor="start" style="fill:var(--text);font-size:12px;font-weight:600">z = 100 + 0i</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Argument θ</span><span class="tl-live" id="cn-theta-val">θ = 0.00 rad (0°)</span></div>
+        <input type="range" id="cn-theta-slider" min="0" max="628" step="1" value="0">
+        <div class="tl-hint">Drag to rotate the point around the circle. Modulus stays fixed at \(|z|=1.2\) (scaled for the chart); the real part (purple, cosine) and imaginary part (amber, sine) trace out exactly the unit-circle relationship from the previous lesson.</div>
+      </div>
+    </div>
+    <div class="tl-readout">Rectangular: <b id="cn-rect-val">a + bi = 1.20 + 0.00i</b> · Polar: <b id="cn-polar-val">1.20 · e^(i·0.00)</b></div>
+    <div class="tl-chart-caption">The blue radius is the modulus \(|z|\) (fixed length here); the green arc is the argument \(\theta\); the purple dashed segment is the real part \(a=|z|\cos\theta\); the amber dashed segment is the imaginary part \(b=|z|\sin\theta\). Every point on this circle is \(|z|\,e^{i\theta}\) for some \(\theta\) — polar form made visible.</div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Converting between rectangular and polar form, and evaluating \(e^{i\pi}\)</h3>
+    <p><strong>Part 1 — rectangular to polar.</strong> Convert \(z = 3+4i\) to polar form.</p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Compute the modulus</h4>
+          <div class="tl-math">\[ |z| = \sqrt{3^2+4^2} = \sqrt{9+16} = \sqrt{25} = 5 \]</div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Compute the argument</h4>
+          <div class="tl-math">\[ \theta = \tan^{-1}\!\left(\frac{4}{3}\right) \approx 0.9273\text{ rad} \approx 53.13° \]</div>
+          <p>(Both \(a=3\) and \(b=4\) are positive, so the point sits in the first quadrant and no adjustment to the raw \(\tan^{-1}\) result is needed.)</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Write the polar form</h4>
+          <div class="tl-math">\[ z = 5\,e^{i\cdot0.9273} = 5(\cos 53.13° + i\sin 53.13°) \]</div>
+          <p>Check: \(5\cos(53.13°)\approx5(0.6)=3\) and \(5\sin(53.13°)\approx5(0.8)=4\) — recovers the original \(3+4i\).</p>
+        </div>
+      </div>
+    </div>
+    <p><strong>Part 2 — evaluating \(e^{i\pi}\).</strong> Apply Euler's formula directly with \(\theta=\pi\):</p>
+    <div class="tl-math">
+      \[ e^{i\pi} = \cos\pi + i\sin\pi = (-1) + i(0) = -1 \]
+    </div>
+    <p>
+      Adding 1 to both sides gives Euler's identity, \(e^{i\pi}+1=0\) — the
+      same result derived in Section 2, now reached by direct substitution
+      rather than by rearranging.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    In quantitative finance, complex numbers show up almost entirely through
+    two connected tools. The first is the <strong>characteristic function</strong>
+    of a probability distribution — essentially, a Fourier-transform-style
+    encoding of a distribution using \(E[e^{i\theta X}]\) for a random variable
+    \(X\) — which some pricing models (particularly those with distributions
+    that don't have a simple closed-form density, like several stochastic
+    volatility models) find far easier to work with than the raw probability
+    density itself. A model's characteristic function can often be written
+    down explicitly even when its density can't, and prices can then be
+    recovered from the characteristic function via a numerical Fourier
+    inversion — a technique real quant desks use specifically because it turns
+    an otherwise-intractable pricing integral into a fast, well-understood
+    numerical routine.
+  </p>
+  <p>
+    The second is the <strong>Fourier Transform</strong> itself, used across
+    quantitative finance and signal processing generally to decompose a time
+    series into its constituent cycles (a later Signal Processing lesson in
+    this curriculum covers this properly) — under the hood, every frequency
+    component in a Fourier decomposition is represented using \(e^{i\theta}\),
+    precisely because Euler's formula lets a single rotating complex number
+    stand in for a paired cosine-and-sine oscillation, which is far more
+    compact algebraically than carrying the two real trigonometric functions
+    around separately.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this goes wrong in practice</h3>
+    <p>
+      <strong>Forgetting the quadrant when computing the argument.</strong>
+      \(\tan^{-1}(b/a)\) alone can't distinguish a point in the first quadrant
+      from one in the third (both give the same ratio \(b/a\) when both signs
+      flip) — always check the actual signs of \(a\) and \(b\) to place the
+      angle in the correct quadrant, or use a two-argument arctangent function
+      (commonly \(\text{atan2}\) in most programming languages) that handles
+      this automatically.
+    </p>
+    <p>
+      <strong>Treating "imaginary" as "not real/not useful."</strong> The name
+      is a historical accident from when these numbers were first treated with
+      suspicion; imaginary and complex numbers are exactly as rigorously
+      defined as real numbers and are the natural, standard tool for
+      describing rotation and oscillation — nothing about a pricing model or a
+      Fourier decomposition that uses them is any less legitimate than one
+      that doesn't.
+    </p>
+    <p>
+      <strong>Confusing the argument's units.</strong> \(\theta\) in Euler's
+      formula must be in radians, not degrees — exactly the same radians-only
+      requirement flagged in the previous lesson for \(\sin\) and \(\cos\),
+      since Euler's formula is built directly from them.
+    </p>
+    <p>
+      <strong>Assuming every complex-valued intermediate result is a modeling
+      error.</strong> Seeing an imaginary part appear partway through a
+      characteristic-function calculation is expected and correct for these
+      methods — the final priced quantity typically ends up real once the
+      calculation is complete (e.g. after a Fourier inversion integral), so
+      panicking at an intermediate complex number, rather than checking
+      whether the final output is real as it should be, is a common early
+      mistake.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(i\) is defined by \(i^2=-1\).</strong> A complex number \(a+bi\) has a real part \(a\) and an imaginary part \(b\), both ordinary real numbers.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The complex plane plots \(z=a+bi\) as the point \((a,b)\).</strong> Modulus \(|z|=\sqrt{a^2+b^2}\) is distance from the origin; argument \(\theta\) is the angle from the positive real axis.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Euler's formula fuses \(e^x\) with sine and cosine.</strong> \(e^{i\theta}=\cos\theta+i\sin\theta\) — motivated by substituting \(i\theta\) into \(e^x\)'s Taylor series and watching it split into the cosine and sine series.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Euler's identity, \(e^{i\pi}+1=0\), links five fundamental constants.</strong> A direct consequence of Euler's formula at \(\theta=\pi\), not a separate result.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Complex numbers appear in finance through characteristic functions and the Fourier Transform.</strong> Both are covered properly in later lessons this one exists to prepare for.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>An intermediate complex number isn't automatically an error.</strong> Many legitimate pricing calculations pass through complex-valued intermediate steps and arrive at a real final answer — check the final output, not every intermediate one.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Compute \((2+3i)(1-i)\).</summary>
+    <div class="tl-answer">
+      Expand like any two brackets: \(2(1) + 2(-i) + 3i(1) + 3i(-i) = 2 - 2i +
+      3i - 3i^2\). Since \(i^2=-1\), the last term \(-3i^2 = -3(-1) = 3\). Combine:
+      \(2 + 3 + (-2i+3i) = 5 + i\).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Find the modulus and argument of \(z = -1 + i\).</summary>
+    <div class="tl-answer">
+      Modulus: \(|z| = \sqrt{(-1)^2+1^2} = \sqrt{2} \approx 1.414\). For the
+      argument, note \(a=-1\) and \(b=1\) put the point in the second quadrant
+      (negative real, positive imaginary) — the raw \(\tan^{-1}(1/-1)\)
+      calculation needs a quadrant adjustment. The correct argument is
+      \(\theta = 135° = 3\pi/4\) radians, which can be checked directly:
+      \(\sqrt{2}\cos(135°) = \sqrt{2}\times(-\frac{\sqrt2}{2}) = -1\) and
+      \(\sqrt{2}\sin(135°) = \sqrt{2}\times\frac{\sqrt2}{2} = 1\) — matches.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Using Euler's formula, evaluate \(e^{i\pi/2}\) and identify which complex number it equals.</summary>
+    <div class="tl-answer">
+      \(e^{i\pi/2} = \cos(\pi/2) + i\sin(\pi/2) = 0 + i(1) = i\). So
+      \(e^{i\pi/2} = i\) exactly — raising \(e\) to this particular imaginary
+      power lands precisely on the imaginary unit itself, a quarter-turn
+      around the complex plane's unit circle from \(1\).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why does substituting \(i\theta\) into the Taylor series for \(e^x\) split cleanly into separate real and imaginary series matching \(\cos\theta\) and \(\sin\theta\)?</summary>
+    <div class="tl-answer">
+      Because the powers of \(i\) cycle with period 4: \(i^1=i\), \(i^2=-1\),
+      \(i^3=-i\), \(i^4=1\), then repeat. Substituting \(x=i\theta\) into
+      \(e^x=1+x+x^2/2!+x^3/3!+\cdots\) means every term's power of \(i\) falls
+      into one of those four cases. The even-numbered terms (powers 0, 2, 4,
+      …) always come out as real numbers (since \(i^2, i^4,\dots\) are real),
+      and collecting them reproduces \(\cos\theta\)'s own Taylor series exactly.
+      The odd-numbered terms always carry exactly one leftover factor of \(i\)
+      (since \(i^1, i^3,\dots\) are pure imaginary), and collecting them,
+      after factoring out that shared \(i\), reproduces \(\sin\theta\)'s
+      Taylor series exactly. The full derivation is covered in this curriculum's Calculus for
+      Finance lesson (Deeper Foundations).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Is \(e^{i\pi}\) a real number or a complex number? Explain, given that it "looks" complex.</summary>
+    <div class="tl-answer">
+      \(e^{i\pi} = \cos\pi + i\sin\pi = -1 + i(0) = -1\), which is a real
+      number (its imaginary part is exactly zero, not merely small). This is
+      exactly the pitfall named above: an expression built from \(i\) can
+      still evaluate to a genuinely real result — the presence of \(i\) in the
+      input notation doesn't guarantee a complex-valued output, and checking
+      the actual imaginary part (here, zero) is what settles the question, not
+      how the expression looks before evaluating it.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Paul J. Nahin, <em>An Imaginary Tale: The Story of \(\sqrt{-1}\)</em>, Princeton University Press, 1998 — a well-regarded, historically grounded account of how complex numbers came to be accepted, aimed at readers who want the "why" behind the notation, not just the mechanics.</li>
+    <li>Tristan Needham, <em>Visual Complex Analysis</em>, Oxford University Press, 1997 — builds complex numbers and Euler's formula geometrically, with an emphasis on seeing rotation and the complex plane rather than only manipulating symbols; widely cited as the standard "intuition-first" complex analysis reference.</li>
+    <li>Richard Feynman, <em>The Feynman Lectures on Physics</em>, Vol. I, Chapter 22 ("Algebra"), Caltech, 1964 — Feynman's own well-known walkthrough of Euler's formula and identity, praised for its plain-language motivation of exactly the Taylor-series argument previewed on this page.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="foundation-trig-logs-exponentials.html">← Trigonometry, Logarithms &amp; Exponentials</a>
+    <a href="foundation-multivariable-calculus.html">Partial Derivatives &amp; Multivariable Calculus →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var slider = document.getElementById('cn-theta-slider');
+  var thetaVal = document.getElementById('cn-theta-val');
+  var modulusLine = document.getElementById('cn-modulus-line');
+  var realLine = document.getElementById('cn-real-line');
+  var imagLine = document.getElementById('cn-imag-line');
+  var arc = document.getElementById('cn-arc');
+  var point = document.getElementById('cn-point');
+  var label = document.getElementById('cn-label');
+  var rectVal = document.getElementById('cn-rect-val');
+  var polarVal = document.getElementById('cn-polar-val');
+  if (!slider) return;
+
+  var CX = 250, CY = 190, R = 100, ARC_R = 35;
+
+  function update(){
+    var thetaDeg = parseInt(slider.value, 10) / 10;
+    var theta = thetaDeg * Math.PI / 180;
+    var modulus = 1.2; // fixed illustrative modulus
+
+    thetaVal.textContent = 'θ = ' + theta.toFixed(2) + ' rad (' + thetaDeg.toFixed(0) + '°)';
+
+    var a = modulus * Math.cos(theta);
+    var b = modulus * Math.sin(theta);
+
+    var px = CX + R * Math.cos(theta);
+    var py = CY - R * Math.sin(theta); // screen y is inverted
+
+    modulusLine.setAttribute('x2', px);
+    modulusLine.setAttribute('y2', py);
+
+    realLine.setAttribute('x2', px);
+    realLine.setAttribute('y2', CY);
+
+    imagLine.setAttribute('x1', px);
+    imagLine.setAttribute('y1', CY);
+    imagLine.setAttribute('x2', px);
+    imagLine.setAttribute('y2', py);
+
+    point.setAttribute('cx', px);
+    point.setAttribute('cy', py);
+
+    var labelX = px + (Math.cos(theta) >= 0 ? 8 : -8);
+    var labelAnchor = Math.cos(theta) >= 0 ? 'start' : 'end';
+    label.setAttribute('x', labelX);
+    label.setAttribute('y', py - 10);
+    label.setAttribute('text-anchor', labelAnchor);
+    label.textContent = 'z = ' + a.toFixed(2) + (b >= 0 ? ' + ' : ' - ') + Math.abs(b).toFixed(2) + 'i';
+
+    // Arc from angle 0 to theta, radius ARC_R, sweep depends on sign
+    var arcStartX = CX + ARC_R, arcStartY = CY;
+    var arcEndX = CX + ARC_R * Math.cos(theta), arcEndY = CY - ARC_R * Math.sin(theta);
+    var largeArc = thetaDeg > 180 ? 1 : 0;
+    var sweep = 0; // counterclockwise in screen coords with inverted y
+    arc.setAttribute('d', 'M ' + arcStartX.toFixed(1) + ' ' + arcStartY.toFixed(1) +
+      ' A ' + ARC_R + ' ' + ARC_R + ' 0 ' + largeArc + ' ' + sweep + ' ' +
+      arcEndX.toFixed(1) + ' ' + arcEndY.toFixed(1));
+
+    rectVal.textContent = 'a + bi = ' + a.toFixed(2) + (b >= 0 ? ' + ' : ' - ') + Math.abs(b).toFixed(2) + 'i';
+    polarVal.textContent = modulus.toFixed(2) + ' · e^(i·' + theta.toFixed(2) + ')';
+  }
+
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
+</body>
+</html>
+</content>

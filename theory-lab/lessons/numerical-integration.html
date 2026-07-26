@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Numerical Integration — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Numerical Methods / Numerical Integration</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Numerical Methods · Lesson 4 of 4</div>
+  <h1 class="tl-title">Numerical Integration</h1>
+  <p class="tl-dek">When a price is genuinely an area under a curve that can't be found in closed form — the deterministic grid methods that nail it in one or two dimensions, and the reframe that reveals Monte Carlo was secretly doing the same job all along.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span>~16 min read</span>
+    <span>Prereqs: Linear &amp; Quadratic Programming (loosely — mainly needs calculus prerequisites)</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Many prices and expectations that matter in finance are, mathematically, an area under a curve — and plenty of those curves have no closed-form antiderivative, so the area has to be estimated numerically instead of solved for algebraically.</li>
+      <li>The <strong>trapezoidal rule</strong> approximates the area as a sum of trapezoids under straight-line segments; its error shrinks with the <em>square</em> of the step size, \(O(h^2)\).</li>
+      <li><strong>Simpson's rule</strong> fits a parabola through every three consecutive points instead of a straight line — for smooth functions, its error shrinks with the step size's <em>fourth</em> power, \(O(h^4)\), a dramatically better rate for the same number of points.</li>
+      <li><strong>Monte Carlo integration</strong> is a genuine reframe, not a different idea: instead of a deterministic grid, sample points randomly and average the function's value at them — it estimates the same area under the same curve, just by a different route.</li>
+      <li>Deterministic quadrature (trapezoidal, Simpson's) is far more accurate in 1-2 dimensions, but its cost explodes exponentially as dimensions are added — the "curse of dimensionality." Monte Carlo's error shrinks at a fixed \(1/\sqrt{N}\) rate <em>regardless</em> of dimension, which is exactly why high-dimensional option pricing uses simulation, not a grid.</li>
+      <li>The worked example integrates the standard normal PDF from 0 to 1 with the trapezoidal rule using only 4 intervals, and checks the answer against the exact value \(\Phi(1)-\Phi(0)\approx0.3413\).</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    A price, a probability, or an expected value is very often, underneath the
+    finance vocabulary, exactly the same calculus object: the area under some
+    curve, or equivalently an integral. "What's the probability this variable
+    lands between two values" is the area under its density curve between
+    those two points. "What's the fair value of this option" is, in the
+    risk-neutral pricing framework, an expectation — an integral of the payoff
+    against a probability density. When that density or that payoff is a
+    well-behaved standard shape (lognormal, and a vanilla European option
+    payoff), calculus gives a closed-form answer directly, which is exactly
+    why the Black-Scholes formula, elsewhere in this curriculum, is a clean
+    algebraic expression rather than a number a computer has to grind out.
+    The moment either piece stops being that simple — a genuinely exotic
+    payoff, a distribution with no closed-form CDF — the integral has no
+    algebraic shortcut left, and has to be estimated numerically instead. This
+    lesson covers the two families of tool that do that: deterministic
+    quadrature, which lays down a fixed grid and adds up the pieces, and
+    Monte Carlo, which samples randomly instead — and are, on inspection, both
+    answering the exact same kind of question.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🎲</div>
+      <h4>Bootstrapping &amp; Monte Carlo (elsewhere in this curriculum)</h4>
+      <p>That lesson covers Monte Carlo as a resampling and simulation tool; this lesson reframes the exact same random-sampling machinery as a way of computing an integral — the same tool, one layer more fundamental.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📈</div>
+      <h4>Any non-lognormal or exotic payoff</h4>
+      <p>The instant a model's distribution or a derivative's payoff stops being the textbook simple case, its fair value stops having a closed-form formula and becomes a numerical integration problem instead.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧮</div>
+      <h4>Convex Optimization &amp; Linear/Quadratic Programming (previous lessons)</h4>
+      <p>Interior-point solvers, calibration routines, and likelihood-based model fitting all sometimes need to evaluate an integral (a normalizing constant, an expected loss) as a sub-step — this lesson is the tool for that sub-step.</p>
+    </div>
+  </div>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Slicing the area under a curve into shapes you already know how to measure</h3>
+    <p>
+      An integral — the area under a curve between two points — is easy for a
+      shape with straight edges (a rectangle, a triangle, a trapezoid) and
+      genuinely hard for a curve with no algebraic shortcut. The oldest trick
+      in numerical integration is to stop trying to measure the curved area
+      directly and instead <strong>chop it into thin vertical strips</strong>,
+      each one narrow enough that the curve barely bends within it — narrow
+      enough that a straight line (or, better, a gentle parabola) drawn across
+      the top of each strip is a very good stand-in for the true curve there.
+      Measuring the area of a strip with a straight or parabolic top is
+      ordinary geometry; add up all the strips' areas and you have a very good
+      approximation to the true area under the whole curve — provably better
+      the narrower the strips get. That's the entire idea behind the
+      trapezoidal rule and Simpson's rule: replace one hard problem (the exact
+      curved area) with many easy ones (lots of straight-edged or
+      parabola-topped pieces) and add them up.
+    </p>
+    <p>
+      Monte Carlo integration throws out the grid of strips entirely and
+      replaces it with something that sounds, at first, like a completely
+      different idea: throw random darts at the region under the curve (or,
+      more precisely, sample random points along the horizontal axis and
+      measure the curve's height at each one), and average what you get. It
+      turns out this is mathematically doing exactly the same job — estimating
+      an average height, then multiplying by a width, is precisely what an
+      integral <em>is</em> — just replacing an evenly-spaced, deterministic
+      set of sample points with a randomly-chosen one. The payoff for that
+      randomness, covered below, is that its accuracy doesn't care how many
+      dimensions the problem has — a genuinely different, and often decisive,
+      practical advantage over a fixed grid.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>The trapezoidal rule</h3>
+  <p>
+    To approximate \(\int_a^b f(x)\,dx\), split \([a,b]\) into \(n\) equal
+    strips of width \(h = (b-a)/n\), at points \(x_0=a, x_1, \dots, x_n=b\).
+    Within each strip, replace the true curve with the straight line
+    connecting \((x_i, f(x_i))\) to \((x_{i+1}, f(x_{i+1}))\) — the area of
+    that strip is then exactly the area of a trapezoid, average height times
+    width:
+  </p>
+  <div class="tl-math">
+    \[ \text{Area}_i \approx \frac{f(x_i) + f(x_{i+1})}{2} \cdot h \]
+  </div>
+  <p>Summing every strip and noting each interior point is shared by two adjacent trapezoids (so it's counted twice, while the two endpoints are counted once) gives the composite trapezoidal rule:</p>
+  <div class="tl-math">
+    \[ \int_a^b f(x)\,dx \;\approx\; \frac{h}{2}\Big[f(x_0) + 2f(x_1) + 2f(x_2) + \cdots + 2f(x_{n-1}) + f(x_n)\Big] \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>h=(b−a)/n</code><span>the step size — narrower strips, smaller h, better approximation</span></div>
+    <div class="tl-eq-chip c2"><code>f(x₀), f(xₙ)</code><span>the two endpoints — counted once, not doubled</span></div>
+    <div class="tl-eq-chip c3"><code>2f(xᵢ)</code><span>every interior point — shared by two neighboring trapezoids, so doubled</span></div>
+  </div>
+  <p>
+    The trapezoidal rule's error — how far the approximation sits from the
+    true integral — shrinks proportionally to \(h^2\) (equivalently,
+    proportionally to \(1/n^2\)): halving the step size, i.e. doubling the
+    number of strips, cuts the error to roughly a quarter of what it was. This
+    follows from how well a straight line approximates a smooth curve over a
+    short interval — the same tangent-line-approximation logic used for
+    Newton-Raphson's quadratic convergence in an earlier lesson in this
+    category, applied here to an interval instead of a single point.
+  </p>
+
+  <h3>Simpson's rule — fitting parabolas instead of straight lines</h3>
+  <p>
+    A straight line is the simplest possible curve to fit through two points.
+    <strong>Simpson's rule</strong> uses one more point per piece and fits a
+    parabola through every three consecutive points instead — since a
+    parabola can bend to match a genuinely curving function far better than a
+    straight line can, this typically gives a dramatically more accurate
+    approximation for the same number of evaluation points, at essentially no
+    extra conceptual cost. Requiring an even number of strips \(n\) (so points
+    can be grouped in consecutive pairs, each pair plus the shared endpoint
+    forming one parabola-fitted panel), the composite rule is:
+  </p>
+  <div class="tl-math">
+    \[ \int_a^b f(x)\,dx \;\approx\; \frac{h}{3}\Big[f(x_0) + 4f(x_1) + 2f(x_2) + 4f(x_3) + \cdots + 4f(x_{n-1}) + f(x_n)\Big] \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>h/3</code><span>Simpson's rule's own leading constant, replacing the trapezoidal rule's h/2</span></div>
+    <div class="tl-eq-chip c2"><code>4f(x_odd)</code><span>points at odd-numbered positions get weight 4</span></div>
+    <div class="tl-eq-chip c3"><code>2f(x_even)</code><span>interior points at even-numbered positions get weight 2</span></div>
+  </div>
+  <p>
+    The alternating 4-2-4-2…-4 weighting pattern (with the two endpoints
+    weighted 1) is exactly what falls out of fitting and integrating a
+    parabola through each successive triple of points; it isn't an arbitrary
+    convention. The payoff for the extra structure is a much better error
+    rate: Simpson's rule's error shrinks proportionally to \(h^4\) — halving
+    the step size cuts the error to roughly a sixteenth of what it was, a
+    dramatically faster improvement than the trapezoidal rule's \(h^2\) rate
+    for smooth, well-behaved functions (a function with a kink or a
+    discontinuity inside the interval loses much of this advantage, since the
+    parabola fit assumes local smoothness that a kink violates).
+  </p>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Trapezoidal rule</h4>
+      <svg viewBox="0 0 260 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A curve with straight line segments connecting sample points, forming trapezoid shapes underneath">
+        <path d="M20,100 Q130,10 240,90" style="fill:none;stroke:var(--border2);stroke-width:1.5;stroke-dasharray:3,3"/>
+        <polyline points="20,100 90,55 150,40 200,55 240,90" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+        <circle cx="20" cy="100" r="3" style="fill:var(--blue)"/>
+        <circle cx="90" cy="55" r="3" style="fill:var(--blue)"/>
+        <circle cx="150" cy="40" r="3" style="fill:var(--blue)"/>
+        <circle cx="200" cy="55" r="3" style="fill:var(--blue)"/>
+        <circle cx="240" cy="90" r="3" style="fill:var(--blue)"/>
+      </svg>
+      <p>Straight lines between consecutive points — error shrinks with h² as the strips narrow.</p>
+    </div>
+    <div class="tl-compare-card green">
+      <h4>Simpson's rule</h4>
+      <svg viewBox="0 0 260 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A curve with a smooth parabolic fit tracking closely along the true curve">
+        <path d="M20,100 Q130,10 240,90" style="fill:none;stroke:var(--border2);stroke-width:1.5;stroke-dasharray:3,3"/>
+        <path d="M20,100 Q90,48 150,40 Q200,35 240,90" style="fill:none;stroke:var(--green);stroke-width:2.5"/>
+        <circle cx="20" cy="100" r="3" style="fill:var(--green)"/>
+        <circle cx="90" cy="55" r="3" style="fill:var(--green)"/>
+        <circle cx="150" cy="40" r="3" style="fill:var(--green)"/>
+        <circle cx="200" cy="55" r="3" style="fill:var(--green)"/>
+        <circle cx="240" cy="90" r="3" style="fill:var(--green)"/>
+      </svg>
+      <p>Parabolas fitted through each triple of points hug the true curve far more closely — error shrinks with h⁴ for smooth functions.</p>
+    </div>
+  </div>
+
+  <h3>Monte Carlo integration — the same job, sampled instead of gridded</h3>
+  <p>
+    Recall that an <strong>expectation</strong> of a function \(g\) of a
+    random variable \(X\) with density \(p(x)\) is itself an integral:
+  </p>
+  <div class="tl-math">
+    \[ E[g(X)] = \int g(x)\, p(x)\, dx \]
+  </div>
+  <p>
+    The <strong>law of large numbers</strong> (from the Probability &amp;
+    Random Variables primer elsewhere in this curriculum) says that averaging
+    many independent draws of \(g(X)\) converges to this same expectation as
+    the number of draws grows. That gives an entirely different-looking
+    recipe for estimating the same integral: draw \(N\) independent samples
+    \(x_1, \dots, x_N\) from the distribution \(p\), evaluate \(g\) at each,
+    and average:
+  </p>
+  <div class="tl-math">
+    \[ \int g(x)\,p(x)\,dx \;\approx\; \frac{1}{N}\sum_{i=1}^{N} g(x_i) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>xᵢ ~ p</code><span>N independent random draws from the distribution, not an evenly spaced grid</span></div>
+    <div class="tl-eq-chip c2"><code>g(xᵢ)</code><span>the function evaluated at each random draw</span></div>
+    <div class="tl-eq-chip c3"><code>(1/N)Σg(xᵢ)</code><span>the sample average — the Monte Carlo estimate of the true integral</span></div>
+  </div>
+  <p>
+    This is the exact same machinery as the Monte Carlo simulation covered in
+    the Bootstrapping &amp; Monte Carlo lesson elsewhere in this curriculum —
+    generate many synthetic draws and average a quantity of interest across
+    them — reframed here as a general-purpose numerical integration method in
+    its own right, not tied to any particular financial simulation. Whether
+    you call it "simulating an option's expected discounted payoff" or
+    "Monte Carlo integrating the payoff against the risk-neutral density" is
+    purely a matter of vocabulary; the arithmetic is identical.
+  </p>
+  <p>
+    The error of a Monte Carlo estimate — by the Central Limit Theorem, again
+    from the Probability primer — shrinks proportionally to \(1/\sqrt{N}\),
+    <strong>regardless of the dimension of \(x\)</strong>. That single fact is
+    the crux of the whole comparison with deterministic quadrature, developed
+    fully next.
+  </p>
+
+  <h3>The curse of dimensionality</h3>
+  <p>
+    Trapezoidal and Simpson's rule, as derived above, are one-dimensional
+    recipes: lay down \(n\) points along a single axis. Extending either
+    method to \(d\) dimensions (needed the moment a payoff depends on more
+    than one underlying) means laying down a <em>grid</em> — roughly \(n\)
+    points along <em>every</em> dimension, for a total of \(n^d\) function
+    evaluations to cover the whole space. That exponential blow-up in the
+    exponent \(d\) is the <strong>curse of dimensionality</strong>:
+  </p>
+  <div class="tl-stat-row">
+    <div class="tl-stat blue"><div class="tl-stat-num">10</div><div class="tl-stat-label">1 dimension</div><div class="tl-stat-sub">10 grid points, trivial</div></div>
+    <div class="tl-stat green"><div class="tl-stat-num">100</div><div class="tl-stat-label">2 dimensions</div><div class="tl-stat-sub">10² grid points, still easy</div></div>
+    <div class="tl-stat amber"><div class="tl-stat-num">1,000</div><div class="tl-stat-label">3 dimensions</div><div class="tl-stat-sub">10³, getting heavier</div></div>
+    <div class="tl-stat purple"><div class="tl-stat-num">10,000,000,000</div><div class="tl-stat-label">10 dimensions</div><div class="tl-stat-sub">10¹⁰ — a basket of just 10 underlyings, already infeasible</div></div>
+  </div>
+  <p>
+    A basket option on ten correlated underlyings, or a portfolio-level
+    risk calculation across ten risk factors, is a genuinely
+    ten-dimensional integral — and a grid fine enough to be useful in one
+    dimension (10 points) becomes ten billion evaluations in ten dimensions,
+    utterly infeasible to compute. Monte Carlo's \(1/\sqrt{N}\) error rate, by
+    contrast, does not carry a hidden dependence on \(d\) at all — drawing
+    \(N\) random points in ten dimensions costs exactly the same \(N\)
+    function evaluations as drawing \(N\) random points in one dimension (the
+    points themselves simply have more coordinates; generating and evaluating
+    them isn't intrinsically harder). This is precisely why every
+    high-dimensional pricing problem in practice — basket options,
+    multi-asset portfolio risk, path-dependent payoffs sampled at many time
+    steps (each time step effectively adding a dimension) — is priced with
+    Monte Carlo simulation, never a deterministic grid, while genuinely
+    low-dimensional problems (pricing a single vanilla option under a
+    nonstandard 1D distribution, say) are usually better served by
+    quadrature, which is both more accurate and far cheaper per unit of
+    accuracy in that regime.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(f(x)\), \(g(x)\)</td><td>The function being integrated — a density, a payoff, or a combination of the two.</td></tr>
+    <tr><td>\([a,b]\)</td><td>The interval of integration.</td></tr>
+    <tr><td>\(n\)</td><td>The number of strips (trapezoidal/Simpson's) the interval is divided into.</td></tr>
+    <tr><td>\(h = (b-a)/n\)</td><td>The step size — the width of each strip.</td></tr>
+    <tr><td>\(x_i\)</td><td>One of the \(n{+}1\) evenly-spaced grid points used by a quadrature rule.</td></tr>
+    <tr><td>\(O(h^2)\), \(O(h^4)\)</td><td>Error-order notation — how fast the approximation error shrinks as the step size \(h\) shrinks (trapezoidal: quadratic; Simpson's: quartic).</td></tr>
+    <tr><td>\(p(x)\)</td><td>A probability density function.</td></tr>
+    <tr><td>\(E[g(X)]\)</td><td>The expectation of \(g\) applied to a random variable \(X\) — itself an integral against \(X\)'s density.</td></tr>
+    <tr><td>\(N\)</td><td>The number of random draws in a Monte Carlo estimate.</td></tr>
+    <tr><td>\(d\)</td><td>The number of dimensions the integral is taken over — the variable the curse of dimensionality is exponential in.</td></tr>
+    <tr><td>\(\Phi(z)\)</td><td>The standard normal cumulative distribution function — \(\Phi(1)-\Phi(0)\) is the worked example's target integral.</td></tr>
+  </table></div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Trapezoidal rule approximating Φ(1)−Φ(0) — drag the number of strips</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The standard normal density curve between 0 and 1, with trapezoid shapes drawn underneath approximating the area, updating as the number of strips changes">
+      <line x1="30" y1="230" x2="610" y2="230" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="151.3" y1="20" x2="151.3" y2="240" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
+      <line x1="488.8" y1="20" x2="488.8" y2="240" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
+      <text x="151.3" y="254" text-anchor="middle" style="fill:var(--text3);font-size:11px">z=0</text>
+      <text x="488.8" y="254" text-anchor="middle" style="fill:var(--text3);font-size:11px">z=1</text>
+      <g id="ni-trapezoids"></g>
+      <path style="fill:none;stroke:var(--blue);stroke-width:2.5" d="M50.0,39.3 66.9,36.7 83.8,34.5 100.6,32.8 117.5,31.5 134.4,30.8 151.3,30.5 168.1,30.8 185.0,31.5 201.9,32.8 218.8,34.5 235.6,36.7 252.5,39.3 269.4,42.4 286.3,45.9 303.1,49.7 320.0,54.0 336.9,58.5 353.7,63.4 370.6,68.5 387.5,73.9 404.4,79.4 421.3,85.2 438.1,91.0 455.0,97.0 471.9,103.0 488.8,109.0 505.6,115.1 522.5,121.1 539.4,127.0 556.3,132.9 573.1,138.7 590.0,144.3"/>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Number of strips (n)</span><span class="tl-live" id="ni-n-val">n = 4</span></div>
+        <input type="range" id="ni-n-slider" min="1" max="20" step="1" value="4">
+        <div class="tl-hint">Each trapezoid's area is (φ(zᵢ)+φ(zᵢ₊₁))/2 × h, computed from the real standard normal PDF. Watch the estimate close in on the true value as n grows.</div>
+      </div>
+    </div>
+    <div class="tl-readout" id="ni-readout">Trapezoidal estimate (n=4): 0.33934 — True Φ(1)−Φ(0): 0.34134 — error: −0.00200</div>
+    <div class="tl-chart-caption">The shaded trapezoids are the actual composite trapezoidal-rule panels for the given n, computed from φ(z)=e^(−z²/2)/√(2π). Because the curve is only mildly concave over [0,1], even a handful of strips gets within a fraction of a percent of the true area.</div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Integrating the standard normal PDF from 0 to 1 by hand, with 4 strips</h3>
+    <p>
+      Estimate \(\int_0^1 \varphi(z)\,dz = \Phi(1)-\Phi(0)\), where
+      \(\varphi(z) = \frac{1}{\sqrt{2\pi}}e^{-z^2/2}\), using the trapezoidal
+      rule with \(n=4\) strips, so \(h = (1-0)/4 = 0.25\).
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Evaluate φ at the 5 grid points</h4>
+          <div class="tl-math">
+            \[
+            \begin{aligned}
+            \varphi(0.00) &= 0.39894 \\
+            \varphi(0.25) &= 0.38667 \\
+            \varphi(0.50) &= 0.35207 \\
+            \varphi(0.75) &= 0.30114 \\
+            \varphi(1.00) &= 0.24197
+            \end{aligned}
+            \]
+          </div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Apply the composite trapezoidal formula</h4>
+          <div class="tl-math">
+            \[ \int_0^1 \varphi(z)\,dz \approx \frac{0.25}{2}\Big[0.39894 + 2(0.38667) + 2(0.35207) + 2(0.30114) + 0.24197\Big] \]
+          </div>
+          <div class="tl-math">
+            \[ = 0.125 \times \big[0.39894 + 0.77334 + 0.70414 + 0.60228 + 0.24197\big] = 0.125 \times 2.72067 = 0.34008 \]
+          </div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Compare to the true value</h4>
+          <p>
+            The known true value is \(\Phi(1)-\Phi(0) \approx 0.84134 - 0.50000
+            = 0.34134\). The 4-strip trapezoidal estimate, \(0.34008\), is off
+            by only about \(0.00126\) — a relative error under 0.4%, from just
+            5 function evaluations and no calculus beyond arithmetic. Per the
+            \(O(h^2)\) error rate, doubling to 8 strips (halving \(h\) to
+            0.125) would be expected to cut this error to roughly a quarter of
+            its current size, to well under 0.001 — exactly the behavior the
+            interactive chart above lets you confirm directly by dragging the
+            slider.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Pricing a 7-underlying basket option — why the desk reaches for simulation, not a grid</h3>
+    <p>
+      A structuring desk needs to price a basket call option whose payoff
+      depends on the weighted average of 7 correlated equity underlyings at
+      expiry — a genuinely 7-dimensional pricing integral (the expectation of
+      the payoff against the joint risk-neutral density of all 7 assets'
+      terminal prices). A junior quant, having just learned Simpson's rule,
+      suggests laying down a grid of even 15 points per dimension for high
+      accuracy: \(15^7\), on the order of 170 billion evaluations — not a
+      slow computation, an outright impossible one on any available hardware
+      within a workable timeframe, however this hypothetical case is scaled
+      up in accuracy or precision.
+    </p>
+    <p>
+      Monte Carlo sidesteps the exponential blow-up entirely: draw, say, 1
+      million joint samples of the 7 underlyings' terminal prices (from a
+      correlated multivariate model, calibrated the same way any of this
+      curriculum's covariance-matrix machinery would build one), evaluate the
+      basket payoff on each of the 1 million draws, and average. The cost is
+      exactly 1 million evaluations regardless of the fact that there are 7
+      dimensions involved — order-of-magnitude cheaper than any deterministic
+      grid could ever be at that dimension, at the cost of a
+      \(1/\sqrt{N}\) convergence rate rather than quadrature's much faster
+      per-point convergence in low dimensions. Halving the Monte Carlo
+      error requires quadrupling \(N\) (from 1 million to 4 million draws) —
+      a real, known cost, but a polynomial one, utterly unlike the grid
+      method's exponential wall.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Quant researchers reach for deterministic quadrature constantly in
+    contexts that are easy to overlook precisely because they aren't the
+    headline "pricing an option" calculation: computing a normalizing
+    constant for a likelihood function during model calibration, evaluating a
+    characteristic-function-based pricing formula (the Fourier-transform
+    approach used by models like Heston, elsewhere in this curriculum, reduces
+    option pricing to a one-dimensional integral of a characteristic function
+    — routinely evaluated with Simpson's rule or a specialized quadrature rule
+    like Gauss-Legendre, never with Monte Carlo, precisely because it's
+    low-dimensional and quadrature is both faster and more accurate there),
+    or computing a risk metric that's a 1D or 2D integral of a fitted density.
+    Any time a problem is genuinely one- or two-dimensional and the integrand
+    is reasonably smooth, quadrature is the default, unglamorous, highly
+    accurate workhorse — reaching for Monte Carlo there would be strictly
+    worse on both speed and accuracy.
+  </p>
+  <p>
+    Monte Carlo takes over decisively the moment genuine high dimensionality
+    enters: pricing path-dependent derivatives (each monitoring date along the
+    path effectively adds a dimension), multi-asset basket and rainbow
+    options, and portfolio-level risk measures (Value-at-Risk, Expected
+    Shortfall) computed jointly across many risk factors are all standard
+    Monte Carlo territory in practice, for exactly the curse-of-dimensionality
+    reason developed above. In between the extremes, quasi-Monte Carlo
+    methods (using deterministic, carefully-structured low-discrepancy point
+    sequences — Sobol or Halton sequences — instead of genuinely random
+    draws) are a real, widely used middle ground: they retain Monte Carlo's
+    dimension-independent cost structure while often converging faster than
+    \(1/\sqrt{N}\) in practice for moderately high-dimensional, reasonably
+    smooth integrands, at the cost of losing the clean probabilistic
+    error bars a true random Monte Carlo estimate comes with.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📐</div>
+      <h4>Characteristic-function option pricing</h4>
+      <p>Heston- and SABR-style models price options via a 1D Fourier integral of a characteristic function — routinely evaluated with Simpson's rule or Gauss-Legendre quadrature, not simulation.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🎲</div>
+      <h4>Path-dependent &amp; basket derivatives</h4>
+      <p>Every monitoring date or additional underlying effectively adds a dimension — Monte Carlo's dimension-independent cost is what makes these tractable at all.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧭</div>
+      <h4>Quasi-Monte Carlo</h4>
+      <p>Low-discrepancy sequences (Sobol, Halton) replace true randomness with structured points, often converging faster in practice for moderately high-dimensional, smooth problems.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this goes wrong in practice</h3>
+    <p>
+      <strong>Applying Simpson's rule to a function with a kink or a
+      discontinuity inside the interval.</strong> Both quadrature rules assume
+      the integrand is smooth enough for a local straight-line or parabolic
+      fit to be a good approximation. A payoff with a kink (a digital or
+      barrier feature, say) sitting inside one of the fitted panels breaks
+      that assumption, and the impressive \(O(h^4)\) Simpson's-rule error rate
+      can silently degrade back toward — or worse than — the plain
+      trapezoidal rate. Splitting the integration range at any known kink is
+      the standard fix.
+    </p>
+    <p>
+      <strong>Underestimating the curse of dimensionality until it's too
+      late.</strong> A grid method that works comfortably in 1 or 2
+      dimensions can look like it should "just scale up" to 3 or 4 — the
+      exponential cost only becomes obviously infeasible once someone tries
+      to actually run it, by which point real development time may already
+      be sunk into a deterministic-quadrature implementation that has to be
+      thrown out in favor of simulation.
+    </p>
+    <p>
+      <strong>Treating a Monte Carlo estimate's standard error as the whole
+      story.</strong> The \(1/\sqrt{N}\) rate is an average-case statement
+      about repeated sampling — a single Monte Carlo run, for a fixed finite
+      \(N\), still has genuine sampling noise, and reporting a point estimate
+      without its standard error (or without enough paths to make that
+      standard error small relative to the quantity being estimated) can
+      overstate precision. This connects directly to the Bootstrapping &amp;
+      Monte Carlo lesson's own house discipline: Monte Carlo's convergence is
+      about repeated resampling from a fixed, already-specified model, and
+      says nothing about whether that model itself is correctly specified.
+    </p>
+    <p>
+      <strong>Confusing "more accurate per point" with "cheaper overall."</strong>
+      Simpson's rule is more accurate than the trapezoidal rule <em>per
+      function evaluation</em> in low dimensions — but in a genuinely
+      high-dimensional setting, that per-point accuracy advantage is
+      irrelevant next to the sheer number of points a grid needs, which is
+      the entire point of the dimensionality comparison above. Picking the
+      "better" quadrature rule is the wrong optimization once dimensionality,
+      not per-point accuracy, is the binding constraint.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The trapezoidal rule sums trapezoid-shaped strips under straight-line fits.</strong> Its error shrinks with the square of the step size, O(h²).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Simpson's rule fits parabolas through triples of points instead.</strong> A much better O(h⁴) error rate for smooth functions, at essentially no extra conceptual cost.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Monte Carlo integration is the same job, sampled instead of gridded.</strong> Averaging random draws of a function is mathematically estimating the same integral as a deterministic quadrature rule.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Deterministic quadrature's cost explodes exponentially with dimension.</strong> The curse of dimensionality — roughly nᵈ evaluations for a d-dimensional grid — makes it infeasible past 2-3 dimensions.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Monte Carlo's 1/√N error rate doesn't depend on dimension at all.</strong> The exact reason high-dimensional option pricing (baskets, path-dependent payoffs) always uses simulation, never a grid.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Neither method validates the model being integrated against.</strong> Quadrature and Monte Carlo both faithfully compute the integral of whatever density or payoff they're given — garbage in, precisely-computed garbage out.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why does Simpson's rule generally beat the trapezoidal rule's accuracy for the same number of evaluation points, on a smooth function?</summary>
+    <div class="tl-answer">
+      The trapezoidal rule approximates the curve locally with a straight
+      line, which cannot bend to match any actual curvature in the function —
+      its error comes entirely from that mismatch, and shrinks proportionally
+      to h². Simpson's rule fits a parabola through each set of three
+      consecutive points instead, which can match a smooth function's local
+      curvature far more closely than a straight line can, leaving a much
+      smaller residual error that shrinks proportionally to h⁴ — a much
+      faster improvement as the step size shrinks, for the same underlying
+      grid of points, as long as the function is smooth enough for the local
+      parabolic fit to be accurate (a kink or discontinuity breaks this
+      advantage).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. In what precise sense is Monte Carlo integration "the same thing" as the trapezoidal rule or Simpson's rule, rather than a fundamentally different technique?</summary>
+    <div class="tl-answer">
+      All three are estimating the same object — the area under a curve, or
+      equivalently an expectation, which is exactly what an integral is. The
+      trapezoidal rule and Simpson's rule do this with an evenly-spaced,
+      deterministic set of sample points and a specific weighting scheme
+      derived from fitting straight lines or parabolas. Monte Carlo does it
+      by drawing points randomly instead of on a fixed grid and taking a
+      simple average — a different sampling scheme for choosing where to
+      evaluate the function, but mechanically still "evaluate the function at
+      a set of points, combine those values into a single number that
+      estimates the area/expectation."
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why does a 7-dimensional basket-option pricing problem make deterministic quadrature infeasible but leave Monte Carlo's cost basically unaffected?</summary>
+    <div class="tl-answer">
+      A deterministic grid needs roughly n evaluation points per dimension,
+      so covering d dimensions costs on the order of n^d total evaluations —
+      exponential in the number of dimensions. At 7 dimensions, even a modest
+      per-dimension grid density becomes tens or hundreds of billions of
+      evaluations, computationally infeasible. Monte Carlo instead draws N
+      joint samples (each one a full 7-dimensional point) and evaluates the
+      function once per sample — the cost is simply N evaluations, with no
+      exponential dependence on d baked in at all; drawing a 7-dimensional
+      random point costs essentially the same as drawing a 1-dimensional one.
+      This is exactly why Monte Carlo, not a grid, is the standard tool for
+      genuinely high-dimensional pricing problems.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. A Monte Carlo estimate uses 1 million paths. Roughly how many paths would be needed to cut its standard error in half, and why?</summary>
+    <div class="tl-answer">
+      Monte Carlo's error shrinks proportionally to 1/√N. To cut the error in
+      half, N needs to increase by a factor of 4 (since √4 = 2) — so roughly
+      4 million paths, not 2 million. This quartic-in-accuracy relationship
+      (each halving of error costs 4× the computation) is a real, genuine
+      cost of Monte Carlo, but it's a fixed, dimension-independent
+      relationship — unlike deterministic quadrature, where the cost of
+      improving accuracy can interact with dimensionality in a much less
+      forgiving, exponential way.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why would a quant researcher choose Simpson's rule over Monte Carlo simulation to price a vanilla option under a nonstandard, but still one-dimensional, terminal distribution?</summary>
+    <div class="tl-answer">
+      For a genuinely one-dimensional integral (a single underlying's
+      terminal-price distribution), deterministic quadrature like Simpson's
+      rule converges far faster and more accurately than Monte Carlo for a
+      given amount of computation — its O(h⁴) error rate for a smooth
+      integrand beats Monte Carlo's fixed 1/√N rate decisively at low
+      dimension, and it requires no random-number generation or repeated
+      resampling to reduce noise. Monte Carlo's real advantage — a cost that
+      doesn't explode with dimension — is irrelevant here, since there's only
+      one dimension to begin with; reaching for Monte Carlo in this case would
+      be strictly slower and less accurate than the deterministic alternative
+      for no compensating benefit.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Thomas Simpson, <em>Mathematical Dissertations on a Variety of Physical and Analytical Subjects</em>, 1743 — the historical source of the rule bearing Simpson's name, though the underlying parabolic-interpolation idea was known earlier to Johannes Kepler and others.</li>
+    <li>Philip J. Davis &amp; Philip Rabinowitz, <em>Methods of Numerical Integration</em>, 2nd ed., Academic Press, 1984 — the standard, comprehensive reference on quadrature methods, including error analysis and higher-order rules.</li>
+    <li>Paul Glasserman, <em>Monte Carlo Methods in Financial Engineering</em>, Springer, 2003 — the standard quantitative-finance reference on Monte Carlo methods for derivatives pricing, including variance reduction and quasi-Monte Carlo techniques.</li>
+    <li>Russel E. Caflisch, "Monte Carlo and Quasi-Monte Carlo Methods," <em>Acta Numerica</em>, 1998 — a widely cited survey directly addressing the curse of dimensionality and quasi-Monte Carlo's role as a middle ground between deterministic quadrature and pure Monte Carlo.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="linear-quadratic-programming.html">← Linear &amp; Quadratic Programming</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var slider = document.getElementById('ni-n-slider');
+  var nVal = document.getElementById('ni-n-val');
+  var trapGroup = document.getElementById('ni-trapezoids');
+  var readout = document.getElementById('ni-readout');
+  if (!slider) return;
+
+  // Standard normal PDF and the same erf-based CDF used elsewhere in this curriculum.
+  function phi(z){ return Math.exp(-z * z / 2) / Math.sqrt(2 * Math.PI); }
+  function erf(x){
+    var sign = x >= 0 ? 1 : -1;
+    x = Math.abs(x);
+    var a1=0.254829592, a2=-0.284496736, a3=1.421413741, a4=-1.453152027, a5=1.061405429, p=0.3275911;
+    var t = 1 / (1 + p * x);
+    var y = 1 - (((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+    return sign * y;
+  }
+  function Phi(z){ return 0.5 * (1 + erf(z / Math.SQRT2)); }
+  var TRUE_VALUE = Phi(1) - Phi(0);
+
+  // Chart pixel mapping: z in [-0.3, 1.3] -> px [50,590]; phi in [0,0.42] -> px [230(bottom),20(top)].
+  function mapX(z){ return 50 + (z + 0.3) * (540 / 1.6); }
+  function mapY(y){ return 230 - y * (210 / 0.42); }
+
+  function update(){
+    var n = parseInt(slider.value, 10);
+    nVal.textContent = 'n = ' + n;
+    var h = 1 / n;
+
+    var sum = 0;
+    var svg = '';
+    for (var i = 0; i < n; i++){
+      var z0 = i * h, z1 = (i + 1) * h;
+      var y0 = phi(z0), y1 = phi(z1);
+      sum += (y0 + y1) / 2 * h;
+      var x0 = mapX(z0), x1 = mapX(z1);
+      var py0 = mapY(y0), py1 = mapY(y1);
+      var base = mapY(0);
+      svg += '<polygon points="' + x0.toFixed(1) + ',' + base.toFixed(1) + ' ' + x0.toFixed(1) + ',' + py0.toFixed(1) + ' ' + x1.toFixed(1) + ',' + py1.toFixed(1) + ' ' + x1.toFixed(1) + ',' + base.toFixed(1) + '" style="fill:var(--blue);opacity:.22;stroke:var(--blue);stroke-width:1"></polygon>';
+    }
+    trapGroup.innerHTML = svg;
+
+    var error = sum - TRUE_VALUE;
+    readout.textContent = 'Trapezoidal estimate (n=' + n + '): ' + sum.toFixed(5) + ' — True Φ(1)−Φ(0): ' + TRUE_VALUE.toFixed(5) + ' — error: ' + (error >= 0 ? '+' : '') + error.toFixed(5);
+  }
+
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
+</body>
+</html>

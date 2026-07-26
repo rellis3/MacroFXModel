@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Newton-Raphson &amp; Gradient Descent — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Numerical Methods / Newton-Raphson &amp; Gradient Descent</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Numerical Methods · Lesson 1 of 4</div>
+  <h1 class="tl-title">Newton-Raphson &amp; Gradient Descent</h1>
+  <p class="tl-dek">Two ways to let a computer search for the number you can't solve for by hand — one climbs down a slope one step at a time, the other uses the slope's own curvature to leap straight at the answer.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span>~17 min read</span>
+    <span>Prereqs: Optimization Basics, Calculus for Finance</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Newton-Raphson</strong> finds where a function crosses zero by repeatedly following its tangent line down to the axis: \(x_{n+1} = x_n - f(x_n)/f'(x_n)\). Near a well-behaved root it converges <em>quadratically</em> — the number of correct digits roughly doubles every iteration.</li>
+      <li>That speed is bought with fragility: a bad starting guess, a derivative near zero, or a function with multiple roots can make it overshoot wildly or never settle at all.</li>
+      <li>Solving for a bond's yield-to-maturity and solving for an option's implied volatility are the same task in disguise — "find the input that makes a pricing formula reproduce an observed market price" — and both are textbook Newton-Raphson applications.</li>
+      <li><strong>Gradient descent</strong> solves a different but related problem: not "where does \(f\) cross zero" but "where is \(f\) smallest." It repeatedly steps a fixed fraction \(\alpha\) (the <em>learning rate</em>) down the negative gradient: \(x_{n+1} = x_n - \alpha\nabla f(x_n)\).</li>
+      <li>Too large a learning rate overshoots the minimum and can oscillate or diverge; too small a rate converges reliably but slowly. There is no free lunch — the rate has to be tuned to the problem.</li>
+      <li><strong>Newton's method for optimization</strong>, \(x_{n+1} = x_n - H^{-1}\nabla f(x_n)\), is the bridge between the two ideas: it uses the Hessian \(H\) (curvature, a second derivative) to pick both the step's direction and its size automatically — faster convergence than gradient descent, at the cost of computing and inverting \(H\).</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    A huge share of quantitative finance reduces to one of two questions: "what
+    input makes this formula match an observed number?" or "what input makes
+    this formula as small (or as large) as possible?" Neither question usually
+    has a clean algebraic answer — you can't always rearrange the formula by
+    hand and isolate the variable the way the Optimization Basics lesson's
+    simplest examples allow. Newton-Raphson and gradient descent are the two
+    foundational tools that answer those questions <em>numerically</em>,
+    iterating toward an answer a step at a time instead of solving for it in
+    one closed-form move. Nearly everything built on top of this tier of the
+    curriculum — convex optimization, quadratic programming, calibrating a
+    model to market prices — is, underneath, a more careful, more constrained
+    version of one of these two ideas.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">💵</div>
+      <h4>Bond yield-to-maturity</h4>
+      <p>A bond's price is a known formula in the yield; there's no algebraic inverse. Newton-Raphson is the standard way a pricing engine solves for the yield that reproduces a quoted price.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📈</div>
+      <h4>Option-implied volatility</h4>
+      <p>Same shape of problem: Black-Scholes gives price from volatility, not the reverse. Solving "what σ reproduces this market price" is Newton-Raphson run on the option pricing formula.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧠</div>
+      <h4>Model calibration &amp; machine learning</h4>
+      <p>Fitting a model's parameters to minimize a loss function — whether it's a GARCH log-likelihood or a neural network's error — is gradient descent (or one of its faster cousins) at massive scale.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🧮</div>
+      <h4>Every later lesson in this category</h4>
+      <p>Convex optimization, KKT conditions, and quadratic programming all assume you already know what an iterative solver is doing and why it can fail — this lesson is the foundation underneath them.</p>
+    </div>
+  </div>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Sliding down a tangent line, versus feeling your way downhill blindfolded</h3>
+    <p>
+      Imagine you're standing somewhere on a curve and you want to find exactly
+      where it crosses zero. <strong>Newton-Raphson's</strong> trick: look at
+      the curve's slope right where you're standing, draw the straight tangent
+      line that matches that slope, and walk along the <em>tangent</em> (not
+      the curve) until it hits zero. That's your next guess. Because a smooth
+      curve looks almost exactly like its tangent line very close to a root,
+      this move gets you dramatically closer with each step — as long as
+      you're already reasonably close and the curve isn't doing anything
+      strange (like going nearly flat) near where you're standing.
+    </p>
+    <p>
+      <strong>Gradient descent</strong> solves a different problem with the
+      same flavor of idea, but blindfolded. Picture standing somewhere on a
+      hilly landscape, unable to see the whole terrain, trying to reach the
+      lowest point. You can feel which direction is steepest-downhill right
+      under your feet — that's the gradient — so you take a step that
+      direction. How big a step? That's the one knob you get to choose, the
+      <strong>learning rate</strong>. Step too far and you might stride right
+      over the valley floor and end up higher on the opposite slope than when
+      you started; step too cautiously and you'll get there eventually, just
+      very slowly. Newton-Raphson effectively lets you <em>see</em> the local
+      curvature of the ground, not just its slope, and use that extra
+      information to size the perfect step automatically — which is exactly
+      what "Newton's method for optimization," covered below, adds to plain
+      gradient descent.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>Newton-Raphson — finding where a function crosses zero</h3>
+  <p>
+    The problem: given a function \(f\), find an \(x\) such that \(f(x) = 0\)
+    (a <strong>root</strong>). Start from some guess \(x_n\). The tangent line
+    to \(f\) at \(x_n\) has slope \(f'(x_n)\) and passes through the point
+    \((x_n, f(x_n))\), so its equation is:
+  </p>
+  <div class="tl-math">
+    \[ y = f(x_n) + f'(x_n)(x - x_n) \]
+  </div>
+  <p>
+    Newton-Raphson's move is to find where <em>that tangent line</em> crosses
+    zero, and use that as the next guess \(x_{n+1}\). Setting \(y=0\) and
+    solving for \(x\):
+  </p>
+  <div class="tl-math">
+    \[ 0 = f(x_n) + f'(x_n)(x_{n+1} - x_n) \quad\Longrightarrow\quad x_{n+1} = x_n - \frac{f(x_n)}{f'(x_n)} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>xₙ</code><span>the current guess</span></div>
+    <div class="tl-eq-chip c2"><code>f(xₙ)</code><span>how far off the current guess is from a root</span></div>
+    <div class="tl-eq-chip c3"><code>f'(xₙ)</code><span>the local slope — how fast f is changing right here</span></div>
+    <div class="tl-eq-chip c4"><code>xₙ₊₁</code><span>the next, hopefully better, guess</span></div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">f(xₙ)/f'(xₙ)</div>
+      <div class="tl-fp-name">The correction</div>
+      <div class="tl-fp-desc">How far the tangent line's zero-crossing sits from xₙ</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">−</div>
+      <div class="tl-fp-name">The direction</div>
+      <div class="tl-fp-desc">Subtracting moves toward the root, not away from it</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">xₙ₊₁</div>
+      <div class="tl-fp-name">The result</div>
+      <div class="tl-fp-desc">A new guess, repeated until the correction is negligibly small</div>
+    </div>
+  </div>
+
+  <p>
+    Repeat: compute \(f(x_{n+1})\) and \(f'(x_{n+1})\), take another step, and
+    stop once \(|f(x_n)|\) (or the size of the step itself) drops below some
+    small tolerance you choose in advance.
+  </p>
+
+  <h3>Why it converges so fast — quadratic convergence</h3>
+  <p>
+    Near an actual root \(x^\*\), a smooth function is very well approximated
+    by its tangent line — the gap between the curve and the tangent shrinks
+    proportionally to the <em>square</em> of the distance from \(x^\*\) (this
+    falls straight out of a Taylor expansion of \(f\) around \(x^\*\); you
+    don't need to carry out that expansion to use the result). That single
+    fact is the entire reason Newton-Raphson is fast: if the current guess's
+    error is \(\varepsilon_n = x_n - x^\*\), the next guess's error is
+    approximately proportional to \(\varepsilon_n^2\), not \(\varepsilon_n\).
+    Concretely — if a guess is off by \(0.1\), the next guess is off by
+    roughly \(0.01\), then roughly \(0.0001\), then roughly \(0.00000001\):
+    the number of correct decimal digits <em>roughly doubles</em> on every
+    single iteration once you're close enough. This is called
+    <strong>quadratic convergence</strong>, and it's dramatically faster than
+    a method like bisection, which only ever halves the error each step
+    (linear convergence) no matter how close you already are.
+  </p>
+
+  <div class="tl-solid amber">
+    <strong>The catch:</strong> "once you're close enough" is doing a lot of
+    work in that sentence. Quadratic convergence is a <em>local</em>
+    guarantee — it describes what happens once \(x_n\) is already in a
+    neighborhood of the true root where the tangent-line approximation is
+    good. Far from the root, none of this speed guarantee applies.
+  </div>
+
+  <h3>Where Newton-Raphson fails</h3>
+  <p>
+    The formula divides by \(f'(x_n)\), and every one of its practical failure
+    modes traces back to that division or to the tangent-line approximation
+    breaking down:
+  </p>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card amber">
+      <h4>A flat derivative near the current guess</h4>
+      <p>If \(f'(x_n)\) is close to zero, the correction term \(f(x_n)/f'(x_n)\) explodes — the tangent line is nearly horizontal, so its zero-crossing can be enormously far away, and the next guess can land somewhere wild, sometimes worse than where it started.</p>
+    </div>
+    <div class="tl-compare-card red">
+      <h4>A bad starting point</h4>
+      <p>Far from the root, the tangent line can be a poor stand-in for the actual curve — the method can overshoot, oscillate between two points forever, or converge to a completely different root than the one you wanted (if \(f\) has more than one).</p>
+    </div>
+  </div>
+
+  <p>
+    In practice, production pricing engines rarely run pure Newton-Raphson
+    unguarded — a common, robust fix is to start it from a sensible initial
+    guess informed by the problem (e.g. the coupon rate for a bond near par,
+    or an approximation formula for implied volatility), cap how large a
+    single step is allowed to be, and fall back to a slower but
+    guaranteed-to-converge method like bisection if Newton-Raphson's step
+    ever moves outside a known bracket that must contain the root.
+  </p>
+
+  <h3>The same idea, applied: bond yield-to-maturity and implied volatility</h3>
+  <p>
+    Both of the following are, mechanically, the identical task: a pricing
+    formula \(P(\theta)\) takes some unobservable input \(\theta\) and
+    produces a price; the market gives you an observed price \(P_{mkt}\); you
+    want the \(\theta\) that makes the formula agree with the market. Define
+    \(f(\theta) = P(\theta) - P_{mkt}\) and Newton-Raphson finds its root:
+  </p>
+  <div class="tl-math">
+    \[ \theta_{n+1} = \theta_n - \frac{P(\theta_n) - P_{mkt}}{P'(\theta_n)} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>θₙ</code><span>the unobservable input — a bond's yield, or an option's volatility</span></div>
+    <div class="tl-eq-chip c2"><code>P(θₙ)</code><span>the pricing formula's output at the current guess</span></div>
+    <div class="tl-eq-chip c3"><code>P'(θₙ)</code><span>the pricing formula's sensitivity to θ — for a bond this is (up to sign and scaling) duration; for an option it's vega</span></div>
+    <div class="tl-eq-chip c4"><code>P_mkt</code><span>the one number you actually observed — the market price</span></div>
+  </div>
+  <p>
+    For a bond, \(\theta\) is the yield \(y\) and \(P'(y)\) is closely related
+    to the bond's (dollar) duration — the bond-pricing lesson elsewhere in
+    this curriculum, <em>Bond Pricing &amp; Yield-to-Maturity</em>, covers the
+    pricing formula itself and its sensitivity in full; this lesson uses it
+    only as the function Newton-Raphson is applied to. For an option, \(\theta\)
+    is the implied volatility \(\sigma\) and \(P'(\sigma)\) is the option's
+    vega — an option pricing formula (Black-Scholes, covered elsewhere in this
+    curriculum) has no algebraic inverse for \(\sigma\), which is exactly why
+    every implied-volatility solver in practice is some variant of
+    Newton-Raphson (or a closely related root-finder) run against the pricing
+    formula.
+  </p>
+
+  <h3>Gradient descent — finding where a function is smallest</h3>
+  <p>
+    A different, related problem: instead of "where does \(f\) cross zero,"
+    ask "for what \(x\) is \(f(x)\) as small as possible." Calculus says a
+    smooth function's minimum occurs where its derivative is zero — so this
+    even looks like a root-finding problem on \(f'\) rather than \(f\) — but
+    for a function of many variables (as almost every real calibration or
+    machine-learning problem is), computing and inverting the full
+    second-derivative structure at every step is often too expensive.
+    <strong>Gradient descent</strong> is the cheap alternative: at the current
+    point, compute the <strong>gradient</strong> \(\nabla f(x_n)\) — the
+    direction of steepest <em>increase</em> — and step a fixed distance in the
+    <em>opposite</em> direction, since that's the direction of steepest
+    decrease:
+  </p>
+  <div class="tl-math">
+    \[ x_{n+1} = x_n - \alpha \, \nabla f(x_n) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>∇f(xₙ)</code><span>the gradient — the direction (and steepness) of the fastest local increase</span></div>
+    <div class="tl-eq-chip c2"><code>α</code><span>(alpha) the learning rate — how far to step each time, chosen in advance</span></div>
+    <div class="tl-eq-chip c4"><code>−α∇f(xₙ)</code><span>a step of size α, taken downhill</span></div>
+  </div>
+  <p>
+    In one dimension, \(\nabla f(x)\) is simply \(f'(x)\), so for the toy bowl
+    function \(f(x) = (x-3)^2\), whose minimum is obviously at \(x=3\) by
+    inspection, the update rule is:
+  </p>
+  <div class="tl-math">
+    \[ f(x) = (x-3)^2 \quad\Rightarrow\quad f'(x) = 2(x-3) \quad\Rightarrow\quad x_{n+1} = x_n - \alpha \cdot 2(x_n - 3) \]
+  </div>
+
+  <h3>The learning-rate tradeoff</h3>
+  <p>
+    \(\alpha\) is the single most important knob in gradient descent, and
+    there is a genuine tradeoff, not a "bigger is always better" or "smaller
+    is always safer" answer:
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Too small an α</h4>
+      <p>Every step moves reliably downhill, so convergence is guaranteed for any reasonable well-behaved function — but it can take a very large number of iterations to actually get close to the minimum, which is expensive at scale (imagine millions of parameters, each iteration a full pass over a dataset).</p>
+    </div>
+    <div class="tl-compare-card red">
+      <h4>Too large an α</h4>
+      <p>The step overshoots the minimum, landing on the opposite side — possibly farther from the minimum than the starting point. Repeated overshooting can oscillate with growing amplitude and diverge entirely, never settling anywhere.</p>
+    </div>
+  </div>
+  <p>
+    For the one-dimensional bowl \(f(x)=(x-3)^2\), the update rule algebraically
+    simplifies to \(x_{n+1} - 3 = (1-2\alpha)(x_n - 3)\) — each step multiplies
+    the current error by the fixed factor \((1-2\alpha)\). That factor's size
+    tells you exactly what will happen: if \(0 < \alpha < 0.5\), the factor is
+    between 0 and 1 and the error shrinks every step, monotonically, toward
+    zero. If \(\alpha = 0.5\) exactly, the factor is zero and the very next
+    step lands exactly on the minimum — no overshoot at all (a special case
+    that turns out to be exactly Newton's method for this function, below).
+    If \(0.5 < \alpha < 1\), the factor is negative — the iterate flips sides
+    of the minimum every step (oscillates) but the error still shrinks in
+    magnitude, so it still converges, just less directly. If \(\alpha \ge 1\),
+    the factor's magnitude is 1 or larger and the error no longer shrinks —
+    the sequence oscillates with equal or growing amplitude and never
+    converges. The interactive chart below lets you see exactly this
+    behavior on the real numbers, not just the description of it.
+  </p>
+
+  <h3>Newton's method for optimization — the bridge between the two ideas</h3>
+  <p>
+    Gradient descent only ever looks at the <em>slope</em> — first-derivative
+    information — and has to guess a step size. Newton's method for
+    optimization goes one derivative further: it also uses the
+    <strong>curvature</strong> (the second derivative, or in many dimensions
+    the <strong>Hessian</strong> matrix \(H\), the matrix of all second
+    partial derivatives) to figure out automatically both which direction to
+    move <em>and</em> how far:
+  </p>
+  <div class="tl-math">
+    \[ x_{n+1} = x_n - H^{-1} \nabla f(x_n) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>∇f(xₙ)</code><span>the gradient — same steepest-increase direction as before</span></div>
+    <div class="tl-eq-chip c2"><code>H</code><span>the Hessian — curvature information, second derivatives</span></div>
+    <div class="tl-eq-chip c3"><code>H⁻¹</code><span>inverse curvature — automatically rescales the step, replacing the hand-chosen α</span></div>
+  </div>
+  <p>
+    In one dimension, \(H\) is just the scalar second derivative \(f''(x)\),
+    so Newton's method for optimizing \(f(x)=(x-3)^2\) (where \(f''(x) = 2\)
+    everywhere, a constant) is \(x_{n+1} = x_n - f'(x_n)/2\) — which is
+    <em>exactly</em> the \(\alpha = 0.5\) special case identified above. That's
+    not a coincidence: for a perfectly bowl-shaped (quadratic) function,
+    Newton's method's automatically-chosen step size is precisely the one
+    learning rate that reaches the minimum in a single step, because a
+    quadratic function's curvature is constant and Newton's method reads that
+    curvature directly instead of guessing it. For a general, non-quadratic
+    function, Newton's optimization step still typically converges in far
+    fewer iterations than gradient descent — the same quadratic-convergence
+    property from root-finding carries over — but each step is more expensive
+    to compute (forming and inverting \(H\), which for \(p\) parameters is a
+    \(p \times p\) matrix — expensive when \(p\) is large, which is exactly why
+    plain gradient descent, and its many refinements, remain the workhorse for
+    large-scale machine learning where \(p\) can run into the millions).
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(f(x)\)</td><td>The function whose root (Newton-Raphson) or minimum (gradient descent, Newton's method for optimization) is being sought.</td></tr>
+    <tr><td>\(f'(x)\), \(\nabla f(x)\)</td><td>The first derivative (one dimension) or gradient (many dimensions) — the local slope / steepest-increase direction.</td></tr>
+    <tr><td>\(f''(x)\), \(H\)</td><td>The second derivative (one dimension) or Hessian matrix (many dimensions) — local curvature.</td></tr>
+    <tr><td>\(x_n\)</td><td>The current iterate — the \(n\)-th guess in the sequence of steps.</td></tr>
+    <tr><td>\(x^\*\)</td><td>The true root or minimizer the sequence is converging toward.</td></tr>
+    <tr><td>\(\varepsilon_n = x_n - x^\*\)</td><td>The error at step \(n\) — how far the current guess is from the true answer.</td></tr>
+    <tr><td>\(\alpha\)</td><td>(alpha) The learning rate in gradient descent — a fixed step size chosen in advance.</td></tr>
+    <tr><td>\(\theta\)</td><td>(theta) A generic unobservable input being solved for — a bond yield, an implied volatility.</td></tr>
+    <tr><td>\(P(\theta)\), \(P_{mkt}\)</td><td>A pricing formula's output at a given input, and the observed market price it's being matched to.</td></tr>
+  </table></div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Gradient descent on a 1D bowl — drag the learning rate</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A parabola shaped like a bowl with a movable sequence of points showing gradient descent steps converging toward, oscillating around, or diverging from the minimum depending on the learning rate">
+      <line x1="20" y1="260" x2="620" y2="260" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="320" y1="10" x2="320" y2="270" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
+      <text x="320" y="284" text-anchor="middle" style="fill:var(--text3);font-size:11px">x = 3 (the minimum)</text>
+      <path style="fill:none;stroke:var(--border2);stroke-width:2" d="M40.0,20.0 63.3,58.3 86.7,93.3 110.0,125.0 133.3,153.3 156.7,178.3 180.0,200.0 203.3,218.3 226.7,233.3 250.0,245.0 273.3,253.3 296.7,258.3 320.0,260.0 343.3,258.3 366.7,253.3 390.0,245.0 413.3,233.3 436.7,218.3 460.0,200.0 483.3,178.3 506.7,153.3 530.0,125.0 553.3,93.3 576.7,58.3 600.0,20.0"/>
+      <polyline id="gd-path" points="" style="fill:none;stroke:var(--amber);stroke-width:2"/>
+      <g id="gd-dots"></g>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Learning rate α</span><span class="tl-live" id="gd-alpha-val">α = 0.30</span></div>
+        <input type="range" id="gd-alpha-slider" min="5" max="115" step="1" value="30">
+        <div class="tl-hint">Starting at x₀ = 0, six steps of xₙ₊₁ = xₙ − α·2(xₙ−3). Drag right: watch it overshoot, then oscillate, then diverge — all real arithmetic on f(x) = (x−3)².</div>
+      </div>
+    </div>
+    <div class="tl-readout" id="gd-readout">x₆ ≈ 2.92, f(x₆) ≈ 0.0059 — converging monotonically</div>
+    <div class="tl-chart-caption">Each amber dot is one iterate x₀…x₆, plotted on the true curve f(x)=(x−3)². At α=0.30 the steps shrink steadily toward the minimum; at α=0.50 the very next step lands exactly on it (Newton's method for this quadratic); past α=0.50 the steps start flipping sides, and past α=1.00 they grow without bound.</div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Two hand-worked iterations: a bond's yield, and a bowl's minimum</h3>
+    <p>
+      <strong>Part 1 — bond yield-to-maturity via Newton-Raphson.</strong> A
+      3-year bond, face value 100, annual coupon 5 (a 5% coupon rate), is
+      quoted in the market at \(P_{mkt} = 97.50\) — trading below par, so the
+      market's implied yield must be above the 5% coupon rate. The pricing
+      formula is:
+    </p>
+    <div class="tl-math">
+      \[ P(y) = \frac{5}{(1+y)} + \frac{5}{(1+y)^2} + \frac{105}{(1+y)^3} \]
+    </div>
+    <p>There's no algebraic way to invert this for \(y\) — Newton-Raphson it is. Define \(f(y) = P(y) - 97.50\), start from the natural guess \(y_0 = 0.05\) (the coupon rate), and iterate.</p>
+
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Iteration 0 → 1</h4>
+          <p>At \(y_0 = 5.000\%\): a bond priced exactly at its coupon rate trades at par, so \(P(y_0) = 100.00\) exactly, and \(f(y_0) = 100.00 - 97.50 = 2.50\). The derivative (found by differentiating each cash-flow term) is \(P'(y_0) \approx -272.24\):</p>
+          <div class="tl-math">\[ y_1 = 0.05 - \frac{2.50}{-272.24} = 0.05 + 0.00918 = 0.05918 \ (5.918\%) \]</div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Iteration 1 → 2</h4>
+          <p>At \(y_1 = 5.918\%\): \(P(y_1) \approx 97.5414\), so \(f(y_1) \approx 0.0414\) — the error has already shrunk from 2.50 to 0.0414, roughly 60-fold, in a single step. With \(P'(y_1) \approx -263.15\):</p>
+          <div class="tl-math">\[ y_2 = 0.05918 - \frac{0.0414}{-263.15} = 0.05918 + 0.000157 = 0.05934 \ (5.934\%) \]</div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Iteration 2 → 3 (converged)</h4>
+          <p>At \(y_2 = 5.934\%\), \(P(y_2)\) is already within a fraction of a cent of \(97.50\); a third iteration moves \(y\) by less than \(0.0001\%\) — below any sensible tolerance. The solver reports <strong>yield-to-maturity ≈ 5.934%</strong>, found in three iterations from a naive starting guess.</p>
+        </div>
+      </div>
+    </div>
+
+    <p style="margin-top:16px">
+      <strong>Part 2 — gradient descent minimizing a bowl by hand.</strong>
+      Minimize \(f(x) = (x-3)^2\) starting from \(x_0 = 0\), learning rate
+      \(\alpha = 0.3\). The update rule is \(x_{n+1} = x_n - 0.3 \cdot 2(x_n-3)
+      = x_n - 0.6(x_n - 3)\):
+    </p>
+    <div class="tl-math">
+      \[
+      \begin{aligned}
+      x_1 &= 0 - 0.6(0-3) = 1.800, &&f(x_1) = 1.440 \\
+      x_2 &= 1.8 - 0.6(1.8-3) = 2.520, &&f(x_2) = 0.230 \\
+      x_3 &= 2.52 - 0.6(2.52-3) = 2.808, &&f(x_3) = 0.037 \\
+      x_4 &= 2.808 - 0.6(2.808-3) = 2.923, &&f(x_4) \approx 0.0059
+      \end{aligned}
+      \]
+    </div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>0 → 1.8 → 2.52 → 2.808 → 2.923</code><span>steadily closing in on the true minimum, x=3</span></div>
+      <div class="tl-eq-chip c4"><code>9.0 → 1.44 → 0.23 → 0.037 → 0.0059</code><span>f(xₙ) shrinking by a constant ratio (0.16) each step — linear, not quadratic, convergence</span></div>
+    </div>
+    <p>
+      Notice the contrast with Part 1: the bond-yield solve using
+      Newton-Raphson needed only 2-3 iterations because it's quadratically
+      convergent; gradient descent here needs many more steps to close the
+      same relative distance, because it only ever shrinks the error by a
+      fixed <em>ratio</em> each step (here, \((1-2\times0.3)=0.4\) — matching
+      the general formula from the derivation above) rather than squaring it.
+      That's the real, quantitative version of "gradient descent is cheaper
+      per step, Newton-type methods converge faster per step."
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>An implied-vol solver that quietly returns garbage on a deep out-of-the-money option</h3>
+    <p>
+      A vol-surface calibration process runs Newton-Raphson against the
+      Black-Scholes formula for every strike on a listed options chain,
+      solving for the implied volatility that reproduces each strike's last
+      traded price. For most strikes, close to at-the-money, it converges in
+      2-3 iterations without incident — vega (the pricing formula's
+      sensitivity to volatility, i.e. \(P'(\sigma)\) in the notation above) is
+      comfortably large there, so the correction term stays well-behaved.
+    </p>
+    <p>
+      For a handful of very deep out-of-the-money strikes, though, vega is
+      tiny — those options barely react to volatility at all, since they're
+      almost certain to expire worthless (or almost certain to be exercised)
+      regardless of small vol changes. Dividing by a near-zero vega produces
+      an enormous correction term on the very first iteration, and the solver
+      either returns a wildly implausible volatility (say, 400%) or fails to
+      converge within its iteration cap entirely. If the calibration pipeline
+      naively accepts whatever number the solver returns and feeds it straight
+      into the day's volatility surface, that one bad strike can silently
+      distort every model that reads off the surface near it — a smile/skew
+      shape that looks like a genuine market signal but is actually a
+      numerical-solver artifact. The standard practitioner fix is exactly the
+      one described above: bound the solver's allowed step size, fall back to
+      a bracketing method (bisection, or Brent's method) whenever
+      Newton-Raphson's step leaves a sane range, and flag any strike whose
+      solved volatility sits outside a plausible band for manual review rather
+      than trusting the raw output.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    In practice almost nobody hand-codes a bare, unguarded Newton-Raphson loop
+    for anything that touches live pricing. Production implied-volatility and
+    yield solvers wrap the same core update rule in guardrails: a
+    problem-informed starting guess (an approximation formula, or the previous
+    day's solved value as a warm start), a maximum step size, an iteration cap,
+    and a fallback bracketing method for the rare case where the pure
+    Newton-Raphson step would leave a known-good bracket around the true root.
+    Quant libraries almost universally expose this as a single
+    "solve implied vol" or "solve yield" function precisely so individual
+    users don't each re-derive these edge cases themselves.
+  </p>
+  <p>
+    On the optimization side, plain gradient descent with a fixed learning
+    rate is rarely used as-is at scale either — it's the conceptual starting
+    point for a whole family of refinements: momentum methods that smooth out
+    oscillation, adaptive-learning-rate methods (AdaGrad, RMSProp, Adam) that
+    effectively adjust \(\alpha\) per-parameter based on how the gradient has
+    been behaving, and quasi-Newton methods (BFGS and its limited-memory
+    variant, L-BFGS) that build up an approximation to the Hessian's useful
+    information across iterations without ever forming or inverting the full
+    matrix — capturing much of Newton's-method's speed advantage without its
+    full cost. Any time a quant researcher says a model was "fit by gradient
+    descent" or "calibrated with L-BFGS," they mean some member of this same
+    family, built directly on the two update rules derived above.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this goes wrong in practice</h3>
+    <p>
+      <strong>Trusting Newton-Raphson's output without checking it converged
+      to a plausible root.</strong> A function with multiple roots, or a bad
+      starting guess, can make the method converge — quickly and
+      confidently — to the <em>wrong</em> root, or to a mathematically valid
+      but economically nonsensical answer (a negative implied volatility, an
+      implausible yield). Fast convergence is not the same claim as "converged
+      to the answer you actually wanted."
+    </p>
+    <p>
+      <strong>Picking a single fixed learning rate and never revisiting it.</strong>
+      A rate that works well for one calibration problem, or one region of
+      parameter space, can be far too large or far too small for a different
+      one — this is exactly why adaptive methods exist, and why "just run
+      gradient descent" without any tuning is rarely the practitioner's actual
+      workflow.
+    </p>
+    <p>
+      <strong>Mistaking convergence for correctness of the objective.</strong>
+      Gradient descent (or Newton's method) reliably finds <em>a</em> point
+      where the gradient is zero — but on a non-convex function, that point
+      can be a local minimum that is nowhere near the true global minimum. The
+      next lesson in this category, on convex optimization, is entirely about
+      when "the gradient is zero" is enough to conclude "this is the best
+      possible answer" versus when it isn't.
+    </p>
+    <p>
+      <strong>Ignoring the cost of the Hessian at scale.</strong> Newton's
+      method for optimization looks strictly better than gradient descent on
+      paper (fewer iterations), but forming and inverting a \(p\times p\)
+      Hessian for a model with millions of parameters is computationally
+      infeasible — which is exactly why large-scale machine learning still
+      runs on gradient-descent variants rather than pure Newton's method,
+      despite the latter's faster per-iteration convergence.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Newton-Raphson follows the tangent line to its zero-crossing.</strong> \(x_{n+1}=x_n-f(x_n)/f'(x_n)\), and near a root it converges quadratically — correct digits roughly double each step.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Bond YTM and implied volatility are the same problem in disguise.</strong> Both solve "what input makes a pricing formula match an observed price" — the textbook use case for Newton-Raphson.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Quadratic convergence is a local guarantee, not a global one.</strong> A bad starting point, a near-zero derivative, or multiple roots can make Newton-Raphson overshoot, oscillate, or converge to the wrong answer entirely.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Gradient descent steps a fixed distance downhill.</strong> \(x_{n+1}=x_n-\alpha\nabla f(x_n)\) — cheap per step, needing only first-derivative information, but the learning rate α must be tuned.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The learning rate is a genuine tradeoff, not a free parameter.</strong> Too small converges reliably but slowly; too large overshoots, oscillates, or diverges entirely — there's no universally "safe" default.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Newton's method for optimization bridges both ideas.</strong> \(x_{n+1}=x_n-H^{-1}\nabla f(x_n)\) uses curvature (the Hessian) to pick the step size automatically — faster convergence, at the cost of computing and inverting \(H\).</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why does Newton-Raphson converge so much faster than a method like bisection, once it's close to the root?</summary>
+    <div class="tl-answer">
+      Near a root, a smooth function is very closely approximated by its
+      tangent line, and the gap between the curve and the tangent shrinks
+      proportionally to the <em>square</em> of the distance from the root
+      (from a Taylor expansion). That means each Newton-Raphson step's error
+      is roughly proportional to the square of the previous step's error —
+      the number of correct digits roughly doubles every iteration
+      (quadratic convergence). Bisection, by contrast, only ever halves the
+      size of the bracket containing the root each step, regardless of how
+      close it already is — a fixed, linear rate that Newton-Raphson's local
+      quadratic rate beats decisively once it's in range.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why can Newton-Raphson produce a wildly wrong answer for a deep out-of-the-money option's implied volatility?</summary>
+    <div class="tl-answer">
+      The update divides by the pricing formula's derivative with respect to
+      the input being solved for — for implied volatility, that derivative is
+      vega. Deep out-of-the-money options have very small vega (their price
+      barely reacts to volatility, since they're overwhelmingly likely to
+      expire worthless or be exercised regardless of small vol moves).
+      Dividing the price gap by a near-zero vega produces a huge correction
+      term, throwing the next guess far outside any plausible volatility —
+      this is the "flat derivative" failure mode applied directly to a real
+      pricing formula.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. In gradient descent on f(x)=(x−3)², why does α=0.5 reach the minimum in exactly one step from any starting point, while α=0.3 takes many steps?</summary>
+    <div class="tl-answer">
+      The update rule simplifies to \(x_{n+1}-3=(1-2\alpha)(x_n-3)\) — each
+      step multiplies the current error by the constant factor \((1-2\alpha)\).
+      At \(\alpha=0.5\), that factor is exactly zero, so the very next error
+      is zero regardless of the starting error — one step reaches the minimum
+      exactly. This isn't a coincidence: for this particular quadratic
+      function, \(\alpha=0.5\) equals \(1/f''(x)\), which is precisely what
+      Newton's method for optimization would compute automatically as the
+      ideal step size. At \(\alpha=0.3\), the factor is \(1-0.6=0.4\) — the
+      error still shrinks every step, but only by 60% each time, requiring
+      many iterations to become negligibly small rather than one.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What specifically does Newton's method for optimization add on top of plain gradient descent, and what does that addition cost?</summary>
+    <div class="tl-answer">
+      Gradient descent only uses first-derivative (gradient) information and
+      needs a hand-chosen learning rate α. Newton's method for optimization
+      additionally uses the Hessian (second-derivative / curvature
+      information) and computes the step as \(x_{n+1}=x_n-H^{-1}\nabla f(x_n)\)
+      — the inverse curvature automatically determines both the step's
+      direction and its size, replacing the need to tune α by hand, and
+      typically converging in far fewer iterations. The cost is forming and
+      inverting the Hessian matrix, which for a function of \(p\) variables is
+      a \(p\times p\) matrix — computationally expensive or infeasible once
+      \(p\) is large, which is exactly why plain gradient descent (and its
+      lighter-weight refinements) remains standard for large-scale problems
+      like training a model with millions of parameters.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. A researcher runs gradient descent and it converges — the gradient at the final point is essentially zero. Does that guarantee they've found the global minimum? Why or why not?</summary>
+    <div class="tl-answer">
+      No. A zero gradient only guarantees a <em>stationary point</em> — which
+      could be a local minimum, a local maximum, or a saddle point — and even
+      if it is a genuine local minimum, that says nothing about whether it's
+      the <em>global</em> minimum unless the function has a special property
+      guaranteeing local minima are automatically global. That property is
+      convexity, covered in the next lesson in this category: on a non-convex
+      function, gradient descent (or Newton's method) can converge cleanly and
+      confidently to a local minimum that is far worse than the true global
+      minimum elsewhere in the search space.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Isaac Newton, unpublished method described in <em>De analysi per aequationes numero terminorum infinitas</em>, c. 1669, later formalized and generalized by Joseph Raphson, <em>Analysis Aequationum Universalis</em>, 1690 — the historical origin of the root-finding method, developed independently by the two mathematicians roughly two decades apart.</li>
+    <li>Jorge Nocedal &amp; Stephen J. Wright, <em>Numerical Optimization</em>, 2nd ed., Springer, 2006 — the standard graduate-level reference covering gradient descent, Newton's method, and the full family of quasi-Newton methods (BFGS, L-BFGS) in rigorous depth.</li>
+    <li>William H. Press, Saul A. Teukolsky, William T. Vetterling &amp; Brian P. Flannery, <em>Numerical Recipes: The Art of Scientific Computing</em>, 3rd ed., Cambridge University Press, 2007 — a widely used, implementation-focused reference covering root-finding (including Newton-Raphson and Brent's method) with working code.</li>
+    <li>Sebastian Ruder, "An Overview of Gradient Descent Optimization Algorithms," arXiv:1609.04747, 2016 — a widely cited, accessible survey of the momentum and adaptive-learning-rate refinements (AdaGrad, RMSProp, Adam) built on top of plain gradient descent.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="convex-optimization.html">Convex Optimization →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var slider = document.getElementById('gd-alpha-slider');
+  var alphaVal = document.getElementById('gd-alpha-val');
+  var path = document.getElementById('gd-path');
+  var dotsGroup = document.getElementById('gd-dots');
+  var readout = document.getElementById('gd-readout');
+  if (!slider) return;
+
+  // Real math: f(x) = (x-3)^2, f'(x) = 2(x-3).
+  // x_{n+1} = x_n - alpha * 2 * (x_n - 3)
+  var X_MIN = -3, X_MAX = 9, Y_MAX = 36;
+  var PX_X0 = 40, PX_X1 = 600;   // pixel x-range for data x in [X_MIN, X_MAX]
+  var PX_Y0 = 260, PX_Y1 = 20;   // pixel y-range for data y in [0, Y_MAX] (inverted)
+
+  function mapX(x){ return PX_X0 + (x - X_MIN) * (PX_X1 - PX_X0) / (X_MAX - X_MIN); }
+  function mapY(y){ return PX_Y0 + (y - 0) * (PX_Y1 - PX_Y0) / (Y_MAX - 0); }
+  function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+  function f(x){ return (x - 3) * (x - 3); }
+
+  function update(){
+    var alpha = parseInt(slider.value, 10) / 100;
+    alphaVal.textContent = 'α = ' + alpha.toFixed(2);
+
+    var xs = [0];
+    var x = 0;
+    for (var i = 0; i < 6; i++){
+      x = x - alpha * 2 * (x - 3);
+      xs.push(x);
+    }
+
+    // Build the polyline + dots using the TRUE x_n values, clamped only for
+    // on-screen placement so a diverging path stays visible at the chart edge.
+    var pts = [];
+    var dotsHtml = '';
+    for (var j = 0; j < xs.length; j++){
+      var xc = clamp(xs[j], X_MIN, X_MAX);
+      var yc = f(xc);
+      var px = mapX(xc), py = mapY(yc);
+      pts.push(px.toFixed(1) + ',' + py.toFixed(1));
+      var color = j === 0 ? 'var(--blue)' : (j === xs.length - 1 ? 'var(--green)' : 'var(--amber)');
+      dotsHtml += '<circle cx="' + px.toFixed(1) + '" cy="' + py.toFixed(1) + '" r="4.5" style="fill:' + color + ';stroke:var(--s1);stroke-width:1.2"></circle>';
+    }
+    path.setAttribute('points', pts.join(' '));
+    dotsGroup.innerHTML = dotsHtml;
+
+    var xFinal = xs[xs.length - 1];
+    var fFinal = f(xFinal);
+    var factor = 1 - 2 * alpha;
+    var label;
+    if (Math.abs(alpha - 0.5) < 0.005) {
+      label = 'exact in 1 step — this α equals 1/f″(x), i.e. Newton’s method for this quadratic';
+    } else if (alpha < 0.5) {
+      label = 'converging monotonically';
+    } else if (alpha < 1) {
+      label = 'oscillating, but still converging (|1−2α| = ' + Math.abs(factor).toFixed(2) + ' < 1)';
+    } else {
+      label = 'diverging — steps grow every iteration (|1−2α| = ' + Math.abs(factor).toFixed(2) + ' ≥ 1)';
+    }
+    readout.textContent = 'x₆ ≈ ' + xFinal.toFixed(4) + ', f(x₆) ≈ ' + fFinal.toFixed(4) + ' — ' + label;
+  }
+
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
+</body>
+</html>

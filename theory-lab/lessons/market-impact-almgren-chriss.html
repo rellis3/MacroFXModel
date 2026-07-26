@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Market Impact Models &amp; Almgren-Chriss — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  .tl-table-wrap{overflow-x:auto;margin:14px 0}
+  table.tl-tbl{width:100%;border-collapse:collapse;font-size:13px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r)}
+  table.tl-tbl th,table.tl-tbl td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+  table.tl-tbl th{color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;background:var(--s2)}
+  table.tl-tbl tr:last-child td{border-bottom:none}
+  table.tl-tbl td{color:var(--text2)}
+  table.tl-tbl td:first-child{color:var(--text);font-weight:600;white-space:nowrap}
+  table.tl-tbl td.tl-num{font-family:'DM Mono',monospace;text-align:right}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Market Microstructure / Market Impact Models &amp; Almgren-Chriss</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Market Microstructure · Lesson 3 of 5</div>
+  <h1 class="tl-title">Market Impact Models &amp; Almgren-Chriss</h1>
+  <p class="tl-dek">Trade a large order fast and you pay for the impact of demanding immediacy; trade it slow and you pay in exposure to whatever the market does while you wait — Almgren-Chriss turns that trade-off into a single dial and a precise, closed-form execution schedule.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span>~18 min read</span>
+    <span>Prereqs: <a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics</a></span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Temporary impact</strong> is the price concession needed to trade right now — it reverts once you stop trading. <strong>Permanent impact</strong> is the lasting price move your own trading causes, because it reveals information — it does not revert.</li>
+      <li>The empirically observed <strong>square-root law</strong> says impact scales roughly with \(\sqrt{Q/\text{ADV}}\), not linearly with size — a 4× larger order costs roughly 2× more to execute, not 4× more, which also means impact grows unexpectedly fast for even modest-sized orders.</li>
+      <li><strong>Almgren-Chriss</strong> frames execution as minimizing expected cost (impact) plus a risk-aversion-weighted penalty on the variance of that cost (timing risk) — trading fast lowers timing risk but raises impact cost; trading slow does the reverse.</li>
+      <li>Solving that trade-off (via the Euler-Lagrange equation, derived below) gives a closed form: the optimal remaining-inventory trajectory is \(x(t) = X\,\sinh(\kappa(T-t))/\sinh(\kappa T)\), with \(\kappa=\sqrt{\lambda\sigma^2/\eta}\) folding risk aversion \(\lambda\), volatility \(\sigma\), and the temporary-impact coefficient \(\eta\) into one shape parameter.</li>
+      <li>At \(\kappa\to0\) (no risk aversion) the trajectory collapses to a straight line — constant-rate, TWAP-like trading. As \(\kappa\) grows, the trajectory becomes increasingly front-loaded: fast early, nearly flat later — a risk-averse trader accepts more impact cost to cut timing-risk exposure.</li>
+      <li>Worked example: with \(\sigma^2=0.0004\), \(\eta=0.0012\), a risk-neutral trader (\(\lambda=0\)) trades in a straight line; a moderately risk-averse trader (\(\lambda=27\), giving \(\kappa=3\)) has only about 21% of the order left at the halfway point, versus 50% for the straight-line trader.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    <a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics</a> showed
+    that a single market order walking the book pays a volume-weighted average price
+    worse than the best quote it started at, and that the gap grows with order size.
+    That lesson answered "what does one order cost, right now, given the book as it
+    currently stands." This lesson answers the question a step up from that: if you
+    have to execute a <em>large</em> order — far larger than the whole visible book —
+    over some window of time, what is the best way to spread it out? Trade it all
+    immediately and you pay the full walking-the-book cost from that lesson, all at
+    once, concentrated into one instant. Trade it too slowly, spread thin over a long
+    window, and you are instead exposed to ordinary price volatility for the entire
+    time you're still holding the unexecuted remainder — the price might simply move
+    against you for reasons that have nothing to do with your own trading. Almgren
+    and Chriss's 2000 framework is the formal answer to that trade-off, and it is the
+    standard reference point behind essentially every institutional execution
+    algorithm's underlying logic.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Two ways to get soaked, and a dial that trades one off against the other</h3>
+    <p>
+      Imagine you need to sell a very large position — far more than anyone would
+      absorb at the current price without it moving. You have two bad options at
+      the extremes, and a whole spectrum in between.
+    </p>
+    <p>
+      Sell it all right now, in one shot: you walk deep through the order book (the
+      previous lesson's mechanics), paying a large, immediate, and fairly
+      predictable cost for demanding that much immediacy at once — this is
+      <strong>impact cost</strong>. Alternatively, sell a tiny sliver every hour over
+      the next month: each individual sale barely moves the price, so your impact
+      cost per share is much lower — but you are now sitting on a large unsold
+      position for a whole month, fully exposed to the ordinary up-and-down noise of
+      the market the entire time, for reasons that have nothing to do with your own
+      trading. If the price happens to drift against you during that month, that
+      loss can dwarf anything you saved on impact. This is <strong>timing
+      risk</strong> — the risk of exposure to volatility while you wait.
+    </p>
+    <p>
+      Neither extreme is obviously right; the correct answer depends on how much you
+      personally dislike uncertainty relative to how much you dislike a large but
+      predictable cost. Almgren-Chriss is exactly a formal version of that personal
+      dial: turn it toward "I hate uncertainty" and the model tells you to front-load
+      your selling, getting most of it done early even though that costs more in
+      impact; turn it toward "I'm indifferent to uncertainty, just minimize expected
+      cost" and the model tells you to spread evenly across the whole window instead.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>1. Temporary impact vs. permanent impact</h3>
+  <p>
+    Every trade moves the observed price, but the reason it moves, and whether that
+    move sticks around, splits into two genuinely different effects:
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Temporary impact</h4>
+      <p>The extra price concession needed to get your specific trade filled <em>right
+      now</em> — walking the book, crossing the spread, demanding immediacy from
+      whoever is willing to supply it. Once you stop trading, this component
+      <strong>reverts</strong>: liquidity refills, the book recovers, and the price
+      tends to drift back toward where it would have been without your trade.</p>
+    </div>
+    <div class="tl-compare-card amber">
+      <h4>Permanent impact</h4>
+      <p>The lasting shift in the price that your own trading causes, which does
+      <strong>not</strong> revert. The mechanism is exactly the adverse-selection
+      logic from the <a href="market-microstructure.html">Market Microstructure</a>
+      lesson: other participants (and the market maker) rationally update their
+      belief about fundamental value partly <em>because</em> you traded — your order
+      is itself informative, whether or not you personally possess any real
+      information — so the new price genuinely reflects new (if only partially
+      justified) beliefs, and stays there.</p>
+    </div>
+  </div>
+  <p>
+    A useful way to see both at once: imagine you execute a large sell order over
+    some window, then stop. The price will have fallen during that window from both
+    effects combined. Immediately after you stop, part of that fall reverts back
+    up — the temporary component unwinding as the book refills — while the price
+    settles at a new level below where it started before you traded at all. That
+    residual, permanent gap is the permanent impact; the part that bounced back is
+    the temporary impact.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Price path during and after a large sell order: temporary impact reverts, permanent impact doesn't</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Price versus time chart. Price starts flat, falls steadily during a trading window as a large sell order executes, reaching its lowest point at the end of trading, then partially recovers after trading stops, settling at a level below the starting price. The recovered portion is labeled temporary impact and the residual permanent drop is labeled permanent impact.">
+      <line x1="40" y1="230" x2="610" y2="230" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="40" y1="230" x2="40" y2="30" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="330" y1="230" x2="330" y2="30" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
+      <text x="140" y="248" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">trading window</text>
+      <text x="470" y="248" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">after trading stops</text>
+      <text x="16" y="130" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 16 130)">Price</text>
+      <line x1="40" y1="70" x2="610" y2="70" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:2,4"/>
+      <text x="600" y="65" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">price before trading</text>
+      <path style="fill:none;stroke:var(--red);stroke-width:2.5" d="M40,70 L100,86 L160,104 L220,124 L280,146 L330,168 L390,152 L450,142 L510,137 L570,135 L610,134"/>
+      <line x1="330" y1="168" x2="330" y2="230" style="stroke:var(--amber);stroke-width:1;stroke-dasharray:2,2"/>
+      <line x1="610" y1="134" x2="610" y2="230" style="stroke:var(--purple);stroke-width:1;stroke-dasharray:2,2"/>
+      <circle cx="330" cy="168" r="4" style="fill:var(--red)"/>
+      <circle cx="610" cy="134" r="4" style="fill:var(--purple)"/>
+      <line x1="620" y1="168" x2="620" y2="134" style="stroke:var(--amber);stroke-width:2"/>
+      <text x="628" y="155" font-size="10" font-family="'DM Mono',monospace" fill="var(--amber)">reverts</text>
+      <line x1="20" y1="134" x2="20" y2="70" style="stroke:var(--purple);stroke-width:2"/>
+      <text x="14" y="105" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--purple)" transform="rotate(-90 14 105)">permanent</text>
+      <text x="330" y="185" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--red)">lowest point — end of trading</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--red)"></i>observed price during and after execution</span>
+      <span><i style="background:var(--amber)"></i>temporary component — reverts once trading stops</span>
+      <span><i style="background:var(--purple)"></i>permanent component — the lasting, information-driven price shift</span>
+    </div>
+    <div class="tl-chart-caption">
+      The price falls throughout the trading window (both effects combined), reaches
+      its lowest point exactly when trading stops, then partially recovers — the
+      amber gap — as the temporary concession unwinds, before settling at a level
+      permanently below the starting price — the purple gap. Illustrative, not fitted
+      to real execution data.
+    </div>
+  </div>
+
+  <h3>2. The square-root law of impact</h3>
+  <p>
+    A large body of empirical market-impact research — across equities, futures, and
+    FX, and across many independent studies — finds that realized impact does not
+    scale linearly with order size the way Kyle's simple \(\Delta p=\lambda Q\)
+    assumes at very large sizes. Instead, impact is well approximated by a
+    <strong>square-root</strong> relationship between order size and the market's
+    typical trading volume:
+  </p>
+  <div class="tl-math">
+    \[ I \approx Y\,\sigma\,\sqrt{\frac{Q}{\text{ADV}}} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>I</code><span>impact, typically expressed as a fraction of price (e.g. in basis points)</span></div>
+    <div class="tl-eq-chip c2"><code>Y</code><span>an empirical constant (order 1, varies by study/market) capturing everything else</span></div>
+    <div class="tl-eq-chip c3"><code>σ</code><span>the instrument's volatility over the relevant period</span></div>
+    <div class="tl-eq-chip c4"><code>Q / ADV</code><span>order size as a fraction of average daily (or period) volume</span></div>
+  </div>
+  <p>
+    The headline, non-obvious consequence: because \(\sqrt{x}\) is a <strong>concave</strong>
+    function, impact grows fast for small orders and progressively more slowly for
+    large ones, relative to any straight-line ("linear-in-size") extrapolation.
+    Concretely — doubling order size does not double the cost; quadrupling order
+    size roughly doubles the cost (since \(\sqrt{4Q}=2\sqrt{Q}\)). This has two
+    practical readings that both matter and point in different directions: (1) very
+    large orders are, per share, cheaper to execute than a naive linear model would
+    suggest — there is real economy of scale in impact once you're already trading
+    size, and (2) small-to-moderate orders already carry more impact per share than
+    a linear model calibrated to a large reference size would predict, because the
+    square-root curve sits above a straight chord connecting the origin to any larger
+    reference point.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Square-root impact vs. a naive linear extrapolation</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Chart with x-axis order size as a fraction of average daily volume from 0 to 0.5, y-axis impact in basis points from 0 to 150. A concave square-root curve rises quickly at small sizes and flattens at larger sizes, reaching about 141 basis points at 0.5. A straight dashed chord from the origin to the same endpoint lies below the curve everywhere in between, showing the square-root curve implies more impact than a linear model at small and moderate sizes.">
+      <line x1="50" y1="230" x2="610" y2="230" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="50" y1="230" x2="50" y2="30" style="stroke:var(--text3);stroke-width:1"/>
+      <text x="16" y="130" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 16 130)">Impact (bps)</text>
+      <text x="610" y="250" text-anchor="end" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Order size / ADV &rarr;</text>
+      <text x="46" y="243" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+      <text x="330" y="243" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0.25</text>
+      <text x="606" y="243" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0.5</text>
+      <!-- sqrt curve: I=200*sqrt(x_frac), x_frac in [0,0.5], x_px=50+1120*x_frac, y_px=230-(I/150)*200 -->
+      <path style="fill:none;stroke:var(--blue);stroke-width:2.5" d="M50,230 L88,180.88 L126,160.53 L164,144.92 L202,131.76 L240,120.17 L278,109.68 L316,100.04 L354,91.07 L392,82.64 L430,74.67 L468,67.09 L506,59.84 L544,52.90 L582,46.21 L610,41.44"/>
+      <!-- linear chord from (50,230) to the same endpoint (610,41.44) — both agree there by construction -->
+      <line x1="50" y1="230" x2="610" y2="41.44" style="stroke:var(--text3);stroke-width:2;stroke-dasharray:5,4"/>
+      <circle cx="610" cy="41.44" r="4" style="fill:var(--blue)"/>
+      <text x="600" y="34" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--blue)">both curves: 141bps at 0.5 ADV</text>
+      <circle cx="330" cy="96.67" r="4" style="fill:var(--blue)"/>
+      <circle cx="330" cy="135.72" r="4" style="fill:var(--text3)"/>
+      <text x="338" y="93" font-size="10" font-family="'DM Mono',monospace" fill="var(--blue)">100bps (sqrt, at 0.25 ADV)</text>
+      <text x="338" y="150" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">≈71bps (linear chord)</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>square-root impact, \(I=200\sqrt{Q/\text{ADV}}\) bps</span>
+      <span><i style="background:var(--text3)"></i>a naive straight-line model through the same two endpoints</span>
+    </div>
+    <div class="tl-chart-caption">
+      Both curves are pinned to agree at 0 and at 0.5 ADV (141bps), by construction —
+      that is what makes them comparable. In between, the concave square-root curve
+      bows <em>above</em> the straight chord: at a quarter of ADV, the square-root
+      law implies about 100bps of impact versus roughly 70bps for a naive linear
+      model calibrated off the same reference size — a direct illustration of
+      "smaller orders already cost more per share than a linear extrapolation
+      suggests," which is the practically important reading of the square-root law.
+    </div>
+  </div>
+
+  <h3>3. The Almgren-Chriss trade-off: impact cost vs. timing risk</h3>
+  <p>
+    Set up the execution problem directly. You must liquidate \(X\) units (shares,
+    contracts, whatever the tradable unit is) over a fixed horizon \([0,T]\). Let
+    \(x(t)\) be the units <strong>still remaining unexecuted</strong> at time \(t\),
+    so \(x(0)=X\) and the constraint \(x(T)=0\) says the whole order must be done by
+    the end. The trading rate at any instant is \(-\dot x(t)\) (the speed at which
+    remaining inventory shrinks).
+  </p>
+  <p>
+    Two costs compete. First, a <strong>temporary impact cost</strong>: trading
+    faster (a larger \(|\dot x|\)) demands more immediacy and costs more, modeled as
+    growing with the <em>square</em> of the trading rate (this quadratic form is the
+    standard Almgren-Chriss simplification — it keeps the optimization tractable and
+    penalizes very fast trading disproportionately, in the same spirit as variance
+    penalizing large deviations in the earlier statistics primer):
+  </p>
+  <div class="tl-math">
+    \[ \text{Impact cost} = \int_0^T \tfrac{1}{2}\,\eta\,\dot x(t)^2\,dt \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>η</code><span>(eta) the temporary-impact coefficient — cost per unit of trading-rate-squared</span></div>
+    <div class="tl-eq-chip c2"><code>ẋ(t)</code><span>the trading rate at time t — how fast remaining inventory is shrinking</span></div>
+  </div>
+  <p>
+    Second, a <strong>timing-risk penalty</strong>: every unit still held is exposed
+    to ordinary price volatility \(\sigma\) until it's sold, so the total exposure
+    at any instant is proportional to how much inventory, \(x(t)\), is still sitting
+    unexecuted, and the risk (variance) contributed scales with \(\sigma^2 x(t)^2\).
+    A risk-aversion parameter \(\lambda\) controls how heavily that risk gets
+    weighted against the impact cost above — this is the single "dial" from the
+    intuition section:
+  </p>
+  <div class="tl-math">
+    \[ \text{Risk penalty} = \int_0^T \tfrac{1}{2}\,\lambda\,\sigma^2\,x(t)^2\,dt \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>λ</code><span>(lambda) risk aversion — how much the trader penalizes variance relative to expected cost</span></div>
+    <div class="tl-eq-chip c4"><code>σ² x(t)²</code><span>variance contributed by still holding x(t) units, exposed to volatility σ</span></div>
+  </div>
+  <p>
+    The trader's objective is to choose the whole trajectory \(x(t)\) to minimize the
+    <em>total</em> of both costs together:
+  </p>
+  <div class="tl-math">
+    \[ \min_{x(t)}\ \int_0^T \left[\tfrac{1}{2}\eta\,\dot x(t)^2 + \tfrac{1}{2}\lambda\sigma^2\,x(t)^2\right] dt \qquad \text{s.t. } x(0)=X,\ x(T)=0 \]
+  </div>
+  <p>
+    Notice permanent impact does not appear in this optimization at all. That's a
+    deliberate and well-known feature of the Almgren-Chriss result, not an
+    omission: for a permanent-impact function that is linear in the trading rate,
+    the total permanent-impact cost paid over the whole execution only depends on
+    the total quantity traded (\(X\), fixed) and not on the shape of the trajectory
+    used to trade it — it's a sunk cost every trajectory pays identically, so it
+    drops out of the trajectory-choice problem entirely, even though it is a real
+    and often large component of total execution cost.
+  </p>
+
+  <h3>4. Solving it: the Euler-Lagrange equation and the sinh/cosh trajectory</h3>
+  <p>
+    This is a standard calculus-of-variations problem — minimize an integral of a
+    function of \(x(t)\) and \(\dot x(t)\) — solved with the Euler-Lagrange equation.
+    Write the integrand as \(L = \tfrac12\eta\dot x^2 + \tfrac12\lambda\sigma^2 x^2\).
+    The Euler-Lagrange condition, \(\frac{d}{dt}\frac{\partial L}{\partial \dot x} -
+    \frac{\partial L}{\partial x}=0\), applied term by term:
+  </p>
+  <div class="tl-math">
+    \[ \frac{\partial L}{\partial \dot x} = \eta\dot x \ \Rightarrow\ \frac{d}{dt}\left(\frac{\partial L}{\partial \dot x}\right) = \eta\ddot x \qquad\qquad \frac{\partial L}{\partial x} = \lambda\sigma^2 x \]
+  </div>
+  <div class="tl-math">
+    \[ \eta\,\ddot x(t) - \lambda\sigma^2\,x(t) = 0 \quad\Longrightarrow\quad \ddot x(t) = \kappa^2\, x(t), \qquad \kappa \equiv \sqrt{\frac{\lambda\sigma^2}{\eta}} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>ẍ(t) = κ²x(t)</code><span>a simple linear ODE — its solutions are exponentials, or equivalently sinh/cosh</span></div>
+    <div class="tl-eq-chip c2"><code>κ</code><span>(kappa) the risk-aversion-scaled time constant — the one number that sets the whole trajectory's shape</span></div>
+  </div>
+  <p>
+    This differential equation's general solution is any combination of
+    \(\sinh(\kappa t)\) and \(\cosh(\kappa t)\) (or equivalently \(e^{\kappa t}\) and
+    \(e^{-\kappa t}\) — the same family used for the mean-reverting solutions in
+    the Ornstein-Uhlenbeck lesson elsewhere in this series, just with the sign on the
+    \(x\) term flipped, which turns exponential decay into this hyperbolic form
+    instead). Apply the two boundary conditions — \(x(0)=X\) and \(x(T)=0\) — to pin
+    down the constants, and the result simplifies to a single clean closed form:
+  </p>
+  <div class="tl-math">
+    \[ x(t) = X\,\frac{\sinh(\kappa(T-t))}{\sinh(\kappa T)} \]
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">x(t)</div>
+      <div class="tl-fp-name">Remaining inventory</div>
+      <div class="tl-fp-desc">Units still left to trade at time t — starts at X, ends at 0</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">κ = √(λσ²/η)</div>
+      <div class="tl-fp-name">The shape parameter</div>
+      <div class="tl-fp-desc">Folds risk aversion, volatility, and impact cost into one number</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">sinh(κ(T−t)) / sinh(κT)</div>
+      <div class="tl-fp-name">The trajectory shape</div>
+      <div class="tl-fp-desc">A straight line at κ→0; increasingly front-loaded as κ grows</div>
+    </div>
+  </div>
+
+  <p>
+    Two limits reveal the whole qualitative story. As \(\kappa\to0\) (risk-neutral,
+    \(\lambda=0\)) — using the small-angle approximation \(\sinh(z)\approx z\) for
+    small \(z\) — the trajectory collapses to
+    \(x(t)\to X\frac{T-t}{T}\): a perfectly straight line, meaning a <strong>constant</strong>
+    trading rate for the whole window, i.e. TWAP (time-weighted average price)
+    execution. As \(\kappa\) grows large (increasingly risk-averse), \(\sinh\) grows
+    exponentially, and the trajectory becomes increasingly <strong>front-loaded</strong>:
+    a fast initial burst of trading that gets most of the order done early, followed
+    by a long, nearly-flat tail where very little remains to be traded and therefore
+    very little further timing risk remains either. This matches the intuition
+    directly: a highly risk-averse trader is willing to accept a worse (higher)
+    total expected impact cost specifically to get the position down faster and cut
+    their exposure to timing risk sooner.
+  </p>
+  <p>
+    The corresponding <strong>trading rate</strong>, \(v(t) = -\dot x(t)\), follows
+    directly by differentiating:
+  </p>
+  <div class="tl-math">
+    \[ v(t) = X\,\kappa\,\frac{\cosh(\kappa(T-t))}{\sinh(\kappa T)} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>v(t)</code><span>trading rate — units executed per unit time, at instant t</span></div>
+    <div class="tl-eq-chip c4"><code>cosh(κ(T−t))</code><span>at κ→0, cosh→1 everywhere: a flat, constant rate (TWAP); at high κ, this term peaks sharply at t=0</span></div>
+  </div>
+  <p>
+    At \(\kappa=0\) this reduces to the constant rate \(X/T\) — TWAP again, from the
+    rate side this time. At high \(\kappa\), the rate is highest at \(t=0\) and
+    decays quickly, confirming the front-loaded shape from the inventory trajectory
+    directly.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(X\)</td><td>Total units to execute over the whole horizon.</td></tr>
+    <tr><td>\(T\)</td><td>The total execution horizon (end time).</td></tr>
+    <tr><td>\(x(t)\)</td><td>Remaining (unexecuted) inventory at time \(t\); \(x(0)=X\), \(x(T)=0\).</td></tr>
+    <tr><td>\(\dot x(t)\)</td><td>The trading rate (rate of change of remaining inventory).</td></tr>
+    <tr><td>\(\eta\)</td><td>(eta) Temporary-impact coefficient — cost per unit of (trading rate)².</td></tr>
+    <tr><td>\(\sigma\)</td><td>Volatility of the instrument's price over the execution horizon.</td></tr>
+    <tr><td>\(\lambda\)</td><td>(lambda) Risk aversion — how heavily the trader weights variance (timing risk) against expected impact cost.</td></tr>
+    <tr><td>\(\kappa=\sqrt{\lambda\sigma^2/\eta}\)</td><td>(kappa) The single risk-aversion-scaled shape parameter that determines the whole optimal trajectory.</td></tr>
+    <tr><td>\(I\), \(Y\), ADV</td><td>Square-root law terms: impact, an empirical constant, and average daily volume.</td></tr>
+  </table></div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Backing out κ, then comparing a straight-line trajectory to a front-loaded one</h3>
+    <p>
+      Take a desk that needs to execute an order over a normalized horizon \(T=1\)
+      (one trading day). Assume a volatility of \(\sigma^2=0.0004\) (a 2% daily
+      standard deviation, squared) and a temporary-impact coefficient of
+      \(\eta=0.0012\), both taken as given inputs from prior calibration.
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Risk-neutral trader: λ = 0</h4>
+          <p>With no risk aversion at all, \(\kappa=\sqrt{0\cdot\sigma^2/\eta}=0\)
+          exactly, and the trajectory is the straight line
+          \(x(t)/X = 1-t\) — pure TWAP, a constant trading rate for the entire day.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Moderately risk-averse trader: λ = 27</h4>
+          <p>Plug into \(\kappa=\sqrt{\lambda\sigma^2/\eta}\):</p>
+          <div class="tl-math">
+            \[ \kappa = \sqrt{\frac{27\times 0.0004}{0.0012}} = \sqrt{\frac{0.0108}{0.0012}} = \sqrt{9} = 3 \]
+          </div>
+          <div class="tl-eq-break">
+            <div class="tl-eq-chip c1"><code>λ=27</code><span>the trader's chosen risk-aversion level</span></div>
+            <div class="tl-eq-chip c4"><code>κ=3</code><span>the resulting shape parameter, in units of 1/day</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Compare the two trajectories at the same checkpoints</h4>
+          <p>Using \(x(t)/X = \sinh(\kappa(1-t))/\sinh(\kappa)\) for \(\kappa=3\), against the straight line \(1-t\) for \(\kappa=0\):</p>
+          <div class="tl-table-wrap"><table class="tl-tbl">
+            <tr><th>Time elapsed, t</th><th>Straight-line (κ=0), % remaining</th><th>Front-loaded (κ=3), % remaining</th></tr>
+            <tr><td>0.00</td><td class="tl-num">100.0%</td><td class="tl-num">100.0%</td></tr>
+            <tr><td>0.25</td><td class="tl-num">75.0%</td><td class="tl-num">46.8%</td></tr>
+            <tr><td>0.50</td><td class="tl-num">50.0%</td><td class="tl-num">21.3%</td></tr>
+            <tr><td>0.75</td><td class="tl-num">25.0%</td><td class="tl-num">8.2%</td></tr>
+            <tr><td>1.00</td><td class="tl-num">0.0%</td><td class="tl-num">0.0%</td></tr>
+          </table></div>
+          <p>
+            At the very first quarter of the day, the risk-neutral trader has only
+            sold 25% of the order, while the risk-averse trader (\(\kappa=3\)) has
+            already sold more than half of it (100% − 46.8% ≈ 53.2%). By the
+            halfway mark the gap is even starker: 50% remaining for the
+            straight-line trader versus just 21.3% for the front-loaded one. Both
+            trajectories still finish exactly on time, at \(x(1)=0\) — the
+            difference is entirely in the shape of how they get there, exactly as
+            the qualitative sinh/cosh story predicted.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">The Almgren-Chriss optimal execution trajectory — drag risk aversion κ</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Chart with x-axis time elapsed from 0 to 1 and y-axis fraction of order remaining from 0 to 1. A curve starts at the top left at 1.0 and ends at the bottom right at 0.0. At low risk aversion the curve is a straight line. As risk aversion increases via the slider, the curve becomes increasingly front-loaded, dropping steeply at the start and flattening out near zero for the remainder of the time window.">
+      <line x1="60" y1="250" x2="600" y2="250" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="60" y1="250" x2="60" y2="30" style="stroke:var(--text3);stroke-width:1"/>
+      <text x="16" y="145" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 16 145)">Fraction of order remaining</text>
+      <text x="600" y="270" text-anchor="end" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Time elapsed (fraction of T) &rarr;</text>
+      <text x="56" y="254" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+      <text x="330" y="264" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0.5</text>
+      <text x="600" y="264" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">1.0</text>
+      <text x="56" y="34" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">1.0</text>
+      <line x1="60" y1="150" x2="600" y2="150" style="stroke:var(--border);stroke-width:1;stroke-dasharray:2,4"/>
+      <text x="600" y="146" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0.5</text>
+      <path id="ac-line-twap" style="fill:none;stroke:var(--text3);stroke-width:1.5;stroke-dasharray:4,4" d="M60,30 L600,250"/>
+      <path id="ac-traj" style="fill:none;stroke:var(--blue);stroke-width:2.5" d="M60,30 L600,250"/>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Risk aversion κ (combines λ, σ², η into one shape parameter)</span><span class="tl-live" id="ac-kappa-val">κ = 0.00</span></div>
+        <input type="range" id="ac-kappa-slider" min="0" max="80" step="1" value="0">
+        <div class="tl-hint">Drag right to increase risk aversion. At κ = 0 the optimal trajectory is a straight line (TWAP — constant trading rate). As κ rises, the curve front-loads: most of the order executes early, trading off more impact cost for less timing-risk exposure.</div>
+      </div>
+    </div>
+    <div class="tl-readout">At the halfway point (t = 0.5T), about <b id="ac-half-val">50.0</b>% of the order remains — versus the dashed reference line's fixed 50% for a pure straight-line (TWAP) schedule.</div>
+    <div class="tl-chart-caption">Illustrative, not fitted to real execution data. The curve is \(x(t)/X=\sinh(\kappa(1-t))/\sinh(\kappa)\) for \(t\in[0,1]\); the dashed line is the \(\kappa=0\) TWAP limit, shown fixed for reference as κ changes.</div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A portfolio manager liquidating a concentrated position ahead of a known risk event</h3>
+    <p>
+      A portfolio manager needs to exit a large, concentrated position over the
+      course of a trading day, and a scheduled macro data release is due partway
+      through the session — an event they have no informational edge on, but one
+      they know is likely to raise realized volatility sharply around the release
+      itself. Two desks handling similar-sized liquidations might reasonably choose
+      very different schedules given the identical position and identical horizon.
+    </p>
+    <p>
+      A desk running close to risk-neutral (low \(\lambda\), low \(\kappa\)) spreads
+      the sale evenly across the full day, including through the data release
+      itself — accepting the timing risk of the news event because minimizing
+      total expected impact cost is the dominant objective, and evening out the
+      trading rate achieves that. A more risk-averse desk (high \(\lambda\), high
+      \(\kappa\)) instead front-loads aggressively, aiming to have the large
+      majority of the position already sold <em>before</em> the data release even
+      occurs — deliberately accepting a higher expected impact cost from trading
+      faster than the impact-minimizing pace, specifically to avoid holding size
+      through a period of foreseeably elevated volatility. Neither choice is
+      "wrong" in the abstract: they reflect two different, equally legitimate
+      values of \(\lambda\), and Almgren-Chriss is precisely the framework that
+      makes that difference explicit and quantifiable rather than a matter of
+      unstated gut feel.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Almost no execution desk solves the Euler-Lagrange equation by hand for every
+    order — but the framework's outputs shape real, everyday execution-algorithm
+    design and decision-making:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📐</div>
+      <h4>Calibrating η and σ from real trade data</h4>
+      <p>Execution desks estimate the temporary-impact coefficient and volatility
+      inputs empirically from historical executions and market data (often using
+      the square-root law relationship as a starting functional form), rather than
+      assuming textbook constants — the whole framework is only as good as these
+      calibrated inputs.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🎚️</div>
+      <h4>Choosing λ as an explicit risk policy, not a hidden default</h4>
+      <p>A desk or a portfolio manager sets risk aversion deliberately based on
+      genuine risk tolerance and situational context (e.g. a known upcoming event,
+      as in the scenario above) — treating it as a stated policy choice rather than
+      whatever a default execution-algorithm setting happens to produce.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🤖</div>
+      <h4>Building the actual TWAP/VWAP/IS algorithm families around it</h4>
+      <p>TWAP corresponds to the \(\kappa\to0\) limit; volume-weighted (VWAP)
+      schedules adapt the same trade-off to the market's typical intraday volume
+      curve rather than to raw clock time; "implementation shortfall" algorithms are
+      built directly on minimizing exactly this impact-cost-versus-timing-risk
+      objective, often with the front-loading Almgren-Chriss derives explicitly
+      built in.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🔄</div>
+      <h4>Adapting the schedule in real time</h4>
+      <p>Live execution algorithms re-solve or adjust the trajectory as conditions
+      change mid-execution — realized volatility spiking, liquidity thinning, or the
+      order being partially filled faster or slower than planned — rather than
+      committing blindly to a static schedule computed once at the start.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this model is misread or over-applied</h3>
+    <p>
+      <strong>Treating the closed-form trajectory as literally optimal in live
+      markets.</strong> The sinh/cosh solution comes from assuming constant
+      volatility and a constant, linear temporary-impact coefficient for the whole
+      horizon. Real markets have time-varying volatility and liquidity (including
+      predictable intraday patterns), so a live execution schedule is typically
+      adapted around this closed form, not applied mechanically as a fixed plan
+      computed once at the start of the day.
+    </p>
+    <p>
+      <strong>Forgetting that permanent impact still costs money, even though it
+      doesn't affect the optimal shape.</strong> Permanent impact drops out of the
+      trajectory-optimization math because it's trajectory-independent for a linear
+      permanent-impact model — but it is still a real cost paid on the full order
+      size, often a substantial share of total execution cost. "Doesn't affect the
+      optimal shape" is not the same claim as "doesn't matter."
+    </p>
+    <p>
+      <strong>Assuming higher risk aversion is always the safer or better choice.</strong>
+      A high-\(\kappa\), heavily front-loaded schedule pays a higher <em>expected</em>
+      impact cost by construction — it's not a free lunch. It's the right choice only
+      when the trader's genuine risk tolerance, or a specific situational reason (a
+      known upcoming volatility event, as in the scenario above), actually justifies
+      paying that higher expected cost for reduced timing-risk variance.
+    </p>
+    <p>
+      <strong>Applying Kyle's linear impact and the square-root law interchangeably
+      without noting the size regime each is meant for.</strong> Kyle's Lambda
+      (\(\Delta p=\lambda Q\)) is a tractable linear approximation most defensible
+      for smaller orders relative to depth; the square-root law is the better
+      empirical fit specifically documented at larger sizes relative to average
+      daily volume. Using the linear form far outside the size range it was
+      calibrated for will misestimate cost, typically understating it for large
+      orders.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Temporary impact reverts; permanent impact doesn't.</strong> One is the price of demanding immediacy right now; the other is a lasting, information-driven repricing that your own trading itself causes.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Impact scales roughly with the square root of relative order size, not linearly.</strong> A 4× larger order costs about 2× more, not 4× more — and smaller orders already cost more per share than a naive linear model would predict.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Almgren-Chriss frames execution as one explicit trade-off: impact cost vs. timing risk.</strong> A single risk-aversion parameter \(\lambda\) sets how heavily variance (timing risk) is weighted against expected impact cost.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The optimal trajectory has a clean closed form.</strong> \(x(t)=X\sinh(\kappa(T-t))/\sinh(\kappa T)\), with \(\kappa=\sqrt{\lambda\sigma^2/\eta}\): a straight line (TWAP) at \(\kappa=0\), increasingly front-loaded as \(\kappa\) rises.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Permanent impact doesn't change the optimal shape, but it still costs real money.</strong> It's trajectory-independent (a sunk cost on the fixed total size), which is why it drops out of the optimization — not because it's negligible.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Higher risk aversion is not free — it's a deliberate trade of more expected cost for less variance.</strong> A front-loaded schedule pays more impact on average; it's only the right choice when that trade genuinely matches the trader's risk tolerance or situation.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The closed-form trajectory assumes constant volatility and a constant linear impact coefficient.</strong> Real desks adapt the schedule as conditions change; treating the formula as a fixed, one-time plan ignores real intraday variation in both inputs.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What is the practical difference between temporary and permanent impact, and why does only one of them revert?</summary>
+    <div class="tl-answer">
+      Temporary impact is the price concession needed to get a trade filled
+      immediately — it comes from consuming resting liquidity in the book right
+      now, and it reverts once trading stops because the book refills and the
+      concession was purely about the momentary demand for immediacy, not new
+      information. Permanent impact is a lasting repricing because the trade
+      itself is informative — other participants (and the market maker) rationally
+      update their belief about fundamental value partly because of the trade
+      having happened at all, the same adverse-selection logic that explains the
+      bid-ask spread in the Market Microstructure lesson. Since that updated belief
+      doesn't have a reason to revert on its own, the permanent component persists.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why does the square-root law imply that quadrupling an order's size only roughly doubles its impact cost, and what does that same math imply about small orders relative to a naive linear model?</summary>
+    <div class="tl-answer">
+      Because impact is proportional to \(\sqrt{Q/\text{ADV}}\), and
+      \(\sqrt{4Q}=2\sqrt{Q}\) — quadrupling the input to a square root only doubles
+      the output. This is the "economy of scale" reading: very large orders cost
+      less per share than a linear model would suggest. But the same concavity cuts
+      the other way for smaller orders: since the square-root curve lies above any
+      straight chord connecting the origin to a larger reference point, small and
+      moderate-sized orders already carry more impact per share than a linear model
+      calibrated off a bigger reference size would predict — both readings come
+      from the same concave shape, just read at different ends of the size range.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. In the Almgren-Chriss optimization, why does permanent impact drop out of the objective function entirely, and does that mean it doesn't matter?</summary>
+    <div class="tl-answer">
+      For a permanent-impact function that is linear in the trading rate, the total
+      permanent-impact cost paid over the whole execution depends only on the total
+      quantity traded (fixed at \(X\)) — not on how that trading is spread out over
+      time. Since every candidate trajectory pays the identical permanent-impact
+      cost, it contributes nothing to <em>choosing between</em> trajectories, so it
+      drops out of the trajectory-optimization math (the \(x(t)\) that minimizes
+      impact cost plus risk penalty is unaffected by adding a constant to the
+      objective). It absolutely still matters as a real cost — it's just a cost
+      every schedule pays equally, so it's irrelevant to the shape decision
+      specifically, not irrelevant to total execution cost.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why does the optimal trajectory become a straight line exactly when κ → 0, and what does κ → 0 actually correspond to economically?</summary>
+    <div class="tl-answer">
+      Mathematically, as \(\kappa\to0\), \(\sinh(z)\to z\) for small \(z\)
+      (the small-angle/small-argument approximation), so
+      \(x(t)/X=\sinh(\kappa(T-t))/\sinh(\kappa T)\to (T-t)/T\) — a straight line in
+      \(t\). Economically, \(\kappa=\sqrt{\lambda\sigma^2/\eta}\), so \(\kappa=0\)
+      corresponds to \(\lambda=0\): a completely risk-neutral trader who places zero
+      weight on the variance/timing-risk penalty and cares only about minimizing
+      expected impact cost. With no risk-aversion term left in the objective, the
+      optimal choice is simply to spread the (convex, rate-squared) impact cost as
+      evenly as possible over the whole horizon — which is exactly a constant
+      trading rate, i.e. TWAP.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In the worked example, why did the κ=3 trajectory have only about 21% of the order remaining at the halfway point, versus 50% for the straight-line (κ=0) trajectory — what is actually driving that gap?</summary>
+    <div class="tl-answer">
+      The gap is entirely the risk-aversion parameter \(\lambda=27\) (versus
+      \(\lambda=0\) for the straight-line case), translated through
+      \(\kappa=\sqrt{\lambda\sigma^2/\eta}\) into \(\kappa=3\), and then through the
+      exponential growth built into \(\sinh\)/\(\cosh\) into a strongly front-loaded
+      shape. A higher \(\lambda\) means the trader weights the variance (timing-risk)
+      penalty more heavily relative to expected impact cost, and the model's
+      response to that heavier weighting is to reduce the time spent holding
+      inventory as fast as the impact-cost penalty (which grows with the square of
+      trading rate) allows — resulting in most of the order being sold in the first
+      quarter or half of the horizon rather than spread evenly, exactly the 46.8%
+      remaining at t=0.25 and 21.3% remaining at t=0.5 computed in the worked
+      example.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Robert Almgren &amp; Neil Chriss, "Optimal Execution of Portfolio Transactions," <em>Journal of Risk</em>, 3(2), 2000/2001 — the original paper deriving the impact-cost-versus-timing-risk trade-off and the closed-form sinh/cosh optimal trajectory covered in this lesson.</li>
+    <li>Robert Almgren, Chee Thum, Emmanuel Hauptmann &amp; Hong Li, "Direct Estimation of Equity Market Impact," <em>Risk</em>, 2005 — a widely cited empirical paper estimating and validating the square-root law of market impact across a large real dataset.</li>
+    <li>Jean-Philippe Bouchaud, Julius Bonart, Jonathan Donier &amp; Martin Gould, <em>Trades, Quotes and Prices: Financial Markets Under the Microscope</em>, Cambridge University Press, 2018 — a modern, comprehensive treatment connecting the square-root law, temporary/permanent impact, and optimal execution theory in one place.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="limit-order-books.html">← Limit Order Books &amp; Queue Dynamics</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="vpin-order-flow-toxicity.html">VPIN &amp; Order Flow Toxicity →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var slider = document.getElementById('ac-kappa-slider');
+  var kappaVal = document.getElementById('ac-kappa-val');
+  var halfVal = document.getElementById('ac-half-val');
+  var traj = document.getElementById('ac-traj');
+  if (!slider) return;
+
+  // Chart mapping: x=60 is t=0, x=600 is t=1 (540px per unit t).
+  // y=250 is fraction-remaining=0, y=30 is fraction-remaining=1 (220px per unit fraction).
+  var X0 = 60, X1 = 600, Y0 = 250, Y1 = 30;
+  var N = 60; // number of segments along the curve
+
+  function sinh(z){ return (Math.exp(z) - Math.exp(-z)) / 2; }
+
+  function fracRemaining(t, kappa){
+    if (kappa < 1e-6) return 1 - t;
+    return sinh(kappa * (1 - t)) / sinh(kappa);
+  }
+
+  function update(){
+    var kappaSlider = parseInt(slider.value, 10) / 10; // 0..8.0
+    kappaVal.textContent = 'κ = ' + kappaSlider.toFixed(2);
+
+    var d = '';
+    for (var i = 0; i <= N; i++){
+      var t = i / N;
+      var frac = fracRemaining(t, kappaSlider);
+      var x = X0 + t * (X1 - X0);
+      var y = Y0 - frac * (Y0 - Y1);
+      d += (i === 0 ? 'M' : 'L') + x.toFixed(2) + ',' + y.toFixed(2) + ' ';
+    }
+    traj.setAttribute('d', d.trim());
+
+    var halfFrac = fracRemaining(0.5, kappaSlider) * 100;
+    halfVal.textContent = halfFrac.toFixed(1);
+  }
+
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
+</body>
+</html>

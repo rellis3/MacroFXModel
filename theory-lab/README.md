@@ -1,10 +1,13 @@
 # Theory Lab
 
 A from-scratch, math-explained curriculum in the quantitative concepts behind
-this repo's FX/macro research — 34 numbered theory lessons plus 8 background
-primers. Covers everything from standard deviation to the Heston model,
-Random Matrix Theory, Merton's continuous-time portfolio problem, and alpha
-vs. beta separation.
+this repo's FX/macro research — 33 numbered theory lessons, a 5-lesson
+Foundation Mathematics tier for readers starting from GCSE-level maths, 8
+background primers, and three further categories (Fixed Income Mathematics,
+Numerical Methods, Market Microstructure). Covers everything from algebra
+and Euler's formula to the Heston model, Random Matrix Theory, Merton's
+continuous-time portfolio problem, Nelson-Siegel yield curves, and the
+Almgren-Chriss execution model.
 
 **Start at [`hub.html`](./hub.html)** (also linked from the dashboard's
 **Learn ▾** nav menu on `index.html`).
@@ -30,9 +33,10 @@ markup, the house content order, and a verification checklist.
 - A numerically worked example, **plus a named, concrete real-world trading
   scenario** that walks the same numbers through an actual trading decision
   (the amber `.tl-box.scenario` box).
-- An honest note on where the idea connects to an actual module in this
-  repo — clearly marked as either **already in use** (a real, running
-  brick) or a **concept/candidate** (explained here, not built or tested).
+- An honest status badge — CONCEPT means explained here, not a claim about
+  this project's own build status. Lessons no longer name which internal
+  file/module a technique maps to (that mapping now lives in the
+  dashboard-only `../repo-brick-map.html`, not in the shared curriculum).
 - Common pitfalls, a self-test, and further reading (real, correctly
   attributed sources).
 - A TL;DR at the top and the Further Reading section collapsed by default,
@@ -43,6 +47,10 @@ markup, the house content order, and a verification checklist.
 
 ## Curriculum map
 
+- **Foundation Mathematics** (5) — algebra/functions, trigonometry/logs/
+  exponentials, complex numbers, partial derivatives/multivariable calculus,
+  optimization basics. Start here if you've only done GCSE-level maths —
+  read this before the Math Primer below.
 - **0 · Math Primer** (4) — descriptive stats/normal distribution,
   probability/CLT, correlation/regression, returns/compounding. Start here
   if you're new to statistics.
@@ -65,10 +73,19 @@ markup, the house content order, and a verification checklist.
   Monte Carlo.
 - **8 · Advanced Stochastic Calculus & Derivatives** (4) — Itô's Lemma,
   Girsanov's theorem & the risk-neutral measure, the Heston model, SABR.
-- **9 · Advanced Portfolio & Market Structure** (6) — Random Matrix Theory,
-  fractional Brownian motion & long memory, market microstructure,
-  Markowitz & Black-Litterman, alpha vs. beta separation (portable alpha),
-  Merton's continuous-time portfolio problem.
+- **9 · Advanced Portfolio & Market Structure** (5) — Random Matrix Theory,
+  fractional Brownian motion & long memory, Markowitz & Black-Litterman,
+  alpha vs. beta separation (portable alpha), Merton's continuous-time
+  portfolio problem.
+- **10 · Fixed Income Mathematics** (5) — bond pricing & YTM, duration &
+  convexity, bootstrapping the yield curve, Nelson-Siegel & Svensson curve
+  fitting, swap curves & OIS discounting.
+- **11 · Numerical Methods** (4) — Newton-Raphson & gradient descent, convex
+  optimization, linear & quadratic programming, numerical integration.
+- **12 · Market Microstructure** (5) — Kyle's Lambda & Glosten-Milgrom
+  (promoted out of category 9 into its own category), limit order books &
+  queue dynamics, market impact models & Almgren-Chriss, order flow
+  toxicity & VPIN, execution algorithms (TWAP/VWAP/POV/IS).
 
 Nothing in this folder is a trading signal. A lesson explaining a technique
 well is not evidence the technique works here — per `CLAUDE.md`'s Lego
@@ -83,6 +100,9 @@ theory-lab/
   glossary.html       — searchable notation glossary
   assets/theory.css   — shared stylesheet (dark theme, MathJax, interactive-
                          chart, real-world-scenario, and skim-path classes)
-  lessons/*.html      — 42 lesson files (8 primers/foundations + 34
-                        numbered theory lessons)
+  lessons/*.html      — 60 lesson files (5 Foundation Mathematics + 8
+                        primers/foundations + 33 numbered theory lessons +
+                        5 Fixed Income Mathematics + 4 Numerical Methods +
+                        4 further Market Microstructure lessons alongside
+                        the pre-existing one)
 ```

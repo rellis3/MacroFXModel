@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Swap Curves &amp; OIS Discounting — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Fixed Income Mathematics / Swap Curves &amp; OIS Discounting</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Fixed Income Mathematics · Lesson 5 of 5</div>
+  <h1 class="tl-title">Swap Curves &amp; OIS Discounting</h1>
+  <p class="tl-dek">Government bond yields carry the idiosyncratic scars of whoever happens to be issuing and repo-ing that specific bond. A swap is a pure, unbundled bet on interest rates — which is exactly why swap curves, and increasingly OIS curves, replaced government bond curves as the market's working definition of "risk-free," and why the 2008 crisis forced the industry to split one curve into two.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span>~17 min read</span>
+    <span>Prereqs: Curve Fitting: Nelson-Siegel &amp; Svensson</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>An interest rate swap exchanges a fixed rate for a floating rate on a notional principal that is never itself exchanged — only the net cashflow difference changes hands each period.</li>
+      <li>The <strong>swap rate</strong> is the par rate: the fixed rate \(K\) that makes the swap worth exactly zero at inception, given today's discount curve.</li>
+      <li>Swap curves — and increasingly OIS curves — replaced government bond curves as the market's standard "risk-free" discounting curve because government bond yields carry idiosyncratic supply, issuance and repo-specialness effects that have nothing to do with the pure time value of money, while a swap is two parties expressing a pure interest-rate view with no bond to borrow or own.</li>
+      <li>Post-2008, the industry moved from LIBOR discounting to <strong>OIS discounting</strong> for collateralized derivatives because LIBOR (an unsecured interbank lending rate) embeds bank credit risk, while OIS/SOFR (secured, overnight, nearly risk-free) essentially doesn't — the gap between the two blew out from a few basis points to well over 100bp during the crisis.</li>
+      <li>The <strong>multi-curve framework</strong> formalizes the split: one curve (OIS) discounts cashflows to present value, a separate curve (a SOFR-derived forward curve) forecasts the floating leg's future resets — pre-2008 these were, in practice, the same curve; post-2008 they structurally are not.</li>
+      <li>The worked example prices a 2-year annual-pay swap off a flat 3% OIS curve: the par rate comes out to ≈3.00%, and marking an off-market swap actually trading at a fixed rate of 3.2% gives a value to the fixed-rate payer of about <strong>−$38,269</strong> on a $10,000,000 notional — close to zero at the fair rate, meaningfully negative when locked into paying above it.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    For decades, "the risk-free rate" meant the government bond curve — Treasuries
+    in the U.S., Gilts in the U.K., Bunds in Germany. That made intuitive sense:
+    a government (in its own currency) is about as close to a riskless
+    borrower as exists. But government bond yields are never <em>purely</em>
+    about the time value of money. A specific bond's yield is also a function
+    of how much of it is outstanding, whether it's the current on-the-run
+    benchmark or an older off-the-run issue, how expensive or cheap it is to
+    borrow in the repo market, and temporary supply/demand imbalances around
+    auctions and index rebalancing — idiosyncratic, bond-specific noise
+    layered on top of the genuine interest-rate signal.
+  </p>
+  <p>
+    A swap has none of that baggage. Two counterparties agree to exchange a
+    fixed rate for a floating rate on a notional amount, with nothing to
+    issue, own, borrow, or repo. The swap rate is, in a real sense, a cleaner,
+    more direct expression of "what does the market think interest rates will
+    average out to over this horizon" than any single bond's yield — which is
+    exactly why trading desks gradually adopted the swap curve, rather than
+    the government bond curve, as their working definition of the risk-free
+    discounting curve, and why — after the 2008 financial crisis exposed a
+    real credit-risk component hiding inside the specific rate (LIBOR) swap
+    curves had been built on — the industry pushed one step further, to OIS.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A swap is a bet on interest rates with nothing else attached</h3>
+    <p>
+      Imagine two companies: one has borrowed at a floating rate and would
+      rather have the certainty of a fixed payment; the other has borrowed
+      fixed and thinks rates are going to fall, so it would rather pay
+      floating. Instead of either company refinancing its actual loan (with
+      all the paperwork, fees, and balance-sheet consequences that involves),
+      they can simply agree with each other: "you pay me a fixed rate on
+      $10 million for two years, I'll pay you whatever the floating rate
+      turns out to be on that same $10 million, and we'll never actually hand
+      each other the $10 million itself — just the net difference each year."
+      That's a swap. Nobody's actual loan changes hands. Nobody has to buy or
+      sell a bond. It's a pure side bet on the path of interest rates,
+      stripped of every other complication a real bond carries.
+    </p>
+    <p>
+      Because it's stripped of those complications, the rate at which that
+      side bet is agreed to be fair — the swap rate — is a cleaner read on
+      "where the market thinks rates are" than a specific government bond's
+      yield, which is also quietly being pushed around by how scarce that
+      particular bond happens to be this month.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    Consider the simplest case: a plain vanilla, fixed-for-floating interest
+    rate swap with notional \(N\), maturity \(T_n\) (in years), and annual
+    payments at times \(t_1,t_2,\dots,t_n\) (so \(t_i=i\) years and
+    \(t_n=T_n\)). One party pays a fixed rate \(K\) on \(N\) each year; the
+    other pays whatever the floating reference rate resets to for that year,
+    also on \(N\). Only the <em>net</em> difference is actually exchanged each
+    period, and \(N\) itself is never paid or received by either side.
+  </p>
+
+  <h3>Valuing the fixed leg</h3>
+  <p>
+    The fixed leg is the easy half: it's just a known, certain stream of
+    payments \(K\!\cdot\!N\) at each \(t_i\), discounted back to today using
+    the discount factor \(DF(t_i)\) implied by today's discount curve (for
+    now, take that curve as given — the OIS-vs-LIBOR question of
+    <em>which</em> curve to use is exactly the subject of this lesson):
+  </p>
+  <div class="tl-math">
+    \[ PV_{\text{fixed}} = K\cdot N \sum_{i=1}^{n} DF(t_i) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>K·N</code><span>the known fixed cashflow paid each period</span></div>
+    <div class="tl-eq-chip c2"><code>DF(tᵢ)</code><span>today's discount factor for the payment at time tᵢ</span></div>
+    <div class="tl-eq-chip c3"><code>Σ DF(tᵢ)</code><span>often called the swap's "annuity factor" or "PV01 basis" — the sum of all discount factors</span></div>
+  </div>
+
+  <h3>Valuing the floating leg — a telescoping argument</h3>
+  <p>
+    The floating leg looks harder — its future cashflows aren't known yet,
+    they depend on where the floating reference rate actually resets each
+    period. But in the simplest case, where <strong>the same curve is used
+    both to discount cashflows and to project the floating rate's future
+    resets</strong>, a classical bond-math argument collapses the entire
+    floating leg to a strikingly simple closed form.
+  </p>
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>A floating-rate note prices at par on its own curve</h4>
+        <p>
+          Consider a floating-rate note (FRN) that pays the reference rate
+          observed at the start of each period on notional \(N\), and repays
+          \(N\) itself at maturity. A standard result in bond math is that
+          such a note is worth exactly its par value \(N\) on every reset
+          date, <em>provided</em> it's discounted using the same curve the
+          floating rate resets off of — each period's coupon is precisely the
+          fair compensation for lending \(N\) forward one more period on that
+          curve, so the whole note telescopes back to being worth \(N\)
+          today.
+        </p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>The swap's floating leg = that FRN, minus the principal repayment</h4>
+        <p>
+          The swap's floating leg is economically identical to that FRN,
+          except the notional \(N\) is never actually repaid at maturity
+          (swaps don't exchange notional). So its value is the FRN's value
+          minus the present value of receiving \(N\) back at \(T_n\):
+        </p>
+        <div class="tl-math">
+          \[ PV_{\text{float}} = \underbrace{N}_{\text{FRN value}} - \underbrace{N\cdot DF(T_n)}_{\text{principal repayment, removed}} = N\big(1-DF(T_n)\big) \]
+        </div>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>Only the final discount factor survives</h4>
+        <p>
+          Notice what disappeared: every individual period's forward rate
+          cancelled out of the sum, leaving only \(DF(T_n)\), the discount
+          factor to the swap's <em>final</em> maturity. That's the telescoping
+          result — and it depends entirely on the assumption in the box
+          above, that one curve is doing double duty as both the discounting
+          curve and the rate the floating leg resets against. That single
+          assumption is exactly what stopped holding after 2008, which is
+          where the multi-curve framework below picks up.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <h3>The par swap rate</h3>
+  <p>
+    The swap rate quoted in the market is the <strong>par rate</strong> — the
+    value of \(K\) that makes the swap worth exactly zero to both sides at
+    inception, i.e. \(PV_{\text{fixed}} = PV_{\text{float}}\):
+  </p>
+  <div class="tl-math">
+    \[ K_{\text{par}} = \frac{1-DF(T_n)}{\displaystyle\sum_{i=1}^{n} DF(t_i)} \]
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">1 − DF(Tₙ)</div>
+      <div class="tl-fp-name">Floating leg's value per unit notional</div>
+      <div class="tl-fp-desc">From the telescoping result above</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">Σ DF(tᵢ)</div>
+      <div class="tl-fp-name">The annuity factor</div>
+      <div class="tl-fp-desc">Sum of discount factors at each fixed payment date</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">K_par</div>
+      <div class="tl-fp-name">The quoted swap rate</div>
+      <div class="tl-fp-desc">The fixed rate that zeroes out the swap's value today</div>
+    </div>
+  </div>
+  <p>
+    Once a swap has been dealt at some rate \(K\) — whether that's today's
+    par rate or a rate agreed further in the past, now off-market as rates
+    have moved — its mark-to-market value to the party paying fixed is simply
+    the floating leg minus the fixed leg:
+  </p>
+  <div class="tl-math">
+    \[ V_{\text{payer}} = PV_{\text{float}} - PV_{\text{fixed}} = N\big(1-DF(T_n)\big) - K\cdot N\sum_{i=1}^{n} DF(t_i) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>K &gt; K_par</code><span>fixed payer is locked into paying above the fair rate — negative value to the payer</span></div>
+  </div>
+
+  <h3>Why OIS, not LIBOR: the discounting revolution</h3>
+  <p>
+    None of the derivation above cared <em>which</em> curve \(DF(\cdot)\)
+    comes from — only that one curve is used consistently. For decades, that
+    curve was built from LIBOR (the London Interbank Offered Rate) — the rate
+    at which large banks reported they could borrow unsecured from each other.
+    LIBOR is not risk-free: it embeds the credit risk of lending to a bank
+    without collateral, which is normally small and stable, but is exactly
+    the kind of risk that stops being small and stable in a banking crisis.
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card amber">
+      <h4>LIBOR — unsecured, embeds bank credit risk</h4>
+      <p>An interbank <em>unsecured</em> lending rate. A lender to another bank at LIBOR is taking on that bank's credit risk for the loan's term — normally a few basis points of spread over a genuinely risk-free rate, but that spread is exactly what widens sharply when banks start doubting each other's solvency.</p>
+    </div>
+    <div class="tl-compare-card green">
+      <h4>OIS / SOFR — secured, overnight, near risk-free</h4>
+      <p>An Overnight Indexed Swap references an overnight rate (in the U.S., increasingly SOFR — the Secured Overnight Financing Rate, collateralized by Treasury repo) compounded over the period. Overnight and (for SOFR) secured by collateral, it carries essentially none of LIBOR's embedded bank credit risk.</p>
+    </div>
+  </div>
+  <p>
+    Through 2007–2008, the gap between LIBOR and OIS (the "LIBOR-OIS spread")
+    — normally a handful of basis points — widened dramatically as banks grew
+    reluctant to lend to each other unsecured at any price they trusted,
+    making the spread itself a widely watched real-time gauge of banking-system
+    stress (see the chart below). That episode made unmistakably concrete
+    what had previously been a modeling footnote: LIBOR-discounted derivative
+    valuations were quietly baking a bank credit-risk premium into supposedly
+    "risk-free" discounting, for trades that were fully collateralized (cash
+    posted daily against mark-to-market moves) and therefore carried
+    essentially none of that credit risk in reality. The industry response —
+    what's often called the <strong>OIS discounting revolution</strong> — was
+    to discount collateralized derivatives at the rate actually earned on
+    posted cash collateral, which for most major currencies is an
+    OIS-family rate, not LIBOR.
+  </p>
+
+  <h3>The multi-curve framework</h3>
+  <p>
+    Pre-2008, the LIBOR curve did double duty exactly as the single-curve
+    derivation above assumed: it discounted cashflows <em>and</em> it
+    forecast the floating leg's future resets, because LIBOR was both the
+    reference index paid on the floating leg and (for an uncollateralized or
+    loosely collateralized world) a reasonable stand-in for the discount rate.
+    Once collateralized trades started being discounted at OIS instead, that
+    convenient coincidence broke: the curve used to discount (OIS) and the
+    curve used to forecast the floating leg's resets (still LIBOR
+    historically; now, post-transition, a SOFR-derived forward curve) are
+    genuinely different objects, built from different instruments, and they
+    no longer move in lockstep.
+  </p>
+  <div class="tl-math">
+    \[ PV_{\text{float}}^{\text{multi-curve}} = N\sum_{i=1}^{n} DF_{\text{OIS}}(t_i)\cdot \tau_i \cdot F_i^{\text{forecast}} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>DF_OIS(tᵢ)</code><span>discount factor from the OIS curve — used only to bring cashflows to present value</span></div>
+    <div class="tl-eq-chip c3"><code>F_i^forecast</code><span>the forward rate for period i, read off a separate forecast curve (e.g. SOFR-derived)</span></div>
+    <div class="tl-eq-chip c2"><code>τᵢ</code><span>the accrual fraction (year fraction) for period i, from its day-count convention</span></div>
+  </div>
+  <div class="tl-solid amber">
+    <strong>The one-sentence version:</strong> pre-2008, one curve discounted
+    cashflows <em>and</em> forecast floating resets. Post-2008, those are two
+    separate curves — OIS discounts, a forward curve forecasts — and the neat
+    single-curve telescoping shortcut above (\(PV_{\text{float}}=N(1-DF(T_n))\))
+    stops being exactly correct once the two curves genuinely diverge; each
+    period's forward rate has to be estimated from the forecast curve
+    explicitly, then discounted at the OIS rate.
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(N\)</td><td>Notional principal — never itself exchanged in a swap.</td></tr>
+    <tr><td>\(K\)</td><td>The fixed rate agreed for the swap (the "swap rate" when it equals the par rate).</td></tr>
+    <tr><td>\(K_{\text{par}}\)</td><td>The par swap rate — the value of \(K\) that makes the swap worth zero today.</td></tr>
+    <tr><td>\(T_n\)</td><td>The swap's maturity, in years.</td></tr>
+    <tr><td>\(t_i\)</td><td>The \(i\)-th payment date (here, annual, so \(t_i=i\)).</td></tr>
+    <tr><td>\(DF(t)\)</td><td>The discount factor for a cashflow at time \(t\), from today's discount curve.</td></tr>
+    <tr><td>\(\tau_i\)</td><td>The accrual (year) fraction for period \(i\), set by the day-count convention.</td></tr>
+    <tr><td>\(F_i\)</td><td>The forward rate for period \(i\), read off the (possibly separate) forecast curve.</td></tr>
+    <tr><td>\(V_{\text{payer}}\)</td><td>The mark-to-market value of the swap to the party paying fixed.</td></tr>
+    <tr><td>OIS</td><td>Overnight Indexed Swap — a swap referencing a compounded overnight rate; used generically for "the near risk-free curve."</td></tr>
+    <tr><td>SOFR</td><td>Secured Overnight Financing Rate — the USD reference rate that replaced LIBOR, collateralized by Treasury repo.</td></tr>
+  </table></div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Worked example, visualized — PV of each leg, at par vs. at the actual traded rate</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart comparing the present value of the floating leg and the fixed leg of a 2-year swap, first at the par rate where the two are equal, then at the actual traded rate of 3.2 percent where the fixed leg is worth more than the floating leg">
+      <line x1="50" y1="250" x2="610" y2="250" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="50" y1="30" x2="50" y2="250" style="stroke:var(--border);stroke-width:1"/>
+
+      <rect x="110" y="90.6" width="55" height="159.4" style="fill:var(--blue);opacity:.85"/>
+      <rect x="185" y="90.6" width="55" height="159.4" style="fill:var(--green);opacity:.85"/>
+      <text x="137.5" y="82" text-anchor="middle" style="fill:var(--text);font-size:10px">$574,041</text>
+      <text x="212.5" y="82" text-anchor="middle" style="fill:var(--text);font-size:10px">$574,041</text>
+      <text x="175" y="266" text-anchor="middle" style="fill:var(--text3);font-size:11px">Priced at par, K ≈ 3.0005%</text>
+      <text x="175" y="68" text-anchor="middle" style="fill:var(--green);font-size:11px;font-weight:600">value ≈ $0</text>
+
+      <rect x="380" y="90.6" width="55" height="159.4" style="fill:var(--blue);opacity:.85"/>
+      <rect x="455" y="80.0" width="55" height="170.0" style="fill:var(--amber);opacity:.9"/>
+      <text x="407.5" y="82" text-anchor="middle" style="fill:var(--text);font-size:10px">$574,041</text>
+      <text x="482.5" y="72" text-anchor="middle" style="fill:var(--text);font-size:10px">$612,310</text>
+      <text x="445" y="266" text-anchor="middle" style="fill:var(--text3);font-size:11px">Traded at K = 3.2% (off-market)</text>
+
+      <line x1="520" y1="80.0" x2="520" y2="90.6" style="stroke:var(--red);stroke-width:1.5"/>
+      <line x1="514" y1="80.0" x2="526" y2="80.0" style="stroke:var(--red);stroke-width:1.5"/>
+      <line x1="514" y1="90.6" x2="526" y2="90.6" style="stroke:var(--red);stroke-width:1.5"/>
+      <text x="530" y="88" style="fill:var(--red);font-size:10px">Δ ≈ $38,269</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>PV floating leg (unaffected by K)</span>
+      <span><i style="background:var(--green)"></i>PV fixed leg at the par rate</span>
+      <span><i style="background:var(--amber)"></i>PV fixed leg at the traded 3.2% rate</span>
+    </div>
+    <div class="tl-chart-caption">The floating leg's value never depends on \(K\) — only the fixed leg does. At the par rate the two bars match exactly (swap value ≈ $0). At the actual traded rate of 3.2%, above the ≈3.00% par rate, the fixed leg is worth noticeably more than the floating leg — a bad deal, worth about −$38,269, for whoever is locked into paying that fixed rate.</div>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The LIBOR-OIS spread through the 2008 crisis (illustrative shape)</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart of the LIBOR-OIS spread in basis points from January 2007 to January 2009, showing a low stable spread widening sharply around August 2007, March 2008 and especially September-October 2008 before easing into 2009">
+      <line x1="60" y1="220" x2="600" y2="220" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="60" y1="30" x2="60" y2="220" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="60" y1="182" x2="600" y2="182" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
+      <line x1="60" y1="144" x2="600" y2="144" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
+      <line x1="60" y1="106" x2="600" y2="106" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
+      <line x1="60" y1="68" x2="600" y2="68" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
+      <text x="52" y="224" text-anchor="end" style="fill:var(--text3);font-size:10px">0</text>
+      <text x="52" y="186" text-anchor="end" style="fill:var(--text3);font-size:10px">50</text>
+      <text x="52" y="148" text-anchor="end" style="fill:var(--text3);font-size:10px">100</text>
+      <text x="52" y="110" text-anchor="end" style="fill:var(--text3);font-size:10px">150</text>
+      <text x="52" y="72" text-anchor="end" style="fill:var(--text3);font-size:10px">200</text>
+      <text x="18" y="130" text-anchor="middle" style="fill:var(--text3);font-size:11px" transform="rotate(-90 18 130)">Spread (bps)</text>
+
+      <line x1="217.5" y1="30" x2="217.5" y2="220" style="stroke:var(--amber);stroke-width:1;stroke-dasharray:2,2"/>
+      <line x1="375" y1="30" x2="375" y2="220" style="stroke:var(--amber);stroke-width:1;stroke-dasharray:2,2"/>
+      <line x1="510" y1="30" x2="510" y2="220" style="stroke:var(--red);stroke-width:1;stroke-dasharray:2,2"/>
+      <text x="220" y="42" style="fill:var(--amber);font-size:10px">Aug '07: BNP Paribas</text>
+      <text x="322" y="30" style="fill:var(--amber);font-size:10px">Mar '08: Bear Stearns</text>
+      <text x="513" y="20" style="fill:var(--red);font-size:10px">Sep '08: Lehman collapses</text>
+
+      <path style="fill:none;stroke:var(--blue);stroke-width:2.5" d="M60,213.9 L172.5,212.4 L217.5,178.2 L307.5,151.6 L375,147.8 L442.5,174.4 L510,121.2 L532.5,60.4 L555,106.0 L600,144.0"/>
+
+      <text x="60" y="238" text-anchor="middle" style="fill:var(--text3);font-size:10px">Jan '07</text>
+      <text x="195" y="238" text-anchor="middle" style="fill:var(--text3);font-size:10px">Jul '07</text>
+      <text x="330" y="238" text-anchor="middle" style="fill:var(--text3);font-size:10px">Jan '08</text>
+      <text x="465" y="238" text-anchor="middle" style="fill:var(--text3);font-size:10px">Jul '08</text>
+      <text x="600" y="238" text-anchor="middle" style="fill:var(--text3);font-size:10px">Jan '09</text>
+    </svg>
+    <div class="tl-chart-caption">Illustrative shape, not a plotted historical data series — the LIBOR-OIS spread sat around 8-10bp through early 2007, jumped when BNP Paribas froze redemptions on three funds citing subprime exposure (Aug 2007), jumped again around Bear Stearns' collapse (Mar 2008), then spiked hardest after Lehman Brothers failed (Sep 2008) — the real, widely documented 3-month USD LIBOR-OIS spread peaked at roughly 364bp in October 2008, far higher than this stylized chart shows for readability. That spike is a direct market read on interbank credit risk widening in real time — precisely the risk OIS/SOFR discounting is built to exclude.</div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Pricing a 2-year annual-pay swap off a flat 3% OIS curve</h3>
+    <p>
+      Take a flat OIS discount curve at \(r=3\%\) per annum (annual
+      compounding, matching the swap's annual payment frequency), notional
+      \(N=\$10{,}000{,}000\), and a 2-year annual-pay swap. This is a
+      simplification — a real curve isn't flat and a real desk discounts
+      each collateral currency off its own OIS curve — but it isolates the
+      mechanics cleanly.
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Discount factors</h4>
+          <div class="tl-math">\[ DF(1) = \frac{1}{1.03} = 0.970874 \qquad DF(2) = \frac{1}{1.03^2} = 0.942596 \]</div>
+          <p>Annuity factor: \(\sum DF(t_i) = 0.970874+0.942596 = 1.913470\).</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>PV of the floating leg</h4>
+          <div class="tl-math">\[ PV_{\text{float}} = N\big(1-DF(2)\big) = 10{,}000{,}000\times(1-0.942596) = \$574{,}041 \]</div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>The par swap rate</h4>
+          <div class="tl-math">\[ K_{\text{par}} = \frac{1-DF(2)}{\sum DF(t_i)} = \frac{0.057404}{1.913470} \approx 3.0005\% \]</div>
+          <p>Notice this comes out almost exactly equal to the flat curve's own 3% rate — expected, since on a flat curve the par swap rate and the curve's own level should nearly coincide.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>PV of the fixed leg at the actual traded rate, K = 3.2%</h4>
+          <div class="tl-math">\[ PV_{\text{fixed}} = 0.032\times 10{,}000{,}000\times 1.913470 = \$612{,}310 \]</div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">5</div>
+        <div class="tl-step-body">
+          <h4>Mark-to-market value to the fixed-rate payer</h4>
+          <div class="tl-math">\[ V_{\text{payer}} = PV_{\text{float}} - PV_{\text{fixed}} = 574{,}041 - 612{,}310 = -\$38{,}269 \]</div>
+          <p>
+            At the par rate (≈3.0005%), \(PV_{\text{fixed}}\) would equal
+            \(PV_{\text{float}}\) almost exactly, and the swap's value would
+            be close to $0 (the small residual is only rounding) — confirming
+            the par rate is indeed the fair rate. Locked into paying 3.2%
+            instead — 20bp above par — the fixed-rate payer is stuck paying
+            more than the market currently requires, and the swap is worth
+            about −$38,269 to them, or roughly −0.38% of notional.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>The LIBOR-to-SOFR transition</h3>
+    <p>
+      LIBOR's fall from being the default reference rate underlying trillions
+      of dollars of swaps, loans, and mortgages is one of the most concrete,
+      well-documented events in modern rates markets. Two separate problems
+      converged on it. First, the 2008 crisis exposed the discounting issue
+      covered above: LIBOR embeds bank credit risk, which is exactly the
+      wrong thing to be baked into the discount rate for a fully
+      collateralized derivative. Second, and independently, a 2012 scandal
+      revealed that panel banks had been manipulating their LIBOR submissions
+      — LIBOR was set from a small panel of banks self-reporting an estimate
+      of their own borrowing cost, with too little actual transaction volume
+      behind it to police reliably, and regulators concluded the whole
+      benchmark needed replacing rather than patching.
+    </p>
+    <p>
+      Regulators and industry bodies (in the U.S., the Alternative Reference
+      Rates Committee, convened by the Federal Reserve) settled on SOFR — the
+      Secured Overnight Financing Rate, derived from actual, large-volume
+      overnight Treasury repo transactions, first published by the New York
+      Fed in April 2018 — as LIBOR's replacement. The transition took years:
+      new swaps and loans gradually moved to referencing SOFR through the
+      early 2020s, ISDA published a standardized fallback protocol so that
+      existing LIBOR-referencing contracts would convert cleanly once LIBOR
+      stopped, and most LIBOR panel-rate publication ceased at end-2021, with
+      a handful of USD tenors kept alive in a "synthetic," non-panel-based
+      form only for legacy contracts until final cessation on 30 June 2023.
+    </p>
+    <p>
+      For a rates desk, the transition meant maintaining two curve worlds in
+      parallel for years — legacy LIBOR-referencing trades needing the old
+      curve until they matured or converted, new SOFR-referencing trades
+      needing the new one — on top of the OIS-vs-forecast-curve split this
+      lesson already covers, and repricing every existing LIBOR-linked
+      contract's fallback terms once LIBOR actually stopped publishing.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    <strong>CSA discounting.</strong> A collateralized derivative trade is
+    governed by a Credit Support Annex (CSA) specifying what collateral gets
+    posted against mark-to-market moves and in what currency. Standard
+    practice is to discount that trade's cashflows at the rate actually
+    earned on the posted collateral — for cash collateral, that's an
+    overnight rate (SOFR in USD, €STR in the euro area, SONIA in the U.K.) —
+    which is precisely the OIS-discounting principle above, applied trade by
+    trade according to each CSA's specific collateral terms.
+  </p>
+  <p>
+    <strong>Building the forecast curve separately from the discount curve.</strong>
+    A rates desk builds its OIS/discount curve from OIS-family instruments,
+    and builds a separate forecast curve (for USD, a SOFR-derived forward
+    curve, typically bootstrapped from SOFR futures and SOFR-referencing
+    swaps) purely to project future floating-rate resets — two distinct
+    curve-construction exercises feeding into the same trade.
+  </p>
+  <p>
+    <strong>Swap spreads as a market signal.</strong> The gap between a swap
+    rate and the yield on a government bond of the same maturity (the "swap
+    spread") is itself a widely watched indicator — it moves with balance
+    sheet costs, repo market conditions, and relative supply/demand for
+    government paper versus swaps, separate from the pure interest-rate view
+    either curve is meant to express.
+  </p>
+  <p>
+    <strong>Pricing credit off swaps, not government bonds.</strong> Corporate
+    bonds, loans, and mortgages are very often quoted and priced at a spread
+    over the swap curve rather than over government bonds, particularly
+    outside the U.S. — precisely because the swap curve is viewed as the
+    cleaner, more purely interest-rate-driven benchmark to spread a credit
+    instrument against.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where swap valuation goes wrong in practice</h3>
+    <p>
+      <strong>Discounting a collateralized trade at LIBOR (or any credit-risky
+      rate) after 2008.</strong> Doing so systematically mis-marks the trade
+      relative to how it's actually collateralized — the quantified size of
+      this exact error, once the industry recognized it, is what drove the
+      OIS-discounting migration in the first place.
+    </p>
+    <p>
+      <strong>Using one curve to both discount and forecast, once they've
+      genuinely diverged.</strong> The clean telescoping shortcut
+      \(PV_{\text{float}}=N(1-DF(T_n))\) only holds when the discounting and
+      forecasting curves are the same curve. Applying it in a genuine
+      multi-curve setting (OIS discounting, SOFR-forward forecasting) without
+      separating the two curves produces a subtly wrong valuation, not merely
+      an imprecise one.
+    </p>
+    <p>
+      <strong>Treating "swap curve" as literally risk-free.</strong> A swap
+      curve — and even an OIS curve — is a practical approximation to
+      risk-free, not a literal one. It still carries its own basis effects:
+      different collateral currencies imply different effective discount
+      rates for the same USD cashflow (cross-currency basis), and even OIS
+      rates in different jurisdictions embed that market's own repo and
+      collateral dynamics.
+    </p>
+    <p>
+      <strong>Day-count and compounding mismatches.</strong> Mixing annual
+      vs. semi-annual payment frequencies, or actual/360 vs. 30/360 vs.
+      actual/365 day-count conventions, when comparing swap rates quoted in
+      different markets is one of the most common real errors — a rate that
+      looks like a clean arbitrage across two markets often just reflects an
+      uncorrected convention mismatch, not a genuine mispricing.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A swap exchanges fixed for floating with no notional exchange.</strong> The swap rate is the par rate — the fixed rate that zeroes out the swap's value at inception.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Swap curves replaced government bond curves as the standard "risk-free" curve</strong> because bond yields carry idiosyncratic supply/repo effects a pure interest-rate swap doesn't.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Post-2008, OIS replaced LIBOR for discounting collateralized derivatives</strong> because LIBOR embeds bank credit risk that OIS/SOFR (secured, overnight) essentially doesn't.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The multi-curve framework splits discounting from forecasting</strong> — one curve (OIS) discounts, a separate curve (a SOFR-derived forward curve) forecasts floating resets; pre-2008 these were, in effect, one curve.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>"Risk-free" is a practical approximation, not a literal one.</strong> Swap and OIS curves still carry their own collateral-currency and cross-currency basis effects.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The worked example is a deliberate simplification.</strong> A flat curve, single currency, and single CSA/collateral type — real desks maintain separate discount and forecast curves per collateral currency, not one flat number.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why is no notional exchanged in an interest rate swap, and what does that mean for counterparty risk relative to holding a bond of the same notional?</summary>
+    <div class="tl-answer">
+      A swap is purely an exchange of interest-rate cashflows — each side
+      already effectively "has" the notional (it's a reference amount used to
+      size the fixed and floating payments, not principal being lent). Since
+      the principal itself never changes hands, there's no principal at risk
+      if a counterparty defaults — only the net difference of the remaining
+      cashflows is exposed, which is a much smaller amount than the full
+      notional a bondholder would have at risk if the bond's issuer
+      defaulted. This is a large part of why swaps could grow to such
+      enormous notional volumes without being nearly as risky, position for
+      position, as holding bonds of the same face amount.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What makes a swap rate the "par rate," and how do you solve for it?</summary>
+    <div class="tl-answer">
+      The par rate is the fixed rate \(K\) at which the swap's value is
+      exactly zero to both parties at inception — neither side pays anything
+      up front to enter the trade. Algebraically, set the fixed leg's PV
+      equal to the floating leg's PV, \(K\cdot N\sum DF(t_i) = N(1-DF(T_n))\),
+      and solve for \(K\): \(K_{\text{par}} = (1-DF(T_n))/\sum DF(t_i)\), the
+      floating leg's per-unit-notional value divided by the annuity factor.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why did the industry move from LIBOR discounting to OIS discounting for collateralized derivatives after 2008?</summary>
+    <div class="tl-answer">
+      LIBOR is an unsecured interbank lending rate, so it embeds the credit
+      risk of lending to a bank without collateral — a risk that widened
+      sharply and visibly during the 2008 crisis (the LIBOR-OIS spread spike).
+      A fully collateralized derivative trade, by contrast, carries close to
+      no counterparty credit risk, because collateral is posted daily against
+      mark-to-market moves. Discounting that trade's cashflows at LIBOR was
+      therefore quietly baking in a credit-risk premium that didn't belong in
+      the valuation of a trade that was, in practice, secured. OIS/SOFR —
+      secured, overnight, essentially free of bank credit risk — matches the
+      actual risk (or lack of it) in a collateralized trade far more
+      accurately, which is why the industry moved the discounting convention
+      to it.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What is the multi-curve framework, and why weren't the discount curve and the forecast curve always different?</summary>
+    <div class="tl-answer">
+      The multi-curve framework separates the curve used to discount
+      cashflows to present value (OIS) from the curve used to forecast the
+      floating leg's future rate resets (a SOFR-derived, or historically a
+      LIBOR-derived, forward curve). Pre-2008, LIBOR effectively did both
+      jobs at once — it was both the reference index paid on the floating
+      leg and, in a world without widespread OIS-based collateral
+      discounting, a reasonable proxy for the discount rate too — so the
+      single-curve simplification (one curve discounts and forecasts) held
+      well enough in practice. Once collateralized trades started being
+      discounted at OIS specifically, that coincidence broke: OIS and the
+      floating-rate-forecast curve are built from different instruments and
+      no longer move together, so they have to be treated, and constructed,
+      as two separate curves.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In the worked example, why is the swap's value close to zero at the par rate but meaningfully negative to the fixed-rate payer at 3.2%?</summary>
+    <div class="tl-answer">
+      The floating leg's present value, \(N(1-DF(T_n))\), doesn't depend on
+      the fixed rate \(K\) at all — it's fixed once the discount curve is
+      fixed. The fixed leg's present value, \(K\cdot N\sum DF(t_i)\), scales
+      directly with \(K\). At the par rate (≈3.0005% here), the fixed leg's
+      PV is constructed, by definition, to exactly equal the floating leg's
+      PV — that's what "par" means. At 3.2%, a higher fixed rate than par,
+      the fixed leg's PV is larger than the floating leg's PV, so the party
+      paying that fixed rate is paying more, in present-value terms, than
+      they're receiving on the floating side — a swap worth negative to them,
+      by exactly that gap (about −$38,269 in the worked example).
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>John Hull and Alan White, <em>"LIBOR vs. OIS: The Derivatives Discounting Dilemma,"</em> Journal of Investment Management, 2013 — a direct, practitioner-oriented treatment of exactly the discounting question covered above.</li>
+    <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson — the standard derivatives textbook's treatment of swap valuation, OIS discounting, and the multi-curve framework.</li>
+    <li>Dubravko Filipović and Anders B. Trolle, <em>"The Term Structure of Interbank Risk,"</em> Journal of Financial Economics, 2013 — an empirical decomposition of the LIBOR-OIS spread into credit-risk and liquidity components during the 2008 crisis.</li>
+    <li>Alternative Reference Rates Committee (ARRC), publications on the SOFR transition and the LIBOR fallback protocol — the primary industry-body record of the LIBOR-to-SOFR transition referenced in the scenario above.</li>
+    <li>Federal Reserve Bank of New York, background materials on the Secured Overnight Financing Rate (SOFR) — the official description of how SOFR is constructed from Treasury repo transactions.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="nelson-siegel-svensson.html">← Curve Fitting: Nelson-Siegel &amp; Svensson</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+</body>
+</html>

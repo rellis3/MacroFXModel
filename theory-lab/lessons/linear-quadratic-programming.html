@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Linear &amp; Quadratic Programming — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Numerical Methods / Linear &amp; Quadratic Programming</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Numerical Methods · Lesson 3 of 4</div>
+  <h1 class="tl-title">Linear &amp; Quadratic Programming</h1>
+  <p class="tl-dek">The two specific, extremely well-studied families of convex problem that turn "portfolio construction with real-world constraints" from a research question into a solved, off-the-shelf computation.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span>~16 min read</span>
+    <span>Prereqs: Convex Optimization</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A <strong>linear program (LP)</strong> minimizes (or maximizes) a linear objective subject to linear constraints: \(\min c^\top x\) s.t. \(Ax \le b\). A <strong>quadratic program (QP)</strong> is the same, but with a quadratic objective — and Markowitz mean-variance, \(\min w^\top\Sigma w\) s.t. \(w^\top\mu=\text{target},\ \sum w_i=1\), is exactly a QP.</li>
+      <li>An LP's optimum is always found at a <strong>vertex</strong> of the feasible region — a direct consequence of the convexity established in the previous lesson. The <strong>simplex method</strong> exploits this by walking from vertex to adjacent vertex, always improving the objective, until no neighboring vertex is better.</li>
+      <li>Markowitz's textbook closed-form solution (pure linear algebra — invert a matrix, done) only works for the <em>equality</em>-constrained version. The moment you add box constraints — no shorting (\(w_i\ge0\)), position caps (\(w_i\le0.1\)) — you don't know in advance which constraints will bind, and the clean formula breaks.</li>
+      <li>Real portfolio construction always has box constraints, which is exactly why practitioners hand the problem to a QP solver rather than plugging numbers into the closed-form Markowitz formula.</li>
+      <li>The worked example solves a tiny 2-variable LP by evaluating every vertex of its feasible region, and separately writes out a fully-specified 3-asset Markowitz QP with box constraints \(0\le w_i\le0.4\) — a solver's actual input, not something meant to be solved by hand.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The previous lesson established that convex problems come with a
+    powerful guarantee — local optimum equals global optimum — but that
+    guarantee is abstract until it's attached to an actual, solvable family
+    of problems. Linear and quadratic programming are that family: two of
+    the most thoroughly studied, most reliably solvable classes of convex
+    optimization problem in existence, with decades of dedicated solver
+    engineering behind them. Anywhere a real trading or portfolio-management
+    workflow needs "the best allocation subject to a list of real-world
+    limits" — capital limits, position caps, no-shorting rules, factor
+    exposure bands — the underlying math is almost always an LP or a QP, not
+    a bespoke algorithm built from scratch.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📊</div>
+      <h4>Markowitz mean-variance, constrained</h4>
+      <p>The moment realistic box constraints are added to the Markowitz problem from this curriculum's Markowitz &amp; Black-Litterman lesson, the clean closed-form solution stops applying and a QP solver takes over — this lesson is exactly that transition.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🧮</div>
+      <h4>Convex Optimization (previous lesson)</h4>
+      <p>LP and QP are the two most important special cases of the convex problems the previous lesson built the general theory for — the KKT conditions derived there apply directly to both.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">⚖️</div>
+      <h4>Index replication &amp; basis trading</h4>
+      <p>Minimizing tracking error subject to a turnover budget, or finding the cheapest basket that replicates a set of cash-flow targets, are both routinely formulated and solved as LPs.</p>
+    </div>
+  </div>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>The best corner of the room, and the best point in a bowl-shaped bucket</h3>
+    <p>
+      Imagine a room whose walls are all flat (every constraint is a straight
+      line or flat plane) — that's the feasible region of a linear program.
+      If you're trying to maximize something that itself changes linearly as
+      you move around the room — walk toward one wall and the quantity
+      increases steadily, walk the other way and it decreases steadily,
+      always at a constant rate — there is never a reason for the best point
+      to be somewhere in the open middle of the floor. You can always do
+      better by continuing to walk in the direction that's improving things,
+      and because the room's walls are flat, that walk only ever gets stopped
+      by a wall, and ultimately by a <strong>corner</strong> where two or
+      more walls meet. That's the entire intuition behind why an LP's optimal
+      answer is always found at a vertex, and why the classic solution method
+      (the simplex method, below) works by hopping from corner to corner,
+      never bothering to check the empty space in between.
+    </p>
+    <p>
+      A quadratic program is the same flat-walled room, but instead of a
+      perfectly linear quantity you're optimizing a <em>bowl-shaped</em> one
+      (a convex quadratic, from the previous lesson) — variance, say. Now the
+      best point is <em>not</em> automatically forced to a corner: a bowl's
+      true lowest point might sit comfortably in the open middle of the
+      room, only getting pushed toward a wall if the bowl's own natural
+      minimum happens to sit outside the room's boundary. That's the
+      structural reason QPs need a genuinely different algorithm than "check
+      the corners" — the answer could be anywhere, not just at a vertex.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>Linear programming — standard form</h3>
+  <p>
+    A <strong>linear program</strong> minimizes a linear objective subject to
+    linear inequality constraints (and, optionally, nonnegativity on the
+    variables):
+  </p>
+  <div class="tl-math">
+    \[ \min_{x} \; c^\top x \quad \text{subject to} \quad Ax \le b, \quad x \ge 0 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>x</code><span>the decision variables — what you're solving for</span></div>
+    <div class="tl-eq-chip c2"><code>c</code><span>the objective's coefficients — c^Tx is the linear quantity being minimized (or, with a sign flip, maximized)</span></div>
+    <div class="tl-eq-chip c3"><code>A, b</code><span>the constraint matrix and right-hand side — Ax≤b packs every linear limit into one matrix inequality</span></div>
+  </div>
+  <p>
+    Everything in an LP — the objective and every constraint — is a straight
+    line (in two dimensions) or a flat plane (in higher dimensions). The
+    region of points satisfying every constraint simultaneously is a
+    <strong>polytope</strong> — a many-dimensional generalization of a
+    polygon, bounded by flat faces and sharp vertices, exactly the "flat-walled
+    room" of the intuition above.
+  </p>
+
+  <h3>Quadratic programming — standard form</h3>
+  <p>
+    A <strong>quadratic program</strong> keeps the same linear constraints but
+    replaces the objective with a quadratic (still convex, per the previous
+    lesson, whenever its Hessian \(H\) is PSD):
+  </p>
+  <div class="tl-math">
+    \[ \min_{x} \; \tfrac{1}{2}x^\top H x + c^\top x \quad \text{subject to} \quad Ax \le b \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>H</code><span>the (PSD) Hessian of the quadratic objective</span></div>
+    <div class="tl-eq-chip c2"><code>c^Tx</code><span>an optional linear term, alongside the quadratic one</span></div>
+    <div class="tl-eq-chip c4"><code>Ax≤b</code><span>the same flat, linear-constraint structure as an LP</span></div>
+  </div>
+  <p>
+    Markowitz mean-variance is exactly this template with \(H = 2\Sigma\), no
+    linear term, and the constraints \(w^\top\mu = R^\*\) (target return, an
+    equality, which can be written as two opposing inequalities to fit the
+    \(\le\) form) and \(\sum w_i = 1\) (budget) — the worked example below
+    writes the full 3-asset version out explicitly, with box constraints
+    added on top.
+  </p>
+
+  <h3>Why an LP's optimum always sits at a vertex</h3>
+  <p>
+    This follows directly from the convexity result proven in the previous
+    lesson, applied to a linear objective over a polytope. A linear function
+    has no curvature at all — it's convex and concave simultaneously (a flat
+    plane satisfies the convexity inequality with equality, not just \(\le\)).
+    Take any point in the feasible region that is <em>not</em> a vertex — it
+    can always be written as a combination of two other feasible points
+    further apart (walk in either direction along some line through it,
+    inside the polytope, until you hit the boundary in both directions). Because
+    the objective is linear, its value changes at a constant rate along that
+    line — so it must be at least as good at one of the two endpoints as it
+    is in the middle. Repeating this argument pushes any candidate optimum
+    outward, along straight lines, until it can go no further — which happens
+    exactly at a vertex, where multiple constraint boundaries meet and there's
+    no direction left to walk without leaving the feasible region. The
+    <strong>simplex method</strong> (George Dantzig, 1947) turns this fact
+    into an algorithm: start at any vertex, look at each adjacent vertex
+    (reachable by moving along a single edge of the polytope), move to
+    whichever adjacent vertex improves the objective the most, and repeat.
+    Because there are only finitely many vertices and each move strictly
+    improves the objective (barring a technical edge case called
+    degeneracy), the walk is guaranteed to terminate at the true optimal
+    vertex in a finite number of steps — no need to ever inspect a
+    non-vertex point at all.
+  </p>
+  <div class="tl-solid blue">
+    <strong>Why this isn't needed for a QP:</strong> a quadratic objective
+    does curve, so the same "always push to the boundary" argument doesn't
+    apply — an unconstrained quadratic minimum can sit anywhere, including
+    deep in the interior of the feasible region. QP solvers (active-set
+    methods, or the interior-point methods mentioned in the practitioner
+    section) are built to search the interior as well as the boundary,
+    which is a structurally different algorithm from simplex's vertex-hopping.
+  </div>
+
+  <h3>Why real portfolio construction needs a QP solver, not the closed-form formula</h3>
+  <p>
+    The classical Markowitz minimum-variance-for-target-return problem, with
+    <em>only</em> the two equality constraints (budget and target return),
+    has a clean closed-form answer reachable with ordinary linear algebra:
+    write the stationarity condition from the Lagrangian as a system of
+    linear equations in the weights and the multipliers, and solve it
+    directly by matrix inversion — no iteration required, because you know in
+    advance exactly which equations must hold. The moment a box constraint
+    like \(w_i \ge 0\) (no shorting) or \(w_i \le 0.1\) (a position cap) is
+    added, that certainty disappears: you do <em>not</em> know in advance
+    whether any particular box constraint will end up binding at the true
+    optimum — whether asset 7 will want to be negative badly enough that its
+    no-shorting constraint kicks in, for instance — and the constraints that
+    turn out to bind (recall <strong>complementary slackness</strong> from
+    the previous lesson) determine which system of equations you'd even need
+    to solve. There is no single fixed matrix to invert, because the correct
+    matrix depends on information (which constraints bind) that is only known
+    once you've already solved the problem. A QP solver handles this
+    correctly by iterating — an active-set method repeatedly guesses which
+    constraints are binding, solves the resulting equality-constrained
+    sub-problem, checks whether the guess was self-consistent (no negative
+    multiplier on a supposedly-binding constraint, no violated constraint
+    among the ones left out), and updates the guess until it is. This is
+    exactly why every practical portfolio optimizer with box constraints —
+    which is to say, essentially every real one — runs on a QP solver, never
+    on the textbook closed-form matrix formula alone.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(x\)</td><td>The decision variable vector being solved for (an LP's or QP's unknowns).</td></tr>
+    <tr><td>\(c\)</td><td>The linear objective's coefficient vector.</td></tr>
+    <tr><td>\(A, b\)</td><td>The constraint matrix and right-hand-side vector — \(Ax\le b\) packs every linear constraint into one expression.</td></tr>
+    <tr><td>\(H\)</td><td>The (positive semi-definite) Hessian of a QP's quadratic objective term.</td></tr>
+    <tr><td>Polytope</td><td>The feasible region of an LP or QP — a many-dimensional shape bounded by flat faces, generalizing a polygon.</td></tr>
+    <tr><td>Vertex</td><td>A corner of the polytope, where enough constraint boundaries intersect to pin down a single point — where an LP's optimum is always found.</td></tr>
+    <tr><td>Active / binding constraint</td><td>A constraint satisfied with equality at the current point — sitting exactly on its boundary.</td></tr>
+    <tr><td>\(w\)</td><td>Portfolio weights — the QP decision variable in the Markowitz application.</td></tr>
+    <tr><td>\(\Sigma, \mu\)</td><td>The covariance matrix and expected-return vector from the Markowitz framework.</td></tr>
+  </table></div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">A 2-variable LP's feasible region — sweep the objective level line</div>
+    <svg viewBox="0 0 640 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A pentagon-shaped feasible region on a 2D plot with axes x and y, a movable diagonal level line for the objective 3x+5y=Z sweeping across it, and the optimal vertex highlighted at (2,6)">
+      <line x1="60" y1="20" x2="60" y2="320" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="60" y1="286.7" x2="580" y2="286.7" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="282.9" y1="20" x2="282.9" y2="320" style="stroke:var(--border);stroke-width:1;stroke-dasharray:2,3;opacity:.5"/>
+      <line x1="431.4" y1="20" x2="431.4" y2="320" style="stroke:var(--border);stroke-width:1;stroke-dasharray:2,3;opacity:.5"/>
+      <line x1="60" y1="186.7" x2="580" y2="186.7" style="stroke:var(--border);stroke-width:1;stroke-dasharray:2,3;opacity:.5"/>
+      <line x1="60" y1="86.7" x2="580" y2="86.7" style="stroke:var(--border);stroke-width:1;stroke-dasharray:2,3;opacity:.5"/>
+      <text x="282.9" y="304" text-anchor="middle" style="fill:var(--text3);font-size:10px">x=2</text>
+      <text x="431.4" y="304" text-anchor="middle" style="fill:var(--text3);font-size:10px">x=4</text>
+      <text x="46" y="190" text-anchor="end" style="fill:var(--text3);font-size:10px">y=3</text>
+      <text x="46" y="90" text-anchor="end" style="fill:var(--text3);font-size:10px">y=6</text>
+
+      <polygon points="134.3,286.7 431.4,286.7 431.4,186.7 282.9,86.7 134.3,86.7" style="fill:var(--blue);opacity:.14;stroke:var(--blue);stroke-width:2.5"/>
+      <circle cx="134.3" cy="286.7" r="4" style="fill:var(--text2)"/>
+      <circle cx="431.4" cy="286.7" r="4" style="fill:var(--text2)"/>
+      <circle cx="431.4" cy="186.7" r="4" style="fill:var(--text2)"/>
+      <circle cx="134.3" cy="86.7" r="4" style="fill:var(--text2)"/>
+      <circle id="lp-opt-vertex" cx="282.9" cy="86.7" r="6" style="fill:var(--green);stroke:var(--s1);stroke-width:1.5"/>
+      <text x="134.3" y="304" text-anchor="middle" style="fill:var(--text2);font-size:10px">(0,0)</text>
+      <text x="431.4" y="304" text-anchor="middle" style="fill:var(--text2);font-size:10px">(4,0)</text>
+      <text x="450" y="182" text-anchor="start" style="fill:var(--text2);font-size:10px">(4,3)</text>
+      <text x="285" y="72" text-anchor="middle" style="fill:var(--green);font-size:11px;font-weight:600">(2,6)</text>
+      <text x="118" y="82" text-anchor="end" style="fill:var(--text2);font-size:10px">(0,6)</text>
+
+      <line x1="505.7" y1="253.3" x2="551.6" y2="219.0" style="stroke:var(--amber);stroke-width:2" marker-end="url(#lp-arrowhead)"/>
+      <text x="558" y="216" style="fill:var(--amber);font-size:10px">∇Z=(3,5)</text>
+      <defs>
+        <marker id="lp-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" style="fill:var(--amber)"/>
+        </marker>
+      </defs>
+
+      <line id="lp-sweep-line" x1="0" y1="0" x2="0" y2="0" style="stroke:var(--purple);stroke-width:2.5"/>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Objective level Z (maximize 3x + 5y = Z)</span><span class="tl-live" id="lp-z-val">Z = 20</span></div>
+        <input type="range" id="lp-z-slider" min="0" max="42" step="1" value="20">
+        <div class="tl-hint">Drag right: the level line 3x+5y=Z sweeps up and to the right. It keeps touching the shaded feasible region until Z=36 — its last contact point is the optimal vertex (2,6) — then it sweeps off the region entirely.</div>
+      </div>
+    </div>
+    <div class="tl-readout" id="lp-readout">At Z=20, the line 3x+5y=20 cuts through the interior of the feasible region — not yet optimal.</div>
+    <div class="tl-chart-caption">The shaded pentagon is the feasible region for x≤4, y≤6, 3x+2y≤18, x,y≥0. Every vertex is a candidate optimum; evaluating 3x+5y at each one (worked example below) finds the true maximum at (2,6), Z=36 — exactly where the purple sweep line last touches the region before leaving it for good.</div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Solving a tiny LP by evaluating every vertex, then specifying a real 3-asset QP</h3>
+    <p>
+      <strong>Part 1 — the LP.</strong> A desk splits risk-capital between two
+      strategies, allocating \(x\) units to Strategy A and \(y\) units to
+      Strategy B, and wants to maximize expected P&amp;L (in \$ thousands):
+    </p>
+    <div class="tl-math">
+      \[
+      \begin{aligned}
+      \text{maximize} \quad & Z = 3x + 5y \\
+      \text{subject to} \quad & x \le 4 \quad \text{(Strategy A's operational capacity)} \\
+      & y \le 6 \quad \text{(Strategy B's operational capacity)} \\
+      & 3x + 2y \le 18 \quad \text{(shared margin budget)} \\
+      & x \ge 0, \ y \ge 0
+      \end{aligned}
+      \]
+    </div>
+    <p>
+      The feasible region is the pentagon shown in the chart above, with
+      vertices \((0,0)\), \((4,0)\), \((4,3)\) (where \(x=4\) meets the margin
+      line), \((2,6)\) (where the margin line meets \(y=6\)), and \((0,6)\).
+      Per the vertex argument above, the optimum must be at one of these five
+      points — evaluate \(Z\) at each:
+    </p>
+    <div class="tl-math">
+      \[
+      \begin{aligned}
+      (0,0): \quad & Z = 3(0)+5(0) = 0 \\
+      (4,0): \quad & Z = 3(4)+5(0) = 12 \\
+      (4,3): \quad & Z = 3(4)+5(3) = 27 \\
+      (2,6): \quad & Z = 3(2)+5(6) = \mathbf{36} \quad \leftarrow \text{maximum} \\
+      (0,6): \quad & Z = 3(0)+5(6) = 30
+      \end{aligned}
+      \]
+    </div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c3"><code>(2,6), Z=36</code><span>the optimal allocation — 2 units to Strategy A, 6 to Strategy B</span></div>
+    </div>
+    <p>
+      The optimal allocation is \(x=2\), \(y=6\), for a maximum expected P&amp;L
+      of 36 (\$36,000) — both the operational cap on Strategy B (\(y\le6\))
+      and the shared margin budget (\(3x+2y\le18\)) are binding at this
+      vertex simultaneously (check: \(y=6\) exactly, and
+      \(3(2)+2(6)=18\) exactly), while Strategy A's own cap (\(x\le4\)) has
+      slack (\(x=2<4\)) and, per complementary slackness, contributes nothing
+      to pinning down the answer.
+    </p>
+
+    <p style="margin-top:16px">
+      <strong>Part 2 — the fully-specified QP.</strong> A 3-asset Markowitz
+      minimum-variance problem, targeting a 5% expected return, with a
+      no-shorting and a 40%-position-cap box constraint on every weight —
+      exactly the fully-specified input a real QP solver would take (not
+      something meant to be solved by hand):
+    </p>
+    <div class="tl-math">
+      \[
+      \mu = \begin{pmatrix} 0.05 \\ 0.07 \\ 0.03 \end{pmatrix}, \qquad
+      \Sigma = \begin{pmatrix} 0.0400 & 0.0180 & -0.0060 \\ 0.0180 & 0.0625 & -0.0090 \\ -0.0060 & -0.0090 & 0.0225 \end{pmatrix}
+      \]
+    </div>
+    <div class="tl-math">
+      \[
+      \begin{aligned}
+      \text{minimize} \quad & w^\top \Sigma w \\
+      \text{subject to} \quad & w_1 + w_2 + w_3 = 1 \\
+      & 0.05\,w_1 + 0.07\,w_2 + 0.03\,w_3 = 0.05 \\
+      & 0 \le w_1 \le 0.40, \quad 0 \le w_2 \le 0.40, \quad 0 \le w_3 \le 0.40
+      \end{aligned}
+      \]
+    </div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>Σ</code><span>the 3×3 covariance matrix — variances on the diagonal (4%², 6.25%², 2.25%²), covariances off it</span></div>
+      <div class="tl-eq-chip c2"><code>μ</code><span>expected returns (5%, 7%, 3%) — the target-return equality constraint</span></div>
+      <div class="tl-eq-chip c4"><code>0 ≤ wᵢ ≤ 0.40</code><span>the box constraints that push this out of closed-form territory</span></div>
+    </div>
+    <p>
+      This is precisely the input a QP solver expects: a PSD Hessian
+      (\(2\Sigma\)), two linear equality constraints, and six linear
+      inequality constraints (a lower and upper bound for each of the three
+      weights). Solving it numerically is exactly the solver's job, not a
+      pencil-and-paper exercise — the point of writing it out in full is to
+      make concrete exactly how little changes in the problem's
+      <em>specification</em> between the closed-form-solvable version (drop
+      the box constraints) and the QP-solver-required version (keep them):
+      two extra inequality constraints per asset, and the guaranteed
+      closed-form solve is gone.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A risk-parity fund's overnight rebalance, and why it runs a QP every single day</h3>
+    <p>
+      A systematic multi-asset fund rebalances its portfolio every evening:
+      new return forecasts and a refreshed covariance matrix come in, and the
+      fund needs new target weights that minimize risk for whatever return
+      target the mandate specifies, subject to fixed rules — no instrument
+      may exceed a 15% position, no single asset class may go net short, and
+      the fund's prime broker imposes its own margin-based position caps that
+      can shift day to day as volatility changes.
+    </p>
+    <p>
+      Every one of those rules is a box or linear constraint, and the
+      covariance matrix guarantees convexity — so the problem is, every
+      single night, a fresh QP. Because which constraints will bind changes
+      from one night to the next (a volatile day might push several
+      positions toward their margin-driven caps; a calm day might leave every
+      box constraint slack, quietly reducing to something close to the
+      closed-form unconstrained answer), there is no fixed formula the
+      operations team could hard-code once and reuse — the solver has to run
+      fresh each night, and its output is only as trustworthy as the
+      correctness of that night's constraint set. A stale or misconfigured
+      position cap (last quarter's margin limit, not today's) doesn't
+      produce an error message — it produces a QP solution that is
+      internally consistent and "optimal," just optimal with respect to the
+      wrong constraints, a failure mode that's silent unless someone checks
+      the constraint inputs against what the mandate and the prime broker
+      actually require that day.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Almost nobody implements simplex or a QP active-set method from scratch
+    in production — both problem types are served by mature, heavily
+    optimized solver libraries (open-source options like OSQP, CVXOPT, and
+    the GLPK/CLP family for LPs; commercial solvers like Gurobi and CPLEX for
+    large-scale or mixed-integer problems), and a quant researcher's actual
+    job is almost always <em>formulating</em> the business problem correctly
+    as an LP or QP — getting the objective, the constraint matrix, and the
+    bounds right — and handing that specification to the solver, rather than
+    writing solver internals. For large problems (thousands of variables and
+    constraints, common in index-replication or large multi-asset
+    portfolios), <strong>interior-point methods</strong> are the dominant
+    modern algorithm for both LPs and QPs — rather than walking vertex to
+    vertex like simplex, they cut directly through the interior of the
+    feasible region, using a barrier function that penalizes getting close
+    to a constraint boundary, and converge to the optimum along a smooth
+    path; for the largest, sparsest problems they generally scale better
+    than simplex, though simplex remains highly competitive and is still
+    widely used, particularly when a "warm start" from a previous day's
+    solution is available (a common situation in exactly the daily-rebalance
+    workflow described above).
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📦</div>
+      <h4>Off-the-shelf solvers, not hand-rolled code</h4>
+      <p>OSQP, CVXOPT, Gurobi, CPLEX — the practitioner's job is formulating the objective and constraints correctly, not implementing simplex or an interior-point method from scratch.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🏦</div>
+      <h4>Daily portfolio rebalancing</h4>
+      <p>Any systematic multi-asset fund with position caps, sector limits, or no-shorting rules re-solves a QP on a real schedule, not once at inception.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📉</div>
+      <h4>Index &amp; basis-trade replication</h4>
+      <p>Minimizing tracking error to a benchmark, or finding the cheapest basket matching a set of cash-flow or exposure targets, are routine LP/QP formulations away from portfolio-variance problems specifically.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this goes wrong in practice</h3>
+    <p>
+      <strong>Forgetting to check the problem is even feasible.</strong> A
+      badly specified or overly aggressive set of constraints (target return
+      too high for the box-constrained universe to reach, say) can have
+      <em>no</em> feasible region at all — an empty polytope. A solver
+      reporting "infeasible" is telling you the constraints themselves
+      contradict each other, not that the search failed for some other
+      reason; the fix is to relax a constraint, not to tune the solver.
+    </p>
+    <p>
+      <strong>An unbounded objective with no error until it's too late.</strong>
+      If a maximization LP's feasible region is genuinely unbounded in the
+      direction the objective improves (a missing upper-limit constraint,
+      for instance), the "optimal" value is infinite — a modeling bug, not a
+      numerical one, and one that's easy to miss if a constraint that should
+      have capped a variable was accidentally omitted or mis-signed.
+    </p>
+    <p>
+      <strong>Degenerate vertices confusing the interpretation of a solution.</strong>
+      When more constraints than strictly necessary are binding at the same
+      vertex simultaneously (a coincidence of the specific numbers chosen),
+      the Lagrange multipliers on the tied constraints are not uniquely
+      determined, even though the optimal \(x\) itself is well defined — a
+      subtlety that matters when trying to read economic meaning ("how much
+      would loosening this cap help?") off a solver's reported multipliers.
+    </p>
+    <p>
+      <strong>A near-singular Hessian in a QP causing numerical trouble.</strong>
+      A covariance matrix built from highly correlated or nearly redundant
+      assets can be PSD in theory but numerically very close to singular in
+      practice — small floating-point errors can then produce a solver output
+      that's technically "converged" but numerically unstable, sensitive to
+      tiny input perturbations in a way a well-conditioned problem would not
+      be. Regularizing the covariance matrix (shrinkage, a small ridge term
+      added to the diagonal) is a standard practical fix.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>An LP is a linear objective over linear constraints; a QP swaps in a quadratic objective.</strong> Markowitz mean-variance, \(\min w^\top\Sigma w\), is exactly a QP.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>An LP's optimum is always at a vertex of the feasible polytope.</strong> A direct consequence of a linear objective having no curvature — the simplex method exploits this by walking vertex to vertex.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A QP's optimum need not sit at a vertex.</strong> A quadratic objective curves, so its unconstrained minimum can land anywhere in the feasible region — a structurally different search than simplex's vertex-hopping.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Box constraints are exactly why real portfolios need a QP solver, not the closed-form Markowitz formula.</strong> You can't know in advance which constraints will bind, so there's no single fixed matrix to invert.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Interior-point methods are the dominant modern algorithm for large LPs and QPs.</strong> They cut through the interior via a barrier function rather than hopping vertex to vertex, and generally scale better on the largest, sparsest problems.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>An "optimal" solver output can be optimal with respect to the wrong constraints.</strong> A stale or misconfigured position cap doesn't error out — it silently changes what "optimal" means for that solve.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why is an LP's optimal solution always found at a vertex of the feasible region, never at some interior point?</summary>
+    <div class="tl-answer">
+      Because the objective is linear, it has no curvature — moving along
+      any straight line inside the feasible region changes the objective at
+      a constant rate. For any interior (non-vertex) point, you can always
+      walk further in whichever direction improves the objective until you
+      hit the boundary — so an interior point can never be strictly better
+      than every point reachable by continuing that walk. Repeating this
+      argument along the boundary itself eventually reaches a vertex, where
+      no further improving direction remains inside the feasible region. A
+      quadratic objective, by contrast, does curve, so this "always push
+      further" argument breaks down and a QP's optimum can genuinely sit in
+      the interior.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why does adding a no-shorting constraint (wᵢ≥0) to the classical Markowitz problem eliminate the closed-form solution?</summary>
+    <div class="tl-answer">
+      The closed-form Markowitz solution comes from solving a fixed system
+      of linear equations (the stationarity conditions from the Lagrangian
+      with only equality constraints) by direct matrix inversion — which
+      only works because you know in advance exactly which equations must
+      hold. Adding wᵢ≥0 introduces an inequality constraint whose binding
+      status (does the unconstrained optimum actually want a negative weight
+      here, or not) is not known until after solving the problem — different
+      assets might or might not have their constraint active depending on
+      the specific μ and Σ. Since the correct system of equations to solve
+      depends on which constraints turn out to bind, there's no single fixed
+      matrix to invert in advance; an iterative solver that discovers the
+      active set is required instead.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. In the worked 2-variable LP, why are both y≤6 and 3x+2y≤18 binding at the optimal vertex (2,6), while x≤4 is not?</summary>
+    <div class="tl-answer">
+      A constraint is binding exactly when it's satisfied with equality at
+      the optimal point. At (2,6): y=6 exactly, so y≤6 is binding; and
+      3(2)+2(6)=18 exactly, so 3x+2y≤18 is binding too — this vertex is
+      precisely where those two constraint boundaries intersect. Meanwhile
+      x=2, which is strictly less than the x≤4 cap, so that constraint has
+      slack and is not binding — by complementary slackness, its multiplier
+      is zero, meaning it contributes nothing to determining the optimal
+      point; Strategy A's operational capacity was simply never the limiting
+      factor in this particular solution.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What's the practical difference between simplex and an interior-point method, and why does it matter for a large real-world LP?</summary>
+    <div class="tl-answer">
+      Simplex walks from vertex to adjacent vertex along the edges of the
+      feasible polytope, improving the objective at each step, and never
+      examines any point in the polytope's interior. An interior-point
+      method instead moves through the interior of the feasible region,
+      using a barrier function that discourages getting too close to any
+      constraint boundary, and converges to the optimum along a smooth path
+      rather than a sequence of discrete vertex hops. For very large,
+      sparse problems (thousands of variables and constraints, typical of
+      large-scale portfolio or index-replication problems), interior-point
+      methods generally scale better; simplex remains highly competitive and
+      is often preferred when a "warm start" from a nearby previous solution
+      is available, since it can resume close to the new optimal vertex
+      rather than restarting the interior-point search from scratch.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. A QP solver reports a solution to a nightly portfolio rebalance, and it looks internally consistent (all constraints satisfied, KKT conditions hold). Does that guarantee the portfolio is actually appropriate for that day? Why or why not?</summary>
+    <div class="tl-answer">
+      No — it only guarantees the solution is the true optimum <em>with
+      respect to whatever objective and constraints were actually fed into
+      the solver that night</em>. If a position cap, margin limit, or return
+      target was stale, mis-specified, or simply wrong for that day's actual
+      mandate, the solver will still return a mathematically optimal,
+      internally consistent answer — just optimal for the wrong problem. The
+      KKT conditions holding confirm the math was solved correctly; they say
+      nothing about whether the inputs handed to the solver were the correct
+      inputs, which is a separate, non-mathematical check that has to happen
+      before trusting the output.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>George B. Dantzig, <em>Linear Programming and Extensions</em>, Princeton University Press, 1963 — the foundational text by the inventor of the simplex method, developed originally in 1947 for U.S. Air Force logistics planning.</li>
+    <li>Stephen Boyd &amp; Lieven Vandenberghe, <em>Convex Optimization</em>, Cambridge University Press, 2004 — covers LP and QP as specific, extensively developed special cases of the general convex framework, including interior-point methods.</li>
+    <li>Robert J. Vanderbei, <em>Linear Programming: Foundations and Extensions</em>, 5th ed., Springer, 2020 — a clear, applied treatment of simplex and interior-point methods with worked numerical examples.</li>
+    <li>Bartolomeo Stellato, Goran Banjac, Paul Goulart, Alberto Bemporad &amp; Stephen Boyd, "OSQP: An Operator Splitting Solver for Quadratic Programs," <em>Mathematical Programming Computation</em>, 2020 — the paper behind one of the most widely used open-source QP solvers in modern quantitative finance and robotics.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="convex-optimization.html">← Convex Optimization</a>
+    <a href="numerical-integration.html">Numerical Integration →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var slider = document.getElementById('lp-z-slider');
+  var zVal = document.getElementById('lp-z-val');
+  var sweepLine = document.getElementById('lp-sweep-line');
+  var readout = document.getElementById('lp-readout');
+  var optVertex = document.getElementById('lp-opt-vertex');
+  if (!slider) return;
+
+  // Data-space box used for clipping the sweep line: x in [-1,6], y in [-1,8].
+  var BOX = { xmin: -1, xmax: 6, ymin: -1, ymax: 8 };
+  function mapX(x){ return 60 + (x - (-1)) * (520 / 7); }
+  function mapY(y){ return 320 - (y - (-1)) * (300 / 9); }
+
+  // Line: 3x + 5y = Z. Find where it crosses the drawing box's 4 edges.
+  function boxIntersections(Z){
+    var pts = [];
+    // left edge x = xmin
+    var yL = (Z - 3 * BOX.xmin) / 5;
+    if (yL >= BOX.ymin - 1e-9 && yL <= BOX.ymax + 1e-9) pts.push([BOX.xmin, yL]);
+    // right edge x = xmax
+    var yR = (Z - 3 * BOX.xmax) / 5;
+    if (yR >= BOX.ymin - 1e-9 && yR <= BOX.ymax + 1e-9) pts.push([BOX.xmax, yR]);
+    // bottom edge y = ymin
+    var xB = (Z - 5 * BOX.ymin) / 3;
+    if (xB >= BOX.xmin - 1e-9 && xB <= BOX.xmax + 1e-9) pts.push([xB, BOX.ymin]);
+    // top edge y = ymax
+    var xT = (Z - 5 * BOX.ymax) / 3;
+    if (xT >= BOX.xmin - 1e-9 && xT <= BOX.xmax + 1e-9) pts.push([xT, BOX.ymax]);
+    return pts;
+  }
+
+  var Z_MAX = 36; // true optimum, verified in the worked example above
+
+  function update(){
+    var Z = parseInt(slider.value, 10);
+    zVal.textContent = 'Z = ' + Z;
+
+    var pts = boxIntersections(Z);
+    if (pts.length >= 2) {
+      var p1 = pts[0], p2 = pts[1];
+      sweepLine.setAttribute('x1', mapX(p1[0]).toFixed(1));
+      sweepLine.setAttribute('y1', mapY(p1[1]).toFixed(1));
+      sweepLine.setAttribute('x2', mapX(p2[0]).toFixed(1));
+      sweepLine.setAttribute('y2', mapY(p2[1]).toFixed(1));
+    }
+
+    var atOptimum = Math.abs(Z - Z_MAX) < 0.6;
+    optVertex.setAttribute('r', atOptimum ? '8' : '6');
+
+    var label;
+    if (atOptimum) {
+      label = 'At Z=36, the line 3x+5y=36 touches the region at exactly one point: the optimal vertex (2,6) — the last level line to touch the feasible region before it leaves for good.';
+    } else if (Z < Z_MAX) {
+      label = 'At Z=' + Z + ', the line 3x+5y=' + Z + ' cuts through the interior of the feasible region — not yet optimal, since Z can still be increased.';
+    } else {
+      label = 'At Z=' + Z + ', the line 3x+5y=' + Z + ' has swept past the feasible region entirely — no feasible point reaches this objective value.';
+    }
+    readout.textContent = label;
+  }
+
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
+</body>
+</html>

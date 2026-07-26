@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Execution Algorithms: TWAP, VWAP, POV, IS — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Market Microstructure / Execution Algorithms: TWAP, VWAP, POV, IS</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Market Microstructure · Lesson 5 of 5</div>
+  <h1 class="tl-title">Execution Algorithms: TWAP, VWAP, POV, IS</h1>
+  <p class="tl-dek">Once you accept that a big order moves the price against you the more of it you dump at once, "how do I actually place it" stops being an afterthought and becomes its own decision — four standard schedules, and the honest cost accounting (Perold's Implementation Shortfall) that tells you which one you actually needed.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span>~17 min read</span>
+    <span>Prereqs: market-impact-almgren-chriss.html (Market Impact Models &amp; Almgren-Chriss)</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>TWAP spreads an order evenly across time — simple and predictable, but blind to the fact that trading volume itself is never evenly spread through the day.</li>
+      <li>VWAP instead matches the order's schedule to the historical intraday <em>volume</em> profile, trading more during the heavy open/close and less during the thin midday lull, so the order participates roughly in proportion to how much everyone else is trading.</li>
+      <li>POV (Percentage of Volume) drops the pre-set schedule entirely and instead trades at a fixed percentage of <em>real-time observed</em> volume, so it naturally speeds up when the market gets busy and slows down when it goes quiet.</li>
+      <li>Implementation Shortfall (Perold, 1988) is the honest scorecard: the gap between the "paper" decision price and what you actually paid, split into delay cost (drift before you started), market impact cost (the Almgren-Chriss-style concession from your own trading), and opportunity cost (the price of leaving part of the order unfilled).</li>
+      <li>Algorithm choice is a real tradeoff, not a preference: urgency (fear of the price drifting away before you're done) pulls toward TWAP/POV/aggressive execution; impact concern (fear of moving the price yourself) pulls toward a slower VWAP-style schedule — the same risk-aversion tradeoff the Almgren-Chriss lesson formalizes with a single parameter \(\lambda\).</li>
+      <li>The worked example computes a 4-bucket VWAP-matching share schedule for a 40,000-share order, then separately walks a small trade through all three Implementation Shortfall components in dollars: \$450 delay + \$750 impact + \$300 opportunity = \$1,500 total, on a \$500,000 order.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The Market Impact Models &amp; Almgren-Chriss lesson in this series establishes
+    <em>why</em> a large order should be broken up over time in the first
+    place: trading it all at once pays a large, avoidable temporary-impact
+    cost, while spreading it out too slowly leaves it exposed to price risk
+    for longer. That lesson solves for the theoretically optimal trading
+    trajectory given a risk-aversion parameter. This lesson is about what
+    happens next — the concrete, named schedules real desks actually type
+    into an order-management system, and the accounting framework used to
+    judge, after the fact, whether a given execution was actually any good.
+  </p>
+  <p>
+    Four names come up constantly in any conversation about how an order was
+    actually worked: TWAP, VWAP, POV, and Implementation Shortfall. The first
+    three are <em>execution styles</em> — different rules for pacing the same
+    total order over time. The fourth, Implementation Shortfall, is not a
+    pacing style at all — it is the <em>measurement framework</em> used to
+    score any of the other three (or any other execution approach) against
+    what the trade decision was actually worth before execution began.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📉</div>
+      <h4>Builds directly on Almgren-Chriss</h4>
+      <p>The market-impact cost term in Implementation Shortfall below is exactly the cost the Almgren-Chriss optimal-execution model is built to minimize — same idea, now given a name and a dollar figure after the fact.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🕰️</div>
+      <h4>A volume clock, again</h4>
+      <p>VWAP's core idea — schedule by how much volume typically trades, not by the plain clock — is the same instinct behind the volume-bucketing approach in the VPIN lesson, applied here to pacing an order instead of measuring toxicity.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🎯</div>
+      <h4>Ties back to Kyle's Lambda</h4>
+      <p>Every one of these schedules exists to manage the same \(\Delta p=\lambda Q\) relationship from the Market Microstructure lesson — slicing an order over time is a direct, practical response to price impact scaling with size.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🧾</div>
+      <h4>The closing scorecard</h4>
+      <p>Implementation Shortfall is how a desk answers "did that execution actually go well," in dollars, decomposed into pieces that point at different root causes rather than one opaque number.</p>
+    </div>
+  </div>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>You've decided to buy 40,000 shares. Now what?</h3>
+    <p>
+      Suppose a portfolio manager decides, at 9:30am, to buy 40,000 shares of
+      a stock. Nothing about that decision says <em>how</em> to actually place
+      the order. Dump it all in at once as a single market order, and — per
+      the Kyle's Lambda logic from earlier in this series — you push the
+      price against yourself immediately and pay a large, unnecessary impact
+      cost on top of whatever the shares were "really" worth at 9:30am. Spread
+      it out, and you avoid that self-inflicted cost, but now you're exposed
+      to a new risk: the price might simply drift away from you — up, if
+      you're buying — before you finish, for reasons that have nothing to do
+      with your own trading at all.
+    </p>
+    <p>
+      The simplest possible answer to "how do I spread it out" is: evenly, by
+      the clock. Trade 1/8th of the order every half hour across a 4-hour
+      window. That's <strong>TWAP</strong> — Time-Weighted Average Price — and
+      it's a completely reasonable first idea. Its flaw is equally simple:
+      real markets don't trade the same amount every half hour. Volume is
+      almost always heaviest right at the open and right at the close, and
+      thinnest around midday. An evenly-spread TWAP order is, without meaning
+      to, trading a disproportionately large share of its size during the
+      thin midday lull relative to how much natural liquidity is actually
+      available then — exactly the condition that (as the earlier Market
+      Microstructure lesson's Kyle's Lambda scenario showed) makes the same
+      order size cost more in impact. <strong>VWAP</strong> fixes this by
+      matching the order's pace to the market's own historical volume
+      pattern instead of the plain clock, and <strong>POV</strong> goes one
+      step further and reacts to volume as it happens in real time, rather
+      than trusting a historical pattern at all. All three are just different
+      answers to the same one question: given that you must spread the order
+      out somehow, exactly what should "somehow" mean?
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    Three scheduling rules first, in increasing order of sophistication, then
+    the Implementation Shortfall accounting framework used to judge any of
+    them after the fact.
+  </p>
+
+  <h3>1. TWAP — Time-Weighted Average Price</h3>
+  <p>
+    Split the total order \(X\) into \(K\) equal time intervals and trade an
+    equal fraction in each:
+  </p>
+  <div class="tl-math">
+    \[ x_k = \frac{X}{K} \quad \text{for every interval } k=1,\dots,K \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>X</code><span>total order size to execute</span></div>
+    <div class="tl-eq-chip c2"><code>K</code><span>number of equal time intervals the execution window is chopped into</span></div>
+    <div class="tl-eq-chip c3"><code>x_k</code><span>shares traded in interval k — identical for every interval, by construction</span></div>
+  </div>
+  <p>
+    TWAP's entire appeal is its simplicity and predictability — a
+    counterparty (or a compliance reviewer) can verify exactly what should
+    have traded in any given interval with nothing more than a calculator.
+    Its weakness is exactly what the intuition above described: it implicitly
+    assumes trading volume is uniform through the day, which is essentially
+    never true. TWAP trades too large a fraction of its order, relative to
+    natural liquidity, during quiet periods, and too small a fraction during
+    the heaviest, most liquidity-rich windows.
+  </p>
+
+  <h3>2. VWAP — Volume-Weighted Average Price</h3>
+  <p>
+    VWAP fixes exactly that blind spot by scheduling participation
+    proportional to a <em>historical intraday volume profile</em> — the
+    empirically typical fraction of a full day's volume that trades in each
+    interval, estimated from recent past sessions in the same name:
+  </p>
+  <div class="tl-math">
+    \[ x_k = X \cdot w_k, \qquad \sum_{k=1}^{K} w_k = 1 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>w_k</code><span>the historical share of total daily volume that typically trades in interval k</span></div>
+    <div class="tl-eq-chip c4"><code>Σw_k = 1</code><span>the weights across all K intervals must sum to exactly the whole order</span></div>
+  </div>
+  <p>
+    Interval \(k\)'s weight \(w_k\) is not fixed at \(1/K\) like TWAP — it is
+    read off (or forecast from) that name's own historical volume curve,
+    which in most liquid equity markets is famously "U-shaped": heavy at the
+    open, heavy again at the close, and lighter through the middle of the
+    day. Trading in proportion to \(w_k\) means the order participates at
+    roughly the same <em>rate</em> as the rest of the market throughout the
+    day — heavier when the market is naturally heavier, lighter when it's
+    naturally lighter — which, by the same Kyle's-Lambda logic as before,
+    tends to produce less impact per share than TWAP's flat schedule, because
+    the order is never forced to represent an outsized fraction of a thin
+    period's volume.
+  </p>
+  <p>
+    The benchmark this schedule targets, the actual VWAP price for the day,
+    is itself just the volume-weighted average traded price across the whole
+    session:
+  </p>
+  <div class="tl-math">
+    \[ \text{VWAP} = \frac{\sum_{k} P_k \cdot \text{Vol}_k}{\sum_{k} \text{Vol}_k} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>P_k</code><span>the traded price in interval k</span></div>
+    <div class="tl-eq-chip c3"><code>Vol_k</code><span>the total market volume traded in interval k</span></div>
+  </div>
+  <p>
+    An order executed exactly along the historical weights \(w_k\), at each
+    interval's prevailing price, will tend to land close to this VWAP
+    benchmark — which is precisely why "VWAP" is used both as the name of the
+    scheduling algorithm and as the name of the performance benchmark that
+    algorithm (and, informally, almost any execution) gets measured against.
+  </p>
+
+  <h3>3. POV — Percentage of Volume</h3>
+  <p>
+    TWAP and VWAP both commit, in advance, to a fixed schedule — \(x_k\) is
+    decided before the trading day even starts. POV drops that commitment
+    entirely and instead targets a fixed <em>participation rate</em>,
+    \(p\), against whatever volume is <em>actually</em> observed in real time:
+  </p>
+  <div class="tl-math">
+    \[ x_k = p \cdot \text{Vol}_k^{\text{observed}} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>p</code><span>the target participation rate — e.g. 10% means "trade 10% of whatever volume actually happens"</span></div>
+    <div class="tl-eq-chip c2"><code>Vol_k^observed</code><span>the real, live volume that traded in interval k — not a historical forecast</span></div>
+  </div>
+  <p>
+    Because \(p\) is applied to <em>observed</em> volume rather than a
+    pre-committed historical weight, POV automatically speeds up when the
+    market is unexpectedly busy (a news headline, a large print from someone
+    else) and automatically slows down when it's unexpectedly quiet — it
+    adapts to the actual session as it unfolds, rather than to what a typical
+    session usually looks like. The tradeoff: a POV order's total completion
+    time is not known in advance the way TWAP's or VWAP's is, since it
+    depends on how much total volume actually materializes; an unexpectedly
+    quiet day can leave a POV order still unfinished well past when a TWAP or
+    VWAP schedule would already be done, which is exactly the "opportunity
+    cost of an unfilled remainder" component of Implementation Shortfall
+    covered next.
+  </p>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>TWAP — evenly by the clock</h4>
+      <p>Simple, fully predictable in advance. Ignores that volume isn't uniform, so it over-trades thin periods and under-trades heavy ones relative to natural liquidity.</p>
+    </div>
+    <div class="tl-compare-card green">
+      <h4>VWAP — by the historical volume shape</h4>
+      <p>Matches a pre-committed schedule to the typical U-shaped intraday volume curve. Still a fixed, pre-set schedule — vulnerable if today's actual volume pattern doesn't match history.</p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>POV — a fixed % of live volume</h4>
+      <p>Reactive rather than pre-committed — speeds up and slows down with real trading activity as it happens. Completion time is uncertain, since it depends on how much volume actually shows up.</p>
+    </div>
+  </div>
+
+  <h3>4. Implementation Shortfall — Perold's honest scorecard</h3>
+  <p>
+    André Perold's 1988 framework starts from a single, sharp idea: the
+    <strong>real</strong> cost of a trade decision is not just the commission
+    and spread paid on the shares that got filled. It is the total gap
+    between the "paper" world — where the entire order executes instantly, at
+    the price that prevailed the moment the decision was made, with zero
+    cost — and the real world, where execution takes time, moves the price,
+    and sometimes doesn't fully complete at all:
+  </p>
+  <div class="tl-math">
+    \[ \text{IS} = (\bar{P}_{\text{exec}} - P_{\text{decision}})\cdot X_{\text{filled}} \;+\; (P_{\text{cancel}} - P_{\text{decision}})\cdot X_{\text{unfilled}} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>P_decision</code><span>the "paper" price at the exact moment the trade decision was made</span></div>
+    <div class="tl-eq-chip c2"><code>P̄_exec</code><span>the actual average price achieved on the shares that did get filled</span></div>
+    <div class="tl-eq-chip c3"><code>X_filled / X_unfilled</code><span>how many shares of the original order were, and weren't, executed</span></div>
+    <div class="tl-eq-chip c4"><code>P_cancel</code><span>the price used to value the unfilled remainder — e.g. the price when the order was cancelled or the session's close</span></div>
+  </div>
+  <p>
+    Read in words: Implementation Shortfall is what you actually paid for the
+    shares you got, above the paper decision price, plus a charge for the
+    shares you never got at all, valued at whatever the price was by the time
+    you gave up on them. This one number is the honest, all-in cost of the
+    entire decision-to-execution process — but a single total dollar figure
+    doesn't say <em>why</em> it was expensive. Perold's framework's real
+    value is splitting that total into causally distinct pieces:
+  </p>
+
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Delay cost</h4>
+        <p>Price drift between the decision and the moment trading actually begins — time spent getting the order to a desk, choosing an algorithm, or simply waiting for a chosen entry point, during which the price can move for reasons having nothing to do with your own trading yet:</p>
+        <div class="tl-math">\[ \text{Delay} = (P_{\text{start}} - P_{\text{decision}}) \cdot X_{\text{filled}} \]</div>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>Market impact cost</h4>
+        <p>The price concession that comes specifically from your own trading pushing the price as you execute — the Kyle's-Lambda / Almgren-Chriss cost, measured from when trading actually began to the average price you achieved:</p>
+        <div class="tl-math">\[ \text{Impact} = (\bar{P}_{\text{exec}} - P_{\text{start}}) \cdot X_{\text{filled}} \]</div>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>Opportunity cost</h4>
+        <p>The cost attached to any portion of the order left unfilled — valued against the decision price, since an incomplete order means the portfolio manager's original decision was never fully carried out at all:</p>
+        <div class="tl-math">\[ \text{Opportunity} = (P_{\text{cancel}} - P_{\text{decision}}) \cdot X_{\text{unfilled}} \]</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">Delay</div>
+      <div class="tl-fp-name">Cost of hesitation</div>
+      <div class="tl-fp-desc">Drift before your own trading even began — not caused by you</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">Impact</div>
+      <div class="tl-fp-name">Cost of your own footprint</div>
+      <div class="tl-fp-desc">The concession from your own trading — this is the Almgren-Chriss term</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">Opportunity</div>
+      <div class="tl-fp-name">Cost of giving up</div>
+      <div class="tl-fp-desc">What the unfilled portion of the order "should have" cost, valued at the decision price</div>
+    </div>
+  </div>
+  <p>
+    Because delay and impact are both measured against the shares that
+    actually filled (\(X_\text{filled}\)), and opportunity cost is measured
+    against exactly the shares that didn't (\(X_\text{unfilled}\)), the three
+    components add up cleanly back to the total: Delay + Impact for the
+    filled shares reduces to \((\bar P_\text{exec}-P_\text{decision})\cdot
+    X_\text{filled}\), and adding the Opportunity cost term for the unfilled
+    shares reproduces the full Implementation Shortfall formula above exactly
+    — nothing is double-counted, and nothing is left out.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(X\)</td><td>Total order size the decision called for.</td></tr>
+    <tr><td>\(K\)</td><td>Number of scheduling intervals an order is broken into (TWAP/VWAP).</td></tr>
+    <tr><td>\(x_k\)</td><td>Shares scheduled to trade in interval \(k\).</td></tr>
+    <tr><td>\(w_k\)</td><td>Historical fraction of a typical day's volume occurring in interval \(k\) — the VWAP schedule's weights.</td></tr>
+    <tr><td>\(p\)</td><td>Target participation rate for a POV order — the fixed fraction of real-time volume to trade.</td></tr>
+    <tr><td>\(\text{Vol}_k\)</td><td>Total market volume traded in interval \(k\) (historical for VWAP's \(w_k\), live for POV).</td></tr>
+    <tr><td>\(P_\text{decision}\)</td><td>The "paper" price at the exact moment the trade decision was made — the Implementation Shortfall benchmark.</td></tr>
+    <tr><td>\(P_\text{start}\)</td><td>The price when actual trading began, after any delay.</td></tr>
+    <tr><td>\(\bar P_\text{exec}\)</td><td>The volume-weighted average price actually achieved across all filled shares.</td></tr>
+    <tr><td>\(P_\text{cancel}\)</td><td>The price used to value any unfilled remainder (e.g. cancellation price or session close).</td></tr>
+    <tr><td>\(X_\text{filled}\), \(X_\text{unfilled}\)</td><td>Shares of the original order that were, and were not, executed.</td></tr>
+  </table></div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A typical U-shaped intraday volume profile and a VWAP-matching schedule</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart with four intraday buckets: Open, Midday 1, Midday 2, Close. Historical volume share bars in blue show 35%, 15%, 15%, 35% respectively, forming a U shape. Overlaid amber bars of the same proportional heights show the VWAP order schedule tracking the same shape exactly.">
+      <line x1="50" y1="220" x2="610" y2="220" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="50" y1="220" x2="50" y2="30" style="stroke:var(--text3);stroke-width:1"/>
+      <text x="24" y="128" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 24 128)">Share of order/volume</text>
+      <text x="46" y="224" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0%</text>
+      <text x="46" y="128" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">20%</text>
+      <text x="46" y="34" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">40%</text>
+      <line x1="50" y1="30" x2="610" y2="30" style="stroke:var(--border);stroke-width:1;stroke-dasharray:2,3"/>
+      <line x1="50" y1="128" x2="610" y2="128" style="stroke:var(--border);stroke-width:1;stroke-dasharray:2,3"/>
+
+      <rect x="95" y="87" width="50" height="133" style="fill:var(--blue);opacity:.55"/>
+      <rect x="245" y="163" width="50" height="57" style="fill:var(--blue);opacity:.55"/>
+      <rect x="365" y="163" width="50" height="57" style="fill:var(--blue);opacity:.55"/>
+      <rect x="485" y="87" width="50" height="133" style="fill:var(--blue);opacity:.55"/>
+
+      <rect x="150" y="87" width="20" height="133" style="fill:var(--amber);opacity:.85"/>
+      <rect x="300" y="163" width="20" height="57" style="fill:var(--amber);opacity:.85"/>
+      <rect x="420" y="163" width="20" height="57" style="fill:var(--amber);opacity:.85"/>
+      <rect x="540" y="87" width="20" height="133" style="fill:var(--amber);opacity:.85"/>
+
+      <text x="130" y="235" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Open</text>
+      <text x="280" y="235" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Midday 1</text>
+      <text x="400" y="235" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Midday 2</text>
+      <text x="520" y="235" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Close</text>
+
+      <text x="120" y="80" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--blue)">35%</text>
+      <text x="270" y="156" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--blue)">15%</text>
+      <text x="390" y="156" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--blue)">15%</text>
+      <text x="510" y="80" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--blue)">35%</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>Historical volume share \(w_k\) (the market)</span>
+      <span><i style="background:var(--amber)"></i>VWAP order schedule (matches the same shape)</span>
+    </div>
+    <div class="tl-chart-caption">Illustrative, a stylized "U-shape" typical of many liquid equity markets — real profiles vary by name and by market. A VWAP schedule's bars (amber) are proportional to the historical volume bars (blue) in every bucket: heavier at the open and close, lighter through the middle of the day. A TWAP schedule, by contrast, would draw four bars of exactly equal height regardless of this shape.</div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Part 1 — building a VWAP schedule; Part 2 — computing Implementation Shortfall</h3>
+    <p>
+      <strong>Part 1.</strong> A desk needs to buy \(X=40{,}000\) shares and
+      wants to match the historical intraday volume profile shown in the
+      chart above: Open 35%, Midday 1 15%, Midday 2 15%, Close 35%
+      (\(\sum w_k = 1.00\)). The VWAP schedule is simply \(x_k = X\cdot w_k\)
+      in each bucket:
+    </p>
+    <div class="tl-math">
+      \[
+      \begin{aligned}
+      \text{Open: } & 40{,}000 \times 0.35 = 14{,}000 \text{ shares}\\
+      \text{Midday 1: } & 40{,}000 \times 0.15 = 6{,}000 \text{ shares}\\
+      \text{Midday 2: } & 40{,}000 \times 0.15 = 6{,}000 \text{ shares}\\
+      \text{Close: } & 40{,}000 \times 0.35 = 14{,}000 \text{ shares}
+      \end{aligned}
+      \]
+    </div>
+    <p>Check: \(14{,}000+6{,}000+6{,}000+14{,}000 = 40{,}000\) — the full order, allocated in exactly the same proportions as the market's own historical volume shape. A TWAP schedule on the same order would instead trade a flat 10,000 shares in every one of the four buckets.</p>
+
+    <p style="margin-top:16px">
+      <strong>Part 2.</strong> A separate, small trade: a portfolio manager
+      decides at 9:30am to buy 10,000 shares at a decision price
+      \(P_\text{decision}=\$50.00\). By the time the desk actually starts
+      trading, the price has drifted to \(P_\text{start}=\$50.05\). The order
+      fills in two clips — 6,000 shares at \$50.10 and 3,000 shares at
+      \$50.20 — leaving 1,000 shares unfilled at the end of the day, valued at
+      the closing price \(P_\text{cancel}=\$50.30\).
+    </p>
+
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Average execution price on the filled shares</h4>
+          <div class="tl-math">
+            \[ \bar{P}_{\text{exec}} = \frac{6{,}000(50.10) + 3{,}000(50.20)}{9{,}000} = \frac{300{,}600+150{,}600}{9{,}000} = \frac{451{,}200}{9{,}000} \approx \$50.1333 \]
+          </div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Delay cost — drift before trading began</h4>
+          <div class="tl-math">
+            \[ \text{Delay} = (50.05 - 50.00)\times 9{,}000 = 0.05 \times 9{,}000 = \$450 \]
+          </div>
+          <p>Measured over the 9,000 shares that ultimately got filled — the unfilled 1,000 shares are accounted for separately, in the opportunity cost term, so no shares get charged for delay twice.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Market impact cost — the price concession from your own trading</h4>
+          <div class="tl-math">
+            \[ \text{Impact} = (50.1333 - 50.05)\times 9{,}000 = 0.0833\times 9{,}000 = \$750 \]
+          </div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Opportunity cost — the unfilled 1,000 shares</h4>
+          <div class="tl-math">
+            \[ \text{Opportunity} = (50.30 - 50.00)\times 1{,}000 = 0.30\times 1{,}000 = \$300 \]
+          </div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">5</div>
+        <div class="tl-step-body">
+          <h4>Total Implementation Shortfall</h4>
+          <div class="tl-math">
+            \[ \text{IS} = \$450 + \$750 + \$300 = \$1{,}500 \]
+          </div>
+          <p>
+            On a \(10{,}000\)-share order at a \$50.00 decision price
+            (\$500,000 of notional), \$1,500 of total shortfall is 30 basis
+            points — and the breakdown says exactly where it came from: half
+            of it (\$750) is genuine market impact from the desk's own
+            trading, \$450 is drift that happened before a single share
+            traded, and \$300 is the price of never finishing the order at
+            all. A single "\$1,500, or 30bps" headline number would hide all
+            three of those very different root causes.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Choosing an algorithm: urgency vs. impact concern</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Quadrant chart with impact concern on the vertical axis and urgency on the horizontal axis. Low urgency and high impact concern places VWAP in the top left. High urgency and high impact concern places POV in the top right. Low urgency and low impact concern places TWAP in the bottom left. High urgency and low impact concern places aggressive Implementation Shortfall execution in the bottom right.">
+      <line x1="320" y1="30" x2="320" y2="260" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="60" y1="145" x2="600" y2="145" style="stroke:var(--border);stroke-width:1"/>
+      <text x="320" y="20" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">high impact concern</text>
+      <text x="320" y="278" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">low impact concern</text>
+      <text x="70" y="145" text-anchor="start" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" dy="-6">low urgency</text>
+      <text x="590" y="145" text-anchor="end" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" dy="-6">high urgency</text>
+
+      <rect x="90" y="60" width="150" height="70" rx="8" style="fill:var(--blue);opacity:.18;stroke:var(--blue)"/>
+      <text x="165" y="90" text-anchor="middle" font-size="15" font-family="'DM Mono',monospace" font-weight="600" fill="var(--blue)">VWAP</text>
+      <text x="165" y="110" text-anchor="middle" font-size="10" font-family="'DM Sans',sans-serif" fill="var(--text3)">patient, minimize footprint</text>
+
+      <rect x="400" y="60" width="150" height="70" rx="8" style="fill:var(--purple);opacity:.18;stroke:var(--purple)"/>
+      <text x="475" y="90" text-anchor="middle" font-size="15" font-family="'DM Mono',monospace" font-weight="600" fill="var(--purple)">POV</text>
+      <text x="475" y="110" text-anchor="middle" font-size="10" font-family="'DM Sans',sans-serif" fill="var(--text3)">adapts to real volume, both concerns real</text>
+
+      <rect x="90" y="165" width="150" height="70" rx="8" style="fill:var(--green);opacity:.18;stroke:var(--green)"/>
+      <text x="165" y="195" text-anchor="middle" font-size="15" font-family="'DM Mono',monospace" font-weight="600" fill="var(--green)">TWAP</text>
+      <text x="165" y="215" text-anchor="middle" font-size="10" font-family="'DM Sans',sans-serif" fill="var(--text3)">neither concern dominant, simplicity wins</text>
+
+      <rect x="400" y="165" width="150" height="70" rx="8" style="fill:var(--red);opacity:.18;stroke:var(--red)"/>
+      <text x="475" y="195" text-anchor="middle" font-size="14" font-family="'DM Mono',monospace" font-weight="600" fill="var(--red)">Aggressive IS</text>
+      <text x="475" y="215" text-anchor="middle" font-size="10" font-family="'DM Sans',sans-serif" fill="var(--text3)">finish fast, pay the impact</text>
+    </svg>
+    <div class="tl-chart-caption">Illustrative positioning, not a precise optimization. High urgency (fear the price runs away before you finish) with low impact concern favors trading fast and aggressive, closer to Almgren-Chriss's low-risk-aversion end. High impact concern with low urgency favors a patient, footprint-minimizing VWAP-style schedule, closer to Almgren-Chriss's high-risk-aversion end. POV sits in between as a genuinely adaptive middle path, and plain TWAP is the simple default when neither concern is pressing enough to justify anything more sophisticated.</div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Algorithm selection on a real execution desk is a genuine decision, made
+    trade by trade, that comes down to weighing two competing fears against
+    each other — exactly the risk-aversion tradeoff the Almgren-Chriss lesson
+    formalizes with a single parameter, now applied as a practical choice
+    between named, off-the-shelf schedules:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">⏳</div>
+      <h4>Urgency — fear of the price drifting away</h4>
+      <p>High conviction, a fast-moving name, or information that could leak or become stale pushes toward finishing quickly — accepting more impact cost in exchange for less exposure to adverse price drift while the order is still open.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🌊</div>
+      <h4>Impact concern — fear of moving the price yourself</h4>
+      <p>A large order relative to typical daily volume, or a thinly-traded name, pushes toward a patient, low-footprint schedule — accepting more price-drift risk in exchange for a smaller self-inflicted impact cost.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧭</div>
+      <h4>The practical resolution</h4>
+      <p>Low urgency and high impact concern favors VWAP; high urgency with real impact concern favors POV's adaptive pacing; genuinely low stakes on both fronts favors plain TWAP for its simplicity; high urgency with low impact concern favors an aggressive, fast-completing schedule that accepts impact cost as the price of certainty.</p>
+    </div>
+  </div>
+  <p>
+    Implementation Shortfall is the after-the-fact discipline that keeps this
+    honest: a desk that always claims "we chose the schedule the situation
+    called for" should be able to show, trade after trade, that its delay,
+    impact, and opportunity costs actually land where that logic predicts —
+    low impact cost on patient VWAP trades, low delay/opportunity cost on
+    urgent aggressive trades — rather than simply asserting it. Transaction
+    cost analysis (TCA) desks exist specifically to run this Implementation
+    Shortfall decomposition on every trade, systematically, rather than
+    trusting a single blended average cost number.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where execution-algorithm reasoning goes wrong</h3>
+    <p>
+      <strong>Treating "VWAP" as automatically synonymous with "good execution."</strong>
+      Matching the VWAP benchmark only means you traded in proportion to how
+      the whole market traded that day — if the price trended strongly against
+      you throughout the session, a perfectly-executed VWAP schedule still
+      pays that trend in full. VWAP is a participation schedule and a
+      benchmark, not a guarantee of a good price.
+    </p>
+    <p>
+      <strong>Ignoring that VWAP's schedule is built on a historical, not a
+      guaranteed, volume profile.</strong> If the actual day's volume shape
+      differs meaningfully from history (an unscheduled news event
+      concentrates volume somewhere the historical profile didn't expect), a
+      pre-committed VWAP schedule can end up badly out of step with real
+      liquidity, exactly where POV's live-volume adaptivity would have done
+      better.
+    </p>
+    <p>
+      <strong>Treating Implementation Shortfall's "decision price" as
+      arbitrary or movable after the fact.</strong> The whole framework's
+      honesty depends on fixing \(P_\text{decision}\) at the true moment the
+      decision was made, before any information about how execution actually
+      went. Quietly redefining the decision price to a more favorable moment
+      after seeing the results turns an honest cost-accounting tool into a
+      way to flatter a bad execution.
+    </p>
+    <p>
+      <strong>Comparing Implementation Shortfall totals across trades of
+      very different urgency without the decomposition.</strong> A low total
+      IS on a low-urgency VWAP trade and a low total IS on a high-urgency
+      aggressive trade do not represent the same quality of execution
+      decision-making — the components behind an equal headline number can
+      look completely different, which is exactly why the breakdown, not
+      just the total, is the useful output.
+    </p>
+    <p>
+      <strong>Forgetting the opportunity cost term entirely.</strong> An
+      execution that never finishes the order can look artificially cheap if
+      only the cost on the filled shares is reported — Perold's framework
+      exists specifically because a merely "good average price on the
+      shares that traded" can hide a decision that was never actually
+      carried out in full.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>TWAP is the simple baseline, not the sophisticated choice.</strong> Equal shares in equal time intervals is predictable but ignores that real trading volume is never uniform through the day.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>VWAP schedules by the historical volume shape.</strong> \(x_k = X\cdot w_k\) matches participation to a typically U-shaped intraday volume curve — heavier at the open/close, lighter at midday.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>POV reacts to real, live volume instead of a historical forecast.</strong> \(x_k = p\cdot\text{Vol}_k^\text{observed}\) speeds up and slows down with actual market activity, at the cost of an uncertain completion time.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Implementation Shortfall is the honest, all-in scorecard.</strong> It splits the gap between decision price and actual cost into delay, market impact, and opportunity cost — three different root causes, not one opaque number.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Algorithm choice is a real tradeoff, not a habit.</strong> Urgency (fear of drift) pulls toward faster, more aggressive execution; impact concern (fear of your own footprint) pulls toward a slower, VWAP-style schedule — the same risk-aversion axis Almgren-Chriss formalizes mathematically.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Matching the VWAP benchmark is not the same as a good price.</strong> A perfectly on-schedule VWAP execution still pays in full for any adverse trend that ran through the whole session — the benchmark measures participation quality, not price quality.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What specific blind spot does VWAP fix relative to TWAP?</summary>
+    <div class="tl-answer">
+      TWAP assumes trading volume is uniform across the execution window and
+      splits the order into equal-sized clips per time interval regardless.
+      Real intraday volume is essentially never uniform — it is typically
+      heaviest at the open and close and lightest around midday. TWAP
+      therefore ends up trading a disproportionately large share of its order,
+      relative to natural liquidity, during thin periods (worse impact, by
+      Kyle's-Lambda logic) and a disproportionately small share during heavy
+      periods. VWAP fixes this by weighting each interval's order size to the
+      historical fraction of a typical day's volume that trades then, so the
+      order participates roughly in proportion to actual market activity.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why can a POV order's total completion time not be known in advance, unlike TWAP or VWAP?</summary>
+    <div class="tl-answer">
+      TWAP and VWAP both pre-commit to a fixed schedule over a fixed time
+      window before trading starts, so their duration is known up front. POV
+      instead targets a fixed percentage \(p\) of whatever volume actually
+      trades in real time, \(x_k = p\cdot\text{Vol}_k^\text{observed}\) — the
+      total time to complete the order therefore depends on how much real
+      volume actually shows up, which is not known in advance. An
+      unexpectedly quiet session can leave a POV order unfinished well past
+      when a TWAP or VWAP schedule targeting the same size would already be
+      done.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. In Perold's Implementation Shortfall framework, why is delay cost measured against \(X_\text{filled}\) rather than the full original order size?</summary>
+    <div class="tl-answer">
+      Because the unfilled portion of the order already has its own,
+      separate cost term — opportunity cost, \((P_\text{cancel}-P_\text{decision})\times
+      X_\text{unfilled}\) — measured against the decision price directly.
+      Charging delay cost against the full original order size (filled plus
+      unfilled) would double-count the drift on the unfilled shares once
+      inside delay cost and again inside opportunity cost. Measuring delay
+      only against the shares that were ultimately filled keeps the three
+      components (delay, impact, opportunity) summing back exactly to the
+      total shortfall with no shares counted twice.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. A 20,000-share buy order has a decision price of \$100.00. Trading begins at \$100.02 and fills completely at an average price of \$100.10. Nothing is left unfilled. What is the delay cost, the market impact cost, and the total Implementation Shortfall?</summary>
+    <div class="tl-answer">
+      Delay cost \(= (100.02-100.00)\times 20{,}000 = 0.02\times20{,}000 =
+      \$400\). Market impact cost \(= (100.10-100.02)\times 20{,}000 =
+      0.08\times20{,}000 = \$1{,}600\). There is no unfilled quantity, so
+      opportunity cost is \$0. Total Implementation Shortfall \(=
+      \$400+\$1{,}600+\$0 = \$2{,}000\), which also equals the direct check
+      \((100.10-100.00)\times20{,}000=\$2{,}000\) — consistent, since with
+      zero unfilled shares the whole shortfall is just the filled-shares term.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why does high "impact concern" push a desk toward VWAP or a similarly patient schedule, while high "urgency" pushes toward a fast, aggressive execution?</summary>
+    <div class="tl-answer">
+      Impact concern is the fear that your own trading will move the price
+      against you — by \(\Delta p=\lambda Q\), spreading the same size out
+      over more time and matching it to natural liquidity (VWAP's approach)
+      reduces how much of a footprint you leave per unit of time, lowering
+      total impact cost. Urgency is the opposite fear — that the price will
+      drift away from you, for reasons unrelated to your own trading, the
+      longer the order stays open. A fast, aggressive execution minimizes
+      that exposure window at the cost of accepting more impact. These pull
+      in opposite directions on the exact same underlying risk-aversion axis
+      the Almgren-Chriss framework formalizes: patience trades lower expected
+      impact cost for more price-drift risk, and speed trades the reverse.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why is it considered dishonest, in the Implementation Shortfall framework, to redefine the "decision price" after seeing how an execution turned out?</summary>
+    <div class="tl-answer">
+      The entire framework's value comes from anchoring the benchmark to a
+      fixed, objective moment — the instant the trade decision was actually
+      made — that is chosen independently of, and before, anything about how
+      the subsequent execution goes. If the decision price could be shifted
+      after the fact to whatever moment happens to make the resulting
+      shortfall look smaller, the "cost" reported would no longer reflect the
+      real gap between the decision and its execution; it would just be
+      cherry-picked to flatter the result. This is the same discipline as
+      fixing a backtest's in-sample/out-of-sample split before looking at
+      results — the benchmark has to be pinned down before you know the
+      answer, or it stops measuring anything honest.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>André F. Perold, "The Implementation Shortfall: Paper Versus Reality," <em>Journal of Portfolio Management</em>, 1988 — the original paper defining Implementation Shortfall as the gap between paper and real portfolios.</li>
+    <li>Robert Kissell, <em>The Science of Algorithmic Trading and Portfolio Management</em>, Academic Press, 2013 — a standard practitioner-level reference covering TWAP, VWAP, POV, and Implementation Shortfall cost decomposition in depth.</li>
+    <li>Robert Almgren &amp; Neil Chriss, "Optimal Execution of Portfolio Transactions," <em>Journal of Risk</em>, 2001 — the optimal-execution model this lesson's market-impact cost term connects directly back to; covered in the prior lesson in this series.</li>
+    <li>Ian Domowitz &amp; Henry Yegerman, "The Cost of Algorithmic Trading: A First Look at Comparative Performance," <em>Journal of Trading</em>, 2005 — an empirical comparison of algorithmic execution styles and their realized transaction costs.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="vpin-order-flow-toxicity.html">← Order Flow Toxicity &amp; VPIN</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+</body>
+</html>

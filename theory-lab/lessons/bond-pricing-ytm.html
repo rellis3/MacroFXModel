@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bond Pricing &amp; Yield to Maturity — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Fixed Income Mathematics / Bond Pricing &amp; Yield to Maturity</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Fixed Income Mathematics · Lesson 1 of 5</div>
+  <h1 class="tl-title">Bond Pricing &amp; Yield to Maturity</h1>
+  <p class="tl-dek">A bond's price is nothing more than the present value of a known stream of future cash — the same discounting arithmetic as any other asset, applied to coupons and a face value instead of dividends. Yield to maturity flips the question around: given the price the market is actually charging, what single discount rate explains it?</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span>~16 min read</span>
+    <span>Prereqs: basic compounding / present value (covered in this curriculum's returns &amp; compounding primer)</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A bond's price is the present value of every cash flow it pays: each coupon \(C\) discounted back from the period it arrives in, plus the face value \(F\) discounted back from maturity — \(P = \sum_{t=1}^{n} \frac{C}{(1+y)^t} + \frac{F}{(1+y)^n}\).</li>
+      <li>Yield to maturity (YTM) is the single discount rate \(y\) that makes that formula's output equal the bond's actual observed market price. It's implicit — you plug in a price and solve for \(y\), not the other way around — and for more than a couple of periods there is no closed-form algebraic solution, only an iterative numerical search.</li>
+      <li>Price and yield move in opposite directions, always: discount the same fixed cash flows at a higher rate and every term in the sum shrinks, so price falls when yield rises, and vice versa.</li>
+      <li>A bond trades at par when its coupon rate equals its YTM, at a premium (above face value) when the coupon rate exceeds YTM, and at a discount (below face value) when YTM exceeds the coupon rate.</li>
+      <li>The worked example prices a 5-year, 4% annual-coupon, $1,000 face bond at a 5% YTM and gets \(P \approx \$956.71\) — a discount bond, because the 4% coupon sits below the 5% YTM — then sets up a Newton-Raphson-style iterative search for the YTM implied by an observed market price.</li>
+      <li>The interactive chart drags a YTM slider along the price-yield curve for that same bond — the curve visibly bends rather than running straight, the convexity this lesson's follow-up (Duration &amp; Convexity) builds on directly.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Every fixed-income instrument — a government bond, a corporate bond, the
+    fixed leg of an interest-rate swap — reduces to the same question: a
+    known, contractually fixed set of future cash payments, and a price today.
+    Bond pricing is just present-value arithmetic applied to that stream, and
+    yield to maturity is the single number the market uses to summarize an
+    entire bond's return in one figure, the way a "price-per-share" summarizes
+    an equity. Once you can price a bond and back out its yield, you have the
+    building block underneath a rates desk's entire vocabulary: yield curves,
+    duration, spread trades, and the sensitivity analysis that governs how
+    every fixed-income (and, transitively, most FX and macro) portfolio
+    manages risk.
+  </p>
+  <p>
+    This lesson also sets up the next two in this category directly. Duration
+    and convexity (Lesson 2) are, respectively, the first- and second-order
+    sensitivity of exactly the pricing formula built here to a change in
+    yield. Bootstrapping the yield curve (Lesson 3) exists precisely because
+    a single bond's YTM is a blended average across all its cash flows'
+    maturities, not a clean per-maturity rate — a limitation this lesson
+    surfaces but doesn't yet solve.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A bond is just a stack of IOUs, priced the way you'd price any of them</h3>
+    <p>
+      Imagine a friend offers you a deal: give me $1,000 today, and I'll pay
+      you $40 a year for the next five years, then hand back your $1,000 at
+      the end. That's a bond — a 4% coupon on $1,000 face value, five-year
+      maturity. Whether $1,000 is a fair price for that promise depends on
+      one thing: what else you could do with your money instead. If bank
+      accounts pay 5% right now, your friend's deal is worse than the
+      alternative, so you shouldn't pay a full $1,000 for it — you'd only pay
+      some smaller amount that makes the deal competitive with the 5% you
+      could get elsewhere. Bond pricing is exactly that comparison, made
+      precise: discount every future payment back to today at whatever
+      rate the market currently demands, and add them up.
+    </p>
+    <p>
+      Yield to maturity flips the same idea around. Instead of "here's the
+      market's going rate, what should I pay," it asks "given what the bond
+      is actually trading for right now, what rate does that price imply I'm
+      earning if I hold it to maturity?" It's a single, back-solved number
+      that lets you compare a 5-year bond against a 10-year bond, or a
+      corporate bond against a government one, on the same scale — much like
+      a z-score lets you compare unrelated series on the same ruler.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    A coupon-paying bond promises two kinds of cash flow: a fixed coupon
+    payment \(C\) at the end of each period until maturity, and a single
+    lump-sum face value \(F\) (also called par value or principal) returned
+    alongside the final coupon at maturity. If the bond has \(n\) periods
+    remaining and the market's required discount rate per period is \(y\),
+    the bond's price is the present value of that entire cash-flow stream:
+  </p>
+  <div class="tl-math">
+    \[ P = \sum_{t=1}^{n} \frac{C}{(1+y)^t} + \frac{F}{(1+y)^n} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>P</code><span>the bond's price today — present value of everything it pays</span></div>
+    <div class="tl-eq-chip c2"><code>C</code><span>the fixed coupon payment received each period</span></div>
+    <div class="tl-eq-chip c3"><code>y</code><span>the discount rate per period — the yield</span></div>
+    <div class="tl-eq-chip c4"><code>F/(1+y)ⁿ</code><span>the face value, discounted back from maturity alone</span></div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">Σ C/(1+y)ᵗ</div>
+      <div class="tl-fp-name">The coupon annuity</div>
+      <div class="tl-fp-desc">Every coupon, discounted from the period it lands in back to today</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">F/(1+y)ⁿ</div>
+      <div class="tl-fp-name">The face-value lump sum</div>
+      <div class="tl-fp-desc">The one-time repayment of principal, discounted only from maturity</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">P</div>
+      <div class="tl-fp-name">The price</div>
+      <div class="tl-fp-desc">Everything added together — what the whole promise is worth today</div>
+    </div>
+  </div>
+
+  <p>
+    Each term is ordinary present-value discounting, the same arithmetic
+    behind any multi-period cash flow: a dollar received \(t\) periods from
+    now is worth \(1/(1+y)^t\) dollars today, because a dollar today could
+    instead be invested at rate \(y\) and grow into \((1+y)^t\) dollars by
+    then. The bond formula is simply that discounting applied once per
+    coupon, plus once more for the face value.
+  </p>
+
+  <h3>Yield to maturity — the same formula, solved backwards</h3>
+  <p>
+    In the pricing formula above, \(y\) is an input: you're told the going
+    market rate and asked to compute \(P\). In practice it usually runs the
+    other way. A bond is already trading somewhere — you observe its market
+    price \(P_{mkt}\) — and the question is: what single, constant discount
+    rate \(y\), applied uniformly to every cash flow, makes the formula's
+    output equal that observed price? That rate is the <strong>yield to
+    maturity</strong>:
+  </p>
+  <div class="tl-math">
+    \[ P_{mkt} = \sum_{t=1}^{n} \frac{C}{(1+\text{YTM})^t} + \frac{F}{(1+\text{YTM})^n} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>P_mkt</code><span>the price actually observed in the market — the known input now</span></div>
+    <div class="tl-eq-chip c4"><code>YTM</code><span>the single unknown rate being solved for</span></div>
+  </div>
+  <p>
+    YTM is best understood as the internal rate of return an investor earns
+    by buying the bond at \(P_{mkt}\), holding it to maturity, collecting
+    every coupon, and reinvesting each coupon at that same rate \(y\) (an
+    assumption worth flagging up front — reinvestment risk is exactly the
+    gap between YTM's assumption and what actually happens if rates move,
+    covered further in the pitfalls below). It compresses an entire
+    multi-year cash-flow schedule into one number that can be quoted,
+    compared across bonds of different maturities and coupons, and tracked
+    over time — which is precisely why "the 10-year yield" is the headline
+    number a macro desk watches, not "the 10-year bond's price."
+  </p>
+  <div class="tl-solid blue">
+    <strong>Why there's no clean formula for \(y\):</strong> for a single-period
+    bond, solving for \(y\) is simple algebra: \(P=(C+F)/(1+y)\) rearranges
+    directly to \(y=(C+F)/P - 1\). For a two-period bond it's a quadratic, at
+    least still solvable by a closed-form formula. But for three or more
+    periods, \(y\) appears raised to three or more different powers in the
+    same equation simultaneously, and there is no general algebraic formula
+    (analogous to the quadratic formula) that isolates it. Every real bond
+    with more than a couple of coupons left needs an <em>iterative numerical
+    search</em> — an initial guess for \(y\), refined step by step until the
+    formula's price output matches \(P_{mkt}\) closely enough. This
+    curriculum's Numerical Methods material covers exactly this kind of
+    root-finding in depth via Newton-Raphson; the worked example below shows
+    the first few iterations applied to this specific problem.
+  </div>
+
+  <h3>The inverse price-yield relationship</h3>
+  <p>
+    Look again at the pricing formula: every single cash flow is divided by
+    \((1+y)\) raised to some positive power. Raise \(y\), and every one of
+    those denominators grows, so every term in the sum shrinks — with no
+    exception, because every term has the identical structure. There is no
+    scenario in the plain fixed-coupon bond formula where raising \(y\)
+    increases any individual term. This gives the single most important
+    qualitative fact in fixed income:
+  </p>
+  <div class="tl-math">
+    \[ y \uparrow \;\Rightarrow\; P \downarrow \qquad\qquad y \downarrow \;\Rightarrow\; P \uparrow \]
+  </div>
+  <p>
+    Bond prices and yields move in strictly opposite directions. This isn't
+    an empirical tendency that occasionally breaks — it falls directly out
+    of the algebra of discounting a fixed cash-flow stream, and it holds for
+    every plain-vanilla fixed-coupon bond, always. It is also, note, not a
+    straight-line (linear) relationship — the curve connecting price to
+    yield bends, an effect called convexity that the interactive chart below
+    makes visible and that Lesson 2 quantifies precisely.
+  </p>
+
+  <h3>Par, premium, and discount bonds</h3>
+  <p>
+    Comparing a bond's fixed coupon rate (the coupon divided by face value)
+    against its YTM tells you immediately whether the bond trades above,
+    below, or exactly at face value:
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Par bond — coupon rate = YTM</h4>
+      <p>The bond's price equals its face value exactly, \(P=F\). This happens precisely when the coupon the bond pays matches the return the market currently demands — there's no gap to compensate for either way.</p>
+    </div>
+    <div class="tl-compare-card green">
+      <h4>Premium bond — coupon rate &gt; YTM</h4>
+      <p>The bond pays a coupon richer than what the market currently requires, so investors bid its price above face value, \(P>F\), until the higher price brings the effective return back down to the market's YTM.</p>
+    </div>
+    <div class="tl-compare-card amber">
+      <h4>Discount bond — coupon rate &lt; YTM</h4>
+      <p>The coupon is stingier than the going rate, so the price falls below face value, \(P&lt;F\), compensating the buyer with capital gain (buy below face, redeem at full face) for the below-market coupon.</p>
+    </div>
+  </div>
+  <p>
+    All three cases are the exact same pricing formula — nothing changes
+    structurally, only the relationship between \(C/F\) (the coupon rate)
+    and \(y\) (the YTM). At maturity, every one of these bonds still pays
+    back exactly \(F\), regardless of what it traded for along the way; a
+    premium bond's price is guaranteed to decay down toward \(F\) as
+    maturity approaches (a fact used directly in the "pull to par" framing
+    practitioners use, covered below).
+  </p>
+
+  <h3>Clean price, dirty price, and accrued interest (briefly)</h3>
+  <p>
+    The pricing formula above assumes you're valuing the bond exactly on a
+    coupon date — no partial period in between. In reality, bonds trade on
+    every business day, most of which fall <em>between</em> coupon dates. The
+    <strong>dirty price</strong> (also called the "full" or "invoice" price)
+    is what a buyer actually pays: the bond's theoretical present value plus
+    <strong>accrued interest</strong> — the portion of the next coupon the
+    seller has already "earned" by holding the bond since the last coupon
+    date, and is owed as compensation for handing that accrued claim to the
+    buyer. The <strong>clean price</strong> is the dirty price minus that
+    accrued interest — it's the price quoted on trading screens, precisely
+    because it doesn't jump by the coupon amount on every coupon date and so
+    moves smoothly with genuine changes in yield, while the dirty price is
+    what actually settles. This lesson's pricing formula and worked example
+    both assume valuation on a coupon date, where clean price and dirty price
+    coincide.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(P\)</td><td>The bond's price today — present value of every future cash flow.</td></tr>
+    <tr><td>\(C\)</td><td>The fixed coupon payment received at the end of each period.</td></tr>
+    <tr><td>\(F\)</td><td>Face value (par value / principal) — repaid once, at maturity.</td></tr>
+    <tr><td>\(y\)</td><td>The discount rate per period — when solved backwards from a market price, this is the yield to maturity (YTM).</td></tr>
+    <tr><td>\(n\)</td><td>Number of periods (coupon dates) remaining until maturity.</td></tr>
+    <tr><td>\(t\)</td><td>The index of a given period, running from 1 (the next coupon) to \(n\) (maturity).</td></tr>
+    <tr><td>\(P_{mkt}\)</td><td>The bond's observed market price — the known quantity used to back out YTM.</td></tr>
+    <tr><td>Coupon rate</td><td>\(C/F\) — the coupon expressed as a percentage of face value; compared against YTM to classify par/premium/discount.</td></tr>
+  </table></div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">The price-yield curve — 5-year, 4% annual coupon, $1,000 face bond</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Curved line showing bond price falling as yield rises, with a movable marker for the currently selected yield">
+      <line x1="70" y1="230" x2="600" y2="230" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="70" y1="20" x2="70" y2="230" style="stroke:var(--border);stroke-width:1"/>
+      <text x="335" y="262" text-anchor="middle" style="fill:var(--text3);font-size:11px">Yield to maturity (%)</text>
+      <text x="20" y="125" text-anchor="middle" style="fill:var(--text3);font-size:11px" transform="rotate(-90 20 125)">Price ($)</text>
+      <text x="70" y="245" text-anchor="middle" style="fill:var(--text3);font-size:10px">0%</text>
+      <text x="600" y="245" text-anchor="middle" style="fill:var(--text3);font-size:10px">20%</text>
+      <text x="60" y="234" text-anchor="end" style="fill:var(--text3);font-size:10px">0</text>
+      <text x="60" y="30" text-anchor="end" style="fill:var(--text3);font-size:10px">2000</text>
+      <path id="bond-curve-path" style="fill:none;stroke:var(--blue);stroke-width:2.5" d=""/>
+      <line id="bond-y-marker" x1="0" y1="20" x2="0" y2="230" style="stroke:var(--amber);stroke-width:1.5;stroke-dasharray:2,2"/>
+      <circle id="bond-y-dot" cx="0" cy="0" r="5" style="fill:var(--amber);stroke:var(--s1);stroke-width:1.5"/>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Yield to maturity</span><span class="tl-live" id="bond-y-val">y = 5.00%</span></div>
+        <input type="range" id="bond-y-slider" min="10" max="1800" step="5" value="500">
+        <div class="tl-hint">Drag to move along the curve. Watch the price update in real time using the exact same discounting formula above — and notice the curve bends rather than running straight.</div>
+      </div>
+    </div>
+    <div class="tl-readout">Price at this yield: $<b id="bond-p-val">956.71</b></div>
+    <div class="tl-chart-caption">This is the exact pricing formula above, evaluated at every yield from 0.1% to 18% for a 5-year, 4% annual-coupon, $1,000 face bond. The curve is visibly bowed, not a straight line — a bond's price falls faster for the first percentage point of yield increase near low yields than it does further out. That curvature is convexity, quantified in Lesson 2.</div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Pricing a 5-year, 4% coupon bond at a 5% YTM, then reversing the problem</h3>
+    <p>
+      A bond has $1,000 face value, pays a 4% annual coupon (\(C = \$40\) per
+      year), matures in exactly \(n=5\) years, and the market's required YTM
+      is 5% (\(y=0.05\)). Discount every cash flow back to today.
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Discount each of the five $40 coupons</h4>
+          <div class="tl-math">
+            \[ \frac{40}{1.05^1}=38.10,\quad \frac{40}{1.05^2}=36.28,\quad \frac{40}{1.05^3}=34.56,\quad \frac{40}{1.05^4}=32.91,\quad \frac{40}{1.05^5}=31.34 \]
+          </div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Sum the discounted coupons</h4>
+          <div class="tl-math">
+            \[ 38.10+36.28+34.56+32.91+31.34 = 173.19 \]
+          </div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Discount the $1,000 face value from year 5 only</h4>
+          <div class="tl-math">
+            \[ \frac{1000}{1.05^5} = \frac{1000}{1.27628} \approx 783.53 \]
+          </div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Add the two pieces</h4>
+          <div class="tl-math">
+            \[ P = 173.19 + 783.53 = \$956.71 \]
+          </div>
+          <p>
+            The bond prices at $956.71 — a <strong>discount</strong> to its
+            $1,000 face value, exactly as expected, since its 4% coupon rate
+            sits below the 5% YTM the market demands. This matches the
+            discount-bond case from the comparison above.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <h4 style="margin-top:20px">Now reverse it: given a market price, find the YTM</h4>
+    <p>
+      Suppose instead you observe this same bond trading at
+      \(P_{mkt} = \$1{,}021.00\) and want to know what YTM the market is
+      implying. There's no algebraic shortcut (per the box above) — set up
+      an iterative search instead. Newton-Raphson refines a guess
+      \(y_k\) using the pricing function \(f(y) = P(y) - P_{mkt}\) (the gap
+      between the model price at a trial yield and the observed price) and
+      its derivative \(f'(y)\) (which, not coincidentally, is (the negative
+      of) modified duration times price — the subject of the very next
+      lesson):
+    </p>
+    <div class="tl-math">
+      \[ y_{k+1} = y_k - \frac{f(y_k)}{f'(y_k)} \]
+    </div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>f(y)</code><span>model price at trial yield y, minus the observed market price</span></div>
+      <div class="tl-eq-chip c4"><code>f'(y)</code><span>the pricing function's slope — how fast price moves per unit of y</span></div>
+    </div>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Start with a reasonable guess, \(y_0 = 4.00\%\)</h4>
+          <p>The coupon rate is a common, cheap starting guess. At \(y_0=0.04\), plugging into the pricing formula gives \(P(0.04) = \$1{,}000.00\) exactly (a 4% coupon bond priced at a 4% YTM is, by definition, a par bond). So \(f(y_0) = 1000.00 - 1021.00 = -21.00\) — the model price is too low, meaning the trial yield is too high (recall: yield up, price down) relative to what a $1,021 market price implies.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Estimate the local slope \(f'(y_0)\) and take a step</h4>
+          <p>A quick numerical estimate (evaluating the pricing formula at \(y=3.9\%\) and \(y=4.1\%\) — prices of \$1,004.48 and \$995.57 respectively — and taking the difference) gives a slope of roughly \(f'(y_0) \approx -4{,}459\) dollars per unit change in \(y\) — consistent with duration-driven price sensitivity, formalized in Lesson 2. The Newton step is:</p>
+          <div class="tl-math">
+            \[ y_1 = 0.0400 - \frac{-21.00}{-4459} \approx 0.0400 - 0.0047 \approx 0.0353 \]
+          </div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Repeat until \(f(y_k)\) is close enough to zero</h4>
+          <p>Plugging \(y_1 \approx 3.53\%\) back into the pricing formula gives a price much closer to \$1,021, and \(f(y_1)\) shrinks to only a small fraction of the original $21 gap. One or two more iterations of the same step converge to the bond's true YTM to well beyond any practical precision. This is exactly the Newton-Raphson procedure covered in depth in this curriculum's Numerical Methods material — bond YTM solving is one of its textbook applications.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A rate-sensitive fund watches "the 10-year" reprice overnight</h3>
+    <p>
+      A fixed-income portfolio manager holds a large position in 10-year
+      Treasury notes. Overnight, a stronger-than-expected inflation print
+      hits the wire. Within minutes, headlines say "the 10-year yield jumped
+      15 basis points." No one on the desk needs to re-run a pricing model to
+      know what happened to the bond's price — the inverse price-yield
+      relationship from this lesson says it immediately and unambiguously:
+      yield up means price down, full stop, for every plain fixed-coupon bond
+      in the book.
+    </p>
+    <p>
+      The manager's actual work starts one level deeper: <em>how much</em>
+      did the price fall, and does that match what the position's risk model
+      predicted? A bond priced near par with a longer maturity will have
+      moved by a noticeably larger dollar amount than a bond near maturity
+      with only a few coupons left, even though both are described by the
+      exact same "yield up, price down" direction. Untangling "how much" from
+      "which direction" is precisely the job duration and convexity do —
+      this scenario is the reason Lesson 2 exists immediately after this one,
+      not an isolated curiosity.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Rates desks and macro funds live inside this formula every day, mostly
+    in its "solve for YTM" direction rather than its "solve for price"
+    direction — market prices are observed continuously; the yield is the
+    derived, comparable summary statistic. A trader quoting a bond says "it's
+    trading at a yield of 4.32%," not "it's trading at $978.40" — the yield
+    is what's comparable across different coupons, maturities, and issuers,
+    which is exactly why it's the quoted convention.
+  </p>
+  <p>
+    <strong>Pull to par</strong> is a standard piece of desk intuition built
+    directly on this lesson's par/premium/discount framework: as a bond
+    approaches maturity, holding its yield fixed, a premium bond's price
+    decays smoothly down toward face value and a discount bond's price rises
+    smoothly up toward face value, since at maturity every bond redeems at
+    exactly \(F\) regardless of what it traded for along the way. Traders
+    holding premium bonds near maturity account for this expected price
+    decay explicitly rather than mistaking it for a market move.
+  </p>
+  <p>
+    <strong>Yield-based relative value</strong> is the standard way desks
+    compare bonds that differ in coupon, maturity, and issuer all at once —
+    a 3% coupon bond and a 6% coupon bond of the same maturity aren't
+    directly comparable by price, but their YTMs are, on the same scale, the
+    same way a z-score makes otherwise-incomparable series comparable.
+    Spread trades (buying one bond, selling another, on the difference
+    between their yields) are built entirely on this comparability.
+  </p>
+  <p>
+    <strong>Solving for YTM in production systems</strong> is virtually never
+    done by hand — every pricing library and terminal runs a Newton-Raphson
+    (or a similar bisection/secant) root-finder against the exact pricing
+    equation shown above, purely because no closed form exists for more than
+    a couple of coupon periods. The iterative worked example above is the
+    literal algorithm, at toy scale, behind every "YTM" field a Bloomberg
+    terminal or pricing library displays.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this goes wrong in practice</h3>
+    <p>
+      <strong>Treating YTM as a guaranteed realized return.</strong> YTM's
+      derivation implicitly assumes every coupon is reinvested at that exact
+      same rate \(y\) for the life of the bond, and that the bond is held to
+      maturity without default. In reality, rates move around, so coupons
+      actually get reinvested at whatever rate prevails when each one is
+      paid — this gap is called <strong>reinvestment risk</strong>, and it
+      means the return an investor actually realizes over the holding period
+      can differ meaningfully from the quoted YTM, especially for
+      longer-maturity, higher-coupon bonds where more of the total return
+      comes from reinvested coupons rather than price appreciation.
+    </p>
+    <p>
+      <strong>Confusing coupon rate with yield.</strong> The coupon rate is
+      fixed at issuance and never changes for the life of the bond; YTM
+      moves every time the market price moves. A bond's coupon rate tells
+      you what it was worth relative to rates <em>at issuance</em> — its YTM
+      tells you what it's worth relative to rates <em>right now</em>. These
+      only coincide for a par bond.
+    </p>
+    <p>
+      <strong>Ignoring clean vs. dirty price when comparing quotes.</strong>
+      Prices quoted between coupon dates are almost always clean prices;
+      forgetting to add accrued interest back before comparing to a
+      settlement amount, or comparing a clean-price quote against a formula
+      that assumes valuation exactly on a coupon date, introduces a
+      systematic (if usually small) error.
+    </p>
+    <p>
+      <strong>Assuming a single starting guess always converges cleanly.</strong>
+      Newton-Raphson's iteration can fail to converge, oscillate, or converge
+      to an economically meaningless root (e.g. a negative yield far from
+      any sensible value) if the initial guess is poor or the pricing
+      function's local slope is unusual — real implementations bound the
+      search to a sensible yield range and fall back to a slower but more
+      robust method (like bisection) if Newton-Raphson misbehaves.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A bond's price is just present value.</strong> \(P = \sum \frac{C}{(1+y)^t} + \frac{F}{(1+y)^n}\) — discount every coupon from the period it lands in, discount the face value from maturity, and add.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>YTM is the same formula solved backwards.</strong> Given an observed market price, YTM is the single discount rate that reproduces it — implicit, and (beyond 1-2 periods) solvable only iteratively, e.g. via Newton-Raphson.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Price and yield move in strictly opposite directions.</strong> This falls directly out of the discounting algebra — no exceptions for a plain fixed-coupon bond.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Coupon rate vs. YTM tells you par/premium/discount.</strong> Coupon = YTM → par; coupon &gt; YTM → premium; coupon &lt; YTM → discount.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The price-yield relationship is curved, not straight.</strong> That curvature (convexity) is why a duration-only estimate of a price move is an approximation, not exact — the subject of the very next lesson.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>YTM assumes coupons are reinvested at YTM itself.</strong> Real reinvestment happens at whatever rate prevails later — the realized return on a held bond can differ from its quoted YTM.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Clean price ≠ dirty price between coupon dates.</strong> The formula here assumes valuation exactly on a coupon date; real settlement amounts include accrued interest.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why can't you generally solve the bond pricing formula for \(y\) algebraically once there are more than a couple of coupon periods?</summary>
+    <div class="tl-answer">
+      Because \(y\) appears raised to a different power in every term of the
+      sum simultaneously (\((1+y)^1, (1+y)^2, \dots, (1+y)^n\)), and there is
+      no general algebraic formula — analogous to the quadratic formula for
+      degree-2 polynomials — that isolates a single variable appearing at
+      three or more different powers in the same equation. For \(n=1\) it's
+      linear (solvable directly); for \(n=2\) it's a quadratic (still
+      solvable by formula); for \(n \ge 3\) there is, in general, no closed
+      form, so YTM must be found by an iterative numerical search such as
+      Newton-Raphson.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. A bond's coupon rate is 6% and its YTM is 4.5%. Does it trade above, below, or at face value, and why?</summary>
+    <div class="tl-answer">
+      Above face value — a premium bond. Its coupon (6%) is richer than the
+      return the market currently requires (4.5%), so investors are willing
+      to pay more than face value for the bond, up to the point where the
+      higher purchase price brings the bond's effective return back down to
+      the market's 4.5% YTM. This is the "coupon rate &gt; YTM ⇒ premium"
+      rule from the par/premium/discount comparison above.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. If market yields rise, what happens to bond prices, and why is this true without exception for a plain fixed-coupon bond?</summary>
+    <div class="tl-answer">
+      Prices fall. Every cash flow in the pricing formula is divided by
+      \((1+y)\) raised to some positive power; raising \(y\) makes every one
+      of those denominators larger, so every term in the sum shrinks with no
+      exception, since every term shares that exact structure. There is no
+      configuration of a plain fixed-coupon bond where a yield increase
+      raises any individual discounted cash flow, so the sum — the price —
+      must fall.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What does yield to maturity actually assume about reinvestment, and why does that matter for the return an investor actually realizes?</summary>
+    <div class="tl-answer">
+      YTM is derived assuming every coupon received along the way is
+      reinvested at that exact same rate, \(y\), until maturity, and that the
+      bond is held to maturity without default. In reality, market rates
+      change over time, so coupons actually get reinvested at whatever rate
+      happens to prevail when each one is paid — not necessarily the
+      original YTM. This gap, called reinvestment risk, means the actual
+      realized return on a held bond can differ from its quoted YTM,
+      especially for bonds with more coupons and a longer time to maturity,
+      where reinvested-coupon income makes up a larger share of the total
+      return.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. What is the difference between a clean price and a dirty price, and why do trading screens quote the clean price?</summary>
+    <div class="tl-answer">
+      The dirty (full/invoice) price is what a buyer actually pays: the
+      bond's present value plus accrued interest — the portion of the next
+      coupon the seller has already earned since the last coupon date and is
+      owed for transferring that claim. The clean price is the dirty price
+      minus that accrued interest. Screens quote the clean price because it
+      moves smoothly with genuine changes in yield, while the dirty price
+      jumps mechanically by the coupon amount on every coupon date — a jump
+      that has nothing to do with a change in valuation and would make the
+      quoted price much harder to read at a glance.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Frank J. Fabozzi, <em>Bond Markets, Analysis, and Strategies</em>, 9th ed., Pearson, 2016 — the standard practitioner/academic textbook covering bond pricing, YTM, and the par/premium/discount framework in full depth.</li>
+    <li>Bruce Tuckman &amp; Angel Serrat, <em>Fixed Income Securities: Tools for Today's Markets</em>, 3rd ed., Wiley, 2011 — a rigorous, quant-oriented treatment of bond math, including the numerical methods used to solve for yield in practice.</li>
+    <li>Robert W. Kolb, <em>The Financial Hub of Bond Markets</em> or any standard CFA Institute Level I fixed-income curriculum reading — for the clean/dirty price and accrued interest conventions referenced briefly above.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="duration-convexity.html">Duration &amp; Convexity →</a>
+  </div>
+</div>
+<script>
+(function(){
+  // Exact bond pricing formula from this page: P = sum_{t=1..n} C/(1+y)^t + F/(1+y)^n
+  var C = 40, F = 1000, n = 5;
+  function price(y){
+    var p = 0;
+    for (var t = 1; t <= n; t++) p += C / Math.pow(1+y, t);
+    p += F / Math.pow(1+y, n);
+    return p;
+  }
+
+  var slider = document.getElementById('bond-y-slider');
+  var yVal = document.getElementById('bond-y-val');
+  var pVal = document.getElementById('bond-p-val');
+  var pathEl = document.getElementById('bond-curve-path');
+  var marker = document.getElementById('bond-y-marker');
+  var dot = document.getElementById('bond-y-dot');
+  if (!slider) return;
+
+  // Chart pixel mapping: x in [70,600] maps to yield in [0.001, 0.18]; y in [230,20] maps to price in [0, 2000]
+  var X0 = 70, X1 = 600, YMIN = 0.001, YMAX = 0.18;
+  var PY0 = 230, PY1 = 20, PMIN = 0, PMAX = 2000;
+
+  function xForY(y){ return X0 + (y - YMIN) / (YMAX - YMIN) * (X1 - X0); }
+  function yForP(p){ return PY0 + (p - PMIN) / (PMAX - PMIN) * (PY1 - PY0); }
+
+  function buildCurve(){
+    var d = '';
+    var steps = 120;
+    for (var i = 0; i <= steps; i++) {
+      var y = YMIN + (YMAX - YMIN) * i / steps;
+      var p = price(y);
+      var x = xForY(y);
+      var py = yForP(p);
+      d += (i === 0 ? 'M' : 'L') + x.toFixed(2) + ',' + py.toFixed(2) + ' ';
+    }
+    pathEl.setAttribute('d', d);
+  }
+
+  function update(){
+    var y = parseInt(slider.value, 10) / 10000; // slider in basis points-ish (1 unit = 0.01%)
+    var p = price(y);
+    yVal.textContent = 'y = ' + (y*100).toFixed(2) + '%';
+    pVal.textContent = p.toFixed(2);
+    var x = xForY(y);
+    var py = yForP(p);
+    marker.setAttribute('x1', x); marker.setAttribute('x2', x);
+    marker.setAttribute('y1', 20); marker.setAttribute('y2', 230);
+    dot.setAttribute('cx', x); dot.setAttribute('cy', py);
+  }
+
+  buildCurve();
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Convex Optimization — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Numerical Methods / Convex Optimization</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Numerical Methods · Lesson 2 of 4</div>
+  <h1 class="tl-title">Convex Optimization</h1>
+  <p class="tl-dek">The one shape-property of a problem that turns "found a good answer" into "found the best possible answer, guaranteed" — and exactly what breaks the guarantee the moment a real-world constraint gets in the way.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span>~17 min read</span>
+    <span>Prereqs: Newton-Raphson &amp; Gradient Descent</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A function is <strong>convex</strong> if the line segment ("chord") joining any two points on its graph never dips below the graph itself: \(f(\theta x + (1-\theta)y) \le \theta f(x) + (1-\theta) f(y)\). Informally: bowl-shaped, never saddle-shaped or wavy.</li>
+      <li>The single most important practical consequence: on a convex function, <strong>any local minimum is automatically the global minimum</strong> — there's no hidden better answer lurking somewhere else in the search space.</li>
+      <li>A twice-differentiable function is convex exactly when its Hessian (second-derivative matrix) is <strong>positive semi-definite</strong> everywhere — never curving downward in any direction.</li>
+      <li>Markowitz portfolio variance, \(w^\top \Sigma w\), is a convex quadratic function because a valid covariance matrix \(\Sigma\) is always positive semi-definite — which is exactly why mean-variance optimization is a well-posed, reliably solvable problem in the first place.</li>
+      <li>The <strong>Lagrangian</strong> converts a constrained problem into an unconstrained one; the <strong>KKT conditions</strong> (stationarity, primal feasibility, dual feasibility, complementary slackness) are the necessary conditions a convex problem's true optimum must satisfy.</li>
+      <li>Adding a realistic-sounding constraint — "hold at most 10 names" (a cardinality constraint) — can destroy convexity entirely, turning a cleanly solvable problem into a combinatorial one that needs heuristics rather than a guaranteed-optimal solve.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The previous lesson in this category showed gradient descent and Newton's
+    method reliably finding a point where the gradient is zero, and then
+    flagged the same open question at the end: is that point actually the
+    <em>best</em> answer, or just a locally comfortable one with a better
+    answer sitting elsewhere in the search space? Convexity is the property
+    that answers that question with a flat, provable "yes, it's the best" —
+    and its absence is the property that turns optimization from "solve it"
+    into "search for it, with no guarantee you found the best." This single
+    shape-property is the dividing line between the reliably solvable
+    optimization problems finance leans on constantly (Markowitz portfolio
+    construction, the quadratic-programming lesson that follows this one) and
+    the much harder combinatorial problems that show up the moment a
+    realistic trading constraint gets added.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📊</div>
+      <h4>Markowitz mean-variance optimization</h4>
+      <p>Portfolio variance is a convex quadratic function because a covariance matrix is always positive semi-definite — the reason this optimization problem is reliably solvable at all, covered elsewhere in this curriculum's Markowitz &amp; Black-Litterman lesson.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📐</div>
+      <h4>Linear &amp; Quadratic Programming</h4>
+      <p>The next lesson in this category is entirely about a specific, extremely well-studied family of convex problems — this lesson is what makes that family's guarantees possible.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🎯</div>
+      <h4>Model calibration</h4>
+      <p>Fitting a model to minimize a loss function only comes with a "found the true best fit" guarantee if that loss function is convex in its parameters — otherwise gradient descent or Newton's method can converge to a misleadingly comfortable local answer.</p>
+    </div>
+  </div>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A bowl has exactly one bottom; an egg carton has many</h3>
+    <p>
+      Picture a mixing bowl sitting on a table. However you look at it, it
+      curves upward in every direction from its single lowest point — there's
+      no second dip anywhere in the bowl that could trick a marble rolling
+      around inside it into settling somewhere other than the true bottom. Now
+      picture an egg carton instead: a landscape with many separate dips, each
+      one a local low point, but only one of them is the deepest. A marble
+      dropped into any one dip will happily settle there and stop — even
+      though a much lower dip might be sitting right next to it. If you can
+      only feel the local slope under the marble (exactly what gradient
+      descent and Newton's method do), you have no way to tell, from inside
+      one dip, whether you're in the bowl or in one cell of the egg carton.
+      <strong>Convexity is the mathematical statement "this landscape is a
+      bowl, not an egg carton"</strong> — and it's the only thing that turns
+      "the marble stopped rolling" into "the marble found the lowest point
+      there is."
+    </p>
+    <p>
+      The same shape idea applies to the <em>set</em> of allowed answers, not
+      just the function being minimized. A <strong>convex set</strong> is one
+      where, if two points are both allowed, every point on the straight line
+      between them is allowed too — a solid disk, a solid rectangle, a solid
+      triangle. A set with a hole in the middle, or two separate blobs, is not
+      convex — there exist pairs of allowed points whose connecting line
+      passes through forbidden territory. Both halves matter for a full
+      guarantee: a convex <em>function</em> minimized over a convex
+      <em>set</em> of allowed points is the textbook definition of a
+      convex optimization problem, and it's precisely this combination that
+      makes "local optimum = global optimum" hold.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>Defining a convex function</h3>
+  <p>
+    Formally, a function \(f\) is <strong>convex</strong> on some set if, for
+    any two points \(x\) and \(y\) in that set and any weight
+    \(\theta \in [0,1]\):
+  </p>
+  <div class="tl-math">
+    \[ f(\theta x + (1-\theta) y) \;\le\; \theta f(x) + (1-\theta) f(y) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>θx + (1−θ)y</code><span>a point on the straight-line segment between x and y</span></div>
+    <div class="tl-eq-chip c2"><code>f(θx+(1−θ)y)</code><span>the curve's actual value there — the left-hand side</span></div>
+    <div class="tl-eq-chip c3"><code>θf(x)+(1−θ)f(y)</code><span>the value of the straight chord connecting (x,f(x)) and (y,f(y)) at that same point</span></div>
+    <div class="tl-eq-chip c4"><code>≤</code><span>the curve never lies above its own chord — this is the entire definition</span></div>
+  </div>
+  <p>
+    Read the two sides directly against a picture: the right-hand side,
+    \(\theta f(x) + (1-\theta) f(y)\), is exactly the height of the straight
+    line ("chord") connecting the two points \((x, f(x))\) and \((y, f(y))\) on
+    the graph, evaluated at the same horizontal position as the left-hand
+    side. The inequality says the actual curve, at every point between \(x\)
+    and \(y\), sits <em>at or below</em> that chord — the curve never bulges
+    upward above the straight line joining any two of its own points. That is
+    the entire, complete definition of convexity; the interactive chart below
+    lets you verify this inequality on real numbers by sliding \(\theta\)
+    between 0 and 1 for a specific function. (If the inequality is strict,
+    \(<\), for all \(\theta\) in \((0,1)\) and \(x\ne y\), the function is
+    <strong>strictly</strong> convex — it has no flat stretches, and its
+    minimizer, if one exists, is unique.)
+  </p>
+
+  <h3>The Hessian test — checking convexity with calculus</h3>
+  <p>
+    Checking the chord inequality directly for every pair of points is
+    impractical. For a twice-differentiable function, there's a much more
+    usable equivalent test using the second derivative — in one dimension:
+  </p>
+  <div class="tl-math">
+    \[ f \text{ is convex} \quad\Longleftrightarrow\quad f''(x) \ge 0 \ \text{ for every } x \]
+  </div>
+  <p>
+    In words: the function's curvature never bends downward anywhere — it's
+    either curving upward (like a genuine bowl) or momentarily flat, never
+    curving the "wrong" way. In many dimensions, the second derivative becomes
+    the <strong>Hessian</strong> matrix \(H\) (every second partial
+    derivative, arranged in a grid), and the equivalent condition is that
+    \(H\) is <strong>positive semi-definite</strong> everywhere:
+  </p>
+  <div class="tl-math">
+    \[ f \text{ is convex} \quad\Longleftrightarrow\quad v^\top H v \ge 0 \ \text{ for every vector } v, \text{ at every point} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>H</code><span>the Hessian — the many-dimensional generalization of f''(x)</span></div>
+    <div class="tl-eq-chip c2"><code>v</code><span>an arbitrary direction vector — "no matter which way you look"</span></div>
+    <div class="tl-eq-chip c3"><code>v^T H v ≥ 0</code><span>curvature is never negative in any direction — positive semi-definite (PSD)</span></div>
+  </div>
+  <p>
+    "Positive semi-definite" is exactly the same property this curriculum's
+    Linear Algebra &amp; Matrices lesson uses to characterize a valid
+    covariance matrix — no coincidence, since a Hessian and a covariance
+    matrix are both symmetric matrices being asked the same structural
+    question: "is there any direction in which this matrix produces a
+    negative number?" A practical shortcut for checking PSD-ness on a small
+    matrix by hand (used in the worked example below) is <strong>Sylvester's
+    criterion</strong>: a symmetric matrix is positive semi-definite if every
+    one of its leading principal minors (the determinant of the top-left
+    \(1\times1\), then \(2\times2\), then \(3\times3\)… sub-block) is
+    non-negative — for a strictly positive-definite check (the stronger,
+    more common case in practice), each of those minors should be strictly
+    positive.
+  </p>
+
+  <h3>Why convexity guarantees local optimum = global optimum</h3>
+  <p>
+    Here is the single most important practical fact in this lesson, and the
+    reasoning behind it in full. Suppose \(x^\*\) is a <strong>local</strong>
+    minimum of a convex function \(f\) — meaning \(f(x^\*) \le f(x)\) for
+    every \(x\) in some small neighborhood around \(x^\*\), but not
+    necessarily compared to points far away. Suppose, for contradiction, some
+    other point \(y\) elsewhere gives a strictly smaller value,
+    \(f(y) < f(x^\*)\). Convexity says that for any \(\theta\) close to 1, the
+    point \(\theta x^\* + (1-\theta) y\) — which sits just slightly toward
+    \(y\) from \(x^\*\), and so lies inside \(x^\*\)'s small neighborhood for
+    \(\theta\) close enough to 1 — must satisfy:
+  </p>
+  <div class="tl-math">
+    \[ f(\theta x^\* + (1-\theta)y) \le \theta f(x^\*) + (1-\theta) f(y) < \theta f(x^\*) + (1-\theta) f(x^\*) = f(x^\*) \]
+  </div>
+  <p>
+    (the middle strict inequality holds because \(f(y) < f(x^\*)\) and
+    \((1-\theta) > 0\)). But that point is inside \(x^\*\)'s neighborhood, and
+    it has a strictly smaller value than \(f(x^\*)\) — directly contradicting
+    the assumption that \(x^\*\) was a local minimum in the first place. The
+    contradiction means the assumption was false: no such \(y\) with a
+    strictly smaller value can exist anywhere. <strong>Every local minimum of
+    a convex function is therefore automatically a global minimum</strong> —
+    not because you searched everywhere and confirmed it by exhaustion, but
+    because the shape of the function itself makes a hidden better answer
+    logically impossible.
+  </p>
+  <div class="tl-solid green">
+    <strong>The payoff:</strong> for a convex problem, gradient descent or
+    Newton's method finding <em>a</em> point with zero gradient is enough to
+    conclude it found <em>the</em> best point, full stop — no separate search
+    over the rest of the space is needed. This is exactly the guarantee that
+    was missing at the end of the previous lesson.
+  </div>
+
+  <h3>Markowitz mean-variance is a convex quadratic program</h3>
+  <p>
+    Portfolio variance, from the Markowitz framework covered elsewhere in this
+    curriculum, is \(w^\top \Sigma w\) — a <strong>quadratic form</strong> in
+    the weight vector \(w\). Its Hessian (the matrix of second derivatives
+    with respect to the weights) is a constant, \(2\Sigma\), independent of
+    \(w\) itself. A valid covariance matrix \(\Sigma\) is always positive
+    semi-definite by construction (it's built from actual variances and
+    covariances of real random variables, and a variance can never be
+    negative) — so the Hessian \(2\Sigma\) is PSD everywhere, and portfolio
+    variance is a convex function of the weights, full stop, for any real
+    covariance matrix. Combined with the fact that the constraints
+    (weights summing to 1, hitting a target expected return, and — as the
+    worked example below adds — no-shorting box constraints \(w_i \ge 0\))
+    are all <strong>linear</strong>, and a linear constraint always describes
+    a convex set, the whole Markowitz minimum-variance problem is a
+    <strong>convex quadratic program</strong>: a convex quadratic objective
+    minimized over a convex (in fact, polyhedral) feasible set. That is
+    precisely why mean-variance optimization is reliably, provably solvable —
+    any solver that finds a point satisfying the optimality conditions below
+    has found the genuine global minimum-variance portfolio, not a merely
+    locally comfortable one.
+  </p>
+
+  <h3>The Lagrangian and the KKT conditions</h3>
+  <p>
+    A constrained optimization problem — minimize \(f(x)\) subject to
+    inequality constraints \(g_i(x) \le 0\) and equality constraints
+    \(h_j(x) = 0\) — is converted into a single unconstrained expression by
+    the <strong>Lagrangian</strong>, which folds every constraint into the
+    objective using one multiplier per constraint:
+  </p>
+  <div class="tl-math">
+    \[ \mathcal{L}(x, \lambda, \nu) = f(x) + \sum_i \lambda_i\, g_i(x) + \sum_j \nu_j\, h_j(x) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>f(x)</code><span>the original objective being minimized</span></div>
+    <div class="tl-eq-chip c2"><code>λᵢ, gᵢ(x)</code><span>a Lagrange multiplier and its matching inequality constraint</span></div>
+    <div class="tl-eq-chip c3"><code>νⱼ, hⱼ(x)</code><span>a Lagrange multiplier and its matching equality constraint</span></div>
+  </div>
+  <p>
+    For a <em>convex</em> problem (convex \(f\) and \(g_i\), affine — linear
+    plus a constant — \(h_j\)), the following four conditions, together known
+    as the <strong>Karush-Kuhn-Tucker (KKT) conditions</strong>, are both
+    necessary <em>and</em> sufficient for a point \(x^\*\) (with matching
+    multipliers \(\lambda^\*, \nu^\*\)) to be the true global optimum — this
+    sufficiency, not just necessity, is itself a special benefit of convexity
+    that does not hold in general for non-convex problems:
+  </p>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">∇ₓL = 0</div>
+      <div class="tl-fp-name">Stationarity</div>
+      <div class="tl-fp-desc">The Lagrangian's gradient with respect to x vanishes at the optimum</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">gᵢ(x)≤0, hⱼ(x)=0</div>
+      <div class="tl-fp-name">Primal feasibility</div>
+      <div class="tl-fp-desc">The candidate point actually satisfies every original constraint</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">λᵢ ≥ 0</div>
+      <div class="tl-fp-name">Dual feasibility</div>
+      <div class="tl-fp-desc">Every inequality-constraint multiplier is non-negative</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">λᵢgᵢ(x)=0</div>
+      <div class="tl-fp-name">Complementary slackness</div>
+      <div class="tl-fp-desc">Each inequality constraint is either exactly binding, or its multiplier is zero</div>
+    </div>
+  </div>
+
+  <p>
+    <strong>Stationarity</strong>, \(\nabla_x \mathcal{L} = 0\), is the direct
+    generalization of "the gradient is zero" from the unconstrained case in
+    the previous lesson — except now it's the gradient of the whole
+    Lagrangian, which already accounts for the constraints' pull on the
+    solution. <strong>Primal feasibility</strong> just restates that the
+    candidate answer must actually satisfy the original problem's constraints
+    — a mathematically convenient \(x\) that violates a constraint is not a
+    valid answer. <strong>Dual feasibility</strong>, \(\lambda_i \ge 0\), only
+    applies to inequality constraints (not equality constraints, whose
+    multipliers \(\nu_j\) can be any sign) — a negative multiplier would mean
+    the constraint is somehow being rewarded for being violated, which
+    contradicts it being an upper-bound-type constraint in the first place.
+    <strong>Complementary slackness</strong>, \(\lambda_i g_i(x) = 0\), is the
+    subtlest and most useful condition in practice: for each inequality
+    constraint, either the constraint is exactly <strong>binding</strong>
+    (\(g_i(x)=0\), sitting right on its boundary) with a possibly nonzero
+    multiplier, or it has slack (\(g_i(x) < 0\), strictly inside the feasible
+    region) and its multiplier must be exactly zero — a constraint that isn't
+    actually limiting the solution contributes nothing to the optimum. This is
+    exactly how a solver (and a human checking its output by hand) identifies
+    <em>which</em> constraints are the ones actually shaping the answer.
+  </p>
+
+  <h3>Where convexity breaks — the cardinality constraint</h3>
+  <p>
+    Real portfolio construction very often wants a rule like "hold at most 10
+    names" — a <strong>cardinality constraint</strong>, limiting the number of
+    nonzero weights rather than their size. This sounds like a small, natural
+    addition to the clean convex problem above. It is not: cardinality is a
+    constraint on <em>how many</em> weights are nonzero, which is fundamentally
+    a discrete, combinatorial condition (choose which 10 of \(N\) assets), not
+    a smooth geometric one. The set of vectors satisfying "at most 10 nonzero
+    entries" is <strong>not convex</strong> — it's a union of many separate
+    flat pieces (one for each possible choice of which 10 assets), and the
+    straight line between a point in one piece and a point in a different
+    piece typically passes through vectors with <em>more</em> than 10 nonzero
+    entries, which are outside the allowed set entirely. The moment that
+    constraint is added, the clean guarantees above are gone: there is no
+    longer a guarantee that a local optimum is global, and the problem becomes
+    combinatorially hard (technically NP-hard) — checking every one of the
+    \(\binom{N}{10}\) possible subsets of assets exactly is computationally
+    infeasible for any realistic \(N\).
+  </p>
+  <div class="tl-solid red">
+    <strong>The practical fallout:</strong> a cardinality-constrained
+    portfolio problem is not solved with the same convex-QP solver used for
+    Markowitz — practitioners instead use heuristics (greedy forward/backward
+    selection), relaxations (replacing the hard cardinality constraint with an
+    \(\ell_1\)-penalty that encourages, but doesn't force, sparsity — the same
+    idea behind LASSO regression), or mixed-integer programming solvers that
+    can handle the discreteness directly but scale far worse and offer weaker
+    optimality guarantees than a convex QP solver ever needs.
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(f(x)\)</td><td>The function being tested for convexity, or minimized.</td></tr>
+    <tr><td>\(\theta\)</td><td>(theta) A weight between 0 and 1, mixing two points \(x\) and \(y\) into a point on their connecting line segment.</td></tr>
+    <tr><td>\(f''(x)\), \(H\)</td><td>The second derivative (one dimension) or Hessian matrix (many dimensions) — curvature.</td></tr>
+    <tr><td>PSD</td><td>Positive semi-definite — \(v^\top H v \ge 0\) for every direction vector \(v\); the matrix-algebra test for convexity.</td></tr>
+    <tr><td>\(\Sigma\)</td><td>(capital sigma) A covariance matrix — always PSD by construction, which is why \(w^\top\Sigma w\) (portfolio variance) is always convex.</td></tr>
+    <tr><td>\(\mathcal{L}(x,\lambda,\nu)\)</td><td>The Lagrangian — the constrained objective folded into a single unconstrained expression using one multiplier per constraint.</td></tr>
+    <tr><td>\(g_i(x) \le 0\)</td><td>An inequality constraint, written in the standard "less than or equal to zero" form.</td></tr>
+    <tr><td>\(h_j(x) = 0\)</td><td>An equality constraint.</td></tr>
+    <tr><td>\(\lambda_i\)</td><td>(lambda) The Lagrange multiplier for inequality constraint \(i\); must be \(\ge 0\) at the optimum (dual feasibility).</td></tr>
+    <tr><td>\(\nu_j\)</td><td>(nu) The Lagrange multiplier for equality constraint \(j\); unrestricted in sign.</td></tr>
+    <tr><td>Binding constraint</td><td>An inequality constraint satisfied with equality, \(g_i(x)=0\) — sitting exactly on its boundary at the optimum.</td></tr>
+  </table></div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">The convexity inequality, verified on real numbers — drag θ</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A convex bowl curve with a straight chord drawn between two fixed points on it, and a movable pair of points showing the curve always sitting at or below the chord">
+      <line x1="20" y1="260" x2="620" y2="260" style="stroke:var(--border);stroke-width:1"/>
+      <path style="fill:none;stroke:var(--border2);stroke-width:2" d="M40.0,260.0 71.1,259.3 102.2,257.2 133.3,253.8 164.4,248.9 195.6,242.7 226.7,235.1 257.8,226.1 288.9,215.7 320.0,203.9 351.1,190.8 382.2,176.2 413.3,160.3 444.4,143.0 475.6,124.3 506.7,104.2 537.8,82.8 568.9,59.9 600.0,35.7"/>
+      <line id="cvx-chord" x1="102.2" y1="257.2" x2="537.8" y2="82.8" style="stroke:var(--purple);stroke-width:2;stroke-dasharray:5,4"/>
+      <circle cx="102.2" cy="257.2" r="4" style="fill:var(--text2)"/>
+      <circle cx="537.8" cy="82.8" r="4" style="fill:var(--text2)"/>
+      <text x="102.2" y="276" text-anchor="middle" style="fill:var(--text3);font-size:11px">x = 1</text>
+      <text x="537.8" y="70" text-anchor="middle" style="fill:var(--text3);font-size:11px">y = 8</text>
+      <line id="cvx-marker" x1="0" y1="0" x2="0" y2="260" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:2,2"/>
+      <circle id="cvx-chord-dot" r="5.5" style="fill:var(--purple);stroke:var(--s1);stroke-width:1.5"/>
+      <circle id="cvx-curve-dot" r="5.5" style="fill:var(--blue);stroke:var(--s1);stroke-width:1.5"/>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>θ (weight on x=1)</span><span class="tl-live" id="cvx-theta-val">θ = 0.50</span></div>
+        <input type="range" id="cvx-theta-slider" min="0" max="100" step="1" value="50">
+        <div class="tl-hint">f(x) = 0.15x² on x, y = 1, 8. Blue dot is the curve's real value at P = θ·1 + (1−θ)·8; purple dot is the chord's value at the same point. Drag θ across its full range — the blue dot never rises above the purple one.</div>
+      </div>
+    </div>
+    <div class="tl-readout" id="cvx-readout">P = 4.50 — curve f(P) ≈ 3.04, chord value ≈ 4.87 — curve ≤ chord ✓</div>
+    <div class="tl-chart-caption">Every convex function satisfies f(θx+(1−θ)y) ≤ θf(x)+(1−θ)f(y) for every θ∈[0,1] — the graph never bulges above the straight chord joining any two of its own points. This is the literal, numerical definition of convexity, not just an illustration of it.</div>
+  </div>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Convex — a bowl</h4>
+      <svg viewBox="0 0 260 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A single bowl-shaped curve with one marked lowest point">
+        <path d="M20,120 Q130,-10 240,120" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+        <circle cx="130" cy="78" r="5" style="fill:var(--green)"/>
+        <text x="130" y="100" text-anchor="middle" style="fill:var(--text2);font-size:11px">the one minimum</text>
+      </svg>
+      <p>Any local minimum found here — by gradient descent, Newton's method, or a KKT-satisfying solver — is guaranteed to be the global minimum. There is nowhere else lower to look.</p>
+    </div>
+    <div class="tl-compare-card red">
+      <h4>Non-convex — an egg carton</h4>
+      <svg viewBox="0 0 260 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A wavy curve with two separate local minima, one shallower and one deeper">
+        <path d="M15,110 Q60,10 100,80 T190,40 Q220,70 245,115" style="fill:none;stroke:var(--red);stroke-width:2.5"/>
+        <circle cx="100" cy="80" r="5" style="fill:var(--amber)"/>
+        <circle cx="190" cy="40" r="5" style="fill:var(--green)"/>
+        <text x="100" y="102" text-anchor="middle" style="fill:var(--text2);font-size:10px">local (not global)</text>
+        <text x="190" y="26" text-anchor="middle" style="fill:var(--text2);font-size:10px">true global minimum</text>
+      </svg>
+      <p>A solver that starts near the left dip can converge cleanly and confidently to the shallower local minimum — with zero gradient, every appearance of success — and never discover the deeper, true minimum sitting elsewhere on the curve.</p>
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Verifying a 2-asset covariance matrix is PSD, then writing the full KKT conditions</h3>
+    <p>
+      <strong>Part 1 — is this Σ actually PSD?</strong> Take a concrete 2-asset
+      covariance matrix, with asset 1's volatility 20% and asset 2's
+      volatility 30%, correlated at \(\rho = 0.2\) (so the covariance is
+      \(0.2 \times 0.20 \times 0.30 = 0.012\)):
+    </p>
+    <div class="tl-math">
+      \[ \Sigma = \begin{pmatrix} 0.0400 & 0.0120 \\ 0.0120 & 0.0900 \end{pmatrix} \]
+    </div>
+    <p>Apply Sylvester's criterion — check the leading principal minors:</p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>1×1 leading minor</h4>
+          <div class="tl-math">\[ \Sigma_{11} = 0.0400 > 0 \ \checkmark \]</div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>2×2 leading minor (the full determinant)</h4>
+          <div class="tl-math">\[ \det(\Sigma) = (0.0400)(0.0900) - (0.0120)^2 = 0.003600 - 0.000144 = 0.003456 > 0 \ \checkmark \]</div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Conclusion</h4>
+          <p>Both leading minors are strictly positive, so \(\Sigma\) is positive <em>definite</em> (a stronger condition than merely semi-definite) — confirmed by its eigenvalues, which work out to \(\lambda_1 \approx 0.0927\) and \(\lambda_2 \approx 0.0373\), both positive. Portfolio variance \(w^\top\Sigma w\) built from this matrix is therefore strictly convex, and any point satisfying the KKT conditions below is the unique global minimum-variance solution.</p>
+        </div>
+      </div>
+    </div>
+
+    <p style="margin-top:16px">
+      <strong>Part 2 — the full KKT conditions for the 2-asset minimum-variance
+      problem, with no shorting allowed.</strong> Minimize portfolio variance,
+      subject to hitting a target return \(R^\*\), the weights summing to 1,
+      and a no-shorting box constraint on each weight:
+    </p>
+    <div class="tl-math">
+      \[
+      \begin{aligned}
+      \text{minimize} \quad & w^\top \Sigma w \\
+      \text{subject to} \quad & w_1 + w_2 = 1 \\
+      & w_1 \mu_1 + w_2 \mu_2 = R^\* \\
+      & -w_1 \le 0, \quad -w_2 \le 0
+      \end{aligned}
+      \]
+    </div>
+    <p>
+      Build the Lagrangian with \(\nu_1\) on the budget constraint,
+      \(\nu_2\) on the return target, and \(\lambda_1,\lambda_2 \ge 0\) on the
+      two no-shorting constraints (written as \(-w_i \le 0\)):
+    </p>
+    <div class="tl-math">
+      \[ \mathcal{L} = w^\top\Sigma w + \nu_1(1 - w_1 - w_2) + \nu_2(R^\* - w_1\mu_1 - w_2\mu_2) - \lambda_1 w_1 - \lambda_2 w_2 \]
+    </div>
+    <p>The full KKT system for this problem, written out in every piece:</p>
+    <div class="tl-math">
+      \[
+      \begin{aligned}
+      \textbf{Stationarity:} \quad & 2(\Sigma_{11}w_1 + \Sigma_{12}w_2) - \nu_1 - \nu_2\mu_1 - \lambda_1 = 0 \\
+      & 2(\Sigma_{21}w_1 + \Sigma_{22}w_2) - \nu_1 - \nu_2\mu_2 - \lambda_2 = 0 \\[4pt]
+      \textbf{Primal feasibility:} \quad & w_1+w_2=1, \quad w_1\mu_1+w_2\mu_2=R^\*, \quad w_1\ge0, \quad w_2\ge0 \\[4pt]
+      \textbf{Dual feasibility:} \quad & \lambda_1 \ge 0, \quad \lambda_2 \ge 0 \\[4pt]
+      \textbf{Complementary slackness:} \quad & \lambda_1 w_1 = 0, \quad \lambda_2 w_2 = 0
+      \end{aligned}
+      \]
+    </div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>λ₁w₁=0, λ₂w₂=0</code><span>the practically useful line: if the optimum wants to short (would need wᵢ<0), λᵢ becomes positive and pins wᵢ to exactly 0 instead</span></div>
+    </div>
+    <p>
+      Read the complementary-slackness line as the whole point of adding the
+      constraint in the first place: if the <em>unconstrained</em>
+      minimum-variance solution would want a negative weight on asset \(i\),
+      the no-shorting constraint becomes binding (\(w_i=0\) exactly) and its
+      multiplier \(\lambda_i\) turns positive, absorbing exactly the pull that
+      would otherwise have pushed \(w_i\) negative. If the unconstrained
+      solution already has \(w_i>0\), the constraint was never actually in the
+      way, and \(\lambda_i=0\) — the constraint contributes nothing, exactly
+      as complementary slackness says it must.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>"Just add a max-10-names rule" turns a five-second solve into an overnight heuristic run</h3>
+    <p>
+      A quant researcher has a clean, working minimum-variance optimizer
+      across a 60-name universe — a convex QP, solved to guaranteed
+      optimality in well under a second every time it's re-run. A portfolio
+      manager asks for one seemingly small addition: "the fund's mandate says
+      we can only hold 10 positions at once — can you just add that as a
+      constraint?"
+    </p>
+    <p>
+      Adding \(w_i \ge 0\) or \(w_i \le 0.1\) (position caps) to the existing
+      solver is trivial — both are linear, and the problem stays a convex QP,
+      solved just as fast as before. "At most 10 nonzero weights," though,
+      is not a linear or convex constraint at all — it's a statement about
+      which <em>subset</em> of the 60 names get used, a combinatorial choice
+      among \(\binom{60}{10}\) (many billions) of possible subsets. The
+      existing convex solver has no way to express that constraint directly;
+      it either needs to be reformulated as a much harder mixed-integer
+      quadratic program (solvable, but potentially minutes or hours instead of
+      milliseconds, with weaker guarantees of finding the true optimum within
+      a practical time budget), or approximated with a heuristic — for
+      instance, solve the unconstrained problem, keep the 10 largest-magnitude
+      weights, rescale, and accept that the result is a good candidate, not a
+      provably optimal one. The manager's request looked like "add one more
+      line to the constraint list"; underneath, it's a switch from a
+      polynomial-time, guaranteed-optimal problem to an NP-hard one — a fact
+      worth stating plainly before promising a quick turnaround.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Quant researchers lean on convexity constantly, often implicitly: choosing
+    to formulate a calibration or portfolio problem so that it stays convex
+    is, in practice, one of the most valuable design decisions a researcher
+    makes, precisely because it converts "search heuristically and hope" into
+    "hand the problem to an off-the-shelf solver and trust the answer." Modern
+    convex solvers (interior-point methods, covered at a conceptual level in
+    the next lesson in this category) routinely solve problems with thousands
+    of variables and constraints to high precision in a fraction of a second
+    — a speed and reliability gap from non-convex, heuristic-driven
+    optimization that is hard to overstate.
+  </p>
+  <p>
+    When a real business requirement (cardinality, minimum-lot-size trading
+    constraints, all-or-nothing position rules) genuinely breaks convexity,
+    the standard practitioner move is not to abandon the convex core — it's
+    to keep the convex problem as the workhorse and layer a heuristic or
+    relaxation on top: greedy asset selection followed by a convex re-solve on
+    the selected subset, an \(\ell_1\)-penalty relaxation that nudges toward
+    sparsity without forcing it exactly (the same convexity-preserving trick
+    LASSO regression uses), or accepting a mixed-integer solver's slower,
+    weaker-guarantee answer specifically because the discreteness is
+    unavoidable for that particular rule. Knowing precisely which constraints
+    in a given mandate are "free" (linear, convexity-preserving) versus
+    "expensive" (combinatorial, convexity-breaking) is itself a genuinely
+    valuable, non-obvious skill — many realistic-sounding portfolio rules turn
+    out to be the free kind, and it's worth checking before assuming a
+    heuristic is required.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this goes wrong in practice</h3>
+    <p>
+      <strong>Assuming "the solver converged" means "found the global optimum,"
+      without checking convexity first.</strong> This is only guaranteed for a
+      genuinely convex problem. Running a general-purpose optimizer on a
+      non-convex objective (a common situation once a model has enough
+      nonlinear structure) and reporting the result as "the optimal solution"
+      is a routine, easy-to-miss overstatement — the honest claim is "a
+      solution the solver found, from this starting point," full stop.
+    </p>
+    <p>
+      <strong>Forgetting that convexity of the objective isn't enough on its
+      own — the feasible set matters too.</strong> A perfectly convex
+      objective minimized over a non-convex feasible set (exactly what a
+      cardinality constraint produces) does not carry the local-equals-global
+      guarantee. Both halves — convex function, convex set — are required.
+    </p>
+    <p>
+      <strong>Treating a small nonlinear tweak as harmless.</strong> Adding a
+      seemingly minor nonlinear term to an otherwise convex objective (a small
+      transaction-cost penalty with a kink, say, or a threshold-based rule) can
+      break convexity entirely, even though the added term looks numerically
+      small next to the rest of the objective. Convexity is a global,
+      structural property — it doesn't degrade gracefully with a "slightly
+      non-convex" version; either the guarantee holds everywhere or it doesn't
+      hold at all.
+    </p>
+    <p>
+      <strong>Misreading a non-binding constraint's multiplier.</strong> By
+      complementary slackness, a constraint with slack (not exactly on its
+      boundary) must have a multiplier of exactly zero at the true optimum. A
+      solver reporting a small but nonzero multiplier on a supposedly
+      non-binding constraint is a signal of numerical imprecision or an
+      incomplete solve, not a meaningful economic result — the multiplier
+      itself is only interpretable once you've confirmed the corresponding
+      constraint is actually binding.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Convexity means the curve never bulges above its own chord.</strong> \(f(\theta x+(1-\theta)y)\le\theta f(x)+(1-\theta)f(y)\) — bowl-shaped, not egg-carton-shaped.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>On a convex problem, local optimum = global optimum, provably.</strong> The single most practically important fact in this lesson — no hidden better answer can exist elsewhere.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The Hessian test makes convexity checkable with calculus.</strong> Positive semi-definite everywhere (\(v^\top Hv\ge0\) for every direction \(v\)) is equivalent to convexity for a twice-differentiable function.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Markowitz portfolio variance is always convex.</strong> A valid covariance matrix is always PSD, so \(w^\top\Sigma w\) is a convex quadratic — the reason mean-variance optimization is reliably solvable.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The KKT conditions (stationarity, primal/dual feasibility, complementary slackness) are necessary and sufficient for a convex problem's true optimum.</strong> Complementary slackness in particular identifies exactly which constraints are binding.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A realistic-sounding constraint can destroy convexity entirely.</strong> Cardinality constraints ("at most 10 names") turn a clean, fast convex QP into a much harder combinatorial problem needing heuristics or mixed-integer solvers, with weaker guarantees.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. In plain English, what does the convexity inequality f(θx+(1−θ)y) ≤ θf(x)+(1−θ)f(y) actually say about the graph of f?</summary>
+    <div class="tl-answer">
+      It says the graph of the function, evaluated at any point between x and
+      y, never sits above the straight line ("chord") connecting the two
+      points (x,f(x)) and (y,f(y)) on the graph. Equivalently, the curve
+      always lies at or below its own chords — the visual definition of
+      "bowl-shaped": it never bulges upward between any two of its own
+      points, which rules out wavy or saddle-shaped functions with multiple
+      separate dips.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why does a positive semi-definite Hessian everywhere guarantee a function is convex?</summary>
+    <div class="tl-answer">
+      The Hessian describes the function's curvature in every direction at
+      every point. A positive semi-definite Hessian means that in whichever
+      direction you look, from wherever you're standing, the function is
+      curving upward or is momentarily flat — never curving downward. A
+      function that never curves the "wrong way" anywhere can never develop a
+      second dip or a saddle shape, which is exactly the informal "bowl, not
+      egg carton" picture of convexity made precise with calculus — the
+      Hessian test and the chord-inequality definition are two equivalent
+      ways of stating the same underlying shape property.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why is portfolio variance, w^TΣw, guaranteed to be convex for any valid covariance matrix Σ, with no extra assumptions needed?</summary>
+    <div class="tl-answer">
+      Portfolio variance's Hessian (its matrix of second derivatives with
+      respect to the weights) works out to a constant, 2Σ, regardless of the
+      weights themselves. A valid covariance matrix is always positive
+      semi-definite by construction — it is literally built from variances
+      and covariances of real random variables, and a variance can never be
+      negative in any direction of combination. Since the Hessian 2Σ is PSD
+      everywhere, portfolio variance is convex everywhere, for any real
+      covariance matrix, with no additional assumptions required — this is
+      exactly why Markowitz mean-variance optimization is a reliably solvable
+      problem rather than a heuristic search.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. In the KKT conditions, what does complementary slackness (λᵢgᵢ(x)=0) tell you about a constraint that turns out NOT to be binding at the optimum?</summary>
+    <div class="tl-answer">
+      If a constraint is not binding — meaning it has slack, gᵢ(x) &lt; 0,
+      the candidate point sits strictly inside that constraint's boundary —
+      then complementary slackness forces its multiplier λᵢ to be exactly
+      zero. In other words, a constraint that isn't actually limiting the
+      solution contributes nothing to the stationarity condition or to the
+      final answer; only constraints that are exactly binding (sitting right
+      on their boundary, gᵢ(x)=0) can carry a nonzero multiplier. This is
+      precisely how complementary slackness identifies which constraints in a
+      larger problem are the ones actually shaping the optimum.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why does adding a cardinality constraint ("hold at most 10 names") break the guarantees that hold for the ordinary Markowitz problem?</summary>
+    <div class="tl-answer">
+      The ordinary Markowitz problem's guarantees rest on both the objective
+      (portfolio variance, always convex) and the feasible set (defined by
+      linear equality/inequality constraints, always convex) being convex. A
+      cardinality constraint restricts which subset of assets can be nonzero
+      — a discrete, combinatorial condition, not a smooth geometric one. The
+      set of weight vectors satisfying "at most 10 nonzero entries" is a
+      union of many separate flat pieces (one per possible subset of 10
+      assets), and the straight line between a point in one piece and a point
+      in another typically passes through vectors with more than 10 nonzero
+      entries — outside the allowed set. Because the feasible set is no
+      longer convex, the local-optimum-equals-global-optimum guarantee no
+      longer applies, and the problem becomes combinatorially hard rather than
+      a smoothly solvable convex QP.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Stephen Boyd &amp; Lieven Vandenberghe, <em>Convex Optimization</em>, Cambridge University Press, 2004 — the standard, freely available reference text; covers convex sets and functions, Lagrangian duality, and the KKT conditions in full rigor.</li>
+    <li>William Karush, "Minima of Functions of Several Variables with Inequality Constraints as Side Conditions," M.S. thesis, University of Chicago, 1939, and Harold W. Kuhn &amp; Albert W. Tucker, "Nonlinear Programming," <em>Proceedings of the Second Berkeley Symposium</em>, 1951 — the original derivations that give the KKT conditions their name; Karush's thesis result was independently rediscovered by Kuhn and Tucker over a decade later.</li>
+    <li>Dimitri P. Bertsekas, <em>Nonlinear Programming</em>, 2nd ed., Athena Scientific, 1999 — a rigorous, widely used graduate treatment of constrained optimization, Lagrangian duality, and the interplay between convexity and optimality conditions.</li>
+    <li>Robert Tibshirani, "Regression Shrinkage and Selection via the Lasso," <em>Journal of the Royal Statistical Society, Series B</em>, 1996 — the original LASSO paper; a direct example of using an ℓ₁-penalty as a convex, tractable relaxation of a combinatorial cardinality/sparsity goal, exactly the trick referenced in the practitioner section above.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="newton-raphson-gradient-descent.html">← Newton-Raphson &amp; Gradient Descent</a>
+    <a href="linear-quadratic-programming.html">Linear &amp; Quadratic Programming →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var slider = document.getElementById('cvx-theta-slider');
+  var thetaVal = document.getElementById('cvx-theta-val');
+  var marker = document.getElementById('cvx-marker');
+  var chordDot = document.getElementById('cvx-chord-dot');
+  var curveDot = document.getElementById('cvx-curve-dot');
+  var readout = document.getElementById('cvx-readout');
+  if (!slider) return;
+
+  var X_A = 1, X_B = 8;
+  function f(x){ return 0.15 * x * x; }
+  var X_MIN = 0, X_MAX = 9, Y_MAX = 13;
+  var PX_X0 = 40, PX_X1 = 600;
+  var PX_Y0 = 260, PX_Y1 = 20;
+  function mapX(x){ return PX_X0 + (x - X_MIN) * (PX_X1 - PX_X0) / (X_MAX - X_MIN); }
+  function mapY(y){ return PX_Y0 + (y - 0) * (PX_Y1 - PX_Y0) / (Y_MAX - 0); }
+
+  function update(){
+    var theta = parseInt(slider.value, 10) / 100;
+    thetaVal.textContent = 'θ = ' + theta.toFixed(2);
+
+    var P = theta * X_A + (1 - theta) * X_B;
+    var curveVal = f(P);
+    var chordVal = theta * f(X_A) + (1 - theta) * f(X_B);
+
+    var px = mapX(P);
+    var pyCurve = mapY(curveVal);
+    var pyChord = mapY(chordVal);
+
+    marker.setAttribute('x1', px.toFixed(1));
+    marker.setAttribute('x2', px.toFixed(1));
+    marker.setAttribute('y1', Math.min(pyCurve, pyChord) - 10);
+    curveDot.setAttribute('cx', px.toFixed(1));
+    curveDot.setAttribute('cy', pyCurve.toFixed(1));
+    chordDot.setAttribute('cx', px.toFixed(1));
+    chordDot.setAttribute('cy', pyChord.toFixed(1));
+
+    var ok = curveVal <= chordVal + 1e-9;
+    readout.textContent = 'P = ' + P.toFixed(2) + ' — curve f(P) ≈ ' + curveVal.toFixed(2) + ', chord value ≈ ' + chordVal.toFixed(2) + ' — curve ' + (ok ? '≤ chord ✓' : '> chord (should never happen for a convex function)');
+  }
+
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
+</body>
+</html>

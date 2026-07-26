@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order Flow Toxicity &amp; VPIN — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Market Microstructure / Order Flow Toxicity &amp; VPIN</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Market Microstructure · Lesson 4 of 5</div>
+  <h1 class="tl-title">Order Flow Toxicity &amp; VPIN</h1>
+  <p class="tl-dek">A metric built to answer one question in real time — "is the flow hitting this book right now unusually informed?" — by watching volume instead of the clock, and a famous, still-contested claim that it flashed a warning before the market fell apart in minutes.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span>~16 min read</span>
+    <span>Prereqs: market-microstructure.html (Kyle's Lambda &amp; Glosten-Milgrom)</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>VPIN (Volume-Synchronized Probability of Informed Trading) takes Glosten-Milgrom's informed-vs-noise-trader split and tries to estimate it, live, from the tape — its one real innovation is bucketing trades by <strong>volume</strong> instead of by <strong>time</strong>.</li>
+      <li>Equal-<em>volume</em> buckets (each containing exactly \(V\) units of traded volume, however long that takes) track the arrival of new information far better than equal-<em>time</em> bars, because informed traders react to information by trading more, not by trading on a schedule.</li>
+      <li>Each bucket's volume is split into a buy-initiated and sell-initiated share using Bulk Volume Classification (BVC) — a normal-CDF function of the price change over the bucket, not a genuine trade-by-trade buyer/seller tag.</li>
+      <li>VPIN is the rolling average, over the last \(n\) buckets, of each bucket's absolute order imbalance \(|V_\text{buy}-V_\text{sell}|\), normalized by bucket volume — a number between 0 and 1 that rises when volume is one-sided.</li>
+      <li>VPIN is famous for allegedly spiking before the May 6, 2010 "Flash Crash" — but that claim is genuinely disputed in the academic literature, not a settled predictive triumph, and this lesson covers the critique as seriously as the original claim.</li>
+      <li>The worked example below runs 5 hypothetical buckets through the full calculation by hand and lands on VPIN ≈ 0.58 — a high, "one-sided-flow" reading, and shows exactly what number is actually being averaged.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The <a href="market-microstructure.html">Market Microstructure</a> lesson in
+    this series derives the bid-ask spread from a single idea: a market maker
+    cannot tell whether the order in front of them comes from an informed
+    trader (someone who knows something about fundamental value) or a noise
+    trader (someone trading for reasons unrelated to value), and prices that
+    uncertainty into the spread via a belief parameter, \(\alpha\) — the
+    fraction of order flow believed informed. That lesson treats \(\alpha\) as
+    a fixed, exogenous input: something the market maker is assumed to already
+    know or estimate from context.
+  </p>
+  <p>
+    VPIN exists to answer the obvious follow-up question: <em>where does that
+    number actually come from, moment to moment, from real trade data?</em> It
+    is an attempt to build a live, computable proxy for "how informed does the
+    current order flow look" directly from the tape — not a new theory of why
+    a spread or price impact exists (Glosten-Milgrom and Kyle already cover
+    that), but an applied estimation technique layered on top of the same
+    informed-vs-noise distinction. Whether that estimation technique actually
+    works as advertised is a genuinely open, actively argued question in the
+    market microstructure literature, and this lesson treats it that way
+    throughout — a metric can be well-motivated, widely cited, and still have
+    a contested track record; both things are true here at once.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🔗</div>
+      <h4>Builds on Glosten-Milgrom</h4>
+      <p>The informed-trader / noise-trader split and the belief parameter \(\alpha\) are exactly the concepts VPIN tries to estimate live from volume data, not a new model of the spread itself.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">⏱️</div>
+      <h4>A different kind of clock</h4>
+      <p>The core mechanical idea — sample by volume, not by time — reappears anywhere a series needs to track "how much information has actually arrived" rather than "how much time has passed."</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🚨</div>
+      <h4>An early-warning claim</h4>
+      <p>VPIN's public reputation rests almost entirely on one event — the May 2010 Flash Crash — covered honestly, claim and critique both, later in this lesson.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">✂️</div>
+      <h4>Feeds into execution decisions</h4>
+      <p>A desk that believes flow is currently toxic behaves differently — pulling back size, widening, or slowing an execution schedule — which is exactly the territory the next lesson in this series covers.</p>
+    </div>
+  </div>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Why watch volume instead of the clock?</h3>
+    <p>
+      Imagine trying to detect "something important is happening in this
+      market" by checking in every five minutes, no matter what. On a slow,
+      quiet Tuesday afternoon, a five-minute window might contain almost no
+      trading at all — there's nothing to see. Thirty seconds after a
+      surprise headline hits, that same five-minute window could contain more
+      trading than the rest of the day combined — and a fixed-time sampling
+      scheme is still forced to treat that one window as "one observation,"
+      exactly like the quiet one. Time-based bars quietly assume that
+      information arrives at a constant rate throughout the day. It doesn't.
+    </p>
+    <p>
+      VPIN's founding idea is to flip the sampling rule around: instead of
+      "close out an observation every \(X\) minutes," close one out
+      <strong>every time \(V\) units of volume have traded</strong>, however
+      long or short that takes. On the quiet Tuesday afternoon, a volume
+      bucket might span twenty minutes. In the thirty seconds after the
+      headline, it might span three. The claim — plausible, and the actual
+      empirical motivation behind the technique — is that volume-based
+      sampling synchronizes much better with the rate at which genuinely new
+      information is entering the market, because informed traders reveal
+      themselves by trading <em>more</em> when they have something to act on,
+      not by trading on a fixed schedule. Once you're sampling in "volume
+      time" instead of calendar time, the next question is simply: within each
+      of those equal-volume buckets, how one-sided was the trading? A bucket
+      where almost everyone was buying (or almost everyone was selling) looks
+      like informed flow pushing in one direction. A bucket split roughly
+      50/50 looks like ordinary two-sided noise trading. VPIN is just that
+      one-sidedness, averaged over a rolling window of recent buckets.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Time bars vs. volume bars, over the same trading session</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two rows of bars along the same timeline. The top row, labeled time clock, shows bars of equal width but wildly different heights, since volume traded per fixed time interval varies a lot, with one very tall bar during a news spike. The bottom row, labeled volume clock, shows bars of equal height or area but different widths, narrow during the news spike and wide during quiet periods, since each bar always represents the same amount of traded volume.">
+      <text x="20" y="26" font-size="12" font-family="'DM Sans',sans-serif" fill="var(--text)" font-weight="600">Time clock — fixed 5-minute bars</text>
+      <line x1="20" y1="100" x2="620" y2="100" style="stroke:var(--text3);stroke-width:1"/>
+      <rect x="30" y="88" width="60" height="12" style="fill:var(--blue);opacity:.55"/>
+      <rect x="95" y="82" width="60" height="18" style="fill:var(--blue);opacity:.55"/>
+      <rect x="160" y="90" width="60" height="10" style="fill:var(--blue);opacity:.55"/>
+      <rect x="225" y="20" width="60" height="80" style="fill:var(--red);opacity:.65"/>
+      <rect x="290" y="78" width="60" height="22" style="fill:var(--blue);opacity:.55"/>
+      <rect x="355" y="86" width="60" height="14" style="fill:var(--blue);opacity:.55"/>
+      <rect x="420" y="92" width="60" height="8" style="fill:var(--blue);opacity:.55"/>
+      <rect x="485" y="84" width="60" height="16" style="fill:var(--blue);opacity:.55"/>
+      <rect x="550" y="90" width="60" height="10" style="fill:var(--blue);opacity:.55"/>
+      <text x="255" y="16" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--red)">news hits</text>
+      <text x="330" y="120" text-anchor="middle" font-size="10" font-family="'DM Sans',sans-serif" fill="var(--text3)">7 bars, each exactly 5 minutes — volume per bar swings wildly</text>
+
+      <text x="20" y="160" font-size="12" font-family="'DM Sans',sans-serif" fill="var(--text)" font-weight="600">Volume clock — fixed-volume buckets</text>
+      <line x1="20" y1="230" x2="620" y2="230" style="stroke:var(--text3);stroke-width:1"/>
+      <rect x="30" y="210" width="95" height="20" style="fill:var(--green);opacity:.55"/>
+      <rect x="130" y="210" width="90" height="20" style="fill:var(--green);opacity:.55"/>
+      <rect x="225" y="210" width="30" height="20" style="fill:var(--red);opacity:.65"/>
+      <rect x="260" y="210" width="28" height="20" style="fill:var(--red);opacity:.65"/>
+      <rect x="293" y="210" width="88" height="20" style="fill:var(--green);opacity:.55"/>
+      <rect x="386" y="210" width="92" height="20" style="fill:var(--green);opacity:.55"/>
+      <rect x="483" y="210" width="127" height="20" style="fill:var(--green);opacity:.55"/>
+      <text x="255" y="205" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--red)">news hits</text>
+      <text x="330" y="250" text-anchor="middle" font-size="10" font-family="'DM Sans',sans-serif" fill="var(--text3)">7 buckets, each the exact same traded volume — width shrinks when trading is fast</text>
+    </svg>
+    <div class="tl-chart-caption">Illustrative, not fitted to real data. The time clock (top) forces every 5-minute interval to count as one observation, whether it contained almost no trading or a burst of activity. The volume clock (bottom) instead closes a bucket the instant a fixed amount of volume has traded — buckets narrow sharply during the news burst and widen during quiet stretches, keeping the amount of "information" per observation roughly constant instead of the amount of time.</div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    VPIN (Volume-Synchronized Probability of Informed Trading) was introduced
+    by Easley, López de Prado and O'Hara as a computable, real-time proxy for
+    the informed-trading share \(\alpha\) from Glosten-Milgrom-style models.
+    Building it takes three steps: (1) reorganize the tape into equal-volume
+    buckets, (2) classify each bucket's volume into a buy-initiated and
+    sell-initiated share, and (3) average the resulting imbalance over a
+    rolling window.
+  </p>
+
+  <h3>1. Equal-volume buckets</h3>
+  <p>
+    Pick a fixed bucket size \(V\) — some fixed number of shares, contracts,
+    or lots (in practice often chosen as a fraction of a typical day's total
+    volume, e.g. \(1/50\) of average daily volume, so that roughly 50 buckets
+    span a normal trading day). Then walk through the raw trade tape in order
+    and close out a new bucket every time cumulative volume since the last
+    bucket boundary reaches exactly \(V\). If a single trade would push
+    cumulative volume past the boundary, that trade's volume is split across
+    the end of one bucket and the start of the next, so that every bucket's
+    total volume is exactly \(V\) — only each bucket's <em>duration</em> in
+    calendar time varies.
+  </p>
+  <div class="tl-math">
+    \[ \sum_{\text{trades in bucket }\tau} \text{volume} = V \quad \text{for every bucket } \tau \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>V</code><span>the fixed bucket size — the same for every bucket, by construction</span></div>
+    <div class="tl-eq-chip c2"><code>τ</code><span>(tau) the bucket index — 1, 2, 3, … as buckets close out in sequence</span></div>
+  </div>
+  <p>
+    This is the entire mechanical innovation relative to an ordinary time
+    bar. Everything downstream — the classification step and the averaging
+    step — could in principle be run on time bars instead, but doing it on
+    volume buckets is the specific choice that gives VPIN its name and its
+    claimed edge over a plain time-sampled toxicity measure.
+  </p>
+
+  <h3>2. Bulk Volume Classification (BVC) — splitting a bucket into buy and sell volume</h3>
+  <p>
+    A genuine trade-by-trade classifier (like the Lee-Ready tick rule used
+    elsewhere in the microstructure literature) needs quote data and
+    trade-by-trade direction tagging. VPIN's original formulation deliberately
+    avoids that requirement and instead classifies an entire bucket's volume
+    at once, using only the bucket's price change and its overall volatility —
+    this is <strong>Bulk Volume Classification</strong>. The idea: if the
+    price rose over the course of the bucket, more of that bucket's volume was
+    probably buy-initiated (aggressive buyers lifting offers pushes price up);
+    if price fell, more was probably sell-initiated. The <em>size</em> of the
+    price move, standardized by its usual volatility, sets exactly how
+    lopsided that split should be assumed to be:
+  </p>
+  <div class="tl-math">
+    \[ V_{\text{buy},\tau} = V \cdot Z\!\left(\frac{\Delta P_\tau}{\sigma_{\Delta P}}\right), \qquad V_{\text{sell},\tau} = V - V_{\text{buy},\tau} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>ΔP_τ</code><span>the price change (close minus open) over bucket τ</span></div>
+    <div class="tl-eq-chip c2"><code>σ_ΔP</code><span>the typical (standard deviation of) price change per bucket, estimated over recent history</span></div>
+    <div class="tl-eq-chip c3"><code>Z(·)</code><span>the standard normal cumulative distribution function (CDF) — same object as the "percentile" from the Descriptive Statistics primer</span></div>
+    <div class="tl-eq-chip c4"><code>V_buy,τ / V_sell,τ</code><span>the buy- and sell-classified share of bucket τ's fixed volume V — always summing back to V</span></div>
+  </div>
+  <p>
+    Read this the way BVC intends it: standardize the bucket's price change
+    into a z-score (exactly the z-score from the Descriptive Statistics primer
+    in this series — how many "typical bucket moves" this particular move
+    was), then feed that z-score through the normal CDF to get a number
+    between 0 and 1, and use that number directly as the fraction of the
+    bucket's volume assumed buy-initiated. A bucket that closed flat
+    (\(\Delta P_\tau = 0\)) gets \(Z(0)=0.5\) — classified as an even 50/50
+    split, exactly the "no informed skew" case. A bucket with a large positive
+    price move relative to its usual volatility pushes \(Z(\cdot)\) toward 1 —
+    classified as almost entirely buy volume. This is a genuinely different
+    object from a real per-trade classification: it never actually asks "was
+    this specific trade a buy or a sell," only "given how far the price moved
+    over the whole bucket, what fraction of the bucket's volume was probably
+    on the aggressive-buy side" — a statistical proxy, not a ground-truth tag,
+    and exactly the point the academic critique later in this lesson leans on.
+  </p>
+
+  <h3>3. Order imbalance and the VPIN average</h3>
+  <p>
+    Once every bucket has a buy/sell split, each bucket's <strong>order
+    imbalance</strong> is simply the absolute difference between the two:
+  </p>
+  <div class="tl-math">
+    \[ \text{OI}_\tau = |V_{\text{buy},\tau} - V_{\text{sell},\tau}| \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>OI_τ</code><span>order imbalance in bucket τ — how one-sided that bucket's classified volume was</span></div>
+    <div class="tl-eq-chip c3"><code>| · |</code><span>absolute value — a bucket dominated by selling counts the same as one dominated by buying</span></div>
+  </div>
+  <p>
+    A perfectly balanced bucket (\(V_\text{buy}=V_\text{sell}=V/2\)) has
+    \(\text{OI}_\tau = 0\). A bucket classified as entirely one-sided
+    (\(V_\text{buy}=V\), \(V_\text{sell}=0\), or the mirror image) has the
+    maximum possible \(\text{OI}_\tau = V\). VPIN itself is the average of
+    this imbalance over the last \(n\) buckets, normalized by the total volume
+    those \(n\) buckets represent (\(n\cdot V\), since every bucket has the
+    same fixed volume \(V\)):
+  </p>
+  <div class="tl-math">
+    \[ \text{VPIN} = \frac{1}{n\cdot V}\sum_{\tau=1}^{n} |V_{\text{buy},\tau} - V_{\text{sell},\tau}| \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>n</code><span>the rolling window length — how many recent buckets are averaged together</span></div>
+    <div class="tl-eq-chip c4"><code>n·V</code><span>the total volume across the whole window — the normalizer that keeps VPIN between 0 and 1</span></div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">OI_τ / V</div>
+      <div class="tl-fp-name">One bucket's toxicity</div>
+      <div class="tl-fp-desc">How one-sided a single volume bucket's classified flow was, between 0 (balanced) and 1 (fully one-sided)</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">n</div>
+      <div class="tl-fp-name">The averaging window</div>
+      <div class="tl-fp-desc">Smooths out single-bucket noise, at the cost of lagging behind a sudden change</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">VPIN</div>
+      <div class="tl-fp-name">The result</div>
+      <div class="tl-fp-desc">A single number, ~0 to ~1, meant to track "how informed does recent flow look right now"</div>
+    </div>
+  </div>
+
+  <p>
+    Because \(0 \le \text{OI}_\tau \le V\) for every bucket, VPIN itself is
+    bounded between 0 (every recent bucket was perfectly balanced — flow looks
+    like ordinary two-sided noise trading) and 1 (every recent bucket was
+    classified as entirely one-sided — flow looks maximally informed by this
+    proxy). In practice VPIN rarely approaches either extreme; it is read as a
+    relative, time-varying signal — is it high or low <em>compared to its own
+    recent history</em> — not as a literal probability in the strict Bayesian
+    sense its name implies (a pitfall covered below).
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(V\)</td><td>The fixed bucket size — every equal-volume bucket contains exactly this much traded volume.</td></tr>
+    <tr><td>\(\tau\)</td><td>(tau) The bucket index, in sequence as buckets close out.</td></tr>
+    <tr><td>\(\Delta P_\tau\)</td><td>The price change (close minus open) over bucket \(\tau\).</td></tr>
+    <tr><td>\(\sigma_{\Delta P}\)</td><td>The standard deviation of bucket-level price changes, estimated over recent history — the "yardstick" for standardizing \(\Delta P_\tau\).</td></tr>
+    <tr><td>\(Z(\cdot)\)</td><td>The standard normal cumulative distribution function — converts a standardized price change into a number between 0 and 1.</td></tr>
+    <tr><td>\(V_{\text{buy},\tau}\), \(V_{\text{sell},\tau}\)</td><td>The Bulk-Volume-Classified buy- and sell-initiated share of bucket \(\tau\)'s volume; always sum to \(V\).</td></tr>
+    <tr><td>\(\text{OI}_\tau\)</td><td>Order imbalance in bucket \(\tau\) — \(|V_{\text{buy},\tau}-V_{\text{sell},\tau}|\), between 0 and \(V\).</td></tr>
+    <tr><td>\(n\)</td><td>The rolling window length — how many recent buckets VPIN averages over.</td></tr>
+    <tr><td>\(\text{VPIN}\)</td><td>The rolling, normalized average order imbalance — the headline number, between 0 and 1.</td></tr>
+    <tr><td>\(\alpha\)</td><td>(from the Glosten-Milgrom lesson) the true, structural informed-trading share — the object VPIN is trying to proxy, not something it observes directly.</td></tr>
+  </table></div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A hypothetical VPIN time series around a stress event</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart of a hypothetical VPIN reading from 0 to 1 over roughly 60 volume buckets. VPIN drifts around a moderate baseline of about 0.3, rises somewhat in the buckets leading up to a labeled stress event, and then spikes sharply during the event itself before decaying back toward baseline afterward.">
+      <line x1="50" y1="220" x2="610" y2="220" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="50" y1="220" x2="50" y2="30" style="stroke:var(--text3);stroke-width:1"/>
+      <text x="24" y="128" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 24 128)">VPIN (0–1)</text>
+      <text x="610" y="238" text-anchor="end" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">volume buckets, in sequence &rarr;</text>
+      <text x="46" y="224" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0.0</text>
+      <text x="46" y="128" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0.5</text>
+      <text x="46" y="34" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">1.0</text>
+      <line x1="420" y1="30" x2="420" y2="220" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"/>
+      <text x="420" y="20" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--red)">stress event</text>
+      <path style="fill:none;stroke:var(--purple);stroke-width:2" d="M50,163 L80,167 L110,158 L140,165 L170,160 L200,152 L230,157 L260,148 L290,140 L320,145 L350,130 L380,120 L410,98 L420,70 L430,55 L440,80 L450,100 L470,120 L490,135 L520,148 L550,155 L580,158 L610,160"/>
+      <line x1="50" y1="163" x2="610" y2="163" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:2,4;opacity:.5"/>
+      <text x="600" y="180" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">≈0.3 baseline</text>
+    </svg>
+    <div class="tl-chart-caption">Illustrative, not real market data. A rise in VPIN ahead of a stress event, followed by a sharp spike and a slow decay, is the shape of the claim made about the May 2010 Flash Crash — but whether a rise like this is genuinely predictive, or is simply what VPIN mechanically does whenever prices move a lot (since BVC directly converts big price moves into high imbalance), is exactly the disputed question covered in the scenario box below.</div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Computing VPIN by hand over a 5-bucket window</h3>
+    <p>
+      Take a fixed bucket size \(V=1{,}000\) contracts and a rolling window of
+      \(n=5\) buckets. Each bucket's standardized price change,
+      \(\Delta P_\tau/\sigma_{\Delta P}\), has already been computed (that
+      standardization uses exactly the z-score machinery from the
+      Descriptive Statistics primer); this example starts from those five
+      z-scores and their standard-normal CDF values, using the same
+      well-known table values that primer introduces (\(Z(0)=0.5000\),
+      \(Z(1.00)=0.8413\), \(Z(2.00)=0.9772\), \(Z(-0.50)=0.3085\),
+      \(Z(-1.50)=0.0668\)).
+    </p>
+
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Classify each bucket's volume with BVC</h4>
+          <p>Multiply each bucket's \(Z(\cdot)\) value by \(V=1{,}000\) to get \(V_\text{buy}\), then subtract from \(V\) to get \(V_\text{sell}\):</p>
+          <div class="tl-math">
+            \[
+            \begin{aligned}
+            \tau=1:\ Z=0.8413 &\Rightarrow V_\text{buy}=841.3,\ V_\text{sell}=158.7\\
+            \tau=2:\ Z=0.3085 &\Rightarrow V_\text{buy}=308.5,\ V_\text{sell}=691.5\\
+            \tau=3:\ Z=0.5000 &\Rightarrow V_\text{buy}=500.0,\ V_\text{sell}=500.0\\
+            \tau=4:\ Z=0.9772 &\Rightarrow V_\text{buy}=977.2,\ V_\text{sell}=22.8\\
+            \tau=5:\ Z=0.0668 &\Rightarrow V_\text{buy}=66.8,\ V_\text{sell}=933.2
+            \end{aligned}
+            \]
+          </div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Order imbalance per bucket</h4>
+          <div class="tl-math">
+            \[
+            \begin{aligned}
+            \text{OI}_1 &= |841.3-158.7| = 682.6\\
+            \text{OI}_2 &= |308.5-691.5| = 383.0\\
+            \text{OI}_3 &= |500.0-500.0| = 0.0\\
+            \text{OI}_4 &= |977.2-22.8| = 954.4\\
+            \text{OI}_5 &= |66.8-933.2| = 866.4
+            \end{aligned}
+            \]
+          </div>
+          <p>Bucket 3 closed flat — an even split, zero imbalance. Bucket 4 had the largest standardized price move (\(Z=0.9772\), almost entirely buy-classified) and produces the largest imbalance.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Sum the imbalances and normalize</h4>
+          <div class="tl-math">
+            \[ \sum_{\tau=1}^{5}\text{OI}_\tau = 682.6+383.0+0.0+954.4+866.4 = 2{,}886.4 \]
+          </div>
+          <div class="tl-math">
+            \[ \text{VPIN} = \frac{2{,}886.4}{5\times1{,}000} = \frac{2{,}886.4}{5{,}000} \approx 0.577 \]
+          </div>
+        </div>
+      </div>
+    </div>
+    <p>
+      A VPIN reading of about 0.58 over this window says: averaged across the
+      last five equal-volume buckets, roughly 58% of the classified volume was
+      one-sided rather than balanced. Whether that specific number is "high"
+      depends entirely on this instrument's own recent history of VPIN
+      readings — one flat bucket (bucket 3) sitting next to two very lopsided
+      ones (buckets 4 and 5) is exactly the kind of mixed window real data
+      produces; a single clean number like this toy example is not a claim
+      about what any real market actually looks like.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>May 6, 2010 — the "Flash Crash," and what VPIN's role in it actually was</h3>
+    <p>
+      On May 6, 2010, U.S. equity index futures and a wide swath of individual
+      stocks fell roughly 5–9% in minutes, then largely recovered within the
+      same session — one of the most-studied episodes in modern market
+      structure. VPIN entered the public conversation almost entirely because
+      of this event: Easley, López de Prado and O'Hara published research
+      arguing that VPIN, computed on E-mini S&amp;P 500 futures order flow,
+      rose to unusually high levels in the hours <em>before</em> the crash,
+      framing it as evidence of building "order flow toxicity" — informed or
+      aggressive one-sided flow accumulating faster than liquidity providers
+      could absorb it — that a real-time monitor could in principle have
+      flagged as an early warning.
+    </p>
+    <p>
+      That is the famous half of the story. The other half, equally important
+      to state plainly: this claim was directly challenged in the academic
+      literature, most prominently by Andersen &amp; Bondarenko, who
+      re-examined the same data and argued VPIN's apparent predictive power
+      was considerably weaker than portrayed and highly sensitive to modeling
+      choices the original papers did not fully stress-test — particularly
+      the Bulk Volume Classification method itself, the bucket-size parameter
+      \(V\), and the rolling window length \(n\). Different reasonable
+      choices for those parameters produced meaningfully different VPIN
+      paths around the same event, which is a real problem for a metric being
+      proposed as an operational early-warning tool rather than a purely
+      descriptive, after-the-fact statistic.
+    </p>
+    <div class="tl-compare">
+      <div class="tl-compare-card amber">
+        <h4>The claim</h4>
+        <p>VPIN, computed from E-mini order flow, rose to elevated levels ahead of the May 6, 2010 crash — presented as evidence of accumulating toxic, one-sided order flow that overwhelmed available liquidity, and as a proof of concept for VPIN as a real-time systemic-risk monitor.</p>
+      </div>
+      <div class="tl-compare-card purple">
+        <h4>The critique</h4>
+        <p>Andersen &amp; Bondarenko and related work argue the predictive signal is fragile to the BVC classification choice and to \(V\)/\(n\), that similar VPIN elevations occur at many other times without a subsequent crash, and that at least part of any pre-crash rise plausibly reflects ordinary, already-rising volatility rather than a distinct "toxicity" phenomenon BVC is uniquely detecting.</p>
+      </div>
+    </div>
+    <p>
+      This is a genuinely unresolved dispute, not a case where one side has
+      been quietly proven right — treat "VPIN predicted the Flash Crash" as a
+      contested claim you should be able to state both sides of, not a settled
+      fact to repeat uncritically. The honest summary is that VPIN measures
+      something real and mechanically well-defined (rolling, volume-bucketed
+      order imbalance), and that a rise in it around a stress event is a fact
+      about the data — but whether that rise constitutes genuine
+      <em>advance</em> warning of a specific type of upcoming instability, as
+      opposed to a coincident or mildly-lagging symptom of volatility that
+      was already building for other reasons, remains an open, actively
+      debated empirical question.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Whatever one concludes about the Flash Crash specifically, the underlying
+    idea — a live, computable order-flow-imbalance monitor — is genuinely used
+    on trading and risk desks, generally as one input feeding a broader
+    picture rather than a standalone trading signal fired in isolation:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🛡️</div>
+      <h4>Market-making risk controls</h4>
+      <p>A market maker (or automated quoting engine) watching an order-flow-toxicity proxy rise can mechanically widen quoted spreads or shrink quoted size, echoing exactly the Glosten-Milgrom logic — protect against adverse selection when the belief that flow is informed goes up.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🐌</div>
+      <h4>Slowing an execution schedule</h4>
+      <p>A desk executing a large order that sees a toxicity proxy spike may pause or slow its own participation, on the theory that trading into unusually one-sided flow right now is more likely to get run over — directly relevant to the execution-algorithm choices in the next lesson.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📊</div>
+      <h4>One input among many</h4>
+      <p>In practice, VPIN-style measures typically sit alongside realized volatility, quoted-spread widening, and order-book depth as one input into a composite "market is stressed right now" read, rather than being trusted alone.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where VPIN gets over-trusted or misapplied</h3>
+    <p>
+      <strong>Treating VPIN as a literal, calibrated probability.</strong> The
+      name says "probability of informed trading," but VPIN is a normalized
+      order-imbalance average, not a probability derived from a fitted
+      likelihood model in the way a genuine Bayesian posterior (like the
+      Glosten-Milgrom belief update) is. A VPIN of 0.6 does not mean "60%
+      chance the next trade is informed" in any rigorous statistical sense —
+      it means recent volume buckets, as classified by BVC, were on average
+      60% one-sided.
+    </p>
+    <p>
+      <strong>Forgetting BVC is a statistical proxy for trade direction, not a
+      real classification.</strong> Bulk Volume Classification infers buy/sell
+      volume purely from a bucket's aggregate price change — it never checks
+      an actual trade against the prevailing bid/ask the way a tick-rule
+      classifier does. A large price move driven by, say, a single large
+      resting order being lifted can get classified identically to a genuine
+      wave of many small informed trades — BVC cannot distinguish the two.
+    </p>
+    <p>
+      <strong>Ignoring parameter sensitivity.</strong> The bucket size \(V\)
+      and window length \(n\) are free choices, not derived from theory —
+      exactly the concern the Andersen &amp; Bondarenko critique raises. A
+      VPIN series computed with one \(V\) can look meaningfully different from
+      one computed with another on the same underlying tape, which matters a
+      great deal if the metric is being used as an operational threshold
+      trigger rather than a purely descriptive, after-the-fact statistic.
+    </p>
+    <p>
+      <strong>Confusing "VPIN is high" with "a crash is coming."</strong>
+      Elevated VPIN readings occur far more often than crashes do — most
+      periods of one-sided flow resolve without any dramatic price
+      dislocation at all. Reading every VPIN spike as an imminent-crash signal
+      overstates what even VPIN's own proponents claim; the disputed evidence
+      concerns one specific historical episode, not a general, reliable
+      early-warning property established across many events.
+    </p>
+    <p>
+      <strong>Using VPIN as a look-ahead-biased backtest input.</strong> Like
+      any rolling statistic, VPIN computed with a window that includes data
+      from after the decision point it's supposedly informing is not a live,
+      tradeable signal — a subtle version of the exact lookahead-bias trap
+      this project's own house rules warn about for any rolling series.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>VPIN's real innovation is the volume clock, not a new theory.</strong> Bucketing by traded volume instead of elapsed time better tracks the rate at which new information enters the market, on the theory that informed traders reveal themselves by trading more, not on a fixed schedule.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Bulk Volume Classification turns a price move into a buy/sell split.</strong> \(V_\text{buy}=V\cdot Z(\Delta P/\sigma_{\Delta P})\) — a flat bucket splits 50/50, a large standardized price move skews almost entirely to one side.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>VPIN is a rolling, normalized average of order imbalance.</strong> \(\text{VPIN}=\frac{1}{nV}\sum|V_\text{buy,τ}-V_\text{sell,τ}|\), bounded between 0 (balanced flow) and 1 (fully one-sided flow) over the window.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The Flash Crash "early warning" claim is genuinely disputed, not settled.</strong> Andersen &amp; Bondarenko's critique — sensitivity to the BVC method and to the \(V\)/\(n\) parameters, and comparable VPIN elevations at other times without a crash following — is a serious, unresolved challenge to the original claim, not a footnote to dismiss.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>BVC classifies a bucket, not a trade.</strong> It infers direction purely from an aggregate price move, standardized by volatility — a statistical proxy for order flow, not a verified per-trade buyer/seller tag the way a genuine tick-rule classifier is.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>"VPIN predicted the Flash Crash" is not a fact to repeat as settled.</strong> It is one side of an active academic argument — treat it, and this whole metric's forecasting track record, with the same "built ≠ works ≠ has edge" discipline this project applies to every other signal.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What is the single core mechanical difference between a VPIN volume bucket and an ordinary time bar?</summary>
+    <div class="tl-answer">
+      A time bar closes after a fixed amount of <em>elapsed time</em> (e.g.
+      every 5 minutes), regardless of how much volume traded during that
+      window. A VPIN volume bucket closes after a fixed amount of <em>traded
+      volume</em> \(V\), regardless of how much time that takes — a bucket can
+      span twenty minutes on a quiet day and thirty seconds during a burst of
+      activity. The motivation is that this synchronizes sampling with the
+      rate information is actually arriving (proxied by trading activity),
+      rather than with the clock.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. In Bulk Volume Classification, why does a bucket that closes exactly flat (\(\Delta P_\tau=0\)) get classified as a 50/50 buy/sell split?</summary>
+    <div class="tl-answer">
+      BVC sets \(V_\text{buy},\tau = V\cdot Z(\Delta P_\tau/\sigma_{\Delta P})\),
+      where \(Z(\cdot)\) is the standard normal CDF. A price change of zero
+      standardizes to a z-score of exactly 0, and the standard normal CDF at 0
+      is exactly 0.5 by the symmetry of the normal distribution around its
+      mean — so \(V_\text{buy}=0.5V\) and \(V_\text{sell}=0.5V\). Mechanically,
+      a flat bucket is being read as "no net directional evidence in the price
+      move," which BVC translates directly into an even split, whether or not
+      that's actually true of the underlying trades.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. A bucket has \(V=2{,}000\) and a standardized price change with \(Z(\Delta P/\sigma_{\Delta P})=0.90\). What is that bucket's order imbalance \(\text{OI}_\tau\)?</summary>
+    <div class="tl-answer">
+      \(V_\text{buy}=2{,}000\times0.90=1{,}800\), so
+      \(V_\text{sell}=2{,}000-1{,}800=200\). Order imbalance is
+      \(|1{,}800-200|=1{,}600\) — 80% of the bucket's volume was classified as
+      one-sided (\(1{,}600/2{,}000=0.8\)), which is exactly what a 90%
+      buy-classification implies: 90% buy versus 10% sell is an 80-percentage-point
+      gap between the two sides.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why is a rolling window of \(n\) buckets used, rather than reporting each bucket's own order imbalance directly as "VPIN"?</summary>
+    <div class="tl-answer">
+      A single bucket's classification is noisy — it can be dominated by one
+      unusual print, a resting order being lifted, or ordinary short-term
+      randomness, none of which necessarily reflects a sustained shift in how
+      informed the flow really is. Averaging over the last \(n\) buckets
+      smooths that single-bucket noise out, at a real cost: the resulting
+      VPIN reading necessarily lags a sudden true change in flow toxicity,
+      since it's an average that includes older, possibly stale buckets
+      alongside the newest one. Choosing \(n\) is a real bias-variance
+      tradeoff — larger \(n\) is smoother but slower to react; smaller \(n\)
+      reacts faster but is noisier.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. What is the Andersen &amp; Bondarenko critique of VPIN's role in the May 2010 Flash Crash, in plain terms?</summary>
+    <div class="tl-answer">
+      They argue that VPIN's apparent pre-crash rise is considerably less
+      robust and less clearly predictive than the original research portrayed
+      — the pattern is sensitive to the Bulk Volume Classification method and
+      to the choice of bucket size \(V\) and window length \(n\), reasonable
+      alternative choices produce meaningfully different VPIN paths around
+      the same event, and comparably elevated VPIN readings occur at many
+      other times that were not followed by a crash. The upshot is that "VPIN
+      spiked before the Flash Crash" is real as a description of one
+      particular computation on one particular dataset, but the stronger
+      claim — that VPIN is a reliable, general early-warning indicator for
+      this type of event — is not something the critique accepts as
+      established.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why is BVC described in this lesson as classifying "a bucket, not a trade" — and why does that distinction matter?</summary>
+    <div class="tl-answer">
+      A genuine trade-by-trade classifier (like the Lee-Ready tick rule) looks
+      at each individual trade against the prevailing quote to tag it buy- or
+      sell-initiated. BVC never does this — it looks only at the bucket's
+      aggregate price change and volatility, and converts that single number
+      into an assumed buy/sell split applied uniformly to the whole bucket's
+      volume. This matters because two very different underlying realities
+      (many small informed trades all pushing one direction, versus one large
+      resting order getting lifted by a single buyer) can produce the same
+      aggregate price change and therefore get classified identically by BVC
+      — the method cannot tell them apart, which is exactly the kind of
+      approximation error the academic critique targets.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>David Easley, Marcos M. López de Prado &amp; Maureen O'Hara, "Flow Toxicity and Liquidity in a High-Frequency World," <em>Review of Financial Studies</em>, 2012 — the primary paper introducing VPIN and the Bulk Volume Classification method.</li>
+    <li>David Easley, Marcos M. López de Prado &amp; Maureen O'Hara, "The Volume Clock: Insights into the High-Frequency Paradigm," <em>Journal of Portfolio Management</em>, 2012 — the volume-time sampling argument in more depth.</li>
+    <li>Torben G. Andersen &amp; Oleg Bondarenko, "VPIN and the Flash Crash," <em>Journal of Financial Markets</em>, 2014 — the central critique covered honestly in this lesson's scenario box; argues VPIN's predictive content is considerably weaker than claimed and sensitive to the BVC/parameter choices.</li>
+    <li>Torben G. Andersen &amp; Oleg Bondarenko, "Assessing Measures of Order Flow Toxicity and Early Warning Signals for Market Turbulence," <em>Review of Finance</em>, 2015 — a broader follow-up assessment of order-flow-toxicity measures generally, not only VPIN.</li>
+    <li>Maureen O'Hara, <em>Market Microstructure Theory</em>, Blackwell, 1995 — the foundational text underlying the Glosten-Milgrom framework this lesson builds on.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="market-impact-almgren-chriss.html">← Market Impact Models &amp; Almgren-Chriss</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="execution-algorithms.html">Execution Algorithms: TWAP, VWAP, POV, IS →</a>
+  </div>
+</div>
+</body>
+</html>

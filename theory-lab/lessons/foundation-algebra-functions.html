@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Algebra &amp; Functions Refresher — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Foundation Mathematics / Algebra &amp; Functions Refresher</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Foundation Mathematics · Lesson 1 of 6</div>
+  <h1 class="tl-title">Algebra &amp; Functions Refresher</h1>
+  <p class="tl-dek">Rearranging equations, and what a "function" actually is — the two habits of mind every later formula in this curriculum quietly assumes you already have.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span>~14 min read</span>
+    <span>Prereqs: none</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>An equation stays true as long as you do the <em>same thing to both sides</em> — add, subtract, multiply, divide, take a root, apply a log — and "solving for \(x\)" just means repeating that until \(x\) is alone on one side.</li>
+      <li>A <strong>function</strong> is an input→output machine: one input always produces exactly one output. \(f(x)=x^2\) is a rule, not a specific number — you only get a number once you plug one in.</li>
+      <li><strong>Domain</strong> is the set of inputs a function accepts without breaking (dividing by zero, square-rooting a negative); <strong>range</strong> is the set of outputs it can actually produce.</li>
+      <li>A straight line \(y=mx+c\) has constant slope \(m\) (rise over run) and intercept \(c\) (where it crosses the vertical axis); a quadratic \(y=ax^2+bx+c\) curves, and the sign of \(a\) decides whether it curves up (holds water, "convex") or down (sheds water, "concave").</li>
+      <li><strong>Composition</strong> \((f\circ g)(x) = f(g(x))\) chains two machines — feed \(g\)'s output straight into \(f\); an <strong>inverse</strong> \(f^{-1}\) is the machine that undoes \(f\) exactly, so \(f^{-1}(f(x))=x\).</li>
+      <li>The worked example rearranges the compound-interest formula \(FV=P(1+r)^n\) to solve for the rate \(r\) — the exact same "isolate the variable" moves used later in this curriculum to solve for volatility, position size, or any other unknown buried inside a bigger formula.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Every later lesson in this curriculum hands you a formula and expects two
+    things: that you can read it as a function (an input→output rule, not a
+    single fixed number), and that you can rearrange it to solve for whichever
+    piece you actually need. A volatility formula might give you \(\sigma\)
+    from a price series, but a risk-sizing question asks the reverse: "given a
+    target \(\sigma\), what position size do I need?" That's the same
+    algebraic move — isolate the variable you want — applied to a different
+    formula. If rearranging an equation, or reading what "domain," "slope," or
+    "curving up" mean on a graph, ever feels shaky, that shakiness will show up
+    silently in every later lesson that assumes it. This page exists to make
+    those moves automatic before anything else is built on top of them.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📐</div>
+      <h4>Every "solve for X" step</h4>
+      <p>Rearranging a return formula for the rate, a margin formula for the required equity, a pricing formula for an implied input — all the same isolate-the-variable moves this page drills.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📈</div>
+      <h4>Convexity, later in this curriculum</h4>
+      <p>"Curving up" vs. "curving down" on a simple quadratic here is the exact same idea as convexity in options and portfolio theory — just without the option yet.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🔁</div>
+      <h4>Function composition</h4>
+      <p>Chaining a volatility function into a pricing function into a P&amp;L function is composition — reading nested formulas correctly starts here.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">↩️</div>
+      <h4>Inverse functions</h4>
+      <p>"Implied volatility" is quite literally an inverse function — running a pricing formula backwards to recover the input that would have produced an observed output.</p>
+    </div>
+  </div>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>An equation is a balance scale; a function is a machine</h3>
+    <p>
+      Think of an equation like \(2x + 3 = 11\) as a balance scale that's
+      currently level. Both sides weigh the same. If you want to know what
+      \(x\) is, you're allowed to do <em>anything you like</em> to the scale —
+      as long as you do the exact same thing to both pans at once, it stays
+      level. Subtract 3 from both sides: \(2x = 8\). Divide both sides by 2:
+      \(x = 4\). Nothing magic happened; you just kept the scale balanced while
+      peeling away everything that wasn't \(x\).
+    </p>
+    <p>
+      A <strong>function</strong> is a completely different kind of object: not
+      a balanced statement, but a machine. You feed it an input, it does
+      something fixed and repeatable to that input, and it hands back an
+      output. \(f(x) = x^2\) is the "square it" machine — feed in 3, get back
+      9; feed in \(-3\), also get back 9 (the machine doesn't care about the
+      sign, only the square). The letter \(x\) inside \(f(x)\) is not a
+      specific number waiting to be solved for, the way it is in an equation —
+      it's a placeholder for whatever you're about to feed the machine.
+      Confusing these two ideas — treating a function like it's an equation to
+      "solve," or treating an equation like it's a machine that already has an
+      answer baked in — is one of the most common early stumbling blocks, and
+      it's worth being explicit about the difference before moving on.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>Manipulating expressions and equations</h3>
+  <p>
+    Three moves cover almost everything you'll need in this curriculum:
+    <strong>expanding</strong> (multiplying out brackets), <strong>factoring</strong>
+    (the reverse — pulling a common piece back out into brackets), and
+    <strong>rearranging</strong> (doing the same operation to both sides of an
+    equation to isolate a variable).
+  </p>
+  <div class="tl-math">
+    \[ \underbrace{a(b+c) = ab + ac}_{\text{expand}} \qquad\qquad \underbrace{ab + ac = a(b+c)}_{\text{factor}} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>a(b+c)</code><span>a factored expression — a common term \(a\) multiplying a bracket</span></div>
+    <div class="tl-eq-chip c2"><code>ab + ac</code><span>the same expression expanded — the bracket multiplied out</span></div>
+  </div>
+  <p>
+    <strong>Rearranging</strong> an equation is repeated application of one
+    rule: whatever you do to one side, you must do to the other, in the same
+    order it would take to undo it. To isolate \(x\) in \(2x + 3 = 11\):
+    subtract 3 from both sides (\(2x = 8\)), then divide both sides by 2
+    (\(x = 4\)). The moves "undo" the operations that were done to \(x\), in
+    reverse order — \(x\) was multiplied by 2 and then had 3 added, so you
+    subtract 3 first, then divide by 2, peeling the layers off from the
+    outside in.
+  </p>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Linear equation</h4>
+      <p>\(mx + c = y\) — one power of \(x\), a straight-line relationship. Rearranging always isolates \(x\) in one or two moves.</p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>Quadratic equation</h4>
+      <p>\(ax^2+bx+c=0\) — a squared term makes \(x\) appear twice, so isolating it usually needs factoring or the quadratic formula, not a single division.</p>
+    </div>
+  </div>
+
+  <h3>What a function actually is</h3>
+  <p>
+    A <strong>function</strong> \(f\) is a rule that assigns exactly one output
+    to every input it accepts. Write \(f(x) = x^2 + 1\): this says "whatever
+    you feed in as \(x\), square it and add 1." Feeding in the number 3 gives
+    \(f(3) = 3^2+1 = 10\). The letter \(x\) is a placeholder, not a fixed
+    unknown to be solved for — that's the key difference from an equation.
+  </p>
+  <div class="tl-math">
+    \[ f(x) = x^2 + 1 \qquad\Rightarrow\qquad f(3) = 3^2+1 = 10,\quad f(-1)=(-1)^2+1=2 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>f</code><span>the name of the function — the machine itself</span></div>
+    <div class="tl-eq-chip c3"><code>x</code><span>the input placeholder — whatever gets fed in</span></div>
+    <div class="tl-eq-chip c2"><code>f(x)</code><span>"apply the machine \(f\) to input \(x\)" — the resulting output</span></div>
+  </div>
+  <p>
+    The rule "exactly one output per input" is what makes something a function
+    and not just any old relationship between two quantities. \(y^2 = x\) is
+    <em>not</em> a function of \(x\) on its own, because \(x=4\) gives two
+    valid \(y\) values (\(+2\) and \(-2\)) — one input, two outputs, which
+    breaks the definition. \(y = \sqrt{x}\) (taking only the positive root by
+    convention) fixes that and is a genuine function.
+  </p>
+
+  <h3>Domain and range</h3>
+  <p>
+    The <strong>domain</strong> of a function is every input it's allowed to
+    accept without breaking — without dividing by zero, without taking the
+    square root of a negative number (at least while staying in real numbers),
+    and so on. The <strong>range</strong> is every output the function can
+    actually produce once you feed it every allowed input.
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🚫</div>
+      <h4>\(f(x) = \dfrac{1}{x}\)</h4>
+      <p>Domain: every real number except \(x=0\) (division by zero is undefined). Range: every real number except 0 (the machine can never output exactly zero).</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">✅</div>
+      <h4>\(f(x) = \sqrt{x}\)</h4>
+      <p>Domain: \(x \ge 0\) only (no real square root of a negative number). Range: \(f(x) \ge 0\) — the output is never negative.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">♾️</div>
+      <h4>\(f(x) = x^2\)</h4>
+      <p>Domain: every real number (squaring never breaks). Range: \(f(x) \ge 0\) only — a square is never negative, so negative outputs are simply impossible.</p>
+    </div>
+  </div>
+
+  <h3>Linear, quadratic, and polynomial functions</h3>
+  <p>
+    A <strong>linear</strong> function has the form \(y = mx + c\): a constant
+    <strong>slope</strong> \(m\) (how much \(y\) changes for every 1-unit
+    increase in \(x\) — "rise over run") and an <strong>intercept</strong>
+    \(c\) (the value of \(y\) when \(x=0\), i.e. where the line crosses the
+    vertical axis). Its graph is a perfectly straight line — the slope never
+    changes.
+  </p>
+  <div class="tl-math">
+    \[ y = mx + c \qquad m = \frac{\Delta y}{\Delta x} = \frac{y_2-y_1}{x_2-x_1} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>m</code><span>the slope — how steeply \(y\) rises (or falls) per unit of \(x\)</span></div>
+    <div class="tl-eq-chip c2"><code>c</code><span>the intercept — where the line crosses \(x=0\)</span></div>
+    <div class="tl-eq-chip c4"><code>Δy/Δx</code><span>"change in y over change in x" — slope computed from any two points on the line</span></div>
+  </div>
+  <p>
+    A <strong>quadratic</strong> function, \(y = ax^2+bx+c\), has a squared
+    term, so its graph is a curve (a parabola), not a straight line — its
+    slope keeps changing as \(x\) changes. A <strong>polynomial</strong> is the
+    general family both belong to: a sum of terms like \(a_n x^n\), where
+    \(n\) is a non-negative whole number — a linear function is a
+    degree-1 polynomial, a quadratic is degree-2, and so on to any higher
+    power.
+  </p>
+
+  <h3>Reading a graph: slope, intercept, concavity</h3>
+  <p>
+    Three visual ideas recur constantly in later lessons, and they're worth
+    naming precisely now, in the simplest possible setting, before they show
+    up wearing more complicated notation.
+  </p>
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Slope — the direction and steepness</h4>
+        <p>A positive slope means the graph rises left-to-right; negative means it falls. A steeper line has a slope further from zero. A slope of exactly zero is a flat horizontal line — no change at all.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>Intercept — where it crosses the axis</h4>
+        <p>The \(y\)-intercept is the value of the function when \(x=0\). On a straight line \(y=mx+c\), that's exactly \(c\) — no computation needed, it's read straight off the formula.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>Concavity — "curving up" vs. "curving down"</h4>
+        <p>A curve that bends upward like the inside of a bowl (its slope is itself increasing as \(x\) increases) is called <strong>convex</strong>. A curve that bends downward like an upside-down bowl (its slope is decreasing) is <strong>concave</strong>. For \(y=ax^2\), the sign of \(a\) decides which: \(a>0\) curves up (convex, "holds water"), \(a<0\) curves down (concave, "sheds water").</p>
+      </div>
+    </div>
+  </div>
+  <div class="tl-solid blue">
+    <strong>Why this is worth remembering now:</strong> "convexity" comes back
+    later in this curriculum in a much more consequential form — it's the
+    entire reason an option's payoff and a portfolio's risk profile can bend
+    in your favor. Every one of those later, richer discussions reduces, at
+    its core, to this same picture: is the curve bending up, or down?
+  </div>
+
+  <h3>Function composition</h3>
+  <p>
+    <strong>Composition</strong> chains two functions together: feed an input
+    into the inner function, then feed <em>its output</em> straight into the
+    outer function as input. Written \((f \circ g)(x)\), read "\(f\) composed
+    with \(g\)," or equivalently \(f(g(x))\).
+  </p>
+  <div class="tl-math">
+    \[ f(x) = x^2, \quad g(x) = x+1 \qquad\Rightarrow\qquad (f\circ g)(x) = f(g(x)) = (x+1)^2 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>g(x)</code><span>runs first — the inner function, applied to the raw input</span></div>
+    <div class="tl-eq-chip c1"><code>f(g(x))</code><span>runs second — the outer function, applied to \(g\)'s output, not to \(x\) directly</span></div>
+  </div>
+  <p>
+    Order matters: \((f\circ g)(x) = f(g(x))\) is generally <em>not</em> the
+    same as \((g\circ f)(x) = g(f(x))\). With the functions above,
+    \(g(f(x)) = x^2+1\), a different expression from \((x+1)^2\) — check with
+    \(x=2\): \(f(g(2))=f(3)=9\), but \(g(f(2))=g(4)=5\). Reading which function
+    is "innermost" (applied first) versus "outermost" (applied last, to
+    everything already computed) is exactly the skill needed to correctly read
+    a nested formula later in this curriculum — a function of a function of a
+    variable, several layers deep.
+  </p>
+
+  <h3>Inverse functions</h3>
+  <p>
+    The <strong>inverse</strong> of a function \(f\), written \(f^{-1}\), is the
+    machine that exactly undoes \(f\): feed \(f\)'s output back into
+    \(f^{-1}\), and you get the original input back. Not every function has an
+    inverse (it needs to be one that never produces the same output from two
+    different inputs), but where one exists:
+  </p>
+  <div class="tl-math">
+    \[ f^{-1}(f(x)) = x \qquad\text{and}\qquad f(f^{-1}(x)) = x \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>f⁻¹</code><span>the inverse machine — note this is notation, not "1 divided by \(f\)"</span></div>
+    <div class="tl-eq-chip c4"><code>f⁻¹(f(x)) = x</code><span>applying \(f\) then its inverse returns exactly the original input</span></div>
+  </div>
+  <p>
+    <strong>To find an inverse algebraically</strong>: write \(y=f(x)\), swap
+    \(x\) and \(y\), then rearrange to solve for \(y\) again. For
+    \(f(x)=2x+3\): write \(y=2x+3\), swap to \(x=2y+3\), rearrange for \(y\):
+    \(y = (x-3)/2\). So \(f^{-1}(x) = (x-3)/2\) — and indeed, subtracting 3 and
+    dividing by 2 is exactly how you'd undo "multiply by 2, then add 3."
+    Rearranging an equation and finding an inverse function are, underneath
+    the notation, literally the same algebraic move.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(x, y\)</td><td>Generic variables — an input (\(x\)) and an output or dependent quantity (\(y\)).</td></tr>
+    <tr><td>\(f, g\)</td><td>Function names — labels for a specific input→output rule.</td></tr>
+    <tr><td>\(f(x)\)</td><td>"\(f\) applied to \(x\)" — the output of function \(f\) given input \(x\). Not multiplication.</td></tr>
+    <tr><td>\(m\)</td><td>Slope of a straight line — rise over run, \(\Delta y/\Delta x\).</td></tr>
+    <tr><td>\(c\)</td><td>Intercept — the value of \(y\) when \(x=0\).</td></tr>
+    <tr><td>\(\Delta\)</td><td>(delta) "change in" — \(\Delta x\) means the change in \(x\) between two points.</td></tr>
+    <tr><td>\(a,b,c\) (quadratic)</td><td>The coefficients of \(ax^2+bx+c\); the sign of \(a\) sets whether the curve is convex or concave.</td></tr>
+    <tr><td>\((f\circ g)(x)\)</td><td>Function composition — apply \(g\) first, then apply \(f\) to \(g\)'s output.</td></tr>
+    <tr><td>\(f^{-1}\)</td><td>The inverse of \(f\) — the function that exactly undoes it.</td></tr>
+    <tr><td>domain</td><td>The set of inputs a function is allowed to accept.</td></tr>
+    <tr><td>range</td><td>The set of outputs a function can actually produce.</td></tr>
+  </table></div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Slope and concavity, live</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A line and a parabola on the same axes, with a slider controlling the line's slope and a marker showing the parabola curving upward">
+      <line x1="40" y1="220" x2="600" y2="220" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="320" y1="20" x2="320" y2="220" style="stroke:var(--border);stroke-width:1"/>
+      <text x="596" y="234" text-anchor="end" style="fill:var(--text3);font-size:11px">x</text>
+      <text x="332" y="30" text-anchor="start" style="fill:var(--text3);font-size:11px">y</text>
+      <path id="fa-parabola" style="fill:none;stroke:var(--purple);stroke-width:2" d="M120,200 L160,150 L200,108 L240,74 L280,48 L320,30 L360,48 L400,74 L440,108 L480,150 L520,200"/>
+      <text x="500" y="60" text-anchor="middle" style="fill:var(--purple);font-size:11px">y = x²/40 (convex — curves up)</text>
+      <line id="fa-line" x1="80" y1="180" x2="560" y2="180" style="stroke:var(--blue);stroke-width:2.5"/>
+      <circle id="fa-dot" cx="320" cy="180" r="5" style="fill:var(--blue);stroke:var(--s1);stroke-width:1.5"/>
+      <text x="565" y="176" text-anchor="start" style="fill:var(--blue);font-size:11px" id="fa-line-label">y = 0.00x + 0</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Line slope m</span><span class="tl-live" id="fa-m-val">m = 0.00</span></div>
+        <input type="range" id="fa-m-slider" min="-100" max="100" step="5" value="0">
+        <div class="tl-hint">Drag to change the straight line's slope. Notice the purple parabola's slope is different at every point along it — that's the difference between a constant slope (linear) and a slope that itself changes (curved).</div>
+      </div>
+    </div>
+    <div class="tl-chart-caption">The blue line always has one fixed slope \(m\) — turning the dial just rotates it evenly. The purple curve \(y=x^2/40\) is convex: it bends upward, meaning its own slope keeps increasing as \(x\) grows — flat near the bottom, steep further out. That changing-slope behavior is exactly what "curving" means, and exactly what a straight line, by definition, never does.</div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Rearranging the compound-interest formula to solve for the rate</h3>
+    <p>
+      The compound-interest formula gives the future value \(FV\) of a present
+      sum \(P\) invested for \(n\) periods at rate \(r\) per period:
+    </p>
+    <div class="tl-math">
+      \[ FV = P(1+r)^n \]
+    </div>
+    <p>
+      Suppose \(P = \$1{,}000\), \(n = 5\) years, and the investment grows to
+      \(FV = \$1{,}276.28\). What annual rate \(r\) does that imply? Solve for
+      \(r\) step by step — the same "undo the operations in reverse order"
+      discipline from Section 2, just with a root and no simple division this
+      time.
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Isolate the \((1+r)^n\) term</h4>
+          <p>Divide both sides by \(P\) to get the growth factor alone on one side:</p>
+          <div class="tl-math">\[ \frac{FV}{P} = (1+r)^n \]</div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Undo the power with a root</h4>
+          <p>Raising both sides to the power \(1/n\) is the inverse operation of raising to the power \(n\) — it "undoes" the exponent, the same way dividing undoes multiplying:</p>
+          <div class="tl-math">\[ \left(\frac{FV}{P}\right)^{1/n} = 1+r \]</div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Isolate \(r\)</h4>
+          <p>Subtract 1 from both sides:</p>
+          <div class="tl-math">\[ r = \left(\frac{FV}{P}\right)^{1/n} - 1 \]</div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Plug in the numbers</h4>
+          <div class="tl-math">
+            \[ r = \left(\frac{1276.28}{1000}\right)^{1/5} - 1 = (1.27628)^{0.2} - 1 \approx 1.0500 - 1 = 0.0500 \]
+          </div>
+          <p>So \(r \approx 5.00\%\) per year. Check it: \(1000 \times (1.05)^5 = 1000 \times 1.27628 = \$1{,}276.28\) — matches the given \(FV\) exactly.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Solving a leverage formula backwards for the required equity</h3>
+    <p>
+      A trader's position size (in units of the underlying) is set by
+      leverage against their account equity:
+    </p>
+    <div class="tl-math">
+      \[ \text{position size} = \text{equity} \times \frac{\text{leverage}}{\text{price}} \]
+    </div>
+    <div class="tl-formula-parts">
+      <div class="tl-fp blue"><div class="tl-fp-term">equity</div><div class="tl-fp-name">Account capital</div><div class="tl-fp-desc">The cash actually deposited — the thing being solved for here</div></div>
+      <div class="tl-fp amber"><div class="tl-fp-term">leverage</div><div class="tl-fp-name">Multiplier</div><div class="tl-fp-desc">e.g. 30:1 — how many units of exposure per unit of equity</div></div>
+      <div class="tl-fp purple"><div class="tl-fp-term">price</div><div class="tl-fp-name">Instrument price</div><div class="tl-fp-desc">Converts a notional dollar exposure into a unit count</div></div>
+    </div>
+    <p>
+      Say a trader wants exactly 10,000 units of exposure to an instrument
+      trading at \$1.20, using 20:1 leverage. How much equity is required?
+      Rearrange for \(\text{equity}\): multiply both sides by \(\text{price}\),
+      then divide both sides by \(\text{leverage}\):
+    </p>
+    <div class="tl-math">
+      \[ \text{equity} = \frac{\text{position size} \times \text{price}}{\text{leverage}} = \frac{10{,}000 \times 1.20}{20} = \frac{12{,}000}{20} = \$600 \]
+    </div>
+    <p>
+      The trader needs \$600 of equity to support that position at that
+      leverage and price. This is the same "isolate the variable" move as the
+      worked example above, applied to a formula with three inputs instead of
+      one rate — the algebra doesn't change just because the formula got
+      longer.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Nobody at a trading desk sits down to "do algebra" as a named activity —
+    but every pricing model, every risk formula, and every sizing rule is a
+    function, and using one in practice constantly means running it in a
+    direction it wasn't originally written for. A model might be built to
+    compute an expected price from a set of inputs; a trader instead has an
+    observed market price and wants to know what input (a rate, an implied
+    volatility, a required return) would have produced it. That's an inverse
+    problem, and solving it is exactly the rearranging drilled on this page,
+    just embedded in a more complicated formula. Quant and desk-analyst
+    interviews frequently test precisely this skill directly — "given this
+    formula, solve for this other variable" — because it's the daily
+    mechanical work underneath far fancier-sounding tasks like calibration or
+    implied-volatility surface construction.
+  </p>
+  <p>
+    Reading a chart's slope and concavity at a glance is equally constant:
+    a steepening yield curve, an accelerating drawdown, a payoff diagram that
+    bends favorably near a strike price are all, underneath the finance
+    vocabulary, just "is this graph's slope increasing or decreasing, and in
+    which direction." Practitioners build the habit of translating a plotted
+    curve into slope-and-concavity language automatically, because so much of
+    quantitative finance's vocabulary — convexity, duration, gamma — is that
+    same idea renamed for a specific context.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this goes wrong in practice</h3>
+    <p>
+      <strong>Doing an operation to only one side of an equation.</strong> The
+      single most common algebra error: subtracting a term from the left side
+      but forgetting to subtract it from the right too. The equation stops
+      being true the instant the two sides are no longer treated identically.
+    </p>
+    <p>
+      <strong>Confusing a function's name with its output.</strong> \(f\) is the
+      machine; \(f(x)\) is a specific output for a specific input. Writing
+      "\(f = x^2\)" instead of "\(f(x) = x^2\)" blurs that distinction and gets
+      confusing fast once composition and inverses show up.
+    </p>
+    <p>
+      <strong>Assuming every function has an inverse.</strong> \(f(x) = x^2\)
+      over all real numbers does not have a clean inverse — both \(x=2\) and
+      \(x=-2\) give \(f(x)=4\), so there's no way to tell, given only the
+      output 4, which input produced it. (Restricting the domain to
+      \(x \ge 0\) fixes this — a detail that matters more than it looks, and
+      recurs whenever a later formula involves a square or a square root.)
+    </p>
+    <p>
+      <strong>Mixing up composition order.</strong> \(f(g(x))\) and \(g(f(x))\)
+      are generally different expressions — always work from the innermost
+      function outward, and don't assume a nested formula can be read in
+      either order.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>An equation stays true if both sides get the same treatment.</strong> Solving for a variable is just repeatedly undoing operations, in reverse order, on both sides at once.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A function is a machine, not a solved value.</strong> \(f(x)\) means "apply the rule \(f\) to input \(x\)" — the \(x\) is a placeholder, not an unknown to solve for.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Domain and range bound what's possible.</strong> Domain is what a function can accept; range is what it can produce — both matter before trusting a formula's output.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Slope is constant on a line, changing on a curve.</strong> A changing slope is exactly what "curving" (convex/concave) means — the idea convexity later builds on directly.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Composition and inverses chain or undo functions.</strong> Order matters for composition; not every function has a clean inverse.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Rearranging gets harder once roots and exponents are involved.</strong> The compound-interest example needed a fractional-power root, not just addition/subtraction — a habit worth building now, before formulas get longer.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Rearrange \(y = 3x - 7\) to solve for \(x\) in terms of \(y\).</summary>
+    <div class="tl-answer">
+      Add 7 to both sides: \(y+7 = 3x\). Divide both sides by 3:
+      \(x = (y+7)/3\). Check by substituting back: if \(x=(y+7)/3\), then
+      \(3x-7 = 3\cdot(y+7)/3 - 7 = (y+7)-7 = y\) — confirms the rearrangement
+      is correct.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Is \(y^2 = x\) a function of \(x\)? Why or why not?</summary>
+    <div class="tl-answer">
+      No. A function must assign exactly one output to every input. For
+      \(x=9\), both \(y=3\) and \(y=-3\) satisfy \(y^2=9\) — two valid outputs
+      for one input, which breaks the definition. \(y=\sqrt{x}\) (taking only
+      the non-negative root) is a genuine function; \(y^2=x\) on its own is
+      not.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. For \(f(x) = x^2\) and \(g(x) = x - 2\), compute \((f\circ g)(5)\) and \((g\circ f)(5)\). Are they equal?</summary>
+    <div class="tl-answer">
+      \((f\circ g)(5) = f(g(5)) = f(3) = 9\). \((g\circ f)(5) = g(f(5)) =
+      g(25) = 23\). They are not equal — composition is generally not
+      commutative, so the order in which two functions are chained matters.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Does \(y = -2x^2 + 3\) curve up or down, and how do you know without plotting it?</summary>
+    <div class="tl-answer">
+      It curves down (concave). The coefficient on \(x^2\) is \(a=-2\), which
+      is negative — a negative leading coefficient on a quadratic means the
+      parabola opens downward ("sheds water"), the reverse of the \(a>0\) case
+      which opens upward. No plotting is needed; the sign of \(a\) alone
+      determines the direction of curvature.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Find the inverse of \(f(x) = 5x - 10\), and verify it by computing \(f^{-1}(f(4))\).</summary>
+    <div class="tl-answer">
+      Write \(y=5x-10\), swap \(x\) and \(y\): \(x = 5y-10\), then solve for
+      \(y\): \(y = (x+10)/5\). So \(f^{-1}(x) = (x+10)/5\). Verify:
+      \(f(4) = 5(4)-10 = 10\), and \(f^{-1}(10) = (10+10)/5 = 20/5 = 4\) —
+      exactly the original input, as required of a genuine inverse.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>I.M. Gelfand &amp; Alexander Shen, <em>Algebra</em>, Birkhäuser, 1993 — a short, famously clear rebuild of school algebra from first principles, aimed at exactly the "I can follow the steps but don't quite trust why" gap this lesson targets.</li>
+    <li>Sheldon Axler, <em>Algebra and Trigonometry</em>, Wiley, 2011 — a modern undergraduate text with an unusually careful, function-first treatment of domain, range, composition, and inverses, matching this lesson's emphasis on functions as machines rather than solved equations.</li>
+    <li>Khan Academy, "Algebra basics" and "Functions" course sequences (khanacademy.org) — free, self-paced practice problems for every technique on this page, useful for repetition beyond what a single lesson can provide.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="foundation-trig-logs-exponentials.html">Trigonometry, Logarithms &amp; Exponentials →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var slider = document.getElementById('fa-m-slider');
+  var mVal = document.getElementById('fa-m-val');
+  var line = document.getElementById('fa-line');
+  var dot = document.getElementById('fa-dot');
+  var label = document.getElementById('fa-line-label');
+  if (!slider) return;
+
+  // Pixel mapping: x=320 is the y-axis (data x=0), 40px per data-x unit.
+  // Data x ranges roughly -7..7 across the plotted pixel range 80..560.
+  var X0 = 320, PX_PER_UNIT = 40, Y0 = 180;
+
+  function update(){
+    var m = parseInt(slider.value, 10) / 100; // -1.00 .. 1.00
+    mVal.textContent = 'm = ' + m.toFixed(2);
+
+    var xLeftData = (80 - X0) / PX_PER_UNIT;   // data-x at pixel 80
+    var xRightData = (560 - X0) / PX_PER_UNIT; // data-x at pixel 560
+    var yLeftPix = Y0 - m * xLeftData * PX_PER_UNIT;
+    var yRightPix = Y0 - m * xRightData * PX_PER_UNIT;
+
+    line.setAttribute('y1', yLeftPix);
+    line.setAttribute('y2', yRightPix);
+    dot.setAttribute('cy', Y0);
+
+    var cVal = 0;
+    label.textContent = 'y = ' + m.toFixed(2) + 'x + ' + cVal;
+    var midY = Y0 - m * 0 * PX_PER_UNIT;
+    label.setAttribute('y', (midY - 4) < 24 ? 24 : (midY - 4) > 236 ? 236 : (midY - 4));
+  }
+
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
+</body>
+</html>
+</content>
