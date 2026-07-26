@@ -357,7 +357,7 @@
     </p>
   </div>
 
-  <div class="tl-chart">
+  <div class="tl-chart interactive">
     <div class="tl-chart-label">The growth-rate curve: why past f*, more size is less growth</div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart of geometric growth rate g(f) against bet fraction f. The curve starts at zero, rises to a peak at f-star (full Kelly), then falls back through zero at 2f-star and continues into negative territory beyond that. A marked point on the rising part of the curve, below and left of the peak, shows half-Kelly still solidly positive.">
       <line x1="70" y1="30" x2="70" y2="270" style="stroke:var(--border)"/>
@@ -365,22 +365,32 @@
       <line x1="70" y1="170" x2="610" y2="170" style="stroke:var(--border)"/>
       <text x="614" y="174" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">g = 0</text>
 
-      <line x1="275.2" y1="80" x2="275.2" y2="270" style="stroke:var(--text3);stroke-dasharray:3,3"/>
-      <text x="275.2" y="20" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">f* (full Kelly)</text>
+      <line id="kelly-fstar-line" x1="250" y1="80" x2="250" y2="270" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+      <text id="kelly-fstar-label" x="250" y="20" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">f* (full Kelly)</text>
 
-      <line x1="480.4" y1="170" x2="480.4" y2="270" style="stroke:var(--text3);stroke-dasharray:3,3"/>
-      <text x="480.4" y="288" text-anchor="middle" fill="var(--text2)" font-size="10.5" font-family="'DM Mono',monospace">2f* — growth rate hits zero</text>
+      <line id="kelly-2fstar-line" x1="430" y1="170" x2="430" y2="270" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+      <text id="kelly-2fstar-label" x="430" y="288" text-anchor="middle" fill="var(--text2)" font-size="10.5" font-family="'DM Mono',monospace">2f* — growth rate hits zero</text>
 
-      <path d="M70,170 C78.6,163.4 104.2,141.9 121.3,130.6 C138.4,119.4 155.5,110.0 172.6,102.5 C189.7,95.0 206.8,89.4 223.9,85.6 C241.0,81.9 258.1,80.0 275.2,80.0 C292.3,80.0 309.4,81.9 326.5,85.6 C343.6,89.4 360.7,95.0 377.8,102.5 C394.9,110.0 412.0,119.4 429.1,130.6 C446.2,141.9 465.0,156.8 480.4,170.0 C495.8,183.2 507.7,195.2 521.4,209.6 C535.1,224.0 555.7,248.6 562.5,256.4" style="stroke:var(--blue);stroke-width:2.5;fill:none;stroke-linecap:round"/>
+      <path id="kelly-curve-path" d="M70.0,170.0 L88.0,152.9 L106.0,137.6 L124.0,124.1 L142.0,112.4 L160.0,102.5 L178.0,94.4 L196.0,88.1 L214.0,83.6 L232.0,80.9 L250.0,80.0 L268.0,80.9 L286.0,83.6 L304.0,88.1 L322.0,94.4 L340.0,102.5 L358.0,112.4 L376.0,124.1 L394.0,137.6 L412.0,152.9 L430.0,170.0 L448.0,188.9 L466.0,209.6 L484.0,232.1 L502.0,256.4" style="stroke:var(--blue);stroke-width:2.5;fill:none;stroke-linecap:round"/>
 
-      <circle cx="275.2" cy="80" r="3.5" fill="var(--blue)"/>
-      <circle cx="172.6" cy="102.5" r="3.5" fill="var(--amber)"/>
-      <text x="172.6" y="118" text-anchor="middle" fill="var(--amber)" font-size="10.5" font-family="'DM Mono',monospace">½f* (half-Kelly)</text>
-      <circle cx="480.4" cy="170" r="3.5" fill="var(--text2)"/>
+      <circle id="kelly-fstar-dot" cx="250" cy="80" r="3.5" fill="var(--blue)"/>
+      <circle id="kelly-halfkelly-dot" cx="160" cy="102.5" r="3.5" fill="var(--amber)"/>
+      <text id="kelly-halfkelly-label" x="160" y="118" text-anchor="middle" fill="var(--amber)" font-size="10.5" font-family="'DM Mono',monospace">½f* (half-Kelly)</text>
+      <circle id="kelly-2fstar-dot" cx="430" cy="170" r="3.5" fill="var(--text2)"/>
 
       <text x="340" y="296" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">bet fraction f</text>
       <text x="26" y="150" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 26 150)">growth rate g(f)</text>
     </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Win probability p (even-money bet)</span><span class="tl-live" id="kelly-p-val">p = 0.55</span></div>
+        <input type="range" id="kelly-p-slider" min="51" max="90" step="1" value="55">
+      </div>
+    </div>
+    <div class="tl-readout">
+      Full Kelly f* = 2p−1 = <b id="kelly-fstar-val">10%</b> of bankroll · Half-Kelly = <b id="kelly-half-val">5%</b>
+    </div>
+    <div class="tl-hint">Drag the slider to change the win probability. The curve's shape never changes — it always peaks at f* and crosses zero at 2f* — only what f* is worth as a percentage of bankroll (above) changes with the edge.</div>
     <div class="tl-chart-caption">
       Growth rate rises with bet size only up to <strong>f*</strong> — betting
       more than that doesn't just add risk, it actively makes the long-run
@@ -392,6 +402,81 @@
       size, and therefore much shallower drawdowns.
     </div>
   </div>
+  <script>
+  (function(){
+    var slider = document.getElementById('kelly-p-slider');
+    var pVal = document.getElementById('kelly-p-val');
+    var fstarVal = document.getElementById('kelly-fstar-val');
+    var halfVal = document.getElementById('kelly-half-val');
+    var curvePath = document.getElementById('kelly-curve-path');
+    var fstarLine = document.getElementById('kelly-fstar-line');
+    var fstarLabel = document.getElementById('kelly-fstar-label');
+    var fstarDot = document.getElementById('kelly-fstar-dot');
+    var twoFstarLine = document.getElementById('kelly-2fstar-line');
+    var twoFstarLabel = document.getElementById('kelly-2fstar-label');
+    var twoFstarDot = document.getElementById('kelly-2fstar-dot');
+    var halfDot = document.getElementById('kelly-halfkelly-dot');
+    var halfLabel = document.getElementById('kelly-halfkelly-label');
+
+    // x-axis mapping, read off the chart's own geometry: the plot area runs
+    // from X0=70 to 610 (AXIS_WIDTH=540px). We treat that axis as spanning
+    // "0 to 3*f*" so f*, 2f* and the curve always rescale together as p
+    // changes (this is what keeps 3*f* from ever running past the drawn
+    // axis, even at p=0.90 where f*=80%). Expressed in u = f/f* units, one
+    // f*-unit is always AXIS_WIDTH/3 px, so the f*/2f*/half-Kelly pixel
+    // positions come out identical for every p — only the % values in the
+    // readout (what that fixed position is actually worth) move with p.
+    var X0 = 70, AXIS_WIDTH = 540, PX_PER_FSTAR = AXIS_WIDTH / 3;
+    // y-axis mapping, read off the original curve/dots: g=0 sits at Y0=170,
+    // and the peak (normalized g=1 at u=1) sits Y_SCALE=90px above that.
+    var Y0 = 170, Y_SCALE = 90, U_MAX = 2.4, STEPS = 24;
+
+    function yAt(u){ return Y0 - Y_SCALE * (2 * u - u * u); }
+
+    function update(){
+      var p = parseInt(slider.value, 10) / 100;
+      var fStar = 2 * p - 1;
+      var fStarPct = Math.round(fStar * 100);
+      var halfPct = fStarPct / 2;
+
+      pVal.textContent = 'p = ' + p.toFixed(2);
+      fstarVal.textContent = fStarPct + '%';
+      halfVal.textContent = halfPct + '%';
+
+      var xFstar = X0 + PX_PER_FSTAR;
+      var x2Fstar = X0 + 2 * PX_PER_FSTAR;
+      var xHalf = X0 + 0.5 * PX_PER_FSTAR;
+
+      fstarLine.setAttribute('x1', xFstar);
+      fstarLine.setAttribute('x2', xFstar);
+      fstarLabel.setAttribute('x', xFstar);
+      fstarDot.setAttribute('cx', xFstar);
+      fstarDot.setAttribute('cy', yAt(1));
+
+      twoFstarLine.setAttribute('x1', x2Fstar);
+      twoFstarLine.setAttribute('x2', x2Fstar);
+      twoFstarLabel.setAttribute('x', x2Fstar);
+      twoFstarDot.setAttribute('cx', x2Fstar);
+      twoFstarDot.setAttribute('cy', yAt(2));
+
+      halfDot.setAttribute('cx', xHalf);
+      halfDot.setAttribute('cy', yAt(0.5));
+      halfLabel.setAttribute('x', xHalf);
+
+      var pts = [];
+      for (var i = 0; i <= STEPS; i++){
+        var u = U_MAX * i / STEPS;
+        var x = X0 + u * PX_PER_FSTAR;
+        var y = yAt(u);
+        pts.push(x.toFixed(1) + ',' + y.toFixed(1));
+      }
+      curvePath.setAttribute('d', 'M' + pts.join(' L'));
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+  </script>
 
   <h2>How practitioners actually use this</h2>
   <p>

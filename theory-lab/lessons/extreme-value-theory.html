@@ -327,13 +327,23 @@
       <rect x="536" y="244" width="28" height="6"   style="fill:var(--s3);stroke:var(--border)"></rect>
       <rect x="567" y="246" width="28" height="4"   style="fill:var(--s3);stroke:var(--border)"></rect>
       <rect x="598" y="247" width="28" height="3"   style="fill:var(--s3);stroke:var(--border)"></rect>
-      <line x1="257" y1="18" x2="257" y2="250" style="stroke:var(--amber);stroke-width:1.5;stroke-dasharray:3,3"></line>
-      <text x="262" y="30" style="font:10px 'DM Mono',monospace;fill:var(--amber)">threshold u</text>
+      <line id="evt-threshold-line" x1="257" y1="18" x2="257" y2="250" style="stroke:var(--amber);stroke-width:1.5;stroke-dasharray:3,3"></line>
+      <text id="evt-threshold-label" x="262" y="30" style="font:10px 'DM Mono',monospace;fill:var(--amber)">threshold u</text>
       <path d="M 54,249 C 59.17,249 74.67,249.17 85,249 C 95.33,248.83 105.67,248.33 116,248 C 126.33,247.67 136.67,248.33 147,247 C 157.33,245.67 167.67,244.33 178,240 C 188.33,235.67 198.67,230.83 209,221 C 219.33,211.17 229.67,197.5 240,181 C 250.33,164.5 260.67,141.5 271,122 C 281.33,102.5 291.67,77.67 302,64 C 312.33,50.33 322.67,40 333,40 C 343.33,40 353.67,50.33 364,64 C 374.33,77.67 384.67,102.5 395,122 C 405.33,141.5 415.67,164.5 426,181 C 436.33,197.5 446.67,211.17 457,221 C 467.33,230.83 477.67,235.67 488,240 C 498.33,244.33 508.67,245.67 519,247 C 529.33,248.33 539.67,247.67 550,248 C 560.33,248.33 570.67,248.83 581,249 C 591.33,249.17 606.83,249 612,249" style="fill:none;stroke:var(--text3);stroke-width:2;stroke-dasharray:4,3"></path>
-      <path d="M 54,243 C 59.17,242.17 74.67,240.17 85,238 C 95.33,235.83 105.67,233 116,230 C 126.33,227 136.67,224 147,220 C 157.33,216 167.67,211 178,206 C 188.33,201 198.67,196.5 209,190 C 219.33,183.5 232,175 240,167 C 248,159 254.17,146.17 257,142" style="fill:none;stroke:var(--red);stroke-width:2.5"></path>
+      <path id="evt-gpd-curve" d="M 54,243 C 59.17,242.17 74.67,240.17 85,238 C 95.33,235.83 105.67,233 116,230 C 126.33,227 136.67,224 147,220 C 157.33,216 167.67,211 178,206 C 188.33,201 198.67,196.5 209,190 C 219.33,183.5 232,175 240,167 C 248,159 254.17,146.17 257,142" style="fill:none;stroke:var(--red);stroke-width:2.5"></path>
       <text x="40" y="270" style="font:10px 'DM Mono',monospace;fill:var(--text3)">← larger losses</text>
       <text x="626" y="270" text-anchor="end" style="font:10px 'DM Mono',monospace;fill:var(--text3)">larger gains →</text>
     </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head">
+          <span>Threshold u (percentile)</span>
+          <span class="tl-live" id="evt-u-val">90th percentile</span>
+        </div>
+        <input type="range" id="evt-u-slider" min="80" max="98" step="1" value="90">
+        <div class="tl-hint">Higher threshold = fewer exceedances feed the GPD fit (more noise, but a purer tail) · lower threshold = more data (smoother fit, but risks contaminating the tail with 'ordinary' observations).</div>
+      </div>
+    </div>
     <div class="tl-legend">
       <span><i style="background:var(--s3);border:1px solid var(--border)"></i>Return histogram</span>
       <span><i style="background:var(--text3)"></i>Normal distribution fit</span>
@@ -349,6 +359,79 @@
     point of peaks-over-threshold.
     </div>
   </div>
+
+  <script>
+  (function () {
+    var PEAK_X = 319;      // x of the tallest bar (bin containing the histogram mode)
+    var EDGE_X = 54;        // fixed far-left extent of the drawn tail curve (matches the static chart)
+    var BASELINE_Y = 250;   // x-axis
+    var H_MAX = 210;        // height (px) of the tallest bar, used to scale the curve's envelope
+    var K_DECAY = 0.0107254; // decay rate, fit so the curve passes through the default u=90 anchor
+    var D0 = 10.9058, LAMBDA = 0.1737898; // threshold-position mapping constants (fit so p=90 -> x=257)
+    var NUM_SAMPLES = 24;
+
+    // Original static path (p=90 / u at x=257) — used verbatim so the default render is pixel-exact.
+    var DEFAULT_CURVE_D = "M 54,243 C 59.17,242.17 74.67,240.17 85,238 C 95.33,235.83 105.67,233 116,230 C 126.33,227 136.67,224 147,220 C 157.33,216 167.67,211 178,206 C 188.33,201 198.67,196.5 209,190 C 219.33,183.5 232,175 240,167 C 248,159 254.17,146.17 257,142";
+
+    var slider = document.getElementById('evt-u-slider');
+    var uVal = document.getElementById('evt-u-val');
+    var thresholdLine = document.getElementById('evt-threshold-line');
+    var thresholdLabel = document.getElementById('evt-threshold-label');
+    var gpdCurve = document.getElementById('evt-gpd-curve');
+
+    function ordinalSuffix(n) {
+      var d = n % 10;
+      if (d === 1) return 'st';
+      if (d === 2) return 'nd';
+      if (d === 3) return 'rd';
+      return 'th';
+    }
+
+    // Maps percentile (80-98) to an x-position on the LEFT/loss side of the histogram.
+    // Higher percentile = more extreme loss = further left (smaller x, deeper into the tail),
+    // matching this chart's "← larger losses" / "larger gains →" axis labels. Exponential so the
+    // threshold accelerates toward the sparse left edge near the top of the range, the way a
+    // heavy-tailed quantile function does — and it lands exactly on x=257 at p=90 by construction.
+    function thresholdX(p) {
+      var d = D0 * Math.exp(LAMBDA * (p - 80));
+      return PEAK_X - d;
+    }
+
+    // Height (px above baseline) of the smoothed tail-fit envelope at a given x — same exponential
+    // "family" as the threshold mapping above, just re-anchored so it sweeps up toward the peak.
+    function envelopeHeight(x) {
+      return H_MAX * Math.exp(-K_DECAY * (PEAK_X - x));
+    }
+
+    function buildCurvePath(toX) {
+      var pts = [];
+      for (var i = 0; i < NUM_SAMPLES; i++) {
+        var x = EDGE_X + (toX - EDGE_X) * (i / (NUM_SAMPLES - 1));
+        var y = BASELINE_Y - envelopeHeight(x);
+        pts.push((i === 0 ? 'M ' : 'L ') + x.toFixed(1) + ',' + y.toFixed(1));
+      }
+      return pts.join(' ');
+    }
+
+    function update() {
+      var p = parseInt(slider.value, 10);
+      uVal.textContent = p + ordinalSuffix(p) + ' percentile';
+
+      var tx = thresholdX(p);
+      thresholdLine.setAttribute('x1', tx.toFixed(1));
+      thresholdLine.setAttribute('x2', tx.toFixed(1));
+      thresholdLabel.setAttribute('x', (tx + 5).toFixed(1));
+
+      // At the default (u=90th), reuse the original hand-tuned path exactly so the chart matches
+      // the file's static default pixel-for-pixel; every other threshold redraws the same
+      // exponential-envelope curve family, just clipped between the fixed left edge and the new u.
+      gpdCurve.setAttribute('d', p === 90 ? DEFAULT_CURVE_D : buildCurvePath(tx));
+    }
+
+    slider.addEventListener('input', update);
+    update();
+  })();
+  </script>
 
   <h2>How practitioners actually use this</h2>
   <p>
