@@ -91,6 +91,12 @@
   <div class="tl-math">
     \[ \bar{x} = \frac{1}{n}\sum_{i=1}^{n} x_i \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>x̄</code><span>the mean — what we're solving for</span></div>
+    <div class="tl-eq-chip c2"><code>n</code><span>how many numbers you have</span></div>
+    <div class="tl-eq-chip c3"><code>xᵢ</code><span>each individual data point</span></div>
+    <div class="tl-eq-chip c4"><code>Σ</code><span>"add up every one of them"</span></div>
+  </div>
   <p>
     The mean is a measure of <em>central tendency</em> — a single number meant
     to represent "the typical value." On its own it says nothing about how
@@ -111,29 +117,30 @@
   <div class="tl-math">
     \[ \sum_{i=1}^{n} (x_i - \bar{x}) = 0 \quad \text{always, for any dataset} \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>xᵢ − x̄</code><span>one point's signed distance from the mean</span></div>
+    <div class="tl-eq-chip c4"><code>= 0</code><span>the positives and negatives always cancel exactly</span></div>
+  </div>
   <p>
     So the plain average deviation is always exactly zero, no matter how
     spread out or tightly clustered the data is — it is useless as a measure
     of spread. Two fixes are possible, and both are used in practice:
   </p>
-  <p>
-    <strong>Fix 1 — take the absolute value first.</strong> Average
-    \(|x_i - \bar{x}|\) instead of \(x_i - \bar{x}\). This is a real, valid
-    statistic called the <strong>mean absolute deviation</strong> (MAD), and
-    it does correctly measure spread. It is used in some robust-statistics
-    contexts precisely because it doesn't do what fix 2 does below — treat a
-    huge deviation as far worse than a merely large one. But it has a real
-    cost: absolute value is not smooth at zero (it has a sharp corner), which
-    makes it awkward to work with in calculus-based derivations (optimization,
-    maximum-likelihood estimation, the machinery behind regression and most of
-    the models in this series) — one of the reasons MAD lost out to variance
-    as the default.
-  </p>
-  <p>
-    <strong>Fix 2 — square the deviations first.</strong> Average
-    \((x_i - \bar{x})^2\) instead. This is <strong>variance</strong>, and it
-    is the standard choice, for two compounding reasons:
-  </p>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card amber">
+      <h4>Fix 1 — take the absolute value first</h4>
+      <p>Average \(|x_i - \bar{x}|\) instead of \(x_i - \bar{x}\). A real, valid statistic called the <strong>mean absolute deviation</strong> (MAD) — used in robust-statistics contexts precisely because it does <em>not</em> treat a huge deviation as far worse than a merely large one.</p>
+      <p style="margin-top:8px">Cost: absolute value has a sharp corner at zero, which is awkward for the calculus-based methods (least squares, maximum likelihood) behind most models in this series — one reason MAD lost out to variance as the default.</p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>Fix 2 — square the deviations first</h4>
+      <p>Average \((x_i - \bar{x})^2\) instead. This is <strong>variance</strong> — the standard choice, for two compounding reasons covered below.</p>
+      <p style="margin-top:8px">Bonus: the square function is smooth everywhere (no sharp corner), which is exactly why calculus-based estimation builds on variance rather than MAD.</p>
+    </div>
+  </div>
+
+  <p>Why variance specifically wins, in more depth:</p>
   <ul>
     <li>
       <strong>Squaring makes every term positive</strong> (or zero), just like
@@ -155,25 +162,31 @@
       "rare-big-moves-count-a-lot," which is a feature here, not an accident.
     </li>
   </ul>
-  <p>
-    Squaring also has a purely mathematical convenience: the square function
-    is smooth everywhere (no sharp corner at zero, unlike absolute value),
-    which is why calculus-based estimation methods (least squares, maximum
-    likelihood) build on variance rather than MAD as the default loss to
-    minimize.
-  </p>
 
   <h3>Population variance vs. sample variance — why divide by \(n-1\)?</h3>
   <p>
     There are two versions of the variance formula, and mixing them up is one
-    of the most common statistics mistakes. If you somehow had
-    <strong>every single value in the entire population</strong> of interest —
-    every trading day that will ever occur, which is impossible in practice —
-    and you knew the population's true mean \(\mu\) exactly, the
-    <strong>population variance</strong> is:
+    of the most common statistics mistakes.
   </p>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Population variance, \(\sigma^2\)</h4>
+      <p>Used only if you somehow had <strong>every single value in the entire population</strong> — every trading day that will ever occur — and knew the true mean \(\mu\) exactly. Impossible in practice.</p>
+    </div>
+    <div class="tl-compare-card green">
+      <h4>Sample variance, \(s^2\)</h4>
+      <p>Used whenever you have a <strong>sample</strong> drawn from the population (e.g. the last 100 trading days) and only an estimate \(\bar{x}\) of the true mean — which is nearly always the finance case.</p>
+    </div>
+  </div>
+
+  <p>If you somehow had every single value in the entire population — every trading day that will ever occur, which is impossible in practice — and you knew the population's true mean \(\mu\) exactly, the <strong>population variance</strong> is:</p>
   <div class="tl-math">
     \[ \sigma^2 = \frac{1}{n}\sum_{i=1}^{n} (x_i - \mu)^2 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>σ²</code><span>population variance — the true, usually-unknowable number</span></div>
+    <div class="tl-eq-chip c3"><code>μ</code><span>(mu) the true population mean, known exactly here</span></div>
   </div>
   <p>
     In practice you never have the whole population — you have a
@@ -188,6 +201,10 @@
   </p>
   <div class="tl-math">
     \[ s^2 = \frac{1}{n-1}\sum_{i=1}^{n} (x_i - \bar{x})^2 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>s²</code><span>sample variance — what you can actually compute</span></div>
+    <div class="tl-eq-chip c4"><code>n−1</code><span>Bessel's correction — one "used up" degree of freedom</span></div>
   </div>
   <p>
     <strong>Why \(n-1\), intuitively.</strong> The sample mean \(\bar{x}\) is
@@ -236,6 +253,9 @@
   <div class="tl-math">
     \[ s = \sqrt{s^2} = \sqrt{\frac{1}{n-1}\sum_{i=1}^{n} (x_i - \bar{x})^2} \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>s</code><span>standard deviation — variance's square root, back in real units</span></div>
+  </div>
   <p>
     This is the \(\sigma\) referenced everywhere else in this series (the
     population version is written \(\sigma\), the sample version is often
@@ -277,6 +297,12 @@
   <div class="tl-math">
     \[ f(x) = \frac{1}{\sigma\sqrt{2\pi}}\, e^{-\frac{(x-\mu)^2}{2\sigma^2}} \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>f(x)</code><span>the curve's height at point x — not a probability itself</span></div>
+    <div class="tl-eq-chip c3"><code>μ</code><span>where the peak of the bell sits</span></div>
+    <div class="tl-eq-chip c2"><code>σ</code><span>how wide the bell is</span></div>
+    <div class="tl-eq-chip c4"><code>e</code><span>Euler's number, ≈2.718 — creates the curve's fast-decaying tails</span></div>
+  </div>
   <p>
     You don't need calculus to use this formula — you need to know what its
     two pieces are doing. The exponential term,
@@ -308,6 +334,11 @@
   <div class="tl-math">
     \[ z = \frac{x - \mu}{\sigma} \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>z</code><span>the z-score — "how many sigmas away," unitless</span></div>
+    <div class="tl-eq-chip c3"><code>x</code><span>the value you're scoring</span></div>
+    <div class="tl-eq-chip c2"><code>σ</code><span>the yardstick the deviation is measured in</span></div>
+  </div>
   <p>
     This takes a deviation from the mean (\(x - \mu\), in the original units)
     and divides it by \(\sigma\) (also in the original units), so the units
@@ -331,6 +362,25 @@
   <div class="tl-math">
     \[ P(|z| < 1) \approx 68\% \qquad P(|z| < 2) \approx 95\% \qquad P(|z| < 3) \approx 99.7\% \]
   </div>
+
+  <div class="tl-stat-row">
+    <div class="tl-stat blue">
+      <div class="tl-stat-num">68%</div>
+      <div class="tl-stat-label">within ±1σ</div>
+      <div class="tl-stat-sub">a normal, unremarkable day</div>
+    </div>
+    <div class="tl-stat green">
+      <div class="tl-stat-num">95%</div>
+      <div class="tl-stat-label">within ±2σ</div>
+      <div class="tl-stat-sub">1-in-20-ish, worth a second look</div>
+    </div>
+    <div class="tl-stat purple">
+      <div class="tl-stat-num">99.7%</div>
+      <div class="tl-stat-label">within ±3σ</div>
+      <div class="tl-stat-sub">1-in-370-ish, a genuine tail event</div>
+    </div>
+  </div>
+
   <p>
     In words: about 68% of a normal distribution's values fall within 1
     standard deviation of the mean (\(z\) between \(-1\) and \(+1\)); about
@@ -408,59 +458,94 @@
       Suppose a currency pair's last six daily returns, in percent, were:
       \(+1.0,\ +2.0,\ -1.0,\ +3.0,\ 0.0,\ +1.0\). Walk through every step.
     </p>
-    <p><strong>Step 1 — the mean.</strong> Sum the six values and divide by
-    \(n=6\):</p>
-    <div class="tl-math">
-      \[ \bar{x} = \frac{1.0+2.0+(-1.0)+3.0+0.0+1.0}{6} = \frac{6.0}{6} = 1.0\% \]
+
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>The mean</h4>
+          <p>Sum the six values and divide by \(n=6\):</p>
+          <div class="tl-math">
+            \[ \bar{x} = \frac{1.0+2.0+(-1.0)+3.0+0.0+1.0}{6} = \frac{6.0}{6} = 1.0\% \]
+          </div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Deviations from the mean</h4>
+          <p>Subtract 1.0 from each value:</p>
+          <div class="tl-math">
+            \[ 1.0-1.0=0,\quad 2.0-1.0=1,\quad -1.0-1.0=-2,\quad 3.0-1.0=2,\quad 0.0-1.0=-1,\quad 1.0-1.0=0 \]
+          </div>
+          <p>
+            Check: these six deviations, \(0, 1, -2, 2, -1, 0\), sum to zero —
+            as they always must (shown in the derivation above). Good sign the
+            arithmetic so far is correct.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Square each deviation, then sum</h4>
+          <div class="tl-math">
+            \[ 0^2+1^2+(-2)^2+2^2+(-1)^2+0^2 = 0+1+4+4+1+0 = 10 \]
+          </div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Sample variance</h4>
+          <p>Divide the sum of squared deviations by \(n-1 = 5\) (Bessel's
+          correction — this is a sample, and the mean used was estimated from
+          this same sample):</p>
+          <div class="tl-math">
+            \[ s^2 = \frac{10}{6-1} = \frac{10}{5} = 2.0\ (\%)^2 \]
+          </div>
+          <p>
+            For contrast, the (incorrect here, but illustrative) population
+            formula dividing by \(n=6\) instead would give
+            \(10/6 \approx 1.667\ (\%)^2\) — a smaller number, exactly the
+            systematic understatement Bessel's correction exists to fix.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">5</div>
+        <div class="tl-step-body">
+          <h4>Standard deviation</h4>
+          <p>Take the square root to get back to percent units:</p>
+          <div class="tl-math">
+            \[ s = \sqrt{2.0} \approx 1.414\% \]
+          </div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">6</div>
+        <div class="tl-step-body">
+          <h4>A z-score</h4>
+          <p>The best day in the sample was \(+3.0\%\). How unusual was it
+          relative to this pair's recent typical behavior?</p>
+          <div class="tl-math">
+            \[ z = \frac{3.0 - 1.0}{1.414} = \frac{2.0}{1.414} \approx 1.41 \]
+          </div>
+          <p>
+            A z-score of about 1.41 sits between the \(\pm1\sigma\) band
+            (about 68% of outcomes) and the \(\pm2\sigma\) band (about 95% of
+            outcomes) — the day was noticeably above average, but well short
+            of the roughly 95th-percentile territory that a full \(z=2\)
+            would represent, and nowhere close to the \(z\approx3\) tail-event
+            territory. With only 6 data points this is a toy illustration,
+            not a real volatility estimate — a real z-score gate would use a
+            much longer rolling window, exactly what
+            <code>js/statsCore.js</code>'s <code>rollingZScore</code> does
+            (next section).
+          </p>
+        </div>
+      </div>
     </div>
-    <p><strong>Step 2 — deviations from the mean.</strong> Subtract 1.0 from
-    each value:</p>
-    <div class="tl-math">
-      \[ 1.0-1.0=0,\quad 2.0-1.0=1,\quad -1.0-1.0=-2,\quad 3.0-1.0=2,\quad 0.0-1.0=-1,\quad 1.0-1.0=0 \]
-    </div>
-    <p>
-      Check: these six deviations, \(0, 1, -2, 2, -1, 0\), sum to zero — as
-      they always must (shown in the derivation above). Good sign the
-      arithmetic so far is correct.
-    </p>
-    <p><strong>Step 3 — square each deviation, then sum.</strong></p>
-    <div class="tl-math">
-      \[ 0^2+1^2+(-2)^2+2^2+(-1)^2+0^2 = 0+1+4+4+1+0 = 10 \]
-    </div>
-    <p><strong>Step 4 — sample variance.</strong> Divide the sum of squared
-    deviations by \(n-1 = 5\) (Bessel's correction — this is a sample, and the
-    mean used was estimated from this same sample):</p>
-    <div class="tl-math">
-      \[ s^2 = \frac{10}{6-1} = \frac{10}{5} = 2.0\ (\%)^2 \]
-    </div>
-    <p>
-      For contrast, the (incorrect here, but illustrative) population formula
-      dividing by \(n=6\) instead would give \(10/6 \approx 1.667\ (\%)^2\) —
-      a smaller number, exactly the systematic understatement Bessel's
-      correction exists to fix.
-    </p>
-    <p><strong>Step 5 — standard deviation.</strong> Take the square root to
-    get back to percent units:</p>
-    <div class="tl-math">
-      \[ s = \sqrt{2.0} \approx 1.414\% \]
-    </div>
-    <p><strong>Step 6 — a z-score.</strong> The best day in the sample was
-    \(+3.0\%\). How unusual was it relative to this pair's recent typical
-    behavior?</p>
-    <div class="tl-math">
-      \[ z = \frac{3.0 - 1.0}{1.414} = \frac{2.0}{1.414} \approx 1.41 \]
-    </div>
-    <p>
-      A z-score of about 1.41 sits between the \(\pm1\sigma\) band (about 68%
-      of outcomes) and the \(\pm2\sigma\) band (about 95% of outcomes) — the
-      day was noticeably above average, but well short of the roughly
-      95th-percentile territory that a full \(z=2\) would represent, and
-      nowhere close to the \(z\approx3\) tail-event territory. With only 6
-      data points this is a toy illustration, not a real volatility estimate
-      — a real z-score gate would use a much longer rolling window, exactly
-      what <code>js/statsCore.js</code>'s <code>rollingZScore</code> does
-      (next section).
-    </p>
   </div>
 
   <h2>How practitioners actually use this</h2>
@@ -478,6 +563,26 @@
     picking an arbitrary raw-price threshold that doesn't adapt as volatility
     changes.
   </p>
+
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body"><h4>Pick a rolling window \(N\)</h4><p>e.g. the last 20 or 100 observations — long enough to estimate \(\bar{x}\) and \(s\) reliably, short enough to track a changing regime.</p></div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body"><h4>Recompute the mean and \(s\) over that window</h4><p>Slide the window forward one observation at a time — this is what makes it "rolling," not a single fixed-sample statistic.</p></div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body"><h4>Score the newest observation</h4><p>\(z = (x_{\text{new}} - \bar{x}) / s\), using the just-computed rolling mean and standard deviation.</p></div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">4</div>
+      <div class="tl-step-body"><h4>Threshold consistently</h4><p>"Only act when \(|z| > 2\)" is a literature-standard way of saying "only on moves genuinely unusual for this instrument lately" — one rule that adapts as volatility changes, instead of a fixed raw-price cutoff.</p></div>
+    </div>
+  </div>
+
   <p>
     This is also the statistical backbone of Bollinger Bands (price bands
     drawn at \(\pm2\sigma\) from a moving average — literally a z-score gate
