@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The SABR Model — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Advanced Stochastic Calculus &amp; Derivatives / The SABR Model</div>
+  <div class="tl-kicker">Advanced Stochastic Calculus &amp; Derivatives · Lesson 4 of 4</div>
+  <h1 class="tl-title">The SABR Model</h1>
+  <p class="tl-dek">Four parameters and one closed-form approximation for the implied-volatility smile — the reason SABR, not the arguably richer Heston model, is what an FX or rates options desk actually recalibrates every time the market moves.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — the FX-options-market-standard smile model</span>
+    <span>~16 min read</span>
+    <span>Prereqs: The Heston Model</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    The Heston lesson built a genuine stochastic-volatility model: volatility
+    itself is a random process, correlated with the underlying's returns
+    through \(\rho\), and that correlation is what produces the skewed,
+    non-flat implied-volatility smile real options markets actually show
+    (something plain Black-Scholes, with its single constant \(\sigma\),
+    structurally cannot produce). Heston is correct in spirit and is a real,
+    self-consistent model of how volatility evolves. But it has a practical
+    problem this lesson exists to solve: pricing a single option under Heston
+    requires evaluating its characteristic function and numerically inverting
+    a Fourier integral, and <em>calibrating</em> Heston's five parameters to
+    match today's observed market smile means doing that numerical inversion
+    over and over inside an optimizer's search loop. That is workable
+    overnight or for a research backtest. It is not what happens at a live FX
+    options desk that needs to re-quote a USD/JPY smile every time spot ticks,
+    dozens or hundreds of times a session.
+  </p>
+  <p>
+    SABR (Hagan, Kumar, Lesniewski &amp; Woodward, "Managing Smile Risk," 2002)
+    solves exactly that problem, and solves it well enough that it became the
+    de facto industry-standard model for quoting and interpolating implied
+    volatility smiles in both FX options and interest-rate options (swaptions,
+    caps/floors) markets. It is a different kind of stochastic-volatility
+    model from Heston — simpler in its assumed dynamics, not more
+    "sophisticated" — but its authors derived a very good closed-form
+    algebraic approximation for the implied volatility smile directly in
+    terms of its four parameters and the strike and forward. That single fact
+    — no numerical integration, no Fourier inversion, just algebra — is the
+    entire reason SABR won the practitioner adoption race. This lesson covers
+    the model's specification, what each of its four parameters actually
+    controls, the closed-form approximation itself, and the daily desk
+    workflow (fit to a handful of liquid quotes, read off the rest of the
+    smile) that this closed form makes possible.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A volatility model built to be fit fast, not to be exhaustively "correct"</h3>
+    <p>
+      Every stochastic-volatility model faces the same two jobs: describe how
+      volatility might evolve (that's the modeling job), and let a trader
+      match the model's parameters to whatever the market is quoting right
+      now (that's the calibration job). Heston takes the modeling job very
+      seriously — mean-reverting variance, its own volatility, correlation
+      with the spot — and pays for that seriousness with a calibration job
+      that's numerically heavy. SABR asks a different question: what is the
+      <em>simplest</em> stochastic-volatility model whose implied-vol smile
+      can be written down almost in closed form? The SABR dynamics
+      themselves are, if anything, a step down in modeling ambition from
+      Heston — no mean reversion in the volatility process at all, just a
+      volatility level that random-walks (in log terms) forever. What makes
+      SABR valuable isn't a claim that this simpler process is a more
+      faithful description of "true" volatility dynamics. It's that Hagan and
+      his co-authors found an accurate algebraic shortcut from
+      "here are the four parameters" straight to "here is the implied
+      volatility at any strike" — skipping the option-pricing step
+      (no PDE to solve, no Fourier transform to invert) entirely. A trader can
+      type four numbers into a formula and read off an entire smile in the
+      time it takes to hit enter. That speed, not superior realism, is
+      SABR's whole reason for existing in daily practice.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    Three things to cover in order: (1) the SABR stochastic differential
+    equations — what "Stochastic Alpha, Beta, Rho" actually names, (2) what
+    each of the four parameters does to the shape of the smile, and (3) the
+    closed-form Hagan approximation that turns those four numbers into a full
+    implied-volatility curve.
+  </p>
+
+  <h3>1. The model specification — two coupled SDEs</h3>
+  <p>
+    SABR models a forward price or forward rate \(F_t\) — a forward FX rate,
+    a forward swap rate, whichever underlying the option is actually struck
+    against — together with its own instantaneous volatility level
+    \(\alpha_t\), which is <em>itself</em> a random process rather than a
+    fixed constant:
+  </p>
+  <div class="tl-math">
+    \[ dF_t = \alpha_t F_t^{\beta}\,dW_t^{1} \]
+    \[ d\alpha_t = \nu\,\alpha_t\,dW_t^{2} \]
+    \[ \mathbb{E}\big[dW_t^{1}\,dW_t^{2}\big] = \rho\,dt \]
+  </div>
+  <div class="tl-symbols"><table>
+    <tr><td>\(F_t\)</td><td>The forward price or forward rate at time \(t\) — e.g. the 3-month forward EUR/USD rate, or a forward swap rate for a swaption. SABR is specified for the <em>forward</em>, not the spot, and deliberately gives it zero drift (there is no \(\mu\,dt\) or \(r\,dt\) term on \(F_t\) at all) — under the appropriate forward or swap measure a forward price is, by no-arbitrage construction, already a martingale, so this is the natural measure to model it in directly rather than a simplification.</td></tr>
+    <tr><td>\(\alpha_t\)</td><td>(alpha) The instantaneous volatility level of the forward at time \(t\). \(\alpha_0\) (today's value, usually just written \(\alpha\)) is one of the four calibrated parameters and is, roughly, "today's at-the-money volatility level" — though not exactly equal to it once the correction terms below are included.</td></tr>
+    <tr><td>\(\beta\)</td><td>(beta) The <strong>backbone exponent</strong> — a fixed constant (not itself random) controlling how strongly volatility scales with the level of the forward itself. Explained in full below.</td></tr>
+    <tr><td>\(\nu\)</td><td>(nu) The <strong>volatility of volatility</strong> ("vol-of-vol") — how much \(\alpha_t\) itself fluctuates. Note \(\alpha_t\) follows plain driftless geometric Brownian motion in \(\nu\) — the same lognormal SDE form as the underlying in the Black-Scholes lesson, just applied to the volatility parameter instead of to price. There is no mean-reversion term here at all, unlike Heston's variance process — a deliberate simplification.</td></tr>
+    <tr><td>\(\rho\)</td><td>(rho) The correlation between the two driving Brownian motions \(dW_t^1\) (shocks to the forward) and \(dW_t^2\) (shocks to volatility) — the same skew-generating role \(\rho\) plays in Heston.</td></tr>
+    <tr><td>\(dW_t^1, dW_t^2\)</td><td>Two correlated standard Brownian motions (Wiener processes) — the two independent sources of randomness in the model, one driving the forward, one driving its volatility, linked by \(\rho\).</td></tr>
+  </table></div>
+  <p>
+    "SABR" is simply an acronym for the four objects that fully specify this
+    system: <strong>S</strong>tochastic <strong>A</strong>lpha (the random
+    volatility level \(\alpha_t\)), <strong>B</strong>eta (the backbone
+    exponent), <strong>R</strong>ho (the correlation). "Vol-of-vol" \(\nu\)
+    is the fourth parameter, present in the dynamics but not in the acronym's
+    letters. Compare this directly to Heston: Heston models the
+    <em>variance</em> \(v_t\) as a mean-reverting (Cox-Ingersoll-Ross) process
+    with its own long-run level, mean-reversion speed, and vol-of-vol, plus a
+    correlation \(\rho\) with the spot. SABR instead lets the underlying's
+    own exponent \(\beta\) do work that Heston does with its CIR
+    specification, drops mean-reversion in volatility entirely, and in
+    exchange gets an implied-vol formula you can write on a whiteboard.
+  </p>
+
+  <h3>2. What each parameter controls — backbone, skew, curvature</h3>
+  <p>
+    The four parameters are not four interchangeable dials on the same knob —
+    each one governs a geometrically distinct feature of the resulting
+    implied-volatility smile (implied vol plotted against strike, at a fixed
+    expiry). Understanding what's genuinely separable between them is most of
+    what's needed to use the model sensibly.
+  </p>
+  <p>
+    <strong>\(\alpha\) — the current volatility level.</strong> This sets the
+    overall height of the smile: roughly, the at-the-money implied volatility
+    level, before the (typically small) correction terms in the closed-form
+    formula below are applied. Raise \(\alpha\) and the entire smile shifts up
+    roughly in parallel; it does the same job as \(\sigma\) in Black-Scholes
+    or \(v_0\) in Heston — "how volatile is this market, right now."
+  </p>
+  <p>
+    <strong>\(\beta\) — the backbone exponent.</strong> This controls
+    <em>how volatility itself scales with the level of the forward</em> —
+    not the shape of today's smile directly, but the relationship between
+    today's ATM vol and what ATM vol would look like if the forward itself
+    were sitting at a different level. \(\beta = 1\) makes the model
+    "lognormal-like": \(F_t^{\beta} = F_t\), so the diffusion term
+    \(\alpha_t F_t\,dW_t^1\) makes percentage moves the relevant quantity,
+    exactly like geometric Brownian motion in Black-Scholes — volatility
+    scales roughly proportionally with the forward's level. \(\beta = 0\)
+    makes the model "normal-like": \(F_t^{\beta} = 1\), so
+    \(dF_t = \alpha_t\,dW_t^1\) is arithmetic Brownian motion — volatility is
+    an absolute (not percentage) quantity, unaffected by the forward's own
+    level, which is exactly the "normal model" convention rates desks lean on
+    when yields are near zero or negative (a fractional power of a negative
+    forward rate, \(F_t^{\beta}\) for non-integer \(\beta\), is not even
+    well-defined — a real, recurring problem for lognormal-style,
+    \(\beta\)-near-1 rate models once government bond yields went negative
+    after 2008 and again in 2015, and part of why the "normal" \(\beta=0\)
+    convention became standard in parts of the rates market). Values of
+    \(\beta\) between 0 and 1 interpolate between these two extremes (e.g.
+    \(\beta = 0.5\) resembles a CIR/square-root-style scaling). Market
+    convention very often simply <strong>fixes</strong> \(\beta\) by
+    asset-class convention (FX desks commonly use \(\beta\) at or near 1;
+    parts of the rates market use \(\beta = 0\) or a shifted variant) rather
+    than treating it as a free parameter to fit — the practical reason why is
+    explained after the closed-form formula below.
+  </p>
+  <p>
+    <strong>\(\rho\) — correlation, the smile's skew.</strong> Exactly the
+    same conceptual role \(\rho\) plays in Heston: it sets the sign and
+    strength of the asymmetry between how the forward moves and how its
+    volatility moves. A negative \(\rho\) (forward falls, volatility tends to
+    rise) tilts the smile so that low strikes (puts, downside protection)
+    carry higher implied vol than high strikes (calls) — a downward-sloping
+    skew, the shape seen in most equity index markets and in many FX pairs
+    during risk-off conditions. \(\rho\) is what makes the smile asymmetric
+    rather than a symmetric "smile" shape.
+  </p>
+  <p>
+    <strong>\(\nu\) — vol-of-vol, the smile's curvature.</strong> This is the
+    parameter that specifically controls how <em>convex</em> — how
+    pronouncedly "U-shaped" or "smile-shaped" — the implied-vol curve is
+    around its at-the-money point, largely independent of its skew. A low
+    \(\nu\) means volatility itself barely fluctuates, so the smile stays
+    nearly flat across strikes (close to the flat-\(\sigma\) Black-Scholes
+    world). A high \(\nu\) means volatility itself is highly uncertain, which
+    fattens the tails of the distribution of \(F_T\) symmetrically in both
+    directions (deep out-of-the-money puts <em>and</em> calls both become
+    more richly priced relative to at-the-money), producing a pronounced
+    U-shape. The chart below isolates exactly this effect: three smile curves
+    sharing the same at-the-money level and the same \(\rho\) (so no skew
+    tilt), differing only in \(\nu\).
+  </p>
+
+  <h3>3. The closed-form implied-volatility approximation (Hagan et al., 2002)</h3>
+  <p>
+    This is SABR's central practical result. Hagan, Kumar, Lesniewski and
+    Woodward used a singular-perturbation / asymptotic-expansion technique
+    (matched asymptotics on the SABR SDEs' transition density — a genuinely
+    technical derivation, outside this lesson's scope) to derive a very
+    accurate closed-form <strong>algebraic</strong> approximation for the
+    Black-76 implied volatility \(\sigma_B\) (the implied vol you'd plug into
+    the standard forward-price option formula to reproduce a SABR-consistent
+    option price) directly in terms of the strike \(K\), the forward \(F\),
+    the time to expiry \(T\), and the four SABR parameters:
+  </p>
+  <div class="tl-math">
+    \[ \sigma_B(K,F) \approx \frac{\alpha}{(FK)^{\frac{1-\beta}{2}}\Big[1+\frac{(1-\beta)^2}{24}\ln^2\frac{F}{K}+\frac{(1-\beta)^4}{1920}\ln^4\frac{F}{K}\Big]}\cdot\left(\frac{z}{x(z)}\right)\cdot\left[1+\left(\frac{(1-\beta)^2}{24}\frac{\alpha^2}{(FK)^{1-\beta}}+\frac{1}{4}\frac{\rho\beta\nu\alpha}{(FK)^{\frac{1-\beta}{2}}}+\frac{2-3\rho^2}{24}\nu^2\right)T\right] \]
+  </div>
+  <div class="tl-math">
+    \[ z=\frac{\nu}{\alpha}(FK)^{\frac{1-\beta}{2}}\ln\frac{F}{K}, \qquad x(z)=\ln\left(\frac{\sqrt{1-2\rho z+z^2}+z-\rho}{1-\rho}\right) \]
+  </div>
+  <div class="tl-symbols"><table>
+    <tr><td>\(\sigma_B(K,F)\)</td><td>The (Black-76) implied volatility this approximation predicts for an option struck at \(K\), forward at \(F\) — this is the number that finally goes on the desk's quote screen, the entire output the formula exists to produce.</td></tr>
+    <tr><td>\((FK)^{\frac{1-\beta}{2}}\)</td><td>A "moneyness-adjusted" scaling factor that reduces to 1 exactly when \(\beta=1\) — one reason \(\beta=1\) is a convenient, simplifying convention (several terms in the formula collapse).</td></tr>
+    <tr><td>\(\ln(F/K)\)</td><td>Log-moneyness — how far the strike sits from the forward, in log terms; zero exactly at-the-money. The same quantity that drove \(d_1,d_2\) in Black-Scholes.</td></tr>
+    <tr><td>\(z\)</td><td>An intermediate quantity that is (to leading order) proportional to \(\nu/\alpha\) times log-moneyness — it is the variable that carries \(\nu\)'s effect into the formula, vanishing exactly at \(K=F\) (where \(\ln(F/K)=0\)).</td></tr>
+    <tr><td>\(x(z)\)</td><td>A further transform of \(z\) built from \(\rho\); the ratio \(z/x(z)\) is the term primarily responsible for the smile's characteristic shape away from at-the-money, and is defined so that \(z/x(z)\to 1\) as \(z\to 0\) (i.e. it reduces to 1 exactly at the money, leaving only the prefactor and the \(T\)-correction bracket).</td></tr>
+    <tr><td>\(T\)</td><td>Time to expiry — the correction bracket's contribution (all three \(\rho\)/\(\nu\)-dependent terms) scales with \(T\), so the smile the formula produces is flatter for very short-dated options and more pronounced for longer-dated ones, all else equal.</td></tr>
+  </table></div>
+  <p>
+    The formula looks dense, but the practical point is simple: it is
+    <strong>pure algebra</strong> — exponents, logarithms, a square root, one
+    natural log. Evaluating it at any \(K\) costs essentially nothing
+    computationally. Contrast this with Heston, where getting a single
+    implied vol at a single strike requires evaluating a complex-valued
+    characteristic function and numerically integrating it (or running an FFT
+    across a strike grid, à la Carr-Madan) to get an option price, and then
+    numerically inverting the Black-Scholes formula to back out the implied
+    vol that price corresponds to — a chain of numerical procedures, each with
+    its own tolerance and failure modes, that must be repeated for every
+    candidate parameter set an optimizer proposes during calibration. SABR's
+    formula collapses that entire chain into one direct evaluation. Setting
+    \(K=F\) (at the money) simplifies the general formula considerably (since
+    \(\ln(F/K)=0\) and \(z/x(z)\to1\)) to:
+  </p>
+  <div class="tl-math">
+    \[ \sigma_{ATM} \approx \frac{\alpha}{F^{1-\beta}}\left[1+\left(\frac{(1-\beta)^2}{24}\frac{\alpha^2}{F^{2-2\beta}}+\frac{1}{4}\frac{\rho\beta\nu\alpha}{F^{1-\beta}}+\frac{2-3\rho^2}{24}\nu^2\right)T\right] \]
+  </div>
+  <p>
+    This is why calibration is so fast in practice. With \(\beta\) fixed by
+    convention, only three unknowns remain — \(\alpha\), \(\rho\), \(\nu\) —
+    and the standard FX quoting convention already provides almost exactly
+    three independent market observations to fit them to: the at-the-money
+    volatility, the 25-delta risk reversal (a skew measure — the vol
+    difference between a 25-delta call and a 25-delta put), and the 25-delta
+    butterfly (a curvature measure — how much richer the 25-delta wings are
+    than a pure interpolation between ATM and skew alone would suggest).
+    Three unknowns, three market-quoted constraints, and a closed-form
+    formula to evaluate at each trial point — this is a small, fast, well
+    behaved root-finding or least-squares problem, not a slow global
+    optimization over an expensive pricing function. This is also the
+    practical reason \(\beta\) is usually <em>not</em> included as a fourth
+    free parameter: \(\beta\) and \(\rho\) both influence the smile's skew to
+    some degree (there is a well-documented near-redundancy between them —
+    similar-looking skews can be produced by different \((\beta,\rho)\)
+    combinations), so leaving both free makes the fit poorly identified
+    (multiple, materially different parameter sets fit the same handful of
+    observed quotes about equally well). Fixing \(\beta\) by convention
+    removes that ambiguity and lets \(\rho\) alone carry the skew.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>Solving for \(\alpha\) and reading off two off-market-strike vols</h3>
+    <p>
+      Suppose a desk has already fixed \(\beta = 1\) by FX convention, and has
+      previously calibrated \(\rho = -0.25\) and \(\nu = 0.40\) (a modest put
+      skew, moderate vol-of-vol) to the broader shape of the recent EUR/USD
+      smile. Today's 3-month forward is \(F = 1.2000\), time to expiry
+      \(T = 0.25\) years, and the live 3-month ATM implied vol quote is
+      \(10.00\%\). The desk needs \(\alpha\) such that the ATM formula
+      reproduces that quote, then wants the implied vol at two strikes 200
+      pips either side of the forward.
+    </p>
+    <p>
+      With \(\beta=1\), the ATM formula's \((1-\beta)^2\) term vanishes and
+      \(F^{1-\beta}=1\), collapsing it to
+      \(\sigma_{ATM} \approx \alpha\big[1+\big(\tfrac14\rho\nu\alpha +
+      \tfrac{2-3\rho^2}{24}\nu^2\big)T\big]\). Solving this (numerically —
+      the correction term is small, so it converges in a couple of
+      iterations from a starting guess of \(\alpha \approx 0.10\)) for
+      \(\sigma_{ATM}=0.10\) gives:
+    </p>
+    <div class="tl-math">
+      \[ \alpha \approx 0.0998 \;(9.98\%) \]
+    </div>
+    <p>
+      Note \(\alpha\) came out only trivially below the 10.00% ATM quote —
+      for a 3-month option the \(T\)-scaled correction terms are small, so
+      \(\alpha\) is close to, but not identically equal to, the ATM vol
+      itself; the gap would widen for a longer-dated option or a larger
+      \(\nu\). Plugging this \(\alpha\) (with the same \(\beta,\rho,\nu,F,T\))
+      into the full closed-form formula at \(K=1.2200\) (a 200-pip
+      out-of-the-money call) and \(K=1.1800\) (a 200-pip out-of-the-money
+      put) gives:
+    </p>
+    <div class="tl-math">
+      \[ \sigma_B(K{=}1.22,F) \approx 9.92\%, \qquad \sigma_B(K{=}1.18,F) \approx 10.09\% \]
+    </div>
+    <p>
+      The put strike prices richer than the call strike — exactly the
+      downward-sloping skew \(\rho=-0.25\) was chosen to produce — and both
+      numbers came from one direct algebraic evaluation each, no repricing
+      loop, no numerical inversion. That is the entire calibrate-then-read-off
+      workflow described in the trading scenario below, done by hand on two
+      strikes; a real desk would do this across a full strike ladder,
+      instantly, every time the market moves.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">How &nu; (vol-of-vol) controls smile curvature, holding ATM fixed</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three implied volatility smile curves plotted against strike-to-forward ratio, all passing through the same at-the-money point. The low vol-of-vol curve is nearly flat. The medium vol-of-vol curve shows a mild U-shape. The high vol-of-vol curve shows a pronounced, steep U-shape, especially at the wings.">
+      <line x1="40" y1="250" x2="620" y2="250" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="40" y1="250" x2="40" y2="20" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="330" y1="20" x2="330" y2="250" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+      <text x="330" y="267" text-anchor="middle" font-size="12" font-family="'DM Mono',monospace" fill="var(--text3)">K = F (ATM)</text>
+      <text x="620" y="270" text-anchor="end" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Strike / Forward (K/F) →</text>
+      <text x="14" y="135" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 14 135)">Implied volatility</text>
+      <text x="34" y="215" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">10%</text>
+      <polyline points="40.00,208.29 136.67,210.29 233.33,211.36 330.00,211.67 426.67,211.36 523.33,210.52 620.00,209.21" style="stroke:var(--text2);stroke-width:2" fill="none"/>
+      <polyline points="40.00,162.75 136.67,189.89 233.33,206.30 330.00,211.67 426.67,206.84 523.33,193.73 620.00,174.56" style="stroke:var(--blue);stroke-width:2.5" fill="none"/>
+      <polyline points="40.00,50.90 136.67,132.70 233.33,190.58 330.00,211.67 426.67,192.50 523.33,145.35 620.00,85.00" style="stroke:var(--amber);stroke-width:2.5" fill="none"/>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--text2)"></i>Low &nu; = 0.10 (nearly flat)</span>
+      <span><i style="background:var(--blue)"></i>Medium &nu; = 0.40 (mild smile)</span>
+      <span><i style="background:var(--amber)"></i>High &nu; = 0.80 (pronounced smile)</span>
+    </div>
+    <div class="tl-chart-caption">
+      All three curves use the same \(\beta=1\), \(\rho=0\) (skew deliberately
+      switched off so curvature is isolated), \(F=1.20\), \(T=0.25\), with
+      \(\alpha\) re-solved for each \(\nu\) so every curve shares the identical
+      10% at-the-money level. Only \(\nu\) differs between the three curves,
+      and only the wings move — this is exactly the sense in which \(\nu\)
+      controls the smile's <strong>curvature</strong> while leaving its
+      symmetric shape and its ATM level untouched. Compare to \(\rho\), which
+      (holding \(\nu\) fixed) would tilt these same curves left or right
+      rather than pulling their wings up or down symmetrically.
+    </div>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    SABR's daily job on an options desk is narrow and specific: given a
+    handful of liquid, actually-tradeable market quotes for a given expiry,
+    produce a full, arbitrage-consistent-looking implied-volatility curve
+    across every strike a client might ask about — including strikes nobody
+    is actively quoting a two-way market in right now. FX and rates option
+    markets don't trade a continuous strike ladder; they trade (and quote
+    tightly) a small standard set of points — the at-the-money straddle, the
+    25-delta risk reversal, the 25-delta butterfly, sometimes a 10-delta
+    version of each. Everything in between and beyond has to be
+    <em>interpolated or extrapolated</em>, and it has to be done in a way
+    that doesn't introduce arbitrage (e.g. a butterfly spread with a negative
+    price, or an implied density that goes negative somewhere). SABR, fit to
+    those liquid points, is the industry's default tool for producing that
+    full curve, precisely because refitting it is cheap enough to do
+    continuously as the market moves rather than once a day.
+  </p>
+
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Quoting a full USD/JPY smile from three numbers, live</h3>
+    <p>
+      An FX options desk needs to be able to quote a two-way price on a
+      USD/JPY option at essentially any strike a client asks for, expiring
+      next week — not just the two or three strikes with an active
+      interdealer market. What the desk actually observes live, streaming
+      from the interdealer brokers, is a small handful of standard points for
+      that expiry: the at-the-money implied vol, the 25-delta risk reversal
+      (the call-vol-minus-put-vol skew measure), and the 25-delta butterfly
+      (the curvature measure). That's it — three numbers, refreshed
+      continuously.
+    </p>
+    <p>
+      The desk fixes \(\beta\) by convention (FX desks commonly run
+      \(\beta\) at or near 1), then solves the small, well-posed
+      three-equation system above — \(\alpha\), \(\rho\), \(\nu\) fit to
+      ATM/risk-reversal/butterfly — using the closed-form Hagan formula as
+      the pricing function inside a fast local root-finder. Because each
+      trial evaluation is pure algebra rather than a Fourier inversion, this
+      fit runs in effectively real time. Once fit, the desk reads the
+      implied vol for <em>any</em> strike — including one nobody is
+      currently making a market in — directly off the closed-form curve, and
+      that same curve is what feeds the pricing engine when a client asks for
+      an odd-strike or odd-tenor quote. As spot moves and the ATM/RR/BF
+      quotes update through the session, the desk re-solves the same three
+      equations again — and again, and again. This exact workflow — fit SABR
+      to a few liquid quotes, read off (and continuously refresh) the rest of
+      the smile — is standard daily practice on FX and interest-rate options
+      desks, not a research exercise; it is the practical machinery
+      underneath every FX options quote a desk publishes at strikes away from
+      the standard delta points.
+    </p>
+  </div>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>SABR is background theory, not a built module — and it's the practical layer under the OI course's gamma story</h3>
+    <p>
+      This repo has no options-pricing or smile-calibration module of any
+      kind today — no SABR fit, no Heston fit, no Black-Scholes engine
+      wired into a live strategy. Both this lesson and the preceding Heston
+      lesson are pure theory background: understanding <em>how</em> real
+      options desks build and manage a volatility surface, not a description
+      of anything built or tested in this codebase. That distinction matters
+      under this repo's own honesty discipline (<code>CLAUDE.md</code>'s
+      "built ≠ works ≠ has edge") — nothing in this lesson has been
+      calibrated to real market data or validated out-of-sample here; it's
+      knowledge to have on hand, not a claim about anything running in
+      production.
+    </p>
+    <p>
+      Where it's genuinely relevant: <code>education/open-interest-course-notes.md</code>
+      teaches that dealers who are short gamma must mechanically buy as price
+      rises and sell as it falls, and that this hedging flow is what makes
+      high-open-interest strikes act like magnets and walls — a fact this
+      Theory Lab's Black-Scholes lesson derives formally (gamma as
+      \(\partial^2 C/\partial S^2\)) using a single flat \(\sigma\). Real
+      dealer books are not priced or hedged off a single flat \(\sigma\);
+      every strike in a real book carries its own implied vol, read off a
+      smile exactly like the one this lesson builds, and a dealer's true
+      aggregate gamma exposure across strikes depends on the <em>shape</em>
+      of that smile (via \(\rho\) and \(\nu\)), not just an ATM level. SABR
+      is, in that sense, the practical, calibration-friendly cousin of the
+      Heston lesson this Theory Lab already covers — where Heston teaches the
+      genuine risk-neutral dynamics that produce a smile, SABR is what a real
+      desk actually turns those market-observed smiles into, day to day, and
+      is the missing layer between "dealers have OI-weighted gamma exposure
+      at a strike" (the course notes' claim) and "here is exactly how a real
+      book prices and risk-manages every strike in between" (what an actual
+      dealer's systems do, using something in the SABR family or a close
+      relative of it).
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where the model is misused or over-trusted</h3>
+    <p>
+      <strong>Treating the Hagan formula as exact.</strong> It is a
+      singular-perturbation asymptotic approximation, not an exact solution —
+      excellent for typical, liquid at-the-money-ish strike ranges and
+      moderate maturities, but known to degrade, and in some parameter
+      regimes to produce outright arbitrage (a non-monotonic, even locally
+      negative, implied probability density), for very low strikes, very long
+      maturities, or unusually high \(\nu\). This is a well-documented,
+      actively studied weakness — Hagan and co-authors themselves published a
+      follow-up, "Arbitrage-Free SABR" (2014), using a PDE/finite-difference
+      approach specifically to patch this failure mode for the strike/maturity
+      combinations where the original closed form breaks down.
+    </p>
+    <p>
+      <strong>Free-fitting \(\beta\) alongside \(\rho\).</strong> As noted
+      above, \(\beta\) and \(\rho\) both influence skew and are close to
+      redundant with each other when both are left free — a fit with both
+      floating can land on very different-looking parameter sets that
+      reproduce today's smile about equally well, which is a real
+      identification problem, not a numerical inconvenience to code around.
+      Fixing \(\beta\) by market convention (and letting \(\rho\) alone carry
+      the skew) is the standard, deliberate fix, not a shortcut being taken
+      for lack of computing power.
+    </p>
+    <p>
+      <strong>Confusing a good same-day fit with a good model of smile
+      dynamics over time.</strong> SABR, fit fresh each time to today's
+      ATM/RR/BF, can reproduce today's smile shape very well — that's a
+      cross-sectional (single-snapshot) fit. It is a separate, harder
+      question whether the SABR dynamics correctly predict how the
+      <em>whole smile should move</em> as the forward itself moves over the
+      following days (the "backbone" prediction) — a documented critique in
+      the literature is that SABR's backbone prediction (governed by
+      \(\beta\)) does not always match how real market smiles are observed to
+      shift as the underlying moves. Refitting SABR from scratch every day
+      papers over this by construction, but that is refitting, not evidence
+      the dynamical assumption was right.
+    </p>
+    <p>
+      <strong>Forgetting \(F\) is a forward, and forward measures are
+      instrument-specific.</strong> SABR is specified under the forward or
+      swap measure appropriate to the specific instrument being priced — an
+      FX forward measure for an FX option, a swap measure for a swaption. It
+      is not a single universal model applied identically everywhere; the
+      "right" \(F\), and the discounting/measure conventions layered on top
+      to get from \(\sigma_B\) to an actual price, differ by asset class and
+      require care that is genuinely outside the scope of what this lesson's
+      implied-vol formula covers on its own.
+    </p>
+  </div>
+
+  <h2>Closing this tier: from Itô's Lemma to the market's smile</h2>
+  <p>
+    This is the last lesson in the Advanced Stochastic Calculus &amp;
+    Derivatives tier, and the four lessons in it form one continuous
+    argument rather than four unrelated topics. Itô's Lemma is the calculus
+    rule that makes it possible to say anything precise at all about a
+    function of a randomly moving quantity — without it, "how does an
+    option's value change as the stock moves" has no rigorous answer.
+    Girsanov's theorem is what licenses the specific mathematical move at the
+    heart of every model in this tier: that you're allowed to change the
+    probability measure you're computing under (from real-world to
+    risk-neutral, or to a forward/swap measure) and have prices still come
+    out consistent — it's the theorem that makes "risk-neutral pricing" more
+    than a convenient fiction. Heston is the first serious attempt to take
+    those two tools and build a model where volatility itself is honestly
+    treated as random, rather than assumed away as a constant — and it
+    succeeds at that, at the cost of needing numerical Fourier methods to
+    actually price anything. SABR, this lesson, is the market's practical
+    answer to the same problem Heston solves in principle: a simpler
+    stochastic-volatility specification, paired with a closed-form
+    approximation good enough that a desk can refit it continuously against
+    live quotes. Together, the four lessons are the rigorous version of a
+    single sentence: Black-Scholes assumes volatility is a known constant;
+    real markets disagree, quoting a whole smile instead of one number; Itô
+    and Girsanov are the machinery that lets you build a model where
+    volatility is genuinely random and still price consistently; and Heston
+    and SABR are the two standard ways that machinery gets used in
+    practice — one for getting the dynamics right, the other for getting the
+    fit fast. Neither is "better" in the abstract; they answer different
+    questions, and knowing which one you're reaching for, and why, is the
+    actual takeaway of this tier.
+  </p>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why do practitioners often prefer SABR to Heston for day-to-day smile quoting, even though Heston is arguably the more complete stochastic-volatility model?</summary>
+    <div class="tl-answer">
+      The deciding factor is calibration speed, not modeling realism. Heston
+      requires evaluating a characteristic function and numerically inverting
+      a Fourier integral to get a single option price, then inverting
+      Black-Scholes to recover the implied vol that price corresponds to — a
+      chain of numerical procedures that has to be repeated for every trial
+      parameter set inside a calibration optimizer. SABR's authors derived a
+      closed-form algebraic approximation for implied volatility directly in
+      terms of the four SABR parameters, the strike, and the forward — no
+      numerical integration or inversion at all. That makes SABR calibration
+      fast enough to run continuously against a live, moving market, which is
+      what an FX or rates options desk actually needs; Heston's added realism
+      (genuine mean-reverting variance dynamics) doesn't outweigh that
+      practical cost for routine smile-quoting, even though it may matter more
+      for other uses (e.g. pricing certain exotics where the dynamics, not
+      just the snapshot smile, matter).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What does the beta backbone parameter actually control, and how is that distinct from what rho and nu each control?</summary>
+    <div class="tl-answer">
+      \(\beta\) controls how volatility scales with the level of the forward
+      itself — \(\beta=1\) makes the model behave like geometric Brownian
+      motion (volatility roughly proportional to the forward's level,
+      "lognormal-like"), \(\beta=0\) makes it behave like arithmetic Brownian
+      motion (volatility an absolute, level-independent quantity,
+      "normal-like"). This is a statement about the relationship between the
+      forward's level and its volatility over time (the "backbone" traced out
+      by ATM vol as the forward moves) — a different question from either
+      \(\rho\) (which sets the skew — the asymmetry between low and high
+      strikes in today's snapshot smile) or \(\nu\) (which sets the
+      curvature — how convex/U-shaped today's snapshot smile is). All three
+      can influence the shape of a fitted smile to some degree, but only
+      \(\beta\) is really about how the volatility level itself is tied to
+      the forward's level, which is why it's normally fixed by convention
+      rather than fit alongside the other two.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. In the chart above, all three curves share the same at-the-money level and the same rho. Why does only nu move the wings, and why don't the curves tilt left or right?</summary>
+    <div class="tl-answer">
+      The chart deliberately sets \(\rho=0\) for all three curves, removing
+      the term that would otherwise tilt the smile asymmetrically toward one
+      side. With skew switched off, changing \(\nu\) only changes how much
+      the volatility parameter itself fluctuates — a higher \(\nu\) fattens
+      the distribution of possible volatility outcomes symmetrically, which
+      symmetrically fattens the tails of the implied forward-price
+      distribution in both directions, raising implied vol for both deep
+      out-of-the-money puts and deep out-of-the-money calls roughly equally.
+      That produces a symmetric, more pronounced U-shape as \(\nu\) rises,
+      with the at-the-money point untouched (since the wings move but the
+      curves are pinned to meet at \(K=F\)) — exactly the curvature effect
+      the chart isolates. A nonzero \(\rho\) would instead pull one wing up
+      and the other down, tilting the whole curve rather than symmetrically
+      lifting both wings.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why is beta typically fixed by market convention instead of calibrated freely alongside rho?</summary>
+    <div class="tl-answer">
+      Because \(\beta\) and \(\rho\) both influence the smile's skew to a
+      significant degree, and their effects are close to redundant with each
+      other — different \((\beta,\rho)\) pairs can produce very similar
+      fitted smiles for the handful of market quotes actually available. If
+      both are left free, the calibration is poorly identified: multiple,
+      materially different parameter combinations fit today's observed
+      quotes about equally well, which makes the fitted \(\rho\) (and any
+      risk sensitivity computed from it) unstable and hard to trust day to
+      day. Fixing \(\beta\) by asset-class convention (near 1 for FX,
+      commonly 0 or a shifted variant for rates in low/negative-rate
+      environments) removes that ambiguity and lets \(\rho\) alone,
+      unambiguously, carry the skew, with \(\nu\) alone carrying curvature —
+      a well-identified three-parameter fit against three market quotes.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Walk through the practical calibration workflow a desk uses to go from a handful of quoted points to a full smile.</summary>
+    <div class="tl-answer">
+      The desk observes a small set of liquid, standard market quotes for a
+      given expiry — typically the at-the-money implied vol, the 25-delta
+      risk reversal (a skew measure), and the 25-delta butterfly (a curvature
+      measure). With \(\beta\) already fixed by convention, this leaves three
+      unknowns (\(\alpha,\rho,\nu\)) and three market-quoted constraints — a
+      small, well-posed root-finding or least-squares problem. The desk
+      solves it by repeatedly evaluating the closed-form Hagan formula (fast,
+      pure algebra) at trial parameter values until the model-implied ATM
+      vol, risk reversal and butterfly match the market-quoted ones. Once
+      fit, the same closed-form formula is evaluated at any strike the desk
+      needs a quote for — including strikes with no active two-way market —
+      to read off the rest of the smile directly. As the underlying market
+      quotes update through the session, the desk re-solves the same
+      three-equation system again, continuously.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. What are the known limitations of the Hagan closed-form approximation, and how does "Arbitrage-Free SABR" relate to them?</summary>
+    <div class="tl-answer">
+      The Hagan formula is an asymptotic (singular-perturbation) expansion,
+      not an exact solution to the SABR SDEs' pricing problem — it is very
+      accurate for typical, liquid strike ranges and moderate maturities, but
+      can degrade, and in some parameter regimes produce outright arbitrage
+      (e.g. a non-monotonic or even locally negative implied risk-neutral
+      density), for very low strikes, very long-dated options, or unusually
+      high vol-of-vol. Hagan and co-authors published a follow-up paper,
+      "Arbitrage-Free SABR" (2014), specifically to address this: rather than
+      relying on the closed-form asymptotic expansion in the problematic
+      regimes, it solves the underlying forward Kolmogorov (Fokker-Planck)
+      PDE numerically (finite differences) to get an arbitrage-consistent
+      density and price directly. That is slower than the original closed
+      form but removes the arbitrage failure mode — a real, actively used
+      patch for exactly the strike/maturity combinations where the fast
+      closed form is known not to be reliable.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Patrick S. Hagan, Deep Kumar, Andrew S. Lesniewski &amp; Diana E. Woodward, "Managing Smile Risk," <em>Wilmott Magazine</em>, 2002 — the original paper: the SABR SDEs, the singular-perturbation derivation, and the closed-form implied-volatility approximation this lesson is built around.</li>
+    <li>Patrick S. Hagan, Deep Kumar, Andrew S. Lesniewski &amp; Diana E. Woodward, "Arbitrage-Free SABR," <em>Wilmott Magazine</em>, 2014 — the follow-up addressing the original formula's known arbitrage failure modes at extreme strikes/maturities, via a numerical PDE approach.</li>
+    <li>Fabrice Douglas Rouah &amp; Gregory Vainberg, <em>Option Pricing Models and Volatility Using Excel-VBA</em>, Wiley, 2007 — a practitioner-oriented treatment covering both Heston and SABR side by side, including calibration mechanics, which is a useful direct comparison of the two models' practical workflows.</li>
+    <li>Standard FX options market-making literature and desk convention — SABR's role as the industry-standard smile-interpolation tool for FX and interest-rate (swaption, cap/floor) options is documented throughout practitioner-facing derivatives-pricing references and reflects genuinely near-universal adoption across those markets, not this repo's own assessment.</li>
+    <li>This Theory Lab's own <a href="heston-model.html">Heston Model</a> lesson — read first; SABR is presented throughout this lesson as the practical, calibration-friendly counterpart to the genuine stochastic-volatility dynamics Heston introduces.</li>
+    <li><code>education/open-interest-course-notes.md</code> in this repo — the applied gamma/dealer-hedging framework that a real, per-strike volatility smile (built the way this lesson describes) ultimately feeds into at a real dealer.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="heston-model.html">← The Heston Model</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+</body>
+</html>

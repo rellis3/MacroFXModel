@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interest Rate Parity — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Macro &amp; FX Theory / Interest Rate Parity</div>
+  <div class="tl-kicker">Macro &amp; FX Theory · Lesson 1 of 3</div>
+  <h1 class="tl-title">Interest Rate Parity — Covered vs. Uncovered</h1>
+  <p class="tl-dek">One of these two theories is an accounting identity enforced by riskless arbitrage and holds to within a fraction of a basis point. The other one is a genuine economic hypothesis about what markets expect — and it has failed, on average, in almost every dataset anyone has tested it on for forty years. That failure is not a footnote; it is the empirical basis of the entire FX carry trade.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — the foundational FX theory this repo hasn't formalized yet</span>
+    <span>~17 min read</span>
+    <span>Prereqs: Time Value of Money</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    Almost every serious conversation about currencies eventually touches
+    interest rates: "the dollar is strong because the Fed is hiking,"
+    "the yen is weak because Japanese rates are pinned near zero," "carry
+    traders are long AUD/NZD because the yield pickup is attractive." All of
+    that language is really pointing at one underlying relationship — the
+    link between the interest rate differential on two currencies and their
+    exchange rate — and interest rate parity is the formal statement of that
+    link, in two very different flavors that get confused with each other
+    constantly.
+  </p>
+  <p>
+    <strong>Covered</strong> interest rate parity (CIP) is not really a theory
+    about markets at all; it is closer to an accounting identity, enforced by
+    the same riskless-arbitrage logic that ties a bond's price to its yield.
+    It says the forward exchange rate is fully determined, today, by today's
+    spot rate and today's two interest rates — full stop, no forecasting
+    involved. <strong>Uncovered</strong> interest rate parity (UIP) looks
+    almost identical on paper, but makes a completely different kind of
+    claim: that the market's best guess of the <em>future</em> spot rate
+    equals that same forward rate — i.e., that the higher-yielding currency
+    is expected, on average, to depreciate by exactly enough to erase the
+    extra interest an investor earns holding it. CIP holds almost by
+    construction. UIP is a testable empirical prediction, and it is
+    famously, repeatedly wrong. Understanding exactly why one holds and the
+    other doesn't — and what that gap actually funds — is the entire point
+    of this lesson, and it is the theoretical foundation any honest look at
+    the carry trade has to start from.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Interest rates are the rental price of money</h3>
+    <p>
+      Think of an interest rate as the price you pay (or earn) to rent money
+      for a period of time, and think of the forward exchange rate as
+      nothing more than today's spot rate, adjusted for the fact that money
+      rents at different prices in different currencies. If yen rents for
+      almost nothing and Australian dollars rent for a much higher price, and
+      you want to borrow yen, convert it to Australian dollars, park it for a
+      year, and convert it back — the forward market has to charge you a
+      correspondingly worse exchange rate on the way back, or you'd have
+      discovered a machine that prints riskless money out of nothing. That
+      "correspondingly worse" adjustment <em>is</em> the covered interest
+      rate parity formula. It isn't a forecast of anything; it's the terms
+      that make the round trip a wash, enforced by the fact that if the
+      terms were ever meaningfully off, a trading desk would do exactly that
+      round trip at size until the mispricing closed.
+    </p>
+    <p>
+      Uncovered interest rate parity asks a completely different question:
+      if you don't lock in that forward rate at all — if you just borrow the
+      cheap currency, buy the expensive one, and take your chances on
+      whatever the exchange rate happens to be when you convert back — does
+      the currency you bought drift down, on average, by about the same
+      amount the locked-in forward rate implied? That's no longer an
+      accounting identity anyone can force to be true. It's a claim about
+      what actually tends to happen in the world, and the honest answer,
+      repeatedly, is: not really.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    This section builds up three ideas in order: the no-arbitrage argument
+    that pins down covered interest rate parity exactly, the very different
+    kind of claim uncovered interest rate parity makes once you remove the
+    forward hedge, and the forward premium puzzle — the specific, replicated
+    empirical finding that UIP gets the sign wrong on average.
+  </p>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(S\)</td><td>The <strong>spot</strong> exchange rate today, quoted as units of domestic currency per one unit of foreign currency (e.g. USD per EUR).</td></tr>
+      <tr><td>\(F\)</td><td>The <strong>forward</strong> exchange rate agreed today for a transaction settling at time \(T\), same quote convention as \(S\).</td></tr>
+      <tr><td>\(r_d\)</td><td>The <strong>domestic</strong> risk-free interest rate for the period \(T\) (e.g. the USD money-market rate).</td></tr>
+      <tr><td>\(r_f\)</td><td>The <strong>foreign</strong> risk-free interest rate for the period \(T\) (e.g. the EUR money-market rate).</td></tr>
+      <tr><td>\(T\)</td><td>Time to maturity of the forward contract and the two deposits, in years.</td></tr>
+      <tr><td>\(E_t[S_{t+T}]\)</td><td>The market's <strong>expectation</strong>, formed today at time \(t\), of what the spot rate will actually be at time \(t+T\). Unlike \(F\), this is never directly observable — only its realizations are.</td></tr>
+      <tr><td>\(e\)</td><td>Base of the natural logarithm, used in the continuous-compounding version of the formula below.</td></tr>
+    </table>
+  </div>
+
+  <p><strong>1. Covered interest rate parity — a no-arbitrage argument, not a
+  forecast.</strong> Consider a domestic investor (say, based in USD, with
+  EUR as the foreign currency) with two ways to turn one unit of domestic
+  currency into a riskless payoff \(T\) years from now, using nothing but
+  today's prices:</p>
+  <p>
+    <strong>Route 1 — stay home.</strong> Deposit the money in domestic
+    currency at the domestic rate. One unit today becomes \((1+r_d)\) units
+    of domestic currency at \(T\), guaranteed, with no exposure to the
+    exchange rate at all.
+  </p>
+  <p>
+    <strong>Route 2 — round-trip through the foreign currency, fully
+    hedged.</strong> Convert the one unit of domestic currency to foreign
+    currency at today's spot rate, getting \(1/S\) units of foreign currency.
+    Deposit that at the foreign rate, growing to \((1/S)(1+r_f)\) units of
+    foreign currency at \(T\). At the very same moment — today — also sell
+    that known future foreign-currency amount forward, locking in today's
+    forward rate \(F\) for the conversion back to domestic currency at \(T\).
+    The final domestic-currency payoff, entirely determined today with zero
+    exchange-rate risk in between, is \((1/S)(1+r_f)\,F\).
+  </p>
+  <p>
+    Both routes start with exactly one unit of domestic currency and end
+    with a completely riskless, fully known payoff at \(T\) — no forecasting,
+    no exposure, nothing left to chance in either leg. If the two riskless
+    payoffs were not equal, there would be a genuine free-lunch arbitrage:
+    borrow at zero net cost via the cheaper route, invest via the more
+    expensive one, and pocket the difference with no capital and no risk.
+    Real trading desks do exactly this the instant such a gap opens, and
+    their trading closes it. No-arbitrage therefore requires the two routes
+    to pay the same:
+  </p>
+  <div class="tl-math">\[ 1 + r_d \;=\; \frac{F}{S}\,(1+r_f) \quad\Longrightarrow\quad \boxed{\dfrac{F}{S} = \dfrac{1+r_d}{1+r_f}} \]</div>
+  <p>
+    Rearranged, \(F = S\cdot\dfrac{1+r_d}{1+r_f}\). Under continuous
+    compounding this is usually written in its more compact exponential
+    form, which converges to the same relationship as \(T\) shrinks:
+  </p>
+  <div class="tl-math">\[ F = S\,e^{(r_d - r_f)T} \]</div>
+  <p>
+    Two things follow immediately and are worth internalizing before
+    anything else in this lesson. First, <strong>this formula requires
+    nothing about anyone's beliefs or expectations</strong> — \(F\) is
+    completely pinned down today by \(S\), \(r_d\), and \(r_f\), which are
+    all observable today. Second, notice which currency ends up "expensive"
+    forward: when \(r_d > r_f\), \(F/S > 1\), meaning the <em>foreign</em>
+    currency (the lower-yielding one) trades forward at a
+    <strong>premium</strong> to spot, while the higher-yielding domestic
+    currency trades at a forward <strong>discount</strong>. That
+    higher-rate-currency-at-a-discount / lower-rate-currency-at-a-premium
+    pattern is completely mechanical, baked into the arbitrage argument
+    above — it says nothing yet about where the spot rate will actually be
+    at \(T\). That's exactly the question the next section asks, and it's
+    where things stop being an identity.
+  </p>
+  <p>
+    In practice, CIP holds to within a sliver of a basis point in liquid G10
+    pairs during normal market conditions — deviations are bounded almost
+    entirely by transaction costs (bid-ask spreads, funding costs, margin) so
+    thin that only the largest bank trading desks can act on them at all,
+    and even then only fleetingly. It is worth being precise, though, that
+    "holds almost exactly" is not quite "holds with zero exception": Du,
+    Tepper &amp; Verdelhan (2018) documented small, persistent CIP deviations
+    across major currencies after the 2008 financial crisis, driven by
+    post-crisis bank balance-sheet and leverage-ratio regulatory constraints
+    rather than a genuinely unexploited free-lunch — the arbitrage in the
+    textbook derivation above assumes unlimited, cost-free balance sheet to
+    execute it, and that assumption got measurably more expensive for banks
+    to satisfy after 2008. The identity is still the right starting model;
+    the real-world deviation is a story about who can fund the arbitrage, not
+    evidence the no-arbitrage logic is wrong.
+  </p>
+
+  <p><strong>2. Uncovered interest rate parity — the same formula, with the
+  forward hedge removed.</strong> UIP asks what happens if, instead of
+  locking in \(F\) via a forward contract (Route 2 above), an investor simply
+  converts to the foreign currency, earns \(r_f\), and converts back later at
+  whatever the spot rate turns out to be — carrying the full exchange-rate
+  risk uncovered. UIP is the hypothesis that, under rational expectations, the
+  market-clearing condition for that uncovered bet to be a fair one (i.e., for
+  neither currency to offer a systematically better expected return once risk
+  is set aside) is exactly that the <em>expected</em> future spot rate equals
+  today's forward rate:
+  </p>
+  <div class="tl-math">\[ E_t[S_{t+T}] = F \]</div>
+  <p>
+    Combine this with the CIP identity above (substituting \(F\)) and UIP's
+    real content becomes explicit as a statement purely about expectations:
+  </p>
+  <div class="tl-math">\[ \frac{E_t[S_{t+T}]}{S} = \frac{1+r_d}{1+r_f} \]</div>
+  <p>
+    Read this the way a carry trader has to: if the domestic currency's rate
+    \(r_d\) is higher than the foreign rate \(r_f\), the right-hand side is
+    greater than 1, which means the market must be expecting \(S\) itself to
+    rise — the price of foreign currency, in domestic terms, is expected to
+    go up. Concretely, that means the <em>domestic</em>, higher-yielding
+    currency is expected to <strong>depreciate</strong> against the
+    lower-yielding foreign one, by (approximately) the size of the interest
+    differential. That is the whole claim of UIP in one sentence: the extra
+    interest you earn holding the higher-yielding currency should be expected,
+    on average, to be exactly offset by that currency's expected depreciation
+    — so an uncovered bet on the high-yielder has the same expected return as
+    just staying in the low-yielder. No free lunch, covered or uncovered.
+    Unlike CIP, this is not enforced by any riskless arbitrage — nothing
+    stops the market's actual expectation, let alone the outcome, from being
+    something else entirely. It is a hypothesis about behavior, and it needs
+    to be checked against data.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>Checking the identity, and forcing it back into line</h3>
+    <p>
+      Take USD as domestic and EUR as foreign, spot \(S = 1.10\) USD/EUR,
+      a one-year domestic rate \(r_d = 5.00\%\) and a one-year foreign rate
+      \(r_f = 3.00\%\). The fair one-year forward rate CIP implies is:
+    </p>
+    <div class="tl-math">\[ F^\ast = 1.10 \times \frac{1.05}{1.03} = 1.10 \times 1.019417 \approx 1.1214 \ \text{USD/EUR} \]</div>
+    <p>
+      Note EUR (the lower-yielding currency) is indeed priced forward at a
+      premium to spot (1.1214 &gt; 1.10), consistent with the sign
+      established above. The roughly 1.94% forward premium is close to, but
+      not exactly, the 2.00 percentage-point rate gap — the small difference
+      is the compounding term, and for small rates \(F/S - 1 \approx r_d -
+      r_f\) is a good rule-of-thumb approximation.
+    </p>
+    <p>
+      Now suppose the market forward were mispriced at \(F_{mkt} = 1.15\)
+      instead of the fair 1.1214 — deliberately exaggerated here (a real
+      G10 mispricing this size would never survive more than an instant) so
+      the mechanics are easy to see. Borrow \$1,000,000 at 5% (owe
+      \$1,050,000 in a year). Convert to EUR at spot: \$1,000,000 / 1.10 =
+      €909,090.91. Invest at 3%: €909,090.91 × 1.03 = €936,363.64. Sell that
+      forward at the mispriced 1.15: €936,363.64 × 1.15 = \$1,076,818.18.
+      Repay the \$1,050,000 loan, and pocket <strong>\$26,818.18</strong> —
+      guaranteed, from zero net capital, before a single dollar of directional
+      risk. That is precisely the trade real desks run the instant \(F\)
+      drifts away from \(F^\ast\), in whatever direction, at whatever size
+      their balance sheet allows — and it is exactly why the deviation never
+      gets anywhere near this large in practice; it gets arbitraged back
+      toward \(F^\ast\) continuously, bounded only by transaction costs and
+      (per the Du-Tepper-Verdelhan point above) balance-sheet cost of capital.
+    </p>
+  </div>
+
+  <p><strong>3. The forward premium puzzle — Fama (1984).</strong> UIP makes
+  a sharp, testable prediction: currencies with a higher interest rate should
+  <em>on average</em> depreciate by roughly the size of their rate advantage,
+  so that no systematic, riskless-in-expectation edge exists from simply
+  holding the higher yielder unhedged. Eugene Fama's 1984 paper tested this
+  directly by regressing the currency's subsequent realized change in the
+  spot rate against the forward premium (which, by the CIP identity above, is
+  essentially the interest differential). Under UIP with rational
+  expectations, that regression should return a coefficient of 1 — the
+  forward premium should predict subsequent depreciation one-for-one, no more
+  and no less. Fama, and a large replicating literature since (surveyed by
+  Froot &amp; Thaler, 1990, who report an average estimated coefficient across
+  published studies of roughly \(-0.8\) rather than \(+1\)), found instead
+  that the coefficient is typically <strong>negative</strong>. In plain
+  terms: <strong>high-interest-rate currencies have tended, on average, to
+  appreciate or stay roughly flat rather than depreciate the way UIP
+  predicts</strong> — the exact opposite sign from the theory's prediction,
+  and remarkably consistent across currency pairs, decades, and studies. This
+  is precisely the empirical basis of the FX carry trade: borrow the
+  low-yielding currency, hold the high-yielding one unhedged, and — on
+  average, historically, outside the episodes covered in the scenario box
+  below — the interest-rate pickup has not been fully offset by depreciation,
+  sometimes not offset at all.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The forward premium puzzle — predicted vs. observed</div>
+    <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter chart plotting interest-rate differential on the x-axis against subsequent 12-month currency return on the y-axis. A dashed line shows what UIP predicts: a steep one-to-one downward slope, so a higher interest-rate advantage should be offset by an equally large depreciation. A solid line through scattered data points shows what is typically observed empirically: a nearly flat, even slightly upward-sloping relationship, meaning higher-yielding currencies have not depreciated nearly as much as UIP predicts. One scatter point at a high interest-rate differential shows a sharp negative return, representing a crash episode.">
+      <line x1="60" y1="140" x2="600" y2="140" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="168" y1="20" x2="168" y2="260" style="stroke:var(--text3);stroke-width:1"/>
+
+      <line x1="60" y1="110" x2="600" y2="260" style="stroke:var(--blue);stroke-width:2;stroke-dasharray:6,4"/>
+      <line x1="60" y1="156.5" x2="600" y2="111.5" style="stroke:var(--amber);stroke-width:2.5"/>
+
+      <circle cx="87" cy="152" r="3.5" fill="var(--purple)"/>
+      <circle cx="114" cy="122" r="3.5" fill="var(--purple)"/>
+      <circle cx="141" cy="162.5" r="3.5" fill="var(--purple)"/>
+      <circle cx="178.8" cy="132.5" r="3.5" fill="var(--purple)"/>
+      <circle cx="211.2" cy="144.5" r="3.5" fill="var(--purple)"/>
+      <circle cx="249" cy="113" r="3.5" fill="var(--purple)"/>
+      <circle cx="276" cy="137" r="3.5" fill="var(--purple)"/>
+      <circle cx="303" cy="102.5" r="3.5" fill="var(--purple)"/>
+      <circle cx="340.8" cy="155" r="3.5" fill="var(--purple)"/>
+      <circle cx="373.2" cy="110" r="3.5" fill="var(--purple)"/>
+      <circle cx="411" cy="125" r="3.5" fill="var(--purple)"/>
+      <circle cx="438" cy="92" r="3.5" fill="var(--purple)"/>
+      <circle cx="481.2" cy="132.5" r="3.5" fill="var(--purple)"/>
+      <circle cx="519" cy="98" r="3.5" fill="var(--purple)"/>
+      <circle cx="556.8" cy="192.5" r="4.5" fill="var(--red)"/>
+
+      <text x="168" y="278" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">0</text>
+      <text x="276" y="278" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">2</text>
+      <text x="384" y="278" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">4</text>
+      <text x="492" y="278" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">6</text>
+      <text x="600" y="278" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">8</text>
+      <text x="330" y="298" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">Interest-rate differential, high-yielder vs. funding currency (% p.a.)</text>
+
+      <text x="52" y="24" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="end">8</text>
+      <text x="52" y="84" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="end">4</text>
+      <text x="52" y="144" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="end">0</text>
+      <text x="52" y="204" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="end">-4</text>
+      <text x="52" y="264" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="end">-8</text>
+      <text x="12" y="140" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)" transform="rotate(-90 12 140)" text-anchor="middle">Subsequent 12M currency return (%)</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>UIP prediction (slope ≈ −1)</span>
+      <span><i style="background:var(--amber)"></i>Typically observed (flat-to-positive)</span>
+      <span><i style="background:var(--purple)"></i>Currency-year observations</span>
+      <span><i style="background:var(--red)"></i>Crash episode</span>
+    </div>
+    <div class="tl-chart-caption">
+      The dashed blue line is what uncovered interest rate parity predicts:
+      the further a currency's yield advantage over the funding currency, the
+      more it should be expected to depreciate, one-for-one, to offset that
+      advantage. The solid amber line is the stylized shape of what studies
+      since Fama (1984) have typically found instead: a relationship that is
+      close to flat, sometimes even sloping the wrong way — higher-yielding
+      currencies have tended to depreciate less than predicted, or not at
+      all, delivering positive average carry. <strong>The single red point at
+      a high differential is not decoration</strong> — it represents exactly
+      the kind of episode the scenario below walks through: even in a
+      dataset where the average carry trade has historically paid, individual
+      episodes can crash hard, and that crash risk is precisely what the
+      average positive return is compensation for.
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>The JPY/AUD carry trade — and the day it stopped working</h3>
+    <p>
+      A textbook carry trade: borrow Japanese yen, where policy rates sat at
+      roughly 0.0%–0.1% through most of 2023 and into mid-2024, and use the
+      proceeds to buy Australian dollars, where the RBA cash rate stood at
+      4.35% through the same period. Hold the AUD in short-dated bank bills
+      or simply carry the position via the FX forward/swap points, which (per
+      the CIP identity above) embed that roughly 4.2-percentage-point rate
+      gap as a daily credit. On a notional \$10,000,000 position, unchanged
+      exchange rate, that is on the order of \$420,000 a year, accruing
+      day by day, for doing nothing but holding the position.
+    </p>
+    <p>
+      <strong>What UIP says about this trade.</strong> UIP's prediction is
+      unambiguous: AUD, the higher-yielding currency, should be expected to
+      depreciate against JPY by <em>roughly that same 4.2 percentage points</em>
+      over the year, leaving the uncovered trade with no better expected
+      return than simply holding yen. If UIP held exactly, this trade would
+      be a wash on average — interesting only as a way to take on
+      AUD/JPY volatility, not a source of edge.
+    </p>
+    <p>
+      <strong>What the forward premium puzzle says instead.</strong> The
+      empirical literature on the yen carry trade specifically (and the carry
+      factor across currencies generally) has found that AUD has not, on
+      average, depreciated against JPY by anywhere near the size of the
+      interest-rate gap over long stretches of calm markets — periods when
+      global risk appetite is stable, this trade has tended to pocket the
+      differential largely intact, sometimes alongside AUD holding steady or
+      even appreciating. That is the forward premium puzzle showing up in a
+      single, concrete cross: the "should depreciate" side of UIP simply
+      hasn't shown up reliably.
+    </p>
+    <p>
+      <strong>What this trade is actually short.</strong> The honest other
+      half of the story is early August 2024. The Bank of Japan raised its
+      policy rate on 31 July 2024 — a hawkish surprise against a market that
+      had spent years pricing Japan as a permanent zero-rate funding source —
+      and a soft US payrolls report days later revived US recession fears at
+      the same time. The result was a violent, fast unwind of yen-funded
+      carry positioning across the board: the yen appreciated sharply and
+      abruptly against nearly everything, AUD/JPY (one of the most heavily
+      carry-traded crosses) fell on the order of 10%+ peak-to-trough in
+      roughly two weeks, and volatility spiked across global markets (the
+      episode is widely referenced as contributing to the early-August 2024
+      global equity selloff). A position that had been quietly earning
+      something like 4.2% a year in carry gave back several years' worth of
+      that accumulated edge in about ten trading days. Nothing about the
+      interest-rate differential changed on the day of the crash — what
+      changed was the market's tolerance for holding the funding-currency
+      short, all at once.
+    </p>
+    <p>
+      That is the honest shape of the trade in both directions: the forward
+      premium puzzle describes a real, replicated empirical tendency for the
+      yield pickup to survive uncorrected through calm periods, and it is a
+      genuinely different empirical fact than the "no free lunch" logic of
+      CIP. But the trade is not free money — it is short a fat, left tail
+      event that arrives without warning and moves fast, structurally the
+      same kind of risk this Theory Lab's <a href="extreme-value-theory.html">Extreme
+      Value Theory</a> and <a href="merton-jump-diffusion.html">Merton
+      Jump-Diffusion</a> lessons describe: most of the time nothing happens,
+      and then, occasionally, everything happens at once. Reporting the
+      average historical carry return without reporting the crash risk it is
+      short is not a complete description of the trade.
+    </p>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    <strong>The FX carry trade</strong> — long a basket of high-yielding
+    currencies, short a basket of low-yielders, typically funded in whichever
+    currency has the lowest policy rate at the time (yen and, at various
+    points, Swiss francs have been the classic funding legs) — is a
+    long-standing, widely used systematic strategy built directly on the
+    forward premium puzzle. Institutional versions size positions across many
+    currency pairs rather than one, both to diversify idiosyncratic crash risk
+    and because the average empirical edge is a cross-sectional phenomenon
+    (higher-yielders as a group vs. lower-yielders as a group), not a reliable
+    property of any single pair.
+  </p>
+  <p>
+    <strong>Crash-risk-aware carry.</strong> Because the strategy's return
+    distribution is left-skewed (small, steady gains most of the time; sharp,
+    infrequent losses), practitioners commonly overlay it with tail hedges
+    (out-of-the-money FX options on the funding currency), volatility-based
+    position sizing that de-risks automatically when realized or implied
+    volatility rises, or momentum/trend filters that reduce exposure when a
+    funding currency starts appreciating sharply — treating the crash risk as
+    something to actively manage rather than simply accept.
+  </p>
+  <p>
+    <strong>Covered interest rate arbitrage</strong> is the domain of bank
+    trading desks and cross-currency basis swap markets, where the actual
+    (tiny) deviations from CIP documented by Du, Tepper &amp; Verdelhan (2018)
+    are traded as a distinct, much lower-risk strategy — closer to relative
+    value on regulatory funding costs than a directional currency bet, and
+    entirely separate from the carry trade's risk-bearing UIP violation.
+  </p>
+  <p>
+    <strong>Rate-differential signals more broadly</strong> underlie a huge
+    amount of discretionary and systematic FX macro reasoning — central bank
+    divergence trades, "dollar smile" framing, and this repo's own empirical
+    work on the US-Germany yield spread leading EUR/USD (see the repo box
+    below) all start from the same interest-differential intuition IRP
+    formalizes, whether or not the practitioner ever writes down the CIP/UIP
+    equations explicitly.
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+    <h3>A genuine gap — no file here computes CIP, UIP, or a carry signal</h3>
+    <p>
+      Said plainly: nothing in this codebase currently computes a
+      CIP-implied fair forward, checks a UIP-implied expected depreciation
+      against realized FX moves, or scores a carry-trade signal from rate
+      differentials. That is a real missing piece of the theory base, not a
+      gap this lesson is inventing to have something to write about.
+    </p>
+    <p>
+      The closest existing material is <code>education/macro-deep-dives-notes.md</code>'s
+      Lesson 2, "The Transatlantic Yield Spread (US 10Y vs. German Bund)" —
+      it studies, empirically, whether the US-Germany yield spread leads
+      EUR/USD, tracking the spread's level and regime (narrowing/widening)
+      against subsequent EUR/USD direction. That is valuable, real empirical
+      work, but it is answering a different question than IRP does. IRP is
+      about the no-arbitrage relationship between <em>interest rates and the
+      forward rate</em> today (CIP), and the theoretical expectation of
+      <em>future spot movement</em> implied by that relationship (UIP) — a
+      structural, no-arbitrage-anchored claim. The yield-spread lesson is a
+      reduced-form, lead-lag empirical check on whether spread changes
+      historically preceded EUR/USD moves, without reference to whether the
+      relationship it's finding is consistent with (or a violation of) UIP in
+      the formal sense. The honest framing is that formal IRP math is the
+      theoretical foundation any such empirical rates-FX work should
+      eventually be checked against — does the yield-spread lead-lag
+      relationship look like a UIP-consistent adjustment, or does it look
+      like the forward-premium-puzzle pattern this lesson describes? That
+      question hasn't been asked in this repo yet.
+    </p>
+    <p>
+      Building this for real would need real interest-rate data (FRED for
+      sovereign/policy rates, or OANDA's forward/swap points directly, which
+      embed the interest differential per the CIP identity) matched carefully
+      to actual tradeable tenors — and, per this repo's Lego Principle 5 and
+      the working agreement above, it would need the same honest harness
+      discipline as anything else here: a true in-sample/out-of-sample split,
+      realistic costs, and a non-trivial OOS trade count before a carry or
+      UIP-deviation signal could be treated as anything more than a
+      historically interesting pattern. The forward premium puzzle is a real,
+      well-replicated empirical finding in the broader literature — that is
+      not the same claim as "a carry signal built on this repo's data would
+      show a validated OOS edge," and until that test is actually run here,
+      it should not be described as one.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where CIP and UIP get mixed up in practice</h3>
+    <p>
+      <strong>Treating a UIP "failure" as an arbitrage opportunity.</strong>
+      It is not. CIP is enforced by riskless arbitrage; a UIP deviation is a
+      risk-bearing bet with a real, sometimes brutal downside, not a free
+      lunch. Financial media (and, occasionally, market commentary) blur this
+      distinction by calling carry-trade returns "arbitrage" — they aren't;
+      they're compensation for bearing a specific, well-documented tail risk.
+    </p>
+    <p>
+      <strong>The peso problem.</strong> A rare, large devaluation risk that
+      hasn't yet occurred in a given sample will depress the currency's
+      average realized appreciation relative to what a fully rational market
+      was actually pricing in — the average return over any finite historical
+      window can look like a clean violation of UIP purely because the sample
+      didn't happen to include the crash the market was, correctly, pricing a
+      probability of. This is a genuine confound for interpreting historical
+      carry-trade profitability as proof UIP fails, rather than proof the
+      sample was lucky; it does not mean the forward premium puzzle isn't
+      real, but it means any specific historical average carry return should
+      be read with real caution about what didn't happen to be in the
+      window.
+    </p>
+    <p>
+      <strong>Ignoring transaction costs and tenor mismatches when computing
+      "the differential."</strong> A back-of-envelope carry calculation using
+      headline policy rates, ignoring bid-ask spreads on the FX leg, funding
+      costs, and margin requirements, and matching a policy rate of one tenor
+      against a forward of a different tenor, routinely overstates the
+      realizable edge. The differential that matters is the one embedded in
+      the actual tradeable forward/swap points, at the actual tenor being
+      traded, net of costs.
+    </p>
+    <p>
+      <strong>Treating the forward premium puzzle as evidence any single
+      currency pair will keep paying carry forever.</strong> The documented
+      empirical pattern is an average, across many currency pairs and long
+      samples. It does not say every carry cross pays every year, and it
+      says nothing at all about timing — the scenario box above is a real
+      illustration of exactly this: a genuinely well-documented average
+      tendency, and a genuinely brutal individual crash, both true at once.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why does CIP hold almost exactly while UIP fails empirically — what's actually different about the two claims?</summary>
+    <div class="tl-answer">
+      CIP is enforced by riskless arbitrage: both routes in the derivation
+      (stay domestic, or convert-invest-and-sell-forward) produce a fully
+      known, riskless payoff today, so if they weren't equal a trading desk
+      could lock in free money with zero risk and zero net capital — and that
+      trading itself closes any gap. UIP replaces the hedged forward sale
+      with an unhedged bet on the future spot rate, which introduces real
+      risk that no amount of trading can arbitrage away — the future spot
+      rate simply isn't known today. UIP is therefore a claim about what the
+      market's rational expectation of that unknown future rate actually is,
+      which is a behavioral/expectations hypothesis, not an accounting
+      identity, and there is no mechanical force compelling it to be true.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. If the domestic interest rate is higher than the foreign interest rate, does the foreign currency trade forward at a premium or a discount, and why?</summary>
+    <div class="tl-answer">
+      At a premium. From \(F/S = (1+r_d)/(1+r_f)\), if \(r_d > r_f\) then
+      \(F/S > 1\), so the forward price of the foreign currency (in domestic
+      terms) is higher than its spot price — it is more expensive to buy
+      forward than today. Equivalently, the higher-yielding (domestic)
+      currency trades at a forward discount. This falls straight out of the
+      no-arbitrage derivation and is true regardless of what actually happens
+      to the spot rate later — it says nothing yet about realized returns,
+      only about today's forward price.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What is a carry trade actually short, in risk terms?</summary>
+    <div class="tl-answer">
+      It is short a rare, large, and typically fast depreciation of the
+      high-yielding currency against the funding currency — a left-tail
+      "crash" risk that tends to arrive alongside broader risk-off shocks
+      (a funding-currency rate surprise, a risk-sentiment shift, a
+      liquidity squeeze) rather than gradually. Structurally this is the
+      same shape of risk this Theory Lab's Extreme Value Theory and Merton
+      Jump-Diffusion lessons describe: steady, modest gains most of the time,
+      funded by bearing exposure to an infrequent, sharp, negative jump. The
+      average historical carry return is, in effect, compensation for
+      holding that tail risk, not a free-standing edge independent of it.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What does the forward premium puzzle say empirically, and what result from Fama (1984) established it?</summary>
+    <div class="tl-answer">
+      Fama regressed a currency's subsequent realized change in the spot rate
+      on its forward premium (which, via the CIP identity, closely tracks the
+      interest-rate differential). Under UIP with rational expectations, that
+      regression's coefficient should be +1 — the forward premium should
+      predict subsequent depreciation one-for-one. Fama found the estimated
+      coefficient was instead typically negative, a result replicated widely
+      since (Froot &amp; Thaler's 1990 survey reports an average across
+      published studies of roughly −0.8). In plain terms: high-interest-rate
+      currencies have tended, on average, to appreciate or stay flat rather
+      than depreciate the way UIP predicts — the wrong sign from the theory's
+      point of view, and the empirical basis of the FX carry trade.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. What is a "peso problem," and why does it complicate reading a historical average carry-trade return as clean proof that UIP fails?</summary>
+    <div class="tl-answer">
+      A peso problem is when a rare, large adverse event (e.g. a currency
+      devaluation or crash) that the market was rationally pricing some
+      probability of simply hasn't occurred yet within a given historical
+      sample. If that event doesn't show up in the window being studied, the
+      currency's average realized return over that window will look
+      systematically better than what the market was actually, correctly,
+      expecting — making UIP look like it failed by more than it really did,
+      or making a carry trade's historical average look more reliably
+      profitable than the underlying probabilities justify. It's a reminder
+      that any specific historical carry-return average should be read
+      alongside what tail event wasn't in the sample, not as a clean,
+      sample-independent measurement of the true expected return.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Given that the forward premium puzzle is a well-replicated finding in the academic literature, why isn't that enough, on its own, for this repo to treat a carry-trade signal as validated?</summary>
+    <div class="tl-answer">
+      Because "documented in the broader literature, on other datasets and
+      time periods" is a different claim from "tested, with this repo's
+      actual data and honest harness discipline, and found to hold
+      out-of-sample here." Per Lego Principle 5 and the working agreement
+      above, any signal — however well-supported elsewhere — only counts as
+      validated once it clears realistic fills, real costs, a true
+      in-sample/out-of-sample split, and a non-trivial OOS trade count (≥30)
+      on this repo's own data. No such test has been run here yet; this
+      lesson lays out the theory and the honest empirical backdrop, not a
+      claim that a carry signal built in MacroFXModel would show an edge.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Eugene F. Fama, <em>"Forward and Spot Exchange Rates,"</em> Journal of Monetary Economics, 1984 — the paper establishing the forward premium puzzle via the regression described above.</li>
+    <li>Kenneth A. Froot and Richard H. Thaler, <em>"Anomalies: Foreign Exchange,"</em> Journal of Economic Perspectives, 1990 — the widely cited survey of the accumulated evidence against UIP across studies.</li>
+    <li>Markus K. Brunnermeier, Stefan Nagel, and Lasse H. Pedersen, <em>"Carry Trades and Currency Crashes,"</em> NBER Macroeconomics Annual, 2008 — the empirical and theoretical treatment of carry trades' crash-risk exposure, directly relevant to the scenario above.</li>
+    <li>Craig Burnside, Martin Eichenbaum, Isaac Kleshchelski, and Sergio Rebelo, <em>"Do Peso Problems Explain the Returns to the Carry Trade?"</em> Review of Financial Studies, 2011 — a direct empirical treatment of the peso-problem confound described in the pitfalls above.</li>
+    <li>Wenxin Du, Alexander Tepper, and Adrien Verdelhan, <em>"Deviations from Covered Interest Rate Parity,"</em> Journal of Finance, 2018 — documents the small, persistent post-2008 CIP deviations tied to bank balance-sheet costs, referenced in the CIP section above.</li>
+    <li>Paul R. Krugman, Maurice Obstfeld, and Marc J. Melitz, <em>"International Economics: Theory and Policy,"</em> Pearson — the standard textbook treatment of covered and uncovered interest rate parity.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="purchasing-power-parity.html">Purchasing Power Parity →</a>
+  </div>
+</div>
+</body>
+</html>

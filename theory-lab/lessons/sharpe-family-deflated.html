@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sharpe, Sortino, Calmar &amp; the Deflated Sharpe Ratio — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Applied Statistics &amp; Validation / Sharpe, Sortino, Calmar &amp; the Deflated Sharpe Ratio</div>
+  <div class="tl-kicker">Applied Statistics &amp; Validation · Lesson 5 of 7</div>
+  <h1 class="tl-title">Sharpe, Sortino, Calmar &amp; the Deflated Sharpe Ratio</h1>
+  <p class="tl-dek">Three ways to divide return by risk, built from scratch — then the formal answer to a question every backtest eventually has to face: how much of your best reported Sharpe ratio is just the residue of trying many variations?</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — extends this repo's js/metricsCore.js and the Multiple Testing lesson</span>
+    <span>~17 min read</span>
+    <span>Prereqs: Multiple Testing &amp; the Look-Elsewhere Effect, Descriptive Statistics &amp; the Normal Distribution</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    Every backtest in this repo ends the same way: a single number that's
+    supposed to summarize "was this good." Almost always that number is a
+    Sharpe ratio, sometimes a Sortino or a Calmar. Those three ratios are the
+    subject of the first half of this lesson, built up from the same
+    return/std-dev arithmetic the Math Primer already covers — nothing exotic,
+    just three different, precise answers to "risk-adjusted how much."
+  </p>
+  <p>
+    The second half of the lesson is the more important one for how this repo
+    actually works. The Lego Principle's validation rule (CLAUDE.md, principle
+    5) already says a strategy "wins" only if it beats the incumbent on OOS
+    Sharpe with a non-trivial trade count — but it says nothing yet about what
+    happens to that Sharpe number when it was selected as the best of many
+    variations tried along the way. The Multiple Testing lesson in this series
+    showed that testing 70 pair/regime slices and reporting the "significant"
+    survivors overstates how special they are, purely from the number of
+    chances taken. The exact same effect happens to a Sharpe ratio, and it is
+    arguably the more dangerous version of the two, because a Sharpe ratio
+    looks like a single, self-contained fact about a strategy — it doesn't
+    visibly carry a record of how many parameter sweeps, lookback windows, or
+    entry-rule variants were tried to produce it. The Deflated Sharpe Ratio
+    (Bailey &amp; López de Prado, 2014) is the formal tool built specifically
+    to put that hidden number back into the calculation.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Three ratios, three different denominators — plus one correction that changes what "good" means</h3>
+    <p>
+      The <strong>Sharpe ratio</strong> asks the simplest question: for every
+      unit of <em>total</em> up-and-down wobble a strategy produces, how much
+      excess return did you actually get? It treats a big up-swing and a big
+      down-swing as equally "risky," because both widen the standard
+      deviation in the denominator the same way. The <strong>Sortino
+      ratio</strong> objects to that: nobody complains about upside
+      surprises, so why should upside variance count against a strategy the
+      same way downside variance does? Sortino answers the exact same
+      question as Sharpe but only counts the <em>bad</em> half of the wobble.
+      The <strong>Calmar ratio</strong> throws out variance-based risk
+      entirely and asks a completely different, more visceral question
+      instead: forget the average day-to-day noise — how bad did the single
+      worst losing streak actually get, peak to trough, and how does the
+      strategy's return compare to that one specific number?
+    </p>
+    <p>
+      All three ratios share a blind spot, though: none of them know how they
+      were produced. A Sharpe of 1.8 looks identical whether it's the only
+      thing you ever tried, or the single winner you kept after testing 50
+      variations and discarding the other 49. Those are not the same claim.
+      If you flip 50 coins, one of them will land heads 8 times in a row just
+      from volume — that coin isn't secretly a better coin, and the strategy
+      variation with the best backtested Sharpe out of 50 isn't automatically
+      the one with the most real edge. The <strong>Deflated Sharpe
+      Ratio</strong> is what happens when you ask, honestly: given how many
+      variations were actually tried, how good would the best one look purely
+      by luck, with zero real skill anywhere in the search — and does the
+      reported Sharpe clear <em>that</em> bar, not the far lower bar of "is
+      it above zero."
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    <strong>Sharpe ratio.</strong> For a series of per-period returns
+    \(R_1,\ldots,R_T\) with risk-free rate \(r_f\), define the per-period
+    excess return \(X_i = R_i - r_f\). The Sharpe ratio is the mean excess
+    return divided by its standard deviation:
+  </p>
+  <div class="tl-math">\[ SR = \frac{\bar{X}}{\sigma_X} = \frac{\text{mean per-period excess return}}{\text{std. dev. of per-period excess return}} \]</div>
+  <p>
+    This is a per-period number — computed on whatever bar the returns are
+    sampled at (daily, weekly, per-trade). To compare strategies sampled at
+    different frequencies on a common footing, it's annualized by multiplying
+    by the square root of the number of periods per year, \(k\):
+  </p>
+  <div class="tl-math">\[ SR_{annual} = SR \times \sqrt{k} \]</div>
+  <p>
+    <strong>Why \(\sqrt{k}\), specifically.</strong> This isn't an arbitrary
+    convention — it's the exact same square-root-of-time scaling this
+    series' Returns &amp; Compounding primer derives for volatility, applied
+    here to a ratio instead of to \(\sigma\) alone. For a return series that's
+    roughly independent period to period (no strong autocorrelation), summing
+    \(k\) of them to get an annual figure sums their means linearly but sums
+    their <em>variances</em> linearly too — and variance, not standard
+    deviation, is the additive quantity for independent draws:
+  </p>
+  <div class="tl-math">\[ \mu_{annual} \approx k\,\bar{X}, \qquad \sigma^2_{annual} \approx k\,\sigma_X^2 \quad\Longrightarrow\quad \sigma_{annual} \approx \sqrt{k}\,\sigma_X \]</div>
+  <p>
+    Divide the annualized mean by the annualized standard deviation and the
+    \(k\)'s don't cancel evenly — the mean scales by a full factor of \(k\)
+    while the standard deviation scales by only \(\sqrt{k}\), leaving a net
+    \(\sqrt{k}\) behind:
+  </p>
+  <div class="tl-math">\[ SR_{annual} = \frac{k\bar{X}}{\sqrt{k}\,\sigma_X} = \sqrt{k}\cdot\frac{\bar{X}}{\sigma_X} = \sqrt{k}\cdot SR \]</div>
+  <p>
+    This is precisely why "annualize a Sharpe ratio by \(\sqrt{k}\)" is not a
+    rule of thumb — it falls straight out of the same "variance adds, standard
+    deviation doesn't" fact that makes daily volatility scale to a 20-day
+    horizon by \(\sqrt{20}\) rather than by 20, which is the exact scaling
+    this repo's own vol math (<code>js/volBacktestEngine.js</code>'s
+    horizon-scaled \(\sigma\)) depends on throughout. It also carries the same
+    caveat forward: the derivation assumes the per-period returns are close to
+    independent. A strategy whose returns are meaningfully autocorrelated
+    (trending equity curves, overlapping holding periods) violates that
+    assumption, and naive \(\sqrt{k}\) annualization then <em>overstates</em>
+    the true annualized Sharpe — a point Lo (2002) makes formally and one
+    worth remembering any time an annualized Sharpe looks unusually clean.
+  </p>
+
+  <p>
+    <strong>Sortino ratio.</strong> Sharpe's standard deviation \(\sigma_X\)
+    treats a period that beats expectations and a period that misses it as
+    equally "risky," because both contribute to variance the same way — a
+    squared deviation doesn't know which side of the mean it came from. For a
+    strategy with real upside/downside asymmetry (a trend-follower with small
+    frequent losses and rare large wins, say), that's a real distortion:
+    Sharpe effectively penalizes the strategy for having good months, because
+    good months widen \(\sigma_X\) exactly as much as bad ones do. The
+    Sortino ratio (Sortino &amp; van der Meer, 1991; Sortino &amp; Price,
+    1994) fixes this by replacing full standard deviation with
+    <strong>downside deviation</strong> — a standard deviation computed only
+    over the periods that fell short of some minimum acceptable return
+    (MAR), typically zero:
+  </p>
+  <div class="tl-math">\[ DD = \sqrt{\frac{1}{n_d}\sum_{i:\,X_i < MAR} (X_i - MAR)^2}, \qquad Sortino = \frac{\bar{X} - MAR}{DD}\times\sqrt{k} \]</div>
+  <p>
+    where \(n_d\) is the count of periods that fell below the MAR. This
+    matches <code>js/metricsCore.js</code>'s <code>sortinoRatio</code> exactly
+    — it accumulates squared deviations only over \(r &lt; 0\) periods,
+    divides by the count of those periods, and annualizes by the same
+    \(\sqrt{k}\) as Sharpe (some textbook treatments divide by the
+    <em>total</em> period count \(n\) instead of just the downside count
+    \(n_d\); this repo's implementation follows the semi-deviation-of-losses
+    convention above, which is one standard variant among a few in the
+    literature). The intuitive payoff: a strategy whose variance is
+    disproportionately made of favorable big wins gets a Sortino
+    <em>higher</em> than its Sharpe, because the wins that inflate Sharpe's
+    denominator don't touch Sortino's at all — Sortino is answering "how
+    risky is this, counting only the part of the wobble an investor would
+    actually call bad."
+  </p>
+
+  <p>
+    <strong>Calmar ratio.</strong> Sharpe and Sortino both use a dispersion
+    statistic — an <em>average</em> measure of how spread out returns are —
+    in the denominator. The Calmar ratio (Young, 1991) throws that idea out
+    entirely and uses something that isn't a dispersion measure at all: the
+    single worst realized peak-to-trough decline in the equity curve.
+  </p>
+  <div class="tl-math">\[ Calmar = \frac{CAGR}{|MaxDD|} \]</div>
+  <p>
+    matching <code>js/metricsCore.js</code>'s <code>calmar(annualReturn,
+    maxDD)</code>, which takes both quantities from the caller rather than
+    assuming a single definition of "annual return" (definitions vary too
+    much across engines to bake one in silently — the same reasoning
+    documented in that module's own header comment about why Sharpe used to
+    mean different things in different backtest cards). \(MaxDD\) is not an
+    average of anything; it's a single specific realized event — the worst
+    drop the equity curve actually experienced, start to finish, in the
+    exact historical path that occurred. That's a fundamentally different
+    kind of risk statistic from \(\sigma\), and it's why Calmar can disagree
+    sharply with Sharpe.
+  </p>
+  <p>
+    <strong>When Calmar tells you something Sharpe doesn't.</strong> Picture
+    two strategies with the same annualized return. Strategy A wobbles
+    moderately almost every day but has never had a genuinely deep drawdown —
+    its worst peak-to-trough loss is a shallow 6%. Strategy B is quieter on
+    most ordinary days (a lower day-to-day \(\sigma\), so a <em>higher</em>
+    Sharpe) but is exposed to occasional violent moves — a short-volatility or
+    carry-style profile that mostly looks calm until it doesn't — producing a
+    genuinely brutal 45% drawdown once in the sample. Sharpe, built from
+    average dispersion, rewards Strategy B for its quiet typical day and
+    barely notices the one catastrophic stretch buried in the tail of the
+    same distribution it's averaging over. Calmar, built from the single
+    worst realized outcome, flips the ranking completely: Strategy A's
+    Calmar is high, Strategy B's is low, because Calmar is specifically
+    measuring the thing an actual trader or investor experiences as "the
+    worst it got," not "how noisy was a typical day." A strategy with a
+    modest Sharpe but a genuinely small max drawdown is often more
+    <em>usable</em> in practice — easier to keep trading through, less likely
+    to trigger a redemption or a loss of nerve — than a high-Sharpe strategy
+    that is occasionally brutal, even when their average risk-adjusted return
+    numbers look similar on paper.
+  </p>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(R_i, r_f\)</td><td>Per-period portfolio return and the risk-free rate; \(X_i = R_i - r_f\) is the per-period excess return.</td></tr>
+      <tr><td>\(\bar{X}, \sigma_X\)</td><td>Mean and standard deviation of per-period excess returns — Sharpe's numerator and denominator.</td></tr>
+      <tr><td>\(k\)</td><td>Periods per year (252 daily, 52 weekly, 12 monthly, or the strategy's actual trade frequency) — the annualization factor.</td></tr>
+      <tr><td>\(DD, MAR\)</td><td>Downside (semi-)deviation, and the minimum acceptable return threshold it's computed relative to (0 in this repo).</td></tr>
+      <tr><td>\(CAGR, MaxDD\)</td><td>Annualized compounded return, and the worst realized peak-to-trough equity decline — Calmar's numerator and denominator.</td></tr>
+      <tr><td>\(N\)</td><td>Number of independent strategy variations/trials tried before reporting the best one's Sharpe ratio.</td></tr>
+      <tr><td>\(\sigma_{SR}\)</td><td>Standard deviation of the \(N\) trials' own Sharpe ratios — how spread out the search's outcomes were.</td></tr>
+      <tr><td>\(SR_0\)</td><td>The expected value of the <em>best-of-\(N\)</em> Sharpe ratio under the null of zero true skill everywhere — the chance-expected ceiling.</td></tr>
+      <tr><td>\(\gamma_3, \gamma_4\)</td><td>Skewness and (raw, not excess) kurtosis of the reported track record's own per-period returns.</td></tr>
+      <tr><td>\(T\)</td><td>Number of return observations in the reported track record.</td></tr>
+      <tr><td>\(\Phi, \Phi^{-1}\)</td><td>The standard normal CDF, and its inverse (the probit function).</td></tr>
+      <tr><td>\(\gamma_E\)</td><td>The Euler-Mascheroni constant, \(\approx 0.5772\), from the extreme-value-theory approximation behind \(SR_0\).</td></tr>
+      <tr><td>DSR</td><td>The Deflated Sharpe Ratio — the probability the true Sharpe ratio exceeds zero, after both the trial-count and non-normality corrections.</td></tr>
+    </table>
+  </div>
+
+  <p>
+    <strong>The Deflated Sharpe Ratio — the problem it solves.</strong> This
+    is the direct Sharpe-ratio analogue of the Multiple Testing lesson's
+    central point, and CLAUDE.md's own house rule already names the general
+    version of it: "count the cells and state the chance-baseline (multiple
+    testing): finding a few 'winners' among 70 slices is what noise does.
+    Survivors must beat chance <em>and</em> be IS-consistent." That rule was
+    written for p-values across slices. A Sharpe ratio search has exactly the
+    same structure — a researcher backtests \(N\) variations of a signal
+    (different lookbacks, thresholds, filters), gets \(N\) different Sharpe
+    ratios back, and reports only the best one. The best-of-\(N\) Sharpe is
+    inflated by the search itself, in exactly the way the best-of-70 p-value
+    is inflated by testing 70 slices — more trials means more chances for one
+    to look good purely from the noise in a finite backtest sample, with zero
+    real edge required anywhere in the search.
+  </p>
+  <p>
+    The Deflated Sharpe Ratio (Bailey &amp; López de Prado, 2014) is the
+    formal correction. It takes as <strong>inputs</strong>: the number of
+    trials \(N\) actually run, the variance of the Sharpe ratios observed
+    across those \(N\) trials (\(\sigma_{SR}^2\) — how spread out the
+    search's own results were), the reported track record's length \(T\), and
+    that same track record's skewness \(\gamma_3\) and kurtosis \(\gamma_4\)
+    — the same fat-tail diagnostics this repo's <code>skewness</code> and
+    <code>excessKurtosis</code> functions already compute, and the same ones
+    already feeding <code>minTrackRecordLength</code>'s "fat-tail-adjusted"
+    figure per CLAUDE.md. It produces two <strong>outputs</strong>: first, a
+    corrected benchmark \(SR_0\) — the Sharpe ratio you'd <em>expect</em> the
+    best of \(N\) purely-lucky, zero-skill trials to show, which becomes the
+    bar the reported Sharpe has to clear instead of the naive bar of zero;
+    second, the DSR itself — a probability between 0 and 1 that the true,
+    population Sharpe ratio of the selected strategy is actually above zero,
+    after both corrections.
+  </p>
+  <p>
+    <strong>How \(SR_0\), the chance-expected ceiling, is built.</strong>
+    This step is a direct application of extreme value theory (the subject of
+    this series' EVT lesson) to a different quantity — instead of the
+    distribution of an <em>extreme return</em>, it is the distribution of the
+    <em>maximum of \(N\) approximately Gaussian numbers</em> (the \(N\)
+    trial-level Sharpe ratios). A classical EVT result for the expected
+    maximum of \(N\) i.i.d. standard normal draws gives Bailey &amp; López de
+    Prado's approximation:
+  </p>
+  <div class="tl-math">\[ SR_0 \;\approx\; \sigma_{SR}\Big[(1-\gamma_E)\,\Phi^{-1}\!\Big(1-\tfrac{1}{N}\Big) \;+\; \gamma_E\,\Phi^{-1}\!\Big(1-\tfrac{1}{Ne}\Big)\Big] \]</div>
+  <p>
+    Both terms increase with \(N\) (more trials, more room for an extreme
+    draw) and the whole expression is scaled by \(\sigma_{SR}\) (more
+    dispersion across the \(N\) trials' own results, more room for one of
+    them to land far above the pack purely by chance). This is exactly the
+    "count the cells" instinct from the Multiple Testing lesson, turned into
+    an explicit number: more variations tried, and more spread in what those
+    variations returned, both raise the bar the eventual "best" one has to
+    clear before it means anything.
+  </p>
+  <p>
+    <strong>How the final probability is built.</strong> With \(SR_0\) as
+    the corrected benchmark instead of zero, the DSR asks how many standard
+    errors the observed Sharpe \(\widehat{SR}\) sits above \(SR_0\) — using a
+    standard error that itself widens for a track record with negative skew
+    or fat tails, rather than assuming Gaussian returns:
+  </p>
+  <div class="tl-math">\[ DSR(\widehat{SR}) \;=\; \Phi\!\left(\frac{(\widehat{SR}-SR_0)\sqrt{T-1}}{\sqrt{1-\gamma_3\widehat{SR}+\frac{\gamma_4-1}{4}\widehat{SR}^2}}\right) \]</div>
+  <p>
+    The denominator inside that square root is not a new idea introduced just
+    for DSR — it is the exact same skew/kurtosis-adjusted variance-inflation
+    term already sitting inside this repo's own
+    <code>minTrackRecordLength</code> (its <code>adj</code> variable:
+    <code>1 - skew*sr + ((kurt-1)/4)*sr*sr</code>), which exists there for the
+    identical reason: a Sharpe estimate's own standard error is not the
+    simple Gaussian one once the underlying returns are skewed or fat-tailed,
+    and FX/macro pnl reliably is both. DSR and this repo's
+    <code>minTrackRecordLength</code> are, in effect, the same non-normality
+    correction applied to two related questions — "how many years of live
+    data would it take to trust this Sharpe" versus "given the search that
+    produced it, what's the probability this Sharpe is real right now" — and
+    both trace back to the same Bailey &amp; López de Prado research program.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>Computing all three ratios from one hypothetical daily return series</h3>
+    <p>
+      Suppose a backtest produces daily excess returns with mean
+      \(\bar{X}=0.0004\) (4 basis points/day) and standard deviation
+      \(\sigma_X = 0.006\) (60bp/day), over \(k=252\) trading days/year. The
+      per-period, then annualized, Sharpe ratio:
+    </p>
+    <div class="tl-math">\[ SR = \frac{0.0004}{0.006} = 0.0667, \qquad SR_{annual} = 0.0667\times\sqrt{252} = 0.0667\times15.87 \approx 1.06 \]</div>
+    <p>
+      Now suppose the days that lost money did so in a fairly tight, orderly
+      way — losses were small and consistent rather than occasional violent
+      gap-downs — giving a downside deviation of \(DD = 0.0045\), smaller
+      than the full \(\sigma_X = 0.006\) because most of that total dispersion
+      actually comes from the size of the wins, not the losses:
+    </p>
+    <div class="tl-math">\[ Sortino_{annual} = \frac{0.0004}{0.0045}\times\sqrt{252} = 0.0889\times15.87 \approx 1.41 \]</div>
+    <p>
+      Sortino (1.41) comes out meaningfully above Sharpe (1.06) here — exactly
+      the pattern this lesson's math predicts for a strategy whose variance
+      is disproportionately made of favorable upside moves rather than
+      symmetric noise: Sortino simply isn't charging the strategy for the
+      part of its wobble that nobody experiences as risk. Finally, suppose
+      this same return stream compounds to a 9.5% annualized return (CAGR)
+      but experienced one stretch where the equity curve fell 12% peak to
+      trough before recovering:
+    </p>
+    <div class="tl-math">\[ Calmar = \frac{9.5\%}{12\%} \approx 0.79 \]</div>
+    <p>
+      Three numbers, three different stories about the same underlying
+      strategy: a solid but unremarkable Sharpe, a noticeably better Sortino
+      (because the variance that matters is asymmetric here), and a Calmar
+      below 1 (because the worst realized drawdown was a meaningful fraction
+      of the annual return itself — a strategy where a bad stretch can wipe
+      out more than a year of gains, worth knowing even with a respectable
+      Sharpe sitting right next to it).
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Raw reported Sharpe vs. the chance-expected ceiling for a 50-variation search</div>
+    <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart with two bars on the same Sharpe-ratio axis. The left bar, labeled raw reported Sharpe from the best of 50 trials, reaches 1.80 and is tall. The right bar, labeled expected best-of-fifty Sharpe under zero true skill, reaches 1.50 and is visibly shorter. A bracket between the two bar tops is annotated: gap explained by the number of variations tried, N equals 50.">
+      <line x1="70" y1="260" x2="610" y2="260" style="stroke:var(--border)"/>
+      <line x1="70" y1="30" x2="70" y2="260" style="stroke:var(--border)"/>
+
+      <line x1="70" y1="210" x2="610" y2="210" style="stroke:var(--border);stroke-dasharray:2,3"/>
+      <text x="60" y="214" text-anchor="end" fill="var(--text3)" font-size="10.5" font-family="'DM Mono',monospace">0.5</text>
+      <line x1="70" y1="160" x2="610" y2="160" style="stroke:var(--border);stroke-dasharray:2,3"/>
+      <text x="60" y="164" text-anchor="end" fill="var(--text3)" font-size="10.5" font-family="'DM Mono',monospace">1.0</text>
+      <line x1="70" y1="110" x2="610" y2="110" style="stroke:var(--border);stroke-dasharray:2,3"/>
+      <text x="60" y="114" text-anchor="end" fill="var(--text3)" font-size="10.5" font-family="'DM Mono',monospace">1.5</text>
+      <line x1="70" y1="60" x2="610" y2="60" style="stroke:var(--border);stroke-dasharray:2,3"/>
+      <text x="60" y="64" text-anchor="end" fill="var(--text3)" font-size="10.5" font-family="'DM Mono',monospace">2.0</text>
+
+      <rect x="185" y="80" width="130" height="180" rx="3" style="fill:var(--blue)"/>
+      <text x="250" y="70" text-anchor="middle" fill="var(--text)" font-size="14" font-weight="700" font-family="'DM Mono',monospace">1.80</text>
+      <text x="250" y="280" text-anchor="middle" fill="var(--text2)" font-size="11.5" font-family="'DM Sans',sans-serif">Raw reported Sharpe</text>
+      <text x="250" y="295" text-anchor="middle" fill="var(--text3)" font-size="10.5" font-family="'DM Sans',sans-serif">(best of 50 trials)</text>
+
+      <rect x="395" y="110" width="130" height="150" rx="3" style="fill:var(--amber)"/>
+      <text x="460" y="100" text-anchor="middle" fill="var(--text)" font-size="14" font-weight="700" font-family="'DM Mono',monospace">1.50</text>
+      <text x="460" y="280" text-anchor="middle" fill="var(--text2)" font-size="11.5" font-family="'DM Sans',sans-serif">Chance-expected ceiling</text>
+      <text x="460" y="295" text-anchor="middle" fill="var(--text3)" font-size="10.5" font-family="'DM Sans',sans-serif">SR₀, zero true skill, N=50</text>
+
+      <path d="M250,55 L250,45 L460,45 L460,90" style="stroke:var(--text3);fill:none;stroke-dasharray:3,3"/>
+      <text x="355" y="38" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">gap ≈ 0.30 — explained by N=50 variations tried</text>
+
+      <text x="340" y="313" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">annualized Sharpe ratio</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Both bars are Sharpe ratios, on the same axis — the difference between
+      them is not a modeling error, it's the price of running 50 variations
+      and keeping only the winner. The right bar isn't zero: with 50 trials
+      and realistic dispersion across them, pure luck alone is expected to
+      produce a best-of-50 Sharpe around 1.5. A raw 1.80 clearing 1.5 by only
+      0.3, once the reported track record's own length, skew and kurtosis are
+      folded in (the Deflated Sharpe Ratio step, not shown as a third bar
+      because it outputs a probability, not a Sharpe), is a meaningfully
+      weaker claim than the same 1.80 would be if it were the only variation
+      ever tried.
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Real-world scenario</div>
+    <h3>50 variations of a mean-reversion signal, one reported Sharpe of 1.8 — how impressive is it really?</h3>
+    <p>
+      A researcher builds a mean-reversion signal and, in the course of
+      development, backtests 50 variations of it — different lookback
+      windows, different z-score entry thresholds, a couple of different exit
+      rules. The best of the 50 posts an annualized Sharpe ratio of 1.8 on 60
+      closed trades, and that's the number that goes in the writeup: "the
+      strategy achieves a Sharpe of 1.8." This is exactly the scenario
+      CLAUDE.md's own house rule is written to catch: "finding a few
+      'winners' among 70 slices is what noise does. Survivors must beat
+      chance <em>and</em> be IS-consistent." Fifty parameter variations is
+      the same shape of problem as seventy regime slices — a search, with a
+      single reported survivor.
+    </p>
+    <p>
+      Applying the DSR machinery above, with the trial dispersion, track
+      length, and non-normality inputs a real sweep like this would plausibly
+      show — \(N=50\) trials with a standard deviation of \(\sigma_{SR}=0.66\)
+      across their Sharpe ratios, \(T=60\) trades, and a return distribution
+      with skew \(\gamma_3=-0.4\) and kurtosis \(\gamma_4=7\) (moderately
+      fat-tailed and left-skewed, unremarkable for a stop-driven FX
+      mean-reversion book that occasionally gets caught in a breakout):
+    </p>
+    <div class="tl-math">\[ SR_0 \approx 0.66\big[0.4228\times\Phi^{-1}(0.98) + 0.5772\times\Phi^{-1}(0.9926)\big] \approx 0.66\times2.28 \approx 1.50 \]</div>
+    <p>
+      That's the expected-by-chance ceiling: with 50 variations tried at this
+      dispersion, pure luck with zero real edge anywhere in the search is
+      expected to produce a best-of-50 Sharpe around <strong>1.50</strong>.
+      The reported 1.80 clears that ceiling by only 0.30 — not by the full
+      1.80 it appears to clear if you compare it to zero. Running that gap
+      through the full DSR formula, with the track record's own skew and
+      kurtosis widening the standard error:
+    </p>
+    <div class="tl-math">\[ DSR \approx \Phi\!\left(\frac{(1.80-1.50)\sqrt{59}}{\sqrt{1-(-0.4)(1.8)+\frac{7-1}{4}(1.8)^2}}\right) = \Phi\!\left(\frac{0.30\times7.68}{2.57}\right) \approx \Phi(0.89) \approx 0.81 \]</div>
+    <p>
+      An 81% probability that the true Sharpe ratio is above zero — elevated,
+      genuinely more than a coin flip, but a long way from the near-certainty
+      a raw 1.80 suggests when judged in isolation. Contrast that with what a
+      naive test would say if it ignored the 50 trials entirely and simply
+      asked "is 1.8 significantly above zero": the same track record's own
+      standard error gives a z-score of \(1.8\sqrt{59}/2.57\approx5.4\), a
+      probability effectively indistinguishable from 100%. That gap — near
+      certainty on a naive read, 81% once the search itself is priced in —
+      <em>is</em> the multiple-testing correction, made concrete for a single
+      Sharpe ratio instead of a table of p-values. And 81% is still not the
+      end of the story: it corrects for the search, it does not replace this
+      repo's own OOS discipline (Lego Principle 5) — a signal still needs to
+      clear a true out-of-sample split with a non-trivial trade count on data
+      the search never touched at all, on top of clearing its own DSR.
+    </p>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Sharpe, Sortino and Calmar are reported side by side on essentially every
+    institutional tearsheet, precisely because they answer genuinely
+    different questions and none of them subsumes the others: Sharpe for a
+    general risk-adjusted-return comparison, Sortino when a strategy's
+    return profile is known or suspected to be asymmetric (options-selling,
+    trend-following, anything with a convex or concave payoff shape), and
+    Calmar specifically when the audience — an allocator, a risk committee,
+    a trader deciding whether they can personally stomach the strategy — cares
+    about the worst realized outcome more than the average one. None of the
+    three is "the" right metric; the right move is to name which question is
+    being asked before quoting a number, exactly the kind of "name the
+    benchmark before claiming improvement" discipline CLAUDE.md's own working
+    agreement already asks for.
+  </p>
+  <p>
+    The Deflated Sharpe Ratio, and the broader research program it comes
+    from (Bailey, Borwein, López de Prado &amp; Zhu's related work on
+    backtest overfitting), is used differently — less as a routine tearsheet
+    line and more as a gate a result has to pass before it's taken seriously
+    at all. Quant research groups that run large parameter sweeps or feature
+    searches (which is most of them) treat an un-deflated "best Sharpe from
+    the grid search" as close to meaningless on its own, precisely because
+    grid searches are engineered to find outliers — that's the entire point
+    of running one. The honest question after any sweep isn't "what was the
+    best Sharpe," it's "given how many things I tried, is the best Sharpe
+    still better than what an empty search with the same shape would have
+    handed me for free." DSR is the answer to that second question, stated as
+    a number instead of a gut feeling.
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+    <h3>metricsCore.js already has the Sharpe honesty pair — DSR is the next layer, and it isn't built yet</h3>
+    <p>
+      This repo is unusually well set up to add DSR properly, because the
+      pieces it depends on already exist as bricks, not as something that
+      would need to be invented. <code>js/metricsCore.js</code> already ships
+      <code>sharpeRatio</code>, <code>sortinoRatio</code> and
+      <code>calmar</code> exactly as derived above, each taking its
+      annualization explicitly rather than assuming one — the module's own
+      header comment explains this was built specifically because the same
+      three ratios had drifted into 8+ different, silently disagreeing
+      implementations across the codebase's various backtest engines before
+      this brick existed. It also already ships the Sharpe-honesty pair:
+      <code>sharpeStdError</code> (Lo 2002's standard error of an annualized
+      Sharpe) and <code>minTrackRecordLength</code> (Bailey &amp; López de
+      Prado, 2012), the latter already using the exact skew/kurtosis-adjusted
+      variance-inflation term this lesson's DSR formula uses too. Per
+      CLAUDE.md, <code>summarizeTrades</code> already feeds every strategy's
+      real per-trade skew and excess kurtosis into that adjustment rather
+      than assuming Gaussian returns, so every result card already reports
+      \(SR \pm SE\) and a fat-tail-adjusted minimum track record length
+      alongside the raw Sharpe.
+    </p>
+    <p>
+      What's genuinely missing is the piece this lesson is centrally about:
+      nothing in the current metrics stack tracks, or corrects for, <em>how
+      many variations were tried</em> before a "best" Sharpe was reported.
+      <code>minTrackRecordLength</code> answers "how much live data would it
+      take to trust this specific Sharpe," which is a valuable but different
+      question from "given the parameter sweep that produced this Sharpe, how
+      much of it is the sweep talking." There is no <code>N</code> (trial
+      count) tracked anywhere in a backtest card today, no
+      <code>deflatedSharpe.js</code>, and no UI element that asks "how many
+      variations did you actually try to get here" before rendering a
+      headline Sharpe. This is a genuine, valuable, currently-missing
+      validation layer — the natural next step for this metrics stack, not a
+      claim that it already exists in some other form. Building it would mean
+      instrumenting the places that already run parameter sweeps (any
+      backtest with a grid of thresholds/lookbacks/windows) to log every
+      trial's Sharpe, not just the winner's, so \(N\) and \(\sigma_{SR}\) are
+      real numbers pulled from the actual search rather than guessed after
+      the fact — the single most common way DSR gets misapplied in practice
+      is plugging in a guessed or undercounted \(N\) instead of the sweep's
+      true trial count, which silently understates \(SR_0\) and overstates
+      the resulting DSR.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where the Sharpe family, and its deflated version, quietly go wrong</h3>
+    <p>
+      <strong>Reporting a Sharpe ratio annualized by \(\sqrt{k}\) on
+      autocorrelated returns.</strong> The \(\sqrt{k}\) derivation above
+      assumes roughly independent per-period returns. Trend-following
+      strategies, overlapping-window backtests, and anything with genuine
+      serial correlation in its returns will show a naively annualized
+      Sharpe that overstates the true one — a subtle inflation that has
+      nothing to do with edge and everything to do with the annualization
+      formula's own assumption being violated.
+    </p>
+    <p>
+      <strong>Reaching for Calmar or Sortino only after Sharpe already looks
+      unflattering.</strong> All three ratios should be named up front as
+      answering different questions, decided by what the audience actually
+      cares about — not selected after the fact because one of them happens
+      to flatter a particular result. Cherry-picking the metric that looks
+      best is a much smaller-scale version of the exact multiple-testing
+      problem DSR exists to correct.
+    </p>
+    <p>
+      <strong>Undercounting \(N\) when computing a Deflated Sharpe Ratio.</strong>
+      DSR is only as honest as the trial count fed into it. A researcher who
+      formally logs 10 backtest runs but informally eyeballed and discarded
+      20 more along the way (adjusting a threshold "by feel," rerunning,
+      trying again) has really run something closer to 30 trials, not 10 —
+      and every trial that isn't counted understates \(SR_0\) and overstates
+      the resulting DSR. This is the identical undercounting failure mode the
+      Multiple Testing lesson flags for informal, unlogged slice-testing;
+      here it inflates a Sharpe ratio instead of a p-value.
+    </p>
+    <p>
+      <strong>Treating the \(N\) trials as independent when they're really
+      correlated.</strong> The extreme-value-theory approximation behind
+      \(SR_0\) is cleanest when the \(N\) trial outcomes are close to
+      independent draws. In practice, a parameter sweep over adjacent
+      lookback windows (19-day vs 20-day vs 21-day) produces highly
+      correlated equity curves and Sharpe ratios, not independent ones — the
+      true "effective" number of independent trials is smaller than the raw
+      count of variations tried, meaning a literal-\(N\) DSR calculation on a
+      dense grid search is itself somewhat conservative, but not by an amount
+      the formula quantifies on its own.
+    </p>
+    <p>
+      <strong>Treating a high DSR as proof, not evidence.</strong> DSR
+      corrects for the specific selection bias of trying \(N\) variations and
+      keeping the best. It says nothing about costs, regime shift, data
+      snooping in the feature design itself (rather than the parameter
+      sweep), or whether the strategy still works on data the entire search —
+      not just the reported trial — never touched. A DSR of 0.9 on an
+      in-sample search is still an in-sample number; CLAUDE.md's OOS bar
+      (Lego Principle 5) is a separate, still-mandatory hurdle, not one DSR
+      substitutes for.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why does annualizing a Sharpe ratio use \(\sqrt{k}\) rather than \(k\) itself?</summary>
+    <div class="tl-answer">
+      Because mean and variance scale differently under summation of
+      (roughly) independent periods: the annualized mean scales linearly by
+      \(k\), but variance also scales linearly by \(k\), which means
+      annualized standard deviation scales only by \(\sqrt{k}\). Dividing the
+      \(k\)-scaled numerator by the \(\sqrt{k}\)-scaled denominator leaves a
+      net \(\sqrt{k}\) — the same square-root-of-time volatility scaling
+      derived in the Returns &amp; Compounding primer, applied here to a
+      ratio. It also means the scaling is only valid when returns are close
+      to independent period to period; meaningful autocorrelation makes naive
+      \(\sqrt{k}\) annualization overstate the true Sharpe.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why does it make more intuitive sense to penalize only downside deviation, as Sortino does, for a strategy with asymmetric returns?</summary>
+    <div class="tl-answer">
+      Standard deviation treats a period that beats expectations and one that
+      misses it as equally "risky," because a squared deviation from the mean
+      doesn't distinguish direction. For a strategy whose variance comes
+      disproportionately from favorable big wins (a trend-follower, say),
+      Sharpe effectively punishes it for having good outcomes, since those
+      widen the denominator exactly as much as a bad outcome would. Sortino
+      only accumulates deviations below a minimum acceptable return, so a
+      strategy isn't charged in its risk measure for the part of its
+      variability that nobody would actually call risk.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why can a strategy have a great Sharpe ratio but be unusable in practice because of its Calmar ratio?</summary>
+    <div class="tl-answer">
+      Sharpe is built from an average dispersion statistic (standard
+      deviation) computed over the whole return series; Calmar is built from
+      a single specific realized event (the worst peak-to-trough drawdown).
+      A strategy can be quiet on most ordinary days — giving it a high Sharpe
+      — while still carrying exposure to a rare but genuinely severe
+      drawdown that a variance-based statistic barely registers because it's
+      one stretch inside a much longer, calmer series. Calmar surfaces
+      exactly that worst-case realized outcome, which is often what actually
+      determines whether a real investor or trader can keep following the
+      strategy through a bad stretch, independent of how good its average
+      risk-adjusted return looks.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What specifically does the Deflated Sharpe Ratio correct for that a plain Sharpe ratio doesn't?</summary>
+    <div class="tl-answer">
+      A plain Sharpe ratio doesn't know how it was produced — it looks
+      identical whether it's the only strategy ever tested or the single
+      survivor kept after testing many variations. DSR corrects for exactly
+      that: it uses the number of trials \(N\) and the spread of Sharpe
+      ratios across those trials to compute \(SR_0\), the Sharpe a purely
+      lucky, zero-skill best-of-\(N\) search would be expected to produce,
+      and then benchmarks the reported Sharpe against \(SR_0\) instead of
+      zero. It additionally widens or narrows the standard error of that
+      comparison using the track record's own skewness and kurtosis, rather
+      than assuming Gaussian returns — the same non-normality correction
+      already used in this repo's <code>minTrackRecordLength</code>.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In the DSR formula, what does it mean if \(\sigma_{SR}\) (the spread of Sharpe ratios across the N trials) is large rather than small?</summary>
+    <div class="tl-answer">
+      A larger spread across the trials means the search's own outcomes were
+      more dispersed — some trials did much better or worse than others by
+      chance alone — which gives pure luck more room to produce an extreme
+      best-of-\(N\) result. That raises \(SR_0\), the chance-expected ceiling,
+      which in turn makes it harder for the actually reported Sharpe to clear
+      the bar by a meaningful margin. A tight, low-dispersion set of trial
+      outcomes implies a lower \(SR_0\) and makes a given reported Sharpe look
+      comparatively more impressive, all else equal.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why is undercounting the number of trials \(N\) one of the most damaging mistakes when computing a Deflated Sharpe Ratio?</summary>
+    <div class="tl-answer">
+      \(SR_0\), the chance-expected ceiling the reported Sharpe must clear,
+      rises with \(N\). If a researcher only logs the formal backtest runs
+      but doesn't count the informal threshold nudges and reruns tried along
+      the way, the true number of variations explored is larger than the
+      \(N\) fed into the formula. That understates \(SR_0\), which in turn
+      overstates the final DSR — producing a falsely reassuring probability
+      that the true Sharpe is positive. It's the identical undercounting
+      failure this series' Multiple Testing lesson warns about for informal,
+      unlogged slice-testing, here inflating a Sharpe-based probability
+      instead of understating a p-value's true multiple-testing burden.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>William F. Sharpe, <em>"Mutual Fund Performance"</em>, Journal of Business, 1966 — the original "reward-to-variability ratio," the source of the Sharpe ratio's name and its first formal statement.</li>
+    <li>Frank A. Sortino &amp; Robert van der Meer, <em>"Downside Risk"</em>, Journal of Portfolio Management, 1991, and Sortino &amp; Lee N. Price, <em>"Performance Measurement in a Downside Risk Framework"</em>, Journal of Investing, 1994 — the downside-deviation refinement and its formalization as the Sortino ratio.</li>
+    <li>Terry W. Young, <em>"Calmar Ratio: A Smoother Tool"</em>, Futures magazine, 1991 — the original statement of return-over-max-drawdown as a performance measure.</li>
+    <li>Andrew W. Lo, <em>"The Statistics of Sharpe Ratios"</em>, Financial Analysts Journal, 2002 — the standard-error derivation for an estimated Sharpe ratio, including the autocorrelation caveat on \(\sqrt{k}\) annualization, and the basis for this repo's <code>sharpeStdError</code>.</li>
+    <li>David H. Bailey &amp; Marcos López de Prado, <em>"The Sharpe Ratio Efficient Frontier"</em>, Journal of Risk, 2012 — the Probabilistic Sharpe Ratio and Minimum Track Record Length, the direct basis for this repo's <code>minTrackRecordLength</code>.</li>
+    <li>David H. Bailey &amp; Marcos López de Prado, <em>"The Deflated Sharpe Ratio: Correcting for Selection Bias, Backtest Overfitting, and Non-Normality"</em>, Journal of Portfolio Management, 2014 — the primary citation for this lesson's second half: the full DSR derivation, the extreme-value-theory approximation for \(SR_0\), and worked examples of the selection-bias correction.</li>
+    <li>David H. Bailey, Jonathan M. Borwein, Marcos López de Prado &amp; Qiji Jim Zhu, <em>"Pseudo-Mathematics and Financial Charlatanism: The Effects of Backtest Overfitting on Out-of-Sample Performance"</em>, Notices of the AMS, 2014 — the broader, more accessible case for why un-deflated backtest metrics systematically mislead, with the same authors' perspective on why this matters beyond the formula itself.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="copulas.html">← Copulas &amp; Joint Tail Dependence</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged Cross-Validation →</a>
+  </div>
+</div>
+</body>
+</html>

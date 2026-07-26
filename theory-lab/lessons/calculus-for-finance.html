@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculus for Finance — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Deeper Foundations / Calculus for Finance</div>
+  <div class="tl-kicker">Deeper Foundations · Lesson 2 of 4</div>
+  <h1 class="tl-title">Calculus for Finance: Derivatives, Integrals &amp; Taylor Series</h1>
+  <p class="tl-dek">The tangent-line slope, the area under a curve, and the local approximation built from both — the three ideas that Ornstein-Uhlenbeck, Black-Scholes, and Kelly Criterion all quietly assume you already have.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">DEEPER FOUNDATION — read before Ornstein-Uhlenbeck, Black-Scholes, or Kelly Criterion</span>
+    <span>~15 min read</span>
+    <span>Prereqs: none</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    Three lessons already in this Theory Lab lean on calculus without pausing
+    to teach it. The Ornstein-Uhlenbeck lesson writes
+    <code>dX_t = &theta;(&mu; - X_t)dt + &sigma;dW_t</code> and asks you to read it as "the
+    rate of change of \(X\)" — that is a derivative. The Black-Scholes lesson
+    builds a partial differential equation out of how an option's price
+    changes with the underlying, with time, and with volatility — three more
+    derivatives, all at once. The Kelly Criterion lesson finds the
+    growth-optimal bet size by taking a derivative of a growth-rate function
+    and setting it to zero, then derives the volatility-drag formula
+    \(g \approx \mu - \sigma^2/2\) using something called a "second-order
+    Taylor expansion" without stopping to say what that phrase means. None of
+    those lessons are wrong to assume it — but if the words "derivative,"
+    "integral," and "Taylor series" are more familiar as vague memories from a
+    school course than as tools you could actually use, this page is the
+    detour that makes the rest of this series load-bearing rather than
+    decorative.
+  </p>
+  <p>
+    Calculus, at its core, is the mathematics of <em>change</em> and
+    <em>accumulation</em>. A derivative answers "how fast is this changing
+    right now?" An integral answers "how much has accumulated so far?" A
+    Taylor series answers "if I only know a function's value and its rate(s)
+    of change at one point, how good a guess can I make about its value
+    nearby?" Every one of those three questions turns out to be exactly the
+    question a piece of quantitative finance is quietly asking — an option's
+    delta, a cumulative return, a quick mental estimate of volatility drag.
+    This lesson builds all three from first principles, with every step of
+    arithmetic shown, so nothing later in the series has to be taken on
+    faith.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>The speedometer and the odometer</h3>
+    <p>
+      Picture driving a car. The <strong>speedometer</strong> tells you how
+      fast you are going <em>right now</em> — not your average speed over the
+      whole trip, but your speed at this exact instant, which can be
+      different one second from now. That is a derivative: an instantaneous
+      rate of change. The <strong>odometer</strong> tells you the total
+      distance you've covered so far — it accumulates every instant of
+      speed, over every instant of time, into a single running total. That is
+      an integral: an accumulated total built up from a rate.
+    </p>
+    <p>
+      The two instruments are mirror images of each other, and that mirror
+      relationship is not a coincidence — it's a theorem (the Fundamental
+      Theorem of Calculus, below). If you know your speed at every instant,
+      you can reconstruct the total distance traveled by accumulating it.
+      If you know the total distance traveled as a smooth function of time,
+      you can reconstruct your speed at any instant by asking how steeply
+      that distance function is rising right then. In finance, "distance
+      traveled" is usually a price, a wealth level, or an option value, and
+      "speed" is usually the thing traders actually care about day to day —
+      a rate of change like delta, a drift, or a mean-reversion speed. A
+      <strong>Taylor series</strong>, the third idea this lesson builds, is
+      what lets you use the speedometer reading <em>alone</em> — your speed
+      right now, plus how quickly your speed itself is changing — to make a
+      good guess about where you'll be a few seconds from now, without
+      needing to know the entire future trip in advance.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">One curve, two ideas: the tangent line (derivative) and the shaded area (integral)</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A smooth, upward-curving function plotted against x. Near the left, a shaded green region under the curve between two x-values illustrates the integral as accumulated area. Farther right, an amber tangent line touches the curve at a single point, illustrating the derivative as the instantaneous slope at that point.">
+      <line x1="50" y1="20" x2="50" y2="252" style="stroke:var(--text3)"/>
+      <line x1="50" y1="252" x2="610" y2="252" style="stroke:var(--text3)"/>
+      <text x="612" y="256" font-size="12" font-family="'DM Mono',monospace" fill="var(--text3)">x</text>
+      <text x="30" y="130" font-size="12" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle" transform="rotate(-90 30 130)">f(x)</text>
+
+      <polygon points="114,252 114,220.3 141,214.7 168,208.6 195,201.9 222,194.8 222,252" style="fill:var(--green);fill-opacity:0.22;stroke:var(--green);stroke-width:1"/>
+
+      <polyline points="60,230.0 87,225.4 114,220.3 141,214.7 168,208.6 195,201.9 222,194.8 249,187.1 276,178.9 303,170.2 330,160.9 357,151.1 384,140.9 411,130.1 438,118.8 465,106.9 492,94.6 519,81.7 546,68.3 573,54.4 600,40.0" style="stroke:var(--blue);stroke-width:2.5" fill="none"/>
+
+      <line x1="357" y1="153.5" x2="519" y2="84.0" style="stroke:var(--amber);stroke-width:2.5"/>
+      <circle cx="438" cy="118.8" r="4.5" fill="var(--amber)"/>
+
+      <text x="168" y="180" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--green)" text-anchor="middle">area = &#8747; f(x) dx</text>
+      <text x="438" y="105" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--amber)" text-anchor="middle">slope = f&#39;(x&#8320;)</text>
+      <text x="438" y="266" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">x&#8320;</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>f(x) — the curve</span>
+      <span><i style="background:var(--amber)"></i>Tangent line at x&#8320; — the derivative</span>
+      <span><i style="background:var(--green)"></i>Shaded area — the integral</span>
+    </div>
+    <div class="tl-chart-caption">
+      The same curve illustrates both ideas at once, but they're read off
+      different parts of it. On the left, the <strong>green shaded region</strong>
+      between two x-values is the area under the curve — the accumulated
+      total, i.e. the integral. Farther right, the <strong>amber tangent
+      line</strong> touches the curve at exactly one point, \(x_0\), and its
+      slope is the curve's instantaneous rate of change there — the
+      derivative. Notice the tangent line gets steeper the farther right it's
+      drawn: this curve is convex (curving upward), so its instantaneous
+      slope keeps increasing — that changing steepness is itself measured by
+      the second derivative, which shows up later in the Taylor series
+      section.
+    </div>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <div class="tl-symbols"><table>
+    <tr><td>\(f(x)\)</td><td>A function of \(x\) — a price, an option value, a wealth level, anything that depends smoothly on some input \(x\).</td></tr>
+    <tr><td>\(h\)</td><td>A (usually small) change in \(x\) — sometimes written \(\Delta x\). Used to build the average rate of change before shrinking it toward an instantaneous one.</td></tr>
+    <tr><td>\(\lim_{h\to 0}\)</td><td>"The limit as \(h\) shrinks toward, but never quite reaches, zero" — the formal machinery that turns an average (over some finite gap) into an instantaneous quantity (at a single point).</td></tr>
+    <tr><td>\(f'(x)\), \(\dfrac{df}{dx}\)</td><td>The <strong>derivative</strong> of \(f\) at \(x\) — its instantaneous rate of change; equivalently, the slope of the line tangent to the curve at that point. Both notations mean the same thing.</td></tr>
+    <tr><td>\(f''(x)\)</td><td>The <strong>second derivative</strong> — the derivative of the derivative, i.e. the rate of change of the rate of change. Measures curvature: how quickly the slope itself is changing.</td></tr>
+    <tr><td>\(\int_a^b f(x)\,dx\)</td><td>The <strong>definite integral</strong> of \(f\) from \(a\) to \(b\) — the accumulated area between the curve and the x-axis over that interval.</td></tr>
+    <tr><td>\(F(x)\)</td><td>An <strong>antiderivative</strong> of \(f\): any function whose own derivative gives back \(f\), i.e. \(F'(x) = f(x)\). Integration is the reverse operation of differentiation.</td></tr>
+    <tr><td>\(dx\)</td><td>An infinitesimally small width along the x-axis — the "thickness" of each accumulated slice inside an integral, or the tiny step size a derivative is defined over.</td></tr>
+  </table></div>
+
+  <h3>The derivative: instantaneous rate of change</h3>
+  <p>
+    Start with something easier: the <strong>average</strong> rate of change
+    of \(f\) between two points, \(x\) and \(x+h\). That's just "rise over
+    run" — the change in \(f\) divided by the change in \(x\):
+  </p>
+  <div class="tl-math">
+    \[ \text{average rate of change} = \frac{f(x+h) - f(x)}{h} \]
+  </div>
+  <p>
+    Geometrically, this is the slope of the <strong>secant line</strong> — the
+    straight line connecting the two points \((x, f(x))\) and
+    \((x+h, f(x+h))\) on the curve. It's an honest, useful number, but it
+    describes the average behavior <em>over the whole gap</em> \(h\), not
+    what's happening at the single point \(x\) itself. A car's average speed
+    over an hour-long trip doesn't tell you how fast it was going in any
+    particular second of that hour.
+  </p>
+  <p>
+    To get the <em>instantaneous</em> rate of change — the speedometer
+    reading at the single point \(x\), not the average over a whole
+    interval — shrink the gap \(h\) toward zero and see what the average
+    rate of change approaches. That limiting value is the formal definition
+    of the <strong>derivative</strong>:
+  </p>
+  <div class="tl-math">
+    \[ f'(x) = \lim_{h \to 0} \frac{f(x+h) - f(x)}{h} \]
+  </div>
+  <p>
+    As \(h\) shrinks, the secant line connecting \(x\) and \(x+h\) rotates
+    and approaches the single line that just <em>touches</em> the curve at
+    \(x\) without crossing through it nearby — the tangent line. So the
+    derivative \(f'(x)\) is, geometrically, exactly the slope of that tangent
+    line: the instantaneous steepness of the curve at one specific point.
+  </p>
+
+  <h3>A worked derivative: \(d/dx(x^2) = 2x\), from first principles</h3>
+  <p>
+    Apply the limit definition directly to \(f(x) = x^2\), with every step of
+    the arithmetic shown. First, expand \(f(x+h)\):
+  </p>
+  <div class="tl-math">
+    \[ f(x+h) = (x+h)^2 = x^2 + 2xh + h^2 \]
+  </div>
+  <p>
+    Subtract \(f(x) = x^2\):
+  </p>
+  <div class="tl-math">
+    \[ f(x+h) - f(x) = (x^2 + 2xh + h^2) - x^2 = 2xh + h^2 \]
+  </div>
+  <p>
+    Divide by \(h\). Because both remaining terms in the numerator share a
+    factor of \(h\), that factor cancels cleanly (this step is only valid for
+    \(h \neq 0\), which is exactly the regime the limit is taken over — \(h\)
+    approaches zero but the division happens before it gets there):
+  </p>
+  <div class="tl-math">
+    \[ \frac{f(x+h)-f(x)}{h} = \frac{2xh + h^2}{h} = \frac{h(2x+h)}{h} = 2x + h \]
+  </div>
+  <p>
+    Finally, take the limit as \(h \to 0\). The \(2x\) term doesn't involve
+    \(h\) at all, so it's untouched; the remaining \(h\) term shrinks to
+    exactly zero:
+  </p>
+  <div class="tl-math">
+    \[ f'(x) = \lim_{h\to 0}(2x+h) = 2x \]
+  </div>
+  <p>
+    So \(\dfrac{d}{dx}(x^2) = 2x\), exactly — not approximately. This is the
+    single most-cited example in every introductory calculus course for a
+    reason: the algebra is short enough to show completely, and it makes the
+    mechanism unmistakable — the \(h^2\) term is what carries the
+    "curviness" of \(x^2\) (a straight line, \(f(x)=x\), would have no
+    surviving \(h\) term at all: \(f(x+h)-f(x) = h\), giving derivative
+    exactly 1 everywhere, no limit needed to clean anything up), and it
+    vanishes only because you divide by \(h\) <em>before</em> letting \(h\)
+    go to zero, not after. Doing it in the other order — setting \(h=0\)
+    first — would give the meaningless \(0/0\); the entire point of the
+    limit is that it evaluates a fraction whose numerator and denominator are
+    both racing to zero, and asks what ratio they're racing toward.
+  </p>
+
+  <h3>The integral: the reverse of differentiation</h3>
+  <p>
+    An integral answers a different question: not "how fast is \(f\)
+    changing," but "how much area sits between the curve \(f(x)\) and the
+    x-axis, over some interval?" The idea, built directly from the
+    accumulation intuition above, is to chop the interval from \(a\) to \(b\)
+    into many thin rectangular slices of width \(\Delta x\), each with height
+    roughly \(f(x)\) at that slice, add up all the rectangles' areas, and then
+    let the slices get infinitesimally thin (\(\Delta x \to 0\), the same
+    limiting idea the derivative used, just applied to a sum of areas rather
+    than a single ratio) so the jagged rectangle-approximation becomes the
+    exact, smooth area under the curve:
+  </p>
+  <div class="tl-math">
+    \[ \int_a^b f(x)\,dx = \lim_{\Delta x \to 0} \sum_{i} f(x_i)\,\Delta x \]
+  </div>
+  <p>
+    Computing that limit of a sum directly, slice by slice, is tedious.
+    The single most important fact in calculus — the
+    <strong>Fundamental Theorem of Calculus</strong> — is that you almost
+    never have to. It says integration and differentiation are exact
+    inverses of one another: if \(F\) is any antiderivative of \(f\) (that
+    is, \(F'(x) = f(x)\)), then the definite integral collapses to a plain
+    subtraction:
+  </p>
+  <div class="tl-math">
+    \[ \int_a^b f(x)\,dx = F(b) - F(a) \]
+  </div>
+  <p>
+    Read plainly: to find the accumulated area under a rate-of-change curve
+    between two points, find a function whose <em>derivative</em> is that
+    curve, then just evaluate it at the two endpoints and subtract. This is
+    the formal version of the speedometer/odometer relationship from the
+    intuition box: the odometer reading (an antiderivative of speed) at the
+    end of the trip, minus the odometer reading at the start, gives the
+    total distance traveled — you never had to add up infinitely many
+    instants of speed by hand, because differentiation and integration undo
+    each other.
+  </p>
+
+  <h3>Taylor series: approximating a function from a single point</h3>
+  <p>
+    The derivative gives you the tangent line at a point — and the tangent
+    line is itself the simplest possible <em>approximation</em> to the curve
+    near that point. Rearranging the average-rate-of-change idea for a small,
+    finite step \(h\) (rather than the limit \(h \to 0\)) gives the
+    <strong>first-order Taylor approximation</strong>:
+  </p>
+  <div class="tl-math">
+    \[ f(x+h) \approx f(x) + f'(x)\,h \]
+  </div>
+  <p>
+    This says: to estimate \(f\) a small step \(h\) away from a known point
+    \(x\), start at the known value \(f(x)\) and add the tangent line's rise
+    over that step — slope \(f'(x)\) times the step size \(h\). It's exactly
+    the equation of the tangent line drawn in the chart above, and it's
+    exact only in the limit \(h \to 0\); for any finite \(h\), it's an
+    approximation whose error grows as the curve bends away from that
+    straight tangent line.
+  </p>
+  <p>
+    That bending-away is precisely what the <strong>second derivative</strong>
+    \(f''(x)\) measures — how fast the slope itself is changing, i.e. the
+    curve's curvature. Adding a correction term built from it gives the
+    <strong>second-order Taylor expansion</strong>, the version this lesson
+    builds up to:
+  </p>
+  <div class="tl-math">
+    \[ f(x+h) \approx f(x) + f'(x)\,h + \frac{f''(x)}{2}\,h^2 \]
+  </div>
+  <p>
+    Each added term is a correction for something the previous term missed:
+    \(f(x)\) alone assumes nothing changes at all (a flat, zeroth-order
+    guess); adding \(f'(x)h\) accounts for the curve's slope at \(x\) (a
+    straight tangent-line guess); adding \(\frac{1}{2}f''(x)h^2\) accounts
+    for the curve bending away from that straight line (a parabola-shaped
+    guess that hugs the true curve more closely). A full Taylor series keeps
+    adding higher-derivative terms (\(\frac{f'''(x)}{6}h^3\), and so on) for
+    an increasingly exact match, but the second-order version above is
+    already the workhorse approximation used throughout quantitative
+    finance, because it's usually accurate enough over small moves and far
+    simpler than carrying more terms.
+  </p>
+
+  <h3>Connecting Taylor series to two formulas already in this Theory Lab</h3>
+  <p>
+    Two formulas elsewhere in this series that were stated and used, without
+    being derived on the spot, are both literally instances of the
+    second-order Taylor expansion above. Seeing the derivation makes clear
+    they aren't separate pieces of financial folklore — they're the same
+    piece of calculus, applied twice.
+  </p>
+  <p>
+    <strong>First: \(\ln(1+R) \approx R - R^2/2\)</strong> from the
+    Returns, Log-Returns &amp; Compounding primer. Let \(f(x) = \ln(1+x)\)
+    and expand around \(x=0\). Three quantities are needed: \(f(0) =
+    \ln(1) = 0\); the first derivative \(f'(x) = \frac{1}{1+x}\), so
+    \(f'(0) = 1\); and the second derivative \(f''(x) = -\frac{1}{(1+x)^2}\),
+    so \(f''(0) = -1\). Plugging these three numbers into the second-order
+    Taylor formula, with step size \(h\):
+  </p>
+  <div class="tl-math">
+    \[ f(0+h) \approx f(0) + f'(0)h + \frac{f''(0)}{2}h^2 = 0 + (1)h + \frac{-1}{2}h^2 = h - \frac{h^2}{2} \]
+  </div>
+  <p>
+    Relabel the step \(h\) as a return \(R\), and this is exactly
+    \(\ln(1+R) \approx R - R^2/2\) — not a separate approximation someone
+    invented for finance, but the general-purpose Taylor formula with three
+    specific numbers dropped in.
+  </p>
+  <p>
+    <strong>Second: \(g \approx \mu - \sigma^2/2\)</strong>, the
+    volatility-drag formula from both the returns primer and the Kelly
+    Criterion lesson. This one doesn't require a fresh Taylor expansion — it
+    follows from averaging the <em>same</em> \(\ln(1+R)\approx R - R^2/2\)
+    identity over many periods. Averaging the left side gives the mean log
+    return, which (because log returns add across time, as the returns
+    primer derives) equals the compounded growth rate \(g\). Averaging the
+    right side gives the arithmetic mean \(\mu\) minus one-half the average
+    squared return; for a return series with small mean relative to its
+    spread, that average squared return is well approximated by the
+    variance \(\sigma^2\). Put the two averaged sides back together:
+  </p>
+  <div class="tl-math">
+    \[ g \approx \mu - \frac{\sigma^2}{2} \]
+  </div>
+  <p>
+    Same Taylor expansion, same \(h - h^2/2\) shape, just relabeled twice —
+    once per period as \(\ln(1+R)\approx R - R^2/2\), and once again after
+    averaging across many periods as \(g \approx \mu - \sigma^2/2\). Both
+    "quick mental math" shortcuts a trader might use are the identical
+    piece of calculus wearing different clothes.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>How good is the second-order approximation, numerically?</h3>
+    <p>
+      Take \(f(x) = \ln(1+x)\) again and check the Taylor approximation
+      \(f(h) \approx h - h^2/2\) against the true value at two different
+      step sizes, to see the error shrink as \(h\) shrinks — exactly the
+      behavior the derivation above predicts.
+    </p>
+    <p>
+      <strong>Small step, \(h = 0.05\):</strong> the true value is
+      \(\ln(1.05) \approx 0.04879\). The Taylor approximation gives
+      \(0.05 - (0.05)^2/2 = 0.05 - 0.00125 = 0.04875\). The error is
+      \(0.04879 - 0.04875 = 0.00004\) — about four hundredths of one
+      percent, small enough to ignore for almost any practical purpose.
+    </p>
+    <p>
+      <strong>Larger step, \(h = 0.30\):</strong> the true value is
+      \(\ln(1.30) \approx 0.26236\). The Taylor approximation gives
+      \(0.30 - (0.30)^2/2 = 0.30 - 0.045 = 0.255\). The error is now
+      \(0.26236 - 0.255 = 0.00736\) — roughly 2.8% of the true value, and
+      nearly 200 times larger in absolute size than the \(0.00004\) error at
+      \(h=0.05\), even though \(h\) only grew sixfold. This is exactly the
+      local-approximation warning the pitfalls section below returns to: the
+      pitfalls section below returns to: the second-order Taylor
+      expansion is very accurate for small steps and degrades, sometimes
+      quickly, as the step size grows, because it's still ignoring every
+      term from the third derivative onward.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Delta is a derivative you're already trading with</h3>
+    <p>
+      Suppose you're holding a call option, currently priced at \(C = \$4.30\)
+      while the underlying is at \(S = \$100\). Your broker's risk screen
+      shows a delta of 0.60. What that number actually means: if the
+      underlying ticks up by \(\$1\) right now, the option's price is
+      expected to move by roughly \(\$0.60\), not the full \(\$1\) — because
+      an option's value is a function of the underlying price, \(C(S)\), and
+      0.60 <em>is</em> \(\frac{dC}{dS}\) evaluated at today's spot: the
+      instantaneous slope of the option-price function at \(S=100\), read
+      directly off a live risk screen instead of derived from a limit by
+      hand. Delta is not "sort of like" a derivative or an approximation of
+      one — it is one, computed by the pricing model's own machinery (the
+      Black-Scholes lesson derives exactly this quantity in closed form).
+    </p>
+    <p>
+      And it's a <em>first-order</em> approximation in exactly the Taylor
+      sense above: \(\Delta C \approx \delta \cdot \Delta S\) is the
+      tangent-line estimate, good for small moves in \(S\) and increasingly
+      wrong for large ones, because it ignores how delta itself changes as
+      \(S\) moves — that curvature term is <strong>gamma</strong>, the
+      option's second derivative with respect to the underlying, and it's
+      exactly the \(\frac{1}{2}f''(x)h^2\) correction term from the
+      second-order Taylor expansion above, applied to an option book instead
+      of an abstract \(f(x)\). This is precisely why option desks quote and
+      risk-manage both delta <em>and</em> gamma together, not delta alone —
+      one is the first-order Taylor term, the other is the second-order
+      correction that keeps the estimate honest for a bigger move.
+    </p>
+    <p>
+      The same Taylor logic explains a completely different piece of trader
+      mental math: "if vol is 20% a year, my expected drag is about 2% a
+      year." That's \(\sigma^2/2\) with \(\sigma = 0.20\):
+      \((0.20)^2/2 = 0.04/2 = 0.02\), i.e. 2%. It isn't a coincidence or a
+      memorized rule of thumb picked up on a desk — it's the same
+      second-order Taylor expansion derived above, \(g \approx \mu -
+      \sigma^2/2\), evaluated with one specific number. Once you've seen the
+      derivation, the mental shortcut stops being a trick to memorize and
+      becomes a two-line calculation you could redo from scratch.
+    </p>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    <strong>The Greeks are a Taylor expansion of an option's price.</strong>
+    Delta (\(\partial C/\partial S\)), gamma (\(\partial^2 C/\partial S^2\)),
+    theta (\(\partial C/\partial t\)), and vega (\(\partial C/\partial \sigma\))
+    are first- and second-order derivatives of the option-pricing function
+    with respect to different inputs. A "delta-gamma" approximation to how
+    much an option book's value will move for a given underlying shock is
+    exactly the second-order Taylor expansion built above, applied variable
+    by variable: \(\Delta C \approx \delta\,\Delta S +
+    \frac{1}{2}\gamma\,(\Delta S)^2\). Risk desks use this constantly because
+    fully repricing every option in a large book for every hypothetical
+    market move is expensive; the Taylor approximation gives a fast,
+    close-enough estimate from quantities (the Greeks) the desk already has
+    on hand.
+  </p>
+  <p>
+    <strong>Optimization is "set the derivative to zero."</strong> Wherever a
+    quantitative model claims to find an "optimal" value — the Kelly
+    Criterion lesson's growth-optimal bet fraction \(f^*\), or a regression's
+    least-squares coefficients — the standard method is exactly the calculus
+    move used in that lesson: write the objective as a function of the
+    parameter, differentiate it, and solve for where that derivative equals
+    zero (where the tangent line is flat, i.e. neither rising nor falling —
+    the hallmark of a smooth maximum or minimum). This single idea,
+    "optimal points are where the derivative vanishes," underlies far more of
+    quantitative finance than any one lesson name-checks explicitly.
+  </p>
+  <p>
+    <strong>Integrals show up as probability and as cumulative
+    performance.</strong> A cumulative distribution function is, by
+    definition, the integral of a probability density function — "the
+    probability that a return is less than \(x\)" is the accumulated area
+    under the density curve up to \(x\). An equity curve is, in continuous
+    terms, the integral of a P&amp;L rate over time — exactly the
+    odometer-from-speedometer relationship the intuition box opened with,
+    now applied to trading returns instead of distance.
+  </p>
+  <p>
+    <strong>Rates of change in real market data are almost always estimated,
+    not computed exactly.</strong> A real price series only exists at
+    discrete points in time (one close per day, one tick per trade), so
+    there is no literal \(h \to 0\) to take — practitioners approximate a
+    derivative with a <em>finite difference</em> (a plain \(\Delta f/\Delta x\)
+    over the smallest available step, or a regression slope over a short
+    rolling window) and treat it as a working stand-in for the theoretical
+    limit, at the cost of a small amount of discretization and estimation
+    error that a purely analytical derivative never has.
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>Vocabulary, not a module — but it's already load-bearing in three lessons and in real code</h3>
+    <p>
+      This lesson is not describing a specific brick or a buildable feature —
+      it is math literacy this Theory Lab's own lessons already lean on
+      without deriving. Three concrete places it shows up: the Ornstein-Uhlenbeck
+      lesson's half-life derivation solves the drift-only ODE
+      \(\frac{d}{dt}\mathbb{E}[X_t-\mu] = -\theta\,\mathbb{E}[X_t-\mu]\) — a
+      statement written entirely in derivative notation, whose solution is
+      an exponential decay curve; the Black-Scholes lesson's option-pricing
+      formula comes from a partial differential equation built out of
+      \(\partial C/\partial t\), \(\partial C/\partial S\), and
+      \(\partial^2 C/\partial S^2\) — three of the derivatives introduced
+      above, just with a partial-derivative notation for a function of more
+      than one variable; and the Kelly Criterion lesson's entire derivation
+      of \(f^*\), and its volatility-drag formula \(g \approx \mu -
+      \sigma^2/2\), are respectively an optimization (set a derivative to
+      zero) and a second-order Taylor expansion, both built directly on this
+      page's machinery.
+    </p>
+    <p>
+      In actual repo code, the closest analogs are <code>js/statsCore.js</code>'s
+      <code>linregSlope</code> and <code>ewma</code>. <code>linregSlope</code>
+      is, in substance, a discrete estimate of a derivative — it fits a
+      straight line through a rolling window of data and reports its slope,
+      which is exactly the finite-difference stand-in for an instantaneous
+      rate of change described in the practitioner section above, applied
+      over a short window instead of an infinitesimal one. <code>ewma</code>
+      (exponentially weighted moving average) is the discrete-time cousin of
+      the exponential-decay solution that falls out of a simple
+      differential equation — the same \(e^{-\theta t}\)-shaped decay the
+      Ornstein-Uhlenbeck lesson derives continuously, recomputed step by step
+      on discrete bars instead of solved once in closed form. Neither
+      function is described here as "an implementation of calculus" in any
+      formal sense — they are ordinary statistics/smoothing utilities — but
+      the concepts underneath them (a rate of change over a window, a
+      recursive smoothing rule shaped like exponential decay) are the same
+      concepts this lesson just built from scratch.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where calculus reasoning goes wrong in practice</h3>
+    <p>
+      <strong>Treating a finite-difference slope as if it were the exact
+      derivative.</strong> Real data gives you \(\Delta f/\Delta x\) over
+      some non-zero gap (a day, a rolling window), not the true limit as
+      that gap shrinks to zero. That finite-difference estimate is itself
+      noisy and depends on the window chosen — a shorter window tracks
+      instantaneous change more closely but is noisier; a longer window is
+      smoother but is really estimating an average rate of change over the
+      window, quietly drifting back toward the secant-line concept the
+      derivative was defined to improve on.
+    </p>
+    <p>
+      <strong>Extrapolating a first-order (tangent-line/delta-only) estimate
+      too far.</strong> The Taylor approximation \(f(x+h) \approx f(x) +
+      f'(x)h\) is a <em>local</em> statement — accurate near \(x\), and
+      increasingly wrong the larger \(h\) gets, exactly as the worked
+      example above showed numerically (a roughly two-hundred-fold jump in
+      absolute error going from \(h=0.05\) to \(h=0.30\)). Using delta alone
+      to estimate an option's P&amp;L for a large underlying move, without
+      the gamma correction, is the single most common version of this
+      mistake in practice.
+    </p>
+    <p>
+      <strong>Assuming a function is differentiable everywhere.</strong> The
+      derivative's limit definition silently assumes the limit actually
+      exists and is the same approaching from both sides. Real financial
+      functions can have kinks — an option's payoff at expiry has a sharp
+      corner exactly at the strike price, where the left-hand and right-hand
+      slopes genuinely disagree, and no single tangent line describes that
+      point. Applying smooth-function calculus across a kink without
+      noticing it is a quiet source of pricing and hedging errors right at
+      the kink.
+    </p>
+    <p>
+      <strong>Forgetting the small-\(x\) assumption behind
+      \(\ln(1+R)\approx R - R^2/2\) and \(g \approx \mu - \sigma^2/2\).</strong>
+      Both formulas are second-order Taylor expansions, and every Taylor
+      expansion carries an implicit "this holds near the expansion point"
+      caveat. They are excellent approximations for typical daily FX moves
+      and are measurably worse for large single-period returns (a genuine
+      concern for crypto or single-name equities, less so for ordinary daily
+      FX, as the returns primer notes) — reach for the exact geometric-mean
+      formula rather than the Taylor shortcut whenever the returns involved
+      are large.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why is the derivative defined as a limit, \(\lim_{h\to 0}\), rather than just picking some small, fixed \(h\) and computing \([f(x+h)-f(x)]/h\)?</summary>
+    <div class="tl-answer">
+      Any fixed, non-zero \(h\) gives the slope of a secant line — the
+      average rate of change over that specific gap, which depends on how
+      big \(h\) is and on how much the function curves within that gap. Two
+      different choices of \(h\) generally give two different answers. The
+      limit process is what removes that arbitrary dependence: as \(h\)
+      shrinks toward zero, the secant line's slope converges to a single,
+      well-defined value — the slope of the one tangent line at that exact
+      point — independent of any particular choice of step size. A fixed
+      \(h\) gives an approximation to the derivative; the limit gives the
+      derivative itself.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. In the first-principles derivation of \(d/dx(x^2)=2x\), what role does the \(h^2\) term play, and why is it correct that it vanishes in the final answer?</summary>
+    <div class="tl-answer">
+      Expanding \((x+h)^2 = x^2 + 2xh + h^2\) shows two new terms beyond
+      \(x^2\): a term linear in \(h\) (\(2xh\)) and a term quadratic in
+      \(h\) (\(h^2\)). The quadratic term is what carries the function's
+      curvature — a straight line \(f(x)=x\) would produce no such term at
+      all. After dividing the whole difference by \(h\), the quadratic term
+      becomes a single leftover \(h\) (from \(h^2/h\)), which genuinely does
+      shrink to exactly zero as \(h\to 0\) — this isn't hand-waving, it's
+      the correct limit of a term that literally goes to zero. What survives
+      the limit, \(2x\), is the linear term's coefficient, which is why the
+      derivative of \(x^2\) is proportional to \(x\) but the derivative of a
+      straight line is a constant with no \(x\) at all.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. In one sentence each, what does a derivative measure and what does an integral measure, and how does the Fundamental Theorem of Calculus connect them?</summary>
+    <div class="tl-answer">
+      A derivative measures the instantaneous rate of change of a function at
+      a point (the tangent line's slope there); an integral measures the
+      accumulated area under a function's curve over an interval (a running
+      total built from that rate). The Fundamental Theorem of Calculus
+      connects them by proving they are exact inverse operations: if \(F\) is
+      an antiderivative of \(f\) (meaning \(F'=f\)), the accumulated area
+      from \(a\) to \(b\) can be found by evaluating \(F\) at the two
+      endpoints and subtracting, \(\int_a^b f(x)dx = F(b)-F(a)\), without
+      ever summing infinitely many rectangular slices by hand.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why does the first-order Taylor term, \(f'(x)h\), correspond exactly to the tangent line, and why does a convex (or concave) function need the second-order term to be approximated well?</summary>
+    <div class="tl-answer">
+      The tangent line at \(x\) is, by definition, the straight line passing
+      through \((x, f(x))\) with slope \(f'(x)\); its value at a step \(h\)
+      away is exactly \(f(x) + f'(x)h\), which is precisely the first-order
+      Taylor approximation. A tangent line is straight, so it only matches a
+      curved function exactly at the single point of tangency — for a convex
+      or concave function, the true curve bends away from that straight line
+      as \(h\) grows, and the size of that bending-away is governed by the
+      second derivative \(f''(x)\) (curvature). Adding the
+      \(\frac{1}{2}f''(x)h^2\) term corrects for exactly that bend, which is
+      why it noticeably improves the approximation for any function that
+      isn't already a straight line.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In the option-delta scenario, why is delta alone (a first-order Taylor term) insufficient for estimating the P&amp;L of a large move in the underlying, and what corrects it?</summary>
+    <div class="tl-answer">
+      Delta is the option-price function's first derivative with respect to
+      the underlying, evaluated at today's spot — a snapshot of the
+      instantaneous slope right now. Using \(\Delta C \approx \delta\,\Delta
+      S\) alone implicitly assumes that slope stays constant over the whole
+      move, which is only true for an infinitesimally small \(\Delta S\).
+      For a large move, delta itself changes as the underlying moves — that
+      changing-slope effect is gamma, the option's second derivative with
+      respect to the underlying, and adding the correction term
+      \(\frac{1}{2}\gamma(\Delta S)^2\) (the second-order Taylor term)
+      captures the part of the price move delta alone misses.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why is \(g \approx \mu - \sigma^2/2\) called an approximation rather than an exact formula, and under what condition would you expect it to break down?</summary>
+    <div class="tl-answer">
+      It's derived by averaging the second-order Taylor expansion of
+      \(\ln(1+R)\) around \(R=0\) — a local approximation that keeps only
+      the first two correction terms (linear and quadratic in \(R\)) and
+      drops every higher-order term. It is not an exact algebraic identity
+      the way log-return additivity across time is; it holds well when
+      per-period returns \(R\) are small relative to 1, which is the typical
+      case for daily FX. It degrades for large per-period returns (very
+      volatile instruments, wide single-period moves, fat-tailed regimes)
+      where the dropped higher-order terms are no longer negligible, in
+      which case the exact geometric-mean formula should be used instead of
+      the Taylor shortcut.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>James Stewart, <em>Calculus</em>, Cengage Learning (any recent edition) — the standard, widely-used introductory calculus textbook; covers limits, derivatives, integrals, and Taylor series in far more depth and generality than this lesson needs, with extensive worked problems.</li>
+    <li>Isaac Newton and Gottfried Wilhelm Leibniz independently developed the core ideas of calculus in the late 1600s, working from different starting problems (Newton from physics and motion, Leibniz from geometry and his own notation) and arriving at equivalent results; their near-simultaneous, independent development led to a well-documented priority dispute between English and Continental mathematicians in the decades that followed. Much of the standard notation used in this lesson (\(dx\), \(\int\)) comes from Leibniz.</li>
+    <li>Marek Capiński and Tomasz Zastawniak, <em>Mathematics for Finance: An Introduction to Financial Engineering</em>, Springer, 2nd edition, 2011 — a finance-first treatment that builds up exactly the calculus tools (derivatives, Taylor expansions, and their stochastic extensions) this lesson introduces, in the specific context of option pricing and portfolio theory the rest of this Theory Lab uses them for.</li>
+    <li>This Theory Lab's own <a href="ou-mean-reversion.html">Ornstein-Uhlenbeck</a>, <a href="black-scholes.html">Black-Scholes</a>, and <a href="kelly-criterion.html">Kelly Criterion</a> lessons — the three places in this series this page's vocabulary is used without being re-derived; worth rereading once this lesson's definitions are fresh.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="linear-algebra-matrices.html">← Linear Algebra &amp; Matrices</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF →</a>
+  </div>
+</div>
+</body>
+</html>

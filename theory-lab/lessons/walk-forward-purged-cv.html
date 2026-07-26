@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Walk-Forward &amp; Purged Cross-Validation — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Applied Statistics &amp; Validation / Walk-Forward &amp; Purged Cross-Validation</div>
+  <div class="tl-kicker">Applied Statistics &amp; Validation · Lesson 6 of 7</div>
+  <h1 class="tl-title">Walk-Forward &amp; Purged Cross-Validation</h1>
+  <p class="tl-dek">A chronological train/test split looks rigorous — but if your features are built from overlapping rolling windows, the boundary itself can leak the future into the past. This is the formal theory behind this repo's own "no lookahead" rule.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — the theory behind this repo's own OOS discipline</span>
+    <span>~16 min read</span>
+    <span>Prereqs: Multiple Testing &amp; the Look-Elsewhere Effect</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+  Every lesson in the Applied Statistics &amp; Validation track eventually runs into the same
+  practical question: once you've built a rule, how do you honestly find out whether it works on
+  data it hasn't seen? The instinctive, textbook answer — split the data into folds, hold some out,
+  average performance across folds — is <strong>standard cross-validation</strong>, and it is one of
+  the most reliable tools in general machine learning. It is also, in its default random-shuffle
+  form, <strong>flatly wrong for time series</strong>, including every price series this repo trades.
+  Not "slightly optimistic" wrong — mechanically broken, in a way that can make a strategy with zero
+  real edge look statistically solid.
+  </p>
+  <p>
+  The reason is that standard k-fold CV assumes each row of data is exchangeable — that shuffling
+  rows and testing on a random subset tells you something valid about "unseen" data. Price data
+  violates that assumption in two compounding ways: (1) nearby time points are <em>serially
+  correlated</em> — today's volatility, trend, and regime look a lot like yesterday's, so a randomly
+  shuffled fold is never truly independent of the rest of the sample, and (2) most features used in
+  this repo (and in quantitative finance generally) are built from <em>rolling windows</em> — HV20,
+  a 20-day rolling z-score, a rolling percentile — so a single row's feature value is a function of
+  many neighboring rows' raw data. Shuffle the rows and you shuffle a feature that was never
+  independent of its neighbors in the first place. This lesson works through why that specific
+  combination breaks naive validation, what <strong>walk-forward validation</strong> fixes about it,
+  and why walk-forward alone still isn't the whole fix — the more subtle failure mode that
+  <strong>purging</strong> and <strong>embargoing</strong> exist to close.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Grading a weather forecaster with tomorrow's newspaper already on the desk</h3>
+    <p>
+    Imagine testing a weather forecaster by handing them a stack of 365 daily forecast sheets in
+    random order and asking them to fill each one in, with all 365 days' actual weather also sitting
+    on the desk in a separate pile, freely browsable. Even if the forecaster never deliberately peeks
+    at "today's" answer, they can see next Tuesday's actual sunny skies while filling in this
+    Tuesday's forecast — and if this Tuesday and next Tuesday happen to be part of the same warm
+    spell (which nearby days usually are), that adjacent information quietly makes this Tuesday's
+    forecast look better than it would if the forecaster genuinely only knew what had already
+    happened. Random k-fold cross-validation on time series does exactly this: it randomly assigns
+    some days to the "test" pile and others to the "train" pile without regard to chronology, so a
+    model can end up being fit, in part, on data that comes <em>after</em> the day it's being
+    graded on. The forecaster was never dishonest — the setup itself handed them the answer key.
+    Walk-forward validation is the fix: train only on days that have already happened, test only on
+    days that haven't yet — mirroring how a live forecaster actually operates, one day at a time,
+    never able to see next Tuesday while filling in this Tuesday's sheet.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Walk-forward validation with a purge gap and an embargo gap, rolled forward one fold</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Timeline diagram of two walk-forward folds. Fold 1: a blue train segment, a small red-hatched purge gap, a green test segment, a small amber-hatched embargo gap, then unused future data. Fold 2 below it shows the same structure shifted forward in time, with the train segment now longer because it has absorbed fold 1's former test and embargo periods.">
+      <defs>
+        <pattern id="wf-hatch-red" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <rect width="6" height="6" style="fill:var(--red-bg)"/>
+          <line x1="0" y1="0" x2="0" y2="6" style="stroke:var(--red)" stroke-width="2"/>
+        </pattern>
+        <pattern id="wf-hatch-amber" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <rect width="6" height="6" style="fill:var(--amber-bg)"/>
+          <line x1="0" y1="0" x2="0" y2="6" style="stroke:var(--amber)" stroke-width="2"/>
+        </pattern>
+        <marker id="wf-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" style="fill:var(--text3)"/>
+        </marker>
+      </defs>
+
+      <text x="60" y="22" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">Fold 1</text>
+      <rect x="60" y="30" width="540" height="34" rx="3" style="fill:var(--s2);stroke:var(--border)"/>
+      <rect x="60" y="30" width="260" height="34" rx="3" style="fill:var(--blue);opacity:.55"/>
+      <rect x="320" y="30" width="14" height="34" style="fill:url(#wf-hatch-red);stroke:var(--red)"/>
+      <rect x="334" y="30" width="110" height="34" rx="3" style="fill:var(--green);opacity:.55"/>
+      <rect x="444" y="30" width="14" height="34" style="fill:url(#wf-hatch-amber);stroke:var(--amber)"/>
+      <rect x="458" y="30" width="142" height="34" rx="3" style="fill:var(--s3)"/>
+      <line x1="334" y1="24" x2="334" y2="30" style="stroke:var(--text3)" stroke-width="1"/>
+      <text x="334" y="20" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9px">T</text>
+      <line x1="444" y1="24" x2="444" y2="30" style="stroke:var(--text3)" stroke-width="1"/>
+      <text x="444" y="20" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9px">T+h</text>
+      <text x="190" y="80" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:10px">train</text>
+      <text x="389" y="80" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:10px">test</text>
+      <text x="529" y="80" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">not yet used</text>
+
+      <path d="M 100,100 C 100,124 320,124 320,148" style="fill:none;stroke:var(--text3)" stroke-width="1.3" marker-end="url(#wf-arrow)"/>
+      <text x="330" y="122" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px;font-style:italic">window rolls forward by the test length</text>
+
+      <text x="60" y="168" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">Fold 2</text>
+      <rect x="60" y="176" width="540" height="34" rx="3" style="fill:var(--s2);stroke:var(--border)"/>
+      <rect x="60" y="176" width="350" height="34" rx="3" style="fill:var(--blue);opacity:.55"/>
+      <rect x="410" y="176" width="14" height="34" style="fill:url(#wf-hatch-red);stroke:var(--red)"/>
+      <rect x="424" y="176" width="110" height="34" rx="3" style="fill:var(--green);opacity:.55"/>
+      <rect x="534" y="176" width="14" height="34" style="fill:url(#wf-hatch-amber);stroke:var(--amber)"/>
+      <rect x="548" y="176" width="52" height="34" rx="3" style="fill:var(--s3)"/>
+      <line x1="424" y1="170" x2="424" y2="176" style="stroke:var(--text3)" stroke-width="1"/>
+      <text x="424" y="166" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9px">T&#8242;</text>
+      <line x1="534" y1="170" x2="534" y2="176" style="stroke:var(--text3)" stroke-width="1"/>
+      <text x="534" y="166" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9px">T&#8242;+h</text>
+      <text x="235" y="226" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:10px">train (absorbed fold 1's test + embargo, now safely in the past)</text>
+      <text x="479" y="226" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:10px">test</text>
+      <text x="574" y="226" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">unused</text>
+
+      <text x="60" y="256" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9.5px">
+        purge (red): training rows removed because their feature/label window overlaps the test period
+      </text>
+      <text x="60" y="270" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9.5px">
+        embargo (amber): extra buffer immediately after test, before training resumes — guards residual serial correlation
+      </text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue);opacity:.55"></i>train</span>
+      <span><i style="background:var(--red)"></i>purge gap</span>
+      <span><i style="background:var(--green);opacity:.55"></i>test</span>
+      <span><i style="background:var(--amber)"></i>embargo gap</span>
+      <span><i style="background:var(--s3)"></i>not yet used</span>
+    </div>
+    <div class="tl-chart-caption">
+    Both rows are the same dataset, same rule, one fold apart. In fold 1, training uses everything up
+    to boundary \(T\); a thin purge gap (red hatching) removes the handful of training rows right
+    before \(T\) whose feature or label window reaches into the test period; test runs strictly after
+    that on \([T, T{+}h)\); an embargo gap (amber hatching) then holds back the rows immediately after
+    the test period as an extra safety margin before any of them are allowed back into a future
+    training set. In fold 2, the walk-forward window has rolled forward by the test length: what was
+    fold 1's test and embargo period is now comfortably in the past and safe to train on again, and a
+    fresh purge/test/embargo trio sits at the new boundary \(T'\). This is schematic and not to a
+    specific dataset's scale — the point is the shape, not the pixel widths.
+    </div>
+  </div>
+
+  <h2>The math, step by step</h2>
+
+  <h3>Why random k-fold CV is wrong for time series</h3>
+  <p>
+  Standard \(k\)-fold cross-validation partitions a dataset of \(n\) rows into \(K\) roughly equal
+  folds, <strong>assigned at random</strong>, trains on \(K-1\) folds and tests on the remaining one,
+  and rotates until every fold has served as the test set once. This is a good procedure when rows
+  are (approximately) <strong>i.i.d.</strong> — independent draws from the same distribution, with no
+  systematic relationship between a row's position in the dataset and its value. Under that
+  assumption, a randomly held-out fold really is a valid stand-in for "data the model hasn't seen,"
+  because nothing about which rows land in which fold carries information the model could exploit.
+  </p>
+  <p>
+  Time-ordered price data is not i.i.d. in the way that matters here. Let \(i\) index chronological
+  time (day 1, day 2, …, day \(n\)). Two problems compound:
+  </p>
+  <div class="tl-math">\[ \text{Random fold assignment can place row } i+1 \text{ in training while row } i \text{ is in test.} \]</div>
+  <p>
+  That is <strong>literal lookahead</strong>: a model evaluated on day \(i\) was fit, in part, using
+  day \(i{+}1\)'s data — a day that, at the moment day \(i\)'s forecast would have had to be made
+  live, had not happened yet. This is precisely the violation CLAUDE.md's checklist forbids in one
+  sentence: <em>"No lookahead. σ/regime/score for window \(i\) use data \(< i\) only."</em> Random
+  k-fold CV, applied naively to a time-ordered series, breaks that rule by construction — not as an
+  edge case, but on every fold, for roughly half the boundary rows.
+  </p>
+  <p>
+  Second, even where a fold's rows are all chronologically "before" or "after" a given test row in
+  the crude sense of not being literally future observations of the exact same target, nearby time
+  points are <strong>serially correlated</strong>: today's volatility regime, trend state, and many
+  engineered features resemble yesterday's far more than two i.i.d. draws would. A model can partly
+  "solve" a test fold not by learning a genuine, generalizable pattern, but by exploiting the fact
+  that a training row from three days after (or before) the test row sits in a highly similar
+  volatility/regime state — information a live forecaster, moving strictly forward through time,
+  would never have had access to when the two rows are on opposite sides of the fold boundary.
+  Randomly shuffling breaks the one property — chronological order — that made the data safe to
+  cross-validate in the first place.
+  </p>
+
+  <h3>Walk-forward validation: train on the past, test on the strict future</h3>
+  <p>
+  The fix replaces random fold assignment with <strong>chronological</strong> fold assignment. Define
+  a sequence of fold boundaries \(T_1 < T_2 < \dots < T_K\) and, for each fold \(k\), split strictly
+  by time:
+  </p>
+  <div class="tl-math">\[ \text{Train}_k = \{\, i : i < T_k \,\}, \qquad \text{Test}_k = \{\, i : T_k \le i < T_k + h \,\} \]</div>
+  <p>
+  Fit the model (or compute the score/selector) using only \(\text{Train}_k\), evaluate it only on
+  \(\text{Test}_k\), then roll the boundary forward — \(T_{k+1} = T_k + h\) for a rolling
+  fixed-length window, or simply extend the training set to include \(\text{Test}_k\) once it has
+  been used, for an <em>expanding</em> window (the more common choice, and the one drawn in the
+  diagram above) — and repeat for as many folds as the data allows. This is the exact discipline
+  CLAUDE.md already writes into house rule form: every σ, regime read, or score used for window
+  \(i\) must be built only from data strictly earlier than \(i\). Walk-forward validation is that
+  rule applied not just within a single feature calculation, but to the entire train/evaluate
+  cycle — the model itself never has access to a boundary it hasn't crossed yet.
+  </p>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(n\)</td><td>total number of chronologically ordered observations (e.g. daily bars).</td></tr>
+      <tr><td>\(K\)</td><td>number of walk-forward folds.</td></tr>
+      <tr><td>\(T_k\)</td><td>the train/test boundary for fold \(k\) — the first index belonging to that fold's test set.</td></tr>
+      <tr><td>\(h\)</td><td>the length of the test window for a given fold.</td></tr>
+      <tr><td>\(w\)</td><td>the length of a rolling <em>feature</em> window (e.g. \(w=20\) for a 20-day rolling volatility, HV20).</td></tr>
+      <tr><td>\(H\)</td><td>the forward <em>label</em> horizon — how many periods ahead the training target/outcome is computed over (e.g. a 5-day forward return used to label a trade a win or a loss).</td></tr>
+      <tr><td>\(e\)</td><td>the embargo length — the extra buffer immediately after a test window during which no observation re-enters training.</td></tr>
+      <tr><td>\(\text{Train}_k, \text{Test}_k\)</td><td>the training and test index sets for fold \(k\), after applying the chronological split (and, below, the purge/embargo corrections).</td></tr>
+    </table>
+  </div>
+
+  <h3>The subtler problem: overlapping feature windows leak across the boundary</h3>
+  <p>
+  A clean chronological split fixes the lookahead problem above — but it does <em>not</em>, on its
+  own, fix a second, easier-to-miss leak. Almost every feature this repo (and quantitative finance
+  generally) uses is not a single day's raw price — it's a function of a <strong>rolling window</strong>
+  of nearby days: HV20 (20-day rolling volatility), a rolling z-score, a rolling percentile, an EWMA.
+  Write the feature computed at index \(i\) as depending on the backward window
+  </p>
+  <div class="tl-math">\[ \text{Feature}(i) = f\big(\text{bars}[\,i-w+1,\; i\,]\big) \]</div>
+  <p>
+  and, symmetrically, write a forward-looking training <em>label</em> — the outcome the model is
+  actually being fit to predict, such as "did a trade opened at \(i\) win over the next \(H\)
+  periods" — as depending on a forward window:
+  </p>
+  <div class="tl-math">\[ \text{Label}(i) = g\big(\text{bars}[\,i,\; i+H\,]\big) \]</div>
+  <p>
+  Now look at what happens right at a chronological boundary \(T_k\). A training row \(i\) that is,
+  by the letter of the rule, "strictly before" the test set (\(i < T_k\)) can still have a
+  <strong>label</strong> that reaches forward into the test period whenever \(i + H \ge T_k\) — i.e.
+  whenever \(i \ge T_k - H\). Its target value was computed, in part, from price action that occurs
+  <em>inside</em> the test window. The training set never touched a test-period row directly, and
+  the split date is technically respected — but the model was still fit using information that, in a
+  live setting, would not have existed yet. Mirror the same logic on the other side of the boundary:
+  a row \(i\) chronologically <em>after</em> the test period (relevant to a later fold, once
+  \(\text{Test}_k\) has been absorbed back into training) can have a <strong>feature</strong> window
+  that reaches backward into the just-tested-on period whenever \(i - w + 1 < T_k + h\), i.e.
+  \(i < T_k + h + w - 1\). Both directions are the same failure: a window that straddles the
+  boundary carries test-period information into a training row, even though every individual index
+  respects "\(<\)" or "\(\ge\)" the split date on paper.
+  </p>
+
+  <h3>Purging: removing the contaminated training rows</h3>
+  <p>
+  <strong>Purging</strong> (the term and the formal treatment are Marcos López de Prado's, in
+  <em>Advances in Financial Machine Learning</em>) removes exactly the training rows identified
+  above: any index \(i\) whose combined feature-and-label window overlaps the test interval is
+  dropped from the training set entirely, in both directions:
+  </p>
+  <div class="tl-math">\[ \text{Purge}_k = \Big\{\, i \in \text{Train}_k \;:\; \big[\,i-w+1,\; i+H\,\big] \,\cap\, \big[\,T_k,\; T_k+h\,\big) \ne \varnothing \,\Big\} \]</div>
+  <p>
+  and the actually-usable training set for fold \(k\) is \(\text{Train}_k \setminus \text{Purge}_k\).
+  This is a mechanical, checkable criterion — for a given \(w\), \(H\), and boundary, you can compute
+  exactly which row indices must be dropped, rather than relying on "the split date looks clean."
+  </p>
+
+  <h3>Embargo: a buffer for residual serial correlation</h3>
+  <p>
+  Purging removes every row with an <em>explicit</em>, window-length-computable overlap. But real
+  financial series carry serial correlation that runs beyond the exact length of any one feature
+  window or label horizon — volatility clustering, regime persistence, slow-moving order-flow
+  effects that a hard cutoff at \(w\) or \(H\) days doesn't fully capture. <strong>Embargoing</strong>
+  adds a further, deliberately conservative buffer of length \(e\) immediately after the test window,
+  during which no row — even one whose mechanical window no longer technically overlaps — is allowed
+  back into training:
+  </p>
+  <div class="tl-math">\[ \text{Embargo}_k = \big[\, T_k + h,\; T_k + h + e \,\big) \]</div>
+  <p>
+  Training on the next fold only resumes strictly after this embargo period ends. López de Prado's
+  own guidance sizes \(e\) as a small fraction of the total sample (on the order of 1% of \(n\)) or
+  ties it to the label horizon \(H\) directly; the exact size is a judgment call, but the principle
+  is not — it is an explicit acknowledgment that the mechanical purge formula above is a
+  <em>lower bound</em> on how much needs to be removed, not a provably complete one, given that real
+  return series are correlated in ways a fixed window length only approximately describes.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>Counting the exact rows a purge/embargo scheme removes</h3>
+    <p>
+    Take a dataset of \(n=1{,}000\) daily bars, a 20-day rolling volatility feature (\(w=20\)), and a
+    5-day forward label horizon (\(H=5\)) — a trade opened on day \(i\) is labeled a win or a loss
+    using the realized path over days \(i\) through \(i+5\). Set a fold boundary at day
+    \(T=500\), with a 100-day test window (\(h=100\), so the test set is days 500&ndash;599).
+    </p>
+    <p>
+    <strong>Backward purge (label leak).</strong> A training day \(i < 500\) has a contaminated label
+    whenever \(i + 5 \ge 500\), i.e. \(i \ge 495\). That purges training days <strong>495&ndash;499</strong>
+    — 5 rows — because each of their labels was computed using price action on day 500 or later,
+    which is inside the test window. A "clean-looking" split at day 500 quietly let 5 training
+    labels see into the test set.
+    </p>
+    <p>
+    <strong>Forward purge (feature leak).</strong> Once fold 1's test period ends at day 599, the
+    next fold would like to train on day 600 onward. But day 600's HV20 feature uses days
+    581&ndash;600 — 581&ndash;599 of which are inside the just-finished test window. The feature
+    window stops overlapping test only once \(i - 19 > 599\), i.e. \(i \ge 619\). So days
+    <strong>600&ndash;618</strong> — 19 rows — must also be purged before they're allowed back into
+    training.
+    </p>
+    <p>
+    <strong>Embargo on top.</strong> Purging alone would let training resume at day 619. A
+    conservative scheme adds an embargo of, say, \(e=10\) days beyond that mechanical cutoff — days
+    <strong>619&ndash;628</strong> — as a buffer against serial correlation the window-length
+    formula doesn't explicitly model. Training on the next fold only resumes at day <strong>629</strong>,
+    not day 600 and not day 619. Out of the roughly 129 days between the test set's start and where
+    training safely resumes (500 through 628), 24 of them (5 backward-purged + 19 forward-purged) are
+    removed by a mechanical, computable rule, and a further 10 are removed by a deliberate safety
+    margin — none of this is visible if you only look at the split date itself.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-box-label">A real-world trading scenario</div>
+    <h3>The backtest that "looked" out-of-sample but wasn't</h3>
+    <p>
+    A researcher builds a strategy around a 20-day rolling-volatility feature (HV20) and validates it
+    with what looks like a textbook-rigorous chronological train/test split at day 500: train on days
+    1&ndash;499, test on days 500 onward. No random shuffling, no obvious lookahead — the split date
+    is respected everywhere, and the researcher reports a solid out-of-sample Sharpe ratio.
+    </p>
+    <p>
+    Here's the leak that split doesn't catch. Day 500's <em>test-period</em> volatility feature is
+    computed from days <strong>481&ndash;500</strong> (the 20-day window ending on day 500). That's
+    expected and fine on its own — a live model computing a feature for day 500 is entitled to use
+    everything up through day 500. The problem is on the <em>training</em> side of the boundary: if
+    the strategy's training labels are built from a forward-looking horizon (say, "did this trade win
+    over the next 5 days"), then training days <strong>495 through 499</strong> — all comfortably
+    inside the "train" bucket by date — have labels that were computed using price action on day 500
+    and just after. Those training rows' targets were quietly built, in part, from the exact same
+    price moves that determine whether the model's day-500 test call was a winner. The model, during
+    fitting, effectively got a preview of how that stretch of the market behaved before it was ever
+    asked to "forecast" it.
+    </p>
+    <p>
+    Without purging those five training rows (and, symmetrically, embargoing the days right after
+    the test period before the next fold's training resumes), the reported out-of-sample Sharpe ratio
+    is quietly inflated by information that, relative to what a model making decisions live would
+    have had, technically came from the future. The split date on the calendar was honest; the
+    windows straddling it were not. This is exactly the gap a clean chronological split can hide and
+    a purge/embargo scheme is built to close.
+    </p>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+  Two overlapping traditions converge on the same discipline from different directions:
+  </p>
+  <ul>
+    <li>
+      <strong>Algorithmic trading's "walk-forward optimization."</strong> Robert Pardo's treatment
+      (<em>The Evaluation and Optimization of Trading Strategies</em>) popularized rolling the
+      train/test boundary forward repeatedly across a price history and comparing in-sample
+      performance to out-of-sample performance on each roll. A commonly cited diagnostic is the
+      <strong>walk-forward efficiency</strong> — roughly, OOS performance divided by IS performance
+      on the same fold — with a ratio well below 1 flagging a parameter set that was overfit to its
+      training window rather than genuinely robust. This tradition emphasizes rolling repeatedly
+      (many folds, not one lucky split) over any one fold's result in isolation, for the same reason
+      the multiple-testing lesson warns against trusting a single best-of-many slice: one good fold
+      out of several is a weaker claim than a rule that holds up fold after fold.
+    </li>
+    <li>
+      <strong>Machine-learning-in-finance's "purged k-fold CV."</strong> López de Prado's treatment
+      formalizes the purge/embargo mechanics above as a drop-in replacement for scikit-learn-style
+      k-fold CV specifically for finance, where cross-sectional ML models (not just single-series
+      backtests) are common and the temptation to reach for standard, off-the-shelf k-fold tooling is
+      strongest. His point is that the mechanical fix (purge the overlap, embargo a further buffer)
+      is what lets you keep the statistical efficiency benefits of k-fold-style validation — using
+      more of the data, running more folds — without reintroducing the lookahead that made random
+      k-fold wrong for time series in the first place.
+    </li>
+  </ul>
+  <p>
+  In practice, both traditions agree on the same checklist: never assign folds at random for
+  time-ordered data; know the window length of every feature and label your model touches; compute
+  (don't eyeball) which rows near a boundary need to be purged; add an embargo buffer rather than
+  trusting the mechanical purge formula to be perfectly complete; and judge a rule by its behavior
+  across many rolled folds, not by one favorable-looking split.
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>This is the formal name for a rule <code>CLAUDE.md</code> already enforces — and a refinement worth checking against</h3>
+    <p>
+    This repo's build discipline states the walk-forward principle directly, twice: the adding-a-
+    strategy checklist's <strong>"No lookahead. σ/regime/score for window \(i\) use data \(< i\) only"</strong>,
+    and the Lego Principle's <strong>"true in-sample / out-of-sample split"</strong> requirement,
+    paired with the <strong>≥30 OOS trade count gate</strong> that keeps a fold's out-of-sample result
+    from being too thin to mean anything. Those two rules, together, are exactly what this lesson
+    formalizes: train strictly on the past, evaluate strictly on the unseen future, and don't trust a
+    thin sliver of OOS trades as if it were a real fold.
+    </p>
+    <p>
+    Where this lesson goes further than the current codebase does: <code>summarizeSplit</code> in
+    <code>js/honestForecastEngine.js</code> performs exactly one chronological split — everything
+    before a computed split date is IS, everything from that date on is OOS — and it does not
+    currently purge or embargo rows straddling that boundary. That's an honest gap, not a hidden bug:
+    a single clean chronological split (no shuffling) already eliminates the crude lookahead problem
+    this lesson opens with. What it does <em>not</em> eliminate is the subtler boundary leak described
+    above, and this repo has no shortage of features built on exactly the kind of overlapping rolling
+    windows where that leak lives — HV20 and the other vol-sigma series in
+    <code>js/volBacktestEngine.js</code>, the rolling z-scores and percentiles in
+    <code>js/statsCore.js</code> (<code>rollingZScore</code>, <code>rollingPercentile</code>), and the
+    day-type estimators in <code>js/dayTypeCore.js</code> all compute a value at index \(i\) from a
+    window of nearby bars. Any of them used near a train/OOS split boundary is a candidate for exactly
+    the label/feature overlap this lesson walks through. This isn't a claim that any specific reported
+    OOS Sharpe in this repo is wrong — that's an empirical question a purge/embargo check would have
+    to answer per-strategy — but it is the concrete, checkable refinement worth applying before
+    trusting an OOS number on a strategy whose features lean on multi-day rolling windows near the
+    split date.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Ways this goes wrong in practice</h3>
+    <ul>
+      <li>
+      <strong>Using scikit-learn's default <code>KFold</code> (or any shuffled split) on time-ordered
+      data.</strong> The default shuffles rows before splitting unless you explicitly disable it —
+      quietly reintroducing the exact lookahead this lesson opens with, even when the researcher
+      believes they're doing "cross-validation" correctly because the tool is standard and
+      well-tested elsewhere.
+      </li>
+      <li>
+      <strong>Trusting a single chronological split because "the date is respected."</strong> As the
+      trading scenario above shows, respecting the split date is necessary but not sufficient. The
+      leak lives in the feature/label windows, not in whether an index number is technically greater
+      or less than the split date.
+      </li>
+      <li>
+      <strong>Sizing the purge window using only the feature length, forgetting the label
+      horizon.</strong> Purging is a two-directional problem — a backward-leaking label horizon
+      \(H\) and a forward-leaking feature window \(w\) are different quantities that both need to be
+      accounted for; purging only one direction still leaves a leak on the other side of the
+      boundary.
+      </li>
+      <li>
+      <strong>Treating embargo as optional "extra caution" rather than a distinct failure mode it
+      solves.</strong> Purging handles the leak you can compute exactly; embargo handles the leak you
+      can't fully compute, from serial correlation beyond the window length. Skipping embargo because
+      "the purge formula already handles it" conflates the two.
+      </li>
+      <li>
+      <strong>Reporting walk-forward results from only one or two rolled folds.</strong> A rule that
+      happens to look good on one particular boundary date is subject to the same "best of many
+      looks" problem as any other single result — Pardo's walk-forward-efficiency tradition
+      specifically wants many rolled folds, not one favorable split, for the same reason the multiple
+      testing lesson distrusts a single winning slice.
+      </li>
+      <li>
+      <strong>Forgetting purging/embargo is about validation, not a source of edge.</strong> A
+      correctly purged and embargoed OOS test can still show a null result — the discipline only
+      makes the OOS number honest, it doesn't manufacture a positive one. A strategy that fails a
+      properly purged test failed for a real reason, not because the validation was "too strict."
+      </li>
+    </ul>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why is random k-fold cross-validation wrong for time series even if you never literally look at a "future" row directly?</summary>
+    <div class="tl-answer">
+    Two separate problems compound. First, random fold assignment can place a chronologically later
+    row (day \(i+1\)) into the training set while an earlier row (day \(i\)) sits in the test set —
+    which is literal lookahead: the model evaluated on day \(i\) was fit partly using data from a day
+    that, in a live setting, hadn't happened yet. Second, even rows that don't literally violate
+    ordering are still serially correlated with their neighbors (volatility clustering, regime
+    persistence), so a model can exploit similarity to nearby rows across the fold boundary rather
+    than learning a pattern that would have generalized to genuinely unseen future data. Standard CV
+    assumes rows are exchangeable draws with no such structure; time-ordered financial data violates
+    that assumption by construction, not as an edge case.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. How does walk-forward validation directly implement CLAUDE.md's "No lookahead" rule?</summary>
+    <div class="tl-answer">
+    Walk-forward validation defines each fold's train set as strictly \(\{i : i < T_k\}\) and test set
+    as strictly \(\{i : T_k \le i < T_k + h\}\), so by construction no training observation is ever
+    chronologically later than any test observation in the same fold. That is exactly the rule
+    "σ/regime/score for window \(i\) use data \(< i\) only," applied not just inside a single feature
+    calculation but to the entire train/evaluate cycle: the model is never fit using information from
+    a time index it hasn't reached yet.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What specific problem does "purging" solve that a plain chronological split doesn't?</summary>
+    <div class="tl-answer">
+    A plain chronological split only guarantees that a row's own time index respects the train/test
+    boundary — it says nothing about the window a feature or label at that index was computed from. A
+    training row can sit strictly before the test boundary by index, yet have a forward-looking label
+    (e.g. a 5-day-ahead outcome) that was computed using price action that falls inside the test
+    period, or a training row just after the test period can have a backward-looking feature (e.g. a
+    20-day rolling volatility) that reaches back into the test period. Purging removes exactly those
+    rows — any training index whose combined feature-and-label window overlaps the test interval —
+    closing a leak that the split date alone leaves open.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. In the worked example (n=1,000, w=20, H=5, test = days 500&ndash;599), why are training days 495&ndash;499 purged, and why are days 600&ndash;618 purged separately from the embargo?</summary>
+    <div class="tl-answer">
+    Days 495&ndash;499 are purged because their forward-looking labels use a 5-day horizon
+    (\(H=5\)), so a label computed at day \(i\) uses data through day \(i+5\); for \(i \ge 495\),
+    \(i+5 \ge 500\), meaning the label reaches into the test period that starts at day 500 — a
+    backward (label) leak. Days 600&ndash;618 are a separate, forward (feature) leak: day \(i\)'s
+    20-day HV20 window is \([i-19, i]\), which still overlaps the test period (ending day 599) for
+    any \(i\) up to 618 (\(i-19 \le 599\)). Both are mechanical, purge-formula-computable overlaps.
+    The embargo (days 619&ndash;628 in the example) is a separate, additional buffer added on top of
+    that mechanical cutoff — it isn't required by the window-overlap formula at all, it's a
+    deliberate safety margin against serial correlation the formula doesn't explicitly capture.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In the trading scenario (20-day vol feature, split at day 500), what exactly leaks, and in which direction — from test into train, or train into test?</summary>
+    <div class="tl-answer">
+    It leaks from the test period backward into training, via the training labels. Day 500's own test
+    feature (built from days 481&ndash;500) isn't the problem — a live model is entitled to use
+    everything through the day it's forecasting. The leak is that training days 495&ndash;499, which
+    sit on the "train" side of the split date, have forward-looking labels that were computed using
+    price action on day 500 and after — i.e., inside the test window. The model was fit, in part,
+    using information about how the test period actually played out, even though every index
+    technically respected the chronological split.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Does passing a correctly purged and embargoed walk-forward test prove a strategy has real edge?</summary>
+    <div class="tl-answer">
+    No. Purging and embargoing only remove a specific source of contamination from the validation
+    procedure — they make the resulting OOS number honest relative to what a live, strictly
+    forward-moving process would have seen. They say nothing about whether the underlying idea has a
+    plausible economic mechanism, whether the effect survives realistic costs, whether it holds up
+    across many rolled folds rather than one, or whether it clears the multiple-testing chance
+    baseline if many variants were tried. A properly validated null result is still a null result;
+    purging and embargo are necessary correctness conditions for the test, not evidence of edge on
+    their own.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Marcos López de Prado, <em>Advances in Financial Machine Learning</em> (Wiley, 2018) — Chapter 7, "Cross-Validation in Finance," is the original formal treatment of purged and embargoed k-fold CV used throughout this lesson; the same author's Deflated Sharpe Ratio / Probability of Backtest Overfitting work is covered in the Multiple Testing lesson.</li>
+    <li>Robert Pardo, <em>The Evaluation and Optimization of Trading Strategies</em> (Wiley, 2nd ed., 2008) — the standard algorithmic-trading-literature treatment of walk-forward optimization and walk-forward efficiency as an overfitting diagnostic.</li>
+    <li>Marcos López de Prado, "The 10 Reasons Most Machine Learning Funds Fail," <em>Journal of Portfolio Management</em> (2018) — a practitioner-facing summary that includes leakage from non-purged cross-validation among the recurring, avoidable failure modes.</li>
+    <li>Campbell R. Harvey &amp; Yan Liu, "Backtesting," <em>Journal of Portfolio Management</em> (2015) — broader context on why walk-forward and out-of-sample discipline specifically (not just in-sample fit quality) is what separates a real backtest from a curve-fitting exercise.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="sharpe-family-deflated.html">← The Sharpe Family &amp; the Deflated Sharpe Ratio</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="bootstrapping-monte-carlo.html">Bootstrapping &amp; Monte Carlo →</a>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Model Selection: AIC &amp; BIC — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Applied Statistics &amp; Validation / Model Selection (AIC/BIC)</div>
+  <div class="tl-kicker">Applied Statistics &amp; Validation · Lesson 2 of 7</div>
+  <h1 class="tl-title">Model Selection: AIC &amp; BIC</h1>
+  <p class="tl-dek">Adding another free parameter to a model can never make its in-sample fit worse — which means raw fit alone will always vote for the most complicated model you're willing to build. AIC and BIC are the two standard tools for penalizing that complexity honestly, and they don't always agree on the answer.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — how to penalize complexity honestly</span>
+    <span>~15 min read</span>
+    <span>Prereqs: Regression Diagnostics</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+  Every model-fitting procedure you'll use here — OLS regression, an ARIMA order, a GARCH
+  variance equation, a hidden Markov model's number of states — has a knob for complexity: how
+  many parameters it's allowed to estimate. Give a model more knobs and its in-sample fit can
+  only get better, or at worst stay exactly the same. It can never get worse, because a model
+  with more free parameters always contains every simpler model as a special case (just set the
+  extra parameters to whatever value reproduces the simpler model), so the more complex model's
+  best achievable fit is a lower bound on nothing except itself. That single fact is the entire
+  root of overfitting: if you judge candidate models purely by in-sample goodness-of-fit — raw
+  likelihood, raw \(R^2\), raw sum of squared residuals — the fanciest, most parameter-hungry
+  model in your candidate set wins by construction, every time, whether or not its extra
+  parameters describe anything real.
+  </p>
+  <p>
+  This is exactly the mechanism already flagged in this Theory Lab's
+  <a href="primer-correlation-regression.html">Correlation &amp; Regression primer</a>, in its
+  pitfall box on why "\(R^2\) can never go down when you add another predictor, even a useless
+  one" — OLS is free to set a new predictor's coefficient to zero if it adds nothing, so the fit
+  can only stay flat or improve. AIC and BIC are the formal answer to that pitfall: instead of
+  asking "does adding this parameter help the fit?" (the answer is always "yes, weakly"), they ask
+  "does adding this parameter help the fit by <em>more</em> than the going rate for a free
+  parameter?" That reframing is what turns "always improves" into a real, decidable choice between
+  competing models of different sizes.
+  </p>
+
+  <div class="tl-box intuition"><div class="tl-box-label">Plain-English intuition</div>
+    <h3>Connect-the-dots with enough dots</h3>
+    <p>
+    Give a curve enough free parameters and it will pass through every single data point exactly —
+    a polynomial of degree \(n-1\) fit to \(n\) data points achieves a perfect \(R^2=1\), zero
+    residual error, regardless of whether the underlying relationship is a straight line with
+    noise or genuinely wiggly. That "perfect fit" is not evidence the curve found real structure;
+    it is a mechanical consequence of having as many knobs as data points to turn. A ruler-straight
+    line through the same noisy data will have a worse in-sample fit and will almost always
+    generalize better to a new data point the curve has never seen, because the wiggly curve spent
+    its extra parameters chasing this particular sample's noise, not the underlying relationship.
+    AIC and BIC are the two standard ways of putting a number on "how many dots is too many" — a
+    formal penalty that grows with the number of free parameters, so that a model only wins by
+    having more parameters if those parameters earn their keep by more than the penalty charges for
+    them.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+  Start with the <strong>likelihood</strong> of a fitted model: given the model's estimated
+  parameters, the likelihood \(L\) is the probability (density) of observing the data you actually
+  observed. Fitting a model by maximum likelihood means choosing the parameters that make \(L\) as
+  large as possible; call that maximized value \(\hat L\), and its natural log \(\ln \hat L\) the
+  <strong>maximized log-likelihood</strong>. A higher \(\ln \hat L\) means the fitted model assigns
+  higher probability to the data actually seen — a purely in-sample notion of "fits well."
+  </p>
+  <p>
+  Now suppose Model B contains Model A as a special case — for instance, Model B is Model A plus
+  three extra lag terms, and setting those three extra coefficients to zero recovers Model A
+  exactly. Model B's maximum-likelihood search happens over a strictly larger parameter space that
+  includes every point Model A could reach. So whatever log-likelihood Model A achieves, Model B
+  can always match it (by setting the extra parameters to zero) and, generically, can do at least
+  slightly better by nudging them away from zero to chase whatever pattern — real or noise —
+  happens to exist in this particular sample:
+  </p>
+  <div class="tl-math">\[ \ln \hat L_{B} \ \ge\ \ln \hat L_{A} \quad \text{whenever B nests A} \]</div>
+  <p>
+  This is the log-likelihood analogue of the \(R^2\) fact from the regression primer, and it is
+  exactly why raw log-likelihood (or raw \(R^2\), or raw sum-of-squared-residuals) is not a valid
+  way to choose between models of different sizes — it will always point toward the largest model
+  in the candidate set, regardless of whether the extra parameters represent anything real. AIC and
+  BIC both fix this the same conceptual way: <strong>goodness of fit minus a complexity
+  penalty</strong>, so that extra parameters have to buy enough of an improvement in fit to be
+  worth their cost. Both are scaled so that <strong>lower is better</strong> — this lesson uses
+  \(-2\ln\hat L\) (a quantity called the <strong>deviance</strong>) as the "badness of fit" term
+  that both criteria then add a penalty to.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(k\)</td><td>the number of free parameters estimated by the model (in a Gaussian regression this includes the residual variance itself, a common source of off-by-one mismatches between software packages)</td></tr>
+    <tr><td>\(L\), \(\hat L\)</td><td>the model's likelihood; \(\hat L\) is the maximized likelihood at the fitted (MLE) parameters — the probability the fitted model assigns to the data actually observed</td></tr>
+    <tr><td>\(\ln \hat L\)</td><td>the maximized log-likelihood; higher means a better in-sample fit</td></tr>
+    <tr><td>\(-2\ln\hat L\)</td><td>the deviance — the "badness of fit" term both AIC and BIC subtract, well actually add, a penalty to; it can only fall (or stay flat) as \(k\) grows</td></tr>
+    <tr><td>\(n\)</td><td>the sample size — the number of observations actually used to fit and compare the candidate models</td></tr>
+    <tr><td>AIC</td><td>Akaike Information Criterion, \(2k - 2\ln\hat L\) — lower is better</td></tr>
+    <tr><td>BIC</td><td>Bayesian Information Criterion (also called the Schwarz Criterion, SIC/SBC), \(k\ln(n) - 2\ln\hat L\) — lower is better</td></tr>
+    <tr><td>\(\Delta\)AIC, \(\Delta\)BIC</td><td>the gap between a candidate model's criterion value and the best (lowest) one in the set — used to grade "how much worse" a model is than the leader, not just which one wins</td></tr>
+  </table></div>
+
+  <h3>Deriving AIC: an out-of-sample-oriented penalty</h3>
+  <p>
+  Akaike's (1974) argument starts from a different question than "which model fits my sample
+  best?" — it asks "which model will predict <em>new</em> data, drawn from the same true but
+  unknown process, best?" Formally, the target is the expected
+  <strong>Kullback-Leibler divergence</strong> between the fitted model and the true
+  data-generating process — a measure of how much information is lost by using the fitted model
+  as an approximation to reality. Akaike showed that the raw in-sample log-likelihood
+  \(\ln\hat L\) is an <em>optimistic</em> estimate of that out-of-sample quantity — it looks better
+  than the model will actually perform on new data — and that the size of that optimism bias is,
+  asymptotically, approximately equal to \(k\), the number of fitted parameters. Correcting for
+  that bias by adding \(k\) back (doubled, by convention, so it lines up with the \(-2\ln\hat L\)
+  scale used for likelihood-ratio tests) gives:
+  </p>
+  <div class="tl-math">\[ \text{AIC} = 2k - 2\ln\hat L \]</div>
+  <p>
+  Read AIC as "twice the number of parameters, plus the deviance" — the deviance is the in-sample
+  badness-of-fit, and \(2k\) is the estimated correction needed to make that number a fair estimate
+  of expected out-of-sample badness-of-fit rather than an in-sample-flattering one. A model that
+  adds a parameter for pure noise will typically improve \(-2\ln\hat L\) by less than 2 (in
+  expectation, under the null that the parameter is truly zero, the improvement in \(-2\ln\hat L\)
+  from one extra parameter follows a \(\chi^2_1\) distribution with mean 1, i.e. it improves
+  \(-2\ln\hat L\) by about 1 on average) — smaller than the 2-point penalty it costs — so on
+  average AIC is not fooled by a genuinely useless parameter, even though it can still be fooled
+  on any <em>particular</em> noisy sample.
+  </p>
+
+  <h3>Deriving BIC: a Bayesian-consistency penalty</h3>
+  <p>
+  Schwarz's (1978) argument starts from Bayesian model comparison: given a set of candidate
+  models, each with its own prior probability, Bayes' rule says you should compare their
+  <strong>marginal likelihoods</strong> — the probability of the data averaged (integrated) over
+  each model's own prior on its parameters, not just evaluated at the single best-fitting point.
+  That integral is generally intractable in closed form, but Schwarz showed that, for large
+  \(n\), a Laplace approximation to the log marginal likelihood reduces to the maximized
+  log-likelihood minus a penalty of \(\tfrac{k}{2}\ln(n)\) plus terms that vanish as \(n\) grows.
+  Doubling that (again, to match the \(-2\ln\hat L\) convention) gives:
+  </p>
+  <div class="tl-math">\[ \text{BIC} = k\ln(n) - 2\ln\hat L \]</div>
+  <p>
+  Read BIC as "the deviance, plus a penalty of \(\ln(n)\) per parameter" rather than AIC's flat 2
+  per parameter. Because it approximates a Bayesian posterior-probability comparison under
+  (implicitly) equal priors on the candidate models, BIC has a property AIC does not: it is
+  <strong>model-selection consistent</strong> — if the true data-generating model is actually one
+  of the candidates, the probability that BIC picks it approaches 1 as \(n\to\infty\). AIC has no
+  such guarantee; even with infinite data, AIC retains a fixed, nonzero probability of preferring
+  an overly complex model, because it is optimizing a different target (expected prediction error,
+  not "recover the exact true model").
+  </p>
+
+  <h3>Why they disagree: the penalty each parameter has to clear</h3>
+  <p>
+  Both formulas are "deviance plus a per-parameter penalty" — they differ only in how big that
+  penalty is. AIC charges a flat \(2\) per parameter, no matter how much data you have. BIC
+  charges \(\ln(n)\) per parameter, which <em>grows</em> with sample size. The two penalties are
+  equal exactly when \(\ln(n) = 2\), i.e. \(n = e^2 \approx 7.39\) — so for essentially any
+  dataset with more than about 8 observations, \(\ln(n) > 2\) and BIC's per-parameter penalty is
+  already stricter than AIC's, and the gap widens (logarithmically) as \(n\) grows further. With
+  \(n=100\) observations, for example, BIC charges \(\ln(100)\approx4.605\) per parameter — more
+  than double AIC's flat charge of 2. This is the entire mechanical reason BIC systematically
+  favors simpler (more parsimonious) models than AIC, especially in larger samples: it is not a
+  different philosophy about what makes a good model so much as a stricter, sample-size-aware
+  price tag on every additional parameter.
+  </p>
+  <p>
+  The practical consequence is a genuine, well-known split in emphasis, not just arithmetic
+  trivia: <strong>AIC is oriented toward good out-of-sample predictive performance</strong> — it
+  is asymptotically equivalent to leave-one-out cross-validation (a result due to Stone, 1977),
+  making it a reasonable default when the goal is forecasting accuracy and you don't believe any
+  candidate model is the literal, exactly-true process. <strong>BIC is oriented toward finding the
+  most probable / most parsimonious model</strong> given the data, under the assumption that a
+  "true," comparatively simple model exists among your candidates — which is why it is the more
+  common default in fields that care about parsimony and interpretability (economics, some of
+  time-series order selection) and tends to pick smaller models than AIC once samples get large.
+  Neither is "the correct one" in an absolute sense; they answer subtly different questions, and
+  reporting both — and noting when they disagree — is more honest than picking whichever one
+  happens to endorse the model you already wanted.
+  </p>
+
+  <div class="tl-box example"><div class="tl-box-label">Worked example</div>
+    <h3>A genuine tie on AIC, a clear preference on BIC</h3>
+    <p>
+    Suppose you have two candidate models fit to the same \(n=100\) observations. Model A has
+    \(k=2\) parameters and achieves a deviance of \(-2\ln\hat L_A = 100\) (equivalently
+    \(\ln\hat L_A = -50\)). Model B has \(k=5\) parameters — three more than A — and, exactly as
+    the nesting argument above predicts, fits slightly better in-sample:
+    \(-2\ln\hat L_B = 94\) (equivalently \(\ln\hat L_B = -47\)). Model B's extra three parameters
+    bought it a 6-point improvement in deviance. Is that worth it?
+    </p>
+    <p><strong>AIC:</strong></p>
+    <div class="tl-math">\[ \text{AIC}_A = 2(2) + 100 = 4 + 100 = 104 \]</div>
+    <div class="tl-math">\[ \text{AIC}_B = 2(5) + 94 = 10 + 94 = 104 \]</div>
+    <p>
+    A genuine tie: \(\text{AIC}_A = \text{AIC}_B = 104\). Model B's 6-point deviance improvement
+    was worth exactly its 6-point AIC penalty increase (\(2\times3\) extra parameters) — no more,
+    no less. AIC is indifferent between them; neither model has "won." That a model with three
+    extra free parameters and a genuinely better maximized likelihood still only manages a tie is
+    the complexity penalty doing precisely its job.
+    </p>
+    <p><strong>BIC</strong> (with \(n=100\), so \(\ln(100)\approx4.605\)):</p>
+    <div class="tl-math">\[ \text{BIC}_A = 2\ln(100) + 100 \approx 2(4.605) + 100 = 9.21 + 100 = 109.21 \]</div>
+    <div class="tl-math">\[ \text{BIC}_B = 5\ln(100) + 94 \approx 5(4.605) + 94 = 23.03 + 94 = 117.03 \]</div>
+    <p>
+    BIC prefers Model A by roughly \(117.03 - 109.21 \approx 7.8\) points — a clear, non-trivial
+    margin, not a tie. The same 6-point in-sample improvement that exactly offset AIC's penalty is
+    nowhere near enough to offset BIC's steeper, sample-size-scaled charge for those same three
+    extra parameters (\(3 \times \ln(100) \approx 13.8\) points of penalty, versus AIC's flat
+    \(3\times2=6\)). This is the worked arithmetic behind the earlier claim: the same pair of
+    models, the same data, and AIC calls it a dead heat while BIC calls it a clear win for the
+    simpler model — because BIC's penalty for those three extra parameters is more than double
+    AIC's at this sample size.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">In-sample fit always improves with complexity; AIC/BIC don't</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart with number of parameters on the x-axis. A gray curve for in-sample log-likelihood improvement rises smoothly and monotonically, flattening at higher parameter counts but never turning down. A blue curve for AIC/BIC falls at first, reaches a minimum around 4 parameters marked as optimal complexity, then rises again as parameter count keeps increasing.">
+      <line x1="60" y1="20" x2="60" y2="200" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="60" y1="200" x2="620" y2="200" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="246" y1="200" x2="246" y2="20" style="stroke:var(--amber);stroke-dasharray:3,3"/>
+      <polyline points="60,190 122,150 184,120 246,100 308,85 370,73 432,64 494,57 556,52 618,48" fill="none" style="stroke:var(--text3);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round"/>
+      <polyline points="60,170 122,140 184,110 246,95 308,100 370,112 432,128 494,148 556,170 618,195" fill="none" style="stroke:var(--blue);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round"/>
+      <circle cx="246" cy="95" r="4.5" style="fill:var(--amber)"/>
+      <text x="252" y="88" style="fill:var(--amber);font-family:'DM Mono',monospace;font-size:10px">optimal complexity</text>
+      <text x="560" y="42" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">in-sample fit</text>
+      <text x="560" y="208" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:10px" transform="translate(0,0)">AIC / BIC</text>
+      <text x="52" y="203" text-anchor="end" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">worse</text>
+      <text x="52" y="24" text-anchor="end" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">better</text>
+      <text x="22" y="110" text-anchor="middle" transform="rotate(-90 22 110)" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">schematic quality (up = better)</text>
+      <text x="60" y="218" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">1</text>
+      <text x="246" y="218" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">4</text>
+      <text x="618" y="218" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">10</text>
+      <text x="340" y="234" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">number of parameters (k)</text>
+    </svg>
+    <div class="tl-chart-caption">
+    The gray curve is in-sample fit (log-likelihood) as parameters are added: it rises
+    monotonically — <strong>it never turns down</strong>, exactly per the nesting argument above —
+    but with steadily diminishing returns, each extra parameter buying less improvement than the
+    last. The blue curve is AIC/BIC, plotted here on the same "up is better" schematic axis
+    (equivalent to \(-\)AIC or \(-\)BIC): it improves alongside the fit curve at first, because
+    early parameters are buying more fit-improvement than they cost in penalty, but past the marked
+    minimum the penalty overtakes the (now-flattening) fit gains and the criterion gets worse even
+    though the raw fit keeps technically improving. That minimum is the model the criterion
+    recommends — not the model with the best in-sample fit, which by construction is always the
+    rightmost, most complex one on the chart. This chart is illustrative/schematic, built to show
+    the qualitative shape, not fit to real data.
+    </div>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+  In applied work, AIC and BIC are computed for every model in a candidate set (e.g. every ARIMA
+  order up to some maximum, every number of hidden Markov states, every lag length for a
+  regression), and the model with the <em>lowest</em> value is preferred. A common refinement,
+  from Burnham &amp; Anderson's model-selection literature, is to look at the gap
+  \(\Delta_i = \text{AIC}_i - \text{AIC}_{\min}\) for every model rather than just crowning the
+  single winner: a rule of thumb treats \(\Delta \le 2\) as "substantial support, effectively tied
+  with the best model," \(4\text{–}7\) as "considerably less support," and \(\Delta > 10\) as
+  "essentially no support" — the same "don't over-read one number" discipline as reading a p-value
+  without its context. Two further practical caveats matter as much as the formula itself:
+  </p>
+  <p>
+  <strong>AIC/BIC only rank a candidate set against each other — they say nothing about whether
+  any of them fit well in an absolute sense.</strong> The best model in a set of five bad models is
+  still the best of five bad models; a low AIC is a relative, not absolute, statement. And
+  <strong>the comparison is only valid across models fit on the identical response variable and
+  identical usable sample</strong> — you cannot compare AIC across a model fit on levels versus one
+  fit on differences, or (a subtlety specific to time series and directly relevant to the trading
+  scenario below) across an AR(1) and an AR(5) fit carelessly, because the AR(5) model consumes 5
+  initial observations as lagged inputs rather than as fitted data points, effectively shrinking its
+  usable \(n\) relative to the AR(1) model unless both are re-fit on the same trimmed, aligned
+  sample. For small samples relative to \(k\) (a common rule of thumb: \(n/k < 40\)), the standard
+  refinement is the corrected \(\text{AIC}_c = \text{AIC} + \frac{2k(k+1)}{n-k-1}\), which adds a
+  further, sharper penalty that matters more when data is scarce relative to the number of
+  parameters being estimated.
+  </p>
+
+  <div class="tl-box scenario"><div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Choosing a mean-reversion spread's lag length</h3>
+    <p>
+    A researcher is deciding how many lags to use in an autoregressive model of a mean-reversion
+    spread — say, a demeaned FX cross-pair spread believed to revert toward zero. Two candidates are
+    on the table, fit on the same \(n=100\) days of the (already demeaned, so no separate intercept
+    is needed) spread: <strong>Model 1</strong>, a 1-lag AR model with \(k=2\) free parameters (the
+    lag-1 mean-reversion coefficient, plus the residual variance the Gaussian likelihood also
+    estimates), and <strong>Model 2</strong>, a 5-lag AR model with \(k=5\) free parameters (five
+    lag coefficients spanning the last week; for simplicity, and to keep this example directly
+    comparable to the one worked through above, the residual-variance parameter is rolled into that
+    same \(k=5\) count rather than treated as a separate 6th parameter — a common simplification,
+    though careful software will report it separately). Reusing the worked example's exact deviance
+    numbers for a direct, checkable comparison: \(-2\ln\hat L_1 = 100\) and \(-2\ln\hat L_2 = 94\).
+    </p>
+    <p>
+    Model 2's extra lags give it a better in-sample deviance, exactly as the nesting argument
+    guarantees they must: \(-2\ln\hat L_1 = 100\) versus \(-2\ln\hat L_2 = 94\). Read naively — "the
+    5-lag model explains the data better" — that sounds like a reason to prefer it. But running the
+    same AIC/BIC arithmetic as the worked example: AIC ties the two models exactly at 104, and BIC
+    prefers the 1-lag model by roughly 7.8 points. Both criteria say the same thing here: the extra
+    four lags improved the in-sample fit by <em>less</em> than the going rate for four more free
+    parameters — AIC says "no better than a coin flip between them," and BIC, with its steeper,
+    sample-size-scaled penalty, says "meaningfully prefer the simpler model." Neither criterion
+    finds evidence that lags 2 through 5 are pulling their weight.
+    </p>
+    <p>
+    The trading interpretation is direct: those four extra lag coefficients were very likely fitting
+    sampling noise in this particular 100-day window, not real, persistent mean-reversion structure
+    in the spread. A model that spent its extra parameters on noise will typically fit that specific
+    noise's shape and nothing that recurs in a new sample — so choosing the 1-lag model here is not
+    "settling for less"; it is choosing the model more likely to have the same coefficients still
+    describe the spread on data the researcher hasn't seen yet, which is the entire point of the
+    exercise. This is the same trade-off Lego Principle 5 requires everywhere else in this repo: a
+    model selection criterion is a cheap, honest first filter for exactly this question, standing in
+    for — not replacing — a genuine out-of-sample check before either model is trusted with real
+    risk.
+    </p>
+  </div>
+
+  <div class="tl-box repo"><div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>The formal version of a rule this repo already states in prose</h3>
+    <p>
+    To be direct about what is and isn't built here: <strong>there is currently no coded AIC/BIC
+    step anywhere in this codebase</strong> — no engine here formally computes and compares
+    information criteria across candidate model orders. That is a genuine, currently-missing formal
+    step, not a solved problem being merely under-documented. This lesson exists to make the theory
+    available before that gap gets filled, not to claim it already has been.
+    </p>
+    <p>
+    What already exists is the house instinct AIC/BIC would formalize. <code>CLAUDE.md</code>'s own
+    backtest-build-discipline section says it plainly: <em>"only add tunable parameters after,
+    knowing each one you add is overfit risk you're buying"</em> — that is, in prose, exactly what
+    the AIC/BIC penalty terms (\(2k\) and \(k\ln n\)) price numerically. And the
+    <a href="multiple-testing.html">Multiple Testing lesson</a>'s discipline of "count the cells"
+    before declaring a slice a real survivor is the same instinct applied to a different axis of
+    the same problem: multiple testing counts how many <em>looks</em> at the data you took before
+    calling one significant, while AIC/BIC count how many <em>parameters</em> a single model was
+    allowed before calling its fit meaningful. Both are answers to the same underlying question —
+    "how much of what I'm seeing is the price of giving myself more chances to find something?" —
+    aimed at two different places a model builder can quietly buy overfitting without noticing:
+    too many slices, or too many knobs on one model. Any future engine here that searches over lag
+    length, HMM state count, or GARCH order — anywhere a "how much complexity" choice currently
+    relies on eyeballing in-sample fit — is a legitimate candidate for a real AIC/BIC (or AICc)
+    step, logged the same honest way the rest of this repo's validation is: reported alongside, not
+    instead of, a true out-of-sample check.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall"><div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this goes wrong in practice</h3>
+    <p>
+    <strong>Treating AIC/BIC as an absolute goodness-of-fit measure.</strong> A low AIC only means
+    "best among the candidates you actually compared" — it says nothing about whether any of them
+    describe the data well in an absolute sense. A set of five badly-specified models still has a
+    "winner" by AIC; that win doesn't make it a good model.
+    </p>
+    <p>
+    <strong>Comparing models fit on different effective sample sizes.</strong> An AR(1) and an
+    AR(5) fit to "the same" time series do not automatically share the same usable \(n\) — the
+    AR(5) model loses its first 5 observations to lagged inputs unless both models are re-fit on
+    the same trimmed, aligned window. Comparing their raw AIC/BIC values without aligning \(n\)
+    first silently compares apples to a slightly different set of apples.
+    </p>
+    <p>
+    <strong>Comparing non-nested models, or models on different response variables, as if the
+    comparison were automatically valid.</strong> AIC/BIC assume the likelihoods being compared are
+    computed on the identical data and response (e.g. you cannot validly compare an AIC computed on
+    levels against one computed on first differences, or two models built on different link
+    functions, without adjusting for the change of variables in the likelihood).
+    </p>
+    <p>
+    <strong>Over-interpreting a small gap as decisive.</strong> A \(\Delta\)AIC or \(\Delta\)BIC of
+    1 or 2 is not meaningfully different from a tie (as the worked example's exact AIC tie shows
+    directly) — treat small gaps as "roughly indistinguishable," not as a confident preference for
+    whichever model happened to land a fraction of a point lower.
+    </p>
+    <p>
+    <strong>Letting AIC/BIC substitute for a genuine out-of-sample check.</strong> Both criteria are
+    principled, cheap, in-sample-computable estimates of an out-of-sample-oriented quantity — they
+    are not the same thing as actually holding out data and checking. Per Lego Principle 5, a model
+    that "wins" on AIC/BIC still has to prove itself on a true in-sample/out-of-sample split with
+    realistic costs before it earns any trust; the criteria narrow the candidate set honestly, they
+    don't replace validating the survivor.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz"><summary>Q1. Why does raw log-likelihood (or raw \(R^2\)) always weakly favor a model with more parameters, even parameters that describe nothing real?</summary>
+    <div class="tl-answer">Whenever one model nests another (the larger model reduces to the smaller one by setting some parameters to a fixed value, typically zero), the larger model's maximum-likelihood search happens over a strictly larger parameter space that includes every point the smaller model could reach. It can therefore always match the smaller model's fit exactly and, generically, do at least marginally better by moving the extra parameters away from zero to track whatever pattern — real or pure sampling noise — exists in that specific sample. This is a mechanical consequence of optimizing over a bigger space, not evidence the extra parameters are meaningful; it's the same reason OLS \(R^2\) can never fall when a predictor is added.</div>
+  </details>
+  <details class="tl-quiz"><summary>Q2. Write down the AIC and BIC formulas and explain, in one sentence, why lower values are preferred for both.</summary>
+    <div class="tl-answer">\(\text{AIC} = 2k - 2\ln\hat L\) and \(\text{BIC} = k\ln(n) - 2\ln\hat L\). Lower is better for both because each is "badness of fit" (\(-2\ln\hat L\), which falls as fit improves) plus a complexity penalty that rises with \(k\) — so a lower total means a model achieved good fit without spending too many parameters to get there, while a higher total means either a poor fit, an over-parameterized model, or both.</div>
+  </details>
+  <details class="tl-quiz"><summary>Q3. Why does BIC penalize complexity more harshly than AIC as sample size \(n\) grows, and at roughly what sample size does BIC's per-parameter penalty first exceed AIC's?</summary>
+    <div class="tl-answer">AIC charges a flat 2 points per parameter regardless of sample size, while BIC charges \(\ln(n)\) per parameter — a penalty that grows (albeit slowly, logarithmically) as more data is collected. The two penalties are equal exactly when \(\ln(n)=2\), i.e. \(n=e^2\approx7.39\); for essentially any dataset with more than about 8 observations, \(\ln(n)>2\) and BIC is already the stricter of the two, with the gap widening as \(n\) increases further (e.g. at \(n=100\), BIC's per-parameter charge of \(\ln(100)\approx4.6\) is more than double AIC's flat 2).</div>
+  </details>
+  <details class="tl-quiz"><summary>Q4. In the worked example, Model A (\(k=2\)) and Model B (\(k=5\)) tie exactly on AIC at 104 each, but BIC prefers Model A by about 7.8 points. Why did the same three extra parameters "buy" so much less under BIC?</summary>
+    <div class="tl-answer">The three extra parameters improved the deviance by 6 points (from 100 to 94). Under AIC, three extra parameters cost \(3\times2=6\) points of penalty — an exact wash, hence the tie. Under BIC at \(n=100\), three extra parameters cost \(3\times\ln(100)\approx13.8\) points of penalty — more than double the 6-point improvement they bought, leaving Model B clearly worse off net. The improvement in fit was identical in both cases; only the price tag for the parameters that produced it changed, because BIC's per-parameter charge (\(\ln n\)) is larger than AIC's (2) once \(n>e^2\).</div>
+  </details>
+  <details class="tl-quiz"><summary>Q5. In what sense is AIC "oriented toward out-of-sample predictive performance" while BIC is oriented toward "finding the true model"? Are these the same goal?</summary>
+    <div class="tl-answer">They are related but distinct goals. AIC is derived to approximately minimize expected Kullback-Leibler divergence between the fitted model and the true (possibly infinitely complex, never exactly capturable) data-generating process, and is asymptotically equivalent to leave-one-out cross-validation — it is tuned for good prediction on new data, without assuming any candidate model is exactly correct. BIC is derived from a Bayesian model-comparison argument and is model-selection consistent: if the true model actually is among the candidates, BIC's probability of selecting it approaches 1 as \(n\to\infty\). AIC has no such consistency guarantee — even with infinite data it retains a fixed, nonzero chance of preferring an overly complex model, because "predicts best" and "is exactly the true model" are not the same target once the true model's exact form isn't assumed to be in the candidate set.</div>
+  </details>
+  <details class="tl-quiz"><summary>Q6. In the AR(1) vs. AR(5) mean-reversion spread scenario, why does the 5-lag model's better in-sample log-likelihood not mean it is the better model to actually trade?</summary>
+    <div class="tl-answer">The 5-lag model is mechanically guaranteed to fit at least as well in-sample as the 1-lag model it nests, whether or not lags 2 through 5 describe any real, persistent structure in the spread. Both AIC (an exact tie) and BIC (a clear preference for the simpler model) show that the improvement those four extra lags bought was no better than — and by BIC's stricter accounting, considerably worse than — the going rate for four more free parameters, meaning the improvement is plausibly explained by the model fitting this specific sample's noise rather than real mean-reversion dynamics. A model that fit noise in-sample has no reason to keep fitting a *different* sample's noise out-of-sample, so the simpler model is the one more likely to still work on data the researcher hasn't seen — which is what the researcher actually needs before risking capital on it.</div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Hirotugu Akaike (1974), "A New Look at the Statistical Model Identification," <em>IEEE Transactions on Automatic Control</em> — the original AIC paper.</li>
+    <li>Gideon Schwarz (1978), "Estimating the Dimension of a Model," <em>Annals of Statistics</em> — the original BIC (Schwarz Criterion) paper.</li>
+    <li>Kenneth P. Burnham &amp; David R. Anderson, <em>Model Selection and Multimodel Inference: A Practical Information-Theoretic Approach</em> (2nd ed., Springer, 2002) — the standard applied reference for AIC-based model selection, the \(\Delta_i\) rule-of-thumb tables, and AICc.</li>
+    <li>James D. Hamilton, <em>Time Series Analysis</em> (Princeton University Press, 1994) — standard econometrics textbook coverage of AIC/BIC in the specific context of choosing ARMA/VAR lag order.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="regression-diagnostics.html">← Regression Diagnostics</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="arima-var.html">ARIMA &amp; VAR →</a>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Heston Model — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Advanced Stochastic Calculus &amp; Derivatives / The Heston Model</div>
+  <div class="tl-kicker">Advanced Stochastic Calculus &amp; Derivatives · Lesson 3 of 4</div>
+  <h1 class="tl-title">The Heston Model</h1>
+  <p class="tl-dek">Black-Scholes prices every option off one fixed \(\sigma\) forever — Heston's 1993 fix is to stop treating volatility as a constant at all and instead let it be its own random process, mean-reverting and correlated with price, the same way GARCH already treats it in discrete time.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not yet built in this repo</span>
+    <span>~17 min read</span>
+    <span>Prereqs: GARCH &amp; Volatility Clustering, Black-Scholes-Merton Option Pricing</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    The Black-Scholes-Merton model prices an option by assuming the underlying
+    follows geometric Brownian motion with one fixed volatility parameter,
+    \(\sigma\), held constant for the life of the option. The GARCH lesson in
+    this Theory Lab already spent an entire lesson establishing, empirically,
+    that this is not how real markets behave: volatility clusters, it has its
+    own memory, calm regimes and turbulent regimes persist and decay over time
+    rather than sitting at one flat level. A GARCH(1,1) forecast for tomorrow's
+    variance depends on yesterday's shock and yesterday's variance forecast —
+    volatility is <em>itself</em> a process with dynamics, not a fixed input you
+    look up once.
+  </p>
+  <p>
+    Black-Scholes, taken literally, has no room for that idea at all. Every
+    application of the formula bakes in a single number and treats it as known
+    and unchanging from now until expiry. That assumption is directly falsified
+    by the same evidence the GARCH lesson covered — realized volatility visibly
+    rises and falls over any option's life, sometimes dramatically, and options
+    markets price this in: two options on the same underlying with different
+    expiries or struck at different levels routinely trade at meaningfully
+    different implied volatilities, something a single true constant \(\sigma\)
+    could never produce.
+  </p>
+  <p>
+    Steven Heston's 1993 paper is, informally, GARCH's core insight — "variance
+    is itself a stochastic process with its own mean-reverting dynamics" —
+    carried across from discrete-time econometrics into the continuous-time
+    stochastic calculus that option pricing runs on. Instead of one fixed
+    \(\sigma\), Heston's model describes the underlying's <em>instantaneous
+    variance</em> as a second random process running alongside the price, with
+    its own drift, its own noise term, and — critically — a noise term that is
+    allowed to be correlated with the noise driving price itself. That single
+    added correlation parameter turns out to be exactly what's needed to
+    generate a realistic volatility smile, something flat-\(\sigma\)
+    Black-Scholes structurally cannot produce.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Weather that has its own weather</h3>
+    <p>
+      Black-Scholes treats volatility the way a very naive forecaster treats
+      tomorrow's weather: "the average temperature this month is 20°C, so I'll
+      just assume every single day is exactly 20°C." That's obviously wrong in a
+      specific, structured way — some days are much hotter, some much colder,
+      and crucially, hot spells and cold spells tend to <em>cluster</em>: a hot
+      day is more likely to be followed by another hot day than by a random draw
+      from the whole month's temperature distribution. That clustering is
+      exactly the GARCH lesson's "volatility has memory" idea, applied to
+      temperature instead of returns.
+    </p>
+    <p>
+      Heston's model says: fine, let's stop pretending the temperature is fixed.
+      Let's build a second little model, running alongside the main one, whose
+      entire job is to describe how "today's temperature" itself drifts and
+      wiggles and reverts back toward a seasonal average over time — hot spells
+      fade, cold spells fade, but there's real random weather-of-the-weather in
+      between. Now bolt one more realistic detail on: on days the temperature is
+      unusually low, storms (turbulence) tend to be more likely too — the two
+      processes are not independent, they're correlated. That's the whole model:
+      price has its usual random wiggle, but the <em>size</em> of that wiggle is
+      itself randomly wiggling and mean-reverting, and it tends to get bigger
+      exactly when price falls.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    Recall plain Black-Scholes describes the underlying with one stochastic
+    differential equation and a single constant \(\sigma\):
+  </p>
+  <div class="tl-math">
+    \[ dS_t = \mu S_t\,dt + \sigma S_t\,dW_t \]
+  </div>
+  <p>
+    Heston's model keeps the same basic shape for the price equation but
+    replaces the constant \(\sigma\) with the square root of a second,
+    <em>time-varying</em>, randomly evolving quantity \(v_t\) — the
+    instantaneous variance:
+  </p>
+  <div class="tl-math">
+    \[ dS_t = \mu S_t\,dt + \sqrt{v_t}\,S_t\,dW_t^{1} \]
+  </div>
+  <p>
+    That one change of notation — \(\sigma \to \sqrt{v_t}\) — is the entire
+    conceptual leap. Volatility is no longer a parameter you plug in once; it is
+    the square root of a variable that itself moves randomly through time and
+    needs its own equation of motion. Heston supplies exactly that second
+    equation, describing how \(v_t\) itself evolves:
+  </p>
+  <div class="tl-math">
+    \[ dv_t = \kappa(\theta - v_t)\,dt + \xi\sqrt{v_t}\,dW_t^{2} \]
+  </div>
+  <p>
+    and, tying the two equations together, specifies that the two Brownian
+    motions driving them are correlated:
+  </p>
+  <div class="tl-math">
+    \[ \mathrm{Corr}(dW_t^{1}, dW_t^{2}) = \rho \]
+  </div>
+  <p>
+    Every symbol, spelled out:
+  </p>
+  <div class="tl-symbols"><table>
+    <tr><td>\(S_t\)</td><td>The underlying's price at time \(t\) — same role as in plain Black-Scholes.</td></tr>
+    <tr><td>\(\mu\)</td><td>(mu) The price process's drift rate — same role as in plain Black-Scholes; under risk-neutral pricing this becomes the risk-free rate, exactly as in the Black-Scholes lesson.</td></tr>
+    <tr><td>\(v_t\)</td><td>The <strong>instantaneous variance</strong> at time \(t\) — a second stochastic process, not a constant. \(\sqrt{v_t}\) plays the role plain \(\sigma\) played in Black-Scholes, except it is now itself random and time-varying rather than fixed for the life of the option.</td></tr>
+    <tr><td>\(dW_t^{1}\)</td><td>The Wiener increment driving the <em>price</em> process — the same object from the OU and Black-Scholes lessons: mean zero, variance \(dt\).</td></tr>
+    <tr><td>\(dW_t^{2}\)</td><td>A second, separate Wiener increment driving the <em>variance</em> process. Separate from \(dW_t^1\) in the sense of being its own source of randomness, but — see \(\rho\) below — not independent of it.</td></tr>
+    <tr><td>\(\kappa\)</td><td>(kappa) The <strong>speed of mean reversion</strong> of variance — how fast \(v_t\) gets pulled back toward its long-run level after a shock. Plays exactly the role \(\theta\) (the reversion-speed parameter, sometimes written \(\kappa\) or \(\alpha\) depending on notation) played in the Ornstein-Uhlenbeck lesson, just applied to variance instead of price.</td></tr>
+    <tr><td>\(\theta\)</td><td>(theta) The <strong>long-run (unconditional) variance</strong> that \(v_t\) reverts toward — the variance-process equivalent of \(\mu\), the long-run mean level, in the OU lesson. Note this \(\theta\) is a long-run-variance level, unrelated to the option-Greek \(\theta\) (time decay) from the Black-Scholes lesson — an unfortunate but standard notation collision in the literature.</td></tr>
+    <tr><td>\(\xi\)</td><td>(xi, sometimes written \(\sigma_v\) in other sources) The <strong>volatility of variance</strong> ("vol of vol") — how large the random wiggles in \(v_t\) itself are. A larger \(\xi\) means variance itself swings around more violently rather than reverting smoothly toward \(\theta\).</td></tr>
+    <tr><td>\(\sqrt{v_t}\) (in the variance SDE)</td><td>The variance process's own diffusion term is scaled by \(\sqrt{v_t}\), not a constant — this is a square-root (CIR-type) diffusion, which keeps \(v_t\) non-negative (variance can't legitimately go negative) and makes the noise shrink toward zero as \(v_t\) approaches zero, unlike a plain OU process whose noise term is a flat constant regardless of the current level.</td></tr>
+    <tr><td>\(\rho\)</td><td>(rho) The <strong>correlation</strong> between the price shock \(dW_t^1\) and the variance shock \(dW_t^2\). This is the parameter with no Black-Scholes or plain-OU analogue at all, and it is what makes the model capable of generating a realistic smile/skew — see below.</td></tr>
+  </table></div>
+
+  <h3>The variance process is an Ornstein-Uhlenbeck process — applied to variance instead of price</h3>
+  <p>
+    It is worth being explicit about how directly this connects to the
+    Ornstein-Uhlenbeck lesson already in this Theory Lab. Strip the
+    square-root-scaled noise term off the variance SDE for a moment and look at
+    the drift alone:
+  </p>
+  <div class="tl-math">
+    \[ dv_t = \kappa(\theta - v_t)\,dt + (\text{noise}) \]
+  </div>
+  <p>
+    Compare this to the OU process from that lesson, written with its own
+    reversion-speed and long-run-mean parameters:
+  </p>
+  <div class="tl-math">
+    \[ dX_t = \kappa(\mu - X_t)\,dt + \sigma\,dW_t \]
+  </div>
+  <p>
+    The structure is identical: a term that pulls the process back toward a
+    long-run level, at a rate proportional to how far away it currently is.
+    When \(v_t > \theta\) (variance is currently elevated), the drift term
+    \(\kappa(\theta - v_t)\) is negative, pulling \(v_t\) back down; when
+    \(v_t < \theta\), the drift is positive, pulling it back up. This is exactly
+    the "rubber band" intuition the OU lesson built for mean-reverting price
+    spreads, applied here to a completely different quantity — variance instead
+    of price or a price spread. Heston's only structural addition on top of
+    plain OU is the \(\sqrt{v_t}\) scaling on the noise term (so variance can
+    never diffuse into negative territory, unlike an unconstrained OU process,
+    which technically can wander arbitrarily low) — this specific variant of a
+    mean-reverting square-root diffusion is called a <strong>CIR process</strong>
+    (Cox-Ingersoll-Ross, originally built for interest rates, another quantity
+    that shouldn't go negative). The headline takeaway: <strong>Heston did not
+    invent a new kind of randomness for variance — it reuses the OU-style
+    mean-reversion story this Theory Lab already covers, just pointed at a
+    different variable</strong>, with one technical tweak to keep that variable
+    non-negative.
+  </p>
+
+  <h3>Why the correlation \(\rho\) is the whole story behind the smile</h3>
+  <p>
+    In equity and FX markets, empirically estimated \(\rho\) is very often
+    <strong>negative</strong>. This has a well-known name: the
+    <strong>leverage effect</strong> — the tendency for volatility to rise
+    precisely when prices fall (originally explained, for equities, by a
+    falling stock price mechanically raising a firm's leverage ratio and
+    therefore its equity-return volatility; the empirical pattern is observed
+    far more broadly than that original story, including in FX, where there is
+    no literal corporate leverage mechanism, but the same "down move, vol
+    spike" co-movement shows up in the data regardless).
+  </p>
+  <p>
+    A negative \(\rho\) means the shock that pushes price down and the shock
+    that pushes variance up are correlated — when \(dW_t^1\) draws a large
+    negative value (price falls), \(dW_t^2\) tends to also draw a positive value
+    (variance rises) more often than chance alone would produce. The practical
+    consequence for the shape of the return distribution: large down-moves are
+    disproportionately likely to be <em>accompanied</em> by a simultaneous vol
+    spike, which fattens the left tail of the return distribution specifically
+    — a different distributional distortion, from a different mechanism, than
+    the Merton jump-diffusion lesson's fat tails (there, a discontinuous jump
+    process injects rare large moves directly; here, a continuous but
+    correlated stochastic-variance process makes ordinary diffusion itself wider
+    exactly when price is falling) — but the observable symptom, a heavier left
+    tail than a symmetric normal distribution would predict, rhymes with that
+    earlier lesson's discussion from a different angle entirely.
+  </p>
+  <p>
+    This is the mechanism that lets Heston generate a genuine volatility
+    <strong>smile</strong>, or more precisely in equity/FX markets a
+    <strong>skew</strong> (asymmetric smile): because down-moves and vol-spikes
+    tend to co-occur under negative \(\rho\), the model assigns more probability
+    to a large downside move than a symmetric, zero-correlation model would —
+    which is exactly the scenario that makes low-strike (out-of-the-money put)
+    options worth more than flat-\(\sigma\) Black-Scholes would say. Back out
+    the implied volatility that would make Black-Scholes match Heston's
+    (correlation-aware) price at each strike, and low strikes come out with
+    higher implied volatility than at-the-money — a skew, generated purely from
+    model specification, with no jump term anywhere in the equations. Set
+    \(\rho = 0\) and \(\xi \to 0\) (no correlation, no vol-of-vol) and the model
+    collapses back toward flat Black-Scholes, with no smile at all — the smile
+    is not free, it is earned specifically by \(\xi \neq 0\) (variance actually
+    moves) combined with \(\rho \neq 0\) (that movement is linked to price
+    direction).
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">What a flat-σ model versus stochastic vol implies about the smile</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two implied volatility curves plotted against option strike/moneyness: a flat dashed line representing constant-sigma Black-Scholes, and a solid blue curve that slopes upward toward low strikes and stays somewhat elevated at high strikes, representing the Heston-implied smile and skew generated by stochastic volatility with negative correlation between price and variance.">
+      <line x1="40" y1="250" x2="600" y2="250" style="stroke:var(--border)"/>
+      <line x1="320" y1="20" x2="320" y2="250" style="stroke:var(--border);stroke-dasharray:2,3"/>
+      <text x="40" y="266" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">low strike (OTM put)</text>
+      <text x="480" y="266" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">high strike (OTM call)</text>
+      <text x="320" y="18" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">at-the-money</text>
+      <line x1="40" y1="150" x2="600" y2="150" style="stroke:var(--text3);stroke-dasharray:4,3"/>
+      <text x="546" y="144" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">Black-Scholes (constant σ)</text>
+      <path d="M40,110 C 130,112 200,122 260,138 C 300,148 310,152 320,153 C 340,155 380,158 440,163 C 500,168 560,172 600,175" style="stroke:var(--blue);stroke-width:2.5" fill="none"/>
+      <text x="46" y="100" font-size="11" font-family="'DM Mono',monospace" fill="var(--blue)">Heston-implied smile/skew</text>
+      <text x="46" y="113" font-size="10" font-family="'DM Mono',monospace" fill="var(--blue)">(stochastic vol + negative ρ)</text>
+      <text x="20" y="145" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)" transform="rotate(-90 20 145)">implied vol →</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--text3)"></i>Black-Scholes (constant σ)</span>
+      <span><i style="background:var(--blue)"></i>Heston-implied smile/skew (from stochastic vol + negative correlation ρ)</span>
+    </div>
+    <div class="tl-chart-caption">
+      Black-Scholes assumes one flat \(\sigma\) for every strike — the dashed
+      line, by construction perfectly horizontal, because the model has no
+      parameter that could make it slope. The solid curve is the shape
+      typically implied when the true underlying process is Heston with a
+      negative \(\rho\): implied volatility is <strong>higher for low
+      strikes</strong> (out-of-the-money puts) than for at-the-money or
+      high-strike options, because the negative correlation between price and
+      variance shocks makes a large down-move disproportionately likely to
+      coincide with a vol spike, fattening the left side of the return
+      distribution relative to the right. This is a stylized illustration of
+      the shape, not a fitted curve from real market data or real Heston
+      parameters.
+    </div>
+  </div>
+
+  <h3>The pricing formula — semi-closed-form, not derived here</h3>
+  <p>
+    Having two correlated stochastic processes instead of one constant makes
+    the option-pricing problem considerably harder than plain Black-Scholes.
+    Heston's genuinely important 1993 contribution was proving that, despite
+    this added complexity, European option prices under this model still admit
+    a <strong>semi-closed-form solution</strong> — not a simple algebraic
+    formula like Black-Scholes, but an expression built from the model's
+    <strong>characteristic function</strong> (the Fourier transform of the
+    underlying's log-price distribution), which can be evaluated by numerically
+    integrating that characteristic function rather than by Monte Carlo
+    simulation or a full partial-differential-equation solve. This is what
+    "semi-closed-form" means here: there is a precise formula, but it requires
+    a numerical Fourier/characteristic-function step to evaluate, unlike
+    Black-Scholes' fully closed-form cumulative-normal expression.
+  </p>
+  <p>
+    That derivation — solving the associated pricing PDE via a characteristic-function
+    ansatz, handling the branch-cut numerical subtleties that later research
+    found in naive implementations — is genuinely technical and is
+    <strong>not derived here</strong>. It is not needed to understand what the
+    model is, why it exists, or why it can generate a smile. The point of this
+    lesson is the <strong>model specification</strong> — two correlated SDEs,
+    mean-reverting variance, the mechanism connecting \(\rho\) to skew — not
+    reproducing the closed-form pricing machinery, which is a substantial piece
+    of applied mathematics in its own right and belongs in a dedicated
+    numerical-methods treatment, not a conceptual model-specification lesson.
+  </p>
+
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Why out-of-the-money puts are structurally more expensive than a flat-σ model says they should be</h3>
+    <p>
+      An options desk pulls up an implied-volatility curve for a given expiry
+      and notices what shows up on almost every equity index and most major FX
+      pairs, almost all of the time: out-of-the-money puts (low strikes) are
+      trading at a meaningfully <em>higher</em> implied volatility than
+      at-the-money options. A trader reasoning purely from flat-\(\sigma\)
+      Black-Scholes has no way to make sense of this at all — that model has
+      exactly one \(\sigma\) per underlying and expiry, and it is supposed to
+      price every strike consistently off that same number. A flat-\(\sigma\)
+      world literally cannot produce a sloped implied-vol curve; if the market
+      shows one, either the model is misspecified or there is something the
+      flat-\(\sigma\) story is missing.
+    </p>
+    <p>
+      A Heston-consistent explanation is available, and it does not require
+      assuming the market is "wrong" or mispriced: volatility itself is
+      stochastic, and it tends to spike <em>exactly when prices fall</em>
+      (negative \(\rho\), the leverage effect). That means a big down-move is
+      more likely to arrive <em>together with</em> a volatility explosion than
+      a symmetric up-move of the same size is — the joint event "price falls a
+      lot AND volatility spikes" is more probable under Heston's correlated
+      dynamics than the joint event "price rises a lot AND volatility spikes."
+      An out-of-the-money put only pays off in exactly that first, more likely
+      scenario. Priced honestly under a process where that scenario has
+      elevated probability, the put is worth more than a symmetric,
+      zero-correlation (or flat-\(\sigma\)) model would say — and that is
+      precisely what shows up as a persistently higher implied volatility at
+      low strikes.
+    </p>
+    <p>
+      The desk's takeaway is not "puts are overpriced, sell them" — it's the
+      opposite: this is a <strong>structural feature of how price and
+      volatility actually co-move</strong>, not a mispricing to be arbitraged
+      away. Downside protection commanding a persistent premium (sometimes
+      called the "volatility risk premium" when discussed in the context of
+      systematically selling that protection) is a market correctly reflecting
+      a real statistical asymmetry, not a free lunch — and any strategy built
+      to harvest that premium is taking on exactly the tail risk the premium
+      compensates for, which is a separate question from whether the premium
+      exists.
+    </p>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Heston is one of the most widely implemented stochastic-volatility models
+    in production option-pricing systems, precisely because the semi-closed-form
+    solution makes calibration to an observed implied-volatility surface fast
+    enough to run repeatedly through a trading day. Desks fit
+    \((\kappa, \theta, \xi, \rho, v_0)\) to match observed option prices across
+    strikes and expiries, then use the calibrated model to price and hedge
+    options that aren't directly quoted in the market, and to compute
+    model-consistent Greeks that account for the fact that volatility itself
+    moves (an additional "vega-like" sensitivity to changes in \(v_t\), on top
+    of the Black-Scholes Greeks).
+  </p>
+  <p>
+    Heston is not the last word, and real desks are honest that no single
+    stochastic-volatility model perfectly reproduces every observed smile at
+    every expiry simultaneously. Two directions extend it further, and this
+    lesson names them without deriving either: <strong>stochastic-vol-plus-jumps
+    models</strong> (sometimes called Bates' model, which is literally Heston's
+    two SDEs with a Merton-style jump term from the previous lesson added on
+    top of the price process) combine both smile-generating mechanisms —
+    continuous stochastic volatility for the "shape" of the smile and
+    discontinuous jumps for extra short-dated tail risk that pure diffusion,
+    however correlated, still can't fully capture at very short expiries. And
+    <strong>local-volatility</strong> and <strong>local-stochastic-volatility</strong>
+    models take a more purely empirical route, calibrating a volatility surface
+    directly to match observed option prices exactly at a point in time, at the
+    cost of less clean forward-looking dynamics than Heston's parametric SDEs.
+    Which of these a given desk reaches for is a practical trade-off between fit
+    quality, calibration speed, and how the model needs to behave for hedging
+    purposes — not a claim that any one of them is universally "correct."
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+    <h3>Continuous-time cousin of the GARCH sigma this repo already runs — and no options module to connect it to</h3>
+    <p>
+      Say this plainly up front: this repo has <strong>no options-pricing
+      module of any kind</strong> — no Black-Scholes implementation, no
+      Heston implementation, no implied-volatility surface, nothing that
+      prices a derivative contract. This lesson is pure theory background,
+      exactly like the Black-Scholes and Merton jump-diffusion lessons before
+      it. Nothing here describes existing code, and nothing here proposes
+      building an options desk inside this repo.
+    </p>
+    <p>
+      What the repo <em>does</em> already have, built and running in
+      production, is the discrete-time cousin of exactly the insight Heston's
+      variance SDE formalizes. Per <code>CLAUDE.md</code>'s core-modules table,
+      <code>js/volBacktestEngine.js</code> implements GARCH(1,1) as one of
+      three sigma estimators (alongside HV20 and Yang-Zhang) feeding the live
+      forecaster's bands, with the recursion
+      \(v \leftarrow \omega + \alpha\,r_{i-1}^2 + \beta\,v,\ \sigma_i=\sqrt v\)
+      and fitted constants \(\alpha=0.06,\ \beta=0.91\) (a persistence of 0.97,
+      roughly a 23-trading-day half-life). That recursion is discrete-time
+      variance with its own memory — today's variance forecast depends on
+      yesterday's shock and yesterday's own forecast. Heston's
+      \(dv_t=\kappa(\theta-v_t)dt+\xi\sqrt{v_t}\,dW_t^2\) is, informally, the
+      same idea — variance reverting toward a long-run level with its own
+      source of randomness — expressed as a continuous-time SDE instead of a
+      discrete daily recursion. Neither engine copies the other's code, and
+      they are not claimed to be mathematically equivalent (GARCH is discrete
+      and this repo's GARCH has no explicit correlation-with-price term the way
+      Heston's \(\rho\) does); the connection is conceptual — "let variance
+      itself be a process with memory and dynamics" is the shared insight, one
+      lesson's discrete-time home and the other's continuous-time home.
+    </p>
+    <p>
+      The Merton jump-diffusion lesson is the other half of this repo's theory
+      coverage of the smile: that lesson covers discontinuous jumps as one way
+      Black-Scholes gets extended to explain a real smile; this lesson covers
+      correlated stochastic volatility as a different mechanism producing the
+      same observable symptom. Real practitioner models often combine both (the
+      "stochastic-vol-plus-jumps" family mentioned above) rather than picking
+      one mechanism as the single true explanation — this lesson does not take
+      a position on which mechanism, or which combination, would best describe
+      any specific FX pair's real smile, because that would require fitting
+      real option data this repo does not currently source or store.
+    </p>
+    <p>
+      Building an actual Heston calibration engine here would be new,
+      unvalidated work requiring a characteristic-function pricer, a
+      calibration routine against a real implied-vol surface this repo does
+      not currently have a data source for, and — per the Lego Principle — a
+      concrete reason at least two callers would use it. Nothing here proposes
+      that; this is theory background connecting an existing, tested brick
+      (GARCH in <code>volBacktestEngine.js</code>) to the wider stochastic-
+      volatility literature it belongs to.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where Heston-style thinking is misused or overextended</h3>
+    <p>
+      <strong>Treating calibrated parameters as physically meaningful,
+      time-invariant constants.</strong> \((\kappa,\theta,\xi,\rho)\) fitted to
+      today's option surface are a snapshot, not physical laws — refitting the
+      same model a week later, especially after a regime shift, routinely
+      produces materially different parameter values. Don't treat one
+      calibration as a permanent description of "how this underlying's
+      volatility works."
+    </p>
+    <p>
+      <strong>The Feller condition and parameter admissibility.</strong> The
+      CIR-type variance process technically requires \(2\kappa\theta \geq
+      \xi^2\) (the Feller condition) to guarantee \(v_t\) never hits exactly
+      zero; many real calibrations to option data land outside this region in
+      practice, which has real numerical and interpretive consequences that a
+      careless implementation can miss entirely.
+    </p>
+    <p>
+      <strong>A single correlation \(\rho\) is a simplification, not a
+      complete description of the price-vol relationship.</strong> Real
+      markets can show a more complex, regime-dependent relationship between
+      price moves and volatility than one constant correlation coefficient
+      captures — the leverage effect's strength itself is not obviously
+      constant across calm and crisis regimes.
+    </p>
+    <p>
+      <strong>Semi-closed-form is not the same as fast in every implementation.</strong>
+      Naive numerical implementations of the Heston characteristic-function
+      integral are known to hit branch-cut discontinuities in the complex
+      logarithm that produce silently wrong prices for some parameter
+      combinations — a well-documented practical trap in the numerical-methods
+      literature, and exactly the kind of subtlety this lesson flags but does
+      not attempt to resolve, since deriving or debugging that integral is out
+      of scope here.
+    </p>
+    <p>
+      <strong>A good smile fit does not validate a trading edge.</strong>
+      Calibrating Heston to match today's observed option prices is a
+      curve-fitting exercise by construction — it will fit reasonably well
+      almost by definition, since that is what calibration optimizes for. It
+      says nothing, by itself, about whether a strategy built on top of that
+      calibration (e.g. trading realized vs. implied variance, or a
+      volatility-risk-premium harvesting strategy) would show a real edge
+      out-of-sample. Per this repo's validation discipline, that would need to
+      be tested on data the calibration didn't see, not assumed from a tight
+      in-sample fit.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why can constant-σ Black-Scholes never generate a volatility smile at all, structurally, regardless of what σ value is chosen?</summary>
+    <div class="tl-answer">
+      Because the model has exactly one free parameter, \(\sigma\), and it is
+      applied identically to every strike and every expiry for a given
+      underlying — there is no mechanism in the model by which the "correct"
+      \(\sigma\) could differ by strike. Backing out an implied volatility from
+      market prices at different strikes and finding they differ is, by
+      construction, evidence that the true underlying process is not
+      flat-\(\sigma\) geometric Brownian motion; it is not something any choice
+      of a single \(\sigma\) could reproduce, no matter how it's chosen.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What roles do κ and θ play in Heston's variance SDE, and how do they map onto the Ornstein-Uhlenbeck lesson's parameters?</summary>
+    <div class="tl-answer">
+      \(\kappa\) is the speed of mean reversion — how quickly \(v_t\) gets
+      pulled back toward its long-run level after a shock, the same role
+      played by the reversion-speed parameter in the OU lesson. \(\theta\) is
+      the long-run (unconditional) variance level that \(v_t\) reverts toward
+      — the variance-process analogue of the OU lesson's long-run mean
+      \(\mu\). The drift term \(\kappa(\theta - v_t)\) is structurally
+      identical to the OU process's \(\kappa(\mu - X_t)\) drift, just applied
+      to variance instead of price: when variance is above its long-run level
+      the drift pulls it down, and vice versa.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What does a negative correlation ρ between the price process's Brownian motion and the variance process's Brownian motion actually produce, and what is this phenomenon usually called?</summary>
+    <div class="tl-answer">
+      A negative \(\rho\) means the random shock pushing price down and the
+      random shock pushing variance up tend to occur together more often than
+      chance alone would predict. This is called the leverage effect — the
+      empirical tendency for volatility to rise when prices fall. The
+      consequence for the return distribution is a fatter left tail than a
+      symmetric (zero-correlation) model would produce, because large
+      down-moves are disproportionately likely to coincide with a volatility
+      spike.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why does negative ρ specifically make out-of-the-money puts command higher implied volatility than at-the-money options, rather than just making the whole curve shift up uniformly?</summary>
+    <div class="tl-answer">
+      An out-of-the-money put only pays off in the specific scenario of a large
+      downside move. Negative \(\rho\) raises the probability of exactly that
+      scenario — a large downside move co-occurring with a volatility spike —
+      relative to a symmetric, zero-correlation model, without proportionally
+      raising the probability of a large upside move co-occurring with a vol
+      spike. Because the effect is concentrated in the downside-move scenario
+      specifically, it raises the fair value (and hence the backed-out implied
+      volatility) of low-strike puts more than it does at-the-money or
+      high-strike options, producing a sloped skew rather than a uniform
+      upward shift of the whole curve.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Heston's actual option-pricing formula is described as "semi-closed-form." What does that mean, and why doesn't this lesson derive it?</summary>
+    <div class="tl-answer">
+      It means there is a precise pricing expression, but evaluating it
+      requires numerically integrating the model's characteristic function
+      (its Fourier transform), rather than plugging into a simple algebraic
+      formula the way Black-Scholes' cumulative-normal expression works.
+      Deriving that characteristic-function solution and handling its known
+      numerical subtleties (branch-cut issues in the complex logarithm) is
+      substantial applied mathematics in its own right. This lesson's goal is
+      understanding the model specification — the two correlated SDEs, the
+      mean-reverting variance, why ρ produces a smile — not reproducing the
+      closed-form pricing machinery, which is explicitly out of scope here.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Does this repo have an options-pricing module or a Heston implementation? What does it have instead that connects to this lesson's theory, and how exactly are the two related?</summary>
+    <div class="tl-answer">
+      No — this repo has no options-pricing module of any kind, and this
+      lesson is pure theory background, not a description of existing code.
+      What it does have is GARCH(1,1) as one of three sigma estimators in
+      <code>js/volBacktestEngine.js</code>, which treats variance as a process
+      with its own memory (today's forecast depends on yesterday's shock and
+      yesterday's forecast) in discrete time. Heston's variance SDE
+      formalizes essentially the same insight — mean-reverting variance with
+      its own source of randomness — in continuous time, with the added
+      feature (not present in this repo's plain GARCH(1,1)) of an explicit
+      correlation between the variance shocks and the price shocks. The two
+      are conceptual cousins sharing the same core idea, not the same model
+      and not code that has been ported between them.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Steven L. Heston, "A Closed-Form Solution for Options with Stochastic Volatility with Applications to Bond and Currency Options," <em>Review of Financial Studies</em>, 1993 — the original paper. Notably, it explicitly covers currency options as one of its applications, directly relevant to this repo's FX focus.</li>
+    <li>David S. Bates, "Jumps and Stochastic Volatility: Exchange Rate Processes Implicit in Deutsche Mark Options," <em>Review of Financial Studies</em>, 1996 — the widely cited stochastic-vol-plus-jumps extension combining Heston's variance process with a Merton-style jump term, and, like Heston's own paper, built on FX/currency option data.</li>
+    <li>Rama Cont &amp; Peter Tankov, <em>Financial Modelling with Jump Processes</em>, Chapman &amp; Hall/CRC, 2004 — the same standard reference cited in the Merton jump-diffusion lesson, covering stochastic volatility and combined jump/stochastic-vol models in the broader Lévy/affine-process framework.</li>
+    <li>Jim Gatheral, <em>The Volatility Surface: A Practitioner's Guide</em>, Wiley, 2006 — a standard practitioner-level treatment of Heston, local volatility, and the empirical shape of the smile/skew, written by a working quant.</li>
+    <li><code>js/volBacktestEngine.js</code> in this repo — the built, tested GARCH(1,1) sigma estimator this lesson's repo box connects to; see also the GARCH &amp; Volatility Clustering lesson for its full derivation.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="girsanov-risk-neutral.html">← Girsanov's Theorem &amp; Risk-Neutral Pricing</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="sabr-model.html">The SABR Model →</a>
+  </div>
+</div>
+</body>
+</html>
