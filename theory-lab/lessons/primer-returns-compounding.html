@@ -457,40 +457,6 @@
     which is a theme this series returns to more than once.
   </p>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this connects to MacroFXModel</div>
-    <h3>The literal design rule behind the forecast engine's horizons</h3>
-    <p>
-      CLAUDE.md states the Lego Principle's third rule plainly: strategies
-      here must be "horizon-agnostic. Daily / weekly / 20-day differ only by
-      σ scale (×1 / ×√5 / ×√20) and window length." That is the
-      square-root-of-time rule derived above, applied directly: 5 trading
-      days scales daily σ by \(\sqrt{5}\), 20 trading days scales it by
-      \(\sqrt{20}\), because log returns across those days are (approximately)
-      independent and additive, so their variances add and their standard
-      deviations scale by the square root of the day count. This is not a
-      coincidental resemblance — it is the exact mechanism, and it's why
-      <code>js/forecastCore.js</code>'s <code>HORIZONS</code> table and
-      <code>js/volBacktestEngine.js</code>'s vol-sigma series are built to
-      share one volatility calculation scaled by horizon, rather than
-      re-estimating volatility separately at each horizon from scratch.
-    </p>
-    <p>
-      The gap this primer derives between arithmetic and geometric means,
-      \(g \approx \mu - \sigma^2/2\), reappears by name and by formula in the
-      Kelly Criterion lesson, where it is the mechanism behind volatility
-      drag and the reason overbetting past the Kelly-optimal size can turn a
-      genuinely positive-expectancy bet's compounded growth rate negative.
-      And the lognormal price assumption this primer's log-additivity
-      argument justifies is the starting assumption of the upcoming
-      Black-Scholes lesson — geometric Brownian motion, the stochastic
-      process Black-Scholes prices options under, is defined directly in
-      terms of log returns being the natural additive unit of price
-      movement, for exactly the reasons worked out above.
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
@@ -594,8 +560,8 @@
       T\sigma^2\)) and standard deviation is the square root of variance.
       Going from 1 day to 16 days multiplies the horizon by 16, so volatility
       scales by \(\sqrt{16}=4\) — quadruples — not by 16. This is exactly the
-      ×1 / ×√5 / ×√20 scaling CLAUDE.md specifies for this repo's daily /
-      weekly / 20-day horizons.
+      ×1 / ×√5 / ×√20 scaling this project uses for its daily / weekly /
+      20-day horizons.
     </div>
   </details>
   <details class="tl-quiz">

@@ -17,7 +17,7 @@
   <h1 class="tl-title">Random Matrix Theory &amp; the Marchenko-Pastur Law</h1>
   <p class="tl-dek">The PCA lesson showed how to split a correlation matrix into ranked eigenvalues. It never asked the harder question: with only a finite sample of history, how many of those eigenvalues are real, and how many are exactly what pure noise looks like when you don't have enough data?</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — extends js/diversificationCore.js's existing eigenvalue math</span>
+    <span class="tl-status concept">CONCEPT — extends the eigenvalue math used elsewhere in this project's diversification research</span>
     <span>~18 min read</span>
     <span>Prereqs: Principal Component Analysis &amp; Factor Regimes, Linear Algebra &amp; Matrices</span>
   </div>
@@ -28,7 +28,7 @@
       <li>A correlation matrix built from finite history always spreads its eigenvalues away from 1 — even for instruments that are truly independent — purely from sampling noise, the same way 20 fair coin flips rarely land exactly 10-10.</li>
       <li>The Marchenko-Pastur law gives the exact "noise band" \([\lambda_{\min}, \lambda_{\max}] = [(1-\sqrt{q})^2, (1+\sqrt{q})^2]\) that pure-noise eigenvalues are expected to fall inside, where \(q = N/T\) (instruments over observations).</li>
       <li>Worked example in this lesson: \(N=30\) FX pairs, \(T=250\) days gives \(q=0.12\), so \(\lambda_{\min}\approx0.43\) and \(\lambda_{\max}\approx1.81\) — the basket's \(\lambda_1=8.2\) clears that band easily (a real factor), while \(\lambda_2\)–\(\lambda_4\) all land inside it (indistinguishable from noise).</li>
-      <li><code>js/diversificationCore.js</code>'s <code>effectiveBetsPCA</code> already consumes the full eigenvalue spectrum from <code>symmetricEigenvalues</code> but does not run this noise-band check against it — a concrete, unbuilt guardrail, not something the repo currently does.</li>
+      <li>This project's existing effective-number-of-bets calculation already consumes the full eigenvalue spectrum but does not run this noise-band check against it — a concrete, unbuilt guardrail, not something the repo currently does.</li>
     </ul>
   </div>
 
@@ -415,59 +415,6 @@
     something built or claimed here.
   </p>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
-    <h3>A concrete, unbuilt guardrail for the existing effective-bets metric</h3>
-    <p>
-      As the PCA lesson's repo box lays out, <code>js/diversificationCore.js</code>
-      already computes <code>symmetricEigenvalues</code> — the full eigenvalue
-      spectrum of a correlation matrix, via a from-scratch Jacobi rotation —
-      and feeds it into <code>effectiveBetsPCA(corr)</code>, the \((\sum_i
-      \lambda_i)^2 / \sum_i \lambda_i^2\) inverse-participation-ratio metric
-      that <code>diversification.html</code> displays live as "effective
-      number of bets." That metric already uses the entire eigenvalue
-      spectrum this lesson is about — every \(\lambda_i\) it computes goes
-      into the formula, with no distinction made between an eigenvalue that
-      is an overwhelming, obvious common factor and one that is statistically
-      indistinguishable from noise at the basket's actual \(N\) and \(T\).
-    </p>
-    <p>
-      To be explicit about what is and isn't already there: <strong>the
-      Marchenko-Pastur noise-filtering step described in this lesson is not
-      currently applied anywhere in this repo.</strong> It is a specific,
-      well-defined, low-risk enhancement candidate, not a claim about
-      existing behavior. Concretely, it would mean: given the eigenvalues
-      <code>symmetricEigenvalues</code> already returns, and the \(N\) and
-      \(T\) already known from the basket and the lookback window used to
-      build the correlation matrix, compute \(q = N/T\) and the
-      \((\lambda_{\min}, \lambda_{\max})\) band from the two-line formula in
-      this lesson, and flag which of the returned eigenvalues fall inside it.
-      That flag doesn't have to change the effective-bets number itself — it
-      could ship first as a simple annotation on <code>diversification.html</code>
-      ("2 of 5 eigenvalues distinguishable from noise at this window length")
-      — a direct, honest caveat on a metric that currently has none, and a
-      guardrail against a very specific overstatement: a basket whose
-      effective-bets score looks reassuringly close to \(N\) only because
-      several of its "distinct" eigenvalues are actually noise-band clutter
-      that happens to sum correctly, not because the basket is genuinely
-      that diversified.
-    </p>
-    <p>
-      This is a buildable next step, not a validated one. Any change to how
-      <code>effectiveBetsPCA</code> itself treats noise-band eigenvalues
-      (excluding them, shrinking them, reweighting the formula around only
-      the "real" ones) would be a new piece of decision logic on top of an
-      existing metric, and per Lego Principle 5 it would need its own honest
-      before/after comparison — does flagging or filtering noise-band
-      eigenvalues actually produce a more decision-useful diversification
-      read in practice, on real baskets, not just a theoretically cleaner
-      one — before being trusted, and it should be registered as a candidate
-      in <code>LEGO_MODULES.md §2</code> before it's built, not assumed to
-      help because the math is elegant.
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
@@ -571,7 +518,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Only the ratio q=N/T matters</strong>, not N or T individually — more history per instrument narrows the band; more instruments relative to history widens it.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked scenario: N=30, T=250 gives q=0.12.</strong> λ₁=8.2 clears the ~0.43–1.81 band easily (a real factor); λ₂–λ₄ all land inside it (indistinguishable from noise).</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>"Inside the band" doesn't prove there's no structure.</strong> It means this sample can't currently distinguish that eigenvalue from noise — a real but modest factor can still hide there.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This noise-band check is not currently run in this repo.</strong> <code>js/diversificationCore.js</code>'s <code>effectiveBetsPCA</code> already has the eigenvalues it would need — this is a concrete, unbuilt guardrail, not a claim about existing behavior.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This noise-band check is not currently run in this repo.</strong> This project's existing effective-number-of-bets calculation already has the eigenvalues it would need — this is a concrete, unbuilt guardrail, not a claim about existing behavior.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -659,15 +606,15 @@
     </div>
   </details>
   <details class="tl-quiz">
-    <summary>Q6. js/diversificationCore.js already computes eigenvalues via symmetricEigenvalues and feeds them into an effective-bets metric. What specific step is missing to apply this lesson's noise-band test, and why would it matter?</summary>
+    <summary>Q6. This project's own code already computes eigenvalues and feeds them into an effective-bets metric. What specific step is missing to apply this lesson's noise-band test, and why would it matter?</summary>
     <div class="tl-answer">
       What's missing is comparing each returned eigenvalue against a
       Marchenko-Pastur band computed from the basket's actual \(N\) (number
       of instruments) and \(T\) (number of observations in the lookback
       window used to build the correlation matrix) — a two-line calculation
       (\(q = N/T\), then \((1 \mp \sqrt{q})^2\)) that isn't currently run
-      anywhere against the eigenvalues <code>symmetricEigenvalues</code>
-      already produces. It matters because the effective-bets formula
+      anywhere against the eigenvalues that computation already produces.
+      It matters because the effective-bets formula
       currently treats every eigenvalue as equally informative regardless of
       whether it's an obvious common factor or a value indistinguishable
       from pure sampling noise at that window length — so a basket could
@@ -686,7 +633,6 @@
     <li>Laurent Laloux, Pierre Cizeau, Jean-Philippe Bouchaud &amp; Marc Potters, "Noise Dressing of Financial Correlation Matrices," <em>Physical Review Letters</em>, 1999 — the landmark, widely-cited application of Random Matrix Theory to real stock-market correlation matrices, showing the great majority of eigenvalues fall inside the Marchenko-Pastur noise band and only a handful represent genuine common factors.</li>
     <li>Vasiliki Plerou, Parameswaran Gopikrishnan, Bernd Rosenow, Luís A. Nunes Amaral &amp; H. Eugene Stanley, "Universal and Nonuniversal Properties of Cross Correlations in Financial Time Series," <em>Physical Review Letters</em>, 1999 — a contemporaneous, independent confirmation of RMT applied to financial correlation matrices, often cited alongside Laloux et al.</li>
     <li>Jean-Philippe Bouchaud &amp; Marc Potters, <em>A First Course in Random Matrix Theory: for Physicists, Engineers and Data Scientists</em>, Cambridge University Press, 2020 — a modern, practitioner-oriented textbook covering the Marchenko-Pastur law and the eigenvalue-cleaning/shrinkage techniques mentioned but not built in this lesson.</li>
-    <li><code>js/diversificationCore.js</code> and <code>diversification.html</code> in this repo — the existing eigenvalue-based "effective number of bets" implementation this lesson's repo box identifies as a concrete, not-yet-built candidate for a Marchenko-Pastur noise-band guardrail.</li>
   </ul>
   </details>
 

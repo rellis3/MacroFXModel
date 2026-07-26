@@ -501,53 +501,6 @@
     than beside.
   </p>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
-    <h3>The theoretical ceiling the Kelly lesson's formula sits under — still nothing built</h3>
-    <p>
-      CLAUDE.md states plainly that "volatility-based position sizing, cutting
-      losers and letting winners run are powerful drivers of results — worth
-      building and validating alongside an entry signal." The Kelly lesson
-      framed \(f^*=\mu/\sigma^2\) as the practical, textbook answer to the
-      sizing half of that sentence. This lesson's contribution isn't a new,
-      competing formula to implement — it's the honest statement of what that
-      formula actually is: the log-utility (\(\gamma=1\)) special case of a
-      much larger, rigorous framework, and the reason "how much smaller than
-      full Kelly should I actually bet" has a mathematically precise answer
-      once an investor is honest about their own \(\gamma\), rather than only
-      a heuristic one ("half-Kelly, because people say so").
-    </p>
-    <p>
-      As with the Kelly lesson, this stays a theoretical ceiling, not a built
-      feature: there is still no <code>kellySizing.js</code>, no utility-based
-      sizing module, no \(\gamma\)-elicitation step anywhere in this repo's
-      backtests or live bots. If a formal sizing engine is ever built here, the
-      honest order of operations, consistent with the Lego Principle, doesn't
-      change: a signal earns its place on real out-of-sample Sharpe and a
-      non-trivial OOS trade count <em>first</em>, on its own merits, exactly as
-      every other strategy in this repo must — and only then does a sizing
-      layer, Kelly, fractional Kelly, or a fuller Merton-style utility
-      treatment, get applied on top of an edge that has already been shown to
-      be real.
-    </p>
-    <p>
-      This is also the final lesson of the whole Theory Lab curriculum, so a
-      short closing note is worth saying plainly, not as a sales pitch. This
-      series started with a Math Primer and worked all the way up to a
-      continuous-time control problem solved by a differential equation for
-      an entire function of wealth and time — real machinery, honestly
-      explained. None of it changes the one rule that governs everything in
-      this repo, stated in <code>LEGO_MODULES.md</code> and CLAUDE.md's Lego
-      Principle alike: a piece of math is a tool, not a result, until it has
-      been connected to a real signal and proven on data it hasn't seen. Every
-      idea in this curriculum — from the first primer lesson to the HJB
-      equation on this page — is judged the same way: honestly, out of sample,
-      with real costs, or it isn't judged as edge at all. That discipline was
-      the whole point of the series, not a footnote to it.
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>

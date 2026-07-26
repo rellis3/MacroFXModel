@@ -432,42 +432,6 @@
     "how bad could this actually get."
   </p>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this connects to MacroFXModel</div>
-    <h3>The theory underneath a phrase the Black-Scholes lesson used and moved past</h3>
-    <p>
-      This lesson has no direct module in this repo, and it's worth being
-      plain about that: MacroFXModel doesn't price options anywhere in its
-      codebase — there is no <code>optionPricingEngine.js</code>, no Greeks
-      calculator wired into a live bot, nothing that would call a
-      risk-neutral expectation in production. This is pure derivation,
-      one layer underneath the Black-Scholes lesson's own claim that
-      "\(N(d_2)\) is the risk-neutral probability the option finishes in the
-      money" — a sentence that lesson stated and used, but did not fully
-      justify. This lesson is that justification.
-    </p>
-    <p>
-      The genuine repo connection is conceptual rather than a code module,
-      and it's a real one: the martingale definition from the
-      <code>emh.html</code> lesson (\(\mathbb{E}[P_t \mid \mathcal{F}_{t-1}]
-      = P_{t-1}\)) is not just a loose analogy to what happens under
-      \(\mathbb{Q}\) — it is the <em>literal same object</em>, applied to the
-      discounted price process instead of the raw one. The EMH lesson treats
-      the martingale property as an empirical claim about \(\mathbb{P}\),
-      testable with autocorrelations and variance-ratio tests on real return
-      series (the same kind of honest, OOS-checkable claim this repo insists
-      on everywhere else). This lesson shows the same property holding under
-      \(\mathbb{Q}\) by mathematical construction rather than empirical
-      accident. That is arguably the moment this Theory Lab's two separate
-      threads — market-efficiency theory (is <em>this actual market</em> a
-      fair game?) and derivatives-pricing theory (can I legitimately price
-      <em>this option</em> as if the world were a fair game?) — formally
-      meet: they turn out to be the same mathematical object, asked about
-      under two different measures, for two entirely different purposes.
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>

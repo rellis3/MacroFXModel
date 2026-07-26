@@ -28,7 +28,7 @@
     <li>Glosten-Milgrom derives the bid-ask spread from pure Bayesian adverse selection: Spread \(=\alpha(V_H-V_L)\), where \(\alpha\) is the informed-trading share and \(V_H-V_L\) is the fundamental-value uncertainty — not an arbitrary fee, but the exact gap needed for zero expected profit.</li>
     <li>This file's own worked numbers: with \(V_H=101\), \(V_L=99\), a spread of 0.60 at \(\alpha=0.3\) doubles to 1.20 at \(\alpha=0.6\), exactly tracking the formula, with the midpoint pinned at 100.00 both times.</li>
     <li>Kyle's Lambda extends the same logic to order size: \(\Delta p=\lambda Q\) with \(\lambda=\sigma_v/(2\sigma_u)\); the worked example runs the same 500-unit order through \(\sigma_u=100\) (liquid, \(\lambda=0.01\), $5 impact) versus \(\sigma_u=20\) (thin, \(\lambda=0.05\), $25 impact) — a five-fold cost difference from liquidity alone.</li>
-    <li>Both models are the formal "why" behind this repo's fill discipline — the spread every backtest pays is the adverse-selection premium of section 3, and the extra slippage modeled on stop/breakout entries is a high-\(\lambda\) event — connecting directly to <code>fill-realism.html</code>'s empirical test of whether reported edge survives progressively more realistic fills.</li>
+    <li>Both models are the formal "why" behind this repo's fill discipline — the spread every backtest pays is the adverse-selection premium of section 3, and the extra slippage modeled on stop/breakout entries is a high-\(\lambda\) event — connecting directly to this project's own empirical test of whether reported edge survives progressively more realistic fills.</li>
   </ul>
 </div>
 
@@ -41,7 +41,7 @@
     default... plus slippage on stop/breakout entries. Free fills are not
     honest," and a standing anti-pattern warns against "assuming the intrabar
     take-profit was hit on a daily bar (path is unknown) — prefer M1 fills."
-    <code>fill-realism.html</code> goes further and empirically tests whether
+    This project's own fill-realism research goes further and empirically tests whether
     a strategy's headline Sharpe survives being re-priced through
     progressively more realistic, finer-grained fills. All of that is sound
     practical discipline. None of it, as currently written anywhere in this
@@ -542,57 +542,6 @@
     </p>
   </div>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this connects to MacroFXModel</div>
-    <h3>The theory underneath a rule this repo already enforces without citing it</h3>
-    <p>
-      This repo's own project memory states, as a hard rule for every new
-      strategy: <strong>"Costs on by default. Round-trip spread + commission,
-      plus slippage on stop/breakout entries. Free fills are not honest,"</strong>
-      and separately flags, as an explicit anti-pattern to avoid: <strong>
-      "Assuming the intrabar take-profit was hit on a daily bar (path is
-      unknown) — prefer M1 fills or mark-to-window-close."</strong> Until now,
-      both rules have stood purely as practical discipline, learned the hard
-      way, with no formal citation behind the "why." Glosten-Milgrom and
-      Kyle's Lambda are that "why": the spread every backtest here pays on
-      entry and exit is, in theory, exactly the adverse-selection premium
-      derived in section 3 above — a cost that exists because whoever is
-      quoting the other side of the trade cannot tell an informed order from
-      a noise one, and prices accordingly. And the additional slippage this
-      repo specifically flags for <em>stop and breakout</em> entries — orders
-      that, by design, fire during fast, directional moves, exactly the
-      moments when momentary liquidity thins out and suspected informed flow
-      spikes — is precisely a high-\(\lambda\) event: the same order size that
-      would be cheap in calm, deep conditions costs more exactly when a stop
-      is triggering, because \(\lambda\) is elevated in exactly that instant.
-    </p>
-    <p>
-      The engineering already reflects this even without naming it. This
-      repo's realistic fill walker — <code>walkBars</code> in
-      <code>js/forecastCore.js</code>, the shared Tier-1 primitive every
-      forecast-family strategy imports per the Lego Principle's core-modules
-      table (never copy it; the vol-sigma series and band constants it works
-      alongside live in <code>js/volBacktestEngine.js</code>) — exists
-      specifically to avoid assuming a fill happened at a clean, frictionless
-      price on an unknown intrabar path. <code>fill-realism.html</code> is the
-      empirical version of the same question this lesson answers
-      theoretically: it re-prices the per-line volatility tearsheet at a
-      ladder of bar resolutions and checks whether the reported edge survives
-      being repriced through progressively more honest — that is, more
-      microstructure-realistic — fills, or whether it was a fill artifact all
-      along (its own framing: "if OOS Sharpe collapses as bars get finer
-      toward 1-min truth, the edge is a fill artifact"). Kyle's Lambda is the
-      formal parameter that predicts exactly this kind of collapse should be
-      expected wherever a strategy's simulated fills understate how thin
-      liquidity actually was on the path between entry and exit. Nothing about
-      the code changes as a result of reading this lesson — the fill walker
-      and the cost discipline are already correct. What changes is having a
-      rigorous, citable reason for a rule that was previously enforced purely
-      as hard-earned practical caution.
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
@@ -659,7 +608,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A trade is itself Bayesian evidence.</strong> Observing a buy shifts the market maker's belief about fundamental value from a flat 50/50 prior toward \(V_H\), even with no public news at all — the order flow is the news.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Kyle's Lambda formalizes why size and depth both matter.</strong> \(\Delta p=\lambda Q\) with \(\lambda=\sigma_v/(2\sigma_u)\) says price impact scales with order size, and the rate it scales at depends on how much noise-trading depth is available to absorb it.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Thin markets mean high \(\lambda\), and high \(\lambda\) means the same order costs more.</strong> A 500-unit order that costs \$5 of impact in a deep market can cost \$25 in a market with a fifth the noise-trading depth — nothing about the order changed, only the depth it landed in.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This is the theoretical "why" behind this repo's cost/fill-realism discipline.</strong> The round-trip spread every backtest pays is, in theory, the adverse-selection premium of Glosten-Milgrom; the extra slippage modeled on stop/breakout entries is a high-\(\lambda\) event — the rules in <code>CLAUDE.md</code> and <code>fill-realism.html</code> were already correct, this lesson just supplies the citation.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This is the theoretical "why" behind this repo's cost/fill-realism discipline.</strong> The round-trip spread every backtest pays is, in theory, the adverse-selection premium of Glosten-Milgrom; the extra slippage modeled on stop/breakout entries is a high-\(\lambda\) event — this project's own house rules and existing fill-realism research were already correct, this lesson just supplies the citation.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>\(\lambda\) is not a fixed constant of an instrument.</strong> It depends on time-varying fundamental uncertainty and time-varying noise-trading depth — the same pair has a low \(\lambda\) at London/NY overlap and a high \(\lambda\) at a thin session transition. A single "typical slippage" number applied at every hour throws that away.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Price impact is not purely linear or purely permanent in reality.</strong> Kyle's straight-line \(\Delta p=\lambda Q\) is a tractable first-order approximation; empirical impact grows sub-linearly at large size (closer to a square-root law), and real trades also carry temporary impact that partially reverts, on top of the model's permanent component.</span></div>
   </div>
@@ -754,7 +703,7 @@
     </div>
   </details>
   <details class="tl-quiz">
-    <summary>Q6. Why does CLAUDE.md's rule to model extra slippage specifically on stop and breakout entries reflect Kyle's Lambda, rather than being an arbitrary conservative padding?</summary>
+    <summary>Q6. Why does this project's rule to model extra slippage specifically on stop and breakout entries reflect Kyle's Lambda, rather than being an arbitrary conservative padding?</summary>
     <div class="tl-answer">
       Stop and breakout entries fire, by design, during fast, directional
       price moves — exactly the moments when momentary liquidity tends to
@@ -779,7 +728,6 @@
     <li>Albert S. "Pete" Kyle, "Continuous Auctions and Insider Trading," <em>Econometrica</em>, 1985 — the original paper defining the linear price-impact coefficient now universally called Kyle's Lambda.</li>
     <li>Maureen O'Hara, <em>Market Microstructure Theory</em>, Blackwell, 1995 — the standard textbook synthesis of both models and the broader microstructure literature built on them.</li>
     <li><code>theory-lab/lessons/bayesian-inference.html</code> in this repo — the Bayesian-updating machinery the Glosten-Milgrom derivation above applies directly.</li>
-    <li><code>fill-realism.html</code> in this repo — the empirical, bar-resolution-ladder test of whether a strategy's edge survives realistic fills, the practical counterpart to the theory in this lesson.</li>
   </ul>
   </details>
 

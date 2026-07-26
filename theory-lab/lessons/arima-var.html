@@ -29,7 +29,7 @@
       <li>The order (<i>p</i>,<i>d</i>,<i>q</i>) is read off the data via the Box-Jenkins loop — ACF/PACF cutoff patterns, a unit-root check for <i>d</i>, Ljung-Box residual diagnostics — not guessed or assumed to be (1,1,0).</li>
       <li>VAR is the orthogonal generalization: instead of one series on its own lags, it regresses a whole system of series (e.g. the DE–US yield spread and EUR/USD) each on lagged values of itself <em>and</em> every other series, so it can reveal bidirectional feedback a single "Y on lagged X" regression can never see.</li>
       <li>Granger causality tests whether one series's lags significantly improve forecasting another beyond its own history — it is explicitly a statistical/predictive claim, <strong>not</strong> true structural causation, since an unobserved common driver can produce the same result.</li>
-      <li>The lesson's running example — does the yield spread lead EUR/USD, or the reverse — is this repo's own <code>macro-deep-dives-notes.md</code> lead-lag case study formalized as a testable VAR/Granger question; no such fit has actually been run in this repo yet.</li>
+      <li>The lesson's running example — does the yield spread lead EUR/USD, or the reverse — is this repo's own prior lead-lag case study formalized as a testable VAR/Granger question; no such fit has actually been run in this repo yet.</li>
     </ul>
   </div>
 
@@ -47,11 +47,11 @@
   </p>
   <p>
     Both limits show up directly in work already sitting in this repo. This
-    codebase's macro notes (<code>education/macro-deep-dives-notes.md</code>,
-    Lessons 2–3) build a detailed, dated, qualitative case that the DE–US
+    codebase's own macro research notes (Lessons 2–3) build a detailed, dated,
+    qualitative case that the DE–US
     yield spread leads EUR/USD by roughly a trading session — but the argument
     stops at "the spread moved first, then FX followed," a narrative reading
-    of a chart, not a fitted model. <code>credit-leadlag.html</code> in this
+    of a chart, not a fitted model. This project's own lead-lag tooling in this
     repo does the same kind of thing for a credit-spread/vol pair. Neither one
     has a model with two variables in it that could answer, formally,
     "how much does the spread's <em>own</em> past explain FX beyond what FX's
@@ -456,7 +456,7 @@
   </p>
   <p>
     This is exactly the right tool for the question this repo's Interest Rate
-    Parity lesson and <code>education/macro-deep-dives-notes.md</code>'s
+    Parity lesson and this project's own prior macro research notes'
     Transatlantic Yield Spread lesson both raise but never formally test: does
     the yield spread lead FX, does FX lead the spread, or does the influence
     run both ways? A VAR fit on the two series doesn't just answer "are they
@@ -509,7 +509,7 @@
     the standard tool for exactly the lead-lag questions this repo already
     raises informally: a policy-rate differential against a currency pair, a
     credit spread against an equity index (this repo's own
-    <code>credit-leadlag.html</code> measures a lead-lag empirically without a
+    This project's own lead-lag tooling measures a lead-lag empirically without a
     VAR/Granger structure underneath it yet), a term spread against a growth
     proxy.
   </p>
@@ -519,7 +519,7 @@
     <div class="tl-box-label">Real-world trading scenario</div>
     <h3>Does the yield spread lead EUR/USD, or is it the other way around?</h3>
     <p>
-      This is the exact question <code>education/macro-deep-dives-notes.md</code>'s
+      This is the exact question this project's own prior macro research notes'
       Transatlantic Yield Spread lesson poses and answers only qualitatively:
       its Lesson 3 case study walks through a dated example (17–18 Feb 2026)
       where the DE–US yield spread fell steadily on the Tuesday while EUR/USD
@@ -552,45 +552,7 @@
       To be clear about what this is: the 2-day, one-directional result above
       is an illustration of what a VAR + Granger causality test <em>could</em>
       show, chosen to make the payoff concrete — not a result already produced
-      in this repo. No such fit has been run here yet; see the repo box below
-      for what that would actually require.
-    </p>
-  </div>
-
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
-    <h3>The formal upgrade from macro-deep-dives-notes.md's qualitative lead-lag case study</h3>
-    <p>
-      <code>education/macro-deep-dives-notes.md</code>'s Lesson 2
-      (Transatlantic Yield Spread) and Lesson 3 (the Feb 2026 live case study)
-      already build a detailed narrative case that the DE–US yield spread
-      leads EUR/USD, complete with a five-channel transmission-speed table and
-      a real dated example of an ~24-hour lead. Its own §3.5 "next steps"
-      section explicitly names <strong>rolling lag correlation</strong> and
-      <strong>Granger causality testing</strong> as the intended quantitative
-      follow-up to that qualitative case study — this lesson's VAR/Granger
-      causality section is exactly that follow-up, written out formally.
-      <code>credit-leadlag.html</code> in this repo does a structurally similar
-      thing for a different pair (credit spreads vs. risk-vol), again as an
-      empirical, descriptive lead-lag measurement without a VAR/Granger
-      structure underneath it.
-    </p>
-    <p>
-      <strong>To be explicit about what this is and isn't:</strong> none of
-      that VAR/Granger fitting has been built here. Doing it honestly would
-      need real daily (or intraday) yield-spread and FX data pulled and
-      aligned the way this repo's data-modeling discipline requires (matched
-      update cadence, no lookahead), a stationarity check before fitting —
-      most likely on daily <em>changes</em> in the spread and log-returns in
-      FX, not raw levels, exactly per this lesson's differencing step —
-      Granger tests run on rolling windows rather than one full-sample test
-      (since macro-deep-dives-notes.md's own §2.7 notes causality direction
-      can reverse in risk-off regimes), and the same true in-sample/
-      out-of-sample split with a non-trivial trade count this repo requires of
-      every other strategy before a Granger-causality finding becomes the
-      basis for a live signal's timing. This is currently a research candidate
-      for <code>LEGO_MODULES.md §2</code>, not a described feature.
+      in this repo. No such fit has been run here yet.
     </p>
   </div>
 
@@ -645,7 +607,7 @@
     </p>
     <p>
       <strong>Regime dependence / parameter instability.</strong> Exactly the
-      caution <code>macro-deep-dives-notes.md</code> itself gives (§2.7's
+      caution this project's own prior macro research itself gives (§2.7's
       breakdown modes — risk-off flights to safety, central-bank intervention,
       extreme positioning, geopolitical shocks) applies directly to any
       VAR/Granger fit: a lead-lag relationship estimated over one regime is
@@ -767,7 +729,6 @@
     <li>Clive W. J. Granger, "Investigating Causal Relations by Econometric Models and Cross-Spectral Methods," <em>Econometrica</em>, 1969 — the original Granger causality test, part of the body of work behind Granger's 2003 Nobel Memorial Prize.</li>
     <li>C. W. J. Granger &amp; P. Newbold, "Spurious Regressions in Econometrics," <em>Journal of Econometrics</em>, 1974 — the classic warning about fitting AR/VAR-family models to non-stationary data without differencing first, directly motivating the "I" in ARIMA and the pitfalls above.</li>
     <li>James D. Hamilton, <em>Time Series Analysis</em>, Princeton University Press, 1994 — already cited in the OU lesson; its ARIMA and VAR chapters are the standard graduate reference for everything covered here.</li>
-    <li><code>education/macro-deep-dives-notes.md</code> (Lessons 2–3) and <code>credit-leadlag.html</code> in this repo — the existing qualitative lead-lag work this lesson's VAR/Granger causality section formalizes.</li>
   </ul>
   </details>
 

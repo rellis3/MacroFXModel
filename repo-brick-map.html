@@ -1,0 +1,2045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Repo Brick Map — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theory-lab/assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+
+  <div class="tl-crumb"><a href="index.html">MacroFX Dashboard</a> / Repo Brick Map</div>
+
+  <div class="tl-hub-hero">
+    <div class="tl-kicker">Internal — Dashboard Only, Not Shared</div>
+    <h1>Repo Brick Map</h1>
+    <p>Every "Where this connects to MacroFXModel" note from the Theory Lab curriculum, consolidated in one place instead of scattered across 42 shared lesson pages. This is where the actual mapping lives now — which lesson's math corresponds to which real internal module, what's already built and tested, and what's still a described-but-unbuilt candidate.</p>
+    <div class="tl-callout">
+      <strong>Why this page is separate.</strong> The Theory Lab curriculum is shared with an external study group under its own password. That group doesn't need to know which internal source files of this project's trading system a given lesson maps to — so those specifics were moved here, behind the dashboard's own password, instead of living inline in the shared lessons. Nothing on this page is a trading signal; per <a href="CLAUDE.md">CLAUDE.md</a>'s Lego Principle #5, a concept only earns trust once it clears this project's real out-of-sample bar.
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>Advanced Portfolio &amp; Market Structure</h2>
+    <div class="brick-grid">
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/alpha-beta-separation.html">Alpha vs. Beta Separation</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+          <h3>An honest, currently-missing decomposition</h3>
+          <p>
+            No strategy in this repo currently has its returns regressed against a
+            market/risk factor to separate beta from alpha — every backtest card
+            reports a strategy's raw Sharpe/return, not how much of it is exposure
+            to a common factor. The regression machinery already exists:
+            <code>js/statsCore.js</code>'s <code>linregSlope</code> is exactly the
+            \(\beta\) estimator this lesson uses, and <code>pca-factors.html</code> /
+            <code>random-matrix-theory.html</code>'s eigenvalue work is exactly how
+            you'd identify what the dominant "market factor" even is for a
+            multi-pair FX book (PC1 of the correlation matrix, filtered against the
+            Marchenko-Pastur noise band). Wiring these together — regress each
+            strategy's trade-level or daily returns against that dominant factor,
+            report \(\hat\alpha\)/\(\hat\beta\)/its standard error alongside the
+            existing Sharpe card — would be a genuine, currently-unbuilt candidate
+            that this repo's own tooling already has every ingredient for. Like
+            everything else in this Theory Lab, it would need the same OOS
+            discipline before the resulting \(\hat\alpha\) is trusted as real.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/fractional-brownian-motion.html">Fractional Brownian Motion &amp; Long Memory</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this connects to MacroFXModel</div>
+          <h3>A descriptive statistic already in production, a generative model not yet built</h3>
+          <p>
+            <code>js/rangeBiasCore.js</code>'s <code>computeHurst</code>, covered in the previous lesson, is exactly the
+            R/S-regression-based estimator this lesson gives a formal home to — it produces an empirical \(H\) but does
+            not, and was never designed to, fit an underlying generative model like fBm or ARFIMA to the data. That is a
+            reasonable scope for a live entry-bias feature: it needs a fast, robust regime read, not a full model fit. It
+            does mean the live feature's \(H\) is a description of the recent past's scaling behavior, not a forecast
+            derived from a fitted long-memory process — a distinction worth keeping straight given how easily "the Hurst
+            exponent is 0.85" can be misread as "and therefore the model predicts continued persistence for N more days,"
+            which computeHurst's descriptive R/S procedure does not, by itself, license.
+          </p>
+          <p>
+            Separately, <code>js/volBacktestEngine.js</code>'s GARCH-family sigma estimator is a genuinely short-memory
+            model by construction — its volatility persistence decays geometrically, exactly the AR(1)-style curve in the
+            chart above. Long memory in realized volatility is a widely documented empirical regularity in the academic
+            literature (not a claim specific to this repo's data), distinct from and additional to the short-memory
+            clustering GARCH already captures. If this repo ever needs to forecast volatility meaningfully further out
+            than a short-memory GARCH model can honestly support — which it does not currently attempt to do — fitting a
+            genuine long-memory volatility model (ARFIMA on log-realized-vol, or a long-memory GARCH variant such as
+            FIGARCH) would be the natural, currently-unbuilt next step, and it would need the same OOS validation
+            discipline (Lego Principle 5) as any other model before being trusted over the existing GARCH sigma series.
+            Nothing described in this lesson is wired into any live forecaster today; it is background theory for a
+            future extension, not a description of current behavior.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/market-microstructure.html">Market Microstructure: Price Impact &amp; the Bid-Ask Spread</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this connects to MacroFXModel</div>
+          <h3>The theory underneath a rule this repo already enforces without citing it</h3>
+          <p>
+            This repo's own project memory states, as a hard rule for every new
+            strategy: <strong>"Costs on by default. Round-trip spread + commission,
+            plus slippage on stop/breakout entries. Free fills are not honest,"</strong>
+            and separately flags, as an explicit anti-pattern to avoid: <strong>
+            "Assuming the intrabar take-profit was hit on a daily bar (path is
+            unknown) — prefer M1 fills or mark-to-window-close."</strong> Until now,
+            both rules have stood purely as practical discipline, learned the hard
+            way, with no formal citation behind the "why." Glosten-Milgrom and
+            Kyle's Lambda are that "why": the spread every backtest here pays on
+            entry and exit is, in theory, exactly the adverse-selection premium
+            derived in section 3 above — a cost that exists because whoever is
+            quoting the other side of the trade cannot tell an informed order from
+            a noise one, and prices accordingly. And the additional slippage this
+            repo specifically flags for <em>stop and breakout</em> entries — orders
+            that, by design, fire during fast, directional moves, exactly the
+            moments when momentary liquidity thins out and suspected informed flow
+            spikes — is precisely a high-\(\lambda\) event: the same order size that
+            would be cheap in calm, deep conditions costs more exactly when a stop
+            is triggering, because \(\lambda\) is elevated in exactly that instant.
+          </p>
+          <p>
+            The engineering already reflects this even without naming it. This
+            repo's realistic fill walker — <code>walkBars</code> in
+            <code>js/forecastCore.js</code>, the shared Tier-1 primitive every
+            forecast-family strategy imports per the Lego Principle's core-modules
+            table (never copy it; the vol-sigma series and band constants it works
+            alongside live in <code>js/volBacktestEngine.js</code>) — exists
+            specifically to avoid assuming a fill happened at a clean, frictionless
+            price on an unknown intrabar path. <code>fill-realism.html</code> is the
+            empirical version of the same question this lesson answers
+            theoretically: it re-prices the per-line volatility tearsheet at a
+            ladder of bar resolutions and checks whether the reported edge survives
+            being repriced through progressively more honest — that is, more
+            microstructure-realistic — fills, or whether it was a fill artifact all
+            along (its own framing: "if OOS Sharpe collapses as bars get finer
+            toward 1-min truth, the edge is a fill artifact"). Kyle's Lambda is the
+            formal parameter that predicts exactly this kind of collapse should be
+            expected wherever a strategy's simulated fills understate how thin
+            liquidity actually was on the path between entry and exit. Nothing about
+            the code changes as a result of reading this lesson — the fill walker
+            and the cost discipline are already correct. What changes is having a
+            rigorous, citable reason for a rule that was previously enforced purely
+            as hard-earned practical caution.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/markowitz-black-litterman.html">Markowitz &amp; Black-Litterman</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+          <h3>A real, currently-missing formal portfolio-construction layer</h3>
+          <p>
+            To be direct about the current state of this repo: <strong>nothing here
+            runs a Markowitz or Black-Litterman-style optimizer to set position
+            weights</strong>. Every strategy — the reversion/continuation engine,
+            the range and confluence engines, the volatility-band forecasters —
+            operates on one instrument at a time and outputs a signal or a plan for
+            that instrument in isolation. There is no layer that takes several such
+            signals across a basket and asks "given everything I currently believe
+            about these instruments, and how they co-move, what's the actual
+            capital allocation that makes sense across all of them at once."
+          </p>
+          <p>
+            The pieces this lesson depends on are, encouragingly, already partly
+            built: <code>js/diversificationCore.js</code>'s <code>correlationMatrix</code>
+            and <code>symmetricEigenvalues</code> compute exactly the \(\Sigma\)
+            (or its correlation-normalized cousin) this lesson's variance formula
+            and Black-Litterman's \(\Pi = \delta \Sigma w_{mkt}\) both need, and the
+            existing "effective number of bets" metrics (<code>effectiveBetsPCA</code>,
+            <code>effectiveBetsEntropy</code>, <code>effectiveBetsWeighted</code>,
+            surfaced on <code>diversification.html</code>) are already answering a
+            closely related — but distinctly narrower — question: "how concentrated
+            is this basket's risk," not "what weights should I hold." Wiring an
+            actual optimizer on top would mean: sourcing or estimating an expected-
+            return vector (the hard, fragile part, which is exactly why Black-
+            Litterman's equilibrium-prior-plus-views approach is the more honest
+            starting point than raw Markowitz); deciding what "market-equilibrium
+            weights" even means in an FX context, where there's no obvious
+            market-cap analogue the way there is for equities (position/flow data,
+            or simply equal-weight, would need to stand in, each with real
+            trade-offs); and building the actual constrained-optimization solver
+            (a small, well-understood numerical problem, but not one this repo
+            currently has any code for).
+          </p>
+          <p>
+            <strong>This would be a meaningfully large, genuinely new piece of
+            infrastructure</strong> — not a quick extension of the existing
+            diversification tooling, even though it builds directly on that
+            tooling's covariance-matrix foundation. It is the natural formal
+            portfolio-construction layer <em>if and when</em> this repo moves from
+            single-instrument signals toward true multi-instrument portfolio
+            construction, but that "if" is doing real work: until there's an actual
+            need to allocate capital jointly across several live signals at once,
+            building this optimizer would be infrastructure in search of a use
+            case. Per this repo's standard discipline, were it built, it would still
+            need its own honest validation — a portfolio-construction layer doesn't
+            get to skip the IS/OOS split just because its inputs (the individual
+            signals) were separately validated; the way those signals get
+            <em>combined</em> is itself a claim that needs testing on its own terms
+            (Lego Principle 5).
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/merton-portfolio-problem.html">Merton's Continuous-Time Portfolio Problem</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+          <h3>The theoretical ceiling the Kelly lesson's formula sits under — still nothing built</h3>
+          <p>
+            CLAUDE.md states plainly that "volatility-based position sizing, cutting
+            losers and letting winners run are powerful drivers of results — worth
+            building and validating alongside an entry signal." The Kelly lesson
+            framed \(f^*=\mu/\sigma^2\) as the practical, textbook answer to the
+            sizing half of that sentence. This lesson's contribution isn't a new,
+            competing formula to implement — it's the honest statement of what that
+            formula actually is: the log-utility (\(\gamma=1\)) special case of a
+            much larger, rigorous framework, and the reason "how much smaller than
+            full Kelly should I actually bet" has a mathematically precise answer
+            once an investor is honest about their own \(\gamma\), rather than only
+            a heuristic one ("half-Kelly, because people say so").
+          </p>
+          <p>
+            As with the Kelly lesson, this stays a theoretical ceiling, not a built
+            feature: there is still no <code>kellySizing.js</code>, no utility-based
+            sizing module, no \(\gamma\)-elicitation step anywhere in this repo's
+            backtests or live bots. If a formal sizing engine is ever built here, the
+            honest order of operations, consistent with the Lego Principle, doesn't
+            change: a signal earns its place on real out-of-sample Sharpe and a
+            non-trivial OOS trade count <em>first</em>, on its own merits, exactly as
+            every other strategy in this repo must — and only then does a sizing
+            layer, Kelly, fractional Kelly, or a fuller Merton-style utility
+            treatment, get applied on top of an edge that has already been shown to
+            be real.
+          </p>
+          <p>
+            This is also the final lesson of the whole Theory Lab curriculum, so a
+            short closing note is worth saying plainly, not as a sales pitch. This
+            series started with a Math Primer and worked all the way up to a
+            continuous-time control problem solved by a differential equation for
+            an entire function of wealth and time — real machinery, honestly
+            explained. None of it changes the one rule that governs everything in
+            this repo, stated in <code>LEGO_MODULES.md</code> and CLAUDE.md's Lego
+            Principle alike: a piece of math is a tool, not a result, until it has
+            been connected to a real signal and proven on data it hasn't seen. Every
+            idea in this curriculum — from the first primer lesson to the HJB
+            equation on this page — is judged the same way: honestly, out of sample,
+            with real costs, or it isn't judged as edge at all. That discipline was
+            the whole point of the series, not a footnote to it.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/random-matrix-theory.html">Random Matrix Theory &amp; the Marchenko-Pastur Law</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+          <h3>A concrete, unbuilt guardrail for the existing effective-bets metric</h3>
+          <p>
+            As the PCA lesson's repo box lays out, <code>js/diversificationCore.js</code>
+            already computes <code>symmetricEigenvalues</code> — the full eigenvalue
+            spectrum of a correlation matrix, via a from-scratch Jacobi rotation —
+            and feeds it into <code>effectiveBetsPCA(corr)</code>, the \((\sum_i
+            \lambda_i)^2 / \sum_i \lambda_i^2\) inverse-participation-ratio metric
+            that <code>diversification.html</code> displays live as "effective
+            number of bets." That metric already uses the entire eigenvalue
+            spectrum this lesson is about — every \(\lambda_i\) it computes goes
+            into the formula, with no distinction made between an eigenvalue that
+            is an overwhelming, obvious common factor and one that is statistically
+            indistinguishable from noise at the basket's actual \(N\) and \(T\).
+          </p>
+          <p>
+            To be explicit about what is and isn't already there: <strong>the
+            Marchenko-Pastur noise-filtering step described in this lesson is not
+            currently applied anywhere in this repo.</strong> It is a specific,
+            well-defined, low-risk enhancement candidate, not a claim about
+            existing behavior. Concretely, it would mean: given the eigenvalues
+            <code>symmetricEigenvalues</code> already returns, and the \(N\) and
+            \(T\) already known from the basket and the lookback window used to
+            build the correlation matrix, compute \(q = N/T\) and the
+            \((\lambda_{\min}, \lambda_{\max})\) band from the two-line formula in
+            this lesson, and flag which of the returned eigenvalues fall inside it.
+            That flag doesn't have to change the effective-bets number itself — it
+            could ship first as a simple annotation on <code>diversification.html</code>
+            ("2 of 5 eigenvalues distinguishable from noise at this window length")
+            — a direct, honest caveat on a metric that currently has none, and a
+            guardrail against a very specific overstatement: a basket whose
+            effective-bets score looks reassuringly close to \(N\) only because
+            several of its "distinct" eigenvalues are actually noise-band clutter
+            that happens to sum correctly, not because the basket is genuinely
+            that diversified.
+          </p>
+          <p>
+            This is a buildable next step, not a validated one. Any change to how
+            <code>effectiveBetsPCA</code> itself treats noise-band eigenvalues
+            (excluding them, shrinking them, reweighting the formula around only
+            the "real" ones) would be a new piece of decision logic on top of an
+            existing metric, and per Lego Principle 5 it would need its own honest
+            before/after comparison — does flagging or filtering noise-band
+            eigenvalues actually produce a more decision-useful diversification
+            read in practice, on real baskets, not just a theoretically cleaner
+            one — before being trusted, and it should be registered as a candidate
+            in <code>LEGO_MODULES.md §2</code> before it's built, not assumed to
+            help because the math is elegant.
+          </p>
+        </div>
+    </div>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>Applied Statistics &amp; Validation</h2>
+    <div class="brick-grid">
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/arima-var.html">ARIMA &amp; Vector Autoregression (VAR)</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+          <h3>The formal upgrade from macro-deep-dives-notes.md's qualitative lead-lag case study</h3>
+          <p>
+            <code>education/macro-deep-dives-notes.md</code>'s Lesson 2
+            (Transatlantic Yield Spread) and Lesson 3 (the Feb 2026 live case study)
+            already build a detailed narrative case that the DE–US yield spread
+            leads EUR/USD, complete with a five-channel transmission-speed table and
+            a real dated example of an ~24-hour lead. Its own §3.5 "next steps"
+            section explicitly names <strong>rolling lag correlation</strong> and
+            <strong>Granger causality testing</strong> as the intended quantitative
+            follow-up to that qualitative case study — this lesson's VAR/Granger
+            causality section is exactly that follow-up, written out formally.
+            <code>credit-leadlag.html</code> in this repo does a structurally similar
+            thing for a different pair (credit spreads vs. risk-vol), again as an
+            empirical, descriptive lead-lag measurement without a VAR/Granger
+            structure underneath it.
+          </p>
+          <p>
+            <strong>To be explicit about what this is and isn't:</strong> none of
+            that VAR/Granger fitting has been built here. Doing it honestly would
+            need real daily (or intraday) yield-spread and FX data pulled and
+            aligned the way this repo's data-modeling discipline requires (matched
+            update cadence, no lookahead), a stationarity check before fitting —
+            most likely on daily <em>changes</em> in the spread and log-returns in
+            FX, not raw levels, exactly per this lesson's differencing step —
+            Granger tests run on rolling windows rather than one full-sample test
+            (since macro-deep-dives-notes.md's own §2.7 notes causality direction
+            can reverse in risk-off regimes), and the same true in-sample/
+            out-of-sample split with a non-trivial trade count this repo requires of
+            every other strategy before a Granger-causality finding becomes the
+            basis for a live signal's timing. This is currently a research candidate
+            for <code>LEGO_MODULES.md §2</code>, not a described feature.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/bootstrapping-monte-carlo.html">Bootstrapping &amp; Monte Carlo Simulation</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this connects to MacroFXModel</div>
+          <h3>The rule this lesson formalizes, and the tool that actually tests generalization</h3>
+          <p>
+            This repo's <code>CLAUDE.md</code> states, in the "Backtest build
+            discipline" section:
+          </p>
+          <p>
+            <em>"Don't let Monte Carlo stand in for OOS. Resampling from a strategy's
+            own realized return distribution shows the range of outcomes consistent
+            with that mean/std — it says nothing about whether the signal
+            generalizes to data it hasn't seen. It's a legitimate expectation-setting
+            tool; label it as that, not as robustness evidence."</em>
+          </p>
+          <p>
+            Everything above this box is the from-scratch statistical justification
+            for why that sentence is true rather than merely asserted: a bootstrap
+            resample and a Monte Carlo path are both, mechanically, incapable of
+            containing information the original sample or its fitted model didn't
+            already have. Neither can substitute for what this repo's Lego Principle
+            #5 actually requires — judging a strategy against a <strong>true
+            in-sample / out-of-sample split</strong>, with a non-trivial OOS trade
+            count, on data the signal was never fit to. This tier's Walk-Forward
+            Validation &amp; Purged Cross-Validation lesson is the tool built to test
+            exactly that different question — repeatedly re-fitting on one stretch
+            of real history and testing, un-touched, on a later stretch it never
+            saw, with a purge gap to prevent leakage across the split. Bootstrapping
+            and Monte Carlo cannot stand in for that, no matter how many replicates
+            are run, because they were never built to touch data outside the
+            original sample in the first place. Use them for exactly what they're
+            good at — an honest confidence interval, an expectation-setting
+            distribution of outcomes given what you already believe — and reach for
+            walk-forward validation, not a bigger \(B\), whenever the actual question
+            is generalization.
+          </p>
+          <p>
+            Zooming out: this is the seventh and final lesson in this Applied
+            Statistics &amp; Validation tier, and read in order the seven lessons
+            trace one continuous validation toolkit rather than seven unrelated
+            topics — checking a fitted model's residuals for autocorrelation and
+            heteroskedasticity, choosing between competing models honestly rather
+            than by in-sample fit alone, modeling a time series' own dynamics with
+            ARIMA/VAR, capturing how markets move together beyond a single
+            correlation number with copulas, judging a strategy's risk-adjusted
+            return with a Sharpe ratio corrected for multiple testing (the Deflated
+            Sharpe Ratio), testing whether a signal survives on data it never saw
+            with walk-forward and purged cross-validation, and — here — being
+            precise about what resampling your own results can and cannot tell you
+            once that OOS test is done. None of the seven replaces the others; each
+            one closes a different way a backtest can quietly lie to its author.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/copulas.html">Copulas — Modeling Dependence Beyond Correlation</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+          <h3>A genuine gap next to the existing correlation tools — not yet built</h3>
+          <p>
+            This repo has no copula implementation anywhere, and this lesson is not
+            pretending otherwise — it is flagged as a concept lesson precisely
+            because there is nothing to point at in the codebase yet. What does
+            exist, and what makes the gap concrete rather than abstract, is
+            <code>correlations.html</code> (the Correlation Lab), which computes a
+            rolling Pearson correlation on log returns over a 60-bar window and
+            blends it with a beta spread into a "hedge score," and
+            <code>diversification.html</code>, which builds its "effective number of
+            bets" metrics (<code>effectiveBetsPCA</code>,
+            <code>effectiveBetsEntropy</code>, <code>effectiveBetsWeighted</code> in
+            <code>js/diversificationCore.js</code>) directly off the eigenvalues of
+            that same kind of correlation matrix. Both tools are honest and useful
+            at the question they answer — "how linked are these instruments on an
+            ordinary day, and how concentrated is my book around that linkage" — and
+            neither one, by construction, can see tail dependence, because a Pearson
+            correlation matrix is exactly the object this lesson describes as blind
+            to it.
+          </p>
+          <p>
+            A copula-based dependence model would be a meaningful complement to
+            those tools specifically for stress-testing a multi-pair book's tail
+            behavior — not a replacement for the rolling-correlation view, which
+            remains the right, simpler tool for ordinary-day diversification checks.
+            A candidate shape: fit realistic fat-tailed marginals per instrument
+            (reusing the EVT lesson's machinery), fit a small set of candidate
+            copulas (Gaussian as the baseline, Clayton or Student-t as the
+            tail-dependent alternative) to historical pair data, and compare what
+            each implies for joint drawdown probability versus what a naive
+            correlation-only Monte Carlo would show — surfaced as a "tail
+            dependence" companion metric next to the existing hedge score and
+            effective-bets numbers, not a new standalone page.
+          </p>
+          <p>
+            To be explicit about what this is and isn't: this is an unbuilt
+            candidate, not a claim that it would necessarily improve anything.
+            Fitting and validating a copula's tail dependence parameter honestly
+            needs real historical crisis-period data — 2008, the 2015 CHF unpeg,
+            the March 2020 COVID shock, and similar episodes — because tail events
+            are by definition rare, and a tail dependence estimate fit only on calm
+            years is exactly the failure mode the Gaussian-copula/CDO history above
+            warns about. Any such module would need to be built as a proper Tier-1
+            or Tier-2 brick (per this repo's Lego Principle 6), registered as a
+            candidate in <code>LEGO_MODULES.md §2</code>, and validated honestly on
+            out-of-sample crisis windows before it informed any real sizing
+            decision — not assumed to help because the underlying theory is
+            well-established.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/model-selection-aic-bic.html">Model Selection: AIC &amp; BIC</a></div>
+      <div class="tl-box repo"><div class="tl-icon-badge green">🧩</div><div class="tl-box-label">Where this connects to MacroFXModel</div>
+          <h3>The formal version of a rule this repo already states in prose</h3>
+          <p>
+          To be direct about what is and isn't built here: <strong>there is currently no coded AIC/BIC
+          step anywhere in this codebase</strong> — no engine here formally computes and compares
+          information criteria across candidate model orders. That is a genuine, currently-missing formal
+          step, not a solved problem being merely under-documented. This lesson exists to make the theory
+          available before that gap gets filled, not to claim it already has been.
+          </p>
+          <p>
+          What already exists is the house instinct AIC/BIC would formalize. <code>CLAUDE.md</code>'s own
+          backtest-build-discipline section says it plainly: <em>"only add tunable parameters after,
+          knowing each one you add is overfit risk you're buying"</em> — that is, in prose, exactly what
+          the AIC/BIC penalty terms (\(2k\) and \(k\ln n\)) price numerically. And the
+          <a href="theory-lab/lessons/multiple-testing.html">Multiple Testing lesson</a>'s discipline of "count the cells"
+          before declaring a slice a real survivor is the same instinct applied to a different axis of
+          the same problem: multiple testing counts how many <em>looks</em> at the data you took before
+          calling one significant, while AIC/BIC count how many <em>parameters</em> a single model was
+          allowed before calling its fit meaningful. Both are answers to the same underlying question —
+          "how much of what I'm seeing is the price of giving myself more chances to find something?" —
+          aimed at two different places a model builder can quietly buy overfitting without noticing:
+          too many slices, or too many knobs on one model. Any future engine here that searches over lag
+          length, HMM state count, or GARCH order — anywhere a "how much complexity" choice currently
+          relies on eyeballing in-sample fit — is a legitimate candidate for a real AIC/BIC (or AICc)
+          step, logged the same honest way the rest of this repo's validation is: reported alongside, not
+          instead of, a true out-of-sample check.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/regression-diagnostics.html">Regression Diagnostics: Durbin-Watson, Breusch-Pagan &amp; Jarque-Bera</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this connects to MacroFXModel</div>
+          <h3>The from-scratch math behind an existing house rule</h3>
+          <p>
+            <code>CLAUDE.md</code>'s backtest-build-discipline section states the
+            rule this lesson exists to formalize, word for word: <em>"Add residual
+            diagnostics to any regression-based signal: Durbin-Watson
+            (autocorrelation), Jarque-Bera (residual normality), Breusch-Pagan
+            (heteroskedasticity) before trusting its p-value/coefficient. A
+            statistically 'significant' coefficient on a heteroskedastic fit has
+            optimistic standard errors — check before leaning on it."</em> That
+            sentence has been sitting in this repo's prose discipline as a rule to
+            follow; this lesson is the derivation underneath it — where each
+            statistic comes from, why the specific formula catches the specific
+            failure it's named for, and why a failure specifically inflates
+            apparent significance rather than just generically "being a problem."
+          </p>
+          <p>
+            The Jarque-Bera test in particular reuses building blocks that already
+            exist in this codebase rather than introducing new ones:
+            <code>js/metricsCore.js</code>'s <code>skewness</code> and
+            <code>excessKurtosis</code> functions — built 2026-07-21 as Tier-1
+            primitives, unit-tested in <code>legoBricks.test.mjs</code>, and already
+            wired into <code>summarizeTrades</code>'s <code>skew</code>/
+            <code>excessKurt</code> output fields — are the exact two ingredients
+            the \(JB = \tfrac{n}{6}(S^2 + K^2/4)\) formula combines. The only
+            difference between how this repo currently uses them and what
+            Jarque-Bera does is the input series: today they describe the shape of
+            a strategy's realized trade P&amp;L; Jarque-Bera applies the identical
+            math to a regression's residual series instead. Nothing new needs
+            building to compute \(S\) and \(K\) for a regression's residuals — the
+            brick already exists.
+          </p>
+          <p>
+            <code>education/regression-analysis-course-notes.md</code> covers the
+            applied, practical side of regression work in this repo — how to set
+            up and interpret a regression for a trading signal day to day. This
+            lesson is deliberately the theory layer underneath that practice: the
+            three checks a regression should pass before its p-value is quoted
+            anywhere, derived from first principles rather than invoked as a
+            checklist item.
+          </p>
+          <p>
+            This is Lesson 1 of a new <strong>Applied Statistics &amp;
+            Validation</strong> category — the from-scratch math behind the
+            broader honest-harness discipline (Lego Principle 5, the
+            backtest-build-discipline section) that this repo already enforces in
+            prose across every regression-based signal it builds.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/sharpe-family-deflated.html">Sharpe, Sortino, Calmar &amp; the Deflated Sharpe Ratio</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+          <h3>metricsCore.js already has the Sharpe honesty pair — DSR is the next layer, and it isn't built yet</h3>
+          <p>
+            This repo is unusually well set up to add DSR properly, because the
+            pieces it depends on already exist as bricks, not as something that
+            would need to be invented. <code>js/metricsCore.js</code> already ships
+            <code>sharpeRatio</code>, <code>sortinoRatio</code> and
+            <code>calmar</code> exactly as derived above, each taking its
+            annualization explicitly rather than assuming one — the module's own
+            header comment explains this was built specifically because the same
+            three ratios had drifted into 8+ different, silently disagreeing
+            implementations across the codebase's various backtest engines before
+            this brick existed. It also already ships the Sharpe-honesty pair:
+            <code>sharpeStdError</code> (Lo 2002's standard error of an annualized
+            Sharpe) and <code>minTrackRecordLength</code> (Bailey &amp; López de
+            Prado, 2012), the latter already using the exact skew/kurtosis-adjusted
+            variance-inflation term this lesson's DSR formula uses too. Per
+            CLAUDE.md, <code>summarizeTrades</code> already feeds every strategy's
+            real per-trade skew and excess kurtosis into that adjustment rather
+            than assuming Gaussian returns, so every result card already reports
+            \(SR \pm SE\) and a fat-tail-adjusted minimum track record length
+            alongside the raw Sharpe.
+          </p>
+          <p>
+            What's genuinely missing is the piece this lesson is centrally about:
+            nothing in the current metrics stack tracks, or corrects for, <em>how
+            many variations were tried</em> before a "best" Sharpe was reported.
+            <code>minTrackRecordLength</code> answers "how much live data would it
+            take to trust this specific Sharpe," which is a valuable but different
+            question from "given the parameter sweep that produced this Sharpe, how
+            much of it is the sweep talking." There is no <code>N</code> (trial
+            count) tracked anywhere in a backtest card today, no
+            <code>deflatedSharpe.js</code>, and no UI element that asks "how many
+            variations did you actually try to get here" before rendering a
+            headline Sharpe. This is a genuine, valuable, currently-missing
+            validation layer — the natural next step for this metrics stack, not a
+            claim that it already exists in some other form. Building it would mean
+            instrumenting the places that already run parameter sweeps (any
+            backtest with a grid of thresholds/lookbacks/windows) to log every
+            trial's Sharpe, not just the winner's, so \(N\) and \(\sigma_{SR}\) are
+            real numbers pulled from the actual search rather than guessed after
+            the fact — the single most common way DSR gets misapplied in practice
+            is plugging in a guessed or undercounted \(N\) instead of the sweep's
+            true trial count, which silently understates \(SR_0\) and overstates
+            the resulting DSR.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/walk-forward-purged-cv.html">Walk-Forward &amp; Purged Cross-Validation</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this connects to MacroFXModel</div>
+          <h3>This is the formal name for a rule <code>CLAUDE.md</code> already enforces — and a refinement worth checking against</h3>
+          <p>
+          This repo's build discipline states the walk-forward principle directly, twice: the adding-a-
+          strategy checklist's <strong>"No lookahead. σ/regime/score for window \(i\) use data \(< i\) only"</strong>,
+          and the Lego Principle's <strong>"true in-sample / out-of-sample split"</strong> requirement,
+          paired with the <strong>≥30 OOS trade count gate</strong> that keeps a fold's out-of-sample result
+          from being too thin to mean anything. Those two rules, together, are exactly what this lesson
+          formalizes: train strictly on the past, evaluate strictly on the unseen future, and don't trust a
+          thin sliver of OOS trades as if it were a real fold.
+          </p>
+          <p>
+          Where this lesson goes further than the current codebase does: <code>summarizeSplit</code> in
+          <code>js/honestForecastEngine.js</code> performs exactly one chronological split — everything
+          before a computed split date is IS, everything from that date on is OOS — and it does not
+          currently purge or embargo rows straddling that boundary. That's an honest gap, not a hidden bug:
+          a single clean chronological split (no shuffling) already eliminates the crude lookahead problem
+          this lesson opens with. What it does <em>not</em> eliminate is the subtler boundary leak described
+          above, and this repo has no shortage of features built on exactly the kind of overlapping rolling
+          windows where that leak lives — HV20 and the other vol-sigma series in
+          <code>js/volBacktestEngine.js</code>, the rolling z-scores and percentiles in
+          <code>js/statsCore.js</code> (<code>rollingZScore</code>, <code>rollingPercentile</code>), and the
+          day-type estimators in <code>js/dayTypeCore.js</code> all compute a value at index \(i\) from a
+          window of nearby bars. Any of them used near a train/OOS split boundary is a candidate for exactly
+          the label/feature overlap this lesson walks through. This isn't a claim that any specific reported
+          OOS Sharpe in this repo is wrong — that's an empirical question a purge/embargo check would have
+          to answer per-strategy — but it is the concrete, checkable refinement worth applying before
+          trusting an OOS number on a strategy whose features lean on multi-day rolling windows near the
+          split date.
+          </p>
+        </div>
+    </div>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>Foundations &amp; Epistemics</h2>
+    <div class="brick-grid">
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/bayesian-inference.html">Bayesian Inference &amp; Updating</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+          <h3>Confluence scoring is currently additive, not Bayesian — and that's a genuine, unbuilt design question</h3>
+          <p>
+            <code>js/levelSources.js</code> emits a <code>Level[]</code> from several
+            independent sources (daily open, prior hi/lo, pivots, volume profile,
+            swing S&amp;R, round numbers, VWAP), and <code>collectLevels</code> /
+            <code>clusterLevels</code> group nearby levels from different sources
+            into a confluence cluster. Separately, <code>js/entryGradeCore.js</code>'s
+            <code>computeSignalScore</code> combines several component scores
+            (<code>hmmScore</code>, <code>momScore</code>, <code>rbScore</code>,
+            <code>structScore</code>, optionally <code>macroScore</code>) into a
+            single 0–100 signal score via a fixed weighted sum — 25/25/20/20/10 with
+            macro data on, 38/25/25/12 without.
+          </p>
+          <p>
+            A weighted sum treats each confirming signal as contributing a fixed,
+            independent slice of "confidence," regardless of how correlated that
+            signal is with the others already counted, and regardless of how common
+            or rare the situation it's flagging actually is. A Bayesian alternative
+            is a genuinely different design: treat "fade" vs. "follow" as two
+            competing hypotheses with a prior (e.g. the historical base rate of fade
+            vs. follow outcomes at this kind of level, the way the worked example
+            above used the 20% base rate of trend days), and treat each additional
+            confirming signal (structural confluence, momentum alignment, range-bias
+            conviction, macro alignment) as evidence that updates the posterior via
+            its own likelihood ratio — sequential updating exactly as derived above,
+            each new signal multiplying in a Bayes factor rather than adding a fixed
+            point weight. The structural appeal, in principle, is that this can
+            naturally down-weight <strong>correlated</strong> signals (two features
+            that are mostly saying the same thing shouldn't each buy a full,
+            independent slice of confidence the way a linear sum lets them) and it
+            would produce an actual calibrated probability ("62% likely to fade")
+            instead of an unitless 0–100 score.
+          </p>
+          <p>
+            To be explicit about where this stands: <strong>this is not built,
+            not prototyped, and not validated</strong> — it is a candidate reframing
+            of an existing brick, described honestly as a hypothesis about design,
+            not a claim of improvement. Building it would require estimating real
+            likelihood ratios per signal from historical data (not guessed weights),
+            handling the correlation-between-signals problem explicitly rather than
+            just asserting Bayes handles it gracefully, and — per this repo's Lego
+            Principle #5 — proving it beats the incumbent additive
+            <code>computeSignalScore</code> on true out-of-sample Sharpe with a
+            non-trivial OOS trade count before it would replace anything live. A
+            more "principled-sounding" formula is not evidence by itself; only the
+            OOS comparison is.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/emh.html">The Efficient Market Hypothesis</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this connects to MacroFXModel</div>
+          <h3>The house discipline in <code>CLAUDE.md</code> is EMH turned into engineering practice</h3>
+          <p>
+          This repo's build discipline — spelled out in <code>CLAUDE.md</code> — is not an arbitrary
+          process checklist. It is what taking EMH seriously as a prior looks like in code. A few direct
+          lines:
+          </p>
+          <ul>
+            <li>
+            <strong>The in-sample / out-of-sample split, and the "≥30 OOS trades" gate</strong>
+            (<code>js/honestForecastEngine.js</code>'s <code>summarizeSplit</code>, and the OOS Sharpe gate
+            referenced throughout the repo's strategy-validation rules) exist because an in-sample result
+            is exactly the kind of thing the joint-hypothesis problem warns about: you fit a rule to a
+            known history, and the history you fit to no longer has any power to distinguish "found a
+            genuine, persistent edge" from "found the specific noise pattern that happened to occur in this
+            sample." Only performance on data the rule never saw is evidence against the null that "this is
+            just noise the fitting process found."
+            </li>
+            <li>
+            <strong>"Name the benchmark before claiming improvement"</strong> is the buy-and-hold /
+            no-skill floor from the bullet above, made a hard rule rather than a suggestion. An equity
+            curve that looks good in isolation is not evidence of anything until it's shown next to what a
+            passive, EMH-consistent baseline would have produced over the same period with the same costs.
+            </li>
+            <li>
+            <strong>"Costs on by default"</strong> and the requirement for realistic fills (the fill walker
+            in <code>js/forecastCore.js</code>, never a zero-cost backtest) matter because EMH's prediction
+            is specifically about <em>costless</em>, riskless arbitrage. A pattern that only "works" before
+            spread and slippage isn't a counterexample to EMH at all — it's consistent with it. EMH doesn't
+            claim markets are efficient net of frictions it never promised to overcome; it claims the free
+            lunch isn't there. Charging real costs is what makes the test actually about the free lunch.
+            </li>
+          </ul>
+          <p>
+          None of this says any particular strategy in this repo does or doesn't beat efficient pricing —
+          that's an empirical question answered per-strategy by its own OOS card, not by this lesson. What
+          this lesson explains is <em>why the discipline exists at all</em>: because the default,
+          working assumption going in is that markets are efficient enough that a real edge is the
+          exception, not the expectation, and the entire validation harness is built to make that a hard
+          bar to clear rather than an easy one.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/multiple-testing.html">Multiple Testing &amp; the Look-Elsewhere Effect</a></div>
+      <div class="tl-box repo"><div class="tl-icon-badge green">🧩</div><div class="tl-box-label">Where this connects to MacroFXModel</div>
+          <h3>The theory behind a rule this repo already writes in prose</h3>
+          <p>
+          This lesson is the mathematics behind a working agreement already stated in this repo's own
+          <code>CLAUDE.md</code>: <em>"Pooled nulls hide subset edges — disaggregate before declaring
+          null. But count the cells and state the chance-baseline (multiple testing): finding a few
+          'winners' among 70 slices is what noise does. Survivors must beat chance and be
+          IS-consistent."</em> That sentence is asking you to do, in your head, exactly the FWER
+          calculation worked through above: count \(m\) (the number of cells you sliced the data into),
+          compute or at least estimate what noise alone would produce at that \(m\), and only treat a
+          slice as a real survivor if it clears that chance-baseline <em>and</em> holds up in-sample
+          consistently <em>and</em>, per Lego Principle 5, on a genuine out-of-sample split.
+          </p>
+          <p>
+          Pages like <code>cross-pair-research.html</code> and <code>correlations.html</code> are
+          exactly the kind of surface where this applies: any workflow that slices results across many
+          pairs, regimes, sessions or parameter values is running many implicit hypothesis tests, one
+          per slice, even if no p-value or correction is ever literally computed. To be clear about what
+          is and isn't built here: there is currently no coded Bonferroni or Benjamini-Hochberg step
+          anywhere in this codebase — this is a mental-discipline correction, not a software feature. The
+          honest use of this lesson is to keep the count-the-cells habit active whenever you're reading
+          a multi-slice results table on those pages (or any future one like them), and to be
+          specifically suspicious of a report that surfaces only the "winning" slices without saying how
+          many were checked in total.
+          </p>
+        </div>
+    </div>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>Options &amp; Derivatives</h2>
+    <div class="brick-grid">
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/black-scholes.html">Black-Scholes-Merton Option Pricing</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this connects to MacroFXModel</div>
+          <h3>The pricing theory underneath the OI course's applied gamma-wall material</h3>
+          <p>
+            <code>education/open-interest-course-notes.md</code> Lesson 05 ("Gamma
+            &amp; Dealer Dynamics") teaches, as operational fact, that a dealer who
+            is short gamma from selling options must buy as the underlying rises
+            and sell as it falls to stay hedged — and that this mechanical,
+            price-agnostic rehedging is the actual mechanism behind call walls
+            acting as resistance, put walls acting as support, and the "gamma
+            squeeze" that follows a wall breaking. This lesson is the pricing
+            theory that produces that fact rather than just asserting it: delta
+            (\(N(d_1)\) above) is the hedge ratio the course notes describe a
+            dealer maintaining, and gamma (\(\partial^2C/\partial S^2\)) is
+            precisely the rate at which that hedge ratio must change as price
+            moves — which is why the course notes' claim that gamma effects
+            intensify as expiry approaches is not an empirical curiosity but a
+            direct, derivable consequence of the Black-Scholes formula: gamma for
+            an at-the-money option provably rises as \(T \to 0\). The "why call
+            walls are resistance" mechanism the course notes trace through step by
+            step (dealers buy to hedge rising delta as price approaches a big call
+            strike, then stop buying once delta saturates near 1.0 at/through the
+            strike, so the rally loses its fuel) is exactly the shape of \(N(d_1)\)
+            as a function of \(S_0/K\): it rises steeply near the strike and
+            flattens out toward 1.0 once deep in-the-money. Reading this lesson
+            does not replace that course's applied trading framework — the OI
+            notes' treatment of walls, max pain, magnetism, and daily trading
+            process is the practical, tested-against-a-real-heatmap layer this
+            repo actually uses; this page is the theoretical foundation underneath
+            it, for understanding <em>why</em> the mechanism works rather than only
+            <em>that</em> it does. For the applied trading framework, read
+            <code>open-interest-course-notes.md</code> directly.
+          </p>
+          <p>
+            <code>book-stress.html</code> asks whether a portfolio's diversification
+            survives a liquidity contraction. Any book that includes options carries
+            Greek exposures on top of its raw directional exposures, and those Greek
+            exposures are themselves the derivatives derived in this lesson — a
+            "diversified" book of options across several underlyings can still have
+            a concentrated, correlated gamma exposure that only becomes visible once
+            you compute the Greeks explicitly, which is a natural extension of that
+            page's stress-testing logic once options enter the picture. No such
+            Greek-aware stress logic is built into <code>book-stress.html</code>
+            today — this is a conceptual link for future work, not a description of
+            an existing feature.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/merton-jump-diffusion.html">The Merton Jump-Diffusion Model</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+          <h3>The theory behind fat tails this repo already measures — and a very concrete practical echo</h3>
+          <p>
+            This repo does not fit a jump-diffusion model anywhere, does not price
+            options, and has no \(\lambda, \mu_J, \sigma_J\) estimator. Say that
+            plainly: this is unbuilt here, a theory lesson, not a description of
+            existing code.
+          </p>
+          <p>
+            What the repo <em>does</em> already have, built and tested, is the honest
+            empirical way to respect exactly the risk this lesson describes without
+            needing to fit a full parametric jump model. Per <code>CLAUDE.md</code>,
+            <code>js/metricsCore.js</code> ships Tier-1 fat-tail primitives —
+            <code>skewness</code>, <code>excessKurtosis</code>, <code>histVaR</code>,
+            <code>histCVaR</code> — built 2026-07-21 and hand-checked in
+            <code>legoBricks.test.mjs</code>. <code>summarizeTrades</code> (the shared
+            trade-log summarizer used across the platform's backtest report cards)
+            emits <code>skew</code>, <code>excessKurt</code>, <code>var95</code>, and
+            <code>cvar95</code> on every trade-return series it summarizes. Jump-diffusion
+            is the theoretical <em>story</em> for exactly why a real FX return series
+            should have nonzero excess kurtosis and a heavier left tail than a Gaussian
+            model would predict — a sudden macro-release gap is a literal, observable
+            instance of the \(dJ_t\) term this lesson defines. <code>excessKurtosis</code>
+            and <code>histCVaR</code> are the empirical, model-free way this codebase
+            already catches that reality in a trade-return series, without ever having
+            to estimate a jump intensity or a jump-size distribution. This is a real,
+            already-built connection — not a proposal.
+          </p>
+          <p>
+            There is a second, very concrete practical echo, unrelated to option
+            pricing: <code>CLAUDE.md</code>'s own anti-pattern list warns against
+            "assuming the intrabar take-profit was hit on a daily bar (path is
+            unknown) — prefer M1 fills or mark-to-window-close," and
+            <code>fill-realism.html</code> documents a real instance of this exact
+            failure mode in the Per-Line Volatility tearsheet (~44% zero-duration
+            trades where TP is unknowable on the fill bar, so the walker marks to
+            close and hides real outer-line stop losses on continuation days). That
+            bug and Merton's jump term are the same underlying risk wearing two
+            different hats: a fill walker that assumes a limit or stop was touched at
+            its exact quoted price implicitly assumes the path between bars was
+            continuous — that price had to pass through every intermediate level to
+            get from the open to the close. A genuine gap (a jump) can blow straight
+            through a resting limit or stop without ever trading at the assumed price,
+            the same way Merton's \(dJ_t\) term skips over the intermediate price
+            levels a pure-diffusion path would have been forced to cross. A
+            backtest's fill assumption and an option-pricing model's path assumption
+            are answering the same underlying question — "can price teleport?" — for
+            two different purposes.
+          </p>
+          <p>
+            Building an actual jump-diffusion estimator or option-pricing engine here
+            would be a new, unvalidated undertaking — it would need synthetic-data
+            unit tests that recover known \(\lambda,\mu_J,\sigma_J\) parameters before
+            touching real prices, and, per the Lego Principle, a clear reason two or
+            more callers would use it rather than building it because the math is
+            elegant. Nothing here proposes that. The honest summary is: the fat-tail
+            metrics already in <code>metricsCore.js</code> are the built, tested,
+            empirical answer to "does this repo respect jump/gap risk" — a full
+            parametric jump-diffusion model is not built, and is not needed to get
+            that empirical honesty.
+          </p>
+        </div>
+    </div>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>Deeper Foundations</h2>
+    <div class="brick-grid">
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/calculus-for-finance.html">Calculus for Finance: Derivatives, Integrals &amp; Taylor Series</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this connects to MacroFXModel</div>
+          <h3>Vocabulary, not a module — but it's already load-bearing in three lessons and in real code</h3>
+          <p>
+            This lesson is not describing a specific brick or a buildable feature —
+            it is math literacy this Theory Lab's own lessons already lean on
+            without deriving. Three concrete places it shows up: the Ornstein-Uhlenbeck
+            lesson's half-life derivation solves the drift-only ODE
+            \(\frac{d}{dt}\mathbb{E}[X_t-\mu] = -\theta\,\mathbb{E}[X_t-\mu]\) — a
+            statement written entirely in derivative notation, whose solution is
+            an exponential decay curve; the Black-Scholes lesson's option-pricing
+            formula comes from a partial differential equation built out of
+            \(\partial C/\partial t\), \(\partial C/\partial S\), and
+            \(\partial^2 C/\partial S^2\) — three of the derivatives introduced
+            above, just with a partial-derivative notation for a function of more
+            than one variable; and the Kelly Criterion lesson's entire derivation
+            of \(f^*\), and its volatility-drag formula \(g \approx \mu -
+            \sigma^2/2\), are respectively an optimization (set a derivative to
+            zero) and a second-order Taylor expansion, both built directly on this
+            page's machinery.
+          </p>
+          <p>
+            In actual repo code, the closest analogs are <code>js/statsCore.js</code>'s
+            <code>linregSlope</code> and <code>ewma</code>. <code>linregSlope</code>
+            is, in substance, a discrete estimate of a derivative — it fits a
+            straight line through a rolling window of data and reports its slope,
+            which is exactly the finite-difference stand-in for an instantaneous
+            rate of change described in the practitioner section above, applied
+            over a short window instead of an infinitesimal one. <code>ewma</code>
+            (exponentially weighted moving average) is the discrete-time cousin of
+            the exponential-decay solution that falls out of a simple
+            differential equation — the same \(e^{-\theta t}\)-shaped decay the
+            Ornstein-Uhlenbeck lesson derives continuously, recomputed step by step
+            on discrete bars instead of solved once in closed form. Neither
+            function is described here as "an implementation of calculus" in any
+            formal sense — they are ordinary statistics/smoothing utilities — but
+            the concepts underneath them (a rate of change over a window, a
+            recursive smoothing rule shaped like exponential decay) are the same
+            concepts this lesson just built from scratch.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/linear-algebra-matrices.html">Linear Algebra &amp; Matrices</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this is actually used in MacroFXModel</div>
+          <h3><code>symmetricEigenvalues</code> in <code>js/diversificationCore.js</code></h3>
+          <p>
+            This is not a hypothetical connection — <code>js/diversificationCore.js</code>
+            already runs exactly the eigenvalue math from this lesson on a real
+            correlation matrix. Its <code>symmetricEigenvalues(mat)</code> function is a
+            cyclic Jacobi rotation: a numerical algorithm that repeatedly applies small
+            rotations to zero out a symmetric matrix's off-diagonal entries, converging
+            on its eigenvalues without ever writing down a characteristic equation
+            (the by-hand approach above is fine for a \(2\times2\), but becomes
+            impractical past 3&#215;3 or 4&#215;4 — Jacobi rotation, QR algorithms, and
+            similar iterative methods are how real software finds eigenvalues of
+            larger matrices). Those eigenvalues feed directly into
+            <code>effectiveBetsPCA</code> and <code>effectiveBetsEntropy</code>, the
+            "how many independent bets do I actually have" metrics wired into
+            <code>diversification.html</code> — the exact \((\Sigma\lambda)^2/\Sigma\lambda^2\)
+            formula used in the scenario box above, on this repo's own strategy
+            correlation matrix rather than a two-pair toy example.
+          </p>
+          <p>
+            One honest gap, noted here and covered in more depth in the PCA lesson's
+            own repo box: <code>symmetricEigenvalues</code> currently returns
+            <em>only</em> the eigenvalues, not the eigenvectors — sufficient for the
+            effective-bets metrics, which only need "how much variance," not "in
+            which combination of instruments." The eigenvectors (the accumulated
+            rotation matrix from the same Jacobi sweeps) are a documented, unbuilt
+            candidate in <code>LEGO_MODULES.md §2</code> for anyone who wants the
+            "which strategies actually make up this dominant risk factor" loadings,
+            not just its size.
+          </p>
+          <p>
+            This lesson is Lesson 1 of the Deeper Foundations tier specifically
+            because the PCA lesson (<code>pca-factors.html</code>), the Kalman Filter
+            lesson (<code>kalman-filter.html</code>), and the Hidden Markov Model
+            lesson (<code>hidden-markov-models.html</code>) each build directly on
+            top of the vocabulary here — vectors, matrices, matrix multiplication,
+            and eigenvectors/eigenvalues — without re-deriving any of it. If a term
+            in one of those three lessons is unclear, it is very likely defined
+            properly here rather than there.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+          <h3>Background literacy for choices this repo already makes, and the step before Cointegration</h3>
+          <p>
+            This lesson is framed as foundational reading rather than a proposed
+            new module, but the connection to existing code is real and specific,
+            not decorative. <code>js/statsCore.js</code>'s
+            <code>rollingZScore(arr, period, clipAt, ddof)</code> and
+            <code>linregSlope(values)</code> are both, structurally, "look back over
+            a window of length <code>period</code> and summarize it" functions —
+            exactly the family of lookback-window choice this lesson's trading
+            scenario is about. Neither function, nor most of the places that call
+            them across the regime classifiers and day-type estimators built on
+            top of <code>statsCore.js</code>, currently derives its window length
+            from an ACF/PACF read of the underlying series; the window is chosen
+            the ordinary way most of this codebase chooses windows — by convention,
+            by what a related published estimator uses, or by what back-tested
+            acceptably. That is not a defect being flagged here — it is simply the
+            literacy gap this lesson exists to close: any such window is an
+            implicit claim about how much of a series' own history is genuinely
+            informative, and the ACF/PACF pair is the tool that would let that
+            claim be checked against data rather than asserted by convention, the
+            next time a lookback parameter in this family is revisited.
+          </p>
+          <p>
+            The tighter, more concrete connection is to the Cointegration lesson
+            that immediately follows this one in the reading order. Its Step 2 asks
+            whether a spread's residual \(\hat\epsilon_t\) is stationary, and does
+            so with the Augmented Dickey-Fuller test — which is not a separate,
+            unrelated piece of machinery. The ADF test <em>is</em> a stationarity
+            test built directly from the ideas in this lesson: it regresses the
+            series' change on its own lagged level (asking, in effect, "does this
+            series revert, the way a stationary series with a decaying ACF would,
+            or does it wander, the way a series with a slowly-decaying ACF would")
+            plus enough lagged difference terms to absorb the residual's own
+            short-run autocorrelation — the same \(p\) that a PACF read of the
+            differenced residual would help choose, as noted above. Anyone reading
+            the Cointegration lesson's Step 2 without having first internalized
+            what "testing a series for stationarity" concretely means, and what an
+            autocorrelation structure looks like when it's present versus absent,
+            is taking that step largely on faith. This lesson is meant to remove
+            that faith requirement before it's needed.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/time-value-of-money.html">Time Value of Money</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this connects to MacroFXModel</div>
+          <h3>Background literacy — no module in this repo computes forward points today</h3>
+          <p>
+            Nothing in this repo currently prices FX forwards, builds a discount
+            curve, or computes covered-interest-parity forward points — this
+            lesson is background literacy, not a description of an existing
+            brick, and should be read that way: <span class="tl-status concept">CONCEPT</span>
+            only. What it <em>does</em> underpin directly: the Black-Scholes
+            lesson's risk-free rate \(r\) — and its <code>Ke^{-rT}</code> discount
+            term specifically — is exactly the present-value machinery derived
+            here, and that lesson's own symbols table already notes that for FX
+            options, \(r\) is really a domestic/foreign rate <em>differential</em>,
+            which is precisely the two-currency setup worked through in the
+            scenario box above. The upcoming Interest Rate Parity lesson depends
+            on this page even more directly: it has no separate math to introduce
+            beyond applying the future-value/discounting formulas above to two
+            currencies simultaneously and comparing the results — everything
+            genuinely new in that lesson is the cross-currency bookkeeping, not
+            new arithmetic. If this page's \(FV=PV(1+r)^t\), discount factors, and
+            the arbitrage argument in the scenario box aren't already second
+            nature, that is exactly where to pause before continuing.
+          </p>
+        </div>
+    </div>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>Cross-Asset &amp; Structure</h2>
+    <div class="brick-grid">
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/cointegration.html">Cointegration &amp; Statistical Arbitrage</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+          <h3>The repo already flags this exact gap in its own notes — it just hasn't been built</h3>
+          <p>
+            This isn't a hypothetical extension — <code>education/macro-deep-dives-notes.md</code>
+            names the gap directly. Its stat-arb entry-model section states the
+            requirement plainly: <em>"Key requirements: cointegration (not just
+            correlation), an economic linkage explaining the relationship,
+            sufficient liquidity in both legs"</em>; its quick-revision sheet
+            repeats it as a bare fact to remember — <em>"Stat arb needs
+            cointegration, not correlation. Lead-lag needs Granger causality"</em>;
+            and its own "areas of interest to read deeper on" list ends with
+            <em>"Cointegration vs correlation — the formal tests (Engle-Granger,
+            Johansen) that stat arb requires."</em> This lesson is, in effect, the
+            deep dive that item was asking for.
+          </p>
+          <p>
+            Three existing tools in this repo currently answer adjacent but
+            different questions, and it's worth being precise about which question
+            each one answers so a future extension doesn't conflate them:
+          </p>
+          <p>
+            <code>correlations.html</code> (the Correlation Lab) computes a
+            rolling Pearson correlation on <em>log returns</em> over a 60-bar
+            window, and its "hedge score" blends that correlation with a beta
+            spread to rank pairs as hedge candidates. That is a well-posed answer
+            to "do these two pairs' short-term moves tend to offset each other" —
+            it is not a test of whether either pair's <em>level</em> relationship
+            to the other is stationary. A pair the tool ranks as a strong hedge on
+            return correlation could still have a spread, in levels, that is a
+            pure random walk with no equilibrium to revert to.
+          </p>
+          <p>
+            <code>cross-pair-research.html</code> already states the principle in
+            its own UI copy — <em>"Correlation ≠ edge"</em> — and runs an
+            independent-bets gate off the participation ratio of the
+            return-correlation matrix plus a fade/follow sign-test between pairs.
+            That's a sound check for a different failure mode (treating correlated
+            bets as independent bets), but it is, again, working from a
+            return-correlation matrix, not a cointegration test on levels.
+          </p>
+          <p>
+            <code>credit-leadlag.html</code> is the closest of the three in spirit
+            — it deliberately does not run a naive level correlation, and instead
+            tests whether credit-spread <em>velocity</em> (a differenced,
+            largely-stationary transform) leads risk-instrument forward volatility
+            out-of-sample, reporting a genuine IS/OOS information coefficient. That
+            is squarely a <strong>lead-lag / Granger-causality-style</strong>
+            question, which macro-deep-dives-notes.md correctly separates from the
+            cointegration question — different tool, for a different family of
+            relationship (does A's <em>change</em> predict B's future
+            <em>change</em>, versus does A and B's combined <em>level</em> have a
+            stable equilibrium).
+          </p>
+          <p>
+            The suggested validation check, to be explicit: before any of this
+            repo's cross-asset pages (or the Transatlantic Yield Spread lesson in
+            <code>macro-deep-dives-notes.md</code>, which currently reasons about
+            the US-Germany yield spread leading EUR/USD narratively and via
+            cross-correlation) treats a relationship as tradeable mean-reversion
+            rather than a shared-trend coincidence, running the actual
+            Engle-Granger (or, for a basket, Johansen) test on the levels would be
+            the correct next check — the honest reading of "is there an
+            equilibrium here" that a rolling correlation coefficient cannot
+            provide by itself. This is a statement about what a rigorous next step
+            would look like, not a claim that any of these three pages is currently
+            wrong or incomplete for what it's built to do — each already does its
+            own stated job. And per this repo's Lego Principle 5, none of that
+            would be worth anything without the usual discipline: build it as a
+            shared brick (not a bespoke test bolted onto one page), and prove any
+            cointegration-filtered pair selection beats the incumbent approach on
+            true out-of-sample Sharpe with a non-trivial OOS trade count before
+            treating it as an improvement, not just a more theoretically satisfying
+            story.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/pca-factors.html">Principal Component Analysis &amp; Factor Regimes</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+          <h3>Extending eigenvalues (already built) to eigenvectors/loadings (not yet built)</h3>
+          <p>
+            This repo is not starting from zero on PCA. <code>js/diversificationCore.js</code>
+            already implements <code>symmetricEigenvalues</code> — a cyclic Jacobi
+            rotation that computes the eigenvalues of a correlation matrix from
+            scratch, no external linear-algebra library — and feeds those eigenvalues
+            into <code>effectiveBetsPCA(corr)</code>, which computes
+            \((\sum_i \lambda_i)^2 \big/ \sum_i \lambda_i^2\), the "inverse
+            participation ratio." That formula is a compact summary statistic built
+            directly from the eigenvalue spectrum this lesson derives: it equals
+            \(N\) (the number of instruments) when every eigenvalue is equal — no
+            dominant factor, every instrument is its own independent bet — and
+            shrinks toward 1 as one eigenvalue comes to dominate the rest — one
+            factor, many costumes. This is wired live into <code>diversification.html</code>
+            alongside <code>effectiveBetsEntropy</code> (a Meucci-style entropy
+            version of the same idea) and <code>effectiveBetsWeighted</code>
+            (allocation-aware). <code>correlations.html</code> is the pairwise view
+            one level below this — the raw correlation heatmap PCA is built on top
+            of, useful for eyeballing individual pair relationships but, as the
+            basket grows past a handful of instruments, hard to read as a whole in a
+            way a single \(\text{EVR}_1\) number isn't.
+          </p>
+          <p>
+            What's genuinely missing is the <strong>eigenvector</strong> side.
+            <code>symmetricEigenvalues</code> currently returns only the eigenvalues
+            (a deliberate, documented simplification — see the "eigenvalues are
+            rotation-invariant" comment in that file — because the effective-bets
+            metrics only ever needed the spectrum, not the directions). Extracting
+            the eigenvectors from the same Jacobi sweep (they fall out as the
+            accumulated rotation matrix, a small, well-understood addition to the
+            existing algorithm rather than a new one) would unlock exactly the piece
+            this lesson emphasizes: <em>which instruments load on PC1, and by how
+            much</em> — turning "your basket's effective number of bets is 1.6 out of
+            4" into "your basket's dominant factor is basically EURUSD and GBPUSD
+            moving together; AUDJPY and USDCAD are your genuinely separate bets."
+            That is a materially more actionable diagnostic for someone deciding
+            what to trim from an over-concentrated book, and it would sit as a
+            natural addition to the existing <code>diversification.html</code> page
+            rather than a new one — same data, same eigen-decomposition, one more
+            output surfaced.
+          </p>
+          <p>
+            <strong>To be explicit about what this is and isn't:</strong> everything
+            above is a description of an unbuilt extension to existing, working code
+            — not a claim that loadings are already displayed anywhere, and
+            absolutely not a claim that "PC1 dominance" by itself is a trading
+            signal. This is a data-summarization and risk-visibility tool: it tells
+            you how concentrated your current basket's variance is and around what,
+            today, on historical data. Any trading rule built on top of it — for
+            example, sizing down when \(\text{EVR}_1\) is unusually high, on the
+            theory that a market dominated by one factor is a market where
+            diversification benefits have temporarily evaporated — is a genuinely
+            separate claim that would need its own honest OOS validation per this
+            repo's standard discipline (Lego Principle 5), built as a proper Tier-1
+            or Tier-2 brick and registered in <code>LEGO_MODULES.md §2</code> as a
+            candidate before it's assumed to help.
+          </p>
+        </div>
+    </div>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>Risk &amp; Sizing</h2>
+    <div class="brick-grid">
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/extreme-value-theory.html">Extreme Value Theory &amp; Tail Risk</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this connects to MacroFXModel</div>
+          <h3>The empirical half is already a Tier-1 brick; the EVT half is a described-not-built next layer</h3>
+          <p>
+          <code>js/metricsCore.js</code> already has exactly the honest, sample-bound version of this lesson's
+          core question, built 2026-07-21 per <code>CLAUDE.md</code>'s output-analysis discipline
+          ("report distributional shape, not just Sharpe"). <code>skewness(xs)</code> and
+          <code>excessKurtosis(xs)</code> compute the sample skew and excess kurtosis of a pnl series — cheap
+          diagnostics that catch a fat or asymmetric tail a lone Sharpe ratio hides. <code>histVaR(xs, p)</code>
+          and <code>histCVaR(xs, p)</code> are, precisely, the "plain historical method" section of this
+          lesson: <code>histVaR</code> takes the \((1-p)\) empirical quantile of the series (via linear-
+          interpolated sample quantiles — the standard type-7/numpy-default method, no distributional
+          assumption at all), and <code>histCVaR</code> averages every observation at or beyond that
+          quantile — exactly the VaR and CVaR definitions given above, computed the fully honest, assumption-
+          free way. <code>summarizeTrades</code> wires these into every performance card as <code>skew</code>,
+          <code>excessKurt</code>, <code>var95</code>, <code>cvar95</code>, and — worth repeating from
+          <code>CLAUDE.md</code> because it's an easy thing to misread — these are <strong>per-trade</strong>
+          tail statistics computed on a per-trade pnl series, not portfolio VaR over a fixed time horizon; the
+          two are related but not interchangeable, and nothing in this repo currently claims otherwise.
+          </p>
+          <p>
+          The GPD-fitting, peaks-over-threshold layer this lesson covers is genuinely the <strong>next rung up
+          the same ladder</strong> — a natural extension if this repo ever needs to answer "what does a
+          worse-than-anything-I've-seen-yet drawdown plausibly look like," which <code>histVaR</code>/
+          <code>histCVaR</code> structurally cannot answer once you ask for a quantile beyond what the sample
+          itself supports (exactly the "2.5th-worst observation" problem in the worked example above). But it
+          is important to say plainly: <strong>this is not built here, and building it right now would not be
+          a good idea.</strong> Most strategies in this repo have well under 1,000 closed trades — several
+          have well under 100. Fitting a GPD needs a reasonable number of tail exceedances to be remotely
+          stable (the worked example used 50, itself on the low side of common practice), and a strategy with,
+          say, 150 trades might offer 10–15 exceedances above a sensible threshold — nowhere near enough to
+          trust a fitted \(\xi\) at all, let alone extrapolate it out to a rarer quantile than the sample can
+          even weakly support. Fitting a GPD to a sample that small would trade a data-point problem for a
+          tinier, harder-to-detect version of the same data-point problem, dressed up in more sophisticated
+          machinery — precisely the kind of overreach the pitfalls section below and this project's honest-
+          teammate contract both warn against. The correct read of this lesson for this repo, today, is: the
+          empirical version already built is the right tool for the trade-count this repo actually has: know
+          the theory exists, know exactly what it would extend, and don't reach for it until the sample sizes
+          justify it.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/kelly-criterion.html">The Kelly Criterion &amp; Position Sizing</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+          <h3>Formalizes a principle CLAUDE.md already states — but it needs an honestly-estimated edge as input, and there isn't one built yet</h3>
+          <p>
+            This repo's own CLAUDE.md already names the target: "volatility-based
+            position sizing, cutting losers and letting winners run are powerful
+            drivers of results — worth building and validating alongside an entry
+            signal." Kelly and fractional Kelly are the textbook formalization of
+            exactly the first half of that sentence — a principled way to turn "how
+            volatile is this instrument, and how good is my edge" into "how much
+            capital should this specific trade risk," instead of a flat,
+            hand-picked percentage-of-equity risk-per-trade rule. The continuous
+            form, \(f^*=\mu/\sigma^2\), maps directly onto quantities this repo
+            already computes per-instrument and per-horizon — the vol-sigma series
+            in <code>js/volBacktestEngine.js</code> and the OOS Sharpe/return
+            statistics that <code>js/metricsCore.js</code>'s
+            <code>summarizeTrades</code> already produces for every strategy that
+            goes through the standard IS/OOS harness.
+          </p>
+          <p>
+            <code>book-stress.html</code> ("does diversification survive a
+            liquidity contraction?") and <code>diversification.html</code> (the
+            combined-book explorer) are the closest existing pieces of
+            infrastructure, and the connection is direct: both already look at
+            <em>portfolio-level</em> risk across multiple lines/instruments held
+            together, which is precisely the level at which Kelly sizing should
+            actually be applied in a multi-strategy book — not line-by-line in
+            isolation, but jointly, because Kelly's variance term is supposed to be
+            the variance of the <em>combined</em> position, and two correlated
+            lines sized independently by their own standalone Kelly fractions will
+            systematically overstate the combined book's safe aggregate size (the
+            same correlated-signal double-counting problem this series' Bayesian
+            Inference lesson raises for confluence scoring, here showing up as
+            correlated-return double-counting instead of correlated-evidence
+            double-counting). A book-level Kelly or fractional-Kelly sizing layer
+            sitting on top of <code>book-stress.html</code>'s existing
+            cross-instrument view would be the natural extraction point.
+          </p>
+          <p>
+            To be explicit about where this stands: <strong>none of this is built
+            as a sizing engine in the repo today</strong> — there is no
+            <code>kellySizing.js</code>, no Kelly-fraction column on any backtest
+            card, nothing wired into a live bot's position-size calculation. This
+            is a genuine, unbuilt design candidate, not a claim that the repo
+            already does this. And per CLAUDE.md's own method-vs-edge distinction
+            — "a method is not a strategy... state the dependency up front, not
+            after the primary signal tests empty" — Kelly sizing has a hard
+            dependency this page has stressed throughout: it needs an
+            <strong>honestly-estimated</strong> win probability/edge (\(p\), or
+            \(\mu\)) and variance (\(\sigma^2\)) as inputs, sourced from true
+            out-of-sample performance, not from an in-sample backtest's optimistic
+            numbers. Plugging an in-sample Sharpe or win rate directly into the
+            Kelly formula is a textbook way to compute a confidently wrong,
+            oversized bet — the formula does exactly what it's told, and what it's
+            told matters enormously. The correct sequencing, consistent with the
+            Lego Principle's OOS-Sharpe bar (Lego Principle #5), is: a signal
+            clears the repo's real IS/OOS split with a non-trivial OOS trade count
+            first, on its own merits — <em>then</em> Kelly or fractional Kelly is
+            layered on as a sizing decision for that already-validated edge.
+            Applying it earlier, to make a weak or null signal's equity curve look
+            more aggressive, would be using the sizing math to paper over a signal
+            problem rather than solve a sizing problem.
+          </p>
+        </div>
+    </div>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>Time Series &amp; Regimes</h2>
+    <div class="brick-grid">
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/garch-volatility.html">GARCH &amp; Volatility Clustering</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this connects to MacroFXModel</div>
+          <h3>One of three sigma estimators feeding the live forecaster's bands</h3>
+          <p>
+            Per <code>CLAUDE.md</code>'s core-modules table, <code>js/volBacktestEngine.js</code> owns the
+            "vol-sigma series (HV20 / GARCH / Yang-Zhang), <code>ASSET_PARAMS</code>, <code>classifyRegime</code>, band
+            constants... <code>fetchD1</code>" — this lesson's math is exactly what powers the middle one of those three
+            estimators. Concretely, the engine's <code>garchSigmas(bars, omega)</code> function implements the same
+            recursion derived above:
+          </p>
+          <div class="tl-math">\[ v \leftarrow \omega + \alpha\, r_{i-1}^2 + \beta\, v,\qquad \sigma_i = \sqrt{v} \]</div>
+          <p>
+            with the series initialized at the unconditional variance \(\omega/(1-\alpha-\beta)\) for the first two bars
+            (rather than at zero) — precisely the long-run-variance formula derived above, used as a sane starting point
+            before any history has accumulated. The repo's actual constants,
+            <code>G_ALPHA = 0.06</code> and <code>G_BETA = 0.91</code>, give a persistence of \(\alpha+\beta = 0.97\) —
+            a half-life of \(\ln(0.5)/\ln(0.97) \approx 23\) trading days, meaning a shock's imprint on this engine's
+            variance forecast takes roughly a month to decay by half. Per <code>ASSET_PARAMS.index</code>
+            (<code>garch_omega: 4.76e-6</code>), GARCH(1,1) is applied as the index-asset-class estimator (currently
+            NQ), alongside HV20 for the commodity class and Yang-Zhang(30) for the fx class — three different sigma
+            estimators computed and compared under one walk-forward harness, not three redundant copies of the same idea.
+            This lesson does not take a position on which of the three performs best out-of-sample for any given
+            instrument — that's an empirical question the repo's own walk-forward comparison is built to answer, not
+            something to assume from the math alone (Lego Principle 5: OOS evidence, not a prior about the method).
+          </p>
+          <p>
+            Whichever \(\sigma\) estimator is selected feeds forward into <code>js/forecastCore.js</code>'s
+            <code>computeBands</code>, which builds the actual tradable price band from it using the Feller
+            driftless-Brownian-range construction that <code>CLAUDE.md</code> flags as load-bearing:
+            \(HL = BM\_const \times corr \times \sigma\). In other words, GARCH's job in this system is narrowly scoped
+            but consequential — it is one candidate answer to "what is \(\sigma\) today," and everything downstream
+            (band width, regime classification thresholds, entry-zone confidence) inherits whatever that answer says.
+            Note also that <code>classifyRegime</code> (BULL/BEAR/RANGE via EMA-20 slope) is a separate, directional
+            classifier — it answers "which way," not "how big" — so it should not be confused with, or substituted for,
+            the volatility-clustering question GARCH answers here.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/hidden-markov-models.html">Hidden Markov Models &amp; Regime Detection</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+          <h3>A statistically fitted alternative to the existing threshold rules — genuinely unbuilt, not a plan</h3>
+          <p>
+          This repo already has two regime/state classifiers, and it's worth being precise about how an HMM
+          would differ from each, rather than treating "regime detection" as one undifferentiated idea:
+          </p>
+          <ul>
+            <li>
+            <strong><code>js/volBacktestEngine.js</code>'s <code>classifyRegime</code></strong> is a
+            hand-set <strong>threshold rule</strong>: it looks at a rolling slope of closes over a fixed
+            window and compares it against a fixed numeric cutoff (<code>thresh</code>) to call a period
+            bullish, bearish, or neutral. The threshold, window, and slope parameters are chosen by the
+            person writing the code, not estimated from the data's own transition/persistence structure.
+            </li>
+            <li>
+            <strong><code>js/dayTypeCore.js</code>'s <code>classifyDayType</code> / <code>dayTypeScore</code></strong>
+            is a step up in sophistication — a weighted, score-based <em>selector</em> (per this repo's
+            Lego Principle 4, "the brain is a selector, not more knobs") that combines several estimators
+            from an <code>ESTIMATORS</code> registry into a single trend-day-ness score \(T\) = drift ÷
+            diffusion, which then drives fade-vs-follow strategy choice. It's principled in the sense that
+            it's a composed score rather than one raw threshold, but the weights in <code>DAYTYPE_PRESETS</code>
+            are still chosen, not fitted, and there's no explicit model of regime <em>persistence</em> or
+            state-transition dynamics — each bar's score is computed fresh, not conditioned on "how long have
+            we already been in this apparent regime."
+            </li>
+          </ul>
+          <p>
+          An HMM would be a genuinely different kind of object from both: instead of a fixed cutoff or a
+          fixed weighting, you'd fit \(A\) and the emission parameters directly from historical return data
+          via Baum-Welch, letting the data itself tell you how persistent each regime actually is (the
+          \(1/(1-A_{ii})\) expected-duration number from the worked example above, but estimated rather than
+          assumed) and how differently returns actually behave in each state, rather than encoding that as a
+          hand-picked threshold or weight. That is a real, substantive advantage in principle: it replaces a
+          guessed constant with an estimated one, and it gives you a probabilistic confidence (the filtered
+          state probability) rather than a hard binary flag.
+          </p>
+          <p>
+          It would also add real complexity and real estimation risk, and none of that should be
+          understated. Fitting an HMM well requires enough data and enough genuine regime-switching behavior
+          for Baum-Welch to converge to a sensible, non-degenerate solution — a real risk given how few FX
+          regimes are cleanly, stably Markov-stationary over any window long enough to fit on (regimes in
+          practice drift, macro backdrops change, and a 2-state or 3-state model is a strong
+          simplification of a much messier reality — this is expanded on in the pitfalls below). And per
+          this repo's Lego Principle 5 — no change counts as an improvement without beating the incumbent on
+          out-of-sample Sharpe with a non-trivial OOS trade count — an HMM-based regime classifier would need
+          to actually outperform <code>classifyRegime</code> or <code>dayTypeScore</code> OOS before it would
+          be worth the added complexity, not merely be more statistically sophisticated in the abstract.
+          Sophistication is not the bar; OOS performance is. This lesson describes the concept and the
+          honest tradeoff — it is <strong>not</strong> a claim that an HMM would improve this repo's regime
+          detection, and nothing here has been built or tested.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/hurst-variance-ratio.html">The Hurst Exponent &amp; Variance Ratio Test</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this connects to MacroFXModel</div>
+          <h3>This is the one lesson describing a feature already running here</h3>
+          <p>
+            Unlike most of the other lessons in this series, which introduce concepts as background theory, the Hurst
+            exponent is already computed and consumed in production in this codebase. <code>js/rangeBiasCore.js</code>
+            implements <code>computeHurst(closes)</code> — R/S analysis over lags of 2, 4, 8, and 16 bars, exactly the
+            log-log-regression procedure derived above — as one of five entry-bias features (alongside ADX, swing
+            CHoCH/BOS, TWAP, and EMA-RSI) that grade conviction on a candidate entry. Its interpretation thresholds match
+            the theory precisely: <code>featureHurst</code> treats \(H &lt; 0.45\) as "mean-reverting" (confirms a fade
+            entry), \(H &gt; 0.55\) as "trending" (confirms a follow/continuation entry, i.e. conflicts with a fade), and
+            the band in between as neutral / abstaining — a direct, if slightly widened, application of the
+            \(H \lessgtr 0.5\) split covered above. This one brick is shared by both <code>levels.js</code> (the live
+            engine that writes alerts) and the <code>asiaRangeEngine</code> backtest, per the shared brick table in
+            <code>CLAUDE.md</code> — the same design discipline (one implementation, imported everywhere, never copied)
+            that this whole series keeps stressing.
+          </p>
+          <p>
+            Recent git history in this repo shows a dedicated "Hurst A/B harness (drift #11 evidence)" was built
+            specifically to validate this feature out-of-sample against the incumbent without it. That is exactly the
+            right instinct, and it's worth being explicit about why: everything explained above is a correct, well-founded
+            statistical property of price paths, but a theoretically elegant statistic is not automatically an edge — per
+            the Lego Principle's validation discipline (rule 5 in <code>CLAUDE.md</code>), a change to what a live feature
+            confirms or conflicts with only counts as an improvement if it beats the incumbent on out-of-sample Sharpe with
+            a non-trivial trade count. This lesson does not have access to what that A/B harness found, and doesn't claim
+            to — treat the Hurst feature's mathematical basis (sound) and its demonstrated live edge (a separate, empirical
+            question that the harness, not this document, is positioned to answer) as two different claims.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/kalman-filter.html">The Kalman Filter &amp; Adaptive Relationships</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+          <h3>An adaptive coefficient for a lead-lag relationship whose strength already varies with regime</h3>
+          <p>
+            Two places in this repo already describe exactly the kind of relationship
+            a Kalman filter is built for: one whose <em>strength</em>, not just its
+            level, seems to change with market conditions. <code>education/macro-deep-dives-notes.md</code>'s
+            Lesson 2 ("The Transatlantic Yield Spread") documents that the lead time
+            between a US–German yield-spread move and the EUR/USD reaction is not
+            constant — its own table (§2.4) states the lead runs "hours to 1–2 days"
+            in high-volatility/news-driven conditions but "2–4 weeks" in range-bound,
+            low-vol conditions, and "1–3 months" around a regime change. Lesson 3's
+            live case study (17–18 Feb 2026) is a single concrete instance of that
+            relationship firing with a ~24-hour lead. That is, in plain language,
+            "the coefficient connecting spread-momentum to the FX/vol response is not
+            fixed — it moves with the regime," which is precisely the premise a
+            state-space model with a drifting \(x_t\) is designed to capture, instead
+            of hand-coding regime buckets with fixed thresholds.
+          </p>
+          <p>
+            <code>credit-leadlag.html</code> (backed by <code>js/creditCore.js</code> +
+            <code>js/creditHmm.js</code>, spec in <code>docs/CREDIT_SIGNAL_SPEC.md</code>)
+            is the closer, already-built analog: it computes a lead-lag
+            <strong>correlation</strong> between credit velocity (from ICE BofA US HY
+            OAS) and a risk instrument's forward realized vol, scanning a fixed grid
+            of lags over a fixed sample and reporting an out-of-sample information
+            coefficient. That's a static, single-number characterization of the
+            relationship's strength at each lag, refit over whatever window the job
+            is run on — the same "frozen until you re-run it" property the OLS
+            hedge-ratio example above has. A Kalman-filtered version would instead
+            model the coefficient linking credit velocity to forward vol (at a chosen
+            best lag) as a hidden state \(x_t\) that drifts smoothly, observed each
+            day through the noisy realized relationship — letting the filter's own
+            gain slow down when the relationship has been stable for a while and
+            speed back up right after a genuine regime shift (when innovations
+            \(e_t\) start coming in larger than \(S_t\) expects), without anyone
+            hand-tuning a regime switch.
+          </p>
+          <p>
+            To be explicit about where this stands: <strong>this is not built, not
+            prototyped, and not validated.</strong> It is a genuine candidate, not a
+            claim of improvement. Choosing \(Q\) and \(R\) is itself a real modeling
+            decision — as the pitfalls box below makes concrete, grid-searching them
+            against a backtest is just overfitting the window-length problem in a
+            different, more opaque parameterization, which is exactly the anti-pattern
+            this repo's Lego Principle warns against (principle 4: a selector, not more
+            knobs to optimize). Per Lego Principle 5, any Kalman-filtered version of
+            this relationship would need to beat the incumbent fixed-lag correlation
+            approach on true out-of-sample Sharpe or information coefficient, with a
+            non-trivial OOS sample, before it replaced anything live — a more
+            theoretically elegant estimator is not evidence of an improvement by
+            itself.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/ou-mean-reversion.html">The Ornstein-Uhlenbeck Process &amp; Mean Reversion</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+          <h3>An unbuilt candidate next to <code>dayTypeCore.js</code>'s drift/diffusion score</h3>
+          <p>
+            <code>js/dayTypeCore.js</code> already estimates something conceptually
+            adjacent to \(\theta\): its <code>dayTypeScore</code> blends several
+            rolling-window estimators (efficiency ratio, variance ratio, Hurst
+            exponent, etc.) into a single \(T \in [0,1]\) trend-day-ness score — high
+            \(T\) meaning drift-dominated (follow), low \(T\) meaning diffusion-dominated
+            / mean-reverting (fade), all computed fresh within each day's window with
+            no explicit reversion-speed or half-life concept. It answers "is today more
+            trend or more chop," not "if this reverts, how many bars until it's halfway
+            back."
+          </p>
+          <p>
+            A fitted OU half-life is a different, complementary kind of number: instead
+            of a same-window relative score, it is an estimable, physically-interpretable
+            quantity — actual trading days — that could in principle be computed
+            per-instrument (e.g. rolling AR(1) fits on daily closes or on a
+            deviation-from-moving-average series) and compared against what
+            <code>dayTypeScore</code>'s low-T / fade regime implicitly assumes about how
+            fast reversion happens. If an instrument's fitted half-life is very long
+            (say 30+ days) even when <code>dayTypeScore</code> currently flags it as
+            low-\(T\)/fade-favoring, that would be worth knowing — the "fade" bet might
+            be directionally right but too slow for the exit logic the fade legs
+            actually use.
+          </p>
+          <p>
+            <strong>To be explicit about what this is and isn't:</strong> this is a
+            candidate connection, not a claim that <code>dayTypeCore.js</code> already
+            does OU fitting, and not a claim that layering an OU half-life on top of it
+            would improve anything. Per the Lego Principle, that would need to be built
+            as a proper Tier-1 estimator (a pure function, unit-tested on synthetic
+            OU-generated data so you can verify the fit recovers a known \(\theta\),
+            before ever touching real prices), then validated OOS with a non-trivial
+            trade count against the existing selector — not assumed to help because the
+            math is elegant. It is currently unbuilt and untested here; treat it as a
+            research candidate for <code>LEGO_MODULES.md §2</code>, not as a described
+            feature.
+          </p>
+        </div>
+    </div>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>Advanced Stochastic Calculus &amp; Derivatives</h2>
+    <div class="brick-grid">
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/girsanov-risk-neutral.html">Girsanov's Theorem &amp; the Risk-Neutral Measure</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this connects to MacroFXModel</div>
+          <h3>The theory underneath a phrase the Black-Scholes lesson used and moved past</h3>
+          <p>
+            This lesson has no direct module in this repo, and it's worth being
+            plain about that: MacroFXModel doesn't price options anywhere in its
+            codebase — there is no <code>optionPricingEngine.js</code>, no Greeks
+            calculator wired into a live bot, nothing that would call a
+            risk-neutral expectation in production. This is pure derivation,
+            one layer underneath the Black-Scholes lesson's own claim that
+            "\(N(d_2)\) is the risk-neutral probability the option finishes in the
+            money" — a sentence that lesson stated and used, but did not fully
+            justify. This lesson is that justification.
+          </p>
+          <p>
+            The genuine repo connection is conceptual rather than a code module,
+            and it's a real one: the martingale definition from the
+            <code>emh.html</code> lesson (\(\mathbb{E}[P_t \mid \mathcal{F}_{t-1}]
+            = P_{t-1}\)) is not just a loose analogy to what happens under
+            \(\mathbb{Q}\) — it is the <em>literal same object</em>, applied to the
+            discounted price process instead of the raw one. The EMH lesson treats
+            the martingale property as an empirical claim about \(\mathbb{P}\),
+            testable with autocorrelations and variance-ratio tests on real return
+            series (the same kind of honest, OOS-checkable claim this repo insists
+            on everywhere else). This lesson shows the same property holding under
+            \(\mathbb{Q}\) by mathematical construction rather than empirical
+            accident. That is arguably the moment this Theory Lab's two separate
+            threads — market-efficiency theory (is <em>this actual market</em> a
+            fair game?) and derivatives-pricing theory (can I legitimately price
+            <em>this option</em> as if the world were a fair game?) — formally
+            meet: they turn out to be the same mathematical object, asked about
+            under two different measures, for two entirely different purposes.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/heston-model.html">The Heston Model</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+          <h3>Continuous-time cousin of the GARCH sigma this repo already runs — and no options module to connect it to</h3>
+          <p>
+            Say this plainly up front: this repo has <strong>no options-pricing
+            module of any kind</strong> — no Black-Scholes implementation, no
+            Heston implementation, no implied-volatility surface, nothing that
+            prices a derivative contract. This lesson is pure theory background,
+            exactly like the Black-Scholes and Merton jump-diffusion lessons before
+            it. Nothing here describes existing code, and nothing here proposes
+            building an options desk inside this repo.
+          </p>
+          <p>
+            What the repo <em>does</em> already have, built and running in
+            production, is the discrete-time cousin of exactly the insight Heston's
+            variance SDE formalizes. Per <code>CLAUDE.md</code>'s core-modules table,
+            <code>js/volBacktestEngine.js</code> implements GARCH(1,1) as one of
+            three sigma estimators (alongside HV20 and Yang-Zhang) feeding the live
+            forecaster's bands, with the recursion
+            \(v \leftarrow \omega + \alpha\,r_{i-1}^2 + \beta\,v,\ \sigma_i=\sqrt v\)
+            and fitted constants \(\alpha=0.06,\ \beta=0.91\) (a persistence of 0.97,
+            roughly a 23-trading-day half-life). That recursion is discrete-time
+            variance with its own memory — today's variance forecast depends on
+            yesterday's shock and yesterday's own forecast. Heston's
+            \(dv_t=\kappa(\theta-v_t)dt+\xi\sqrt{v_t}\,dW_t^2\) is, informally, the
+            same idea — variance reverting toward a long-run level with its own
+            source of randomness — expressed as a continuous-time SDE instead of a
+            discrete daily recursion. Neither engine copies the other's code, and
+            they are not claimed to be mathematically equivalent (GARCH is discrete
+            and this repo's GARCH has no explicit correlation-with-price term the way
+            Heston's \(\rho\) does); the connection is conceptual — "let variance
+            itself be a process with memory and dynamics" is the shared insight, one
+            lesson's discrete-time home and the other's continuous-time home.
+          </p>
+          <p>
+            The Merton jump-diffusion lesson is the other half of this repo's theory
+            coverage of the smile: that lesson covers discontinuous jumps as one way
+            Black-Scholes gets extended to explain a real smile; this lesson covers
+            correlated stochastic volatility as a different mechanism producing the
+            same observable symptom. Real practitioner models often combine both (the
+            "stochastic-vol-plus-jumps" family mentioned above) rather than picking
+            one mechanism as the single true explanation — this lesson does not take
+            a position on which mechanism, or which combination, would best describe
+            any specific FX pair's real smile, because that would require fitting
+            real option data this repo does not currently source or store.
+          </p>
+          <p>
+            Building an actual Heston calibration engine here would be new,
+            unvalidated work requiring a characteristic-function pricer, a
+            calibration routine against a real implied-vol surface this repo does
+            not currently have a data source for, and — per the Lego Principle — a
+            concrete reason at least two callers would use it. Nothing here proposes
+            that; this is theory background connecting an existing, tested brick
+            (GARCH in <code>volBacktestEngine.js</code>) to the wider stochastic-
+            volatility literature it belongs to.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/ito-lemma.html">Itô's Lemma</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this connects to MacroFXModel</div>
+          <h3>Pure mathematical foundation — no direct repo module, and that's the honest answer</h3>
+          <p>
+            Unlike most Theory Lab lessons, this one does not map onto a specific
+            file in this repo, and it would be dishonest to invent a connection
+            where none exists. There is no <code>itoLemma.js</code>, no backtest
+            engine that calls this formula directly, no dashboard card that displays
+            it. What this lesson <em>is</em>, honestly: the rigorous derivation
+            underneath a claim <code>black-scholes.html</code> makes and does not
+            prove — that solving GBM "is a standard but non-trivial step using
+            Itô's Lemma" — and underneath the \(\sigma^2/2\) term that this same
+            curriculum has now derived, informally, in three separate places:
+            option-pricing drift (this lesson and <code>black-scholes.html</code>),
+            volatility drag in compounding (<code>primer-returns-compounding.html</code>),
+            and volatility drag in position sizing
+            (<code>kelly-criterion.html</code>). None of those three pages currently
+            cross-reference each other on this specific point. The point of writing
+            this lesson is exactly that noticing: three informal, independent
+            appearances of the same correction term across the curriculum are not
+            three coincidences, they are one piece of mathematics — Itô's Lemma —
+            surfacing wherever a log (or any nonlinear function) is applied to
+            something random. Seeing it derived rigorously once, here, is meant to
+            make the other two appearances legible as the same fact rather than
+            three separate "it just works out this way" observations.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/sabr-model.html">The SABR Model</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this connects to MacroFXModel</div>
+          <h3>SABR is background theory, not a built module — and it's the practical layer under the OI course's gamma story</h3>
+          <p>
+            This repo has no options-pricing or smile-calibration module of any
+            kind today — no SABR fit, no Heston fit, no Black-Scholes engine
+            wired into a live strategy. Both this lesson and the preceding Heston
+            lesson are pure theory background: understanding <em>how</em> real
+            options desks build and manage a volatility surface, not a description
+            of anything built or tested in this codebase. That distinction matters
+            under this repo's own honesty discipline (<code>CLAUDE.md</code>'s
+            "built ≠ works ≠ has edge") — nothing in this lesson has been
+            calibrated to real market data or validated out-of-sample here; it's
+            knowledge to have on hand, not a claim about anything running in
+            production.
+          </p>
+          <p>
+            Where it's genuinely relevant: <code>education/open-interest-course-notes.md</code>
+            teaches that dealers who are short gamma must mechanically buy as price
+            rises and sell as it falls, and that this hedging flow is what makes
+            high-open-interest strikes act like magnets and walls — a fact this
+            Theory Lab's Black-Scholes lesson derives formally (gamma as
+            \(\partial^2 C/\partial S^2\)) using a single flat \(\sigma\). Real
+            dealer books are not priced or hedged off a single flat \(\sigma\);
+            every strike in a real book carries its own implied vol, read off a
+            smile exactly like the one this lesson builds, and a dealer's true
+            aggregate gamma exposure across strikes depends on the <em>shape</em>
+            of that smile (via \(\rho\) and \(\nu\)), not just an ATM level. SABR
+            is, in that sense, the practical, calibration-friendly cousin of the
+            Heston lesson this Theory Lab already covers — where Heston teaches the
+            genuine risk-neutral dynamics that produce a smile, SABR is what a real
+            desk actually turns those market-observed smiles into, day to day, and
+            is the missing layer between "dealers have OI-weighted gamma exposure
+            at a strike" (the course notes' claim) and "here is exactly how a real
+            book prices and risk-manages every strike in between" (what an actual
+            dealer's systems do, using something in the SABR family or a close
+            relative of it).
+          </p>
+        </div>
+    </div>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>Macro &amp; FX Theory</h2>
+    <div class="brick-grid">
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/interest-rate-parity.html">Interest Rate Parity — Covered vs. Uncovered</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+          <h3>A genuine gap — no file here computes CIP, UIP, or a carry signal</h3>
+          <p>
+            Said plainly: nothing in this codebase currently computes a
+            CIP-implied fair forward, checks a UIP-implied expected depreciation
+            against realized FX moves, or scores a carry-trade signal from rate
+            differentials. That is a real missing piece of the theory base, not a
+            gap this lesson is inventing to have something to write about.
+          </p>
+          <p>
+            The closest existing material is <code>education/macro-deep-dives-notes.md</code>'s
+            Lesson 2, "The Transatlantic Yield Spread (US 10Y vs. German Bund)" —
+            it studies, empirically, whether the US-Germany yield spread leads
+            EUR/USD, tracking the spread's level and regime (narrowing/widening)
+            against subsequent EUR/USD direction. That is valuable, real empirical
+            work, but it is answering a different question than IRP does. IRP is
+            about the no-arbitrage relationship between <em>interest rates and the
+            forward rate</em> today (CIP), and the theoretical expectation of
+            <em>future spot movement</em> implied by that relationship (UIP) — a
+            structural, no-arbitrage-anchored claim. The yield-spread lesson is a
+            reduced-form, lead-lag empirical check on whether spread changes
+            historically preceded EUR/USD moves, without reference to whether the
+            relationship it's finding is consistent with (or a violation of) UIP in
+            the formal sense. The honest framing is that formal IRP math is the
+            theoretical foundation any such empirical rates-FX work should
+            eventually be checked against — does the yield-spread lead-lag
+            relationship look like a UIP-consistent adjustment, or does it look
+            like the forward-premium-puzzle pattern this lesson describes? That
+            question hasn't been asked in this repo yet.
+          </p>
+          <p>
+            Building this for real would need real interest-rate data (FRED for
+            sovereign/policy rates, or OANDA's forward/swap points directly, which
+            embed the interest differential per the CIP identity) matched carefully
+            to actual tradeable tenors — and, per this repo's Lego Principle 5 and
+            the working agreement above, it would need the same honest harness
+            discipline as anything else here: a true in-sample/out-of-sample split,
+            realistic costs, and a non-trivial OOS trade count before a carry or
+            UIP-deviation signal could be treated as anything more than a
+            historically interesting pattern. The forward premium puzzle is a real,
+            well-replicated empirical finding in the broader literature — that is
+            not the same claim as "a carry signal built on this repo's data would
+            show a validated OOS edge," and until that test is actually run here,
+            it should not be described as one.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/purchasing-power-parity.html">Purchasing Power Parity</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this connects to MacroFXModel</div>
+          <h3>This repo has no PPP-based signal or price-level data pipeline today</h3>
+          <p>
+          To be direct about it: nothing in this codebase currently ingests CPI or price-level data, computes
+          a real exchange rate, or builds a PPP-based fair-value estimate for any pair. This is a genuine gap,
+          not a built brick with caveats — there is no <code>pppCore.js</code> or equivalent to point to, and
+          this lesson is not describing something already wired into the forecaster or any backtest engine.
+          </p>
+          <p>
+          If a PPP-based fair-value view were ever built here, the natural data feed already exists as a
+          named environment variable in <code>CLAUDE.md</code>'s data-source table: <code>FRED_KEY</code>,
+          which is listed for "macro / quotes / news data feeds" and is the standard source for national CPI
+          series. Building it properly would mean pulling CPI for each side of a pair from FRED, resampling
+          to a common release frequency (per this repo's data-modeling discipline — never hold a monthly CPI
+          print "live" against daily bars), constructing the real exchange rate above, and — per Lego
+          Principle 5 and this project's honest-teammate contract — proving any resulting signal on a true
+          out-of-sample split with a non-trivial trade count before calling it anything more than a candidate.
+          Given the multi-year half-lives documented above, an honest OOS test of a PPP-based signal would
+          also need a matching multi-year evaluation horizon and a will to accept that most trading-frequency
+          backtests simply cannot validate a signal this slow — a scope/data limitation to state plainly
+          rather than paper over with a lookalike fast-horizon test.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/taylor-rule.html">The Taylor Rule</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this connects to MacroFXModel</div>
+          <h3>The theory behind two existing lessons — not yet a built calculator</h3>
+          <p>
+            This repo has <strong>no Taylor-Rule-implied-rate calculator</strong> anywhere in the codebase today. What it
+            does have is <code>education/macro-deep-dives-notes.md</code>'s Lesson 1, "Macro Drivers, Regime Detection
+            &amp; Validation," and Lesson 2, "The Transatlantic Yield Spread" — both of which study rate expectations and
+            the US-German yield spread empirically, as observed market data, without deriving what actually generates a
+            central bank's rate path. This lesson is that missing derivation. Lesson 2's own §2.8 ("What moves the spread
+            itself") lists "monetary policy — Fed vs ECB rate paths" and "inflation gap ... inflation surprise = spread
+            move" as upstream drivers of the spread — in the vocabulary of this lesson, that is precisely the
+            \(a(\pi-\pi^{*})\) term (plus the growth-differential language in the same section echoing the
+            \(b(y-y^{*})\) term) doing the work behind an applied trading lesson's own bullet points.
+          </p>
+          <p>
+            That makes a Taylor-Rule-implied-rate tracker a natural, currently-missing companion piece to the existing
+            yield-spread machinery: computing an implied-minus-actual policy gap for both economies side by side would
+            let a future version of this repo test whether that gap <em>leads</em> the yield spread's own moves, rather
+            than only trading the spread once it has already shifted. It is not, however, a small addition to bolt on
+            casually. Building it honestly needs FRED-sourced inflation data (headline/core CPI or PCE, per the
+            currency's central bank convention) and an output-gap proxy (CBO potential GDP, Okun's-law unemployment gap,
+            or an HP-filtered GDP series — each a real, debatable choice, not a single obvious number), the same
+            "boring parsing done correctly and visibly" discipline <code>CLAUDE.md</code> calls out for macro data
+            (currency/whitespace stripping, explicit date formats, matching resample frequency to each series' true
+            release cadence), and — per this repo's Lego Principle 5 — a genuine walk-forward out-of-sample test with a
+            non-trivial trade count before any implied-minus-actual gap is trusted as an FX signal rather than an
+            interesting number on a chart.
+          </p>
+        </div>
+    </div>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>Math Primer</h2>
+    <div class="brick-grid">
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/primer-correlation-regression.html">Correlation &amp; Linear Regression</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this connects to MacroFXModel</div>
+          <h3>The primer behind an existing brick, an existing course note, and three upcoming lessons</h3>
+          <p>
+            <code>js/statsCore.js</code>'s <code>linregSlope</code> — listed in
+            this repo's shared-utility-bricks table as owning "\(\text{rollingZScore}\)/
+            \(\text{rollingZAt}\), \(\text{rollingPercentile}\), \(\text{linregSlope}\),
+            \(\text{ewma}\), moments" — is a direct implementation of the
+            \(\hat\beta = \mathrm{Cov}(X,Y)/\mathrm{Var}(X)\) formula derived above,
+            specialized to the case where \(X\) is simply the bar index \(0,1,2,\dots\).
+            Reading the source confirms it line for line: it computes the mean of
+            the values, sums \((i - \bar{i})(v_i - \bar v)\) over the window for the
+            numerator and \((i-\bar i)^2\) for the denominator, and divides — the
+            exact numerator/denominator pair this primer's derivation ends on. That
+            is why the CLAUDE.md brick registry's instruction to import
+            <code>linregSlope</code> rather than re-deriving a trend slope inline
+            is not just a style preference — every "trend strength" or "per-bar
+            drift" number computed anywhere in this repo should be running through
+            this one formula, not a second copy of it.
+          </p>
+          <p>
+            <code>education/regression-analysis-course-notes.md</code> already
+            states the applied version of exactly this idea — "Regression
+            decomposes variation in returns into an explained part (factor
+            exposures, the β's) and an unexplained part (the residual ε, where
+            alpha — and noise — live). OLS finds the line minimizing squared
+            residuals." This primer is the from-scratch derivation underneath that
+            sentence: where \(\hat\beta\) actually comes from, why "minimizing
+            squared residuals" produces that specific formula and not some other
+            one, and why \(R^2\) is the number that quantifies "explained."
+          </p>
+          <p>
+            Finally, this is deliberately the toolkit the next three lessons in
+            this track build on directly, not incidentally. The
+            <a href="theory-lab/lessons/cointegration.html">Cointegration</a> lesson's Engle-Granger
+            Step 1 is literally the OLS regression derived above, run on two price
+            levels instead of two abstract variables — its Step 2 only exists
+            because that Step 1 regression's ordinary R² can't be trusted on
+            non-stationary inputs, a distinction that presupposes knowing what R²
+            normally means. The <strong>PCA &amp; Factor Regimes</strong> lesson
+            operates on a correlation matrix built entirely from the \(r\) formula
+            above, applied pairwise across a whole basket of series at once. And
+            the <strong>Kalman Filter</strong> lesson's adaptive hedge ratio is this
+            primer's \(\hat\beta\), re-estimated recursively bar by bar instead of
+            once on a fixed window. None of those three lessons re-derive
+            covariance, correlation, or the OLS normal equations — they assume this
+            primer and move straight to what's new.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/primer-probability.html">Probability &amp; Random Variables</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this connects to MacroFXModel</div>
+          <h3>Background literacy, not a specific module</h3>
+          <p>
+            This primer doesn't map onto one file the way a Tier-1 brick does — it's
+            the formal vocabulary that other lessons and modules already assume.
+            Two direct connections are worth being explicit about. First, the
+            <strong>Bayesian Inference</strong> lesson in this series defines
+            \(P(H)\), \(P(E \mid H)\), and the posterior \(P(H \mid E)\) without
+            ever pausing to define what a probability or a random variable formally
+            is — \(H\) and \(E\) are events, and any signal built from real data
+            (a return, a classifier score, a day-type flag) is a random variable in
+            the sense defined above; Bayes' theorem is a rule for combining
+            probabilities of events, and this primer is the object-level layer
+            underneath it. Second, this repo's vol-forecasting and GARCH-family
+            work (documented in <code>js/volBacktestEngine.js</code> and the GARCH
+            lesson) assumes a distribution shape for returns — often approximately
+            normal, or a fatter-tailed alternative like Student's t — as a modeling
+            choice, not an arbitrary one. The CLT is part of why "start from
+            approximately normal" is defensible: a day's return is, informally, an
+            aggregation of many smaller order-flow and price-formation events, and
+            aggregation of many roughly-independent pieces is exactly the setting
+            the CLT describes. It is equally important to state the limit of that
+            justification honestly: the CLT's guarantee depends on independence and
+            finite variance, and daily financial returns visibly violate the
+            independence assumption (volatility clustering — big moves cluster in
+            time, they are not scattered independently), which is precisely why raw
+            normality is a starting point that gets corrected, not a settled fact
+            that gets assumed. This is background literacy for reading those later
+            lessons critically, not a claim that any specific module here needs to
+            change.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/primer-returns-compounding.html">Returns, Log-Returns &amp; Compounding</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this connects to MacroFXModel</div>
+          <h3>The literal design rule behind the forecast engine's horizons</h3>
+          <p>
+            CLAUDE.md states the Lego Principle's third rule plainly: strategies
+            here must be "horizon-agnostic. Daily / weekly / 20-day differ only by
+            σ scale (×1 / ×√5 / ×√20) and window length." That is the
+            square-root-of-time rule derived above, applied directly: 5 trading
+            days scales daily σ by \(\sqrt{5}\), 20 trading days scales it by
+            \(\sqrt{20}\), because log returns across those days are (approximately)
+            independent and additive, so their variances add and their standard
+            deviations scale by the square root of the day count. This is not a
+            coincidental resemblance — it is the exact mechanism, and it's why
+            <code>js/forecastCore.js</code>'s <code>HORIZONS</code> table and
+            <code>js/volBacktestEngine.js</code>'s vol-sigma series are built to
+            share one volatility calculation scaled by horizon, rather than
+            re-estimating volatility separately at each horizon from scratch.
+          </p>
+          <p>
+            The gap this primer derives between arithmetic and geometric means,
+            \(g \approx \mu - \sigma^2/2\), reappears by name and by formula in the
+            Kelly Criterion lesson, where it is the mechanism behind volatility
+            drag and the reason overbetting past the Kelly-optimal size can turn a
+            genuinely positive-expectancy bet's compounded growth rate negative.
+            And the lognormal price assumption this primer's log-additivity
+            argument justifies is the starting assumption of the upcoming
+            Black-Scholes lesson — geometric Brownian motion, the stochastic
+            process Black-Scholes prices options under, is defined directly in
+            terms of log returns being the natural additive unit of price
+            movement, for exactly the reasons worked out above.
+          </p>
+        </div>
+    </div>
+    <div class="brick-entry">
+      <div class="brick-entry-head"><a href="theory-lab/lessons/primer-stats-normal.html">Descriptive Statistics &amp; the Normal Distribution</a></div>
+      <div class="tl-box repo">
+          <div class="tl-icon-badge green">🧩</div>
+          <div class="tl-box-label">Where this connects to MacroFXModel</div>
+          <h3>This is the math behind <code>js/statsCore.js</code>'s z-score bricks</h3>
+          <p>
+            This repo already has this exact math built as a shared Tier-1 brick:
+            <code>js/statsCore.js</code> exports <code>rollingZScore</code>/
+            <code>rollingZAt</code> (compute a rolling-window z-score, the "how many
+            sigmas away, right now" gate described above) alongside
+            <code>rollingPercentile</code>, <code>linregSlope</code>, <code>ewma</code>,
+            and a set of statistical <code>moments</code>. Per
+            <code>CLAUDE.md</code>'s shared-utility-bricks table, this module owns
+            "z-score/percentile gates — never re-inline a z-score" for exactly the
+            reason the Lego Principle gives generally: two copies of the same
+            z-score math will eventually drift, and a wrong \(\sigma\) is a silent,
+            hard-to-catch bug in anything downstream of it.
+          </p>
+          <p>
+            The <code>moments</code> helper takes a <code>ddof</code> (delta degrees
+            of freedom) parameter — and that parameter is now precisely what this
+            lesson just explained. <code>ddof=0</code> divides by \(n\) (population
+            variance); <code>ddof=1</code> divides by \(n-1\) (sample variance,
+            Bessel's correction). Knowing which one a given call site needs is
+            exactly the population-vs-sample judgment call worked through above.
+            More broadly, this primer is the statistical vocabulary — mean,
+            variance, \(\sigma\), z-score — needed to read every other lesson's
+            references to sigma, volatility, and standard deviations without having
+            to look the terms up mid-lesson.
+          </p>
+        </div>
+    </div>
+    </div>
+  </div>
+  <div class="tl-cat">
+    <h2>Where this sits next to Theory Lab</h2>
+    <div class="tl-cat-sub"></div>
+    <p style="color:var(--text2);max-width:760px">Every lesson linked above still stands on its own in <a href="theory-lab/hub.html">Theory Lab</a> — this page only adds back the specific internal-architecture context that was stripped out of the shared curriculum. If a lesson isn't listed here, it never had a repo-connection note in the first place (some lessons are pure background theory with nothing yet built on top of them).</p>
+  </div>
+
+</div>
+</body>
+</html>

@@ -26,10 +26,10 @@
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
       <li>Random k-fold CV assumes rows are exchangeable; time series aren't — shuffling can put day \(i+1\) in training while day \(i\) is the test row, which is literal lookahead, plus serially-correlated neighbors let a model "cheat" across the fold boundary.</li>
-      <li>Walk-forward validation fixes this by only ever training on \(\{i : i < T_k\}\) and testing on \(\{i : T_k \le i < T_k+h\}\) — the same "no lookahead" discipline CLAUDE.md already states as "σ/regime/score for window \(i\) use data \(< i\) only," applied to the whole train/evaluate cycle.</li>
+      <li>Walk-forward validation fixes this by only ever training on \(\{i : i < T_k\}\) and testing on \(\{i : T_k \le i < T_k+h\}\) — the same "no lookahead" discipline this project's own house rule already states as "σ/regime/score for window \(i\) use data \(< i\) only," applied to the whole train/evaluate cycle.</li>
       <li>A clean chronological split alone still leaks: a training row just before the boundary can have a forward-looking label that reaches into the test window, and a training row just after the test period can have a rolling feature window that reaches back into it.</li>
       <li>The worked example (\(n=1{,}000\), \(w=20\), \(H=5\), test = days 500–599) shows this concretely: days 495–499 are purged for a label leak, days 600–618 for a feature leak, and a further 10-day embargo (days 619–628) buffers residual serial correlation the mechanical purge formula doesn't capture — training only resumes at day 629.</li>
-      <li>This repo's own <code>summarizeSplit</code> (<code>js/honestForecastEngine.js</code>) does a single clean chronological split with no purge/embargo — an honest gap, not a bug, but a checkable refinement worth applying to strategies whose features (HV20, rolling z-scores/percentiles, day-type estimators) lean on multi-day rolling windows near the split date.</li>
+      <li>This project's own split/metrics reporting does a single clean chronological split with no purge/embargo — an honest gap, not a bug, but a checkable refinement worth applying to strategies whose features (HV20, rolling z-scores/percentiles, day-type estimators) lean on multi-day rolling windows near the split date.</li>
     </ul>
   </div>
 
@@ -180,7 +180,7 @@
   <p>
   That is <strong>literal lookahead</strong>: a model evaluated on day \(i\) was fit, in part, using
   day \(i{+}1\)'s data — a day that, at the moment day \(i\)'s forecast would have had to be made
-  live, had not happened yet. This is precisely the violation CLAUDE.md's checklist forbids in one
+  live, had not happened yet. This is precisely the violation this project's own checklist forbids in one
   sentence: <em>"No lookahead. σ/regime/score for window \(i\) use data \(< i\) only."</em> Random
   k-fold CV, applied naively to a time-ordered series, breaks that rule by construction — not as an
   edge case, but on every fold, for roughly half the boundary rows.
@@ -215,7 +215,7 @@
   fixed-length window, or simply extend the training set to include \(\text{Test}_k\) once it has
   been used, for an <em>expanding</em> window (the more common choice, and the one drawn in the
   diagram above) — and repeat for as many folds as the data allows. This is the exact discipline
-  CLAUDE.md already writes into house rule form: every σ, regime read, or score used for window
+  this project's own house rule already states: every σ, regime read, or score used for window
   \(i\) must be built only from data strictly earlier than \(i\). Walk-forward validation is that
   rule applied not just within a single feature calculation, but to the entire train/evaluate
   cycle — the model itself never has access to a boundary it hasn't crossed yet.
@@ -473,40 +473,6 @@
     </div>
   </div>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this connects to MacroFXModel</div>
-    <h3>This is the formal name for a rule <code>CLAUDE.md</code> already enforces — and a refinement worth checking against</h3>
-    <p>
-    This repo's build discipline states the walk-forward principle directly, twice: the adding-a-
-    strategy checklist's <strong>"No lookahead. σ/regime/score for window \(i\) use data \(< i\) only"</strong>,
-    and the Lego Principle's <strong>"true in-sample / out-of-sample split"</strong> requirement,
-    paired with the <strong>≥30 OOS trade count gate</strong> that keeps a fold's out-of-sample result
-    from being too thin to mean anything. Those two rules, together, are exactly what this lesson
-    formalizes: train strictly on the past, evaluate strictly on the unseen future, and don't trust a
-    thin sliver of OOS trades as if it were a real fold.
-    </p>
-    <p>
-    Where this lesson goes further than the current codebase does: <code>summarizeSplit</code> in
-    <code>js/honestForecastEngine.js</code> performs exactly one chronological split — everything
-    before a computed split date is IS, everything from that date on is OOS — and it does not
-    currently purge or embargo rows straddling that boundary. That's an honest gap, not a hidden bug:
-    a single clean chronological split (no shuffling) already eliminates the crude lookahead problem
-    this lesson opens with. What it does <em>not</em> eliminate is the subtler boundary leak described
-    above, and this repo has no shortage of features built on exactly the kind of overlapping rolling
-    windows where that leak lives — HV20 and the other vol-sigma series in
-    <code>js/volBacktestEngine.js</code>, the rolling z-scores and percentiles in
-    <code>js/statsCore.js</code> (<code>rollingZScore</code>, <code>rollingPercentile</code>), and the
-    day-type estimators in <code>js/dayTypeCore.js</code> all compute a value at index \(i\) from a
-    window of nearby bars. Any of them used near a train/OOS split boundary is a candidate for exactly
-    the label/feature overlap this lesson walks through. This isn't a claim that any specific reported
-    OOS Sharpe in this repo is wrong — that's an empirical question a purge/embargo check would have
-    to answer per-strategy — but it is the concrete, checkable refinement worth applying before
-    trusting an OOS number on a strategy whose features lean on multi-day rolling windows near the
-    split date.
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
@@ -558,11 +524,11 @@
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Random k-fold CV is mechanically broken for time series.</strong> Shuffling can put day \(i+1\) in training while day \(i\) is the test row — literal lookahead, not a subtle statistical nuance.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Walk-forward validation trains strictly on the past.</strong> \(\text{Train}_k=\{i:i<T_k\}\), \(\text{Test}_k=\{i:T_k\le i<T_k+h\}\) — the same "no lookahead" rule CLAUDE.md states, applied to the whole train/evaluate cycle.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Walk-forward validation trains strictly on the past.</strong> \(\text{Train}_k=\{i:i<T_k\}\), \(\text{Test}_k=\{i:T_k\le i<T_k+h\}\) — the same "no lookahead" rule this project's own house rule states, applied to the whole train/evaluate cycle.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A clean split date alone still leaks.</strong> Rolling feature/label windows straddling the boundary can carry test-period information into training even when every index technically respects the split.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Purging removes the mechanically computable overlap.</strong> Any training row whose combined feature+label window touches the test interval is dropped — exact, checkable, not eyeballed.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Embargo buffers what purging can't formula-ize.</strong> Real serial correlation runs beyond any window length — embargo is a deliberate, conservative extra margin on top of the mechanical purge.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This repo's own <code>summarizeSplit</code> has no purge/embargo yet.</strong> An honest gap, not a bug — a checkable refinement worth applying to strategies whose features lean on multi-day rolling windows near the split date.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This project's own split/metrics reporting has no purge/embargo yet.</strong> An honest gap, not a bug — a checkable refinement worth applying to strategies whose features lean on multi-day rolling windows near the split date.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Passing a purged test is not proof of edge.</strong> It only makes the OOS number honest — it says nothing about costs, economic mechanism, or whether the result clears the multiple-testing chance baseline.</span></div>
   </div>
 
@@ -583,7 +549,7 @@
     </div>
   </details>
   <details class="tl-quiz">
-    <summary>Q2. How does walk-forward validation directly implement CLAUDE.md's "No lookahead" rule?</summary>
+    <summary>Q2. How does walk-forward validation directly implement the "no lookahead" rule this project follows?</summary>
     <div class="tl-answer">
     Walk-forward validation defines each fold's train set as strictly \(\{i : i < T_k\}\) and test set
     as strictly \(\{i : T_k \le i < T_k + h\}\), so by construction no training observation is ever

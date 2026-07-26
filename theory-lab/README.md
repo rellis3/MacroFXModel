@@ -15,6 +15,11 @@ reverse-engineered forecast and the gated trading system it inspired)? Those
 live in the sibling **[COG Hub](../cog/hub.html)**, not here — see
 `../cog/README.md`.
 
+Building or restyling a lesson? See
+[`../education/LESSON_STYLE_GUIDE.md`](../education/LESSON_STYLE_GUIDE.md) —
+every component in `assets/theory.css`, when to use it, copy-pasteable
+markup, the house content order, and a verification checklist.
+
 ## What every lesson page contains
 
 - Plain-English intuition before any math.

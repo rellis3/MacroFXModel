@@ -29,7 +29,7 @@
       <li>Worked example: a classifier that's 80% accurate at flagging trend days, when only 20% of days actually are trend days, gives a posterior of only <strong>50%</strong> that a flagged day is real — not 80%. That's the base-rate fallacy.</li>
       <li>The interactive chart's sliders default to a 20% prior and 80% classifier accuracy, reproducing that same 50% posterior; drag them to see how a rarer prior or a weaker classifier pulls the posterior around.</li>
       <li>A Bayes factor of 4 (0.80/0.20) is what actually separates the 20% prior from the 50% posterior here — "substantial" evidence on Jeffreys' scale, real but not decisive.</li>
-      <li>The repo box flags Bayesian updating as a genuine, unbuilt alternative to `computeSignalScore`'s fixed weighted sum — a design hypothesis, not a validated improvement.</li>
+      <li>Bayesian updating is flagged here as a genuine, unbuilt alternative to this project's own fixed weighted scoring sum — a design hypothesis, not a validated improvement.</li>
     </ul>
   </div>
 
@@ -490,58 +490,6 @@
     base-rate fallacy in a different costume.
   </p>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
-    <h3>Confluence scoring is currently additive, not Bayesian — and that's a genuine, unbuilt design question</h3>
-    <p>
-      <code>js/levelSources.js</code> emits a <code>Level[]</code> from several
-      independent sources (daily open, prior hi/lo, pivots, volume profile,
-      swing S&amp;R, round numbers, VWAP), and <code>collectLevels</code> /
-      <code>clusterLevels</code> group nearby levels from different sources
-      into a confluence cluster. Separately, <code>js/entryGradeCore.js</code>'s
-      <code>computeSignalScore</code> combines several component scores
-      (<code>hmmScore</code>, <code>momScore</code>, <code>rbScore</code>,
-      <code>structScore</code>, optionally <code>macroScore</code>) into a
-      single 0–100 signal score via a fixed weighted sum — 25/25/20/20/10 with
-      macro data on, 38/25/25/12 without.
-    </p>
-    <p>
-      A weighted sum treats each confirming signal as contributing a fixed,
-      independent slice of "confidence," regardless of how correlated that
-      signal is with the others already counted, and regardless of how common
-      or rare the situation it's flagging actually is. A Bayesian alternative
-      is a genuinely different design: treat "fade" vs. "follow" as two
-      competing hypotheses with a prior (e.g. the historical base rate of fade
-      vs. follow outcomes at this kind of level, the way the worked example
-      above used the 20% base rate of trend days), and treat each additional
-      confirming signal (structural confluence, momentum alignment, range-bias
-      conviction, macro alignment) as evidence that updates the posterior via
-      its own likelihood ratio — sequential updating exactly as derived above,
-      each new signal multiplying in a Bayes factor rather than adding a fixed
-      point weight. The structural appeal, in principle, is that this can
-      naturally down-weight <strong>correlated</strong> signals (two features
-      that are mostly saying the same thing shouldn't each buy a full,
-      independent slice of confidence the way a linear sum lets them) and it
-      would produce an actual calibrated probability ("62% likely to fade")
-      instead of an unitless 0–100 score.
-    </p>
-    <p>
-      To be explicit about where this stands: <strong>this is not built,
-      not prototyped, and not validated</strong> — it is a candidate reframing
-      of an existing brick, described honestly as a hypothesis about design,
-      not a claim of improvement. Building it would require estimating real
-      likelihood ratios per signal from historical data (not guessed weights),
-      handling the correlation-between-signals problem explicitly rather than
-      just asserting Bayes handles it gracefully, and — per this repo's Lego
-      Principle #5 — proving it beats the incumbent additive
-      <code>computeSignalScore</code> on true out-of-sample Sharpe with a
-      non-trivial OOS trade count before it would replace anything live. A
-      more "principled-sounding" formula is not evidence by itself; only the
-      OOS comparison is.
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
@@ -574,8 +522,9 @@
       correlated signals — e.g. two level sources that are both really just
       re-detecting the same daily pivot — will get double-counted as if they
       were two separate confirmations, inflating the posterior further than
-      the evidence actually warrants. This is precisely the concern raised in
-      the repo box above about a naive multi-signal Bayesian score.
+      the evidence actually warrants. This is precisely the risk with any
+      naive multi-signal Bayesian score that treats every signal as
+      independent.
     </p>
     <p>
       <strong>Treating a Bayes factor as a posterior probability.</strong> A
@@ -671,10 +620,10 @@
     </div>
   </details>
   <details class="tl-quiz">
-    <summary>Q6. Why is a weighted additive score (like computeSignalScore's 25/25/20/20/10 blend) not automatically "wrong" just because a Bayesian alternative exists?</summary>
+    <summary>Q6. Why is a weighted additive score (like a 25/25/20/20/10 blend) not automatically "wrong" just because a Bayesian alternative exists?</summary>
     <div class="tl-answer">
       Because "more principled-sounding" is not the same as "better" — per the
-      Lego Principle in this repo's CLAUDE.md, an idea only earns adoption by
+      Lego Principle in this project's own house discipline, an idea only earns adoption by
       beating the incumbent on true out-of-sample Sharpe with a non-trivial
       OOS trade count, not by sounding more theoretically justified. A naive
       Bayesian version also introduces its own failure mode — treating

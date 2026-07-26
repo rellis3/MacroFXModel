@@ -598,9 +598,8 @@
             would represent, and nowhere close to the \(z\approx3\) tail-event
             territory. With only 6 data points this is a toy illustration,
             not a real volatility estimate — a real z-score gate would use a
-            much longer rolling window, exactly what
-            <code>js/statsCore.js</code>'s <code>rollingZScore</code> does
-            (next section).
+            much longer rolling window, exactly what this project's own
+            rolling z-score code does (next section).
           </p>
         </div>
       </div>
@@ -655,37 +654,6 @@
     means throughout the rest of this series before any GARCH or Yang-Zhang
     refinement is layered on top.
   </p>
-
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this connects to MacroFXModel</div>
-    <h3>This is the math behind <code>js/statsCore.js</code>'s z-score bricks</h3>
-    <p>
-      This repo already has this exact math built as a shared Tier-1 brick:
-      <code>js/statsCore.js</code> exports <code>rollingZScore</code>/
-      <code>rollingZAt</code> (compute a rolling-window z-score, the "how many
-      sigmas away, right now" gate described above) alongside
-      <code>rollingPercentile</code>, <code>linregSlope</code>, <code>ewma</code>,
-      and a set of statistical <code>moments</code>. Per
-      <code>CLAUDE.md</code>'s shared-utility-bricks table, this module owns
-      "z-score/percentile gates — never re-inline a z-score" for exactly the
-      reason the Lego Principle gives generally: two copies of the same
-      z-score math will eventually drift, and a wrong \(\sigma\) is a silent,
-      hard-to-catch bug in anything downstream of it.
-    </p>
-    <p>
-      The <code>moments</code> helper takes a <code>ddof</code> (delta degrees
-      of freedom) parameter — and that parameter is now precisely what this
-      lesson just explained. <code>ddof=0</code> divides by \(n\) (population
-      variance); <code>ddof=1</code> divides by \(n-1\) (sample variance,
-      Bessel's correction). Knowing which one a given call site needs is
-      exactly the population-vs-sample judgment call worked through above.
-      More broadly, this primer is the statistical vocabulary — mean,
-      variance, \(\sigma\), z-score — needed to read every other lesson's
-      references to sigma, volatility, and standard deviations without having
-      to look the terms up mid-lesson.
-    </p>
-  </div>
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
@@ -829,7 +797,6 @@
     <li>David Freedman, Robert Pisani &amp; Roger Purves, <em>Statistics</em>, 4th ed., W. W. Norton, 2007 — a widely used, notably careful and non-mathematical introductory statistics textbook; its treatment of the standard deviation and the normal approximation is the standard "start from zero" reference this primer follows in spirit.</li>
     <li>Abraham de Moivre, <em>The Doctrine of Chances</em>, 1733 supplement — the earliest known derivation of the normal curve, as an approximation to the binomial distribution for large numbers of coin flips, predating Gauss by roughly three-quarters of a century.</li>
     <li>Carl Friedrich Gauss, <em>Theoria Motus Corporum Coelestium</em>, 1809 — Gauss's development of the normal distribution as the error law of astronomical measurement, in service of predicting orbits from imprecise observations; the distribution bears his name from this work, though de Moivre's result came first in a different context.</li>
-    <li><code>js/statsCore.js</code> in this repo — the shared Tier-1 brick (<code>rollingZScore</code>, <code>rollingZAt</code>, <code>rollingPercentile</code>, moments with a <code>ddof</code> parameter) implementing exactly the z-score and variance math this lesson derives.</li>
   </ul>
   </details>
 

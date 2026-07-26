@@ -28,7 +28,7 @@
       <li>Heston (1993) replaces Black-Scholes' one constant \(\sigma\) with a second stochastic process \(v_t\) for the instantaneous variance, mean-reverting toward a long-run level \(\theta\) at speed \(\kappa\) with its own noise \(\xi\sqrt{v_t}\,dW_t^2\) — a CIR-type process.</li>
       <li>The two Brownian motions driving price and variance are allowed to correlate (\(\rho\)); empirically \(\rho\) is usually negative, the "leverage effect" where volatility spikes when price falls.</li>
       <li>That negative \(\rho\) is exactly what generates a realistic volatility smile/skew — it makes large down-moves disproportionately likely to coincide with a vol spike, so low-strike puts price with higher implied vol than at-the-money, something flat-\(\sigma\) Black-Scholes structurally cannot produce.</li>
-      <li>The variance SDE is the same OU "rubber band" mean-reversion this Theory Lab already covers, just pointed at variance instead of price — informally the continuous-time cousin of GARCH(1,1)'s discrete-time "variance depends on yesterday's shock and yesterday's forecast" recursion, already running in this repo's <code>js/volBacktestEngine.js</code>.</li>
+      <li>The variance SDE is the same OU "rubber band" mean-reversion this Theory Lab already covers, just pointed at variance instead of price — informally the continuous-time cousin of GARCH(1,1)'s discrete-time "variance depends on yesterday's shock and yesterday's forecast" recursion, already running in this project's own volatility research.</li>
       <li>Prices come from a semi-closed-form solution via the model's characteristic function, not a simple algebraic formula — this repo has no options-pricing module of any kind, so this lesson is pure theory background.</li>
     </ul>
   </div>
@@ -411,65 +411,6 @@
     purposes — not a claim that any one of them is universally "correct."
   </p>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
-    <h3>Continuous-time cousin of the GARCH sigma this repo already runs — and no options module to connect it to</h3>
-    <p>
-      Say this plainly up front: this repo has <strong>no options-pricing
-      module of any kind</strong> — no Black-Scholes implementation, no
-      Heston implementation, no implied-volatility surface, nothing that
-      prices a derivative contract. This lesson is pure theory background,
-      exactly like the Black-Scholes and Merton jump-diffusion lessons before
-      it. Nothing here describes existing code, and nothing here proposes
-      building an options desk inside this repo.
-    </p>
-    <p>
-      What the repo <em>does</em> already have, built and running in
-      production, is the discrete-time cousin of exactly the insight Heston's
-      variance SDE formalizes. Per <code>CLAUDE.md</code>'s core-modules table,
-      <code>js/volBacktestEngine.js</code> implements GARCH(1,1) as one of
-      three sigma estimators (alongside HV20 and Yang-Zhang) feeding the live
-      forecaster's bands, with the recursion
-      \(v \leftarrow \omega + \alpha\,r_{i-1}^2 + \beta\,v,\ \sigma_i=\sqrt v\)
-      and fitted constants \(\alpha=0.06,\ \beta=0.91\) (a persistence of 0.97,
-      roughly a 23-trading-day half-life). That recursion is discrete-time
-      variance with its own memory — today's variance forecast depends on
-      yesterday's shock and yesterday's own forecast. Heston's
-      \(dv_t=\kappa(\theta-v_t)dt+\xi\sqrt{v_t}\,dW_t^2\) is, informally, the
-      same idea — variance reverting toward a long-run level with its own
-      source of randomness — expressed as a continuous-time SDE instead of a
-      discrete daily recursion. Neither engine copies the other's code, and
-      they are not claimed to be mathematically equivalent (GARCH is discrete
-      and this repo's GARCH has no explicit correlation-with-price term the way
-      Heston's \(\rho\) does); the connection is conceptual — "let variance
-      itself be a process with memory and dynamics" is the shared insight, one
-      lesson's discrete-time home and the other's continuous-time home.
-    </p>
-    <p>
-      The Merton jump-diffusion lesson is the other half of this repo's theory
-      coverage of the smile: that lesson covers discontinuous jumps as one way
-      Black-Scholes gets extended to explain a real smile; this lesson covers
-      correlated stochastic volatility as a different mechanism producing the
-      same observable symptom. Real practitioner models often combine both (the
-      "stochastic-vol-plus-jumps" family mentioned above) rather than picking
-      one mechanism as the single true explanation — this lesson does not take
-      a position on which mechanism, or which combination, would best describe
-      any specific FX pair's real smile, because that would require fitting
-      real option data this repo does not currently source or store.
-    </p>
-    <p>
-      Building an actual Heston calibration engine here would be new,
-      unvalidated work requiring a characteristic-function pricer, a
-      calibration routine against a real implied-vol surface this repo does
-      not currently have a data source for, and — per the Lego Principle — a
-      concrete reason at least two callers would use it. Nothing here proposes
-      that; this is theory background connecting an existing, tested brick
-      (GARCH in <code>volBacktestEngine.js</code>) to the wider stochastic-
-      volatility literature it belongs to.
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
@@ -532,7 +473,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Set ρ=0 and ξ→0 and Heston collapses back to flat Black-Scholes.</strong> The smile is earned specifically by ξ≠0 (variance actually moves) combined with ρ≠0 (that movement is linked to price direction).</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Prices need a semi-closed-form numerical step, not simple algebra.</strong> Naive characteristic-function implementations are known to hit branch-cut discontinuities that silently misprice for some parameter combinations.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A good smile fit is curve-fitting by construction, not a validated edge.</strong> Calibrating Heston to today's option prices says nothing, by itself, about whether a strategy built on it would show real edge out-of-sample.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This repo has no options-pricing module at all.</strong> This lesson is pure theory background — a continuous-time cousin of the GARCH sigma already running in <code>js/volBacktestEngine.js</code>, not a description of existing code.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This repo has no options-pricing module at all.</strong> This lesson is pure theory background — a continuous-time cousin of the GARCH sigma already running in this project's own volatility research, not a description of existing code.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -612,8 +553,8 @@
     <div class="tl-answer">
       No — this repo has no options-pricing module of any kind, and this
       lesson is pure theory background, not a description of existing code.
-      What it does have is GARCH(1,1) as one of three sigma estimators in
-      <code>js/volBacktestEngine.js</code>, which treats variance as a process
+      What it does have is GARCH(1,1) as one of three sigma estimators,
+      which treats variance as a process
       with its own memory (today's forecast depends on yesterday's shock and
       yesterday's forecast) in discrete time. Heston's variance SDE
       formalizes essentially the same insight — mean-reverting variance with
@@ -632,7 +573,7 @@
     <li>David S. Bates, "Jumps and Stochastic Volatility: Exchange Rate Processes Implicit in Deutsche Mark Options," <em>Review of Financial Studies</em>, 1996 — the widely cited stochastic-vol-plus-jumps extension combining Heston's variance process with a Merton-style jump term, and, like Heston's own paper, built on FX/currency option data.</li>
     <li>Rama Cont &amp; Peter Tankov, <em>Financial Modelling with Jump Processes</em>, Chapman &amp; Hall/CRC, 2004 — the same standard reference cited in the Merton jump-diffusion lesson, covering stochastic volatility and combined jump/stochastic-vol models in the broader Lévy/affine-process framework.</li>
     <li>Jim Gatheral, <em>The Volatility Surface: A Practitioner's Guide</em>, Wiley, 2006 — a standard practitioner-level treatment of Heston, local volatility, and the empirical shape of the smile/skew, written by a working quant.</li>
-    <li><code>js/volBacktestEngine.js</code> in this repo — the built, tested GARCH(1,1) sigma estimator this lesson's repo box connects to; see also the GARCH &amp; Volatility Clustering lesson for its full derivation.</li>
+    <li>See also the GARCH &amp; Volatility Clustering lesson in this Theory Lab for the full derivation of the discrete-time GARCH(1,1) sigma estimator this lesson's variance SDE is the continuous-time cousin of.</li>
   </ul>
   </details>
 

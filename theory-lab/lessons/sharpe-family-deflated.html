@@ -17,7 +17,7 @@
   <h1 class="tl-title">Sharpe, Sortino, Calmar &amp; the Deflated Sharpe Ratio</h1>
   <p class="tl-dek">Three ways to divide return by risk, built from scratch — then the formal answer to a question every backtest eventually has to face: how much of your best reported Sharpe ratio is just the residue of trying many variations?</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — extends this repo's js/metricsCore.js and the Multiple Testing lesson</span>
+    <span class="tl-status concept">CONCEPT — extends the performance statistics used throughout this project and the Multiple Testing lesson</span>
     <span>~17 min read</span>
     <span>Prereqs: Multiple Testing &amp; the Look-Elsewhere Effect, Descriptive Statistics &amp; the Normal Distribution</span>
   </div>
@@ -25,11 +25,11 @@
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
-      <li>Sharpe = mean excess return ÷ its std. dev., annualized by \(\sqrt{k}\) (not \(k\)) because variance, not std. dev., is what adds linearly across independent periods — this is exactly <code>js/metricsCore.js</code>'s <code>sharpeRatio</code>.</li>
-      <li>Sortino swaps in downside deviation (std. dev. computed only over below-MAR periods) so upside wobble stops counting against a strategy — matches <code>sortinoRatio</code>'s exact convention (divide by the downside count \(n_d\), not total \(n\)).</li>
-      <li>Calmar = CAGR ÷ worst peak-to-trough drawdown, a single realized event rather than an average dispersion statistic — <code>calmar(annualReturn, maxDD)</code> takes both as caller-supplied inputs rather than assuming one definition.</li>
+      <li>Sharpe = mean excess return ÷ its std. dev., annualized by \(\sqrt{k}\) (not \(k\)) because variance, not std. dev., is what adds linearly across independent periods — this is exactly how this project's own Sharpe calculation works.</li>
+      <li>Sortino swaps in downside deviation (std. dev. computed only over below-MAR periods) so upside wobble stops counting against a strategy — matches this project's own Sortino calculation's exact convention (divide by the downside count \(n_d\), not total \(n\)).</li>
+      <li>Calmar = CAGR ÷ worst peak-to-trough drawdown, a single realized event rather than an average dispersion statistic — this project's own Calmar calculation takes both as caller-supplied inputs rather than assuming one definition.</li>
       <li>The Deflated Sharpe Ratio corrects a reported Sharpe for how many variations were tried before it was picked: in the lesson's worked example (\(N=50\) trials, \(\sigma_{SR}=0.66\)), pure luck alone is expected to produce a best-of-50 Sharpe of \(SR_0\approx1.50\), so a reported 1.80 only clears that bar by 0.30 — working out to \(DSR\approx0.81\), not the near-100% a naive zero-benchmark test would claim.</li>
-      <li><code>js/metricsCore.js</code> already ships the Sharpe-honesty pair (<code>sharpeStdError</code>, <code>minTrackRecordLength</code>) that DSR's non-normality correction reuses, but nothing today tracks the trial count \(N\) behind a reported Sharpe — DSR itself isn't built yet.</li>
+      <li>This project's own performance-metrics module already ships the Sharpe-honesty pair (a Sharpe standard-error function and a minimum-track-record-length function) that DSR's non-normality correction reuses, but nothing today tracks the trial count \(N\) behind a reported Sharpe — DSR itself isn't built yet.</li>
     </ul>
   </div>
 
@@ -45,7 +45,8 @@
   </p>
   <p>
     The second half of the lesson is the more important one for how this repo
-    actually works. The Lego Principle's validation rule (CLAUDE.md, principle
+    actually works. The Lego Principle's validation rule (this project's own house
+    rule, principle
     5) already says a strategy "wins" only if it beats the incumbent on OOS
     Sharpe with a non-trivial trade count — but it says nothing yet about what
     happens to that Sharpe number when it was selected as the best of many
@@ -160,7 +161,7 @@
     rule of thumb — it falls straight out of the same "variance adds, standard
     deviation doesn't" fact that makes daily volatility scale to a 20-day
     horizon by \(\sqrt{20}\) rather than by 20, which is the exact scaling
-    this repo's own vol math (<code>js/volBacktestEngine.js</code>'s
+    this project's own vol math (its
     horizon-scaled \(\sigma\)) depends on throughout. It also carries the same
     caveat forward: the derivation assumes the per-period returns are close to
     independent. A strategy whose returns are meaningfully autocorrelated
@@ -193,12 +194,12 @@
   </div>
   <p>
     where \(n_d\) is the count of periods that fell below the MAR. This
-    matches <code>js/metricsCore.js</code>'s <code>sortinoRatio</code> exactly
+    matches this project's own Sortino calculation exactly
     — it accumulates squared deviations only over \(r &lt; 0\) periods,
     divides by the count of those periods, and annualizes by the same
     \(\sqrt{k}\) as Sharpe (some textbook treatments divide by the
     <em>total</em> period count \(n\) instead of just the downside count
-    \(n_d\); this repo's implementation follows the semi-deviation-of-losses
+    \(n_d\); this project's implementation follows the semi-deviation-of-losses
     convention above, which is one standard variant among a few in the
     literature). The intuitive payoff: a strategy whose variance is
     disproportionately made of favorable big wins gets a Sortino
@@ -221,8 +222,7 @@
     <div class="tl-eq-chip c4"><code>MaxDD</code><span>worst realized peak-to-trough equity decline, one specific event</span></div>
   </div>
   <p>
-    matching <code>js/metricsCore.js</code>'s <code>calmar(annualReturn,
-    maxDD)</code>, which takes both quantities from the caller rather than
+    matching this project's own Calmar calculation, which takes both quantities from the caller rather than
     assuming a single definition of "annual return" (definitions vary too
     much across engines to bake one in silently — the same reasoning
     documented in that module's own header comment about why Sharpe used to
@@ -277,7 +277,7 @@
   <p>
     <strong>The Deflated Sharpe Ratio — the problem it solves.</strong> This
     is the direct Sharpe-ratio analogue of the Multiple Testing lesson's
-    central point, and CLAUDE.md's own house rule already names the general
+    central point, and this project's own house rule already names the general
     version of it: "count the cells and state the chance-baseline (multiple
     testing): finding a few 'winners' among 70 slices is what noise does.
     Survivors must beat chance <em>and</em> be IS-consistent." That rule was
@@ -297,10 +297,10 @@
     across those \(N\) trials (\(\sigma_{SR}^2\) — how spread out the
     search's own results were), the reported track record's length \(T\), and
     that same track record's skewness \(\gamma_3\) and kurtosis \(\gamma_4\)
-    — the same fat-tail diagnostics this repo's <code>skewness</code> and
-    <code>excessKurtosis</code> functions already compute, and the same ones
-    already feeding <code>minTrackRecordLength</code>'s "fat-tail-adjusted"
-    figure per CLAUDE.md. It produces two <strong>outputs</strong>: first, a
+    — the same fat-tail diagnostics this project's own skewness and
+    excess-kurtosis functions already compute, and the same ones
+    already feeding its minimum-track-record-length function's "fat-tail-adjusted"
+    figure per this project's own house rule. It produces two <strong>outputs</strong>: first, a
     corrected benchmark \(SR_0\) — the Sharpe ratio you'd <em>expect</em> the
     best of \(N\) purely-lucky, zero-skill trials to show, which becomes the
     bar the reported Sharpe has to clear instead of the naive bar of zero;
@@ -360,13 +360,13 @@
   <p>
     The denominator inside that square root is not a new idea introduced just
     for DSR — it is the exact same skew/kurtosis-adjusted variance-inflation
-    term already sitting inside this repo's own
-    <code>minTrackRecordLength</code> (its <code>adj</code> variable:
+    term already sitting inside this project's own
+    minimum-track-record-length function (its adjustment variable:
     <code>1 - skew*sr + ((kurt-1)/4)*sr*sr</code>), which exists there for the
     identical reason: a Sharpe estimate's own standard error is not the
     simple Gaussian one once the underlying returns are skewed or fat-tailed,
-    and FX/macro pnl reliably is both. DSR and this repo's
-    <code>minTrackRecordLength</code> are, in effect, the same non-normality
+    and FX/macro pnl reliably is both. DSR and this project's own
+    minimum-track-record-length function are, in effect, the same non-normality
     correction applied to two related questions — "how many years of live
     data would it take to trust this Sharpe" versus "given the search that
     produced it, what's the probability this Sharpe is real right now" — and
@@ -469,7 +469,7 @@
       rules. The best of the 50 posts an annualized Sharpe ratio of 1.8 on 60
       closed trades, and that's the number that goes in the writeup: "the
       strategy achieves a Sharpe of 1.8." This is exactly the scenario
-      CLAUDE.md's own house rule is written to catch: "finding a few
+      this project's own house rule is written to catch: "finding a few
       'winners' among 70 slices is what noise does. Survivors must beat
       chance <em>and</em> be IS-consistent." Fifty parameter variations is
       the same shape of problem as seventy regime slices — a search, with a
@@ -527,7 +527,7 @@
     about the worst realized outcome more than the average one. None of the
     three is "the" right metric; the right move is to name which question is
     being asked before quoting a number, exactly the kind of "name the
-    benchmark before claiming improvement" discipline CLAUDE.md's own working
+    benchmark before claiming improvement" discipline this project's own working
     agreement already asks for.
   </p>
 
@@ -563,56 +563,6 @@
     handed me for free." DSR is the answer to that second question, stated as
     a number instead of a gut feeling.
   </p>
-
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
-    <h3>metricsCore.js already has the Sharpe honesty pair — DSR is the next layer, and it isn't built yet</h3>
-    <p>
-      This repo is unusually well set up to add DSR properly, because the
-      pieces it depends on already exist as bricks, not as something that
-      would need to be invented. <code>js/metricsCore.js</code> already ships
-      <code>sharpeRatio</code>, <code>sortinoRatio</code> and
-      <code>calmar</code> exactly as derived above, each taking its
-      annualization explicitly rather than assuming one — the module's own
-      header comment explains this was built specifically because the same
-      three ratios had drifted into 8+ different, silently disagreeing
-      implementations across the codebase's various backtest engines before
-      this brick existed. It also already ships the Sharpe-honesty pair:
-      <code>sharpeStdError</code> (Lo 2002's standard error of an annualized
-      Sharpe) and <code>minTrackRecordLength</code> (Bailey &amp; López de
-      Prado, 2012), the latter already using the exact skew/kurtosis-adjusted
-      variance-inflation term this lesson's DSR formula uses too. Per
-      CLAUDE.md, <code>summarizeTrades</code> already feeds every strategy's
-      real per-trade skew and excess kurtosis into that adjustment rather
-      than assuming Gaussian returns, so every result card already reports
-      \(SR \pm SE\) and a fat-tail-adjusted minimum track record length
-      alongside the raw Sharpe.
-    </p>
-    <p>
-      What's genuinely missing is the piece this lesson is centrally about:
-      nothing in the current metrics stack tracks, or corrects for, <em>how
-      many variations were tried</em> before a "best" Sharpe was reported.
-      <code>minTrackRecordLength</code> answers "how much live data would it
-      take to trust this specific Sharpe," which is a valuable but different
-      question from "given the parameter sweep that produced this Sharpe, how
-      much of it is the sweep talking." There is no <code>N</code> (trial
-      count) tracked anywhere in a backtest card today, no
-      <code>deflatedSharpe.js</code>, and no UI element that asks "how many
-      variations did you actually try to get here" before rendering a
-      headline Sharpe. This is a genuine, valuable, currently-missing
-      validation layer — the natural next step for this metrics stack, not a
-      claim that it already exists in some other form. Building it would mean
-      instrumenting the places that already run parameter sweeps (any
-      backtest with a grid of thresholds/lookbacks/windows) to log every
-      trial's Sharpe, not just the winner's, so \(N\) and \(\sigma_{SR}\) are
-      real numbers pulled from the actual search rather than guessed after
-      the fact — the single most common way DSR gets misapplied in practice
-      is plugging in a guessed or undercounted \(N\) instead of the sweep's
-      true trial count, which silently understates \(SR_0\) and overstates
-      the resulting DSR.
-    </p>
-  </div>
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
@@ -667,7 +617,7 @@
       snooping in the feature design itself (rather than the parameter
       sweep), or whether the strategy still works on data the entire search —
       not just the reported trial — never touched. A DSR of 0.9 on an
-      in-sample search is still an in-sample number; CLAUDE.md's OOS bar
+      in-sample search is still an in-sample number; this project's own OOS bar
       (Lego Principle 5) is a separate, still-mandatory hurdle, not one DSR
       substitutes for.
     </p>
@@ -745,7 +695,7 @@
       zero. It additionally widens or narrows the standard error of that
       comparison using the track record's own skewness and kurtosis, rather
       than assuming Gaussian returns — the same non-normality correction
-      already used in this repo's <code>minTrackRecordLength</code>.
+      already used in this project's own minimum-track-record-length function.
     </div>
   </details>
   <details class="tl-quiz">
@@ -783,8 +733,8 @@
     <li>William F. Sharpe, <em>"Mutual Fund Performance"</em>, Journal of Business, 1966 — the original "reward-to-variability ratio," the source of the Sharpe ratio's name and its first formal statement.</li>
     <li>Frank A. Sortino &amp; Robert van der Meer, <em>"Downside Risk"</em>, Journal of Portfolio Management, 1991, and Sortino &amp; Lee N. Price, <em>"Performance Measurement in a Downside Risk Framework"</em>, Journal of Investing, 1994 — the downside-deviation refinement and its formalization as the Sortino ratio.</li>
     <li>Terry W. Young, <em>"Calmar Ratio: A Smoother Tool"</em>, Futures magazine, 1991 — the original statement of return-over-max-drawdown as a performance measure.</li>
-    <li>Andrew W. Lo, <em>"The Statistics of Sharpe Ratios"</em>, Financial Analysts Journal, 2002 — the standard-error derivation for an estimated Sharpe ratio, including the autocorrelation caveat on \(\sqrt{k}\) annualization, and the basis for this repo's <code>sharpeStdError</code>.</li>
-    <li>David H. Bailey &amp; Marcos López de Prado, <em>"The Sharpe Ratio Efficient Frontier"</em>, Journal of Risk, 2012 — the Probabilistic Sharpe Ratio and Minimum Track Record Length, the direct basis for this repo's <code>minTrackRecordLength</code>.</li>
+    <li>Andrew W. Lo, <em>"The Statistics of Sharpe Ratios"</em>, Financial Analysts Journal, 2002 — the standard-error derivation for an estimated Sharpe ratio, including the autocorrelation caveat on \(\sqrt{k}\) annualization, and the basis for this project's own Sharpe standard-error calculation.</li>
+    <li>David H. Bailey &amp; Marcos López de Prado, <em>"The Sharpe Ratio Efficient Frontier"</em>, Journal of Risk, 2012 — the Probabilistic Sharpe Ratio and Minimum Track Record Length, the direct basis for this project's own minimum-track-record-length function.</li>
     <li>David H. Bailey &amp; Marcos López de Prado, <em>"The Deflated Sharpe Ratio: Correcting for Selection Bias, Backtest Overfitting, and Non-Normality"</em>, Journal of Portfolio Management, 2014 — the primary citation for this lesson's second half: the full DSR derivation, the extreme-value-theory approximation for \(SR_0\), and worked examples of the selection-bias correction.</li>
     <li>David H. Bailey, Jonathan M. Borwein, Marcos López de Prado &amp; Qiji Jim Zhu, <em>"Pseudo-Mathematics and Financial Charlatanism: The Effects of Backtest Overfitting on Out-of-Sample Performance"</em>, Notices of the AMS, 2014 — the broader, more accessible case for why un-deflated backtest metrics systematically mislead, with the same authors' perspective on why this matters beyond the formula itself.</li>
   </ul>

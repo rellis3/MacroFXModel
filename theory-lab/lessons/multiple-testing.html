@@ -411,33 +411,6 @@
     whether you found an edge or just found the winner of a lottery you didn't know you entered.
   </div>
 
-  <div class="tl-box repo"><div class="tl-icon-badge green">🧩</div><div class="tl-box-label">Where this connects to MacroFXModel</div>
-    <h3>The theory behind a rule this repo already writes in prose</h3>
-    <p>
-    This lesson is the mathematics behind a working agreement already stated in this repo's own
-    <code>CLAUDE.md</code>: <em>"Pooled nulls hide subset edges — disaggregate before declaring
-    null. But count the cells and state the chance-baseline (multiple testing): finding a few
-    'winners' among 70 slices is what noise does. Survivors must beat chance and be
-    IS-consistent."</em> That sentence is asking you to do, in your head, exactly the FWER
-    calculation worked through above: count \(m\) (the number of cells you sliced the data into),
-    compute or at least estimate what noise alone would produce at that \(m\), and only treat a
-    slice as a real survivor if it clears that chance-baseline <em>and</em> holds up in-sample
-    consistently <em>and</em>, per Lego Principle 5, on a genuine out-of-sample split.
-    </p>
-    <p>
-    Pages like <code>cross-pair-research.html</code> and <code>correlations.html</code> are
-    exactly the kind of surface where this applies: any workflow that slices results across many
-    pairs, regimes, sessions or parameter values is running many implicit hypothesis tests, one
-    per slice, even if no p-value or correction is ever literally computed. To be clear about what
-    is and isn't built here: there is currently no coded Bonferroni or Benjamini-Hochberg step
-    anywhere in this codebase — this is a mental-discipline correction, not a software feature. The
-    honest use of this lesson is to keep the count-the-cells habit active whenever you're reading
-    a multi-slice results table on those pages (or any future one like them), and to be
-    specifically suspicious of a report that surfaces only the "winning" slices without saying how
-    many were checked in total.
-    </p>
-  </div>
-
   <div class="tl-box pitfall"><div class="tl-icon-badge red">⚠️</div><div class="tl-box-label">Common pitfalls</div>
     <h3>Where this goes wrong in practice</h3>
     <p>

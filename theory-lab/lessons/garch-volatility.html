@@ -17,7 +17,7 @@
   <h1 class="tl-title">GARCH &amp; Volatility Clustering</h1>
   <p class="tl-dek">Big moves cluster together even though the direction of the next move stays unpredictable — GARCH is the model that turns "volatility has memory" into a number you can forecast one day ahead.</p>
   <div class="tl-meta">
-    <span class="tl-status candidate">ALREADY IN USE — js/volBacktestEngine.js's sigma series</span>
+    <span class="tl-status concept">CONCEPT — one of the volatility estimators used across this project's research</span>
     <span>~16 min read</span>
     <span>Prereqs: Ornstein-Uhlenbeck &amp; Mean Reversion</span>
   </div>
@@ -27,8 +27,8 @@
     <ul>
       <li>Volatility clusters — big moves (of either sign) follow big moves, and calm follows calm — even though the direction of the next move stays close to unpredictable.</li>
       <li>GARCH(1,1) forecasts tomorrow's variance as \(\sigma_t^2 = \omega + \alpha\epsilon_{t-1}^2 + \beta\sigma_{t-1}^2\): a floor, a reaction to yesterday's squared shock, and inertia from yesterday's own variance level.</li>
-      <li>\(\alpha+\beta\) is the persistence — how slowly a spike decays. This lesson's worked example uses \(\alpha=0.08,\ \beta=0.90\) (persistence 0.98, half-life ≈ 34 days); the repo's actual estimator in <code>js/volBacktestEngine.js</code> uses <code>G_ALPHA=0.06</code>, <code>G_BETA=0.91</code> (persistence 0.97, half-life ≈ 23 days).</li>
-      <li>GARCH is one of three sigma estimators in <code>js/volBacktestEngine.js</code> (alongside HV20 and Yang-Zhang), currently applied to the index asset class (NQ) — it isn't a claim that GARCH beats the others OOS, just the estimator this repo runs there.</li>
+      <li>\(\alpha+\beta\) is the persistence — how slowly a spike decays. This lesson's worked example uses \(\alpha=0.08,\ \beta=0.90\) (persistence 0.98, half-life ≈ 34 days); this project's actual estimator uses \(\alpha=0.06,\ \beta=0.91\) (persistence 0.97, half-life ≈ 23 days).</li>
+      <li>GARCH is one of three sigma estimators this project runs (alongside HV20 and Yang-Zhang), currently applied to the index asset class (NQ) — it isn't a claim that GARCH beats the others OOS, just the estimator this project runs there.</li>
     </ul>
   </div>
 
@@ -509,45 +509,6 @@
     already runs one such range-based alternative side by side with GARCH — see below.
   </p>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this connects to MacroFXModel</div>
-    <h3>One of three sigma estimators feeding the live forecaster's bands</h3>
-    <p>
-      Per <code>CLAUDE.md</code>'s core-modules table, <code>js/volBacktestEngine.js</code> owns the
-      "vol-sigma series (HV20 / GARCH / Yang-Zhang), <code>ASSET_PARAMS</code>, <code>classifyRegime</code>, band
-      constants... <code>fetchD1</code>" — this lesson's math is exactly what powers the middle one of those three
-      estimators. Concretely, the engine's <code>garchSigmas(bars, omega)</code> function implements the same
-      recursion derived above:
-    </p>
-    <div class="tl-math">\[ v \leftarrow \omega + \alpha\, r_{i-1}^2 + \beta\, v,\qquad \sigma_i = \sqrt{v} \]</div>
-    <p>
-      with the series initialized at the unconditional variance \(\omega/(1-\alpha-\beta)\) for the first two bars
-      (rather than at zero) — precisely the long-run-variance formula derived above, used as a sane starting point
-      before any history has accumulated. The repo's actual constants,
-      <code>G_ALPHA = 0.06</code> and <code>G_BETA = 0.91</code>, give a persistence of \(\alpha+\beta = 0.97\) —
-      a half-life of \(\ln(0.5)/\ln(0.97) \approx 23\) trading days, meaning a shock's imprint on this engine's
-      variance forecast takes roughly a month to decay by half. Per <code>ASSET_PARAMS.index</code>
-      (<code>garch_omega: 4.76e-6</code>), GARCH(1,1) is applied as the index-asset-class estimator (currently
-      NQ), alongside HV20 for the commodity class and Yang-Zhang(30) for the fx class — three different sigma
-      estimators computed and compared under one walk-forward harness, not three redundant copies of the same idea.
-      This lesson does not take a position on which of the three performs best out-of-sample for any given
-      instrument — that's an empirical question the repo's own walk-forward comparison is built to answer, not
-      something to assume from the math alone (Lego Principle 5: OOS evidence, not a prior about the method).
-    </p>
-    <p>
-      Whichever \(\sigma\) estimator is selected feeds forward into <code>js/forecastCore.js</code>'s
-      <code>computeBands</code>, which builds the actual tradable price band from it using the Feller
-      driftless-Brownian-range construction that <code>CLAUDE.md</code> flags as load-bearing:
-      \(HL = BM\_const \times corr \times \sigma\). In other words, GARCH's job in this system is narrowly scoped
-      but consequential — it is one candidate answer to "what is \(\sigma\) today," and everything downstream
-      (band width, regime classification thresholds, entry-zone confidence) inherits whatever that answer says.
-      Note also that <code>classifyRegime</code> (BULL/BEAR/RANGE via EMA-20 slope) is a separate, directional
-      classifier — it answers "which way," not "how big" — so it should not be confused with, or substituted for,
-      the volatility-clustering question GARCH answers here.
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
@@ -592,7 +553,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>GARCH(1,1) has three additive pieces.</strong> A floor (ω), a reaction to yesterday's squared shock (α), and inertia from yesterday's own variance level (β).</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>α+β is the persistence.</strong> It's the day-over-day decay rate of a volatility shock's excess over normal, and the half-life falls straight out of it: \(n_{1/2}=\ln(0.5)/\ln(\alpha+\beta)\).</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Stationarity requires α+β &lt; 1.</strong> At exactly 1 (IGARCH) a shock never decays; above 1 the model isn't valid at all — always sanity-check this on any parameter set.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo already runs GARCH(1,1) in production.</strong> <code>js/volBacktestEngine.js</code> uses <code>G_ALPHA=0.06</code>, <code>G_BETA=0.91</code> (persistence 0.97, half-life ≈ 23 days) as one of three sigma estimators, applied to the index asset class.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This project already runs GARCH(1,1) in production.</strong> It uses \(\alpha=0.06\), \(\beta=0.91\) (persistence 0.97, half-life ≈ 23 days) as one of three sigma estimators, applied to the index asset class.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Plain GARCH(1,1) is symmetric.</strong> It can't capture the leverage effect (down moves raising volatility more than equal-sized up moves) — EGARCH/GJR-GARCH exist specifically to address that.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This isn't a claim GARCH beats the alternatives OOS.</strong> It's one of three estimators (alongside HV20 and Yang-Zhang) compared under the same walk-forward harness — which wins is an empirical question, not assumed from the math.</span></div>
   </div>
@@ -653,7 +614,7 @@
     </div>
   </details>
   <details class="tl-quiz">
-    <summary>Q6. In <code>js/volBacktestEngine.js</code>'s <code>garchSigmas()</code>, the first two entries of the output series are set to \(\sqrt{\omega/(1-\alpha-\beta)}\) rather than to zero or to the first observed return. Why?</summary>
+    <summary>Q6. In a typical GARCH(1,1) sigma-series implementation, the first two entries of the output series are set to \(\sqrt{\omega/(1-\alpha-\beta)}\) rather than to zero or to the first observed return. Why?</summary>
     <div class="tl-answer">
       Because the recursion needs a starting value for \(\sigma_{t-1}^2\) before there is any prior GARCH output to
       recurse on, and starting at zero (or at one noisy single-day return) would bias the earliest forecasts. The

@@ -17,7 +17,7 @@
   <h1 class="tl-title">The Hurst Exponent &amp; Variance Ratio Test</h1>
   <p class="tl-dek">Two different ways to ask the same question of a price series — is it wandering randomly, drifting with momentum, or snapping back toward a mean? — and why the second, less famous method is the one to trust more.</p>
   <div class="tl-meta">
-    <span class="tl-status candidate">ALREADY IN USE — js/rangeBiasCore.js computes a live Hurst feature</span>
+    <span class="tl-status concept">CONCEPT — a feature used elsewhere in this project's entry-bias research</span>
     <span>~15 min read</span>
     <span>Prereqs: Ornstein-Uhlenbeck &amp; Mean Reversion</span>
   </div>
@@ -28,7 +28,7 @@
       <li>R/S analysis estimates the Hurst exponent \(H\) as the slope of \(\log(R/S)_n\) regressed on \(\log n\) — the rescaled range of a chunk's cumulative mean-deviations, measured across several window lengths.</li>
       <li>\(H\) partitions into three regimes: \(H<0.5\) is anti-persistent/mean-reverting, \(H=0.5\) is a random walk (range grows as \(\sqrt{n}\)), and \(H>0.5\) is persistent/trending.</li>
       <li>The variance ratio test (Lo &amp; MacKinlay 1988) asks the same question more rigorously: under a random walk, \(VR(q)=\operatorname{Var}(r_t^{(q)})/(q\cdot\operatorname{Var}(r_t^{(1)}))\) should equal exactly 1, and it comes with an actual standard error/z-statistic instead of an eyeballed regression slope.</li>
-      <li>This isn't just theory here — <code>js/rangeBiasCore.js</code>'s <code>computeHurst</code> already runs live R/S analysis (lags 2/4/8/16) as one of five entry-bias features, treating \(H&lt;0.45\) as confirming a fade and \(H&gt;0.55\) as confirming a follow, shared by <code>levels.js</code> and <code>asiaRangeEngine</code>.</li>
+      <li>This isn't just theory here — this project's own entry-bias logic already runs live R/S analysis (lags 2/4/8/16) as one of five entry-bias features, treating \(H&lt;0.45\) as confirming a fade and \(H&gt;0.55\) as confirming a follow, shared across its live entry logic and its backtest engine.</li>
       <li>Both statistics are biased in small samples and say nothing about direction — they only license which strategy family (fade vs. follow) has a right to work right now.</li>
     </ul>
   </div>
@@ -38,7 +38,7 @@
   <p>
     Almost every trading decision in this repo boils down to one binary question asked over and over: at this level,
     right now, should the system <strong>fade</strong> the move (bet on reversion) or <strong>follow</strong> it (bet on
-    continuation)? <code>js/dayTypeCore.js</code> answers a version of this with a drift-vs-diffusion score; this lesson
+    continuation)? This project's own day-type classifier answers a version of this with a drift-vs-diffusion score; this lesson
     covers a different, older, and in some ways more fundamental way to answer it: measure how "persistent" the recent
     path itself has been, independent of any particular price model. That is what the Hurst exponent and the variance
     ratio test are for. Neither one predicts direction — both measure a property of the <em>path</em>: does the series
@@ -142,8 +142,8 @@
     In practice you don't estimate this from one chunk. You split the series into windows of several different lengths
     <em>n</em> (say 8, 16, 32, 64 bars), compute the average \((R/S)_n\) across all windows of each length, plot
     \(\log(R/S)_n\) against \(\log n\), and fit a straight line through those points. The slope of that line is your
-    estimate of <em>H</em>. This is exactly what the ordinary-least-squares step at the bottom of
-    <code>computeHurst</code> in this repo does — more on that in the repo box below.
+    estimate of <em>H</em>. This is exactly what this project's own live Hurst estimator does with its
+    ordinary-least-squares step.
   </p>
 
   <div class="tl-symbols">
@@ -359,37 +359,6 @@
     market's permanent nature.
   </p>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this connects to MacroFXModel</div>
-    <h3>This is the one lesson describing a feature already running here</h3>
-    <p>
-      Unlike most of the other lessons in this series, which introduce concepts as background theory, the Hurst
-      exponent is already computed and consumed in production in this codebase. <code>js/rangeBiasCore.js</code>
-      implements <code>computeHurst(closes)</code> — R/S analysis over lags of 2, 4, 8, and 16 bars, exactly the
-      log-log-regression procedure derived above — as one of five entry-bias features (alongside ADX, swing
-      CHoCH/BOS, TWAP, and EMA-RSI) that grade conviction on a candidate entry. Its interpretation thresholds match
-      the theory precisely: <code>featureHurst</code> treats \(H &lt; 0.45\) as "mean-reverting" (confirms a fade
-      entry), \(H &gt; 0.55\) as "trending" (confirms a follow/continuation entry, i.e. conflicts with a fade), and
-      the band in between as neutral / abstaining — a direct, if slightly widened, application of the
-      \(H \lessgtr 0.5\) split covered above. This one brick is shared by both <code>levels.js</code> (the live
-      engine that writes alerts) and the <code>asiaRangeEngine</code> backtest, per the shared brick table in
-      <code>CLAUDE.md</code> — the same design discipline (one implementation, imported everywhere, never copied)
-      that this whole series keeps stressing.
-    </p>
-    <p>
-      Recent git history in this repo shows a dedicated "Hurst A/B harness (drift #11 evidence)" was built
-      specifically to validate this feature out-of-sample against the incumbent without it. That is exactly the
-      right instinct, and it's worth being explicit about why: everything explained above is a correct, well-founded
-      statistical property of price paths, but a theoretically elegant statistic is not automatically an edge — per
-      the Lego Principle's validation discipline (rule 5 in <code>CLAUDE.md</code>), a change to what a live feature
-      confirms or conflicts with only counts as an improvement if it beats the incumbent on out-of-sample Sharpe with
-      a non-trivial trade count. This lesson does not have access to what that A/B harness found, and doesn't claim
-      to — treat the Hurst feature's mathematical basis (sound) and its demonstrated live edge (a separate, empirical
-      question that the harness, not this document, is positioned to answer) as two different claims.
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
@@ -436,7 +405,7 @@
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>H is the slope of log(R/S)ₙ regressed on log n.</strong> \(H<0.5\) is anti-persistent/mean-reverting, \(H=0.5\) is a random walk, \(H>0.5\) is persistent/trending.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The variance ratio test asks the identical question more rigorously.</strong> Under a random walk \(VR(q)=1\) exactly, and Lo &amp; MacKinlay's asymptotic distribution gives you an actual standard error and z-statistic, not an eyeballed slope.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This isn't just theory here.</strong> <code>js/rangeBiasCore.js</code>'s <code>computeHurst</code> already runs live R/S analysis (lags 2/4/8/16) as one of five entry-bias features, shared by <code>levels.js</code> and <code>asiaRangeEngine</code>.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This isn't just theory here.</strong> This project's own entry-bias logic already runs live R/S analysis (lags 2/4/8/16) as one of five entry-bias features, shared across its live entry logic and its backtest engine.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Neither statistic predicts direction.</strong> Both only measure whether the recent path has memory that reinforces (trending) or undoes (mean-reverting) past moves — that licenses which strategy family has a right to work, not which way price goes next.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>R/S is biased toward finding H&gt;0.5 in small samples</strong> — exactly the regime a live feature computed on a few dozen daily bars sits in.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A single H or VR reading is noisy and can flip on estimation noise alone.</strong> Treat it as a decaying prior about the current regime, never a fact about the market's permanent nature.</span></div>

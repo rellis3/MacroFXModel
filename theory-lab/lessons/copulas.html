@@ -44,8 +44,8 @@
   <h2>Why this matters</h2>
   <p>
     Every correlation number this repo computes — the rolling Pearson
-    correlation on <code>correlations.html</code>, the correlation matrix
-    feeding the eigenvalue decomposition on <code>diversification.html</code>,
+    correlation in this project's own pair-ranking tooling, the correlation matrix
+    feeding the eigenvalue decomposition in this project's own diversification research,
     every "how related are these two instruments" question anywhere in the
     codebase — is, underneath, the same single summary statistic: a number
     between -1 and 1 that describes, on average, how linearly two series move
@@ -592,7 +592,7 @@
       Suppose two FX pairs show a comfortable rolling-window correlation of
       about 0.4 most of the time — the kind of number that, on a
       correlation-based hedge score or diversification check like this repo's
-      <code>correlations.html</code>, reads as "meaningfully related but not
+      this project's own pair-ranking tooling, reads as "meaningfully related but not
       redundant": a portfolio holding both looks reasonably diversified,
       not like two copies of the same bet.
     </p>
@@ -612,60 +612,6 @@
       linear-correlation-only view creates, and it is invisible to any tool —
       in this repo or elsewhere — that only ever computes a single rolling
       Pearson number and stops there.
-    </p>
-  </div>
-
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
-    <h3>A genuine gap next to the existing correlation tools — not yet built</h3>
-    <p>
-      This repo has no copula implementation anywhere, and this lesson is not
-      pretending otherwise — it is flagged as a concept lesson precisely
-      because there is nothing to point at in the codebase yet. What does
-      exist, and what makes the gap concrete rather than abstract, is
-      <code>correlations.html</code> (the Correlation Lab), which computes a
-      rolling Pearson correlation on log returns over a 60-bar window and
-      blends it with a beta spread into a "hedge score," and
-      <code>diversification.html</code>, which builds its "effective number of
-      bets" metrics (<code>effectiveBetsPCA</code>,
-      <code>effectiveBetsEntropy</code>, <code>effectiveBetsWeighted</code> in
-      <code>js/diversificationCore.js</code>) directly off the eigenvalues of
-      that same kind of correlation matrix. Both tools are honest and useful
-      at the question they answer — "how linked are these instruments on an
-      ordinary day, and how concentrated is my book around that linkage" — and
-      neither one, by construction, can see tail dependence, because a Pearson
-      correlation matrix is exactly the object this lesson describes as blind
-      to it.
-    </p>
-    <p>
-      A copula-based dependence model would be a meaningful complement to
-      those tools specifically for stress-testing a multi-pair book's tail
-      behavior — not a replacement for the rolling-correlation view, which
-      remains the right, simpler tool for ordinary-day diversification checks.
-      A candidate shape: fit realistic fat-tailed marginals per instrument
-      (reusing the EVT lesson's machinery), fit a small set of candidate
-      copulas (Gaussian as the baseline, Clayton or Student-t as the
-      tail-dependent alternative) to historical pair data, and compare what
-      each implies for joint drawdown probability versus what a naive
-      correlation-only Monte Carlo would show — surfaced as a "tail
-      dependence" companion metric next to the existing hedge score and
-      effective-bets numbers, not a new standalone page.
-    </p>
-    <p>
-      To be explicit about what this is and isn't: this is an unbuilt
-      candidate, not a claim that it would necessarily improve anything.
-      Fitting and validating a copula's tail dependence parameter honestly
-      needs real historical crisis-period data — 2008, the 2015 CHF unpeg,
-      the March 2020 COVID shock, and similar episodes — because tail events
-      are by definition rare, and a tail dependence estimate fit only on calm
-      years is exactly the failure mode the Gaussian-copula/CDO history above
-      warns about. Any such module would need to be built as a proper Tier-1
-      or Tier-2 brick (per this repo's Lego Principle 6), registered as a
-      candidate in <code>LEGO_MODULES.md §2</code>, and validated honestly on
-      out-of-sample crisis windows before it informed any real sizing
-      decision — not assumed to help because the underlying theory is
-      well-established.
     </p>
   </div>
 

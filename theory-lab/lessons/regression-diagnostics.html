@@ -17,7 +17,7 @@
   <h1 class="tl-title">Regression Diagnostics: Durbin-Watson, Breusch-Pagan &amp; Jarque-Bera</h1>
   <p class="tl-dek">A regression's p-value is not a fact about the world — it's a fact about a model of the world, and that model comes with fine print. This lesson derives, from scratch, the three checks that verify the fine print actually holds before you trust the headline number: is the error serially correlated (Durbin-Watson), does its variance change across the sample (Breusch-Pagan), and does it look enough like a bell curve for small-sample inference to be valid (Jarque-Bera).</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — formalizes a rule this repo's CLAUDE.md already enforces in prose</span>
+    <span class="tl-status concept">CONCEPT — formalizes a validation discipline used throughout this project</span>
     <span>~17 min read</span>
     <span>Prereqs: Correlation &amp; Linear Regression primer</span>
   </div>
@@ -26,7 +26,7 @@
   <div class="tl-tldr-label">TL;DR</div>
   <ul>
     <li>A regression's p-value is only valid if its residuals are non-autocorrelated (Durbin-Watson), homoskedastic (Breusch-Pagan), and — in small samples — approximately normal (Jarque-Bera); failing one doesn't make \(\hat\beta\) wrong, it makes the classical standard error wrong.</li>
-    <li><code>CLAUDE.md</code>'s backtest-build-discipline section already states this as a rule: <em>"Add residual diagnostics to any regression-based signal: Durbin-Watson (autocorrelation), Jarque-Bera (residual normality), Breusch-Pagan (heteroskedasticity) before trusting its p-value/coefficient. A statistically 'significant' coefficient on a heteroskedastic fit has optimistic standard errors — check before leaning on it."</em> This lesson derives why.</li>
+    <li>This project's own backtest-build discipline already states this as a rule: <em>"Add residual diagnostics to any regression-based signal: Durbin-Watson (autocorrelation), Jarque-Bera (residual normality), Breusch-Pagan (heteroskedasticity) before trusting its p-value/coefficient. A statistically 'significant' coefficient on a heteroskedastic fit has optimistic standard errors — check before leaning on it."</em> This lesson derives why.</li>
     <li>Durbin-Watson compares squared consecutive-residual changes to total residual variance; \(DW \approx 2\) means no lag-1 autocorrelation, toward 0 means positive autocorrelation, toward 4 means negative.</li>
     <li>The worked scenario: an FX yield-spread regression shows a p-value of 0.01, but its residuals give \(DW = 0.6\) (implying \(\hat\rho \approx 0.7\)); with ~500 daily observations that corresponds to an effective sample size of only \(n_{eff}\approx 88\), and correcting for that (e.g. Newey-West/HAC standard errors) pushes the "significant" result back toward noise.</li>
     <li>Passing all three diagnostics only certifies that the in-sample significance claim is honestly computed — it says nothing about out-of-sample durability (Lego Principle 5 still applies).</li>
@@ -71,8 +71,8 @@
     the significance claim built on top of it is fiction.
   </p>
   <p>
-    This is precisely the gap this repo's own build discipline calls out by
-    name. <code>CLAUDE.md</code>'s backtest-build-discipline section states
+    This is precisely the gap this project's own build discipline calls out by
+    name. Its backtest-build-discipline section states
     plainly: <em>"Add residual diagnostics to any regression-based signal:
     Durbin-Watson (autocorrelation), Jarque-Bera (residual normality),
     Breusch-Pagan (heteroskedasticity) before trusting its p-value/coefficient.
@@ -345,17 +345,16 @@
   </p>
   <p>
     Both ingredient statistics are already built, tested, and in production
-    in this repo — <code>js/metricsCore.js</code>'s <code>skewness(xs)</code>
+    in this project — a sample-skewness function
     (Fisher-Pearson sample skewness; positive means a longer right tail,
     negative a fatter <em>left</em> tail — the direction that matters most
-    for a strategy's downside) and <code>excessKurtosis(xs)</code> (kurtosis
+    for a strategy's downside) and an excess-kurtosis function (kurtosis
     minus 3, so a normal distribution reads exactly 0 and any positive value
     means fatter-than-normal tails). Jarque-Bera is nothing more than those
     same two quantities, computed on a regression's <em>residuals</em>
     specifically, squared, weighted, and summed into one number with a known
     reference distribution to test against — the identical building blocks
-    this repo already uses to describe a strategy's raw return distribution
-    (`summarizeTrades`'s <code>skew</code>/<code>excessKurt</code> fields)
+    this project already uses to describe a strategy's raw return distribution
     repurposed to describe a regression's leftover error instead of a
     strategy's P&amp;L.
   </p>
@@ -370,9 +369,9 @@
     observations. With enough data, non-normal residuals stop mattering much
     for inference on \(\hat\beta\), because the averaging in the CLT smooths
     the irregularity away. With a small sample — few, non-overlapping trading
-    periods being the common case in this repo, since resampling to a
-    signal's true release frequency, per the backtest-build-discipline
-    guidance above the diagnostics section in <code>CLAUDE.md</code>, often
+    periods being the common case in this project, since resampling to a
+    signal's true release frequency, per this project's own backtest-build-discipline
+    guidance, often
     leaves far fewer independent rows than the raw daily bar count suggests —
     that averaging hasn't had enough terms to do its smoothing work yet, so a
     skewed or fat-tailed residual distribution translates more directly into
@@ -493,7 +492,7 @@
       the data.
     </p>
     <p>
-      This is exactly the trap <code>CLAUDE.md</code>'s "add residual
+      This is exactly the trap this project's own "add residual
       diagnostics... before trusting its p-value/coefficient" rule exists to
       prevent — not as an abstract statistical nicety, but as the specific
       mechanism by which a signal with a genuinely unremarkable relationship
@@ -545,58 +544,6 @@
     however carefully diagnosed, is not evidence on its own (Lego Principle
     5).
   </p>
-
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this connects to MacroFXModel</div>
-    <h3>The from-scratch math behind an existing house rule</h3>
-    <p>
-      <code>CLAUDE.md</code>'s backtest-build-discipline section states the
-      rule this lesson exists to formalize, word for word: <em>"Add residual
-      diagnostics to any regression-based signal: Durbin-Watson
-      (autocorrelation), Jarque-Bera (residual normality), Breusch-Pagan
-      (heteroskedasticity) before trusting its p-value/coefficient. A
-      statistically 'significant' coefficient on a heteroskedastic fit has
-      optimistic standard errors — check before leaning on it."</em> That
-      sentence has been sitting in this repo's prose discipline as a rule to
-      follow; this lesson is the derivation underneath it — where each
-      statistic comes from, why the specific formula catches the specific
-      failure it's named for, and why a failure specifically inflates
-      apparent significance rather than just generically "being a problem."
-    </p>
-    <p>
-      The Jarque-Bera test in particular reuses building blocks that already
-      exist in this codebase rather than introducing new ones:
-      <code>js/metricsCore.js</code>'s <code>skewness</code> and
-      <code>excessKurtosis</code> functions — built 2026-07-21 as Tier-1
-      primitives, unit-tested in <code>legoBricks.test.mjs</code>, and already
-      wired into <code>summarizeTrades</code>'s <code>skew</code>/
-      <code>excessKurt</code> output fields — are the exact two ingredients
-      the \(JB = \tfrac{n}{6}(S^2 + K^2/4)\) formula combines. The only
-      difference between how this repo currently uses them and what
-      Jarque-Bera does is the input series: today they describe the shape of
-      a strategy's realized trade P&amp;L; Jarque-Bera applies the identical
-      math to a regression's residual series instead. Nothing new needs
-      building to compute \(S\) and \(K\) for a regression's residuals — the
-      brick already exists.
-    </p>
-    <p>
-      <code>education/regression-analysis-course-notes.md</code> covers the
-      applied, practical side of regression work in this repo — how to set
-      up and interpret a regression for a trading signal day to day. This
-      lesson is deliberately the theory layer underneath that practice: the
-      three checks a regression should pass before its p-value is quoted
-      anywhere, derived from first principles rather than invoked as a
-      checklist item.
-    </p>
-    <p>
-      This is Lesson 1 of a new <strong>Applied Statistics &amp;
-      Validation</strong> category — the from-scratch math behind the
-      broader honest-harness discipline (Lego Principle 5, the
-      backtest-build-discipline section) that this repo already enforces in
-      prose across every regression-based signal it builds.
-    </p>
-  </div>
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>

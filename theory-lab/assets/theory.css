@@ -285,3 +285,12 @@ h2:first-of-type{margin-top:0}
 .tl-gloss-noresults{display:none;color:var(--text3);text-align:center;padding:50px 0;font-size:14px}
 .tl-gloss-hero-link{display:inline-flex;align-items:center;gap:8px;background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:20px;padding:8px 16px;font-size:13px;font-weight:600;color:var(--blue);text-decoration:none;margin-top:14px}
 .tl-gloss-hero-link:hover{background:var(--blue);color:#fff}
+
+/* Repo Brick Map (dashboard-only, /repo-brick-map.html) — each entry wraps
+   the same .tl-box.repo card lessons used to show inline, now consolidated
+   in one owner-only page instead of scattered across the shared curriculum */
+.brick-grid{display:flex;flex-direction:column;gap:10px}
+.brick-entry{margin-bottom:6px}
+.brick-entry-head{font-size:13px;font-weight:700;margin-bottom:6px}
+.brick-entry-head a{color:var(--text);text-decoration:none;border-bottom:1px dashed var(--border2)}
+.brick-entry-head a:hover{color:var(--blue);border-bottom-color:var(--blue)}

@@ -62,7 +62,7 @@
     purpose. Kelly sizing cannot manufacture an edge that isn't there, and
     used carelessly it will happily size up a fake or overestimated edge into
     a ruinous bet. It is a formalization of a question this repo's own
-    working philosophy already raises — CLAUDE.md states plainly that
+    working philosophy already raises — it states plainly that
     "volatility-based position sizing, cutting losers and letting winners run
     are powerful drivers of results — worth building and validating alongside
     an entry signal." Kelly is the textbook version of the first half of that
@@ -304,7 +304,8 @@
     volatility while holding the edge \(\mu\) fixed cuts the optimal size by
     a factor of four, not two. This is the same reason a vol-targeting
     position-sizing rule (scale position size inversely with recent realized
-    volatility, exactly the kind of thing CLAUDE.md calls out as worth
+    volatility, exactly the kind of thing this project's own working
+    philosophy calls out as worth
     building) is, in substance, a rolling approximation of Kelly sizing even
     when nobody explicitly names it that.
   </p>
@@ -616,72 +617,6 @@
     trading some of Kelly's precision for much greater robustness to
     estimation error and regime change.
   </p>
-
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
-    <h3>Formalizes a principle CLAUDE.md already states — but it needs an honestly-estimated edge as input, and there isn't one built yet</h3>
-    <p>
-      This repo's own CLAUDE.md already names the target: "volatility-based
-      position sizing, cutting losers and letting winners run are powerful
-      drivers of results — worth building and validating alongside an entry
-      signal." Kelly and fractional Kelly are the textbook formalization of
-      exactly the first half of that sentence — a principled way to turn "how
-      volatile is this instrument, and how good is my edge" into "how much
-      capital should this specific trade risk," instead of a flat,
-      hand-picked percentage-of-equity risk-per-trade rule. The continuous
-      form, \(f^*=\mu/\sigma^2\), maps directly onto quantities this repo
-      already computes per-instrument and per-horizon — the vol-sigma series
-      in <code>js/volBacktestEngine.js</code> and the OOS Sharpe/return
-      statistics that <code>js/metricsCore.js</code>'s
-      <code>summarizeTrades</code> already produces for every strategy that
-      goes through the standard IS/OOS harness.
-    </p>
-    <p>
-      <code>book-stress.html</code> ("does diversification survive a
-      liquidity contraction?") and <code>diversification.html</code> (the
-      combined-book explorer) are the closest existing pieces of
-      infrastructure, and the connection is direct: both already look at
-      <em>portfolio-level</em> risk across multiple lines/instruments held
-      together, which is precisely the level at which Kelly sizing should
-      actually be applied in a multi-strategy book — not line-by-line in
-      isolation, but jointly, because Kelly's variance term is supposed to be
-      the variance of the <em>combined</em> position, and two correlated
-      lines sized independently by their own standalone Kelly fractions will
-      systematically overstate the combined book's safe aggregate size (the
-      same correlated-signal double-counting problem this series' Bayesian
-      Inference lesson raises for confluence scoring, here showing up as
-      correlated-return double-counting instead of correlated-evidence
-      double-counting). A book-level Kelly or fractional-Kelly sizing layer
-      sitting on top of <code>book-stress.html</code>'s existing
-      cross-instrument view would be the natural extraction point.
-    </p>
-    <p>
-      To be explicit about where this stands: <strong>none of this is built
-      as a sizing engine in the repo today</strong> — there is no
-      <code>kellySizing.js</code>, no Kelly-fraction column on any backtest
-      card, nothing wired into a live bot's position-size calculation. This
-      is a genuine, unbuilt design candidate, not a claim that the repo
-      already does this. And per CLAUDE.md's own method-vs-edge distinction
-      — "a method is not a strategy... state the dependency up front, not
-      after the primary signal tests empty" — Kelly sizing has a hard
-      dependency this page has stressed throughout: it needs an
-      <strong>honestly-estimated</strong> win probability/edge (\(p\), or
-      \(\mu\)) and variance (\(\sigma^2\)) as inputs, sourced from true
-      out-of-sample performance, not from an in-sample backtest's optimistic
-      numbers. Plugging an in-sample Sharpe or win rate directly into the
-      Kelly formula is a textbook way to compute a confidently wrong,
-      oversized bet — the formula does exactly what it's told, and what it's
-      told matters enormously. The correct sequencing, consistent with the
-      Lego Principle's OOS-Sharpe bar (Lego Principle #5), is: a signal
-      clears the repo's real IS/OOS split with a non-trivial OOS trade count
-      first, on its own merits — <em>then</em> Kelly or fractional Kelly is
-      layered on as a sizing decision for that already-validated edge.
-      Applying it earlier, to make a weak or null signal's equity curve look
-      more aggressive, would be using the sizing math to paper over a signal
-      problem rather than solve a sizing problem.
-    </p>
-  </div>
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>

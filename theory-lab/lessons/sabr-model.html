@@ -488,47 +488,6 @@
     </p>
   </div>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this connects to MacroFXModel</div>
-    <h3>SABR is background theory, not a built module — and it's the practical layer under the OI course's gamma story</h3>
-    <p>
-      This repo has no options-pricing or smile-calibration module of any
-      kind today — no SABR fit, no Heston fit, no Black-Scholes engine
-      wired into a live strategy. Both this lesson and the preceding Heston
-      lesson are pure theory background: understanding <em>how</em> real
-      options desks build and manage a volatility surface, not a description
-      of anything built or tested in this codebase. That distinction matters
-      under this repo's own honesty discipline (<code>CLAUDE.md</code>'s
-      "built ≠ works ≠ has edge") — nothing in this lesson has been
-      calibrated to real market data or validated out-of-sample here; it's
-      knowledge to have on hand, not a claim about anything running in
-      production.
-    </p>
-    <p>
-      Where it's genuinely relevant: <code>education/open-interest-course-notes.md</code>
-      teaches that dealers who are short gamma must mechanically buy as price
-      rises and sell as it falls, and that this hedging flow is what makes
-      high-open-interest strikes act like magnets and walls — a fact this
-      Theory Lab's Black-Scholes lesson derives formally (gamma as
-      \(\partial^2 C/\partial S^2\)) using a single flat \(\sigma\). Real
-      dealer books are not priced or hedged off a single flat \(\sigma\);
-      every strike in a real book carries its own implied vol, read off a
-      smile exactly like the one this lesson builds, and a dealer's true
-      aggregate gamma exposure across strikes depends on the <em>shape</em>
-      of that smile (via \(\rho\) and \(\nu\)), not just an ATM level. SABR
-      is, in that sense, the practical, calibration-friendly cousin of the
-      Heston lesson this Theory Lab already covers — where Heston teaches the
-      genuine risk-neutral dynamics that produce a smile, SABR is what a real
-      desk actually turns those market-observed smiles into, day to day, and
-      is the missing layer between "dealers have OI-weighted gamma exposure
-      at a strike" (the course notes' claim) and "here is exactly how a real
-      book prices and risk-manages every strike in between" (what an actual
-      dealer's systems do, using something in the SABR family or a close
-      relative of it).
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
@@ -757,7 +716,7 @@
     <li>Fabrice Douglas Rouah &amp; Gregory Vainberg, <em>Option Pricing Models and Volatility Using Excel-VBA</em>, Wiley, 2007 — a practitioner-oriented treatment covering both Heston and SABR side by side, including calibration mechanics, which is a useful direct comparison of the two models' practical workflows.</li>
     <li>Standard FX options market-making literature and desk convention — SABR's role as the industry-standard smile-interpolation tool for FX and interest-rate (swaption, cap/floor) options is documented throughout practitioner-facing derivatives-pricing references and reflects genuinely near-universal adoption across those markets, not this repo's own assessment.</li>
     <li>This Theory Lab's own <a href="heston-model.html">Heston Model</a> lesson — read first; SABR is presented throughout this lesson as the practical, calibration-friendly counterpart to the genuine stochastic-volatility dynamics Heston introduces.</li>
-    <li><code>education/open-interest-course-notes.md</code> in this repo — the applied gamma/dealer-hedging framework that a real, per-strike volatility smile (built the way this lesson describes) ultimately feeds into at a real dealer.</li>
+    <li>This project's own prior research notes on options market microstructure — the applied gamma/dealer-hedging framework that a real, per-strike volatility smile (built the way this lesson describes) ultimately feeds into at a real dealer.</li>
   </ul>
   </details>
 

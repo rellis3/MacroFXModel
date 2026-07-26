@@ -487,32 +487,6 @@
     being free money — nothing more, nothing less.
   </div>
 
-  <div class="tl-box repo">
-    <div class="tl-icon-badge green">🧩</div>
-    <div class="tl-box-label">Where this connects to MacroFXModel</div>
-    <h3>Background literacy — no module in this repo computes forward points today</h3>
-    <p>
-      Nothing in this repo currently prices FX forwards, builds a discount
-      curve, or computes covered-interest-parity forward points — this
-      lesson is background literacy, not a description of an existing
-      brick, and should be read that way: <span class="tl-status concept">CONCEPT</span>
-      only. What it <em>does</em> underpin directly: the Black-Scholes
-      lesson's risk-free rate \(r\) — and its <code>Ke^{-rT}</code> discount
-      term specifically — is exactly the present-value machinery derived
-      here, and that lesson's own symbols table already notes that for FX
-      options, \(r\) is really a domestic/foreign rate <em>differential</em>,
-      which is precisely the two-currency setup worked through in the
-      scenario box above. The upcoming Interest Rate Parity lesson depends
-      on this page even more directly: it has no separate math to introduce
-      beyond applying the future-value/discounting formulas above to two
-      currencies simultaneously and comparing the results — everything
-      genuinely new in that lesson is the cross-currency bookkeeping, not
-      new arithmetic. If this page's \(FV=PV(1+r)^t\), discount factors, and
-      the arbitrage argument in the scenario box aren't already second
-      nature, that is exactly where to pause before continuing.
-    </p>
-  </div>
-
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
