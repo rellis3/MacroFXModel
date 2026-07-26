@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fractional Brownian Motion &amp; Long Memory — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Advanced Portfolio &amp; Market Structure / Fractional Brownian Motion &amp; Long Memory</div>
+  <div class="tl-kicker">Advanced Portfolio &amp; Market Structure · Lesson 2 of 5</div>
+  <h1 class="tl-title">Fractional Brownian Motion &amp; Long Memory</h1>
+  <p class="tl-dek">
+    The Hurst exponent lesson measured persistence with a slope fit to historical rescaled ranges — a descriptive
+    statistic, not a model of anything. This lesson gives \(H\) a real generating process: a Gaussian process with a
+    precisely defined covariance structure, fractional Brownian motion, plus its discrete-time econometric cousin
+    ARFIMA — and uses both to turn "long memory" from a loose adjective into a formally testable property that a
+    finite-order ARMA model can never possess, no matter how many parameters it is given.
+  </p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — formalizes the Hurst exponent lesson's empirical statistic</span>
+    <span>~17 min read</span>
+    <span>Prereqs: Hurst Exponent &amp; Variance Ratio Test, Stationarity, ACF &amp; PACF</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    The previous lesson in this series measured how "persistent" a price path has been using R/S analysis and the
+    variance ratio test — both are, deliberately, model-free: they estimate a single number, \(H\), directly from
+    historical data without ever committing to a specific mathematical process that could have generated that data.
+    That's a genuine strength (you don't need to believe a specific model to trust the measurement) but it is also a
+    limitation: a bare number with no generating model behind it is hard to reason about precisely. What, exactly,
+    does \(H = 0.7\) imply about the correlation between today's move and a move 50 days from now? Does that
+    correlation ever really vanish, or does it just get small? Is "persistence" the same thing as "long memory," or
+    only sometimes? None of those questions have crisp answers without a model. Fractional Brownian motion is that
+    model — a continuous-time stochastic process built so that its Hurst exponent is not fit after the fact but is a
+    parameter of its exact covariance structure, from which every one of those questions above has a precise,
+    derivable answer. This lesson builds that process from its defining formula, uses it to state "long memory"
+    exactly (a genuine mathematical distinction from mere autocorrelation), and introduces ARFIMA, the tool
+    econometricians actually reach for when they want to fit long-memory behavior to real, noisy, discretely-sampled
+    data like a daily volatility series.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A random walk that never fully forgets</h3>
+    <p>
+      Ordinary Brownian motion is amnesiac: at every instant, it draws a fresh, independent increment, with zero
+      regard for which direction it has been moving. Its whole future is statistically indifferent to its whole past,
+      given only where it stands right now. Fractional Brownian motion keeps the same rough visual texture — a
+      continuous, jagged, random path — but bakes in a controllable amount of memory. Turn the memory dial to
+      "persistent" (\(H>0.5\)) and the process behaves like a random walker who is subtly reluctant to reverse course:
+      having drifted up recently makes a further upward increment slightly more likely, and — this is the part that
+      makes it a genuinely different object from an AR(1) process — that subtle reluctance to reverse does not fade
+      away exponentially fast as you look further into the past; it fades so slowly that, added up over all lags, it
+      never stops mattering. Turn the dial to "anti-persistent" (\(H<0.5\)) and the walker becomes subtly
+      self-correcting, the drunk-on-a-leash from the previous lesson. Set the dial to exactly \(H=0.5\) and every trace
+      of memory vanishes and you are left with vanilla Brownian motion. The dial itself — a single real number between
+      0 and 1 — is built directly into the process's covariance function, which is the entire mathematical content of
+      this lesson.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    Four steps: (1) the precise definition of fractional Brownian motion via its covariance function, and the
+    algebra showing it collapses to ordinary Brownian motion at \(H=0.5\); (2) what non-independent increments mean
+    for \(H \ne 0.5\), split into the persistent and anti-persistent cases; (3) a rigorous definition of "long
+    memory" — the exact sense in which it is a different mathematical category from "somewhat autocorrelated," not
+    just a matter of degree; (4) ARFIMA, the discrete-time model practitioners actually fit, and its precise link
+    back to \(H\).
+  </p>
+
+  <h3>1. Defining \(B_H(t)\) by its covariance</h3>
+  <p>
+    Fractional Brownian motion (fBm), usually written \(B_H(t)\), is the unique (up to a scale constant) centered
+    Gaussian process with \(B_H(0)=0\) and covariance function
+  </p>
+  <div class="tl-math">
+    \[ \operatorname{Cov}\big(B_H(s), B_H(t)\big) = \tfrac{1}{2}\Big(|s|^{2H} + |t|^{2H} - |t-s|^{2H}\Big), \qquad
+    s, t \ge 0,\ H \in (0,1) \]
+  </div>
+  <p>
+    This single formula is the entire definition — everything else in this lesson is a consequence of it. \(H\) is
+    called the <strong>Hurst index</strong> (or self-similarity index) of the process, and it is the same \(H\) the
+    previous lesson estimated empirically from real price data via R/S analysis: fBm is the generating model whose
+    parameter that estimation procedure is, whether or not the person running it realizes it, trying to recover.
+  </p>
+  <p>
+    <strong>The \(H=0.5\) reduction, checked exactly.</strong> Set \(H = 0.5\), so \(2H = 1\), and take \(0 \le s \le
+    t\) without loss of generality (so \(|t-s| = t-s\)):
+  </p>
+  <div class="tl-math">
+    \[ \operatorname{Cov}\big(B_{0.5}(s), B_{0.5}(t)\big) = \tfrac{1}{2}\Big(s + t - (t-s)\Big)
+    = \tfrac{1}{2}\big(2s\big) = s = \min(s,t) \]
+  </div>
+  <p>
+    That is exactly the covariance function of ordinary (standard) Brownian motion, \(\operatorname{Cov}(W(s),W(t)) =
+    \min(s,t)\). This is not a coincidence engineered for this lesson — it is the defining check that any claimed
+    formula for fBm must pass, and it is the precise sense in which "fBm generalizes Brownian motion" is a true
+    mathematical statement rather than a hand-wave: at \(H=0.5\), the general formula reduces algebraically, term for
+    term, to the special case everyone already knows. For any other value of \(H\), that cancellation does not happen
+    and the process is a genuinely different object with genuinely different correlation behavior, worked out next.
+  </p>
+  <p>
+    A second consequence of the same formula, obtained by setting \(s=t\) inside \(\operatorname{Var}(B_H(t)-B_H(s)) =
+    \operatorname{Var}(B_H(t)) + \operatorname{Var}(B_H(s)) - 2\operatorname{Cov}(B_H(s),B_H(t))\) and substituting the
+    covariance formula, is the increment-variance scaling law
+  </p>
+  <div class="tl-math">
+    \[ \operatorname{Var}\big(B_H(t) - B_H(s)\big) = |t-s|^{2H} \]
+  </div>
+  <p>
+    which says the standard deviation of an increment over a span of length \(n\) scales as \(n^H\) — exactly the
+    power law the previous lesson's R/S statistic was built to detect empirically. Fractional Brownian motion is, in
+    this precise sense, the continuous-time object whose existence R/S analysis and the variance ratio test were
+    always implicitly testing for.
+  </p>
+
+  <h3>2. What non-independent increments actually mean</h3>
+  <p>
+    For ordinary Brownian motion, non-overlapping increments are independent — that is the entire content of
+    \(H=0.5\). For \(H \ne 0.5\), fBm's increments (the process is sometimes analyzed through its increments,
+    <strong>fractional Gaussian noise</strong>, \(X_i = B_H(i+1)-B_H(i)\)) are correlated, and the sign of that
+    correlation is exactly the fade/follow split the Hurst lesson introduced empirically:
+  </p>
+  <ul>
+    <li><strong>\(H > 0.5\): persistent, positively correlated increments.</strong> A positive increment makes the
+      next increment more likely to also be positive. Correlations between increments decay — but, critically, they
+      decay as a <strong>power law</strong> in the lag, not exponentially. This is qualitatively different from the
+      short memory of an AR(1) process (covered in the Ornstein-Uhlenbeck and stationarity lessons), whose
+      autocorrelation decays as \(\phi^k\) — a geometric, exponentially fast decay that makes lag-60 correlation
+      numerically indistinguishable from zero for any \(|\phi|<1\). A persistent-fBm-consistent series can still show
+      a real, non-negligible correlation at lag 60 that no AR(1) fit, however carefully tuned, could ever produce.</li>
+    <li><strong>\(H < 0.5\): anti-persistent, negatively correlated increments.</strong> A positive increment makes
+      the next increment more likely to be negative — consistent with the Hurst lesson's \(H<0.5\) mean-reverting
+      case. Here the correlations are negative but, as the next section makes precise, they decay fast enough to sum
+      to a finite value — which matters for whether this case counts as "long memory" in the strict sense below.</li>
+  </ul>
+  <p>
+    Both cases stand in contrast to \(H=0.5\), where the increment autocorrelation is exactly zero at every nonzero
+    lag — no persistence, no anti-persistence, nothing to model.
+  </p>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(B_H(t)\)</td><td>fractional Brownian motion with Hurst index \(H\) — a centered Gaussian process, \(B_H(0)=0\), defined entirely by its covariance function</td></tr>
+      <tr><td>\(H\)</td><td>the Hurst index, \(H \in (0,1)\) — the same persistence parameter the previous lesson estimated empirically via R/S analysis and the variance ratio test</td></tr>
+      <tr><td>\(\operatorname{Cov}(B_H(s),B_H(t))\)</td><td>the covariance between the process's value at two times \(s\) and \(t\) — the single formula that defines the entire process</td></tr>
+      <tr><td>\(\min(s,t)\)</td><td>ordinary Brownian motion's covariance function — exactly what the fBm formula reduces to when \(H=0.5\)</td></tr>
+      <tr><td>\(X_i\)</td><td>fractional Gaussian noise — the stationary increment process \(B_H(i+1)-B_H(i)\), the discrete object whose autocorrelation is analyzed for long memory</td></tr>
+      <tr><td>\(\gamma(k)\)</td><td>the autocovariance of \(X_i\) at lag \(k\) — decays as \(k^{2H-2}\) for large \(k\), the power law at the heart of this lesson</td></tr>
+      <tr><td>\(d\)</td><td>ARFIMA's fractional differencing order, \(d = H - 0.5\) — the discrete-time econometric parameter that plays the same role as \(H\)</td></tr>
+    </table>
+  </div>
+
+  <h3>3. Long memory, defined precisely — not just "somewhat persistent"</h3>
+  <p>
+    "Long memory" has a specific formal meaning, and it is worth stating exactly because the phrase gets used loosely
+    in practice. A stationary process is said to have <strong>long memory</strong> (equivalently, <strong>long-range
+    dependence</strong>) if its autocovariance function \(\gamma(k)\) is <em>not absolutely summable</em>:
+  </p>
+  <div class="tl-math">
+    \[ \sum_{k=-\infty}^{\infty} |\gamma(k)| = \infty \]
+  </div>
+  <p>
+    For fractional Gaussian noise, \(\gamma(k)\) behaves asymptotically like \(H(2H-1)\,k^{2H-2}\) for large \(k\).
+    Whether that sum diverges or converges is a direct, checkable consequence of the exponent \(2H-2\): the sum
+    \(\sum_k k^{2H-2}\) diverges exactly when \(2H-2 \ge -1\), i.e. when \(H \ge 0.5\). This gives a precise,
+    non-obvious refinement of the persistent/anti-persistent split from the section above:
+  </p>
+  <ul>
+    <li><strong>\(H > 0.5\)</strong> gives \(2H-2 > -1\): the autocovariance sum diverges. This is genuine long
+      memory in the strict, formal sense.</li>
+    <li><strong>\(H < 0.5\)</strong> gives \(2H-2 < -1\): the autocovariance sum converges absolutely, even though the
+      correlations are negative and real. Anti-persistence is a genuine, useful, mean-reverting property — but it is
+      technically <em>short</em> memory by this definition, not long memory with a negative sign. "Long memory"
+      strictly names the \(H>0.5\) case.</li>
+    <li><strong>\(H = 0.5\)</strong>: \(\gamma(k)=0\) for all \(k \ne 0\) — no memory of any kind, the sum is trivially
+      finite (it's zero).</li>
+  </ul>
+  <p>
+    Now contrast this with any finite-order, stationary ARMA process (the AR(1)/OU and ARIMA machinery from earlier
+    lessons in this Theory Lab). A stationary ARMA process's autocorrelation function is always a mixture of damped
+    exponentials/sinusoids — it decays geometrically, as \(\phi^k\) for the dominant root \(\phi\) with \(|\phi|<1\).
+    A geometric series is always absolutely summable, \(\sum_k |\phi|^k = \frac{1}{1-|\phi|} < \infty\), <strong>for
+    any finite \(\phi\) short of exactly 1</strong>. This is the crux of the whole lesson: no ARMA model, however
+    many autoregressive or moving-average terms you add, can ever produce a non-summable autocorrelation function —
+    exponential decay is exponential decay, and adding more lag terms only changes the rate and shape of that decay,
+    never its fundamentally summable character. Long memory in the strict sense above requires a genuinely different
+    kind of process — a power-law-decaying one like fBm/fractional Gaussian noise — not a bigger ARMA model. That is
+    a formal distinction, not a matter of degree, and it is the reason this lesson exists as a separate piece of
+    machinery rather than "just use a higher-order AR model."
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Exponential decay (short memory) vs. power-law decay (long memory)</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart comparing two autocorrelation decay curves against lag on the x-axis. A blue curve representing a short-memory AR(1)-style process falls from 1 to near zero by around lag 10 and stays near zero. A red curve representing a long-memory process starts at 1 and decays much more slowly, remaining clearly above zero and still elevated around 0.3 at lag 50 and beyond.">
+      <line x1="60" y1="20" x2="60" y2="250" style="stroke:var(--border)" />
+      <line x1="60" y1="250" x2="610" y2="250" style="stroke:var(--border)" />
+      <line x1="60" y1="240" x2="610" y2="240" style="stroke:var(--border);stroke-dasharray:3,3" />
+      <line x1="151.7" y1="20" x2="151.7" y2="250" style="stroke:var(--border);stroke-dasharray:2,4" />
+      <text x="151.7" y="16" font-size="11" text-anchor="middle" fill="var(--text3)">lag 10</text>
+      <polyline points="60,40 105.8,206.4 151.7,234.4 197.5,239.1 243.3,239.8 289.2,240 335,240 380.8,240 426.7,240 472.5,240 518.3,240 564.2,240 610,240" fill="none" style="stroke:var(--blue);stroke-width:2.5" />
+      <polyline points="60,40 105.8,123.2 151.7,142.6 197.5,152.9 243.3,159.8 289.2,164.7 335,168.6 380.8,171.7 426.7,174.3 472.5,176.6 518.3,178.5 564.2,180.2 610,181.7" fill="none" style="stroke:var(--red);stroke-width:2.5" />
+      <text x="118" y="200" font-size="12" fill="var(--blue)">short memory (AR(1)-style) — exponential decay</text>
+      <text x="330" y="115" font-size="12" fill="var(--red)">long memory (fBm-consistent, H &#8776; 0.85) — power-law decay</text>
+      <text x="560" y="272" font-size="12" fill="var(--text3)">lag k</text>
+      <text x="20" y="140" font-size="12" fill="var(--text3)" transform="rotate(-90 20 140)">autocorrelation &#961;(k)</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Both curves start at \(\rho(0)=1\) by construction. The blue curve is a stylized AR(1) autocorrelation,
+      \(\rho(k) = 0.7^k\) — essentially indistinguishable from zero by lag 10, exactly the exponential-decay
+      signature no finite ARMA order can escape. The red curve is a stylized long-memory autocorrelation,
+      \(\rho(k) \propto (k+1)^{-0.3}\) (consistent with an fBm/ARFIMA process around \(H \approx 0.85\)) — still at
+      roughly 0.3 by lag 50–60, a level an AR(1) fit would have long since forgotten. Summed to infinity, the blue
+      curve's tail contributes a finite, small amount; the red curve's tail, decaying as a power law, keeps adding up
+      forever — the formal divergence described above, made visible.
+    </div>
+  </div>
+
+  <h3>4. ARFIMA — the discrete-time cousin practitioners actually fit</h3>
+  <p>
+    Fractional Brownian motion is a continuous-time construction, which makes it awkward to fit directly to daily or
+    weekly bars. The ARIMA lesson elsewhere in this Theory Lab covers the standard discrete-time toolkit: an
+    ARIMA(\(p,d,q\)) model applies \(d\) rounds of first-differencing (\(d\) is a non-negative <em>integer</em> — 0,
+    1, or occasionally 2) to induce stationarity before fitting an ARMA(\(p,q\)) model to what's left.
+    <strong>ARFIMA</strong> (AutoRegressive Fractionally Integrated Moving Average) is the direct generalization: it
+    allows \(d\) to be any <em>real</em> number, not just an integer, via the fractional differencing operator
+    \((1-L)^d\) (where \(L\) is the lag operator), expanded as an infinite binomial series rather than the familiar
+    finite first-difference. The practical payoff is that ARFIMA can fit the slow, power-law-decaying
+    autocorrelation described above using ordinary discrete-time estimation methods (maximum likelihood, or the
+    Geweke–Porter-Hudak semiparametric estimator), without ever touching the continuous-time fBm machinery — an
+    econometrician's tool for a physicist's process.
+  </p>
+  <p>
+    The fractional order \(d\) is directly, exactly related to the Hurst index:
+  </p>
+  <div class="tl-math">
+    \[ d = H - 0.5 \]
+  </div>
+  <p>
+    so \(d \in (0, 0.5)\) corresponds to \(H \in (0.5, 1)\) — genuine long memory, positive \(d\) meaning the series
+    needs a fraction of a differencing pass to induce stationarity, less than the whole integer difference an
+    ordinary ARIMA model would apply. \(d \in (-0.5, 0)\) corresponds to \(H \in (0, 0.5)\) — the anti-persistent,
+    short-memory-but-negatively-correlated case from the section above. And \(d=0\) corresponds exactly to
+    \(H=0.5\): no fractional differencing needed at all, which is just an ordinary stationary ARMA model — the same
+    reduction-to-the-familiar-case check as the covariance formula's \(H=0.5\) reduction, now on the econometric
+    side of the same coin.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>Converting between \(H\) and \(d\), and checking the covariance reduction numerically</h3>
+    <p>
+      <strong>The \(H=0.5\) reduction, with numbers.</strong> Take \(s=2\), \(t=5\). Plugging into the general fBm
+      covariance formula at \(H=0.5\): \(\operatorname{Cov}(B_{0.5}(2), B_{0.5}(5)) = \tfrac{1}{2}(2^1 + 5^1 - 3^1) =
+      \tfrac{1}{2}(2+5-3) = \tfrac{1}{2}(4) = 2\), and \(\min(2,5)=2\) — they match exactly, as the general algebra
+      above guarantees for any \(s,t\).
+    </p>
+    <p>
+      <strong>\(H \to d\) conversions.</strong> A researcher who has estimated \(H \approx 0.85\) from a volatility
+      series (strongly persistent, per the Hurst lesson's regimes) is, via \(d = H - 0.5\), looking at
+      \(d \approx 0.35\) in ARFIMA terms — a real, long-memory-consistent fractional order comfortably inside the
+      stationary-and-invertible range \(d \in (-0.5, 0.5)\). A different series estimated at \(H \approx 0.3\)
+      (mean-reverting) maps to \(d \approx -0.2\) — a legitimate, if less commonly discussed, negative fractional
+      order. Both conversions run in the other direction just as easily: an ARFIMA fit reporting \(\hat{d} = 0.4\)
+      is reporting \(H \approx 0.9\), i.e. very strong persistence, in exactly the language the previous lesson's
+      R/S regression would have used.
+    </p>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    In practice, almost nobody trades a literal simulated path of fractional Brownian motion — it shows up as the
+    theoretical justification behind two very practical activities. First, it is the formal backstop for exactly the
+    kind of Hurst-exponent regime-gating covered in the previous lesson: knowing that a real generating process
+    exists whose parameter <em>is</em> \(H\) is what makes "estimate \(H\), use it to gate fade vs. follow" a
+    principled thing to do rather than an ad hoc curve-fit. Second, and more concretely useful day to day, it
+    motivates fitting <strong>ARFIMA</strong> (or ARFIMA-GARCH hybrids, and specifically <strong>FIGARCH</strong> —
+    Fractionally Integrated GARCH — for volatility) whenever a series' own autocorrelation function refuses to decay
+    the way a standard, finite-order ARMA or GARCH model assumes it should. The tell is exactly the pattern in the
+    chart above: fit an AR(1) or a low-order ARMA, look at the residual ACF, and if it is still visibly elevated at
+    lags of 40, 50, 60+ where a correctly-specified short-memory model's residual ACF should be indistinguishable
+    from noise, that is the practical, empirical signature of long memory the formal definition above describes —
+    and the appropriate next model to reach for is ARFIMA, not a bigger ARMA order (per the point above, a bigger
+    ARMA order cannot fix this; only a different kind of process can).
+  </p>
+
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A GARCH residual that refuses to go away</h3>
+    <p>
+      A researcher is modeling a currency pair's realized-volatility series and starts, reasonably, with a
+      short-memory approach: an AR(1) model on log-volatility, or the GARCH(1,1) framework covered in the next
+      lesson in this series, both of which capture volatility clustering — today's volatility being informative
+      about tomorrow's — through exponentially decaying persistence. The fit looks fine at short lags, but the
+      residual autocorrelation refuses to die out: even at 60-plus trading day lags, there is still a small but
+      persistent, clearly non-zero autocorrelation left over, well beyond what the GARCH(1,1) persistence parameter
+      can honestly explain at that horizon. This is not a sign the GARCH fit is broken — it is the well-documented
+      "long memory in volatility" stylized fact (see the Ding, Granger &amp; Engle reference below): realized
+      volatility across essentially every liquid market shows autocorrelation that decays as a slow power law, not
+      the fast geometric decay any finite-order GARCH's short memory implies, distinct from and layered on top of
+      GARCH's own (real, but short-range) clustering effect.
+    </p>
+    <p>
+      Recognizing this as long memory — rather than concluding the GARCH model just needs another parameter or a
+      longer lag — motivates fitting an ARFIMA (or FIGARCH) specification instead. Suppose the fractional
+      differencing order comes back estimated at \(\hat{d} \approx 0.35\). Via \(H = d + 0.5\), that implies
+      \(H \approx 0.85\) — strongly persistent, in the same units as the Hurst lesson's regime split. The payoff for
+      taking this seriously rather than papering over it with a bigger short-memory model: an ARFIMA/FIGARCH fit
+      that has actually matched the series' true, slowly-decaying dependence structure supports forecasting
+      volatility meaningfully further out than a short-memory GARCH(1,1) could honestly justify, because the model
+      itself now encodes the correct rate of memory decay rather than truncating it exponentially fast by
+      construction. This is a genuinely different, better-specified model of a real, well-documented empirical
+      pattern — not a way of manufacturing extra predictive power out of nothing, and it still requires the same
+      out-of-sample validation discipline as any other model before its longer-horizon forecasts are trusted.
+    </p>
+  </div>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>A descriptive statistic already in production, a generative model not yet built</h3>
+    <p>
+      <code>js/rangeBiasCore.js</code>'s <code>computeHurst</code>, covered in the previous lesson, is exactly the
+      R/S-regression-based estimator this lesson gives a formal home to — it produces an empirical \(H\) but does
+      not, and was never designed to, fit an underlying generative model like fBm or ARFIMA to the data. That is a
+      reasonable scope for a live entry-bias feature: it needs a fast, robust regime read, not a full model fit. It
+      does mean the live feature's \(H\) is a description of the recent past's scaling behavior, not a forecast
+      derived from a fitted long-memory process — a distinction worth keeping straight given how easily "the Hurst
+      exponent is 0.85" can be misread as "and therefore the model predicts continued persistence for N more days,"
+      which computeHurst's descriptive R/S procedure does not, by itself, license.
+    </p>
+    <p>
+      Separately, <code>js/volBacktestEngine.js</code>'s GARCH-family sigma estimator is a genuinely short-memory
+      model by construction — its volatility persistence decays geometrically, exactly the AR(1)-style curve in the
+      chart above. Long memory in realized volatility is a widely documented empirical regularity in the academic
+      literature (not a claim specific to this repo's data), distinct from and additional to the short-memory
+      clustering GARCH already captures. If this repo ever needs to forecast volatility meaningfully further out
+      than a short-memory GARCH model can honestly support — which it does not currently attempt to do — fitting a
+      genuine long-memory volatility model (ARFIMA on log-realized-vol, or a long-memory GARCH variant such as
+      FIGARCH) would be the natural, currently-unbuilt next step, and it would need the same OOS validation
+      discipline (Lego Principle 5) as any other model before being trusted over the existing GARCH sigma series.
+      Nothing described in this lesson is wired into any live forecaster today; it is background theory for a
+      future extension, not a description of current behavior.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where fBm and ARFIMA reasoning goes wrong in practice</h3>
+    <ul>
+      <li><strong>fBm itself is not stationary (only its increments are).</strong> \(B_H(t)\) has variance
+        \(t^{2H}\), which grows with \(t\) — the process itself is a non-stationary random walk in the same sense
+        ordinary Brownian motion is. "Long memory," "stationary," and "fractional Gaussian noise" (the increment
+        process) are the objects with a well-defined ACF to discuss; the raw fBm level series is not one of them.
+        This mirrors the stationarity lesson's warning about running memory diagnostics on price levels instead of
+        returns.</li>
+      <li><strong>Structural breaks and regime switching can produce spurious long memory.</strong> A series made of
+        several genuinely short-memory regimes stitched together (e.g. calm-market AR(1) volatility alternating with
+        crisis-period AR(1) volatility at a different level) can show an aggregate autocorrelation function that
+        decays very slowly — visually identical to true long memory — purely as an artifact of the regime switching,
+        with no single long-memory process actually generating the data. This confound is itself well documented in
+        the time-series literature; it means "the ACF decays slowly" should prompt a check for regime instability
+        before concluding ARFIMA is the right model, not an automatic ARFIMA fit.</li>
+      <li><strong>\(d\) is estimated with real uncertainty, and different estimators disagree.</strong> Maximum
+        likelihood, the Geweke–Porter-Hudak log-periodogram regression, and other semiparametric estimators of \(d\)
+        can give meaningfully different point estimates on the same finite sample, especially with the heavy tails
+        typical of financial returns — a single reported \(\hat{d}\) deserves the same skepticism as a single point
+        estimate of \(H\) from R/S analysis in the previous lesson (small-sample bias, no free lunch just because
+        the model is fancier).</li>
+      <li><strong>Anti-persistence (\(H<0.5\), \(d<0\)) is not "long memory with a minus sign."</strong> As derived
+        above, the \(H<0.5\) case has a formally <em>summable</em> autocovariance — it is short memory by the strict
+        definition, even though it is real, negatively-correlated, mean-reverting structure. Calling it "long
+        memory" is a common looseness worth avoiding in precise writing.</li>
+      <li><strong>A good ARFIMA in-sample fit is not automatically forecast edge.</strong> Per this repo's working
+        agreement (a method is not a strategy), a better-specified statistical description of volatility's
+        dependence structure is a legitimate methodological improvement over a misspecified GARCH — it is not, by
+        itself, evidence that trading on the resulting longer-horizon forecast makes money. That still requires the
+        same honest, costed, out-of-sample test as anything else in this repo.</li>
+    </ul>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why does fBm reduce to ordinary Brownian motion exactly at H = 0.5, algebraically?</summary>
+    <div class="tl-answer">
+      Setting \(H=0.5\) makes \(2H=1\), so the general covariance formula
+      \(\tfrac{1}{2}(|s|^{2H}+|t|^{2H}-|t-s|^{2H})\) becomes \(\tfrac{1}{2}(s+t-(t-s))\) for \(0\le s\le t\). The
+      \(-(t-s)\) term cancels the \(t\) term and reinforces the \(s\) term: \(s+t-t+s = 2s\), and dividing by 2
+      gives exactly \(s = \min(s,t)\), which is the defining covariance function of ordinary Brownian motion. The
+      cancellation is exact and algebraic, not approximate — it is the formal check any candidate fBm covariance
+      formula must satisfy, confirming fBm is a strict generalization rather than merely "similar to" Brownian
+      motion at \(H=0.5\).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What's the precise mathematical distinction between "long memory" and just "somewhat persistent" or "somewhat autocorrelated"?</summary>
+    <div class="tl-answer">
+      Long memory has a specific formal definition: a stationary process's autocovariance function \(\gamma(k)\) is
+      not absolutely summable, \(\sum_k |\gamma(k)| = \infty\). This is a categorical, checkable property, not a
+      matter of degree. Any stationary finite-order ARMA process has geometrically (exponentially) decaying
+      autocorrelation, and a geometric series is always absolutely summable for any decay rate strictly between 0
+      and 1 — so no ARMA process, regardless of how "persistent" its autocorrelation looks at short lags, can ever
+      have long memory in this strict sense. Only a process whose autocorrelation decays as a power law slow enough
+      (exponent \(\ge -1\)) qualifies — which for fractional Gaussian noise happens precisely when \(H > 0.5\).
+      "Somewhat persistent" is a vague, comparative description; "long memory" is a specific claim about a divergent
+      infinite sum.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why aren't fBm's increments independent for H ≠ 0.5, and is the H < 0.5 case actually "long memory" too?</summary>
+    <div class="tl-answer">
+      Independence of increments is a special property of \(H=0.5\) alone — it's the case where the covariance
+      formula's cross-terms cancel perfectly, leaving zero correlation between non-overlapping increments. For any
+      other \(H\), that cancellation does not happen, and the increment autocovariance \(\gamma(k)\) is nonzero and
+      decays as \(k^{2H-2}\). But \(H<0.5\) (anti-persistent) is technically <strong>not</strong> long memory in the
+      strict sense: the exponent \(2H-2 < -1\) makes the autocovariance sum converge absolutely, so it is
+      short-memory, negatively-correlated structure — real and useful for mean-reversion reasoning, but a formally
+      different category from the \(H>0.5\) long-memory case, where \(2H-2 \ge -1\) makes the sum diverge.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What is the exact relationship between ARFIMA's fractional order d and the Hurst index H, and what happens at d = 0?</summary>
+    <div class="tl-answer">
+      \(d = H - 0.5\), equivalently \(H = d + 0.5\). At \(d=0\), \(H=0.5\) — no fractional differencing is applied
+      at all, and the model collapses to an ordinary stationary ARMA process, the exact discrete-time analogue of
+      fBm's own reduction to ordinary Brownian motion at \(H=0.5\). Positive \(d \in (0,0.5)\) (equivalently
+      \(H\in(0.5,1)\)) is the genuine long-memory, persistent case; negative \(d \in (-0.5,0)\) (equivalently
+      \(H\in(0,0.5)\)) is the anti-persistent, short-memory case.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why can't a finite-order AR or ARMA model, no matter how many lags you add, ever exhibit true long memory?</summary>
+    <div class="tl-answer">
+      A stationary ARMA(p,q) process's autocorrelation function is always built from a finite mixture of
+      geometrically decaying terms (powers of the model's characteristic roots, all with modulus less than 1 for
+      stationarity). A geometric series \(\sum_k |\phi|^k\) always converges to \(1/(1-|\phi|)\) for any \(|\phi|<1\),
+      regardless of how close \(\phi\) is to 1 or how many AR/MA terms are combined — adding more lag terms changes
+      the shape and rate of the decay but never removes its fundamentally summable, exponential character. Long
+      memory requires a slower, power-law decay rate that no finite combination of exponentials can replicate; it
+      requires a structurally different kind of process (fractional differencing / fBm), not a bigger version of
+      the same one.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. A researcher sees a volatility series' residual autocorrelation still elevated at lag 60 after fitting GARCH(1,1), and estimates ARFIMA's d ≈ 0.35. Is fitting ARFIMA automatically the right next step, and is a good in-sample d estimate itself evidence of trading edge?</summary>
+    <div class="tl-answer">
+      Not automatically on either count. First, slowly-decaying residual autocorrelation is also the signature of
+      structural breaks or regime switching stitched together from several genuinely short-memory regimes — a
+      well-documented confound that can mimic true long memory without any single long-memory process actually being
+      present, so it's worth checking for regime instability before committing to ARFIMA. Second, even a
+      well-estimated \(\hat{d}\approx 0.35\) (implying \(H\approx 0.85\)) is a statement about the series' dependence
+      structure being better described by ARFIMA than by GARCH(1,1) alone — a legitimate methodological improvement,
+      consistent with the well-documented "long memory in volatility" literature. It is not, by itself, evidence that
+      forecasting further out with that model produces a tradeable edge; per this repo's working agreement, that
+      claim still needs a real, costed, out-of-sample test before being treated as anything more than a
+      better-specified model.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Benoit B. Mandelbrot &amp; John W. Van Ness, "Fractional Brownian Motions, Fractional Noises and
+      Applications," <em>SIAM Review</em>, 1968 — the foundational paper defining fBm via its covariance structure,
+      by the same Mandelbrot who applied Hurst's rescaled-range method to financial data (see the previous lesson).</li>
+    <li>C. W. J. Granger &amp; Roselyne Joyeux, "An Introduction to Long-Memory Time Series Models and Fractional
+      Differencing," <em>Journal of Time Series Analysis</em>, 1980 — the original ARFIMA paper, introducing
+      fractional differencing as a discrete-time model of long memory (developed independently and concurrently by
+      J. R. M. Hosking, "Fractional Differencing," <em>Biometrika</em>, 1981).</li>
+    <li>Zhuanxin Ding, Clive W. J. Granger &amp; Robert F. Engle, "A Long Memory Property of Stock Market Returns and
+      a New Model," <em>Journal of Empirical Finance</em>, 1993 — the widely-cited empirical documentation of long
+      memory in volatility (absolute and squared returns), and the paper that motivated the FIGARCH line of models.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="random-matrix-theory.html">← Random Matrix Theory</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="market-microstructure.html">Market Microstructure →</a>
+  </div>
+</div>
+</body>
+</html>

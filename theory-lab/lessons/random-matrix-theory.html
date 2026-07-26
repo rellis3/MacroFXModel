@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Random Matrix Theory &amp; the Marchenko-Pastur Law — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Advanced Portfolio &amp; Market Structure / Random Matrix Theory</div>
+  <div class="tl-kicker">Advanced Portfolio &amp; Market Structure · Lesson 1 of 5</div>
+  <h1 class="tl-title">Random Matrix Theory &amp; the Marchenko-Pastur Law</h1>
+  <p class="tl-dek">The PCA lesson showed how to split a correlation matrix into ranked eigenvalues. It never asked the harder question: with only a finite sample of history, how many of those eigenvalues are real, and how many are exactly what pure noise looks like when you don't have enough data?</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — extends js/diversificationCore.js's existing eigenvalue math</span>
+    <span>~18 min read</span>
+    <span>Prereqs: Principal Component Analysis &amp; Factor Regimes, Linear Algebra &amp; Matrices</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    The PCA lesson in this Theory Lab ends on a clean, useful result: sort a
+    correlation matrix's eigenvalues from largest to smallest, and the biggest
+    one usually corresponds to a genuine, interpretable common factor — for an
+    FX basket, "risk-on/risk-off," a broad dollar factor that most pairs load
+    onto together. It's a satisfying story, and for the very first eigenvalue
+    it's usually a true one. But the lesson quietly skipped a harder question
+    that shows up the moment you look past PC1: how do you know the
+    <em>second</em>-largest eigenvalue is a real factor too, rather than
+    nothing at all — just an artifact of the fact that you only had, say, 250
+    days of history to estimate a 30-instrument correlation matrix from?
+  </p>
+  <p>
+    This is not a hypothetical worry. Even a correlation matrix built from
+    instruments that are, by construction, <em>completely independent</em> of
+    each other — no shared factor, no real structure whatsoever — will not
+    produce a flat, boring eigenvalue spectrum when you only have a finite
+    number of observations to estimate it from. It will produce a spread of
+    eigenvalues, some above 1, some below, purely from sampling noise. If you
+    don't know what that noise-only spread is supposed to look like, you have
+    no principled way to tell a real second factor from an unlucky roll of
+    the dice in your sample window. Random Matrix Theory (RMT) — specifically
+    the Marchenko-Pastur law — is the tool that tells you exactly what the
+    noise-only spread looks like, as a precise, derivable band of values, so
+    you can check any real eigenvalue against it before you believe it.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Flipping coins tells you what "no pattern" looks like, too</h3>
+    <p>
+      Flip a fair coin 20 times and you will almost never get exactly 10
+      heads and 10 tails. You might get 12-8, or 8-12, or occasionally 15-5.
+      None of those outcomes mean the coin is biased — they're exactly what
+      "no real pattern, finite sample" looks like, and statistics gives you a
+      precise band (a confidence interval) around 50/50 that tells you how
+      much wobble is normal before you'd start suspecting a rigged coin.
+      Random Matrix Theory does the same job for correlation-matrix
+      eigenvalues. If every instrument in your basket were truly independent
+      — no shared factor at all, the statistical equivalent of a fair coin —
+      a correlation matrix estimated from a finite number of days would still
+      show eigenvalues scattered above and below 1, purely from sampling
+      noise, the same way 20 fair coin flips scatter around but not exactly
+      on 10-10. The Marchenko-Pastur law is the "how much wobble is normal"
+      band for eigenvalues: a precise, math-derived range that pure noise is
+      expected to live inside, given how many instruments you have relative
+      to how many days of data you used. An eigenvalue inside that range
+      isn't obviously a real factor, any more than 12 heads out of 20 is
+      obviously a biased coin. An eigenvalue far outside it is a different
+      story — that's the equivalent of flipping 19 heads out of 20.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    Everything below builds directly on the PCA lesson's setup: \(N\)
+    instruments, \(T\) days of returns, arranged into a correlation matrix
+    \(\Sigma\) whose eigenvalues \(\lambda_1 \geq \lambda_2 \geq \dots \geq
+    \lambda_N\) sum to \(N\) (the trace of a correlation matrix — every
+    diagonal entry is 1). Nothing about that machinery changes here. What
+    changes is what you're allowed to conclude from a given eigenvalue's
+    size.
+  </p>
+
+  <h3>Step 1 — why a genuinely flat spectrum is only a limit, never a real observation</h3>
+  <p>
+    If your \(N\) instruments were <em>truly, perfectly</em> independent, and
+    you had infinite history (\(T \to \infty\)) to estimate their correlation
+    matrix from, that matrix would converge exactly to the identity matrix —
+    every off-diagonal correlation exactly 0, every eigenvalue exactly 1. A
+    perfectly flat spectrum at 1 is what "no shared structure, in the limit
+    of infinite data" looks like. But you never have infinite data. \(T\) is
+    always some finite number — 250 trading days in a year, maybe a few
+    thousand across a decade of history if the instrument's even existed that
+    long — and \(N\), the instrument count in a basket you actually care
+    about, is not always small next to that. That gap between the idealized
+    infinite-data case and the finite sample you actually have is exactly
+    where the trouble starts.
+  </p>
+
+  <h3>Step 2 — a thought experiment: correlate pure noise with itself</h3>
+  <p>
+    Take this literally rather than abstractly. Generate \(N = 30\)
+    completely independent random return series — no shared driver of any
+    kind built in, by construction — and draw \(T = 250\) observations of
+    each, exactly the shape of one year of daily returns across a 30-pair FX
+    basket. Because these are independent by construction, the true
+    (population) correlation between any two of them is exactly 0. But
+    compute the <em>sample</em> correlation between any two of these series
+    over those 250 draws, and it will not come out at exactly 0.00 — by pure
+    chance, some pairs will show a sample correlation of 0.06, others -0.11,
+    others 0.03, purely because 250 finite draws of two truly unrelated
+    series will happen to drift together on some days and apart on others,
+    the same way 20 fair coin flips don't land exactly 10-10. Build the full
+    \(30 \times 30\) sample correlation matrix out of these purely
+    coincidental sample correlations, and its eigenvalues will <em>not</em>
+    all equal 1. They will spread out — some noticeably above 1, some below —
+    even though there is, by construction, zero genuine correlation structure
+    anywhere in the data that generated them. This spread is not evidence of
+    anything real; it is the specific, characteristic footprint that
+    finite-sample noise leaves on a correlation matrix's eigenvalues, and it
+    is exactly as knowable, in advance, as the spread of outcomes from
+    flipping a coin 20 times.
+  </p>
+
+  <h3>Step 3 — the Marchenko-Pastur law</h3>
+  <p>
+    Marchenko and Pastur (1967) proved something remarkable about exactly
+    this thought experiment: it doesn't just produce "some spread" — the
+    spread converges to a specific, fully derivable probability distribution.
+    Formally, take an \(N \times N\) sample correlation matrix built from
+    \(N\) mutually independent series, each with \(T\) i.i.d. observations
+    (mean zero, unit variance). In the limit \(N, T \to \infty\) with the
+    ratio held fixed at:
+  </p>
+  <div class="tl-math">
+    \[ q = \frac{N}{T} \]
+  </div>
+  <p>
+    the empirical distribution of that matrix's eigenvalues converges to the
+    <strong>Marchenko-Pastur distribution</strong> — and critically, that
+    distribution has <em>bounded support</em>: in the idealized limit, no
+    eigenvalue of a pure-noise correlation matrix falls outside a specific,
+    computable band:
+  </p>
+  <div class="tl-math">
+    \[ \lambda_{\min} = (1 - \sqrt{q})^2 \qquad\qquad \lambda_{\max} = (1 + \sqrt{q})^2 \]
+  </div>
+  <p>
+    Read \(q = N/T\) exactly as "how many instruments you're trying to
+    estimate simultaneous pairwise relationships for, relative to how many
+    independent days of data you have to estimate them from." That single
+    ratio is the entire input the noise band depends on — not \(N\) alone,
+    not \(T\) alone, but their relationship. Within the band, the density is
+    not uniform; it is highest somewhere in the middle of \([\lambda_{\min},
+    \lambda_{\max}]\) and tapers toward zero at both edges, which is exactly
+    why a histogram of a real basket's noise-only eigenvalues tends to look
+    like a hump sitting inside the band, not a flat plateau — and, in the
+    idealized limit, the density is exactly zero everywhere outside the band.
+  </p>
+  <p>
+    A smaller \(q\) — meaning relatively <em>more</em> history for a given
+    number of instruments, either because \(N\) is small or \(T\) is large —
+    pushes \(\sqrt{q}\) toward 0, which pushes both \(\lambda_{\min}\) and
+    \(\lambda_{\max}\) toward 1: the noise band narrows and tightens around
+    1, because more data per instrument means sample correlations converge
+    more tightly to their true (zero) values, so a pure-noise matrix's
+    eigenvalues cluster closer to the flat, no-structure spectrum described
+    in Step 1. A larger \(q\) — more instruments relative to history — pushes
+    the band wider: \(\lambda_{\min}\) falls toward 0 and \(\lambda_{\max}\)
+    rises well above 1, meaning noise alone can produce a much bigger spread
+    of eigenvalues, so a much larger eigenvalue is needed before it's
+    distinguishable from what chance alone could produce. In the extreme
+    case \(q \to 1\) (nearly as many instruments as observations),
+    \(\lambda_{\min} \to 0\); if \(q > 1\) (literally more instruments than
+    days of data, \(N > T\)), the sample correlation matrix becomes
+    mathematically singular — rank at most \(T\) — and a fraction \((1 -
+    1/q)\) of its eigenvalues sit at exactly zero, a separate, harder failure
+    mode worth flagging on its own (a wide basket estimated over a short
+    window doesn't just have a wide noise band, it has structurally
+    unrecoverable directions).
+  </p>
+
+  <h3>Step 4 — the practical decision rule</h3>
+  <p>
+    Put a real basket's real sample correlation matrix's eigenvalues next to
+    this band, and the rule is direct. Compute \(q = N/T\) for your actual
+    basket and window, compute \(\lambda_{\min}\) and \(\lambda_{\max}\) from
+    the formula above, then look at each observed eigenvalue \(\lambda_i\):
+  </p>
+  <ul>
+    <li><strong>\(\lambda_i\) inside \([\lambda_{\min}, \lambda_{\max}]\):</strong>
+    statistically indistinguishable from what a matrix of pure, uncorrelated
+    noise would produce at this same \(N\) and \(T\). This does not prove
+    there is no real structure behind that component — it means your current
+    sample size doesn't give you enough evidence to tell the two apart, which
+    for practical purposes should be treated with real suspicion before being
+    called a genuine factor.</li>
+    <li><strong>\(\lambda_i\) clearly above \(\lambda_{\max}\):</strong>
+    evidence that this component explains more shared variance than pure
+    chance could produce at this \(N\), \(T\) — a strong candidate for a
+    genuine common factor. This is exactly why the PCA lesson's dollar/
+    risk-on PC1, which routinely explains 50-70%+ of an FX basket's variance,
+    survives this test so comfortably: an eigenvalue that large sits nowhere
+    near the noise band at any realistic \(N/T\), while PC2 and PC3 — the
+    components the PCA lesson was already more cautious about — are exactly
+    the ones most likely to land inside it.</li>
+  </ul>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(N\)</td><td>Number of instruments in the basket — the number of rows/columns of the correlation matrix, and the number of eigenvalues it has.</td></tr>
+    <tr><td>\(T\)</td><td>Number of independent observations (e.g. trading days) used to estimate the correlation matrix — the amount of information available per instrument.</td></tr>
+    <tr><td>\(q\)</td><td>\(= N/T\), the Marchenko-Pastur shape parameter — instruments relative to history. Smaller \(q\) (more history per instrument) narrows the noise band; larger \(q\) widens it.</td></tr>
+    <tr><td>\(\lambda_i\)</td><td>The \(i\)-th eigenvalue of the <em>real</em>, observed sample correlation matrix (same object as in the PCA lesson) — what gets checked against the noise band.</td></tr>
+    <tr><td>\(\lambda_{\min}, \lambda_{\max}\)</td><td>\((1 \mp \sqrt{q})^2\) — the lower and upper edge of the Marchenko-Pastur noise band: the range a pure-noise correlation matrix's eigenvalues are expected to occupy at this \(N/T\).</td></tr>
+    <tr><td>"noise band"</td><td>Informal shorthand used throughout this lesson for \([\lambda_{\min}, \lambda_{\max}]\) — the region where an eigenvalue cannot be confidently distinguished from sampling noise.</td></tr>
+  </table></div>
+
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Thirty FX pairs, one year of daily returns</h3>
+    <p>
+      A researcher builds a correlation matrix across \(N = 30\) FX pairs
+      using \(T = 250\) days of daily returns — one calendar year, a
+      perfectly ordinary lookback window. First, the shape ratio:
+    </p>
+    <div class="tl-math">
+      \[ q = \frac{N}{T} = \frac{30}{250} = 0.12 \]
+    </div>
+    <p>
+      Then the noise band, worked through exactly:
+    </p>
+    <div class="tl-math">
+      \[
+      \sqrt{q} = \sqrt{0.12} \approx 0.3464
+      \]
+      \[
+      \lambda_{\min} = (1 - 0.3464)^2 = (0.6536)^2 \approx 0.4272
+      \qquad
+      \lambda_{\max} = (1 + 0.3464)^2 = (1.3464)^2 \approx 1.8128
+      \]
+    </div>
+    <p>
+      So at this \(N/T\), any eigenvalue between roughly <strong>0.43 and
+      1.81</strong> is inside the noise band — indistinguishable from what
+      30 completely independent random series over 250 days would produce
+      by chance alone. The researcher then looks at the real eigenvalues
+      from the actual 30-pair basket: the largest, \(\lambda_1 = 8.2\), sits
+      enormously far above 1.81 — an overwhelming, easy call: this is a real,
+      genuine common factor (in practice, almost certainly the same
+      dollar/risk-on factor the PCA lesson describes as PC1). But the next
+      several eigenvalues — \(\lambda_2, \lambda_3, \lambda_4, \dots\) — all
+      come back somewhere between 0.5 and 1.7, squarely <em>inside</em> the
+      0.43-1.81 noise band.
+    </p>
+    <p>
+      That places the researcher in front of a genuinely consequential
+      modeling decision: treating that second or third principal component
+      as a meaningful additional "factor" in a diversification or risk model
+      — something to trade against, hedge separately, or report as "the
+      euro-specific factor" or "the commodity-bloc factor" — would be
+      fitting statistical noise, not signal. At \(N=30\) instruments and
+      \(T=250\) days, this basket simply does not carry enough information
+      to distinguish PC2 or PC3 from what pure randomness would have
+      produced anyway. Only the first component clears the bar. That doesn't
+      mean PC2 is definitely meaningless in reality — it means this sample,
+      at this size, cannot tell the difference, and building on top of it as
+      if it could would be overfitting to noise while believing it's
+      structure.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Eigenvalue histogram against the Marchenko-Pastur noise band</div>
+    <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Histogram of correlation-matrix eigenvalues, most bars clustered inside a shaded Marchenko-Pastur noise band roughly between 0.43 and 1.81, with one isolated red bar far to the right near eigenvalue 8.2 labeled genuine factor">
+      <rect x="66.6" y="60" width="86.2" height="220" style="fill:var(--s3)"/>
+      <line x1="66.6" y1="60" x2="66.6" y2="285" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+      <line x1="152.8" y1="60" x2="152.8" y2="285" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+      <text x="109.7" y="46" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">MP noise band</text>
+      <text x="66.6" y="298" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">0.43</text>
+      <text x="152.8" y="298" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">1.81</text>
+
+      <line x1="40" y1="280" x2="600" y2="280" style="stroke:var(--border)"/>
+      <line x1="40" y1="60" x2="40" y2="280" style="stroke:var(--border)"/>
+
+      <rect x="41" y="222.9" width="16" height="57.1" style="fill:var(--blue);opacity:.8"/>
+      <rect x="59.7" y="137.1" width="16" height="142.9" style="fill:var(--blue);opacity:.8"/>
+      <rect x="78.3" y="80.0" width="16" height="200.0" style="fill:var(--blue);opacity:.8"/>
+      <rect x="97.0" y="108.6" width="16" height="171.4" style="fill:var(--blue);opacity:.8"/>
+      <rect x="115.7" y="165.7" width="16" height="114.3" style="fill:var(--blue);opacity:.8"/>
+      <rect x="134.3" y="194.3" width="16" height="85.7" style="fill:var(--blue);opacity:.8"/>
+      <rect x="153.0" y="251.4" width="16" height="28.6" style="fill:var(--blue);opacity:.8"/>
+      <rect x="171.7" y="251.4" width="16" height="28.6" style="fill:var(--blue);opacity:.8"/>
+
+      <rect x="542" y="230" width="18" height="50" style="fill:var(--red)"/>
+      <text x="551" y="221" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">genuine factor</text>
+
+      <text x="40" y="296" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">0</text>
+      <text x="164.4" y="296" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">2</text>
+      <text x="288.9" y="296" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">4</text>
+      <text x="413.3" y="296" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">6</text>
+      <text x="537.8" y="296" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">8</text>
+      <text x="320" y="314" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.05em">EIGENVALUE (λ)</text>
+      <text x="15" y="170" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.05em" transform="rotate(-90 15 170)">COUNT</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--s3)"></i>Marchenko-Pastur noise band [λ_min, λ_max]</span>
+      <span><i style="background:var(--blue)"></i>eigenvalues indistinguishable from noise</span>
+      <span><i style="background:var(--red)"></i>eigenvalue clearly above λ_max — genuine factor</span>
+    </div>
+    <div class="tl-chart-caption">
+      Illustrative eigenvalue spectrum for a 30-instrument basket (the scenario
+      above): the great majority of eigenvalues — the smaller, everyday
+      "noise" components — pile up inside or near the shaded noise band, the
+      same hump shape the Marchenko-Pastur density predicts for pure sampling
+      noise at this \(N/T\). One eigenvalue sits far outside the band, near 8,
+      clearly separated in both position and, in practice, statistical
+      significance — this is the one component this sample can actually
+      support calling a genuine common factor.
+    </div>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    The best-known application of this exact idea to real markets is Laloux,
+    Cizeau, Bouchaud &amp; Potters' 1999 study of the correlation matrix of
+    several hundred U.S. stocks: they found that the overwhelming majority of
+    the eigenvalues of a real stock-market correlation matrix fell inside the
+    Marchenko-Pastur band computed from the actual \(N\) and \(T\) of their
+    dataset — meaning most of what a naive PCA would report as "factor
+    structure" in that basket was statistically indistinguishable from noise
+    — while a small handful of the largest eigenvalues (led by one dominant
+    "market factor," directly analogous to the FX dollar factor) sat far
+    outside it and were judged to be genuinely non-random. That paper is
+    generally credited with launching "RMT filtering" or "RMT denoising" as
+    a standard risk-management technique, particularly for large-N problems
+    like equity covariance estimation for portfolio optimization, where
+    naively trusting every eigenvalue (and every eigenvector) of a
+    sample covariance matrix is well known to produce badly overfit,
+    unstable optimal portfolios — Markowitz optimization is notoriously
+    sensitive to estimation error in exactly this way, and RMT gives a
+    principled first cut at separating the estimation error from the real
+    signal before optimizing on top of it.
+  </p>
+  <p>
+    In practice the technique is used in two related ways. The first,
+    covered fully by this lesson, is a <strong>binary screen</strong>: decide
+    how many of a basket's eigenvalues are worth treating as real factors at
+    all, before doing anything more sophisticated with them (running a
+    factor model, sizing a diversification metric, deciding how many
+    independent bets a book really has). The second, more advanced use —
+    <strong>eigenvalue cleaning</strong> or <strong>shrinkage</strong> — goes
+    a step further: rather than a hard binary cut, it replaces every
+    eigenvalue inside the noise band with a single common value (often their
+    average), leaving the eigenvalues above \(\lambda_{\max}\) untouched, and
+    reconstructs a "cleaned" correlation matrix from that adjusted spectrum.
+    That cleaned matrix still has \(N\) eigenvalues and is still a valid
+    correlation matrix, but it no longer pretends the noise-band eigenvalues
+    carry information they can't actually support — a materially more honest
+    input to a covariance-based optimizer than the raw sample matrix. This
+    lesson focuses on the simpler binary version of the idea; eigenvalue
+    cleaning is a real, well-established extension worth knowing exists, not
+    something built or claimed here.
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+    <h3>A concrete, unbuilt guardrail for the existing effective-bets metric</h3>
+    <p>
+      As the PCA lesson's repo box lays out, <code>js/diversificationCore.js</code>
+      already computes <code>symmetricEigenvalues</code> — the full eigenvalue
+      spectrum of a correlation matrix, via a from-scratch Jacobi rotation —
+      and feeds it into <code>effectiveBetsPCA(corr)</code>, the \((\sum_i
+      \lambda_i)^2 / \sum_i \lambda_i^2\) inverse-participation-ratio metric
+      that <code>diversification.html</code> displays live as "effective
+      number of bets." That metric already uses the entire eigenvalue
+      spectrum this lesson is about — every \(\lambda_i\) it computes goes
+      into the formula, with no distinction made between an eigenvalue that
+      is an overwhelming, obvious common factor and one that is statistically
+      indistinguishable from noise at the basket's actual \(N\) and \(T\).
+    </p>
+    <p>
+      To be explicit about what is and isn't already there: <strong>the
+      Marchenko-Pastur noise-filtering step described in this lesson is not
+      currently applied anywhere in this repo.</strong> It is a specific,
+      well-defined, low-risk enhancement candidate, not a claim about
+      existing behavior. Concretely, it would mean: given the eigenvalues
+      <code>symmetricEigenvalues</code> already returns, and the \(N\) and
+      \(T\) already known from the basket and the lookback window used to
+      build the correlation matrix, compute \(q = N/T\) and the
+      \((\lambda_{\min}, \lambda_{\max})\) band from the two-line formula in
+      this lesson, and flag which of the returned eigenvalues fall inside it.
+      That flag doesn't have to change the effective-bets number itself — it
+      could ship first as a simple annotation on <code>diversification.html</code>
+      ("2 of 5 eigenvalues distinguishable from noise at this window length")
+      — a direct, honest caveat on a metric that currently has none, and a
+      guardrail against a very specific overstatement: a basket whose
+      effective-bets score looks reassuringly close to \(N\) only because
+      several of its "distinct" eigenvalues are actually noise-band clutter
+      that happens to sum correctly, not because the basket is genuinely
+      that diversified.
+    </p>
+    <p>
+      This is a buildable next step, not a validated one. Any change to how
+      <code>effectiveBetsPCA</code> itself treats noise-band eigenvalues
+      (excluding them, shrinking them, reweighting the formula around only
+      the "real" ones) would be a new piece of decision logic on top of an
+      existing metric, and per Lego Principle 5 it would need its own honest
+      before/after comparison — does flagging or filtering noise-band
+      eigenvalues actually produce a more decision-useful diversification
+      read in practice, on real baskets, not just a theoretically cleaner
+      one — before being trusted, and it should be registered as a candidate
+      in <code>LEGO_MODULES.md §2</code> before it's built, not assumed to
+      help because the math is elegant.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where the noise-band rule is misapplied</h3>
+    <p>
+      <strong>Treating "inside the band" as proof of no structure.</strong>
+      The Marchenko-Pastur test is a statistical power statement, not a
+      certainty. An eigenvalue inside \([\lambda_{\min}, \lambda_{\max}]\)
+      means your sample <em>cannot currently distinguish</em> that component
+      from noise — it does not prove the underlying economic relationship is
+      zero. A real but modest factor can easily hide inside the noise band
+      at a small \(T\) or a large \(N\); more history (a bigger \(T\), which
+      shrinks \(q\) and narrows the band) is the direct remedy, not a
+      reinterpretation of the same sample.
+    </p>
+    <p>
+      <strong>Forgetting the theorem is an asymptotic (\(N, T \to \infty\))
+      result being applied to a finite basket.</strong> \(N=30\), \(T=250\)
+      is nowhere near infinity. The Marchenko-Pastur band is the right and
+      widely-used practical benchmark at finite sample sizes too — that's
+      exactly what the Laloux et al. finance application relies on — but
+      edge effects exist: real finite-\(N,T\) spectra show some spread
+      right around \(\lambda_{\max}\) itself (formally, fluctuations of the
+      largest "noise" eigenvalue follow a separate Tracy-Widom distribution,
+      not a hard wall), so an eigenvalue sitting just barely above
+      \(\lambda_{\max}\) is a much weaker signal than one sitting several
+      multiples above it, the way \(\lambda_1 = 8.2\) does against
+      \(\lambda_{\max} \approx 1.81\) in the worked scenario. Treat values
+      right at the edge as ambiguous, not as a clean pass/fail.
+    </p>
+    <p>
+      <strong>Applying the raw i.i.d. assumption to real returns without
+      caveat.</strong> The theorem assumes the underlying series are
+      independent and identically distributed with fixed variance. Real
+      asset returns have time-varying volatility (the exact subject of this
+      repo's GARCH/HV lessons), fat tails, and autocorrelation — none of
+      which the textbook Marchenko-Pastur derivation assumes. In practice
+      this mostly affects how tightly real noise hugs the theoretical band
+      (studies generally find it's still a good practical benchmark, per
+      Laloux et al. and the large RMT-in-finance literature that followed),
+      but it means the band should be read as "the right order of magnitude
+      and a strong first cut," not a court-admissible p-value.
+    </p>
+    <p>
+      <strong>Using the wrong \(N\) or \(T\) in the formula.</strong> \(q =
+      N/T\) only means what this lesson says if \(T\) is genuinely the
+      number of independent observations used to build the correlation
+      matrix. Overlapping windows (e.g. rolling weekly returns computed from
+      daily data with a 1-day step) inflate the effective \(T\) you'd plug
+      in relative to the true amount of independent information, understating
+      \(q\) and making the noise band look narrower — and any real factor
+      look more significant — than the data actually supports. Sample
+      degrees of freedom, not raw row count, is the correct \(T\).
+    </p>
+    <p>
+      <strong>Stopping at the binary rule and calling it "denoised."</strong>
+      This lesson deliberately covers only the in-band/out-of-band screen,
+      the simplest and most teachable slice of RMT-in-finance. Reporting
+      "2 of 30 eigenvalues are real" is a genuine, useful statement; it is
+      not the same as having built a cleaned, shrinkage-adjusted correlation
+      matrix ready to feed a portfolio optimizer — that is a separate,
+      more involved technique (mentioned above, not built here) with its own
+      literature and its own validation requirements.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why does a correlation matrix built from truly independent random series still produce a spread of nonzero, non-identical eigenvalues, instead of a flat spectrum at exactly 1?</summary>
+    <div class="tl-answer">
+      Because a flat spectrum at exactly 1 is only what "no shared structure"
+      looks like with infinite data. With any finite number of observations
+      \(T\), the <em>sample</em> correlation between two truly independent
+      series will not land exactly on the true (zero) correlation — it will
+      drift above or below zero purely by chance, the same way a finite
+      number of fair coin flips rarely lands exactly 50/50. Building a
+      correlation matrix out of these coincidentally-nonzero sample
+      correlations and computing its eigenvalues necessarily produces a
+      spread away from 1, even though the underlying population has zero
+      real correlation anywhere. That spread is finite-sample noise, not
+      evidence of any real relationship.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What does a smaller q = N/T do to the width of the Marchenko-Pastur noise band, and why does more history relative to instruments narrow it?</summary>
+    <div class="tl-answer">
+      A smaller \(q\) narrows the band: \(\lambda_{\min} = (1-\sqrt{q})^2\)
+      and \(\lambda_{\max} = (1+\sqrt{q})^2\) both move toward 1 as \(\sqrt{q}
+      \to 0\). This happens because \(q = N/T\) shrinks either by lowering
+      \(N\) (fewer instruments to estimate simultaneous relationships for)
+      or raising \(T\) (more independent observations to estimate each
+      pairwise correlation from). More data per relationship means each
+      sample correlation converges more tightly to its true value (here,
+      zero, for genuinely independent series), so the finite-sample noise
+      described in Q1 is smaller in magnitude, and the resulting eigenvalue
+      spread tightens correspondingly. Less history relative to instruments
+      does the opposite: each sample correlation is noisier, so a pure-noise
+      matrix's eigenvalues spread further from 1 in both directions.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. In the worked scenario (N=30, T=250), the second-largest eigenvalue falls inside the noise band. Does that prove there is no real second factor in the data?</summary>
+    <div class="tl-answer">
+      No. It means this sample, at this \(N\) and \(T\), cannot statistically
+      distinguish that eigenvalue's size from what a matrix built from pure,
+      uncorrelated noise would produce at the same \(N/T\) ratio. There
+      might be a real, but modest, second factor whose true effect is simply
+      too small to clear the noise band at only 250 observations — a bigger
+      \(T\) (more history) would narrow the band and could reveal it. What
+      the result <em>does</em> support is a specific, narrower claim: treating
+      that eigenvalue as a confirmed factor right now, on this sample, is
+      not statistically justified — a materially different statement from
+      "there is definitely nothing there."
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why is an eigenvalue sitting just barely above λ_max a weaker signal than one sitting several multiples above it, even though both are technically "outside the band"?</summary>
+    <div class="tl-answer">
+      The Marchenko-Pastur bound is an asymptotic (infinite N, T) result;
+      at finite sample sizes, the largest eigenvalue produced by pure noise
+      alone doesn't stop precisely at \(\lambda_{\max}\) — it has its own
+      fluctuation distribution around that edge (Tracy-Widom fluctuations,
+      a standard refinement in the random-matrix literature). So a real
+      eigenvalue only modestly above \(\lambda_{\max}\) could still plausibly
+      be an unusually large draw from the noise distribution's own edge
+      wobble, not a genuine factor. An eigenvalue several multiples above
+      \(\lambda_{\max}\) — like 8.2 against a \(\lambda_{\max}\) of 1.81 in
+      the worked scenario — is far outside any plausible noise fluctuation
+      at that edge, which is why it reads as an unambiguous genuine factor
+      while a value of, say, 2.0 against the same 1.81 bound would not.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why is q = N/T, rather than N or T individually, the parameter that determines the noise band's width?</summary>
+    <div class="tl-answer">
+      Because what determines how noisy a sample correlation matrix's
+      eigenvalues are is not the absolute size of the basket or the absolute
+      length of history, but how much information you have <em>per
+      relationship you're estimating</em>. A basket of 100 instruments over
+      100,000 days of history and a basket of 3 instruments over 3,000 days
+      can have the same \(q\) and therefore the same noise band width, even
+      though their \(N\) and \(T\) individually look nothing alike — what
+      matters is that both have comparably abundant data relative to the
+      number of pairwise relationships being estimated. \(N\) alone tells you
+      how many eigenvalues exist; \(T\) alone tells you how much data exists;
+      only their ratio tells you how reliably each individual eigenvalue can
+      be estimated.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. js/diversificationCore.js already computes eigenvalues via symmetricEigenvalues and feeds them into an effective-bets metric. What specific step is missing to apply this lesson's noise-band test, and why would it matter?</summary>
+    <div class="tl-answer">
+      What's missing is comparing each returned eigenvalue against a
+      Marchenko-Pastur band computed from the basket's actual \(N\) (number
+      of instruments) and \(T\) (number of observations in the lookback
+      window used to build the correlation matrix) — a two-line calculation
+      (\(q = N/T\), then \((1 \mp \sqrt{q})^2\)) that isn't currently run
+      anywhere against the eigenvalues <code>symmetricEigenvalues</code>
+      already produces. It matters because the effective-bets formula
+      currently treats every eigenvalue as equally informative regardless of
+      whether it's an obvious common factor or a value indistinguishable
+      from pure sampling noise at that window length — so a basket could
+      report a reassuring, close-to-\(N\) effective-bets score that is
+      partly an artifact of noise-band eigenvalues summing up correctly,
+      not evidence the basket is genuinely that diversified. Flagging which
+      eigenvalues clear the noise band would add an honest caveat to that
+      number without requiring the metric's formula itself to change.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Vladimir A. Marchenko &amp; Leonid A. Pastur, "Distribution of eigenvalues for some sets of random matrices," <em>Mathematics of the USSR-Sbornik</em>, 1967 — the original derivation of the eigenvalue distribution this lesson is named for, proved decades before its finance application.</li>
+    <li>Laurent Laloux, Pierre Cizeau, Jean-Philippe Bouchaud &amp; Marc Potters, "Noise Dressing of Financial Correlation Matrices," <em>Physical Review Letters</em>, 1999 — the landmark, widely-cited application of Random Matrix Theory to real stock-market correlation matrices, showing the great majority of eigenvalues fall inside the Marchenko-Pastur noise band and only a handful represent genuine common factors.</li>
+    <li>Vasiliki Plerou, Parameswaran Gopikrishnan, Bernd Rosenow, Luís A. Nunes Amaral &amp; H. Eugene Stanley, "Universal and Nonuniversal Properties of Cross Correlations in Financial Time Series," <em>Physical Review Letters</em>, 1999 — a contemporaneous, independent confirmation of RMT applied to financial correlation matrices, often cited alongside Laloux et al.</li>
+    <li>Jean-Philippe Bouchaud &amp; Marc Potters, <em>A First Course in Random Matrix Theory: for Physicists, Engineers and Data Scientists</em>, Cambridge University Press, 2020 — a modern, practitioner-oriented textbook covering the Marchenko-Pastur law and the eigenvalue-cleaning/shrinkage techniques mentioned but not built in this lesson.</li>
+    <li><code>js/diversificationCore.js</code> and <code>diversification.html</code> in this repo — the existing eigenvalue-based "effective number of bets" implementation this lesson's repo box identifies as a concrete, not-yet-built candidate for a Marchenko-Pastur noise-band guardrail.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="fractional-brownian-motion.html">Fractional Brownian Motion →</a>
+  </div>
+</div>
+</body>
+</html>
