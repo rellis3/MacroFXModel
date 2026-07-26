@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Advanced Portfolio &amp; Market Structure / Markowitz &amp; Black-Litterman</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Advanced Portfolio &amp; Market Structure · Lesson 4 of 5</div>
   <h1 class="tl-title">Markowitz &amp; Black-Litterman</h1>
   <p class="tl-dek">Harry Markowitz gave portfolio construction its first real mathematics — and, almost immediately, practitioners discovered the mathematics was so sensitive to its own inputs that it was barely usable as written. Black-Litterman is the fix everyone actually uses: start from what the market already believes, and nudge it, rather than trying to specify the whole truth yourself.</p>
@@ -19,6 +20,17 @@
     <span class="tl-status concept">CONCEPT — the theory behind this repo's diversification tooling</span>
     <span>~18 min read</span>
     <span>Prereqs: Linear Algebra &amp; Matrices, Correlation &amp; Linear Regression primer</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Portfolio variance is a quadratic form \(w^\top \Sigma w\), not a weighted average — the cross-covariance terms are exactly where diversification benefit lives, the same idea <code>diversification.html</code> measures via effective-bets metrics rather than prescribes weights for.</li>
+      <li>Solving for the minimum-variance combination at every target return traces the <strong>efficient frontier</strong>; its leftmost point is the minimum-variance portfolio.</li>
+      <li>Markowitz's optimizer is extremely sensitive to the expected-return inputs specifically (far more than to the covariance matrix) — small forecast nudges can flip "optimal" weights into extreme long/short corner solutions, the "error-maximization" flaw that kept it from being used naively for decades.</li>
+      <li>Black-Litterman fixes this by starting from a market-equilibrium prior \(\Pi = \delta\Sigma w_{mkt}\) and Bayesian-blending it with a handful of confidence-weighted investor views, rather than asking for a precise forecast for every instrument.</li>
+      <li>Nothing in this repo currently runs either optimizer — every strategy here is single-instrument; this is the theory a future multi-instrument portfolio-construction layer, built on <code>diversificationCore.js</code>'s existing covariance machinery, would sit on.</li>
+    </ul>
   </div>
 
   <h2>Why this matters</h2>
@@ -784,7 +796,8 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Harry Markowitz, "Portfolio Selection," <em>Journal of Finance</em>, 1952 — the founding paper of modern portfolio theory; part of the body of work for which Markowitz shared the 1990 Nobel Memorial Prize in Economic Sciences.</li>
     <li>Harry Markowitz, <em>Portfolio Selection: Efficient Diversification of Investments</em>, Wiley, 1959 — Markowitz's own full-length elaboration of the 1952 paper's framework.</li>
@@ -793,6 +806,7 @@
     <li>Thomas Idzorek, "A Step-by-Step Guide to the Black-Litterman Model," 2005 (widely circulated practitioner working paper) — a commonly used, more implementation-oriented walkthrough of the master formula's terms and calibration.</li>
     <li><code>js/diversificationCore.js</code> and <code>diversification.html</code> in this repo — the existing correlation-matrix and eigenvalue-based "effective number of bets" tooling this lesson's repo box builds on, and the natural foundation for the missing optimizer layer described above.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="market-microstructure.html">← Market Microstructure</a>

@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Advanced Stochastic Calculus &amp; Derivatives / The Heston Model</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Advanced Stochastic Calculus &amp; Derivatives · Lesson 3 of 4</div>
   <h1 class="tl-title">The Heston Model</h1>
   <p class="tl-dek">Black-Scholes prices every option off one fixed \(\sigma\) forever — Heston's 1993 fix is to stop treating volatility as a constant at all and instead let it be its own random process, mean-reverting and correlated with price, the same way GARCH already treats it in discrete time.</p>
@@ -19,6 +20,17 @@
     <span class="tl-status concept">CONCEPT — not yet built in this repo</span>
     <span>~17 min read</span>
     <span>Prereqs: GARCH &amp; Volatility Clustering, Black-Scholes-Merton Option Pricing</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Heston (1993) replaces Black-Scholes' one constant \(\sigma\) with a second stochastic process \(v_t\) for the instantaneous variance, mean-reverting toward a long-run level \(\theta\) at speed \(\kappa\) with its own noise \(\xi\sqrt{v_t}\,dW_t^2\) — a CIR-type process.</li>
+      <li>The two Brownian motions driving price and variance are allowed to correlate (\(\rho\)); empirically \(\rho\) is usually negative, the "leverage effect" where volatility spikes when price falls.</li>
+      <li>That negative \(\rho\) is exactly what generates a realistic volatility smile/skew — it makes large down-moves disproportionately likely to coincide with a vol spike, so low-strike puts price with higher implied vol than at-the-money, something flat-\(\sigma\) Black-Scholes structurally cannot produce.</li>
+      <li>The variance SDE is the same OU "rubber band" mean-reversion this Theory Lab already covers, just pointed at variance instead of price — informally the continuous-time cousin of GARCH(1,1)'s discrete-time "variance depends on yesterday's shock and yesterday's forecast" recursion, already running in this repo's <code>js/volBacktestEngine.js</code>.</li>
+      <li>Prices come from a semi-closed-form solution via the model's characteristic function, not a simple algebraic formula — this repo has no options-pricing module of any kind, so this lesson is pure theory background.</li>
+    </ul>
   </div>
 
   <h2>Why this matters</h2>
@@ -565,7 +577,8 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Steven L. Heston, "A Closed-Form Solution for Options with Stochastic Volatility with Applications to Bond and Currency Options," <em>Review of Financial Studies</em>, 1993 — the original paper. Notably, it explicitly covers currency options as one of its applications, directly relevant to this repo's FX focus.</li>
     <li>David S. Bates, "Jumps and Stochastic Volatility: Exchange Rate Processes Implicit in Deutsche Mark Options," <em>Review of Financial Studies</em>, 1996 — the widely cited stochastic-vol-plus-jumps extension combining Heston's variance process with a Merton-style jump term, and, like Heston's own paper, built on FX/currency option data.</li>
@@ -573,6 +586,7 @@
     <li>Jim Gatheral, <em>The Volatility Surface: A Practitioner's Guide</em>, Wiley, 2006 — a standard practitioner-level treatment of Heston, local volatility, and the empirical shape of the smile/skew, written by a working quant.</li>
     <li><code>js/volBacktestEngine.js</code> in this repo — the built, tested GARCH(1,1) sigma estimator this lesson's repo box connects to; see also the GARCH &amp; Volatility Clustering lesson for its full derivation.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="girsanov-risk-neutral.html">← Girsanov's Theorem &amp; Risk-Neutral Pricing</a>

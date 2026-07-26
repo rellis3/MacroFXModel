@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Risk &amp; Sizing / Extreme Value Theory</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Risk &amp; Sizing · Lesson 14 of 14 (final)</div>
   <h1 class="tl-title">Extreme Value Theory &amp; Tail Risk</h1>
   <p class="tl-dek">Your worst historical day is not your worst possible day — EVT is the theory of how to say something honest about the losses you haven't seen yet, without pretending a handful of data points can tell you the whole story.</p>
@@ -19,6 +20,17 @@
     <span class="tl-status candidate">EXTENDS AN EXISTING BRICK — js/metricsCore.js's histVaR/histCVaR</span>
     <span>~16 min read</span>
     <span>Prereqs: Merton Jump-Diffusion Model, Kelly Criterion &amp; Position Sizing</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Historical VaR/CVaR (this repo's <code>histVaR</code>/<code>histCVaR</code>) read the answer straight off your sample, so far out in the tail (99.5%+) they're really just reporting the identity of your worst day or two, not a stable estimate.</li>
+      <li>Peaks-over-threshold (POT) fixes this by discarding everything below a high threshold \(u\) and fitting only the exceedances beyond it — using more of the tail data than a block-maxima approach, while still isolating tail-specific behavior.</li>
+      <li>The Generalized Pareto Distribution (GPD) is the shape those exceedances converge to (Balkema-de Haan-Pickands theorem); its shape parameter \(\xi\) tells you whether the tail is heavy/Pareto-type (\(\xi>0\)), exponential (\(\xi=0\)), or bounded (\(\xi<0\)).</li>
+      <li>A fitted GPD lets you extrapolate VaR/CVaR past what the raw sample supports — but that's a modeling assumption, not a measurement, and it's unverifiable at the exact quantile you're extrapolating to.</li>
+      <li>This repo's <code>js/metricsCore.js</code> already ships the honest empirical half (<code>histVaR</code>/<code>histCVaR</code>/skew/kurtosis); the GPD/POT layer is deliberately not built here because most strategies' trade counts are far too small to fit \(\xi\) reliably.</li>
+    </ul>
   </div>
 
   <h2>Why this matters</h2>
@@ -641,13 +653,15 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Ronald A. Fisher and Leonard H. C. Tippett, "Limiting Forms of the Frequency Distribution of the Largest or Smallest Member of a Sample," <em>Proceedings of the Cambridge Philosophical Society</em>, 1928 — the original statement of the extreme-value limiting shapes.</li>
     <li>Boris V. Gnedenko, "Sur la distribution limite du terme maximum d'une série aléatoire," <em>Annals of Mathematics</em>, 1943 — the rigorous proof completing what is now called the Fisher-Tippett-Gnedenko theorem.</li>
     <li>A. A. Balkema and Laurens de Haan, "Residual Life Time at Great Age," <em>Annals of Probability</em>, 1974, and James Pickands III, "Statistical Inference Using Extreme Order Statistics," <em>Annals of Statistics</em>, 1975 — the two independent papers establishing that threshold exceedances converge to the Generalized Pareto Distribution, the theoretical basis of the peaks-over-threshold method.</li>
     <li>Paul Embrechts, Claudia Klüppelberg, and Thomas Mikosch, <em>Modelling Extremal Events for Insurance and Finance</em>, Springer, 1997 — the standard, comprehensive EVT-for-risk textbook; the reference practitioners reach for once they need to actually implement any of this.</li>
   </ul>
+  </details>
 
   <h2>You've finished the Theory Lab curriculum</h2>
   <div class="tl-callout">

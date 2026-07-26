@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Foundations &amp; Epistemics / Multiple Testing</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Foundations &amp; Epistemics · Lesson 3 of 14</div>
   <h1 class="tl-title">Multiple Testing &amp; the Look-Elsewhere Effect</h1>
   <p class="tl-dek">If you run 70 statistical tests at the usual 5% threshold, you should expect several to look "significant" even when nothing real is happening — this lesson is about why, and what to do instead.</p>
@@ -20,6 +21,16 @@
     <span>~13 min read</span>
     <span>Prereqs: Bayesian Inference (helpful for the FDR section)</span>
   </div>
+
+<div class="tl-tldr">
+  <div class="tl-tldr-label">TL;DR</div>
+  <ul>
+    <li>Running \(m\) independent tests at \(\alpha=0.05\) each, the family-wise error rate (chance of at least one false positive) is \(\text{FWER}=1-(1-\alpha)^m\) — it climbs toward 1 fast, not linearly.</li>
+    <li>At \(m=70\) (the interactive slider's default), FWER ≈ 97.2% and the expected number of false positives among pure-noise slices is \(70 \times 0.05 = 3.5\) — "3 out of 70 slices look significant" is what noise does, not a discovery.</li>
+    <li>Bonferroni fixes this by shrinking the per-test bar to \(\alpha/m\) (a strict, correlation-agnostic worst case); Benjamini-Hochberg (FDR) uses a rank-dependent staircase, \(p_{(k)} \le \frac{k}{m}q\), that's more forgiving and better suited to correlated FX slices.</li>
+    <li>This is the mechanical basis for this repo's own house rule: "finding a few 'winners' among 70 slices is what noise does" — survivors must beat the chance-baseline and be IS-consistent, per Lego Principle 5.</li>
+  </ul>
+</div>
 
   <h2>Why this matters</h2>
   <p>
@@ -433,7 +444,8 @@
     <div class="tl-answer">Rank 1's BH critical value is \(\frac{1}{70}(0.10) \approx 0.00143\). Since \(0.0009 < 0.00143\), it passes the BH cutoff at rank 1 (and, for reference, it also clears Bonferroni's flat \(0.000714\) bar only if it's below that — 0.0009 is actually just above Bonferroni's 0.000714, so it would fail the stricter Bonferroni test while passing BH, illustrating exactly how the two corrections can disagree). Passing either correction only means the result is unlikely to be pure multiple-testing noise. To actually trust it as a tradeable edge you still need it to be in-sample consistent (not carried by one lucky sub-period), to hold up on a genuine out-of-sample split with realistic costs, and to have an economically sensible mechanism — statistical survival is necessary, not sufficient.</div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Yoav Benjamini &amp; Yosef Hochberg (1995), "Controlling the False Discovery Rate: A Practical and Powerful Approach to Multiple Testing," <em>Journal of the Royal Statistical Society, Series B</em> — the original BH procedure.</li>
     <li>Carlo Emilio Bonferroni (1936), "Teoria statistica delle classi e calcolo delle probabilità" — the original inequality underlying the Bonferroni correction (the union bound applied to multiple comparisons).</li>
@@ -442,6 +454,7 @@
     <li>David H. Bailey, Jonathan Borwein, Marcos López de Prado &amp; Qiji Jim Zhu, "Pseudo-Mathematics and Financial Charlatanism: The Effects of Backtest Overfitting on Out-of-Sample Performance," <em>Notices of the AMS</em> (2014) — a readable, non-technical entry point into PBO.</li>
     <li>ATLAS &amp; CMS Collaborations' Higgs boson discovery papers (2012, <em>Physics Letters B</em>) — the canonical applied example of "look-elsewhere effect" correction in a real many-bins search.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="bayesian-inference.html">← Bayesian Inference &amp; Updating</a>

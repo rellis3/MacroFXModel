@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Time Series &amp; Regimes / Kalman Filter</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Time Series &amp; Regimes · Lesson 8 of 14</div>
   <h1 class="tl-title">The Kalman Filter &amp; Adaptive Relationships</h1>
   <p class="tl-dek">A recursive rule for tracking a hidden quantity — like a hedge ratio that drifts slowly rather than staying fixed — that blends yesterday's estimate with today's noisy observation in exactly the proportion each one deserves.</p>
@@ -19,6 +20,17 @@
     <span class="tl-status concept">CONCEPT — not yet built in this repo</span>
     <span>~17 min read</span>
     <span>Prereqs: Bayesian Inference, Ornstein-Uhlenbeck &amp; Mean Reversion</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Each step is just two equations: <strong>predict</strong> (carry the estimate forward unchanged, but inflate its uncertainty \(P\) by the process variance \(Q\)) then <strong>update</strong> (blend in the new observation by the Kalman gain \(K_t\), then shrink \(P\)).</li>
+      <li>The gain \(K_t = P_{t\mid t-1}H_t / (H_t^2 P_{t\mid t-1} + R)\) is derived, not chosen — it's the ratio of prediction uncertainty to total (prediction + observation) uncertainty, so it moves toward 1 when the observation is trustworthy and toward 0 when it's noisy.</li>
+      <li>The update step is exact Bayesian updating: the predicted distribution is the prior, the observation model is the likelihood, and — because both are Gaussian and linearly related (conjugacy) — the posterior comes out Gaussian too, with the closed-form mean/variance shown here instead of a numerical integral.</li>
+      <li>The worked example tracks a hedge ratio starting at \(\hat{x}=1.20\): Day 1's gain is 0.804 (estimate moves to 1.321), Day 2's gain drops to 0.471 with no parameter changed (estimate moves to 1.311) — the gain keeps settling toward a steady state set purely by \(Q/R\).</li>
+      <li>This is presented as a genuine candidate for tracking a drifting hedge ratio or lead-lag coefficient in this repo — explicitly <strong>not built, not prototyped, not validated</strong>, and any use would need to beat the incumbent on true OOS performance first.</li>
+    </ul>
   </div>
 
   <h2>Why this matters</h2>
@@ -614,7 +626,8 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Rudolf E. Kálmán, <em>"A New Approach to Linear Filtering and Prediction Problems,"</em> Journal of Basic Engineering, 1960 — the original paper deriving the recursion covered in this lesson.</li>
     <li>Greg Welch &amp; Gary Bishop, <em>"An Introduction to the Kalman Filter,"</em> UNC Chapel Hill Technical Report TR 95-041 (updated periodically) — a widely used, accessible tutorial derivation, closer in spirit and notation to this lesson than the original 1960 paper.</li>
@@ -622,6 +635,7 @@
     <li>Ernest P. Chan, <em>Algorithmic Trading: Winning Strategies and Their Rationale</em>, Wiley, 2013 — an accessible, practitioner-facing chapter applying the Kalman filter to online hedge-ratio estimation for pairs trading, the direct finance analog of the worked example above.</li>
     <li>Robert H. Shumway &amp; David S. Stoffer, <em>Time Series Analysis and Its Applications: With R Examples</em>, Springer — the rigorous state-space and dynamic linear model treatment, including multivariate generalizations beyond the scalar case covered here.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="hidden-markov-models.html">← Hidden Markov Models &amp; Regime Detection</a>

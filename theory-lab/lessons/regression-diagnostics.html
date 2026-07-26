@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Applied Statistics &amp; Validation / Regression Diagnostics</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Applied Statistics &amp; Validation · Lesson 1 of 7</div>
   <h1 class="tl-title">Regression Diagnostics: Durbin-Watson, Breusch-Pagan &amp; Jarque-Bera</h1>
   <p class="tl-dek">A regression's p-value is not a fact about the world — it's a fact about a model of the world, and that model comes with fine print. This lesson derives, from scratch, the three checks that verify the fine print actually holds before you trust the headline number: is the error serially correlated (Durbin-Watson), does its variance change across the sample (Breusch-Pagan), and does it look enough like a bell curve for small-sample inference to be valid (Jarque-Bera).</p>
@@ -20,6 +21,17 @@
     <span>~17 min read</span>
     <span>Prereqs: Correlation &amp; Linear Regression primer</span>
   </div>
+
+<div class="tl-tldr">
+  <div class="tl-tldr-label">TL;DR</div>
+  <ul>
+    <li>A regression's p-value is only valid if its residuals are non-autocorrelated (Durbin-Watson), homoskedastic (Breusch-Pagan), and — in small samples — approximately normal (Jarque-Bera); failing one doesn't make \(\hat\beta\) wrong, it makes the classical standard error wrong.</li>
+    <li><code>CLAUDE.md</code>'s backtest-build-discipline section already states this as a rule: <em>"Add residual diagnostics to any regression-based signal: Durbin-Watson (autocorrelation), Jarque-Bera (residual normality), Breusch-Pagan (heteroskedasticity) before trusting its p-value/coefficient. A statistically 'significant' coefficient on a heteroskedastic fit has optimistic standard errors — check before leaning on it."</em> This lesson derives why.</li>
+    <li>Durbin-Watson compares squared consecutive-residual changes to total residual variance; \(DW \approx 2\) means no lag-1 autocorrelation, toward 0 means positive autocorrelation, toward 4 means negative.</li>
+    <li>The worked scenario: an FX yield-spread regression shows a p-value of 0.01, but its residuals give \(DW = 0.6\) (implying \(\hat\rho \approx 0.7\)); with ~500 daily observations that corresponds to an effective sample size of only \(n_{eff}\approx 88\), and correcting for that (e.g. Newey-West/HAC standard errors) pushes the "significant" result back toward noise.</li>
+    <li>Passing all three diagnostics only certifies that the in-sample significance claim is honestly computed — it says nothing about out-of-sample durability (Lego Principle 5 still applies).</li>
+  </ul>
+</div>
 
   <h2>Why this matters</h2>
   <p>
@@ -686,13 +698,15 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>James Durbin &amp; Geoffrey S. Watson, <em>"Testing for Serial Correlation in Least Squares Regression, I,"</em> Biometrika, 1950, and <em>"...II,"</em> Biometrika, 1951 — the original two-part paper deriving the Durbin-Watson statistic and its bounds tables, the source of the test used throughout this lesson.</li>
     <li>Trevor S. Breusch &amp; Adrian R. Pagan, <em>"A Simple Test for Heteroscedasticity and Random Coefficient Variation,"</em> Econometrica, 1979 — the original derivation of the auxiliary-regression Lagrange Multiplier test for heteroskedasticity described in this lesson.</li>
     <li>Carlos M. Jarque &amp; Anil K. Bera, <em>"Efficient Tests for Normality, Homoscedasticity and Serial Independence of Regression Residuals,"</em> Economics Letters, 1980, and <em>"A Test for Normality of Observations and Regression Residuals,"</em> International Statistical Review, 1987 — the original and follow-up papers formalizing the skewness/kurtosis-based normality test.</li>
     <li>Jeffrey M. Wooldridge, <em>Introductory Econometrics: A Modern Approach</em> — the standard textbook treatment of all three diagnostics, the classical OLS assumptions they test, and heteroskedasticity/autocorrelation-robust standard errors (White, Newey-West) as the practical remedy once a test flags a violation.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>

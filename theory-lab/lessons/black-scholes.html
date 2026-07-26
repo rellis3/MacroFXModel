@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Options &amp; Derivatives / Black-Scholes-Merton</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Options &amp; Derivatives · Lesson 11 of 14</div>
   <h1 class="tl-title">Black-Scholes-Merton Option Pricing</h1>
   <p class="tl-dek">A single replication argument turns "what should this option cost?" into an equation that needs no forecast of where price is going — and the same equation, differentiated a second time, is the reason dealer hedging around big open-interest strikes behaves the way it does.</p>
@@ -20,6 +21,17 @@
     <span>~18 min read</span>
     <span>Prereqs: GARCH &amp; Volatility Clustering</span>
   </div>
+
+<div class="tl-tldr">
+  <div class="tl-tldr-label">TL;DR</div>
+  <ul>
+    <li>A no-arbitrage replication argument — a continuously rebalanced portfolio of the underlying plus a risk-free bond that exactly clones the option's payoff — pins down the option's price without any forecast of which way the underlying is going; only volatility \(\sigma\) matters, not the expected return \(\mu\).</li>
+    <li>The closed-form result is \(C = S_0N(d_1) - Ke^{-rT}N(d_2)\), with \(d_1 = [\ln(S_0/K) + (r+\sigma^2/2)T]/(\sigma\sqrt{T})\) and \(d_2 = d_1 - \sigma\sqrt{T}\).</li>
+    <li>The Greeks are just this formula's partial derivatives: delta \(=N(d_1)\) is the hedge ratio, gamma is how fast that hedge goes stale, theta is time decay, vega is sensitivity to \(\sigma\), and rho is sensitivity to \(r\).</li>
+    <li>The worked example (\(S_0=K=100\), \(r=2\%\), \(\sigma=20\%\), \(T=1\) year) prices the at-the-money call at roughly <strong>$8.92</strong>, all of it time value since intrinsic value is zero.</li>
+    <li>The page's interactive chart loads with sliders at \(\sigma=20\%\) and \(T=1.00\)y by default — the same inputs as the worked example — so it starts by reproducing that same $8.92 price before you drag either slider.</li>
+  </ul>
+</div>
 
   <h2>Why this matters</h2>
   <p>
@@ -678,13 +690,15 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Fischer Black &amp; Myron Scholes, "The Pricing of Options and Corporate Liabilities," <em>Journal of Political Economy</em>, 1973 — the original paper.</li>
     <li>Robert C. Merton, "Theory of Rational Option Pricing," <em>Bell Journal of Economics and Management Science</em>, 1973 — the contemporaneous, more rigorous derivation (including the continuous-time replication argument in its modern form) that is why the model is properly credited as Black-Scholes-<strong>Merton</strong>; Merton and Scholes received the 1997 Nobel Memorial Prize in Economic Sciences for this work, Black having died in 1995 and thus been ineligible (the Nobel is not awarded posthumously).</li>
     <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson — the standard textbook treatment of the derivation, the Greeks, and their extensions; the reference most quant/trading desks point newcomers to first.</li>
     <li><code>education/open-interest-course-notes.md</code> Lesson 05 in this repo — the applied gamma/dealer-hedging framework this lesson provides the pricing-theory foundation for.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="pca-factors.html">← Principal Component Analysis &amp; Factor Regimes</a>

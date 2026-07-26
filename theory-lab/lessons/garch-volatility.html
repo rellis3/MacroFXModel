@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Time Series &amp; Regimes / GARCH</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Time Series &amp; Regimes · Lesson 6 of 14</div>
   <h1 class="tl-title">GARCH &amp; Volatility Clustering</h1>
   <p class="tl-dek">Big moves cluster together even though the direction of the next move stays unpredictable — GARCH is the model that turns "volatility has memory" into a number you can forecast one day ahead.</p>
@@ -19,6 +20,16 @@
     <span class="tl-status candidate">ALREADY IN USE — js/volBacktestEngine.js's sigma series</span>
     <span>~16 min read</span>
     <span>Prereqs: Ornstein-Uhlenbeck &amp; Mean Reversion</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Volatility clusters — big moves (of either sign) follow big moves, and calm follows calm — even though the direction of the next move stays close to unpredictable.</li>
+      <li>GARCH(1,1) forecasts tomorrow's variance as \(\sigma_t^2 = \omega + \alpha\epsilon_{t-1}^2 + \beta\sigma_{t-1}^2\): a floor, a reaction to yesterday's squared shock, and inertia from yesterday's own variance level.</li>
+      <li>\(\alpha+\beta\) is the persistence — how slowly a spike decays. This lesson's worked example uses \(\alpha=0.08,\ \beta=0.90\) (persistence 0.98, half-life ≈ 34 days); the repo's actual estimator in <code>js/volBacktestEngine.js</code> uses <code>G_ALPHA=0.06</code>, <code>G_BETA=0.91</code> (persistence 0.97, half-life ≈ 23 days).</li>
+      <li>GARCH is one of three sigma estimators in <code>js/volBacktestEngine.js</code> (alongside HV20 and Yang-Zhang), currently applied to the index asset class (NQ) — it isn't a claim that GARCH beats the others OOS, just the estimator this repo runs there.</li>
+    </ul>
   </div>
 
   <h2>Why this matters</h2>
@@ -562,13 +573,15 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Robert F. Engle, "Autoregressive Conditional Heteroskedasticity with Estimates of the Variance of United Kingdom Inflation," <em>Econometrica</em>, 1982 — the original ARCH paper; part of the body of work cited in Engle's 2003 Nobel Memorial Prize in Economic Sciences.</li>
     <li>Tim Bollerslev, "Generalized Autoregressive Conditional Heteroskedasticity," <em>Journal of Econometrics</em>, 1986 — introduces the GARCH generalization (the \(\beta\sigma_{t-1}^2\) term) used throughout this lesson.</li>
     <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em> — the chapter on estimating volatility (EWMA and GARCH(1,1)) is a standard, widely-used practitioner-level treatment with worked numerical examples similar in spirit to the one above.</li>
     <li>Dan Yang &amp; Qiang Zhang, "Drift-Independent Volatility Estimation Based on High, Low, Open, and Close Prices," <em>Journal of Business</em>, 2000 — the range-based estimator this repo runs as its third sigma series (Yang-Zhang), an OHLC-range alternative to close-to-close GARCH/HV.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="hurst-variance-ratio.html">← Hurst Exponent &amp; Variance Ratio Test</a>

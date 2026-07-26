@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Applied Statistics &amp; Validation / Copulas</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Applied Statistics &amp; Validation · Lesson 4 of 7</div>
   <h1 class="tl-title">Copulas — Modeling Dependence Beyond Correlation</h1>
   <p class="tl-dek">
@@ -26,6 +27,17 @@
     <span class="tl-status concept">CONCEPT — not yet built in this repo</span>
     <span>~17 min read</span>
     <span>Prereqs: Correlation &amp; Linear Regression primer; Extreme Value Theory helpful</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A single Pearson correlation number describes average linear co-movement only — it cannot tell you whether two series stay similarly linked in the tails or suddenly move almost as one during a crash.</li>
+      <li>Sklar's theorem says any joint distribution splits, without loss of information, into each variable's own marginal distribution plus a copula that captures only how the two are linked — so marginals and dependence can be modeled independently and then combined.</li>
+      <li>The Gaussian copula has zero tail dependence (\(\lambda_L=0\)) for any correlation below 1, meaning extreme joint crashes become asymptotically independent events; the Clayton copula is built to have nonzero, asymmetric lower-tail dependence (\(\lambda_L=2^{-1/\theta}\), \(\lambda_U=0\)) that matches "crash together, don't necessarily rally together."</li>
+      <li>Two dependence structures tuned to the same Kendall's \(\tau=0.40\) can imply wildly different joint-crash probabilities — asymptotically 0% (Gaussian) versus roughly 60% (Clayton) — while reporting an identical correlation-ish headline number.</li>
+      <li>The Gaussian copula's industry-wide use in CDO pricing (David X. Li, 2000), fit mostly on calm historical data, understated real mortgage-default tail dependence and is a widely documented factor in how badly those tranches performed once the 2007-2008 crisis hit.</li>
+    </ul>
   </div>
 
   <h2>Why this matters</h2>
@@ -742,7 +754,8 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Abe Sklar, "Fonctions de répartition à \(n\) dimensions et leurs marges," <em>Publications de l'Institut de Statistique de l'Université de Paris</em>, 8, 1959 — the original theorem this lesson's entire marginals/copula split is built on.</li>
     <li>David X. Li, "On Default Correlation: A Copula Function Approach," <em>Journal of Fixed Income</em>, 2000 — the paper that introduced the Gaussian copula to structured-credit pricing; widely, and fairly, cited as the paper whose industry-wide application underestimated tail dependence in mortgage-backed securities and CDO tranches before 2008. Worth reading as an instructive historical case study, not a hit piece — the mathematics is standard, the failure was in how broadly and uncritically the specific (thin-tailed) copula choice was trusted.</li>
@@ -751,6 +764,7 @@
     <li>Alexander J. McNeil, Rüdiger Frey &amp; Paul Embrechts, <em>Quantitative Risk Management: Concepts, Techniques and Tools</em>, Princeton University Press, 2005 (revised ed. 2015) — the standard graduate-level reference textbook with a full, rigorous treatment of copulas, Sklar's theorem, and tail dependence in a risk-management context.</li>
     <li>Felix Salmon, "Recipe for Disaster: The Formula That Killed Wall Street," <em>Wired</em>, 2009 — an accessible, widely-read journalistic account of the Gaussian copula's role in the 2008 crisis; useful as plain-English context on the historical episode, though it should be read alongside the McNeil/Frey/Embrechts academic treatment above rather than in place of it.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="arima-var.html">← ARIMA &amp; Vector Autoregression</a>

@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Cross-Asset &amp; Structure / Cointegration</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Cross-Asset &amp; Structure · Lesson 9 of 14</div>
   <h1 class="tl-title">Cointegration &amp; Statistical Arbitrage</h1>
   <p class="tl-dek">Two series can drift together for years with a 95% correlation and still have no stable relationship at all — cointegration is the specific, testable condition that tells you whether a spread has a home to come back to, or is just two random walks that happened to lean the same way.</p>
@@ -19,6 +20,17 @@
     <span class="tl-status concept">CONCEPT — not yet tested in this repo</span>
     <span>~16 min read</span>
     <span>Prereqs: Ornstein-Uhlenbeck &amp; Mean Reversion</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>High return correlation is not the same as cointegration: two series can move together in returns for years while their levels drift apart forever, because correlation is about changes and cointegration is about levels having a stable spread.</li>
+      <li>Regressing one non-stationary price series on another in levels can produce a striking R² even when the two are completely unrelated random walks (Granger &amp; Newbold's spurious-regression result) — a high R² alone proves nothing.</li>
+      <li>The Engle-Granger two-step method fixes this: regress the levels to get a hedge ratio β (Step 1), then run an ADF test — with stricter Engle-Granger/MacKinnon critical values, not plain Dickey-Fuller — on the residual spread to check it's actually stationary (Step 2).</li>
+      <li>Johansen's test generalizes this to a basket of three or more series at once, avoiding Engle-Granger's arbitrary Y-vs-X choice and finding how many independent cointegrating relationships exist simultaneously.</li>
+      <li>The worked AUD/USD-vs-NZD/USD example shows the same high Step-1 R² can hide either a real mean-reverting spread or a spurious one — only the Step-2 ADF test tells them apart; the repo box notes <code>correlations.html</code> and <code>cross-pair-research.html</code> currently rank pairs on return correlation, not a levels cointegration test.</li>
+    </ul>
   </div>
 
   <h2>Why this matters</h2>
@@ -752,7 +764,8 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Clive W.J. Granger and Paul Newbold, <em>"Spurious Regressions in Econometrics,"</em> Journal of Econometrics, 1974 — the original demonstration that regressing unrelated non-stationary series produces misleadingly significant results.</li>
     <li>David A. Dickey and Wayne A. Fuller, <em>"Distribution of the Estimators for Autoregressive Time Series with a Unit Root,"</em> Journal of the American Statistical Association, 1979 — the origin of the (later "augmented") unit-root test used in Engle-Granger's Step 2.</li>
@@ -761,6 +774,7 @@
     <li>James G. MacKinnon, <em>"Numerical Distribution Functions for Unit Root and Cointegration Tests,"</em> Journal of Applied Econometrics, 1996 — the practical response-surface critical values used by most software implementations of these tests.</li>
     <li>Evan Gatev, William N. Goetzmann, and K. Geert Rouwenhorst, <em>"Pairs Trading: Performance of a Relative-Value Arbitrage Rule,"</em> Review of Financial Studies, 2006 — the widely cited practitioner-facing empirical study of pairs-trading performance.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="kalman-filter.html">← Kalman Filter &amp; Adaptive Relationships</a>

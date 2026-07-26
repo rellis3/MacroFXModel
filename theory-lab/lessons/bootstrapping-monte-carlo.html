@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Applied Statistics &amp; Validation / Bootstrapping &amp; Monte Carlo</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Applied Statistics &amp; Validation · Lesson 7 of 7</div>
   <h1 class="tl-title">Bootstrapping &amp; Monte Carlo Simulation</h1>
   <p class="tl-dek">Two ways to manufacture "many possible outcomes" out of a single dataset — and the one, easy-to-miss reason neither one tells you whether a signal will work on data it has never seen.</p>
@@ -19,6 +20,17 @@
     <span class="tl-status concept">CONCEPT — formalizes a rule this repo's CLAUDE.md already states in prose</span>
     <span>~15 min read</span>
     <span>Prereqs: Probability &amp; Random Variables primer</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>The bootstrap resamples your one real dataset with replacement, thousands of times, to approximate the sampling distribution of a statistic (a Sharpe ratio, a mean, a max drawdown) with no assumption about its shape.</li>
+      <li>For time series (volatility clustering, serial correlation), a plain bootstrap shuffles that structure away and understates uncertainty — the block bootstrap resamples contiguous blocks instead, so short-term dependence survives in the resample.</li>
+      <li>Monte Carlo simulation is a different move: fit a parametric model (GARCH, GBM) to the data and generate brand-new synthetic paths from it, rather than resampling real observations.</li>
+      <li>Both tools only describe what's plausible given what you already have — the one sample, or a model fitted to that sample — never what would happen against market conditions that sample never contained.</li>
+      <li>As CLAUDE.md states: "Don't let Monte Carlo stand in for OOS. Resampling from a strategy's own realized return distribution shows the range of outcomes consistent with that mean/std — it says nothing about whether the signal generalizes to data it hasn't seen. It's a legitimate expectation-setting tool; label it as that, not as robustness evidence."</li>
+    </ul>
   </div>
 
   <h2>Why this matters</h2>
@@ -599,7 +611,8 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Bradley Efron, "Bootstrap Methods: Another Look at the Jackknife," <em>Annals of Statistics</em>, 1979 — the original paper introducing the bootstrap.</li>
     <li>Bradley Efron &amp; Robert J. Tibshirani, <em>An Introduction to the Bootstrap</em>, Chapman &amp; Hall/CRC, 1993 — the standard textbook treatment, covering standard errors, confidence intervals, and the bootstrap's theoretical justification in far more depth than this lesson.</li>
@@ -607,6 +620,7 @@
     <li>Dimitris N. Politis &amp; Joseph P. Romano, "The Stationary Bootstrap," <em>Journal of the American Statistical Association</em>, 1994 — the random block-length refinement of the block bootstrap.</li>
     <li>Oliver Ledoit &amp; Michael Wolf, "Robust Performance Hypothesis Testing with the Sharpe Ratio," <em>Journal of Empirical Finance</em>, 2008 — a direct finance application of resampling-based inference to Sharpe ratio comparisons, including the serial-correlation caveats covered above.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="walk-forward-purged-cv.html">← Walk-Forward Validation &amp; Purged Cross-Validation</a>

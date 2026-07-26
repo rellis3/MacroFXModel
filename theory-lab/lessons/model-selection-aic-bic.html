@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Applied Statistics &amp; Validation / Model Selection (AIC/BIC)</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Applied Statistics &amp; Validation · Lesson 2 of 7</div>
   <h1 class="tl-title">Model Selection: AIC &amp; BIC</h1>
   <p class="tl-dek">Adding another free parameter to a model can never make its in-sample fit worse — which means raw fit alone will always vote for the most complicated model you're willing to build. AIC and BIC are the two standard tools for penalizing that complexity honestly, and they don't always agree on the answer.</p>
@@ -20,6 +21,16 @@
     <span>~15 min read</span>
     <span>Prereqs: Regression Diagnostics</span>
   </div>
+
+<div class="tl-tldr">
+  <div class="tl-tldr-label">TL;DR</div>
+  <ul>
+    <li>Adding a free parameter to a model can never make its in-sample fit (log-likelihood, \(R^2\)) worse — a larger model always nests and can at least match a smaller one — so raw in-sample fit alone always favors the most complex candidate, whether or not the extra parameters describe anything real.</li>
+    <li>AIC \(= 2k - 2\ln\hat L\) charges a flat penalty of 2 per parameter and is oriented toward out-of-sample prediction (asymptotically equivalent to leave-one-out cross-validation); BIC \(= k\ln(n) - 2\ln\hat L\) charges \(\ln(n)\) per parameter — stricter than AIC once \(n>e^2\approx7.4\) — and is oriented toward finding the true, most-parsimonious model (it's model-selection consistent as \(n\to\infty\), AIC is not).</li>
+    <li>The file's worked example (\(n=100\)): a 2-parameter Model A (\(-2\ln\hat L=100\)) and a 5-parameter Model B (\(-2\ln\hat L=94\)) tie exactly on AIC at 104 each, but BIC prefers Model A by about 7.8 points (109.21 vs. 117.03) — the same three extra parameters and the same 6-point deviance improvement read as "a dead heat" under AIC and "a clear win for the simpler model" under BIC.</li>
+    <li>Neither criterion is a substitute for a genuine out-of-sample check — they're a cheap, principled first filter (Lego Principle 5 still applies), and this repo currently has no coded AIC/BIC step in any engine.</li>
+  </ul>
+</div>
 
   <h2>Why this matters</h2>
   <p>
@@ -411,13 +422,15 @@
     <div class="tl-answer">The 5-lag model is mechanically guaranteed to fit at least as well in-sample as the 1-lag model it nests, whether or not lags 2 through 5 describe any real, persistent structure in the spread. Both AIC (an exact tie) and BIC (a clear preference for the simpler model) show that the improvement those four extra lags bought was no better than — and by BIC's stricter accounting, considerably worse than — the going rate for four more free parameters, meaning the improvement is plausibly explained by the model fitting this specific sample's noise rather than real mean-reversion dynamics. A model that fit noise in-sample has no reason to keep fitting a *different* sample's noise out-of-sample, so the simpler model is the one more likely to still work on data the researcher hasn't seen — which is what the researcher actually needs before risking capital on it.</div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Hirotugu Akaike (1974), "A New Look at the Statistical Model Identification," <em>IEEE Transactions on Automatic Control</em> — the original AIC paper.</li>
     <li>Gideon Schwarz (1978), "Estimating the Dimension of a Model," <em>Annals of Statistics</em> — the original BIC (Schwarz Criterion) paper.</li>
     <li>Kenneth P. Burnham &amp; David R. Anderson, <em>Model Selection and Multimodel Inference: A Practical Information-Theoretic Approach</em> (2nd ed., Springer, 2002) — the standard applied reference for AIC-based model selection, the \(\Delta_i\) rule-of-thumb tables, and AICc.</li>
     <li>James D. Hamilton, <em>Time Series Analysis</em> (Princeton University Press, 1994) — standard econometrics textbook coverage of AIC/BIC in the specific context of choosing ARMA/VAR lag order.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="regression-diagnostics.html">← Regression Diagnostics</a>

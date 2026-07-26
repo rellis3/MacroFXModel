@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Time Series &amp; Regimes / Hurst &amp; Variance Ratio</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Time Series &amp; Regimes · Lesson 5 of 14</div>
   <h1 class="tl-title">The Hurst Exponent &amp; Variance Ratio Test</h1>
   <p class="tl-dek">Two different ways to ask the same question of a price series — is it wandering randomly, drifting with momentum, or snapping back toward a mean? — and why the second, less famous method is the one to trust more.</p>
@@ -19,6 +20,17 @@
     <span class="tl-status candidate">ALREADY IN USE — js/rangeBiasCore.js computes a live Hurst feature</span>
     <span>~15 min read</span>
     <span>Prereqs: Ornstein-Uhlenbeck &amp; Mean Reversion</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>R/S analysis estimates the Hurst exponent \(H\) as the slope of \(\log(R/S)_n\) regressed on \(\log n\) — the rescaled range of a chunk's cumulative mean-deviations, measured across several window lengths.</li>
+      <li>\(H\) partitions into three regimes: \(H<0.5\) is anti-persistent/mean-reverting, \(H=0.5\) is a random walk (range grows as \(\sqrt{n}\)), and \(H>0.5\) is persistent/trending.</li>
+      <li>The variance ratio test (Lo &amp; MacKinlay 1988) asks the same question more rigorously: under a random walk, \(VR(q)=\operatorname{Var}(r_t^{(q)})/(q\cdot\operatorname{Var}(r_t^{(1)}))\) should equal exactly 1, and it comes with an actual standard error/z-statistic instead of an eyeballed regression slope.</li>
+      <li>This isn't just theory here — <code>js/rangeBiasCore.js</code>'s <code>computeHurst</code> already runs live R/S analysis (lags 2/4/8/16) as one of five entry-bias features, treating \(H&lt;0.45\) as confirming a fade and \(H&gt;0.55\) as confirming a follow, shared by <code>levels.js</code> and <code>asiaRangeEngine</code>.</li>
+      <li>Both statistics are biased in small samples and say nothing about direction — they only license which strategy family (fade vs. follow) has a right to work right now.</li>
+    </ul>
   </div>
 
   <h2>Why this matters</h2>
@@ -449,7 +461,8 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Harold Edwin Hurst, "Long-Term Storage Capacity of Reservoirs," <em>Transactions of the American Society of
       Civil Engineers</em>, 1951 — the original Nile-flood rescaled-range analysis this whole method is named for.</li>
@@ -461,6 +474,7 @@
     <li>Andrew W. Lo, "Long-Term Memory in Stock Market Prices," <em>Econometrica</em>, 1991 — the paper documenting
       classical R/S analysis's small-sample bias and proposing a modified R/S statistic to correct for it.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="ou-mean-reversion.html">← Ornstein-Uhlenbeck &amp; Mean Reversion</a>

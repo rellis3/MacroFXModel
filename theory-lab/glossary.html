@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notation Glossary — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+
+  <div class="tl-crumb"><a href="hub.html">Theory Lab</a> / Notation Glossary</div>
+  <div class="tl-kicker">Reference · Not A Lesson</div>
+  <h1 class="tl-title">Notation Glossary</h1>
+  <p class="tl-dek">A lookup page, not a lesson. When a symbol in any Theory Lab page stops you cold — the triangle, the weird curly-o, "isn't that variance?" — come here. Every entry is written for someone who's never seen it before: what it's called, what it actually measures or does, and where in this curriculum it shows up.</p>
+
+  <div class="tl-callout">
+    <strong>Read this first — the single biggest trap in all of this notation:</strong> a handful of Greek letters (α, β, λ, θ, γ, π, φ, ρ) mean <em>completely different things in different lessons</em>. The same squiggle that means "GARCH's shock sensitivity" in one lesson means "a regression's intercept" in another and "risk aversion" in a third. There is no universal decoder ring — every lesson defines its own symbols locally in a "the math, step by step" section. This page tells you the full range of what a symbol <em>could</em> mean and which lesson uses which meaning, so you can tell them apart instead of assuming they're all the same thing. Entries below are flagged <span style="color:var(--amber);font-weight:600">⚠ multi-meaning</span> where this applies.
+  </div>
+
+  <input type="text" class="tl-gloss-search" id="glossSearch" placeholder="Type a symbol or word — e.g. &quot;sigma&quot;, &quot;variance&quot;, &quot;triangle&quot;, &quot;hat&quot;…" autocomplete="off">
+  <div class="tl-gloss-count" id="glossCount"></div>
+
+  <div class="tl-gloss-noresults" id="glossNoResults">No symbols match that search. Try a shorter word, or the plain-English name (e.g. "average" instead of "mu").</div>
+
+  <!-- ============================================================ -->
+  <h2 class="tl-gloss-section-h">Greek letters — one consistent meaning</h2>
+  <div class="tl-gloss-section-sub">These show up in many lessons, but they mean the same thing everywhere in this curriculum.</div>
+  <div class="tl-gloss-grid" id="glossGrid">
+
+    <div class="tl-gloss-card" data-search="sigma standard deviation volatility spread variance square root">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\sigma\)</div><div class="tl-gloss-name">Sigma (lowercase)<span>Standard deviation / volatility</span></div></div>
+      <div class="tl-gloss-def">The single most common symbol in this whole curriculum. Plain English: how big the typical wiggle away from average is. Not the direction of a move — just how <em>jumpy</em> the thing is. A calm currency pair has a small σ; a wild one has a large σ. It's always in the same units as the thing it's measuring (e.g. "%", or price points).</div>
+      <div class="tl-gloss-def">Technically it's the square root of variance — variance is the average <em>squared</em> distance from the mean (squared so negative and positive swings don't cancel out), and σ takes the square root to get back into normal, human-readable units.</div>
+      <div class="tl-gloss-where">Defined from scratch in: <a href="lessons/primer-stats-normal.html">Descriptive Statistics primer</a>. Central to: <a href="lessons/garch-volatility.html">GARCH</a>, <a href="lessons/black-scholes.html">Black-Scholes</a>, <a href="lessons/kelly-criterion.html">Kelly Criterion</a>, <a href="lessons/extreme-value-theory.html">Extreme Value Theory</a>, and almost everything else.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="mu mean average drift expected return">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\mu\)</div><div class="tl-gloss-name">Mu<span>Mean / average / "drift"</span></div></div>
+      <div class="tl-gloss-def">The typical or expected value — the number everything else is measured as a distance from. In a price-path formula (like an SDE), μ is the steady, predictable pull in one direction, before any random noise gets added on top. If σ is "how jumpy," μ is "which way is it steadily leaning, on average."</div>
+      <div class="tl-gloss-where">Defined in: <a href="lessons/primer-stats-normal.html">Descriptive Statistics primer</a>. Used as "drift" in: <a href="lessons/ou-mean-reversion.html">Ornstein-Uhlenbeck</a> (the long-run mean it reverts to), <a href="lessons/black-scholes.html">Black-Scholes</a>, <a href="lessons/heston-model.html">Heston</a>. Used as "expected return" in <a href="lessons/kelly-criterion.html">Kelly Criterion</a>.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="rho correlation heston sabr">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\rho\)</div><div class="tl-gloss-name">Rho<span>Correlation between two random things</span></div></div>
+      <div class="tl-gloss-def">A number between -1 and +1 saying how much two things tend to move together. +1 = perfectly together, -1 = perfectly opposite, 0 = no linear relationship. In this curriculum ρ specifically shows up as the correlation between two <em>different sources of randomness</em> inside one model (e.g. "does volatility spike exactly when price falls?").</div>
+      <div class="tl-gloss-where">Used in: <a href="lessons/heston-model.html">Heston</a> and <a href="lessons/sabr-model.html">SABR</a> (correlation between the price process and the volatility process — a negative ρ is what generates a realistic volatility skew). The everyday version of this same idea (correlation between two variables generally) is taught as plain <code>r</code> in the <a href="lessons/primer-correlation-regression.html">Correlation &amp; Regression primer</a>.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="nu vol of vol volatility of volatility heston sabr">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\nu\)</div><div class="tl-gloss-name">Nu<span>"Vol of vol"</span></div></div>
+      <div class="tl-gloss-def">Not the volatility of the price — the volatility <em>of the volatility itself</em>. How much does the wiggliness keep changing? A low ν means volatility itself stays fairly steady; a high ν means volatility spikes around unpredictably in its own right, which is exactly what produces a curved (not flat) volatility smile.</div>
+      <div class="tl-gloss-where">Used in: <a href="lessons/heston-model.html">Heston</a> and <a href="lessons/sabr-model.html">SABR</a> — in SABR specifically, ν controls how curved the smile is.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="kappa mean reversion speed heston variance">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\kappa\)</div><div class="tl-gloss-name">Kappa<span>Speed of mean reversion (for variance)</span></div></div>
+      <div class="tl-gloss-def">How fast something snaps back to its long-run average once it strays. Bigger κ = snaps back faster; smaller κ = wanders further before correcting. This is the exact same job θ does in the Ornstein-Uhlenbeck lesson — Heston just uses a different letter because it's applying the idea to <em>variance</em> instead of price.</div>
+      <div class="tl-gloss-where">Used in: <a href="lessons/heston-model.html">Heston</a> (variance's speed of reversion). Compare directly to θ's identical role in <a href="lessons/ou-mean-reversion.html">Ornstein-Uhlenbeck</a>.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="xi shape parameter tail evt generalized pareto">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\xi\)</div><div class="tl-gloss-name">Xi<span>Tail "fatness" (GPD shape parameter)</span></div></div>
+      <div class="tl-gloss-def">Controls how fat an extreme tail is. Positive ξ = a genuinely heavy tail (extreme losses bigger than a normal-curve guess would ever predict); ξ = 0 = a milder, exponential-style tail; negative ξ = a tail that's actually bounded (there's a hard floor to how bad it gets).</div>
+      <div class="tl-gloss-where">Used only in: <a href="lessons/extreme-value-theory.html">Extreme Value Theory</a>, fitted to the Generalized Pareto Distribution.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="epsilon error term noise residual shock">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\varepsilon\)</div><div class="tl-gloss-name">Epsilon<span>Error / noise / "the leftover"</span></div></div>
+      <div class="tl-gloss-def">Whatever a model doesn't explain. If you fit a line through some points, ε is the gap between the line's prediction and what actually happened at each point — the part your formula can't account for, assumed to average out to zero over many observations.</div>
+      <div class="tl-gloss-where">Used in every regression/AR/MA formula: <a href="lessons/primer-correlation-regression.html">Correlation &amp; Regression primer</a>, <a href="lessons/arima-var.html">ARIMA &amp; VAR</a>, <a href="lessons/regression-diagnostics.html">Regression Diagnostics</a>.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="delta uppercase change in derivative option">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\Delta\)</div><div class="tl-gloss-name">Delta (capital)<span>"The change in ___"</span></div></div>
+      <div class="tl-gloss-def">Just means "the change in whatever comes after it." Δt = a step forward in time. ΔS = how much the price moved. It's the plain, everyday-sized version of "d" in calculus (which means an infinitely tiny change) — Δ is a real, finite-sized change you could actually measure.</div>
+      <div class="tl-gloss-def">Separately, traders also use the word "Delta" for an option's sensitivity to the underlying price moving (how much the option's value changes per $1 move) — a specific number, not this general symbol, covered as \(dC/dS\).</div>
+      <div class="tl-gloss-where">General usage throughout. Option "Delta" specifically discussed in: <a href="lessons/calculus-for-finance.html">Calculus for Finance</a>, <a href="lessons/black-scholes.html">Black-Scholes</a>.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="tau lag time to expiry">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\tau\)</div><div class="tl-gloss-name">Tau<span>A lag, or time remaining</span></div></div>
+      <div class="tl-gloss-def">Usually "how many steps back are we comparing to" (e.g. comparing today to τ days ago) or "how much time is left" (equivalent to writing T−t as one symbol).</div>
+      <div class="tl-gloss-where">Used loosely in: <a href="lessons/stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a> (as a lag).</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="omega uppercase sample space probability">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\Omega\)</div><div class="tl-gloss-name">Omega (capital)<span>The sample space</span></div></div>
+      <div class="tl-gloss-def">The set of literally every possible outcome. Roll a die: Ω = {1,2,3,4,5,6}. It's the "universe" a probability problem is defined inside.</div>
+      <div class="tl-gloss-where">Defined in: <a href="lessons/primer-probability.html">Probability &amp; Random Variables primer</a>.</div>
+    </div>
+
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 class="tl-gloss-section-h">Greek letters — ⚠ multi-meaning (context matters)</h2>
+  <div class="tl-gloss-section-sub">Same letter, genuinely different jobs depending on which lesson you're in. Always trust the local definition in that lesson's "symbols" table over anything below.</div>
+  <div class="tl-gloss-grid">
+
+    <div class="tl-gloss-card" data-search="beta slope regression garch persistence sabr backbone">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\beta\)</div><div class="tl-gloss-name">Beta<span>⚠ Changes meaning by lesson</span></div></div>
+      <div class="tl-gloss-multi"><strong>In regression</strong> (Correlation primer, Regression Diagnostics, ARIMA/VAR): the slope of a fitted line — how much Y moves per one unit of X.<br><strong>In GARCH:</strong> "persistence" — how much of yesterday's volatility carries into today.<br><strong>In SABR:</strong> the "backbone" exponent controlling how volatility scales with the price level itself.</div>
+      <div class="tl-gloss-where"><a href="lessons/primer-correlation-regression.html">Correlation &amp; Regression primer</a> · <a href="lessons/garch-volatility.html">GARCH</a> · <a href="lessons/sabr-model.html">SABR</a></div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="alpha intercept garch significance threshold edge">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\alpha\)</div><div class="tl-gloss-name">Alpha<span>⚠ Changes meaning by lesson</span></div></div>
+      <div class="tl-gloss-multi"><strong>In regression:</strong> the intercept — where the fitted line crosses zero.<br><strong>In GARCH:</strong> how sensitive volatility is to yesterday's shock.<br><strong>In Multiple Testing:</strong> the significance threshold you're willing to accept (usually 0.05 — a 5% chance of a false alarm).<br><strong>In SABR:</strong> today's volatility level.<br><strong>In trading slang</strong> (not a formula here): "alpha" just means edge/excess return — a completely different, informal usage.</div>
+      <div class="tl-gloss-where"><a href="lessons/primer-correlation-regression.html">Correlation &amp; Regression primer</a> · <a href="lessons/garch-volatility.html">GARCH</a> · <a href="lessons/multiple-testing.html">Multiple Testing</a> · <a href="lessons/sabr-model.html">SABR</a></div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="lambda kyle eigenvalue jump intensity poisson">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\lambda\)</div><div class="tl-gloss-name">Lambda<span>⚠ Three unrelated meanings</span></div></div>
+      <div class="tl-gloss-multi"><strong>In Market Microstructure</strong> (Kyle's Lambda): how much price moves per unit of order size — a measure of market depth/liquidity.<br><strong>In Merton Jump-Diffusion:</strong> how <em>often</em> price jumps happen (e.g. average jumps per year) — nothing to do with price impact.<br><strong>In PCA / Random Matrix Theory:</strong> an eigenvalue — how much of the total variance one particular "direction" or factor explains.</div>
+      <div class="tl-gloss-where"><a href="lessons/market-microstructure.html">Market Microstructure</a> · <a href="lessons/merton-jump-diffusion.html">Merton Jump-Diffusion</a> · <a href="lessons/pca-factors.html">PCA</a> · <a href="lessons/random-matrix-theory.html">Random Matrix Theory</a></div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="theta mean reversion speed ou heston hmm option time decay">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\theta\)</div><div class="tl-gloss-name">Theta<span>⚠ Changes meaning by lesson</span></div></div>
+      <div class="tl-gloss-multi"><strong>In Ornstein-Uhlenbeck:</strong> speed of mean reversion — bigger θ snaps back to the mean faster.<br><strong>In Heston:</strong> sometimes the long-run variance level itself (paired with κ for the speed).<br><strong>In Hidden Markov Models:</strong> loose shorthand for "the model's whole parameter set," not one specific number.<br><strong>On a real options desk</strong> (not a lesson here): "theta" also names an option's time-decay Greek — a different, informal use of the same letter.</div>
+      <div class="tl-gloss-where"><a href="lessons/ou-mean-reversion.html">Ornstein-Uhlenbeck</a> · <a href="lessons/heston-model.html">Heston</a> · <a href="lessons/hidden-markov-models.html">Hidden Markov Models</a></div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="gamma risk aversion option second derivative merton kelly">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\gamma\)</div><div class="tl-gloss-name">Gamma<span>⚠ Two unrelated meanings</span></div></div>
+      <div class="tl-gloss-multi"><strong>In Merton's Portfolio Problem:</strong> risk aversion — bigger γ means a more cautious investor who should rationally bet a smaller fraction of full Kelly.<br><strong>On a real options desk</strong> (touched on in Calculus for Finance/Black-Scholes): "Gamma" also names an option's second-order price sensitivity — how fast Delta itself changes. "Being short gamma" is a common trading phrase, unrelated to the risk-aversion meaning.</div>
+      <div class="tl-gloss-where"><a href="lessons/merton-portfolio-problem.html">Merton's Portfolio Problem</a> · <a href="lessons/black-scholes.html">Black-Scholes</a> (Greeks section)</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="pi inflation constant 3.14 normal distribution">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\pi\)</div><div class="tl-gloss-name">Pi<span>⚠ Two totally unrelated meanings</span></div></div>
+      <div class="tl-gloss-multi"><strong>In the Taylor Rule:</strong> inflation (a percentage, like 3%).<br><strong>Everywhere else:</strong> just the mathematical constant 3.14159… — it shows up inside the normal distribution's formula for reasons that have nothing to do with economics. The context always makes it obvious which one you're looking at.</div>
+      <div class="tl-gloss-where"><a href="lessons/taylor-rule.html">The Taylor Rule</a> (inflation) · <a href="lessons/primer-stats-normal.html">Descriptive Statistics primer</a> (the constant, inside the bell-curve formula)</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="phi ar coefficient normal density autoregression">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\phi\)</div><div class="tl-gloss-name">Phi (lowercase)<span>⚠ Two meanings</span></div></div>
+      <div class="tl-gloss-multi"><strong>In OU / ARIMA / Stationarity:</strong> the AR(1) coefficient — how much of yesterday's value carries forward into today (φ close to 1 = very persistent, φ close to 0 = barely persistent).<br><strong>In statistics generally:</strong> sometimes denotes the standard normal bell-curve formula itself (its capital version, Φ, is the cumulative version — see below).</div>
+      <div class="tl-gloss-where"><a href="lessons/ou-mean-reversion.html">Ornstein-Uhlenbeck</a> · <a href="lessons/stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a> · <a href="lessons/arima-var.html">ARIMA &amp; VAR</a></div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="omega lowercase garch baseline outcome sample space element">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\omega\)</div><div class="tl-gloss-name">Omega (lowercase)<span>⚠ Two unrelated meanings</span></div></div>
+      <div class="tl-gloss-multi"><strong>In GARCH:</strong> the baseline/floor constant in the variance formula — roughly, "the variance you'd settle at with no recent shocks."<br><strong>In Probability:</strong> one single specific outcome drawn from the sample space Ω (e.g. "the die landed on 4" is one ω from Ω={1..6}).</div>
+      <div class="tl-gloss-where"><a href="lessons/garch-volatility.html">GARCH</a> · <a href="lessons/primer-probability.html">Probability &amp; Random Variables primer</a></div>
+    </div>
+
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 class="tl-gloss-section-h">Capital letters, functions &amp; operators</h2>
+  <div class="tl-gloss-section-sub">The non-Greek notation that shows up just as often — expectation brackets, the summation sign, square roots.</div>
+  <div class="tl-gloss-grid">
+
+    <div class="tl-gloss-card" data-search="E bracket expectation expected value average">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(E[\cdot]\)</div><div class="tl-gloss-name">E[ ]<span>Expectation / expected value</span></div></div>
+      <div class="tl-gloss-def">"The average result you'd get if you could repeat this forever." Not a guess about any single outcome — a statement about the long-run average across infinitely many repeats. \(E[X]\) reads as "the expected value of X."</div>
+      <div class="tl-gloss-where">Defined in: <a href="lessons/primer-probability.html">Probability &amp; Random Variables primer</a>. Used throughout — <a href="lessons/kelly-criterion.html">Kelly Criterion</a>, <a href="lessons/bayesian-inference.html">Bayesian Inference</a>, <a href="lessons/merton-portfolio-problem.html">Merton's Portfolio Problem</a>.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="Var variance function">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(Var(\cdot)\)</div><div class="tl-gloss-name">Var( )<span>Variance</span></div></div>
+      <div class="tl-gloss-def">The average <em>squared</em> distance from the mean — squared specifically so that swings above and below the average don't cancel each other out, and so bigger swings count more than proportionally. σ (sigma) is just the square root of this, back in normal units.</div>
+      <div class="tl-gloss-where">Defined in: <a href="lessons/primer-stats-normal.html">Descriptive Statistics primer</a>, <a href="lessons/primer-probability.html">Probability primer</a>.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="Cov covariance move together">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(Cov(\cdot,\cdot)\)</div><div class="tl-gloss-name">Cov( , )<span>Covariance</span></div></div>
+      <div class="tl-gloss-def">Do two things tend to move together (positive), move apart (negative), or move independently of each other (near zero)? Unlike correlation, covariance's size also depends on each variable's own units — that's exactly why correlation \(r\) exists, to rescale it into a clean, comparable -1-to-+1 number.</div>
+      <div class="tl-gloss-where">Defined in: <a href="lessons/primer-correlation-regression.html">Correlation &amp; Regression primer</a>. Used in: <a href="lessons/linear-algebra-matrices.html">Linear Algebra</a>, <a href="lessons/markowitz-black-litterman.html">Markowitz &amp; Black-Litterman</a>.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="N d1 d2 normal cumulative distribution function Phi capital">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(N(\cdot)\) / \(\Phi(\cdot)\)</div><div class="tl-gloss-name">N( ) or Phi (capital)<span>The normal-curve "percentile lookup"</span></div></div>
+      <div class="tl-gloss-def">"What fraction of a bell curve sits to the LEFT of this point?" Feed it a number, get back a probability between 0 and 1. This is the exact tool Black-Scholes uses to turn \(d_1\)/\(d_2\) into an actual price — \(N(d_2)\) is literally "the probability the option finishes in the money."</div>
+      <div class="tl-gloss-where">Central to: <a href="lessons/black-scholes.html">Black-Scholes</a>. The z-score version of this same idea (how many standard deviations away, and what percentile that implies) is taught in the <a href="lessons/primer-stats-normal.html">Descriptive Statistics primer</a>.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="sigma capital summation add up sum">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\Sigma\)</div><div class="tl-gloss-name">Sigma (capital)<span>⚠ Two unrelated meanings</span></div></div>
+      <div class="tl-gloss-multi"><strong>As a big operator</strong> (\(\sum\), often drawn slightly differently but easy to confuse): "add up everything that follows, across a list." E.g. \(E[X]=\sum_i x_i P(x_i)\) means "multiply each outcome by its probability, then add all those products together."<br><strong>As a bolded/matrix symbol</strong> (covariance matrix): a whole grid of numbers — every pair of variables' covariance, all at once. Not a sum at all, despite reusing the same-looking capital letter.</div>
+      <div class="tl-gloss-where">Summation: <a href="lessons/primer-probability.html">Probability primer</a>. Covariance matrix: <a href="lessons/linear-algebra-matrices.html">Linear Algebra</a>, <a href="lessons/pca-factors.html">PCA</a>, <a href="lessons/random-matrix-theory.html">Random Matrix Theory</a>, <a href="lessons/markowitz-black-litterman.html">Markowitz &amp; Black-Litterman</a>.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="square root sqrt volatility scaling time">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\sqrt{\cdot}\)</div><div class="tl-gloss-name">Square root<span>Undoes squaring</span></div></div>
+      <div class="tl-gloss-def">Turns variance (which is in "squared units," like %² — an awkward unit nobody thinks in) back into standard deviation (real, human-readable units, like %). Also shows up in the famous "volatility scales with the square root of time" rule — a 20-day σ is roughly the 1-day σ times √20, not ×20.</div>
+      <div class="tl-gloss-where"><a href="lessons/primer-stats-normal.html">Descriptive Statistics primer</a>, <a href="lessons/primer-returns-compounding.html">Returns &amp; Compounding primer</a> (√time scaling).</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="integral area under curve">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\int\)</div><div class="tl-gloss-name">Integral<span>Total area under a curve</span></div></div>
+      <div class="tl-gloss-def">The running total/accumulation of something over a range — literally the area trapped between a curve and the x-axis. In finance this is how you turn "a range of possible future prices, each with some probability" into "one expected value."</div>
+      <div class="tl-gloss-where">Introduced in: <a href="lessons/calculus-for-finance.html">Calculus for Finance</a>.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="partial derivative curly d rate of change one variable">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\partial\)</div><div class="tl-gloss-name">Partial derivative<span>Rate of change, one input at a time</span></div></div>
+      <div class="tl-gloss-def">"How fast does this change if I nudge JUST this one input, freezing every other input exactly where it is?" The curly d (as opposed to a plain d) is the signal that there are multiple inputs and you're only wiggling one of them.</div>
+      <div class="tl-gloss-where">Central to: <a href="lessons/black-scholes.html">Black-Scholes</a>'s pricing equation, <a href="lessons/ito-lemma.html">Itô's Lemma</a>.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="dW dS dX brownian motion stochastic differential noise random increment">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(dW_t\)</div><div class="tl-gloss-name">dW, dS, dX (with a "d")<span>An infinitely tiny random nudge</span></div></div>
+      <div class="tl-gloss-def">A "d" in front of a variable means "an infinitely small change in it, over an infinitely small step of time." \(dW_t\) specifically is the unpredictable, purely-random nudge from Brownian motion at each instant — the "noise engine" bolted onto a drift term (μ) to build almost every stochastic model in this curriculum. It's the mathematical object behind "the price wiggles randomly."</div>
+      <div class="tl-gloss-where">The heart of: <a href="lessons/ou-mean-reversion.html">Ornstein-Uhlenbeck</a>, <a href="lessons/black-scholes.html">Black-Scholes</a>, <a href="lessons/merton-jump-diffusion.html">Merton Jump-Diffusion</a>, <a href="lessons/heston-model.html">Heston</a>, <a href="lessons/ito-lemma.html">Itô's Lemma</a>, <a href="lessons/girsanov-risk-neutral.html">Girsanov's Theorem</a>.</div>
+    </div>
+
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 class="tl-gloss-section-h">Subscripts, hats, bars &amp; other shorthand</h2>
+  <div class="tl-gloss-section-sub">Small marks attached to a letter that change its meaning — easy to miss, easy to misread.</div>
+  <div class="tl-gloss-grid">
+
+    <div class="tl-gloss-card" data-search="subscript t time index t-1 t+1 previous next period">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(X_t\)</div><div class="tl-gloss-name">Subscript t<span>"Which point in time"</span></div></div>
+      <div class="tl-gloss-def">A small \(t\) after a variable just means "the value at time t" — today, in most contexts. \(X_{t-1}\) is yesterday's value, \(X_{t+1}\) is tomorrow's. It's a label, not a multiplication or an exponent — don't read it as "X times t."</div>
+      <div class="tl-gloss-where">Used in essentially every lesson involving a time series.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="hat estimated value beta hat sample statistic">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\hat{\beta}\)</div><div class="tl-gloss-name">Hat (▲ over a letter)<span>"This is an estimate, not the truth"</span></div></div>
+      <div class="tl-gloss-def">A hat means "this is the number you actually calculated from real, limited data" — as opposed to the true, unknowable value it's trying to approximate. \(\hat\beta\) = the slope you computed from your sample; \(\beta\) (no hat) = the true, never-fully-knowable population slope. Every backtested statistic in this curriculum is technically a "hat" version of something.</div>
+      <div class="tl-gloss-where">Used throughout regression contexts: <a href="lessons/primer-correlation-regression.html">Correlation &amp; Regression primer</a>, <a href="lessons/regression-diagnostics.html">Regression Diagnostics</a>.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="bar average sample mean x bar">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\bar{X}\)</div><div class="tl-gloss-name">Bar (▬ over a letter)<span>The average of your actual data</span></div></div>
+      <div class="tl-gloss-def">"The average of the specific numbers I have in front of me" — the sample mean, computed directly rather than a theoretical/true value.</div>
+      <div class="tl-gloss-where">Used in: <a href="lessons/primer-stats-normal.html">Descriptive Statistics primer</a>, <a href="lessons/primer-returns-compounding.html">Returns &amp; Compounding primer</a>.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="tilde transformed variable adjusted approximate">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\tilde{X}\)</div><div class="tl-gloss-name">Tilde (~ over a letter)<span>A transformed/adjusted version</span></div></div>
+      <div class="tl-gloss-def">Marks "this is a modified version of the plain variable" — exactly what's been done to it (de-meaned, rescaled, risk-adjusted, etc.) always gets spelled out locally in whichever lesson uses it.</div>
+      <div class="tl-gloss-where">Context-specific — check the local lesson's own symbol table when you see it.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="sim tilde distributed as follows a distribution">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(X \sim N(0,1)\)</div><div class="tl-gloss-name">~ (tilde between two things)<span>"Is distributed as"</span></div></div>
+      <div class="tl-gloss-def">Read the whole expression as a sentence: "X is distributed as a standard normal." It's a completely different symbol/use from the tilde-over-one-letter above — this one sits between two things and means "follows this probability distribution."</div>
+      <div class="tl-gloss-where"><a href="lessons/primer-probability.html">Probability &amp; Random Variables primer</a>, and used casually everywhere after.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="approximately equal approx tilde equals wavy">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(\approx\)</div><div class="tl-gloss-name">Approximately equal<span>"Close enough, with a stated simplification"</span></div></div>
+      <div class="tl-gloss-def">Flags that a formula is a simplification, not exact — usually because a small term was dropped (e.g. \(\ln(1+R)\approx R - R^2/2\), the exact version has more terms that matter less as R gets smaller). Worth asking "small compared to what?" whenever you see it.</div>
+      <div class="tl-gloss-where">Used constantly, e.g. <a href="lessons/primer-returns-compounding.html">Returns &amp; Compounding primer</a>, <a href="lessons/kelly-criterion.html">Kelly Criterion</a>'s volatility drag.</div>
+    </div>
+
+    <div class="tl-gloss-card" data-search="arrow tends to converges approaches limit infinity">
+      <div class="tl-gloss-top"><div class="tl-gloss-symbol">\(n \to \infty\)</div><div class="tl-gloss-name">Arrow (→)<span>"Tends to" / "approaches"</span></div></div>
+      <div class="tl-gloss-def">Describes what happens as something grows or shrinks without bound. \(n\to\infty\) means "as your sample size gets bigger and bigger, without limit" — used to describe a theoretical result that holds exactly only in that limit, but is a useful approximation well before you actually get there.</div>
+      <div class="tl-gloss-where"><a href="lessons/primer-probability.html">Probability primer</a> (Law of Large Numbers, CLT), <a href="lessons/random-matrix-theory.html">Random Matrix Theory</a>.</div>
+    </div>
+
+  </div>
+
+  <div class="tl-cat" style="margin-top:44px">
+    <p style="color:var(--text2);max-width:760px">This page will grow as new lessons introduce new notation — if a symbol in a lesson isn't here yet, that's a gap worth flagging, not a sign it doesn't matter.</p>
+    <a class="tl-gloss-hero-link" href="hub.html">← Back to the Theory Lab hub</a>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  var input = document.getElementById('glossSearch');
+  var cards = Array.prototype.slice.call(document.querySelectorAll('.tl-gloss-card'));
+  var countEl = document.getElementById('glossCount');
+  var noResults = document.getElementById('glossNoResults');
+
+  function totalCount(){ return cards.length; }
+  countEl.textContent = totalCount() + ' symbols indexed — search by symbol name, plain-English word, or what it looks like.';
+
+  function applyFilter(){
+    var q = input.value.trim().toLowerCase();
+    var shown = 0;
+    cards.forEach(function(card){
+      var hay = (card.getAttribute('data-search') || '') + ' ' + card.textContent.toLowerCase();
+      var match = q === '' || hay.toLowerCase().indexOf(q) !== -1;
+      card.style.display = match ? '' : 'none';
+      if (match) shown++;
+    });
+    // hide section headers whose whole group is empty
+    document.querySelectorAll('.tl-gloss-grid').forEach(function(grid){
+      var anyVisible = Array.prototype.slice.call(grid.querySelectorAll('.tl-gloss-card')).some(function(c){ return c.style.display !== 'none'; });
+      var heading = grid.previousElementSibling; // the sub-line
+      var heading2 = heading && heading.previousElementSibling; // the h2
+      if (heading && heading.classList.contains('tl-gloss-section-sub')) heading.style.display = anyVisible ? '' : 'none';
+      if (heading2 && heading2.classList.contains('tl-gloss-section-h')) heading2.style.display = anyVisible ? '' : 'none';
+    });
+    noResults.style.display = shown === 0 ? 'block' : 'none';
+    countEl.style.display = q === '' ? '' : 'none';
+  }
+
+  input.addEventListener('input', applyFilter);
+})();
+</script>
+
+</body>
+</html>

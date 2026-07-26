@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Cross-Asset &amp; Structure / PCA &amp; Factor Regimes</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Cross-Asset &amp; Structure · Lesson 10 of 14</div>
   <h1 class="tl-title">Principal Component Analysis &amp; Factor Regimes</h1>
   <p class="tl-dek">A basket of currency pairs looks like many separate bets, but most days it's really one bet — "risk-on or risk-off" — wearing several costumes; PCA is the tool that measures exactly how true that is, and when.</p>
@@ -19,6 +20,17 @@
     <span class="tl-status concept">CONCEPT — partially built (eigenvalues only) in this repo</span>
     <span>~16 min read</span>
     <span>Prereqs: Cointegration &amp; Statistical Arbitrage</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>PCA finds the direction (eigenvector) through a basket's return data along which it varies the most — the "eigenvalue" measures how much variance lies along that direction, and the explained variance ratio (\(\lambda_i / \sum_j \lambda_j\)) turns that into a headline percentage, e.g. "PC1 explains 72% of the basket's variance."</li>
+      <li>Because eigenvectors of a covariance/correlation matrix are mutually perpendicular, the principal components they define are uncorrelated by construction, not by empirical coincidence — PC1 captures the most shared variance, PC2 the next-most orthogonal to it, and so on.</li>
+      <li>A component's loadings (the entries of its eigenvector, one per instrument) show which pairs actually make up that shared factor — a large loading means that instrument drives the component; a near-zero loading means it barely participates.</li>
+      <li>This repo is partially built here already: <code>js/diversificationCore.js</code>'s <code>symmetricEigenvalues</code> already computes the eigenvalues of a correlation matrix (feeding <code>effectiveBetsPCA</code>'s "effective number of bets" metric on <code>diversification.html</code>), but it deliberately doesn't return the eigenvectors/loadings — the "which instruments drive PC1" piece this lesson covers is not yet built.</li>
+      <li>PCA is a descriptive/risk-visibility tool, not a trading signal by itself — correlation structure (and PC1 dominance) shifts across regimes, famously spiking toward 1 in a crisis, so any rule built on top of it needs its own OOS validation.</li>
+    </ul>
   </div>
 
   <h2>Why this matters</h2>
@@ -743,7 +755,8 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Karl Pearson, "On Lines and Planes of Closest Fit to Systems of Points in Space," <em>Philosophical Magazine</em>, 1901 — the original geometric formulation PCA is built on (finding the best-fitting line/plane through a cloud of points), predating its statistical/finance use by decades.</li>
     <li>Harold Hotelling, "Analysis of a Complex of Statistical Variables into Principal Components," <em>Journal of Educational Psychology</em>, 1933 — the paper that formalized PCA in its modern statistical form and coined "principal components."</li>
@@ -752,6 +765,7 @@
     <li>Robert Litterman &amp; José Scheinkman, "Common Factors Affecting Bond Returns," <em>Journal of Fixed Income</em>, 1991 — the classic empirical demonstration of the level/slope/curvature PCA decomposition on yield curves referenced in the practitioner-use section.</li>
     <li><code>js/diversificationCore.js</code> and <code>diversification.html</code> in this repo — the existing eigenvalue-based "effective number of bets" implementation this lesson's repo box builds on and extends.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="cointegration.html">← Cointegration &amp; Statistical Arbitrage</a>

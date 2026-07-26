@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Advanced Stochastic Calculus &amp; Derivatives / The SABR Model</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Advanced Stochastic Calculus &amp; Derivatives · Lesson 4 of 4</div>
   <h1 class="tl-title">The SABR Model</h1>
   <p class="tl-dek">Four parameters and one closed-form approximation for the implied-volatility smile — the reason SABR, not the arguably richer Heston model, is what an FX or rates options desk actually recalibrates every time the market moves.</p>
@@ -19,6 +20,17 @@
     <span class="tl-status concept">CONCEPT — the FX-options-market-standard smile model</span>
     <span>~16 min read</span>
     <span>Prereqs: The Heston Model</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>SABR has four parameters — \(\alpha\) (current vol level), \(\beta\) (backbone exponent, usually fixed by convention), \(\rho\) (correlation → skew), \(\nu\) (vol-of-vol → curvature) — each controlling a geometrically distinct feature of the smile.</li>
+      <li>Its whole practical advantage over Heston is the Hagan et al. (2002) closed-form algebraic approximation for implied vol: no characteristic function, no Fourier inversion, just exponents/logs/a square root, so a desk can refit it against live ATM/risk-reversal/butterfly quotes in real time.</li>
+      <li>With \(\beta\) fixed by convention, calibration reduces to three unknowns (\(\alpha,\rho,\nu\)) against three standard FX quotes — a small, fast, well-identified fit rather than a slow global optimization.</li>
+      <li>The formula is an asymptotic approximation, not exact — it can misbehave (even imply arbitrage) at extreme strikes/maturities or high \(\nu\), which is what "Arbitrage-Free SABR" (2014) patches numerically.</li>
+      <li>This is the last lesson in the Advanced Stochastic Calculus &amp; Derivatives tier: Itô → Girsanov → Heston (dynamics done right) → SABR (the fast, practitioner-friendly cousin of Heston, not a "better" model, just one built for speed of fit).</li>
+    </ul>
   </div>
 
   <h2>Why this matters</h2>
@@ -650,7 +662,8 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Patrick S. Hagan, Deep Kumar, Andrew S. Lesniewski &amp; Diana E. Woodward, "Managing Smile Risk," <em>Wilmott Magazine</em>, 2002 — the original paper: the SABR SDEs, the singular-perturbation derivation, and the closed-form implied-volatility approximation this lesson is built around.</li>
     <li>Patrick S. Hagan, Deep Kumar, Andrew S. Lesniewski &amp; Diana E. Woodward, "Arbitrage-Free SABR," <em>Wilmott Magazine</em>, 2014 — the follow-up addressing the original formula's known arbitrage failure modes at extreme strikes/maturities, via a numerical PDE approach.</li>
@@ -659,6 +672,7 @@
     <li>This Theory Lab's own <a href="heston-model.html">Heston Model</a> lesson — read first; SABR is presented throughout this lesson as the practical, calibration-friendly counterpart to the genuine stochastic-volatility dynamics Heston introduces.</li>
     <li><code>education/open-interest-course-notes.md</code> in this repo — the applied gamma/dealer-hedging framework that a real, per-strike volatility smile (built the way this lesson describes) ultimately feeds into at a real dealer.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="heston-model.html">← The Heston Model</a>

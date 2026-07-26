@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Advanced Stochastic Calculus &amp; Derivatives / Itô's Lemma</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Advanced Stochastic Calculus &amp; Derivatives · Lesson 1 of 4</div>
   <h1 class="tl-title">Itô's Lemma</h1>
   <p class="tl-dek">Ordinary calculus's chain rule quietly assumes a curve is smooth enough that its own squared wiggle vanishes in the limit. A Brownian path is not that smooth, and the term ordinary calculus throws away turns out to be exactly the \(\sigma^2/2\) the Black-Scholes lesson uses in its \(d_1\)/\(d_2\) formula without ever deriving it. This lesson derives it.</p>
@@ -19,6 +20,17 @@
     <span class="tl-status concept">CONCEPT — the derivation Black-Scholes assumed</span>
     <span>~18 min read</span>
     <span>Prereqs: Calculus for Finance, Black-Scholes-Merton Option Pricing</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Flagged up front as the most mathematically demanding lesson in this curriculum — the result is one line, but getting there requires accepting a genuinely strange fact about Brownian motion.</li>
+      <li>The ordinary chain rule works because a smooth function's increment \(\Delta x\) is order \(\Delta t\), so its square is order \(\Delta t^2\) and vanishes in the limit — Brownian motion breaks this, since \(dW_t\) is order \(\sqrt{dt}\), making \((dW_t)^2\) order \(dt\), not negligible.</li>
+      <li>That single fact is written as the identity \((dW_t)^2 = dt\) (a quadratic-variation statement about the aggregate, not any one random draw), and it forces an extra term into the Taylor expansion that ordinary calculus is entitled to drop — this extra term is Itô's Lemma.</li>
+      <li>Applying Itô's Lemma to \(\ln S_t\) under geometric Brownian motion makes every \(S_t\) cancel and leaves \(d(\ln S_t) = (\mu - \sigma^2/2)\,dt + \sigma\,dW_t\) — the mechanical, non-arbitrary origin of the \((r\pm\sigma^2/2)\) terms inside Black-Scholes's \(d_1\)/\(d_2\), which that lesson simply asserted.</li>
+      <li>The same \(\sigma^2/2\) correction also appears informally elsewhere in this curriculum (volatility drag in the Kelly Criterion and Returns &amp; Compounding lessons) — three independent appearances of one underlying piece of mathematics.</li>
+    </ul>
   </div>
 
   <h2>Why this matters</h2>
@@ -683,7 +695,8 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Kiyosi Itô, "Stochastic Integral," <em>Proceedings of the Imperial Academy</em>, Vol. 20, No. 8, 1944 — the original paper defining the Itô integral and the calculus built on it.</li>
     <li>Steven E. Shreve, <em>Stochastic Calculus for Finance II: Continuous-Time Models</em>, Springer, 2004 — the standard quantitative-finance graduate textbook; Chapter 4 derives Itô's formula carefully and applies it directly to the Black-Scholes-Merton PDE.</li>
@@ -692,6 +705,7 @@
     <li><code>black-scholes.html</code> in this Theory Lab — the lesson whose GBM-solution and \(d_1\)/\(d_2\) claims this lesson derives.</li>
     <li><code>kelly-criterion.html</code> and <code>primer-returns-compounding.html</code> in this Theory Lab — the two places the same \(\sigma^2/2\) correction already appears informally, discussed in the scenario box above.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>

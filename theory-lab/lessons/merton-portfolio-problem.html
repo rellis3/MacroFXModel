@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Advanced Portfolio &amp; Market Structure / Merton's Portfolio Problem</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Advanced Portfolio &amp; Market Structure · Lesson 5 of 5</div>
   <h1 class="tl-title">Merton's Continuous-Time Portfolio Problem</h1>
   <p class="tl-dek">Where the Kelly Criterion's \(f^*=\mu/\sigma^2\) actually comes from: the Hamilton-Jacobi-Bellman equation, expected-utility maximization, and the single general formula that Kelly turns out to be one exact special case of.</p>
@@ -19,6 +20,17 @@
     <span class="tl-status concept">CONCEPT — the continuous-time generalization of Kelly sizing</span>
     <span>~18 min read</span>
     <span>Prereqs: Kelly Criterion &amp; Position Sizing, Itô's Lemma</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Merton's problem asks: choose consumption and a risky-asset allocation fraction continuously through time to maximize expected lifetime utility — solved via the Hamilton-Jacobi-Bellman (HJB) equation, which finds the value function \(J(W,t)\) (best-achievable utility from wealth \(W\) at time \(t\)) rather than a single number, because today's optimal choice depends on the value of every possible future wealth level.</li>
+      <li>For an investor with constant relative risk aversion \(\gamma\), the HJB equation solves out to a clean, wealth- and horizon-independent constant allocation: \(f^*=\mu/(\gamma\sigma^2)\) — the "Merton fraction."</li>
+      <li>Setting \(\gamma=1\) (log utility) reduces this exactly, term for term, to the Kelly Criterion's \(f^*=\mu/\sigma^2\) — not an approximation, but a literal algebraic identity, because maximizing expected log-wealth is identical, as an optimization problem, to expected-utility maximization under \(U(c)=\ln c\).</li>
+      <li>Fractional Kelly (e.g. half-Kelly for \(\gamma=2\)) is reframed as the exact utility-optimum for a more risk-averse investor, not a safety discount off one "true" answer.</li>
+      <li>This is the final lesson of the 41-lesson Theory Lab curriculum, closing the loop by deriving the very first sizing formula the series introduced — and it still ends on the same discipline that governs everything in this repo: a piece of math is a tool, not a result, until it's proven on out-of-sample data with real costs.</li>
+    </ul>
   </div>
 
   <h2>Why this matters</h2>
@@ -617,7 +629,8 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Robert C. Merton, <em>"Lifetime Portfolio Selection under Uncertainty: The Continuous-Time Case"</em>, Review of Economics and Statistics, 1969 — the original continuous-time consumption/portfolio problem, and the paper that introduces the constant-fraction CRRA result derived in this lesson.</li>
     <li>Robert C. Merton, <em>"Optimum Consumption and Portfolio Rules in a Continuous-Time Model"</em>, Journal of Economic Theory, 1971 (erratum 1973) — the fuller, more rigorous treatment of the same problem, including the HJB derivation in detail and extensions beyond the single-risky-asset case.</li>
@@ -625,6 +638,7 @@
     <li>Paul A. Samuelson, <em>"Lifetime Portfolio Selection by Dynamic Stochastic Programming"</em>, Review of Economics and Statistics, 1969 — the discrete-time counterpart published the same year, useful for seeing the same optimal-constant-fraction result emerge without continuous-time machinery.</li>
     <li>John Y. Campbell and Luis M. Viceira, <em>Strategic Asset Allocation: Portfolio Choice for Long-Term Investors</em>, Oxford University Press, 2002 — a modern, applied extension of the Merton framework to realistic long-horizon investing questions, including time-varying investment opportunities.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="markowitz-black-litterman.html">← Markowitz &amp; Black-Litterman</a>

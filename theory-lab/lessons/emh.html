@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Foundations &amp; Epistemics / Efficient Market Hypothesis</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Foundations &amp; Epistemics · Lesson 1 of 14</div>
   <h1 class="tl-title">The Efficient Market Hypothesis</h1>
   <p class="tl-dek">Prices already reflect what's knowable — so before you believe you've found an edge, you should first ask why the market left it there.</p>
@@ -20,6 +21,17 @@
     <span>~12 min read</span>
     <span>Prereqs: none — start here</span>
   </div>
+
+<div class="tl-tldr">
+  <div class="tl-tldr-label">TL;DR</div>
+  <ul>
+    <li>EMH's testable core: prices should follow a <strong>martingale</strong> — \(E[\epsilon_t \mid \mathcal{F}_{t-1}] = 0\) — so return autocorrelation \(\rho_1, \rho_2, \dots\) should be statistically indistinguishable from zero if the weak form holds.</li>
+    <li>Fama's three nested forms each rule out a different strategy: <strong>weak</strong> (past price/volume history) rules out technical analysis, <strong>semi-strong</strong> (all public info) rules out fundamental analysis on public data, <strong>strong</strong> (public + private info) would rule out even insider trading — and is essentially never taken as literally true.</li>
+    <li>The <strong>joint-hypothesis problem</strong>: you can never test market efficiency in isolation, only "efficiency + the assumed pricing model" together — so a single anomalous backtest can't tell you whether the market is inefficient or your pricing model just missed a risk factor.</li>
+    <li>This lesson's own worked example: with \(n=500\) daily returns, the noise-level standard error of \(\hat\rho_1\) is \(\approx 1/\sqrt{500} \approx 0.045\); \(\hat\rho_1=0.03\) is unremarkable noise, but \(\hat\rho_1=0.15\) clears ~3 standard errors — a real statistical signal, though still only the <em>start</em> of a research question, not proof of a tradeable edge (no OOS, cost, or mechanism check yet).</li>
+    <li>EMH doesn't forbid all profit — only riskless, cost-free profit — which is exactly why this repo bakes in an OOS split with a ≥30-trade gate, a named no-skill benchmark, and costs-on-by-default: they're EMH's joint-hypothesis and free-lunch logic turned into engineering rules.</li>
+  </ul>
+</div>
 
   <h2>Why this matters</h2>
   <p>
@@ -507,7 +519,8 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Eugene F. Fama, "Efficient Capital Markets: A Review of Theory and Empirical Work," <em>Journal of Finance</em>, 1970 — the paper that formalized the weak/semi-strong/strong taxonomy used throughout this lesson.</li>
     <li>Eugene F. Fama, "Efficient Capital Markets II," <em>Journal of Finance</em>, 1991 — Fama's own update and restatement of the joint-hypothesis problem after two more decades of empirical anomaly literature.</li>
@@ -515,6 +528,7 @@
     <li>Andrew W. Lo, "The Adaptive Markets Hypothesis: Market Efficiency from an Evolutionary Perspective," <em>Journal of Portfolio Management</em>, 2004, and his later book <em>Adaptive Markets: Financial Evolution at the Speed of Thought</em> — the modern reframing of efficiency as ecological/competitive rather than binary.</li>
     <li>Andrei Shleifer, <em>Inefficient Markets: An Introduction to Behavioral Finance</em> — a counterweight literature covering the limits-to-arbitrage arguments (funding constraints, noise-trader risk) for why some inefficiencies can persist.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>

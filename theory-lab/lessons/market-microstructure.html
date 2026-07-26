@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Advanced Portfolio &amp; Market Structure / Market Microstructure</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Advanced Portfolio &amp; Market Structure · Lesson 3 of 5</div>
   <h1 class="tl-title">Market Microstructure: Price Impact &amp; the Bid-Ask Spread</h1>
   <p class="tl-dek">A market maker facing an anonymous order never knows whether it comes from someone who knows something they don't, or someone who simply needs to trade — and that single piece of uncertainty is the formal origin of both the bid-ask spread and the fact that trading a bigger size moves the price against you.</p>
@@ -20,6 +21,16 @@
     <span>~17 min read</span>
     <span>Prereqs: none required — Correlation &amp; Linear Regression primer helpful</span>
   </div>
+
+<div class="tl-tldr">
+  <div class="tl-tldr-label">TL;DR</div>
+  <ul>
+    <li>Glosten-Milgrom derives the bid-ask spread from pure Bayesian adverse selection: Spread \(=\alpha(V_H-V_L)\), where \(\alpha\) is the informed-trading share and \(V_H-V_L\) is the fundamental-value uncertainty — not an arbitrary fee, but the exact gap needed for zero expected profit.</li>
+    <li>This file's own worked numbers: with \(V_H=101\), \(V_L=99\), a spread of 0.60 at \(\alpha=0.3\) doubles to 1.20 at \(\alpha=0.6\), exactly tracking the formula, with the midpoint pinned at 100.00 both times.</li>
+    <li>Kyle's Lambda extends the same logic to order size: \(\Delta p=\lambda Q\) with \(\lambda=\sigma_v/(2\sigma_u)\); the worked example runs the same 500-unit order through \(\sigma_u=100\) (liquid, \(\lambda=0.01\), $5 impact) versus \(\sigma_u=20\) (thin, \(\lambda=0.05\), $25 impact) — a five-fold cost difference from liquidity alone.</li>
+    <li>Both models are the formal "why" behind this repo's fill discipline — the spread every backtest pays is the adverse-selection premium of section 3, and the extra slippage modeled on stop/breakout entries is a high-\(\lambda\) event — connecting directly to <code>fill-realism.html</code>'s empirical test of whether reported edge survives progressively more realistic fills.</li>
+  </ul>
+</div>
 
   <h2>Why this matters</h2>
   <p>
@@ -662,7 +673,8 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Lawrence R. Glosten &amp; Paul R. Milgrom, "Bid, Ask and Transaction Prices in a Specialist Market with Heterogeneously Informed Traders," <em>Journal of Financial Economics</em>, 1985 — the original adverse-selection derivation of the bid-ask spread.</li>
     <li>Albert S. "Pete" Kyle, "Continuous Auctions and Insider Trading," <em>Econometrica</em>, 1985 — the original paper defining the linear price-impact coefficient now universally called Kyle's Lambda.</li>
@@ -670,6 +682,7 @@
     <li><code>theory-lab/lessons/bayesian-inference.html</code> in this repo — the Bayesian-updating machinery the Glosten-Milgrom derivation above applies directly.</li>
     <li><code>fill-realism.html</code> in this repo — the empirical, bar-resolution-ladder test of whether a strategy's edge survives realistic fills, the practical counterpart to the theory in this lesson.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="fractional-brownian-motion.html">← Fractional Brownian Motion</a>

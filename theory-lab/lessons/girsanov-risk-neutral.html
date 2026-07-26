@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Advanced Stochastic Calculus &amp; Derivatives / Girsanov's Theorem &amp; the Risk-Neutral Measure</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Advanced Stochastic Calculus &amp; Derivatives · Lesson 2 of 4</div>
   <h1 class="tl-title">Girsanov's Theorem &amp; the Risk-Neutral Measure</h1>
   <p class="tl-dek">The Black-Scholes lesson called \(N(d_2)\) "the risk-neutral probability the option finishes in the money" and moved on. This lesson is about that phrase specifically — what a "risk-neutral probability" formally is, why it's legitimate to price with it instead of your actual view of the market, and the 1960 theorem that makes the substitution rigorous rather than a hand-wave.</p>
@@ -19,6 +20,17 @@
     <span class="tl-status concept">CONCEPT — the theorem behind Black-Scholes' "risk-neutral probability" claim</span>
     <span>~17 min read</span>
     <span>Prereqs: Itô's Lemma, Black-Scholes-Merton Option Pricing</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>An option's no-arbitrage price is a discounted expectation under the <strong>risk-neutral measure \(\mathbb{Q}\)</strong>, not the real-world measure \(\mathbb{P}\) — so the underlying's true expected return \(\mu\) never enters the formula, only the risk-free rate \(r\).</li>
+      <li><strong>Girsanov's theorem</strong> (1960) is what makes that substitution rigorous: it says you can shift a Brownian motion's drift by \(\theta = (\mu-r)/\sigma\) and still have a valid Brownian motion, just under a different, equivalent probability measure \(\mathbb{Q}\) that assigns the same possible paths different likelihoods.</li>
+      <li>\(\theta=(\mu-r)/\sigma\) is the unique shift that makes the <em>discounted</em> price \(\tilde S_t=e^{-rt}S_t\) a martingale under \(\mathbb{Q}\) — that martingale property, not convenience, is why pricing "ignores" \(\mu\).</li>
+      <li>That discounted-price martingale under \(\mathbb{Q}\) is the exact same object as the EMH lesson's "fair game" martingale under \(\mathbb{P}\) — here it holds by construction rather than as an empirical, testable claim.</li>
+      <li>\(N(d_2)\) is a real, well-defined probability (\(\mathbb{Q}(S_T>K)\)) — it's the <em>measure</em> it's computed under that's a deliberate pricing device, not a real-world forecast, which is why a bullish real-world view is a separate bet, not a reason to reprice the option.</li>
+    </ul>
   </div>
 
   <h2>Why this matters</h2>
@@ -559,7 +571,8 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Igor V. Girsanov, "On Transforming a Certain Class of Stochastic Processes by Absolutely Continuous Substitution of Measures," <em>Theory of Probability &amp; Its Applications</em>, 1960 — the original theorem.</li>
     <li>Steven Shreve, <em>Stochastic Calculus for Finance II: Continuous-Time Models</em>, Springer — the standard, rigorous treatment (Chapter 5 covers Girsanov's theorem and risk-neutral pricing directly); the same reference this Theory Lab's Itô's Lemma lesson points to.</li>
@@ -568,6 +581,7 @@
     <li><code>theory-lab/lessons/emh.html</code> in this repo — the martingale definition this lesson shows re-appearing, by construction, under the risk-neutral measure.</li>
     <li><code>theory-lab/lessons/black-scholes.html</code> in this repo — the lesson whose "risk-neutral probability" claim about \(N(d_2)\) this lesson exists to justify.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="ito-lemma.html">← Itô's Lemma</a>

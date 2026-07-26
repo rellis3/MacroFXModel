@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Macro &amp; FX Theory / The Taylor Rule</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Macro &amp; FX Theory · Lesson 3 of 3</div>
   <h1 class="tl-title">The Taylor Rule</h1>
   <p class="tl-dek">A formula that turns two macro numbers — how far inflation sits from target, and how hot the economy is running — into what a central bank's policy rate "should" be, and why the GAP between that number and what a central bank is actually doing is one of the most closely watched signals in FX.</p>
@@ -19,6 +20,17 @@
     <span class="tl-status concept">CONCEPT — the mechanism behind this repo's yield-spread/FX lead-lag notes</span>
     <span>~15 min read</span>
     <span>Prereqs: None required — Interest Rate Parity helpful for framing</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>The Taylor Rule prescribes a policy rate as \(i = r^{*} + \pi + a(\pi-\pi^{*}) + b(y-y^{*})\): a neutral baseline plus a correction for the inflation gap and a correction for the output gap.</li>
+      <li>Worked example: \(r^{*}=2\%\), \(\pi=3\%\), \(\pi^{*}=2\%\), output gap \(=+1\%\), \(a=b=0.5\) → \(i = 2+3+0.5(1)+0.5(1) = 6\%\).</li>
+      <li>What traders actually watch isn't the level of \(i\) itself but the gap between the Taylor-implied rate and the actual policy rate.</li>
+      <li>"Behind the curve" means actual policy sits below the implied rate (looser than the data justify, hawkish-repricing risk); "ahead of the curve" means actual policy sits above it (tighter than justified, cut risk).</li>
+      <li>This repo has no Taylor-Rule calculator built yet — this lesson is the theory behind the existing yield-spread notes, not a shipped tool.</li>
+    </ul>
   </div>
 
   <h2>Why this matters</h2>
@@ -406,13 +418,15 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>John B. Taylor, "Discretion versus Policy Rules in Practice," <em>Carnegie-Rochester Conference Series on Public Policy</em>, 39, 1993 — the original paper introducing the rule and its illustrative \(a=b=0.5\), \(r^{*}=2\%\) coefficients.</li>
     <li>John B. Taylor, "Housing and Monetary Policy," Federal Reserve Bank of Kansas City's Jackson Hole Economic Symposium, 2007 — Taylor's own argument that the Fed held rates well below the rule-implied level in 2003–2005, an example of the "behind the curve" gap discussed above.</li>
     <li>Board of Governors of the Federal Reserve System, <em>Monetary Policy Report</em> (submitted semiannually to Congress) — see the section on "Monetary Policy Rules and Their Role in the Federal Reserve's Policy Process," which publishes and compares the classic rule alongside the "balanced approach" and other reference-rule variants.</li>
     <li>Athanasios Orphanides, "Monetary Policy Rules Based on Real-Time Data," <em>American Economic Review</em>, 91(4), 2001 — the standard critique showing how large a difference real-time vs. later-revised output-gap estimates make to a computed Taylor Rule.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="purchasing-power-parity.html">← Purchasing Power Parity</a>
