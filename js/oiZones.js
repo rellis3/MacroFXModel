@@ -64,6 +64,12 @@ export function buildOIZones(inst, price, cfg = {}) {
     vannaNote = null,              // vanna-state note (firing tailwind/headwind) — appended to rationale.
     stability = null,              // oiWallStability(...) output (server-injected from oi_history)
     change = null,                 // classifyOIChange(...) output (server-injected)
+    pathBlockCheck = true,         // flag when ANOTHER wall sits between spot and the zone's entry —
+                                   // price interacts with that nearer level FIRST (it may reject/stall
+                                   // before reaching the stronger wall the bot is trading). Note + trim,
+                                   // never blocks. Uses ALL walls (incl. sub-minTier ones the bot skips).
+    blockMinTier = 'moderate',     // a path wall must be ≥ this tier to count as a blocker (skip trivia)
+    blockTrim = 0.9,               // entry-size haircut when a blocking wall sits in the path
   } = cfg;
 
   const gex = inst.exposures?.gex ?? inst.gex ?? 0;
@@ -109,6 +115,26 @@ export function buildOIZones(inst, price, cfg = {}) {
   };
   const persNote = w => (w?.persistence > 1 ? ` · durable ${w.persistence}exp` : '');
 
+  // Path-blocking wall: the FIRST wall price runs into on the way to a zone's entry.
+  // The bot trades the STRONGEST wall (by OI×durability) which may sit further away than
+  // a weaker wall — but price hits the nearer one first and can reject/stall there. Use
+  // the FULL wall list (all tiers, incl. the sub-minTier walls the bot won't trade) so a
+  // nearby moderate wall the selector dropped still registers as a level in the path.
+  const _blockRank = _rank(blockMinTier);
+  const allWalls = [
+    ...(Array.isArray(inst.callWalls) ? inst.callWalls : []).map(w => ({ strike: w?.strike, tier: w?.tier, kind: 'call' })),
+    ...(Array.isArray(inst.putWalls) ? inst.putWalls : []).map(w => ({ strike: w?.strike, tier: w?.tier, kind: 'put' })),
+  ].filter(w => Number.isFinite(w.strike) && _rank(w.tier) >= _blockRank);
+  // Nearest wall STRICTLY between spot and `entry`, excluding the wall being traded
+  // (`ownLevel`). Returns the one closest to price (first hit), or null.
+  const nearestBlocker = (entry, ownLevel) => {
+    if (!pathBlockCheck) return null;
+    const lo = Math.min(price, entry), hi = Math.max(price, entry);
+    const cands = allWalls.filter(w => w.strike > lo + tol && w.strike < hi - tol && Math.abs(w.strike - ownLevel) > tol);
+    if (!cands.length) return null;
+    return cands.sort((a, b) => Math.abs(a.strike - price) - Math.abs(b.strike - price))[0];
+  };
+
   const zones = [];
   // Fallback measured-move TP: a trade with no wall-based target (both null) would go
   // to the broker SL-only. If fallbackTpR > 0, give it a TP at fallbackTpR × the stop
@@ -129,7 +155,14 @@ export function buildOIZones(inst, price, cfg = {}) {
     // low-probability target by expiry — flag it (don't block the trade).
     if (expMove && tp1 != null && (tp1 > expMove.upper || tp1 < expMove.lower))
       rationale = `${rationale} · ⚠ TP beyond implied move (low-prob by expiry)`;
-    zones.push({ ...z, entry: +z.entry.toFixed(6), sl: +z.sl.toFixed(6),
+    // A wall between spot and this entry is the first level price hits — flag it and
+    // trim entry size (price may reject/stall there before reaching the traded wall).
+    let sizeFactor = z.sizeFactor;
+    if (z.blocker) {
+      rationale = `${rationale} · ⚠ ${z.blocker.tier} ${z.blocker.kind} wall ${+z.blocker.strike.toFixed(6)} in the path (price hits it first)`;
+      sizeFactor = +(sizeFactor * blockTrim).toFixed(2);
+    }
+    zones.push({ ...z, sizeFactor, entry: +z.entry.toFixed(6), sl: +z.sl.toFixed(6),
       tp1: tp1 != null ? +tp1.toFixed(6) : null, tp2: tp2 != null ? +tp2.toFixed(6) : null, rationale, regime });
   };
 
@@ -141,7 +174,7 @@ export function buildOIZones(inst, price, cfg = {}) {
       const tp1 = (maxPain != null && maxPain < w.strike) ? maxPain : null;
       const oppo = puts.filter(p => p.strike < w.strike).sort((a, b) => b.strike - a.strike)[0]?.strike ?? null;
       add({ mode: 'fade', side: 'sell', level: w.strike, entry: w.strike, sl: w.strike + buf,
-        tp1, tp2: oppo, sizeFactor: sizeFactor(w),
+        tp1, tp2: oppo, sizeFactor: sizeFactor(w), blocker: nearestBlocker(w.strike, w.strike),
         rationale: `${regime} · call wall ${w.strike} ${w.tier}${w.mult ? ` ${w.mult}×` : ''} → fade (resistance)${tp1 != null ? ` toward max pain ${maxPain}` : ''}${conc ? ` · ${conc}` : ''}${persNote(w)}` });
     }
     for (const w of puts) {
@@ -150,7 +183,7 @@ export function buildOIZones(inst, price, cfg = {}) {
       const tp1 = (maxPain != null && maxPain > w.strike) ? maxPain : null;
       const oppo = calls.filter(c => c.strike > w.strike).sort((a, b) => a.strike - b.strike)[0]?.strike ?? null;
       add({ mode: 'fade', side: 'buy', level: w.strike, entry: w.strike, sl: w.strike - buf,
-        tp1, tp2: oppo, sizeFactor: sizeFactor(w),
+        tp1, tp2: oppo, sizeFactor: sizeFactor(w), blocker: nearestBlocker(w.strike, w.strike),
         rationale: `${regime} · put wall ${w.strike} ${w.tier}${w.mult ? ` ${w.mult}×` : ''} → fade (support)${tp1 != null ? ` toward max pain ${maxPain}` : ''}${conc ? ` · ${conc}` : ''}${persNote(w)}` });
     }
   }
@@ -168,14 +201,14 @@ export function buildOIZones(inst, price, cfg = {}) {
       const bn = breakNote(w.strike, 'call', +1);
       add({ mode: 'break', side: 'buy', level: w.strike, entry: w.strike + brk, sl: w.strike - buf,
         tp1: calls.filter(c => c.strike > w.strike).sort((a, b) => a.strike - b.strike)[0]?.strike ?? null, tp2: null,
-        sizeFactor: +(sizeFactor(w) * bn.trim).toFixed(2),
+        sizeFactor: +(sizeFactor(w) * bn.trim).toFixed(2), blocker: nearestBlocker(w.strike + brk, w.strike),
         rationale: `${regime} · call wall ${w.strike} ${w.tier} → follow the break UP (short-gamma squeeze) past ${+(w.strike + brk).toFixed(6)}${persNote(w)}${bn.note}` });
     }
     for (const w of puts) {
       const bn = breakNote(w.strike, 'put', -1);
       add({ mode: 'break', side: 'sell', level: w.strike, entry: w.strike - brk, sl: w.strike + buf,
         tp1: puts.filter(p => p.strike < w.strike).sort((a, b) => b.strike - a.strike)[0]?.strike ?? null, tp2: null,
-        sizeFactor: +(sizeFactor(w) * bn.trim).toFixed(2),
+        sizeFactor: +(sizeFactor(w) * bn.trim).toFixed(2), blocker: nearestBlocker(w.strike - brk, w.strike),
         rationale: `${regime} · put wall ${w.strike} ${w.tier} → follow the break DOWN (short-gamma squeeze) past ${+(w.strike - brk).toFixed(6)}${persNote(w)}${bn.note}` });
     }
   }
