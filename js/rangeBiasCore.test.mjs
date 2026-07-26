@@ -73,7 +73,10 @@ ok('ema == ref (manual)', ema([1,2,3,4,5,6,7,8,9,10], 4) === (() => { const p=4,
 console.log('[features run + aggregate]');
 for (const dir of ['long', 'short']) {
   const rb = computeRangeBiasServer('EUR/USD', dir, bars5, bars30, daily);
-  ok(`[${dir}] 5 features present`, rb.features.length === 5);
+  // featureHurst dropped from the aggregate 2026-07-25 (evidence in
+  // rangeBiasCore.js above computeRangeBiasServer) — 4 active features now.
+  ok(`[${dir}] 4 features present`, rb.features.length === 4);
+  ok(`[${dir}] hurst not in the aggregate`, !rb.features.some(f => f.key === 'hurst'));
   ok(`[${dir}] conviction in [-1,1]`, rb.conviction >= -1 && rb.conviction <= 1, `conv=${rb.conviction.toFixed(3)}`);
   ok(`[${dir}] confirm+conflict counts consistent`, rb.confirmCount + rb.conflictCount === rb.features.filter(f => f.signal !== null).length);
 }

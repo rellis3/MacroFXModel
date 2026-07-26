@@ -1,7 +1,7 @@
 /**
  * Range-Bias Core — the live entry-bias feature set as ONE shared brick.
  *
- * These five features + their helpers were private to levels.js (the engine that
+ * These features + their helpers were private to levels.js (the engine that
  * writes ai_entries → Telegram). Lifting them into a brick lets the Asia-range
  * BACKTEST score levels with the SAME range-bias conviction the live bot grades
  * on — closing part of the live↔backtest gap (CONFLUENCE_LIVE_VS_BACKTEST.md).
@@ -181,15 +181,34 @@ export function featureHurst(dailyBars, entryDir) {
   return { signal: null, key: 'hurst', val: `Hurst ${hStr} neutral` };
 }
 
-// ── Aggregate range-bias conviction from the 5 features ──────────────────────
+// ── Aggregate range-bias conviction from the 4 active features ───────────────
 // `sym` is accepted for signature parity with levels.js (unused in the math).
+//
+// featureHurst was DROPPED from this aggregate 2026-07-25 per the pre-
+// registered decision rule in ANALYTICS_ENGINE_DESIGN.md (LEGO_MODULES §3
+// drift #11), on real-data evidence from js/hurstBench.js run across 10
+// instruments: incumbent median OOS |IC| vs forward efficiency ratio = 0.026,
+// DFA = 0.010 — 0/10 instruments cleared the 0.20 usable-relationship bar for
+// EITHER estimator. Neither reading predicts anything, so the rule says drop,
+// not swap.
+//
+// It was worse than inert. The incumbent (R/S on levels) read H≈0.88 on all
+// 10 instruments with ZERO exceptions in the trending bucket, so
+// featureHurst voted the OPPOSITE of every entryDir on every call — an
+// unconditional conflict vote, not noise. Because conviction is a ratio
+// (confirm−conflict)/total, adding that fifth guaranteed-conflict vote
+// distorts asymmetrically: a clean 3-confirm/1-conflict setup that used to
+// score conviction=0.50 (clears the >0.30 "RB confirm" tag threshold in
+// server.js) dropped to 0.20 (fails it) purely from the extra vote — a
+// manufactured false negative on well-confirmed setups, while already-weak
+// setups were barely affected. Function kept (used by hurstBench.js and
+// tested standalone) — just no longer wired into the live conviction score.
 export function computeRangeBiasServer(sym, entryDir, bars5m, bars30m, dailyBars) {
   const features = [
     featureADX(bars30m, entryDir),
     featureSwingRegime(bars30m, entryDir),
     featureTwap(bars5m, entryDir),
     featureEmaRsi(dailyBars, entryDir),
-    featureHurst(dailyBars, entryDir),
   ];
   const active        = features.filter(f => f.signal !== null);
   const confirmCount  = active.filter(f => f.signal === entryDir).length;

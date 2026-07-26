@@ -954,28 +954,44 @@ unifying them changes existing numbers, so adopt deliberately with an OOS re-run
     **not yet migrated** (asiaRangeEngine is production/range-line-bot path → highest
     caution; rangeFibEngine has no test). Retire by pointing both at `sessionRanges`
     with an equivalence check — behaviour must stay byte-identical.
-11. **🔴 Hurst estimator is saturated in the LIVE range-bias feature (found
-    2026-07-25 from the live Analytics Desk).** `rangeBiasCore.computeHurst`
-    runs R/S over lags `[2,4,8,16]` on **price levels**. Two independent
-    defects compound: (a) R/S over windows that short is severely
-    small-sample-biased upward, and (b) a non-stationary level series returns
-    ≈H+1 by construction. Measured on synthetics: trend **0.935**, oscillator
-    **0.938**, random walk **0.862/0.921** — it cannot separate a trend from a
-    coin flip. Live evidence: the Desk showed GOLD 0.903 and EURUSD 0.882 —
-    two opposite markets, effectively the same number. **Consequence:**
-    `featureHurst` thresholds at 0.45/0.55, so with readings pinned near 0.9 it
-    returns "trending" essentially always — i.e. that feature is a constant,
-    not a signal, inside `computeRangeBiasServer` (live `levels.js` + the
-    `asiaRangeEngine` backtest, which at least share the same copy, so live and
-    backtest agree *on the degenerate value*). Duplicate copies of the same
-    function also exist in `js/range-bias.js` and `js/backtest-engine.js`.
-    **Fix built, not applied:** `statsCore.hurstDFA` (DFA on returns —
-    calibrated: white noise 0.499, random walk 1.522, anti-persistent 0.366,
-    persistent 0.826; `js/hurstDfa.test.mjs` pins BOTH the correct values and
-    the incumbent's saturation). `analyticsDesk` uses it. **Not swapped into
-    the live path** — that changes range-bias conviction on a live bot and its
-    banked results, so it needs a deliberate A/B + OOS re-run, not a silent
-    substitution.
+11. **✅ RESOLVED 2026-07-25 — Hurst was saturated AND actively harmful in the
+    LIVE range-bias feature; `featureHurst` dropped from the aggregate.**
+    Found from the live Analytics Desk: `rangeBiasCore.computeHurst` runs R/S
+    over lags `[2,4,8,16]` on **price levels**, which reads ≈H+1 on a
+    non-stationary series and is severely small-sample-biased upward besides
+    — GOLD 0.903, EURUSD 0.882, two opposite markets read as the same number.
+    **The pre-registered A/B (`js/hurstBench.js`, run on real D1 across 10
+    instruments) confirmed the DROP outcome**: incumbent median OOS |IC| vs
+    forward efficiency ratio = **0.026**, DFA = **0.010** — 0/10 instruments
+    cleared the 0.20 usable-relationship bar for *either* estimator. Neither
+    reading predicts anything; better calibration (DFA) does not earn a swap
+    under the pre-registered rule.
+    It was worse than inert, not merely neutral: H≈0.88 on **all 10**
+    instruments with zero exceptions in the trending bucket meant
+    `featureHurst` (thresholds 0.45/0.55) voted the OPPOSITE of every
+    `entryDir`, unconditionally, on every call. Because conviction is the
+    ratio `(confirm−conflict)/total`, that guaranteed fifth conflict vote
+    distorted asymmetrically: a clean 3-confirm/1-conflict setup that should
+    read conviction=0.50 (clears the `>0.30` "RB confirm" tag in `server.js`)
+    was dragged to 0.20 (fails it) — a manufactured false negative on
+    well-confirmed setups specifically, while already-weak setups were barely
+    touched.
+    **Fix applied:** `featureHurst` removed from `computeRangeBiasServer`'s
+    aggregate (`js/rangeBiasCore.js`, evidence + reasoning in the code
+    comment); the function itself is kept (used by `hurstBench.js`, tested
+    standalone). Live consumers — `levels.js` grading and the `asiaRangeEngine`
+    confluence backtest — both go through this one shared aggregate, so both
+    move together; no drift introduced. `js/rangeBiasCore.test.mjs` updated
+    (4 features, not 5; asserts `hurst` key absent from the aggregate).
+    `perLineStrategy` (the confirmed range-line edge) was never a consumer —
+    untouched throughout. Duplicate copies of the saturated `computeHurst`
+    still exist in `js/range-bias.js` and `js/backtest-engine.js` (not wired
+    to this aggregate, not touched by this fix — candidates for the same
+    review if a consumer surfaces). `statsCore.hurstDFA` (the calibrated
+    replacement estimator, used by `analyticsDesk`) stays available for any
+    future feature that wants a Hurst reading; this resolution says the
+    *live range-bias feature specifically* carries no information, not that
+    Hurst is unusable everywhere.
 
 ---
 
