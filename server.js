@@ -7334,6 +7334,9 @@ const OI_BOT_CFG_DEFAULTS = {
   fadeInPin: true, followBreaks: true, maxPainReversion: true,
   requireEstablished: false, avoidLiquidating: true,
   maxZonesPerSide: 4,                // bot trades the K strongest walls per side (display count is separate)
+  pathBlockCheck: true,              // flag/trim when a nearer wall sits between spot and a zone's entry
+  blockMinTier: 'moderate',          // that path wall must be ≥ this tier to count (skip trivia)
+  blockTrim: 0.9,                    // entry-size haircut when a blocking wall is in the path
   fx_enabled: false, fx_pairs: [],   // opt-in FX universe (weak asset); [] + fx_enabled = none added
   fxFallbackTpR: 2.0,                // FX-only: give a wall-less trade (breakout past the outermost
                                      // partial-OI wall) a measured-move TP at this R-multiple of the

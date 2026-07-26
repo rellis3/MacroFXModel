@@ -58,6 +58,29 @@ console.log('[Breakout OI-flow confirmation — building = backed, unwinding = w
   ok('no change data → full size (== confirmed size)', upNone.sizeFactor === upB.sizeFactor, `${upNone.sizeFactor} == ${upB.sizeFactor}`);
 }
 
+console.log('[Path-blocking wall — a nearer wall between spot and the traded zone]');
+{
+  // Trade the STRONG call wall at 4300, but a MODERATE call wall sits at 4250 —
+  // between spot 4200 and the entry. Price hits 4250 first → flag + trim entry size.
+  const inst = { ...base, exposures: { gex: 5000 },
+    callWalls: [{ strike: 4300, oi: 9000, tier: 'strong', mult: 3.2 }, { strike: 4250, oi: 5000, tier: 'moderate', mult: 2.0 }],
+    putWalls:  [{ strike: 4100, oi: 8000, tier: 'strong', mult: 3.0 }] };
+  const z = buildOIZones(inst, 4200, cfg);                    // minTier 'strong' → only 4300 traded
+  const sell = z.find(x => x.side === 'sell' && x.level === 4300);
+  ok('strong 4300 is still the traded wall (4250 moderate not traded)', sell && !z.some(x => x.level === 4250), z.map(x => x.level).join(','));
+  ok('nearer 4250 wall flagged in the path', /moderate call wall 4250 in the path/.test(sell.rationale), sell.rationale);
+  ok('blocker object carried on the zone', sell.blocker && sell.blocker.strike === 4250);
+  const clear = buildOIZones({ ...inst, callWalls: [{ strike: 4300, oi: 9000, tier: 'strong', mult: 3.2 }] }, 4200, cfg).find(x => x.level === 4300);
+  ok('no blocker → no path warning + full size', clear && !/in the path/.test(clear.rationale) && clear.sizeFactor > sell.sizeFactor,
+    `${clear?.sizeFactor} > ${sell?.sizeFactor}`);
+  // A weak (sub-blockMinTier) wall in the path does NOT trip it — avoids trivia.
+  const weakInPath = buildOIZones({ ...inst, callWalls: [{ strike: 4300, oi: 9000, tier: 'strong' }, { strike: 4250, oi: 1000, tier: 'weak' }] }, 4200, cfg).find(x => x.level === 4300);
+  ok('a WEAK path wall is ignored (below blockMinTier)', weakInPath && !/in the path/.test(weakInPath.rationale), weakInPath.rationale);
+  // pathBlockCheck:false disables it entirely.
+  const off = buildOIZones(inst, 4200, { ...cfg, pathBlockCheck: false }).find(x => x.level === 4300);
+  ok('pathBlockCheck:false → no flag, no trim', off && !/in the path/.test(off.rationale) && off.sizeFactor === clear.sizeFactor, off.rationale);
+}
+
 console.log('[Max-pain reversion — near expiry + extended]');
 {
   const inst = { ...base, exposures: { gex: 5000 }, expiries: { OG3: { dte: 1, maxPain: 4200 } } };
