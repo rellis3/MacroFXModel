@@ -116,7 +116,17 @@ passed the harness — which is what lets us build all of it now.
   thread in the repo and it *is* one of the twenty engines, not a detour from
   them.
 
-### Pre-registered: the Hurst estimator decision (drift #11)
+### RESOLVED 2026-07-25: the Hurst estimator decision (drift #11)
+
+**Outcome: DROP.** Run on real D1 across 10 instruments (`hurst-bench.html`):
+incumbent median OOS |IC| = 0.026, DFA = 0.010 — 0/10 instruments cleared 0.20
+for either estimator. `featureHurst` removed from `computeRangeBiasServer`
+(`js/rangeBiasCore.js`); full evidence in `LEGO_MODULES.md` §3 #11. It turned
+out to be worse than the "predicts nothing" case anticipated below: because
+the incumbent read >0.55 on every one of the 10 instruments, the feature was
+an unconditional conflict vote against every entry, distorting conviction
+asymmetrically rather than just adding noise. Kept below for the record —
+the pre-registration is what let this resolve on evidence instead of debate.
 
 Run `hurst-bench.html` on all 26 instruments. **Both outcomes named before
 the run**, so a null cannot be re-narrated into a maybe:

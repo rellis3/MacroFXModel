@@ -78,12 +78,17 @@
     <div class="legend">
       <b>Effective bets</b> is the inverse participation ratio of the correlation matrix' eigenvalues —
       N uncorrelated sleeves give N, perfectly correlated sleeves give 1. The number to read is
-      <b>crisis vs calm</b>: if it collapses in the crisis rows, the book's diversification is
-      an illusion precisely when it is needed, and per-sleeve drawdowns should not be treated as
-      independent when sizing. <b>sleeves −</b> counts how many sleeves lost money in that window
-      (all of them = one bet wearing N hats). <b>Uncovered</b> windows are outside the data range and
-      are reported as such rather than filled in. Allocation modes are compared on realized geometry
-      only; weights are computed on trailing windows (no lookahead).
+      <b>crisis vs calm</b> as a <b>percentage</b>: badges are relative and material —
+      <span class="badge b-good">holds</span> ≥95%, <span class="badge b-meh">slightly lower</span> 80–95%,
+      <span class="badge b-bad">degrades</span> 60–80%, <span class="badge b-bad">collapses</span> &lt;60%.
+      Any decrease is <i>not</i> a collapse: effective bets estimated on a 40-day window carry real
+      estimation error (windows under 60 days are marked ⚠), so a few-percent drop is
+      indistinguishable from noise. The <b>signed number beside avg ρ</b> is the change vs the calm
+      baseline — a crisis where correlation <i>falls</i> is evidence <b>against</b> the convergence
+      thesis, and is shown rather than buried. <b>sleeves −</b> counts how many lost money in that
+      window (all of them = one bet wearing N hats). Allocation modes are compared on realized
+      geometry only; weights come from trailing windows (no lookahead), and a mode winning here is
+      not evidence it keeps winning.
     </div>
   </div>
 </main>
@@ -98,19 +103,33 @@ $('src').onchange = () => { $('pasteWrap').style.display = $('src').value==='pas
 function renderReplay(r){
   if(!r?.ok) return `<div class="card neg">Stress replay failed: ${r?.error||'unknown'}</div>`;
   const calm = r.calm;
+  // Badge thresholds are RELATIVE and material: any decrease is not a collapse.
+  // Effective bets estimated on a 40-day window is noisy, so a few-percent
+  // drop is indistinguishable from estimation error — calling that "collapses"
+  // manufactures a scary narrative out of noise.
   const rows = r.windows.map(w => {
-    if(!w.covered) return `<tr><td>${w.label}</td><td colspan="8" class="mut">uncovered — outside the data range (${w.from} → ${w.to})</td></tr>`;
-    const collapse = Number.isFinite(w.effectiveBets) && Number.isFinite(calm.effectiveBets) && w.effectiveBets < calm.effectiveBets;
+    if(!w.covered) return `<tr><td>${w.label}</td><td colspan="9" class="mut">uncovered — outside the data range (${w.from} → ${w.to})</td></tr>`;
+    const ratio = (Number.isFinite(w.effectiveBets) && calm.effectiveBets > 0) ? w.effectiveBets / calm.effectiveBets : NaN;
+    let badge = '<span class="badge b-good">holds</span>';
+    if (Number.isFinite(ratio)) {
+      if (ratio < 0.60) badge = '<span class="badge b-bad">collapses</span>';
+      else if (ratio < 0.80) badge = '<span class="badge b-bad">degrades</span>';
+      else if (ratio < 0.95) badge = '<span class="badge b-meh">slightly lower</span>';
+    }
+    // Correlation vs calm — a crisis window where ρ FALLS is evidence against
+    // the convergence thesis, and must be visible rather than buried.
+    const dRho = (Number.isFinite(w.avgCorr) && Number.isFinite(calm.avgCorr)) ? w.avgCorr - calm.avgCorr : NaN;
+    const noisy = w.n < 60;
     return `<tr>
-      <td>${w.label} <span class="mut">${w.n}d</span></td>
+      <td>${w.label} <span class="mut">${w.n}d</span>${noisy?' <span class="amb" title="short window — effective-bets estimate is noisy">⚠</span>':''}</td>
       <td class="${sgn(w.book.total)}">${pc(w.book.total)}</td>
       <td class="neg">${pc(w.book.maxDD)}</td>
       <td class="neg">${pc(w.book.worst,2)}</td>
       <td>${w.sleevesNegative}/${r.nSleeves}</td>
-      <td>${f2(w.avgCorr)}</td>
-      <td><b class="${collapse?'neg':''}">${f2(w.effectiveBets)}</b></td>
+      <td>${f2(w.avgCorr)} <span class="${dRho>0?'neg':'pos'}" style="font-size:11px">${Number.isFinite(dRho)?(dRho>=0?'+':'')+dRho.toFixed(2):''}</span></td>
+      <td><b class="${Number.isFinite(ratio)&&ratio<0.8?'neg':''}">${f2(w.effectiveBets)}</b> <span class="mut" style="font-size:11px">${Number.isFinite(ratio)?(ratio*100).toFixed(0)+'%':''}</span></td>
       <td class="mut">${f2(calm.effectiveBets)}</td>
-      <td>${collapse ? '<span class="badge b-bad">collapses</span>' : '<span class="badge b-good">holds</span>'}</td>
+      <td>${badge}</td>
     </tr>`;
   }).join('');
   return `<div class="card">
