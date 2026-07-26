@@ -1,10 +1,9 @@
 # Theory Lab
 
 A from-scratch, math-explained curriculum in the quantitative concepts behind
-this repo's FX/macro research — Efficient Markets, Bayesian inference,
-multiple testing, mean reversion, GARCH, Hidden Markov Models, Kalman
-filters, cointegration, PCA, Black-Scholes/Merton, jump-diffusion, Kelly
-sizing, and Extreme Value Theory.
+this repo's FX/macro research — 33 numbered lessons plus 8 background primers,
+covering everything from standard deviation to the Heston model, Random
+Matrix Theory, and Merton's continuous-time portfolio problem.
 
 **Start at [`hub.html`](./hub.html)** (also linked from the dashboard's
 **Learn ▾** nav menu on `index.html`).
@@ -23,30 +22,45 @@ unpacking — or read this curriculum straight through as its own path.
 
 - Plain-English intuition before any math.
 - The math, step by step, with every symbol defined.
-- An inline SVG chart illustrating the concept (a random-walk scatter, a
-  regime-shaded price path, the Kelly growth curve, etc. — hand-built,
-  no chart library, no external requests).
-- A numerically worked example.
+- An inline SVG chart illustrating the concept — many are interactive
+  (sliders/buttons that recompute the math live), all hand-built, no chart
+  library, no external requests.
+- A numerically worked example, **plus a named, concrete real-world trading
+  scenario** that walks the same numbers through an actual trading decision
+  (the amber `.tl-box.scenario` box).
 - An honest note on where the idea connects to an actual module in this
   repo — clearly marked as either **already in use** (a real, running
   brick) or a **concept/candidate** (explained here, not built or tested).
 - Common pitfalls, a self-test, and further reading (real, correctly
   attributed sources).
 
-## Math Primer (start here if you're new)
+## Curriculum map
 
-The 14 numbered lessons assume you already know mean/variance/standard
-deviation, what a normal distribution is, what correlation and a
-regression line are, and the difference between simple and log returns.
-Four short primer lessons fill that gap from zero:
-
-1. Descriptive Statistics & the Normal Distribution
-2. Probability & Random Variables
-3. Correlation & Linear Regression
-4. Returns, Log-Returns & Compounding
-
-They're linked as their own "0 · Math Primer" section at the top of
-`hub.html`, ahead of Lesson 1.
+- **0 · Math Primer** (4) — descriptive stats/normal distribution,
+  probability/CLT, correlation/regression, returns/compounding. Start here
+  if you're new to statistics.
+- **0.5 · Deeper Foundations** (4) — linear algebra, calculus, stationarity/
+  ACF/PACF, time value of money. Not sequential — read one alongside
+  whichever later lesson calls for it.
+- **1 · Foundations & Epistemics** (3) — EMH, Bayesian inference, multiple
+  testing.
+- **2 · Time Series & Regimes** (5) — Ornstein-Uhlenbeck, Hurst/variance
+  ratio, GARCH, Hidden Markov Models, Kalman filters.
+- **3 · Cross-Asset & Structure** (2) — cointegration, PCA.
+- **4 · Options & Derivatives** (2) — Black-Scholes-Merton, Merton
+  jump-diffusion.
+- **5 · Risk & Sizing** (2) — Kelly criterion, Extreme Value Theory.
+- **6 · Macro & FX Theory** (3) — Interest Rate Parity & the carry trade,
+  Purchasing Power Parity, the Taylor Rule.
+- **7 · Applied Statistics & Validation** (7) — regression diagnostics,
+  AIC/BIC, ARIMA & VAR, copulas, Sharpe/Sortino/Calmar & the Deflated
+  Sharpe Ratio, walk-forward & purged cross-validation, bootstrapping &
+  Monte Carlo.
+- **8 · Advanced Stochastic Calculus & Derivatives** (4) — Itô's Lemma,
+  Girsanov's theorem & the risk-neutral measure, the Heston model, SABR.
+- **9 · Advanced Portfolio & Market Structure** (5) — Random Matrix Theory,
+  fractional Brownian motion & long memory, market microstructure,
+  Markowitz & Black-Litterman, Merton's continuous-time portfolio problem.
 
 Nothing in this folder is a trading signal. A lesson explaining a technique
 well is not evidence the technique works here — per `CLAUDE.md`'s Lego
@@ -57,7 +71,8 @@ and cleared the repo's real out-of-sample bar.
 
 ```
 theory-lab/
-  hub.html            — index / curriculum map, linked from index.html
-  assets/theory.css   — shared stylesheet (dark theme, MathJax-rendered math)
-  lessons/*.html       — the 14 lessons
+  hub.html            — curriculum map, linked from index.html
+  assets/theory.css   — shared stylesheet (dark theme, MathJax, interactive-
+                         chart + real-world-scenario box classes)
+  lessons/*.html       — 41 lesson files (8 primers + 33 numbered lessons)
 ```

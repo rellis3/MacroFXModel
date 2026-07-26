@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Itô's Lemma — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Advanced Stochastic Calculus &amp; Derivatives / Itô's Lemma</div>
+  <div class="tl-kicker">Advanced Stochastic Calculus &amp; Derivatives · Lesson 1 of 4</div>
+  <h1 class="tl-title">Itô's Lemma</h1>
+  <p class="tl-dek">Ordinary calculus's chain rule quietly assumes a curve is smooth enough that its own squared wiggle vanishes in the limit. A Brownian path is not that smooth, and the term ordinary calculus throws away turns out to be exactly the \(\sigma^2/2\) the Black-Scholes lesson uses in its \(d_1\)/\(d_2\) formula without ever deriving it. This lesson derives it.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — the derivation Black-Scholes assumed</span>
+    <span>~18 min read</span>
+    <span>Prereqs: Calculus for Finance, Black-Scholes-Merton Option Pricing</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    Say this plainly up front: this is the most mathematically demanding
+    lesson in this curriculum so far. It is not demanding because the final
+    result is complicated — it fits in one line — but because getting there
+    requires accepting a genuinely strange fact about Brownian motion that has
+    no counterpart anywhere in ordinary calculus. There is no shortcut around
+    that strangeness; the honest thing to do is derive it carefully rather
+    than wave at it.
+  </p>
+  <p>
+    <code>black-scholes.html</code>, elsewhere in this Theory Lab, builds the
+    entire option-pricing model on the assumption that the underlying follows
+    geometric Brownian motion, \(dS_t = \mu S_t\,dt + \sigma S_t\,dW_t\), and
+    then states — without deriving it — that "solving this SDE (a standard
+    but non-trivial step using Itô's Lemma, which is outside this lesson's
+    scope) shows that \(\ln S_t\) is normally distributed." That same lesson's
+    closed-form formula contains a term, \(r + \sigma^2/2\) inside \(d_1\) and
+    \(r - \sigma^2/2\) inside \(d_2\), that is simply asserted. Anyone reading
+    carefully should ask: where does that \(\sigma^2/2\) actually come from?
+    It is not an arbitrary correction, not a risk premium, not a fudge factor
+    calibrated to make the model fit — it is the direct, mechanical
+    consequence of applying the chain rule <em>correctly</em> to a random
+    process, and "correctly" here requires a genuinely different piece of
+    calculus than the one taught in an ordinary calculus course. That piece is
+    Itô's Lemma, named for the Japanese mathematician Kiyosi Itô, who
+    published the result in 1944. This lesson builds it from first principles,
+    starting from the ordinary calculus chain rule everyone already knows.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A coastline that never gets straighter, no matter how far you zoom in</h3>
+    <p>
+      Mathematician Benoit Mandelbrot popularized a famous observation about
+      measuring the coastline of Britain: the closer you look, the more
+      jagged detail you find — bays within bays, inlets within inlets — so
+      the "length" of the coastline keeps growing the finer your ruler gets,
+      rather than converging to a fixed number the way it would for a smooth
+      curve. A smooth curve behaves the opposite way: zoom in far enough on
+      any point of a smooth curve (a parabola, a sine wave, the trajectory of
+      a thrown ball) and it looks, for practical purposes, like a straight
+      line. That "it becomes a straight line under a microscope" property is
+      not a minor technical footnote — it is the entire justification for
+      differential calculus. The derivative \(f'(x)\) is defined as the slope
+      of that straight line, and the chain rule works because a composition
+      of two "eventually straight under a microscope" objects is itself
+      "eventually straight under a microscope."
+    </p>
+    <p>
+      A Brownian motion path is the coastline, not the parabola. However far
+      you zoom in on a Brownian path, it never looks like a straight line —
+      it stays exactly as jagged, at every scale, all the way down. This
+      isn't poetic exaggeration; it is a precise mathematical property
+      (Brownian paths are, with probability one, continuous everywhere but
+      differentiable nowhere), and it is the single fact that forces a
+      different calculus. The chart below shows this directly: a smooth curve
+      and a Brownian-motion-style path, both zoomed in progressively — watch
+      what happens to each.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    Four steps: (1) recall exactly what the ordinary chain rule assumes, by
+    re-deriving it from a Taylor expansion; (2) identify precisely which of
+    that derivation's assumptions Brownian motion violates; (3) redo the
+    Taylor expansion honestly, keeping the term ordinary calculus is entitled
+    to drop; (4) apply the result to \(\ln S_t\) under geometric Brownian
+    motion and watch the Black-Scholes \(\sigma^2/2\) term fall out.
+  </p>
+
+  <h3>1. Ordinary calculus's chain rule — and the assumption hiding inside it</h3>
+  <p>
+    Everyone learns the chain rule as a rule to apply, rarely as something
+    with an assumption baked in. For a smooth, ordinary (deterministic)
+    function of time \(x(t)\), and a smooth function \(f\) applied to it:
+  </p>
+  <div class="tl-math">
+    \[ \frac{d}{dt}f(x(t)) = f'(x(t))\,\frac{dx}{dt} \]
+  </div>
+  <p>
+    Here is where that comes from. Taylor-expand \(f\) around the current
+    point \(x\), for a small change \(\Delta x\):
+  </p>
+  <div class="tl-math">
+    \[ f(x+\Delta x) = f(x) + f'(x)\Delta x + \tfrac{1}{2}f''(x)(\Delta x)^2 + O(\Delta x^3) \]
+  </div>
+  <p>
+    Now let \(\Delta x\) be the change in \(x(t)\) over a small time step
+    \(\Delta t\): to leading order, \(\Delta x \approx x'(t)\Delta t\). Plug
+    that in and look at the size of each term as \(\Delta t \to 0\): the
+    first term, \(f'(x)\Delta x\), is order \(\Delta t\) (it shrinks
+    proportionally to \(\Delta t\)). The second term, \(\tfrac{1}{2}f''(x)
+    (\Delta x)^2\), is order \((\Delta t)^2\) — because \(\Delta x\) itself is
+    order \(\Delta t\), squaring it gives order \(\Delta t^2\), which shrinks
+    <em>much</em> faster than \(\Delta t\) as \(\Delta t \to 0\) (if \(\Delta
+    t = 0.01\), \(\Delta t^2 = 0.0001\) — a hundred times smaller). Dividing
+    the whole expansion by \(\Delta t\) and taking the limit, every term of
+    order \(\Delta t\) or smaller vanishes except the very first — which is
+    exactly the chain rule above. <strong>The ordinary chain rule is really a
+    statement that the second-order (and higher) Taylor terms are negligible
+    in the limit, because a smooth function's own increment \(\Delta x\) is
+    itself order \(\Delta t\), so its square is order \(\Delta t^2\).</strong>
+    That is the assumption. It holds for every differentiable function you
+    meet in an ordinary calculus course. It does not hold for Brownian motion.
+  </p>
+
+  <h3>2. Why Brownian motion breaks the assumption: \((dW_t)^2 = dt\)</h3>
+  <p>
+    A Wiener process (standard Brownian motion) \(W_t\) has independent,
+    mean-zero increments with \(\text{Var}(W_{t+\Delta t} - W_t) = \Delta t\)
+    over any interval of length \(\Delta t\). That variance fact is the whole
+    story. It means a Brownian increment \(\Delta W\) is <em>typically</em> of
+    size \(\sqrt{\Delta t}\) (its standard deviation), not of size \(\Delta t\)
+    the way a smooth function's increment is. Consequently, its <em>square</em>
+    is typically of size \(\Delta t\) — not \(\Delta t^2\). This single
+    difference in scaling is the entire reason ordinary calculus fails for
+    Brownian motion.
+  </p>
+  <p>
+    Make this precise the way stochastic calculus does, via <strong>quadratic
+    variation</strong>. Take a partition of \([0,T]\) into \(n\) small
+    subintervals of length \(\Delta t = T/n\), and sum the squared increments
+    of \(W_t\) across the whole partition:
+  </p>
+  <div class="tl-math">
+    \[ \sum_{i=0}^{n-1}\left(W_{t_{i+1}} - W_{t_i}\right)^2 \]
+  </div>
+  <p>
+    Each term in that sum has expectation \(\Delta t\) (since each increment
+    has variance \(\Delta t\)), and there are \(n = T/\Delta t\) terms, so the
+    sum's expectation is exactly \(T\) — for <em>every</em> partition, no
+    matter how fine. As the partition is refined (\(n \to \infty\), \(\Delta t
+    \to 0\)), this sum doesn't just have expectation \(T\); it converges (in
+    mean-square, a standard but technical mode of convergence covered rigorously
+    in any stochastic calculus text — cited here rather than proven) to the
+    fixed number \(T\) itself. Compare this to the same construction for an
+    ordinary smooth function \(x(t)\): each term
+    \((x(t_{i+1})-x(t_i))^2 \approx (x'(t_i))^2(\Delta t)^2\), so the whole sum
+    is bounded by (a constant) \(\times \Delta t \times T \to 0\) as \(\Delta t
+    \to 0\). <strong>A smooth function's quadratic variation is zero. Brownian
+    motion's quadratic variation over \([0,T]\) is \(T\) — not zero.</strong>
+    This is the single fact from which all of Itô calculus follows, and it is
+    written, as shorthand, as the identity:
+  </p>
+  <div class="tl-math">
+    \[ (dW_t)^2 = dt \]
+  </div>
+  <p>
+    Read this carefully for what it is and isn't. It is <strong>not</strong> a
+    claim that any single random increment \(dW_t\), squared, literally equals
+    the deterministic number \(dt\) — \(dW_t\) is still random, mean zero,
+    with actual outcomes scattered on both sides of zero. It is shorthand for
+    the quadratic-variation fact just derived: <em>summed up over an interval,
+    the squared increments accumulate at exactly rate \(dt\) per unit time,
+    with no randomness surviving in the limit</em> — sometimes called "Itô's
+    multiplication table," alongside the companion (and far less surprising)
+    facts \(dt \cdot dt = 0\) and \(dt \cdot dW_t = 0\), which say that terms
+    with a \(dt\) factor are always negligible next to terms of pure order
+    \(dt\). This is exactly why the chart below shows a jagged Brownian-style
+    path staying jagged at every zoom level while a smooth curve visibly
+    straightens: "staying jagged under magnification" and "having positive
+    quadratic variation" are the same underlying fact viewed two ways, one
+    visual and one algebraic.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Smooth curve vs. a Brownian-style path, at increasing zoom</div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap">
+      <div style="flex:1;min-width:190px">
+        <svg viewBox="0 0 200 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Panel 1, full path, 1x zoom. A smooth blue curve wanders gently. A jagged red Brownian-style path is rough and irregular throughout. A dashed box marks the small window panel 2 zooms into.">
+          <rect x="1" y="1" width="198" height="138" fill="none" style="stroke:var(--border);stroke-width:1"/>
+          <text x="100" y="14" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">1× — full path</text>
+          <g transform="translate(0,18)">
+            <line x1="12" y1="110" x2="188" y2="110" style="stroke:var(--text3);stroke-width:0.75"/>
+            <rect x="82.4" y="10" width="11" height="100" fill="none" style="stroke:var(--amber);stroke-width:1;stroke-dasharray:2,2"/>
+            <polyline points="12.00,60.00 12.80,56.94 13.60,53.89 14.40,50.86 15.20,47.87 16.00,44.93 16.80,42.06 17.60,39.25 18.40,36.54 19.20,33.91 20.00,31.39 20.80,28.99 21.60,26.71 22.40,24.55 23.20,22.54 24.00,20.66 24.80,18.93 25.60,17.35 26.40,15.93 27.20,14.66 28.00,13.55 28.80,12.59 29.60,11.79 30.40,11.14 31.20,10.64 32.00,10.29 32.80,10.08 33.60,10.00 34.40,10.05 35.20,10.23 36.00,10.51 36.80,10.91 37.60,11.40 38.40,11.97 39.20,12.62 40.00,13.34 40.80,14.11 41.60,14.92 42.40,15.77 43.20,16.65 44.00,17.53 44.80,18.41 45.60,19.29 46.40,20.14 47.20,20.97 48.00,21.76 48.80,22.50 49.60,23.18 50.40,23.81 51.20,24.36 52.00,24.84 52.80,25.24 53.60,25.55 54.40,25.78 55.20,25.92 56.00,25.96 56.80,25.92 57.60,25.78 58.40,25.55 59.20,25.24 60.00,24.84 60.80,24.36 61.60,23.81 62.40,23.18 63.20,22.50 64.00,21.76 64.80,20.97 65.60,20.14 66.40,19.29 67.20,18.41 68.00,17.53 68.80,16.65 69.60,15.77 70.40,14.92 71.20,14.11 72.00,13.34 72.80,12.62 73.60,11.97 74.40,11.40 75.20,10.91 76.00,10.51 76.80,10.23 77.60,10.05 78.40,10.00 79.20,10.08 80.00,10.29 80.80,10.64 81.60,11.14 82.40,11.79 83.20,12.59 84.00,13.55 84.80,14.66 85.60,15.93 86.40,17.35 87.20,18.93 88.00,20.66 88.80,22.54 89.60,24.55 90.40,26.71 91.20,28.99 92.00,31.39 92.80,33.91 93.60,36.54 94.40,39.25 95.20,42.06 96.00,44.93 96.80,47.87 97.60,50.86 98.40,53.89 99.20,56.94 100.00,60.00 100.80,63.06 101.60,66.11 102.40,69.14 103.20,72.13 104.00,75.07 104.80,77.94 105.60,80.75 106.40,83.46 107.20,86.09 108.00,88.61 108.80,91.01 109.60,93.29 110.40,95.45 111.20,97.46 112.00,99.34 112.80,101.07 113.60,102.65 114.40,104.07 115.20,105.34 116.00,106.45 116.80,107.41 117.60,108.21 118.40,108.86 119.20,109.36 120.00,109.71 120.80,109.92 121.60,110.00 122.40,109.95 123.20,109.77 124.00,109.49 124.80,109.09 125.60,108.60 126.40,108.03 127.20,107.38 128.00,106.66 128.80,105.89 129.60,105.08 130.40,104.23 131.20,103.35 132.00,102.47 132.80,101.59 133.60,100.71 134.40,99.86 135.20,99.03 136.00,98.24 136.80,97.50 137.60,96.82 138.40,96.19 139.20,95.64 140.00,95.16 140.80,94.76 141.60,94.45 142.40,94.22 143.20,94.08 144.00,94.04 144.80,94.08 145.60,94.22 146.40,94.45 147.20,94.76 148.00,95.16 148.80,95.64 149.60,96.19 150.40,96.82 151.20,97.50 152.00,98.24 152.80,99.03 153.60,99.86 154.40,100.71 155.20,101.59 156.00,102.47 156.80,103.35 157.60,104.23 158.40,105.08 159.20,105.89 160.00,106.66 160.80,107.38 161.60,108.03 162.40,108.60 163.20,109.09 164.00,109.49 164.80,109.77 165.60,109.95 166.40,110.00 167.20,109.92 168.00,109.71 168.80,109.36 169.60,108.86 170.40,108.21 171.20,107.41 172.00,106.45 172.80,105.34 173.60,104.07 174.40,102.65 175.20,101.07 176.00,99.34 176.80,97.46 177.60,95.45 178.40,93.29 179.20,91.01 180.00,88.61 180.80,86.09 181.60,83.46 182.40,80.75 183.20,77.94 184.00,75.07 184.80,72.13 185.60,69.14 186.40,66.11 187.20,63.06 188.00,60.00" style="stroke:var(--blue);stroke-width:1.75" fill="none"/>
+            <polyline points="12.00,68.87 12.80,68.00 13.60,69.00 14.39,69.88 15.19,68.72 15.99,73.22 16.79,74.99 17.58,68.45 18.38,65.18 19.18,66.92 19.98,60.84 20.77,61.63 21.57,67.22 22.37,67.98 23.17,64.79 23.96,69.77 24.76,64.75 25.56,65.94 26.36,76.17 27.15,70.24 27.95,67.77 28.75,67.93 29.55,78.76 30.34,75.27 31.14,70.27 31.94,66.60 32.74,70.46 33.54,61.60 34.33,60.84 35.13,66.18 35.93,74.16 36.73,73.82 37.52,76.86 38.32,76.63 39.12,75.43 39.92,65.82 40.71,67.24 41.51,69.86 42.31,73.11 43.11,71.91 43.90,78.18 44.70,74.44 45.50,71.36 46.30,62.00 47.09,64.56 47.89,62.29 48.69,61.57 49.49,61.34 50.29,69.50 51.08,67.44 51.88,63.34 52.68,64.73 53.48,62.23 54.27,53.33 55.07,45.75 55.87,42.68 56.67,36.56 57.46,35.65 58.26,37.08 59.06,35.70 59.86,37.14 60.65,39.64 61.45,33.37 62.25,29.75 63.05,33.91 63.84,26.84 64.64,23.94 65.44,23.38 66.24,24.04 67.03,30.67 67.83,30.37 68.63,24.73 69.43,25.75 70.23,28.08 71.02,24.39 71.82,22.86 72.62,28.26 73.42,23.75 74.21,23.57 75.01,19.81 75.81,21.84 76.61,22.31 77.40,21.57 78.20,17.19 79.00,16.34 79.80,27.55 80.59,23.54 81.39,28.40 82.19,28.00 82.99,25.15 83.78,16.37 84.58,14.48 85.38,13.78 86.18,10.00 86.98,11.14 87.77,11.67 88.57,12.60 89.37,15.15 90.17,16.87 90.96,18.90 91.76,20.18 92.56,21.76 93.36,17.10 94.15,21.15 94.95,22.41 95.75,18.16 96.55,18.89 97.34,29.47 98.14,30.73 98.94,26.89 99.74,29.43 100.53,22.93 101.33,29.28 102.13,26.06 102.93,23.66 103.72,14.64 104.52,16.62 105.32,24.06 106.12,22.96 106.92,25.04 107.71,26.09 108.51,24.25 109.31,19.35 110.11,16.18 110.90,28.29 111.70,35.14 112.50,36.19 113.30,34.32 114.09,30.40 114.89,34.08 115.69,30.97 116.49,33.63 117.28,38.54 118.08,47.64 118.88,49.93 119.68,46.33 120.47,48.16 121.27,49.55 122.07,51.94 122.87,49.71 123.67,47.12 124.46,52.62 125.26,50.98 126.06,57.87 126.86,57.74 127.65,59.07 128.45,54.91 129.25,54.78 130.05,65.71 130.84,56.48 131.64,55.85 132.44,60.71 133.24,59.91 134.03,62.41 134.83,71.23 135.63,79.51 136.43,79.71 137.22,77.72 138.02,86.30 138.82,95.10 139.62,99.97 140.41,95.43 141.21,91.90 142.01,94.95 142.81,93.86 143.61,98.35 144.40,100.96 145.20,99.27 146.00,107.42 146.80,99.72 147.59,93.93 148.39,90.47 149.19,86.20 149.99,88.44 150.78,89.15 151.58,84.63 152.38,86.91 153.18,91.45 153.97,89.80 154.77,95.05 155.57,86.94 156.37,89.94 157.16,93.68 157.96,86.69 158.76,82.72 159.56,91.91 160.35,88.56 161.15,89.80 161.95,95.01 162.75,103.32 163.55,97.88 164.34,102.72 165.14,105.03 165.94,110.00 166.74,104.75 167.53,97.66 168.33,100.48 169.13,98.21 169.93,96.71 170.72,94.05 171.52,95.64 172.32,91.91 173.12,86.41 173.91,86.18 174.71,79.12 175.51,78.75 176.31,83.31 177.10,84.84 177.90,78.56 178.70,72.14 179.50,68.21 180.30,68.37 181.09,70.57 181.89,77.94 182.69,69.49 183.49,71.54 184.28,67.65 185.08,65.41 185.88,73.93 186.68,70.20 187.47,74.41 188.00,72.15" style="stroke:var(--red);stroke-width:1.25" fill="none"/>
+          </g>
+        </svg>
+      </div>
+      <div style="flex:1;min-width:190px">
+        <svg viewBox="0 0 200 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Panel 2, 16x zoom into the dashed window from panel 1. The smooth blue curve now looks almost like a straight line. The jagged red path is exactly as rough as before, at this new scale. A dashed box marks the smaller window panel 3 zooms into.">
+          <rect x="1" y="1" width="198" height="138" fill="none" style="stroke:var(--border);stroke-width:1"/>
+          <text x="100" y="14" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">16× zoom</text>
+          <g transform="translate(0,18)">
+            <line x1="12" y1="110" x2="188" y2="110" style="stroke:var(--text3);stroke-width:0.75"/>
+            <rect x="12" y="10" width="11" height="100" fill="none" style="stroke:var(--amber);stroke-width:1;stroke-dasharray:2,2"/>
+            <polyline points="12.00,10.00 12.80,10.19 13.60,10.38 14.40,10.58 15.20,10.77 16.00,10.97 16.80,11.17 17.60,11.38 18.40,11.58 19.20,11.79 20.00,12.01 20.80,12.22 21.60,12.44 22.40,12.66 23.20,12.88 24.00,13.10 24.80,13.33 25.60,13.56 26.40,13.79 27.20,14.02 28.00,14.26 28.80,14.50 29.60,14.74 30.40,14.99 31.20,15.23 32.00,15.48 32.80,15.74 33.60,15.99 34.40,16.25 35.20,16.51 36.00,16.77 36.80,17.03 37.60,17.30 38.40,17.57 39.20,17.84 40.00,18.12 40.80,18.40 41.60,18.68 42.40,18.96 43.20,19.24 44.00,19.53 44.80,19.82 45.60,20.11 46.40,20.41 47.20,20.71 48.00,21.01 48.80,21.31 49.60,21.61 50.40,21.92 51.20,22.23 52.00,22.55 52.80,22.86 53.60,23.18 54.40,23.50 55.20,23.82 56.00,24.15 56.80,24.48 57.60,24.81 58.40,25.14 59.20,25.48 60.00,25.81 60.80,26.15 61.60,26.50 62.40,26.84 63.20,27.19 64.00,27.54 64.80,27.90 65.60,28.25 66.40,28.61 67.20,28.97 68.00,29.33 68.80,29.70 69.60,30.07 70.40,30.44 71.20,30.81 72.00,31.19 72.80,31.57 73.60,31.95 74.40,32.33 75.20,32.72 76.00,33.11 76.80,33.50 77.60,33.89 78.40,34.29 79.20,34.69 80.00,35.09 80.80,35.49 81.60,35.90 82.40,36.30 83.20,36.71 84.00,37.13 84.80,37.54 85.60,37.96 86.40,38.38 87.20,38.81 88.00,39.23 88.80,39.66 89.60,40.09 90.40,40.52 91.20,40.96 92.00,41.40 92.80,41.84 93.60,42.28 94.40,42.72 95.20,43.17 96.00,43.62 96.80,44.07 97.60,44.53 98.40,44.99 99.20,45.44 100.00,45.91 100.80,46.37 101.60,46.84 102.40,47.31 103.20,47.78 104.00,48.25 104.80,48.73 105.60,49.21 106.40,49.69 107.20,50.17 108.00,50.66 108.80,51.14 109.60,51.63 110.40,52.13 111.20,52.62 112.00,53.12 112.80,53.62 113.60,54.12 114.40,54.63 115.20,55.13 116.00,55.64 116.80,56.15 117.60,56.67 118.40,57.18 119.20,57.70 120.00,58.22 120.80,58.74 121.60,59.27 122.40,59.79 123.20,60.32 124.00,60.85 124.80,61.39 125.60,61.92 126.40,62.46 127.20,63.00 128.00,63.54 128.80,64.09 129.60,64.64 130.40,65.19 131.20,65.74 132.00,66.29 132.80,66.85 133.60,67.40 134.40,67.96 135.20,68.53 136.00,69.09 136.80,69.66 137.60,70.23 138.40,70.80 139.20,71.37 140.00,71.94 140.80,72.52 141.60,73.10 142.40,73.68 143.20,74.27 144.00,74.85 144.80,75.44 145.60,76.03 146.40,76.62 147.20,77.21 148.00,77.81 148.80,78.41 149.60,79.01 150.40,79.61 151.20,80.21 152.00,80.82 152.80,81.42 153.60,82.03 154.40,82.65 155.20,83.26 156.00,83.87 156.80,84.49 157.60,85.11 158.40,85.73 159.20,86.36 160.00,86.98 160.80,87.61 161.60,88.24 162.40,88.87 163.20,89.50 164.00,90.14 164.80,90.77 165.60,91.41 166.40,92.05 167.20,92.69 168.00,93.34 168.80,93.98 169.60,94.63 170.40,95.28 171.20,95.93 172.00,96.58 172.80,97.24 173.60,97.89 174.40,98.55 175.20,99.21 176.00,99.87 176.80,100.54 177.60,101.20 178.40,101.87 179.20,102.54 180.00,103.21 180.80,103.88 181.60,104.55 182.40,105.23 183.20,105.91 184.00,106.58 184.80,107.26 185.60,107.95 186.40,108.63 187.20,109.31 188.00,110.00" style="stroke:var(--blue);stroke-width:1.75" fill="none"/>
+            <polyline points="12.00,108.67 12.77,95.81 13.55,110.00 14.32,109.17 15.09,107.76 15.87,105.86 16.64,97.94 17.41,97.77 18.19,97.13 18.96,97.92 19.73,96.77 20.51,93.67 21.28,92.01 22.05,98.35 22.83,97.47 23.60,91.19 24.38,93.31 25.15,93.75 25.92,88.82 26.70,84.68 27.47,81.11 28.24,74.64 29.02,70.47 29.79,68.30 30.56,72.92 31.34,63.04 32.11,58.98 32.88,57.65 33.66,50.96 34.43,46.11 35.20,49.64 35.98,51.27 36.75,43.04 37.52,47.48 38.30,49.53 39.07,52.96 39.84,46.69 40.62,53.51 41.39,49.18 42.16,40.44 42.94,49.18 43.71,47.12 44.48,42.77 45.26,44.04 46.03,47.06 46.80,36.77 47.58,39.87 48.35,42.61 49.13,39.83 49.90,35.35 50.67,44.95 51.45,39.28 52.22,39.66 52.99,31.13 53.77,28.99 54.54,41.82 55.31,45.13 56.09,40.95 56.86,36.05 57.63,29.82 58.41,27.48 59.18,27.72 59.95,36.82 60.73,40.11 61.50,36.79 62.27,42.46 63.05,39.08 63.82,37.78 64.59,34.57 65.37,32.39 66.14,33.70 66.91,32.96 67.69,32.91 68.46,38.02 69.23,34.18 70.01,39.81 70.78,33.88 71.55,32.13 72.33,19.80 73.10,15.11 73.88,17.01 74.65,20.51 75.42,22.74 76.20,30.12 76.97,23.56 77.74,19.57 78.52,23.76 79.29,30.13 80.06,28.42 80.84,32.73 81.61,31.11 82.38,31.22 83.16,36.26 83.93,34.00 84.70,28.73 85.48,20.38 86.25,14.53 87.02,10.00 87.80,14.64 88.57,14.87 89.34,14.16 90.12,17.33 90.89,19.50 91.66,26.09 92.44,30.88 93.21,27.81 93.98,25.68 94.76,26.57 95.53,22.15 96.30,21.36 97.08,20.92 97.85,26.92 98.63,28.11 99.40,25.59 100.17,32.84 100.95,29.38 101.72,32.11 102.49,26.98 103.27,22.24 104.04,25.12 104.81,23.65 105.59,27.70 106.36,29.50 107.13,29.94 107.91,31.96 108.68,31.66 109.45,26.89 110.23,22.25 111.00,35.07 111.77,39.80 112.55,40.15 113.32,41.40 114.09,41.12 114.87,41.61 115.64,47.92 116.41,52.28 117.19,57.38 117.96,50.94 118.73,43.23 119.51,40.30 120.28,45.26 121.05,41.25 121.83,42.26 122.60,41.76 123.38,40.79 124.15,43.56 124.92,43.17 125.70,46.09 126.47,43.99 127.24,47.05 128.02,48.27 128.79,51.61 129.56,51.95 130.34,42.27 131.11,49.79 131.88,42.54 132.66,42.90 133.43,37.13 134.20,37.43 134.98,40.59 135.75,43.49 136.52,50.57 137.30,52.47 138.07,56.65 138.84,54.54 139.62,51.39 140.39,50.79 141.16,51.56 141.94,54.84 142.71,48.19 143.48,51.21 144.26,60.33 145.03,60.98 145.80,58.90 146.58,51.85 147.35,58.47 148.13,52.04 148.90,57.17 149.67,57.51 150.45,64.40 151.22,68.17 151.99,72.47 152.77,71.90 153.54,67.71 154.31,61.97 155.09,59.21 155.86,61.45 156.63,64.36 157.41,62.74 158.18,66.57 158.95,68.63 159.73,70.72 160.50,74.20 161.27,69.16 162.05,67.16 162.82,73.22 163.59,72.76 164.37,82.74 165.14,85.88 165.91,71.94 166.69,66.09 167.46,64.96 168.23,57.57 169.01,63.98 169.78,62.22 170.55,69.78 171.33,61.01 172.10,59.72 172.88,58.50 173.65,68.16 174.42,71.19 175.20,77.46 175.97,79.15 176.74,83.31 177.52,78.42 178.29,83.94 179.06,66.49 179.84,66.41 180.61,66.71 181.38,62.33 182.16,73.08 182.93,69.60 183.70,63.56 184.48,57.77 185.25,55.27 186.02,54.54 186.80,56.99 187.57,48.17 188.00,58.11" style="stroke:var(--red);stroke-width:1.25" fill="none"/>
+          </g>
+        </svg>
+      </div>
+      <div style="flex:1;min-width:190px">
+        <svg viewBox="0 0 200 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Panel 3, 256x zoom, nested inside panel 2's dashed window. The smooth blue curve is now indistinguishable from a straight line. The jagged red path is still exactly as rough as in panels 1 and 2 — it never smooths out.">
+          <rect x="1" y="1" width="198" height="138" fill="none" style="stroke:var(--border);stroke-width:1"/>
+          <text x="100" y="14" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">256× zoom</text>
+          <g transform="translate(0,18)">
+            <line x1="12" y1="110" x2="188" y2="110" style="stroke:var(--text3);stroke-width:0.75"/>
+            <polyline points="12.00,10.00 12.80,10.42 13.60,10.83 14.40,11.25 15.20,11.67 16.00,12.09 16.80,12.51 17.60,12.92 18.40,13.34 19.20,13.76 20.00,14.18 20.80,14.60 21.60,15.02 22.40,15.44 23.20,15.87 24.00,16.29 24.80,16.71 25.60,17.13 26.40,17.55 27.20,17.98 28.00,18.40 28.80,18.82 29.60,19.25 30.40,19.67 31.20,20.10 32.00,20.52 32.80,20.95 33.60,21.37 34.40,21.80 35.20,22.23 36.00,22.65 36.80,23.08 37.60,23.51 38.40,23.93 39.20,24.36 40.00,24.79 40.80,25.22 41.60,25.65 42.40,26.08 43.20,26.51 44.00,26.94 44.80,27.37 45.60,27.80 46.40,28.23 47.20,28.66 48.00,29.09 48.80,29.53 49.60,29.96 50.40,30.39 51.20,30.82 52.00,31.26 52.80,31.69 53.60,32.13 54.40,32.56 55.20,33.00 56.00,33.43 56.80,33.87 57.60,34.30 58.40,34.74 59.20,35.18 60.00,35.61 60.80,36.05 61.60,36.49 62.40,36.93 63.20,37.37 64.00,37.80 64.80,38.24 65.60,38.68 66.40,39.12 67.20,39.56 68.00,40.00 68.80,40.44 69.60,40.89 70.40,41.33 71.20,41.77 72.00,42.21 72.80,42.65 73.60,43.10 74.40,43.54 75.20,43.98 76.00,44.43 76.80,44.87 77.60,45.32 78.40,45.76 79.20,46.21 80.00,46.65 80.80,47.10 81.60,47.54 82.40,47.99 83.20,48.44 84.00,48.89 84.80,49.33 85.60,49.78 86.40,50.23 87.20,50.68 88.00,51.13 88.80,51.58 89.60,52.03 90.40,52.48 91.20,52.93 92.00,53.38 92.80,53.83 93.60,54.28 94.40,54.73 95.20,55.19 96.00,55.64 96.80,56.09 97.60,56.54 98.40,57.00 99.20,57.45 100.00,57.91 100.80,58.36 101.60,58.82 102.40,59.27 103.20,59.73 104.00,60.18 104.80,60.64 105.60,61.10 106.40,61.55 107.20,62.01 108.00,62.47 108.80,62.93 109.60,63.39 110.40,63.84 111.20,64.30 112.00,64.76 112.80,65.22 113.60,65.68 114.40,66.14 115.20,66.61 116.00,67.07 116.80,67.53 117.60,67.99 118.40,68.45 119.20,68.91 120.00,69.38 120.80,69.84 121.60,70.30 122.40,70.77 123.20,71.23 124.00,71.70 124.80,72.16 125.60,72.63 126.40,73.09 127.20,73.56 128.00,74.03 128.80,74.49 129.60,74.96 130.40,75.43 131.20,75.90 132.00,76.36 132.80,76.83 133.60,77.30 134.40,77.77 135.20,78.24 136.00,78.71 136.80,79.18 137.60,79.65 138.40,80.12 139.20,80.59 140.00,81.07 140.80,81.54 141.60,82.01 142.40,82.48 143.20,82.96 144.00,83.43 144.80,83.90 145.60,84.38 146.40,84.85 147.20,85.33 148.00,85.80 148.80,86.28 149.60,86.75 150.40,87.23 151.20,87.70 152.00,88.18 152.80,88.66 153.60,89.14 154.40,89.61 155.20,90.09 156.00,90.57 156.80,91.05 157.60,91.53 158.40,92.01 159.20,92.49 160.00,92.97 160.80,93.45 161.60,93.93 162.40,94.41 163.20,94.89 164.00,95.38 164.80,95.86 165.60,96.34 166.40,96.82 167.20,97.31 168.00,97.79 168.80,98.28 169.60,98.76 170.40,99.25 171.20,99.73 172.00,100.22 172.80,100.70 173.60,101.19 174.40,101.67 175.20,102.16 176.00,102.65 176.80,103.14 177.60,103.62 178.40,104.11 179.20,104.60 180.00,105.09 180.80,105.58 181.60,106.07 182.40,106.56 183.20,107.05 184.00,107.54 184.80,108.03 185.60,108.52 186.40,109.02 187.20,109.51 188.00,110.00" style="stroke:var(--blue);stroke-width:1.75" fill="none"/>
+            <polyline points="12.00,100.43 12.69,100.88 13.38,98.57 14.06,93.66 14.75,91.70 15.44,96.53 16.13,97.33 16.81,91.08 17.50,81.12 18.19,73.49 18.88,73.90 19.56,69.35 20.25,70.32 20.94,64.97 21.63,68.78 22.31,59.70 23.00,56.52 23.69,51.55 24.38,45.20 25.06,52.61 25.75,59.64 26.44,64.11 27.13,62.18 27.81,60.33 28.50,50.86 29.19,52.57 29.88,57.73 30.56,65.27 31.25,60.73 31.94,72.79 32.63,82.81 33.31,86.28 34.00,83.33 34.69,92.34 35.38,97.28 36.06,104.65 36.75,106.14 37.44,104.62 38.13,110.00 38.81,106.87 39.50,102.05 40.19,96.49 40.88,91.49 41.56,89.59 42.25,91.22 42.94,85.59 43.63,78.63 44.31,72.92 45.00,77.35 45.69,71.51 46.38,72.84 47.06,79.03 47.75,86.26 48.44,90.53 49.13,102.59 49.81,100.08 50.50,95.03 51.19,92.75 51.88,88.92 52.56,89.42 53.25,89.94 53.94,90.30 54.63,90.20 55.31,85.19 56.00,89.47 56.69,92.23 57.38,93.71 58.06,94.25 58.75,96.03 59.44,96.26 60.13,96.48 60.81,98.09 61.50,96.51 62.19,98.85 62.88,96.36 63.56,97.42 64.25,96.80 64.94,89.88 65.63,87.96 66.31,89.37 67.00,89.71 67.69,91.89 68.38,93.26 69.06,86.61 69.75,83.20 70.44,93.17 71.13,86.96 71.81,88.33 72.50,85.11 73.19,91.25 73.88,88.34 74.56,89.74 75.25,94.00 75.94,96.46 76.63,91.31 77.31,94.38 78.00,91.20 78.69,83.10 79.38,80.45 80.06,78.05 80.75,74.00 81.44,65.43 82.13,54.53 82.81,52.10 83.50,49.05 84.19,47.32 84.88,43.54 85.56,49.51 86.25,54.33 86.94,53.24 87.63,51.50 88.31,49.88 89.00,54.35 89.69,57.71 90.38,52.71 91.06,59.74 91.75,62.23 92.44,66.65 93.13,70.32 93.81,68.87 94.50,66.08 95.19,60.56 95.88,55.35 96.56,51.71 97.25,54.91 97.94,48.34 98.63,53.58 99.31,54.77 100.00,62.20 100.69,58.80 101.38,65.61 102.06,67.16 102.75,62.77 103.44,59.27 104.13,54.03 104.81,57.45 105.50,51.01 106.19,60.53 106.88,64.35 107.56,51.71 108.25,47.28 108.94,50.52 109.63,58.18 110.31,48.80 111.00,50.84 111.69,56.92 112.38,43.72 113.06,46.86 113.75,46.30 114.44,52.09 115.13,48.85 115.81,42.79 116.50,51.16 117.19,63.85 117.88,68.31 118.56,70.21 119.25,71.09 119.94,68.52 120.63,72.88 121.31,68.44 122.00,62.81 122.69,61.53 123.38,54.23 124.06,53.37 124.75,50.20 125.44,48.36 126.13,53.94 126.81,57.78 127.50,50.54 128.19,54.53 128.88,60.75 129.56,62.06 130.25,58.66 130.94,60.04 131.63,50.93 132.31,51.02 133.00,44.34 133.69,50.94 134.38,50.00 135.06,59.16 135.75,49.29 136.44,46.63 137.13,36.49 137.81,25.45 138.50,32.65 139.19,34.89 139.88,34.21 140.56,35.23 141.25,37.10 141.94,40.25 142.63,49.88 143.31,47.13 144.00,43.50 144.69,50.81 145.38,56.23 146.06,49.99 146.75,40.10 147.44,39.17 148.13,36.01 148.81,31.95 149.50,30.71 150.19,35.64 150.88,45.93 151.56,37.11 152.25,36.97 152.94,35.03 153.63,39.94 154.31,37.01 155.00,34.32 155.69,36.21 156.38,31.47 157.06,32.19 157.75,28.48 158.44,25.99 159.13,32.87 159.81,35.07 160.50,28.85 161.19,35.44 161.88,25.90 162.56,19.32 163.25,17.18 163.94,18.26 164.63,25.68 165.31,21.68 166.00,13.28 166.69,10.81 167.38,10.00 168.06,20.84 168.75,24.00 169.44,28.69 170.13,32.88 170.81,37.26 171.50,44.66 172.19,53.44 172.88,56.09 173.56,62.27 174.25,65.93 174.94,76.24 175.63,73.60 176.31,70.08 177.00,62.22 177.69,51.28 178.38,33.79 179.06,38.17 179.75,31.93 180.44,38.08 181.13,33.94 181.81,37.98 182.50,35.00 183.19,36.65 183.88,41.43 184.56,43.51 185.25,52.32 185.94,58.11 186.63,58.07 187.31,57.78 188.00,59.85" style="stroke:var(--red);stroke-width:1.25" fill="none"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>Smooth, ordinary function</span>
+      <span><i style="background:var(--red)"></i>Brownian-motion-style path</span>
+      <span><i style="background:var(--amber)"></i>Window the next panel zooms into</span>
+    </div>
+    <div class="tl-chart-caption">
+      Same underlying pair of curves, re-plotted (with the y-axis autoscaled
+      to fill each panel) at three successive 16× zoom levels, each nested
+      inside the dashed window of the previous panel. The <strong>blue smooth
+      curve</strong> visibly straightens with each zoom — by 256×, it is
+      indistinguishable from a straight line, exactly as ordinary calculus
+      assumes. The <strong>red Brownian-style path</strong> is generated by a
+      midpoint-displacement construction whose displacement variance scales
+      with segment length — the same variance-scales-with-time property real
+      Brownian motion has — and it stays exactly as jagged at 256× as it was
+      at 1×. It never resolves into a straight line, at any zoom level,
+      because its quadratic variation over any interval is nonzero however
+      small the interval — this is the visual content of \((dW_t)^2 = dt\).
+    </div>
+  </div>
+
+  <h3>3. Building Itô's Lemma: the same Taylor expansion, one extra term</h3>
+  <p>
+    Now redo the derivation from step 1, honestly, for a random process
+    instead of a smooth function. Let \(X_t\) follow a general <strong>Itô
+    process</strong> (this is the same form as the GBM in the Black-Scholes
+    lesson, just written for a generic \(X_t\) rather than specifically the
+    price \(S_t\)):
+  </p>
+  <div class="tl-math">
+    \[ dX_t = \mu\,dt + \sigma\,dW_t \]
+  </div>
+  <p>
+    Take a twice-differentiable function \(f(X_t)\) and Taylor-expand it —
+    exactly the same second-order expansion used in step 1, and the same one
+    used to derive volatility drag in the Calculus for Finance lesson and the
+    Kelly Criterion lesson:
+  </p>
+  <div class="tl-math">
+    \[ df = f'(X_t)\,dX_t + \tfrac{1}{2}f''(X_t)\,(dX_t)^2 + \cdots \]
+  </div>
+  <p>
+    Everything so far is identical to ordinary calculus. The difference is
+    entirely in what happens to \((dX_t)^2\). Expand it:
+  </p>
+  <div class="tl-math">
+    \[ (dX_t)^2 = \mu^2(dt)^2 + 2\mu\sigma\,dt\,dW_t + \sigma^2(dW_t)^2 \]
+  </div>
+  <p>
+    Apply Itô's multiplication table to each of the three terms. \((dt)^2\) is
+    order \(dt^2\) — negligible, exactly as in ordinary calculus. \(dt\,dW_t\)
+    is also negligible (a \(dt\) factor multiplying anything vanishes faster
+    than order \(dt\)). But the last term, \(\sigma^2(dW_t)^2\), is where
+    Brownian motion refuses to cooperate with the ordinary-calculus habit of
+    dropping second-order terms: by the quadratic-variation fact from step 2,
+    \((dW_t)^2 = dt\), so this term equals \(\sigma^2\,dt\) — <strong>order
+    \(dt\), the same order as the drift term, not negligible.</strong>
+  </p>
+  <div class="tl-math">
+    \[ (dX_t)^2 = \sigma^2\,dt \]
+  </div>
+  <p>
+    Substitute that back into the Taylor expansion:
+  </p>
+  <div class="tl-math">
+    \[ df = f'(X_t)\big(\mu\,dt + \sigma\,dW_t\big) + \tfrac{1}{2}f''(X_t)\,\sigma^2\,dt \]
+  </div>
+  <p>
+    Collect the \(dt\) terms together and the \(dW_t\) term separately. This
+    is <strong>Itô's Lemma</strong>:
+  </p>
+  <div class="tl-math">
+    \[ df = \left(f'(X_t)\mu + \tfrac{1}{2}f''(X_t)\sigma^2\right)dt + f'(X_t)\sigma\,dW_t \]
+  </div>
+  <div class="tl-symbols"><table>
+    <tr><td>\(X_t\)</td><td>The underlying random (Itô) process — a variable that evolves partly predictably (drift) and partly randomly (diffusion). In the Black-Scholes context this is the asset price \(S_t\); Itô's Lemma is stated generally because it applies to a function of <em>any</em> Itô process, not just GBM.</td></tr>
+    <tr><td>\(dX_t = \mu\,dt + \sigma\,dW_t\)</td><td>The assumed dynamics of \(X_t\): a drift \(\mu\) (predictable part, per unit time) plus a diffusion \(\sigma\,dW_t\) (random shock, scaled by \(\sigma\)). Same structural form as the GBM equation in the Black-Scholes lesson.</td></tr>
+    <tr><td>\(f(\cdot)\)</td><td>Any twice-continuously-differentiable function you want to apply to \(X_t\) — e.g. \(f(x)=\ln x\) below, or a call option's value as a function of the underlying.</td></tr>
+    <tr><td>\(f'(X_t)\), \(f''(X_t)\)</td><td>The first and second derivatives of \(f\), evaluated at the current value \(X_t\) — ordinary calculus objects, nothing new about them individually.</td></tr>
+    <tr><td>\((dW_t)^2 = dt\)</td><td>The one substitution ordinary calculus has no rule for: Brownian motion's quadratic variation accumulates at rate \(dt\) per unit time, rather than vanishing, because a Brownian increment is order \(\sqrt{dt}\) rather than order \(dt\). Derived in step 2 above.</td></tr>
+    <tr><td>\(\tfrac{1}{2}f''(X_t)\sigma^2\,dt\)</td><td>The <strong>Itô correction term</strong> — the entire content of this lesson. It is the ordinary second-order Taylor term, \(\tfrac{1}{2}f''(x)(\Delta x)^2\), evaluated with \((\Delta x)^2 \to \sigma^2 dt\) instead of \(\to 0\). Everything else in the formula (the \(f'(X_t)\mu\,dt\) drift term and the \(f'(X_t)\sigma\,dW_t\) diffusion term) is exactly what the ordinary chain rule would have produced.</td></tr>
+  </table></div>
+  <p>
+    It is worth restating the entire point of this derivation in one sentence,
+    because it's easy to lose in the algebra: <strong>Itô's Lemma is the
+    Taylor expansion you already know, applied to a random process instead of
+    a deterministic one, plus exactly one extra term that ordinary calculus is
+    entitled to throw away and stochastic calculus is not.</strong> There is
+    no additional machinery beyond that one substitution — no new kind of
+    derivative, no new function, nothing conceptually exotic. The entire
+    apparent strangeness of "stochastic calculus" reduces to accepting that
+    \((dW_t)^2 = dt\) rather than \(0\), and then doing completely standard
+    algebra with that one fact in hand.
+  </p>
+
+  <h3>4. Applying Itô's Lemma to \(\ln S_t\) — where Black-Scholes's \(\sigma^2/2\) actually comes from</h3>
+  <p>
+    Now do exactly what <code>black-scholes.html</code> deferred. Let \(X_t =
+    S_t\), following geometric Brownian motion \(dS_t = \mu S_t\,dt + \sigma
+    S_t\,dW_t\), and apply Itô's Lemma with \(f(x) = \ln x\). Its derivatives
+    are \(f'(x) = 1/x\) and \(f''(x) = -1/x^2\). Plug \(X_t = S_t\), \(f'(S_t)
+    = 1/S_t\), \(f''(S_t) = -1/S_t^2\), drift \(\mu S_t\), and diffusion
+    \(\sigma S_t\) into the formula from step 3:
+  </p>
+  <div class="tl-math">
+    \[ d(\ln S_t) = \left(\frac{1}{S_t}\cdot \mu S_t + \tfrac{1}{2}\cdot\left(-\frac{1}{S_t^2}\right)\cdot(\sigma S_t)^2\right)dt + \frac{1}{S_t}\cdot\sigma S_t\,dW_t \]
+  </div>
+  <p>
+    Every \(S_t\) cancels cleanly (the \(1/S_t\) in \(f'\) against the \(S_t\)
+    in the drift and diffusion; the \(1/S_t^2\) in \(f''\) against the
+    \(S_t^2\) from squaring the diffusion). What's left:
+  </p>
+  <div class="tl-math">
+    \[ d(\ln S_t) = \left(\mu - \frac{\sigma^2}{2}\right)dt + \sigma\,dW_t \]
+  </div>
+  <p>
+    <strong>There it is.</strong> The instantaneous drift of \(\ln S_t\) is
+    not \(\mu\) — the price's own drift — it is \(\mu - \sigma^2/2\). The
+    \(\sigma^2/2\) did not appear because of risk, discounting, or any
+    financial argument; it appeared purely because \(f''(x) = -1/x^2\) is
+    negative and \((dX_t)^2 = \sigma^2 dt\) is positive, so the Itô correction
+    term \(\tfrac{1}{2}f''(S_t)\sigma^2 S_t^2\,dt\) is <em>always negative</em>
+    for the log function — a direct, mechanical consequence of applying the
+    chain rule correctly, not an assumption bolted on afterward. (This also
+    explains, precisely, the black-scholes.html claim quoted at the top of
+    this lesson: since \(\mu\) and \(\sigma\) are constants, integrating
+    \(d(\ln S_t)\) over \([0,T]\) gives \(\ln S_T - \ln S_0 = (\mu -
+    \sigma^2/2)T + \sigma W_T\), so \(\ln S_T\) is normal — hence \(S_T\) is
+    lognormal.)
+  </p>
+  <p>
+    Now take the same replication argument the Black-Scholes lesson builds —
+    the one that swaps the real-world drift \(\mu\) for the risk-free rate
+    \(r\) for pricing purposes (formally, a change of probability measure —
+    the subject of the next lesson in this sequence, Girsanov's theorem, not
+    derived here). Substituting \(\mu \to r\):
+  </p>
+  <div class="tl-math">
+    \[ d(\ln S_t) = \left(r - \frac{\sigma^2}{2}\right)dt + \sigma\,dW_t \quad\Longrightarrow\quad \ln\frac{S_T}{S_0} = \left(r-\frac{\sigma^2}{2}\right)T + \sigma\sqrt{T}\,Z,\ \ Z\sim N(0,1) \]
+  </div>
+  <p>
+    This is the exact quantity Black-Scholes needs to compute \(N(d_2)\), the
+    risk-neutral probability that the option finishes in the money
+    (\(S_T > K\)):
+  </p>
+  <div class="tl-math">
+    \[ P(S_T>K) = P\!\left(\ln\tfrac{S_T}{S_0} > \ln\tfrac{K}{S_0}\right) = P\!\left(Z > \frac{\ln(K/S_0)-(r-\sigma^2/2)T}{\sigma\sqrt{T}}\right) = N(d_2),\qquad d_2 = \frac{\ln(S_0/K)+\left(r-\dfrac{\sigma^2}{2}\right)T}{\sigma\sqrt{T}} \]
+  </div>
+  <p>
+    That is <em>exactly</em> the \(d_2\) formula from <code>black-scholes.html</code>,
+    with \((r-\sigma^2/2)\) sitting in the numerator precisely because that is
+    the risk-neutral drift of \(\ln S_t\) — derived above, term for term, from
+    Itô's Lemma applied to \(f(S)=\ln S\). \(d_1\) then follows from \(d_2\) by
+    a further algebraic shift, \(d_1 = d_2 + \sigma\sqrt{T}\), which turns
+    \((r-\sigma^2/2)\) into \((r+\sigma^2/2)\):
+  </p>
+  <div class="tl-math">
+    \[ d_1 = \frac{\ln(S_0/K)+\left(r-\dfrac{\sigma^2}{2}\right)T}{\sigma\sqrt{T}} + \sigma\sqrt{T} = \frac{\ln(S_0/K)+\left(r+\dfrac{\sigma^2}{2}\right)T}{\sigma\sqrt{T}} \]
+  </div>
+  <p>
+    matching the black-scholes.html formula exactly. Be precise about what
+    has and hasn't been derived here: the \((r-\sigma^2/2)\) drift term inside
+    \(d_2\) is a direct Itô's Lemma output, shown above line by line. The
+    further shift from \(d_2\) to \(d_1\) by \(\sigma\sqrt{T}\) is a real,
+    well-established result (it reflects pricing \(N(d_1)\) under a different
+    probability measure — the "stock measure" rather than the risk-neutral
+    money-market measure), but justifying <em>that</em> shift rigorously
+    requires Girsanov's theorem, which is genuinely the next lesson's job, not
+    this one's. What this lesson delivers in full is the piece
+    black-scholes.html explicitly skipped: the \(\sigma^2/2\) is not asserted,
+    it is derived, and it is derived from exactly one fact — \((dW_t)^2=dt\)
+    — that ordinary calculus doesn't have.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>Reprising the Black-Scholes worked example, now with the algebra shown</h3>
+    <p>
+      <code>black-scholes.html</code>'s worked example uses \(S_0=K=100\),
+      \(r=0.02\), \(\sigma=0.20\), \(T=1\), and simply states \(d_1=0.20\),
+      \(d_2=0.00\). Reconstruct those two numbers from the Itô-derived
+      formulas above, term by term.
+    </p>
+    <p>
+      \(d_2\) first, since it's the one this lesson directly derives:
+      \(\ln(S_0/K) = \ln(100/100) = \ln(1) = 0\) (spot equals strike). The
+      risk-neutral drift term is \(\left(r-\sigma^2/2\right)T = (0.02 -
+      0.20^2/2)(1) = 0.02 - 0.02 = 0\) — in this particular example the
+      Itô correction \(\sigma^2/2 = 0.02\) exactly cancels the risk-free rate
+      \(r=0.02\), a coincidence of the chosen round numbers, not a general
+      property. So the numerator of \(d_2\) is \(0+0=0\), and:
+    </p>
+    <div class="tl-math">
+      \[ d_2 = \frac{0 + 0}{0.20\sqrt{1}} = 0.00 \]
+    </div>
+    <p>
+      Then \(d_1\) is just \(d_2\) shifted by \(\sigma\sqrt{T} = 0.20\sqrt{1}
+      = 0.20\):
+    </p>
+    <div class="tl-math">
+      \[ d_1 = d_2 + \sigma\sqrt{T} = 0.00 + 0.20 = 0.20 \]
+    </div>
+    <p>
+      Both numbers match the Black-Scholes worked example exactly — the
+      difference is that here, \(d_2=0.00\) is visibly the risk-neutral drift
+      of \(\ln S_T\) (which happens to be zero at this exact parameter
+      combination), rather than a number that appears from nowhere.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>The correction term shows up three times in this curriculum — that's not a coincidence</h3>
+    <p>
+      Picture a quant re-deriving why a stock's risk-neutral drift is
+      \(r - \sigma^2/2\) rather than simply \(r\) — the exact question this
+      lesson has just answered. Without Itô's Lemma, that \(\sigma^2/2\) looks
+      like an arbitrary adjustment, the kind of thing a junior quant might
+      suspect was reverse-engineered to make historical option prices fit, or
+      a "volatility haircut" someone added by convention and everyone since
+      has copied without questioning. <strong>With Itô's Lemma, it is not an
+      adjustment at all — it is what the chain rule, applied correctly to a
+      random process, mechanically produces</strong> the moment you take the
+      log of anything that follows geometric Brownian motion. There is
+      nothing to calibrate and nothing to justify empirically; it falls out
+      of \(f''(x) = -1/x^2\) for \(f(x)=\ln x\) and the one substitution
+      \((dW_t)^2=dt\), as derived step by step above.
+    </p>
+    <p>
+      Here is the part worth sitting with: <strong>this same \(\sigma^2/2\)
+      term already appeared twice earlier in this curriculum, informally,
+      before this lesson ever named Itô.</strong> The Returns &amp;
+      Compounding primer (<code>primer-returns-compounding.html</code>)
+      derives "volatility drag," \(g \approx \bar{R} - \sigma^2/2\) — the gap
+      between a strategy's arithmetic average return and its actual compounded
+      growth rate — using a second-order Taylor expansion of \(\ln(1+R)\)
+      around zero. The Kelly Criterion lesson (<code>kelly-criterion.html</code>)
+      derives the identical \(g \approx \mu - \sigma^2/2\) for a continuous
+      return stream, by the same Taylor-expansion logic, to explain why
+      overbetting past the Kelly-optimal fraction can turn a positive-drift
+      strategy into a long-run loser. Both of those derivations are doing,
+      informally and in discrete time, exactly the Taylor expansion this
+      lesson made rigorous in continuous time: \(f(x+\Delta x) \approx f(x) +
+      f'(x)\Delta x + \tfrac{1}{2}f''(x)(\Delta x)^2\) with \(f=\ln\), and
+      \((\Delta x)^2\) standing in, informally, for what Itô's Lemma makes
+      precise as \(\sigma^2\,dt\). Three different parts of this curriculum —
+      option pricing, position sizing, and basic compounding — independently
+      run into the identical correction term, because all three are really
+      asking the same underlying question: "what happens to a growth rate
+      when you take the logarithm of something random?" Itô's Lemma is the
+      one piece of machinery that answers that question rigorously, once,
+      for all three.
+    </p>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    No trading desk re-derives Itô's Lemma from scratch before pricing a
+    trade — it is baked, permanently, into every derivatives pricing library
+    in use anywhere, the way ordinary calculus is baked into a physics
+    simulation without anyone re-deriving \(F=ma\) each time. Where it matters
+    directly, constantly, to a working quant: (1) <strong>deriving the
+    governing PDE for a new payoff.</strong> Every exotic option's pricing PDE
+    — barriers, Asians, lookbacks, anything beyond a plain European call/put —
+    is derived the same way the Black-Scholes PDE was: apply Itô's Lemma to
+    the payoff's value function, build the hedged (locally riskless)
+    portfolio, and set its return equal to the risk-free rate. Itô's Lemma is
+    the mechanical step that appears in literally every one of those
+    derivations, not a special case. (2) <strong>Multivariate and correlated
+    extensions.</strong> The version derived in this lesson covers one Itô
+    process; pricing a basket option, a spread option, or anything involving
+    two correlated underlyings requires the multivariate form of Itô's Lemma
+    (sometimes called Itô-Doeblin), which adds a covariance cross-term
+    \(\rho\sigma_1\sigma_2\) alongside each asset's own \(\sigma^2/2\) term —
+    the same one-extra-term logic, generalized to more than one source of
+    randomness. That extension is not covered in this lesson but is a direct,
+    mechanical generalization of the same Taylor-expansion argument. (3)
+    <strong>Convexity adjustments.</strong> Anywhere a desk needs the expected
+    value, not just the value, of a nonlinear function of a random rate or
+    price — futures-vs-forward convexity, CMS convexity adjustments, XVA
+    calculations — Itô's Lemma (via its close cousin, Itô's formula for
+    computing expectations, sometimes packaged as the Feynman-Kac theorem) is
+    the standard tool for making that adjustment rigorous rather than
+    heuristic.
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>Pure mathematical foundation — no direct repo module, and that's the honest answer</h3>
+    <p>
+      Unlike most Theory Lab lessons, this one does not map onto a specific
+      file in this repo, and it would be dishonest to invent a connection
+      where none exists. There is no <code>itoLemma.js</code>, no backtest
+      engine that calls this formula directly, no dashboard card that displays
+      it. What this lesson <em>is</em>, honestly: the rigorous derivation
+      underneath a claim <code>black-scholes.html</code> makes and does not
+      prove — that solving GBM "is a standard but non-trivial step using
+      Itô's Lemma" — and underneath the \(\sigma^2/2\) term that this same
+      curriculum has now derived, informally, in three separate places:
+      option-pricing drift (this lesson and <code>black-scholes.html</code>),
+      volatility drag in compounding (<code>primer-returns-compounding.html</code>),
+      and volatility drag in position sizing
+      (<code>kelly-criterion.html</code>). None of those three pages currently
+      cross-reference each other on this specific point. The point of writing
+      this lesson is exactly that noticing: three informal, independent
+      appearances of the same correction term across the curriculum are not
+      three coincidences, they are one piece of mathematics — Itô's Lemma —
+      surfacing wherever a log (or any nonlinear function) is applied to
+      something random. Seeing it derived rigorously once, here, is meant to
+      make the other two appearances legible as the same fact rather than
+      three separate "it just works out this way" observations.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this result is misunderstood or misapplied</h3>
+    <p>
+      <strong>Treating \((dW_t)^2=dt\) as a statement about one random draw.</strong>
+      It is not saying a single Brownian increment, squared, literally equals
+      the deterministic number \(dt\) every time — any individual \(dW_t\) is
+      still random and can be larger or smaller than \(\sqrt{dt}\) in
+      magnitude. The identity is a statement about the limit of a sum of many
+      squared increments (quadratic variation), which converges to \(T\) with
+      no remaining randomness. Treating it as a single-draw fact rather than a
+      limiting/aggregate one is the single most common source of confusion
+      when first meeting Itô calculus.
+    </p>
+    <p>
+      <strong>Confusing "\(\ln S_T\) drifts at \(\mu-\sigma^2/2\)" with "the
+      stock is expected to be worth less because of volatility."</strong>
+      This is exactly the volatility-drag confusion flagged in the Kelly
+      Criterion and Returns &amp; Compounding lessons: \(E[S_T]\) under GBM
+      still grows at the raw rate \(\mu\) (or \(r\), risk-neutrally) — that
+      is unaffected by \(\sigma\). What shrinks by \(\sigma^2/2\) is the drift
+      of the <em>log</em>, equivalently the median/typical path, not the
+      mean. The gap between the two exists because \(E[e^X] \ne e^{E[X]}\) for
+      a random \(X\) (Jensen's inequality, since \(e^x\) is convex) — a higher
+      \(\sigma\) widens that gap without lowering the arithmetic mean at all.
+    </p>
+    <p>
+      <strong>Applying the single-variable form of Itô's Lemma to a function
+      of two correlated random processes.</strong> The formula derived in this
+      lesson, \(df = (f'\mu+\tfrac12f''\sigma^2)dt+f'\sigma\,dW_t\), is for a
+      function of <em>one</em> Itô process. A function of two correlated
+      processes (a spread, a basket, a ratio of two prices) needs the
+      multivariate version, which adds a cross-partial-derivative term
+      weighted by the covariance between the two processes' \(dW\)'s. Using
+      the single-variable formula on a genuinely two-asset payoff silently
+      drops that cross term and misprices the correlation risk.
+    </p>
+    <p>
+      <strong>Thinking the \(\tfrac12f''\sigma^2\) correction is specific to
+      \(\ln(\cdot)\).</strong> It is not — it appears for <em>any</em>
+      twice-differentiable \(f\) with \(f''\ne0\) applied to a diffusion; the
+      log function is simply the case this lesson (and Black-Scholes) needs.
+      A convex \(f\) (\(f''>0\), like \(f(x)=x^2\)) gets a <em>positive</em>
+      Itô correction instead — the sign of the correction always matches the
+      sign of \(f''\), which is worth checking explicitly rather than assuming
+      it's always a downward \(\sigma^2/2\)-style adjustment.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why doesn't the ordinary calculus chain rule work for a function of Brownian motion, in precise terms?</summary>
+    <div class="tl-answer">
+      The ordinary chain rule comes from a second-order Taylor expansion,
+      \(f(x+\Delta x)\approx f(x)+f'(x)\Delta x+\tfrac12 f''(x)(\Delta x)^2\),
+      in which the second-order term is dropped because, for a smooth
+      deterministic function, \(\Delta x\) is itself order \(\Delta t\), so
+      \((\Delta x)^2\) is order \((\Delta t)^2\) — negligible next to the
+      order-\(\Delta t\) first term as \(\Delta t\to 0\). For Brownian motion,
+      an increment \(dW_t\) has variance \(dt\), so it is typically of size
+      \(\sqrt{dt}\), not \(dt\) — meaning \((dW_t)^2\) is order \(dt\), the
+      <em>same</em> order as the first-order term, not negligible. Dropping
+      it, as the ordinary chain rule does, throws away a real, same-order
+      contribution.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Where does the \(\tfrac12 f''\sigma^2\) term in Itô's Lemma actually come from — is it a new kind of derivative, or something else?</summary>
+    <div class="tl-answer">
+      It is nothing more exotic than the second-order term of an ordinary
+      Taylor expansion, \(\tfrac12 f''(X_t)(dX_t)^2\), with \((dX_t)^2\)
+      expanded out to \(\sigma^2(dW_t)^2\) (the \(\mu^2(dt)^2\) and
+      \(2\mu\sigma\,dt\,dW_t\) cross terms vanish as negligible), and then
+      \((dW_t)^2\) replaced with \(dt\) via the quadratic-variation fact from
+      step 2. No new derivative or new function is introduced — it is
+      completely standard calculus, applied to one substitution
+      \((dX_t)^2=\sigma^2 dt\) that ordinary calculus never needs to make
+      because ordinary functions have \((dx)^2\to 0\) instead.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Someone claims "(dW_t)^2 = dt means every single Brownian increment, squared, equals dt exactly." Is that a correct reading of the identity?</summary>
+    <div class="tl-answer">
+      No. Any individual increment \(dW_t\) is still a random draw from a
+      mean-zero distribution with variance \(dt\) — its square, for one
+      particular draw, is not exactly \(dt\). The identity is shorthand for
+      quadratic variation: summed over a partition of an interval, the
+      squared increments \(\sum_i(W_{t_{i+1}}-W_{t_i})^2\) converge, as the
+      partition is refined, to the fixed number \(T\) — with the randomness
+      of individual terms averaging out in the limit. It is a statement about
+      an aggregate/limiting quantity, not about any single increment.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Derive \(d(\ln S_t)\) from Itô's Lemma applied to geometric Brownian motion, and state its drift term precisely.</summary>
+    <div class="tl-answer">
+      With \(f(x)=\ln x\), \(f'(x)=1/x\), \(f''(x)=-1/x^2\), and \(dS_t=\mu
+      S_t\,dt+\sigma S_t\,dW_t\), Itô's Lemma gives \(d(\ln S_t) =
+      \left(\tfrac{1}{S_t}\mu S_t + \tfrac12\left(-\tfrac{1}{S_t^2}\right)
+      (\sigma S_t)^2\right)dt + \tfrac{1}{S_t}\sigma S_t\,dW_t\). Every
+      \(S_t\) cancels, leaving \(d(\ln S_t) = \left(\mu-\tfrac{\sigma^2}
+      {2}\right)dt+\sigma\,dW_t\). The drift of \(\ln S_t\) is
+      \(\mu-\sigma^2/2\), strictly less than the price's own drift \(\mu\) —
+      a direct consequence of \(f''(x)=-1/x^2\) being negative, which makes
+      the Itô correction term always subtract for the log function.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. How does the \((r-\sigma^2/2)\) drift term derived in this lesson relate to the \((r-\sigma^2/2)\) inside Black-Scholes's \(d_2\) and the \((r+\sigma^2/2)\) inside \(d_1\)?</summary>
+    <div class="tl-answer">
+      Substituting the risk-neutral drift \(r\) for \(\mu\) in the Itô result
+      gives \(\ln(S_T/S_0)=(r-\sigma^2/2)T+\sigma\sqrt{T}\,Z\). Computing
+      \(P(S_T>K)\) from that normal distribution produces exactly \(d_2 =
+      [\ln(S_0/K)+(r-\sigma^2/2)T]/(\sigma\sqrt{T})\) — the \((r-\sigma^2/2)\)
+      is the risk-neutral drift of \(\ln S_t\), derived term-by-term from
+      Itô's Lemma. \(d_1\) is then \(d_2+\sigma\sqrt{T}\) by definition, and
+      adding \(\sigma\sqrt{T}\) to the \((r-\sigma^2/2)T\) numerator term
+      turns it into \((r+\sigma^2/2)T\) algebraically. So \(d_2\)'s term comes
+      directly from this lesson's Itô derivation; \(d_1\)'s term is that same
+      quantity shifted by a probability-measure change (Girsanov's theorem,
+      the next lesson), not a separate Itô computation.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. The \(\sigma^2/2\) term also shows up in the Kelly Criterion lesson's "volatility drag" and the Returns &amp; Compounding primer's log-return approximation. Is that the same term, or just a coincidental resemblance?</summary>
+    <div class="tl-answer">
+      It's the same term, arrived at by the same underlying mathematics at
+      different levels of formality. Both the Kelly Criterion and Returns
+      &amp; Compounding lessons derive \(g\approx \mu-\sigma^2/2\) (or
+      \(\bar R-\sigma^2/2\)) informally, using a discrete-time second-order
+      Taylor expansion of \(\ln(1+R)\) around zero — the same
+      \(f(x+\Delta x)\approx f(x)+f'(x)\Delta x+\tfrac12 f''(x)(\Delta x)^2\)
+      expansion this lesson uses, with \(f=\ln\). Itô's Lemma is the
+      continuous-time, rigorous version of exactly that expansion, with
+      \((\Delta x)^2\) made precise as \(\sigma^2\,dt\) rather than
+      approximated informally. All three appearances trace back to the same
+      fact: taking the logarithm of something random subtracts a
+      variance/2 term from its drift, whether you derive that once rigorously
+      (Itô's Lemma) or arrive at it informally three separate times.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Kiyosi Itô, "Stochastic Integral," <em>Proceedings of the Imperial Academy</em>, Vol. 20, No. 8, 1944 — the original paper defining the Itô integral and the calculus built on it.</li>
+    <li>Steven E. Shreve, <em>Stochastic Calculus for Finance II: Continuous-Time Models</em>, Springer, 2004 — the standard quantitative-finance graduate textbook; Chapter 4 derives Itô's formula carefully and applies it directly to the Black-Scholes-Merton PDE.</li>
+    <li>Bernt Øksendal, <em>Stochastic Differential Equations: An Introduction with Applications</em>, Springer — a more mathematically rigorous treatment, including the quadratic-variation argument behind \((dW_t)^2=dt\) in full.</li>
+    <li>Paul Wilmott, <em>Paul Wilmott on Quantitative Finance</em>, Wiley — a practitioner-oriented derivation connecting Itô's Lemma directly to the Black-Scholes PDE, in the style this repo's own Black-Scholes lesson follows.</li>
+    <li><code>black-scholes.html</code> in this Theory Lab — the lesson whose GBM-solution and \(d_1\)/\(d_2\) claims this lesson derives.</li>
+    <li><code>kelly-criterion.html</code> and <code>primer-returns-compounding.html</code> in this Theory Lab — the two places the same \(\sigma^2/2\) correction already appears informally, discussed in the scenario box above.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="girsanov-risk-neutral.html">Girsanov's Theorem &amp; the Risk-Neutral Measure →</a>
+  </div>
+</div>
+</body>
+</html>
