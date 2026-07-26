@@ -34,6 +34,7 @@ h1.tl-title{font-size:28px;font-weight:700;line-height:1.25;margin-bottom:10px}
 .tl-status{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;font-family:'DM Mono',monospace}
 .tl-status.concept{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd)}
 .tl-status.candidate{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd)}
+.tl-status.course{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
 
 /* headings + body */
 h2{font-size:20px;font-weight:700;margin:36px 0 12px;padding-top:4px}

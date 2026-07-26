@@ -1,0 +1,1876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quantitative &amp; Macro Foundations — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+/* Local extension: the shared stylesheet only styles two-column symbol
+   legends (.tl-symbols). This page is dense with wide multi-column
+   reference tables, so it adds a generic table wrapper in the same
+   dark-theme language (same CSS variables) rather than duplicating or
+   fighting the shared sheet. */
+.tl-table{overflow-x:auto;margin:14px 0;border:1px solid var(--border);border-radius:var(--r)}
+.tl-table table{width:100%;border-collapse:collapse;font-size:13px}
+.tl-table th{background:var(--s2);color:var(--text);text-align:left;padding:8px 10px;border-bottom:1.5px solid var(--border2);font-weight:600;white-space:nowrap}
+.tl-table td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top}
+.tl-table tr:last-child td{border-bottom:none}
+.tl-table tbody tr:hover{background:var(--s1)}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Course Notes / Quantitative &amp; Macro Foundations</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Course Notes · Lesson 2 of 10</div>
+  <h1 class="tl-title">Quantitative &amp; Macro Foundations</h1>
+  <p class="tl-dek">Applied lesson notes on the plumbing of macro markets — signal vs. noise, the capital-flow hierarchy, central bank mechanics, fixed income, currencies, and cross-asset synthesis — kept as a study reference, not a validated trading system.</p>
+  <div class="tl-meta">
+    <span class="tl-status course">COURSE NOTES — applied practice, not from-scratch derivation</span>
+    <span>~55 min read</span>
+    <span>Prereqs: Data Foundations</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Markets are noisiest at short horizons and clearest at long ones — signal-to-noise improves with holding period, while transaction-cost drag compounds against you at high frequency, so the two effects stack against short-term trading.</li>
+      <li>Systematic validation (hypothesis → in-sample → out-of-sample → walk-forward → small live size) fails most ideas <em>before</em> capital is at risk; ad-hoc/intuition-based trading fails ideas <em>with</em> capital already deployed — a "double negative" of lost time and lost money.</li>
+      <li>Policy decisions cascade through a capital-flow hierarchy — central banks → government bonds → currencies → equities → credit — with information degrading and lag increasing at each step down; most retail activity happens at the noisiest, most crowded bottom rungs.</li>
+      <li>Central banks are readable: dual-mandate reaction functions, FOMC statement/press-conference/minutes language shifts, the dot plot (a conditional projection, not a forecast), and the balance sheet (QE/QT, net liquidity ≈ balance sheet − TGA − RRP) all telegraph policy before it happens.</li>
+      <li>Bond math is mechanical and leads the other asset classes: price and yield move inversely by definition, duration converts yield moves into price moves, the yield curve encodes recession expectations, and credit spreads plus real yields (TIPS) explain moves in gold, growth stocks, and FX that look mysterious from the equity side alone.</li>
+      <li>The cross-asset synthesis lesson's own verdict: understanding this framework is not the same as having an edge — markets are efficient at short horizons, and the institutional edge is data infrastructure, systematic implementation, longer time horizons, and the discipline to test before trading, not discretionary daily macro calls.</li>
+    </ul>
+  </div>
+
+  <div class="tl-callout">
+    <strong>A note on the numbers in this file.</strong> The specific correlations, percentages and figures throughout these lessons are <em>exemplar data</em> representing typical historical ranges, as the lesson material itself states. Actual values vary by time period, market regime and measurement methodology. The relationships and mechanisms described are well-established; treat exact figures as illustrative until verified against current data.
+  </div>
+
+  <h2>Lesson 1 — Repositioning Your Approach to Financial Markets</h2>
+
+  <h3>1.1 Market microstructure &amp; noise</h3>
+  <p>
+    Markets aggregate information from a huge range of heterogeneous participants —
+    central banks, pension funds, sovereign wealth funds, hedge funds, prop desks,
+    algorithmic traders. Their differing time horizons, mandates and information
+    sets create <strong>market noise</strong>: price movements that are
+    fundamentally random and carry no predictive signal.
+  </p>
+  <div class="tl-math">\[ SNR = \frac{\text{Signal Power}}{\text{Noise Power}} \]</div>
+  <ul>
+    <li><strong>SNR &lt; 1 (low):</strong> noise dominates; random fluctuations overwhelm signal.</li>
+    <li><strong>SNR ≈ 1 (neutral):</strong> signal and noise roughly equal; edge uncertain.</li>
+    <li><strong>SNR &gt; 1 (high):</strong> signal dominates; exploitable patterns emerge.</li>
+  </ul>
+  <p>
+    SNR varies with <strong>holding period</strong>: short horizons are
+    noise-dominated; longer horizons move through a transition zone into
+    signal-extractable territory. Extending the holding period improves
+    signal-extraction potential.
+  </p>
+
+  <h3>1.2 Transaction cost friction</h3>
+  <ul>
+    <li>Institutions access markets through prime brokerage with materially different cost structures than retail execution.</li>
+    <li>At shorter horizons, costs compound geometrically: spread, slippage, market impact, opportunity cost.</li>
+    <li><strong>Alpha-erosion example:</strong> a strategy with 5bps expected alpha per trade becomes negative EV when transaction costs exceed that threshold — common at high frequencies.</li>
+    <li><strong>The double penalty:</strong> short horizons suffer BOTH low SNR (noise dominates) AND high transaction-cost impact — a compounding disadvantage that makes alpha extraction at short horizons exceptionally difficult.</li>
+    <li>The crossover point where expected alpha exceeds friction determines the <strong>minimum viable holding period</strong> for any strategy.</li>
+  </ul>
+
+  <h3>1.3 Two approaches to strategy development</h3>
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Systematic practitioner (data-driven)</div>
+    <ul>
+      <li>Hypothesis generation from empirical observation</li>
+      <li>In-sample parameter estimation with regularisation</li>
+      <li>Out-of-sample validation on held-out data</li>
+      <li>Walk-forward analysis simulating live deployment</li>
+      <li>Monte Carlo simulation for tail-risk assessment</li>
+      <li>Paper trading before capital allocation</li>
+    </ul>
+  </div>
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Retail trader (intuition-based, no validation)</div>
+    <ul>
+      <li>Hypothesis from intuition or narrative</li>
+      <li>No systematic parameter optimisation</li>
+      <li>Live market is the only test environment</li>
+      <li>Strategy invalidation requires months of live trading</li>
+      <li>Drawdown limits discovered through experience</li>
+      <li>Real capital at risk from day one</li>
+    </ul>
+  </div>
+
+  <h3>1.4 Time &amp; capital comparison</h3>
+  <div class="tl-table"><table>
+    <tr><th>Metric</th><th>Systematic</th><th>Intuition-based</th></tr>
+    <tr><td>Time to invalidation</td><td>~2 weeks</td><td>~6 months</td></tr>
+    <tr><td>Capital risked to test</td><td>$0</td><td>100%</td></tr>
+    <tr><td>Strategies tested per year</td><td>50+</td><td>2–3</td></tr>
+    <tr><td>Cost of a failed strategy</td><td>Time only</td><td>Time + money</td></tr>
+  </table></div>
+
+  <h3>1.5 Strategy lifecycle timelines (side-by-side)</h3>
+  <p><strong>Systematic:</strong></p>
+  <ul>
+    <li>Week 1 — hypothesis &amp; data preparation: clean data, define universe, establish a hypothesis with clear falsifiability criteria.</li>
+    <li>Week 2 — in-sample development: parameter optimisation with cross-validation; guard against overfitting.</li>
+    <li>Week 3 — out-of-sample validation: test on held-out data; strategy shows degradation → rejected. <strong>No capital lost.</strong></li>
+    <li>Week 4 — new hypothesis iteration: pivot to a refined hypothesis; begin a new validation cycle; capital preserved.</li>
+  </ul>
+  <p><strong>Intuition-based:</strong></p>
+  <ul>
+    <li>Week 1 — live trading begins: capital deployed immediately on conviction; "testing" via P&amp;L.</li>
+    <li>Month 1 — early results mixed: −8% drawdown; unclear if noise or failure; continues trading.</li>
+    <li>Month 3 — drawdown deepens to −15%; conviction wavers but insufficient data to conclude failure.</li>
+    <li>Month 6 — strategy abandoned: −22% drawdown; 6 months lost. <strong>Double negative: lost time AND lost capital.</strong></li>
+  </ul>
+
+  <h3>1.6 The validation funnel</h3>
+  <p>
+    The systematic practitioner's own funnel, from the lesson's example numbers:
+    52 hypotheses generated → 34 pass in-sample → 13 pass out-of-sample → 6 pass
+    walk-forward → 4 deployed live. $0 was lost to the 48 strategies rejected
+    along the way — every gate ran on compute, not capital. The intuition-based
+    path skips every gate: 3 hypotheses generated, all validation stages
+    skipped, 3 deployed live untested — 100% of capital exposed during
+    "testing," 0 validated before deployment.
+  </p>
+  <div class="tl-chart">
+    <div class="tl-chart-label">The validation funnel — attrition at every gate, $0 lost until deployment</div>
+    <svg viewBox="0 0 640 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Funnel diagram narrowing from top to bottom through five stages: 52 hypotheses generated, 34 pass in-sample, 13 pass out-of-sample, 6 pass walk-forward, 4 deployed live. Each band is narrower than the one above it, illustrating attrition at each validation gate.">
+      <polygon points="60,30 580,30 530,90 110,90" fill="var(--blue)" opacity="0.85"/>
+      <polygon points="110,90 530,90 470,150 170,150" fill="var(--blue2)" opacity="0.85"/>
+      <polygon points="170,150 470,150 415,210 225,210" fill="var(--purple)" opacity="0.85"/>
+      <polygon points="225,210 415,210 375,270 265,270" fill="var(--amber)" opacity="0.9"/>
+      <polygon points="265,270 375,270 355,330 285,330" fill="var(--green)" opacity="0.95"/>
+
+      <text x="320" y="55" text-anchor="middle" fill="#0f1117" font-size="13" font-weight="700" font-family="'DM Sans',sans-serif">52 hypotheses generated</text>
+      <text x="320" y="115" text-anchor="middle" fill="#0f1117" font-size="13" font-weight="700" font-family="'DM Sans',sans-serif">34 pass in-sample</text>
+      <text x="320" y="175" text-anchor="middle" fill="#0f1117" font-size="13" font-weight="700" font-family="'DM Sans',sans-serif">13 pass out-of-sample</text>
+      <text x="320" y="235" text-anchor="middle" fill="#0f1117" font-size="12.5" font-weight="700" font-family="'DM Sans',sans-serif">6 pass walk-forward</text>
+      <text x="320" y="295" text-anchor="middle" fill="#0f1117" font-size="12.5" font-weight="700" font-family="'DM Sans',sans-serif">4 deployed live</text>
+
+      <text x="600" y="94" text-anchor="start" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">65%</text>
+      <text x="600" y="154" text-anchor="start" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">38%</text>
+      <text x="600" y="214" text-anchor="start" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">46%</text>
+      <text x="600" y="274" text-anchor="start" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">67%</text>
+
+      <text x="320" y="365" text-anchor="middle" fill="var(--text3)" font-size="11.5" font-family="'DM Mono',monospace">48 strategies rejected safely · $0 lost to failed strategies</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Idea → in-sample backtest → out-of-sample validation → walk-forward →
+      live (small size). Each gate is narrower than the last — the percentage
+      to the right of each boundary is the share of that stage's survivors
+      that clear the next gate. The intuition-based path, by contrast, skips
+      straight from idea to full live deployment: 3 hypotheses, 0 validation
+      stages, 100% of capital exposed during what amounts to "testing."
+    </div>
+  </div>
+
+  <h3>1.7 The information asymmetry — metrics known before deployment</h3>
+  <p>
+    The systematic practitioner enters live trading with a complete statistical
+    profile (11/11 metrics known from the backtest); the intuition-based trader
+    knows 0/11 and discovers them through live P&amp;L — "paying tuition to the
+    market."
+  </p>
+  <div class="tl-table"><table>
+    <tr><th>Metric</th><th>Definition / why it matters</th></tr>
+    <tr><td><strong>CAGR</strong></td><td>Expected annualised return; is the strategy worth the operational overhead and opportunity cost of capital?</td></tr>
+    <tr><td><strong>Sharpe ratio</strong></td><td>Return per unit of volatility; enables comparison across strategies and asset classes. Below 0.5 generally unacceptable.</td></tr>
+    <tr><td><strong>Sortino ratio</strong></td><td>Return per unit of downside deviation; more relevant than Sharpe when losses matter more than volatility (i.e. always).</td></tr>
+    <tr><td><strong>Maximum drawdown</strong></td><td>Largest peak-to-trough decline; critical for survival — determines position sizing and whether you can psychologically and financially endure the strategy.</td></tr>
+    <tr><td><strong>Drawdown duration</strong></td><td>Time to recovery; a 20% drawdown lasting 18 months will break most investors — know it before deployment.</td></tr>
+    <tr><td><strong>Win rate</strong></td><td>% of winning trades; psychological sustainability — a 30% win-rate strategy can be highly profitable but emotionally brutal without preparation.</td></tr>
+    <tr><td><strong>Profit factor</strong></td><td>Gross profit ÷ gross loss; below 1.0 = losing strategy; below 1.5 leaves little margin for execution slippage.</td></tr>
+    <tr><td><strong>Max consecutive losses</strong></td><td>Longest losing streak; even profitable strategies have 10+ consecutive losses — without this knowledge, streaks feel like strategy failure.</td></tr>
+    <tr><td><strong>Expectancy</strong></td><td>Average profit per trade after costs; negative expectancy = guaranteed long-term loss.</td></tr>
+    <tr><td><strong>Calmar ratio</strong></td><td>CAGR ÷ max drawdown; "is the expected return worth the worst historical pain?"</td></tr>
+    <tr><td><strong>Tail ratio</strong></td><td>Right tail ÷ left tail (95th percentile); are your big days wins or losses? Critical for the true risk profile.</td></tr>
+  </table></div>
+
+  <h3>1.8 The blindfold problem — interpreting a drawdown</h3>
+  <p>Same −15% drawdown, completely different decision quality:</p>
+  <div class="tl-box intuition">
+    <div class="tl-box-label">With backtest data</div>
+    <p>Historical max DD −22%; avg DD duration 47 days; current DD 31 days; 8 similar historical drawdowns, 8/8 recovered → <em>within expected parameters; continue executing; this is normal variance.</em></p>
+  </div>
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Without backtest data</div>
+    <p>Historical max ???, expected duration ???, is this normal ???, will it recover ??? → <em>no framework for the decision; likely abandons the strategy at the worst possible time, locking in losses.</em></p>
+  </div>
+  <p>
+    Monte Carlo simulation (e.g. 1,000 simulated equity paths) shows the range
+    of expected outcomes before deployment. The intuition trader with no
+    statistical framework "often abandons at precisely the wrong moment."
+  </p>
+
+  <h3>1.9 Lesson 1 key takeaways (as given)</h3>
+  <div class="tl-box">
+    <div class="tl-box-label">Key takeaways</div>
+    <ul>
+      <li><strong>Signal vs noise:</strong> at short horizons noise dominates; extend holding periods to improve signal extraction.</li>
+      <li><strong>Transaction cost drag:</strong> costs compound at high frequencies; the crossover point of alpha vs friction sets the minimum viable holding period.</li>
+      <li><strong>Systematic validation:</strong> walk-forward testing costs compute, not capital; most hypotheses fail — the advantage is discovering failure <em>before</em> deployment.</li>
+      <li><strong>The double negative:</strong> ad-hoc validation risks destroying time AND capital simultaneously; systematic approaches decouple these — failed strategies consume only time.</li>
+    </ul>
+  </div>
+
+  <h2>Lesson 2 — Understanding What Moves Markets</h2>
+
+  <h3>2.1 The capital flow hierarchy</h3>
+  <p>
+    Policy decisions cascade through asset classes in predictable sequences,
+    like dominoes. Most traders watch the last domino (stocks) without seeing
+    what pushed the first (central bank policy).
+  </p>
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Weather-system analogy</div>
+    <p>Central banks are the pressure systems; watching only stocks is looking out the window instead of at the weather map.</p>
+  </div>
+  <p>
+    <strong>The information cascade:</strong> a Fed policy shift → bond markets
+    react within hours → currencies adjust over days–weeks → equity valuations
+    reprice over weeks–months → credit spreads adjust over months. Each level
+    down adds noise, lag and interpretation error. By the time policy affects
+    the stock you watch, smart money positioned months ago.
+  </p>
+  <p>
+    <strong>The retail disadvantage:</strong> most retail participants trade at
+    Levels 4–5 (equities, single stocks) without understanding Levels 1–3 —
+    trading effects while institutions trade causes.
+  </p>
+  <div class="tl-table"><table>
+    <tr><th>Level</th><th>Asset class</th><th>Primary drivers</th><th>Typical lag</th><th>Signal quality</th><th>Dominant participants</th></tr>
+    <tr><td>1</td><td>Central banks</td><td>Inflation mandates, employment, financial stability</td><td>Source</td><td>Highest</td><td>Policy committees, primary dealers</td></tr>
+    <tr><td>2</td><td>Government bonds</td><td>Rate expectations, term premia, flight-to-quality</td><td>Hours–days</td><td>High</td><td>Central banks, sovereign wealth, pension funds</td></tr>
+    <tr><td>3</td><td>G10 currencies</td><td>Rate differentials, current account, risk sentiment</td><td>Days–weeks</td><td>Medium-high</td><td>Real money, macro funds, corporates</td></tr>
+    <tr><td>4</td><td>Equity indices</td><td>Earnings expectations, discount rates, risk appetite</td><td>Weeks–months</td><td>Medium</td><td>Asset managers, pension funds, retail</td></tr>
+    <tr><td>5</td><td>Corporate credit</td><td>Default risk, spread compression, liquidity</td><td>Months–quarters</td><td>Lower</td><td>Insurance, credit funds, banks</td></tr>
+  </table></div>
+  <p><strong>Quantitative implications:</strong></p>
+  <ul>
+    <li>Lead-lag: bond yields tend to lead equity returns by 3–6 months in rate-driven regimes (exemplar: 2022 hiking cycle); rate differentials lead FX moves by 2–8 weeks on average.</li>
+    <li>During regime changes macro factors can explain the majority of cross-asset variance; in normal conditions idiosyncratic factors dominate more.</li>
+    <li>SNR at the bond/rates level is materially higher than at the equity level for medium-term moves.</li>
+    <li>Crowding: the lower the hierarchy level, the more participants, the more crowded the information, the smaller the edge.</li>
+  </ul>
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Worked example — rate hike transmission</div>
+    <ol>
+      <li>Fed announces +0.25%. (The original signal.)</li>
+      <li>Bond markets reprice within hours; 2Y yields jump, bond prices fall.</li>
+      <li>Currency markets adjust over days–weeks; money flows into USD; dollar strengthens.</li>
+      <li>Stocks reprice over weeks–months; higher borrowing costs; future profits worth less today; growth stocks hit hardest.</li>
+      <li>Credit follows over months; refinancing costs rise; riskier bonds fall; defaults may increase.</li>
+    </ol>
+  </div>
+  <div class="tl-symbols"><table>
+    <tr><td>Primary dealers</td><td>The ~24 major banks (Goldman, JPM, …) that trade directly with the Fed — they see and react to policy first.</td></tr>
+    <tr><td>Sovereign wealth funds</td><td>Government-owned funds (Norway's oil fund, Singapore's GIC) managing hundreds of billions.</td></tr>
+    <tr><td>Signal-to-noise here</td><td>Signal = information that predicts future prices; noise = meaningless fluctuation. Top of hierarchy = mostly signal; bottom = wading through noise.</td></tr>
+  </table></div>
+  <p>
+    <strong>Practical application (as taught):</strong> before any position,
+    check the levels above you. Trading equities → check bond yields, curve
+    slope, credit spreads first. Trading FX → check rate expectations via Fed
+    Funds futures, 2Y differentials, forward guidance. Trading anything →
+    "What's the Fed/ECB/BoJ doing and how is it flowing through to my asset
+    class?"
+  </p>
+
+  <h3>2.2 Interest rate mechanics &amp; capital flows</h3>
+  <p>
+    Interest rates are <strong>the price of money</strong>; money flows to the
+    highest risk-adjusted return. This drives trillions in daily flows and
+    explains the majority of medium-term FX and cross-border allocation moves.
+    Core intuition: $1M at 5% (country A) vs 1% (country B) → money flows to A;
+    multiplied across thousands of investors this flow is what moves
+    currencies.
+  </p>
+  <p><strong>Key figures:</strong></p>
+  <ul>
+    <li><strong>$7.5T daily FX volume</strong> — largest market globally (~30× US stock market daily volume); highly liquid, dominated by large institutions.</li>
+    <li><strong>0.7–0.9 correlation</strong> USD/JPY ↔ US–Japan rate differential (exemplar range; regime-dependent — &gt;0.85 during 2021–24 hiking cycle; long-term average nearer 0.6–0.75; weakens in risk-off when JPY rallies as safe haven regardless).</li>
+    <li><strong>2Y is the key maturity</strong> — roughly how far ahead markets predict CB policy; the 2Y yield is the market's best guess at future rates.</li>
+    <li><strong>6–18 months</strong> — historical average lag from rate cycles to full equity impact; bond traders often see equity moves coming far in advance.</li>
+  </ul>
+  <p><strong>Carry trade mechanics:</strong></p>
+  <ul>
+    <li>Borrow low-yield currency, invest in high-yield currency, pocket the differential (e.g. borrow JPY at 0.1%, deposit USD at 5% → ~4.9% carry).</li>
+    <li>Return decomposition: carry component ~80% of total returns in calm periods; spot component ~20%; volatility drag negative during unwinds — can exceed carry.</li>
+    <li><strong>Unwind risk:</strong> "picking up pennies in front of a steamroller." Returns steady until a risk event triggers mass deleveraging; JPY can rally 10% in days.</li>
+    <li><strong>Carry-unwind chain reaction:</strong> (1) something scares markets → (2) carry traders rush to exit, selling high-yield investments and buying back yen/francs → (3) safe-haven currencies spike → (4) risk assets fall together as liquidity is withdrawn.</li>
+    <li>Key insight: sudden JPY strength on a "risk-off" day is the mechanical unwinding of trillions in carry trades — anticipate it rather than react.</li>
+  </ul>
+  <p><strong>Rate-cycle playbooks — when rates rise (tightening):</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>Asset</th><th>Direction</th><th>Mechanism</th></tr>
+    <tr><td>Domestic currency</td><td>Strengthens</td><td>Capital inflows seeking yield</td></tr>
+    <tr><td>Bond prices</td><td>Fall</td><td>Inverse price-yield relationship</td></tr>
+    <tr><td>Growth stocks</td><td>Underperform</td><td>Higher discount rate on future cash flows</td></tr>
+    <tr><td>Value / banks</td><td>Outperform</td><td>Net interest margin expansion</td></tr>
+    <tr><td>Gold</td><td>Pressured</td><td>Higher real rates raise opportunity cost</td></tr>
+    <tr><td>EM assets</td><td>Outflows</td><td>Relative carry diminishes</td></tr>
+  </table></div>
+  <p>
+    <strong>When rates fall (easing):</strong> the mirror image — currency
+    weakens, bonds rally (duration gains), growth outperforms, value/banks
+    underperform (margin compression), gold supported, EM inflows.
+  </p>
+  <ul>
+    <li><strong>Growth vs value:</strong> growth stocks are valued on far-future profits — rate rises discount those harder; value/banks often benefit from higher rates via loan pricing.</li>
+    <li><strong>Gold nuance:</strong> gold responds primarily to <strong>real</strong> rates (nominal − inflation). If inflation rises faster than nominal rates, gold can rally even as the Fed hikes — watch TIPS yields, not just nominal rates.</li>
+  </ul>
+  <p><strong>Critical rate spreads watchlist:</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>Spread</th><th>Role</th><th>Read</th></tr>
+    <tr><td>2Y–10Y</td><td>Yield-curve slope</td><td>Inversion → recession signal</td></tr>
+    <tr><td>US–DE 2Y</td><td>EUR/USD driver</td><td>Widening → USD strength</td></tr>
+    <tr><td>HY–IG</td><td>Credit risk appetite</td><td>Widening → risk-off</td></tr>
+    <tr><td>OIS–SOFR</td><td>Funding stress</td><td>Widening → liquidity strain / bank nervousness</td></tr>
+  </table></div>
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Case study — the 2022 rate shock</div>
+    <p>Fed pivoted hawkish late 2021, fastest hiking cycle in 40 years; the hierarchy transmitted predictably:</p>
+    <ul>
+      <li>Weeks 1–4: 2Y yields 0.25% → 1.5%; bonds repriced immediately.</li>
+      <li>Months 1–3: DXY +15% as differentials widened; EUR/USD 1.15 → parity.</li>
+      <li>Months 3–9: Nasdaq −35%; growth crushed by duration sensitivity.</li>
+      <li>Months 9–18: HY spreads +250bps; credit finally repriced the regime.</li>
+    </ul>
+    <p><em>Lesson:</em> those watching Level 2 (bonds) exited growth stocks 3–6 months before the bottom fell out; those watching headlines bought the dip all the way down.</p>
+  </div>
+
+  <h3>2.3 Risk regime dynamics</h3>
+  <p>
+    Markets oscillate between <strong>risk-on</strong> and <strong>risk-off</strong>;
+    in these regimes cross-asset correlations become highly predictable as
+    capital mechanically flows between "safe" and "risky" assets. <em>Knowing
+    which regime you're in matters more than your specific trade thesis.</em>
+  </p>
+  <p><strong>The correlation regime problem:</strong> Modern Portfolio Theory assumes stable correlations; in stress, correlations converge toward 1 — everything falls together, exactly when diversification is needed.</p>
+  <ul>
+    <li>0.2–0.4 = normal markets, diversification works.</li>
+    <li>0.5–0.7 = elevated stress, correlations rising, reduce exposure.</li>
+    <li>0.8–1.0 = crisis mode, everything moves together, cash is king.</li>
+  </ul>
+  <p><strong>Regime identification indicators:</strong></p>
+  <ul>
+    <li>VIX level: &lt;15 calm; 15–25 normal; 25–35 elevated; 35+ panic.</li>
+    <li>VIX term structure: contango = normal/complacency; backwardation = fear and hedging demand.</li>
+    <li>Credit spreads: HY OAS &lt; 350bps risk-on; &gt; 500bps risk-off.</li>
+    <li>JPY &amp; CHF strengthening = risk-off flows in progress.</li>
+    <li>Gold and USTs both rising = classic flight-to-quality.</li>
+  </ul>
+  <p>
+    <strong>Risk-on characteristics:</strong> VIX below ~18, credit spreads
+    tightening, EM outperforming DM, carry trades profitable, positive
+    equity-bond correlation (both can fall as rates normalise higher). Rallies:
+    S&amp;P/Nasdaq, AUD/JPY (best risk-on proxy). Falls: VIX, Treasury prices
+    (safety sold).
+  </p>
+  <p>
+    <strong>Risk-off:</strong> capital exits risk assets (equities, EM, credit,
+    oil, AUD) into safe havens (USTs, JPY, CHF, gold, USD cash).
+  </p>
+  <p><strong>Cross-asset correlation matrix (exemplar, "normal" conditions):</strong></p>
+  <div class="tl-table"><table>
+    <tr><th></th><th>SPX</th><th>UST10Y</th><th>Gold</th><th>DXY</th><th>Crude</th><th>HY</th><th>VIX</th></tr>
+    <tr><td>SPX</td><td>1.00</td><td>−0.30</td><td>0.15</td><td>−0.25</td><td>0.45</td><td>0.85</td><td>−0.82</td></tr>
+    <tr><td>UST10Y</td><td>−0.30</td><td>1.00</td><td>0.40</td><td>0.20</td><td>−0.35</td><td>−0.25</td><td>0.28</td></tr>
+    <tr><td>Gold</td><td>0.15</td><td>0.40</td><td>1.00</td><td>−0.55</td><td>0.25</td><td>0.18</td><td>0.20</td></tr>
+    <tr><td>DXY</td><td>−0.25</td><td>0.20</td><td>−0.55</td><td>1.00</td><td>−0.42</td><td>−0.20</td><td>0.22</td></tr>
+    <tr><td>Crude</td><td>0.45</td><td>−0.35</td><td>0.25</td><td>−0.42</td><td>1.00</td><td>0.50</td><td>−0.38</td></tr>
+    <tr><td>HY</td><td>0.85</td><td>−0.25</td><td>0.18</td><td>−0.20</td><td>0.50</td><td>1.00</td><td>−0.78</td></tr>
+    <tr><td>VIX</td><td>−0.82</td><td>0.28</td><td>0.20</td><td>0.22</td><td>−0.38</td><td>−0.78</td><td>1.00</td></tr>
+  </table></div>
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Critical warning (from the lesson)</div>
+    <p>
+      Correlations are NOT stable. March 2020: correlations spiked to 0.9+
+      across risk assets within 48 hours. 2022: the −0.30 SPX/UST correlation
+      flipped to +0.40 for much of the year — stocks and bonds fell together. A
+      "diversified" portfolio can become a single concentrated bet. Verify
+      current regime correlations before relying on historical averages.
+    </p>
+  </div>
+  <p><strong>Practical application — daily risk dashboard checklist:</strong></p>
+  <ol>
+    <li>VIX level &amp; structure — VIX1/VIX2 ratio below 0.9 = stress.</li>
+    <li>Credit canary — CDX HY widening &gt;20bps in a day = early warning.</li>
+    <li>FX tells — JPY strength vs high-beta currencies (AUD, MXN) = risk-off flows.</li>
+    <li>Correlation check — stocks and bonds moving together = normal relationships broken.</li>
+  </ol>
+  <p><strong>Rule:</strong> if 3+ indicators flash warning, reduce gross exposure <em>before</em> analysing individual positions.</p>
+
+  <h3>2.4 Central bank liquidity regimes</h3>
+  <p>
+    <strong>Liquidity is the dominant variable in modern markets.</strong>
+    "Don't fight the Fed" isn't wisdom — it's mathematics.
+  </p>
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Bathtub analogy</div>
+    <p>
+      Liquidity = amount of money in the financial system. More money = higher
+      asset prices; less = lower. Central banks control the faucet; QE raises
+      the water level and everything floats higher; QT drains it.
+    </p>
+  </div>
+  <p>
+    Crucial 2020 example: earnings collapsed, unemployment spiked, worst GDP
+    quarter ever — stocks rallied ~70% off the lows because the Fed injected
+    ~$3T. <strong>Liquidity beat fundamentals. It almost always does.</strong>
+    Combined Fed+ECB+BoJ+BoE balance sheets and the S&amp;P 500 move together
+    across QE zones (up) and QT zones (struggle).
+  </p>
+  <div class="tl-symbols"><table>
+    <tr><td>QE</td><td>Quantitative easing — CB creates new money and buys bonds from banks — cash into the banking system, eventually into other assets.</td></tr>
+    <tr><td>QT</td><td>Quantitative tightening — CB lets bonds mature without replacement or sells; money removed from the system.</td></tr>
+  </table></div>
+  <p><strong>QE transmission mechanism (steps):</strong></p>
+  <ol>
+    <li>Central bank creates reserves (digital money creation).</li>
+    <li>Buys government bonds from primary dealers.</li>
+    <li>Dealers receive cash and must deploy it somewhere.</li>
+    <li>Cash flows into next-best alternatives (credit, equities).</li>
+    <li>Asset prices rise, yields compress, risk-taking increases.</li>
+    <li>Wealth effect → economic activity (in theory).</li>
+  </ol>
+  <p><strong>QE market impact table:</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>Asset class</th><th>Direction</th><th>Magnitude (typical/exemplar)</th></tr>
+    <tr><td>Equity indices</td><td>↑ strong rally</td><td>historically +15–25% per $1T (varies widely)</td></tr>
+    <tr><td>Bond yields</td><td>↓ compressed</td><td>−50–100bps typical</td></tr>
+    <tr><td>Credit spreads</td><td>↓ tighter</td><td>−100–200bps HY</td></tr>
+    <tr><td>Domestic FX</td><td>↓ weaker</td><td>−5–10% on major pairs</td></tr>
+    <tr><td>Volatility</td><td>↓ crushed</td><td>VIX to sub-15</td></tr>
+    <tr><td>Commodities</td><td>↑ supported</td><td>dollar-weakness effect</td></tr>
+  </table></div>
+  <p><em>Why QE weakens the currency:</em> more dollars in circulation → supply/demand → dollar falls vs other currencies.</p>
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Case study — the 2020 liquidity firehose</div>
+    <ul>
+      <li>Mar 23: Fed announces unlimited QE → S&amp;P bottoms within hours.</li>
+      <li>Apr–Jun: $2.9T injected; SPX +45% from lows despite worst GDP print ever.</li>
+      <li>Jul–Dec: $120B/month continued; Nasdaq new highs monthly.</li>
+    </ul>
+    <p>Key tell: the bottom came from the liquidity announcement, not vaccine news or economic data. <em>Fundamentals said sell; liquidity said buy; liquidity won.</em></p>
+  </div>
+
+  <h3>2.5 Institutional flow calendar</h3>
+  <p>
+    Institutional money moves on predictable schedules — pension rebalancing,
+    index reconstitution, options expiration, month-end flows — creating
+    mechanical buying/selling pressure unrelated to fundamentals. Know the
+    calendar so you aren't the liquidity for someone else's forced trade. Why
+    they exist: mandates. A 60/40 fund whose equities rally to 65% MUST sell at
+    month-end to rebalance — not a choice.
+  </p>
+  <p><strong>Month-end rebalancing mechanics:</strong></p>
+  <ol>
+    <li>Stocks outperform during the month (e.g. +5% vs flat bonds).</li>
+    <li>Portfolio is now overweight equities (62/38 vs 60/40 target).</li>
+    <li>Fund must sell stocks / buy bonds — selling winners, buying losers (opposite of momentum).</li>
+    <li>Creates counter-trend pressure in the final 2–3 days after a strong month.</li>
+  </ol>
+  <p><em>Trading implication:</em> don't chase breakouts on the 29th–31st after a strong rally; wait for rebalancing flows to complete.</p>
+  <p><strong>Options expiration (OpEx):</strong></p>
+  <ul>
+    <li>Monthly options expire the 3rd Friday.</li>
+    <li><strong>Pin risk:</strong> prices gravitate toward strikes with high open interest into expiry (hedging mechanics, not news).</li>
+    <li><strong>Gamma squeeze:</strong> dealer hedging near expiry can amplify moves in either direction — self-reinforcing loops.</li>
+  </ul>
+  <p><em>Trading implication:</em> OpEx week (especially Friday) is dominated by hedging flows, not information; reduce directional bets into expiry; real moves often happen the week after.</p>
+  <p><strong>Seasonality (S&amp;P 500 average monthly returns, exemplar 1950–2024):</strong></p>
+  <ul>
+    <li><strong>September</strong> historically the weakest month (74-year pattern). Theories: tax-loss selling before October mutual-fund fiscal year-end, institutional portfolio reviews, pattern-following.</li>
+    <li><strong>November–December</strong> historically strong ("Santa rally" / year-end rally): tax-loss selling done, bonus-driven buying, holiday optimism. The "why" matters less than the "what".</li>
+    <li><strong>Quarter-end window dressing:</strong> managers buy winners to show in reports.</li>
+  </ul>
+  <p><strong>Key rule:</strong> know when forced flows happen so you're not their liquidity.</p>
+
+  <h3>2.6 Positioning data &amp; flow analysis</h3>
+  <p>
+    <strong>News explains moves retroactively; positioning shows where crowded
+    trades are before they unwind.</strong> The same headline can be bullish or
+    bearish depending on existing positioning. Positioning is potential energy.
+  </p>
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Room analogy</div>
+    <p>
+      Everyone leaning on one wall → any shout of "fire" causes a violent
+      stampede to the other side; people spread evenly → orderly movement.
+    </p>
+  </div>
+  <p><strong>The narrative trap (same news, opposite headlines):</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>If stocks rise</th><th>If stocks fall</th></tr>
+    <tr><td>"Stocks rally on strong jobs data"</td><td>"Stocks fall on hot jobs (Fed fears)"</td></tr>
+    <tr><td>"Market shrugs off hawkish Fed"</td><td>"Hawkish Fed sends stocks tumbling"</td></tr>
+    <tr><td>"Earnings beat expectations"</td><td>"Guidance disappoints despite beat"</td></tr>
+  </table></div>
+  <p>
+    The narrative is written AFTER the move to explain it; it has zero
+    predictive value. Pros ask: <em>"How is the market positioned, and will
+    this news force repositioning?"</em> — not "what does this news mean?"
+  </p>
+  <p><strong>Key positioning data sources:</strong></p>
+  <ul>
+    <li><strong>CFTC COT report (Fridays):</strong> futures positioning by trader type (commercial hedgers vs speculators); extreme spec long/short often precedes reversals.</li>
+    <li><strong>Fund flow data:</strong> ETF/mutual-fund flows; massive inflows often mark tops (everyone who wants to buy has bought); outflows can mark bottoms.</li>
+    <li><strong>Short interest:</strong> very high short interest = squeeze potential if price rises.</li>
+    <li><strong>Options put/call ratio:</strong> heavy puts = bearish sentiment (contrarian buy); heavy calls = bullish sentiment (contrarian sell).</li>
+  </ul>
+  <p><strong>Positioning readings:</strong></p>
+  <ul>
+    <li><strong>Extreme long:</strong> crowded long, vulnerable to negative catalysts — everyone who wants to buy already has; who's left to buy?</li>
+    <li><strong>Neutral:</strong> no extreme; fundamentals and news flow drive direction.</li>
+    <li><strong>Extreme short:</strong> crowded short, vulnerable to squeeze — forced covering accelerates rallies.</li>
+  </ul>
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Case study — GameStop (2021), a textbook positioning unwind</div>
+    <ul>
+      <li>Setup: 140% short interest (more shares short than existed) — extreme crowding.</li>
+      <li>Catalyst: retail buying → price rise → shorts faced margin calls.</li>
+      <li>Unwind: forced covering → more buying → more margin calls — reflexive loop.</li>
+      <li>Result: +1,700% in weeks with nothing about the business changed.</li>
+    </ul>
+    <p><em>Lesson:</em> extreme positioning is stored energy; catalysts release it; the magnitude of the move is proportional to the crowding, not the importance of the news.</p>
+  </div>
+  <p><strong>Pre-trade positioning checklist:</strong></p>
+  <ol>
+    <li>Who's already in this trade? (COT, flows, options positioning)</li>
+    <li>What would force them out? (identify the unwind catalyst)</li>
+    <li>Am I early or late? (if everyone's talking about it, you're late — the move happens when positioning builds, not when it's recognised)</li>
+    <li>What's my edge over the crowd? (if you can't identify it, you ARE the crowd)</li>
+  </ol>
+
+  <h3>2.7 Lesson 2 key takeaways (as given)</h3>
+  <div class="tl-box">
+    <div class="tl-box-label">Key takeaways</div>
+    <ul>
+      <li><strong>The hierarchy is not optional:</strong> CBs → bonds → FX → equities → credit; information degrades at each level; check the levels above before any position.</li>
+      <li><strong>Rates drive everything:</strong> differentials explain the majority of FX moves; rate cycles lead equity cycles 6–18 months; watch the 2Y.</li>
+      <li><strong>Know your regime:</strong> risk-on/off are distinct states; correlations spike in stress; check VIX structure and credit spreads daily.</li>
+      <li><strong>Liquidity trumps fundamentals:</strong> track Fed balance sheet, RRP, TGA weekly; don't fight the flow.</li>
+      <li><strong>Flows are mechanical:</strong> month-end, OpEx, reconstitution create predictable forced flows; don't provide liquidity to scheduled flows unless paid to.</li>
+      <li><strong>Position before narrative:</strong> extreme positioning + catalyst = violent move; check COT, flows, options OI before trading headlines.</li>
+    </ul>
+  </div>
+
+  <h2>Lesson 3 — Central Bank Policy Deep Dive</h2>
+  <p><em>(Course note: structural knowledge that stays relevant across cycles; specific stances, rates and committee compositions change — verify current data.)</em></p>
+
+  <h3>3.1 The Federal Reserve: structure &amp; decision-making</h3>
+  <p>
+    Markets react to <strong>changes in expectations</strong> about Fed
+    decisions, not just the decisions. Anticipating where the Fed is heading
+    before it's fully priced = edge. Requires: (1) what inputs the Fed
+    watches, (2) how members think, (3) how their communication reveals
+    intent.
+  </p>
+  <p><strong>Structure numbers:</strong> 12 regional Fed banks; 7 Board governors (permanent FOMC voters); 12 FOMC voters per meeting; 8 scheduled meetings per year.</p>
+  <p><strong>The dual mandate:</strong></p>
+  <ol>
+    <li><strong>Maximum employment</strong> — lowest sustainable unemployment without triggering inflation; the "natural rate" (u*) is estimated, not fixed.</li>
+    <li><strong>Price stability</strong> — since 2012 an explicit 2% inflation target measured by <strong>PCE</strong> (not CPI); 2020 shift to <em>average inflation targeting</em> (inflation may run above 2% temporarily to make up for shortfalls).</li>
+  </ol>
+  <p><em>Trading implication:</em> low unemployment + high inflation = no tradeoff → Fed tightens aggressively. High unemployment + high inflation (stagflation) = painful choice → watch which mandate they prioritise.</p>
+  <p><strong>FOMC composition:</strong></p>
+  <ul>
+    <li>Permanent voters (7): Chair (most powerful voice), Vice Chair, 5 other governors (presidential appointees, Senate-confirmed).</li>
+    <li>Rotating voters (5): NY Fed president (permanent voter — market operations role) + 4 regional presidents rotating annually.</li>
+    <li>Non-voting participants (7): remaining regional presidents attend, discuss, submit projections; they influence the committee and signal future policy when they rotate in.</li>
+  </ul>
+  <p><strong>Hawk–dove spectrum:</strong></p>
+  <ul>
+    <li><strong>Dovish:</strong> prioritises employment; tolerates higher inflation; slower to hike.</li>
+    <li><strong>Neutral:</strong> balanced, data-dependent, flexible on timing.</li>
+    <li><strong>Hawkish:</strong> prioritises price stability; inflation-focused; quicker to hike.</li>
+  </ul>
+  <p>
+    Hawk-heavy committee → faster tightening, higher terminal rates, hawkish
+    surprises. Dove-heavy → patience, lower terminal rates, employment
+    emphasis. The Chair's view usually dominates, but a strongly opposed
+    committee can constrain the Chair — <strong>watch dissents</strong>; they
+    map the range of views.
+  </p>
+  <p><strong>The Fed's reaction function:</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>Input</th><th>What the Fed watches</th><th>Policy response</th><th>Market impact</th></tr>
+    <tr><td>Inflation (PCE)</td><td>Core PCE YoY, expectations surveys, breakevens</td><td>Above 2% → tighten; below → ease</td><td>Hot CPI = hawkish repricing, yields up</td></tr>
+    <tr><td>Employment</td><td>NFP, unemployment rate, JOLTS, wage growth</td><td>Tight labor → tighten; rising unemployment → ease</td><td>Strong jobs = hawkish; "bad news is good news" late-cycle</td></tr>
+    <tr><td>Financial conditions</td><td>Credit spreads, equity levels, lending surveys</td><td>Loose → can tighten more; tight → pause/ease</td><td>Market selloffs can slow Fed tightening</td></tr>
+    <tr><td>Global factors</td><td>Dollar strength, foreign CB policy, global growth</td><td>Strong USD = effective tightening already; global stress → cautious</td><td>Global risk-off can delay hikes</td></tr>
+  </table></div>
+  <p><strong>Fed-watcher scorecard (before each FOMC):</strong></p>
+  <ol>
+    <li>Inflation check — core PCE vs 2%, trend direction.</li>
+    <li>Labor check — unemployment direction, wage growth.</li>
+    <li>Financial conditions — spreads tight/wide, big equity moves.</li>
+    <li>Committee composition — who votes this year, net hawk/dove tilt.</li>
+    <li>Recent Fedspeak — what members have signalled, tone shifts.</li>
+  </ol>
+
+  <h3>3.2 The FOMC communication cycle</h3>
+  <p><strong>Communication hierarchy (most → least important):</strong></p>
+  <ol>
+    <li>FOMC statement (official decision + forward guidance)</li>
+    <li>Press conference (Chair's interpretation; Q&amp;A reveals nuance)</li>
+    <li>Minutes (detailed discussion, released 3 weeks later)</li>
+    <li>Individual speeches (personal views; can signal future consensus)</li>
+    <li>Interviews / Congressional testimony (often more candid)</li>
+  </ol>
+  <p><strong>Meeting timeline:</strong></p>
+  <ul>
+    <li>T−14 to T−10 days: <strong>blackout period</strong> begins — officials stop public comment; speeches just before blackout are especially important (last chance to signal).</li>
+    <li>T−1 (Tue): meeting day 1 — economic review, staff presentations.</li>
+    <li>T-day (Wed) 2:00 PM ET: <strong>statement released</strong> — the most important moment; markets react immediately.</li>
+    <li>T-day 2:30 PM ET: <strong>press conference</strong> — can reinforce or modify the market's interpretation.</li>
+    <li>T+3 weeks (Wed) 2:00 PM ET: <strong>minutes released</strong> — range of views, specific concerns, dissent reasoning.</li>
+  </ul>
+  <p><strong>Reading the statement — word changes are the signal:</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>Language shift</th><th>Signal</th></tr>
+    <tr><td>"some further" → "further"</td><td>Hawkish — more tightening coming</td></tr>
+    <tr><td>"monitoring" → "closely monitoring"</td><td>Dovish — increased concern</td></tr>
+    <tr><td>"gradual" → "patient"</td><td>Dovish — slower pace</td></tr>
+    <tr><td>"balanced" → "weighted to downside"</td><td>Dovish — growth worry</td></tr>
+    <tr><td>adding "elevated" before inflation</td><td>Hawkish — inflation concern rising</td></tr>
+    <tr><td>removing forward guidance</td><td>Neutral — flexibility, data-dependent</td></tr>
+  </table></div>
+  <p><em>Pro tip:</em> diff the statement against the previous one — changes are the signal, not the absolute language.</p>
+  <p><strong>The press conference edge:</strong></p>
+  <ul>
+    <li>Prepared remarks (first 10–15 min): tone (confident vs cautious), emphasis reveals priorities, new phrases not in the statement = important signal.</li>
+    <li>Q&amp;A: less scripted; hesitation/deflection; repetition of a theme = strong conviction; "we'll see"/"it depends" = genuine uncertainty.</li>
+  </ul>
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Warning</div>
+    <p>Initial market reaction to the presser often reverses — the first move is algorithmic (keyword-based); real positioning comes in following hours/days as humans digest nuance.</p>
+  </div>
+  <p><strong>Reading the minutes efficiently:</strong></p>
+  <ol>
+    <li>Skip to "Participants' Views" — the staff review is background.</li>
+    <li>Look for quantifiers: "a few" &lt; "several" &lt; "many" &lt; "most" &lt; "all" — they reveal committee consensus.</li>
+    <li>Find the "however" sentences — the "however" clause usually reveals the true concern.</li>
+    <li>Check the balance of risks — which scenarios were explicitly considered.</li>
+  </ol>
+  <p><strong>FOMC meeting prep checklist:</strong></p>
+  <ol>
+    <li>Review the previous statement (baseline language).</li>
+    <li>Check market pricing (CME FedWatch — probability of each outcome).</li>
+    <li>Read recent Fedspeak since the last meeting.</li>
+    <li>Note data releases since last meeting (CPI, NFP, PCE).</li>
+    <li>Identify key questions the market needs clarified.</li>
+    <li>Plan scenarios in advance: hawkish surprise → X; dovish surprise → Y; as expected → Z.</li>
+  </ol>
+
+  <h3>3.3 The dot plot &amp; rate expectations</h3>
+  <ul>
+    <li><strong>SEP (Summary of Economic Projections)</strong> released 4×/year: March, June, September, December. Includes the dot plot.</li>
+    <li>The dot plot shows where each FOMC participant (voters AND non-voters) thinks Fed Funds should be at each year-end plus the "longer run" (their neutral-rate estimate).</li>
+    <li><strong>Critical:</strong> dots are NOT forecasts — they are <em>conditional projections</em> (where rates SHOULD go IF the economy evolves as that member expects). When the economy surprises, the dots move.</li>
+  </ul>
+  <p><strong>Reading the dot plot:</strong></p>
+  <ul>
+    <li><strong>Median dot:</strong> media focus, but just one data point — the distribution matters more.</li>
+    <li><strong>Range/dispersion:</strong> wide = high uncertainty/disagreement; tight = consensus (more likely follow-through).</li>
+    <li><strong>The shift vs the previous SEP is the signal</strong>, not the absolute level.</li>
+    <li><strong>Longer-run dots:</strong> the neutral rate estimate (r*); rising longer-run dots = structurally higher rate environment.</li>
+  </ul>
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">The dot plot's dirty secret</div>
+    <p>Poor track record — 2021 dots showed zero rates through 2024; by 2022 rates were 4%+. Don't treat dots as commitments.</p>
+  </div>
+  <p><strong>Dots vs market pricing — where the edge is:</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>Scenario</th><th>Interpretation</th><th>Typical reaction</th></tr>
+    <tr><td>Dots &gt; market</td><td>Fed more hawkish than priced</td><td>Yields ↑, stocks ↓, USD ↑</td></tr>
+    <tr><td>Dots &lt; market</td><td>Fed more dovish than priced</td><td>Yields ↓, stocks ↑, USD ↓</td></tr>
+    <tr><td>Dots = market</td><td>Already priced</td><td>Focus shifts to statement/presser tone</td></tr>
+    <tr><td>Dispersion widens</td><td>Committee uncertain</td><td>Volatility ↑, path unclear</td></tr>
+  </table></div>
+  <p><strong>How to check market pricing:</strong></p>
+  <ul>
+    <li><strong>CME FedWatch tool</strong> — free; market-implied probabilities per meeting.</li>
+    <li><strong>Fed Funds futures</strong> — implied rate = 100 − futures price; settles to the average effective FF rate for the month.</li>
+    <li><strong>OIS (overnight index swaps)</strong> — professional market; more liquid for longer-term pricing.</li>
+  </ul>
+  <p><strong>The SEP beyond the dots:</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>Component</th><th>Shows</th><th>Watch for</th></tr>
+    <tr><td>GDP growth</td><td>Expected real growth by year</td><td>Marking down growth? Recession concern?</td></tr>
+    <tr><td>Unemployment rate</td><td>Expected jobless rate</td><td>Higher projection = acknowledging tightening pain</td></tr>
+    <tr><td>PCE inflation</td><td>Headline + core path</td><td>When do they expect 2%? How confident?</td></tr>
+    <tr><td>Longer-run estimates</td><td>Structural equilibrium</td><td>Rising r* = secular shift to higher rates</td></tr>
+  </table></div>
+  <p><strong>Consistency check:</strong> do the dots make sense given the projections? Low unemployment + low inflation projections don't compute with aggressive cuts — inconsistencies signal uncertainty or wishful thinking.</p>
+  <p><strong>SEP analysis framework:</strong> (1) compare to previous SEP; (2) compare to market; (3) check dispersion; (4) longer-run r* changing?; (5) cross-check dots against GDP/unemployment/inflation forecasts; (6) count outliers and consider who they might be.</p>
+
+  <h3>3.4 Reading Fedspeak</h3>
+  <p>
+    Fed officials speak a constructed language; phrases that sound vague carry
+    precise meanings. <strong>This isn't obfuscation — it's precision</strong>:
+    communicate intent (manage expectations) without committing (preserve
+    flexibility). Learn the dictionary.
+  </p>
+  <p><strong>Fedspeak decoder:</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>Phrase</th><th>Meaning</th></tr>
+    <tr><td>"Inflation remains elevated"</td><td>Hawkish — concerned, likely to act</td></tr>
+    <tr><td>"Inflation has eased"</td><td>Dovish — progress noted, may slow tightening</td></tr>
+    <tr><td>"Strongly committed to returning inflation to 2%"</td><td>Hawkish — no pivot coming</td></tr>
+    <tr><td>"We're seeing the effects of our policy actions"</td><td>Dovish — tightening is working</td></tr>
+    <tr><td>"The labor market remains tight"</td><td>Hawkish — wage-pressure concern</td></tr>
+    <tr><td>"Labor market coming into better balance"</td><td>Dovish — cooling appropriately</td></tr>
+    <tr><td>"Prepared to raise rates further if appropriate"</td><td>Hawkish — door open, don't price cuts</td></tr>
+    <tr><td>"We can proceed carefully"</td><td>Dovish — slowing pace, pause likely</td></tr>
+  </table></div>
+  <p><strong>"Data dependent" decoder:</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>Phrase</th><th>Actual meaning</th></tr>
+    <tr><td>"We are data dependent"</td><td>Standard disclaimer — signals nothing</td></tr>
+    <tr><td>"Particularly attentive to incoming data"</td><td>Next few prints heavily influence the decision</td></tr>
+    <tr><td>"The data will guide us"</td><td>Genuine uncertainty</td></tr>
+    <tr><td>"We need to see more evidence"</td><td>Current data isn't enough — inertia wins</td></tr>
+    <tr><td>"One/two prints don't change our view"</td><td>No reaction to next release — need a sustained trend</td></tr>
+  </table></div>
+  <p>Key: when they say "data dependent," ask <strong>which data</strong> — inflation, employment, or financial conditions? The emphasis tells you the trigger.</p>
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Language shifts precede policy shifts — example (2021–22 pivot)</div>
+    <ul>
+      <li>Early 2021: "inflation is transitory" (no concern)</li>
+      <li>Late 2021: "perhaps time to retire 'transitory'" (concern emerging)</li>
+      <li>Dec 2021: "inflation is persistent" (major language shift)</li>
+      <li>Jan 2022: "prepared to raise rates" (policy change coming)</li>
+      <li>Mar 2022: first hike.</li>
+    </ul>
+    <p><em>Lesson:</em> the "transitory" → "persistent" shift was the signal, months before the hike.</p>
+  </div>
+  <p><strong>Trial balloons:</strong> a non-voting member or lesser voice floats an idea; or a "leak" to a connected journalist (often Nick Timiraos, WSJ); Fed watches the market reaction; if acceptable, adopted more broadly; if severe, walked back as "one person's view." Watch for: a lesser-known official suddenly getting attention, or WSJ stories citing unnamed "Fed officials."</p>
+  <p><strong>Fedspeak monitoring system:</strong></p>
+  <ol>
+    <li>Follow the speech calendar (published on the Fed website).</li>
+    <li>Prioritise by influence: Chair &gt; Vice Chair &gt; NY Fed &gt; governors &gt; regional presidents.</li>
+    <li>Keep a log of key phrases; monitor for changes.</li>
+    <li>Note the context: a hawk turning dovish is more significant than a dove being dovish.</li>
+    <li>Watch for clustering: multiple officials using similar new language = coordinated → policy shift coming.</li>
+  </ol>
+
+  <h3>3.5 The Fed's balance sheet: QE/QT mechanics</h3>
+  <p>
+    Balance sheet went from ~$900B pre-2008 to nearly <strong>$9T at the 2022
+    peak</strong>. Core mechanism: the Fed buys assets and pays with newly
+    created reserves → reserves enter the banking system → more liquidity →
+    generally higher asset prices. QT reverses this.
+  </p>
+  <p><strong>Balance sheet anatomy:</strong></p>
+  <ul>
+    <li><strong>Assets (what the Fed owns):</strong> Treasuries ~60–70%; MBS ~25–30%; loans &amp; other ~5%. Growing assets = QE = liquidity injection = bullish risk assets.</li>
+    <li><strong>Liabilities (what the Fed owes):</strong> currency in circulation ~25%; bank reserves ~35–40%; reverse repo (RRP) ~20–25%; Treasury General Account (TGA) ~5–10%. Reserves + RRP + TGA = the "liquidity" that can flow to markets.</li>
+  </ul>
+  <p>
+    <strong>QE transmission (as steps):</strong> announce purchases (e.g.
+    $120B/month) → buy from primary dealers, crediting their reserve accounts
+    → reserves enter banking system → <strong>portfolio-rebalancing
+    effect</strong> (sellers redeploy cash into credit, equities) → asset
+    prices rise across markets.
+  </p>
+  <p>
+    <strong>QT mechanics:</strong> let bonds mature without replacement (or
+    sell), with monthly runoff caps (e.g. $60B UST + $35B MBS) → Treasury must
+    issue new bonds to replace maturing debt → private sector absorbs the
+    supply using cash from markets → reserves drain → headwinds for risk
+    assets.
+  </p>
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">QT risk</div>
+    <p>
+      QE effects are gradual; QT can cause <strong>sudden stress when reserves
+      get scarce</strong> — Sept 2019 repo spike, March 2023 bank stress. The
+      Fed often doesn't know where the pain point is until they hit it.
+    </p>
+  </div>
+  <p><strong>The net liquidity equation:</strong></p>
+  <div class="tl-math">\[ \text{Net Liquidity} \approx \text{Fed Balance Sheet} - \text{TGA} - \text{RRP} \]</div>
+  <div class="tl-table"><table>
+    <tr><th>Component</th><th>What it is</th><th>Liquidity effect</th></tr>
+    <tr><td>Fed balance sheet</td><td>Total assets (bonds held)</td><td>Growing = adding; shrinking = draining</td></tr>
+    <tr><td>TGA</td><td>Treasury's checking account at the Fed</td><td>Rising = hoarding cash (drains); falling = spending (adds)</td></tr>
+    <tr><td>RRP</td><td>Money parked overnight at the Fed by money-market funds</td><td>Rising = excess cash idle; falling = cash flowing back to markets</td></tr>
+  </table></div>
+  <p>
+    Even during QT, TGA drawdown or falling RRP can mean net liquidity is
+    RISING — the headline balance sheet doesn't tell the full story. Track net
+    liquidity weekly: rising = risk-asset tailwind; falling = headwind.
+  </p>
+  <p><strong>Balance sheet monitoring:</strong></p>
+  <ul>
+    <li><strong>H.4.1 release</strong> — every Thursday 4:30 PM ET, the Fed's weekly balance sheet; the primary source. Track the week-over-week trend, not the level.</li>
+    <li>Watch reserves: below ~$3T has historically caused stress.</li>
+    <li>Monitor TGA: quarterly refunding plans; big TGA buildups (debt ceiling, heavy issuance) drain liquidity.</li>
+    <li>Check RRP: high = excess parked; draining = cash that can support markets.</li>
+  </ul>
+
+  <h3>3.6 Other major central banks &amp; policy divergence</h3>
+  <ul>
+    <li><strong>ECB:</strong> single mandate (price stability); must manage fragmentation risk across 20 economies.</li>
+    <li><strong>BoJ:</strong> signature policy <strong>Yield Curve Control (YCC)</strong> — targets the 10Y yield in a band around 0%, unique among major CBs. Decades fighting deflation → structurally dovish (they WANT inflation). Owns ~50% of JGBs and is a major holder of Japanese equities via ETFs. 8 meetings/year but can adjust YCC at any time. Watch: YCC band adjustments (widening = de facto tightening), FX intervention (BoJ/MoF), governor commentary on inflation expectations. BoJ policy surprises cause extreme yen moves; YCC removal would be seismic globally. <strong>BoJ is the wildcard / most likely to surprise.</strong></li>
+    <li><strong>BoE:</strong> faces stagflation risk — high inflation + weak growth limits options.</li>
+    <li><strong>PBoC:</strong> different toolkit — RRR (reserve requirements), administered rates, FX management; moves often outside scheduled meetings; China stimulus matters globally.</li>
+  </ul>
+  <p><strong>Policy divergence drives FX:</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>Scenario</th><th>FX impact</th><th>Example</th></tr>
+    <tr><td>Fed hawkish, ECB dovish</td><td>EUR/USD falls</td><td>2022: Fed hiked aggressively, ECB lagged → EUR to parity</td></tr>
+    <tr><td>Fed hawkish, BoJ dovish</td><td>USD/JPY rises</td><td>2022–24: differential drove USD/JPY 115 → 150+</td></tr>
+    <tr><td>Fed pauses, others catch up</td><td>USD weakens broadly</td><td>Late 2023: Fed pause while others hiked → DXY declined</td></tr>
+    <tr><td>Synchronized easing</td><td>FX stable, risk assets rally</td><td>2020 coordinated easing</td></tr>
+  </table></div>
+  <p><strong>Global CB monitoring framework:</strong> CB meeting calendar (dates cluster into event-heavy weeks); per-CB note of current rate, direction of travel, relative hawkishness; track which CBs converge/diverge (drives FX); expect surprises mainly from BoJ and off-schedule PBoC moves.</p>
+
+  <h3>3.7 Trading around Fed events</h3>
+  <p>
+    <strong>The core question — trade or avoid?</strong> Fed events are high
+    volatility, not necessarily high edge. Before trading FOMC ask: do I have a
+    differentiated view from market pricing? Can I size for the volatility? Is
+    this a real edge or a gamble on a binary? <strong>Sitting out is
+    valid</strong> — some of the best traders reduce exposure before meetings
+    and re-engage after.
+  </p>
+  <p><strong>Pre-FOMC dynamics:</strong></p>
+  <ul>
+    <li>Week before: volatility compresses ("calm before the storm").</li>
+    <li>1–2 days before: light positioning, market sits on hands.</li>
+    <li>Morning of: low-conviction moves, everyone waits for 2 PM.</li>
+    <li><strong>Pre-FOMC drift:</strong> documented slight positive equity bias in the 24h before announcements; well-known, likely mostly arbitraged, persists weakly.</li>
+    <li>Positioning: reduce gross if no edge; if positioning for a surprise, size smaller than normal; options strategies can benefit from vol expansion.</li>
+  </ul>
+  <p><strong>The two-phase announcement reaction:</strong></p>
+  <ul>
+    <li><strong>Phase 1 — algorithmic (2:00–2:05 PM):</strong> instant, keyword-based scanning of the statement; fast but often wrong; high volatility, low signal.</li>
+    <li><strong>Phase 2 — human digestion (2:05–4:00 PM):</strong> full statement + presser processed in context; can reverse Phase 1.</li>
+  </ul>
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Warning</div>
+    <p>Don't chase the first spike; wait until the presser finishes before committing to directional trades.</p>
+  </div>
+  <p><strong>Post-FOMC — the real move takes days:</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>Timeframe</th><th>What happens</th><th>Implication</th></tr>
+    <tr><td>Day 1</td><td>High vol, frequent reversals (algos + initial reactions)</td><td>Don't trust the close</td></tr>
+    <tr><td>Day 2</td><td>Digestion; analyst takes; positioning adjustments</td><td>Direction clearer, still volatile</td></tr>
+    <tr><td>Days 3–5</td><td>True repositioning by funds</td><td>Trend often establishes; safer entry</td></tr>
+    <tr><td>Weeks 2–3</td><td>Minutes released</td><td>Can reinforce or modify; secondary move if new info</td></tr>
+  </table></div>
+  <p><em>Edge insight:</em> if you're not a speed trader, your edge on Fed events is <strong>patience</strong> — let algos and fast money establish positions, then decide to follow or fade.</p>
+  <p><strong>Fade vs follow framework:</strong></p>
+  <ul>
+    <li><strong>Follow when:</strong> outcome genuinely surprised (dots moved vs pricing); language shifted materially; move consistent across assets (stocks, bonds, FX all confirming); move persists through the presser; macro backdrop supports the new path.</li>
+    <li><strong>Fade when:</strong> outcome roughly as expected but market overreacted; move reversed during the presser; cross-asset confirmation missing (e.g. stocks up but yields also up on a "dovish" read); positioning was already extreme going in; technicals suggest exhaustion.</li>
+  </ul>
+  <p><strong>FOMC trading checklist:</strong></p>
+  <ul>
+    <li><strong>Before:</strong> check market pricing (what would surprise?); decide trade-or-sit-out; define scenarios and sizes in advance; set alerts for 2:00 and 2:30 ET.</li>
+    <li><strong>During/after:</strong> don't react to the Phase-1 spike; compare outcome to pre-defined scenarios; check cross-asset confirmation; consider waiting to Day 2–3 for a cleaner entry; calendar the minutes release (3 weeks).</li>
+  </ul>
+
+  <h3>3.8 Lesson 3 key takeaways (as given)</h3>
+  <div class="tl-box">
+    <div class="tl-box-label">Key takeaways</div>
+    <ul>
+      <li><strong>Know the players:</strong> committee composition, hawk/dove leanings, dissents; the Chair dominates but a unified committee is more predictable than a divided one.</li>
+      <li><strong>Language precedes action:</strong> pivots are telegraphed through word changes ("transitory" → "persistent"); diff the statements — the diff is the signal.</li>
+      <li><strong>Dots ≠ destiny:</strong> conditional projections, not commitments; the tradeable object is dots vs market pricing.</li>
+      <li><strong>Balance sheet = liquidity:</strong> track Net Liquidity (BS − TGA − RRP) weekly via H.4.1; rising = risk tailwind, falling = headwind.</li>
+      <li><strong>Divergence drives FX:</strong> monitor relative policy paths; BoJ is the wildcard.</li>
+      <li><strong>Patience is edge:</strong> first moves often reverse; wait for the presser, check cross-asset confirmation, consider waiting days.</li>
+    </ul>
+  </div>
+
+  <h2>Lesson 4 — Fixed Income Fundamentals for Traders</h2>
+  <p><em>(Course note: bond math is mathematical fact; bond↔FX/equity relationships are well-established but vary in strength by regime.)</em></p>
+
+  <h3>4.1 Bond math essentials</h3>
+  <p>
+    <strong>The fundamental law: PRICE ↑ ⟷ YIELD ↓.</strong> Always.
+    Mathematical, not opinion. Intuition: you hold a bond paying $50/yr (5% on
+    $1,000); new bonds pay $60/yr; nobody pays full price for yours, so its
+    price falls until its effective yield matches the market.
+  </p>
+  <div class="tl-math">\[ \text{Yield} \approx \frac{\text{Coupon}}{\text{Price}} \]</div>
+  <p>(simplified) — fixed coupon + falling price = rising yield.</p>
+  <div class="tl-symbols"><table>
+    <tr><td>Face value / par</td><td>Repaid at maturity, typically $1,000; "at par" = priced 100.</td></tr>
+    <tr><td>Coupon</td><td>Annual % of face value.</td></tr>
+    <tr><td>Maturity</td><td>When the bond repays face value.</td></tr>
+    <tr><td>YTM</td><td>Total return if held to maturity, accounting for price, coupon, time — "the yield" people quote.</td></tr>
+  </table></div>
+  <p><strong>Price quotes:</strong> 100 = par (yield = coupon); 95 = discount (yield &gt; coupon — capital gain at maturity); 105 = premium (yield &lt; coupon — capital loss at maturity).</p>
+  <p>
+    Headline translation: "10Y yield hits 4.5%" = investors demand 4.5% to
+    hold 10Y Treasuries; if yesterday was 4.3%, yields rose and prices fell —
+    holders lost money, new buyers get better rates.
+  </p>
+
+  <h3>4.2 Duration &amp; convexity</h3>
+  <p>
+    <strong>Duration ≈ % price change per 1% yield move.</strong> Longer
+    maturity = higher duration = more rate sensitivity. Approximate durations:
+    2Y Treasury ≈ 2; 10Y ≈ 8; 30Y ≈ 18; long-duration (growth) stocks ≈ 25+.
+  </p>
+  <div class="tl-math">\[ \text{Price change} \approx -\text{Duration} \times \text{Yield change} \]</div>
+  <div class="tl-table"><table>
+    <tr><th>Bond</th><th>Duration</th><th>Yields +0.5%</th><th>Yields −0.5%</th></tr>
+    <tr><td>2Y</td><td>~2</td><td>≈ −1%</td><td>≈ +1%</td></tr>
+    <tr><td>10Y</td><td>~8</td><td>≈ −4%</td><td>≈ +4%</td></tr>
+    <tr><td>30Y</td><td>~18</td><td>≈ −9%</td><td>≈ +9%</td></tr>
+  </table></div>
+  <p><strong>Why 2022 was historic:</strong> 10Y yields rose ~2.5% (≈1.5% → ≈4%); duration ~8 → ~20% losses — worst bond market in decades.</p>
+  <p>
+    <strong>Growth stocks have duration too:</strong> their value is mostly
+    earnings far in the future; higher rates discount those harder — they
+    behave like long-dated bonds. High-duration equities: growth, tech,
+    unprofitable companies. Low duration: value, banks (often benefit from
+    higher rates). This is why Nasdaq and 30Y Treasuries (e.g. TLT) often
+    trade together.
+  </p>
+  <p>
+    <strong>Convexity:</strong> the price/yield relationship is curved, not
+    linear. Positive convexity (most bonds): prices rise more when yields fall
+    than they fall when yields rise — good for holders. Negative convexity
+    (e.g. MBS): behaves worse than duration predicts both ways (prepayment
+    risk). For most trading purposes duration suffices; convexity matters for
+    large bond books, MBS, and big yield moves.
+  </p>
+
+  <h3>4.3 The yield curve deep dive</h3>
+  <p>
+    The curve plots yields (y-axis) vs maturity (x-axis): 3M, 2Y, 5Y, 10Y,
+    30Y. Its shape encodes collective expectations for future rates, growth,
+    inflation. "The bond market talking — and it's usually smarter than the
+    stock market."
+  </p>
+  <p><strong>Shapes:</strong></p>
+  <ul>
+    <li><strong>Normal (upward sloping):</strong> healthy economy expected; growth + inflation anticipated.</li>
+    <li><strong>Flat:</strong> uncertainty; often a transition phase.</li>
+    <li><strong>Inverted:</strong> short rates above long; recession signal; market expects cuts.</li>
+    <li><strong>Humped:</strong> middle highest; rare; policy transition or unusual conditions.</li>
+  </ul>
+  <p><strong>Why inversion predicts recession (mechanism):</strong></p>
+  <ol>
+    <li>Fed tightening pushes short rates (2Y) up.</li>
+    <li>Market expects the hikes to eventually slow the economy and force cuts.</li>
+    <li>Long rates reflect the expected <em>average</em> of future rates — if cuts are coming they rise less.</li>
+    <li>2Y &gt; 10Y = the market pricing that the Fed will be forced to cut.</li>
+  </ol>
+  <p>
+    An inverted curve has preceded <strong>every US recession in the past
+    50+ years</strong>; lead time is variable — historically <strong>6 to 24
+    months</strong>. A warning sign, not a precise timer.
+  </p>
+  <p><strong>Key spreads:</strong></p>
+  <ul>
+    <li><strong>2s10s</strong> — the most popular measure; negative = inverted; media/Fed watched.</li>
+    <li><strong>3M–10Y</strong> — some research says better recession-predictive power; the Fed's preferred measure.</li>
+    <li><strong>2s30s</strong> — the very long end; more volatile; can diverge from 2s10s.</li>
+  </ul>
+  <p><strong>Curve moves and their meanings:</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>Move</th><th>What's happening</th><th>Signal</th></tr>
+    <tr><td>Bull steepener</td><td>Short rates fall faster than long</td><td>Fed cuts being priced; early recession or crisis response</td></tr>
+    <tr><td>Bear steepener</td><td>Long rates rise faster than short</td><td>Growth/inflation expectations rising; recovery or inflation fear</td></tr>
+    <tr><td>Bull flattener</td><td>Long rates fall faster than short</td><td>Flight to quality; growth fears; long bonds as haven</td></tr>
+    <tr><td>Bear flattener</td><td>Short rates rise faster than long</td><td>Fed tightening; hikes expected to slow the economy; inversion risk</td></tr>
+  </table></div>
+  <p><strong>Curve → equity positioning (as taught):</strong></p>
+  <ul>
+    <li>Steepening (bull or bear): generally favors cyclicals, value, banks.</li>
+    <li>Flattening toward inversion: caution — reduce cyclicals, favor defensives.</li>
+    <li>Deeply inverted: recession risk elevated, timing uncertain — reduce risk gradually, don't panic.</li>
+    <li><strong>Rapid UN-inversion:</strong> often happens right before the recession actually starts — the steepening after inversion can be the final warning.</li>
+  </ul>
+
+  <h3>4.4 Credit spreads &amp; risk appetite</h3>
+  <p>
+    <strong>Credit spread</strong> = extra yield demanded to hold corporate vs
+    government debt. Treasury 4%, corporate 6% → spread 200bps = default-risk
+    compensation. Spreads <strong>widening</strong> = fear rising;
+    <strong>tightening</strong> = confidence rising.
+  </p>
+  <div class="tl-symbols"><table>
+    <tr><td>IG</td><td>Investment grade, BBB− and above.</td></tr>
+    <tr><td>HY</td><td>"Junk", BB+ and below.</td></tr>
+    <tr><td>OAS</td><td>Option-adjusted spread.</td></tr>
+    <tr><td>CDX</td><td>Tradeable credit-default index.</td></tr>
+  </table></div>
+  <p><strong>Why credit leads equities:</strong></p>
+  <ul>
+    <li>Bond investors are more institutional, downside-focused, less swayed by narrative; bonds have defined downside (paid back or not) → natural skepticism; credit liquidity can seize faster, giving early signals.</li>
+    <li><strong>Classic pattern:</strong> spreads start widening → equities ignore it for days/weeks → equities eventually sell off. Watching credit = advance warning.</li>
+  </ul>
+  <div class="tl-box scenario">
+    <div class="tl-box-label">2008 example</div>
+    <p>HY spreads began widening significantly in summer 2007; equities made new highs in October 2007 — credit warned for months.</p>
+  </div>
+  <p><strong>HY spread interpretation bands (rough guideposts):</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>Level</th><th>Read</th></tr>
+    <tr><td>&lt; 300bps</td><td>Very tight — strong risk appetite, potentially complacent</td></tr>
+    <tr><td>300–400</td><td>Normal — healthy risk appetite</td></tr>
+    <tr><td>400–500</td><td>Elevated — some stress, monitor</td></tr>
+    <tr><td>500–700</td><td>Stressed — risk-off, recession pricing</td></tr>
+    <tr><td>&gt; 800</td><td>Crisis — distress, defaults expected</td></tr>
+  </table></div>
+  <p><strong>Direction and speed matter more than level:</strong> +50bps in a week is more significant than a slow drift.</p>
+  <p><strong>CDX indices (tradeable credit):</strong></p>
+  <ul>
+    <li><strong>CDX IG:</strong> 125 North American IG names.</li>
+    <li><strong>CDX HY:</strong> 100 HY names; more volatile, more equity-correlated.</li>
+  </ul>
+  <p>Liquid and tradeable; many institutional desks watch CDX more closely than equity indices for real-time risk sentiment.</p>
+  <p><strong>Credit monitoring routine:</strong></p>
+  <ol>
+    <li>Daily: HY spread level + direction; widening trend = caution for equity longs.</li>
+    <li>Divergence alert: equities rally + spreads widen = be skeptical of the rally.</li>
+    <li>Speed: +20bps in a day often precedes equity volatility.</li>
+    <li>Confirmation: add equity risk preferably when credit is stable/tightening.</li>
+  </ol>
+
+  <h3>4.5 TIPS &amp; real yields</h3>
+  <p>
+    <strong>Real yield = nominal yield − inflation expectations.</strong>
+    Nominal 4.5%, expected inflation 2.5% → real ≈ 2% (true after-inflation
+    return).
+  </p>
+  <p>
+    <strong>Why real yields matter:</strong> they're the opportunity cost of
+    holding non-yielding assets. High real yields → bonds pay a real return →
+    why hold gold (no yield), speculative growth, crypto? Low/negative real
+    yields → bonds don't beat inflation → non-yielders attractive.
+  </p>
+  <p><strong>The gold relationship:</strong> gold performs well when real yields are falling or negative; struggles when they rise — documented over decades.</p>
+  <p><strong>TIPS:</strong> principal adjusts with inflation; TIPS yield ≈ the real yield directly.</p>
+  <div class="tl-math">\[ \text{Breakeven Inflation} = \text{Nominal Yield} - \text{TIPS Yield} \]</div>
+  <p>= the market's expected average inflation over that horizon. Example: 10Y at 4.5%, 10Y TIPS at 2.0% → 10Y breakeven 2.5%.</p>
+  <p><strong>Real-yield environments:</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>Environment</th><th>Gold</th><th>Growth stocks</th></tr>
+    <tr><td>Negative/falling</td><td>Supportive</td><td>Supportive (lower discount rate)</td></tr>
+    <tr><td>Rising toward positive</td><td>Pressure</td><td>Pressure (higher discount rate)</td></tr>
+    <tr><td>High positive (2%+)</td><td>Headwind</td><td>Challenging (works only if growth strong enough)</td></tr>
+  </table></div>
+  <p><strong>2022 in context:</strong> real yields swung from roughly −1% to +1.5% — that ~2.5% swing crushed gold and growth stocks simultaneously. Not random; real yields.</p>
+  <p><strong>Monitoring:</strong> track the 10Y TIPS yield (FRED, TradingView, Bloomberg); watch direction more than level; cross-check gold/growth responses; decompose nominal moves — if rising nominals are all breakevens (inflation expectations), real yields may not be rising much.</p>
+
+  <h3>4.6 Yields as the FX driver</h3>
+  <p>
+    <strong>Core mechanism:</strong> money flows to the highest return; US 5%
+    vs Europe 3% → capital flows to USD assets → EUR/USD lower. The
+    fundamental FX driver over weeks–months — more important than GDP, trade
+    balances, or politics in most regimes.
+  </p>
+  <p>
+    <strong>Why the 2Y tenor:</strong> reflects the CB policy trajectory over
+    the relevant horizon; less day-to-day noise than 3M; more policy-driven
+    than 10Y (which embeds term premium and inflation uncertainty); FX desks at
+    major banks watch 2Y differentials closely.
+  </p>
+  <p><strong>Rule of thumb:</strong> track the 2Y differential between two countries for the fundamental FX pressure; watch the spread, not absolute levels.</p>
+  <p><strong>Key differential pairs:</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>FX pair</th><th>Spread to watch</th><th>Relationship</th></tr>
+    <tr><td>EUR/USD</td><td>US 2Y − Germany 2Y</td><td>Spread widens → EUR/USD falls</td></tr>
+    <tr><td>USD/JPY</td><td>US 2Y − Japan 2Y</td><td>Spread widens → USD/JPY rises</td></tr>
+    <tr><td>GBP/USD</td><td>UK 2Y − US 2Y</td><td>UK spread widens → GBP/USD rises</td></tr>
+    <tr><td>AUD/USD</td><td>Australia 2Y − US 2Y</td><td>Aussie spread widens → AUD/USD rises</td></tr>
+  </table></div>
+  <p>Correlation is not constant: differentials typically explain a significant portion of FX variance, but strength varies; in risk-off, safe-haven flows can override differentials.</p>
+  <p><strong>When rates DON'T drive FX:</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Why</th></tr>
+    <tr><td>Risk-off panic</td><td>JPY &amp; CHF rally regardless of rates</td><td>Haven flows overwhelm carry logic</td></tr>
+    <tr><td>CB intervention</td><td>FX moves against rate logic</td><td>BoJ/PBoC can overpower markets short-term</td></tr>
+    <tr><td>Balance-of-payments crisis</td><td>EM currency collapses despite high rates</td><td>Capital flight dominates</td></tr>
+    <tr><td>Extreme positioning</td><td>FX reverses despite rates</td><td>Unwind mechanics dominate</td></tr>
+  </table></div>
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Case study — USD/JPY 2021–2024 (textbook rate-differential story)</div>
+    <ul>
+      <li>Start: US and Japan both near zero; small differential.</li>
+      <li>2022–23: Fed hiked aggressively; BoJ stayed at zero (YCC).</li>
+      <li>Differential blew out: US 2Y ~0.25% → ~5%; Japan near zero.</li>
+      <li>USD/JPY tracked the differential from ~110 to ~150+, correlation at the high end of the historical range.</li>
+      <li>Japan intervened multiple times but couldn't sustainably reverse the rate-driven trend; the pair only turned when US rate expectations shifted.</li>
+    </ul>
+  </div>
+  <p><strong>Using rates for FX views:</strong> build a rate-differential watchlist (US 2Y vs Germany, Japan, UK, Australia minimum); watch for divergence (differentials move but FX doesn't — it may catch up, or something else is driving); rate expectations shift around FOMC/ECB/BoJ meetings; combine differentials (fundamental bias) with technicals (entry timing).</p>
+
+  <h3>4.7 Bonds leading equities — the institutional view</h3>
+  <p>
+    <strong>Why bonds often lead:</strong> institution-dominated (CBs,
+    pensions, insurers, banks) who move on macro faster; obsessed with
+    downside risk (paid back or not) → naturally skeptical, quicker to react;
+    Treasury markets among the most liquid in the world → information priced
+    quickly.
+  </p>
+  <p>
+    <strong>Information cascade:</strong> policy signals emerge → bond markets
+    react (hours to days) → FX adjusts (days to weeks) → equities reprice
+    (weeks to months). If you only watch equities, you see the last domino.
+  </p>
+  <p>
+    <strong>Yields and equity valuations:</strong> higher rates = lower P/E
+    multiples (mathematical, via the discount rate). <strong>Rate of change
+    matters most:</strong> a rapid 3% → 5% is more disruptive than sitting at
+    5% for a year. Don't use simplistic rules like "10Y above X% = sell
+    stocks" — impact depends on <em>why</em> rates are moving (growth optimism
+    vs inflation fear) and what's priced.
+  </p>
+  <p><strong>The MOVE index (bond-market VIX):</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>Level</th><th>Read</th></tr>
+    <tr><td>&lt; 80</td><td>Low vol — calm bond market, stable rate expectations</td></tr>
+    <tr><td>80–120</td><td>Normal uncertainty range</td></tr>
+    <tr><td>120–150</td><td>Elevated — rising rate uncertainty; watch for equity spillover</td></tr>
+    <tr><td>&gt; 150</td><td>High stress — bond turmoil; equities typically follow</td></tr>
+  </table></div>
+  <p>MOVE spikes often precede VIX spikes; March 2023 (SVB) saw MOVE at extremes before equities fully reacted.</p>
+  <p><strong>Bond-first framework (before any equity position):</strong></p>
+  <ol>
+    <li>What are yields doing? (rising = headwind for growth/long-duration)</li>
+    <li>What's the curve saying? (flattening/inverting = caution)</li>
+    <li>What are credit spreads doing? (widening = risk-off warning)</li>
+    <li>What's MOVE doing? (elevated = expect equity vol)</li>
+    <li>Any divergence? (bonds warning + stocks rallying = be skeptical)</li>
+  </ol>
+  <p><strong>Daily 5-minute fixed-income scan:</strong></p>
+  <ol>
+    <li>10Y yield — vs yesterday, vs last week</li>
+    <li>2s10s — steepening or flattening? still inverted?</li>
+    <li>2Y — policy expectations shifting?</li>
+    <li>HY spreads (CDX HY) — tightening or widening?</li>
+    <li>MOVE — elevated or calm?</li>
+    <li>Real yields (10Y TIPS) — rising or falling?</li>
+    <li>Rate differentials — US vs major partners shifting?</li>
+  </ol>
+  <p><em>Time: 5 minutes. This context shapes the entire trading day.</em></p>
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Case study — putting it together, the 2022 bear market</div>
+    <ul>
+      <li>10Y surged ~1.5% → ~4.2% (historic move).</li>
+      <li>Real yields flipped deeply negative → positive (crushed gold and growth).</li>
+      <li>2s10s inverted (recession warning).</li>
+      <li>HY spreads roughly doubled (risk-off).</li>
+      <li>MOVE at multi-year highs.</li>
+      <li>USD surged on massive differentials vs Europe/Japan.</li>
+      <li>Equities followed: S&amp;P ~−25%, Nasdaq ~−35% (duration assets hit hardest).</li>
+    </ul>
+    <p><em>Lesson:</em> every signal was visible in fixed income first; watched from bonds, none of the equity carnage was surprising.</p>
+  </div>
+
+  <h3>4.8 Lesson 4 key takeaways (as given)</h3>
+  <div class="tl-box">
+    <div class="tl-box-label">Key takeaways</div>
+    <ul>
+      <li><strong>Price &amp; yield are opposites</strong> — master this or nothing else makes sense.</li>
+      <li><strong>Duration = rate sensitivity</strong> — growth stocks are long-duration assets; this explains 2022.</li>
+      <li><strong>The curve predicts recessions</strong> — inversion preceded every US recession in 50+ years; 6–24-month variable lead.</li>
+      <li><strong>Credit spreads = fear gauge</strong> — widening often leads equity selloffs.</li>
+      <li><strong>Rate differentials drive FX</strong> — 2Y spreads are the key metric.</li>
+      <li><strong>Real yields drive gold &amp; growth</strong> — watch TIPS.</li>
+      <li><strong>Bonds lead, equities follow</strong> — the cascade gives advance warning.</li>
+      <li><strong>Check bonds before every trade</strong> — the 5-minute daily scan.</li>
+    </ul>
+  </div>
+
+  <h2>Lesson 5 — Currency Markets &amp; Global Flows</h2>
+  <p><em>(Course note: FX relationships are well-established but regime-varying; dynamics can shift rapidly during intervention, crisis, or regime change.)</em></p>
+
+  <h3>5.1 FX market structure</h3>
+  <p><strong>Key figures:</strong></p>
+  <ul>
+    <li><strong>~$7.5T daily volume</strong> (BIS Triennial Survey) — largest market by turnover.</li>
+    <li><strong>24/5 trading:</strong> Sydney → Tokyo → London → New York.</li>
+    <li><strong>~88% of trades have USD on one side.</strong></li>
+    <li><strong>OTC structure</strong> — decentralised, over-the-counter.</li>
+  </ul>
+  <p>
+    Size ⇒ highly liquid and efficient — harder to manipulate, faster to
+    price information; FX moves = large sophisticated players repositioning on
+    macro. For equity traders: FX is the <strong>transmission
+    mechanism</strong> between CB policy and global asset prices; policy
+    divergence shows up in currencies before stocks.
+  </p>
+  <p><strong>Quoting conventions:</strong></p>
+  <ul>
+    <li>Always pairs: EUR/USD = 1.0850 → 1 euro buys 1.0850 dollars; first currency = base, second = quote; number rises = base strengthening.</li>
+    <li>USD/JPY = 150.00 → 1 dollar buys 150 yen; rises = USD strengthening / yen weakening.</li>
+    <li>Convention: most pairs quote USD first, but EUR, GBP, AUD, NZD quote USD second — historical convention, not logic.</li>
+  </ul>
+  <p><strong>Participants:</strong> central banks (reserves, intervention, policy); commercial banks (client facilitation, prop); corporates (hedging trade/investment flows); asset managers (portfolio hedging, currency overlay); hedge funds (speculation, macro); retail (small fraction, mostly noise).</p>
+  <p><strong>Instruments:</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>Instrument</th><th>What</th><th>Who uses</th></tr>
+    <tr><td>Spot</td><td>Immediate exchange (T+2)</td><td>Everyone — the quoted "price"</td></tr>
+    <tr><td>Forwards</td><td>Exchange at a future date at an agreed rate</td><td>Corporates hedging future flows</td></tr>
+    <tr><td>Swaps</td><td>Simultaneous spot + forward (rolling positions)</td><td>Banks/institutions managing funding</td></tr>
+    <tr><td>Options</td><td>Right (not obligation) at a strike</td><td>Hedgers wanting protection with flexibility</td></tr>
+  </table></div>
+  <p><strong>Swaps are the largest segment by volume</strong> — "dollar funding stress" shows up in the swap market first.</p>
+
+  <h3>5.2 G10 currency characteristics ("personalities")</h3>
+  <div class="tl-table"><table>
+    <tr><th>Currency</th><th>Character</th></tr>
+    <tr><td><strong>USD</strong></td><td>Reserve currency, always in demand; safe haven in risk-off; highly rate-sensitive; "anti-risk" in most regimes</td></tr>
+    <tr><td><strong>EUR</strong></td><td>ECB policy-driven; current-account surplus; fragmentation risk; USD's main counterweight</td></tr>
+    <tr><td><strong>JPY</strong></td><td><strong>Ultimate safe haven</strong>; funding currency (low rates); BoJ intervention risk; rallies on risk-off</td></tr>
+    <tr><td><strong>GBP</strong></td><td>High beta / volatile; BoE-sensitive; current-account deficit; stagflation-prone economy</td></tr>
+    <tr><td><strong>CHF</strong></td><td>Safe haven; current-account surplus; SNB intervention history; negative-rate history</td></tr>
+    <tr><td><strong>AUD</strong></td><td>Commodity currency; <strong>China proxy</strong>; risk-on currency; historically high carry</td></tr>
+  </table></div>
+  <p><strong>Safe havens vs risk currencies:</strong></p>
+  <ul>
+    <li>Safe havens (USD, JPY, CHF): strengthen in stress. JPY is the purest — rallies in risk-off even when Japan's fundamentals are weak.</li>
+    <li>Risk currencies (AUD, NZD, CAD, NOK, SEK, EM): strengthen with risk appetite, weaken in stress; often commodity- or carry-linked.</li>
+  </ul>
+  <p><em>Implication:</em> in risk-off expect JPY/CHF up, AUD/EM down. If AUD rallies during a supposed "risk-off," question the narrative.</p>
+  <p><strong>Commodity currencies:</strong> AUD — iron ore, coal (China demand proxy); CAD — oil (tracks crude); NZD — dairy/agriculture (China demand); NOK — oil (tracks Brent). Use the linkages to cross-check narratives (oil rally → CAD, NOK strength; China stimulus → AUD).</p>
+
+  <h3>5.3 What drives currencies (by timeframe)</h3>
+  <div class="tl-table"><table>
+    <tr><th>Timeframe</th><th>Primary drivers</th><th>Signal quality</th></tr>
+    <tr><td>Intraday</td><td>Order flow, liquidity, data releases, headlines</td><td>Noise-dominated; hard to predict</td></tr>
+    <tr><td>Days–weeks</td><td>Rate expectations, risk sentiment, positioning</td><td>Mix of signal and noise</td></tr>
+    <tr><td><strong>Weeks–months</strong></td><td><strong>Rate differentials, policy divergence, relative growth</strong></td><td><strong>Highest signal — the sweet spot</strong></td></tr>
+    <tr><td>Months–years</td><td>Current account, valuation (PPP), structural flows</td><td>Slow anchors; mean reversion</td></tr>
+  </table></div>
+  <p>
+    <strong>Rate differentials — the dominant medium-term driver:</strong> the
+    2Y differential reflects the policy trajectory over the horizon most
+    relevant for carry and macro positioning. Over weeks–months differentials
+    typically explain a substantial portion of major-pair moves — often cited
+    50–80% depending on period and pair.
+  </p>
+  <p><strong>When it breaks:</strong> safe-haven flows (JPY rallies in risk-off despite rate disadvantage); intervention; extreme positioning reversals.</p>
+  <p>
+    <strong>Risk sentiment as the overrider — risk-off FX pattern:</strong>
+    fear rises (VIX spikes, spreads widen) → haven bid (USD, JPY, CHF
+    strengthen regardless of differentials) → risk currencies sell (AUD, NZD,
+    EM; carry unwinds) → once panic subsides, fundamentals reassert.
+  </p>
+  <p>
+    <strong>Long-term anchors:</strong> <em>PPP</em> — exchange rates should
+    equalise the price of identical goods; deviations can persist for years
+    but extremes tend to mean-revert eventually. <em>Current account</em> —
+    persistent deficits need foreign capital (weaker currency or higher
+    rates); surpluses give structural support. Long-term valuation doesn't
+    time anything but frames the context: extreme undervaluation can limit
+    downside, extreme overvaluation can limit upside — eventually.
+  </p>
+
+  <h3>5.4 The dollar cycle &amp; Dollar Smile</h3>
+  <p><strong>Why the dollar is special:</strong></p>
+  <ul>
+    <li>Reserve currency: ~58–60% of global CB reserves (gradually declining, still dominant) — structural demand.</li>
+    <li>Invoicing currency for most global trade, even between non-US countries.</li>
+    <li>Funding currency: most global debt is USD-denominated — dollar strength makes that debt harder to service.</li>
+    <li>Safe haven: in crisis the world wants dollars — even when the crisis is US-originated.</li>
+  </ul>
+  <p><strong>The Dollar Smile theory — USD is strong at both extremes, weak in the middle:</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>Regime</th><th>Characteristics</th><th>USD</th></tr>
+    <tr><td>Left side — US exceptionalism</td><td>US growth &gt; RoW, Fed hawkish, differentials favor USD</td><td><strong>Strong</strong></td></tr>
+    <tr><td>Middle — synchronized global growth</td><td>Global growth strong, risk appetite high, carry works</td><td><strong>Weak</strong></td></tr>
+    <tr><td>Right side — global risk-off</td><td>Panic, VIX spiking, flight to safety</td><td><strong>Strong</strong></td></tr>
+  </table></div>
+  <p><em>Key insight:</em> strong USD doesn't always mean the same thing — 2022 was left-side strength (Fed hawkish, differentials); March 2020 was right-side strength (panic). Implications for other assets differ.</p>
+  <p>
+    <strong>Dollar cycles:</strong> multi-year, historically roughly 7–10 years
+    peak-to-peak. 1980s: strong early (Volcker), weak late. 1990s: weak early,
+    strong late (tech boom). 2000s: weak (EM boom, commodity supercycle).
+    2010s: bottomed ~2011, strengthened through 2022. <em>Caution:</em> cycle
+    timing is imprecise — don't call major turns; understand the current
+    regime and what would change it.
+  </p>
+  <p><strong>Dollar strength — good or bad for risk assets? Depends on the driver:</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>Driver</th><th>Risk-asset impact</th><th>Why</th></tr>
+    <tr><td>US growth outperformance</td><td>Mixed-to-positive (for US)</td><td>Strong economy supports US equities; pressures EM/exporters</td></tr>
+    <tr><td>Fed hawkishness</td><td>Negative</td><td>Higher rates → lower valuations; hits growth stocks</td></tr>
+    <tr><td>Global risk-off</td><td>Negative</td><td>USD rallying because everything else is selling</td></tr>
+  </table></div>
+  <p>Ask "<strong>why</strong> is the dollar strong?" — not just "is it strong?"</p>
+
+  <h3>5.5 Carry trades — mechanics and risks</h3>
+  <p>
+    Borrow low-yield (funding) currency, invest in high-yield: e.g. borrow JPY
+    at 0.1%, invest MXN at 10% → ~9.9% carry. Exposure: spot moves — a 10%
+    peso drop exceeds a year's carry. "Pennies in front of a steamroller."
+  </p>
+  <div class="tl-math">\[ \text{Carry Return} = \text{Interest Rate Differential} - \text{Hedging Cost} \]</div>
+  <p>
+    Components in practice: interest differential + spot return + roll yield
+    (forward points). Calm markets → differential dominates (steady yield);
+    volatile markets → spot dominates and can overwhelm years of carry in
+    days.
+  </p>
+  <p><strong>Classic roles:</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>Role</th><th>Currencies</th><th>Why</th></tr>
+    <tr><td>Funding (borrow)</td><td>JPY, CHF, EUR (historically)</td><td>Low/negative rates; stable economies</td></tr>
+    <tr><td>Investment (buy)</td><td>AUD, NZD, EM</td><td>High rates; commodity exposure</td></tr>
+  </table></div>
+  <p>
+    <strong>The JPY carry trade:</strong> decades of near-zero rates made JPY
+    the world's favorite funding currency; trillions of carry positions built
+    on borrowed yen — why JPY moves violently in risk-off.
+  </p>
+  <p>
+    <strong>Why carry works (usually):</strong> in theory high-yielders should
+    depreciate to offset the rate advantage (Uncovered Interest Parity); in
+    practice they often don't, at least not immediately — risk premium (carry
+    compensates real risk), momentum (flows toward yield strengthen the
+    high-yielder further), slow adjustment. Historical studies: positive
+    long-run returns with significant crisis drawdowns.
+  </p>
+  <p><strong>Anatomy of a carry unwind:</strong></p>
+  <ol>
+    <li>Trigger event — risk-off shock, vol spike, unexpected policy shift.</li>
+    <li>Initial selling — some carry traders close, selling high-yield currencies.</li>
+    <li>Spot moves against carry — high-yielders weaken; funding currencies (JPY) strengthen.</li>
+    <li>Stop-losses trigger — more forced exits; selling begets selling.</li>
+    <li>Cascade — JPY can rally 5–10% in days; years of carry wiped out.</li>
+  </ol>
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Reflexivity</div>
+    <p>JPY strength → more stops hit → more forced JPY buying → more strength. This is why JPY moves are explosive in risk-off.</p>
+  </div>
+  <p><strong>Monitoring carry:</strong></p>
+  <ul>
+    <li>JPY in risk-off: sharp JPY rally = carry unwinding = caution on ALL risk.</li>
+    <li>COT positioning: extreme short JPY = crowded carry.</li>
+    <li>Volatility: carry works in low vol; rising FX vol = carry headwind.</li>
+    <li>Differential narrowing (e.g. Fed cuts) = carry less attractive.</li>
+  </ul>
+
+  <h3>5.6 Cross-currency basis — dollar funding stress (advanced)</h3>
+  <p>
+    <strong>Covered Interest Parity (CIP):</strong> in theory, no risk-free
+    arbitrage from borrowing one currency and lending another FX-hedged — the
+    forward premium/discount should equal the rate differential.
+  </p>
+  <div class="tl-math">\[ \text{Forward Premium} \approx \text{Interest Rate Differential} \]</div>
+  <p><strong>The basis = the deviation from CIP</strong> (quoted in bps).</p>
+  <ul>
+    <li><strong>Negative basis:</strong> obtaining dollars via FX swaps costs MORE than CIP predicts — non-US entities paying a premium for dollar funding = <strong>dollar scarcity / stress</strong>. (EUR/USD basis −30bps = European entities pay 30bps/yr extra to swap euros into dollars.)</li>
+    <li><strong>Positive basis:</strong> rare, usually minor.</li>
+  </ul>
+  <p><strong>Why it exists:</strong> global dollar demand (trade, debt service, reserves); post-2008 bank balance-sheet regulation limits arbitrage; quarter-end balance-sheet reduction (seasonal widening — don't overreact); risk aversion blocking arbitrage in stress.</p>
+  <p><strong>Reading the basis (EUR/USD, rough guideposts):</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>Level</th><th>Read</th></tr>
+    <tr><td>0 to −20bps</td><td>Normal</td></tr>
+    <tr><td>−20 to −50</td><td>Elevated — dollar demand pressure</td></tr>
+    <tr><td>−50 to −100</td><td>Stressed — significant funding pressure</td></tr>
+    <tr><td>&lt; −100</td><td>Crisis — severe dollar shortage (2008 / 2020 style)</td></tr>
+  </table></div>
+  <p>Direction and speed matter more than levels; the structure has evolved with regulation.</p>
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Case study — March 2020 dollar squeeze</div>
+    <ul>
+      <li>Basis blew out ~−20 → beyond −100bps in days.</li>
+      <li>DXY surged despite the US being the pandemic epicenter — everyone needed dollars.</li>
+      <li>Fed opened swap lines with foreign CBs → basis normalised quickly — the Fed effectively backstopped global dollar funding.</li>
+    </ul>
+    <p><em>Lesson:</em> the basis warned of dollar stress before other indicators, and its normalisation showed the intervention was working.</p>
+  </div>
+  <p><strong>Monitoring:</strong> track EUR/USD and JPY/USD basis (most liquid/watched); 20–30bps moves in a day = funding stress emerging; USD rallying + basis blowing out = a funding squeeze (more concerning than rate-driven strength); Fed swap-line activation → expect normalisation; ignore predictable quarter-end widenings.</p>
+
+  <h3>5.7 Central bank FX intervention</h3>
+  <p>
+    CBs intervene when currency moves are "disorderly" or economically
+    harmful. <strong>Escalation pattern:</strong> verbal warnings → rate
+    checks → actual intervention. Intervention <strong>can work
+    short-term</strong> — especially against one-sided positioning — but
+    <strong>struggles against fundamentals long-term</strong>. Most active
+    interveners: <strong>BoJ/MoF, SNB, PBoC</strong>; the Fed rarely
+    intervenes.
+  </p>
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Case study — Japan 2022–2024</div>
+    <ul>
+      <li>Pattern: verbal warnings → rate checks → actual intervention.</li>
+      <li>Scale: tens of billions of dollars spent buying yen.</li>
+      <li>Effect: sharp short-term reversals (USD/JPY dropped several yen in hours).</li>
+      <li>Limitation: could not sustainably reverse the trend while rate differentials stayed wide.</li>
+      <li>Resolution: USD/JPY only sustainably reversed when US rate expectations shifted.</li>
+    </ul>
+    <p><em>Lesson:</em> intervention slows moves and hurts speculators; it buys time but doesn't change fundamentals.</p>
+  </div>
+  <p><strong>Trading around intervention:</strong> know the "lines in the sand" (levels where CBs intervened before); watch the verbal-escalation ladder; respect the firepower short-term (don't fight it); don't overestimate it long-term; intervention-driven moves can provide entries if fundamentals still favor the original direction.</p>
+
+  <h3>5.8 FX for the non-FX trader</h3>
+  <p>
+    FX is Level 3 in the hierarchy — often moves before equities fully price
+    information; reveals risk sentiment (JPY strength, EM weakness, basis
+    blowouts precede VIX spikes); affects earnings (dollar strength hurts US
+    multinationals' foreign earnings, helps importers).
+  </p>
+  <p><strong>FX signal table:</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>Signal</th><th>Watch</th><th>Implication</th></tr>
+    <tr><td>Risk-off warning</td><td>JPY strengthening sharply, esp. vs AUD</td><td>Carry unwinding; risk assets likely to follow</td></tr>
+    <tr><td>Dollar funding stress</td><td>Cross-currency basis widening rapidly</td><td>Global liquidity tightening; credit stress possible</td></tr>
+    <tr><td>EM contagion</td><td>Broad EM FX weakness, esp. "fragile" currencies</td><td>Risk-off spreading; may hit DM</td></tr>
+    <tr><td>China sentiment</td><td>AUD weakness, CNY fixing surprises</td><td>Growth concerns; commodities and EM exposed</td></tr>
+    <tr><td>Rate expectations</td><td>Differential moves vs FX moves</td><td>FX not following rates = something else driving</td></tr>
+    <tr><td>Dollar regime</td><td>DXY direction + Dollar-Smile position</td><td>Strong USD = headwind for US multinational earnings, EM, commodities</td></tr>
+  </table></div>
+  <p><strong>Daily FX scan (5 minutes):</strong></p>
+  <ol>
+    <li>DXY direction — strengthening or weakening, and why?</li>
+    <li>USD/JPY — JPY strength = risk-off signal.</li>
+    <li>EUR/USD — dollar strength vs developed markets.</li>
+    <li>AUD/USD — risk sentiment + China proxy.</li>
+    <li>EM FX — broad weakness or specific stress?</li>
+    <li>Cross-currency basis — any blowout (if accessible)?</li>
+  </ol>
+
+  <h3>5.9 Lesson 5 key takeaways (as given)</h3>
+  <div class="tl-box">
+    <div class="tl-box-label">Key takeaways</div>
+    <ul>
+      <li><strong>FX is the transmission mechanism</strong> — policy divergence flows through currencies to global assets.</li>
+      <li><strong>Rate differentials dominate medium-term</strong>, but risk sentiment overrides in stress.</li>
+      <li><strong>The Dollar Smile</strong> — strong at both extremes, weak in synchronized growth; know the regime.</li>
+      <li><strong>Carry works until it doesn't</strong> — unwinds are violent; JPY strength = unwind signal.</li>
+      <li><strong>Cross-currency basis = funding stress</strong> — blowouts precede other indicators.</li>
+      <li><strong>EM FX is the canary</strong> — often leads broader risk moves.</li>
+      <li><strong>Intervention has limits</strong> — can't fight fundamentals forever.</li>
+      <li><strong>Use FX to confirm equity views</strong> — divergences between FX and equities are warnings.</li>
+    </ul>
+  </div>
+
+  <h2>Lesson 6 — Cross-Asset Synthesis</h2>
+  <p><em>(Course framing: this is the structural framework for institutional cross-asset analysis — how global macro funds and multi-asset allocators actually think. Understanding the framework is the first step; systematic implementation through data infrastructure and quantitative testing is where edge is built.)</em></p>
+
+  <h3>6.1 The institutional cross-asset framework</h3>
+  <p><strong>How a global macro fund thinks</strong> — forming a view (e.g. "the Fed pivots dovish earlier than expected"), they ask:</p>
+  <ol>
+    <li>What's the highest-conviction expression? (maybe 2Y rates, not equities)</li>
+    <li>What's the best risk-adjusted expression? (maybe rate options for convexity)</li>
+    <li>What should confirm if we're right? (credit tightening, USD weakening)</li>
+    <li>What invalidates the thesis? (inflation reaccelerating)</li>
+    <li>What's the time horizon? (weeks, months, quarters)</li>
+  </ol>
+  <p>The same view can be expressed across the whole capital structure with very different risk/reward; choosing the expression and monitoring confirming signals separates institutional from retail thinking.</p>
+  <p><strong>Capital structure information flow (top-down):</strong></p>
+  <ol>
+    <li>Rates / sovereign bonds — first to price macro shifts</li>
+    <li>Credit (IG → HY) — corporate health, risk appetite</li>
+    <li>FX — policy divergence, global flows</li>
+    <li>Equity indices → sectors → single stocks — broadest participation, most noise</li>
+    <li>Volatility surface — insurance pricing, tail risk, fear</li>
+  </ol>
+  <p>
+    <strong>Why single-asset analysis fails:</strong> analysing equities alone
+    is watching one character of a movie. Equities: noisy, retail flows,
+    narrative-driven, last to price macro. Bonds: cleaner, institution-
+    dominated, mathematically constrained. Credit: bridges corporate
+    fundamentals + macro. FX: policy divergence made tradeable. If you only
+    watch equities, the preceding moves in rates/credit/FX told the story
+    hours-to-weeks earlier.
+  </p>
+  <p><strong>Coherence vs incoherence:</strong></p>
+  <ul>
+    <li><strong>High coherence:</strong> all asset classes pricing the same scenario → trends tend to persist; trend-following works.</li>
+    <li><strong>Low coherence:</strong> conflicting stories → someone is wrong (opportunity), or markets are transitioning (wait), or genuine uncertainty (reduce risk).</li>
+  </ul>
+  <p>
+    Coherence informs conviction and position size, not just direction.
+    <em>Quant note (from the lesson):</em> coherence is measurable — rolling
+    cross-asset correlations vs regime norms; a coherence score can track
+    stock-bond corr vs expected, credit-equity corr vs expected, FX-rate-
+    differential alignment; aggregate deviations signal regime uncertainty.
+    High- vs low-coherence periods differ for trend vs mean-reversion
+    strategies — testable.
+  </p>
+  <div class="tl-callout">
+    <strong>Reality check (from the lesson):</strong> understanding the framework ≠ edge. Markets are efficient at short horizons; institutional edge = superior data infrastructure + systematic implementation + longer horizons + capacity to hold through volatility.
+  </div>
+
+  <h3>6.2 Macro regime framework — the four quadrants</h3>
+  <p>
+    Growth and inflation are the two axes that matter most; everything else
+    (Fed policy, earnings, credit conditions) flows from them. Growth:
+    accelerating or decelerating (ISM, employment, GDP). Inflation: rising or
+    falling (CPI, PCE, breakevens).
+  </p>
+  <ul>
+    <li><strong>Goldilocks (growth ↑, inflation ↓)</strong> — the best of all worlds; CBs stay accommodative; risk assets thrive. Duration neutral; credit overweight; equities overweight (growth style); commodities selective; volatility: sell. Historical examples: 2017, mid-2019, late 2023.</li>
+    <li><strong>Reflation (growth ↑, inflation ↑)</strong> — economy running hot; CB tightening bias; value and real assets outperform. Duration underweight; credit neutral; equities overweight (value style); commodities overweight; TIPS overweight. Examples: 2021 reopening, 2004–2006.</li>
+    <li><strong>Stagflation (growth ↓, inflation ↑)</strong> — the worst outcome; CBs trapped; nowhere to hide except real assets and cash. Duration complex; credit underweight; equities underweight; defensives overweight; gold/energy overweight; cash overweight. Examples: 2022 (partial), the 1970s.</li>
+    <li><strong>Deflation (growth ↓, inflation ↓)</strong> — risk-off; CBs ease aggressively; flight to quality dominates. Duration max overweight; credit IG-only (no HY); equities underweight; quality factor overweight; safe-haven FX (JPY, CHF, USD); volatility: long. Examples: 2008, March 2020, 2015–16.</li>
+  </ul>
+  <p><strong>Regime transition signals (transitions are where the money is made):</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>Transition</th><th>Leading indicators</th><th>Confirmation</th></tr>
+    <tr><td>→ Goldilocks</td><td>Bull steepening, credit tightening, stable breakevens</td><td>Equity breadth, vol declining, EM FX strengthening</td></tr>
+    <tr><td>→ Reflation</td><td>Breakevens rising, commodities breaking out, bear steepening</td><td>Value &gt; growth, banks rallying, TIPS &gt; nominals</td></tr>
+    <tr><td>→ Stagflation</td><td>Growth data weakening with breakevens elevated, curve flattening from the short end</td><td>Credit widening, equities falling, gold/commodities holding</td></tr>
+    <tr><td>→ Deflation</td><td>Bull flattening, credit blowing out, vol spiking</td><td>JPY surging, gold bid on real-yield collapse, quality dominating</td></tr>
+  </table></div>
+  <p>
+    <strong>Quant approaches to regime ID (from the lesson):</strong>
+    rule-based thresholds (e.g. ISM &gt; 50 = growth up; core CPI YoY &gt; 3% =
+    inflation up) — interpretable but arbitrary; Hidden Markov Models —
+    elegant but can overfit; ML clustering on macro indicators; robustness
+    requires testing across methods. <strong>Critical:</strong> regime
+    identification is inherently backward-looking — by the time you're
+    confident, much of the move has happened; the edge is early transition
+    detection via forward-looking indicators and systematic monitoring.
+  </p>
+
+  <h3>6.3 The macro dashboard — data architecture</h3>
+  <p><em>(Designed for medium-term positioning — weeks to months — NOT daily trading. Trading these signals daily is a common retail mistake; markets are efficient at short horizons; edge exists at longer horizons against behavioral biases and structural flows.)</em></p>
+  <p><strong>Tiers:</strong> 1 Policy &amp; liquidity → 2 Rates → 3 Credit → 4 FX → 5 Vol → 6 Commodities.</p>
+  <p><strong>Tier 1 — policy &amp; liquidity (monitor weekly-to-monthly):</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>Series</th><th>Source / code</th><th>What it shows</th></tr>
+    <tr><td>Fed balance sheet</td><td>FRED <code>WALCL</code> (weekly)</td><td>QE expands (injection), QT shrinks (withdrawal)</td></tr>
+    <tr><td>Reverse repo</td><td>FRED <code>RRPONTSYD</code> (daily)</td><td>High = excess liquidity idle; declining = being deployed</td></tr>
+    <tr><td>Treasury General Account</td><td>FRED <code>WTREGEN</code> (weekly)</td><td>Rising drains liquidity; falling injects</td></tr>
+    <tr><td>Financial conditions</td><td>FRED <code>NFCI</code> (Chicago Fed, weekly)</td><td>Positive = tight, negative = loose (also Goldman FCI)</td></tr>
+    <tr><td>Bank lending standards</td><td>FRED <code>DRTSCILM</code> (SLOOS, quarterly)</td><td>% of banks tightening — leading indicator for credit/activity</td></tr>
+    <tr><td>Global M2 (USD-adjusted)</td><td>custom composite (monthly)</td><td>Global liquidity proxy</td></tr>
+  </table></div>
+  <p><strong>Net liquidity proxy:</strong></p>
+  <div class="tl-math">\[ \text{Net Liquidity} \approx \text{Fed Balance Sheet} - \text{TGA} - \text{RRP} \]</div>
+  <p>Rising → risk assets tend to benefit; falling → headwinds. <em>"Not mechanical — a condition, not a signal."</em></p>
+  <p><strong>Building a data pipeline (steps from the lesson):</strong></p>
+  <ol>
+    <li>Data ingestion — automated pulls (FRED, Bloomberg, alternatives; Python/R/APIs).</li>
+    <li>Normalization — z-scores, percentile ranks, regime-adjusted levels.</li>
+    <li>Aggregation — composite indicators summarising multiple variables.</li>
+    <li>Visualization — dashboards that surface signal from noise.</li>
+    <li>Alerting — threshold-based alerts for significant moves/divergences.</li>
+  </ol>
+
+  <h3>6.4 Lead-lag &amp; divergences</h3>
+  <p><strong>Cross-asset playbook by scenario (as given):</strong></p>
+  <ul>
+    <li><strong>Growth scare:</strong> bull flattener, credit widening, copper weak, defensives leading — vs recovery: bear steepener, credit tight, cyclicals leading.</li>
+    <li><strong>Inflation scare:</strong> bear steepener, breakevens rising, gold bid, TIPS outperform — vs disinflation: bull flattener, breakevens falling, growth stocks outperforming.</li>
+    <li><strong>Fed pivot (dovish):</strong> front-end rallying, USD weak, gold bid, duration outperforming — vs hawkish: front-end selling, USD strong, real yields rising.</li>
+  </ul>
+  <p><strong>Reading divergences (when asset classes disagree, someone is wrong — or you're missing information):</strong></p>
+  <ul>
+    <li>Equities rallying + credit widening → credit sees risks equities ignore; historically credit is often right at turning points.</li>
+    <li>Yields falling + equities flat → bonds pricing growth fear equities haven't acknowledged; either bonds overreact or equities catch down.</li>
+    <li>JPY strengthening + equities rallying → haven flows against the risk narrative; possible intervention, positioning unwind, or early risk-off warning.</li>
+  </ul>
+  <p>Divergences don't tell you what to do — <strong>they tell you to investigate</strong>: why the disagreement, and what would resolve it?</p>
+  <p>
+    <strong>Quant testing of lead-lag (from the lesson):</strong>
+    cross-correlation ρ(X_t, Y_{t+lag}) across lags; Granger causality; VAR
+    models; rolling-window stability tests. <strong>Critical finding:</strong>
+    lead-lag relationships are often strongest at regime turning points and
+    weakest during stable trends — the signal is most valuable precisely when
+    it's hardest to trust, which is where systematic testing beats discretion.
+  </p>
+
+  <h3>6.5 Correlation regimes</h3>
+  <p>
+    <strong>The 2022 lesson:</strong> decades of negative stock-bond
+    correlation (bonds hedge stocks) ended when inflation forced the Fed to
+    hike into weakness — both fell together; 60/40 had its worst year since
+    the 1970s. Correlation assumptions built on 40 years of falling inflation
+    broke when the regime changed.
+  </p>
+  <p><strong>Stock-bond correlation — the big one:</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>Regime</th><th>Correlation</th><th>Why</th></tr>
+    <tr><td>Growth-driven</td><td>Negative</td><td>Growth fears → stocks down, bonds up (flight to safety)</td></tr>
+    <tr><td>Inflation-driven</td><td>Positive</td><td>Inflation → rates up → both down</td></tr>
+    <tr><td>Liquidity crisis</td><td>Variable → 1</td><td>Everything sells as cash is raised</td></tr>
+  </table></div>
+  <p>The key question: <em>what's driving markets right now — growth fears or inflation fears?</em> That determines whether bonds hedge or hurt.</p>
+  <p><strong>The "correlation 1" crisis (four phases):</strong></p>
+  <ol>
+    <li><strong>Idiosyncratic</strong> — early stress; some assets fall, others hold; diversification "works."</li>
+    <li><strong>Contagion</strong> — selling spreads; correlations rise; "uncorrelated" assets start moving together.</li>
+    <li><strong>Liquidation</strong> — forced selling, margin calls; everything sold regardless of fundamentals; correlation → 1.</li>
+    <li><strong>Stabilization</strong> — selling exhausted; policy response; correlations normalise.</li>
+  </ol>
+  <p>March 2020: stocks, credit, even Treasuries briefly sold off together in the scramble for cash.</p>
+  <p><strong>Correlation monitoring table:</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>Relationship</th><th>Normal range</th><th>Warning signal</th></tr>
+    <tr><td>SPX vs 10Y Treasury</td><td>−0.3 to +0.1</td><td>Sustained &gt; +0.3 (inflation regime)</td></tr>
+    <tr><td>SPX vs HY credit</td><td>+0.6 to +0.8</td><td>Breakdown (credit-led divergence)</td></tr>
+    <tr><td>Gold vs real yields</td><td>−0.5 to −0.8</td><td>Breakdown of inverse relationship (haven bid dominating)</td></tr>
+    <tr><td>DXY vs risk assets</td><td>−0.3 to −0.5</td><td>Strong positive correlation (dollar funding crisis)</td></tr>
+  </table></div>
+  <p>
+    <strong>Methodology (from the lesson):</strong> rolling windows 20–60d
+    tactical / 120–252d strategic (shorter = noisier but more responsive);
+    EWMA correlations with decay λ ≈ 0.94; regime-conditional estimates (e.g.
+    VIX &gt; 25 vs &lt; 20); stress-test with historical crisis correlations.
+  </p>
+  <div class="tl-math">\[ \rho_t = \frac{\sum(\lambda^i \cdot r_{1,t-i} \cdot r_{2,t-i})}{\sqrt{\sum(\lambda^i \cdot r_1^2) \cdot \sum(\lambda^i \cdot r_2^2)}} \]</div>
+
+  <h3>6.6 Case study — the 2022 cross-asset bear market</h3>
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Case study</div>
+    <p><strong>Setup (late 2021):</strong> 5Y breakeven hit 3.2% (multi-decade high); 10Y TIPS at −1.0% (unsustainably stimulative); Fed rhetoric shifting off "transitory"; bear flattening as the front end priced hikes. Regime: Goldilocks → Reflation, with rising stagflation risk.</p>
+    <p><strong>The cascade:</strong></p>
+    <ul>
+      <li><strong>Nov 2021</strong> — Powell retires "transitory"; 2Y begins rising 0.5% → 1.0%; equities initially ignore it. <em>(First domino.)</em></li>
+      <li><strong>Jan 2022</strong> — 2Y through 1%; 10Y real yields −1.0% → ~0; Nasdaq enters correction; growth (long-duration) leads the decline, as duration math predicts.</li>
+      <li><strong>Mar 2022</strong> — first hike (+25bps); Ukraine adds a commodity/inflation shock; oil to $130; 2s10s inverts in April; full stagflation scare.</li>
+      <li><strong>May–Jun 2022</strong> — 50bps then 75bps hikes; 2Y hits 3%; real yields flip positive (first since 2019); HY 300 → 500+; stock-bond correlation firmly positive.</li>
+      <li><strong>Sep–Oct 2022</strong> — 2Y peaks ~4.5%; 10Y real yield 1.7%; DXY &gt; 114; UK gilt crisis; MOVE spikes; S&amp;P −27% from peak at the lows.</li>
+    </ul>
+    <p><strong>Signal table:</strong></p>
+    <div class="tl-table"><table>
+      <tr><th>Signal</th><th>Late 2021</th><th>Mid 2022</th><th>Oct 2022 lows</th></tr>
+      <tr><td>2Y yield</td><td>0.5% → 1.0%</td><td>1.5% → 3.5%</td><td>~4.5% peak</td></tr>
+      <tr><td>Real yields</td><td>−1.0%</td><td>flipping positive</td><td>+1.7% peak</td></tr>
+      <tr><td>2s10s</td><td>flattening</td><td>inverted (−0.5%)</td><td>deeply inverted</td></tr>
+      <tr><td>HY spreads</td><td>~300bps</td><td>~500bps</td><td>~550bps</td></tr>
+      <tr><td>DXY</td><td>strengthening</td><td>surging</td><td>114 peak</td></tr>
+      <tr><td>Stock-bond corr</td><td>turning positive</td><td>firmly positive (+0.5)</td><td>positive</td></tr>
+    </table></div>
+    <p><strong>What worked:</strong> short duration; long commodities early (energy through June); long USD; long volatility (VIX and MOVE); value over growth (energy/financials vs tech); cash (rising short rates made it competitive).</p>
+    <p><strong>What failed:</strong> 60/40 (worst in decades); risk parity (leveraged bond exposure amplified losses); growth stocks (crushed by rising real yields); "TINA" (cash became an alternative); EM assets (devastated by USD strength).</p>
+    <p><strong>Key lesson:</strong> every signal was visible in cross-asset data. Rates led, FX confirmed, credit warned, equities followed. <strong>The stock-bond correlation flip was THE signal that diversification assumptions had broken.</strong> Equity-only watchers were blindsided; full-capital-structure watchers had months of warning.</p>
+    <p><strong>Systematic lessons:</strong> regime-conditional allocation outperformed; trend-following (CTAs short bonds and equities) performed well; simple real-yield rules would have flagged the growth→value rotation; carry-adjusted positioning justified defensiveness as cash yields rose. <em>The edge wasn't prediction — it was systematic response to observable signals.</em></p>
+  </div>
+
+  <h3>6.7 Case study — the Q4 2023 "everything rally" (peak coherence)</h3>
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Case study</div>
+    <p><strong>Setup (summer–fall 2023):</strong> CPI falling 9% → ~3% (core sticky); labor market resilient; Fed paused after July 2023 (higher-for-longer messaging); curve deeply inverted but no recession materialising. Debate: soft landing (Goldilocks) vs delayed hard landing (Deflation) — <strong>coherence low</strong>.</p>
+    <p><strong>October trough:</strong> 10Y spiked to 5% (term premium + supply + resilient data); S&amp;P −10% from July highs; credit spreads only modestly wider; VIX ~20 (elevated, not panicked). Crucially a <strong>rates-driven selloff, not credit-driven</strong> — HY didn't blow out; credit was NOT confirming a hard landing. That divergence was informative.</p>
+    <p><strong>The pivot:</strong></p>
+    <ul>
+      <li>Oct 27 — core PCE prints soft; inflation narrative shifts toward "mission accomplished."</li>
+      <li>Nov 1 — FOMC holds; Powell less hawkish than feared ("proceed carefully"); market reads peak rates.</li>
+      <li>Nov 3 — weak payrolls; 10Y drops 4.9% → ~4.5% in days; front end rallies; duration trade ON.</li>
+      <li>Nov–Dec — <strong>everything rally</strong>: bonds rally, credit tightens, equities surge, USD weakens, vol collapses. Maximum coherence.</li>
+    </ul>
+    <p><strong>Confirmation table:</strong></p>
+    <div class="tl-table"><table>
+      <tr><th>Asset</th><th>Oct lows</th><th>Year-end</th><th>Signal</th></tr>
+      <tr><td>10Y</td><td>~5.0%</td><td>~3.9%</td><td>confirming (falling)</td></tr>
+      <tr><td>2Y</td><td>~5.2%</td><td>~4.2%</td><td>confirming (falling)</td></tr>
+      <tr><td>HY spreads</td><td>~450bps</td><td>~330bps</td><td>confirming (tightening)</td></tr>
+      <tr><td>S&amp;P 500</td><td>~4,100</td><td>~4,770</td><td>confirming (rallying)</td></tr>
+      <tr><td>DXY</td><td>~107</td><td>~101</td><td>confirming (weakening)</td></tr>
+      <tr><td>VIX</td><td>~21</td><td>~12</td><td>confirming (falling)</td></tr>
+      <tr><td>Gold</td><td>~$1,820</td><td>~$2,060</td><td>confirming (real yields falling)</td></tr>
+    </table></div>
+    <p><strong>What worked:</strong> long duration (yields −100+bps); long credit (tightening + carry); long equities (growth and small caps led); short vol (VIX 20 → 12); short USD; long gold (real-yield collapse).</p>
+    <p><strong>Key lesson:</strong> <strong>coherence is a signal</strong> — when all asset classes tell the same story, the risk of being wrong is lower. Sequencing was textbook: rates first (FOMC + data), credit confirmed (no stress), FX confirmed (USD weak), equities followed. Waiting for "certainty" missed the move; tracking coherence gave early confirmation.</p>
+  </div>
+
+  <h3>6.8 Case study — March 2023 banking stress (SVB)</h3>
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Case study</div>
+    <p><strong>Setup:</strong> Fed still hiking (25–50bps expected in March); 2Y near 5%, 10Y near 4%; bank held-to-maturity bond portfolios carrying massive unrealized losses from the 2022 rate surge; regional banks vulnerable (concentrated deposits, duration mismatch).</p>
+    <p><strong>The 5-day cascade:</strong></p>
+    <ul>
+      <li><strong>Mar 8 (Wed):</strong> Silvergate liquidation — treated as idiosyncratic.</li>
+      <li><strong>Mar 9 (Thu):</strong> SVB discloses $1.8B loss on bond sales + capital raise; stock −60%. <strong>Regional-bank CDS spikes — credit reacted first; this was the early warning.</strong></li>
+      <li><strong>Mar 10 (Fri):</strong> FDIC seizes SVB after a $42B one-day deposit outflow — largest failure since 2008. 2Y yields collapse ~50bps in a day; flight-to-safety; regional bank stocks crater.</li>
+      <li><strong>Mar 12 (Sun):</strong> Signature Bank closed; Fed announces <strong>BTFP</strong> (borrow against underwater bonds at par) + full deposit guarantee — the policy firewall.</li>
+      <li><strong>Mar 13–15:</strong> stabilization with aftershocks (First Republic concerns; Credit Suisse collapse — separate issue, sentiment overlap). Fed still hikes 25bps on Mar 22 — threading the needle.</li>
+    </ul>
+    <p><strong>Signal table:</strong></p>
+    <div class="tl-table"><table>
+      <tr><th>Signal</th><th>Pre-crisis (Mar 8)</th><th>Peak stress (Mar 13)</th><th>Post-response (Mar 20)</th></tr>
+      <tr><td>2Y yield</td><td>5.05%</td><td>3.98% (−107bps!)</td><td>4.17%</td></tr>
+      <tr><td>10Y yield</td><td>3.97%</td><td>3.55%</td><td>3.60%</td></tr>
+      <tr><td>Fed funds expectations</td><td>+50bps priced</td><td>cuts priced for 2023</td><td>+25bps priced</td></tr>
+      <tr><td>Regional bank ETF (KRE)</td><td>$58</td><td>$40 (−30%)</td><td>$42</td></tr>
+      <tr><td>HY spreads</td><td>~450bps</td><td>~520bps</td><td>~480bps</td></tr>
+      <tr><td>MOVE</td><td>~120</td><td>~180 (spiked before VIX)</td><td>~140</td></tr>
+      <tr><td>VIX</td><td>~19</td><td>~26</td><td>~22</td></tr>
+    </table></div>
+    <p><strong>Key observations:</strong></p>
+    <ol>
+      <li><strong>Credit led</strong> — bank CDS and subordinated debt moved before equity (Mar 9).</li>
+      <li><strong>MOVE led VIX</strong> — rate vol spiked first; fundamentally a rates/duration crisis.</li>
+      <li><strong>The 2Y move was historic</strong> — a 3-day drop among the largest ever, pricing emergency cuts.</li>
+      <li><strong>Flight-to-quality</strong> followed the classic deflation-scare playbook.</li>
+      <li><strong>Policy response mattered</strong> — BTFP arrested the panic; cross-asset normalisation within days.</li>
+    </ol>
+    <p><strong>Key lesson:</strong> credit leads at stress points; MOVE can lead VIX in rates-driven crises; regime shifts can be violent and fast (hiking → emergency-cuts-priced in 48 hours); policy response matters. For systematic approaches: <strong>crisis signals must be monitored in real time — a weekly review would have missed this</strong>; automated alerts on credit stress, rate vol and inversion would have flagged it immediately.</p>
+  </div>
+
+  <h3>6.9 Expressing views across the capital structure</h3>
+  <p><strong>Example view: "Fed will cut sooner than expected" — expressions:</strong></p>
+  <div class="tl-table"><table>
+    <tr><th>Expression</th><th>Instrument</th><th>Risk profile</th><th>Carry</th><th>Convexity</th></tr>
+    <tr><td>Direct rates</td><td>Long 2Y Treasuries</td><td>Low vol, clean</td><td>Positive (coupon)</td><td>Low</td></tr>
+    <tr><td>Curve</td><td>2s10s steepener</td><td>Lower vol than outright</td><td>Often negative</td><td>Low</td></tr>
+    <tr><td>Rate options</td><td>Receiver swaptions</td><td>Defined risk, asymmetric</td><td>Negative (premium)</td><td>High</td></tr>
+    <tr><td>FX</td><td>Short USD / long EUR</td><td>Higher vol, rate-diff sensitive</td><td>Variable</td><td>Low</td></tr>
+    <tr><td>Equity</td><td>Long growth (QQQ)</td><td>High vol, many other factors</td><td>Low/variable</td><td>Low</td></tr>
+    <tr><td>Equity options</td><td>Long QQQ calls</td><td>Defined risk, levered upside</td><td>Negative (premium)</td><td>High</td></tr>
+    <tr><td>Gold</td><td>Long GLD</td><td>Real-yield proxy</td><td>Zero</td><td>Low</td></tr>
+  </table></div>
+  <p>
+    Institutional choice: high conviction + short horizon → direct 2Y or
+    front-end rate options (cleanest). Moderate conviction + longer horizon →
+    steepener or gold may offer better risk-adjusted returns. <strong>Equities
+    are the noisiest expression.</strong>
+  </p>
+  <p><strong>Factors in choosing the expression:</strong> conviction level (high → direct; low → relative value or optionality); time horizon (short → liquid; long → can accept illiquidity premium); risk budget (limited → options for defined risk); carry profile (can you afford negative carry while waiting?); correlation to the existing book; liquidity/exit needs.</p>
+  <p><strong>The "cleanest" expression = most directly tied to the thesis, fewest confounders:</strong></p>
+  <ul>
+    <li>"Inflation surprises higher" → cleanest: long breakevens (TIPS vs nominals); noisier: short bonds, long commodities, long value.</li>
+    <li>"Credit stress coming" → cleanest: long CDX HY protection; noisier: short equities, long VIX, long quality.</li>
+    <li>"Dollar will weaken" → cleanest: short DXY / long EUR/USD; noisier: long EM equities, long gold, long commodities.</li>
+  </ul>
+  <p><strong>Systematic implementation (from the lesson):</strong> weight multiple expressions by signal strength, risk contribution (vol-adjusted sizing), correlation between expressions, and costs.</p>
+  <div class="tl-math">\[ \text{Position Size} = \frac{\text{Target Risk}}{\text{Instrument Volatility} \times \text{Correlation to View}} \]</div>
+
+  <h3>6.10 Implementation reality — where edge actually lives</h3>
+  <div class="tl-callout">
+    <strong>The hard truth (the lesson's own words):</strong> reading cross-asset signals and trading them profitably on a discretionary daily basis is extremely difficult; markets are highly efficient at short horizons; most retail traders (and many professionals) who try to "trade the macro" lose money. Institutional edge comes from infrastructure, time horizon and systematic implementation.
+  </div>
+  <p><strong>Why daily discretionary macro is hard:</strong></p>
+  <ul>
+    <li>Information is priced fast — by the time you see a signal, so has everyone.</li>
+    <li>Noise dominates short horizons — daily moves are mostly noise; signal emerges over weeks and months.</li>
+    <li>Behavioral biases compound — overtrading, confirmation bias, recency bias.</li>
+    <li>Transaction costs erode returns with frequency.</li>
+    <li>Narrative is seductive — a post-hoc "story" for any move isn't tradeable.</li>
+  </ul>
+  <p><strong>Where edge can exist:</strong></p>
+  <ul>
+    <li>Longer time horizons (weeks–months) where behavioral biases and structural flows create opportunity.</li>
+    <li>Systematic implementation — rules remove emotion and enforce discipline.</li>
+    <li>Superior data/infrastructure — same signals, faster or higher resolution.</li>
+    <li>Capacity to hold through drawdowns that force others out.</li>
+    <li>Structural advantages — market access, leverage, information.</li>
+    <li><strong>The retail edge:</strong> no benchmark, no redemptions, no career risk — you can be patient and hold through volatility that would get a fund manager fired. Use it.</li>
+  </ul>
+  <p><strong>Systematic strategy families the signals map to (testable):</strong> regime identification models (classify → allocate by historical regime performance); cross-asset trend-following; carry strategies with systematic exits; relative value / mean-reversion in relationships (stock-bond corr, credit-equity); risk-parity with regime-conditional correlations. Each can be backtested, validated OOS, and stress-tested — evidence beyond narrative.</p>
+  <p><strong>What the course's Data Modelling section promises to cover:</strong> building data pipelines (FRED, alternative data); signal construction and normalization; rigorous backtesting (walk-forward, no lookahead, cost modeling); regime detection (HMM, rules, ensembles); portfolio construction (signal combination, correlation-aware sizing, risk budgeting); monitoring/execution (alerts, rebalancing, slippage).</p>
+  <p><strong>The realistic path (as taught):</strong></p>
+  <ol>
+    <li>Education — understand how institutions think about cross-asset dynamics.</li>
+    <li>Context — use the framework to interpret moves even when not trading them.</li>
+    <li>Longer-horizon positioning — inform medium-term allocation (months, not days).</li>
+    <li>Systematic testing — build and test before trading any of these signals.</li>
+    <li>Humility — recognise the limits of discretionary macro at retail scale.</li>
+  </ol>
+  <p><em>"This isn't defeatism — it's realism… value comes from proper application, not from thinking you can out-trade Goldman Sachs on a daily basis."</em></p>
+
+  <h3>6.11 Lesson 6 key takeaways (as given)</h3>
+  <div class="tl-box">
+    <div class="tl-box-label">Key takeaways</div>
+    <ul>
+      <li><strong>Trade the capital structure, not single assets</strong> — one view, many expressions, different risk/reward.</li>
+      <li><strong>Information flows in sequence</strong> — rates → credit → FX → equities; know where you are in the cascade.</li>
+      <li><strong>Regimes determine allocation</strong> — growth × inflation quadrants; detect transitions early.</li>
+      <li><strong>Correlations are variables, not constants</strong> — stock-bond correlation flips between regimes; diversification can fail when most needed.</li>
+      <li><strong>Coherence builds conviction</strong> — aligned markets = high conviction; divergences = investigate.</li>
+      <li><strong>Credit leads at turning points</strong> — skeptical, downside-focused investors move first.</li>
+      <li><strong>Infrastructure enables edge</strong> — pipelines, alerting, quantitative testing.</li>
+      <li><strong>Time horizon is your edge</strong> — daily discretionary macro is extremely hard; edge lives at longer horizons with systematic implementation and patience.</li>
+    </ul>
+  </div>
+
+  <h2>Appendix A — Master reference: formulas from the course</h2>
+  <div class="tl-table"><table>
+    <tr><th>Formula</th><th>Context</th></tr>
+    <tr><td><code>SNR = Signal Power / Noise Power</code></td><td>L1 — noise vs signal by horizon</td></tr>
+    <tr><td><code>Yield ≈ Coupon / Price</code></td><td>L4 — simplified bond yield</td></tr>
+    <tr><td><code>Price change ≈ −Duration × Yield change</code></td><td>L4 — rate sensitivity</td></tr>
+    <tr><td><code>Breakeven Inflation = Nominal Yield − TIPS Yield</code></td><td>L4 — market inflation expectation</td></tr>
+    <tr><td><code>Net Liquidity ≈ Fed Balance Sheet − TGA − RRP</code></td><td>L3/L6 — liquidity available to markets</td></tr>
+    <tr><td><code>Carry Return = Rate Differential − Hedging Cost</code></td><td>L5 — carry mechanics</td></tr>
+    <tr><td><code>Forward Premium ≈ Interest Rate Differential</code></td><td>L5 — covered interest parity</td></tr>
+    <tr><td><code>Implied FF rate = 100 − futures price</code></td><td>L3 — Fed funds futures</td></tr>
+    <tr><td>EWMA correlation with λ ≈ 0.94</td><td>L6 — correlation-regime monitoring</td></tr>
+    <tr><td><code>Position Size = Target Risk / (Instrument Vol × Correlation to View)</code></td><td>L6 — vol-adjusted sizing</td></tr>
+  </table></div>
+
+  <h2>Appendix B — Master reference: data sources &amp; tools named in the course</h2>
+  <div class="tl-table"><table>
+    <tr><th>Source / tool</th><th>What for</th></tr>
+    <tr><td>FRED <code>WALCL</code></td><td>Fed balance sheet (weekly)</td></tr>
+    <tr><td>FRED <code>RRPONTSYD</code></td><td>Overnight reverse repo (daily)</td></tr>
+    <tr><td>FRED <code>WTREGEN</code></td><td>Treasury General Account (weekly)</td></tr>
+    <tr><td>FRED <code>NFCI</code></td><td>Chicago Fed financial conditions (weekly)</td></tr>
+    <tr><td>FRED <code>DRTSCILM</code></td><td>SLOOS bank lending standards (quarterly)</td></tr>
+    <tr><td>H.4.1 release</td><td>Fed weekly balance sheet, Thursdays 4:30 PM ET</td></tr>
+    <tr><td>CME FedWatch</td><td>Market-implied meeting probabilities</td></tr>
+    <tr><td>Fed funds futures / OIS</td><td>Rate expectations pricing</td></tr>
+    <tr><td>CFTC COT report</td><td>Futures positioning by trader type (Fridays)</td></tr>
+    <tr><td>CDX IG / CDX HY</td><td>Tradeable credit indices; real-time risk sentiment</td></tr>
+    <tr><td>HY OAS</td><td>Credit-spread fear gauge</td></tr>
+    <tr><td>MOVE index</td><td>Treasury volatility ("bond VIX")</td></tr>
+    <tr><td>VIX + VIX term structure (VIX1/VIX2)</td><td>Equity vol; contango vs backwardation</td></tr>
+    <tr><td>10Y TIPS yield (e.g. FRED DFII10)</td><td>Real yields</td></tr>
+    <tr><td>2s10s / 3M-10Y spreads</td><td>Curve slope / recession signal</td></tr>
+    <tr><td>Cross-currency basis (EUR/USD, JPY/USD)</td><td>Dollar funding stress</td></tr>
+    <tr><td>Dot plot / SEP</td><td>FOMC projections (Mar/Jun/Sep/Dec)</td></tr>
+    <tr><td>Fed speech calendar; WSJ (Timiraos)</td><td>Fedspeak &amp; trial balloons</td></tr>
+    <tr><td>Put/call ratio, short interest, fund flows</td><td>Positioning/sentiment</td></tr>
+  </table></div>
+
+  <h2>Appendix C — Master reference: the daily scans (as taught)</h2>
+  <p><strong>Risk dashboard (L2):</strong> VIX level &amp; term structure → CDX HY day change → JPY vs high-beta FX → stock-bond correlation check → if 3+ warn, cut gross first.</p>
+  <p><strong>Fixed income scan, 5 min (L4):</strong> 10Y level/change → 2s10s → 2Y → HY spreads → MOVE → 10Y TIPS → key rate differentials.</p>
+  <p><strong>FX scan, 5 min (L5):</strong> DXY direction &amp; why → USD/JPY (JPY strength = risk-off) → EUR/USD → AUD/USD (risk + China) → EM FX breadth → cross-currency basis if available.</p>
+  <p><strong>Pre-trade checks:</strong> levels above you in the hierarchy (L2) → positioning (who's in, what forces them out, am I early or late, what's my edge) (L2) → bond-first framework (L4) → regime &amp; coherence context (L6).</p>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Appendix D — Topics flagged for future investigation</h2></summary>
+  <p>
+    These are open threads named in the lesson material itself — testable
+    ideas the course points at but doesn't resolve, not conclusions to trade
+    on as given.
+  </p>
+  <ul>
+    <li>Lead-lag measurement: cross-correlation by lag, Granger causality, VAR, rolling-window stability (L6 notes these are strongest at regime turns).</li>
+    <li>Regime detection methods: rule-based thresholds vs HMM vs clustering; robustness across methods (L6).</li>
+    <li>Coherence scoring: cross-asset correlation vs regime norms as a conviction/size input; behaviour of trend vs mean-reversion under high/low coherence (L6).</li>
+    <li>Correlation methodology: rolling vs EWMA (λ=0.94), regime-conditional estimates, stress correlations (L6).</li>
+    <li>Carry strategy literature: UIP failure, long-run carry returns and crash risk (L5).</li>
+    <li>Pre-FOMC drift and the two-phase FOMC reaction; post-event drift over days 1–5 (L3).</li>
+    <li>Dot-plot vs market-pricing gaps as surprise-direction indicator (L3).</li>
+    <li>Net-liquidity ↔ risk-asset relationship ("a condition, not a signal") (L3/L6).</li>
+    <li>Calendar-flow effects: month-end rebalancing pressure, OpEx pinning/gamma, September/year-end seasonality (L2).</li>
+    <li>Positioning extremes (COT percentile, short interest, put/call) as reversal conditioning (L2).</li>
+    <li>Yield-curve inversion lead times and the un-inversion "final warning" (L4).</li>
+    <li>Real-yield relationships with gold and growth equities; breakeven decomposition of nominal moves (L4).</li>
+    <li>Cross-currency basis as a funding-stress indicator; quarter-end seasonality; Fed swap lines (L5).</li>
+    <li>Intervention episodes and their limits (Japan 2022–24) (L5).</li>
+    <li>Vol-adjusted sizing and expression selection across the capital structure (L6).</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="data-foundations.html">← Data Foundations</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="regression-analysis-course.html">Regression Analysis →</a>
+  </div>
+</div>
+</body>
+</html>

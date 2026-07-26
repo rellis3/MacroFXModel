@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Foundations — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Course Notes / Data Foundations</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Course Notes · Lesson 1 of 10</div>
+  <h1 class="tl-title">Data Foundations</h1>
+  <p class="tl-dek">Where financial data actually comes from — a four-tier map from the $24k-a-seat terminal down to the free government API — and why a model can never rescue a signal that was built on data it shouldn't have seen, or shouldn't have trusted.</p>
+  <div class="tl-meta">
+    <span class="tl-status course">COURSE NOTES — applied practice, not from-scratch derivation</span>
+    <span>~20 min read</span>
+    <span>Prereqs: none</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Data sourcing is a risk function, not a technical afterthought: a sophisticated model run on corrupted, misaligned, or biased data doesn't produce sophisticated analysis — it produces "sophisticated-looking noise with a false sense of precision," and the model itself cannot detect this. Knight Capital lost $500M in 45 minutes in 2012 from a data/software deployment failure and did not survive it.</li>
+      <li>A four-tier institutional data hierarchy runs from Tier 1 premium vendors ($15,000–$30,000+/year/seat — e.g. Bloomberg Terminal at ~$24k/seat/year) down through Tier 2 primary government/central-bank publishers (free), Tier 3 exchange/derivatives/positioning data ($0–$5,000/year), to Tier 4 accessible APIs and retail aggregators (free/freemium).</li>
+      <li>For US government macro data (CPI, GDP, payrolls, Treasury yields, Fed Funds), Bloomberg aggregates from the exact same public sources reachable free via FRED — the $24k pays for infrastructure, normalisation and unified delivery, not exclusive data. That is <em>not</em> true for tick data, OTC fixed income, corporate fundamentals, or international market data, where Bloomberg's access has no meaningful free equivalent.</li>
+      <li>FRED (Federal Reserve Bank of St. Louis) is free, programmatic, and covers 800,000+ series from 100+ sources — and it stores full revision history ("vintages"), the feature that makes genuine point-in-time backtesting possible.</li>
+      <li>The CFTC's Commitment of Traders (COT) report is free public futures positioning data back to 1986, split into three participant categories (commercial hedgers, non-commercial speculators, non-reportable), with a six-step systematic method for turning it into a signal — explicitly framed as one input, not a standalone edge.</li>
+    </ul>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    A backtest can look exceptional and still be quietly worthless, because the signal underneath it was built on data that either wasn't really there at the time (look-ahead bias), was drawn from a source that silently drops dead or delisted instruments (survivorship bias), or was pulled from a series that was materially revised after first publication (a revision blindspot) — or because a slow-moving series was held "live" against a faster trading frequency it can't actually support (frequency misalignment, the subject of the next lesson in this block). None of these show up in the Sharpe ratio. They show up months later, live, as decay nobody can explain.
+  </p>
+  <p>
+    At well-resourced quant desks and systematic trading operations, data sourcing is treated as more than a technical task: it is governed by documented processes, validation steps, and clear ownership, precisely because analytical output is only as reliable as its inputs. This lesson is a practical map of where financial data actually comes from — a four-tier hierarchy from the most expensive institutional terminal down to free public APIs — and why some of the most valuable macro-economic data in that hierarchy happens to be free, which can materially reduce the data cost of systematic research without giving up anything real.
+  </p>
+
+  <h2>1. Data sourcing is a risk function</h2>
+  <p>
+    The starting premise is blunt: a signal that looks exceptional in testing may be built on data that was unavailable at signal time (look-ahead bias), sourced from a vendor that introduced survivorship bias, or built on a series that underwent material revision after the fact. The model cannot detect any of this on its own — it has no way to know that the number it was fed didn't exist yet, or that the version it saw has since been quietly restated. Systematic data governance is the primary way to catch these issues before they catch you.
+  </p>
+  <p>Three headline facts from this lesson, worth memorising as-is:</p>
+  <div class="tl-symbols"><table>
+    <tr><td>Data quality as a leading cause of model failures</td><td>Widely cited by practitioners — but the lesson is explicit that no single authoritative figure exists for this; the point is that failure is not model-design alone.</td></tr>
+    <tr><td>$500M — Knight Capital, 2012</td><td>Lost in 45 minutes from a data and software deployment failure; the firm did not survive.</td></tr>
+    <tr><td>$24k/year per seat — Bloomberg Terminal</td><td>The institutional data standard; Tier 1 primary access.</td></tr>
+  </table></div>
+
+  <div class="tl-callout">
+    <strong>The Data Quality Principle (quote to memorise):</strong> "A sophisticated model applied to corrupted, misaligned, or biased data does not produce sophisticated analysis. It produces sophisticated-looking noise with a false sense of precision."
+  </div>
+
+  <p>
+    This is explicitly framed as not a beginner's warning: look-ahead bias has been documented in many published backtests and is a plausible contributor to strategies that look strong in testing but disappoint live. Systematic data governance is the primary defence against it — the theme running through this entire block of lessons.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Vocabulary — the blind spots this block is about</div>
+    <h3>Four failure modes, only one of them dealt with fully here</h3>
+    <p><strong>Look-ahead bias</strong> — using data in a backtest that was not actually available at signal time. The most common way a backtest silently cheats.</p>
+    <p><strong>Survivorship bias</strong> — data that excludes dead or delisted instruments, flattering historical results by construction.</p>
+    <p><strong>Revision blindspot</strong> — building on a series that was materially revised after first publication, so the "history" you tested on isn't the history anyone actually traded against.</p>
+    <p><strong>Frequency misalignment</strong> — holding a slower-cadence series (monthly, weekly) "live" against a faster trading frequency (daily) that implies information the series doesn't actually have day-to-day. This lesson only names it; matching resample/trading frequency to a signal's true update cadence is the explicit subject of the next lesson in this block, DF-02 (Data Types &amp; Frequency Alignment).</p>
+  </div>
+
+  <h2>2. Provenance — where data actually comes from</h2>
+  <p>
+    Most practitioners consume data through Bloomberg, Refinitiv, or a third-party vendor without ever asking the obvious question: where did Bloomberg get this? For US government macro data, the provenance chain is four hops long:
+  </p>
+  <div class="tl-symbols"><table>
+    <tr><td>Primary source</td><td>Aggregator / API</td><td>Tier-1 vendor</td><td>End user</td></tr>
+    <tr><td>BLS / BEA / Fed — free, authoritative</td><td>FRED API — free, 800,000+ series</td><td>Bloomberg / Refinitiv — ~$24k / seat / year</td><td>You / your model — same source for these series</td></tr>
+  </table></div>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A supply chain, not a factory</h3>
+    <p>
+      Think of Bloomberg the way you'd think of a supermarket for a specific class of goods, like government macro statistics. The supermarket didn't grow the produce — it bought it from the same farms (BLS, BEA, the Fed) that anyone else could buy from directly, then added packaging, refrigeration, and a delivery van. Knowing only the supermarket's shelf tells you nothing about the item's actual quality or freshness; knowing the farm does. Provenance is asking "which farm did this come from," not "which shelf did I find it on" — and for this specific category of data, the free farm and the $24k supermarket sell the identical product.
+    </p>
+  </div>
+
+  <p>
+    <strong>What this means:</strong> for US macro indicators published by government agencies — CPI, GDP, payrolls, unemployment, Treasury yields, the Fed Funds Rate — Bloomberg aggregates data that originates from the same public sources accessible via FRED. The underlying numbers are the same. Bloomberg's value here is normalisation, delivery infrastructure, and unified access — not exclusive data.
+  </p>
+  <p>
+    <strong>What it does NOT mean:</strong> Bloomberg is not just a relay in general. For tick-level equity and futures data, OTC fixed income pricing, global corporate fundamentals, analyst consensus estimates, and real-time exchange feeds, Bloomberg provides genuine access with no meaningful free equivalent. The $24k premium covers both the infrastructure for government data and proprietary access to data that genuinely cannot be sourced free. The scope note is worth repeating exactly: the "same data, free" argument applies specifically to government macro statistics — not to tick data, intraday prices, fixed income, or international market data.
+  </p>
+
+  <h2>3. The four tiers — the complete institutional data hierarchy</h2>
+  <p>
+    The organising principle is to group sources by reliability, latency, publication governance, revision practices, and cost. The tier a source occupies shapes how it should be used, what validation is appropriate, and what analytical decisions it can credibly support.
+  </p>
+  <div class="tl-symbols"><table>
+    <tr><td>1</td><td>Institutional premium vendors</td><td>$15,000 – $30,000+ / year per seat</td></tr>
+    <tr><td>2</td><td>Primary government &amp; central-bank sources</td><td>Free — the actual primary publishers</td></tr>
+    <tr><td>3</td><td>Exchange, derivatives &amp; positioning data</td><td>$0 – $5,000 / year depending on source</td></tr>
+    <tr><td>4</td><td>Accessible APIs &amp; retail aggregators</td><td>Free — freemium</td></tr>
+  </table></div>
+
+  <h3>Tier 1 — institutional premium vendors</h3>
+  <p>
+    This is the infrastructure layer used by hedge funds, prime brokers, asset managers, and investment banks. These platforms do not originate macro-economic data — they ingest it from primary sources, normalise it across heterogeneous formats, apply systematic cleaning, and deliver it through standardised APIs with defined service levels. The premium pays for this infrastructure, not data exclusivity.
+  </p>
+  <p><em>What Tier 1 provides:</em></p>
+  <ul>
+    <li>Point-in-time vintage data with full revision history</li>
+    <li>Tick-level resolution for equities, FX, and rates</li>
+    <li>Cross-asset coverage from a single endpoint</li>
+    <li>Corporate fundamentals with standardised accounting</li>
+    <li>Real-time delivery with &lt;100ms latency guarantees</li>
+  </ul>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">What premium access cannot buy you</div>
+    <h3>Five things Tier 1 does not give you, memorised as a list</h3>
+    <ul>
+      <li>A better model</li>
+      <li>Better analytical judgment</li>
+      <li>Protection against look-ahead bias in your own pipeline</li>
+      <li>Statistical validity of your backtest</li>
+      <li>"Any of the things that actually determine whether a systematic strategy works"</li>
+    </ul>
+  </div>
+
+  <p>
+    Named Tier 1 vendors from the lesson: Bloomberg Terminal, Refinitiv Eikon / LSEG, FactSet, S&amp;P Global Market Intelligence, Morningstar Direct, ICE Data Services, MSCI RiskMetrics, IHS Markit.
+  </p>
+
+  <h3>Tier 2 — primary government &amp; central-bank sources</h3>
+  <p>
+    The actual primary publishers: BLS, BEA, the Fed, Treasury, ECB, World Bank, OECD, and others. Free and authoritative — this is the farm in the supply-chain analogy above.
+  </p>
+
+  <h3>Tier 3 — exchange, derivatives &amp; positioning data</h3>
+  <p>
+    $0–$5,000/year depending on source. The lesson's featured example is the CFTC's Commitment of Traders report, covered in full below.
+  </p>
+
+  <h3>Tier 4 — accessible APIs &amp; retail aggregators</h3>
+  <p>
+    Free / freemium. FRED itself is the lesson's flagship example: a free, programmatic aggregation layer sitting on top of Tier 2 primary publishers.
+  </p>
+
+  <div class="tl-callout">
+    <strong>Key takeaway on the stack:</strong> the Tier 2 → Tier 4 path is entirely viable for macro systematic research — pulling CPI from FRED via <code>fredapi</code> accesses the same underlying government-published data that commercial vendors aggregate. The difference is tooling, normalisation, and latency — not the underlying numbers — for government-sourced series.
+  </div>
+
+  <h2>4. FRED deep dive — architecture &amp; coverage</h2>
+  <p>
+    FRED stands for Federal Reserve Bank of <strong>St. Louis</strong> Economic Data. It offers free, programmatic, authenticated API access to 800,000+ series from 100+ sources: BLS, BEA, US Treasury, ECB, World Bank, OECD, and more. The lesson describes it as one of the most useful free resources for macro research and a sensible starting point before paying for commercial feeds.
+  </p>
+  <p>The lesson's canonical series-ID list, organised by category, is worth learning cold:</p>
+  <div class="tl-symbols"><table>
+    <tr><td>📈 Inflation &amp; prices (~3,200)</td><td>CPIAUCSL</td><td>Headline CPI, SA</td></tr>
+    <tr><td></td><td>CPILFESL</td><td>Core CPI, SA</td></tr>
+    <tr><td></td><td>PCEPI</td><td>PCE Price Index</td></tr>
+    <tr><td></td><td>PCEPILFE</td><td>Core PCE — the Fed's target</td></tr>
+    <tr><td></td><td>T5YIE</td><td>5y5y inflation breakeven</td></tr>
+    <tr><td>💹 Interest rates (~2,800)</td><td>FEDFUNDS</td><td>Effective Fed Funds Rate</td></tr>
+    <tr><td></td><td>DGS2</td><td>2Y Treasury, daily</td></tr>
+    <tr><td></td><td>DGS10</td><td>10Y Treasury, daily</td></tr>
+    <tr><td></td><td>T10Y2Y</td><td>Yield-curve spread (pre-computed 2s10s)</td></tr>
+    <tr><td></td><td>SOFR</td><td>Overnight rate</td></tr>
+    <tr><td>🏭 Growth &amp; activity (~5,100)</td><td>GDPC1</td><td>Real GDP, quarterly</td></tr>
+    <tr><td></td><td>INDPRO</td><td>Industrial production</td></tr>
+    <tr><td></td><td>RSAFS</td><td>Advance retail sales</td></tr>
+    <tr><td></td><td>UMCSENT</td><td>Consumer sentiment (U. Michigan)</td></tr>
+    <tr><td></td><td>HOUST</td><td>Housing starts</td></tr>
+    <tr><td>👷 Labour market (~1,900)</td><td>PAYEMS</td><td>Total nonfarm payrolls</td></tr>
+    <tr><td></td><td>UNRATE</td><td>Unemployment U-3</td></tr>
+    <tr><td></td><td>U6RATE</td><td>Underemployment U-6</td></tr>
+    <tr><td></td><td>ICSA</td><td>Initial claims, weekly</td></tr>
+    <tr><td></td><td>JTSJOL</td><td>Job openings (JOLTS)</td></tr>
+    <tr><td>🔬 Financial conditions (~2,200)</td><td>NFCI</td><td>Chicago Fed Financial Conditions Index</td></tr>
+    <tr><td></td><td>WALCL</td><td>Fed balance sheet</td></tr>
+    <tr><td></td><td>BAMLH0A0HYM2</td><td>HY credit OAS</td></tr>
+    <tr><td></td><td>DTWEXBGS</td><td>USD broad index</td></tr>
+    <tr><td></td><td>VIXCLS</td><td>CBOE VIX close</td></tr>
+    <tr><td>🌍 International (~180,000)</td><td>ECBDFR</td><td>ECB deposit facility rate</td></tr>
+    <tr><td></td><td>IRLTLT01DEM156N</td><td>Germany 10Y yield</td></tr>
+    <tr><td></td><td>DEXUSEU</td><td>EUR/USD, daily</td></tr>
+    <tr><td></td><td>DCOILWTICO</td><td>WTI crude oil</td></tr>
+    <tr><td></td><td>GOLDAMGBD228NLBM</td><td>Gold PM fix</td></tr>
+  </table></div>
+
+  <h3>FRED vintages — the revision archive</h3>
+  <p>
+    FRED stores the full revision history of most economic series — called vintages — allowing you to pull what was known at any point in time. This is the feature that makes proper backtesting possible: you can recreate exactly what your model would have seen at any historical signal date, rather than testing against today's fully-revised numbers.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">API usage taught in the lesson</div>
+    <h3>Pulling a series' revision dates</h3>
+    <pre style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:14px 18px;overflow-x:auto;font-family:'DM Mono',monospace;font-size:13px;color:var(--text2);margin:14px 0"><code>fred.get_series_vintage_dates("GDPC1")
+# -&gt; all the dates on which the series was revised;
+#    you can then pull the vintage that existed at any historical signal date</code></pre>
+    <p>
+      The lesson's own framing: this is "as close to point-in-time data as you can get without paying for a dedicated vintage database."
+    </p>
+  </div>
+
+  <h2>5. The COT report — free institutional positioning data</h2>
+  <p>
+    The CFTC's Commitment of Traders (COT) report is freely available futures positioning data, often overlooked in retail quantitative practice. It discloses net futures positions across three participant categories in major futures markets: FX, rates, equity indices, energy, metals, and agricultural commodities. It is widely referenced by macro funds, CTAs, and discretionary traders as one input into positioning analysis. Historically, extreme net positioning has sometimes preceded trend reversals — though the lesson is explicit that this relationship is not reliable enough to use in isolation. Understanding the report's structure is the prerequisite to incorporating it into systematic work.
+  </p>
+
+  <p>Report mechanics, memorised:</p>
+  <div class="tl-symbols"><table>
+    <tr><td>Data as-of</td><td>Tuesday</td></tr>
+    <tr><td>Published</td><td>Friday 3:30pm ET</td></tr>
+    <tr><td>Lag</td><td>3 trading days</td></tr>
+    <tr><td>Source</td><td>cftc.gov — free</td></tr>
+    <tr><td>History</td><td>1986 – present</td></tr>
+  </table></div>
+
+  <h3>The three participant categories</h3>
+  <ol>
+    <li><strong>Commercial hedgers</strong> — "smart money" / real money. Entities with legitimate business exposure to the underlying: corn producers hedging harvest, airlines hedging jet fuel, corporates hedging FX. Their positioning reflects business need, not speculation — but at extremes they signal important fundamentals.</li>
+    <li><strong>Non-commercial speculators</strong> — "large specs" / managed money. Hedge funds, CTAs, large speculative traders. The most closely watched category for momentum and sentiment signals. Extreme net long/short positioning by large specs has historically been a contrarian indicator at major turning points.</li>
+    <li><strong>Non-reportable</strong> — small speculators. Positions below CFTC reporting thresholds: retail and small institutional. Generally treated as a noise category; extreme positioning here adds marginal signal. Can be computed as total open interest − commercial − non-commercial.</li>
+  </ol>
+
+  <p>Markets covered by the report:</p>
+  <ul>
+    <li><strong>FX:</strong> EUR, GBP, JPY, AUD, CAD, CHF, MXN (CME FX futures)</li>
+    <li><strong>Rates:</strong> 2Y, 5Y, 10Y, 30Y US Treasuries (CBOT)</li>
+    <li><strong>Equity indices:</strong> S&amp;P 500, NASDAQ, Dow Jones, Russell 2000 (CME)</li>
+    <li><strong>Energy:</strong> WTI crude, Brent, natural gas, RBOB (NYMEX)</li>
+    <li><strong>Metals:</strong> gold, silver, copper (COMEX)</li>
+    <li><strong>Ags:</strong> corn, wheat, soybeans, sugar, coffee (CBOT/ICE)</li>
+  </ul>
+
+  <h3>The lesson's six-step systematic method</h3>
+  <ol>
+    <li>Compute net non-commercial position (longs − shorts)</li>
+    <li>Normalise by open interest for cross-market comparison</li>
+    <li>Apply a rolling z-score to identify positioning extremes</li>
+    <li>Use percentile rank vs 3-year history as the signal threshold</li>
+    <li>Combine with price momentum to avoid catching falling knives</li>
+    <li>Watch commercials for hedging extremes as a leading indicator</li>
+  </ol>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The institutional data hierarchy — cost and access narrow as you go up</div>
+    <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A four-tier pyramid diagram. The narrow top tier is Tier 1, institutional premium vendors, costing fifteen to thirty thousand dollars or more per seat per year, such as Bloomberg Terminal. Below it, Tier 2, primary government and central bank sources such as BLS, BEA and the Fed, free. Below that, Tier 3, exchange, derivatives and positioning data such as the CFTC COT report, zero to five thousand dollars per year. The widest base tier is Tier 4, accessible APIs and retail aggregators such as FRED, free or freemium.">
+      <polygon points="320,10 395,82.5 245,82.5" fill="var(--purple-bg)" stroke="var(--purple)" stroke-width="1.5"/>
+      <polygon points="245,82.5 395,82.5 470,155 170,155" fill="var(--blue-bg)" stroke="var(--blue)" stroke-width="1.5"/>
+      <polygon points="170,155 470,155 545,227.5 95,227.5" fill="var(--amber-bg)" stroke="var(--amber)" stroke-width="1.5"/>
+      <polygon points="95,227.5 545,227.5 620,300 20,300" fill="var(--green-bg)" stroke="var(--green)" stroke-width="1.5"/>
+      <text x="320" y="60" text-anchor="middle" font-size="11.5" font-weight="700" font-family="'DM Sans',sans-serif" fill="var(--text)">Tier 1</text>
+      <text x="320" y="74" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text2)">$15k–$30k+/yr/seat</text>
+      <text x="320" y="118" text-anchor="middle" font-size="11.5" font-weight="700" font-family="'DM Sans',sans-serif" fill="var(--text)">Tier 2 — Primary gov &amp; central-bank sources</text>
+      <text x="320" y="134" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text2)">Free — BLS, BEA, Fed, ECB, World Bank</text>
+      <text x="320" y="190" text-anchor="middle" font-size="11.5" font-weight="700" font-family="'DM Sans',sans-serif" fill="var(--text)">Tier 3 — Exchange, derivatives &amp; positioning</text>
+      <text x="320" y="206" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text2)">$0–$5k/yr — e.g. CFTC COT report</text>
+      <text x="320" y="264" text-anchor="middle" font-size="12" font-weight="700" font-family="'DM Sans',sans-serif" fill="var(--text)">Tier 4 — Accessible APIs &amp; retail aggregators</text>
+      <text x="320" y="281" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text2)">Free / freemium — e.g. FRED, 800,000+ series</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--purple)"></i>Tier 1 — premium vendors</span>
+      <span><i style="background:var(--blue)"></i>Tier 2 — primary publishers</span>
+      <span><i style="background:var(--amber)"></i>Tier 3 — exchange/positioning</span>
+      <span><i style="background:var(--green)"></i>Tier 4 — accessible APIs</span>
+    </div>
+    <div class="tl-chart-caption">
+      Narrowest and most expensive at the top, widest and free at the base. Cost falls as you go down the pyramid, but so does the amount of proprietary infrastructure and coverage you get for it — Tier 1's premium pays for normalisation, tick-level resolution, and cross-asset delivery, not exclusivity over government-published series, which are identical whichever tier you pull them from.
+    </div>
+  </div>
+
+  <h2>6. Key takeaways</h2>
+  <ol>
+    <li><strong>Data sourcing is a risk function — not a technical task.</strong> Every professional quant desk governs it with policy, audit trails, and dedicated resources. Output quality is bounded above by input quality.</li>
+    <li>For <strong>government macro statistics</strong>, Bloomberg aggregates from the same public sources as FRED — CPI, GDP, payrolls, Treasury yields, Fed Funds all originate from BLS/BEA/Fed. Bloomberg is not the exclusive source for these. For tick data, OTC fixed income, corporate fundamentals, and international market data, Bloomberg does provide access with no straightforward free equivalent.</li>
+    <li><strong>FRED</strong>: 800,000+ series, programmatic API, vintage revision history — a sensible starting point before paying for commercial feeds.</li>
+    <li>The <strong>Tier 2 → Tier 4 path is entirely viable</strong> for macro systematic research; the difference vs commercial vendors is tooling, normalisation, latency — not the underlying numbers for government-sourced series.</li>
+    <li><strong>COT data</strong>: free, public futures positioning since 1986, referenced by many professional macro practitioners — one input, not a standalone edge.</li>
+    <li><strong>Understanding provenance is prerequisite to trust.</strong> Before any series enters the pipeline, trace it to its original publisher. If you cannot identify the primary source, you cannot assess revision risk, reliability, or the appropriate use case.</li>
+  </ol>
+
+  <h2>7. Vocabulary &amp; definitions</h2>
+  <div class="tl-symbols"><table>
+    <tr><td>Look-ahead bias</td><td>Using data in a backtest that was not available at signal time</td></tr>
+    <tr><td>Survivorship bias</td><td>Data that excludes dead/delisted instruments, flattering historical results</td></tr>
+    <tr><td>Revision blindspot</td><td>Building on a series that was materially revised after first publication</td></tr>
+    <tr><td>Provenance</td><td>The chain from primary publisher to end user; knowing where a series actually originates</td></tr>
+    <tr><td>Vintage</td><td>The version of an economic series as it existed on a given historical date</td></tr>
+    <tr><td>Point-in-time data</td><td>Data reconstructed to show exactly what was known at each moment</td></tr>
+    <tr><td>Primary source</td><td>The original publisher of a series (BLS, BEA, Fed…), as opposed to an aggregator or vendor</td></tr>
+    <tr><td>Commercial / non-commercial / non-reportable</td><td>The three COT participant categories: hedgers, large specs, small specs</td></tr>
+    <tr><td>Open interest</td><td>Total outstanding futures contracts — the normaliser for cross-market COT comparison</td></tr>
+  </table></div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. State the Data Quality Principle. What does a sophisticated model on bad data produce?</summary>
+    <div class="tl-answer">"A sophisticated model applied to corrupted, misaligned, or biased data does not produce sophisticated analysis. It produces sophisticated-looking noise with a false sense of precision." The danger is precisely that it still <em>looks</em> sophisticated — the false sense of precision is what lets a broken input slip past review.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What happened to Knight Capital in 2012 — how much, how fast, what kind of failure, and what was the outcome for the firm?</summary>
+    <div class="tl-answer">Knight Capital lost $500M in 45 minutes, from a data and software deployment failure. The firm did not survive the loss.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Draw the provenance chain for US government macro data, all four hops. At which hop does the data stop being free, and what does that hop actually add for these series?</summary>
+    <div class="tl-answer">Primary source (BLS / BEA / Fed — free, authoritative) → Aggregator / API (FRED — free, 800,000+ series) → Tier-1 vendor (Bloomberg / Refinitiv — ~$24k/seat/year) → End user (you / your model). The data stops being free at the Tier-1 vendor hop. For these specific series, that hop adds normalisation, delivery infrastructure, and unified access — not exclusive data, since the underlying numbers are identical to what's already free via FRED.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Name the four tiers with their cost bands and at least one example source in each.</summary>
+    <div class="tl-answer">Tier 1 — institutional premium vendors, $15,000–$30,000+/year/seat (e.g. Bloomberg Terminal). Tier 2 — primary government &amp; central-bank sources, free (e.g. BLS, BEA, the Fed). Tier 3 — exchange, derivatives &amp; positioning data, $0–$5,000/year (e.g. the CFTC COT report). Tier 4 — accessible APIs &amp; retail aggregators, free/freemium (e.g. FRED itself as the aggregation layer over Tier 2 data).</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. List what Tier 1 provides — and the five things the lesson says Tier 1 cannot give you.</summary>
+    <div class="tl-answer">Provides: point-in-time vintage data with full revision history; tick-level resolution for equities, FX, and rates; cross-asset coverage from a single endpoint; corporate fundamentals with standardised accounting; real-time delivery with &lt;100ms latency guarantees. Cannot give you: a better model; better analytical judgment; protection against look-ahead bias in your pipeline; statistical validity of your backtest; "any of the things that actually determine whether a systematic strategy works."</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. For which data categories does Bloomberg have genuine exclusive-access value (no free equivalent)? Name at least four.</summary>
+    <div class="tl-answer">Tick-level equity and futures data; OTC fixed income pricing; global corporate fundamentals; analyst consensus estimates; real-time exchange feeds. (Any four of these five.)</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q7. How many series and sources does FRED cover? Which institution runs it?</summary>
+    <div class="tl-answer">800,000+ series from 100+ sources. It is run by the Federal Reserve Bank of St. Louis.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q8. Series-ID quiz: core PCE (the Fed's target)? headline CPI? weekly initial claims? the pre-computed 2s10s spread? HY credit OAS? the Fed balance sheet? Germany 10Y?</summary>
+    <div class="tl-answer"><code>PCEPILFE</code>, <code>CPIAUCSL</code>, <code>ICSA</code>, <code>T10Y2Y</code>, <code>BAMLH0A0HYM2</code>, <code>WALCL</code>, <code>IRLTLT01DEM156N</code>.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q9. What is a FRED vintage, which function returns the revision dates, and why does the lesson call vintages "the institutional feature that makes proper backtesting possible"?</summary>
+    <div class="tl-answer">A vintage is the version of an economic series as it existed on a given historical date, before any subsequent revisions. <code>fred.get_series_vintage_dates("SERIES_ID")</code> returns every date on which the series was revised, which you can then use to pull the vintage that existed at any historical signal date. It's called the feature that makes proper backtesting possible because it lets you reconstruct exactly what your model would have seen at each historical point in time — without it, a backtest run against today's fully-revised numbers is silently using information that didn't exist yet, i.e. look-ahead bias baked into the data itself.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q10. COT mechanics: data as-of day, publication day/time, effective lag, source, and how far back the history goes.</summary>
+    <div class="tl-answer">Data as-of Tuesday; published Friday 3:30pm ET; effective lag of 3 trading days; sourced free from cftc.gov; history runs from 1986 to present.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q11. Name the three COT participant categories. Which is watched as a contrarian indicator at extremes, and which reflects business need rather than speculation?</summary>
+    <div class="tl-answer">Commercial hedgers, non-commercial speculators, and non-reportable (small speculators). Non-commercial speculators ("large specs") are the category historically treated as a contrarian indicator at extreme positioning. Commercial hedgers are the category whose positioning reflects business need rather than speculation (though at extremes they too signal important fundamentals).</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q12. Reproduce the lesson's six-step systematic COT method in order. Why does step 2 come before any cross-market comparison?</summary>
+    <div class="tl-answer">1) Compute net non-commercial position (longs − shorts). 2) Normalise by open interest for cross-market comparison. 3) Apply a rolling z-score to identify positioning extremes. 4) Use percentile rank vs 3-year history as the signal threshold. 5) Combine with price momentum to avoid catching falling knives. 6) Watch commercials for hedging extremes as a leading indicator. Step 2 has to come before cross-market comparison because raw net-position sizes aren't comparable across markets of very different scale — a market's open interest is its own natural yardstick, so dividing by it converts an absolute position count into a relative measure of crowding that can meaningfully be z-scored, percentile-ranked, and compared against other markets.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q13. Why is provenance "prerequisite to trust"? What three things can you not assess if you cannot identify the primary source?</summary>
+    <div class="tl-answer">If you can't trace a series back to its original publisher, you have no basis for judging it. Specifically, you cannot assess: revision risk (has this number been materially restated before, and how often), reliability (is the methodology and publisher trustworthy), or the appropriate use case (what this data can and can't credibly support analytically). Understanding provenance means tracing every series to its original publisher before it ever enters the pipeline.</div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Future research, open questions &amp; implementation notes</h2></summary>
+
+  <h3>Future research leads (untested — questions to take into the harness later)</h3>
+  <ol>
+    <li><strong>Apply the six-step COT method to our FX pairs.</strong> The full recipe — net non-commercial → OI-normalise → z-score → 3y percentile → momentum filter → watch commercials — is free to run: CFTC data is free and runs from 1986. Test it through the standard harness (costs, IS/OOS) when it's picked up.</li>
+    <li><strong>Pull FRED vintages and see the revision problem first-hand.</strong> Take a heavily revised series (GDP, payrolls), compare first-print vs current revised values, and measure how different a simple signal looks on each — making the revision-blindspot warning above concrete rather than abstract.</li>
+    <li><strong>Trace the provenance of every data feed this repo already uses</strong> (OANDA, Finnhub, Twelve Data, news, Myfxbook): who originates each series, what its revision policy is, which tier it belongs to. This is Key Takeaway #6 above, applied to the actual stack.</li>
+    <li><strong>Explore FRED's international coverage</strong> (~180,000 series — ECB rates, Bund yields, FX fixes, commodities) as a free Tier-2 layer for the macro side of FX work.</li>
+    <li><strong>Check the COT publication-lag handling.</strong> Data is as-of Tuesday but only published Friday 15:30 ET — how a backtest must align this without look-ahead is exactly the subject of the next lesson (DF-02, Data Types &amp; Frequency Alignment). Held open for that material.</li>
+  </ol>
+
+  <h3>Areas of interest (to read more on)</h3>
+  <ul>
+    <li><strong>ALFRED</strong> — the archival FRED database behind the vintage functions. How far back do vintages go per series? Which series lack them?</li>
+    <li><strong>The Knight Capital post-mortem</strong> — used here as the flagship data-governance failure; the full account is worth reading as a case study.</li>
+    <li><strong>The COT disaggregated report</strong> — the legacy three-category report is what's described above; CFTC also publishes finer participant breakdowns. What extra resolution is available?</li>
+    <li><strong>How Tier-1 vendors do normalisation</strong> — "standardised accounting," cross-vendor symbology, entity mapping. What does that infrastructure actually involve, and what parts matter for a small systematic stack?</li>
+    <li><strong>Which non-government data has no free equivalent</strong> — tick data, OTC fixed income, consensus estimates, global fundamentals — as a map of where budget would actually have to go.</li>
+  </ul>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this touches MacroFXModel (nothing built yet)</div>
+    <h3>Implementation pointers, for when this material gets used in the repo</h3>
+    <ul>
+      <li><code>FRED_KEY</code> already exists in the Railway env table (<code>CLAUDE.md</code>) — the Tier-2 macro layer described in this lesson is already accessible from this codebase.</li>
+      <li>COT data needs no key: cftc.gov publishes it free.</li>
+      <li>The lesson's z-score / percentile steps map onto existing bricks — <code>statsCore.rollingZScore</code>, <code>rollingPercentile</code> — import, don't re-inline, per the Lego Principle.</li>
+      <li>Any COT/FRED work would go through the house harness discipline (costs on, true IS/OOS split, ≥30 OOS trades) like every other idea — see the strategy checklist in <code>CLAUDE.md</code>.</li>
+    </ul>
+  </div>
+
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="quant-macro-lessons.html">Quantitative &amp; Macro Foundations →</a>
+  </div>
+</div>
+</body>
+</html>

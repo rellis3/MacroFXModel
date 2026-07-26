@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Open Interest — Applied Practice — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<style>
+/* Local, page-scoped table styling — theory.css has no generic multi-column
+   data-table class (only .tl-symbols, built for a 2-col symbol/definition
+   layout). Reuses the shared :root palette from theory.css rather than
+   introducing new colors. */
+.tl-datatable-wrap{overflow-x:auto;margin:14px 0}
+.tl-datatable{width:100%;border-collapse:collapse;font-size:13px;min-width:420px}
+.tl-datatable caption{text-align:left;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
+.tl-datatable th{text-align:left;padding:8px 10px;color:var(--text3);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1.5px solid var(--border);white-space:nowrap}
+.tl-datatable td{padding:8px 10px;color:var(--text2);border-bottom:1px solid var(--border);vertical-align:top}
+.tl-datatable tr:last-child td{border-bottom:none}
+.tl-datatable td strong,.tl-datatable td code{color:var(--text)}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Course Notes / Open Interest — Applied Practice</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what Δ, Γ and the rest actually mean</div>
+  <div class="tl-kicker">Course Notes · Lesson 7 of 10</div>
+  <h1 class="tl-title">Open Interest — Applied Practice</h1>
+  <p class="tl-dek">Six lessons of applied study notes on reading real exchange positioning data: what open interest actually is, where to read it for free, how to convert a futures strike into the level your broker's chart really shows, and the mechanical dealer-hedging story that turns a pile of open contracts at one strike into a wall, a magnet, or a squeeze.</p>
+  <div class="tl-meta">
+    <span class="tl-status course">COURSE NOTES — applied trading practice, not from-scratch theory</span>
+    <span>~26 min read</span>
+    <span>Prereqs: Black-Scholes-Merton Option Pricing</span>
+  </div>
+
+<div class="tl-tldr">
+  <div class="tl-tldr-label">TL;DR</div>
+  <ul>
+    <li><strong>Open interest (OI)</strong> is the count of derivative contracts still open (not volume — contracts traded today). Rising OI means new money is entering; falling OI means positions are being closed — the same price move means opposite things depending on which one moved with it.</li>
+    <li>The <strong>CME Options Open Interest Heatmap</strong> is free, public, updated once daily, and is the same positioning data institutional desks look at — strike on the left, expiration across the top, calls and puts as separate columns.</li>
+    <li>CME strikes are quoted in <strong>futures</strong> terms, not spot — a level has to be converted (<code>spot = futures strike − basis</code>, basis = futures − spot) before it means anything on a broker's chart, with a special inversion step for JPY pairs.</li>
+    <li>The <strong>open interest matrix</strong> turns a heatmap into four concepts: the call wall (resistance), the put wall (support), max pain (the strike price gravitates toward near expiry), and magnetism (how strongly). A 3×-plus outlier versus neighboring strikes is the rule of thumb for a "real" wall.</li>
+    <li><strong>Gamma and dealer hedging</strong> is the mechanism, not folklore: dealers who sold options must rehedge as price moves, and that mechanical buying/selling is what creates — and then exhausts — the pressure at a wall. A wall breaking flips that same hedging into a squeeze in the breakout's direction.</li>
+    <li>Five <strong>trading frameworks</strong> turn all of this into a daily process: wall-to-wall range trading, max-pain reversion near expiry, wall-break momentum, and OI as a confirmation filter on top of a technical setup — all built on a 10–15 minute daily prep ritual.</li>
+  </ul>
+</div>
+
+  <h2>Lesson 01 — Foundations of Open Interest</h2>
+
+  <h3>Definition</h3>
+  <p>
+    <strong>Open interest (OI)</strong> is the total number of outstanding
+    derivative contracts (futures or options) currently open — not closed,
+    exercised, or expired. Every contract has two parties, a buyer and a
+    seller. A new contract being created moves OI up by one; an existing
+    contract being closed moves it down by one.
+  </p>
+
+  <h3>OI vs volume — the critical distinction</h3>
+  <p>Most retail traders miss this distinction entirely: volume measures <strong>activity</strong>, OI measures <strong>commitment</strong>.</p>
+  <div class="tl-datatable-wrap">
+    <table class="tl-datatable">
+      <tr><th>Metric</th><th>Measures</th><th>Resets daily?</th><th>Tells you about</th></tr>
+      <tr><td>Volume</td><td>contracts traded today</td><td>yes — starts at zero</td><td>activity and liquidity</td></tr>
+      <tr><td>Open Interest</td><td>contracts still held</td><td>no — cumulative</td><td>positioning and commitment</td></tr>
+    </table>
+  </div>
+
+  <h3>The four trade scenarios (mechanics)</h3>
+  <ol>
+    <li><strong>New buyer + new seller</strong> → new contract born → OI <strong>+1</strong>.</li>
+    <li><strong>Long closes + short closes</strong> → contract ceases to exist → OI <strong>−1</strong>.</li>
+    <li><strong>Existing long sells to a new buyer</strong> → transfer → OI <strong>unchanged</strong> (volume up).</li>
+    <li><strong>Existing short buys from a new seller</strong> → transfer → OI <strong>unchanged</strong> (volume up).</li>
+  </ol>
+  <p>
+    Key inference: <strong>rising OI = new money entering the market; falling
+    OI = positions being liquidated.</strong> Volume alone can't tell you
+    which — high volume could be either.
+  </p>
+
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Lesson example</div>
+    <h3>Same price move, opposite meanings</h3>
+    <p>Price rises 100 → 105 in both cases below — the OI reading is what tells them apart:</p>
+    <div class="tl-math">
+      <pre style="margin:0;text-align:left;font-family:'DM Mono',monospace;font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.7">Case A: OI +15,000  → new longs entering, trend likely to continue
+Case B: OI −15,000  → shorts covering, rally may be exhausted</pre>
+    </div>
+    <p style="margin-bottom:0">
+      Rising price + rising OI = new longs entering (a healthy trend). Rising
+      price + falling OI = short covering (a weak rally).
+    </p>
+  </div>
+
+  <h3>Market scale</h3>
+  <ul>
+    <li>Global equities ≈ <strong>$100T</strong>; global bonds ≈ <strong>$130T</strong>; global derivatives ≈ <strong>$700T+</strong> notional — roughly 7× equities and bonds combined.</li>
+    <li>This is where institutions hedge risk, express macro views, take leveraged exposure, and where market makers dynamically hedge their books.</li>
+    <li>Three drivers of institutional activity: <strong>hedging</strong> (large put positions show where smart money sees risk), <strong>leverage/exposure</strong> (futures on margin), and <strong>market making</strong> (dealer hedging around key strikes creates predictable price behaviour).</li>
+  </ul>
+
+  <h3>Why retail misses this (the blind spot)</h3>
+  <ol>
+    <li><strong>Education gap</strong> — retail education is chart patterns and indicators.</li>
+    <li><strong>Complexity barrier</strong> — strikes, expirations, and Greeks put people off.</li>
+    <li><strong>Platform limitations</strong> — retail platforms emphasise price; OI needs the exchange.</li>
+    <li><strong>CFD/spot focus</strong> — traders don't realise futures/options data applies to them.</li>
+  </ol>
+  <p>
+    The information asymmetry: institutions analyse positioning while retail
+    draws lines on charts, unaware of the option structures sitting at key
+    levels. The data itself is public and free — the edge is knowing where to
+    look.
+  </p>
+
+  <h3>What OI reveals (the claimed edge)</h3>
+  <ul>
+    <li><strong>Support &amp; resistance</strong> — large put OI acts as support; large call OI acts as resistance. Levels where real money is positioned, not arbitrary lines.</li>
+    <li><strong>Price magnets</strong> — near expiration, price gravitates toward max-pain strikes.</li>
+    <li><strong>Trend confirmation</strong> — OI contextualises price moves (see the case A/B example above).</li>
+    <li><strong>Gamma acceleration</strong> — breaks through concentrated-OI levels accelerate via dealer hedging.</li>
+  </ul>
+  <p>
+    The destination tool for all of it: the <strong>CME Options Open Interest
+    Heatmap</strong> — free, public, used by institutions, updated daily.
+    Strikes run down the side, expirations run across the top, "C"/"P" mark
+    calls and puts, and cyan intensity marks OI concentration. Lesson 02
+    covers reading it.
+  </p>
+
+  <h2>Lesson 02 — Reading the CME</h2>
+
+  <h3>Why the CME</h3>
+  <p>
+    CME Group (CME + CBOT + NYMEX + COMEX) is the world's largest derivatives
+    exchange. FX, indices, commodities, and rates — institutional positioning
+    happens here, and the heatmap is the same data desks at Goldman, JPM, and
+    hedge funds use. It's <strong>free, requires no account, and updates
+    daily.</strong>
+  </p>
+
+  <h3>Access</h3>
+  <p>
+    URL: <code>cmegroup.com/tools-information/quikstrike/options-open-interest-heatmap.html</code>
+  </p>
+  <p>
+    Navigation is a three-column drill-down: <strong>Select Product → Asset
+    Class → Product Family → Product</strong>. Example: Foreign Exchange → FX
+    Majors → EUR/USD (6E).
+  </p>
+  <div class="tl-datatable-wrap">
+    <table class="tl-datatable">
+      <tr><th>Asset class</th><th>Includes</th><th>Key products</th></tr>
+      <tr><td>Foreign Exchange</td><td>currency futures &amp; options</td><td>6E (EUR/USD), 6B (GBP/USD), 6J (USD/JPY)</td></tr>
+      <tr><td>Equity Indexes</td><td>US &amp; intl index products</td><td>ES (S&amp;P 500), NQ (Nasdaq), YM (Dow)</td></tr>
+      <tr><td>Energy</td><td>oil, gas</td><td>CL (WTI crude), NG (nat gas)</td></tr>
+      <tr><td>Metals</td><td>precious &amp; industrial</td><td>GC (gold), SI (silver), HG (copper)</td></tr>
+      <tr><td>Interest Rates</td><td>treasuries, short rates</td><td>ZN (10Y), ZB (30Y)</td></tr>
+    </table>
+  </div>
+
+  <h3>Anatomy of the heatmap</h3>
+  <ul>
+    <li><strong>Strike</strong> — leftmost column; exercise price in the contract's native format.</li>
+    <li><strong>Expiration</strong> — column headers; contract code + DTE.</li>
+    <li><strong>C / P</strong> — call OI and put OI sub-columns per expiry.</li>
+    <li><strong>OI value</strong> — outstanding contracts at that strike/expiry.</li>
+    <li><strong>Colour intensity</strong> — cyan; brighter/darker means more OI, i.e. bigger positions.</li>
+    <li><strong>DTE</strong> — days to expiration; near-term expiries have the most immediate impact because gamma intensifies toward expiry (Lesson 05).</li>
+  </ul>
+  <p>
+    Read it as a matrix: strike on the left, scan across expiries. Big
+    numbers plus bright highlighting mean significant institutional
+    positioning at that level.
+  </p>
+
+  <h3>Contract codes</h3>
+  <p>Format is <strong>Product + Month code + Year</strong>. Example: <code>6EU5</code> = 6E (EUR/USD) + U (September) + 5 (2025).</p>
+  <div class="tl-datatable-wrap">
+    <table class="tl-datatable">
+      <tr><th>Code</th><th>Month</th><th>Code</th><th>Month</th><th>Code</th><th>Month</th></tr>
+      <tr><td>F</td><td>January</td><td>G</td><td>February</td><td>H</td><td>March</td></tr>
+      <tr><td>J</td><td>April</td><td>K</td><td>May</td><td>M</td><td>June</td></tr>
+      <tr><td>N</td><td>July</td><td>Q</td><td>August</td><td>U</td><td>September</td></tr>
+      <tr><td>V</td><td>October</td><td>X</td><td>November</td><td>Z</td><td>December</td></tr>
+    </table>
+  </div>
+  <ul>
+    <li>Weeklies have codes like <code>WE1Q5</code> (Week 1, August 2025).</li>
+    <li><strong>Monthlies typically have more liquidity and larger OI</strong> — start with monthlies until comfortable with the data.</li>
+  </ul>
+
+  <h3>Strike format warning</h3>
+  <p>
+    Strikes are in <strong>futures contract format, not spot</strong> — this
+    is the entire reason Lesson 03 exists. FX strikes are the full exchange
+    rate (futures level). Index strikes are futures points, not the cash
+    index. Commodity strikes are the commodity's own unit ($/barrel, $/oz).
+  </p>
+
+  <h3>Useful features</h3>
+  <ul>
+    <li><strong>Expiration filter</strong> — focus on the front month or a specific date.</li>
+    <li><strong>Call/Put combined toggle</strong> — total OI per strike regardless of direction.</li>
+    <li><strong>Settlements link</strong> — yesterday's official settlement prices.</li>
+    <li><strong>Volume &amp; OI toggle</strong> — OI is usually more informative for levels.</li>
+  </ul>
+
+  <h3>Data timing</h3>
+  <p>
+    The heatmap updates <strong>once daily</strong>, typically early morning
+    US time, reflecting the <strong>previous day's close</strong>. Not
+    real-time — but sufficient for identifying key levels and structural
+    positioning.
+  </p>
+
+  <h3>Quick-reference product table</h3>
+  <div class="tl-datatable-wrap">
+    <table class="tl-datatable">
+      <tr><th>Market</th><th>Symbol</th><th>Path</th><th>Notes</th></tr>
+      <tr><td>EUR/USD</td><td>6E</td><td>FX → FX Majors → EUR/USD</td><td>most liquid FX contract</td></tr>
+      <tr><td>GBP/USD</td><td>6B</td><td>FX → FX Majors → GBP/USD</td><td>second most traded FX</td></tr>
+      <tr><td>USD/JPY</td><td>6J</td><td>FX → FX Majors → JPY/USD</td><td><strong>CME quotes as JPY/USD (inverted)</strong></td></tr>
+      <tr><td>S&amp;P 500</td><td>ES</td><td>Equity Index → US → E-mini S&amp;P</td><td>the benchmark</td></tr>
+      <tr><td>Nasdaq 100</td><td>NQ</td><td>Equity Index → US → E-mini Nasdaq</td><td>tech-heavy</td></tr>
+      <tr><td>Gold</td><td>GC</td><td>Metals → Precious → Gold</td><td>per troy ounce</td></tr>
+      <tr><td>Crude</td><td>CL</td><td>Energy → Crude Oil → WTI</td><td>per barrel</td></tr>
+    </table>
+  </div>
+
+  <h2>Lesson 03 — Futures to CFD Conversion</h2>
+
+  <h3>The problem</h3>
+  <p>
+    The CME shows <strong>futures</strong> prices; brokers show
+    <strong>spot</strong>. Related, but not the same number. Draw a raw CME
+    strike straight onto a spot chart and the level is in the wrong place —
+    price never quite gets there, or it blows straight through.
+  </p>
+
+  <h3>The basis</h3>
+  <p>
+    <strong>Basis = futures price − spot price.</strong> It exists because
+    futures expire while spot is immediate; the difference reflects
+    <strong>cost of carry</strong>, primarily the interest-rate differential
+    between the two currencies. Three drivers:
+  </p>
+  <ol>
+    <li><strong>Interest rate differential</strong> — futures price in the carry (premium or discount).</li>
+    <li><strong>Time to expiration</strong> — basis shrinks toward zero as expiry approaches (futures and spot converge at expiry). Far-dated contracts carry a larger basis.</li>
+    <li><strong>Supply &amp; demand</strong> — positioning can push futures away from fair value temporarily.</li>
+  </ol>
+  <p>
+    The practical upside: there's no need to compute a theoretical fair
+    value — just <strong>measure</strong> the current futures−spot
+    difference.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">The formula, worked</div>
+    <h3>EUR/USD basis conversion</h3>
+    <div class="tl-math">
+      <pre style="margin:0;text-align:left;font-family:'DM Mono',monospace;font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.7">Basis      = Current futures price − Current spot price
+Spot level = Futures strike − Basis</pre>
+    </div>
+    <div class="tl-math">
+      <pre style="margin:0;text-align:left;font-family:'DM Mono',monospace;font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.7">6E futures:      1.1520
+Broker spot:     1.1500
+Basis:           1.1520 − 1.1500 = +0.0020 (+20 pips)
+Strike 1.1600 →  1.1600 − 0.0020 = 1.1580   ← draw the line here</pre>
+    </div>
+    <h3>JPY special case (inversion)</h3>
+    <p>
+      The CME quotes yen as <strong>JPY/USD</strong> (yen per dollar) — the
+      inverse of retail USD/JPY. Convert with <code>1 ÷ rate</code>.
+    </p>
+    <div class="tl-math">
+      <pre style="margin:0;text-align:left;font-family:'DM Mono',monospace;font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.7">6J at 0.006700  → USD/JPY equivalent = 1 ÷ 0.006700 = 149.25
+Broker USD/JPY  = 149.00 → basis = +0.25
+CME strike 0.006667 → inverted = 150.00 → spot level = 150.00 − 0.25 = 149.75</pre>
+    </div>
+    <p style="margin-bottom:0">
+      Simplification: invert all strikes of interest first, then subtract the
+      one basis figure from each.
+    </p>
+  </div>
+
+  <h3>Data sources</h3>
+  <ul>
+    <li><strong>Futures price:</strong> the CME site ("Last" or "Settlement") or TradingView (6E, 6B…).</li>
+    <li><strong>Spot price:</strong> your broker's feed — that's the price you actually trade at.</li>
+    <li><strong>Capture both at the same moment</strong> — basis fluctuates intraday; prices taken hours apart give a wrong basis. Tip: a TradingView layout with futures and spot side by side.</li>
+  </ul>
+
+  <h3>Other markets</h3>
+  <div class="tl-datatable-wrap">
+    <table class="tl-datatable">
+      <tr><th>Market</th><th>Symbol</th><th>Typical basis</th><th>Notes</th></tr>
+      <tr><td>S&amp;P 500</td><td>ES</td><td>5–20 points</td><td>futures usually at premium to SPX cash</td></tr>
+      <tr><td>Nasdaq</td><td>NQ</td><td>10–40 points</td><td>same dynamic; premium varies with rates</td></tr>
+      <tr><td>Gold</td><td>GC</td><td>$2–10</td><td>slight premium common (contango)</td></tr>
+      <tr><td>Crude</td><td>CL</td><td>$0.20–2.00</td><td>contango <strong>or</strong> backwardation — check the curve</td></tr>
+    </table>
+  </div>
+  <p>
+    Retail <strong>index CFDs usually track the futures</strong>, not the
+    cash index, so the basis is often just a few points — verify per broker.
+  </p>
+
+  <h3>Workflow</h3>
+  <ol>
+    <li>Heatmap → pick the strikes with significant OI.</li>
+    <li>Note current futures price.</li>
+    <li>Note broker spot at the same time.</li>
+    <li>Basis = futures − spot.</li>
+    <li>Each strike − basis = spot level.</li>
+    <li>Plot.</li>
+  </ol>
+
+  <h3>Discipline points</h3>
+  <ul>
+    <li><strong>Recalculate at least once per session</strong> — the basis changes intraday and especially near expiry; a stale basis puts levels 10–20 pips off.</li>
+    <li><strong>Efficiency:</strong> most traders track only 3–5 strikes at a time — the largest call wall, the largest put wall, and max pain. Don't convert everything.</li>
+  </ul>
+
+  <h3>Cheat sheet</h3>
+  <ul>
+    <li>Standard pairs: <code>Spot level = CME strike − (futures − spot)</code></li>
+    <li>JPY: invert CME price → basis in USD/JPY terms → invert strike → subtract basis</li>
+    <li>Indices/commodities: same formula; basis often smaller for index CFDs</li>
+  </ul>
+
+  <h2>Lesson 04 — The Open Interest Matrix</h2>
+
+  <h3>The framework — four core concepts</h3>
+  <ul>
+    <li><strong>Call wall</strong> — a strike with massive call OI → resistance; price tends to stall or reverse there.</li>
+    <li><strong>Put wall</strong> — a strike with massive put OI → support; price tends to find a floor there.</li>
+    <li><strong>Max pain</strong> — the strike where option holders lose the most; price gravitates there near expiration.</li>
+    <li><strong>Magnetism</strong> — the pull of price toward high-OI strikes as expiry approaches.</li>
+  </ul>
+
+  <h3>Identifying walls — relative outliers</h3>
+  <p>
+    You're looking for strikes with outsized OI <strong>relative to
+    surrounding strikes</strong>, not just big absolute numbers. Lesson
+    example: 1.1550 with 9.8K calls vs. 2–3.5K at neighbours = call wall;
+    1.1300 with 8.5K puts vs. 1.6–2.9K = put wall.
+  </p>
+  <p><strong>The 3× rule of thumb:</strong></p>
+  <div class="tl-datatable-wrap">
+    <table class="tl-datatable">
+      <tr><th>OI vs. surrounding strikes</th><th>Wall strength</th></tr>
+      <tr><td>1.5×</td><td>weak — minor level</td></tr>
+      <tr><td>2×</td><td>moderate — worth watching</td></tr>
+      <tr><td><strong>3×+</strong></td><td><strong>strong — high-probability level</strong></td></tr>
+    </table>
+  </div>
+  <p>Context matters: a 3× wall in a liquid market beats the same reading in an illiquid one.</p>
+
+  <h3>Max pain</h3>
+  <p>
+    <strong>Definition:</strong> the strike at which option holders (calls and
+    puts combined) would lose the most if the underlying expired there —
+    a.k.a. the maximum pain point, or op-ex price. It's computed by finding,
+    per candidate strike, the total value of options expiring worthless (the
+    course's simplified form):
+  </p>
+  <div class="tl-math">
+    <pre style="margin:0;text-align:left;font-family:'DM Mono',monospace;font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.7">For each strike:
+  Call pain  = Call OI × max(0, Strike − Current price)
+  Put pain   = Put OI  × max(0, Current price − Strike)
+  Total pain = Call pain + Put pain
+Max pain strike = strike with LOWEST total pain
+(in practice: use online calculators or estimate visually from the heatmap)</pre>
+  </div>
+  <p>
+    Why price gravitates there: option <strong>sellers</strong> (market
+    makers, institutions) profit when options expire worthless. The course
+    notes flag a live debate over whether this is active "pinning" or a
+    by-product of gamma hedging — but the empirical tendency is observable
+    either way.
+  </p>
+  <p><strong>Limitations (as taught):</strong></p>
+  <ul>
+    <li>Most relevant <strong>within 2–3 days of expiration</strong>; earlier, other factors dominate.</li>
+    <li>It <strong>shifts</strong> as OI changes — a snapshot, not a fixed target.</li>
+    <li>One input among many, not a guaranteed target.</li>
+  </ul>
+  <p>
+    Quick estimation: look for the strike with roughly <strong>equal call and
+    put OI on either side</strong> — often close to max pain.
+  </p>
+
+  <h3>The complete structure map</h3>
+  <p>
+    Lesson example: put wall 1.1300 · max pain 1.1450 · call wall 1.1600 ·
+    current price 1.1400 → expected range 1.1300–1.1600, gravitational pull
+    toward 1.1450.
+  </p>
+  <div class="tl-datatable-wrap">
+    <table class="tl-datatable">
+      <tr><th>Observation</th><th>Implication</th></tr>
+      <tr><td>Price below max pain</td><td>upward bias toward max pain, especially into expiry</td></tr>
+      <tr><td>Put wall below price</td><td>strong support; shorts may struggle below it</td></tr>
+      <tr><td>Call wall above price</td><td>strong resistance; longs may struggle above it</td></tr>
+      <tr><td>Price between walls</td><td>range-bound behaviour likely until catalyst or expiry</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>Systematic heatmap read (front-month EUR/USD)</h3>
+    <p>Steps applied to a sample grid:</p>
+    <ol>
+      <li><strong>Call wall:</strong> largest value in the Calls column → 1.1600 (8,450 contracts; 2.7× the next-largest strike).</li>
+      <li><strong>Put wall:</strong> largest value in the Puts column → 1.1350 (7,800 contracts; 2.3× the next-largest strike).</li>
+      <li><strong>Max pain:</strong> strike where call OI ≈ put OI → 1.1500 (2,400 calls vs. 2,200 puts).</li>
+      <li><strong>Range:</strong> 1.1350–1.1600, centred on 1.1500.</li>
+    </ol>
+    <p style="margin-bottom:0">
+      <strong>The 80/20 rule:</strong> the top 1–2 call strikes, plus the top
+      1–2 put strikes, plus a rough max-pain zone, is 80% of the value from
+      20% of the effort. Don't analyse every strike.
+    </p>
+  </div>
+
+  <h3>Put/Call ratio and skew</h3>
+  <p><strong>P/C OI ratio</strong> = total put OI ÷ total call OI.</p>
+  <div class="tl-datatable-wrap">
+    <table class="tl-datatable">
+      <tr><th>P/C ratio</th><th>Interpretation</th><th>Typical behaviour</th></tr>
+      <tr><td>&lt; 0.7</td><td>very bullish positioning</td><td>may be overextended; watch for reversal</td></tr>
+      <tr><td>0.7–1.0</td><td>moderately bullish</td><td>normal uptrend conditions</td></tr>
+      <tr><td>1.0–1.3</td><td>neutral to cautious</td><td>balanced market or hedging</td></tr>
+      <tr><td>&gt; 1.3</td><td>bearish / heavy hedging</td><td>downside protection in demand; fear or support</td></tr>
+    </table>
+  </div>
+  <p>
+    Extremes can be <strong>contrarian</strong>: very high put ratios (fear)
+    often mark bottoms; very low ratios (complacency) often mark tops — but
+    in strong trends, "extreme" readings can persist. Context matters.
+  </p>
+  <p>
+    <strong>OI skew</strong> = asymmetry of OI across strikes. Put OI
+    concentrated far below price plus call OI near price = negative skew
+    (downside hedging); the reverse = positioning for upside.
+  </p>
+
+  <h3>Dynamic analysis — tracking OI changes</h3>
+  <ul>
+    <li><strong>OI increasing at a strike</strong> → new positions; the level is becoming more significant; wall strengthening.</li>
+    <li><strong>OI decreasing</strong> → positions closing; the level is losing significance; wall weakening.</li>
+    <li><strong>OI shifting strikes</strong> → repositioning; a new expected range.</li>
+    <li><strong>Wall break + OI drop</strong> → positions closed; the wall may not hold on retest.</li>
+  </ul>
+
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Lesson scenario</div>
+    <h3>A wall that defends once, then fails</h3>
+    <p style="margin-bottom:0">
+      Put wall OI goes 7,800 → 8,200 (strengthening, support looks more
+      reliable) → price bounces off it → next day OI is 6,100 (−2,100 —
+      positions banked on the bounce) → <strong>the next test may break
+      through.</strong> Data-lag caveat: OI is from the previous close — you
+      are always reading yesterday's positioning; a big intraday move may
+      already have changed the picture underneath you.
+    </p>
+  </div>
+
+  <h3>The pre-session OI checklist (Lesson 04 §9)</h3>
+  <ol>
+    <li>Pull the heatmap for your product — front month (highest liquidity).</li>
+    <li>Identify the call wall (resistance).</li>
+    <li>Identify the put wall (support).</li>
+    <li>Estimate max pain (balanced call/put OI).</li>
+    <li>Compute basis &amp; convert strikes.</li>
+    <li>Plot converted CW / PW / MP on the chart.</li>
+    <li>Note the P/C ratio and skew.</li>
+    <li>Compare to yesterday — are the walls strengthening or weakening?</li>
+  </ol>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Open interest by strike — the matrix as a strike ladder</div>
+    <svg viewBox="0 0 640 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart of open interest by strike for a front-month EUR/USD-style ladder. Call open interest is drawn as blue bars above a zero axis; put open interest as red bars below it. The 1.1600 strike carries the tallest call bar and the largest combined call-plus-put open interest, highlighted in amber as the gamma wall. The 1.1350 strike carries the tallest put bar, marked as the put wall. A dashed line at 1.1500 marks the estimated max-pain zone, where call and put open interest are closest to balanced.">
+      <!-- axes -->
+      <line x1="50" y1="20" x2="50" y2="300" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="50" y1="150" x2="610" y2="150" style="stroke:var(--text3);stroke-width:1.2"/>
+      <!-- OI scale ticks -->
+      <line x1="46" y1="150" x2="50" y2="150" style="stroke:var(--text3);stroke-width:1"/>
+      <text x="42" y="153" text-anchor="end" font-size="9" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+      <line x1="46" y1="97.9" x2="50" y2="97.9" style="stroke:var(--text3);stroke-width:1"/>
+      <text x="42" y="101" text-anchor="end" font-size="9" font-family="'DM Mono',monospace" fill="var(--text3)">4,000</text>
+      <line x1="46" y1="45.9" x2="50" y2="45.9" style="stroke:var(--text3);stroke-width:1"/>
+      <text x="42" y="49" text-anchor="end" font-size="9" font-family="'DM Mono',monospace" fill="var(--text3)">8,000</text>
+      <line x1="46" y1="202.1" x2="50" y2="202.1" style="stroke:var(--text3);stroke-width:1"/>
+      <text x="42" y="205" text-anchor="end" font-size="9" font-family="'DM Mono',monospace" fill="var(--text3)">4,000</text>
+      <line x1="46" y1="254.1" x2="50" y2="254.1" style="stroke:var(--text3);stroke-width:1"/>
+      <text x="42" y="257" text-anchor="end" font-size="9" font-family="'DM Mono',monospace" fill="var(--text3)">8,000</text>
+      <text x="14" y="150" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 14 150)">Open interest (contracts)</text>
+
+      <!-- max pain dashed line at 1.1500 (cx=373.75) -->
+      <line x1="373.75" y1="20" x2="373.75" y2="290" style="stroke:var(--purple);stroke-width:1.3;stroke-dasharray:4,4"/>
+      <text x="373.75" y="14" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--purple)">MAX PAIN ≈ 1.1500</text>
+
+      <!-- annotation row: put wall + gamma wall -->
+      <text x="171.25" y="14" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--red)">PUT WALL</text>
+      <text x="508.75" y="14" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--amber)">GAMMA WALL (9,350 combined)</text>
+
+      <!-- call bars (blue), above axis -->
+      <rect x="83.75" y="139.59" width="40" height="10.41" fill="var(--blue)"/>
+      <rect x="151.25" y="134.38" width="40" height="15.62" fill="var(--blue)"/>
+      <rect x="218.75" y="126.57" width="40" height="23.43" fill="var(--blue)"/>
+      <rect x="286.25" y="118.76" width="40" height="31.24" fill="var(--blue)"/>
+      <rect x="353.75" y="118.76" width="40" height="31.24" fill="var(--blue)"/>
+      <rect x="421.25" y="109.65" width="40" height="40.35" fill="var(--blue)"/>
+      <rect x="488.75" y="40.00" width="40" height="110.00" fill="var(--blue)" style="stroke:var(--amber);stroke-width:2.5"/>
+      <rect x="556.25" y="130.47" width="40" height="19.53" fill="var(--blue)"/>
+
+      <!-- put bars (red), below axis -->
+      <rect x="83.75" y="150" width="40" height="18.22" fill="var(--red)"/>
+      <rect x="151.25" y="150" width="40" height="101.53" fill="var(--red)"/>
+      <rect x="218.75" y="150" width="40" height="41.65" fill="var(--red)"/>
+      <rect x="286.25" y="150" width="40" height="28.64" fill="var(--red)"/>
+      <rect x="353.75" y="150" width="40" height="28.64" fill="var(--red)"/>
+      <rect x="421.25" y="150" width="40" height="20.83" fill="var(--red)"/>
+      <rect x="488.75" y="150" width="40" height="11.72" fill="var(--red)" style="stroke:var(--amber);stroke-width:2.5"/>
+      <rect x="556.25" y="150" width="40" height="5.21" fill="var(--red)"/>
+
+      <!-- call OI value labels -->
+      <text x="103.75" y="133.59" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">800</text>
+      <text x="171.25" y="128.38" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">1,200</text>
+      <text x="238.75" y="120.57" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">1,800</text>
+      <text x="306.25" y="112.76" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">2,400</text>
+      <text x="373.75" y="112.76" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">2,400</text>
+      <text x="441.25" y="103.65" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">3,100</text>
+      <text x="508.75" y="55" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="#fff">8,450</text>
+      <text x="576.25" y="124.47" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">1,500</text>
+
+      <!-- put OI value labels -->
+      <text x="103.75" y="180.22" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">1,400</text>
+      <text x="171.25" y="263.53" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">7,800</text>
+      <text x="238.75" y="203.65" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">3,200</text>
+      <text x="306.25" y="190.64" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">2,200</text>
+      <text x="373.75" y="190.64" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">2,200</text>
+      <text x="441.25" y="182.83" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">1,600</text>
+      <text x="508.75" y="173.72" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">900</text>
+      <text x="576.25" y="167.21" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">400</text>
+
+      <!-- strike labels -->
+      <text x="103.75" y="303" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text2)">1.1300</text>
+      <text x="171.25" y="303" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text2)">1.1350</text>
+      <text x="238.75" y="303" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text2)">1.1400</text>
+      <text x="306.25" y="303" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text2)">1.1450</text>
+      <text x="373.75" y="303" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text2)">1.1500</text>
+      <text x="441.25" y="303" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text2)">1.1550</text>
+      <text x="508.75" y="303" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text2)">1.1600</text>
+      <text x="576.25" y="303" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text2)">1.1650</text>
+      <text x="330" y="322" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Strike (CME futures format)</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>Call OI (above axis)</span>
+      <span><i style="background:var(--red)"></i>Put OI (below axis)</span>
+      <span><i style="background:var(--amber)"></i>Gamma wall (highest combined OI)</span>
+      <span><i style="background:var(--purple)"></i>Max pain (dashed)</span>
+    </div>
+    <div class="tl-chart-caption">
+      This is a schematic reconstruction of Lesson 04's systematic-heatmap-read
+      example — not a live pull from the CME site. The three anchor values are
+      the lesson's own worked numbers: the 1.1600 call wall (8,450 contracts,
+      2.7× the next-largest strike), the 1.1350 put wall (7,800 contracts,
+      2.3× the next-largest strike), and the near-balanced 1.1500 max-pain
+      zone (2,400 calls vs. 2,200 puts). The surrounding strikes' OI figures
+      are illustrative filler completing the ladder shape, not sourced
+      numbers. Note that 1.1600 is both the largest single-side call wall
+      <em>and</em>, once its own small put OI is added, the strike with the
+      largest total OI on the ladder — which is exactly why a "call wall" and
+      a "gamma wall" are so often the same level: Lesson 05's mechanism
+      (dealers buying to hedge rising call delta, then running out of buying
+      once delta saturates near the strike) is what turns a concentration
+      like this into resistance.
+    </div>
+  </div>
+
+  <h2>Lesson 05 — Gamma &amp; Dealer Dynamics</h2>
+
+  <h3>The core concept</h3>
+  <p>
+    Market makers who sell options must continuously hedge by trading the
+    underlying. That hedging is <strong>mechanical and predictable</strong> —
+    it is what creates the support/resistance observed at high-OI strikes.
+  </p>
+
+  <h3>The Greeks you need</h3>
+  <p>
+    This course treats delta and gamma as operational facts about hedging
+    behaviour rather than derived quantities — for the formal definition of
+    both as partial derivatives of the option-pricing formula (and why gamma
+    for an at-the-money option provably rises as time-to-expiry shrinks), see
+    the Greeks section of
+    <a href="black-scholes.html">Black-Scholes-Merton Option Pricing</a>. The
+    operational version used here:
+  </p>
+  <div class="tl-symbols"><table>
+    <tr><td>Delta (Δ)</td><td>Option value change per $1 move in the underlying (a 0.50-delta call gains $0.50 per $1 up-move). Also ≈ the probability of expiring in the money.</td></tr>
+    <tr><td>Gamma (Γ)</td><td>How fast delta changes per $1 move. <strong>Highest for at-the-money options near expiration.</strong> High gamma means constant rehedging, which means more market impact.</td></tr>
+  </table></div>
+  <p>
+    Theta (time decay) and vega (volatility sensitivity) aren't critical for
+    this analysis. Why gamma matters more than delta here: delta says how
+    much to hedge <em>now</em>; gamma says how much the hedge must
+    <em>change</em> as price moves. Strikes with large OI near the current
+    price create the strongest effects.
+  </p>
+
+  <h3>Delta hedging flows</h3>
+  <ul>
+    <li>Dealer sells a <strong>call</strong> → exposed to upside → hedges by <strong>buying</strong> the underlying. Price rises → call delta rises → dealer buys more → <strong>supports the rally.</strong></li>
+    <li>Dealer sells a <strong>put</strong> → exposed to downside → price falls → put delta rises in magnitude → dealer <strong>sells</strong> → <strong>accelerates the decline.</strong></li>
+  </ul>
+  <p>
+    This looks like dealers amplify everything — true <strong>when short
+    gamma</strong>. The sign of dealer gamma exposure decides the regime.
+  </p>
+
+  <h3>Long vs. short gamma</h3>
+  <div class="tl-datatable-wrap">
+    <table class="tl-datatable">
+      <tr><th>Dealer position</th><th>Price rises</th><th>Price falls</th><th>Market effect</th></tr>
+      <tr><td><strong>Short gamma</strong> (sold options)</td><td>must buy</td><td>must sell</td><td><strong>amplifies</strong> moves — trends accelerate</td></tr>
+      <tr><td><strong>Long gamma</strong> (bought options)</td><td>must sell</td><td>must buy</td><td><strong>dampens</strong> moves — mean reversion</td></tr>
+    </table>
+  </div>
+  <p>
+    In most conditions dealers are <strong>net short gamma</strong> (retail
+    plus institutions are net option buyers).
+  </p>
+  <p>
+    <strong>The gamma flip:</strong> there is often a price level where
+    aggregate dealer gamma flips sign — above it price tends to accelerate,
+    below it price tends to stabilise (or vice versa). It's estimable from
+    the OI distribution — a key structural level to watch.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Walls don't push back — they run out of fuel</h3>
+    <p style="margin-bottom:0">
+      The counterintuitive part of this whole mechanism: dealer hedging
+      <em>accelerates</em> the move toward a wall, then <em>stops</em> right
+      at the wall. A wall isn't a barrier slowing price down on approach —
+      it's the point where the buying (or selling) that was fuelling the move
+      disappears, because the dealer's hedge is finally complete. That's why
+      a sharp move into a wall can suddenly stall with no obvious reversal
+      trigger: the reversal isn't caused by anything pushing back, it's
+      caused by the fuel running out.
+    </p>
+  </div>
+
+  <h3>Why call walls are resistance (the mechanism)</h3>
+  <p>Trace-through from the lesson (large call OI at 1.1600, dealers short those calls, price 1.1550 and rising):</p>
+  <ol>
+    <li>Approaching 1.1600 → call delta increases → dealers <strong>buy to hedge</strong> → buying supports the rally.</li>
+    <li>At/through 1.1600 → calls go ATM/ITM, delta → 1.0 → dealers are <strong>fully hedged</strong> — no more buying needed.</li>
+    <li>Buying pressure evaporates → without fuel the rally stalls → <strong>resistance.</strong></li>
+  </ol>
+  <p>
+    Key point: the resistance is <strong>not</strong> dealers actively
+    selling at the level — it's the disappearance of the buying that was
+    supporting the move. The market loses its fuel.
+  </p>
+
+  <h3>Why put walls are support (mirror image)</h3>
+  <p>
+    Falling toward a big put strike: dealers sell to hedge growing put delta
+    (accelerating the decline) → at the strike, delta → −1.0, hedging
+    complete → selling evaporates → the decline stalls → <strong>support.</strong>
+  </p>
+
+  <h3>Gamma vs. time — why effects intensify near expiry</h3>
+  <p>Gamma for at-the-money options rises exponentially as DTE → 0.</p>
+  <ul>
+    <li><strong>2+ weeks out:</strong> gamma flat; hedging gradual; wall effects muted.</li>
+    <li><strong>~1 week:</strong> gamma rising; walls exert stronger influence.</li>
+    <li><strong>Final 48 hours:</strong> gamma peaks; hedging intense; max-pain magnetism strongest; walls most effective.</li>
+  </ul>
+  <p>
+    Practical takeaway: focus on the <strong>nearest expiration with
+    significant liquidity</strong> — monthly expiry (typically the third
+    Friday) and weeklies are the key dates.
+  </p>
+
+  <h3>When walls break — the gamma squeeze</h3>
+  <p>Price breaks a big call wall with momentum:</p>
+  <div class="tl-math">
+    <pre style="margin:0;text-align:left;font-family:'DM Mono',monospace;font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.7">Calls flip ATM → ITM → delta jumps toward 1.0
+Dealers who thought they were hedged now need MORE long exposure
+Rapid catch-up buying → price accelerates higher</pre>
+  </div>
+  <p>
+    A <strong>gamma squeeze</strong> is hedging chasing price through a
+    broken high-OI strike, accelerating the breakout. The same positioning
+    that created resistance becomes fuel once breached. <strong>The bigger
+    the wall, the bigger the potential squeeze.</strong> (Puts: the same in
+    reverse — forced selling below a broken put wall.)
+  </p>
+  <ul>
+    <li>Wall <strong>holds</strong> → price stalls, hedging complete, momentum dies → look for reversal/consolidation.</li>
+    <li>Wall <strong>breaks</strong> → squeeze ignites → expect acceleration to the next major level.</li>
+  </ul>
+
+  <h3>The complete mental model</h3>
+  <div class="tl-datatable-wrap">
+    <table class="tl-datatable">
+      <tr><th>Scenario</th><th>Dealer hedging</th><th>Price behaviour</th><th>Implication</th></tr>
+      <tr><td>Approaching call wall</td><td>buying</td><td>rally supported, stalls at wall</td><td>resistance / reversal</td></tr>
+      <tr><td>Breaks call wall</td><td>chase-buying</td><td>gamma squeeze</td><td>ride momentum to next level</td></tr>
+      <tr><td>Approaching put wall</td><td>selling</td><td>decline accelerates, stalls at wall</td><td>support / bounce</td></tr>
+      <tr><td>Breaks put wall</td><td>chase-selling</td><td>squeeze down</td><td>ride momentum to next level</td></tr>
+      <tr><td>Between walls</td><td>minimal</td><td>range-bound, technical-driven</td><td>trade the range; watch for break</td></tr>
+      <tr><td>Near expiration</td><td>amplified</td><td>max-pain magnetism, sharp moves</td><td>expect vol; respect walls</td></tr>
+    </table>
+  </div>
+  <p>
+    <strong>The feedback loop:</strong> price move → delta change → hedging →
+    more price movement. <strong>OI tells you <em>where</em> the loop
+    engages; gamma tells you <em>how powerful</em> it will be.</strong>
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this connects to Theory Lab</div>
+    <h3>This lesson is the applied layer; Black-Scholes is the pricing theory underneath it</h3>
+    <p style="margin-bottom:0">
+      Everything above treats delta and gamma as operational facts about
+      dealer hedging — observable behaviour, not derived quantities. The
+      <a href="black-scholes.html">Black-Scholes-Merton Option Pricing</a>
+      lesson is where those facts come from: delta is literally
+      \(N(d_1)\), the first partial derivative of the option-pricing formula
+      with respect to the underlying's price, and gamma is the second
+      derivative — the precise mathematical statement of "how fast the hedge
+      goes stale." That lesson's own worked derivation of why gamma rises as
+      \(T\to0\) is the formal proof behind this lesson's "gamma effects
+      intensify near expiry" claim above; this lesson doesn't re-derive that
+      math, it's the applied layer built on top of it. The two pages are
+      meant to be read together, not as duplicates of each other — read this
+      one for the trading framework, read Black-Scholes for why the framework
+      works.
+    </p>
+  </div>
+
+  <h2>Lesson 06 — Trading Frameworks</h2>
+  <p>Five frameworks; use the ones that fit your style, and integrate them gradually.</p>
+
+  <h3>Framework 5 first — the daily prep ritual (10–15 min, non-negotiable)</h3>
+  <ol>
+    <li><strong>Heatmap</strong> — front month (or the weekly if within ~5 days of expiry).</li>
+    <li><strong>Key levels</strong> — largest call OI (call wall), largest put OI (put wall), max pain zone; note secondary walls.</li>
+    <li><strong>Basis</strong> — current futures vs. broker spot.</li>
+    <li><strong>Convert</strong> — CW/PW/MP → spot equivalents (<code>spot = strike − basis</code>).</li>
+    <li><strong>Plot &amp; label</strong> — CW / PW / MP lines on the chart.</li>
+    <li><strong>Context</strong> — where is price in the structure? Near a wall? Between walls? Above/below max pain?</li>
+  </ol>
+  <p>Daily record: CW level · PW level · MP level · DTE · P/C ratio · OI changes vs. yesterday.</p>
+
+  <h3>Framework 1 — Wall-to-Wall Range Trading</h3>
+  <ul>
+    <li><strong>Concept:</strong> between the put wall (support) and the call wall (resistance) the market tends to oscillate; dealer hedging defends both ends. Trade the range until it breaks.</li>
+    <li><strong>Use when:</strong> walls are clearly defined (3×+), price is mid-range, there's no major catalyst, and there are <strong>5+ DTE</strong> (moderate gamma).</li>
+    <li><strong>Long</strong> near the put wall / <strong>short</strong> near the call wall on momentum exhaustion.</li>
+    <li><strong>Stop:</strong> beyond the wall (10–20 pips FX). <strong>Targets:</strong> the max-pain zone, then the opposite wall.</li>
+    <li><strong>Invalidation:</strong> a decisive close beyond a wall → range broken → switch to Framework 3.</li>
+  </ul>
+  <div class="tl-box example">
+    <div class="tl-box-label">Lesson example trade</div>
+    <p style="margin-bottom:0">
+      PW 1.1350 / CW 1.1550 / MP 1.1450 → long 1.1360, stop 1.1330, T1 1.1450
+      (90 pips), T2 1.1530 (170 pips) — risking 30 pips to make 90–170.
+    </p>
+  </div>
+
+  <h3>Framework 2 — Max Pain Reversion</h3>
+  <ul>
+    <li><strong>Concept:</strong> price gravitates toward max pain as expiry approaches; strongest in the final hours before settlement.</li>
+    <li><strong>Use when:</strong> within <strong>2 days of expiry</strong> (ideally the final 24h), price is meaningfully extended from max pain (<strong>50+ pips FX, 20+ points indices</strong>), and there's no major news catalyst that could override positioning.</li>
+    <li>Long below MP on stabilisation / short above MP on exhaustion. <strong>Stop</strong> beyond the nearest wall. <strong>Target</strong> max pain (or a partial there).</li>
+    <li>Magnetism strength: 5+ DTE weak · 2–4 DTE moderate · 1 DTE strong · expiry day maximum. Don't fight a clear trend far from expiry.</li>
+    <li><strong>Timing:</strong> same-day or overnight trade only — the effect is time-specific. Wrong → cut quickly; right → price should move relatively fast.</li>
+  </ul>
+
+  <h3>Framework 3 — Wall Break Momentum</h3>
+  <ul>
+    <li><strong>Concept:</strong> a decisive break of a major wall flips dealer hedging from resistance to acceleration — trade the gamma squeeze in the break direction.</li>
+    <li><strong>Use when:</strong> a convincing break occurs (not a touch), ideally with a fundamental catalyst; a clean break, not choppy grinding.</li>
+    <li><strong>Confirming a real break:</strong> weak = barely crosses, low volume/thin session, immediate reversal attempt → avoid/wait. Strong = <strong>20+ pips beyond the wall</strong>, elevated volume/active session, no immediate reversal, catalyst present → high-probability continuation.</li>
+    <li><strong>Stop:</strong> back inside the broken wall. <strong>Target:</strong> next major OI level or a technical target.</li>
+    <li><strong>Size matters:</strong> a 10,000-contract wall break beats a 3,000-contract one — prioritise the largest concentrations for the most explosive moves.</li>
+  </ul>
+
+  <h3>Framework 4 — OI Confirmation (filter, not signal)</h3>
+  <p>Use OI to validate or invalidate technical setups:</p>
+  <div class="tl-datatable-wrap">
+    <table class="tl-datatable">
+      <tr><th>Technical setup</th><th>OI alignment</th><th>Action</th></tr>
+      <tr><td>Long at support</td><td>put wall nearby</td><td>✓ take it — high conviction</td></tr>
+      <tr><td>Long at support</td><td>no significant put OI</td><td>caution — reduced conviction</td></tr>
+      <tr><td>Long breakout</td><td>call wall directly above</td><td>✗ avoid — resistance ahead</td></tr>
+      <tr><td>Long breakout</td><td>no OI until much higher</td><td>✓ take it — clear air</td></tr>
+      <tr><td>Short at resistance</td><td>call wall nearby</td><td>✓ take it — high conviction</td></tr>
+      <tr><td>Trend continuation</td><td>toward max pain</td><td>✓ aligned with magnetism</td></tr>
+      <tr><td>Trend continuation</td><td>away from max pain</td><td>caution — fighting the magnet</td></tr>
+    </table>
+  </div>
+  <p>
+    Principle: <strong>OI doesn't replace technical analysis — it enhances
+    it.</strong> Aligned → conviction up; conflicting → skip or reduce size.
+  </p>
+
+  <h3>Position management with OI</h3>
+  <ul>
+    <li><strong>Targets:</strong> walls and max pain as natural targets. Three-tier scale-out: ⅓ at max pain, ⅓ halfway to the opposite wall, final ⅓ at the wall or trail.</li>
+    <li><strong>Stops:</strong> beyond walls = structural protection; a stop in open space is just a line.</li>
+    <li><strong>Sizing:</strong> OI aligned with the setup → larger; conflicting → smaller; none → minimum or skip.</li>
+    <li><strong>Adjustment triggers:</strong> a significant OI change mid-trade (a new wall appears, an old wall shrinks) → reassess — the structure you traded may be gone.</li>
+  </ul>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>The six pitfalls</h3>
+    <ol style="margin-bottom:0">
+      <li><strong>Treating OI as absolute</strong> — probabilities, not guarantees; always use stops.</li>
+      <li><strong>Ignoring time to expiry</strong> — a wall at 2 DTE is not the same as one at 20 DTE; adjust expectations.</li>
+      <li><strong>Stale data</strong> — recalc the basis; big overnight moves change positioning.</li>
+      <li><strong>Over-complicating</strong> — 2–3 key levels, not every strike across every expiry.</li>
+      <li><strong>Fighting fundamentals</strong> — walls don't stop a central bank announcement.</li>
+      <li><strong>Confirmation bias</strong> — read the full picture, not just the levels that agree with your view.</li>
+    </ol>
+  </div>
+
+  <h3>Integration hierarchy</h3>
+  <div class="tl-datatable-wrap">
+    <table class="tl-datatable">
+      <tr><th>Layer</th><th>Provides</th><th>OI interaction</th></tr>
+      <tr><td>Fundamental/macro</td><td>directional bias, catalysts</td><td>OI shows where the move may accelerate or stall</td></tr>
+      <tr><td>Technical</td><td>entry timing, patterns, levels</td><td>OI confirms or conflicts with technical S/R</td></tr>
+      <tr><td>Sentiment</td><td>crowd positioning, extremes</td><td>P/C ratio is another sentiment input</td></tr>
+      <tr><td>Risk management</td><td>sizing, stops</td><td>OI levels give structural stop locations</td></tr>
+    </table>
+  </div>
+  <p><strong>Fundamentals → direction. Technicals → timing. OI → the structural map of where price stalls, accelerates, or reverses.</strong></p>
+
+  <h3>Framework comparison</h3>
+  <div class="tl-datatable-wrap">
+    <table class="tl-datatable">
+      <tr><th>Framework</th><th>Best when</th><th>Key levels</th><th>Risk profile</th></tr>
+      <tr><td>Wall-to-wall range</td><td>price between defined walls, no catalyst</td><td>PW → CW</td><td>lower risk, lower reward</td></tr>
+      <tr><td>Max pain reversion</td><td>≤48h to expiry, price extended</td><td>MP as target</td><td>moderate / moderate</td></tr>
+      <tr><td>Wall break momentum</td><td>clean break of major wall + catalyst</td><td>broken wall → next wall</td><td>higher risk, higher reward</td></tr>
+      <tr><td>OI confirmation</td><td>technical setup exists</td><td>alignment check</td><td>depends on base setup</td></tr>
+    </table>
+  </div>
+  <p>
+    Course close: the differentiator isn't knowledge, it's <strong>consistent
+    application</strong> — make the pre-session prep a daily habit, start with
+    one framework, and build from there.
+  </p>
+
+  <h2>Key formulas &amp; numbers (reference card)</h2>
+  <div class="tl-datatable-wrap">
+    <table class="tl-datatable">
+      <tr><th>Concept</th><th>Formula / value</th><th>Notes</th></tr>
+      <tr><td>Basis</td><td><code>Basis = futures − spot</code></td><td>measure it, don't model it</td></tr>
+      <tr><td>Spot conversion</td><td><code>Spot level = strike − basis</code></td><td>JPY: invert first (<code>1/rate</code>), then subtract</td></tr>
+      <tr><td>Max pain</td><td>strike minimising total option-holder payout</td><td>lowest total pain across candidate strikes</td></tr>
+      <tr><td>Wall significance — weak</td><td>1.5×</td><td>vs. surrounding strikes</td></tr>
+      <tr><td>Wall significance — moderate</td><td>2×</td><td>vs. surrounding strikes</td></tr>
+      <tr><td>Wall significance — strong</td><td><strong>3×+</strong></td><td>vs. surrounding strikes</td></tr>
+      <tr><td>P/C ratio bands</td><td>&lt;0.7 · 0.7–1.0 · 1.0–1.3 · &gt;1.3</td><td>bullish → neutral → cautious → hedging/fear</td></tr>
+      <tr><td>Max-pain window</td><td>strongest final <strong>48h</strong></td><td>weak at 5+ DTE</td></tr>
+      <tr><td>Break confirmation</td><td>20+ pips beyond the wall</td><td>plus volume, no instant reversal, catalyst</td></tr>
+      <tr><td>Month codes</td><td>F G H J K M N Q U V X Z (Jan→Dec)</td><td><code>6EU5</code> = EUR/USD Sep 2025</td></tr>
+      <tr><td>Market scale</td><td>≈$700T derivatives</td><td>vs. ~$100T equities / ~$130T bonds</td></tr>
+      <tr><td>OI data lag</td><td>one day (previous close)</td><td>recalc basis every session</td></tr>
+    </table>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Define open interest and state the three ways a contract stops counting.</summary>
+    <div class="tl-answer">
+      Open interest is the total number of outstanding derivative contracts
+      (futures or options) currently open. A contract stops counting toward
+      OI when it is closed (the long and short both exit, so the contract
+      ceases to exist), exercised, or expires — in every case the contract no
+      longer exists as an open position, so it's removed from the count
+      rather than merely changing hands.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Two parties trade one contract: list the three possible OI outcomes and what each says about positioning.</summary>
+    <div class="tl-answer">
+      (1) A new buyer trades with a new seller → OI +1 — brand-new
+      commitment, new money entering. (2) An existing long closes against an
+      existing short closing → OI −1 — a position is being fully unwound,
+      liquidation. (3) An existing position holder trades with a new
+      counterparty (existing long sells to a new buyer, or existing short
+      buys from a new seller) → OI unchanged, only volume rises — this is a
+      transfer of an existing position, not new commitment.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Price rises with falling OI — what's happening and what does it imply for the rally?</summary>
+    <div class="tl-answer">
+      Falling OI while price rises means existing short positions are
+      closing (short covering) rather than new longs entering — the rally is
+      being driven by shorts buying back to exit, not by fresh bullish
+      commitment. That implies the rally may be exhausted rather than
+      healthy: once the covering is done, the buying pressure that produced
+      the move disappears, since no new money backed it.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Decode <code>6BZ5</code> and <code>WE3U5</code>.</summary>
+    <div class="tl-answer">
+      <code>6BZ5</code> = 6B (GBP/USD futures) + Z (December) + 5 (2025) — a
+      December 2025 GBP/USD contract. <code>WE3U5</code> = a weekly contract,
+      Week 3 of September (U) 2025.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Futures 1.0842, spot 1.0825 — convert strike 1.0900. Then: 6J 0.006250, broker USD/JPY 159.60 — convert strike 0.006211.</summary>
+    <div class="tl-answer">
+      EUR/USD-style: basis = 1.0842 − 1.0825 = +0.0017. Spot level = 1.0900 −
+      0.0017 = <strong>1.0883</strong>.<br><br>
+      JPY case: invert the 6J price, 1 ÷ 0.006250 = 160.00 (USD/JPY
+      equivalent). Basis = 160.00 − 159.60 = +0.40. Invert the strike, 1 ÷
+      0.006211 ≈ 160.99. Spot level = 160.99 − 0.40 ≈
+      <strong>160.59</strong>.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why can't the basis be set once and forgotten? Give two reasons.</summary>
+    <div class="tl-answer">
+      (1) The basis fluctuates intraday — it reflects the interest-rate
+      differential and time-to-expiry, both of which shift, plus temporary
+      supply/demand pressure on the futures contract, so a value captured
+      hours earlier can already be stale. (2) The basis shrinks toward zero
+      as expiry approaches (futures and spot converge), so a basis measured
+      weeks out is systematically too large once expiry is close — using a
+      stale basis puts converted levels 10–20 pips off exactly when
+      precision matters most (near expiry, when gamma effects are strongest).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q7. Define max pain, give the simplified calculation, and state when it is and isn't predictive.</summary>
+    <div class="tl-answer">
+      Max pain is the strike at which option holders (calls and puts
+      combined) would lose the most if the underlying expired there — the
+      strike where option sellers keep the most premium. Simplified
+      calculation: for each candidate strike, call pain = call OI ×
+      max(0, strike − current price), put pain = put OI × max(0, current
+      price − strike), total pain = call pain + put pain; max pain is the
+      strike with the <em>lowest</em> total pain. It is most relevant within
+      2–3 days of expiration, when magnetism is strongest; earlier than that
+      other factors dominate, it shifts as OI changes (it's a snapshot, not a
+      fixed target), and it's one input among many, never a guaranteed
+      target.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q8. State the 3× rule and why relative OI beats absolute OI.</summary>
+    <div class="tl-answer">
+      The 3× rule: a strike with roughly 1.5× the OI of its neighbours is a
+      weak/minor wall, 2× is moderate and worth watching, and 3×+ is a
+      strong, high-probability level. Relative OI beats absolute OI because
+      what matters is whether a strike is an <em>outlier</em> against its own
+      surrounding strikes, not whether its raw number looks big in isolation
+      — a large absolute OI figure in a naturally high-volume product may be
+      unremarkable next to its neighbours, while a smaller absolute number
+      that dwarfs everything nearby is the real concentration of positioning.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q9. Explain why a call wall is resistance <em>without</em> saying "dealers sell there" (the fuel-exhaustion mechanism).</summary>
+    <div class="tl-answer">
+      As price approaches a big call strike, the calls dealers sold gain
+      delta, so dealers buy the underlying to stay hedged — that buying is
+      what supports the rally on the way up. Once price reaches or passes the
+      strike, those calls go in the money and their delta saturates near 1.0,
+      meaning dealers are now fully hedged and have no further need to buy.
+      The buying pressure that was fuelling the rally simply stops — not
+      because anyone starts selling, but because the source of buying runs
+      out. Without that fuel, the rally stalls, and that stall is what shows
+      up on a chart as resistance.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q10. Short-gamma vs. long-gamma dealers: what does each regime do to moves, and which is typical? What is the gamma flip?</summary>
+    <div class="tl-answer">
+      A short-gamma dealer (one who sold options) must buy as price rises and
+      sell as price falls to stay hedged — this amplifies moves, accelerating
+      trends. A long-gamma dealer (one who bought options) must sell as price
+      rises and buy as price falls — this dampens moves, producing mean
+      reversion. Dealers are typically net short gamma, since retail and
+      institutions are net option buyers in aggregate. The gamma flip is the
+      price level where aggregate dealer gamma exposure changes sign —
+      trading above it behaves like a short-gamma (accelerating) regime,
+      below it like a long-gamma (dampening) one, or vice versa; it's
+      estimable from the OI distribution and is itself a structural level
+      worth watching.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q11. Walk through the gamma squeeze after a put-wall break.</summary>
+    <div class="tl-answer">
+      As price falls toward a big put strike, dealers who sold those puts
+      sell the underlying to hedge growing (more negative) delta —
+      accelerating the decline. If price decisively breaks through the put
+      wall rather than stalling there, those puts move further in the money
+      and delta pushes toward −1.0 faster than dealers' existing hedge
+      accounts for, forcing rapid additional selling to catch up. That
+      catch-up selling is the squeeze: the same positioning that was
+      providing "support" on the way down becomes the fuel accelerating the
+      decline once the wall is broken, mirroring the call-wall breakout case
+      exactly but in the downward direction.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q12. Why do OI effects intensify near expiration, and which options carry the most gamma?</summary>
+    <div class="tl-answer">
+      Gamma for at-the-money options rises as time to expiration shrinks
+      toward zero — the closer to expiry, the faster delta swings for a
+      given price move, so dealers must rehedge more urgently and more often.
+      That means the mechanical buying/selling that creates wall and
+      max-pain effects gets stronger the closer the market gets to
+      expiration, peaking in the final 48 hours. At-the-money options near
+      expiration carry the most gamma of any option; deep in-the-money or
+      out-of-the-money options, and options far from expiry, carry much less.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q13. For each of Frameworks 1–4: precondition, stop logic, and invalidation.</summary>
+    <div class="tl-answer">
+      <strong>Framework 1 (Wall-to-Wall Range):</strong> precondition — walls
+      3×+ defined, price mid-range, no catalyst, 5+ DTE; stop — beyond the
+      wall (10–20 pips FX); invalidation — a decisive close beyond a wall
+      (switch to Framework 3).<br>
+      <strong>Framework 2 (Max Pain Reversion):</strong> precondition — ≤2
+      days to expiry, price extended 50+ pips FX / 20+ points indices from
+      max pain, no major catalyst; stop — beyond the nearest wall;
+      invalidation — a clear trend far from expiry (don't fight it), or the
+      trade not resolving same-day/overnight.<br>
+      <strong>Framework 3 (Wall Break Momentum):</strong> precondition — a
+      convincing (not choppy) break, ideally with a fundamental catalyst;
+      stop — back inside the broken wall; invalidation — a weak break (barely
+      crosses, low volume, immediate reversal attempt).<br>
+      <strong>Framework 4 (OI Confirmation):</strong> precondition — a
+      technical setup already exists (this framework doesn't generate entries
+      on its own); stop/target follow the base technical setup; invalidation
+      — OI conflicts with the setup (reduce size or skip rather than a hard
+      stop rule).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q14. What distinguishes a weak wall break from a strong one (four criteria)?</summary>
+    <div class="tl-answer">
+      A strong break shows: (1) at least 20+ pips beyond the wall, not a bare
+      touch; (2) elevated volume / an active session, not thin liquidity; (3)
+      no immediate reversal attempt back through the level; and (4) a
+      catalyst present (a fundamental reason for the move). A weak break
+      shows the opposite of each: barely crosses the level, low volume or a
+      thin session, an immediate reversal attempt, and no catalyst — that
+      combination should be avoided or waited out rather than traded as a
+      breakout.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q15. Yesterday's put wall bounced price; today its OI is down 27%. Expectation on the next test, and why?</summary>
+    <div class="tl-answer">
+      A 27% drop in OI at a wall that just defended a bounce indicates the
+      positions responsible for the defence were closed — likely banked for
+      profit after the bounce — rather than reinforced. Per Lesson 04's OI-
+      change framework, that's "OI decreasing → positions closing → the level
+      is losing significance → wall weakening." The expectation on the next
+      test is therefore a higher chance the wall fails to hold this time,
+      since the same structural support that produced the first bounce is
+      materially smaller now.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q16. Where do stops belong relative to walls, and why is that structurally better than an arbitrary level?</summary>
+    <div class="tl-answer">
+      Stops belong just beyond the relevant wall — outside a put wall for a
+      long, outside a call wall for a short (or back inside a broken wall
+      for a momentum trade). That's structurally better than an arbitrary
+      distance because the wall itself is the level where dealer hedging
+      flow changes character: price trading through it means the structure
+      that was expected to hold has actually failed, which is a real
+      invalidation signal, not just "price moved against me by some amount."
+      A stop in open space, with no OI structure behind it, is just a line —
+      it has no reason tied to the market's actual positioning.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Future research ideas &amp; areas of interest</h2></summary>
+  <p>Things to investigate off the back of these lessons — not conclusions, a queue to work through:</p>
+  <ol>
+    <li><strong>Wall behaviour in FX:</strong> track converted 6E/6B call and put walls daily — how often does price touch them, and what happens after a touch (stall/reverse vs. break)? How does that compare against round numbers or pivots at similar distances?</li>
+    <li><strong>Max-pain magnetism:</strong> around monthly expiries, measure how close settlement lands to max pain vs. where price was 24–48h earlier. Is the final-48h pull measurable in FX futures?</li>
+    <li><strong>OI-change dynamics:</strong> does the "wall weakened after a defence → next test breaks" pattern (Lesson 04's scenario) show up in the data? Requires a daily OI history — the CME heatmap only shows the current snapshot, so history has to be self-collected. Start capturing early.</li>
+    <li><strong>Gamma flip estimation:</strong> SPX-style GEX (OI × per-strike gamma, with a dealer-positioning assumption) is well known for indices — what would an FX version look like from the heatmap data, and does realised volatility differ either side of the estimated flip level?</li>
+    <li><strong>Basis stability:</strong> how much does the 6E basis actually wobble intraday and into expiry? That sets the error bar on every converted level — are walls lines, or zones?</li>
+    <li><strong>P/C ratio as a sentiment input:</strong> do the lesson's ratio bands (&lt;0.7, &gt;1.3) line up with anything measurable in subsequent price behaviour? Could feed the existing day-type/regime features.</li>
+    <li><strong>Confluence with existing level sources:</strong> does an OI wall that coincides with a level this codebase already computes (pivot, VAH/VAL, round number, prior high/low) behave differently from either alone? A natural fit for the confluence scorer.</li>
+    <li><strong>CME vs. OTC:</strong> FX options trade heavily OTC — how representative is CME listed OI of total FX option positioning? Where do the OTC strike concentrations get published (e.g. DTCC data, bank flow notes), and can they be compared?</li>
+    <li><strong>Dealer positioning assumption:</strong> the mechanism assumes dealers are net short the big OI strikes. What data exists (CFTC COT, CME participant breakdowns) to check who is long/short at the wall strikes?</li>
+    <li><strong>Weeklies vs. monthlies:</strong> the course says monthlies carry the OI — how much structure do FX weeklies add in the final week, and do weekly walls behave like monthly ones?</li>
+    <li><strong>Reading list:</strong> literature on option-expiration pinning (Ni, Pearson &amp; Poteshman 2005), dealer gamma imbalance and returns (Barbon &amp; Buraschi), SqueezeMetrics' GEX white paper, SpotGamma methodology notes — and whatever exists specifically for <strong>FX</strong> rather than equities.</li>
+  </ol>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Real-time implementation ideas (this codebase)</h2></summary>
+  <p>Sketches for when/if these get built — noted here so future work doesn't re-derive them:</p>
+  <ul>
+    <li><strong><code>cme_oi</code> level source:</strong> a Tier-2 brick in <code>js/levelSources.js</code> emitting <code>Level[]</code> — <code>{ price, kind: 'call_wall'|'put_wall'|'max_pain', weight }</code> — through the existing <code>levels(ctx) → Level[]</code> contract, so the confluence scorer, <code>levelChart.js</code> viewer, and any strategy consume OI levels the same way they consume pivots or VWAP.</li>
+    <li><strong>Basis-conversion helper:</strong> a small pure function (futures px, spot px, strike → spot level) with the JPY-inversion case; unit-testable on synthetic numbers; register in <code>LEGO_MODULES.md</code> if built.</li>
+    <li><strong>Daily OI snapshot capture:</strong> a scheduled job storing per-product (strike, expiry, call OI, put OI) rows to R2 each day — needed because the CME serves no history, and research ideas 1–3 above all depend on it.</li>
+    <li><strong>Pre-session ritual automation:</strong> Lesson 06's daily prep (walls → basis → converted levels → plot) maps naturally onto a small dashboard card once the snapshot capture exists — CW/PW/MP per pair with DTE and P/C ratio.</li>
+    <li><strong>Validation:</strong> anything strategy-shaped that comes out of this goes through the standard harness (costs on, IS/OOS split, A/B vs. incumbent), same as every other engine in this repo.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="range-extension-levels.html">← Range Extension Levels</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="cross-asset-options-diagnostic.html">Cross-Asset Options Diagnostic →</a>
+  </div>
+</div>
+</body>
+</html>

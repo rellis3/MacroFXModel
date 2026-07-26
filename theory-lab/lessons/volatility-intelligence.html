@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Volatility Intelligence — Applied Practice — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<style>
+  /* Scoped to this page only — the shared stylesheet has no pseudocode block
+     convention yet (most lessons are pure-math and don't need one). Uses the
+     same design tokens as theory.css so it matches the system without editing it. */
+  pre.tl-code{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin:14px 0;overflow-x:auto;font-family:'DM Mono',monospace;font-size:12.5px;line-height:1.6;color:var(--text2)}
+  pre.tl-code .c{color:var(--text3)}
+  .tl-table-wrap{overflow-x:auto;margin:14px 0}
+  table.tl-tbl{width:100%;border-collapse:collapse;font-size:13px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r)}
+  table.tl-tbl th,table.tl-tbl td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+  table.tl-tbl th{color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;background:var(--s2)}
+  table.tl-tbl tr:last-child td{border-bottom:none}
+  table.tl-tbl td{color:var(--text2)}
+  table.tl-tbl td:first-child{color:var(--text);font-weight:600;white-space:nowrap}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Course Notes / Volatility Intelligence — Applied Practice</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Course Notes · Lesson 4 of 10</div>
+  <h1 class="tl-title">Volatility Intelligence — Applied Practice</h1>
+  <p class="tl-dek">Direction is close to a coin flip; the size of tomorrow's move is not. This is the applied, practitioner-workflow layer built on that asymmetry — daily and weekly range forecasting, session structure, regime classification and vol-adjusted position sizing — not another derivation of the clustering math itself.</p>
+  <div class="tl-meta">
+    <span class="tl-status course">COURSE NOTES — applied practice, not a repo module</span>
+    <span>~19 min read</span>
+    <span>Prereqs: GARCH &amp; Volatility Clustering</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Volatility is predictable in a way direction isn't: forecasting tomorrow's <em>return sign</em> runs ≈51% accuracy (a coin flip), while forecasting tomorrow's <em>range/volatility</em> runs ≈70%+ — because big moves cluster with big moves and quiet spells cluster with quiet spells. That asymmetry is the whole basis for everything below.</li>
+      <li><strong>Daily forecasting practice:</strong> True Range (not simple High−Low, which misses gaps) smoothed with an EMA at α≈0.15 (~12-day effective window) is the recommended day-to-day estimator — simple, and close to as good as heavier models for this purpose. See <a href="garch-volatility.html">GARCH &amp; Volatility Clustering</a> for the formal model this generalizes toward.</li>
+      <li><strong>Weekly regimes:</strong> classify current volatility by where today's ATR sits in its own 6–12 month percentile history (&lt;25th = low, &gt;75th = high), and note that weekly range runs ~2–3× the daily range, not 5×, because of mean reversion within the week.</li>
+      <li><strong>The Asia session as a daily anchor:</strong> the quietest session (Tokyo, ~00:00–06:00 GMT) sets a range that London and New York then expand — typically 2–3.5×. It's context for sizing expectations, not a mechanical entry trigger.</li>
+      <li><strong>Position sizing with volatility:</strong> size inversely to ATR (<code>Risk$ ÷ (ATR × stop multiplier)</code>) so dollar risk per trade stays constant whether the market is calm or turbulent — this is a risk-consistency practice, not a directional edge.</li>
+      <li>These are course-taught heuristics (thresholds, ratios, α values) with the course's own "verify on your data" caveats attached throughout — none of them have been validated against MacroFXModel's own OOS harness yet; see the calibration checklist near the end.</li>
+    </ul>
+  </div>
+
+  <h2>Lesson 1 — Why Volatility Is Predictable</h2>
+  <p><em>Foundational · application: position sizing, risk management.</em></p>
+
+  <h3>1.1 The core insight: returns vs. volatility</h3>
+  <p>
+    Predicting tomorrow's <strong>return/direction</strong> is nearly impossible — typical accuracy sits around
+    <strong>51%</strong>, barely better than a coin flip. Predicting tomorrow's <strong>volatility/range</strong> is
+    surprisingly achievable — directional accuracy of vol forecasts runs <strong>70%+</strong>. You can't reliably
+    know if tomorrow is up or down, but you <em>can</em> reliably estimate how much the market is likely to move —
+    and that's directly actionable for position sizing, stop placement, and target setting.
+  </p>
+
+  <h3>1.2 Volatility clustering</h3>
+  <p>
+    Large moves follow large moves; small moves follow small moves — one of the most robust findings in financial
+    markets, holding across asset classes, time periods and regimes. After a 3% daily move, the next day is far more
+    likely to see a large move than after a quiet 0.3% day; a week of small ranges suggests next week will likely
+    also be quiet, until something changes the regime. Transitions are abrupt — regimes can shift suddenly, often on
+    news/events, and the shift low→high is typically faster than high→low.
+  </p>
+  <p>Why clustering exists (mechanisms the course points to): information arrives in bursts; fear and uncertainty are
+  contagious; leverage and margin calls create cascades; participants adapt slowly to a new volatility regime. The
+  formal model of this exact phenomenon — reacting to a shock immediately and decaying it smoothly rather than
+  dropping it off a rolling-window cliff — is <a href="garch-volatility.html">GARCH</a>; this lesson stays at the
+  practitioner level.</p>
+
+  <h3>1.3 The evidence, visualized</h3>
+  <p>
+    A scatter of yesterday's range vs. today's range shows a clear positive correlation — high-range days tend to
+    follow high-range days; a random market would show no pattern. Returns themselves have near-zero autocorrelation
+    (today's return doesn't predict tomorrow's), while volatility has strong positive autocorrelation (today's vol
+    level strongly predicts tomorrow's). That contrast is the statistical foundation for the whole course.
+  </p>
+
+  <h3>1.4 The persistence principle</h3>
+  <p>The best forecast of tomorrow's volatility is a function of recent volatility, with more weight on recent
+  observations. Four-step loop: <strong>observe</strong> recent volatility (ranges, ATR, standard deviation),
+  <strong>weight</strong> recent observations more than older ones, <strong>forecast</strong> forward with confidence
+  bands, <strong>apply</strong> to sizing/stops/targets.</p>
+
+  <div class="tl-table-wrap"><table class="tl-tbl">
+    <tr><th>Model</th><th>Formula concept</th><th>Complexity</th><th>When to use</th></tr>
+    <tr><td>Yesterday's vol</td><td>Tomorrow ≈ today</td><td>Simple</td><td>Quick estimate, stable regimes</td></tr>
+    <tr><td>Simple moving average</td><td>Average of last N days</td><td>Simple</td><td>Smoother, less noisy</td></tr>
+    <tr><td>Exponential smoothing</td><td>Weighted avg, recent = more weight</td><td>Medium</td><td>Balance of responsiveness and stability</td></tr>
+    <tr><td>GARCH</td><td>Econometric model with mean reversion</td><td>Complex</td><td>Research, formal risk models — see <a href="garch-volatility.html">GARCH &amp; Volatility Clustering</a></td></tr>
+  </table></div>
+  <p>The course's stated takeaway: <strong>simple models often perform nearly as well as complex ones.</strong> A
+  10-day ATR captures most of the predictable variation in volatility — you don't need GARCH to get practical
+  value day to day.</p>
+
+  <h3>1.5 Persistence calculator (interactive tool, as taught)</h3>
+  <p>Input: last 5 daily ranges (High − Low), newest first. Output: tomorrow's expected range. Method: exponential
+  weighting, so recent days get more weight than older days, capturing the persistence effect.</p>
+
+  <h3>1.6 Framework: test persistence on your own data</h3>
+  <p><strong>Data requirements</strong> — minimum 30–60 days of daily OHLC; better 1–2 years to cover different
+  regimes; sources: TradingView, Yahoo Finance, broker platform, Bloomberg; format Date/Open/High/Low/Close.</p>
+  <pre class="tl-code"><span class="c"># Step 1: daily ranges</span>
+daily_range = High - Low
+<span class="c"># or True Range: max(High-Low, |High-PrevClose|, |Low-PrevClose|)</span>
+
+<span class="c"># Step 2: lagged series</span>
+yesterday_range = daily_range.shift(1)
+
+<span class="c"># Step 3: correlation</span>
+correlation = corr(yesterday_range, today_range)   <span class="c"># expect 0.3-0.7</span>
+
+<span class="c"># Step 4: forecast accuracy</span>
+forecast = yesterday_range
+error = abs(today_range - forecast) / today_range
+mean_error = average(error)   <span class="c"># compare to naive long-term-average forecast</span></pre>
+
+  <div class="tl-table-wrap"><table class="tl-tbl">
+    <tr><th>Metric</th><th>What it tells you</th><th>Typical values</th></tr>
+    <tr><td>Correlation (lag-1)</td><td>How strongly today predicts tomorrow</td><td>0.3–0.7 (varies by asset)</td></tr>
+    <tr><td>Mean absolute error</td><td>Average forecast miss</td><td>20–40% of actual range</td></tr>
+    <tr><td>Directional accuracy</td><td>% of time high-vol follows high-vol</td><td>60–75%</td></tr>
+    <tr><td>Autocorrelation decay</td><td>How quickly persistence fades</td><td>Significant for 5–20 days</td></tr>
+  </table></div>
+  <p>⚠️ <strong>Persistence strength varies by asset.</strong> FX majors often show strong persistence; individual
+  stocks vary more; futures behave differently in active vs. overnight sessions. Test on your own instruments
+  before relying on these forecasts.</p>
+
+  <h3>1.7 Why this matters for trading</h3>
+  <ul>
+    <li><strong>Position sizing</strong> — size inversely to expected vol: higher expected vol = smaller position,
+    keeping risk exposure consistent across conditions.</li>
+    <li><strong>Stop placement</strong> — stops based on expected range, not fixed pips; ATR-based stops breathe
+    with the market.</li>
+    <li><strong>Target setting</strong> — know the expected daily range to set realistic targets; if the expected
+    range is 80 pips, a 200-pip day-trade target is unrealistic.</li>
+    <li><strong>Risk warnings</strong> — high-vol regimes call for reduced size, wider stops, and expecting the
+    unexpected; vol forecasts provide early warning.</li>
+  </ul>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Lesson 1 key takeaways</div>
+    <ol>
+      <li>Volatility is predictable, returns are not — don't waste energy predicting direction; focus on predicting range.</li>
+      <li>Volatility clusters: high follows high, low follows low — robust across markets and time.</li>
+      <li>Simple models work well — a 10-day ATR or exponential smoothing captures most of the predictable variation.</li>
+      <li>Test on your instruments — persistence strength varies.</li>
+      <li>Direct applications: position sizing, stops, targets, risk warnings.</li>
+      <li>This is how professionals manage risk.</li>
+    </ol>
+  </div>
+
+  <h2>Lesson 2 — Daily Volatility Forecasting</h2>
+  <p><em>Practical · focus: forecasting methods.</em></p>
+
+  <h3>2.1 Measuring volatility: the building blocks</h3>
+  <ul>
+    <li><strong>Simple range</strong> = High − Low. Simplest measure, easy, but misses gaps.</li>
+    <li><strong>True Range</strong> accounts for gaps: <code>TR = max(High−Low, |High−Close₋₁|, |Low−Close₋₁|)</code>.
+    Worked example: yesterday's close 100; today opens 105, high 106, low 103. Simple range = 3 (106−103), but True
+    Range = <strong>6</strong> (106−100) — capturing the gap that affected overnight positions.</li>
+    <li><strong>Standard deviation</strong> — the classic statistical vol metric on return dispersion; more
+    sensitive to outliers.</li>
+  </ul>
+  <div class="tl-table-wrap"><table class="tl-tbl">
+    <tr><th>Measure</th><th>Best for</th><th>Limitation</th><th>Typical use</th></tr>
+    <tr><td>Simple range</td><td>Intraday analysis</td><td>Misses gaps</td><td>Session-based targets</td></tr>
+    <tr><td>True Range</td><td>Swing trading, sizing</td><td>Slightly more complex</td><td>ATR calculations, stops</td></tr>
+    <tr><td>Standard deviation</td><td>Options, VaR models</td><td>Sensitive to outliers</td><td>Statistical models</td></tr>
+    <tr><td>Parkinson</td><td>Research, efficiency</td><td>Assumes no jumps</td><td>Academic studies</td></tr>
+  </table></div>
+
+  <h3>2.2 Three forecasting methods</h3>
+  <ol>
+    <li><strong>Simple Moving Average</strong> — <code>ATR = Σ(TR) / N</code>. Pros: dead simple, stable. Cons:
+    slow to react, old data weighted equally.</li>
+    <li><strong>Exponential Moving Average</strong> — <code>EMA = α × TR + (1−α) × EMA₋₁</code>. Pros: reacts
+    faster, recent data matters more. Cons: need to choose α.</li>
+    <li><strong>Wilder's Smoothing</strong> (classic ATR) — <code>ATR = (ATR₋₁ × (N−1) + TR) / N</code>. Pros:
+    industry standard, well-tested. Cons: equivalent to an EMA, not necessarily optimal.</li>
+  </ol>
+  <p>✓ <strong>Course recommendation: EMA with a 10–20 day effective period</strong> — captures persistence better
+  than simple averages, still easy to implement.</p>
+  <div class="tl-table-wrap"><table class="tl-tbl">
+    <tr><th>α</th><th>Equivalent period</th><th>Behavior</th><th>Best for</th></tr>
+    <tr><td>0.10</td><td>~19 days</td><td>Slow, smooth</td><td>Position trading, stable markets</td></tr>
+    <tr><td>0.15</td><td>~12 days</td><td>Balanced</td><td><strong>General purpose (recommended)</strong></td></tr>
+    <tr><td>0.20</td><td>~9 days</td><td>Responsive</td><td>Swing trading, volatile markets</td></tr>
+    <tr><td>0.30</td><td>~6 days</td><td>Very reactive</td><td>Short-term, regime changes</td></tr>
+  </table></div>
+  <p>Conversion: <code>α = 2 / (N + 1)</code> ⟷ <code>N = (2 / α) − 1</code>.</p>
+
+  <h3>2.3 Calibrating to your market</h3>
+  <ol>
+    <li><strong>Gather data</strong> — 60–120+ days of daily OHLC; more is more reliable, but too much may include
+    stale regime information.</li>
+    <li><strong>Calculate True Ranges</strong> — the realized-vol series you'll forecast.</li>
+    <li><strong>Test α values</strong> — for each α from 0.05 to 0.40, compute EMA forecasts and measure MAE; lowest
+    MAE = optimal α.</li>
+    <li><strong>Validate out-of-sample</strong> — test the calibrated α on unused data; if performance degrades a
+    lot, the α is overfit.</li>
+  </ol>
+  <pre class="tl-code">def find_optimal_alpha(true_ranges, alpha_range=(0.05, 0.40)):
+    best_alpha, best_mae = 0.15, inf
+    for alpha in arange(*alpha_range, 0.01):
+        ema = true_ranges[0]; forecasts = []
+        for i in 1..len(true_ranges)-1:
+            forecasts.append(ema)
+            ema = alpha * true_ranges[i] + (1 - alpha) * ema
+        mae = mean(abs(true_ranges[1:] - forecasts))
+        if mae &lt; best_mae: best_mae, best_alpha = mae, alpha
+    return best_alpha, best_mae</pre>
+  <p>⚠️ <strong>Don't over-calibrate.</strong> The optimal α on historical data may not be optimal going forward.
+  If your calibrated α is far from typical values (0.10–0.20), be skeptical.</p>
+
+  <h3>2.4 Typical volatility by market (sanity-check reference)</h3>
+  <div class="tl-table-wrap"><table class="tl-tbl">
+    <tr><th>Market</th><th>Typical daily range</th><th>High vol</th><th>Low vol</th></tr>
+    <tr><td>EUR/USD</td><td>50–80 pips</td><td>&gt; 120 pips</td><td>&lt; 40 pips</td></tr>
+    <tr><td>GBP/USD</td><td>70–110 pips</td><td>&gt; 150 pips</td><td>&lt; 50 pips</td></tr>
+    <tr><td>USD/JPY</td><td>50–90 pips</td><td>&gt; 130 pips</td><td>&lt; 40 pips</td></tr>
+    <tr><td>S&amp;P 500 (ES)</td><td>30–60 points</td><td>&gt; 80 points</td><td>&lt; 25 points</td></tr>
+    <tr><td>Crude Oil (CL)</td><td>$1.50–$3.00</td><td>&gt; $4.00</td><td>&lt; $1.00</td></tr>
+    <tr><td>Gold (GC)</td><td>$15–$30</td><td>&gt; $45</td><td>&lt; $12</td></tr>
+  </table></div>
+  <p>Use as sanity checks, not gospel — conditions change; "high vol" in 2019 might be "normal" in 2024. Always
+  compare forecasts to recent realized vol.</p>
+
+  <h3>2.5 Visualizing forecasts — think in ranges, not points</h3>
+  <p>The EMA gives a central-estimate <strong>point forecast</strong>; actual vol will rarely equal it exactly.
+  Build a <strong>confidence band</strong> from historical forecast errors — e.g. "68% of the time, actual will be
+  within ±25% of forecast." Outliers happen — even good forecasts are occasionally very wrong, especially at
+  regime shifts. Plan for it.</p>
+
+  <h3>2.6 Daily workflow (~2 minutes each morning)</h3>
+  <ol>
+    <li><strong>Update data</strong> — add yesterday's TR; compute <code>EMA_new = α × TR_yesterday + (1−α) × EMA_old</code>.</li>
+    <li><strong>Note the forecast</strong> — write it down: "Expected range today: 72 pips."</li>
+    <li><strong>Compare to yesterday</strong> — rising forecast = vol expanding; falling = calmer conditions.</li>
+    <li><strong>Apply</strong> — use it for sizing, stops, targets.</li>
+    <li><strong>End-of-day review</strong> — compare actual vs. forecast; large misses may indicate regime change.
+    Keep a log: Date, Forecast, Actual, Notes.</li>
+  </ol>
+
+  <h3>2.7 Where this leads: advanced quantitative methods</h3>
+  <p>The EMA approach is the foundation; the course notes this is the same persistence property professionals build
+  on more formally, in each case with a deeper treatment already in this Theory Lab rather than repeated here:</p>
+  <ul>
+    <li><strong>GARCH</strong> — formal volatility clustering model → <a href="garch-volatility.html">GARCH &amp; Volatility Clustering</a>.</li>
+    <li><strong>Kalman filters</strong> — state-space models for real-time estimation with noisy observations → <a href="kalman-filter.html">Kalman Filter</a>.</li>
+    <li><strong>Regime-switching</strong> — Markov models capturing distinct high/low vol states → <a href="hidden-markov-models.html">Hidden Markov Models &amp; Regime Detection</a>.</li>
+    <li><strong>Stochastic volatility</strong> (Heston, SABR) — vol as a random process, derivatives pricing → <a href="heston-model.html">Heston Model</a> / <a href="sabr-model.html">SABR Model</a>.</li>
+    <li><strong>VECM</strong> — long-run equilibrium relationships, related to the cointegration family → <a href="cointegration.html">Cointegration</a>.</li>
+    <li><strong>Realized volatility</strong> (high-frequency intraday estimation) and <strong>HAR models</strong>
+    (combining daily/weekly/monthly vol) and <strong>ML approaches</strong> (neural nets, gradient boosting) don't
+    have dedicated lessons here yet — noted as gaps, not covered further in this course.</li>
+  </ul>
+  <p>The principle stays the same across all of them: volatility is persistent and predictable; these are more
+  sophisticated exploitations of the same property. Master the basics first — they perform surprisingly close to
+  complex approaches with far less overfitting risk.</p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Lesson 2 key takeaways</div>
+    <ol>
+      <li>True Range captures gaps — use it instead of simple range for overnight and swing positions.</li>
+      <li>Exponential smoothing is the sweet spot — start with α = 0.15.</li>
+      <li>Calibrate to your market — test α values, measure MAE, don't over-optimize.</li>
+      <li>Think in ranges, not points — build confidence bands around forecasts.</li>
+      <li>Make it a daily habit — 2 minutes each morning anchors expectations.</li>
+      <li>Advanced methods (GARCH, Kalman, regime-switching, …) build on the same persistence principle.</li>
+    </ol>
+  </div>
+
+  <h2>Lesson 3 — Weekly Regimes &amp; Multi-Day Structure</h2>
+  <p><em>Intermediate · focus: regime classification.</em></p>
+
+  <h3>3.1 The three volatility regimes</h3>
+  <div class="tl-table-wrap"><table class="tl-tbl">
+    <tr><th></th><th>🔥 High</th><th>⚖️ Normal</th><th>😴 Low</th></tr>
+    <tr><td>Character</td><td>Crisis mode; large moves, gaps, unpredictable direction; fear dominates</td><td>Business as usual; predictable ranges; trends develop and follow through</td><td>Quiet; small ranges; slow grinding moves; complacency builds</td></tr>
+    <tr><td>Typical duration</td><td>Days to weeks</td><td>Weeks to months</td><td>Weeks to months</td></tr>
+    <tr><td>Daily range</td><td>1.5–3× normal</td><td>Near average</td><td>0.5–0.7× normal</td></tr>
+    <tr><td>Gaps</td><td>Frequent</td><td>Occasional</td><td>Rare</td></tr>
+    <tr><td>Reversals</td><td>Common</td><td>Normal</td><td>Slow to develop</td></tr>
+  </table></div>
+  <p><strong>Regime asymmetry:</strong> low-vol regimes are longer and more stable; high-vol regimes shorter but
+  more intense. Low→high transition is often sudden (a shock); high→low is usually gradual (fear fades slowly).</p>
+
+  <h3>3.2 Classifying the current regime — percentile method</h3>
+  <p>Compare current volatility to its own historical distribution: where does today's ATR sit vs. the last 6–12
+  months? <strong>0–25th percentile = LOW</strong>, <strong>25th–75th = NORMAL</strong>, <strong>75th–100th =
+  HIGH</strong>.</p>
+  <pre class="tl-code">def classify_regime(current_atr, historical_atrs):
+    percentile = (historical_atrs &lt; current_atr).sum() / len(historical_atrs) * 100
+    if percentile &lt; 25:  return "LOW", percentile
+    if percentile &gt; 75:  return "HIGH", percentile
+    return "NORMAL", percentile</pre>
+  <p>💡 <strong>Rolling window matters:</strong> 6–12 months — long enough to capture different regimes, short
+  enough to reflect current market structure.</p>
+
+  <h3>3.3 Week-over-week forecasting</h3>
+  <p>Last week's volatility predicts next week's, just as daily does. Weekly forecasts smooth daily noise; useful
+  for position/swing trades held multiple days. Course example: last week's realized range 245 pips → this week's
+  forecast ≈ 250 pips.</p>
+  <div class="tl-table-wrap"><table class="tl-tbl">
+    <tr><th>Method</th><th>Formula</th><th>When to use</th></tr>
+    <tr><td>Last week</td><td>Forecast = last week's range</td><td>Quick estimate, stable conditions</td></tr>
+    <tr><td>4-week average</td><td>Avg of last 4 weeks</td><td>Smoother, less reactive</td></tr>
+    <tr><td>EMA (weekly)</td><td>α × last + (1−α) × prev EMA</td><td><strong>Balanced (recommended)</strong></td></tr>
+    <tr><td>Sum of daily ATRs</td><td>Daily ATR × 5</td><td>Bridge from daily to weekly</td></tr>
+  </table></div>
+  <p>⚠️ <strong>Weekly vol ≠ daily vol × 5.</strong> Due to mean reversion within the week and overlapping ranges,
+  weekly range is typically <strong>2–3× daily</strong>, not 5×. Measure actual weekly ranges to calibrate.</p>
+
+  <h3>3.4 Trading implications by regime</h3>
+  <div class="tl-table-wrap"><table class="tl-tbl">
+    <tr><th></th><th>😴 Low vol (&lt;25th pct)</th><th>⚖️ Normal (25th–75th)</th><th>🔥 High vol (&gt;75th pct)</th></tr>
+    <tr><td>Position size</td><td>Can increase</td><td>Standard — baseline</td><td>Reduce 30–50%</td></tr>
+    <tr><td>Stops</td><td>Tighter — 0.75× ATR</td><td>Standard — 1× ATR</td><td>Wider — 1.5–2× ATR</td></tr>
+    <tr><td>Targets</td><td>Smaller, scale out early</td><td>Standard R:R (1:2, 1:3)</td><td>Larger, take partials</td></tr>
+    <tr><td>Duration</td><td>Can hold longer</td><td>Normal; let winners run</td><td>Shorter; take profits quickly</td></tr>
+    <tr><td>Strategy type</td><td>Mean reversion works</td><td>Trend following shines</td><td>Momentum, breakouts, continuation</td></tr>
+    <tr><td>Overnight risk</td><td>Lower</td><td>Normal</td><td>Much higher — reduce</td></tr>
+  </table></div>
+  <p>⚠️ <strong>The most dangerous transition: Low → High.</strong> After extended low vol, traders get complacent
+  and size for small ranges. When vol explodes, stops can slip badly and losses accumulate fast. Always be
+  prepared for regime change.</p>
+
+  <h3>3.5 Regime transitions — warning signs</h3>
+  <div class="tl-table-wrap"><table class="tl-tbl">
+    <tr><th>Transition</th><th>Warning signs</th><th>What to do</th></tr>
+    <tr><td>Low → High</td><td>Sudden range spike (&gt;2× average), news shock, gap opens, VIX spike</td><td>Immediately reduce size, widen stops, close marginal positions</td></tr>
+    <tr><td>High → Normal</td><td>Ranges contracting over several days, gaps decreasing, calmer price action</td><td>Gradually normalize positioning, tighten stops cautiously</td></tr>
+    <tr><td>Normal → Low</td><td>Ranges compressing, multi-day consolidation, decreasing ATR trend</td><td>Consider mean-reversion setups, prepare for eventual breakout</td></tr>
+    <tr><td>Low → Normal</td><td>Gradual range expansion, breakout from consolidation, trend development</td><td>Normal approach, watch for trend-following opportunities</td></tr>
+  </table></div>
+
+  <h3>3.6 Data requirements &amp; framework</h3>
+  <p>Data: minimum 6 months daily OHLC, better 12 months; for weekly, build weekly high/low from daily.
+  Calculations: daily ATR (10 or 14 period); weekly range = week high − week low; percentile vs. history. Update
+  frequency: <strong>regime check weekly</strong> (or after big moves); <strong>ATR daily</strong>;
+  <strong>threshold review monthly</strong>.</p>
+  <pre class="tl-code">def weekly_regime_check(daily_data, lookback_months=6):
+    daily_data['ATR'] = calculate_atr(daily_data, period=14)
+    current_atr = daily_data['ATR'].iloc[-1]
+    lookback_days = lookback_months * 21   <span class="c"># ~21 trading days/month</span>
+    historical = daily_data['ATR'].iloc[-lookback_days:-1]
+    regime, percentile = classify_regime(current_atr, historical)
+    return { regime, percentile, current_atr, median_atr: historical.median() }</pre>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Lesson 3 key takeaways</div>
+    <ol>
+      <li>Three regimes — high, normal, low — each need a fundamentally different approach.</li>
+      <li>Percentile ranking is simple and effective: current ATR vs. 6–12 months; &lt;25th = low, &gt;75th = high.</li>
+      <li>Weekly volatility persists like daily — last week's range predicts this week's; use for swing planning.</li>
+      <li>Adapt everything to the regime: size, stops, targets, hold time, strategy type.</li>
+      <li>Low→high transitions require caution — complacency plus oversized positions is the danger.</li>
+      <li>Check regime weekly; daily fluctuations are noise — regime is the bigger-picture concept.</li>
+    </ol>
+  </div>
+
+  <h2>Lesson 4 — Session Structure: Asia Range as Daily Anchor</h2>
+  <p><em>Intermediate · focus: intraday structure. Times ≈ GMT; adjust for timezone/DST.</em></p>
+
+  <h3>4.1 The 24-hour trading day</h3>
+  <div class="tl-table-wrap"><table class="tl-tbl">
+    <tr><th>Session</th><th>Hours (GMT)</th><th>Volatility</th><th>Liquidity</th><th>Character</th></tr>
+    <tr><td>🌏 Asia (Tokyo)</td><td>00:00–06:00</td><td>Lowest</td><td>Moderate</td><td>Range-bound, quiet</td></tr>
+    <tr><td>🌍 London</td><td>~07:00–16:00</td><td>High</td><td>Highest</td><td>Directional, active</td></tr>
+    <tr><td>🌎 New York</td><td>~12:00–21:00</td><td>High (esp. overlap)</td><td>Very high</td><td>Directional, active</td></tr>
+  </table></div>
+  <p><strong>Why Asia matters:</strong> the quietest session establishes a range that London and New York then
+  expand. Asia "sets the table" — it defines the initial support/resistance levels the more volatile sessions
+  will test.</p>
+
+  <h3>4.2 Asia range as a predictor</h3>
+  <p>Key insight: <strong>Asia range predicts the expected daily range.</strong> A narrow Asia range suggests a
+  potentially narrow day; a wide Asia range (vs. its norm) suggests volatility is already elevated and a more
+  active day is likely.</p>
+  <p>Formula: <code>Asia range × expansion ratio = expected daily range</code>. Example: 30 pips × 2.5 = ~75-pip
+  expected daily range. Typical expansion ratio: <strong>2× to 3.5×</strong>.</p>
+  <div class="tl-table-wrap"><table class="tl-tbl">
+    <tr><th>Market</th><th>Typical Asia range</th><th>Expansion ratio</th><th>Expected daily</th></tr>
+    <tr><td>EUR/USD</td><td>20–35 pips</td><td>2.0–3.0×</td><td>50–80 pips</td></tr>
+    <tr><td>GBP/USD</td><td>30–50 pips</td><td>2.0–2.8×</td><td>70–120 pips</td></tr>
+    <tr><td>USD/JPY</td><td>25–45 pips</td><td>1.8–2.5×</td><td>50–90 pips</td></tr>
+    <tr><td>Gold (XAU/USD)</td><td>$5–$12</td><td>2.5–4.0×</td><td>$15–$35</td></tr>
+    <tr><td>S&amp;P 500 futures</td><td>10–25 pts</td><td>2.0–3.5×</td><td>30–60 pts</td></tr>
+  </table></div>
+  <p>These are guidelines, not rules. The ratio <strong>varies with the vol regime</strong>: high-vol regimes
+  expand more (3×+), low-vol less (1.5–2×). Calibrate to your market by measuring actual Asia-to-daily ratios over
+  20–30 days.</p>
+  <pre class="tl-code">def calculate_expansion_ratio(daily_data):
+    daily_data['expansion'] = daily_range / asia_range   <span class="c"># per day</span>
+    return { average, median, min, max of daily_data['expansion'] }
+
+<span class="c"># Data: daily data with Asia session high/low marked.
+# TradingView: session-highlighter indicators can mark the Asia range
+# automatically -- search "Asia session range".</span></pre>
+
+  <h3>4.3 Using the Asia range in trading</h3>
+  <ul>
+    <li><strong>Range context</strong> — compare today's Asia range to recent averages: narrow, normal or wide?
+    Sets expectations for the day.</li>
+    <li><strong>Projected daily range</strong> — Asia range × expansion ratio → use for target setting and
+    expectation management.</li>
+    <li><strong>Timing awareness</strong> — if much of the expected range is used by midday, reduce expectations
+    for further movement; if range is compressed late, opportunity may have passed.</li>
+  </ul>
+  <div class="tl-table-wrap"><table class="tl-tbl">
+    <tr><th>Asia range vs. average</th><th>Suggests</th><th>Trading implication</th></tr>
+    <tr><td>Narrow (&lt; 70% of avg)</td><td>Quiet overnight, compression</td><td>Expect smaller daily range; be patient</td></tr>
+    <tr><td>Normal (70–130%)</td><td>Typical conditions</td><td>Standard expectations; normal expansion ratio</td></tr>
+    <tr><td>Wide (&gt; 130%)</td><td>Vol already elevated; possible overnight news</td><td>Expect active day; adjust sizing for higher vol</td></tr>
+  </table></div>
+  <p>⚠️ <strong>Asia range is context, not a signal.</strong> Use it to set expectations and calibrate targets —
+  not as a mechanical entry trigger. The value is knowing what kind of day to expect.</p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Asia range as a daily anchor — session box, then the breakout into London/NY</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A 24-hour price timeline. The left portion, the Asia session, is shaded as a narrow horizontal box marking its high-low range. For the rest of the day, spanning the London and New York sessions, a price line breaks up out of the top of the Asia box during the London open, pushes further during the London/New York overlap, then pulls back, ending above the Asia range's upper boundary but below the day's high.">
+      <text x="20" y="20" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">24-hour session timeline (GMT)</text>
+
+      <!-- session bg bands -->
+      <rect x="20" y="30" width="155" height="230" style="fill:var(--s2);opacity:.55"/>
+      <rect x="175" y="30" width="230" height="230" style="fill:var(--blue-bg);opacity:.35"/>
+      <rect x="405" y="30" width="215" height="230" style="fill:var(--purple-bg);opacity:.3"/>
+
+      <!-- Asia range anchor box -->
+      <rect x="20" y="150" width="155" height="46" style="fill:var(--amber-bg);stroke:var(--amber);stroke-width:1.5;opacity:.85"/>
+      <line x1="20" y1="150" x2="620" y2="150" style="stroke:var(--amber);stroke-width:1;stroke-dasharray:4,3;opacity:.55"/>
+      <line x1="20" y1="196" x2="620" y2="196" style="stroke:var(--amber);stroke-width:1;stroke-dasharray:4,3;opacity:.55"/>
+      <text x="590" y="146" fill="var(--amber)" font-size="9" font-family="'DM Mono',monospace" text-anchor="end">Asia high</text>
+      <text x="590" y="209" fill="var(--amber)" font-size="9" font-family="'DM Mono',monospace" text-anchor="end">Asia low</text>
+
+      <!-- price path: flat through Asia, breaks up through London, peaks in overlap, pulls back -->
+      <polyline points="20,178 45,182 70,172 95,180 120,168 145,176 175,173
+                         195,158 215,140 235,118 255,100 275,88
+                         300,78 325,70 350,64 375,60 400,58
+                         420,66 440,78 460,92 480,100
+                         505,96 530,90 555,94 580,100 605,104 620,102"
+                style="fill:none;stroke:var(--blue);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round"/>
+
+      <!-- session labels -->
+      <text x="97" y="278" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace" text-anchor="middle">Asia</text>
+      <text x="97" y="291" fill="var(--text3)" font-size="9" font-family="'DM Mono',monospace" text-anchor="middle">00:00-06:00</text>
+      <text x="290" y="278" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace" text-anchor="middle">London</text>
+      <text x="290" y="291" fill="var(--text3)" font-size="9" font-family="'DM Mono',monospace" text-anchor="middle">~07:00-16:00</text>
+      <text x="512" y="278" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace" text-anchor="middle">New York</text>
+      <text x="512" y="291" fill="var(--text3)" font-size="9" font-family="'DM Mono',monospace" text-anchor="middle">~12:00-21:00</text>
+
+      <!-- overlap marker -->
+      <line x1="405" y1="30" x2="405" y2="260" style="stroke:var(--purple);stroke-width:1;stroke-dasharray:2,3;opacity:.6"/>
+      <text x="410" y="42" fill="var(--purple)" font-size="9" font-family="'DM Mono',monospace">London/NY overlap →</text>
+    </svg>
+    <div class="tl-chart-caption">
+      The shaded amber box is the Asia session's high-low range, formed in the quietest, lowest-liquidity hours.
+      Price holds inside it through the session, then breaks above it at the London open, extends further through
+      the London/New York overlap (peak volatility, most of the day's range prints here), and settles — still
+      above the Asia anchor but off the day's high. The Asia box is the reference level everything else is read
+      against, not a trade signal on its own.
+    </div>
+  </div>
+
+  <h3>4.4 Session volatility patterns (intraday rhythm)</h3>
+  <ul>
+    <li><strong>Asia: low &amp; stable</strong> — ranges form; the table is set. Good for identifying levels, not
+    for directional trades.</li>
+    <li><strong>London open: surge</strong> — vol spikes as European traders enter; often when the day's direction
+    is established. Key breakout window.</li>
+    <li><strong>London/NY overlap (~12:00–16:00 GMT): peak volatility</strong> — both centers active; the largest
+    moves of the day happen here; most of the daily range gets printed; highest chance of news-driven vol. Peak
+    opportunity <em>and</em> peak risk — moves are fastest, stops most likely to be hit.</li>
+  </ul>
+
+  <h3>4.5 Daily prep using sessions</h3>
+  <ol>
+    <li><strong>Mark the Asia range</strong> — at (or before) London open, draw Asia session high and low as
+    horizontal lines. These are the day's reference levels.</li>
+    <li><strong>Calculate expected expansion</strong> — Asia range × typical ratio (2–3×) → expected daily range
+    and potential targets beyond the Asia levels.</li>
+    <li><strong>Note the context</strong> — current vol regime? scheduled news today? higher timeframe trend?
+    These affect how to interpret Asia breaks.</li>
+    <li><strong>Watch the London reaction</strong> — first 1–2 hours of London: how does price interact with the
+    Asia levels? Often sets the tone for the day.</li>
+    <li><strong>Adjust through the day</strong> — expected range reached early → reduce expectations; range
+    compressed late → opportunity may have passed.</li>
+  </ol>
+
+  <h3>4.6 Data requirements &amp; framework</h3>
+  <p>Data: minimum 15-min or hourly bars with timestamps, better 5-min for precise session boundaries, 20–30 days
+  for calibration. Key calculations: Asia high/low = max/min during Asia hours; daily high/low = 24-h max/min;
+  expansion ratio = daily range ÷ Asia range.</p>
+  <pre class="tl-code">def get_session_levels(intraday_data, date):
+    asia_start, asia_end = "00:00", "06:00"   <span class="c"># adjust for timezone</span>
+    asia = bars in [asia_start, asia_end)
+    asia_high, asia_low = max(asia.high), min(asia.low)
+    asia_range = asia_high - asia_low
+    expansion = 2.5
+    projected_high = asia_high + asia_range * (expansion - 1) / 2
+    projected_low  = asia_low  - asia_range * (expansion - 1) / 2
+    return { asia_high, asia_low, asia_range, projected_high, projected_low }</pre>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <p>
+      "Asia range as a daily anchor" isn't a new idea to introduce here — this repo already computes real Asia
+      session windows in <code>js/sessionRanges.js</code>'s <code>buildAsiaSessions()</code> (00:00→06:00 local by
+      default, one range per calendar date, built on the <code>barUtils</code> M1 hot path), consumed by the
+      range-extension engines described in <code>RANGE_EXTENSION_STRATEGY.md</code>. That work already tests
+      expansion-style ratios on real M1 data rather than the course's illustrative 2–3.5× figures — treat the
+      table above as the taught heuristic, and the repo's own engine output as the place to check what actually
+      held up OOS on this platform's instruments.
+    </p>
+  </div>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Lesson 4 key takeaways</div>
+    <ol>
+      <li>Asia sets the table — the quietest session establishes the range London and NY expand; typical expansion 2–3.5×.</li>
+      <li>Asia high/low are key levels — intraday S/R; breaks signal direction, holds suggest range continuation.</li>
+      <li>London open is the key breakout window — first 1–2 hours often establish the day's direction; late-day breaks are less reliable.</li>
+      <li>The overlap is peak volatility — most of the daily range prints there.</li>
+      <li>Context matters more than signals — Asia breakouts work best with trend alignment, a catalyst and clean price action; don't trade mechanically.</li>
+      <li>Make it a daily routine: mark Asia levels before London, project the range, watch the reaction, adjust through the day.</li>
+    </ol>
+  </div>
+
+  <h2>Lesson 5 — Position Sizing with Volatility</h2>
+  <p><em>Practical · focus: risk management.</em></p>
+
+  <h3>5.1 Why fixed position sizing fails</h3>
+  <p>
+    Fixed sizing ("always 1 lot" / "always risk 2%") creates <strong>inconsistent risk exposure</strong> — actual
+    risk swings with volatility. Same size regardless of conditions → risk per trade changes with vol → P&amp;L
+    swings with market conditions → results become regime-dependent → hard to isolate whether an edge is real.
+    Vol-adjusted sizing instead adapts to current vol: low vol → larger size, same risk; high vol → smaller size,
+    same risk → consistent P&amp;L volatility, more predictable drawdowns.
+  </p>
+  <p>
+    Course clarification: whether fixed sizing hurts depends on the strategy — some benefit from high vol (trend
+    following, breakouts), others suffer (mean reversion, range trading). The point isn't that high vol is bad —
+    it's that <strong>risk exposure should be consistent and intentional, not an accident of market conditions.</strong>
+    With fixed sizing, a 50-pip stop in low vol and a 100-pip stop in high vol are very different dollar amounts
+    even though both are "1 lot" — and when risk changes with conditions, you can't tell skill from lucky vol
+    timing.
+  </p>
+
+  <h3>5.2 The core formula</h3>
+  <div class="tl-math" style="font-family:'DM Mono',monospace">Position Size = Risk Amount ÷ (ATR × Multiplier)</div>
+  <div class="tl-table-wrap"><table class="tl-tbl">
+    <tr><th>Component</th><th>What it is</th><th>How to determine</th></tr>
+    <tr><td>Risk amount ($)</td><td>Max acceptable loss per trade</td><td>Usually 0.5–2% of account, e.g. $500 on $50k (1%)</td></tr>
+    <tr><td>ATR</td><td>Average True Range — your vol forecast</td><td>10- or 14-period ATR, updated daily (Lesson 2)</td></tr>
+    <tr><td>Multiplier</td><td>Stop distance in ATR units</td><td>Typically 1–2× ATR; depends on strategy and regime</td></tr>
+  </table></div>
+  <p>💡 <strong>The multiplier is your choice.</strong> 1× ATR = tighter stop (hit more often, smaller loss); 2×
+  ATR = wider (hit less often, larger loss if hit). Position size adjusts automatically so risk exposure is the
+  same either way.</p>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked examples</div>
+    <p><strong>Example 1 — EUR/USD, normal vol:</strong> $50,000 account, 1% risk = $500; ATR 65 pips; stop 1.5×
+    ATR = 97.5 pips; pip value $10/std lot. <code>$500 ÷ (97.5 × $10) = 0.51 lots</code>. Risk if stopped: ~$500.</p>
+    <p><strong>Example 2 — EUR/USD, high vol:</strong> same account and risk; ATR 120 pips; stop 1.5× ATR = 180
+    pips. <code>$500 ÷ (180 × $10) = 0.28 lots</code>. Risk if stopped: ~$500 (same!).</p>
+    <p>Notice: vol nearly doubled (65→120 pips) → size nearly halved (0.51→0.28 lots) → <strong>risk exposure
+    unchanged.</strong> That's the power of vol-adjusted sizing.</p>
+  </div>
+
+  <h3>5.4 Regime-based adjustments (optional layer)</h3>
+  <div class="tl-table-wrap"><table class="tl-tbl">
+    <tr><th>Regime</th><th>Risk multiplier</th><th>Note</th></tr>
+    <tr><td>😴 Low vol</td><td>1.0–1.25×</td><td>Can maintain or slightly increase base risk %</td></tr>
+    <tr><td>⚖️ Normal</td><td>1.0×</td><td>Standard risk % — baseline</td></tr>
+    <tr><td>🔥 High vol</td><td>0.5–0.75×</td><td>Reduce base risk % as extra protection</td></tr>
+  </table></div>
+  <p>⚠️ This is a <strong>double adjustment</strong> — the formula already shrinks size when ATR is high; some
+  traders additionally cut the risk % (e.g. 1% → 0.5%) in high-vol regimes. Whether it makes sense depends on the
+  strategy. Reasons traders adjust further anyway: <strong>gaps &amp; slippage</strong> (a 100-pip stop might
+  execute at 150 pips in high vol), <strong>model uncertainty</strong> (vol forecasts are less reliable in extreme
+  regimes; ATR may understate true risk), and <strong>strategy dependence</strong> (cut risk if the strategy
+  suffers in high vol, maintain or increase if it thrives).</p>
+
+  <h3>5.5 ATR-based stops &amp; targets</h3>
+  <div class="tl-table-wrap"><table class="tl-tbl">
+    <tr><th>Stop distance</th><th>Characteristics</th><th>When to use</th></tr>
+    <tr><td>0.75× ATR</td><td>Tight, higher hit rate, smaller losses</td><td>Low-vol regimes, high-conviction setups, scalping</td></tr>
+    <tr><td>1.0× ATR</td><td>Standard, balanced</td><td>Normal conditions, most swing trades</td></tr>
+    <tr><td>1.5× ATR</td><td>Wide, more breathing room</td><td>Trending markets, position trades</td></tr>
+    <tr><td>2.0× ATR</td><td>Very wide, rarely hit but large if triggered</td><td>High-vol regimes, tail-risk protection</td></tr>
+  </table></div>
+  <div class="tl-table-wrap"><table class="tl-tbl">
+    <tr><th>Target distance (1× ATR stop)</th><th>R:R</th><th>Probability context</th></tr>
+    <tr><td>1.0× ATR</td><td>1:1</td><td>Higher probability, smaller wins</td></tr>
+    <tr><td>1.5× ATR</td><td>1.5:1</td><td>Moderate — a reasonable daily target</td></tr>
+    <tr><td>2.0× ATR</td><td>2:1</td><td>Good R:R; may need to hold longer</td></tr>
+    <tr><td>3.0× ATR</td><td>3:1</td><td>Ambitious — strong trend needed</td></tr>
+  </table></div>
+  <p><strong>Reality-check targets:</strong> if expected daily range is 80 pips, a 200-pip day-trade target = 2.5
+  days of average movement — unrealistic. ATR keeps expectations grounded in what the market is likely to
+  deliver.</p>
+
+  <h3>5.6 Implementation steps</h3>
+  <ol>
+    <li><strong>Risk budget</strong> — max risk per trade as % of account (0.5–2%); e.g. $50k × 1% = $500.</li>
+    <li><strong>Get current ATR</strong> — 10- or 14-day; most platforms show it. E.g. EUR/USD ATR = 72 pips.</li>
+    <li><strong>Choose stop multiplier</strong> — by strategy and regime, e.g. 1.5× ATR = 108-pip stop.</li>
+    <li><strong>Calculate size</strong> — <code>Risk ÷ (stop pips × pip value)</code>: <code>$500 ÷ (108 × $10) =
+    0.46 lots</code>.</li>
+    <li><strong>Apply regime adjustment (optional)</strong> — in a high-vol regime, consider a further 25–50%
+    reduction.</li>
+  </ol>
+  <pre class="tl-code">def calculate_position_size(account_size, risk_pct, atr, stop_multiplier, pip_value):
+    risk_amount = account_size * (risk_pct / 100)
+    stop_distance = atr * stop_multiplier
+    return round(risk_amount / (stop_distance * pip_value), 2)
+
+<span class="c"># calculate_position_size(50000, 1, 72, 1.5, 10)  -&gt;  0.46 lots
+# Many platforms have built-in position size calculators; spreadsheets work too.</span></pre>
+
+  <h3>5.7 Common mistakes to avoid</h3>
+  <ul>
+    <li>🔄 <strong>Stale ATR</strong> — using yesterday's ATR in a fast market. Update daily; be extra cautious
+    after major news or regime shifts.</li>
+    <li>📈 <strong>Oversizing in low vol</strong> — the formula allows bigger positions, but set a maximum position
+    size regardless of ATR.</li>
+    <li>🎯 <strong>Ignoring liquidity</strong> — "trade 5 lots" is meaningless if the market can't absorb it
+    without slippage; know your market's depth.</li>
+    <li>💥 <strong>Forgetting gaps</strong> — ATR stops assume exit at the stop price; in gaps and fast markets
+    execution can be far worse. Build in a margin of safety.</li>
+    <li>⚠️ <strong>Maximum size rule</strong> — even if the formula says 10 lots in ultra-low vol, set a hard cap
+    (e.g. 3 lots). Low vol can become high vol instantly — don't be caught oversized when it does.</li>
+  </ul>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Lesson 5 key takeaways</div>
+    <ol>
+      <li>Fixed sizing creates inconsistency — risk exposure changes with vol, obscuring your true edge.</li>
+      <li>Core formula: <code>Size = Risk ÷ (ATR × Stop Multiplier)</code> — keeps risk exposure constant.</li>
+      <li>Size inversely to volatility — ATR doubles → size halves; same risk, different conditions.</li>
+      <li>Regime adjustments are optional — strategy-dependent.</li>
+      <li>ATR for stops and targets too — stay grounded in reality.</li>
+      <li>Set a maximum size — cap positions against sudden regime changes.</li>
+    </ol>
+  </div>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Formula sheet (quick revision)</h2></summary>
+  <div class="tl-table-wrap"><table class="tl-tbl">
+    <tr><th>Concept</th><th>Formula</th></tr>
+    <tr><td>True Range</td><td><code>TR = max(H−L, |H−C₋₁|, |L−C₋₁|)</code></td></tr>
+    <tr><td>EMA forecast</td><td><code>EMA = α × TR + (1−α) × EMA₋₁</code>; start α = 0.15 (~12 days)</td></tr>
+    <tr><td>α ↔ period</td><td><code>α = 2/(N+1)</code> ⟷ <code>N = 2/α − 1</code></td></tr>
+    <tr><td>Wilder ATR</td><td><code>ATR = (ATR₋₁ × (N−1) + TR) / N</code></td></tr>
+    <tr><td>Regime percentile</td><td>% of 6–12-month ATR history below current; &lt;25 = LOW, 25–75 = NORMAL, &gt;75 = HIGH</td></tr>
+    <tr><td>Weekly range</td><td>≈ 2–3× daily (NOT 5×)</td></tr>
+    <tr><td>Expected daily range</td><td>≈ Asia range × expansion ratio (2–3.5×, regime-dependent)</td></tr>
+    <tr><td>Position size</td><td><code>Risk$ ÷ (ATR × stop multiplier × per-pip value)</code></td></tr>
+    <tr><td>Stops</td><td>0.75× (low vol/tight) → 2× ATR (high vol/wide); targets 1–3× ATR</td></tr>
+    <tr><td>Persistence benchmarks</td><td>lag-1 corr 0.3–0.7; MAE 20–40% of range; directional accuracy 60–75%; autocorrelation significant 5–20 days</td></tr>
+  </table></div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Calibration checklist &amp; further study (not yet validated on this repo's data)</h2></summary>
+  <p>Things the lessons themselves say to verify/calibrate on your own data before relying on them — none of these
+  have been run against MacroFXModel's OOS harness yet:</p>
+  <ol>
+    <li><strong>Persistence test per instrument</strong> (L1 §6): lag-1 correlation of daily ranges, MAE of a naive
+    forecast vs. long-term-average benchmark, directional accuracy, autocorrelation decay — on the pairs actually
+    traded (FX majors expected strong; verify gold and indices separately).</li>
+    <li><strong>Optimal α per market</strong> (L2 §3): grid 0.05–0.40 minimizing MAE, then out-of-sample
+    validation; sanity-check the optimum sits near 0.10–0.20.</li>
+    <li><strong>Forecast error bands</strong> (L2 §5): from a real forecast-vs-actual log, what band contains 68%
+    of outcomes? (Course example: ±25%.)</li>
+    <li><strong>Regime thresholds</strong> (L3 §2): does the 25/75 percentile split fit these markets, or do
+    thresholds need adjusting? 6- vs. 12-month lookback comparison.</li>
+    <li><strong>Weekly-to-daily ratio</strong> (L3 §3): measure actual weekly range ÷ daily range per pair — course
+    says typically 2–3×; calibrate rather than assume.</li>
+    <li><strong>Asia expansion ratios</strong> (L4 §2): measure Asia-to-daily ratios over 20–30 days per
+    instrument, split by vol regime (high-vol regimes should show 3×+, low-vol 1.5–2×) — <code>js/sessionRanges.js</code>
+    already has the Asia-session extraction to build this from real M1 data.</li>
+    <li><strong>Session timing</strong> (L4 §4): confirm the London open and the London/NY overlap print most of
+    the daily range on this data; check DST effects on session boundaries.</li>
+    <li><strong>Regime-dependent strategy performance</strong> (L3 §4, L5 §4): does mean reversion actually do
+    better in low-vol regimes and trend-following in normal? Does a given strategy suffer or thrive in high vol
+    (decides whether the optional regime risk-adjustment applies)?</li>
+    <li><strong>Forecast-vs-actual daily log</strong> (L2 §6): Date / Forecast / Actual / Notes, with large misses
+    read as a regime-change indicator.</li>
+    <li><strong>End-of-day expansion check</strong> (L4 §6): log expected (Asia-projected) vs. actual daily range
+    daily to refine the expansion ratio over time.</li>
+  </ol>
+  <p>Areas flagged for deeper study beyond this course's own scope (each links to the Theory Lab lesson that
+  already covers it where one exists): GARCH (<a href="garch-volatility.html">lesson</a>), regime-switching Markov
+  models (<a href="hidden-markov-models.html">lesson</a>), Kalman filters / state-space estimation
+  (<a href="kalman-filter.html">lesson</a>), stochastic volatility — Heston/SABR
+  (<a href="heston-model.html">Heston</a>, <a href="sabr-model.html">SABR</a>), VECM-adjacent long-run equilibrium
+  ideas (<a href="cointegration.html">cointegration</a>), and — with no dedicated lesson yet — HAR models
+  (combining daily/weekly/monthly vol), realized volatility from intraday data, and ML approaches to vol
+  forecasting (the course's own caveat: simple methods get close, with far less overfitting risk).</p>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="regression-analysis-course.html">← Regression Analysis — Applied Practice</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="forecaster-walkthrough.html">Forecaster Walkthrough →</a>
+  </div>
+</div>
+</body>
+</html>

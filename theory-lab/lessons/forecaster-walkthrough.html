@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Daily Forecaster Walkthrough — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+/* page-scoped data-table styling — no generic multi-column table class exists
+   in theory.css yet (only .tl-symbols, a 2-col math-symbol layout), so this
+   is a self-contained addition for this lesson's plain data tables. */
+.tl-dt-wrap{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:2px 16px;margin:14px 0;overflow-x:auto}
+.tl-dt{width:100%;border-collapse:collapse;font-size:13px}
+.tl-dt th{text-align:left;padding:10px 12px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);border-bottom:1.5px solid var(--border2)}
+.tl-dt td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top}
+.tl-dt tr:last-child td{border-bottom:none}
+.tl-dt td:first-child{color:var(--text);font-weight:600}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Course Notes / The Daily Forecaster Walkthrough</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, median and percentile actually mean here</div>
+  <div class="tl-kicker">Course Notes · Lesson 5 of 10</div>
+  <h1 class="tl-title">The Daily Forecaster Walkthrough</h1>
+  <p class="tl-dek">Direction is close to unforecastable day to day; how far price is likely to travel is not. This lesson is the mechanical workflow for turning a published High-Low / Open-Close forecast into chart levels, then trading exhaustion at the edges of that range instead of guessing which way the day breaks.</p>
+  <div class="tl-meta">
+    <span class="tl-status course">COURSE NOTES — a discretionary markup workflow; the band math underneath it is a coded brick, the trade-triggering rules are not backtested here</span>
+    <span>~17 min read</span>
+    <span>Prereqs: Volatility Intelligence — Applied Practice</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>The core idea:</strong> short-term direction is roughly a coin flip, but range/volatility is persistent and forecastable — so the method bypasses direction and asks the answerable question, "how far is price likely to travel today," then trades exhaustion at both ends of that expected journey. Framing to remember: a <strong>range-exhaustion model, not a directional model.</strong></li>
+      <li><strong>Three numbers before every session:</strong> High-Low range % (expected full amplitude), Open-Close % (expected net drift), and percentile context — the median is exceeded roughly 1-in-2 days, the 75th percentile roughly 1-in-4 (a "stretch day"). Get these before the session starts, not mid-session.</li>
+      <li><strong>Chart markup:</strong> verticals at 00:00→00:00, a ray at the 00:00 open, wait for the first unbroken high or low to print, project the H-L% to the <em>opposite</em> side, then re-anchor every time a new extreme prints — the source calls re-anchoring "the most important mechanical discipline in the whole strategy."</li>
+      <li><strong>Reading exhaustion:</strong> a touch of the Expected High/Low is a watch zone, not a signal, until price shows rejection <em>and</em> closes back on the correct side. Two-sided always: project the Expected Low from the day's current high and the Expected High from the day's current low simultaneously, so you never have to guess which side gets hit first.</li>
+      <li><strong>The range budget</strong> — called <strong>"the most powerful intraday filter"</strong> — is how much of the forecast H-L% has already been travelled: <code>consumed = (high − low) / open</code>. As it climbs toward the forecast, breakout odds collapse and mean-reversion odds rise; the checklist's rule of thumb is <strong>&gt;80% consumed → shift to fading extensions.</strong></li>
+      <li><strong>The Open-Close overlay</strong> projects ±O-C% around the open: close inside is a normal day, at the edge is a trend day, outside is a rare stretch day. Combined with a one-sided H-L print, it gives a probability-weighted read on which close scenario is more likely — still without ever predicting direction outright.</li>
+    </ul>
+  </div>
+
+  <h2>The idea in one paragraph</h2>
+  <p>
+    Direction is extremely noisy, and even professional models struggle to
+    beat a coin flip on where price finishes tomorrow. Volatility, by
+    contrast, is persistent and mean-reverting — today's range is
+    meaningfully predicted by recent history. So the forecaster this lesson
+    is built around publishes, before the session, how far price is likely
+    to travel (High-to-Low %) and how far it is likely to settle from the
+    open (Open-to-Close %), each with a median and a 75th-percentile
+    reading. The walkthroughs teach how to turn those two numbers into chart
+    levels — anchor at 00:00, project from the day's extremes, re-anchor as
+    new extremes print, overlay the close envelope — and then how to trade
+    <strong>price exhaustion at the forecasted range extremes</strong>. It is
+    not a directional model. It is a range-exhaustion model.
+  </p>
+
+  <h2>Part 1 — The core idea</h2>
+  <ul>
+    <li>Short-term direction is close to unforecastable; range/volatility is
+    genuinely forecastable. The method <strong>bypasses the hardest problem
+    (direction)</strong> and asks the question that actually has an answer:
+    <em>"How far is price likely to travel today?"</em></li>
+    <li>Once the expected journey distance is known, watch <strong>both
+    ends</strong> of that journey. When price arrives at one end and shows
+    exhaustion, that is the trade.</li>
+    <li>Framing to memorise: <strong>not a directional model, a
+    range-exhaustion model.</strong></li>
+  </ul>
+
+  <h2>Part 2 — The three numbers needed before the session</h2>
+  <div class="tl-dt-wrap">
+    <table class="tl-dt">
+      <tr><th>Number</th><th>What it is</th><th>Example from the source material</th></tr>
+      <tr><td>High–Low range %</td><td>Expected full candle amplitude (high → low), as a % of the open</td><td>2.65% (an NQ-type example), 0.53% (EUR/USD)</td></tr>
+      <tr><td>Open–Close move %</td><td>Expected net drift from open to close</td><td>1.22% (gold)</td></tr>
+      <tr><td>Percentile context</td><td>Where today's forecast sits vs. the historical distribution</td><td>75th percentile = a stretch day</td></tr>
+    </table>
+  </div>
+  <p>
+    The <strong>median</strong> is the working number for the session. The
+    <strong>75th percentile</strong> is the stretch reference — exceeded only
+    about 1 day in 4. The source material frames its forecast as
+    outperforming GARCH, realised/rolling volatility, Parkinson, and a model
+    it names only as "Harvey" — worth flagging plainly as an <strong>unverified
+    claim relative to this repo's own data</strong> rather than a settled
+    fact; it's exactly the kind of comparison this repo's own OOS QLIKE
+    scorecard could check rather than take on faith.
+  </p>
+  <p><strong>Rule:</strong> get all three numbers the evening before or early
+  the same morning. Do not enter the session without them.</p>
+
+  <h2>Part 3 — Chart markup, step by step (the H-L walkthrough)</h2>
+  <p>Tools: a charting platform with a price-range tool, a horizontal ray, and a vertical line.</p>
+  <ol>
+    <li><strong>Bound the session.</strong> Draw verticals at <code>00:00</code> → the next <code>00:00</code>. Everything lives inside these two lines.
+      <br>Why 00:00? The forecast anchors to the full 24-hour calendar-day candle. Reading the open from any other candle (e.g. a 14:30 UTC session open) makes <strong>every</strong> level drift. Non-negotiable.</li>
+    <li><strong>Mark the session open.</strong> Draw a horizontal ray at the 00:00 candle's open, labelled <code>Open</code>. This is the denominator for every percentage calculation that follows.</li>
+    <li><strong>Wait for the first extreme to print.</strong> Do not project any level immediately. Let price establish the first genuinely significant high or low — "significant" meaning it hasn't yet been broken when you check.</li>
+    <li><strong>Project the opposite extreme</strong> with the price-range tool:
+      <ul>
+        <li>First extreme is a <strong>HIGH</strong> → drag the H-L% <strong>down</strong> from it → the bottom of the range is the <strong>Expected Low</strong>.</li>
+        <li>First extreme is a <strong>LOW</strong> → drag the H-L% <strong>up</strong> from it → the top of the range is the <strong>Expected High</strong>.</li>
+        <li>Extend a horizontal ray at the projected level and label it.</li>
+      </ul>
+    </li>
+    <li><strong>Apply the O-C envelope</strong> symmetrically around the open (see Part 7).</li>
+    <li><strong>Re-anchor dynamically all session</strong> — the source calls this "the most important mechanical discipline in the whole strategy":
+      <ul>
+        <li>New low below the anchor low → move the anchor to the new low, re-project the Expected High from there.</li>
+        <li>New high above the anchor high → move the anchor, re-project the Expected Low.</li>
+        <li>Why? You don't know in advance which low will turn out to be THE low of the day. Projecting from the most recent extreme keeps the Expected level valid no matter what comes next.</li>
+      </ul>
+    </li>
+  </ol>
+  <p>Worked re-anchoring sequence (EUR/USD downtrend day, forecast 0.53%):</p>
+  <div class="tl-dt-wrap">
+    <table class="tl-dt">
+      <tr><th>Time</th><th>Event</th></tr>
+      <tr><td>09:00</td><td>Low prints at 1.0850 → project Expected High from 1.0850</td></tr>
+      <tr><td>10:30</td><td>New low at 1.0832 → re-anchor, re-project Expected High</td></tr>
+      <tr><td>11:45</td><td>New low at 1.0818 → re-anchor again, re-project Expected High</td></tr>
+      <tr><td>13:00</td><td>Price reaches 1.0818 + 0.53% → watch for rejection at the new Expected High</td></tr>
+    </table>
+  </div>
+
+  <h2>Part 4 — Reading price exhaustion (the trade signal)</h2>
+  <p>At the Expected High / Expected Low, watch for evidence the day has <strong>used its range budget</strong>:</p>
+  <ul>
+    <li>Touch → immediate reversal (a strong rejection wick).</li>
+    <li>Approach → stall — multiple small candles failing to close through the level.</li>
+    <li>Volume drops into the level, where volume is available.</li>
+    <li>The move <em>into</em> the level is climactic — accelerating right into the touch.</li>
+  </ul>
+  <p><strong>Confirmation requires all three:</strong> price reaches the level → reverses → <strong>closes</strong> back on the correct side (below the Expected High, or above the Expected Low) and doesn't recover. Until all three are met, the level is a <strong>watch zone, not a signal.</strong></p>
+  <div class="tl-dt-wrap">
+    <table class="tl-dt">
+      <tr><th>Element</th><th>Short the Expected High</th><th>Long the Expected Low</th></tr>
+      <tr><td>Entry</td><td>Low established early in the session → Expected High projected → price climbs to it → entry on touch + rejection (e.g. a rejection wick on a 3m/5m chart at the level)</td><td>Mirror image: high established early → Expected Low projected → price declines to it → entry on touch + rejection</td></tr>
+      <tr><td>Stop</td><td>Above the Expected High — a 75th-percentile breach means the forecast is wrong for the day; exit</td><td>Below the Expected Low — mirror image</td></tr>
+      <tr><td>Target</td><td>Back toward the session low / open — the range is already priced in, so mean reversion is the expectation</td><td>Back toward the session high / open — mirror image</td></tr>
+    </table>
+  </div>
+
+  <h2>Part 5 — The range budget</h2>
+  <p>The source material calls this <strong>"the most powerful intraday filter"</strong> in the whole approach:</p>
+  <div class="tl-math">
+    budget consumed&nbsp;&nbsp;=&nbsp;&nbsp;(current high − current low) / daily open<br>
+    budget remaining&nbsp;&nbsp;=&nbsp;&nbsp;forecast H-L%&nbsp;&nbsp;−&nbsp;&nbsp;budget consumed
+  </div>
+  <p>As the budget gets consumed:</p>
+  <ul>
+    <li><strong>breakout / continuation probability collapses;</strong></li>
+    <li><strong>mean-reversion probability rises.</strong></li>
+  </ul>
+  <p>
+    Worked example from the source: median forecast 0.53%; by 14:00 price
+    has already covered 0.50% of it. Remaining budget is only 0.03% —
+    effectively noise — so any "breakout" from here is statistically
+    dubious; the correct trade at that point is fading extensions, not
+    following them. The checklist's rule of thumb: <strong>&gt;80% consumed
+    → fade-extension bias kicks in.</strong>
+  </p>
+  <p>
+    The stated edge over vanilla technical analysis is that this reasoning
+    is <strong>unavailable without a range forecast</strong> in the first
+    place — a plain support/resistance read has no equivalent of "how much
+    of today's statistically typical move has already happened."
+  </p>
+
+  <h2>Part 6 — The two-sided distribution rule</h2>
+  <p>Always maintain both sides of the projection simultaneously:</p>
+  <ul>
+    <li><strong>High side:</strong> Expected Low projected from the current day's high.</li>
+    <li><strong>Low side:</strong> Expected High projected from the current day's low.</li>
+  </ul>
+  <ul>
+    <li>You never need to know in advance which side gets hit first.</li>
+    <li>Both scenarios are covered regardless of the morning's direction, which avoids the directional-bias trap entirely.</li>
+    <li>Once one side is hit and confirmed, the other side tells you how much range is left.</li>
+    <li>If the low-to-high distance already equals or exceeds the forecast H-L%, the probability of a <em>new</em> low is now very low — a natural point to stop adding to shorts.</li>
+  </ul>
+
+  <h2>Part 7 — The Open-to-Close overlay</h2>
+  <p>Project <strong>±O-C%</strong> symmetrically around the open (two rays, or a box). On a median day, the close is expected to land inside it.</p>
+  <div class="tl-dt-wrap">
+    <table class="tl-dt">
+      <tr><th>Close location</th><th>Meaning</th></tr>
+      <tr><td>Inside the envelope</td><td>Normal session, no strong directional bias</td></tr>
+      <tr><td>At the edge</td><td>Median trend day — directional bias confirmed</td></tr>
+      <tr><td>Outside the envelope</td><td>75th-percentile stretch day — rare, don't chase</td></tr>
+    </table>
+  </div>
+  <p>
+    <strong>Combining H-L with O-C — the key conditional read:</strong> if
+    the forecast H-L move has already been met to the downside (the low is
+    in), the upside close scenario becomes very unlikely, because a bullish
+    close above the open would require <em>exceeding</em> the range budget.
+    The model then points to a <strong>bearish close</strong>. This is a
+    probability filter, not a guarantee — but it removes the need to
+    predict direction: the range itself tells you which close scenario is
+    more likely.
+  </p>
+
+  <h2>Part 8 — Common mistakes</h2>
+  <div class="tl-dt-wrap">
+    <table class="tl-dt">
+      <tr><th>Mistake</th><th>Why it hurts</th><th>Correction</th></tr>
+      <tr><td>Anchoring from the wrong candle</td><td>Every level drifts from there</td><td>Always the 00:00 open</td></tr>
+      <tr><td>Not re-anchoring on a new extreme</td><td>Stale level, wrong target</td><td>Every new extreme → re-project</td></tr>
+      <tr><td>Entering at the level without rejection</td><td>Catching a knife</td><td>Wait for rejection + close confirmation</td></tr>
+      <tr><td>Trading against a level when budget = 0</td><td>Fighting exhausted momentum</td><td>Check remaining budget first</td></tr>
+      <tr><td>Ignoring the 75th percentile</td><td>Stopped too tight on stretch days</td><td>75th = override level if the median breaks</td></tr>
+      <tr><td>Predicting which side gets hit first</td><td>Directional bias before the market shows its hand</td><td>Maintain both sides, let price decide</td></tr>
+    </table>
+  </div>
+
+  <h2>Part 9 — Worked examples</h2>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Case study 1</div>
+    <h3>EUR/USD, 0.53% forecast — the high holds</h3>
+    <p>
+      Forecast posted the evening before, for the next session. The high
+      printed early → Expected Low projected 0.53% below it. The high held
+      for most of the session; once price had priced in the low-to-high
+      distance and closed below the forecast high with no recovery, the
+      <strong>high of day was confirmed.</strong>
+    </p>
+  </div>
+  <div class="tl-box example">
+    <div class="tl-box-label">Case study 2</div>
+    <h3>EUR/USD, 0.52% forecast — two re-anchors, then rejection</h3>
+    <p>
+      The low broke → re-anchor; it broke again → re-anchor again. Price
+      then drove up to the Expected High projected from the <em>final</em>
+      anchor low → <strong>immediate rejection</strong>, and no candle
+      closed back above it for the rest of the session. Entry at the
+      rejection, target back to the session lows.
+    </p>
+  </div>
+  <div class="tl-box example">
+    <div class="tl-box-label">Case study 3</div>
+    <h3>2.65% (NQ-type) volatility — the low holds since 1 AM</h3>
+    <p>
+      First significant high printed at 1:00 AM → Expected Low projected.
+      At 14:30 (a later session open) price hit the Expected Low →
+      strong rejection + a close back above it → <strong>low of day
+      confirmed</strong>, holding since 1 AM. Entry at the rejection,
+      target back toward the session high.
+    </p>
+  </div>
+  <div class="tl-box example">
+    <div class="tl-box-label">Case study 4</div>
+    <h3>Gold — the H-L + O-C overlay together</h3>
+    <p>
+      H-L forecast 2.56%, O-C forecast 1.22%. High printed early → Expected
+      Low projected; no trade above the marked high for the rest of the
+      day. The session close tracked almost exactly to the forecast O-C
+      level. H-L and O-C together gave a <strong>bearish close bias</strong>
+      once the high was in.
+    </p>
+  </div>
+  <div class="tl-callout">
+    <strong>Take-away pattern across all four:</strong> anchor → project →
+    re-anchor → wait for the touch → demand rejection + close confirmation →
+    target the other end.
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">One session, the forecasted band, and the range budget it buys you</div>
+    <svg viewBox="0 0 640 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A single trading day's price path plotted against a projected High-Low band. Dashed lines mark the 75th-percentile and median Expected High above the open, and the median and 75th-percentile Expected Low below it. Price wiggles through the session, forms a lower low that re-anchors the projection, then rallies up to touch the median Expected High mid-session where it is rejected, and fades back down through the open toward the Expected Low by the close. Below the chart, a horizontal gauge shows the day's range budget consumed at the time of the touch: about 94 percent of the forecast High-Low move has already been used, past the 80 percent line where the fade-extension bias is said to kick in.">
+      <!-- band lines -->
+      <line x1="60" y1="55" x2="610" y2="55" style="stroke:var(--amber);stroke-dasharray:3,3;stroke-width:1.2"/>
+      <text x="65" y="49" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--amber)">Expected High · 75th (stretch)</text>
+
+      <line x1="60" y1="85" x2="610" y2="85" style="stroke:var(--text2);stroke-dasharray:5,3;stroke-width:1.4"/>
+      <text x="65" y="79" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text2)">Expected High · median</text>
+
+      <line x1="60" y1="150" x2="610" y2="150" style="stroke:var(--text3);stroke-dasharray:2,3;stroke-width:1"/>
+      <text x="65" y="144" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text3)">Open (00:00 anchor)</text>
+
+      <line x1="60" y1="215" x2="610" y2="215" style="stroke:var(--text2);stroke-dasharray:5,3;stroke-width:1.4"/>
+      <text x="65" y="229" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text2)">Expected Low · median</text>
+
+      <line x1="60" y1="245" x2="610" y2="245" style="stroke:var(--amber);stroke-dasharray:3,3;stroke-width:1.2"/>
+      <text x="65" y="259" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--amber)">Expected Low · 75th (stretch)</text>
+
+      <!-- price path -->
+      <polyline points="60,150 115,168 170,192 225,178 280,145 335,108 390,88 445,122 500,160 555,192 610,205" style="stroke:var(--blue);stroke-width:2.5" fill="none"/>
+      <circle cx="60" cy="150" r="3" fill="var(--text2)"/>
+
+      <!-- re-anchor marker -->
+      <circle cx="170" cy="192" r="3.5" fill="var(--text2)"/>
+      <text x="170" y="206" font-size="9" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">re-anchor</text>
+
+      <!-- touch + rejection marker -->
+      <circle cx="390" cy="88" r="4.5" fill="var(--red)"/>
+      <text x="390" y="103" font-size="9" font-family="'DM Mono',monospace" fill="var(--red)" text-anchor="middle">touch + reject</text>
+
+      <!-- time axis -->
+      <text x="60" y="272" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">00:00</text>
+      <text x="335" y="272" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">12:00</text>
+      <text x="610" y="272" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="end">24:00</text>
+
+      <!-- range budget gauge -->
+      <text x="60" y="298" font-size="10.5" font-weight="700" font-family="'DM Mono',monospace" fill="var(--text2)">RANGE BUDGET CONSUMED — AT THE 14:00 TOUCH</text>
+      <rect x="60" y="306" width="550" height="16" rx="3" style="fill:var(--s2);stroke:var(--border)"/>
+      <rect x="60" y="306" width="519" height="16" rx="3" style="fill:var(--amber)"/>
+      <line x1="500" y1="302" x2="500" y2="328" style="stroke:var(--red);stroke-width:1.5"/>
+      <text x="500" y="342" font-size="9" font-family="'DM Mono',monospace" fill="var(--red)" text-anchor="middle">80% — fade bias line</text>
+      <text x="610" y="320" font-size="11" font-weight="700" font-family="'DM Mono',monospace" fill="var(--bg)" text-anchor="end">94%</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>Price path</span>
+      <span><i style="background:var(--text2)"></i>Median Expected High/Low</span>
+      <span><i style="background:var(--amber)"></i>75th-percentile (stretch)</span>
+      <span><i style="background:var(--red)"></i>Rejection / 80% budget line</span>
+    </div>
+    <div class="tl-chart-caption">
+      This illustrates Part 5's own worked numbers: a 0.53% median H-L
+      forecast, with 0.50% of it already travelled by 14:00 — 94% of the
+      day's typical range consumed, past the checklist's 80% threshold where
+      the read flips from "watch for a breakout" to "fade the extension."
+      The remaining 0.03% is treated as noise, not tradeable room. Note the
+      re-anchor at the session's lower low (Part 3) and the touch + rejection
+      at the median Expected High (Part 4) that, combined with the spent
+      budget, is the setup this lesson calls a signal — not the touch alone.
+    </div>
+  </div>
+
+  <h2>Part 10 — Daily workflow checklist</h2>
+  <h3>Pre-session</h3>
+  <ul>
+    <li>Read H-L% and O-C% (median and 75th) for the pair before the session opens.</li>
+    <li>Note the annualised vol and compare it to GARCH output and recent history.</li>
+    <li>Draw verticals at 00:00 → next 00:00.</li>
+    <li>Place a horizontal ray at the 00:00 candle's open.</li>
+    <li>Mark the ±O-C% envelope around the open.</li>
+  </ul>
+  <h3>Early (first 1–3 hours)</h3>
+  <ul>
+    <li>Wait for the first significant extreme to print — don't project early.</li>
+    <li>Project the H-L% to the opposite side once it does.</li>
+    <li>Label the Expected High / Expected Low.</li>
+    <li>Maintain both sides at once.</li>
+  </ul>
+  <h3>Mid-session</h3>
+  <ul>
+    <li>Re-anchor on every new extreme.</li>
+    <li>Track budget consumed.</li>
+    <li>Once more than 80% of the forecast range is consumed, shift to a fade-extension bias.</li>
+    <li>Watch price's approach to either level for exhaustion signs.</li>
+  </ul>
+  <h3>At the level</h3>
+  <ul>
+    <li>Confirm this is actually the Expected High/Low, not just a random touch.</li>
+    <li>Check for exhaustion on the approach — stall, small candles, a climactic move in.</li>
+    <li>Wait for a rejection wick and a close back on the correct side.</li>
+    <li>Place the stop beyond the level; the 75th percentile is the hard override.</li>
+    <li>Target the other anchor / the open.</li>
+  </ul>
+  <h3>End of day</h3>
+  <ul>
+    <li>Check whether the H-L was met and whether the close landed inside the O-C envelope.</li>
+    <li>Log it: date, forecast %, actual %, whether the level was hit, and the result.</li>
+    <li>Grade accuracy over the sample — not off any single day.</li>
+  </ul>
+
+  <h2>Part 11 — Key principles to internalise</h2>
+  <p>The source material's own six, worth repeating verbatim in spirit:</p>
+  <ol>
+    <li><strong>Volatility is easier to forecast than direction.</strong> Trade the thing that's actually forecastable.</li>
+    <li><strong>The forecast is a distribution, not a point prediction.</strong> The median is the working hypothesis; single days miss; calibration is judged over 20+ sessions.</li>
+    <li><strong>Range budget is the most powerful intraday filter.</strong> Once the budget is spent, stop trading breakouts — the edge has flipped to mean reversion.</li>
+    <li><strong>You never need to predict direction.</strong> The two-sided distribution covers both scenarios; be ready at both ends.</li>
+    <li><strong>Confirmation before entry.</strong> A touch is not a signal. Touch + rejection + a close on the correct side is a signal. Be patient.</li>
+    <li><strong>Grade over the sample.</strong> Days will be hit, missed, and overshot; the edge — if it's real — is statistical and only visible over many sessions. Don't abandon the approach on one odd day.</li>
+  </ol>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this lives in the codebase</div>
+    <h3>The band math is a coded brick; the discretionary trade rules above are not</h3>
+    <p>
+      The High-Low / Open-Close bands this lesson teaches you to draw by
+      hand are the same numbers this repo's own forecaster publishes:
+      <code>computeBands</code> in <code>js/forecastCore.js</code>, driven by
+      the Feller driftless-Brownian range distribution
+      (<code>BM_P50</code>/<code>BM_P75</code>,
+      <code>HN_P50</code>/<code>HN_P75</code> constants in
+      <code>js/volBacktestEngine.js</code>) and a per-asset-class σ estimator
+      (Yang-Zhang for FX, HV20 for commodities, GARCH(1,1) for indices). The
+      00:00 anchor is the London-midnight M1 open
+      (<code>fetchSessionOpenLondon</code>). The published forecast lives on
+      <code>vol-forecast.html</code> / <code>vol-forecast-v2.html</code>, and
+      the estimator-benchmarking claim this lesson repeats (outperforming
+      GARCH, realised vol, Parkinson, and "Harvey") has its own OOS QLIKE
+      scorecard at <code>vol-forecast-bench.html</code> — worth checking
+      against this repo's own data rather than taking the source material's
+      word for it.
+    </p>
+    <p>
+      <strong>What is not built:</strong> the manual chart-markup workflow,
+      the exhaustion/rejection entry rules, the range-budget fade filter, and
+      the four case studies above are a discretionary reading of price
+      action — none of it is coded or backtested anywhere in this repo. Per
+      the house working agreement: this is study material, not a validated
+      edge.
+    </p>
+  </div>
+
+  <div class="tl-footer-nav">
+    <a href="volatility-intelligence.html">← Volatility Intelligence — Applied Practice</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="range-extension-levels.html">Range Extension Levels →</a>
+  </div>
+</div>
+</body>
+</html>
