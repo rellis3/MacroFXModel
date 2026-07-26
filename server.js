@@ -237,7 +237,8 @@ function authParseCookies(req) {
 }
 
 function authLoginPage(zone, next, error) {
-  const label = zone === 'education' ? 'Education Hub' : 'Dashboard';
+  if (zone === 'education') return authLoginPageEducation(next, error);
+  const label = 'Dashboard';
   return `<!doctype html><html><head><meta charset="utf-8"><title>Sign in — ${label}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
@@ -265,6 +266,88 @@ document.getElementById('f').addEventListener('submit', async (e) => {
   });
   if (res.ok) { location.href = ${JSON.stringify(next)}; }
   else { location.href = '/login?zone=' + encodeURIComponent(${JSON.stringify(zone)}) + '&next=' + encodeURIComponent(${JSON.stringify(next)}) + '&error=1'; }
+});
+</script>
+</body></html>`;
+}
+
+// Styled to match the "Education Bank" reference design the owner shared —
+// serif gradient wordmark, glowing pill input, teal CTA — for the education
+// zone's login page specifically. The main dashboard keeps the plain form above.
+function authLoginPageEducation(next, error) {
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Sign in — Education Hub</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  *{box-sizing:border-box}
+  body{
+    margin:0;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:radial-gradient(ellipse 900px 500px at 50% 0%, rgba(34,211,238,0.10), transparent 60%), #070a10;
+    color:#e6e9ef;display:flex;align-items:center;justify-content:center;padding:40px 20px;
+  }
+  .wrap{max-width:420px;width:100%;text-align:center}
+  .tag{display:flex;align-items:center;justify-content:center;gap:14px;color:#5eead4;font-size:12px;letter-spacing:.2em;font-weight:600;margin-bottom:36px}
+  .tag .ln{width:22px;height:1px;background:linear-gradient(90deg,transparent,#2dd4dd);opacity:.6}
+  .tag .ln.r{background:linear-gradient(90deg,#2dd4dd,transparent)}
+  .card{
+    background:linear-gradient(180deg, rgba(20,26,36,0.9), rgba(10,14,20,0.9));
+    border:1px solid rgba(45,212,218,0.18);border-radius:22px;padding:40px 30px;
+    box-shadow:0 0 60px rgba(34,211,238,0.06), inset 0 1px 0 rgba(255,255,255,0.02);
+  }
+  .restricted{color:#6b7688;font-size:11px;letter-spacing:.2em;font-weight:600;margin-bottom:18px}
+  h1{font-family:Georgia,'Times New Roman',serif;font-size:32px;font-weight:400;margin:0 0 18px;color:#f2f4f8}
+  h1 em{font-style:italic;background:linear-gradient(90deg,#2dd4dd,#8b8cf9);-webkit-background-clip:text;background-clip:text;color:transparent}
+  p.sub{color:#8b95a7;font-size:15px;line-height:1.6;margin:0 0 28px}
+  .field{position:relative;margin-bottom:16px}
+  .field svg{position:absolute;left:16px;top:50%;transform:translateY(-50%);opacity:.5;pointer-events:none}
+  .field input{width:100%;background:#0b0f16;border:1px solid rgba(45,212,218,0.35);border-radius:16px;padding:15px 44px;color:#e6e9ef;font-size:15px;outline:none}
+  .field input:focus{border-color:rgba(45,212,218,0.7)}
+  .field .toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;opacity:.5;background:none;border:none;padding:6px;color:inherit}
+  .remember{display:flex;align-items:center;gap:10px;color:#9aa4b5;font-size:14px;margin:4px 4px 22px;text-align:left}
+  .remember input{accent-color:#2dd4dd;width:16px;height:16px}
+  button.submit{width:100%;border:none;border-radius:16px;padding:16px;font-size:16px;font-weight:700;background:linear-gradient(90deg,#2dd4dd,#38bdf8);color:#04222a;cursor:pointer}
+  button.submit:hover{filter:brightness(1.05)}
+  .err{color:#f87171;font-size:13px;margin-bottom:14px}
+  .footer{color:#4b5568;font-size:11px;letter-spacing:.2em;font-weight:600;margin-top:28px}
+</style></head><body>
+<div class="wrap">
+  <div class="tag"><span class="ln"></span>PRIVATE QUANTITATIVE &amp; MACRO INSIGHTS<span class="ln r"></span></div>
+  <div class="card">
+    <div class="restricted">RESTRICTED ACCESS</div>
+    <h1>The <em>Education</em> Bank</h1>
+    <p class="sub">Every lesson, framework, and walkthrough — held behind a single key.</p>
+    ${error ? `<div class="err">Incorrect password.</div>` : ''}
+    <form id="f">
+      <div class="field">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        <input type="password" id="pw" placeholder="Enter access key" autofocus>
+        <button type="button" class="toggle" id="toggle" aria-label="Show password">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+      <label class="remember"><input type="checkbox" id="remember" checked> Keep me signed in for 30 days</label>
+      <button type="submit" class="submit">Enter</button>
+    </form>
+  </div>
+  <div class="footer">AUTHORISED MEMBERS ONLY</div>
+</div>
+<script>
+document.getElementById('toggle').addEventListener('click', () => {
+  const pw = document.getElementById('pw');
+  pw.type = pw.type === 'password' ? 'text' : 'password';
+});
+document.getElementById('f').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const res = await fetch('/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      zone: 'education',
+      password: document.getElementById('pw').value,
+      remember: document.getElementById('remember').checked,
+    }),
+  });
+  if (res.ok) { location.href = ${JSON.stringify(next)}; }
+  else { location.href = '/login?zone=education&next=' + encodeURIComponent(${JSON.stringify(next)}) + '&error=1'; }
 });
 </script>
 </body></html>`;
@@ -17755,11 +17838,13 @@ app.get('/login', (req, res) => {
 app.post('/login', (req, res) => {
   const zone     = req.body?.zone === 'education' ? 'education' : 'main';
   const password = req.body?.password || '';
+  const remember = req.body?.remember !== false; // no checkbox on the main-zone page ⇒ always remember
   if (!AUTH_ENABLED || password !== AUTH_PASSWORDS[zone]) {
     return res.status(401).json({ error: 'invalid password' });
   }
+  const maxAge = remember ? `; Max-Age=${Math.floor(AUTH_COOKIE_MAX_MS / 1000)}` : '';
   res.setHeader('Set-Cookie',
-    `${AUTH_COOKIE_NAME}_${zone}=${authMakeCookie(zone)}; Max-Age=${Math.floor(AUTH_COOKIE_MAX_MS / 1000)}; Path=/; HttpOnly; SameSite=Lax${req.secure ? '; Secure' : ''}`);
+    `${AUTH_COOKIE_NAME}_${zone}=${authMakeCookie(zone)}${maxAge}; Path=/; HttpOnly; SameSite=Lax${req.secure ? '; Secure' : ''}`);
   res.json({ ok: true });
 });
 
