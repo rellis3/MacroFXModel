@@ -14,6 +14,7 @@ import express              from 'express';
 import path                from 'path';
 import { fileURLToPath }   from 'url';
 import fs                  from 'fs';
+import crypto               from 'crypto';
 import { createInterface as rlCreateInterface } from 'readline';
 import { execFile, spawn } from 'child_process';
 import { promisify }       from 'util';
@@ -174,6 +175,108 @@ const REFRESH_LEVELS_MS  = parseInt(process.env.REFRESH_LEVELS_MS  || String(30 
 const HMM5M_REFRESH_MS        = parseInt(process.env.HMM5M_REFRESH_MS   || String(30 * 1000)); // 30s — V2 bot polls at 30s cadence
 const MACRO_REFRESH_MS        = parseInt(process.env.MACRO_REFRESH_MS    || String(6 * 60 * 60 * 1000)); // 6h — FRED data updates once daily
 const HMM5M_ALERT_COOLDOWN_MS = 15 * 60 * 1000; // min gap between regime-change Telegram alerts per pair
+
+// ── Site login gate ──────────────────────────────────────────────────────────
+// Two independent password zones: 'main' (dashboard + everything else) and
+// 'education' (education/ + theory-lab/). A zone's cookie only unlocks that
+// zone — the education password never grants dashboard access and vice versa.
+// Disabled entirely (no login required) unless all three env vars below are
+// set, so local/sandbox dev is never accidentally locked out.
+const AUTH_COOKIE_NAME   = 'mfx_session';
+const AUTH_COOKIE_MAX_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const AUTH_SECRET        = process.env.COOKIE_SIGNING_SECRET || '';
+const AUTH_PASSWORDS     = {
+  main:      process.env.DASHBOARD_PASSWORD  || '',
+  education: process.env.EDUCATION_PASSWORD  || '',
+};
+const AUTH_ENABLED = !!AUTH_SECRET && !!AUTH_PASSWORDS.main && !!AUTH_PASSWORDS.education;
+const AUTH_EDU_PREFIXES = ['/education', '/theory-lab'];
+
+function authZoneForPath(pathName) {
+  return AUTH_EDU_PREFIXES.some(p => pathName === p || pathName.startsWith(p + '/'))
+    ? 'education'
+    : 'main';
+}
+
+function authSign(payload) {
+  return crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('hex');
+}
+
+function authMakeCookie(zone) {
+  const exp     = Date.now() + AUTH_COOKIE_MAX_MS;
+  const payload = `zone=${zone}&exp=${exp}`;
+  return Buffer.from(`${payload}&sig=${authSign(payload)}`).toString('base64');
+}
+
+function authVerifyCookie(raw, requiredZone) {
+  if (!raw) return false;
+  let decoded;
+  try { decoded = Buffer.from(raw, 'base64').toString('utf8'); } catch { return false; }
+  const params = new URLSearchParams(decoded);
+  const zone = params.get('zone');
+  const exp  = Number(params.get('exp'));
+  const sig  = params.get('sig');
+  if (!zone || !exp || !sig) return false;
+  const expected = authSign(`zone=${zone}&exp=${exp}`);
+  const sigBuf = Buffer.from(sig), expBuf = Buffer.from(expected);
+  if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) return false;
+  if (Date.now() > exp) return false;
+  return zone === requiredZone;
+}
+
+function authParseCookies(req) {
+  const header = req.headers.cookie;
+  const out = {};
+  if (!header) return out;
+  header.split(';').forEach(part => {
+    const idx = part.indexOf('=');
+    if (idx === -1) return;
+    out[part.slice(0, idx).trim()] = decodeURIComponent(part.slice(idx + 1).trim());
+  });
+  return out;
+}
+
+function authLoginPage(zone, next, error) {
+  const label = zone === 'education' ? 'Education Hub' : 'Dashboard';
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Sign in — ${label}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body{background:#0b0e14;color:#e6e9ef;font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}
+  form{background:#141922;border:1px solid #232a36;border-radius:10px;padding:32px;width:300px}
+  h1{font-size:16px;font-weight:600;margin:0 0 18px}
+  input{width:100%;box-sizing:border-box;background:#0b0e14;border:1px solid #2a3142;color:#e6e9ef;border-radius:6px;padding:10px 12px;font-size:14px;margin-bottom:12px}
+  button{width:100%;background:#3b82f6;color:#fff;border:none;border-radius:6px;padding:10px;font-size:14px;cursor:pointer}
+  button:hover{background:#2563eb}
+  .err{color:#f87171;font-size:13px;margin-bottom:12px}
+</style></head><body>
+<form id="f">
+  <h1>${label} — password required</h1>
+  ${error ? `<div class="err">Incorrect password.</div>` : ''}
+  <input type="password" id="pw" placeholder="Password" autofocus>
+  <button type="submit">Sign in</button>
+</form>
+<script>
+document.getElementById('f').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const res = await fetch('/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ zone: ${JSON.stringify(zone)}, password: document.getElementById('pw').value }),
+  });
+  if (res.ok) { location.href = ${JSON.stringify(next)}; }
+  else { location.href = '/login?zone=' + encodeURIComponent(${JSON.stringify(zone)}) + '&next=' + encodeURIComponent(${JSON.stringify(next)}) + '&error=1'; }
+});
+</script>
+</body></html>`;
+}
+
+function requireAuth(req, res, next) {
+  if (!AUTH_ENABLED) return next();
+  const zone    = authZoneForPath(req.path);
+  const cookies = authParseCookies(req);
+  if (authVerifyCookie(cookies[`${AUTH_COOKIE_NAME}_${zone}`], zone)) return next();
+  res.redirect(`/login?zone=${zone}&next=${encodeURIComponent(req.originalUrl)}`);
+}
 
 // ── Cloudflare env-compatible object ─────────────────────────────────────────
 // Exposes process.env vars and wraps kv.js so _worker.js runs unchanged.
@@ -17629,6 +17732,29 @@ app.all('/api/*', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+// Site login gate — /login is public; everything below it (pages + static
+// assets) requires a valid zone cookie. /api/* above is intentionally NOT
+// gated (Railway's healthcheck hits /api/config, and existing bot/API
+// consumers expect unauthenticated access unchanged).
+app.get('/login', (req, res) => {
+  const zone = req.query.zone === 'education' ? 'education' : 'main';
+  const next = typeof req.query.next === 'string' && req.query.next.startsWith('/') ? req.query.next : '/';
+  res.type('html').send(authLoginPage(zone, next, !!req.query.error));
+});
+
+app.post('/login', (req, res) => {
+  const zone     = req.body?.zone === 'education' ? 'education' : 'main';
+  const password = req.body?.password || '';
+  if (!AUTH_ENABLED || password !== AUTH_PASSWORDS[zone]) {
+    return res.status(401).json({ error: 'invalid password' });
+  }
+  res.setHeader('Set-Cookie',
+    `${AUTH_COOKIE_NAME}_${zone}=${authMakeCookie(zone)}; Max-Age=${Math.floor(AUTH_COOKIE_MAX_MS / 1000)}; Path=/; HttpOnly; SameSite=Lax${req.secure ? '; Secure' : ''}`);
+  res.json({ ok: true });
+});
+
+app.use(requireAuth);
 
 // Dashboard static assets — served from project root.
 // journal.html and backtest.html are served as-is; index.html is the fallback.
