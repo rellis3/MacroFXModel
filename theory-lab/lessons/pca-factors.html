@@ -323,6 +323,61 @@
     </p>
   </div>
 
+  <div class="tl-chart">
+    <div class="tl-chart-label">The classic PCA picture — a correlated cloud, rotated into its own best axes</div>
+    <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter plot of a two-instrument return cloud that is elongated and tilted diagonally, with a long red PC1 arrow drawn along the cloud's long axis and a much shorter amber PC2 arrow drawn perpendicular to it">
+      <line x1="40" y1="160" x2="600" y2="160" style="stroke:var(--border)"/>
+      <line x1="320" y1="20" x2="320" y2="300" style="stroke:var(--border)"/>
+      <circle cx="142.0" cy="250.4" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="153.5" cy="225.2" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="178.2" cy="243.5" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="184.9" cy="218.0" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="205.8" cy="223.2" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="207.7" cy="192.5" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="229.6" cy="204.6" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="238.2" cy="183.3" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="265.8" cy="207.6" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="263.9" cy="178.7" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="286.7" cy="187.9" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="290.5" cy="156.4" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="312.4" cy="168.5" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="319.0" cy="158.0" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="335.2" cy="167.8" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="335.2" cy="143.0" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="361.9" cy="160.3" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="365.7" cy="133.7" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="383.8" cy="137.7" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="387.6" cy="106.1" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="415.2" cy="125.6" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="419.9" cy="101.0" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="446.6" cy="118.4" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="450.4" cy="91.8" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="470.4" cy="94.9" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="476.1" cy="72.3" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="498.9" cy="86.5" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle cx="505.6" cy="71.0" r="4" style="fill:var(--blue);opacity:.7"/>
+      <line x1="120.2" y1="253.2" x2="519.8" y2="66.8" style="stroke:var(--red);stroke-width:2.5"/>
+      <polygon points="519.8,66.8 509.6,78.1 504.6,67.3" style="fill:var(--red)"/>
+      <text x="524" y="60" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:13px;font-weight:600">PC1</text>
+      <line x1="296.8" y1="110.2" x2="343.2" y2="209.8" style="stroke:var(--amber);stroke-width:2"/>
+      <polygon points="343.2,209.8 342.7,194.6 331.9,199.6" style="fill:var(--amber)"/>
+      <text x="350" y="224" style="fill:var(--amber);font-family:'DM Mono',monospace;font-size:13px;font-weight:600">PC2</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--red)"></i>PC1 — direction of maximum variance</span>
+      <span><i style="background:var(--amber)"></i>PC2 — perpendicular, much smaller remaining variance</span>
+    </div>
+    <div class="tl-chart-caption">
+      Each blue dot is one day's return pair for two correlated instruments; the cloud is
+      elongated because the two mostly move together. PC1 (red) is the direction the cloud
+      is actually spread out along the most — for a basket of correlated FX pairs this is
+      very often "everything moving together," a shared risk factor. PC2 (amber), perpendicular
+      to PC1 and much shorter, is what's left over: the smaller slice of variance PC1 doesn't
+      explain. This is a schematic 2-variable illustration; a real basket has as many
+      components as instruments, but in practice only the first few ever matter.
+    </div>
+  </div>
+
   <h2>How practitioners actually use this</h2>
   <p>
     In FX and rates specifically, running PCA across the G10 majors (or across

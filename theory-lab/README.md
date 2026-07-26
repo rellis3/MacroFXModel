@@ -23,12 +23,30 @@ unpacking — or read this curriculum straight through as its own path.
 
 - Plain-English intuition before any math.
 - The math, step by step, with every symbol defined.
+- An inline SVG chart illustrating the concept (a random-walk scatter, a
+  regime-shaded price path, the Kelly growth curve, etc. — hand-built,
+  no chart library, no external requests).
 - A numerically worked example.
 - An honest note on where the idea connects to an actual module in this
   repo — clearly marked as either **already in use** (a real, running
   brick) or a **concept/candidate** (explained here, not built or tested).
 - Common pitfalls, a self-test, and further reading (real, correctly
   attributed sources).
+
+## Math Primer (start here if you're new)
+
+The 14 numbered lessons assume you already know mean/variance/standard
+deviation, what a normal distribution is, what correlation and a
+regression line are, and the difference between simple and log returns.
+Four short primer lessons fill that gap from zero:
+
+1. Descriptive Statistics & the Normal Distribution
+2. Probability & Random Variables
+3. Correlation & Linear Regression
+4. Returns, Log-Returns & Compounding
+
+They're linked as their own "0 · Math Primer" section at the top of
+`hub.html`, ahead of Lesson 1.
 
 Nothing in this folder is a trading signal. A lesson explaining a technique
 well is not evidence the technique works here — per `CLAUDE.md`'s Lego

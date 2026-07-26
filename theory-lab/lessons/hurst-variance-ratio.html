@@ -194,6 +194,30 @@
     a heteroskedasticity-robust version of the test statistic is preferred over the simple homoskedastic one.
   </p>
 
+  <div class="tl-chart">
+    <div class="tl-chart-label">R/S scaling on log-log axes — the slope IS the Hurst exponent</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Log-log plot of log(n) versus log(R/S) showing three straight reference lines from a common origin at different slopes: a steep red line for H greater than 0.5, a dashed 45-degree line for H equal to 0.5, and a shallow blue line for H less than 0.5">
+      <line x1="60" y1="20" x2="60" y2="250" style="stroke:var(--border)" />
+      <line x1="60" y1="250" x2="610" y2="250" style="stroke:var(--border)" />
+      <line x1="100" y1="240" x2="220" y2="40" style="stroke:var(--red);stroke-width:2" />
+      <line x1="100" y1="240" x2="300" y2="40" style="stroke:var(--text3);stroke-width:2;stroke-dasharray:4,3" />
+      <line x1="100" y1="240" x2="580" y2="40" style="stroke:var(--blue);stroke-width:2" />
+      <text x="214" y="34" font-size="12" text-anchor="end" fill="var(--red)">H &gt; 0.5 (trending)</text>
+      <text x="306" y="58" font-size="12" fill="var(--text3)">H = 0.5 (random walk)</text>
+      <text x="430" y="95" font-size="12" fill="var(--blue)">H &lt; 0.5 (mean-reverting)</text>
+      <text x="560" y="272" font-size="12" fill="var(--text3)">log(n)</text>
+      <text x="20" y="140" font-size="12" fill="var(--text3)" transform="rotate(-90 20 140)">log(R/S)</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Because \((R/S)_n \approx c \cdot n^H\), taking logs of both sides turns the power law into a straight line —
+      and the <strong>slope</strong> of that line is the Hurst exponent \(H\) itself, which is exactly why the
+      log-log regression is how \(H\) gets estimated in practice. A steeper slope means a stronger trending
+      tendency, a shallower slope means stronger mean reversion, and a slope of exactly 0.5 (45° here) is
+      statistically indistinguishable from a random walk. This is a schematic of the three regimes, not a fit to
+      real data.
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-box-label">Worked example</div>
     <h3>A tiny variance-ratio calculation by hand</h3>

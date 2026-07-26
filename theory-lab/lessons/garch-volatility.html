@@ -251,6 +251,67 @@
     </p>
   </div>
 
+  <div class="tl-chart">
+    <div class="tl-chart-label">Volatility clustering, visualized: shock cluster → sigma reacts → slow decay</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two-panel chart. Top: daily returns that are small in the first third, spike into a cluster of large up and down moves in the middle third, then calm down but not fully. Bottom: a GARCH conditional volatility line that jumps up sharply as the spike cluster begins, then decays gradually, not instantly, back toward its long-run level.">
+      <text x="20" y="14" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">Daily returns</text>
+      <line x1="20" y1="80" x2="620" y2="80" style="stroke:var(--border);stroke-width:1"/>
+      <rect x="18" y="80" width="4" height="4" style="fill:var(--text2)"/>
+      <rect x="33" y="74" width="4" height="6" style="fill:var(--text2)"/>
+      <rect x="48" y="80" width="4" height="5" style="fill:var(--text2)"/>
+      <rect x="63" y="77" width="4" height="3" style="fill:var(--text2)"/>
+      <rect x="78" y="80" width="4" height="7" style="fill:var(--text2)"/>
+      <rect x="93" y="75" width="4" height="5" style="fill:var(--text2)"/>
+      <rect x="108" y="80" width="4" height="3" style="fill:var(--text2)"/>
+      <rect x="123" y="72" width="4" height="8" style="fill:var(--text2)"/>
+      <rect x="138" y="80" width="4" height="6" style="fill:var(--text2)"/>
+      <rect x="153" y="76" width="4" height="4" style="fill:var(--text2)"/>
+      <rect x="168" y="80" width="4" height="5" style="fill:var(--text2)"/>
+      <rect x="183" y="73" width="4" height="7" style="fill:var(--text2)"/>
+      <rect x="198" y="80" width="4" height="4" style="fill:var(--text2)"/>
+      <rect x="213" y="80" width="4" height="15" style="fill:var(--text2)"/>
+      <rect x="228" y="48" width="4" height="32" style="fill:var(--text2)"/>
+      <rect x="243" y="80" width="4" height="45" style="fill:var(--text2)"/>
+      <rect x="258" y="30" width="4" height="50" style="fill:var(--text2)"/>
+      <rect x="273" y="80" width="4" height="38" style="fill:var(--text2)"/>
+      <rect x="288" y="25" width="4" height="55" style="fill:var(--text2)"/>
+      <rect x="303" y="80" width="4" height="58" style="fill:var(--text2)"/>
+      <rect x="318" y="38" width="4" height="42" style="fill:var(--text2)"/>
+      <rect x="333" y="80" width="4" height="50" style="fill:var(--text2)"/>
+      <rect x="348" y="32" width="4" height="48" style="fill:var(--text2)"/>
+      <rect x="363" y="80" width="4" height="35" style="fill:var(--text2)"/>
+      <rect x="378" y="40" width="4" height="40" style="fill:var(--text2)"/>
+      <rect x="393" y="80" width="4" height="28" style="fill:var(--text2)"/>
+      <rect x="408" y="60" width="4" height="20" style="fill:var(--text2)"/>
+      <rect x="423" y="80" width="4" height="14" style="fill:var(--text2)"/>
+      <rect x="438" y="64" width="4" height="16" style="fill:var(--text2)"/>
+      <rect x="453" y="80" width="4" height="10" style="fill:var(--text2)"/>
+      <rect x="468" y="62" width="4" height="18" style="fill:var(--text2)"/>
+      <rect x="483" y="80" width="4" height="12" style="fill:var(--text2)"/>
+      <rect x="498" y="71" width="4" height="9" style="fill:var(--text2)"/>
+      <rect x="513" y="80" width="4" height="15" style="fill:var(--text2)"/>
+      <rect x="528" y="69" width="4" height="11" style="fill:var(--text2)"/>
+      <rect x="543" y="80" width="4" height="8" style="fill:var(--text2)"/>
+      <rect x="558" y="67" width="4" height="13" style="fill:var(--text2)"/>
+      <rect x="573" y="80" width="4" height="9" style="fill:var(--text2)"/>
+      <rect x="588" y="73" width="4" height="7" style="fill:var(--text2)"/>
+      <rect x="603" y="80" width="4" height="6" style="fill:var(--text2)"/>
+
+      <text x="20" y="164" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">GARCH conditional volatility σₜ</text>
+      <line x1="20" y1="255" x2="620" y2="255" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+      <text x="590" y="250" fill="var(--text3)" font-size="9" font-family="'DM Mono',monospace" text-anchor="end">long-run σ</text>
+      <polyline points="20,255 65,253 110,256 155,254 200,255 215,250 230,200 245,155 260,132 275,128 290,125 305,130 320,135 350,148 380,165 410,180 440,195 470,207 500,217 530,225 560,231 590,236 620,240" style="fill:none;stroke:var(--blue);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round"/>
+    </svg>
+    <div class="tl-chart-caption">
+      The bottom panel's σ<sub>t</sub> estimate reacts immediately to the cluster of large returns in the top
+      panel, then decays gradually — not instantly — back toward the dashed long-run level rather than
+      snapping back the moment the market goes quiet. That gradual, slower-than-a-cliff decay <em>is</em> the
+      persistence (\(\alpha+\beta\) close to 1) the math above describes, and it's exactly the shape a flat
+      trailing HV20 average can't replicate: HV20 would barely move on the shock day and then only fully
+      "forget" it once the shock rolls off the window 20 days later, not smoothly in between.
+    </div>
+  </div>
+
   <h2>How practitioners actually use this</h2>
   <p>
     GARCH(1,1) and its many variants are estimated in practice by maximum likelihood — choosing

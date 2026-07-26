@@ -285,6 +285,34 @@
     </p>
   </div>
 
+  <div class="tl-chart">
+    <div class="tl-chart-label">The regime is never observed — only the price line is</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A single price line drawn over alternating background bands: narrow blue bands where the hidden state is trending and the line climbs steadily, and wider amber bands where the hidden state is choppy and the line chops sideways with noise. The trending bands are about half the width of the choppy bands, matching the worked example's expected durations of about 3.3 days trending versus about 6.7 days choppy.">
+      <rect x="20" y="20" width="65" height="220" style="fill:var(--blue);opacity:.12"/>
+      <rect x="85" y="20" width="130" height="220" style="fill:var(--amber);opacity:.12"/>
+      <rect x="215" y="20" width="65" height="220" style="fill:var(--blue);opacity:.12"/>
+      <rect x="280" y="20" width="130" height="220" style="fill:var(--amber);opacity:.12"/>
+      <rect x="410" y="20" width="65" height="220" style="fill:var(--blue);opacity:.12"/>
+      <rect x="475" y="20" width="145" height="220" style="fill:var(--amber);opacity:.12"/>
+      <polyline points="20,200 35,190 50,175 65,160 85,140 100,155 120,130 140,150 160,125 180,148 200,132 215,145 230,135 245,120 260,105 280,90 300,105 320,80 340,100 360,78 380,98 400,85 410,92 425,80 440,72 460,58 475,50 495,68 515,45 535,65 555,42 575,60 595,48 620,55" style="fill:none;stroke:var(--text);stroke-width:2"/>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>Trending state</span>
+      <span><i style="background:var(--amber)"></i>Choppy state</span>
+    </div>
+    <div class="tl-chart-caption">
+    The shading is what an HMM has to infer, not what it's given — in real data there
+    are no colored bands, only the price line. Here the bands follow the worked
+    example's own numbers: trending stretches (blue) run about 3.3 days before
+    switching, choppy stretches (amber) run about 6.7 days, so the amber bands are
+    drawn roughly twice as wide. The <strong>same kind of noisy up-and-down line</strong>
+    is drawn in both regions — it climbs steadily through the trending bands and
+    chops sideways through the choppy ones — because that's the actual inference
+    problem: given only the observed path, how confident can you be about which
+    hidden state produced each stretch of it?
+    </div>
+  </div>
+
   <h2>How practitioners actually use this</h2>
   <p>
   In real quantitative research, HMMs (and their econometric cousin, Markov-switching regression) show

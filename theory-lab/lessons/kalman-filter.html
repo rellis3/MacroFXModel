@@ -296,6 +296,59 @@
     </p>
   </div>
 
+  <div class="tl-chart">
+    <div class="tl-chart-label">Kalman-filtered hedge ratio vs. noisy daily observations</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter plot of noisy hedge-ratio observations over time, with a smooth Kalman-filtered estimate line threading through them and a shaded uncertainty band that starts wide on the left and narrows toward the right as more observations accumulate">
+      <line x1="60" y1="20" x2="60" y2="230" style="stroke:var(--border2);stroke-width:1"/>
+      <line x1="60" y1="230" x2="610" y2="230" style="stroke:var(--border2);stroke-width:1"/>
+      <polygon points="70,105 114,106 158,105 203,105 247,103 291,104 335,104 379,103 423,103 468,101 512,100 556,99 600,98 600,110 556,115 512,120 468,125 423,131 379,137 335,144 291,150 247,157 203,167 158,175 114,186 70,195" style="fill:var(--blue);opacity:.15"/>
+      <circle cx="70" cy="126" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="70" cy="169" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="114" cy="166" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="114" cy="131" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="158" cy="124" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="158" cy="161" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="203" cy="158" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="203" cy="118" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="247" cy="111" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="247" cy="144" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="291" cy="142" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="291" cy="105" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="335" cy="101" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="335" cy="140" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="379" cy="138" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="379" cy="107" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="423" cy="103" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="423" cy="137" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="468" cy="134" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="468" cy="97" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="512" cy="93" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="512" cy="122" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="556" cy="126" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="556" cy="87" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="600" cy="82" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <circle cx="600" cy="119" r="3.5" style="fill:var(--text3);opacity:.6"/>
+      <polyline points="70,150 114,146 158,140 203,136 247,130 291,127 335,124 379,120 423,117 468,113 512,110 556,107 600,104" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+      <text x="335" y="255" text-anchor="middle" font-size="11" fill="var(--text3)">time</text>
+      <text x="18" y="125" text-anchor="middle" font-size="11" fill="var(--text3)" transform="rotate(-90 18 125)">hedge ratio</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--text3);opacity:.6"></i>Noisy observations</span>
+      <span><i style="background:var(--blue)"></i>Filtered estimate</span>
+      <span><i style="background:var(--blue);opacity:.15"></i>Uncertainty band</span>
+    </div>
+    <div class="tl-chart-caption">
+      Each new noisy observation (grey dots) nudges the filtered estimate (blue
+      line) toward it — by an amount set at that step by the Kalman gain, exactly
+      as the update equation \(\hat{x}_{t\mid t} = \hat{x}_{t\mid t-1} + K_t
+      e_t\) describes. The shaded band is the estimate's uncertainty
+      \(P_{t\mid t}\): wide on the left, when few observations have accumulated,
+      and visibly narrower on the right, as the predict/update recursion keeps
+      folding in evidence and the filter grows more confident in its running
+      estimate.
+    </div>
+  </div>
+
   <h2>How practitioners actually use this</h2>
   <p>
     The Kalman filter was developed by Rudolf Kálmán in 1960 for control and

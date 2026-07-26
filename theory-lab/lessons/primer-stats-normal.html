@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Descriptive Statistics &amp; the Normal Distribution — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Math Primer / Descriptive Statistics &amp; the Normal Distribution</div>
+  <div class="tl-kicker">Math Primer · Primer 1 of 4</div>
+  <h1 class="tl-title">Descriptive Statistics &amp; the Normal Distribution</h1>
+  <p class="tl-dek">Mean, variance, standard deviation, z-scores and the bell curve — the five ideas every other lesson in this series quietly assumes you already have.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">PRIMER — start here if you're new to statistics</span>
+    <span>~13 min read</span>
+    <span>Prereqs: none</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    Every lesson in this series after this one uses \(\sigma\), variance, and
+    "standard deviations away from the mean" without re-explaining them. The
+    Ornstein-Uhlenbeck lesson talks about a stationary variance
+    \(\sigma^2/2\theta\). The GARCH lesson forecasts \(\sigma\) itself, one day
+    at a time. The Hurst / variance-ratio lesson is built entirely out of how
+    variance scales with time. If any of those sentences made you pause and
+    think "wait, what exactly is a standard deviation, and why is it computed
+    the way it's computed, and not some simpler way" — that pause is exactly
+    what this page exists to remove. It is where \(\sigma\), variance, and
+    z-scores get explained once, properly, from nothing, so every later lesson
+    can use them without re-deriving them.
+  </p>
+  <p>
+    This is not a strategy page and it doesn't reference a trading edge. It is
+    the vocabulary and the arithmetic underneath the vocabulary. Read it once,
+    slowly, and the rest of the Theory Lab gets noticeably easier to read.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A number that answers "how spread out is this data, in one summary figure?"</h3>
+    <p>
+      Suppose you track a currency pair's daily percentage move for a week and
+      get five numbers: some up days, some down days, some big, some small. The
+      <strong>mean</strong> answers "where is the center of these numbers, on
+      average?" But two very different weeks can have the exact same mean — a
+      week of five calm +0.1% days averages the same as a week of +5%, -4%,
+      +3%, -3%, +0.1% days if you pick the numbers right, even though the
+      second week was obviously wilder. The mean alone throws away that
+      difference entirely.
+    </p>
+    <p>
+      <strong>Standard deviation</strong> is the number that captures exactly
+      the thing the mean threw away: how far, typically, does a value stray
+      from the center? A small standard deviation means the data hugs the mean
+      tightly — a calm, predictable series. A large standard deviation means
+      the data swings wide — a volatile, unpredictable series. Once you have
+      both the mean (the center) and the standard deviation (the typical
+      spread around that center), you have a compact, two-number summary of an
+      entire dataset's location and shape — and, for data shaped like the
+      "bell curve" this page ends with, those two numbers are enough to
+      describe the whole distribution.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    Start with the mean, because everything else is built on top of it. Given
+    \(n\) numbers \(x_1, x_2, \dots, x_n\) — for us, usually a series of daily
+    percentage returns — the (arithmetic) <strong>mean</strong> \(\bar{x}\) is
+    just the ordinary average: add everything up, divide by how many numbers
+    there are.
+  </p>
+  <div class="tl-math">
+    \[ \bar{x} = \frac{1}{n}\sum_{i=1}^{n} x_i \]
+  </div>
+  <p>
+    The mean is a measure of <em>central tendency</em> — a single number meant
+    to represent "the typical value." On its own it says nothing about how
+    much the individual \(x_i\) vary around it. That's the gap variance and
+    standard deviation fill.
+  </p>
+
+  <h3>Why not just average the distances from the mean?</h3>
+  <p>
+    The most natural first guess at "typical spread" is: for each data point,
+    measure how far it is from the mean, \(x_i - \bar{x}\), then average those
+    distances. Try that, and it breaks immediately. By the definition of the
+    mean, the positive deviations (points above the mean) and the negative
+    deviations (points below the mean) are constructed to exactly cancel —
+    that cancellation is <em>algebraically guaranteed</em>, not a coincidence
+    of one particular dataset:
+  </p>
+  <div class="tl-math">
+    \[ \sum_{i=1}^{n} (x_i - \bar{x}) = 0 \quad \text{always, for any dataset} \]
+  </div>
+  <p>
+    So the plain average deviation is always exactly zero, no matter how
+    spread out or tightly clustered the data is — it is useless as a measure
+    of spread. Two fixes are possible, and both are used in practice:
+  </p>
+  <p>
+    <strong>Fix 1 — take the absolute value first.</strong> Average
+    \(|x_i - \bar{x}|\) instead of \(x_i - \bar{x}\). This is a real, valid
+    statistic called the <strong>mean absolute deviation</strong> (MAD), and
+    it does correctly measure spread. It is used in some robust-statistics
+    contexts precisely because it doesn't do what fix 2 does below — treat a
+    huge deviation as far worse than a merely large one. But it has a real
+    cost: absolute value is not smooth at zero (it has a sharp corner), which
+    makes it awkward to work with in calculus-based derivations (optimization,
+    maximum-likelihood estimation, the machinery behind regression and most of
+    the models in this series) — one of the reasons MAD lost out to variance
+    as the default.
+  </p>
+  <p>
+    <strong>Fix 2 — square the deviations first.</strong> Average
+    \((x_i - \bar{x})^2\) instead. This is <strong>variance</strong>, and it
+    is the standard choice, for two compounding reasons:
+  </p>
+  <ul>
+    <li>
+      <strong>Squaring makes every term positive</strong> (or zero), just like
+      absolute value does — so the cancellation problem is fixed the same
+      way MAD fixes it.
+    </li>
+    <li>
+      <strong>Squaring also penalizes large deviations disproportionately
+      more than small ones.</strong> A deviation twice as large contributes
+      four times as much to the sum (since \(2^2 = 4\)), not twice as much.
+      A deviation of 1% contributes 1 to the sum of squares; a deviation of
+      5% contributes 25 — twenty-five times more than a deviation five times
+      the size, not five times more. This makes variance especially sensitive
+      to outliers and large moves, which turns out to be exactly the right
+      property for risk: a trading strategy usually cares far more about the
+      one day it moved 5% against you than about five separate 1% days,
+      because a single large loss can be catastrophic in a way that many
+      small ones aren't. Squaring is what makes the resulting statistic
+      "rare-big-moves-count-a-lot," which is a feature here, not an accident.
+    </li>
+  </ul>
+  <p>
+    Squaring also has a purely mathematical convenience: the square function
+    is smooth everywhere (no sharp corner at zero, unlike absolute value),
+    which is why calculus-based estimation methods (least squares, maximum
+    likelihood) build on variance rather than MAD as the default loss to
+    minimize.
+  </p>
+
+  <h3>Population variance vs. sample variance — why divide by \(n-1\)?</h3>
+  <p>
+    There are two versions of the variance formula, and mixing them up is one
+    of the most common statistics mistakes. If you somehow had
+    <strong>every single value in the entire population</strong> of interest —
+    every trading day that will ever occur, which is impossible in practice —
+    and you knew the population's true mean \(\mu\) exactly, the
+    <strong>population variance</strong> is:
+  </p>
+  <div class="tl-math">
+    \[ \sigma^2 = \frac{1}{n}\sum_{i=1}^{n} (x_i - \mu)^2 \]
+  </div>
+  <p>
+    In practice you never have the whole population — you have a
+    <strong>sample</strong> drawn from it (say, the last 100 trading days out
+    of the pair's entire history), and you don't know the true \(\mu\); you
+    only have the sample mean \(\bar{x}\) as an estimate of it. If you plug
+    \(\bar{x}\) into the population formula and divide by \(n\), the result is
+    a slightly <em>too small</em> number on average — it systematically
+    underestimates the true variance. The fix is <strong>Bessel's
+    correction</strong>: divide by \(n-1\) instead of \(n\). This is the
+    <strong>sample variance</strong>, written \(s^2\):
+  </p>
+  <div class="tl-math">
+    \[ s^2 = \frac{1}{n-1}\sum_{i=1}^{n} (x_i - \bar{x})^2 \]
+  </div>
+  <p>
+    <strong>Why \(n-1\), intuitively.</strong> The sample mean \(\bar{x}\) is
+    not the true population mean \(\mu\) — it's an estimate computed
+    <em>from the same data</em> you're now measuring spread around. By
+    construction, \(\bar{x}\) is the number that makes the sum of squared
+    deviations <em>as small as possible</em> for this particular sample (a
+    property called least squares) — smaller than the sum of squared
+    deviations around the true \(\mu\) would be, unless \(\bar{x}\) happens to
+    equal \(\mu\) exactly. So measuring spread around \(\bar{x}\) instead of
+    the true \(\mu\) always understates the true variance a little, because
+    you're measuring against a self-optimized center rather than the actual
+    one. Dividing by the smaller number \(n-1\) instead of \(n\) inflates the
+    result just enough to exactly cancel that systematic understatement, on
+    average across many samples.
+  </p>
+  <p>
+    A more formal way to say the same thing: once you've computed \(\bar{x}\)
+    from \(n\) data points, only \(n-1\) of the deviations
+    \((x_i - \bar{x})\) are free to vary independently — the last one is
+    always forced, because all \(n\) deviations are required to sum to
+    exactly zero (shown above). You "used up" one piece of independent
+    information — one <strong>degree of freedom</strong> — computing
+    \(\bar{x}\) from the data itself, so only \(n-1\) degrees of freedom
+    remain to estimate spread. Dividing by the number of genuinely free
+    pieces of information, rather than the raw count of data points,
+    is the deeper reason for \(n-1\).
+  </p>
+  <p>
+    The practical rule: divide by \(n-1\) whenever you're computing variance
+    from a <em>sample</em> and estimating the mean from that same sample —
+    which is nearly always the case in finance, since you never have the
+    "whole population" of a pair's future returns. This matters most with
+    small samples; as \(n\) grows large, the difference between dividing by
+    \(n\) and by \(n-1\) shrinks toward nothing.
+  </p>
+
+  <h3>Standard deviation — back to the original units</h3>
+  <p>
+    Variance is in <em>squared</em> units — if \(x_i\) is a percentage return,
+    variance is in "percent squared," which isn't a unit anyone can interpret
+    intuitively (what is 4 "percent-squared"?). <strong>Standard
+    deviation</strong> fixes this by taking the square root, undoing the
+    squaring and returning to the original units:
+  </p>
+  <div class="tl-math">
+    \[ s = \sqrt{s^2} = \sqrt{\frac{1}{n-1}\sum_{i=1}^{n} (x_i - \bar{x})^2} \]
+  </div>
+  <p>
+    This is the \(\sigma\) referenced everywhere else in this series (the
+    population version is written \(\sigma\), the sample version is often
+    written \(s\), but in practice — since a sample is nearly always what you
+    have — "\(\sigma\)" in casual usage almost always means the sample
+    standard deviation computed with Bessel's correction). It's in the same
+    units as the original data, so a standard deviation of "1.4% per day" is
+    directly interpretable the way "2 percent-squared" is not.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(x_i\)</td><td>The \(i\)-th individual data point — for us, usually a single day's percentage return.</td></tr>
+    <tr><td>\(n\)</td><td>The number of data points in the sample.</td></tr>
+    <tr><td>\(\bar{x}\)</td><td>The sample mean — the ordinary average of the \(x_i\).</td></tr>
+    <tr><td>\(\mu\)</td><td>(mu) The true population mean — usually unknown; \(\bar{x}\) is an estimate of it.</td></tr>
+    <tr><td>\(x_i - \bar{x}\)</td><td>A single deviation from the mean — how far one data point sits from the center, with sign.</td></tr>
+    <tr><td>\(\sigma^2\)</td><td>Population variance — average squared deviation, divided by \(n\) (only valid if \(\mu\) is known exactly).</td></tr>
+    <tr><td>\(s^2\)</td><td>Sample variance — average squared deviation around the sample mean, divided by \(n-1\) (Bessel's correction).</td></tr>
+    <tr><td>\(\sigma\), \(s\)</td><td>Standard deviation — the square root of variance, back in the original units. \(\sigma\) is the symbol used throughout the rest of this series for "volatility."</td></tr>
+    <tr><td>\(n-1\)</td><td>Degrees of freedom remaining after estimating the mean from the same sample.</td></tr>
+    <tr><td>\(z\)</td><td>A z-score — how many standard deviations a specific value sits from the mean, see below.</td></tr>
+  </table></div>
+
+  <h3>The normal distribution</h3>
+  <p>
+    The <strong>normal distribution</strong> (also called the Gaussian
+    distribution, or "the bell curve") is a specific, symmetric, bell-shaped
+    probability distribution defined entirely by two numbers: its mean
+    \(\mu\) (where the peak sits) and its standard deviation \(\sigma\) (how
+    wide the bell is). It shows up constantly in statistics for a deep reason
+    — the Central Limit Theorem, which (informally) says that when you add up
+    or average many small, independent random effects, the result tends to
+    look approximately normal regardless of the shape of the individual
+    effects — but for this page, treat it simply as the reference shape that
+    "typical," well-behaved random noise is often compared against. Its
+    probability density function (PDF) — the formula for the curve's height
+    at any point \(x\) — is:
+  </p>
+  <div class="tl-math">
+    \[ f(x) = \frac{1}{\sigma\sqrt{2\pi}}\, e^{-\frac{(x-\mu)^2}{2\sigma^2}} \]
+  </div>
+  <p>
+    You don't need calculus to use this formula — you need to know what its
+    two pieces are doing. The exponential term,
+    \(e^{-(x-\mu)^2 / 2\sigma^2}\), is what actually creates the bell shape:
+    at \(x = \mu\) the exponent is zero, so \(e^0 = 1\) — the curve's peak.
+    As \(x\) moves away from \(\mu\) in either direction, \((x-\mu)^2\) grows
+    (note it's squared, so direction doesn't matter — the curve is
+    symmetric), which makes the exponent more and more negative, which
+    drives \(e^{(\text{negative number})}\) toward zero very quickly — this
+    is why the tails of the bell curve fall off fast rather than gently. The
+    leading fraction, \(\frac{1}{\sigma\sqrt{2\pi}}\), doesn't affect the
+    curve's shape at all — it's a fixed scaling constant (called a
+    "normalizing constant") chosen so that the total area under the whole
+    curve equals exactly 1, as it must for any valid probability
+    distribution (the probability that \(x\) lands <em>somewhere</em> has to
+    be 100%). You can take that area-equals-one fact on faith here; verifying
+    it requires an integral (specifically the Gaussian integral,
+    \(\int_{-\infty}^{\infty} e^{-t^2}dt = \sqrt{\pi}\)), which is standard
+    calculus but not needed to use the distribution.
+  </p>
+
+  <h3>Z-scores — putting any value on the same universal ruler</h3>
+  <p>
+    A "1.4% move" is meaningless in isolation — is that big or small? It
+    depends entirely on how volatile the instrument normally is. The
+    <strong>z-score</strong> answers the right question instead: <em>how many
+    standard deviations away from the mean is this value?</em>
+  </p>
+  <div class="tl-math">
+    \[ z = \frac{x - \mu}{\sigma} \]
+  </div>
+  <p>
+    This takes a deviation from the mean (\(x - \mu\), in the original units)
+    and divides it by \(\sigma\) (also in the original units), so the units
+    cancel and \(z\) is a pure, unitless number — "how many sigmas away."
+    \(z = 0\) means exactly at the mean. \(z = 1\) means one standard
+    deviation above the mean; \(z = -2\) means two standard deviations below.
+    Because a z-score is unitless, it lets you compare a currency pair's daily
+    return to a completely different instrument's daily return, or to its own
+    weekly return, on the exact same scale — which is precisely why z-scores
+    are the standard tool for "is this move unusual" gates and filters (more
+    in the practitioner section below).
+  </p>
+
+  <h3>The 68/95/99.7 rule</h3>
+  <p>
+    For data that is (approximately) normally distributed, the fraction of
+    the distribution's total probability mass falling within a given number
+    of standard deviations of the mean follows a fixed, well-known pattern —
+    this is the single most useful fact to memorize from this whole page:
+  </p>
+  <div class="tl-math">
+    \[ P(|z| < 1) \approx 68\% \qquad P(|z| < 2) \approx 95\% \qquad P(|z| < 3) \approx 99.7\% \]
+  </div>
+  <p>
+    In words: about 68% of a normal distribution's values fall within 1
+    standard deviation of the mean (\(z\) between \(-1\) and \(+1\)); about
+    95% fall within 2 standard deviations; about 99.7% — nearly all of it —
+    fall within 3. Equivalently, a value with \(|z| > 2\) is already in
+    roughly the rarest 5% of outcomes if the data really is normal, and
+    \(|z| > 3\) is roughly the rarest 0.3%. This is the ruler every z-score,
+    every VaR estimate, and every "how unusual was this move" question
+    elsewhere in this series gets measured against.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The normal distribution &amp; the 68/95/99.7 rule</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bell curve with shaded standard deviation bands">
+      <line x1="90" y1="240" x2="550" y2="240" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="110" y1="30" x2="110" y2="240" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
+      <line x1="180" y1="30" x2="180" y2="240" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
+      <line x1="250" y1="30" x2="250" y2="240" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
+      <line x1="320" y1="20" x2="320" y2="240" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3,3"/>
+      <line x1="390" y1="30" x2="390" y2="240" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
+      <line x1="460" y1="30" x2="460" y2="240" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
+      <line x1="530" y1="30" x2="530" y2="240" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
+      <path style="fill:var(--blue);opacity:.10" d="M110,237.78 L120,236.62 L130,234.97 L140,232.66 L150,229.52 L160,225.33 L170,219.87 L180,212.93 L190,204.35 L200,194.00 L210,181.82 L220,167.91 L230,152.48 L240,135.92 L250,118.69 L260,101.49 L270,85.03 L280,70.13 L290,57.55 L300,48.00 L310,42.03 L320,40.00 L330,42.03 L340,48.00 L350,57.55 L360,70.13 L370,85.03 L380,101.49 L390,118.69 L400,135.92 L410,152.48 L420,167.91 L430,181.82 L440,194.00 L450,204.35 L460,212.93 L470,219.87 L480,225.33 L490,229.52 L500,232.66 L510,234.97 L520,236.62 L530,237.78 L530,240 L110,240 Z"/>
+      <path style="fill:var(--blue);opacity:.20" d="M180,212.93 L190,204.35 L200,194.00 L210,181.82 L220,167.91 L230,152.48 L240,135.92 L250,118.69 L260,101.49 L270,85.03 L280,70.13 L290,57.55 L300,48.00 L310,42.03 L320,40.00 L330,42.03 L340,48.00 L350,57.55 L360,70.13 L370,85.03 L380,101.49 L390,118.69 L400,135.92 L410,152.48 L420,167.91 L430,181.82 L440,194.00 L450,204.35 L460,212.93 L460,240 L180,240 Z"/>
+      <path style="fill:var(--blue);opacity:.35" d="M250,118.69 L260,101.49 L270,85.03 L280,70.13 L290,57.55 L300,48.00 L310,42.03 L320,40.00 L330,42.03 L340,48.00 L350,57.55 L360,70.13 L370,85.03 L380,101.49 L390,118.69 L390,240 L250,240 Z"/>
+      <path style="fill:none;stroke:var(--blue);stroke-width:2" d="M100,238.56 L110,237.78 L120,236.62 L130,234.97 L140,232.66 L150,229.52 L160,225.33 L170,219.87 L180,212.93 L190,204.35 L200,194.00 L210,181.82 L220,167.91 L230,152.48 L240,135.92 L250,118.69 L260,101.49 L270,85.03 L280,70.13 L290,57.55 L300,48.00 L310,42.03 L320,40.00 L330,42.03 L340,48.00 L350,57.55 L360,70.13 L370,85.03 L380,101.49 L390,118.69 L400,135.92 L410,152.48 L420,167.91 L430,181.82 L440,194.00 L450,204.35 L460,212.93 L470,219.87 L480,225.33 L490,229.52 L500,232.66 L510,234.97 L520,236.62 L530,237.78 L540,238.56"/>
+      <text x="320" y="150" text-anchor="middle" style="fill:var(--text);font-size:13px;font-weight:600">68%</text>
+      <text x="465" y="205" text-anchor="start" style="fill:var(--text);font-size:11px">95%</text>
+      <text x="535" y="228" text-anchor="start" style="fill:var(--text);font-size:11px">99.7%</text>
+      <text x="110" y="256" text-anchor="middle" style="fill:var(--text3);font-size:11px">-3σ</text>
+      <text x="180" y="256" text-anchor="middle" style="fill:var(--text3);font-size:11px">-2σ</text>
+      <text x="250" y="256" text-anchor="middle" style="fill:var(--text3);font-size:11px">-1σ</text>
+      <text x="320" y="256" text-anchor="middle" style="fill:var(--text3);font-size:11px">0</text>
+      <text x="390" y="256" text-anchor="middle" style="fill:var(--text3);font-size:11px">1σ</text>
+      <text x="460" y="256" text-anchor="middle" style="fill:var(--text3);font-size:11px">2σ</text>
+      <text x="530" y="256" text-anchor="middle" style="fill:var(--text3);font-size:11px">3σ</text>
+    </svg>
+    <div class="tl-chart-caption">Illustrative, not fitted to real data. About 68% of a normal distribution's mass falls within ±1σ of the mean (darkest band), 95% within ±2σ, 99.7% within ±3σ — this is the ruler every z-score, VaR estimate, and "how unusual was this move" question in later lessons is measured against.</div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>Mean, variance, standard deviation and a z-score, by hand</h3>
+    <p>
+      Suppose a currency pair's last six daily returns, in percent, were:
+      \(+1.0,\ +2.0,\ -1.0,\ +3.0,\ 0.0,\ +1.0\). Walk through every step.
+    </p>
+    <p><strong>Step 1 — the mean.</strong> Sum the six values and divide by
+    \(n=6\):</p>
+    <div class="tl-math">
+      \[ \bar{x} = \frac{1.0+2.0+(-1.0)+3.0+0.0+1.0}{6} = \frac{6.0}{6} = 1.0\% \]
+    </div>
+    <p><strong>Step 2 — deviations from the mean.</strong> Subtract 1.0 from
+    each value:</p>
+    <div class="tl-math">
+      \[ 1.0-1.0=0,\quad 2.0-1.0=1,\quad -1.0-1.0=-2,\quad 3.0-1.0=2,\quad 0.0-1.0=-1,\quad 1.0-1.0=0 \]
+    </div>
+    <p>
+      Check: these six deviations, \(0, 1, -2, 2, -1, 0\), sum to zero — as
+      they always must (shown in the derivation above). Good sign the
+      arithmetic so far is correct.
+    </p>
+    <p><strong>Step 3 — square each deviation, then sum.</strong></p>
+    <div class="tl-math">
+      \[ 0^2+1^2+(-2)^2+2^2+(-1)^2+0^2 = 0+1+4+4+1+0 = 10 \]
+    </div>
+    <p><strong>Step 4 — sample variance.</strong> Divide the sum of squared
+    deviations by \(n-1 = 5\) (Bessel's correction — this is a sample, and the
+    mean used was estimated from this same sample):</p>
+    <div class="tl-math">
+      \[ s^2 = \frac{10}{6-1} = \frac{10}{5} = 2.0\ (\%)^2 \]
+    </div>
+    <p>
+      For contrast, the (incorrect here, but illustrative) population formula
+      dividing by \(n=6\) instead would give \(10/6 \approx 1.667\ (\%)^2\) —
+      a smaller number, exactly the systematic understatement Bessel's
+      correction exists to fix.
+    </p>
+    <p><strong>Step 5 — standard deviation.</strong> Take the square root to
+    get back to percent units:</p>
+    <div class="tl-math">
+      \[ s = \sqrt{2.0} \approx 1.414\% \]
+    </div>
+    <p><strong>Step 6 — a z-score.</strong> The best day in the sample was
+    \(+3.0\%\). How unusual was it relative to this pair's recent typical
+    behavior?</p>
+    <div class="tl-math">
+      \[ z = \frac{3.0 - 1.0}{1.414} = \frac{2.0}{1.414} \approx 1.41 \]
+    </div>
+    <p>
+      A z-score of about 1.41 sits between the \(\pm1\sigma\) band (about 68%
+      of outcomes) and the \(\pm2\sigma\) band (about 95% of outcomes) — the
+      day was noticeably above average, but well short of the roughly
+      95th-percentile territory that a full \(z=2\) would represent, and
+      nowhere close to the \(z\approx3\) tail-event territory. With only 6
+      data points this is a toy illustration, not a real volatility estimate
+      — a real z-score gate would use a much longer rolling window, exactly
+      what <code>js/statsCore.js</code>'s <code>rollingZScore</code> does
+      (next section).
+    </p>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Z-scores are the standard building block for a huge share of quantitative
+    signal design: "is the current value of X unusually high or low relative
+    to its own recent history?" A rolling z-score — recompute the mean and
+    standard deviation over a moving window of the last \(N\) observations,
+    then score the newest observation against that rolling window — turns any
+    raw series (a spread, a price deviation from a moving average, an
+    indicator reading) into a comparable, mean-zero, unit-variance number that
+    can be thresholded consistently: "only act when \(|z| > 2\)," for
+    instance, is a principled, literature-standard way of saying "only act on
+    moves that are genuinely unusual for this instrument lately," rather than
+    picking an arbitrary raw-price threshold that doesn't adapt as volatility
+    changes.
+  </p>
+  <p>
+    This is also the statistical backbone of Bollinger Bands (price bands
+    drawn at \(\pm2\sigma\) from a moving average — literally a z-score gate
+    drawn on a chart), of most simple mean-reversion entry filters, and of
+    Value-at-Risk-style risk statements ("a 2-sigma daily loss" is shorthand
+    for "roughly a 1-in-40-ish day event, if returns were normal" — with the
+    heavy caveat, covered in the pitfalls below, that real returns usually
+    aren't). Standard deviation itself, applied to returns, is the most common
+    starting definition of "volatility" in finance — it's what \(\sigma\)
+    means throughout the rest of this series before any GARCH or Yang-Zhang
+    refinement is layered on top.
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>This is the math behind <code>js/statsCore.js</code>'s z-score bricks</h3>
+    <p>
+      This repo already has this exact math built as a shared Tier-1 brick:
+      <code>js/statsCore.js</code> exports <code>rollingZScore</code>/
+      <code>rollingZAt</code> (compute a rolling-window z-score, the "how many
+      sigmas away, right now" gate described above) alongside
+      <code>rollingPercentile</code>, <code>linregSlope</code>, <code>ewma</code>,
+      and a set of statistical <code>moments</code>. Per
+      <code>CLAUDE.md</code>'s shared-utility-bricks table, this module owns
+      "z-score/percentile gates — never re-inline a z-score" for exactly the
+      reason the Lego Principle gives generally: two copies of the same
+      z-score math will eventually drift, and a wrong \(\sigma\) is a silent,
+      hard-to-catch bug in anything downstream of it.
+    </p>
+    <p>
+      The <code>moments</code> helper takes a <code>ddof</code> (delta degrees
+      of freedom) parameter — and that parameter is now precisely what this
+      lesson just explained. <code>ddof=0</code> divides by \(n\) (population
+      variance); <code>ddof=1</code> divides by \(n-1\) (sample variance,
+      Bessel's correction). Knowing which one a given call site needs is
+      exactly the population-vs-sample judgment call worked through above.
+      More broadly, this primer is the statistical vocabulary — mean,
+      variance, \(\sigma\), z-score — needed to read every other lesson's
+      references to sigma, volatility, and standard deviations without having
+      to look the terms up mid-lesson.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this goes wrong in practice</h3>
+    <p>
+      <strong>Confusing standard deviation with standard error.</strong>
+      Standard deviation measures spread in the <em>data itself</em>. Standard
+      error measures the uncertainty in an <em>estimate</em> (like the mean)
+      computed from a sample of that data, and it shrinks as the sample gets
+      larger (\(\text{SE} = \sigma/\sqrt{n}\)) — a much larger sample gives a
+      more precise estimate of the mean, but does not make the underlying data
+      itself any less spread out. Reporting a standard error where a standard
+      deviation was meant (or vice versa) is a common, misleading mix-up.
+    </p>
+    <p>
+      <strong>Assuming real financial returns are normally distributed.</strong>
+      The 68/95/99.7 rule is exact for a true normal distribution, but real
+      daily FX and equity returns are well documented to have "fat tails" —
+      extreme moves happen meaningfully more often than a normal distribution
+      would predict. A \(z=3\) move that "should" happen roughly 0.3% of the
+      time under normality can happen noticeably more often in real markets.
+      This is the entire subject of two later lessons in this series —
+      Extreme Value Theory and Merton Jump-Diffusion — both of which exist
+      specifically because the plain normal/Gaussian assumption underestimates
+      tail risk.
+    </p>
+    <p>
+      <strong>Forgetting Bessel's correction on small samples.</strong> The
+      gap between dividing by \(n\) and by \(n-1\) is largest exactly when
+      \(n\) is small — a 5-observation sample divided by \(n=5\) versus
+      \(n-1=4\) is a 25% difference in variance, versus a rounding error at
+      \(n=1000\). Backtests with thin trade counts (this repo's own
+      OOS-trade-count discipline exists partly for a related reason) are
+      exactly where getting this wrong matters most.
+    </p>
+    <p>
+      <strong>Treating a z-score threshold as a probability guarantee.</strong>
+      "\(|z|>2\) happens about 5% of the time" is a statement about a
+      hypothetical normal distribution, not a promise about the future
+      frequency of the real, non-normal series being measured. Use z-score
+      gates as a consistent, comparable filter — not as a literal probability
+      forecast.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why do we square deviations from the mean instead of just averaging \(|x_i - \bar{x}|\)?</summary>
+    <div class="tl-answer">
+      Averaging the raw deviations \(x_i - \bar{x}\) always gives exactly
+      zero, since positive and negative deviations are algebraically
+      guaranteed to cancel — it's useless as a spread measure. Squaring (like
+      taking the absolute value) fixes that by making every term positive.
+      Squaring specifically also penalizes large deviations disproportionately
+      more than small ones (a deviation twice as big contributes four times as
+      much, not twice as much), which is a desirable property for measuring
+      risk, and the square function is smooth everywhere, which makes it far
+      more convenient for the calculus-based estimation methods (least
+      squares, maximum likelihood) built on top of variance. The absolute-value
+      alternative (mean absolute deviation) is a valid statistic too, just a
+      different, less commonly used one, partly because it lacks that
+      smoothness.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why does sample variance divide by \(n-1\) instead of \(n\)?</summary>
+    <div class="tl-answer">
+      Because the sample mean \(\bar{x}\) used in the formula is itself
+      estimated from the same data, and by construction it's the value that
+      minimizes the sum of squared deviations for that specific sample —
+      making the resulting sum of squares a little smaller, on average, than
+      it would be around the true (unknown) population mean \(\mu\). Dividing
+      by the smaller number \(n-1\) instead of \(n\) exactly corrects for that
+      systematic understatement. Equivalently: only \(n-1\) of the \(n\)
+      deviations are free to vary once \(\bar{x}\) is fixed, because all \(n\)
+      deviations must sum to zero — one degree of freedom was used up
+      estimating the mean, so dividing by the remaining \(n-1\) degrees of
+      freedom is the more honest denominator.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What does a z-score of 2.5 tell you about an observation?</summary>
+    <div class="tl-answer">
+      It tells you the observation sits 2.5 standard deviations above its
+      reference mean. If the underlying data is approximately normally
+      distributed, that puts it beyond the \(\pm2\sigma\) band (which covers
+      about 95% of outcomes) but inside the \(\pm3\sigma\) band (about 99.7%)
+      — a genuinely unusual, moderately-rare value, roughly in the outer 1-2%
+      of the distribution on that side. It does not, by itself, guarantee the
+      observation is a "true" outlier in the real-world data-generating
+      process — real financial return distributions are fatter-tailed than
+      normal, so a \(z=2.5\) event can occur more often in practice than the
+      normal-distribution math alone would suggest.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Two datasets have the same mean but different standard deviations. What does that tell you, and what doesn't it tell you?</summary>
+    <div class="tl-answer">
+      It tells you the two datasets are centered at the same typical value but
+      differ in how spread out they are around that center — the one with the
+      larger standard deviation has values that swing further from the mean
+      on average (more volatile, less predictable), while the one with the
+      smaller standard deviation clusters more tightly. It does NOT tell you
+      anything about the shape of either distribution (skewed vs. symmetric,
+      normal vs. fat-tailed), about which dataset is "better" or "worse"
+      without more context, or about any relationship (correlation) between
+      the two datasets — mean and standard deviation alone are a two-number
+      summary, not a full description.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. A dataset has \(n=4\) observations. Roughly how different will population variance (÷4) and sample variance (÷3) be, and why does the sample size matter here?</summary>
+    <div class="tl-answer">
+      Dividing the same sum of squared deviations by 3 instead of 4 inflates
+      the result by a factor of \(4/3 \approx 1.33\) — a 33% difference,
+      which is large. This gap shrinks as \(n\) grows: at \(n=100\), dividing
+      by 99 instead of 100 changes the result by only about 1%. Bessel's
+      correction matters most exactly when data is scarce, which is common in
+      finance with short backtests or thin trade counts — using the wrong
+      denominator on a small sample is a bigger, more consequential error than
+      doing it on a large one.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>David Freedman, Robert Pisani &amp; Roger Purves, <em>Statistics</em>, 4th ed., W. W. Norton, 2007 — a widely used, notably careful and non-mathematical introductory statistics textbook; its treatment of the standard deviation and the normal approximation is the standard "start from zero" reference this primer follows in spirit.</li>
+    <li>Abraham de Moivre, <em>The Doctrine of Chances</em>, 1733 supplement — the earliest known derivation of the normal curve, as an approximation to the binomial distribution for large numbers of coin flips, predating Gauss by roughly three-quarters of a century.</li>
+    <li>Carl Friedrich Gauss, <em>Theoria Motus Corporum Coelestium</em>, 1809 — Gauss's development of the normal distribution as the error law of astronomical measurement, in service of predicting orbits from imprecise observations; the distribution bears his name from this work, though de Moivre's result came first in a different context.</li>
+    <li><code>js/statsCore.js</code> in this repo — the shared Tier-1 brick (<code>rollingZScore</code>, <code>rollingZAt</code>, <code>rollingPercentile</code>, moments with a <code>ddof</code> parameter) implementing exactly the z-score and variance math this lesson derives.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="primer-probability.html">Probability &amp; Random Variables →</a>
+  </div>
+</div>
+</body>
+</html>

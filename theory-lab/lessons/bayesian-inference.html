@@ -236,6 +236,33 @@
     </p>
   </div>
 
+  <div class="tl-chart">
+    <div class="tl-chart-label">Worked example, visualized</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart comparing the 20% prior probability of a trend day to the 50% posterior probability after the classifier flags trend-day">
+      <line x1="60" y1="20" x2="580" y2="20" style="stroke:var(--border);stroke-dasharray:2,2" />
+      <line x1="60" y1="65" x2="580" y2="65" style="stroke:var(--border);stroke-dasharray:2,2" />
+      <line x1="60" y1="110" x2="580" y2="110" style="stroke:var(--border);stroke-dasharray:2,2" />
+      <line x1="60" y1="155" x2="580" y2="155" style="stroke:var(--border);stroke-dasharray:2,2" />
+      <line x1="60" y1="200" x2="580" y2="200" style="stroke:var(--border);stroke-dasharray:2,2" />
+      <text x="50" y="24" fill="var(--text3)" font-size="10" text-anchor="end">100%</text>
+      <text x="50" y="69" fill="var(--text3)" font-size="10" text-anchor="end">75%</text>
+      <text x="50" y="114" fill="var(--text3)" font-size="10" text-anchor="end">50%</text>
+      <text x="50" y="159" fill="var(--text3)" font-size="10" text-anchor="end">25%</text>
+      <text x="50" y="204" fill="var(--text3)" font-size="10" text-anchor="end">0%</text>
+      <rect x="160" y="164" width="120" height="36" style="fill:var(--purple)" rx="2" />
+      <text x="220" y="150" fill="var(--text)" font-size="16" font-weight="700" text-anchor="middle">20%</text>
+      <text x="220" y="222" fill="var(--text3)" font-size="12" text-anchor="middle">Prior</text>
+      <text x="220" y="237" fill="var(--text3)" font-size="11" text-anchor="middle">P(trend day)</text>
+      <rect x="360" y="110" width="120" height="90" style="fill:var(--blue)" rx="2" />
+      <text x="420" y="96" fill="var(--text)" font-size="16" font-weight="700" text-anchor="middle">50%</text>
+      <text x="420" y="222" fill="var(--text3)" font-size="12" text-anchor="middle">Posterior</text>
+      <text x="420" y="237" fill="var(--text3)" font-size="11" text-anchor="middle">P(trend day | flagged)</text>
+    </svg>
+    <div class="tl-chart-caption">
+      The classifier's headline "80% accurate" sounds like it should mean an 80% chance any flagged day really is a trend day. It doesn't. Because trend days are rare to begin with (the <strong>20% prior</strong>, purple bar), the false alarms drawn from the much larger population of reversion days catch up to the true alarms from the small trend-day population, and the number that actually describes your confidence in a flagged day is the <strong>50% posterior</strong> (blue bar) — a coin flip, not the quoted accuracy figure.
+    </div>
+  </div>
+
   <h2>How practitioners actually use this</h2>
   <p>
     Three places this shows up constantly, outside of pure statistics:

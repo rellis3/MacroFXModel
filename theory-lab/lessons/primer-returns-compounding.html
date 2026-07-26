@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Returns, Log-Returns &amp; Compounding — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Math Primer / Returns, Log-Returns &amp; Compounding</div>
+  <div class="tl-kicker">Math Primer · Primer 4 of 4</div>
+  <h1 class="tl-title">Returns, Log-Returns &amp; Compounding</h1>
+  <p class="tl-dek">Two ways to measure "how much did the price move," why they disagree the moment volatility shows up, and why that disagreement is the single fact underneath option pricing and position sizing alike.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">PRIMER — the last stop before Lesson 1</span>
+    <span>~14 min read</span>
+    <span>Prereqs: Correlation &amp; Linear Regression</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    Every lesson from here on describes a price series with a mean and a
+    variance and calls the result "the return." That word is doing more work
+    than it looks like it's doing. There are two mathematically distinct
+    definitions of "return" in common use — the simple, percentage-change
+    return you'd compute by hand, and the log return that every stochastic
+    model in this series (Black-Scholes, GARCH, the Ornstein-Uhlenbeck
+    process, Kalman filters on price) is secretly built on. They agree almost
+    exactly for small moves and diverge in ways that matter for large ones,
+    and the gap between them is not a technicality — it is the reason a
+    volatile strategy compounds slower than its own average return suggests,
+    the reason option pricing models assume prices are lognormal rather than
+    normal, and the reason this repo's forecast engine scales its volatility
+    bands by the square root of the horizon instead of the horizon itself.
+  </p>
+  <p>
+    This is the fourth and final math primer, and it closes the loop the
+    first three opened. The statistics primer gave you mean, variance, and
+    standard deviation as tools for describing a distribution. The
+    probability primer gave you independence and the Central Limit Theorem —
+    why sums of many small, independent things start looking Gaussian. The
+    correlation and regression primer gave you the machinery for relating two
+    series to each other. This primer applies all three to the one series
+    every lesson after this one actually cares about: a price, evolving
+    through time, and the arithmetic of what happens when you chain many
+    periods of it together.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>"Average return" is a trap if you don't say which average</h3>
+    <p>
+      Imagine a strategy that, over two periods, is up 50% in the first and
+      down 50% in the second. Averaged the obvious way — add the two numbers,
+      divide by two — the "average return" is exactly 0%. It sounds like you
+      should have your money back. You don't. Start with $100: up 50% takes
+      you to $150; down 50% of that new, larger $150 takes you to $75. You
+      lost a quarter of your money on a strategy whose average return was
+      zero. Nothing about that is a trick or a rounding error — it is what
+      multiplying does that adding doesn't. A gain and an equal-sized loss
+      are not opposites once you're compounding, because the loss is taken
+      off a bigger base than the gain was added to a smaller one. This one
+      example is the entire subject of this primer in miniature: it is why
+      there are two different "averages" of a return series (arithmetic and
+      geometric), why the gap between them is called volatility drag, and
+      why that gap grows with variance, not with how good or bad the
+      individual returns "average out" to look.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    <strong>Two definitions of return.</strong> Let \(P_t\) be a price (or
+    level, or NAV) at time \(t\), and \(P_{t-1}\) the price one period
+    earlier. The <strong>simple return</strong> — the one everyone computes
+    first, and the one that appears on a brokerage statement — is the
+    percentage change:
+  </p>
+  <div class="tl-math">\[ R_t = \frac{P_t - P_{t-1}}{P_{t-1}} \]</div>
+  <p>
+    The <strong>log return</strong> is the natural logarithm of the price
+    ratio instead:
+  </p>
+  <div class="tl-math">\[ r_t = \ln\!\left(\frac{P_t}{P_{t-1}}\right) \]</div>
+  <p>
+    These are related by a simple identity worth holding onto:
+    \(1+R_t = P_t/P_{t-1} = e^{r_t}\), so \(r_t = \ln(1+R_t)\) and
+    \(R_t = e^{r_t}-1\). Neither definition is "more correct" in the
+    abstract — a 10% simple gain is a real, literal 10% more money, and
+    that's what a P&amp;L statement should show. But the two behave
+    completely differently once you start chaining periods together, and
+    that difference is the whole reason quantitative models default to log
+    returns almost everywhere.
+  </p>
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(P_t\)</td><td>Price (or index level, NAV, exchange rate) at time \(t\).</td></tr>
+      <tr><td>\(R_t\)</td><td>Simple return over period \(t\): \((P_t-P_{t-1})/P_{t-1}\), a percentage of the starting price.</td></tr>
+      <tr><td>\(r_t\)</td><td>Log return over period \(t\): \(\ln(P_t/P_{t-1})\).</td></tr>
+      <tr><td>\(\bar{R}\), \(\mu\)</td><td>Arithmetic mean of a return series — the plain average, add and divide.</td></tr>
+      <tr><td>\(g\)</td><td>Geometric mean (compounded per-period growth rate) — the constant per-period return that reproduces the same ending wealth.</td></tr>
+      <tr><td>\(\sigma^2\)</td><td>Variance of the return series; \(\sigma\) is its standard deviation, the volatility.</td></tr>
+      <tr><td>\(T\)</td><td>Number of periods (the holding horizon) a return or a volatility figure is measured or scaled over.</td></tr>
+    </table>
+  </div>
+  <p>
+    <strong>Why simple returns don't add across time.</strong> Chain two
+    periods of simple returns together and the result is not their sum.
+    Starting wealth \(W_0\) becomes \(W_0(1+R_1)\) after period 1, then
+    \(W_0(1+R_1)(1+R_2)\) after period 2. The two-period simple return is
+    \((1+R_1)(1+R_2) - 1 = R_1 + R_2 + R_1 R_2\) — the sum of the two
+    individual returns <em>plus a cross term</em> \(R_1R_2\) that doesn't
+    vanish unless one of the returns is zero. Simple returns compound
+    <strong>multiplicatively</strong>, not additively, which is exactly what
+    made the +50%/-50% example in the intuition box misleading if you tried
+    to average the raw numbers.
+  </p>
+  <p>
+    <strong>Why log returns do add across time.</strong> This is the single
+    most useful property in this primer, and it falls straight out of one
+    logarithm rule: \(\ln(ab) = \ln a + \ln b\). Since
+    \(P_2/P_0 = (P_1/P_0)\cdot(P_2/P_1)\), taking the log of both sides gives:
+  </p>
+  <div class="tl-math">\[ \ln\!\left(\frac{P_2}{P_0}\right) = \ln\!\left(\frac{P_1}{P_0}\right) + \ln\!\left(\frac{P_2}{P_1}\right) \]</div>
+  <p>
+    which is exactly \(r_{0\to 2} = r_{0\to 1} + r_{1\to 2}\): the log return
+    over the whole two-period stretch is simply the <em>sum</em> of the log
+    returns of each leg — no cross term, no approximation, an exact identity
+    for any size of move. This generalizes to any number of periods by the
+    same telescoping argument: the log return from time \(0\) to time \(T\)
+    is just \(r_1 + r_2 + \cdots + r_T\), the plain sum of the one-period log
+    returns in between. This is what "log returns are time-additive" means,
+    and it is the reason models that need to reason about returns over
+    different horizons (a day, a week, a month, an option's time to expiry)
+    almost always work in log-return space: addition is a far simpler
+    operation to build statistics and probability theory on top of than the
+    multiplicative compounding simple returns require.
+  </p>
+
+  <p>
+    <strong>Arithmetic mean vs. geometric mean.</strong> Given a series of
+    simple returns \(R_1, \ldots, R_T\), there are two natural ways to ask
+    "what was the average return?" The <strong>arithmetic mean</strong> is
+    the plain average, \(\bar{R} = \frac{1}{T}\sum_t R_t\) — it answers "if I
+    picked one period at random, what return would I expect?" The
+    <strong>geometric mean</strong> \(g\) answers a different question: "what
+    single, constant per-period return, applied every period, would have
+    turned my actual starting wealth into my actual ending wealth?" Formally,
+    it solves \((1+g)^T = \prod_t (1+R_t)\), so:
+  </p>
+  <div class="tl-math">\[ g = \left(\prod_{t=1}^{T}(1+R_t)\right)^{1/T} - 1 \]</div>
+  <p>
+    The geometric mean is the number that actually describes compounded
+    performance; the arithmetic mean is the number that describes the
+    typical single period. They coincide only when every \(R_t\) is
+    identical (zero variance) — the moment there is any spread at all, \(g\)
+    falls below \(\bar{R}\), and it falls further the more variance there is.
+    That gap is not a rounding artifact of the formula; it is a real,
+    mechanical consequence of multiplying instead of adding, the same
+    mechanism the +50%/−50% example showed directly.
+  </p>
+  <p>
+    <strong>Deriving the gap: volatility drag.</strong> To see exactly where
+    the gap comes from — and to see that it's driven by variance
+    specifically, not by the mean — work in log returns and lean on a small
+    piece of calculus: for small \(x\), \(\ln(1+x) \approx x - x^2/2\) (the
+    second-order Taylor expansion of the natural log around zero; this is
+    the same kind of local approximation used elsewhere in this series, and
+    it gets more accurate the smaller \(x\) is). Apply it to each period's
+    simple return:
+  </p>
+  <div class="tl-math">\[ r_t = \ln(1+R_t) \approx R_t - \frac{R_t^2}{2} \]</div>
+  <p>
+    Average both sides over many periods. The average of \(R_t\) is just the
+    arithmetic mean \(\bar{R}\). The average of \(R_t^2\) is, by the standard
+    definition of variance (mean of the squared deviations from the mean,
+    plus the mean squared — a fact from the statistics primer), approximately
+    \(\sigma^2 + \bar{R}^2\); for the return sizes typical of a single trading
+    period, \(\bar{R}^2\) is small enough relative to \(\sigma^2\) to drop,
+    leaving a clean, useful approximation:
+  </p>
+  <div class="tl-math">\[ \bar{r} \approx \bar{R} - \frac{\sigma^2}{2} \]</div>
+  <p>
+    And because log returns are additive across time, the average log return
+    over many periods <em>is</em> the compounded per-period growth rate — so
+    \(\bar{r} \approx g\), and the relationship becomes the volatility-drag
+    formula that also anchors the Kelly Criterion lesson:
+  </p>
+  <div class="tl-math">\[ g \approx \bar{R} - \frac{\sigma^2}{2} \]</div>
+  <p>
+    Read this literally: the compounded growth rate you actually experience
+    is approximately the average per-period return you'd naively compute,
+    <em>minus half the variance</em>. That subtracted term,
+    \(\sigma^2/2\), is <strong>volatility drag</strong> (sometimes called
+    variance drain). It costs you nothing if returns are perfectly steady
+    (\(\sigma=0\)) and it costs you more, quadratically, the more the
+    returns bounce around — doubling volatility while holding the arithmetic
+    mean fixed doesn't double the drag, it quadruples it, because the drag
+    term is \(\sigma^2\), not \(\sigma\). This is exactly why two strategies
+    with identical average returns can have wildly different real-world
+    outcomes: the steadier one keeps almost all of its arithmetic mean as
+    real growth, and the choppier one gives a chunk of it back to its own
+    variance before it ever reaches the compounding investor.
+  </p>
+
+  <p>
+    <strong>Why volatility scales with the square root of time.</strong> Log
+    returns being additive across time buys one more result, and it's the
+    one this repo's engines lean on daily (literally). Suppose one-period log
+    returns \(r_1, \ldots, r_T\) are approximately independent of each other
+    — a reasonable assumption for returns measured over non-overlapping
+    windows with no strong serial correlation, and the same independence
+    idea the probability primer built the Central Limit Theorem on. The
+    \(T\)-period log return is their sum, \(r_{0\to T} = \sum_{t=1}^{T} r_t\).
+    A basic property of variance — proved in the statistics primer — is that
+    <strong>the variance of a sum of independent variables is the sum of
+    their variances</strong> (this is not true of standard deviations, only
+    of variances; it's why variance, not standard deviation, is the additive
+    quantity). If every period has the same variance \(\sigma^2\):
+  </p>
+  <div class="tl-math">\[ \text{Var}(r_{0\to T}) = \sum_{t=1}^{T}\text{Var}(r_t) = T\sigma^2 \]</div>
+  <p>
+    Standard deviation is the square root of variance, so the \(T\)-period
+    volatility is:
+  </p>
+  <div class="tl-math">\[ \sigma_T = \sqrt{T\sigma^2} = \sigma\sqrt{T} \]</div>
+  <p>
+    This is the famous "square-root-of-time" rule. It is not an empirical
+    regularity someone noticed in market data — it's a direct algebraic
+    consequence of (1) log returns adding across time and (2) variances of
+    independent things adding across time, both derived above from
+    definitions this series already introduced. It tells you, for instance,
+    that if daily volatility is \(\sigma\), then 4-day volatility is
+    \(2\sigma\) (not \(4\sigma\)) and 16-day volatility is \(4\sigma\) — the
+    <em>time</em> horizon has to increase sixteenfold to double the
+    volatility, because volatility scales with the square root of the
+    horizon, not the horizon itself.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Arithmetic mean vs. compounded (geometric) growth</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two lines diverging over time: naive arithmetic-mean projection vs actual compounded value with volatility drag">
+      <line x1="40" y1="260" x2="600" y2="260" style="stroke:var(--border)" stroke-width="1.5"></line>
+      <line x1="40" y1="30" x2="40" y2="260" style="stroke:var(--border)" stroke-width="1.5"></line>
+      <text x="600" y="278" fill="var(--text3)" font-size="11" text-anchor="end" font-family="DM Mono, monospace">time (periods) →</text>
+      <text x="20" y="30" fill="var(--text3)" font-size="11" text-anchor="middle" font-family="DM Mono, monospace" transform="rotate(-90 20 145)">value →</text>
+      <path d="M 40 240 C 140 210, 220 175, 300 140 C 380 105, 460 68, 600 34" fill="none" style="stroke:var(--text3);stroke-width:2;stroke-dasharray:5,4"></path>
+      <path d="M 40 240 C 140 224, 220 205, 300 188 C 380 170, 480 148, 600 112" fill="none" style="stroke:var(--blue);stroke-width:2.5"></path>
+      <text x="480" y="60" fill="var(--text3)" font-size="11" font-family="DM Sans, sans-serif">arithmetic-mean projection</text>
+      <text x="420" y="200" fill="var(--blue)" font-size="11" font-family="DM Sans, sans-serif">actual compounded value</text>
+      <text x="420" y="214" fill="var(--blue)" font-size="11" font-family="DM Sans, sans-serif">(with volatility drag)</text>
+      <circle cx="40" cy="240" r="3" fill="var(--text2)"></circle>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--text3)"></i>Arithmetic-mean projection</span>
+      <span><i style="background:var(--blue)"></i>Actual compounded value</span>
+    </div>
+    <div class="tl-chart-caption">Illustrative, not real data. Two paths with the exact same average per-period return diverge once volatility is added, because compounding is multiplicative — this is exactly the geometric-vs-arithmetic-mean gap the Kelly Criterion lesson later builds a whole sizing argument around.</div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>+50% then −50%: a 0% average return that loses you 25%</h3>
+    <p>
+      Take $100 through two periods: period 1 is \(R_1=+50\%\), period 2 is
+      \(R_2=-50\%\). The <strong>arithmetic mean</strong> is
+      \((0.50 + (-0.50))/2 = 0\%\) — by that measure, "nothing happened."
+    </p>
+    <p>
+      Now compound it for real. After period 1: \(100 \times 1.50 = \$150\).
+      After period 2: \(150 \times 0.50 = \$75\). Starting from $100 and
+      ending at $75 is a <strong>25% loss</strong> — despite a 0% arithmetic
+      average return. The geometric mean here is
+      \(g = \sqrt{1.50\times 0.50} - 1 = \sqrt{0.75}-1 \approx -13.4\%\) per
+      period, which correctly compounds: \((1-0.134)^2 \approx 0.75\), back
+      to the actual $75 ending value. The arithmetic mean told you the
+      typical single-period return; the geometric mean told you what
+      actually happened to your money.
+    </p>
+    <p>
+      The log-return version confirms the additivity property derived above,
+      exactly, not approximately. \(r_1 = \ln(1.50) \approx 0.4055\),
+      \(r_2 = \ln(0.50) \approx -0.6931\). Their sum is
+      \(0.4055 + (-0.6931) = -0.2877\). Compare that to the log return of the
+      whole two-period move computed directly:
+      \(\ln(75/100) = \ln(0.75) \approx -0.2877\) — the same number, because
+      log returns add across time by construction, with no approximation
+      needed for this identity (the Taylor-expansion approximation earlier
+      was only for the <em>arithmetic</em>-mean shortcut formula
+      \(g\approx\bar{R}-\sigma^2/2\), not for the exact log-additivity
+      identity used here).
+    </p>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Quant desks default to log returns for almost any modeling task —
+    computing historical volatility, fitting a GARCH model, feeding a return
+    series into a regression, simulating a price path — precisely because of
+    the two properties derived above: additivity across time (so a daily
+    model and a monthly model are the same math, just summed over more
+    periods) and the fact that log returns can range from \(-\infty\) to
+    \(+\infty\) while simple returns are bounded below at \(-100\%\), which
+    makes a Gaussian (or any symmetric, unbounded) distributional assumption
+    far more defensible for log returns than for simple ones. This is the
+    exact justification behind the standard assumption that price levels are
+    <strong>lognormally</strong> distributed — if log returns are
+    approximately normal (a sum of many small, roughly independent shocks,
+    which is the Central Limit Theorem argument from the probability primer
+    applied to a price series), then the price level itself, being
+    \(e^{\text{sum of normals}}\), is lognormal by definition. That single
+    assumption is the foundation Black-Scholes is built on.
+  </p>
+  <p>
+    Performance reporting, by contrast, almost always uses simple returns and
+    the geometric mean, not the arithmetic mean — a fund's "annualized
+    return" is a compounded (geometric) figure, because that's the number
+    that actually reconciles with the dollars in the account. Seeing both
+    numbers side by side on a tearsheet — arithmetic mean return and CAGR
+    (compound annual growth rate) — is a legitimate, quick volatility-drag
+    check: the bigger the gap between them, the more variance is eating into
+    real compounded performance, independent of whatever the win rate or
+    average trade looks like in isolation.
+  </p>
+  <p>
+    The square-root-of-time rule is the standard, simplest way risk desks
+    convert a volatility or Value-at-Risk figure between horizons — a
+    1-day 95% VaR is routinely scaled to a 10-day VaR by multiplying by
+    \(\sqrt{10}\) rather than re-estimating the whole model at the longer
+    horizon, precisely because it falls directly out of the independent-additive-variance
+    argument above. It is a convenience, not a law of nature — the entire
+    scaling collapses if the independence assumption it rests on breaks,
+    which is a theme this series returns to more than once.
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>The literal design rule behind the forecast engine's horizons</h3>
+    <p>
+      CLAUDE.md states the Lego Principle's third rule plainly: strategies
+      here must be "horizon-agnostic. Daily / weekly / 20-day differ only by
+      σ scale (×1 / ×√5 / ×√20) and window length." That is the
+      square-root-of-time rule derived above, applied directly: 5 trading
+      days scales daily σ by \(\sqrt{5}\), 20 trading days scales it by
+      \(\sqrt{20}\), because log returns across those days are (approximately)
+      independent and additive, so their variances add and their standard
+      deviations scale by the square root of the day count. This is not a
+      coincidental resemblance — it is the exact mechanism, and it's why
+      <code>js/forecastCore.js</code>'s <code>HORIZONS</code> table and
+      <code>js/volBacktestEngine.js</code>'s vol-sigma series are built to
+      share one volatility calculation scaled by horizon, rather than
+      re-estimating volatility separately at each horizon from scratch.
+    </p>
+    <p>
+      The gap this primer derives between arithmetic and geometric means,
+      \(g \approx \mu - \sigma^2/2\), reappears by name and by formula in the
+      Kelly Criterion lesson, where it is the mechanism behind volatility
+      drag and the reason overbetting past the Kelly-optimal size can turn a
+      genuinely positive-expectancy bet's compounded growth rate negative.
+      And the lognormal price assumption this primer's log-additivity
+      argument justifies is the starting assumption of the upcoming
+      Black-Scholes lesson — geometric Brownian motion, the stochastic
+      process Black-Scholes prices options under, is defined directly in
+      terms of log returns being the natural additive unit of price
+      movement, for exactly the reasons worked out above.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where returns-and-compounding reasoning quietly goes wrong</h3>
+    <p>
+      <strong>Averaging simple returns and reporting it as "the" return over
+      a longer period.</strong> The arithmetic mean of a set of simple
+      returns describes a typical single period; it does not describe what
+      happened to compounded wealth, and the gap between the two — as the
+      worked example shows starkly — can be the difference between "flat"
+      and "down 25%." Any headline "average return" figure that doesn't
+      specify arithmetic or geometric should be treated as ambiguous, and a
+      strategy summary that only reports the arithmetic mean is, whether
+      intentionally or not, reporting the more flattering of the two
+      numbers.
+    </p>
+    <p>
+      <strong>Trusting log-return additivity for very large returns.</strong>
+      The exact additivity identity \(r_{0\to T} = \sum r_t\) always holds —
+      that part is algebra, not approximation, and the worked example
+      confirmed it exactly. What breaks down for large moves is the separate
+      small-\(x\) approximation \(\ln(1+x)\approx x - x^2/2\) used to derive
+      the volatility-drag formula \(g\approx\bar{R}-\sigma^2/2\) — that
+      shortcut degrades as individual-period returns get large (a genuine
+      concern for daily crypto or single-name equity moves, less so for
+      typical daily FX). When returns are large, use the exact geometric-mean
+      formula rather than the Taylor-approximated shortcut.
+    </p>
+    <p>
+      <strong>Applying square-root-of-time scaling when returns aren't
+      independent.</strong> The entire derivation above rests on periods
+      being approximately independent, so their variances add cleanly. Real
+      markets violate this routinely — volatility clustering (calm periods
+      followed by calm periods, turbulent periods followed by turbulent
+      periods, the exact phenomenon the GARCH lesson models) means today's
+      variance is not independent of yesterday's, and under positive serial
+      correlation in volatility, naive \(\sqrt{T}\) scaling <em>understates</em>
+      true multi-period risk. The rule is a useful default, not a
+      universal law, and it should be checked against realized multi-period
+      volatility rather than assumed.
+    </p>
+    <p>
+      <strong>Confusing "zero average return" with "no loss."</strong> This
+      is the intuition-box trap restated as a pitfall: a strategy or a
+      position can show a 0% (or even positive) arithmetic mean return over
+      some stretch while actually losing money in compounded terms, purely
+      because of variance. Checking realized ending equity against the
+      arithmetic-mean-implied projection is the simplest way to catch this
+      before it's mistaken for a healthy, break-even system.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why can two return series have the same arithmetic mean but wildly different compounded outcomes?</summary>
+    <div class="tl-answer">
+      Because compounding is multiplicative, not additive: ending wealth is a
+      product of \((1+R_t)\) terms, and the geometric mean that actually
+      governs that product is approximately \(g \approx \bar{R} - \sigma^2/2\)
+      — it depends on variance as well as the arithmetic mean. Two series can
+      share the same \(\bar{R}\) while having very different \(\sigma^2\); the
+      higher-variance one suffers more volatility drag and compounds to a
+      lower ending value even though its "typical single period" looks
+      identical on paper. The +50%/−50% example makes this concrete: the
+      arithmetic mean is 0%, but a real 25% loss results.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why are log returns additive across time while simple returns are not?</summary>
+    <div class="tl-answer">
+      Chaining simple returns multiplies wealth factors together —
+      \((1+R_1)(1+R_2)\) — which expands to \(R_1+R_2+R_1R_2\), a sum plus a
+      nonzero cross term. Chaining log returns instead adds the logs of those
+      same wealth factors directly, because \(\ln(ab)=\ln a+\ln b\) is an
+      exact identity with no cross term:
+      \(\ln(P_2/P_0)=\ln(P_1/P_0)+\ln(P_2/P_1)\). This holds exactly for any
+      size of move, which is why log returns, not simple returns, are the
+      natural unit for reasoning about returns across different time
+      horizons.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why does a strategy's volatility roughly quadruple if you extend the holding period from 1 day to 16 days?</summary>
+    <div class="tl-answer">
+      Volatility scales with the <em>square root</em> of time, not time
+      itself: \(\sigma_T = \sigma\sqrt{T}\), because variances of
+      approximately independent periods add (\(\text{Var}(r_{0\to T}) =
+      T\sigma^2\)) and standard deviation is the square root of variance.
+      Going from 1 day to 16 days multiplies the horizon by 16, so volatility
+      scales by \(\sqrt{16}=4\) — quadruples — not by 16. This is exactly the
+      ×1 / ×√5 / ×√20 scaling CLAUDE.md specifies for this repo's daily /
+      weekly / 20-day horizons.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. In the +50%/−50% worked example, why does the log-return sum exactly equal the log return of the whole two-period move, while the simple-return average does not equal the whole-period simple return?</summary>
+    <div class="tl-answer">
+      Log-return additivity, \(r_{0\to2}=r_1+r_2\), is an exact algebraic
+      identity from \(\ln(ab)=\ln a+\ln b\) — no approximation, so
+      \(\ln(1.5)+\ln(0.5)=\ln(0.75)\) matches to full precision. Simple
+      returns compound multiplicatively: the two-period simple return is
+      \((1+R_1)(1+R_2)-1\), which equals \(R_1+R_2\) only when the cross term
+      \(R_1R_2\) is zero. Here \(R_1R_2 = 0.5\times(-0.5) = -0.25\), which is
+      exactly why the "0% average" and the actual "−25% outcome" differ by
+      25 percentage points.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why does Black-Scholes assume prices are lognormally distributed rather than normally distributed?</summary>
+    <div class="tl-answer">
+      The model assumes log returns, not price levels, are approximately
+      normal — a reasonable assumption if each log return is the sum of many
+      small, roughly independent shocks (the Central Limit Theorem
+      argument). Because log returns add across time
+      (\(r_{0\to T}=\sum r_t\)), the price level itself is \(P_T = P_0
+      e^{\sum r_t}\) — an exponential of a (approximately) normal quantity,
+      which is the definition of a lognormal distribution. A normal
+      assumption directly on price levels would allow negative prices, which
+      a lognormal assumption rules out by construction, matching the reality
+      that prices (and FX rates) can't go below zero.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Zvi Bodie, Alex Kane, and Alan J. Marcus, <em>Investments</em>, McGraw-Hill (any recent edition) — the standard MBA-level textbook treatment of arithmetic vs. geometric mean returns, including the standard worked examples this primer's own example follows the spirit of.</li>
+    <li>William J. Bernstein, <em>"The Volatility Drag/Variance Drain Trap"</em> and related writing (see also his book <em>The Four Pillars of Investing</em>, McGraw-Hill, 2002) — the accessible, practitioner-facing source most associated with popularizing "volatility drag" / "variance drain" as a named concept for retail and institutional investors alike.</li>
+    <li>Paul A. Samuelson, <em>"The 'Fallacy' of Maximizing the Geometric Mean in Long Sequences of Investing or Gambling"</em>, Proceedings of the National Academy of Sciences, 1971 — Samuelson's classic, sharp clarification of exactly when maximizing geometric mean growth is and isn't the correct objective for an investor, a necessary counterweight before treating "maximize compounded growth" as an unconditional rule.</li>
+    <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson (any recent edition) — Chapter on "The Black-Scholes-Merton Model" derives the lognormal price / normal log-return assumption from first principles, the direct bridge from this primer to the upcoming options-pricing lesson.</li>
+  </ul>
+
+  <h2>You're ready for Lesson 1</h2>
+  <div class="tl-callout">
+    That's the full primer sequence. You now have the statistical vocabulary
+    (mean, variance, standard deviation, z-scores) to describe any
+    distribution this series hands you; the probability foundations
+    (expectation, independence, and why the Central Limit Theorem makes
+    "approximately normal" a reasonable default for sums of small shocks) to
+    reason about uncertainty formally; the regression toolkit (covariance,
+    correlation, ordinary least squares, R²) to relate two series to each
+    other and know how much of that relationship to trust; and, from this
+    page, the returns math — log-additivity, the arithmetic/geometric mean
+    gap, and square-root-of-time scaling — that every one of the fourteen
+    lessons ahead will lean on without re-deriving it. None of that math was
+    optional scaffolding; it is the vocabulary the rest of this series is
+    written in. From here, head to the <a href="../hub.html">Theory Lab
+    hub</a> and start with <a href="emh.html">Lesson 1: The Efficient Market
+    Hypothesis</a> — the question of whether there's anything left to find
+    in a price series at all, which is where the substantive material
+    begins.
+  </div>
+
+  <div class="tl-footer-nav">
+    <a href="primer-correlation-regression.html">← Correlation &amp; Linear Regression</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="emh.html">Lesson 1: The Efficient Market Hypothesis →</a>
+  </div>
+</div>
+</body>
+</html>

@@ -304,6 +304,52 @@
     </p>
   </div>
 
+  <div class="tl-chart">
+    <div class="tl-chart-label">Illustrative — normal fit vs. GPD tail fit on a fat-tailed return histogram</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Schematic histogram of returns with a fat left tail, overlaid with a normal-distribution curve that undershoots the tail and a Generalized Pareto Distribution curve that tracks it closely beyond a threshold u">
+      <line x1="40" y1="250" x2="626" y2="250" style="stroke:var(--border);stroke-width:1"></line>
+      <rect x="40"  y="242" width="28" height="8"   style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="71"  y="236" width="28" height="14"  style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="102" y="228" width="28" height="22"  style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="133" y="218" width="28" height="32"  style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="164" y="204" width="28" height="46"  style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="195" y="188" width="28" height="62"  style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="226" y="165" width="28" height="85"  style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="257" y="120" width="28" height="130" style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="288" y="65"  width="28" height="185" style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="319" y="40"  width="28" height="210" style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="350" y="65"  width="28" height="185" style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="381" y="123" width="28" height="127" style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="412" y="182" width="28" height="68"  style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="443" y="222" width="28" height="28"  style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="474" y="241" width="28" height="9"   style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="505" y="242" width="28" height="8"   style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="536" y="244" width="28" height="6"   style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="567" y="246" width="28" height="4"   style="fill:var(--s3);stroke:var(--border)"></rect>
+      <rect x="598" y="247" width="28" height="3"   style="fill:var(--s3);stroke:var(--border)"></rect>
+      <line x1="257" y1="18" x2="257" y2="250" style="stroke:var(--amber);stroke-width:1.5;stroke-dasharray:3,3"></line>
+      <text x="262" y="30" style="font:10px 'DM Mono',monospace;fill:var(--amber)">threshold u</text>
+      <path d="M 54,249 C 59.17,249 74.67,249.17 85,249 C 95.33,248.83 105.67,248.33 116,248 C 126.33,247.67 136.67,248.33 147,247 C 157.33,245.67 167.67,244.33 178,240 C 188.33,235.67 198.67,230.83 209,221 C 219.33,211.17 229.67,197.5 240,181 C 250.33,164.5 260.67,141.5 271,122 C 281.33,102.5 291.67,77.67 302,64 C 312.33,50.33 322.67,40 333,40 C 343.33,40 353.67,50.33 364,64 C 374.33,77.67 384.67,102.5 395,122 C 405.33,141.5 415.67,164.5 426,181 C 436.33,197.5 446.67,211.17 457,221 C 467.33,230.83 477.67,235.67 488,240 C 498.33,244.33 508.67,245.67 519,247 C 529.33,248.33 539.67,247.67 550,248 C 560.33,248.33 570.67,248.83 581,249 C 591.33,249.17 606.83,249 612,249" style="fill:none;stroke:var(--text3);stroke-width:2;stroke-dasharray:4,3"></path>
+      <path d="M 54,243 C 59.17,242.17 74.67,240.17 85,238 C 95.33,235.83 105.67,233 116,230 C 126.33,227 136.67,224 147,220 C 157.33,216 167.67,211 178,206 C 188.33,201 198.67,196.5 209,190 C 219.33,183.5 232,175 240,167 C 248,159 254.17,146.17 257,142" style="fill:none;stroke:var(--red);stroke-width:2.5"></path>
+      <text x="40" y="270" style="font:10px 'DM Mono',monospace;fill:var(--text3)">← larger losses</text>
+      <text x="626" y="270" text-anchor="end" style="font:10px 'DM Mono',monospace;fill:var(--text3)">larger gains →</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--s3);border:1px solid var(--border)"></i>Return histogram</span>
+      <span><i style="background:var(--text3)"></i>Normal distribution fit</span>
+      <span><i style="background:var(--red)"></i>GPD tail fit (beyond u)</span>
+    </div>
+    <div class="tl-chart-caption">
+    Schematic, not fitted to real data. Near the center, the thin dashed normal-distribution curve
+    tracks the histogram reasonably well — but out in the left tail (large losses), it drops toward
+    zero much faster than the bars actually do, badly underestimating how much probability mass sits
+    out there. The red curve is a Generalized Pareto Distribution fitted <em>only</em> to the
+    exceedances beyond the threshold \(u\) (amber dashed line) — restricting the fit to just that
+    region lets it track the fat tail far more closely than the normal curve does, which is the whole
+    point of peaks-over-threshold.
+    </div>
+  </div>
+
   <h2>How practitioners actually use this</h2>
   <p>
   EVT shows up in a fairly specific, disciplined set of roles in real risk management — it is a

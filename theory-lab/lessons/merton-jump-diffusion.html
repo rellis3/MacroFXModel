@@ -91,6 +91,30 @@
     </p>
   </div>
 
+  <div class="tl-chart">
+    <div class="tl-chart-label">Same start, one calendar shock</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two simulated price paths starting at the same point: a pure-diffusion GBM path that wiggles smoothly with no breaks, and a jump-diffusion path that tracks it closely until a marked NFP release, then steps sharply down and resumes smooth wiggling at the new, lower level.">
+      <line x1="340" y1="24" x2="340" y2="250" style="stroke:var(--amber);stroke-dasharray:3,3"/>
+      <text x="346" y="34" font-size="11" font-family="'DM Mono',monospace" fill="var(--amber)">NFP release</text>
+      <polyline points="40,140 80,130 120,145 160,125 200,135 240,150 280,130 320,140 360,128 400,142 440,122 480,138 520,118 560,132 600,115" style="stroke:var(--blue);stroke-width:2" fill="none"/>
+      <polyline points="40,140 80,132 120,143 160,127 200,137 240,148 280,132 320,138 340,138 340,220 360,225 400,210 440,230 480,215 520,235 560,220 600,230" style="stroke:var(--red);stroke-width:2.5" fill="none"/>
+      <circle cx="40" cy="140" r="3.5" fill="var(--text2)"/>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>Pure diffusion (GBM)</span>
+      <span><i style="background:var(--red)"></i>Jump-diffusion</span>
+    </div>
+    <div class="tl-chart-caption">
+      Both paths start at the same point and wiggle almost identically at first.
+      The blue path is what Black-Scholes assumes — continuous by construction,
+      so it can wiggle endlessly but never break, no matter how far you zoom in.
+      The red path shows what actually happens around a scheduled release like
+      NFP: a real discontinuity (the vertical step at the dashed line) that a
+      continuous-path model treats as effectively impossible — exactly the gap
+      jump-diffusion adds back in.
+    </div>
+  </div>
+
   <h2>The math, step by step</h2>
   <p>
     Recall the Black-Scholes world describes the underlying's price as geometric

@@ -357,6 +357,42 @@
     </p>
   </div>
 
+  <div class="tl-chart">
+    <div class="tl-chart-label">The growth-rate curve: why past f*, more size is less growth</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart of geometric growth rate g(f) against bet fraction f. The curve starts at zero, rises to a peak at f-star (full Kelly), then falls back through zero at 2f-star and continues into negative territory beyond that. A marked point on the rising part of the curve, below and left of the peak, shows half-Kelly still solidly positive.">
+      <line x1="70" y1="30" x2="70" y2="270" style="stroke:var(--border)"/>
+      <line x1="70" y1="270" x2="610" y2="270" style="stroke:var(--border)"/>
+      <line x1="70" y1="170" x2="610" y2="170" style="stroke:var(--border)"/>
+      <text x="614" y="174" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">g = 0</text>
+
+      <line x1="275.2" y1="80" x2="275.2" y2="270" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+      <text x="275.2" y="20" text-anchor="middle" fill="var(--text2)" font-size="11" font-family="'DM Mono',monospace">f* (full Kelly)</text>
+
+      <line x1="480.4" y1="170" x2="480.4" y2="270" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+      <text x="480.4" y="288" text-anchor="middle" fill="var(--text2)" font-size="10.5" font-family="'DM Mono',monospace">2f* — growth rate hits zero</text>
+
+      <path d="M70,170 C78.6,163.4 104.2,141.9 121.3,130.6 C138.4,119.4 155.5,110.0 172.6,102.5 C189.7,95.0 206.8,89.4 223.9,85.6 C241.0,81.9 258.1,80.0 275.2,80.0 C292.3,80.0 309.4,81.9 326.5,85.6 C343.6,89.4 360.7,95.0 377.8,102.5 C394.9,110.0 412.0,119.4 429.1,130.6 C446.2,141.9 465.0,156.8 480.4,170.0 C495.8,183.2 507.7,195.2 521.4,209.6 C535.1,224.0 555.7,248.6 562.5,256.4" style="stroke:var(--blue);stroke-width:2.5;fill:none;stroke-linecap:round"/>
+
+      <circle cx="275.2" cy="80" r="3.5" fill="var(--blue)"/>
+      <circle cx="172.6" cy="102.5" r="3.5" fill="var(--amber)"/>
+      <text x="172.6" y="118" text-anchor="middle" fill="var(--amber)" font-size="10.5" font-family="'DM Mono',monospace">½f* (half-Kelly)</text>
+      <circle cx="480.4" cy="170" r="3.5" fill="var(--text2)"/>
+
+      <text x="340" y="296" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">bet fraction f</text>
+      <text x="26" y="150" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 26 150)">growth rate g(f)</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Growth rate rises with bet size only up to <strong>f*</strong> — betting
+      more than that doesn't just add risk, it actively makes the long-run
+      growth rate <em>worse</em>, hitting zero at exactly <strong>2f*</strong>
+      and going negative beyond it, even though every individual bet still has
+      positive expected value. <strong>Half-Kelly</strong> sits on the
+      flatter part of the rising curve: it gives up only a little growth (the
+      curve is nearly flat near the peak) in exchange for a much smaller bet
+      size, and therefore much shallower drawdowns.
+    </div>
+  </div>
+
   <h2>How practitioners actually use this</h2>
   <p>
     Kelly's original 1956 paper wasn't about gambling or investing at all —

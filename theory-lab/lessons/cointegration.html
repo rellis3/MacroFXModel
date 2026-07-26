@@ -383,6 +383,35 @@
     </p>
   </div>
 
+  <div class="tl-chart">
+    <div class="tl-chart-label">Two non-stationary series, one stationary combination</div>
+    <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Top panel: two price series, Series A and Series B, both drifting upward over time with random-walk-like noise. Bottom panel: the residual spread between them, Series A minus beta times Series B, which wanders but keeps reverting toward a horizontal dashed mean line instead of drifting away like the two series above it.">
+      <text x="10" y="14" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">Raw price levels (non-stationary)</text>
+      <polyline points="40,135 70,128 100,132 130,118 160,122 190,105 220,110 250,95 280,100 310,85 340,90 370,75 400,80 430,65 460,70 490,55 520,60 550,45 580,50 600,38" style="stroke:var(--blue);stroke-width:2" fill="none"/>
+      <polyline points="40,140 70,138 100,125 130,130 160,112 190,118 220,100 250,105 280,88 310,95 340,78 370,85 400,68 430,72 460,58 490,62 520,48 550,52 580,40 600,33" style="stroke:var(--purple);stroke-width:2" fill="none"/>
+
+      <line x1="40" y1="240" x2="600" y2="240" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+      <text x="10" y="194" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">Residual spread (stationary)</text>
+      <polyline points="40,245 70,225 100,255 130,235 160,210 190,250 220,230 250,260 280,220 310,245 340,215 370,255 400,235 430,210 460,250 490,225 520,260 550,220 580,245 600,235" style="stroke:var(--green);stroke-width:2" fill="none"/>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>Series A</span>
+      <span><i style="background:var(--purple)"></i>Series B</span>
+      <span><i style="background:var(--green)"></i>Residual spread</span>
+    </div>
+    <div class="tl-chart-caption">
+      Top panel: both raw price series wander upward with no fixed mean of
+      their own — each is individually non-stationary, and neither one ever
+      settles back toward an earlier level in any predictable way. Bottom
+      panel: the specific linear combination between them, <strong>Series A
+      − β·Series B</strong>, does not wander the same way — it keeps
+      snapping back toward the dashed mean line instead of drifting off with
+      the two series above it. That gap, between "neither series alone is
+      mean-reverting" and "the right combination of them is," is exactly
+      what cointegration means.
+    </div>
+  </div>
+
   <h2>How practitioners actually use this</h2>
   <p>
     <strong>Pairs trading</strong> is the flagship application: find two

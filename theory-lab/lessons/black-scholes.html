@@ -382,6 +382,35 @@
     </p>
   </div>
 
+  <div class="tl-chart">
+    <div class="tl-chart-label">Payoff at expiry vs. value today</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Call option payoff diagram. The payoff-at-expiry line is flat at zero below the strike K and rises 1:1 above it, forming a hockey-stick shape. A smooth current-value curve sits above the hockey stick everywhere, closest to it far out of the money and far in the money, and furthest above it right around the strike.">
+      <line x1="40" y1="250" x2="620" y2="250" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="40" y1="250" x2="40" y2="20" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="330" y1="20" x2="330" y2="250" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+      <text x="330" y="267" text-anchor="middle" font-size="12" font-family="'DM Mono',monospace" fill="var(--text3)">K</text>
+      <text x="620" y="270" text-anchor="end" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Underlying price at expiry →</text>
+      <text x="14" y="135" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 14 135)">Option value</text>
+      <text x="34" y="254" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+      <polyline points="40,250 330,250 620,50" style="stroke:var(--text2);stroke-width:2" fill="none"/>
+      <path d="M40,242 C59.3,240.3 117.3,236.3 156,232 C194.7,227.7 243,219.7 272,216 C301,212.3 310.7,216.7 330,210 C349.3,203.3 359,192.3 388,176 C417,159.7 465.3,134.3 504,112 C542.7,89.7 600.7,53.7 620,42" style="stroke:var(--blue);stroke-width:2.5" fill="none"/>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--text2)"></i>Payoff at expiry</span>
+      <span><i style="background:var(--blue)"></i>Current value (includes time value)</span>
+    </div>
+    <div class="tl-chart-caption">
+      The grey "hockey stick" is only what the call is worth on its actual
+      expiry date: nothing below the strike \(K\), dollar-for-dollar above it.
+      <strong>Before</strong> expiry the option is always worth more than
+      that — the blue curve sitting above it — because there's still time
+      left for the underlying to move further in the money. That extra
+      cushion, largest right around \(K\) where the outcome is least certain,
+      is <strong>time value</strong>, and it's exactly what the \(N(d_1)\),
+      \(N(d_2)\) formula above prices.
+    </div>
+  </div>
+
   <h2>How practitioners actually use this</h2>
   <p>
     Almost nobody at a real options desk uses the raw Black-Scholes formula
