@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cross-Asset Options Diagnostic — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Course Notes / Cross-Asset Options Diagnostic</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what RR, BF, CVOL and the rest actually mean</div>
+  <div class="tl-kicker">Course Notes · Lesson 8 of 10</div>
+  <h1 class="tl-title">Cross-Asset Options Diagnostic</h1>
+  <p class="tl-dek">Three of the most liquid listed options markets — SOFR futures, 10-Year note futures, Nasdaq-100 futures — price the same macro world through three different lenses, and on the reference date they disagree. This lesson is one analyst's five-step method for reading that disagreement, not a trade to copy.</p>
+  <div class="tl-meta">
+    <span class="tl-status course">COURSE NOTES — external lecture, recorded faithfully</span>
+    <span>~15 min read</span>
+    <span>Prereqs: Open Interest — Applied Practice</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>The lesson teaches a <strong>five-lens framework</strong>, read in a fixed order because each lens needs the one before it to be interpretable: <strong>Open Interest</strong> (where is the positioning?) → <strong>CVOL</strong> (how much risk overall?) → <strong>term structure</strong> (when is the risk?) → <strong>vol cones</strong> (rich or cheap vs history?) → <strong>skew</strong> (which way — the lens that reveals intent).</li>
+      <li>It is applied to three products on one reference date (21 Apr 2026): <strong>SR3</strong> (3-Month SOFR futures options — front-end Fed-path rates), <strong>TN</strong> (10-Year Ultra T-Note futures options — duration), and <strong>NQ</strong> (E-mini Nasdaq-100 futures options — concentrated equity/AI-capex exposure).</li>
+      <li>Open Interest shows <em>scale</em>, not intent, and is deliberately lens one, not lens five — a big OI block could be an outright bet, a hedge, a spread leg, or structured-product residue. CVOL is a uniform 30-day constant-maturity IV index, comparable across time and (each vs its own history) across products, but blind to where in the calendar the risk sits.</li>
+      <li>Term structure separates smooth contango (normal) from steps/humps (the market naming a specific event — here, the July and October FOMC meetings show up as a step in SR3 and nowhere in TN or NQ). Vol cones convert an absolute level into a percentile rank against a product's own 30-day distribution, resolving whether an elevated reading is actually rich or just fair value in context.</li>
+      <li>Skew splits into risk reversal (RR = 25&Delta; call IV &minus; 25&Delta; put IV, direction) and butterfly (BF = avg(wing IVs) &minus; ATM IV, convexity/fat tails). SR3's sign convention inverts the usual intuition: price = 100 &minus; rate, so a positive SR3 RR means <em>dovish</em> scenarios are bid, not hawkish.</li>
+      <li>Run through all five lenses, SR3 reads as event-rich and directionally biased but fairly priced (not panicking), TN reads as neutral and OTC-driven, and NQ reads as quiet and structurally cheap. The source analyst's own weighted read is that this is the rates market pricing a real, under-hedged risk that the equity options market is currently asleep to — presented here as one analyst's documented judgment call, not this repository's view or a signal it endorses.</li>
+    </ul>
+  </div>
+
+  <h2>0. One-paragraph summary of the lesson</h2>
+  <p>
+    Three of the most liquid listed derivatives markets — SR3 (3-Month SOFR
+    options), TN (10-Year Ultra T-Note options), NQ (E-mini Nasdaq-100 options)
+    — price the same macro through three different lenses, and on 21 Apr 2026
+    they disagree. Read through a five-lens diagnostic (open interest &rarr;
+    CVOL &rarr; term structure &rarr; vol cones &rarr; skew), SR3 is event-rich
+    (step-function vol at the July and October FOMC windows, dovish skew near
+    its 90th percentile, fat tails at the event contracts, fairly priced vs its
+    own history), TN is neutral (sparse listed OI, smooth contango, mild
+    parallel lift — the real 10Y vol flow is OTC swaptions), and NQ is quiet
+    (ATM vol ~30th percentile of its 1-month distribution, smooth term
+    structure straight through the FOMC dates, put demand softer than
+    average). The source analyst's central observation is that the rates
+    options market is paying up for specific, identifiable scenarios that the
+    equity options market is not pricing at all. The lesson's stated
+    objective is situational awareness &mdash; a method for reading what the
+    options complex implies &mdash; not a trade prescription.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Data &amp; sourcing note</div>
+    <p>
+      All readings below are as taught in the source lecture: CME Group
+      QuikStrike / QuikVol end-of-day settlements, dated <strong>21 April
+      2026</strong>, 30-day lookbacks, precision described by the source as
+      "visual-eyeball reads off QuikStrike charts" (bp-vol for rates,
+      vol-point for equity) rather than an exported exact series. Reference
+      futures prices on that date: <strong>SR3M6 = 96.35, TNM6 = 114.02, NQM6
+      = 26,835.5.</strong> These notes preserve the lecture's own numbers and
+      judgments for study purposes; they are not this repository's live data
+      or endorsed forecast.
+    </p>
+  </div>
+
+  <h2>1. The five-lens framework (the core teachable)</h2>
+  <p>
+    Options markets price <strong>probability distributions</strong>. Five
+    lenses, read <strong>in sequence</strong>, produce the minimum workable
+    diagnostic. Ordering is by <em>increasing inferential power</em> &mdash;
+    later lenses need the earlier ones to be interpretable.
+  </p>
+  <div class="tl-symbols"><table>
+    <tr><td>01 &middot; Open Interest</td><td><strong>WHERE</strong> is the positioning? Scale by strike/expiry, gamma walls. Ambiguous on direction &mdash; a big put block could be a bet, a hedge, a spread leg, or structured-product residue.</td></tr>
+    <tr><td>02 &middot; CVOL aggregate</td><td><strong>HOW MUCH</strong> risk overall? 30-day constant-maturity IV, comparable across asset classes. Blind to <em>where in the curve</em> risk sits.</td></tr>
+    <tr><td>03 &middot; Term structure</td><td><strong>WHEN</strong> is the risk? Where in the forward calendar risk concentrates. Steps/humps = event pricing. Week-on-week overlay turns a snapshot into a flow.</td></tr>
+    <tr><td>04 &middot; Vol cones</td><td><strong>RICH or CHEAP?</strong> Today's vol vs its own historical distribution, per tenor &rarr; percentile rank. Resolves whether hedging is expensive.</td></tr>
+    <tr><td>05 &middot; Skew (RR + BF)</td><td><strong>WHICH WAY?</strong> The directional signal &mdash; which tail is bid, and whether fat tails are priced. "The lens that reveals intent."</td></tr>
+  </table></div>
+  <p><strong>Framework principle (memorise):</strong> any single lens misleads.</p>
+  <ul>
+    <li>OI without skew &rarr; wrong direction read.</li>
+    <li>CVOL without term structure &rarr; conceals event concentration.</li>
+    <li>Term structure without cones &rarr; treats elevated vol as expensive when it may be fair value in context.</li>
+    <li>All five together = minimum viable diagnostic.</li>
+  </ul>
+
+  <h2>2. The three products &amp; critical conventions</h2>
+  <div class="tl-symbols"><table>
+    <tr><td>SR3</td><td>3-Month SOFR futures options. Deepest US front-end rates market post-Eurodollar. Each contract prices a specific FOMC meeting window. <strong>Price = 100 &minus; rate &rArr; SR3 calls pay when rates FALL (dovish).</strong></td></tr>
+    <tr><td>TN</td><td>10-Year Ultra T-Note futures options. Tighter deliverable basket (9y5m&ndash;10y) than TY &rArr; cleaner 10Y duration exposure. Most institutional 10Y vol flow trades <strong>OTC as swaptions</strong>; listed TN is a hedging adjunct.</td></tr>
+    <tr><td>NQ</td><td>E-mini Nasdaq-100 futures options. Most concentrated growth/AI-capex exposure in listed equity &mdash; roughly 7 names &asymp; 40% of index weight. Vol mixes single-name dispersion with macro transmission.</td></tr>
+  </table></div>
+  <p>
+    Anchoring futures prices on the reference date: <strong>SR3M6 = 96.35, TNM6
+    = 114.02, NQM6 = 26,835.5.</strong>
+  </p>
+  <p>
+    <strong>Unit convention (matters for every comparison):</strong> CVOL is
+    quoted in the natural unit of the underlying &mdash; <strong>basis
+    points</strong> for yield products, <strong>vol points</strong> for price
+    products (equities, FX, commodities, Treasuries-by-price). &rArr; Never
+    compare 103.87 bp (2Y yield CVOL) to 18.59 vol pts (NQ) directly. Compare
+    each product <strong>to its own history</strong> &mdash; that's the
+    comparison that matters, and it's what the cones (&sect;6) formalise.
+  </p>
+  <p>
+    Tooling used in the lecture: CME QuikStrike / QuikVol &mdash; Active
+    Expirations, Constant Maturity, Front Month, Historical Expirations,
+    Volatility Cones modules; free with a CME account. The source's stated
+    point: the value is the disciplined reading, not privileged data.
+  </p>
+
+  <h2>3. Lens 01 &mdash; Open Interest readings</h2>
+  <p>
+    What OI is: the <strong>stock</strong> of live contracts per
+    strike/expiry. Shows scale, not intent. Big OI = where gamma sits = where
+    market-makers hedge hardest if price arrives there. The four-way
+    ambiguity of a large put position (outright bet / delta hedge / spread
+    short-leg / structured-product overlay) is <em>why</em> OI is lens one,
+    not lens five.
+  </p>
+  <h3>SR3 &mdash; "a barbell of conventional and catastrophe hedging"</h3>
+  <ul>
+    <li><strong>Conventional body:</strong> two-sided OI concentrated in the <strong>95.25&ndash;97.00</strong> strike corridor = rate expectations <strong>3.00%&ndash;4.75%</strong>, straddling SR3M6 96.35. Notable prints: SR3M6 96.25 put 38,300; <strong>SR3U6 96.5 call 389,378</strong>; SR3Z6 96.25 call 251,448.</li>
+    <li><strong>Deep OTM put tail:</strong> strikes <strong>90.00&ndash;93.75</strong> = rates <strong>6.25%&ndash;10.00%</strong>. SR3Z6 93.5 puts 3,407; SR3M6 93.25 puts 3,264; SR3M6 93.75 puts 2,436. These pay only if the Fed is forced to 6.25%+ (emergency re-hiking on an inflation re-acceleration). Small size, but concentrated deep-OTM puts are, as the source puts it, "the signature of tail-hedge demand."</li>
+    <li><strong>Barbell meaning (as taught):</strong> two buyer populations &mdash; the body trades normal policy Brownian motion; the 93-and-below strikes are (probably a small set of macro funds) paying residual premium for a hawkish catastrophe. The dovish tail (seen later in skew) is far bigger, but the hawkish tail is present, priced, paid for.</li>
+  </ul>
+  <h3>TN &mdash; sparse; the flow is elsewhere</h3>
+  <ul>
+    <li>OI in the hundreds-to-low-thousands per strike vs SR3's hundreds of thousands. Broadly spread, no dominant strike.</li>
+    <li>Reading: a <strong>market-structure</strong> fact, not a market-view fact &mdash; 10Y duration conviction lives in OTC swaptions; listed TN is a hedging adjunct.</li>
+  </ul>
+  <h3>NQ &mdash; concentrated upside positioning</h3>
+  <ul>
+    <li>OI centred around NQM6 26,835.5, but <strong>draped to the upside</strong>: substantial call OI at 27,000&ndash;28,000 (up to 28,500) vs thinner put OI at equivalent distances. "Long-call, lightly hedged."</li>
+  </ul>
+  <p>
+    <strong>Cross-product OI read:</strong> SR3 = barbell; NQ = upside skew;
+    TN = sparsity ("go read swaptions"). Already at lens one the three
+    products tell different stories &mdash; as the source frames it, "a
+    feature of the ecosystem, not a problem."
+  </p>
+
+  <h2>4. Lens 02 &mdash; CVOL readings</h2>
+  <h3>Concept primer (as taught)</h3>
+  <ul>
+    <li><strong>IV is a price, not a forecast</strong> &mdash; the vol number that reproduces the quoted option price; the width of the future-outcome distribution the market currently charges for. 20% annualised IV on a $100 underlying &asymp; &plusmn;20%/yr 1&sigma; &asymp; &plusmn;1.25%/day.</li>
+    <li><strong>CVOL</strong> = CME's constant-maturity 30-day IV index family, uniform methodology across products &rArr; today's CVOL comparable to last week's, and across products (each vs its own history).</li>
+  </ul>
+  <h3>The headline: an inverted yield-vol curve</h3>
+  <p>Treasury yield CVOL, 21 Apr 2026:</p>
+  <table style="width:100%;border-collapse:collapse;margin:14px 0;font-size:13px">
+    <thead><tr style="text-align:left;border-bottom:1.5px solid var(--border)"><th style="padding:8px 6px">Tenor</th><th style="padding:8px 6px">Symbol</th><th style="padding:8px 6px">CVOL (bp)</th><th style="padding:8px 6px">Day chg</th><th style="padding:8px 6px">Lesson's reading</th></tr></thead>
+    <tbody style="color:var(--text2)">
+    <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 6px">2-Year</td><td style="padding:8px 6px">TUVY</td><td style="padding:8px 6px"><strong style="color:var(--text)">103.87</strong></td><td style="padding:8px 6px"><strong style="color:var(--text)">+4.38</strong></td><td style="padding:8px 6px">Highest vol on the curve &mdash; front-loaded</td></tr>
+    <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 6px">5-Year</td><td style="padding:8px 6px">FVVY</td><td style="padding:8px 6px">94.68</td><td style="padding:8px 6px">+2.94</td><td style="padding:8px 6px">Elevated, below 2Y</td></tr>
+    <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 6px">10-Year</td><td style="padding:8px 6px">TYVY</td><td style="padding:8px 6px">91.79</td><td style="padding:8px 6px">+3.17</td><td style="padding:8px 6px">Moderate, parallel lift with front</td></tr>
+    <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 6px">30-Year</td><td style="padding:8px 6px">USVY</td><td style="padding:8px 6px">82.85</td><td style="padding:8px 6px">+0.35</td><td style="padding:8px 6px">Stable &mdash; long end unbothered</td></tr>
+    <tr><td style="padding:8px 6px">3M SOFR</td><td style="padding:8px 6px">SRVL</td><td style="padding:8px 6px">80.60</td><td style="padding:8px 6px">&minus;0.35</td><td style="padding:8px 6px">Front-end composite marginally softer</td></tr>
+    </tbody>
+  </table>
+  <ul>
+    <li>Normal shape: yield vol slopes <strong>up</strong> 2Y&rarr;30Y (more time = more accumulated shocks). Today it is <strong>upside-down</strong>.</li>
+    <li>Inversion = the market pricing <strong>resolvable near-term uncertainty</strong>: something knowable in 6&ndash;18 months (the Fed path), after which long-dated vol should decline. 2Y +4.38 vs 30Y +0.35 on the day &rArr; whatever is moving front-end vol is <em>not</em> transmitting out the curve. As the source frames it: "a policy-path pricing event, not a structural term-premium event."</li>
+    <li>Note the SRVL vs TUVY contrast: the 30-day SOFR composite <em>softened</em> (&minus;0.35) while 2Y yield vol jumped &mdash; consistent with event-specific (not broad front-end) repricing.</li>
+  </ul>
+  <h3>Cross-asset coherence check (memorise the logic)</h3>
+  <p>
+    If the rates move were general risk-off, confirmation should appear
+    elsewhere. Check:
+  </p>
+  <ul>
+    <li><strong>FX:</strong> falling &mdash; GBVL 7.62 &minus;0.06, EUVL 6.66 &minus;0.25, JPVL 8.33 &minus;0.26, G5FX 6.95. Not lifting &rArr; not risk-off.</li>
+    <li><strong>Gold:</strong> GCVL 25.89 &minus;0.93 &mdash; the classic macro-stress hedge is quiet &rArr; no systemic-stress pricing.</li>
+    <li><strong>Energy:</strong> CLVL 86.80 +1.25 &mdash; elevated but supply-specific (heating oil flagged), not risk-off transmission.</li>
+    <li><strong>Conclusion as taught:</strong> the rates vol surge is <strong>specific and idiosyncratic</strong> &mdash; a repricing of the Fed's near-term path &mdash; the kind of move that shows up first and biggest in front-end rates options.</li>
+  </ul>
+
+  <h2>5. Lens 03 &mdash; Term structure readings</h2>
+  <h3>Four shapes worth recognising (concept primer)</h3>
+  <ol>
+    <li><strong>Contango</strong> &mdash; IV rises smoothly with tenor. Default state.</li>
+    <li><strong>Backwardation</strong> &mdash; front above back. Stress signature; acute near-term uncertainty expected to resolve.</li>
+    <li><strong>Step</strong> &mdash; flat, jump at one contract, flat again. Fingerprint of an identifiable event inside that contract's life (FOMC, earnings).</li>
+    <li><strong>Hump</strong> &mdash; localised bulge, lower either side. Event contained within one contract window.</li>
+  </ol>
+  <p>
+    Smooth contango = normal. Steps/humps = the market
+    <strong>naming and pricing a specific event</strong>.
+  </p>
+  <h3>SR3 &mdash; the step function</h3>
+  <ul>
+    <li>Jumps at <strong>SR3N26 (July FOMC)</strong> and <strong>SR3V26 (October FOMC)</strong>; serials SR3K26/SR3M26 (May/June, no meeting-density) lower; 2y+ back end at 85&ndash;90 bp normal contango.</li>
+    <li>The lifts are <strong>structural</strong>: present for weeks, widened over the last 5 sessions (7-day overlay sits below today at every tenor, biggest gap at the July contract).</li>
+    <li>Quantified: ~<strong>15 bp excess vol</strong> at the event contracts vs adjacent expiries &rArr; the market prices those meetings as plausibly delivering a <strong>&plusmn;40&ndash;50 bp rate move on the day</strong> &mdash; consistent with surprise hike <em>or</em> surprise cut, not with "unchanged." As the source puts it: "the market expects at least one of those two meetings to deliver news."</li>
+  </ul>
+  <h3>TN and NQ &mdash; silence</h3>
+  <ul>
+    <li>TN: smooth contango 5.5 (OTNM6) &rarr; 7.2 (OTNZ6); week-on-week <strong>parallel</strong> lift ~+0.1 pt; no event signature.</li>
+    <li>NQ: smooth contango 19.8 (NQM6) &rarr; 22.3 (NQH7); ~flat on the week; <strong>no kink at NQU26</strong> &mdash; the contract containing the July FOMC. Labelled by the source "complacent / ignoring rates events."</li>
+  </ul>
+  <h3>Summary table (21 Apr 2026)</h3>
+  <table style="width:100%;border-collapse:collapse;margin:14px 0;font-size:13px">
+    <thead><tr style="text-align:left;border-bottom:1.5px solid var(--border)"><th style="padding:8px 6px">Product</th><th style="padding:8px 6px">Front vol</th><th style="padding:8px 6px">Back vol</th><th style="padding:8px 6px">Shape</th><th style="padding:8px 6px">7-day change</th><th style="padding:8px 6px">Event pricing</th></tr></thead>
+    <tbody style="color:var(--text2)">
+    <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 6px">SR3</td><td style="padding:8px 6px">28 bp (SR3M6)</td><td style="padding:8px 6px">~85 bp (2y+)</td><td style="padding:8px 6px">Step function</td><td style="padding:8px 6px">+3 to +8 bp</td><td style="padding:8px 6px"><strong style="color:var(--text)">STRONG &middot; FOMC</strong></td></tr>
+    <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 6px">TN</td><td style="padding:8px 6px">5.5 (OTNM6)</td><td style="padding:8px 6px">7.2 (OTNZ6)</td><td style="padding:8px 6px">Smooth contango</td><td style="padding:8px 6px">+0.1 parallel</td><td style="padding:8px 6px">NONE</td></tr>
+    <tr><td style="padding:8px 6px">NQ</td><td style="padding:8px 6px">19.8 (NQM6)</td><td style="padding:8px 6px">22.3 (NQH7)</td><td style="padding:8px 6px">Smooth contango</td><td style="padding:8px 6px">~flat</td><td style="padding:8px 6px">NONE</td></tr>
+    </tbody>
+  </table>
+  <p>
+    The SR3-steps vs NQ-smooth contrast through the same calendar is, in the
+    source's words, "the report's central observation."
+  </p>
+
+  <h2>6. Lens 04 &mdash; Vol cone readings</h2>
+  <h3>How to read a cone (concept primer)</h3>
+  <ul>
+    <li>Plot today's IV per tenor over that product's own rolling 30-day distribution: outer band = 5th&ndash;95th %ile, inner band = IQR (25&ndash;75), thin line = 30-day mean, today's curve overlaid.</li>
+    <li>Below the IQR = <strong>cheap</strong> vs recent history; above = <strong>rich</strong>; inside = fair. The cone converts an absolute level into a <strong>percentile rank</strong> &mdash; resolving the "is 70 bp / 18 vol pts high?" question that raw levels can't.</li>
+  </ul>
+  <h3>SR3 &mdash; fair value</h3>
+  <ul>
+    <li>Front SR3K26 (~7 DTE) &asymp; 28 bp; SR3N26 &asymp; 55; SR3V26 &asymp; 67; back 85&ndash;90 bp. Today's curve near/slightly below the 30-day mean at every tenor.</li>
+    <li><strong>Key finding as taught:</strong> front-end rates vol is elevated in absolute terms but <strong>not rich vs its own recent distribution</strong> &mdash; buyers are paying <em>fair value</em> for event exposure. Implication: the term-structure step is <strong>durable, not a one-day panic</strong> &mdash; it has been priced this way for weeks.</li>
+  </ul>
+  <h3>NQ &mdash; structurally cheap</h3>
+  <ul>
+    <li>Chart stats: mean 22.10, LQ/UQ 17.65&ndash;25.85, min/max 16.99&ndash;29.24, last <strong>18.59</strong>. Today's curve runs through the lower half of the IQR at virtually every tenor: ~<strong>30th %ile</strong> front, rising to ~45th at NQZ26 / 240 DTE.</li>
+    <li>Combined with the term-structure reading (&sect;5): "the equity complex sees no events, is paying no premium for events, and is therefore priced like an uneventful forward path."</li>
+  </ul>
+  <h3>Percentile placement table</h3>
+  <table style="width:100%;border-collapse:collapse;margin:14px 0;font-size:13px">
+    <thead><tr style="text-align:left;border-bottom:1.5px solid var(--border)"><th style="padding:8px 6px">Product</th><th style="padding:8px 6px">Front</th><th style="padding:8px 6px">Mid</th><th style="padding:8px 6px">Back</th><th style="padding:8px 6px">Overall</th></tr></thead>
+    <tbody style="color:var(--text2)">
+    <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 6px">SR3</td><td style="padding:8px 6px">~50th %ile</td><td style="padding:8px 6px">~45th</td><td style="padding:8px 6px">~50th</td><td style="padding:8px 6px"><strong style="color:var(--text)">FAIR VALUE</strong></td></tr>
+    <tr><td style="padding:8px 6px">NQ</td><td style="padding:8px 6px">~30th %ile</td><td style="padding:8px 6px">~35th</td><td style="padding:8px 6px">~45th</td><td style="padding:8px 6px"><strong style="color:var(--text)">STRUCTURALLY CHEAP</strong></td></tr>
+    </tbody>
+  </table>
+  <p>
+    (TN cone not shown as primary in the source; extrapolated from TYVY as
+    "likely mid-quartile / neutral by proxy.")
+  </p>
+  <p>
+    Cross-product finding as stated: a buyer of equity vol &mdash; especially
+    a convex structure &mdash; is buying at a statistical discount; whether
+    the discount is justified depends on whether rates&rarr;equity
+    transmission has genuinely changed (the &sect;9 regime question below).
+  </p>
+
+  <h2>7. Lens 05 &mdash; Skew readings</h2>
+  <h3>Concept primer &mdash; decomposing the smile</h3>
+  <p>The smile is a <strong>shape</strong>, not a price. Two numbers summarise it:</p>
+  <ul>
+    <li><strong>Risk reversal (RR) = 25&Delta; call IV &minus; 25&Delta; put IV.</strong> Which wing is bid? Positive = calls/upside bid; negative = puts/downside bid. <em>Direction.</em></li>
+    <li><strong>Butterfly (BF) = avg(wing IVs) &minus; ATM IV.</strong> How fat are the tails vs ATM, direction-agnostic? <em>Convexity.</em></li>
+  </ul>
+  <p>Read together they describe the whole smile; separately each is half a story.</p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Exam-critical &mdash; the SR3 sign-convention trap</div>
+    <p>
+      SR3 price = 100 &minus; rate &rArr; an SR3 <strong>call</strong> pays
+      when price rises = <strong>rates fall</strong> = dovish; an SR3
+      <strong>put</strong> pays when rates rise = hawkish. So
+      <strong>positive SR3 RR = dovish scenarios bid</strong> &mdash; the
+      <em>opposite</em> of the equity intuition. Failing to invert the sign
+      flips the entire rates read.
+    </p>
+  </div>
+
+  <h3>SR3 RR &mdash; "the single most diagnostic chart in this report" (source's own description)</h3>
+  <ul>
+    <li>Shape: <strong>inverted-U</strong>. Slightly negative at the very front (&lt;30 DTE); <strong>+8 to +10</strong> through the middle tenors (50&ndash;200/250 DTE &mdash; the bucket containing the July AND October FOMCs); through zero ~500 DTE; <strong>&minus;4 to &minus;6</strong> at the 2y+ back end (SR3Z27/SR3H28).</li>
+    <li>The positive middle sits <strong>near/above the 90th percentile</strong> of its 30-day history &rArr; historically high premium paid for <strong>dovish-tail protection at those specific meetings</strong>.</li>
+    <li>Negative back end = complementary <strong>hawkish-persistence</strong> view: 2y+ out, puts bid over calls &mdash; a priced probability that 2026's outcome is temporary and rates end up higher. The source's own gloss: "cut now, but stay higher than the long-run neutral." Not inconsistent with the front &mdash; together a <strong>barbell directional bet</strong>, read by the source as "sophisticated macro positioning, not index hedging noise."</li>
+  </ul>
+  <h3>SR3 butterfly</h3>
+  <p>
+    Elevated at the event contracts: ~4 front, <strong>14 at SR3N26</strong>,
+    ~8 back; ~70th %ile. Fat tails priced specifically at the FOMC windows.
+  </p>
+  <h3>NQ RR and BF</h3>
+  <ul>
+    <li>RR: &minus;3.5 front / &minus;6 mid / <strong>&minus;6.5</strong> back &mdash; negative as equity skew always is, but <strong>materially less negative than its historical mean (~&minus;8)</strong>; ~75&ndash;90th %ile "less-negative" &rArr; <strong>put demand has softened</strong>.</li>
+    <li>BF: 0.2 / 0.71 / 0.7 &mdash; at its historical mean (~50th %ile) &rArr; <strong>no fat tails priced</strong>.</li>
+  </ul>
+  <h3>Skew synthesis table</h3>
+  <table style="width:100%;border-collapse:collapse;margin:14px 0;font-size:13px">
+    <thead><tr style="text-align:left;border-bottom:1.5px solid var(--border)"><th style="padding:8px 6px">Metric</th><th style="padding:8px 6px">Front</th><th style="padding:8px 6px">Mid</th><th style="padding:8px 6px">Back</th><th style="padding:8px 6px">%ile</th><th style="padding:8px 6px">Reading</th></tr></thead>
+    <tbody style="color:var(--text2)">
+    <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 6px">SR3 RR</td><td style="padding:8px 6px">&minus;2/+5</td><td style="padding:8px 6px">+8/+10</td><td style="padding:8px 6px">&minus;4/&minus;6</td><td style="padding:8px 6px">~90th</td><td style="padding:8px 6px">Dovish bid, mid tenors</td></tr>
+    <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 6px">SR3 BF</td><td style="padding:8px 6px">~4</td><td style="padding:8px 6px">14 @ N26</td><td style="padding:8px 6px">~8</td><td style="padding:8px 6px">~70th</td><td style="padding:8px 6px">Fat tails at FOMC</td></tr>
+    <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 6px">NQ RR</td><td style="padding:8px 6px">&minus;3.5</td><td style="padding:8px 6px">&minus;6</td><td style="padding:8px 6px">&minus;6.5</td><td style="padding:8px 6px">~75&ndash;90th less-neg</td><td style="padding:8px 6px">Soft put demand</td></tr>
+    <tr><td style="padding:8px 6px">NQ BF</td><td style="padding:8px 6px">0.2</td><td style="padding:8px 6px">0.71</td><td style="padding:8px 6px">0.7</td><td style="padding:8px 6px">~50th</td><td style="padding:8px 6px">No tail priced</td></tr>
+    </tbody>
+  </table>
+  <p>
+    Source's own summary: rates skew carries identifiable, directional-biased
+    tail mass; equity skew carries nothing in particular &mdash; same macro
+    variables, two different conclusions.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Illustrative five-lens composite read &mdash; SR3, 21 Apr 2026</div>
+    <svg viewBox="0 0 560 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A five-axis radar chart with one axis per lens — Open Interest, CVOL, Term Structure, Vol Cone, Skew — plotting an illustrative composite reading for SR3, showing high scores on Term Structure and Skew, moderate on Open Interest and CVOL, and a mid-low score on Vol Cone reflecting fair-value pricing rather than rich pricing.">
+      <g font-family="'DM Mono',monospace" fill="var(--text3)" font-size="10">
+        <!-- background rings at 20/40/60/80/100%, regular pentagon, center (280,194) r=146 -->
+        <polygon points="280,48 418.9,148.9 365.8,312.1 194.2,312.1 141.1,148.9" style="fill:none;stroke:var(--border)"/>
+        <polygon points="280,77 391.1,158.3 349.6,287.7 210.4,287.7 168.9,158.3" style="fill:none;stroke:var(--border)"/>
+        <polygon points="280,106 363.3,167.6 333.5,263.3 226.5,263.3 196.7,167.6" style="fill:none;stroke:var(--border)"/>
+        <polygon points="280,136 335.6,176.9 317.3,238.8 242.7,238.8 224.4,176.9" style="fill:none;stroke:var(--border)"/>
+        <polygon points="280,165 307.8,186.2 301.2,214.4 258.8,214.4 252.2,186.2" style="fill:none;stroke:var(--border)"/>
+      </g>
+      <!-- axis lines from center (280,194) to each vertex at r=146 -->
+      <g stroke="var(--border2)">
+        <line x1="280" y1="194" x2="280" y2="48"/>
+        <line x1="280" y1="194" x2="418.9" y2="148.9"/>
+        <line x1="280" y1="194" x2="365.8" y2="312.1"/>
+        <line x1="280" y1="194" x2="194.2" y2="312.1"/>
+        <line x1="280" y1="194" x2="141.1" y2="148.9"/>
+      </g>
+      <!-- axis labels -->
+      <g font-family="'DM Mono',monospace" font-size="12" fill="var(--text2)">
+        <text x="280" y="32" text-anchor="middle">Open Interest</text>
+        <text x="426" y="145" text-anchor="start">CVOL</text>
+        <text x="366" y="337" text-anchor="middle">Term Structure</text>
+        <text x="194" y="337" text-anchor="middle">Vol Cone</text>
+        <text x="134" y="145" text-anchor="end">Skew</text>
+      </g>
+      <!-- SR3 illustrative composite polygon (score 0-100% of radius along each axis):
+           OI 65% (barbell, concentrated but two-sided)
+           CVOL 60% (SRVL soft but TUVY-adjacent front-end elevated)
+           Term Structure 90% (strong step/event pricing)
+           Vol Cone 50% (fair value, not rich)
+           Skew 90% (RR near 90th pctile, BF ~70th) -->
+      <polygon points="280,99.1 363.3,166.9 357.2,300.3 237.1,253.1 155,153.4"
+        style="fill:var(--blue);fill-opacity:.22;stroke:var(--blue);stroke-width:2.5"/>
+      <g fill="var(--blue)">
+        <circle cx="280" cy="99.1" r="4"/>
+        <circle cx="363.3" cy="166.9" r="4"/>
+        <circle cx="357.2" cy="300.3" r="4"/>
+        <circle cx="237.1" cy="253.1" r="4"/>
+        <circle cx="155" cy="153.4" r="4"/>
+      </g>
+      <text x="280" y="410" text-anchor="middle" font-family="'DM Mono',monospace" font-size="10" fill="var(--text3)">illustrative composite score per lens, 0% (center) to 100% (outer ring) — not a precise index</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>SR3 illustrative composite (Open Interest, CVOL, Term Structure, Vol Cone, Skew)</span>
+    </div>
+    <div class="tl-chart-caption">
+      A stylised way to see the &sect;8 synthesis matrix idea as a single
+      composite read: SR3 scores high on <strong>Term Structure</strong> (the
+      FOMC step) and <strong>Skew</strong> (RR near its 90th percentile) but
+      only mid-range on <strong>Vol Cone</strong>, because the source's
+      reading is that this event pricing is <em>fair value</em>, not rich —
+      elevated in absolute terms but not statistically expensive vs its own
+      history. The exact percentages are an illustrative composite for
+      charting purposes, not a numeric index the source itself publishes;
+      the underlying per-lens readings are the real, faithfully preserved
+      numbers documented in &sect;3&ndash;7 above.
+    </div>
+  </div>
+
+  <h2>8. The synthesis matrix &mdash; 5 lenses &times; 3 products</h2>
+  <p>Compressed one-liner per cell (the diagonal story worth remembering):</p>
+  <div style="overflow-x:auto">
+  <table style="width:100%;border-collapse:collapse;margin:14px 0;font-size:12.5px;min-width:640px">
+    <thead><tr style="text-align:left;border-bottom:1.5px solid var(--border)">
+      <th style="padding:8px 6px">Lens</th><th style="padding:8px 6px">SR3</th><th style="padding:8px 6px">TN</th><th style="padding:8px 6px">NQ</th>
+    </tr></thead>
+    <tbody style="color:var(--text2)">
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:8px 6px;color:var(--text)"><strong>OI</strong></td>
+        <td style="padding:8px 6px">Barbell: body 95&ndash;97 + deep-OTM put wall 90&ndash;93.75 &rarr; dual-population hedging</td>
+        <td style="padding:8px 6px">Sparse; flow is OTC &rarr; read swaptions</td>
+        <td style="padding:8px 6px">Call-heavy 27,000&ndash;28,500, thin puts &rarr; long-call, lightly hedged</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:8px 6px;color:var(--text)"><strong>CVOL</strong></td>
+        <td style="padding:8px 6px">SRVL 80.60 &minus;0.35 but TUVY 103.87 +4.38; curve inverted on vol &rarr; event repricing</td>
+        <td style="padding:8px 6px">TYVY 91.79 +3.17 parallel lift, no structure &rarr; passive</td>
+        <td style="padding:8px 6px">No direct CVOL; equity-vol peers unchanged/softer &rarr; disconnected</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:8px 6px;color:var(--text)"><strong>Term structure</strong></td>
+        <td style="padding:8px 6px">Steps at SR3N26 + SR3V26, ~15 bp excess &rarr; event-rich</td>
+        <td style="padding:8px 6px">Smooth 5.5&rarr;7.2, +0.1 parallel &rarr; flat</td>
+        <td style="padding:8px 6px">Smooth 19.8&rarr;22.3, no NQU26 kink &rarr; complacent</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:8px 6px;color:var(--text)"><strong>Cones</strong></td>
+        <td style="padding:8px 6px">~50th %ile everywhere &rarr; fair (durable, not transient)</td>
+        <td style="padding:8px 6px">Not primary; mid-quartile by proxy &rarr; neutral</td>
+        <td style="padding:8px 6px">~30th front &rarr; cheap</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 6px;color:var(--text)"><strong>Skew</strong></td>
+        <td style="padding:8px 6px">RR +8/+10 @ 90th %ile, BF 14 @ N26, hawkish back &rarr; dovish bid + fat tails</td>
+        <td style="padding:8px 6px">Limited listed signal &rarr; read swaptions</td>
+        <td style="padding:8px 6px">RR less negative than mean, BF at mean &rarr; soft protection</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <p>
+    <strong>Matrix reading (as taught):</strong> within each product the five
+    lenses agree (SR3 = event-rich, directionally biased, fairly priced; TN =
+    neutral, OTC-dominated; NQ = complacent, uneventful, structurally cheap)
+    &mdash; but the three product-level pictures "do not fit naturally
+    together in a coherent regime," in the source's words. Explaining the
+    divergence is the next section's job.
+  </p>
+
+  <h2>9. Regime interpretation &mdash; four hypotheses (one analyst's own weights)</h2>
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Framing note &mdash; read this before the table</div>
+    <p>
+      The probabilities and the "modal" call below are <strong>the source
+      analyst's own judgment</strong>, presented in the lecture as such: "reasonable
+      observers could arrive at different weights, but the four hypotheses
+      should be exhaustive." They are recorded here faithfully as part of the
+      lesson's content &mdash; this is one analyst's documented read on one
+      date, <strong>not a forecast this repository endorses, validates, or
+      has tested out-of-sample.</strong> Per this repo's own working
+      agreement, an idea's weight comes from evidence, not from a prior about
+      whether an idea like this "tends to work" &mdash; and this framework has
+      not been run through that test here.
+    </p>
+  </div>
+  <p>
+    2&times;2: which market is right (horizontal) &times; what kind of error
+    (vertical).
+  </p>
+  <div style="overflow-x:auto">
+  <table style="width:100%;border-collapse:collapse;margin:14px 0;font-size:12.5px;min-width:680px">
+    <thead><tr style="text-align:left;border-bottom:1.5px solid var(--border)">
+      <th style="padding:8px 6px">Scenario</th><th style="padding:8px 6px">Prob</th><th style="padding:8px 6px">Claim</th><th style="padding:8px 6px">Evidence for</th><th style="padding:8px 6px">Evidence against</th>
+    </tr></thead>
+    <tbody style="color:var(--text2)">
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:8px 6px;color:var(--text)"><strong>A</strong></td><td style="padding:8px 6px">20%</td>
+        <td style="padding:8px 6px"><strong>NQ right, SR3 overpaying</strong> &mdash; Fed uncertainty resolves benignly; rates tail-pricing decays</td>
+        <td style="padding:8px 6px">NQ ATM cheap; gold CVOL low; FX vol falling</td>
+        <td style="padding:8px 6px">SR3 cone at mean (not panic); RR at 90th %ile</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:8px 6px;color:var(--text)"><strong>B &mdash; modal</strong></td><td style="padding:8px 6px"><strong>45%</strong></td>
+        <td style="padding:8px 6px"><strong>SR3 right, NQ asleep</strong> &mdash; rates market (closer to the transmission mechanism) prices genuine, possibly bimodal path risk; equity vol suppressed by low realized + systematic short-vol; equity under-hedged</td>
+        <td style="padding:8px 6px">SR3 cone fair; durable TS step; TUVY +4.38; sophisticated RR barbell</td>
+        <td style="padding:8px 6px">&mdash; (implied trade noted by the source: long NQ convexity around FOMC dates)</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:8px 6px;color:var(--text)"><strong>C</strong></td><td style="padding:8px 6px">25%</td>
+        <td style="padding:8px 6px"><strong>Both right about different things</strong> &mdash; rates price the 25-vs-50 bp July binary; either outcome is equity-benign; transmission genuinely limited</td>
+        <td style="padding:8px 6px">TN also quiet; no gold/FX stress confirmation</td>
+        <td style="padding:8px 6px">SR3 BF 14 at N26; deep-OTM put wall</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 6px;color:var(--text)"><strong>D</strong></td><td style="padding:8px 6px">10%</td>
+        <td style="padding:8px 6px"><strong>Transmission broken</strong> &mdash; equity vol-selling AUM so large NQ surface reflects structural flow, not views; real option buyers migrated to rates/OTC/dispersion</td>
+        <td style="padding:8px 6px">Known growth in vol-selling AUM; NQ TS "too smooth"</td>
+        <td style="padding:8px 6px">Hard to prove directly</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <p>
+    <strong>Source's modal read (B, 45%):</strong> the weight of evidence
+    (durable step, 90th %ile RR, concentrated BF at named dates, TUVY lift,
+    rates-specific &mdash; not risk-off &mdash; cross-asset picture) favours
+    rates pricing a real uncertainty that equity under-weights, in the
+    analyst's own assessment. If B is right and NQ repricing begins, the
+    source expects: NQ front vol lifts first with a spike at the July-FOMC
+    contract; NQ RR more negative; NQ BF lifts. <strong>None had begun as of
+    the report date &mdash; "the signal is a standing one," per the
+    source.</strong>
+  </p>
+  <p>
+    <strong>Sizing note (as taught):</strong> B is modal but not dominant
+    &rArr; any expression should stay comfortable under A (20%) and D (10%):
+    small, convex, limited premium at risk, calendar-aligned to the SR3 event
+    dates.
+  </p>
+
+  <h2>10. Forward scenarios &mdash; the priced distribution (author's weights)</h2>
+  <div style="overflow-x:auto">
+  <table style="width:100%;border-collapse:collapse;margin:14px 0;font-size:12.5px;min-width:720px">
+    <thead><tr style="text-align:left;border-bottom:1.5px solid var(--border)">
+      <th style="padding:8px 6px">Scenario</th><th style="padding:8px 6px">Prob</th><th style="padding:8px 6px">Trigger</th><th style="padding:8px 6px">Rates</th><th style="padding:8px 6px">Equity</th><th style="padding:8px 6px">Options P&amp;L map</th>
+    </tr></thead>
+    <tbody style="color:var(--text2)">
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:8px 6px;color:var(--text)"><strong>Base / status quo</strong></td><td style="padding:8px 6px">50%</td>
+        <td style="padding:8px 6px">Hold through July; measured 25 bp cut in Oct on softening labor; conventional messaging</td>
+        <td style="padding:8px 6px">2Y ~&minus;20 bp by year-end; 10Y range-bound; SR3 mids rally modestly; RR decays; surface normalises</td>
+        <td style="padding:8px 6px">NQ grinds higher on multiple expansion; realized stays low; NQ cone reading justified ex post</td>
+        <td style="padding:8px 6px">Long NQ vol &rarr; 0; long SR3 RR decays (pays some); NQ call OI rewarded; &sect;9-A confirmed</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:8px 6px;color:var(--text)"><strong>Dovish tail / emergency cuts</strong></td><td style="padding:8px 6px">20%</td>
+        <td style="padding:8px 6px">Labor cracks Q2/Q3; inflation falls faster; 50 bp July cut + more signalled (growth scare, not recession)</td>
+        <td style="padding:8px 6px">SR3V26 calls print big; front vol realizes; dovish RR vindicated; TN rallies</td>
+        <td style="padding:8px 6px">NQ initial reaction ambiguous (bad growth vs dovish Fed); vol spikes; cheap NQ vol vindicated</td>
+        <td style="padding:8px 6px">Large SR3 call P&amp;L; NQ vol longs pay; NQ straddles monetize; &sect;9-B confirmed</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:8px 6px;color:var(--text)"><strong>Hawkish tail / sticky inflation</strong></td><td style="padding:8px 6px">15%</td>
+        <td style="padding:8px 6px">Core (services + shelter) reaccelerates; on-hold through year-end; higher-for-longer repricing</td>
+        <td style="padding:8px 6px">2027-expiry SR3 puts print; deep-OTM put wall justified; 10Y +40&ndash;60 bp; TN price-vol realizes</td>
+        <td style="padding:8px 6px">NQ de-rates on discount-rate pressure; realized lifts; NQ put skew snaps wider; "complacency punished specifically"</td>
+        <td style="padding:8px 6px">NQ puts pay; SR3 back-end puts pay; short NQ RR pays; &sect;9-B confirmed, opposite direction</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 6px;color:var(--text)"><strong>Shock / non-monetary</strong></td><td style="padding:8px 6px">15%</td>
+        <td style="padding:8px 6px">Geopolitics, credit event, growth cliff, AI-capex correction, single-name blowup &mdash; "something breaks"</td>
+        <td style="padding:8px 6px">Flight-to-quality; SR3 + TN rally; bull-steepening; RR direction catalyst-dependent</td>
+        <td style="padding:8px 6px">NQ realized vol explodes from a 30th-%ile start; BF re-prices overnight; the "no tail priced" read punished cleanly</td>
+        <td style="padding:8px 6px">NQ long vol pays extravagantly; any convex equity structure pays; rates calls pay on safety flow; &sect;9-B or D confirmed</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <p>
+    <strong>Scenario arithmetic as taught:</strong> Dovish (20) + Hawkish (15)
+    + Shock (15) = <strong>50% combined probability that NQ vol realizes
+    meaningfully above implied</strong>; Base (50%) retires the thesis at
+    small cost. The open question the source poses: is 30th-%ile NQ vol
+    priced for that 50% tail, or only for the 50% mode?
+  </p>
+
+  <h2>11. Falsification &amp; monitoring</h2>
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">What would prove this read wrong &mdash; six failure modes of the "asymmetric conviction" thesis</div>
+    <div class="tl-symbols"><table>
+      <tr><td>1</td><td><strong>Vol-selling saturation</strong> &mdash; NQ vol structurally suppressed by put-write ETFs / vol-control mandates / dealer hedging, i.e. "cheap" from supply, not benign outlook. Asymmetry persists without resolution (kills A/B/C). <em>Watch:</em> realized&ndash;implied spread; dealer gamma positioning.</td></tr>
+      <tr><td>2</td><td><strong>Rates vol decay</strong> &mdash; July + Oct FOMCs deliver expected outcomes; SR3 RR + BF decay into expiry; the event was real, resolution benign. <em>Watch:</em> SR3N26/V26 vol post-FOMC; does the RR peak persist or fade.</td></tr>
+      <tr><td>3</td><td><strong>Asymmetric resolution</strong> &mdash; Scenario C plays: rates move big but equity-benign (e.g. bigger July cut driven by falling inflation = dovish-growth-positive). <em>Watch:</em> FOMC-day front-end realized vs SR3N26 IV; NQ vol in the 3 sessions after.</td></tr>
+      <tr><td>4</td><td><strong>Regime flip</strong> &mdash; Gold vol / FX vol / credit spreads lift &rarr; "rates-specific" becomes "general risk-off"; thesis works but via a different mechanism. <em>Watch:</em> GCVL, EUVL, HY OAS, DXY.</td></tr>
+      <tr><td>5</td><td><strong>Data mining</strong> &mdash; rates-equity vol divergences happen all the time in small size; %ile reads may be lookback-sensitive; pattern-matching noise. <em>Watch:</em> re-run at 60d / 90d lookbacks; consistency across windows.</td></tr>
+      <tr><td>6</td><td><strong>Implementation cost</strong> &mdash; edge exists but &lt; frictions (NQ bid-offer, gamma-hedging cost, theta). "Idea right, P&amp;L wrong." <em>Watch:</em> explicit carry estimates; bid-offer at entry; theta/vega at structure level.</td></tr>
+    </table></div>
+  </div>
+
+  <h3>Monitoring dashboard &mdash; six daily indicators with triggers</h3>
+  <table style="width:100%;border-collapse:collapse;margin:14px 0;font-size:13px">
+    <thead><tr style="text-align:left;border-bottom:1.5px solid var(--border)"><th style="padding:8px 6px">Indicator</th><th style="padding:8px 6px">Current</th><th style="padding:8px 6px">Trigger</th></tr></thead>
+    <tbody style="color:var(--text2)">
+      <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 6px">SR3N26 ATM vol</td><td style="padding:8px 6px">~55 bp</td><td style="padding:8px 6px">sustained &lt;50 or &gt;60</td></tr>
+      <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 6px">SR3V26 25&Delta; RR</td><td style="padding:8px 6px">+8 bp vol</td><td style="padding:8px 6px">breach of &plusmn;4 bp from here</td></tr>
+      <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 6px">NQM26 ATM vol</td><td style="padding:8px 6px">19.8</td><td style="padding:8px 6px">22+ validates; 18&minus; weakens</td></tr>
+      <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 6px">NQU26 term kink</td><td style="padding:8px 6px">smooth</td><td style="padding:8px 6px">+0.5 hump appears = "NQ waking up"</td></tr>
+      <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 6px">TUVY (2Y CVOL)</td><td style="padding:8px 6px">103.87</td><td style="padding:8px 6px">&gt;110 escalation; &lt;95 decay</td></tr>
+      <tr><td style="padding:8px 6px">GCVL (gold CVOL)</td><td style="padding:8px 6px">25.89</td><td style="padding:8px 6px">&gt;32 = regime flip to stress</td></tr>
+    </tbody>
+  </table>
+  <p>
+    Movement beyond a threshold &rArr; update the scenario weights above; if
+    meaningful, reassess the whole thesis.
+  </p>
+
+  <h3>Historical precedents cited (with the source's own caveat)</h3>
+  <p>
+    Similar rates-vol-elevated / equity-vol-cheap readings, per the source:
+    <strong>late 2007</strong> (into early 2008), <strong>early 2020
+    pre-COVID</strong>, <strong>Q4 2018 Powell pivot</strong>. Subsequent
+    equity-vol dynamics were extreme in each case, as the source recounts it.
+    The source flags explicitly: "three observations do not make a pattern
+    &mdash; not predictive, worth noting."
+  </p>
+
+  <h3>Closing methodological note (as taught)</h3>
+  <p>
+    The framework's value, per the source, is <strong>compression</strong>:
+    15 readings &rarr; one coherent picture with explicit weights, explicit
+    falsifiers, explicit monitoring triggers. A reader can reject the &sect;9
+    weights or &sect;10 scenarios while accepting the 15 underlying readings
+    &mdash; "that is what analytical transparency looks like," in the
+    source's words. Numerical claims throughout are visual-eyeball reads off
+    QuikStrike charts (precision: bp-vol for rates, vol-point for equity).
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>A method to study, not a signal wired into anything here</h3>
+    <p>
+      This repo has no options-pricing or listed-options-data module of any
+      kind &mdash; no CVOL feed, no OI matrix, no skew/RR-BF computation.
+      This lesson is course material to study, exactly like the other raw
+      lecture notes in <code>education/</code>. Per <code>CLAUDE.md</code>'s
+      own discipline, the closest existing parallel is the <strong>vol
+      cone</strong> idea in &sect;6: this repo's own &sigma; series (HV20 /
+      Yang-Zhang / GARCH from <code>js/volBacktestEngine.js</code>) plotted
+      against its own rolling percentile bands is a documented candidate
+      brick (see <code>education/cross-asset-options-diagnostic-notes.md</code>
+      &sect;14) &mdash; the cone <em>method</em> applied to this repo's FX vol,
+      independent of CME data, not yet built. Nothing about the &sect;9
+      regime weights or the &sect;10 forward scenarios has been tested here;
+      they are recorded as one analyst's documented judgment on one date, for
+      study, not as validated forward guidance this repo stands behind.
+    </p>
+  </div>
+
+  <div class="tl-footer-nav">
+    <a href="open-interest-course.html">&larr; Open Interest &mdash; Applied Practice</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="macro-deep-dives.html">Macro Deep Dives &rarr;</a>
+  </div>
+</div>
+</body>
+</html>

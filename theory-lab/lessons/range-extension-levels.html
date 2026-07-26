@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Range Extension Levels — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Course Notes / Range Extension Levels</div>
+  <div class="tl-kicker">Course Notes · Lesson 6 of 10</div>
+  <h1 class="tl-title">Range Extension Levels</h1>
+  <p class="tl-dek">A systematic, non-statistical way to read where price might run out of steam: project a completed session's range forward as clean multiples, then treat the spots where two different sessions' projections land on top of each other as the day's highest-conviction levels.</p>
+  <div class="tl-meta">
+    <span class="tl-status course">COURSE NOTES — study notes on an applied trading lesson, not a backtested MacroFXModel strategy</span>
+    <span>~11 min read</span>
+    <span>Prereqs: The Daily Forecaster Walkthrough</span>
+  </div>
+
+<div class="tl-tldr">
+  <div class="tl-tldr-label">TL;DR</div>
+  <ul>
+    <li>A <strong>range extension</strong> is not a statistical measure — it's the Asia session's own range (00:00–06:00 London time, measured on 5-minute candle <em>closes</em>) projected forward as simple multiples (1x, 2x… up to 10.5x). It's a forward-projecting structural read on how far price has expanded, deliberately not a backward-looking standard deviation.</li>
+    <li><strong>Tool setup</strong> repurposes a TradingView Fibonacci retracement tool with its levels reset to a custom ladder (quarter-steps inside the range, half-steps out to 10.5x beyond it), applied to the Asia range on EUR/USD's 5-minute chart via the "Asian Range by Nico948" indicator on an OANDA feed.</li>
+    <li><strong>Projecting extension levels</strong> runs in both directions: drawing the Fib tool from the range's highest close to its lowest close projects levels <em>above</em> price (potential short-consideration exhaustion zones); the reverse direction projects levels <em>below</em> price (potential long-consideration zones).</li>
+    <li><strong>Alignment zones</strong> — where an extension level from today's Asia range and one from yesterday's fall within 2 pips of each other on EUR/USD — are the framework's highest-probability levels; a single session's level alone is lower conviction.</li>
+    <li>The lesson's <strong>daily checklist</strong> runs once per day, after the Asia session closes: mark today's range, project extensions above and below it, overlay yesterday's extensions, then scan for 2-pip alignment zones.</li>
+  </ul>
+</div>
+
+  <p>
+    These notes convert applied course material on projecting session-range
+    extensions into price levels — the raw study notes this page distills are
+    in <code>education/range-extension-levels-notes.md</code>. Define the Asia
+    session range (00:00–06:00 London time) on the 5-minute chart, measured
+    from candle closes, not wicks. Project that range's size as multiples —
+    1x, 2x, 3x, up to 10.5x — both above and below the range, using a
+    repurposed TradingView Fibonacci retracement tool. Each level marks how
+    far price has extended relative to the Asia range; far extensions are
+    candidate exhaustion zones (shorts above, longs below). The highest-probability
+    levels are alignment zones, where extensions from today's and yesterday's
+    Asia ranges land within tolerance (2 pips on EUR/USD) of each other. Levels
+    are zones where price <em>may</em> react, not guarantees — always combined
+    with risk management. This is educational content only, not financial
+    advice.
+  </p>
+
+  <h2>1. Understanding range extensions</h2>
+  <p>
+    The lesson flags one distinction as crucial — it "fundamentally changes
+    how you interpret and apply the levels": a range extension is not the
+    same thing as a mathematical standard deviation, even though both are
+    ways of describing "how far price moved."
+  </p>
+  <div class="tl-symbols"><table>
+    <tr><td>What it measures</td><td>✗ Standard deviations measure statistical dispersion from a mean, using historical price data. ✓ Range extensions measure the size of a defined range (the Asia session) projected as multiples into price space.</td></tr>
+    <tr><td>Assumptions</td><td>✗ Standard deviations assume a normal distribution and calculate variance across a dataset. ✓ Range extensions assume nothing stated — they measure how far price <em>can</em> extend from a known range.</td></tr>
+    <tr><td>Direction of inference</td><td>✗ Standard deviations are a <strong>backward-looking</strong> statistical measure. ✓ Range extensions are a <strong>forward-projecting</strong> structural measure.</td></tr>
+  </table></div>
+  <p>
+    Why this matters, close to the lesson's own words: range extensions are
+    <strong>anchored to today's volatility context</strong>. A 2x extension
+    means price has moved twice the distance of the Asia range. This is a
+    <strong>structural observation about market expansion</strong>, not a
+    statistical probability statement.
+  </p>
+  <p>The lesson introduces four building blocks on top of that distinction:</p>
+  <div class="tl-symbols"><table>
+    <tr><td>The Asia Range</td><td>The foundational range from which all extensions are measured — 00:00–06:00 London time.</td></tr>
+    <tr><td>Extension Multiples</td><td>Each level (1x, 2x, 3x…) is how many times the Asia range's distance price has traveled.</td></tr>
+    <tr><td>Exhaustion Zones</td><td>Extension levels mark where price has moved significantly and may find exhaustion.</td></tr>
+    <tr><td>Alignment Zones</td><td>Where extensions from multiple sessions overlap — the higher-probability areas.</td></tr>
+  </table></div>
+
+  <h2>2. Tool setup</h2>
+  <h3>Step 01 — configure the Fibonacci tool (TradingView)</h3>
+  <p>
+    The Fib <strong>retracement</strong> tool is repurposed to project range
+    extension levels rather than retracements. Set its levels to:
+  </p>
+  <div class="tl-math" style="text-align:left;font-family:'DM Mono',monospace;font-size:13px">
+    0, 0.25, 0.5, 0.75, 1,<br>
+    1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5
+  </div>
+  <p>
+    The structure of that grid is worth noticing: quarter-steps (0.25 / 0.5 /
+    0.75) exist only <em>inside</em> the range itself (between 0 and 1);
+    beyond 1 the ladder runs in half-steps out to 10.5. The lesson's pro tip:
+    enable "Use one color" in the Fib settings for cleaner visualization, and
+    save the configuration as a template for quick access.
+  </p>
+  <h3>Step 02 — identify the Asia range</h3>
+  <p>
+    The Asia range is the foundational reference — the range from which all
+    extension levels are projected.
+  </p>
+  <ul>
+    <li><strong>Time window:</strong> 00:00–06:00 London time.</li>
+    <li><strong>Indicator:</strong> "Asian Range by Nico948" (TradingView).</li>
+    <li><strong>Data feed:</strong> OANDA, for consistent timestamps.</li>
+    <li><strong>Chart context:</strong> EUR/USD, 5-minute chart, with a shaded box highlighting the 00:00–06:00 consolidation period that establishes the range.</li>
+  </ul>
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Important, per the lesson</div>
+    <p style="margin-bottom:0">
+      Ensure the chart timezone is set correctly — the Asia range must be
+      consistently defined across all analysis. A mis-set clock silently
+      shifts the entire range.
+    </p>
+  </div>
+
+  <h2>3. Projecting extension levels</h2>
+  <p>
+    Project the Asia range as multiples <strong>both above and below</strong>
+    current price to identify potential exhaustion zones. All analysis runs
+    on the <strong>5-minute timeframe</strong> for precision.
+  </p>
+  <h3>Step 01 — extensions above price (potential short entry zones)</h3>
+  <p>
+    Draw the Fib tool <strong>from the highest candle close to the lowest
+    candle close</strong> within the Asia range. This projects the extension
+    levels <em>above</em> the range — used to identify potential levels to
+    short from.
+  </p>
+  <p>
+    <strong>Key point, per the lesson:</strong> use candle closes, not wicks.
+    Closes represent where price was <strong>accepted</strong>; wicks
+    represent <strong>rejection</strong>.
+  </p>
+  <h3>Step 02 — extensions below price (potential long entry zones)</h3>
+  <p>
+    Draw the Fib tool in the <strong>opposite direction — from the lowest
+    candle close to the highest candle close</strong>. This projects the
+    extension levels <em>below</em> the range.
+  </p>
+  <div class="tl-symbols"><table>
+    <tr><td>Extensions above price</td><td>Price has extended upward → levels mark potential exhaustion zones for <strong>short</strong> considerations.</td></tr>
+    <tr><td>Extensions below price</td><td>Price has extended downward → levels mark potential exhaustion zones for <strong>long</strong> considerations.</td></tr>
+  </table></div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Range extension levels &amp; an alignment zone</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram of two prior Asia session ranges, each drawn as a highlighted box, with extension levels at 127%, 162% and 200% of each range projected forward as dashed horizontal lines. Today's 200% extension lands close to yesterday's 162% extension, and that band is shaded as an alignment (confluence) zone.">
+      <line x1="40" y1="270" x2="620" y2="270" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="40" y1="270" x2="40" y2="20" style="stroke:var(--text3);stroke-width:1"/>
+      <text x="620" y="288" text-anchor="end" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Time (session progression) &#8594;</text>
+      <text x="14" y="145" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 14 145)">Price</text>
+
+      <!-- yesterday's Asia range extension lines (purple) -->
+      <line x1="150" y1="192" x2="620" y2="192" style="stroke:var(--purple);stroke-width:1.5;stroke-dasharray:5,4"/>
+      <line x1="150" y1="150" x2="620" y2="150" style="stroke:var(--purple);stroke-width:1.5;stroke-dasharray:5,4"/>
+      <line x1="150" y1="108" x2="620" y2="108" style="stroke:var(--purple);stroke-width:1.5;stroke-dasharray:5,4"/>
+      <text x="624" y="196" font-size="10" font-family="'DM Mono',monospace" fill="var(--purple)">127%</text>
+      <text x="624" y="154" font-size="10" font-family="'DM Mono',monospace" fill="var(--purple)">162%</text>
+      <text x="624" y="112" font-size="10" font-family="'DM Mono',monospace" fill="var(--purple)">200%</text>
+
+      <!-- today's Asia range extension lines (blue) -->
+      <line x1="330" y1="178" x2="620" y2="178" style="stroke:var(--blue);stroke-width:1.5;stroke-dasharray:5,4"/>
+      <line x1="330" y1="160" x2="620" y2="160" style="stroke:var(--blue);stroke-width:1.5;stroke-dasharray:5,4"/>
+      <line x1="330" y1="147" x2="620" y2="147" style="stroke:var(--blue);stroke-width:1.5;stroke-dasharray:5,4"/>
+      <text x="624" y="182" font-size="10" font-family="'DM Mono',monospace" fill="var(--blue)">127%</text>
+      <text x="624" y="164" font-size="10" font-family="'DM Mono',monospace" fill="var(--blue)">162%</text>
+      <text x="624" y="151" font-size="10" font-family="'DM Mono',monospace" fill="var(--blue)">200%</text>
+
+      <!-- alignment / confluence zone -->
+      <rect x="335" y="140" width="280" height="17" fill="var(--amber)" opacity="0.18" stroke="var(--amber)" stroke-width="1" stroke-dasharray="3,3"/>
+      <text x="475" y="133" text-anchor="middle" font-size="11" font-weight="700" font-family="'DM Sans',sans-serif" fill="var(--amber)">Alignment zone</text>
+
+      <!-- yesterday's Asia range box -->
+      <rect x="60" y="210" width="90" height="22" fill="var(--purple)" opacity="0.22" stroke="var(--purple)" stroke-width="1.5"/>
+      <text x="105" y="204" text-anchor="middle" font-size="10.5" font-family="'DM Sans',sans-serif" fill="var(--purple)">Yesterday's Asia range</text>
+
+      <!-- today's Asia range box -->
+      <rect x="240" y="190" width="90" height="22" fill="var(--blue)" opacity="0.22" stroke="var(--blue)" stroke-width="1.5"/>
+      <text x="285" y="184" text-anchor="middle" font-size="10.5" font-family="'DM Sans',sans-serif" fill="var(--blue)">Today's Asia range</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--purple)"></i>Yesterday's Asia range + extensions</span>
+      <span><i style="background:var(--blue)"></i>Today's Asia range + extensions</span>
+      <span><i style="background:var(--amber)"></i>Alignment / confluence zone</span>
+    </div>
+    <div class="tl-chart-caption">
+      Each session's Asia range (00:00–06:00 London, boxed) is projected
+      forward as dashed extension levels at multiples of its own size — 127%,
+      162% and 200% shown here, out of the lesson's full 0–10.5x ladder. The
+      two ranges don't need matching multiples to line up: here today's 200%
+      extension happens to land within a couple of pips of yesterday's 162%
+      extension, and that overlap — not either line alone — is what the
+      framework treats as the day's highest-probability level.
+    </div>
+  </div>
+
+  <h2>4. Finding alignment zones</h2>
+  <p>
+    The <strong>highest-probability levels</strong> occur where extensions
+    from multiple Asia ranges overlap.
+  </p>
+  <h3>Multi-session confluence</h3>
+  <ul>
+    <li><strong>Repeat</strong> the full extension-projection process on the <strong>previous day's</strong> Asia range.</li>
+    <li>Look for areas where levels from <strong>both sessions</strong> fall close together.</li>
+  </ul>
+  <h3>Alignment tolerance</h3>
+  <ul>
+    <li><strong>EUR/USD: 2 pips.</strong></li>
+    <li>If two extension levels from different sessions fall within 2 pips of each other, mark it as a <strong>confluence zone</strong>.</li>
+    <li>The lesson illustrates this with two overlaid Asia ranges, where the highlighted overlap area is described as "a high-probability confluence area."</li>
+  </ul>
+
+  <h2>5. Daily setup checklist</h2>
+  <div class="tl-box intuition">
+    <div class="tl-box-label">The routine, verbatim</div>
+    <ol>
+      <li>✓ <strong>Current Asia range identified</strong> — today's 00:00–06:00 London range clearly marked.</li>
+      <li>✓ <strong>Extensions above projected</strong> — Fib drawn from highest close to lowest close.</li>
+      <li>✓ <strong>Extensions below projected</strong> — Fib drawn from lowest close to highest close.</li>
+      <li>✓ <strong>Previous session extensions added</strong> — yesterday's Asia range extensions overlaid.</li>
+      <li>✓ <strong>Alignment zones identified</strong> — levels within 2 pips marked as confluence zones.</li>
+    </ol>
+  </div>
+
+  <h2>6. Knowledge check</h2>
+  <details class="tl-quiz">
+    <summary>Q. What's the key difference between range extensions and mathematical standard deviations?</summary>
+    <div class="tl-answer">
+      <p>✗ Range extensions use more data points for higher accuracy.</p>
+      <p>✗ Standard deviations project future levels while range extensions look backward.</p>
+      <p><strong>✓ Range extensions project multiples of a defined range forward; standard deviations measure statistical dispersion from historical data.</strong></p>
+      <p>✗ They are essentially the same calculation with different names.</p>
+      <p style="margin-bottom:0">
+        Watch the second distractor — it's the true statement <em>reversed</em>,
+        an easy trap. It's the standard deviations that look backward and the
+        range extensions that project forward, not the other way around.
+      </p>
+    </div>
+  </details>
+
+  <h2>7. Key takeaways</h2>
+  <ol>
+    <li><strong>Range extensions ≠ standard deviations.</strong> Projecting multiples of a defined range forward, not calculating statistical variance.</li>
+    <li><strong>Extensions measure market expansion.</strong> A 3x extension means price has traveled three times the Asia range distance.</li>
+    <li><strong>Confluence amplifies probability.</strong> Alignment zones where multiple session extensions overlap offer higher probability.</li>
+    <li><strong>These are zones, not guarantees.</strong> Extension levels identify where price <em>may</em> react — always combine with proper risk management.</li>
+  </ol>
+
+  <h2>8. Glossary</h2>
+  <div class="tl-symbols"><table>
+    <tr><td>Asia range</td><td>The 00:00–06:00 London-time session range, measured on 5-minute candle closes; the foundational reference for all projections.</td></tr>
+    <tr><td>Range extension</td><td>The Asia range's size projected as a multiple into price space beyond the range; a forward structural measure.</td></tr>
+    <tr><td>Extension multiple (1x / 2x / 3x…)</td><td>How many Asia-range-distances price has traveled.</td></tr>
+    <tr><td>Exhaustion zone</td><td>An extension level where price has moved significantly and may find exhaustion (shorts above, longs below).</td></tr>
+    <tr><td>Alignment / confluence zone</td><td>Where extension levels from two different Asia sessions fall within tolerance (2 pips EUR/USD); the framework's highest-probability areas.</td></tr>
+    <tr><td>Closes, not wicks</td><td>Ranges are drawn between candle closes (acceptance), never wicks (rejection).</td></tr>
+  </table></div>
+
+  <h2>9. Real-time implementation notes</h2>
+  <div class="tl-box scenario">
+    <div class="tl-box-label">How this would run at the desk</div>
+    <ul style="margin-bottom:0">
+      <li><strong>Prep happens once per day, after 06:00 London</strong> — the Asia range can't be final until the window closes, so the checklist runs at/after Asia close.</li>
+      <li><strong>Standing chart template:</strong> EUR/USD 5m on an OANDA feed, chart timezone verified, the custom Fib template saved, "Asian Range by Nico948" plotted.</li>
+      <li><strong>Two drawings every day</strong> (highest-close→lowest-close, then the reverse), <strong>plus keep yesterday's two</strong> on the chart for the alignment scan.</li>
+      <li><strong>Alignment scan:</strong> walk the ladder and tag any today-vs-yesterday level pair within 2 pips — those confluence zones are the priority levels for the day.</li>
+      <li><strong>Directional read at a level:</strong> above the range = short consideration; below = long consideration. The framework supplies the <em>level</em>; entry trigger, stop, target and sizing are outside its scope — bring risk management.</li>
+      <li><strong>Housekeeping:</strong> re-verify the chart timezone after any platform update or DST change, since a mis-set clock silently shifts the entire range.</li>
+    </ul>
+  </div>
+
+  <details class="tl-section-collapse">
+  <summary><h2>10–11. Open questions &amp; areas for further study</h2></summary>
+
+  <h3>Questions to investigate in future</h3>
+  <p>Open questions the lesson raises but doesn't answer — future study/research prompts, not conclusions:</p>
+  <ol>
+    <li><strong>Which multiples matter most?</strong> The grid runs to 10.5x. Where do reactions actually cluster — 1x? 2–3x? Does reaction quality decay or improve with distance?</li>
+    <li><strong>Why would extension multiples mark exhaustion?</strong> What's the mechanism — statistical rarity of large moves, self-fulfilling attention on session-range multiples, or intraday mean-reversion after fast expansion?</li>
+    <li><strong>Does confluence measurably help?</strong> Test alignment-zone touches vs single-session-level touches: hit rate, reaction size, after costs.</li>
+    <li><strong>Tolerance scaling.</strong> 2 pips is given for EUR/USD only. What's the right tolerance for other pairs/instruments — fixed pips, %ATR, or a fraction of the Asia range?</li>
+    <li><strong>Closes vs wicks.</strong> The lesson asserts closes are better (acceptance vs rejection). Does the close-to-close range produce better levels than the wick high/low range in a fair A/B?</li>
+    <li><strong>Is the Asia session special?</strong> Would any 6-hour overnight window (or another session's range) project equally useful levels, or is 00:00–06:00 London specifically informative?</li>
+    <li><strong>Timezone sensitivity.</strong> London time shifts against UTC with DST. How sensitive are the levels to a one-hour shift in the window?</li>
+    <li><strong>More sessions of confluence.</strong> The lesson uses two Asia ranges (today + yesterday). Does adding a third session tighten or just thin out the zones?</li>
+    <li><strong>Extension distance as a market-state reading.</strong> If a 3x extension means "significant expansion," can the max multiple reached by a given time of day serve as a trend-day vs range-day indicator?</li>
+    <li><strong>Relation to volatility measures.</strong> The lesson says extensions are "anchored to today's volatility context." How do range-multiple levels compare with σ-based bands built from an explicit vol estimate — do they mark the same prices?</li>
+  </ol>
+
+  <h3>Areas of interest for deeper study</h3>
+  <ul>
+    <li><strong>Session-range structure</strong> generally: how overnight/consolidation ranges relate to the following session's expansion (Asia → London/NY handoff).</li>
+    <li><strong>Acceptance vs rejection</strong> as a candle-reading principle (closes vs wicks) — where else does this distinction apply (range definition, level breaks, stop placement)?</li>
+    <li><strong>Confluence as a general method:</strong> the lesson's alignment idea (two independent projections agreeing within tolerance) is a pattern that could apply to any level family — pivots, prior highs/lows, volume levels.</li>
+    <li><strong>Forward-projected vs backward-derived levels</strong> as two families of technical levels — the lesson's core distinction, worth keeping as a classification lens when studying other frameworks.</li>
+    <li><strong>Exhaustion behaviour at stretched prices:</strong> what does "exhaustion" look like on the tape (failure to make new highs, wick clusters, momentum divergence), and how would one confirm it at an extension level?</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="forecaster-walkthrough.html">← The Daily Forecaster Walkthrough</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="open-interest-course.html">Open Interest →</a>
+  </div>
+</div>
+</body>
+</html>

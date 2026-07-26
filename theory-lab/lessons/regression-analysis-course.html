@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Regression Analysis — Applied Practice — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Course Notes / Regression Analysis — Applied Practice</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Course Notes · Lesson 3 of 10</div>
+  <h1 class="tl-title">Regression Analysis — Applied Practice</h1>
+  <p class="tl-dek">The Correlation &amp; Linear Regression primer derives where \(\hat\beta=\mathrm{Cov}(X,Y)/\mathrm{Var}(X)\) and \(R^2\) actually come from. This course picks up from there and stays on the applied side: how quant desks actually use regression for factor discovery and alpha measurement, why the textbook standard errors are usually wrong in finance, how multiple regression turns into a factor model (and where it breaks), the full diagnostic checklist, and what separates a regression that survives contact with live trading from one that only ever worked on a spreadsheet.</p>
+  <div class="tl-meta">
+    <span class="tl-status course">COURSE NOTES — condensed from an applied regression course, restructured and cross-linked to this curriculum</span>
+    <span>~24 min read</span>
+    <span>Prereqs: Correlation &amp; Linear Regression primer</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Regression matters because it <strong>decomposes</strong> variation in returns into an explained part (factor exposures, the β's) and an unexplained residual (ε, where alpha — and noise — live); CAPM through Fama-French/Carhart/FF5 is one continuous history of running this regression, finding a systematic pattern left in the residuals, and adding a factor to absorb it.</li>
+      <li>\(R^2\) and adjusted \(R^2\) measure fit, not correctness: what's a "good" \(R^2\) depends entirely on the application (0.03–0.10 is normal for cross-sectional return prediction, 0.30–0.70 for a CAPM time-series fit), and adjusted \(R^2\) is the cheap first guard against adding noise variables that raise plain \(R^2\) for free.</li>
+      <li>Statistical inference (t-stats, p-values, confidence intervals) is only as good as its standard errors, and in finance the classical formula is almost always wrong — heteroskedasticity and autocorrelation are the rule, not the exception — so <strong>Newey-West (HAC) standard errors are the finance default</strong>, and the multiple-testing problem pushes the factor-discovery significance bar to \(|t|>3\), not the classroom's 2.</li>
+      <li>Multiple regression turns coefficients into <em>partial</em> effects and is how CAPM becomes Fama-French/Carhart, but multicollinearity (checked via VIF) can leave a jointly-significant F-test sitting on top of no individually-significant coefficient at all.</li>
+      <li>The failure modes that actually kill strategies live in the in-sample/out-of-sample gap: overfitting, look-ahead bias, non-stationary (drifting) coefficients, and implementation friction — costs, data lags, capacity, post-publication decay — which is why walk-forward validation and robustness checks across periods/markets/specs are mandatory, not optional polish.</li>
+      <li>Beyond plain OLS, the applied toolkit extends to panel regression with fixed effects and clustered standard errors, Fama-MacBeth two-stage regression (the actual workhorse of empirical asset pricing), and Ridge/Lasso regularization once the predictor count grows — each one a specific fix for a specific way plain OLS breaks, not a reason to abandon OLS by default.</li>
+    </ul>
+  </div>
+
+  <h2>Why this course matters</h2>
+  <p>
+    Regression is the framework quant finance uses to answer one question:
+    when a stock (or a currency, or a strategy) returns 15%, how much of that
+    came from the market rising, how much from a sector or style tilt, and
+    how much — if any — is genuine skill? Without regression this is a
+    guess. With it, variation in returns splits into an <strong>explained</strong>
+    part — the risk factors you're compensated for holding, driven by
+    \(\beta_1X_1+\beta_2X_2+\dots+\beta_kX_k\) — and an <strong>unexplained</strong>
+    residual \(\epsilon\), where idiosyncratic risk and any real alpha both
+    live. \(R^2\) is exactly the ratio of those two pieces:
+    explained-over-total variation. A manager beating the market by 3%/yr
+    with \(\beta=1.2\) hasn't necessarily found anything — that 3% can be
+    pure compensation for carrying more market risk, not skill, and most
+    apparent "alpha" disappears once it is properly regressed against the
+    factors it was actually exposed to.
+  </p>
+  <p>
+    This page assumes the <a href="primer-correlation-regression.html">Correlation
+    &amp; Linear Regression primer</a>'s derivation of \(\hat\beta\), \(\hat\alpha\),
+    and \(R^2=1-\mathrm{SSR}/\mathrm{SST}\) — it does not re-derive any of
+    that math. What follows is the applied layer built on top of it: how the
+    industry actually uses the tool, where the textbook assumptions fail
+    against real return data, how one predictor becomes many, how to know
+    when a regression-based signal is lying to you, and what changes between
+    a regression that looks great on a laptop and one that survives being
+    traded.
+  </p>
+
+  <h2>Lesson 01 — Why regression matters: decomposition, CAPM, and the factor zoo</h2>
+  <p>
+    Three headline uses show up at every quant shop and every allocator,
+    despite very different business models: <strong>factor discovery</strong>
+    (which variables predict future returns, separated from spurious
+    correlations), <strong>risk attribution</strong> (decomposing portfolio
+    volatility into market risk, factor exposures, and idiosyncratic
+    components), and <strong>alpha measurement</strong> (the regression
+    intercept as the return unexplained by known risk factors). AQR builds
+    funds that systematically harvest factor premia identified via
+    regression; Two Sigma regresses thousands of candidate predictors against
+    future returns to test statistical significance and economic meaning;
+    Dimensional attributes a portfolio's returns to "60% market exposure, 25%
+    small-cap tilt, 15% value tilt"; every allocator asks the CAPM question —
+    "alpha, or just more market risk?" — before crediting a manager with
+    skill. The common thread across all four: separating systematic from
+    idiosyncratic, explained from unexplained, factor exposure from alpha.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Correlation is not causation — three specific ways it fails</h3>
+    <p>
+      Regression finds relationships in data whether or not the underlying
+      mechanism is causal, so it pays to know the three standard ways
+      "X and Y move together" can mislead: <strong>omitted variable bias</strong>
+      (a third variable drives both — analyst coverage correlates with
+      returns, but firm quality drives both), <strong>reverse causality</strong>
+      (Y causes X, not the reverse — do high returns attract analyst coverage,
+      rather than coverage driving returns?), and <strong>coincidental
+      correlation</strong> (test enough variables and some correlate by
+      chance — the "Super Bowl indicator" is the standard joke example). In
+      quant practice, prediction often matters more than mechanism — a
+      variable that reliably predicts out-of-sample is useful even if you
+      can't fully explain why — but predictors with a genuine causal story
+      are more robust: value (book/price) has a distress-risk or
+      extrapolation-bias mechanism behind it and is more likely to persist;
+      "ticker starts with A" has no mechanism and won't. Both can look
+      statistically significant in-sample; only one keeps working
+      out-of-sample.
+    </p>
+  </div>
+
+  <p>
+    CAPM is regression's most famous application, and the template every
+    later factor model follows:
+  </p>
+  <div class="tl-math">\[ R_i - R_f = \alpha + \beta(R_m - R_f) + \epsilon \]</div>
+  <p>
+    \(R_i-R_f\) is the asset's excess return (the \(Y\)); \(\alpha\), the
+    intercept, is return unexplained by the market — potential skill;
+    \(\beta\), the slope, is sensitivity to market moves (\(\beta>1\) more
+    volatile/aggressive, \(\beta<1\) less volatile/defensive); \(\epsilon\)
+    is idiosyncratic noise. Before CAPM there was no systematic way to
+    separate skill from risk-taking — a 5% outperformance could be genuine
+    alpha or just a high beta riding an up market. One equation created the
+    field of performance attribution.
+  </p>
+  <p>
+    Every advance since has come from running exactly this regression,
+    examining the residuals, and finding a systematic pattern left over:
+  </p>
+  <ol>
+    <li><strong>CAPM (1960s)</strong> — market factor only; small and value
+      stocks kept showing persistent positive alphas.</li>
+    <li><strong>Fama-French 3-factor (1993)</strong> — adds SMB (Small Minus
+      Big) and HML (High Minus Low book-to-market); much of the small/value
+      "alpha" turned out to be compensation for these factors.</li>
+    <li><strong>Carhart 4-factor (1997)</strong> — adds UMD (Up Minus Down)
+      momentum, observed as a residual pattern; became the
+      performance-evaluation standard.</li>
+    <li><strong>Fama-French 5-factor (2015)</strong> — adds RMW (Robust Minus
+      Weak profitability) and CMA (Conservative Minus Aggressive investment).</li>
+    <li><strong>Any custom factor model</strong> — same recipe: regress
+      returns on candidate factors, examine residuals for leftover patterns,
+      add a factor that explains that systematic variation.</li>
+  </ol>
+  <p>
+    General form: \(R_i-R_f=\alpha+\beta_1F_1+\beta_2F_2+\dots+\beta_kF_k+\epsilon\),
+    with alpha now the return unexplained by <em>all</em> included factors —
+    a value-tilted manager can show a positive CAPM alpha and a zero
+    Fama-French alpha, because what looked like skill under the simple model
+    became explainable factor exposure under the richer one. Hundreds of
+    factors are now published (the "factor zoo"), which creates its own
+    problem: test enough candidate factors and some will appear significant
+    purely by chance, which is exactly why many published factors fail to
+    replicate out-of-sample — a theme this course returns to directly in
+    Lesson 04's multiple-testing discussion below.
+  </p>
+
+  <h2>Lessons 02–03 — OLS mechanics and measuring fit, applied</h2>
+  <p>
+    The primer already derives \(\hat\beta=\mathrm{Cov}(X,Y)/\mathrm{Var}(X)=
+    \rho_{XY}\cdot(\sigma_Y/\sigma_X)\), why squaring residuals is the right
+    objective, and \(R^2=1-\mathrm{SSR}/\mathrm{SST}\) — that derivation is
+    not repeated here. What the primer doesn't cover is how these numbers get
+    misread in practice, and that's the applied content worth carrying
+    forward.
+  </p>
+  <p>
+    <strong>The units trap.</strong> A coefficient is meaningless without its
+    units attached. A regression of return (%) on earnings surprise measured
+    as a percentage might read \(\beta=0.5\); measure the same surprise as a
+    decimal (0.05 instead of 5%) and the identical relationship reports
+    \(\beta=50\); measure it in basis points and it reports \(\beta=0.005\).
+    Nothing about the relationship changed — only the units did. The fix
+    practitioners use is <strong>standardizing</strong> both variables first
+    (\(Z=(X-\bar X)/\sigma_X\)), which turns \(\beta\) into "SD-change in Y
+    per SD-change in X" and makes coefficients comparable across variables
+    measured in different units — e.g. finding that earnings-surprise's
+    standardized effect is three times analyst-coverage's, even though the
+    raw coefficients live on completely different scales. And because
+    \(\beta=\rho_{XY}\cdot(\sigma_Y/\sigma_X)\) (the primer's identity), a
+    high beta can come from high correlation <em>or</em> from high relative
+    volatility alone — a crypto asset can show \(\beta=2\) against equities
+    purely from being twice as volatile, without being especially correlated
+    at all.
+  </p>
+  <p>
+    <strong>Statistical significance is not economic significance.</strong>
+    With enough data, everything becomes "significant" — millions of
+    observations can give a 0.001% effect a vanishingly small p-value. The
+    honest 2×2 to hold in mind: a large effect with a tight standard error is
+    a strong finding worth investigating; a small effect with a tight SE is a
+    precisely-measured nothing; a large effect with a wide SE is promising
+    but unproven (more data needed); a small effect with a wide SE is nothing
+    — move on. Always report magnitudes alongside p-values, and keep the
+    language honest: "X is associated with Y" is defensible, "X causes Y"
+    is a much larger claim.
+  </p>
+
+  <h3>R² and adjusted R²: what a fit number does and doesn't say</h3>
+  <p>
+    \(R^2\) measures scatter around a line, not the line's slope — two
+    datasets sharing the exact same \(\beta\) can show \(R^2=0.92\) (tight
+    cluster) or \(R^2=0.35\) (wide scatter); same relationship, different
+    noise. In finance, low \(R^2\) is normal and expected, because returns
+    carry enormous idiosyncratic variation: a well-specified CAPM regression
+    commonly lands at \(R^2\) 0.30–0.50, and a statistically and economically
+    meaningful coefficient (say \(\beta=0.5\), \(t=4\)) can coexist
+    comfortably with \(R^2=0.05\) — there's just a lot of other variation
+    around it too. \(R^2\) also says nothing about whether the model is
+    correctly specified (a curve snaked through the points fits beautifully
+    in-sample and predicts nothing), whether coefficients are significant
+    (unrelated to t-stats), or whether the model works out-of-sample (a high
+    \(R^2\) is just as consistent with overfitting as with a real
+    relationship).
+  </p>
+  <p>Rough benchmarks worth memorizing, because "good" is entirely context-dependent:</p>
+  <div class="tl-symbols">
+    <table>
+      <tr><td>Cross-sectional return prediction</td><td>\(R^2\approx\) 0.03–0.10 — most variation is idiosyncratic; signal-to-noise is inherently low here.</td></tr>
+      <tr><td>Time-series market model (CAPM)</td><td>\(R^2\approx\) 0.30–0.70 — the market moves all assets to some degree; blue chips run higher, small caps lower.</td></tr>
+      <tr><td>Multi-factor models</td><td>\(R^2\approx\) 0.50–0.90 — multiple systematic sources combined, but this explains the past, not the future.</td></tr>
+      <tr><td>Suspiciously high</td><td>\(R^2 > 0.95\) — treat as a trigger for skepticism, not celebration: overfitting, or a variable that wasn't actually knowable in real time.</td></tr>
+    </table>
+  </div>
+  <p>
+    Plain \(R^2\) has a structural flaw: it can never fall when a variable is
+    added, even a column of pure noise, because OLS can always set that
+    variable's coefficient to exactly zero and reproduce the old fit — so
+    there's a perverse incentive to keep adding variables. <strong>Adjusted
+    \(R^2\)</strong> fixes the incentive by charging a penalty for each added
+    predictor:
+  </p>
+  <div class="tl-math">\[ \bar R^2 = 1 - \frac{(1-R^2)(n-1)}{n-k-1} \]</div>
+  <p>
+    with \(k\) the predictor count. Concretely: a market-only model at
+    \(R^2=0.45\)/adj. \(R^2=0.44\); adding a genuine size factor moves it to
+    \(R^2=0.52\)/adj. \(R^2=0.51\) (size helps); adding a third, purely random
+    column nudges plain \(R^2\) to 0.53 but adjusted \(R^2\) <em>falls</em> to
+    0.50 — the rule of thumb being that if adjusted \(R^2\) drops when a
+    variable is added, that variable is probably noise. Use adjusted
+    \(R^2\) — or RMSE/MAE for practical prediction accuracy, or AIC/BIC when
+    comparing models with different variable counts (derived in the
+    <a href="model-selection-aic-bic.html">Model Selection: AIC &amp; BIC</a>
+    lesson) — rather than chasing plain \(R^2\) upward. The classic
+    overfitting signature is a complex model scoring in-sample \(R^2=0.99\)
+    and out-of-sample \(R^2=0.25\), against a simple model scoring 0.65
+    in-sample and 0.60 out-of-sample: the complex model memorized noise, the
+    simple one captured something real. The more spectacular an in-sample
+    result looks, the more it deserves suspicion, not confidence — a theme
+    this course returns to concretely in Lesson 07's overfitting toolkit
+    below.
+  </p>
+
+  <h2>Lesson 04 — Statistical inference &amp; significance</h2>
+  <p>
+    The t-statistic is a signal-to-noise ratio: \(t=\hat\beta/SE(\hat\beta)\)
+    — the numerator is how far the estimate sits from zero, the denominator
+    is how uncertain that estimate is. The same \(\hat\beta=0.5\) can be a
+    strong \(t=5\) if \(SE=0.1\), or a shaky \(t=1.25\) if \(SE=0.4\) — a
+    small coefficient with a small SE can be highly significant, and a large
+    coefficient with a large SE may not be significant at all. Three things
+    drive the standard error itself: more data shrinks it (doubling \(n\)
+    roughly shrinks SE by \(\sqrt2\)); noisier residuals (\(\sigma^2\)) widen
+    it; more spread in \(X\) shrinks it (better identification).
+  </p>
+
+  <h3>Robust standard errors: the ladder finance actually needs</h3>
+  <p>
+    Classical OLS standard errors assume homoskedastic, independent errors —
+    virtually never true of financial returns, where volatility clusters and
+    residuals correlate across time. The escalation:
+  </p>
+  <div class="tl-symbols">
+    <table>
+      <tr><td>Classical (OLS)</td><td>Robust to nothing — only valid if homoskedasticity and independence are both actually verified, rare in finance.</td></tr>
+      <tr><td>White (HC/HC3)</td><td>Robust to heteroskedasticity; a reasonable choice for cross-sectional data.</td></tr>
+      <tr><td><strong>Newey-West (HAC)</strong></td><td>Robust to heteroskedasticity <em>and</em> autocorrelation — the default for financial time series. Robust t-stats often come out lower than classical ones; 4 lags is a common choice for monthly data.</td></tr>
+    </table>
+  </div>
+  <p>
+    <strong>P-values, read correctly.</strong> \(p\) is the probability of
+    observing data this extreme or more extreme, <em>assuming the null
+    (\(\beta=0\)) is true</em> — it is \(P(\text{data}\mid\text{null})\), not
+    \(P(\text{null}\mid\text{data})\); a Bayesian statement about
+    "probability the null is true" would need priors this test doesn't
+    supply. "Fail to reject" is not "accept the null" — a p-value of 0.15
+    doesn't mean \(\beta=0\), it can mean the sample is too small or noisy to
+    detect a real effect. <strong>Confidence intervals</strong>
+    (\(\hat\beta\pm1.96\cdot SE(\hat\beta)\) for 95%) are more informative
+    than a p-value alone because they show both significance (does the
+    interval exclude zero?) <em>and</em> precision (how wide is it?) — a
+    coefficient of 0.5 with CI \([0.1,0.9]\) is significant but imprecise;
+    the same 0.5 with CI \([0.45,0.55]\) is significant and precise. Report
+    CIs, not just p-values.
+  </p>
+  <p>
+    <strong>The multiple-testing problem</strong> is the central challenge in
+    factor research, covered in full in the
+    <a href="multiple-testing.html">Multiple Testing &amp; the Look-Elsewhere
+    Effect</a> lesson — the short version here: at \(\alpha=5\%\), testing
+    100 true nulls produces roughly 5 false positives by chance alone; 1,000
+    produces roughly 50. Publishing only the significant results fills the
+    literature with noise. Harvey, Liu &amp; Zhu (2016) formalize the fix for
+    factor discovery specifically: because researchers have collectively
+    tested thousands of candidate factors, use \(|t|>3\) as the bar, not the
+    classroom's 2 — a \(t\) of 2.5 might be fine in one pre-registered test,
+    but is suspect once it emerges from a search over many specifications.
+    Most published factors with \(2<|t|<3\) fail to replicate
+    out-of-sample. Formal corrections exist too — Bonferroni divides
+    \(\alpha\) by the number of tests (100 tests → per-test
+    \(\alpha=0.0005\), conservative enough to miss real effects), and the
+    False Discovery Rate controls the expected share of false positives among
+    claimed discoveries — but the ultimate check, catching overfitting that
+    survives every statistical correction, is genuine out-of-sample
+    validation.
+  </p>
+  <p>A practical checklist before trusting a "significant" finance result:</p>
+  <div class="tl-symbols">
+    <table>
+      <tr><td>Robust SEs?</td><td>Newey-West or similar used — classical-only SEs mean the t-stats are likely inflated.</td></tr>
+      <tr><td>\(|t|\) magnitude</td><td>\(|t|>3\) preferred, especially with many specifications tried.</td></tr>
+      <tr><td>Economic size</td><td>Big enough to survive trading costs — significant-but-tiny is not tradeable.</td></tr>
+      <tr><td>Out-of-sample</td><td>Tested on genuinely held-out data, not just in-sample.</td></tr>
+      <tr><td>How many things were tried?</td><td>Cherry-picked from many specs is a red flag even at a good \(t\).</td></tr>
+    </table>
+  </div>
+
+  <h2>Lesson 05 — Multiple regression &amp; factor models</h2>
+  <p>
+    Moving from \(Y=\alpha+\beta_1X_1+\epsilon\) (CAPM) to
+    \(Y=\alpha+\beta_1X_1+\beta_2X_2+\dots+\beta_kX_k+\epsilon\)
+    (Fama-French-style) changes the interpretation of every coefficient: each
+    one becomes a <strong>partial effect</strong> — "the effect of \(X_1\) on
+    \(Y\), holding all other \(X\) variables constant." This is why it
+    matters: it isolates factor effects (market beta in a multi-factor model
+    is sensitivity <em>after</em> controlling for size and value, cleaner
+    than a raw CAPM beta), it controls for confounders (if size and value are
+    themselves correlated, a simple regression on either alone is biased),
+    and it produces a more meaningful alpha — Fama-French alpha is return
+    unexplained by market <em>and</em> size <em>and</em> value, a
+    substantially higher bar than CAPM alpha alone.
+  </p>
+  <div class="tl-math">\[ R_i - R_f = \alpha + \beta_1(\text{Mkt}-\text{RF}) + \beta_2\,\text{SMB} + \beta_3\,\text{HML} + \beta_4\,\text{UMD} + \epsilon \]</div>
+  <div class="tl-symbols">
+    <table>
+      <tr><td>Mkt−RF</td><td>Market — excess market return.</td></tr>
+      <tr><td>SMB</td><td>Size — Small Minus Big.</td></tr>
+      <tr><td>HML</td><td>Value — High Minus Low book-to-market.</td></tr>
+      <tr><td>UMD</td><td>Momentum — Up Minus Down.</td></tr>
+    </table>
+  </div>
+  <p>
+    A worked regression output makes the reading concrete — a fund's returns
+    against the four factors above:
+  </p>
+  <div class="tl-symbols">
+    <table>
+      <tr><td>const (α)</td><td>coef 0.0015, SE 0.0012, t = 1.25, p = 0.212 — not distinguishable from zero.</td></tr>
+      <tr><td>Mkt−RF</td><td>coef 1.15, SE 0.08, t = 14.38, p &lt; 0.001 — strongly significant market exposure.</td></tr>
+      <tr><td>SMB</td><td>coef 0.42, SE 0.12, t = 3.50, p = 0.001 — significant small-cap tilt.</td></tr>
+      <tr><td>HML</td><td>coef 0.15, SE 0.08, t = 1.88, p = 0.062 — marginally significant; suggestive, not conclusive. Don't over-interpret a borderline row.</td></tr>
+    </table>
+  </div>
+  <p>
+    <strong>Multicollinearity</strong> — predictors highly correlated with
+    each other — doesn't bias predictions, but it destroys the ability to
+    interpret individual coefficients: estimates become imprecise, effects
+    can't be separated, and standard errors explode. The standard diagnostic
+    is the <strong>Variance Inflation Factor</strong>: \(\mathrm{VIF}\approx1\)
+    is fine, 5 is moderate, and above 10 is serious to severe. The
+    <strong>F-test</strong> (\(H_0:\beta_1=\beta_2=\dots=\beta_k=0\), all
+    slopes jointly zero) checks overall significance without saying which
+    factor matters — that's the individual t-stats' job — and this produces
+    the classic <strong>multicollinearity paradox</strong>: a significant
+    F-test sitting on top of no individually significant coefficient at
+    all, meaning the factors jointly matter but their separate effects can't
+    be pulled apart.
+  </p>
+  <p>Building a factor model, the process:</p>
+  <ol>
+    <li><strong>Start with theory</strong> — what should logically predict
+      returns? Factors with an economic story are more likely to persist
+      than ones discovered by search alone.</li>
+    <li><strong>Get clean factor data</strong> — no look-ahead bias, handle
+      delistings properly.</li>
+    <li><strong>Run the regression</strong> — OLS with Newey-West SEs; check
+      VIF; examine residuals.</li>
+    <li><strong>Validate extensively</strong> — out-of-sample is mandatory;
+      different periods, different markets. Working in only one sample is
+      overfitting, not validation.</li>
+  </ol>
+  <p>Common factor-model pitfalls worth naming explicitly:</p>
+  <div class="tl-symbols">
+    <table>
+      <tr><td>Overfitting factors</td><td>Adding factors until \(R^2\) looks high fails out-of-sample; each added factor buys more noise-fitting capacity.</td></tr>
+      <tr><td>Look-ahead bias</td><td>Using information not available at the time — e.g. year-end book values can't predict January returns if they weren't published yet.</td></tr>
+      <tr><td>Factor timing</td><td>Implicitly timing factors via variable selection, e.g. selecting on recent performance.</td></tr>
+      <tr><td>Survivorship bias</td><td>Only surviving assets included overstates returns — delisted assets usually did poorly first.</td></tr>
+    </table>
+  </div>
+
+  <h2>Lesson 06 — Regression diagnostics &amp; pitfalls</h2>
+  <p>
+    Three violations dominate financial regressions, and in financial data
+    they are the rule, not the exception:
+  </p>
+  <div class="tl-symbols">
+    <table>
+      <tr><td>Heteroskedasticity</td><td>Non-constant error variance — volatility clustering, large errors following large errors. Fix: robust (White) SEs.</td></tr>
+      <tr><td>Autocorrelation</td><td>Errors correlated over time — today's residual predicts tomorrow's. Fix: Newey-West SEs.</td></tr>
+      <tr><td>Non-stationarity</td><td>Parameters change over time — a relationship estimated on 2010 data may not hold in 2024. Fix: rolling windows, per-regime estimation.</td></tr>
+    </table>
+  </div>
+  <p>
+    The formal derivation and testing procedure for the first two —
+    Durbin-Watson for autocorrelation, Breusch-Pagan for heteroskedasticity,
+    plus Jarque-Bera for residual normality — lives in the
+    <a href="regression-diagnostics.html">Regression Diagnostics</a> lesson
+    and isn't repeated here; the short version is that both violations leave
+    \(\hat\beta\) unbiased but make the reported standard error wrong
+    (usually too small), which inflates t-stats and produces false
+    precision. What that lesson doesn't cover is the rest of the
+    diagnostic habit worth building into every regression:
+  </p>
+  <p><strong>The four residual plots, always drawn:</strong></p>
+  <ol>
+    <li><strong>Residuals vs. fitted</strong> — want random scatter around
+      zero; curves or funnels signal misspecification or heteroskedasticity.</li>
+    <li><strong>Residuals vs. time</strong> — want independence; trends,
+      cycles, or clusters signal autocorrelation or a structural break.</li>
+    <li><strong>Scale-location</strong> (\(\sqrt{|e|}\) vs. fitted) — want
+      constant spread; a funnel again signals heteroskedasticity.</li>
+    <li><strong>Q-Q plot</strong> — want normality; tail deviations signal fat
+      tails, common in finance and capable of distorting small-sample
+      inference.</li>
+    </ol>
+  <p>
+    Statistical tests can miss patterns that are visually obvious — plot
+    residuals before trusting a test result, not instead of it.
+  </p>
+  <p>
+    <strong>Non-stationarity and rolling betas.</strong> Market sensitivity
+    is not a constant — it shifts with leverage, industry dynamics, and
+    regime changes (2008, COVID can invalidate a pre-break estimate). A
+    60-month rolling regression that swings from \(\beta=0.4\) to
+    \(\beta=1.6\) back to \(0.7\) is telling you the relationship itself
+    isn't stable, and the full-sample \(\beta\) should be distrusted
+    accordingly. Detection tools: rolling regressions (plot coefficients over
+    time; jumps mean instability), the Chow test (for a known candidate break
+    date — does \(p<0.05\) say coefficients differ before/after?), and the
+    CUSUM test (for an unknown break date, tracking cumulative residual
+    drift). Stable coefficients across subsamples are more likely to keep
+    working forward; wildly varying ones are a warning the relationship
+    itself isn't real in the way it looks.
+  </p>
+  <p>
+    <strong>Outliers and influential observations.</strong> OLS is not
+    robust — a handful of extreme points (one bad tick, one crisis month) can
+    dominate an estimate. <strong>Cook's Distance</strong> flags influential
+    points (a value \(>1\), or the rule-of-thumb \(>4/n\)); DFBETAS gives the
+    per-coefficient version of the same idea. The triage that follows a flag
+    matters more than the flag itself:
+  </p>
+  <div class="tl-symbols">
+    <table>
+      <tr><td>Data error</td><td>Fix or remove — e.g. a 500% return that's actually a decimal-point typo for 5%.</td></tr>
+      <tr><td>Genuine extreme event</td><td>Keep it, and report sensitivity with/without — e.g. the March 2020 COVID crash.</td></tr>
+      <tr><td>Misspecification signal</td><td>Reconsider the model — a systematic pattern in the outliers usually means a missing variable, not bad luck.</td></tr>
+    </table>
+  </div>
+  <p>
+    The diagnostic habit, stated as a checklist: plot residuals first, every
+    time; test for heteroskedasticity and apply robust SEs if present; test
+    for autocorrelation and apply Newey-West if present; check influential
+    points via Cook's D and report sensitivity. Document it in plain
+    language — "SEs are Newey-West with 4 lags; residual plots show no
+    obvious pattern; results are robust to excluding influential
+    observations" is the level of specificity a regression-based signal
+    should be able to state. A regression without this checklist run is a
+    black box that may or may not be producing garbage — there's no way to
+    know which without doing the diagnostics.
+  </p>
+
+  <h2>Lesson 07 — From regression to production models</h2>
+  <p>
+    An in-sample \(R^2\) of 0.9 means nothing on its own if the
+    out-of-sample \(R^2\) is 0.1 — a model can memorize every quirk of its
+    training data and fail on new data it hasn't seen. In-sample fit "can
+    always be improved" and "may reflect noise"; out-of-sample performance
+    "cannot be gamed" and answers the only question that actually matters:
+    will this work going forward?
+  </p>
+  <p>
+    <strong>Train-test splits, done right, are chronological.</strong> A
+    roughly 70/30 split is standard, but for financial data the split must
+    respect time order — train on earlier periods, test on later ones,
+    because you can only ever predict the future from the past. The cardinal
+    rule: never touch the test set during development; repeatedly checking
+    test performance and adjusting the model is implicitly fitting the test
+    set, which quietly turns "out-of-sample" back into "in-sample." A single
+    split can still be unlucky, which motivates cross-validation — but
+    <strong>standard K-fold CV breaks time ordering</strong> (training folds
+    can peek at the future) and is inappropriate for financial data. The
+    correct version — walk-forward analysis, the gold standard for
+    finance — trains on data up to time \(t\), predicts \(t+1\), rolls
+    forward, and repeats, exactly mimicking how a strategy would actually be
+    traded live; the full mechanics, plus the purged/embargoed refinements
+    needed when features come from overlapping windows, are in the
+    <a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged
+    Cross-Validation</a> lesson.
+  </p>
+  <p>
+    <strong>Rolling vs. expanding windows.</strong> A rolling (fixed
+    lookback) window adapts faster to regime change but works with less data
+    and is noisier; an expanding (all-history) window gives more precise
+    estimates but risks old data misleading a relationship that has since
+    shifted. The practical answer is to test both — similar results across
+    the two suggest a genuinely stable relationship, dramatic divergence is a
+    non-stationarity warning that favors the rolling approach.
+  </p>
+
+  <h3>The bias-variance tradeoff and the overfitting toolkit</h3>
+  <p>
+    Underlying every warning in this course about "too many factors" or "too
+    high an \(R^2\)" is the same tradeoff: a model that's too simple carries
+    high <strong>bias</strong> (systematically wrong, missing real structure
+    in the data) but low <strong>variance</strong> (stable — it wouldn't
+    change much if refit on a different sample of the same underlying
+    process); a model that's too complex carries low bias (it can fit
+    almost anything in-sample) but high variance (small changes in the
+    training sample produce wildly different fitted coefficients, because
+    the model is fitting sample-specific noise rather than the stable
+    signal underneath). Total expected error is, schematically, bias² plus
+    variance plus irreducible noise — and because bias² falls and variance
+    rises as complexity increases, that sum is <strong>U-shaped</strong>: too
+    simple underfits, too complex overfits, and there is a genuine interior
+    minimum in between.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The bias-variance tradeoff: total error vs. model complexity</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart showing bias squared decreasing, variance increasing, and their U-shaped sum (total error) plotted against model complexity, with the minimum total error point marked">
+      <line x1="60" y1="20" x2="60" y2="260" style="stroke:var(--border)"></line>
+      <line x1="60" y1="260" x2="600" y2="260" style="stroke:var(--border)"></line>
+      <text x="330" y="288" fill="var(--text3)" font-size="13" text-anchor="middle">Model complexity →</text>
+      <text x="26" y="140" fill="var(--text3)" font-size="13" text-anchor="middle" transform="rotate(-90 26 140)">Error</text>
+
+      <polyline points="80,39 130,81 180,119 230,152 280,180 330,205 380,225 430,240 480,251 530,258 580,260" style="fill:none;stroke:var(--blue);stroke-width:2"></polyline>
+      <polyline points="80,260 130,258 180,251 230,240 280,225 330,205 380,180 430,152 480,119 530,81 580,39" style="fill:none;stroke:var(--red);stroke-width:2"></polyline>
+      <polyline points="80,26 130,66 180,97 230,119 280,132 330,137 380,132 430,119 480,97 530,66 580,26" style="fill:none;stroke:var(--amber);stroke-width:2.5"></polyline>
+
+      <line x1="330" y1="137" x2="330" y2="260" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:4,4"></line>
+      <circle cx="330" cy="137" r="5" style="fill:var(--amber);stroke:var(--bg);stroke-width:1.5"></circle>
+      <text x="330" y="122" fill="var(--text2)" font-size="11.5" text-anchor="middle">minimum total error</text>
+      <text x="330" y="276" fill="var(--text3)" font-size="10.5" text-anchor="middle">optimal complexity</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>Bias² (falls as complexity rises)</span>
+      <span><i style="background:var(--red)"></i>Variance (rises as complexity rises)</span>
+      <span><i style="background:var(--amber)"></i>Total error = bias² + variance + irreducible noise</span>
+    </div>
+    <div class="tl-chart-caption">Illustrative curves (a symmetric stylization, not fit to a specific model). The same shape underlies why plain \(R^2\) rewards adding complexity indefinitely while out-of-sample error does not — it is the standard complement to the AIC/BIC chart in this curriculum, which penalizes complexity directly by parameter count rather than plotting the error curve itself.</div>
+  </div>
+
+  <p>The overfitting toolkit that follows from this shape:</p>
+  <ol>
+    <li><strong>Fewer parameters</strong> — a 5-factor model has less room to
+      fit noise than a 50-factor one.</li>
+    <li><strong>Penalize complexity</strong> — adjusted \(R^2\), AIC, BIC all
+      guard against "just one more factor" (see
+      <a href="model-selection-aic-bic.html">Model Selection: AIC &amp;
+      BIC</a> for the formal derivation of the second and third).</li>
+    <li><strong>A genuine holdout</strong> — a truly untouched test set,
+      checked once, at the very end.</li>
+    <li><strong>Theory first</strong> — factors with an economic rationale;
+      data-mined factors are the ones that fail out-of-sample.</li>
+  </ol>
+  <p>
+    <strong>Robustness testing</strong> is the complementary check: a finding
+    that holds up across different time periods (2000–2010 <em>and</em>
+    2010–2020, bull <em>and</em> bear), different markets (US and
+    international — value and momentum have been validated globally),
+    different specifications (variable definitions, lag choices, outlier
+    treatment — fragile results here usually mean overfitting), and shows
+    parameter stability across subsamples is much more likely to be a real,
+    persistent relationship than a coincidence of one sample.
+  </p>
+  <p>
+    <strong>Implementation is where paper returns die.</strong> Four
+    specific killers separate the research finding from what's actually
+    achievable live: <strong>transaction costs</strong> (a 10%/yr factor with
+    3%/yr of costs nets 7%, and a 50%/yr paper return with 300% turnover can
+    be net-negative), <strong>implementation lag</strong> (data published
+    with a 2-day lag means using it same-day is look-ahead bias, not a
+    signal), <strong>capacity constraints</strong> (a strategy profitable at
+    \$1M in AUM can hit real market impact at \$100M, especially in
+    small-cap factors), and <strong>post-publication decay</strong>
+    (arbitrage pressure erodes a factor once it's known — the best edges
+    tend to stay proprietary precisely because publishing them attracts
+    capital that competes the edge away). The research-to-production gap is
+    where most quant strategies die; disciplined validation, not more
+    building, is the bridge across it.
+  </p>
+
+  <h2>Lesson 08 — Advanced extensions &amp; what's next</h2>
+  <p>
+    OLS is the trunk; several specialized branches exist for specific
+    structural problems rather than as wholesale replacements for it.
+  </p>
+  <p>
+    <strong>Panel regression</strong> handles data that varies across both
+    entities (assets) and time (months) — plain OLS ignores that structure
+    and produces biased results. <strong>Entity fixed effects</strong> absorb
+    unobserved, time-invariant asset characteristics (persistently higher
+    returns for reasons that never show up as a variable); <strong>time
+    fixed effects</strong> absorb common per-period shocks (market-wide
+    events hitting every asset at once); and standard errors must be
+    <strong>clustered</strong> by entity and/or time, or they come out too
+    small with inflated t-stats.
+  </p>
+  <p>
+    <strong>Fama-MacBeth regression</strong> is the actual workhorse of
+    empirical asset pricing, run in two stages: a cross-sectional stage
+    (each month, regress that month's returns on the <em>prior</em> month's
+    characteristics, producing a monthly premium estimate \(\gamma_t\)) and a
+    time-series stage (average \(\gamma_t\) across months; its standard error
+    comes from the time-series variation of \(\gamma_t\); test whether the
+    mean premium is nonzero). It works because treating each month as one
+    independent observation of the premium sidesteps the cross-sectional
+    correlation problem of pooling all asset-months into a single giant OLS —
+    returns within a month are correlated (a market move hits every asset at
+    once), which a naive pooled regression's independence assumption would
+    silently violate.
+  </p>
+  <p>
+    <strong>Regularization — Ridge and Lasso</strong> — addresses the case of
+    many predictors, where plain OLS overfits into noisy coefficients and
+    poor out-of-sample performance. Both minimize prediction error plus
+    \(\lambda\times\) a coefficient penalty, with \(\lambda\) chosen by
+    cross-validation:
+  </p>
+  <div class="tl-symbols">
+    <table>
+      <tr><td>Ridge</td><td>L2 penalty (\(\sum\beta^2\)) — shrinks coefficients toward zero without eliminating any; suited to many correlated predictors.</td></tr>
+      <tr><td>Lasso</td><td>L1 penalty (\(\sum|\beta|\)) — drives some coefficients exactly to zero, i.e. variable selection; suited to sparse signals where you want a short list.</td></tr>
+      <tr><td>Elastic Net</td><td>L1 + L2 combined — both shrinkage and selection.</td></tr>
+    </table>
+  </div>
+  <p>
+    <strong>When to move beyond regression entirely</strong> (trees,
+    boosting, neural nets) is justified by genuinely nonlinear relationships,
+    high-dimensional data (100+ predictors), or interactions too complex to
+    specify manually — but flexibility is not a free upgrade: ML makes
+    overfitting <em>easier</em>, not harder (a neural net can memorize any
+    dataset perfectly and fail completely out-of-sample), and interpretability
+    drops as flexibility rises. The practical rule: start with simple
+    regression, and add complexity only when the simple model demonstrably
+    fails — the burden of proof sits on complexity, not on simplicity.
+  </p>
+  <p>
+    The institutional workflow this course closes on has four stages:
+    research (hypothesis → data → regression → diagnostics, starting from
+    economic intuition rather than data mining), validation (out-of-sample
+    testing, robustness checks, sensitivity analysis — <em>this is where
+    most strategies die</em>, and the discipline is to be your own harshest
+    critic), implementation (costs, data lags, capacity — where paper profits
+    most often disappear), and live monitoring (tracking live performance
+    against the backtest, watching for decay, iterating — a stage that never
+    really ends). The course's own closing point is that the most valuable
+    thing it teaches isn't a technique at all — it's the mindset: rigorous
+    hypothesis testing, extensive validation, and a healthy default
+    skepticism of any result that looks unusually good.
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>The same discipline this repo's own build rules already state in prose</h3>
+    <p>
+      This course's validation chain — chronological splits, walk-forward
+      analysis, robustness across periods/specs, a genuine out-of-sample
+      Sharpe with a non-trivial trade count — is not a separate philosophy
+      from this repo's own. <code>CLAUDE.md</code>'s Lego Principle 5 states
+      it directly: "a change 'wins' only if it beats the incumbent on OOS
+      Sharpe with a non-trivial OOS trade count (≥30). In-sample improvement
+      is not evidence." The residual-diagnostics rule in the backtest-build
+      discipline section — Durbin-Watson, Breusch-Pagan, Jarque-Bera before
+      trusting a regression-based signal's p-value or coefficient — is
+      exactly Lesson 06's diagnostic checklist above, stated as a repo rule
+      rather than a course note. And <code>js/metricsCore.js</code>'s
+      skew/excess-kurtosis/VaR/CVaR additions are the same instinct as this
+      course's insistence on reporting magnitudes and distributional shape
+      rather than a single fit statistic in isolation.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. 200 candidate signals are tested and 12 come back with p &lt; 0.05. Should you be impressed?</summary>
+    <div class="tl-answer">
+      No. At \(\alpha=5\%\), testing 200 true nulls produces roughly 10 false
+      positives by chance alone, so 12 "significant" results is close to what
+      pure noise would produce. Demand \(|t|>3\) (the Harvey-Liu-Zhu bar for
+      mined factors) and genuine out-of-sample replication before treating
+      any of the 12 as real.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why are classical t-statistics usually inflated (look more significant than they should) in financial time series?</summary>
+    <div class="tl-answer">
+      Because financial residuals are typically positively autocorrelated —
+      today's residual predicts tomorrow's — and the classical standard
+      error formula assumes independence across observations. When that
+      assumption is violated the classical SE underestimates the true
+      sampling uncertainty in \(\hat\beta\), which inflates the t-statistic
+      and understates the p-value. The fix is Newey-West (HAC) standard
+      errors, which are explicitly robust to this.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. A coefficient's 95% CI is [−0.1, 0.7] with p = 0.14. What does the confidence interval tell you that the p-value alone doesn't?</summary>
+    <div class="tl-answer">
+      The p-value alone only says "not significant at the conventional 5%
+      threshold." The CI shows the interval straddles zero but extends well
+      into economically large positive territory — the true effect could
+      plausibly be zero, or it could plausibly be quite large. That's an
+      underpowered test (too little data / too much noise to pin the
+      estimate down), not a demonstrated null — "fail to reject" is not
+      "accept the null."
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. State the Bonferroni-corrected significance threshold for 50 independent tests at an overall α = 5%.</summary>
+    <div class="tl-answer">
+      Per-test \(\alpha = 0.05/50 = 0.001\). Bonferroni divides the overall
+      false-positive budget evenly across all tests performed, which is
+      simple but conservative — it can miss real effects, which is why the
+      False Discovery Rate procedure or a flat \(|t|>3\) bar are often
+      preferred in factor research specifically.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. A multi-factor regression's F-test is significant at p &lt; 0.001, but every individual coefficient's t-statistic is below 1.5. What's the most likely diagnosis?</summary>
+    <div class="tl-answer">
+      Multicollinearity. The F-test says the factors jointly explain real
+      variation in \(Y\), but if the predictors are highly correlated with
+      each other, OLS can't cleanly separate which one deserves the credit —
+      each individual coefficient's standard error inflates and its t-stat
+      collapses, even though the group of factors together clearly matters.
+      Check the Variance Inflation Factor (VIF) on each predictor; values
+      above 10 confirm severe multicollinearity.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why is standard K-fold cross-validation invalid for testing a return-prediction model, and what should be used instead?</summary>
+    <div class="tl-answer">
+      Standard K-fold shuffles observations across folds without respecting
+      time order, so a training fold can end up containing data from
+      <em>after</em> a test fold — the model effectively gets to peek at the
+      future when predicting the past, which is temporal leakage. The
+      correct alternative for financial data is walk-forward analysis: train
+      only on data up to time \(t\), predict \(t+1\), roll forward, and
+      repeat — this is the only validation scheme that mimics how the model
+      would actually have been used live.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Master formula sheet (exam crib)</h2></summary>
+  <div class="tl-symbols">
+    <table>
+      <tr><td>OLS objective</td><td>\(\min\sum(Y_i-\hat Y_i)^2\)</td></tr>
+      <tr><td>Slope</td><td>\(\beta=\mathrm{Cov}(X,Y)/\mathrm{Var}(X)=\rho_{XY}\cdot(\sigma_Y/\sigma_X)\)</td></tr>
+      <tr><td>Intercept</td><td>\(\alpha=\bar Y-\beta\bar X\) (line passes through the centroid)</td></tr>
+      <tr><td>Decomposition</td><td>\(Y_i=\hat Y_i+\epsilon_i\) (actual = fitted + residual)</td></tr>
+      <tr><td>\(R^2\)</td><td>\(1-\mathrm{SS}_{res}/\mathrm{SS}_{tot}=\mathrm{SS}_{exp}/\mathrm{SS}_{tot}\)</td></tr>
+      <tr><td>Adjusted \(R^2\)</td><td>\(1-(1-R^2)(n-1)/(n-k-1)\)</td></tr>
+      <tr><td>t-statistic</td><td>\(\beta/SE(\beta)\) — \(|t|>2\) classic threshold, \(|t|>3\) for mined factors</td></tr>
+      <tr><td>95% CI</td><td>\(\beta\pm1.96\cdot SE(\beta)\)</td></tr>
+      <tr><td>AIC / BIC</td><td>\(2k-2\ln L\) &nbsp;/&nbsp; \(k\ln(n)-2\ln L\)</td></tr>
+      <tr><td>RMSE / MAE</td><td>\(\sqrt{\sum\epsilon^2/n}\) &nbsp;/&nbsp; \(\sum|\epsilon|/n\)</td></tr>
+      <tr><td>Standardized variable</td><td>\(Z=(X-\bar X)/\sigma_X\) (→ β in SD units)</td></tr>
+      <tr><td>CAPM</td><td>\(R_i-R_f=\alpha+\beta(R_m-R_f)+\epsilon\)</td></tr>
+      <tr><td>FF3 + momentum</td><td>\(R_i-R_f=\alpha+\beta_1(\text{Mkt}-\text{RF})+\beta_2\text{SMB}+\beta_3\text{HML}+\beta_4\text{UMD}+\epsilon\)</td></tr>
+      <tr><td>Bonferroni</td><td>per-test \(\alpha=\alpha/N_{tests}\)</td></tr>
+      <tr><td>VIF rule</td><td>≈1 fine · 5 moderate · &gt;10 serious</td></tr>
+      <tr><td>Durbin-Watson</td><td>≈2 none · &lt;2 positive autocorrelation · &gt;2 negative</td></tr>
+      <tr><td>Cook's D flag</td><td>&gt; 1, or the rule-of-thumb &gt; 4/n</td></tr>
+    </table>
+  </div>
+  <p style="font-size:13px;color:var(--text3);margin-top:14px">
+    <strong>Default settings for any financial regression:</strong>
+    Newey-West (HAC) standard errors · chronological splits only ·
+    walk-forward cross-validation · \(|t|>3\) for anything mined from many
+    specifications · report confidence intervals and magnitudes, not just
+    p-values · plot the four residual diagnostic plots · document the
+    diagnostics performed.
+  </p>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Consolidated "investigate later" list</h2></summary>
+  <p style="font-size:13px;color:var(--text3);margin-bottom:10px">Threads flagged across the course for future study — not assessed or endorsed here, just recorded.</p>
+  <h3>Reading list</h3>
+  <ul>
+    <li>Fama &amp; French (1993); Carhart (1997); Fama &amp; French (2015).</li>
+    <li>Harvey, Liu &amp; Zhu (2016) — the source of the \(|t|>3\) rule.</li>
+    <li>Cochrane, <em>Asset Pricing</em>; Campbell/Lo/MacKinlay; Angrist &amp; Pischke.</li>
+    <li>Replication studies of the factor zoo — which factors actually survived?</li>
+    <li>Published estimates of post-publication factor decay.</li>
+  </ul>
+  <h3>Methods to learn properly</h3>
+  <ul>
+    <li>Benjamini-Hochberg FDR procedure mechanics.</li>
+    <li>Newey-West lag selection rules (e.g. the plug-in \(4(n/100)^{2/9}\)).</li>
+    <li>GARCH — the formal model of volatility clustering.</li>
+    <li>Chow / CUSUM structural-break tests; the Hausman test (fixed vs. random effects).</li>
+    <li>Shanken correction for errors-in-variables in two-pass regressions.</li>
+    <li>Purged/embargoed cross-validation for overlapping labels.</li>
+    <li>Robust regression (LAD, M-estimators) and winsorization conventions.</li>
+  </ul>
+  <h3>Application questions</h3>
+  <ul>
+    <li>How are SMB/HML/UMD portfolios actually constructed (sorts, breakpoints, rebalancing)?</li>
+    <li>What is the standard FX factor set (dollar, carry, momentum, value/PPP) and what data does an honest construction require?</li>
+    <li>Typical \(R^2\) levels for FX return models, cross-sectional vs. time-series?</li>
+    <li>Fama-MacBeth lag conventions for characteristics.</li>
+    <li>How does regularization's \(\lambda\) selection compose with walk-forward CV?</li>
+    <li>Practical design of a "touch once" holdout in an iterative research workflow.</li>
+    <li>Where has ML (boosting) genuinely beaten linear models on tabular financial data in published work?</li>
+  </ul>
+  <h3>Implementation candidates (flagged only, not scoped or assessed here)</h3>
+  <ul>
+    <li>A reusable regression utility (OLS + Newey-West SEs + VIF + Durbin-Watson + Cook's D + rolling regression).</li>
+    <li>Residual-diagnostic plots for existing model outputs.</li>
+    <li>Rolling-beta stability views for cross-pair relationships.</li>
+    <li>Fama-MacBeth-style panel testing over the multi-pair daily data.</li>
+    <li>Clustered/date-aware error bars for pooled cross-pair statistics.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="quant-macro-lessons.html">← Quantitative &amp; Macro Foundations</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="volatility-intelligence.html">Volatility Intelligence →</a>
+  </div>
+</div>
+</body>
+</html>

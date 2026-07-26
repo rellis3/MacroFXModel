@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inside the COG-Inspired Gate System — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / COG / Inside the COG-Inspired Gate System</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">COG · Lesson 2 of 2 (final)</div>
+  <h1 class="tl-title">Inside the COG-Inspired Gate System</h1>
+  <p class="tl-dek">An architecture case study in systematic, explainable, gated decision-making — how a trader's apparent reasoning got translated into an information-isolated pipeline of independent gates, not a claim that the pipeline has a proven edge.</p>
+  <div class="tl-meta">
+    <span class="tl-status course">ARCHITECTURE CASE STUDY — documents what's built, not a performance claim</span>
+    <span>~16 min read</span>
+    <span>Prereqs: COG: Reverse-Engineering a Trader's Black-Box Forecast</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>The COG-inspired Nasdaq Macro Threshold Engine is a 4-gate pipeline where each gate is only allowed to read a specific slice of data — Gate 1 (liquidity) and Gate 3 (direction) never touch NQ/QQQ price at all; Gate 2 (risk) reads it only for volatility/correlation regime, never direction; Gate 4 (execution) is the only gate allowed to read NQ price for the actual trade decision.</li>
+      <li>A real, documented lesson from this build: a 2-year synthetic backtest under a hard 4-way Gate1A∩Gate1B∩Gate2∩Gate3 conjunction (every gate must independently agree before the next is even consulted) produced <strong>zero trades</strong> — too many independent hard AND-conditions, not a threshold-calibration problem. The fix was <code>cogThreshold1Gate.js</code>: one blended score replacing the old hard conjunction of Gate1A and Gate1B.</li>
+      <li>V1 (<code>cogBacktestEngine.js</code>/<code>cogEventBacktestEngine.js</code>) is window-driven — one evaluation per fixed daily window per gate. V2 (<code>cogStateEngine.js</code> + <code>cogStateStore.js</code>) replaced that with a persistent asynchronous state machine because direct observation showed gate-validation timing genuinely varies day to day (Gate 1 can validate at 23:30 the prior night or 11:30am).</li>
+      <li>Every gate emits its raw inputs, normalized sub-signals, and weighted contributions — never just a composite number — feeding a Trade Journal and Explainability layer built on a stated "no black boxes" design principle.</li>
+      <li>This lesson documents architecture that exists in code. It is <strong>not</strong> a claim of validated performance — any performance number would need this repo's usual real OOS discipline (Lego Principle 5) before being trusted.</li>
+    </ul>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+  Most trading systems are one model: a single function (or one large ML pipeline) that takes in
+  everything it can get its hands on and spits out a decision. That's simple to build, but it has a
+  specific failure mode that's easy to miss until it bites: nothing stops the model from taking a
+  shortcut. If a "direction" signal is allowed to peek at the very instrument it's about to trade, it
+  can quietly learn "NQ went up, so predict up" — a tautology dressed as a forecast, not a genuine
+  cross-asset read. If a "risk" signal is allowed to influence direction, a volatility spike can get
+  reinterpreted as a directional call it was never supposed to make. And when the whole thing is one
+  opaque scoring function, there's no way to ask "which part of this decision do I actually trust
+  today" — a bad regime read on one factor contaminates everything downstream, and a human reviewing
+  the trade has no way to isolate what went wrong.
+  </p>
+  <p>
+  The COG-inspired gate system in this repo is built around a different premise: split the decision
+  into gates with <em>hard information boundaries</em>, each with a narrow, auditable job, and combine
+  them only at one explicit point. Gate 1 (Liquidity) and Gate 3 (Direction) are never shown NQ/QQQ
+  price at all — structurally, not just by convention, since they're never even passed that data. Gate 2
+  (Risk) is allowed to read the traded instrument's own OHLC, but only to measure its volatility and
+  correlation regime for stop-sizing — it is never permitted to output a directional view. Only Gate 4
+  (Execution) sees NQ price for the trade decision itself, and its only job at that point is to combine
+  Gates 1–3's already-independently-computed classifications, never to re-derive a signal from price
+  directly. That isolation buys three things: each gate can be tested and reasoned about on its own
+  (does the liquidity read make sense in isolation, independent of whatever the execution gate later
+  does with it); a mistake in one gate can't silently leak into another gate's job; and every decision
+  can be explained gate-by-gate to a human, rather than as one inscrutable composite score.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Four specialists who are only allowed to answer their own question</h3>
+    <p>
+    Imagine a hiring committee split into four people, each handed a different, deliberately restricted
+    slice of a candidate's file. One person only sees the macro hiring environment — is the industry
+    growing, is the company's funding position healthy — and never sees the candidate's resume at all.
+    A second person only measures how risky this particular hire is — volatility of the role, how
+    exposed the team is if it doesn't work out — and is explicitly barred from forming an opinion on
+    whether to hire; their job is purely "if we do hire, how much rope do we give them." A third person
+    only looks at signals from outside the company entirely — industry-wide hiring trends, competitor
+    behavior — and is never shown this specific candidate's resume, so they can't accidentally rubber-
+    stamp a decision that was really made on gut feel about one person. Only the fourth person, holding
+    the actual resume, makes the final call — and their whole job is to combine what the other three
+    already independently decided, not to re-litigate their reasoning by re-reading the resume through a
+    different lens. No one person can quietly short-circuit the process by seeing more than their
+    assigned slice, and if the final decision turns out wrong, you can ask each specialist individually
+    what they saw and why — instead of being stuck with one black-box "hire/no-hire" number.
+    </p>
+  </div>
+
+  <h2>The architecture, gate by gate</h2>
+  <p>
+  This maps directly onto real files in <code>js/</code>. Every threshold, weight, sign convention and
+  ticker used by the whole system lives in <code>js/cogConfig.js</code> — its header states the "no
+  black boxes" goal explicitly: a reader should be able to open one file and see every number that
+  drives a decision, with a comment explaining why it has the sign or value it has. Reuse discipline
+  is explicit too: the gates import the repo's generic math/data utility layers
+  (<code>nasdaqTransforms.js</code>, <code>nasdaqDataSources.js</code>, <code>nasdaqPerformance.js</code>)
+  directly, but keep every COG-specific threshold and decision rule local to the <code>cog*.js</code>
+  files, so this system and its sibling can evolve independently.
+  </p>
+
+  <h3>Gate 1A — slow macro liquidity regime</h3>
+  <p>
+  <code>cogLiquidityGate.js</code> never touches Nasdaq price. It reads Fed/ECB/BOJ balance sheets, the
+  reverse-repo facility (RRP), the Treasury General Account (TGA) and HY credit spreads — a pure,
+  slow-moving macro liquidity backdrop that updates at most daily — and reduces the panel to a single
+  RegimeScore in <code>[-5, +5]</code> plus a BULLISH/BEARISH/NEUTRAL/INVALID classification. Per input,
+  it blends a multi-horizon rate-of-change z-score (is this accelerating in a favorable direction) with
+  a rolling level-percentile (is the raw level itself high or low historically), each scaled to
+  <code>[-1,+1]</code> and averaged, before sign/weight are applied. It returns the raw value, the
+  normalized sub-signal, and the final weighted contribution for every input, every bar — never just the
+  composite number.
+  </p>
+
+  <h3>Gate 1B — fast intraday flow</h3>
+  <p>
+  <code>cogLiquidityGate1B.js</code> operates at intraday bar resolution (5-minute bars by default),
+  not Gate 1A's daily resolution. Its composite FlowScore is a weighted sum of normalized intraday
+  z-scores of each input's own short-horizon rate-of-change, rescaled onto <code>[-100,+100]</code>.
+  Unlike Gate 1A's three-way BULLISH/BEARISH/NEUTRAL split, this gate is deliberately
+  binary-with-a-dead-zone: score &gt; +35 is BULLISH (valid), score &lt; -35 is BEARISH (valid), and
+  everything else — including the dead zone and insufficient data coverage — is INVALID. There is no
+  separate NEUTRAL state here. It never touches Nasdaq price either.
+  </p>
+
+  <h3>Threshold 1 — the composite that replaced the hard conjunction</h3>
+  <p>
+  This is the architectural pivot point of the whole system, and it's worth stating plainly because
+  it's a genuine, documented lesson rather than a theoretical ideal. The original design
+  (<code>cogEventBacktestEngine.js</code>'s <code>combinedGate1</code>) required Gate 1A <em>and</em>
+  Gate 1B to <em>independently</em> agree BULLISH or BEARISH before Gate 2 or Gate 3 were even
+  consulted — a hard AND-conjunction on top of Gate 2's and Gate 3's own hard conditions, four
+  independent gates all needing to agree. <strong>A 2-year synthetic backtest under that full
+  Gate1A∩Gate1B∩Gate2∩Gate3 conjunction produced zero trades.</strong> The header of
+  <code>cogThreshold1Gate.js</code> is explicit that this was diagnosed as an architectural problem —
+  too many independent hard gates stacked — not a threshold-calibration problem where you'd just loosen
+  a cutoff.
+  </p>
+  <p>
+  <code>cogThreshold1Gate.js</code> replaces the Gate1A+Gate1B hard AND with a single blended score: a
+  "slow leg" (the same daily balance-sheet/credit panel and ROC-z + level-percentile blend as Gate 1A,
+  computed once per calendar day and frozen across that day's intraday bars) combined with a "fast leg"
+  (a 5-input subset of Gate 1B's cross-asset ROC-z panel — DXY, US10Y, US2Y, HYG/LQD, VIX — genuinely
+  updating every intraday bar). Each leg's own weighted-average vote is blended via a configured
+  slow/fast weight, re-normalized over whichever legs actually have data, into one score, classified
+  BULLISH/BEARISH/INVALID only (the same binary-with-a-dead-zone style Gate 1B used standalone). Notably,
+  the math is <em>duplicated</em> here rather than imported from Gate 1A/1B's own files — a deliberate
+  choice so those two files stay untouched and independently usable if standalone Gate1A/Gate1B work
+  resumes later. The design was also informed by direct observation of the real COG trader's own UI
+  workflow — "1. Threshold 1, 2. Threshold 2, 3. Order Filled, 4. Closed" — which has only one
+  liquidity-style gate ahead of execution, not two independently-gating sublayers.
+  </p>
+
+  <h3>Gate 2 — risk / volatility validity and sizing</h3>
+  <p>
+  <code>cogRiskGate.js</code> is the one deliberate, explicitly-called-out exception to "no Nasdaq
+  price": it reads QQQ/SPY/the traded instrument's own OHLC, but <em>only</em> to measure
+  volatility and correlation regime (ATR, realized vol, GARCH sigma, QQQ-SPY/QQQ-DXY correlation) for
+  stop distance and position-tier sizing. Its job is strictly VALID/INVALID classification plus a stop
+  distance and risk tier — it never outputs LONG or SHORT. It returns every component's raw value and
+  ramp sub-score, plus all stop-model distances, so they can be compared directly.
+  </p>
+
+  <h3>Gate 3 — cross-asset direction</h3>
+  <p>
+  <code>cogDirectionGate.js</code> reads DXY, USDJPY, EURUSD, yields, credit, gold, copper, oil, and
+  ES/RTY futures — cross-asset macro only — and never reads NQ/QQQ. It reduces the panel to a single
+  DirectionScore on <code>[0,100]</code> (50 = neutral) plus a LONG/SHORT/NEUTRAL/INVALID
+  classification. Normalization mirrors Gate 1's approach but with a single ROC window per input rather
+  than Gate 1's fixed three-horizon blend, since cross-asset inputs move on genuinely different natural
+  horizons (short for FX/rates, longer for commodities).
+  </p>
+
+  <h3>Gate 4 — execution</h3>
+  <p>
+  <code>cogExecutionEngine.js</code> is the only file in the system allowed to read Nasdaq price for the
+  trade decision itself. It does two distinct things: <code>decideAction()</code> combines Gates 1–3's
+  already-computed, independent classifications into a single LONG/SHORT/NO_TRADE action — the one and
+  only place those three gates' outputs are combined, so each gate file stays decision-agnostic about
+  the other two. Gate 1 (liquidity backdrop) and Gate 3 (cross-asset direction) must agree on direction,
+  and Gate 2 (risk/vol) must independently clear its own VALID bar; any single gate disagreeing, or
+  being INVALID/NEUTRAL, kills the trade. <code>buildEntryPlan()</code> then prices the trade against
+  the instrument's own OHLC — fill price with slippage/spread, standard and conservative stops from
+  Gate 2's chosen stop model, and position size from Gate 2's eligible risk tiers, which only ever caps
+  <em>down</em> from the requested tier, never up. Fill discipline is explicit and mechanically enforced:
+  a signal computed off bar <em>i</em>'s gate states fills at bar <em>i+1</em>'s open — the only function
+  in the file that touches the bar index, so a caller can never accidentally fill on the same bar the
+  signal fired.
+  </p>
+
+  <h3>The V2 trigger gate — genuine intraday entry timing</h3>
+  <p>
+  <code>cogExecutionTrigger.js</code> is the piece V1 never modeled: real intraday entry timing off NQ's
+  own price action. It does not compute direction itself — direction is read straight off Gate 3
+  (reused completely unmodified, still daily-resolution, frozen per calendar day). This gate only
+  answers "given Gate 3 already says LONG/SHORT, is NQ's own price action confirming that <em>right
+  now</em>, inside the active window?" All four raw components (momentum/volume z-scores, an
+  opening-range break, and an order-flow proxy) are computed direction-aligned before being combined
+  through the same composite ramp-scoring convention Gate 2 uses, so the breakdown shape is identical
+  between the two gates and the Explainability layer can treat them uniformly. Volume spike is the one
+  deliberately direction-agnostic component, since a volume surge is supportive of triggering on either
+  side.
+  </p>
+
+  <h3>The Exit Engine — continuous re-scoring against the entry snapshot</h3>
+  <p>
+  <code>cogExitEngine.js</code> re-evaluates an <em>open</em> trade's health by diffing the current
+  bar's Gate 1/2/3 snapshots against the trade's entry-bar snapshot, realigning every raw feature so a
+  higher value always means "more supportive of staying in," independent of long or short. "Change since
+  entry" components (liquidity, DXY, yields, credit) diff the current bar against the entry bar;
+  "current regime" components (VIX/VVIX spike, ATR expansion, a regime shift) are direction-agnostic by
+  design, since a vol spike or a blown-out ATR threatens a stop on either side of a trade equally. It
+  reuses Gate 1/2/3's own already-computed per-bar contributions directly — no new market-data fetching
+  or precomputation. Live re-evaluation cadence (5/15/30 minutes) and the daily backtest's
+  once-per-bar limitation are both the <em>caller's</em> concern, not this file's.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Information isolation: who is allowed to read what</div>
+    <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flow diagram: three boxes for Gate 1 Liquidity, Gate 2 Risk, and Gate 3 Direction feed arrows into a Gate 4 Execution box. A small note under Gate 2 and another under Gate 4 both read 'reads NQ price (vol/correlation only, never direction)' and 'reads NQ price for the decision', flagging these as the only two gates permitted to read the traded instrument's own price. An Exit Engine box branches off Gate 4 with a looping feedback arrow back to itself, representing continuous re-evaluation of an open trade.">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" style="fill:var(--text2)"/>
+        </marker>
+      </defs>
+
+      <rect x="20" y="20" width="160" height="66" rx="10" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+      <text x="100" y="46" text-anchor="middle" style="fill:var(--blue);font-size:12px;font-weight:700;font-family:'DM Mono',monospace">GATE 1</text>
+      <text x="100" y="64" text-anchor="middle" style="fill:var(--text2);font-size:11px">Liquidity</text>
+      <text x="100" y="78" text-anchor="middle" style="fill:var(--text3);font-size:9px">no Nasdaq price</text>
+
+      <rect x="240" y="20" width="160" height="66" rx="10" style="fill:var(--amber-bg);stroke:var(--amber-bd)"/>
+      <text x="320" y="46" text-anchor="middle" style="fill:var(--amber);font-size:12px;font-weight:700;font-family:'DM Mono',monospace">GATE 2</text>
+      <text x="320" y="64" text-anchor="middle" style="fill:var(--text2);font-size:11px">Risk / Volatility</text>
+      <text x="320" y="78" text-anchor="middle" style="fill:var(--text3);font-size:9px">reads NQ (vol/corr only)</text>
+
+      <rect x="460" y="20" width="160" height="66" rx="10" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+      <text x="540" y="46" text-anchor="middle" style="fill:var(--blue);font-size:12px;font-weight:700;font-family:'DM Mono',monospace">GATE 3</text>
+      <text x="540" y="64" text-anchor="middle" style="fill:var(--text2);font-size:11px">Direction</text>
+      <text x="540" y="78" text-anchor="middle" style="fill:var(--text3);font-size:9px">no NQ/QQQ price</text>
+
+      <rect x="240" y="160" width="160" height="72" rx="10" style="fill:var(--green-bg);stroke:var(--green-bd)"/>
+      <text x="320" y="188" text-anchor="middle" style="fill:var(--green);font-size:12px;font-weight:700;font-family:'DM Mono',monospace">GATE 4</text>
+      <text x="320" y="206" text-anchor="middle" style="fill:var(--text2);font-size:11px">Execution</text>
+      <text x="320" y="220" text-anchor="middle" style="fill:var(--text3);font-size:9px">only gate reading NQ for the decision</text>
+
+      <line x1="100" y1="86" x2="300" y2="160" style="stroke:var(--text2);stroke-width:1.5" marker-end="url(#arrow)"/>
+      <line x1="320" y1="86" x2="320" y2="160" style="stroke:var(--text2);stroke-width:1.5" marker-end="url(#arrow)"/>
+      <line x1="540" y1="86" x2="340" y2="160" style="stroke:var(--text2);stroke-width:1.5" marker-end="url(#arrow)"/>
+
+      <rect x="240" y="270" width="160" height="40" rx="10" style="fill:var(--purple-bg);stroke:var(--purple-bd)"/>
+      <text x="320" y="294" text-anchor="middle" style="fill:var(--purple);font-size:11px;font-weight:700;font-family:'DM Mono',monospace">EXIT ENGINE</text>
+
+      <line x1="320" y1="232" x2="320" y2="270" style="stroke:var(--text2);stroke-width:1.5" marker-end="url(#arrow)"/>
+      <path d="M 400 290 C 440 290, 440 250, 400 232" style="fill:none;stroke:var(--purple);stroke-width:1.5" marker-end="url(#arrow)"/>
+      <text x="450" y="270" style="fill:var(--text3);font-size:9px">re-scores</text>
+      <text x="450" y="281" style="fill:var(--text3);font-size:9px">continuously</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>Never reads NQ/QQQ price</span>
+      <span><i style="background:var(--amber)"></i>Reads NQ price, vol/correlation only</span>
+      <span><i style="background:var(--green)"></i>Only gate reading NQ price for the decision</span>
+      <span><i style="background:var(--purple)"></i>Continuous re-evaluation loop</span>
+    </div>
+    <div class="tl-chart-caption">
+    Gate 1 and Gate 3 structurally never receive Nasdaq/QQQ price as an input — they can't leak it into
+    their classification even by accident. Gate 2 is the one deliberate exception, and only for
+    volatility/correlation regime, never direction. Gate 4 is the single point where Gates 1–3's
+    independently-computed classifications are combined, and the only place NQ price feeds the trade
+    decision itself. The Exit Engine branches off Gate 4's output (an open trade) and loops back on
+    itself bar after bar, continuously diffing the current gate snapshots against the entry snapshot.
+    </div>
+  </div>
+
+  <h2>The state machine: why V2 replaced V1</h2>
+  <p>
+  V1 (<code>cogBacktestEngine.js</code> and the intraday sibling <code>cogEventBacktestEngine.js</code>)
+  is <strong>window-driven</strong>: Threshold 1 gets a morning window, Gate 2 a midday window, Gate 3 a
+  narrow afternoon window, sequenced in that order, with one decision evaluated once a fixed window
+  closes. That's a reasonable first design, and it's honest about its own limitation — Gate 2 and Gate 3
+  are fundamentally daily-resolution signals in this system (vol percentiles, cross-asset daily closes),
+  so the engine computes each once per calendar day and treats it as frozen across that day's intraday
+  bars, checking it within its assigned window rather than inventing intraday updates the underlying
+  data doesn't support.
+  </p>
+  <p>
+  V2 (<code>cogStateEngine.js</code>, backed by the gate-agnostic bookkeeping in
+  <code>cogStateStore.js</code>) exists because direct observation of the real trader's behavior showed
+  the fixed-window assumption doesn't hold: <strong>gate validation timing genuinely varies day to
+  day</strong> — Gate 1 can validate at 23:30 the previous night, or not until 11:30am the same day.
+  Entry isn't a fixed candle either. Instead of a window-driven snapshot, V2 wraps the exact same gate
+  math (Threshold 1, Gate 2, Gate 3 are imported unchanged from their V1 files, never copied) in a
+  continuous per-bar evaluator that <strong>persists a VALID state until something explicitly
+  invalidates it</strong>, rather than re-snapshotting once at a window's end. <code>cogStateStore.js</code>
+  factors out the bookkeeping every gate needs under this model — the current evaluation, the bar a
+  still-valid streak began at, and a log of every label transition — once, so the state engine doesn't
+  reimplement it three times (once per gate). It's deliberately gate-agnostic: callers supply
+  validity/label/reason functions, so the same bookkeeping code serves a Threshold-1-shaped gate, a
+  Gate-2-shaped gate, and a Trigger-Gate-shaped gate without branching on which.
+  </p>
+  <p>
+  V2 also encodes one specific observed behavior directly: a "Setup Gate" deadline. Once NY cash-equity
+  open plus ~5 minutes passes with no open trade or pending entry that day, the Setup Gate is forced
+  INVALID for the rest of the calendar day — regardless of what the underlying Threshold-1 math says —
+  modeling the observed "if no entry has happened ~5 minutes after the open, the setup is usually dead
+  for the day" pattern. Notably, the design deliberately does <em>not</em> add a separate "already
+  entered today" cap on top of that: the deadline override already prevents re-entry after the cutoff,
+  and an additional hard cap would be an invented restriction with no basis in the gates' own logic —
+  it would also incorrectly block the legitimate case of a trade opened, closed, and a fresh signal
+  arming again before the deadline.
+  </p>
+
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Illustrative scenario — not a real historical trade</div>
+    <h3>One hypothetical day, walked through gate by gate</h3>
+    <p>
+    Say Gate 1 (Threshold 1's blended slow+fast liquidity score) validates BULLISH overnight — the slow
+    macro leg was already leaning bullish going into the session, and the fast intraday leg confirms it
+    early, so the state machine marks Gate 1 valid and persists that label rather than waiting for a
+    fixed window to close. Gate 2 separately clears its own VALID bar for the day: volatility is inside
+    a tradeable regime, and it hands back a stop distance and an eligible risk tier — it has no opinion
+    on direction at all. Gate 3, reading only DXY/yields/credit/gold/copper/oil/ES/RTY (never NQ), comes
+    back LONG. With Gate 1 BULLISH, Gate 2 VALID, and Gate 3 LONG all agreeing, Gate 4 combines them into
+    a LONG decision — but it doesn't act immediately. The V2 trigger gate then waits inside its armed
+    window for NQ's own price action (momentum, volume, an opening-range break, an order-flow proxy) to
+    confirm the LONG bias is actually playing out right now, and once it does, Gate 4 prices the entry
+    plan against NQ's own OHLC (fill, stop, size) and the fill happens on the next bar's open. Later in
+    the day, say credit spreads widen sharply and VIX spikes — the Exit Engine re-scores the still-open
+    trade by diffing the current Gate 1/2/3 snapshots against the entry-bar snapshot, and because those
+    are exactly the kind of "current regime" components that threaten a stop on either side of a trade,
+    the ContinuationScore degrades even though Gate 3's underlying direction reading hasn't reversed.
+    </p>
+    <p>
+    None of this is a real trade or a real date — it's a walk-through of how the pieces are wired to
+    click together, using the actual gate semantics documented in the code.
+    </p>
+  </div>
+
+  <h2>Trade Journal and Explainability — "no black boxes" as an actual contract</h2>
+  <p>
+  <code>cogTradeJournal.js</code> builds trade records that satisfy <code>nasdaqPerformance.js</code>'s
+  expected shape for standard performance metrics, plus this system's own audit trail: every gate's
+  state and reasons at entry, the full entry plan, and the full exit breakdown, so the journal UI can
+  show exactly why a trade was taken and why it was closed — not just its PnL. <code>cogExplainability.js</code>
+  builds the mandatory <code>{factor, contribution, explanation}</code> triples purely from what each
+  gate already returns publicly (its <code>contributions[]</code>/<code>breakdown[]</code> numbers and
+  already-phrased <code>reasons[]</code> text) — it does not invent new market interpretation of its
+  own, only reformats and diffs numbers the gates already computed. This is the concrete mechanism
+  behind the "no black boxes" phrase used throughout this system's file headers: it isn't a slogan, it's
+  a specific commitment that every gate returns its raw inputs and per-input contributions, not just a
+  composite score, all the way through to the journal and the explainability layer.
+  </p>
+  <p>
+  Two backtest engines exercise the whole pipeline: <code>cogBacktestEngine.js</code> is the
+  window-driven daily engine (one open trade at a time, fixed starting-equity sizing per trade,
+  disclosed as a simplification rather than hidden — compounding sizing off the then-current equity
+  would require re-running Gate 4 per trade); <code>cogEventBacktestEngine.js</code> is the
+  event-driven intraday sibling that sequences Threshold 1/Gate 2/Gate 3's windows and then lets the
+  Exit Engine re-evaluate repeatedly through the rest of the day at its configured cadence. The daily
+  engine is left completely untouched by the intraday one — a new sibling, not a replacement, so
+  neither can break the other.
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this lives in the repo</div>
+    <h3>Every claim above traces to a real file</h3>
+    <ul>
+      <li><code>js/cogConfig.js</code> — every threshold, weight, sign convention, series ID and ticker; the single source of truth.</li>
+      <li><code>js/cogLiquidityGate.js</code> — Gate 1A, slow macro regime.</li>
+      <li><code>js/cogLiquidityGate1B.js</code> — Gate 1B, fast intraday flow.</li>
+      <li><code>js/cogThreshold1Gate.js</code> — the composite that replaced the Gate1A+Gate1B hard conjunction.</li>
+      <li><code>js/cogRiskGate.js</code> — Gate 2, risk/volatility validity + sizing.</li>
+      <li><code>js/cogDirectionGate.js</code> — Gate 3, cross-asset direction.</li>
+      <li><code>js/cogExecutionEngine.js</code> — Gate 4, the execution decision + entry plan.</li>
+      <li><code>js/cogExecutionTrigger.js</code> — the V2 trigger gate, NQ price-action impulse timing.</li>
+      <li><code>js/cogExitEngine.js</code> — the dynamic ContinuationScore for open trades.</li>
+      <li><code>js/cogStateEngine.js</code> / <code>js/cogStateStore.js</code> — V2's persistent asynchronous state machine.</li>
+      <li><code>js/cogTradeJournal.js</code> / <code>js/cogExplainability.js</code> — the audit trail layer.</li>
+      <li><code>js/cogBacktestEngine.js</code> / <code>js/cogEventBacktestEngine.js</code> — the daily and event-driven backtest engines.</li>
+    </ul>
+    <p>
+    This lesson documents <strong>architecture that exists in code today</strong>. It is not a claim
+    about a specific validated performance number, and none is given here because none was provided —
+    inventing one would violate this repo's own stated discipline. Per <code>CLAUDE.md</code>'s Lego
+    Principle 5 and the "built ≠ works ≠ has edge" working agreement, any performance claim for this
+    system would need the same honest harness — realistic fills, real costs, a true in-sample/out-of-
+    sample split, and a non-trivial OOS trade count — before it should be trusted, exactly like every
+    other strategy in this repo.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Ways a gated architecture like this can go wrong</h3>
+    <ul>
+      <li>
+      <strong>Too many independent hard AND-conditions can silently produce a dead system.</strong> This
+      is the headline, documented lesson here: the original Gate1A∩Gate1B∩Gate2∩Gate3 hard conjunction
+      produced zero trades over a 2-year synthetic backtest, not because any single gate's threshold was
+      wrong, but because requiring four independent conditions to all be true at once is a much stronger
+      constraint than it looks on paper — each additional hard gate multiplies down the probability of a
+      trade ever firing. The fix wasn't loosening thresholds; it was recognizing the conjunction itself as
+      the architectural problem and replacing it with one blended score.
+      </li>
+      <li>
+      <strong>Information leakage across gates defeats the whole isolation design.</strong> The entire
+      point of Gate 1/Gate 3 never touching NQ/QQQ price, and Gate 2 touching it only for vol/correlation,
+      is that no gate can quietly learn "predict NQ direction from NQ's own recent price" and dress it up
+      as an independent cross-asset or macro read. If a future change accidentally threads NQ price into
+      Gate 1 or Gate 3's inputs, or lets Gate 2's volatility read influence a directional call, the system
+      stops being four independent opinions and becomes one opinion wearing four costumes — while still
+      looking, superficially, like the same architecture.
+      </li>
+      <li>
+      <strong>Mistaking "fully engineered and explainable" for "proven to work."</strong> Every gate here
+      returns its raw inputs, normalized sub-signals and weighted contributions — genuinely more
+      transparent than a typical black-box model. But explainability is a property of the pipeline's
+      construction, not evidence about its edge. A system can be perfectly auditable and still have zero
+      or negative expectancy; those are separate questions, and this lesson only answers the first one.
+      </li>
+    </ul>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Which gate is allowed to read the traded instrument's (NQ/QQQ) own price, and for what purpose specifically — and which two gates are structurally never shown it at all?</summary>
+    <div class="tl-answer">
+    Gate 2 (Risk/Volatility, <code>cogRiskGate.js</code>) reads QQQ/SPY/the instrument's own OHLC, but
+    only to measure volatility and correlation regime for stop distance and position sizing — never to
+    produce a directional view. Gate 4 (Execution, <code>cogExecutionEngine.js</code>) is the only gate
+    allowed to read NQ price for the actual trade decision, combining Gates 1–3's already-independent
+    classifications. Gate 1 (Liquidity) and Gate 3 (Direction) are never shown NQ/QQQ price at all.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What specifically went wrong with the original Gate1A∩Gate1B∩Gate2∩Gate3 hard conjunction, and what was diagnosed as the actual cause?</summary>
+    <div class="tl-answer">
+    A 2-year synthetic backtest under that four-way hard conjunction (every gate independently required
+    to agree BULLISH/BEARISH, or VALID, before the next was even consulted) produced zero trades. The
+    cause was diagnosed as architectural — too many independent hard conditions stacked, each one
+    multiplying down the odds a trade ever fires — not a threshold-calibration problem where loosening a
+    cutoff would have fixed it.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. How did cogThreshold1Gate.js fix that problem, and why does it duplicate Gate 1A/1B's math instead of importing it?</summary>
+    <div class="tl-answer">
+    It replaced the hard Gate1A+Gate1B AND-conjunction with a single blended score: a slow leg (the same
+    daily macro panel as Gate 1A, frozen per calendar day) combined with a fast leg (a 5-input subset of
+    Gate 1B's intraday panel, updating every bar), re-normalized and blended via a slow/fast weight into
+    one BULLISH/BEARISH/INVALID classification. The math is duplicated, not imported, specifically so
+    that <code>cogLiquidityGate.js</code>/<code>cogLiquidityGate1B.js</code> stay untouched and remain
+    independently usable if standalone Gate1A/Gate1B work resumes later.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why did V2 replace V1's window-driven design with a persistent asynchronous state machine? What specific observation motivated it?</summary>
+    <div class="tl-answer">
+    Direct observation of the real trader's behavior showed that gate-validation timing genuinely varies
+    day to day — Gate 1 can validate at 23:30 the previous night or not until 11:30am the same day — which
+    a fixed daily window can't represent faithfully. V2 (<code>cogStateEngine.js</code> backed by
+    <code>cogStateStore.js</code>) wraps the same underlying gate math in a continuous per-bar evaluator
+    where a VALID state persists across bars until something explicitly invalidates it, rather than
+    snapshotting once at a fixed window's end.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. What does the V2 trigger gate (cogExecutionTrigger.js) add that V1 never modeled, and what does it reuse unmodified from Gate 3?</summary>
+    <div class="tl-answer">
+    It adds genuine intraday entry timing off NQ's own price action (momentum, volume, an opening-range
+    break, an order-flow proxy), answering "given Gate 3 already says LONG/SHORT, is NQ's price action
+    confirming that right now?" It does not compute direction itself — it reads Gate 3's daily-resolution
+    direction call straight through, reused completely unmodified.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. What does the Exit Engine re-score, and why does it realign every raw feature to "higher = more supportive of staying in" regardless of long or short?</summary>
+    <div class="tl-answer">
+    It re-scores an open trade's health by diffing the current bar's Gate 1/2/3 snapshots against the
+    trade's entry-bar snapshot. Realigning every feature so higher always means "more supportive of
+    staying in" lets one ContinuationScore formula work identically for both long and short trades — a
+    vol spike or widening credit spreads threaten a stop on either side of a trade, and the score doesn't
+    need separate long/short logic to express that.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>This lesson is entirely repo-specific — every claim traces to a file listed in the repo box
+    above. Read the header comments of each <code>cog*.js</code> file directly for the full detail this
+    lesson summarizes; they are written to be read on their own.</li>
+    <li><code>js/cogConfig.js</code> is the single place to check any specific threshold, weight, or
+    ticker referenced in this lesson.</li>
+    <li>As a brief conceptual parallel, not a citation this repo depends on: the broader
+    "explainable AI" design philosophy — preferring models and pipelines that expose their reasoning
+    (feature contributions, decision paths) over ones that only expose a final score — is the same
+    instinct behind this system's "no black boxes" commitment, applied here to a hand-engineered gate
+    pipeline rather than a learned model.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="cog-reverse-engineering.html">← COG: Reverse-Engineering a Trader's Black-Box Forecast</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+</body>
+</html>
