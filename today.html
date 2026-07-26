@@ -1546,7 +1546,7 @@ function oiFor(name, sym) {
   let change = null;
   if (oiHistory) {
     const hk = Object.keys(oiHistory).find(k => normK(k) === normK(lvlKey(name, sym)) || normK(k) === normK(sym) || normK(k) === normK(sym.replace('_', '/')));
-    if (hk && oiHistory[hk]?.deltas) change = { ...oiHistory[hk].deltas, fromDate: oiHistory[hk].prevDate, toDate: oiHistory[hk].curDate, classify: oiHistory[hk].classify, stability: oiHistory[hk].stability };
+    if (hk && oiHistory[hk]?.deltas) change = { ...oiHistory[hk].deltas, fromDate: oiHistory[hk].prevDate, toDate: oiHistory[hk].curDate, classify: oiHistory[hk].classify, confirm: oiHistory[hk].confirm, stability: oiHistory[hk].stability };
   }
   return { inst, ageH, stale: ageH > OI_FRESH_H, gex, regime, change,
     maxPain: inst.maxPain, callWall: inst.callWall, putWall: inst.putWall,
@@ -2578,12 +2578,17 @@ function storyOptions(r) {
   const dp = r.d.dp;
   const bits = [];
   // Wall strength (3× rule) badge — strong walls are the high-probability ones.
-  const cwTier = (o.inst?.callWalls || []).find(w => w.strike === o.callWall)?.tier;
-  const pwTier = (o.inst?.putWalls || []).find(w => w.strike === o.putWall)?.tier;
+  const cwW = (o.inst?.callWalls || []).find(w => w.strike === o.callWall);
+  const pwW = (o.inst?.putWalls || []).find(w => w.strike === o.putWall);
+  const cwTier = cwW?.tier, pwTier = pwW?.tier;
   const tierTag = t => t === 'strong' ? ' <span class="chip" style="font-size:9px;color:var(--green)">3×+ strong</span>' : t === 'moderate' ? ' <span class="chip" style="font-size:9px">2× mod</span>' : '';
+  // Fresh vs stale: today's volume at the wall vs its resting OI (new money vs old).
+  const freshTag = f => f?.tag === 'fresh' ? ' <span class="chip" style="font-size:9px;color:var(--amber)">fresh</span>' : f?.tag === 'stale' ? ' <span class="muted" style="font-size:9px">stale</span>' : '';
   if (o.maxPain) bits.push(`max pain <b>${fmtN(o.maxPain, dp)}</b> (magnet)`);
-  if (o.callWall) bits.push(`call wall ${fmtN(o.callWall, dp)} (cap${o.callWallOI ? `, ${(o.callWallOI / 1000).toFixed(0)}k` : ''})${tierTag(cwTier)}`);
-  if (o.putWall) bits.push(`put wall ${fmtN(o.putWall, dp)} (floor${o.putWallOI ? `, ${(o.putWallOI / 1000).toFixed(0)}k` : ''})${tierTag(pwTier)}`);
+  if (o.callWall) bits.push(`call wall ${fmtN(o.callWall, dp)} (cap${o.callWallOI ? `, ${(o.callWallOI / 1000).toFixed(0)}k` : ''})${tierTag(cwTier)}${freshTag(cwW?.fresh)}`);
+  if (o.putWall) bits.push(`put wall ${fmtN(o.putWall, dp)} (floor${o.putWallOI ? `, ${(o.putWallOI / 1000).toFixed(0)}k` : ''})${tierTag(pwTier)}${freshTag(pwW?.fresh)}`);
+  const vf = o.inst?.volFlow;
+  if (vf && vf.volPcRatio != null) bits.push(`<span class="${vf.divergence ? '' : 'muted'}">flow P/C ${vf.volPcRatio} vs OI ${vf.oiPcRatio}${vf.divergence ? ` <b>(today ${vf.volPcRatio > vf.oiPcRatio ? 'leaning puts' : 'leaning calls'})</b>` : ''}</span>`);
   if (o.inst?.skew?.read && o.inst.skew.read !== 'balanced') bits.push(`<span class="muted">${o.inst.skew.read}</span>`);
   const vm = (o.inst?.volumeMagnets || []).slice(0, 3);
   if (vm.length) bits.push(`vol magnets ${vm.map(v => fmtN(v.strike, dp)).join('/')}`);
@@ -2635,6 +2640,8 @@ function oiChangeLine(o, dp) {
   // Established (multi-day) walls — more reliable than overnight ones.
   const est = (c.stability || []).filter(w => w.established).slice(0, 2);
   if (est.length) bits.push(`<span title="wall persisted ≥5 days — established, more reliable">established</span> ${est.map(w => `${fmtN(w.strike, dp)} (${w.daysPresent}d)`).join(', ')}`);
+  // OI-change × price-direction: is the move backed by fresh money or hollow (covering)?
+  if (c.confirm) bits.push(`<span style="color:${c.confirm.trust === 'confirmed' ? 'var(--green)' : 'var(--amber)'}" title="${c.confirm.note}">${c.confirm.read}${c.confirm.trust === 'weak' ? ' (weak)' : ''}</span>`);
   if (!bits.length && !c.classify) return '';
   const head = c.classify ? `<b>${c.classify}</b>${bits.length ? ' · ' : ''}` : '';
   return `<div class="muted" style="margin-top:3px;font-size:11px">Δ vs ${c.fromDate || 'prior'}: ${head}${bits.join(' · ')}</div>`;
@@ -2747,6 +2754,7 @@ function assembleSnapshot(r) {
     // where each horizon pins, for the analytical brief. Supersedes manual `expiries`.
     termStructure: (oi.inst?.termStructure || []).slice(0, 8),
     dataWarning: oi.inst?.dataWarning ?? null,   // mis-scaled/stale flag → the AI down-weights it
+    volFlow: oi.inst?.volFlow ?? null,           // today's volume P/C flow vs resting OI P/C
     expiries: Object.entries(oi.inst?.expiries || {}).map(([label, e]) => ({ label, dte: e.dte, maxPain: e.maxPain, callWall: e.callWall, putWall: e.putWall })).sort((a, b) => (a.dte ?? 999) - (b.dte ?? 999)).slice(0, 4) };
   // COT positioning (the shape the prompt reads) — real spec/leveraged-fund data
   const ct = cotFor(r.name), rawCot = cot?.[COT_MAP[r.name]?.sym];

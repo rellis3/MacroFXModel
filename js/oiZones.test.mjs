@@ -39,6 +39,25 @@ console.log('[BREAKOUT regime — follow wall breaks (squeeze)]');
   ok('no fade zones in BREAKOUT', !z.some(x => x.mode === 'fade'));
 }
 
+console.log('[Breakout OI-flow confirmation — building = backed, unwinding = weak/trim]');
+{
+  // Break UP through the call wall. If OI is BUILDING at 4300 → confirmed (no trim);
+  // if the wall is LIQUIDATING → short-covering read, size trimmed ×0.85.
+  const built = { events: [{ type: 'fresh_positioning', kind: 'call', strike: 4300 }] };
+  const unwind = { events: [{ type: 'liquidation', kind: 'call', strike: 4300 }] };
+  const zB = buildOIZones({ ...base, exposures: { gex: -5000 } }, 4200, { ...cfg, change: built });
+  const zU = buildOIZones({ ...base, exposures: { gex: -5000 } }, 4200, { ...cfg, change: unwind });
+  const upB = zB.find(x => x.mode === 'break' && x.side === 'buy');
+  const upU = zU.find(x => x.mode === 'break' && x.side === 'buy');
+  ok('building OI → "new longs (confirmed)" in rationale', /new longs \(confirmed\)/.test(upB.rationale), upB.rationale);
+  ok('unwinding OI → "short covering (weak)" in rationale', /short covering \(weak\)/.test(upU.rationale), upU.rationale);
+  ok('weak break is size-trimmed vs confirmed', upU.sizeFactor < upB.sizeFactor, `${upU.sizeFactor} < ${upB.sizeFactor}`);
+  // No change data → no confirmation note, no trim (unchanged behaviour).
+  const upNone = buildOIZones({ ...base, exposures: { gex: -5000 } }, 4200, cfg).find(x => x.mode === 'break' && x.side === 'buy');
+  ok('no change data → no confirmation note', !/confirmed|weak\)/.test(upNone.rationale), upNone.rationale);
+  ok('no change data → full size (== confirmed size)', upNone.sizeFactor === upB.sizeFactor, `${upNone.sizeFactor} == ${upB.sizeFactor}`);
+}
+
 console.log('[Max-pain reversion — near expiry + extended]');
 {
   const inst = { ...base, exposures: { gex: 5000 }, expiries: { OG3: { dte: 1, maxPain: 4200 } } };

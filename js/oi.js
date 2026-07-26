@@ -1,6 +1,6 @@
 import { S } from './state.js';
 import { kvGet, kvSet } from './utils.js';
-import { wallStrengthTier, oiSkew, oiConcentration, clusterStrikes } from './oiConfluence.js';
+import { wallStrengthTier, oiSkew, oiConcentration, clusterStrikes, wallFreshness, volumePCRatio } from './oiConfluence.js';
 import { gammaFlip } from './gammaFlow.js';
 import { charmVannaExposure } from './gammaGreeks.js';
 import { expectedMove, ivDynamics, riskReversal, vannaState } from './ivMetrics.js';
@@ -1010,6 +1010,17 @@ export function processOIData() {
   // vanished and had to be re-pasted).
   const _compactVol = _volParsed.map(v => `${v.strike}\t${v.volume}`).join('\n');
   const volumeMagnets = _volParsed.slice(0, 8).map(v => ({ strike: +volShift(v.strike).toFixed(6), volume: v.volume }));
+  // Volume-flow reads: per-strike volume (basis-shifted) for the wall "fresh vs stale"
+  // tag, + volume put/call ratio (today's directional flow) from the call/put split.
+  const _volPost = _volParsed.map(v => ({ strike: volShift(v.strike), volume: v.volume }));
+  const _volAt = (strike) => { let best = null, bd = Infinity; for (const v of _volPost) { const d = Math.abs(v.strike - strike); if (d < bd) { bd = d; best = v; } } return (best && bd <= Math.abs(strike) * 0.005) ? best.volume : 0; };
+  const _volSplit = parseOIMatrix(rawVol, { mode: 'aggregate' });   // call/put volume split (today's flow)
+  const _totCallVol = _volSplit ? _volSplit.calls.reduce((a, b) => a + Math.abs(b), 0) : 0;
+  const _totPutVol  = _volSplit ? _volSplit.puts.reduce((a, b) => a + Math.abs(b), 0) : 0;
+  const volPcRatio = volumePCRatio(_totCallVol, _totPutVol);   // today's flow (vs the resting OI P/C)
+  // Tag each wall fresh/active/stale by today's volume at that strike vs its resting OI.
+  for (const w of callWalls) w.fresh = wallFreshness(w.oi, _volAt(w.strike));
+  for (const w of putWalls)  w.fresh = wallFreshness(w.oi, _volAt(w.strike));
 
   const totalCallOI = parsed.calls.reduce((a,b)=>a+b,0);
   const totalPutOI  = parsed.puts.reduce((a,b)=>a+b,0);
@@ -1056,6 +1067,8 @@ export function processOIData() {
     callWall: _cwHead?.strike ?? 0, putWall: _pwHead?.strike ?? 0,
     callWallOI: _cwHead?.oi ?? 0,   putWallOI: _pwHead?.oi ?? 0,
     callWalls, putWalls, skew, volumeMagnets, concentration, clusters,
+    volFlow: (volPcRatio != null) ? { volPcRatio, oiPcRatio: +pcRatio.toFixed(2),   // today's flow vs resting positioning
+      divergence: Math.abs(Math.log((volPcRatio || 1) / Math.max(pcRatio, 0.01))) > 0.4 } : null,
     termStructure,   // per-expiry max pain / walls / DTE — for the daily brief & analysis (not the bot)
     primaryExpiry,   // the expiry the walls/max-pain were auto-selected from (DTE + near-money OI)
     dte: Number.isFinite(dteEff) ? dteEff : (primaryExpiry?.dte ?? null),

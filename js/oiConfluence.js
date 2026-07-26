@@ -211,6 +211,37 @@ export function classifyOIChange(deltas, { freshPct = 40 } = {}) {
 // Concentration (ChatGPT layer 5): top-N strikes as a % of total OI. Concentrated
 // positioning → sharper reactions at those strikes; dispersed → weaker influence.
 // `strikeOIs` = per-strike total OI (call+put). Pure.
+// Today's option VOLUME vs resting OI — the "fresh positioning" read. A wall with
+// high volume relative to its resting OI is being defended/built TODAY (new money),
+// not stale positioning. ratio ≥ 1 = today's volume matched/exceeded the whole
+// resting OI (very fresh); < 0.4 = quiet/stale. Pure.
+export function wallFreshness(oi, volume) {
+  if (!(oi > 0)) return null;
+  const r = (+volume || 0) / oi;
+  return { ratio: +r.toFixed(2), tag: r >= 1 ? 'fresh' : r >= 0.4 ? 'active' : 'stale' };
+}
+
+// Volume put/call ratio = today's directional FLOW (vs the OI P/C = resting
+// positioning). A divergence — resting balanced but today heavily one side — is the
+// tell. Returns null if no call volume. Pure.
+export function volumePCRatio(callVol, putVol) {
+  const c = +callVol || 0, p = +putVol || 0;
+  return c > 0 ? +(p / c).toFixed(3) : null;
+}
+
+// OI-change × price-direction: is a move BACKED by fresh positioning, or hollow?
+// The classic table — +OI with the move = new money (confirmed); −OI = the move is
+// on positions CLOSING (short-covering up / long-liquidation down = weak/unsustainable).
+// Signs: oiChg > 0 = OI building, < 0 = unwinding; priceDir > 0 = up, < 0 = down.
+export function oiPriceConfirmation(oiChg, priceDir) {
+  const oi = Math.sign(oiChg || 0), px = Math.sign(priceDir || 0);
+  if (oi === 0 || px === 0) return null;
+  if (oi > 0 && px > 0) return { read: 'new longs', trust: 'confirmed', note: 'up on building OI — new longs, move is backed' };
+  if (oi > 0 && px < 0) return { read: 'new shorts', trust: 'confirmed', note: 'down on building OI — new shorts, move is backed' };
+  if (oi < 0 && px > 0) return { read: 'short covering', trust: 'weak', note: 'up on FALLING OI — short covering, rally may be weak/unsustainable' };
+  return { read: 'long liquidation', trust: 'weak', note: 'down on FALLING OI — long liquidation, capitulation/possible bottom' };
+}
+
 export function oiConcentration(strikeOIs, totalOI = null) {
   const arr = (Array.isArray(strikeOIs) ? strikeOIs : []).filter(n => Number.isFinite(n) && n >= 0).sort((a, b) => b - a);
   const tot = totalOI > 0 ? totalOI : arr.reduce((a, b) => a + b, 0);

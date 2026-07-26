@@ -81,7 +81,7 @@ import { runLiquidityAB, runLiquidityABSuite } from './js/liquidityBacktestEngin
 import { pipSize as _pipSize, instrument, oandaSymbol, resolveKey } from './js/instrumentRegistry.js';
 import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
 import { refreshRangeLineConfluence, packLiveM1 } from './js/rangeLineConfluenceProducer.js';
-import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas, classifyOIChange, oiWallStability } from './js/oiConfluence.js';
+import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas, classifyOIChange, oiWallStability, oiPriceConfirmation } from './js/oiConfluence.js';
 import { buildOILevelText } from './js/oiLevelExport.js';
 import { buildOIZones } from './js/oiZones.js';
 import { gammaFlip as computeGammaFlip, distanceToFlip, flipDrift, rolloffSummary } from './js/gammaFlow.js';
@@ -1764,8 +1764,12 @@ async function _injectServerContext(pair, s) {
         const dl = (cur && prev) ? oiDeltas(cur, prev) : null;
         if (dl) {
           const cls = classifyOIChange(dl);
+          // Whole-book OI-change × price-direction: is the day's move BACKED by fresh
+          // positioning (+OI with the move = new money) or hollow (−OI = covering/liquidation)?
+          const priceDir = (Number.isFinite(cur?.spot) && Number.isFinite(prev?.spot)) ? (cur.spot - prev.spot) : 0;
+          const confirm = oiPriceConfirmation(dl.totalOIChange, priceDir);
           s.oiChange = { fromDate: dates[dates.length - 2], toDate: dates[dates.length - 1], ...dl,
-            classify: cls?.summary ?? null, events: cls?.events ?? [] };
+            classify: cls?.summary ?? null, events: cls?.events ?? [], confirm };
         }
         // Wall STABILITY: how many days each current wall has persisted (needs the
         // multi-day series). Tolerance ≈ 20 bps of the latest spot.
@@ -1848,7 +1852,8 @@ P/C Ratio: ${s.oi.pcRatio}  ->  ${s.oi.pcBias}${s.oi.skew ? `
 OI skew: ${s.oi.skew.read} (${s.oi.skew.score >= 0 ? '+' : ''}${s.oi.skew.score}) — where positioning sits vs spot` : ''}${(s.oi.callWalls || []).some(w => w.tier) || (s.oi.putWalls || []).some(w => w.tier) ? `
 Wall strength (3× rule): ${[...(s.oi.callWalls || []).filter(w => w.tier).map(w => `C${w.strike} ${w.tier}(${w.mult}×)`), ...(s.oi.putWalls || []).filter(w => w.tier).map(w => `P${w.strike} ${w.tier}(${w.mult}×)`)].join(', ') || 'none strong'}` : ''}
 Total Call OI: ${s.oi.totalCallOI}  |  Total Put OI: ${s.oi.totalPutOI}
-OI Flow  -  calls: ${s.oi.totalCallChg ?? 'N/A'}  puts: ${s.oi.totalPutChg ?? 'N/A'}
+OI Flow  -  calls: ${s.oi.totalCallChg ?? 'N/A'}  puts: ${s.oi.totalPutChg ?? 'N/A'}${s.oi.volFlow?.volPcRatio != null ? `
+Today's VOLUME flow: put/call ${s.oi.volFlow.volPcRatio} vs resting OI put/call ${s.oi.volFlow.oiPcRatio}${s.oi.volFlow.divergence ? ` — DIVERGENCE: today's activity is leaning ${s.oi.volFlow.volPcRatio > s.oi.volFlow.oiPcRatio ? 'puts (fresh downside flow vs balanced positioning)' : 'calls (fresh upside flow)'}, a directional tell` : ' (flow ≈ positioning)'}` : ''}
 Aggregate GEX: ${s.oi.gex ?? 'N/A'}  |  DEX: ${s.oi.dex ?? 'N/A'}  ->  ${s.oi.gexRead ?? 'N/A'}
 Gamma flip level: ${s.oiGamma?.flip ?? s.oi.gammaFlip ?? 'N/A'}${s.oiGamma?.dist ? `
 Distance to flip (vol read): spot ${s.oiGamma.dist.side === 'positive' ? 'ABOVE' : s.oiGamma.dist.side === 'negative' ? 'BELOW' : 'AT'} the flip by ${s.oiGamma.dist.atr != null ? `${Math.abs(s.oiGamma.dist.atr)} ATR` : `${Math.abs(s.oiGamma.dist.pct)}%`} → ${s.oiGamma.dist.side === 'positive' ? '+gamma (dampening / pin regime)' : s.oiGamma.dist.side === 'negative' ? '−gamma (amplifying / breakout regime)' : 'at the boundary'}${s.oiGamma.dist.near ? ' · NEAR the flip — regime unstable, one push from flipping' : ' — deeper = stronger regime'}` : ''}${s.oiGamma?.drift?.toward ? `
@@ -1867,7 +1872,8 @@ Durable walls (present across many expiries = structural, not one-day pins): ${[
 Top strikes (strike | callOI/putOI | type):
 ${s.oi.topLevels ? s.oi.topLevels.slice(0, 6).map(l => `  ${l.strike}  C:${l.callOI} / P:${l.putOI}  ${l.strike > s.price ? 'RESISTANCE' : 'SUPPORT'}`).join('\n') : '  N/A'}${s.oiChange ? `
 OI CHANGE vs ${s.oiChange.fromDate} (day-over-day positioning dynamics):
-Positioning: ${s.oiChange.flow.toUpperCase()} (total OI ${s.oiChange.totalOIChange >= 0 ? '+' : ''}${s.oiChange.totalOIChange}${s.oiChange.totalOIChangePct != null ? `, ${s.oiChange.totalOIChangePct >= 0 ? '+' : ''}${s.oiChange.totalOIChangePct}%` : ''}) ${s.oiChange.flow === 'building' ? '- new money entering' : s.oiChange.flow === 'unwinding' ? '- positions liquidating' : ''}
+Positioning: ${s.oiChange.flow.toUpperCase()} (total OI ${s.oiChange.totalOIChange >= 0 ? '+' : ''}${s.oiChange.totalOIChange}${s.oiChange.totalOIChangePct != null ? `, ${s.oiChange.totalOIChangePct >= 0 ? '+' : ''}${s.oiChange.totalOIChangePct}%` : ''}) ${s.oiChange.flow === 'building' ? '- new money entering' : s.oiChange.flow === 'unwinding' ? '- positions liquidating' : ''}${s.oiChange.confirm ? `
+Move confirmation (OI-change × price direction): ${s.oiChange.confirm.read.toUpperCase()} [${s.oiChange.confirm.trust}] — ${s.oiChange.confirm.note}` : ''}
 Max pain shift: ${s.oiChange.maxPainShift ?? 0}  |  P/C ratio change: ${s.oiChange.pcRatioChange ?? 0}
 Call walls firming: ${s.oiChange.callWalls.strengthening.map(w => `${w.strike}(+${w.delta})`).join(', ') || 'none'}  |  fading: ${[...s.oiChange.callWalls.weakening.map(w => `${w.strike}(${w.delta})`), ...s.oiChange.callWalls.faded.map(w => `${w.strike}(gone)`)].join(', ') || 'none'}
 Put walls firming: ${s.oiChange.putWalls.strengthening.map(w => `${w.strike}(+${w.delta})`).join(', ') || 'none'}  |  fading: ${[...s.oiChange.putWalls.weakening.map(w => `${w.strike}(${w.delta})`), ...s.oiChange.putWalls.faded.map(w => `${w.strike}(gone)`)].join(', ') || 'none'}
@@ -7090,10 +7096,13 @@ app.get('/api/oi-history', async (req, res) => {
         ? oiWallStability(dates.slice(-20).map(dt => perPair[dt]), spot * 0.002)
             .filter(w => w.daysPresent >= 1).sort((a, b) => b.daysPresent - a.daysPresent).slice(0, 6)
         : [];
+      // Whole-book OI-change × price-direction confirmation (new money vs covering/liquidation).
+      const priceDir = (Number.isFinite(cur?.spot) && Number.isFinite(prev?.spot)) ? (cur.spot - prev.spot) : 0;
+      const confirm = dl ? oiPriceConfirmation(dl.totalOIChange, priceDir) : null;
       return { curDate: dates[dates.length - 1] ?? null, prevDate: dates[dates.length - 2] ?? null,
                days: dates.length, deltas: dl,
                classify: dl ? classifyOIChange(dl)?.summary ?? null : null,
-               stability: stab };
+               confirm, stability: stab };
     };
     const key = String(req.query.pair || '').trim();
     if (!key) {
