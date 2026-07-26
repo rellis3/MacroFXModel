@@ -343,6 +343,32 @@ cost; (2) **dealer gamma** (the actual fade-vs-extend mechanism — negative γ 
 positive γ pins) as the regime selector, options-data-gated. Run `python3
 costed_median_follow.py` (add `placebo` for the shuffle control).
 
+## Phase 8 — can OU half-life or jumps rescue the sub-cost follow? (`median_follow_conditioned.py`)
+
+Phase-7 left the median follow real-but-sub-cost. Averages hide subsets, so this conditions
+the costed follow on two causal, pre-tag theory estimators the owner asked to test:
+- **OU half-life** — AR(1) φ of log(close)−log(sessionVWAP) up to the fill; half-life =
+  −ln2/ln(φ). Hypothesis: long half-life (trending) → follow clears cost.
+- **Jump fraction (bipower)** — max(RV−BV,0)/RV on the pre-tag 1-min returns. Was the tag
+  a jump (news) or a diffusive grind?
+
+**Result — NULL pooled (both).** OU half-life: OOS terciles −0.010/−0.016/−0.010% (flat, all
+sub-cost) and IS/OOS DISAGREE on the best bucket (IS says low-half-life is best, the opposite
+of the hypothesis). A one-pair EURUSD positive (hi-bucket +0.003% OOS) did NOT replicate —
+subset noise. Jump fraction: high-jump tags follow *worse* (OOS −0.025% vs −0.009%),
+consistently — a real mild "jumps to the median overshoot and revert" pattern, but it doesn't
+help the follow and every bucket stays sub-cost.
+
+**So the FX-spot median angle is now thoroughly explored (Phases 6–8):** the continuation is
+genuine momentum (Phase-7 placebo) but sub-cost as a standalone trade, and neither reversion-
+speed nor jumpiness isolates a cost-clearing subset. Its honest use stays a **directional
+filter** (follow > fade at the median), not an entry. The one mild pointer for further work:
+high-jump tags *revert* — a jump-gated FADE (not follow) is the one cheap FX check left.
+The genuinely different untried lever is options/gamma/VRP — but per the repo audit that data
+is **index/gold, snapshot, not FX-backtestable** (`js/gammaFlow.js`/`ivMetrics.js`/`oi_bot`
+say so), so it's a forward/live NQ effort, not a historical FX backtest. Run `python3
+median_follow_conditioned.py`.
+
 ## Analysis book
 `analysis-book.html` — a dark-theme page with every key chart and a plain-English *what it shows /
 what it means* under each, ending in the scoreboard and honest conclusion. Open it with `charts/`
@@ -363,5 +389,6 @@ alongside.
 - `conditioners.py` — Phase-5 richer at-the-moment conditioners (VWAP-stretch/σ + time-normalized path) on the fresh-extreme race, distance-controlled, IS/OOS, pre-registered cross-sectional verdict → `conditioners_summary.json`. Run `python3 conditioners.py` (6 majors + NQ) or `... EURUSD` (one pair).
 - `median_tag_decision.py` — Phase-6 fade-vs-follow DECISION at the median line: race to the 75th (follow) vs back to open (fade) with σ-expectancy, budget-at-tag buckets, IS/OOS, 6 majors, vs the 77% gambler's-ruin null. Run `python3 median_tag_decision.py`.
 - `costed_median_follow.py` — Phase-7 the COSTED follow-vs-fade on dynamic lines (real fills + spread + slippage, exit grid, IS/OOS) + a shuffled-returns placebo proving the continuation is momentum not fat-tail. Run `python3 costed_median_follow.py` (add `placebo`).
+- `median_follow_conditioned.py` — Phase-8 conditions the costed follow on OU half-life & jump fraction (bipower), pre-tag & causal, IS/OOS pooled FX — both NULL (no cost-clearing subset). Run `python3 median_follow_conditioned.py`.
 - `analysis-book.html` — human-readable write-up of every phase with charts + explanations.
 - `summary.json` / `forecast_vs_fade_summary.json` — headline stats.
