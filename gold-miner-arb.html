@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Gold vs Gold-Miners (GDX/Gold) Stat-Arb Backtester</title>
+<style>
+  :root{
+    --bg:#0e1016; --panel:#161a24; --panel2:#1d222e; --line:#2a3140;
+    --text:#e6e9ef; --text2:#aab2c0; --text3:#6f7889;
+    --accent:#5b9dff; --green:#3fb27f; --red:#e5604d; --amber:#e0a93b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  header{padding:20px 24px;border-bottom:1px solid var(--line);background:var(--panel)}
+  h1{margin:0 0 4px;font-size:19px;font-weight:650}
+  .sub{color:var(--text2);font-size:13px;max-width:1040px}
+  .devnote{margin-top:10px;padding:10px 12px;background:rgba(224,169,59,.08);border:1px solid rgba(224,169,59,.35);border-radius:8px;font-size:12.5px;color:var(--text2)}
+  .devnote b{color:var(--amber)}
+  main{padding:22px 24px;max-width:1320px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:18px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+  label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+  input,select{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:7px 9px;font-size:13px}
+  button{background:var(--accent);color:#fff;border:0;border-radius:7px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer}
+  button.sm{padding:5px 11px;font-size:11.5px;background:var(--panel2);border:1px solid var(--line);color:var(--text2)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .hint{color:var(--text3);font-size:11px;margin-top:3px}
+  #status{margin:14px 0;color:var(--text2);font-size:13px;min-height:18px;white-space:pre-wrap}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{padding:6px 9px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  thead th{color:var(--text3);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+  .sec-title{font-size:14px;font-weight:600;margin:2px 0 10px}
+  .mode{color:var(--text2);font-weight:600}
+  .pos{color:var(--green)} .neg{color:var(--red)} .mut{color:var(--text3)}
+  .win{background:rgba(63,178,127,.12)}
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;margin-left:6px}
+  .b-good{background:rgba(63,178,127,.18);color:var(--green)}
+  .b-bad{background:rgba(229,96,77,.18);color:var(--red)}
+  .b-meh{background:rgba(224,169,59,.18);color:var(--amber)}
+  .legend{color:var(--text3);font-size:11.5px;margin-top:10px;line-height:1.7}
+  code{background:var(--panel2);padding:1px 5px;border-radius:4px;color:var(--text2)}
+  .exports{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .rmeta{color:var(--text3);font-size:11px;margin-top:8px;line-height:1.6}
+</style>
+</head>
+<body>
+<header>
+  <h1>Gold vs Gold-Miners Stat-Arb <span class="mut" style="font-size:13px">· GDX / Gold cointegration backtester</span></h1>
+  <div class="sub">
+    Mechanises the owner-supplied spec: rolling hedge-ratio z-score,
+    cointegration gate, scale-in/scale-out tranches, VIX macro filter, $ risk
+    sizing, hard/time/macro stops. Runs the full policy against a naive
+    single-tranche baseline on a true later-period OOS split, plus an
+    independent cross-check via the platform's already-built, already-tested
+    FX-pairs cointegration engine on the same GDX/Gold pair.
+  </div>
+  <div class="devnote">
+    <b>Known deviations from the original spec</b> — surfaced, not hidden:
+    (1) <b>Daily bars, not 15-minute.</b> Free Yahoo 15-min history only covers
+    ~60 days — far short of the spec's own "2 years" calibration requirement
+    and too short for a real OOS trade count. (2) <b>Gold leg is OANDA
+    XAU_USD spot</b>, not CME GC futures — this avoids a worse problem
+    (Yahoo's GC=F is an unadjusted continuous contract with real price jumps
+    at roll dates that would corrupt the cointegration test), at the cost of
+    ignoring the futures basis. (3) <b>Time-of-day filter does not apply</b>
+    to daily bars — not silently applied. (4) The original spec has
+    <b>no cost section</b>; this engine deducts a round-trip bps cost on every
+    close (below) because free fills are not honest. (5) The "ADF p-value"
+    gate is implemented as an OU λ t-stat vs a documented Engle-Granger 5%
+    critical value (reusing <code>hedgeSignalV2Engine.js</code>, already live
+    for FX pairs) rather than a hand-approximated p-value.
+  </div>
+</header>
+<main>
+  <div class="card">
+    <div class="grid">
+      <div><label>Account equity ($)</label><input id="accountEquity" type="number" value="100000" step="1000"></div>
+      <div><label>Risk per position (%)</label><input id="riskPct" type="number" value="1" step="0.25"></div>
+      <div><label>OOS fraction</label><input id="oosFrac" type="number" value="0.4" step="0.05" min="0.1" max="0.6"></div>
+      <div><label>Data start date</label><input id="start" type="date" value="2016-01-01"></div>
+      <div><label>Entry Z tier 1 (50%)</label><input id="entryZ1" type="number" value="1.5" step="0.1"></div>
+      <div><label>Entry Z tier 2 (+30%)</label><input id="entryZ2" type="number" value="2.5" step="0.1"></div>
+      <div><label>Entry Z tier 3 / reserve (+20%)</label><input id="entryZ3" type="number" value="3.5" step="0.1"></div>
+      <div><label>Disaster stop Z</label><input id="stopZ" type="number" value="4.0" step="0.1"></div>
+      <div><label>Time stop (trading days)</label><input id="timeStopBars" type="number" value="5" step="1"></div>
+      <div><label>VIX macro filter/stop</label><input id="vixMax" type="number" value="30" step="1"></div>
+      <div><label>Round-trip cost (bps)</label><input id="costBpsRoundTrip" type="number" value="10" step="1">
+           <div class="hint">not in the original spec — added per house rule</div></div>
+      <div>
+        <label>Cointegration gate</label>
+        <select id="requireCointegration">
+          <option value="1">On (spec §3.4)</option>
+          <option value="0">Off (diagnostic only)</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-top:14px"><button id="run">Run backtest</button></div>
+    <div id="status"></div>
+  </div>
+
+  <div id="results"></div>
+
+  <div class="card" id="legendCard" style="display:none">
+    <div class="legend">
+      <b>Reading this card</b> — "Policy" is the full spec (VIX filter,
+      cointegration gate, scale-in/out tranches, $ risk sizing). "Baseline" is
+      a naive single-tranche version on the SAME price data (entry at |z|≥2,
+      no VIX filter, no cointegration gate) — the honest thing to A/B against,
+      per <code>CLAUDE.md</code>'s working agreement ("built" ≠ "works" ≠
+      "has edge" — the machinery only means something if it beats the naive
+      version OOS). A result only counts as a signal at ≥30 OOS trades.
+      <br><b>R vs % Return</b> — this spec risks a FIXED 1% of equity per
+      position, so R-multiple and % Return are near-linear rescalings of each
+      other in the exports below — flagged per house convention, not a bug.
+      <br><b>MAE</b> is close-to-close over the daily bars a leg was open,
+      not a true intrabar spread path (no real intrabar path exists for a
+      synthetic two-leg spread from two separately-sourced daily series).
+    </div>
+  </div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let LAST = null;
+
+function fmtPct(x){ return (x==null||isNaN(x)) ? '–' : (x>=0?'+':'')+(+x).toFixed(2)+'%'; }
+function fmtNum(x,d=2){ return (x==null||isNaN(x)) ? '–' : (+x).toFixed(d); }
+function cls(x){ return x>0?'pos':(x<0?'neg':'mut'); }
+
+function summaryRow(label, s){
+  if (!s) return '';
+  const seStr = s.sharpeSE!=null ? ` <span class="mut">± ${fmtNum(s.sharpeSE)}</span>` : '';
+  return `<tr>
+    <td class="mode">${label}</td>
+    <td>${s.trades}</td>
+    <td class="${cls(s.sharpe)}">${fmtNum(s.sharpe)}${seStr}</td>
+    <td>${fmtNum(s.winRate,1)}%</td>
+    <td>${fmtNum(s.profitFactor)}</td>
+    <td class="${cls(s.expectancy)}">${fmtPct(s.expectancy)}</td>
+    <td class="${cls(s.maxDD)}">${fmtPct(s.maxDD)}</td>
+    <td>${s.minTrackYears ?? '–'}</td>
+  </tr>`;
+}
+
+function verdictBadge(policy, baseline){
+  const oosOk = policy.oos.trades >= 30;
+  const beats = policy.oos.sharpe > baseline.oos.sharpe && policy.oos.sharpe > 0;
+  if (!oosOk) return `<span class="badge b-meh">only ${policy.oos.trades} OOS trades — below the 30-trade bar</span>`;
+  if (beats) return `<span class="badge b-good">policy beats baseline OOS</span>`;
+  return `<span class="badge b-bad">policy does NOT beat baseline OOS</span>`;
+}
+
+function renderResults(out){
+  const { policy, baseline, meta, crossCheck } = out;
+  const verdict = verdictBadge(policy, baseline);
+  const cc = crossCheck?.perPair?.[0];
+  const ccHtml = cc ? `
+    <div class="rmeta">
+      Cross-check (existing <code>hedgeSignalV2Engine.js</code>, log-price, no VIX/sizing overlay):
+      cointegrated=<b class="${cc.cointegrated?'pos':'neg'}">${cc.cointegrated}</b>,
+      half-life=${cc.halfLife ?? '–'} bars, t-stat=${cc.tStat}.
+    </div>` : `<div class="rmeta mut">Cross-check unavailable this run.</div>`;
+
+  $('results').innerHTML = `
+    <div class="card">
+      <div class="sec-title">GDX / Gold ${verdict}</div>
+      <div class="rmeta">
+        ${meta.n} aligned daily bars, ${meta.from} → ${meta.to}.
+        Gold: ${meta.goldSource}. GDX: ${meta.gdxSource}. VIX: ${meta.vixSource}.
+      </div>
+      <table>
+        <thead><tr><th>Book</th><th>Trades</th><th>Sharpe</th><th>Win%</th><th>PF</th><th>Expectancy</th><th>Max DD</th><th>Min track yrs</th></tr></thead>
+        <tbody>
+          <tr><td colspan="8" class="mut" style="text-align:left;padding-top:10px">Policy — full spec</td></tr>
+          ${summaryRow('IS', policy.is)}
+          ${summaryRow('OOS', policy.oos)}
+          ${summaryRow('Full', policy.full)}
+          <tr><td colspan="8" class="mut" style="text-align:left;padding-top:10px">Baseline — naive single-tranche</td></tr>
+          ${summaryRow('IS', baseline.is)}
+          ${summaryRow('OOS', baseline.oos)}
+          ${summaryRow('Full', baseline.full)}
+        </tbody>
+      </table>
+      ${ccHtml}
+      <div class="exports">
+        <span class="mut" style="font-size:11.5px">Export policy trade log (${out.policyTrades.length} close-events):</span>
+        <button class="sm" onclick="csvPct()">% Returns</button>
+        <button class="sm" onclick="csvR()">R-Multiples</button>
+        <button class="sm" onclick="csvDollar()">Currency P&amp;L</button>
+      </div>
+      <div class="rmeta">Account equity $${(+$('accountEquity').value||100000).toLocaleString()}; risk-per-position ${$('riskPct').value}% of equity — see the legend card below for the R vs % Return note.</div>
+    </div>
+  `;
+  $('legendCard').style.display = '';
+}
+
+function dl(name, rows){
+  const blob = new Blob([rows.join('\n')], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  URL.revokeObjectURL(a.href);
+}
+function csvPct(){
+  const rows = ['Date,Return %,MAE %'];
+  for (const t of LAST.policyTrades) rows.push(`${t.date},${t.pnl_pct},${t.mae_pct}`);
+  dl('gold_miner_arb_returns.csv', rows);
+}
+function csvR(){
+  const rows = ['date,R,MAE (R)'];
+  for (const t of LAST.policyTrades){
+    const maeR = t.stop_pct > 1e-9 ? +(t.mae_pct / t.stop_pct).toFixed(4) : 0;
+    rows.push(`${t.date},${t.R},${maeR}`);
+  }
+  dl('gold_miner_arb_rmultiples.csv', rows);
+}
+function csvDollar(){
+  const rows = ['Trade Date,PnL ($),Risk ($)'];
+  for (const t of LAST.policyTrades) rows.push(`${t.date},${t.pnl_dollar},${t.risk_dollar}`);
+  dl('gold_miner_arb_dollars.csv', rows);
+}
+
+async function poll(jobId){
+  for (let i = 0; i < 240; i++){
+    await new Promise(r => setTimeout(r, 2500));
+    const res = await fetch(`/api/gold-miner-arb/status/${jobId}`).then(r => r.json()).catch(() => null);
+    if (!res) continue;
+    if (res.status === 'running'){ $('status').textContent = `Running… ${res.elapsed||0}s`; continue; }
+    if (res.status === 'done') return res;
+    if (res.status === 'error') throw new Error((res.error||'engine error') + (res.log ? '\n' + res.log.join('\n') : ''));
+  }
+  throw new Error('timed out');
+}
+
+$('run').onclick = async () => {
+  const body = {
+    accountEquity: +$('accountEquity').value,
+    riskPct: (+$('riskPct').value)/100,
+    oosFrac: +$('oosFrac').value,
+    start: $('start').value,
+    entryZ1: +$('entryZ1').value,
+    entryZ2: +$('entryZ2').value,
+    entryZ3: +$('entryZ3').value,
+    stopZ: +$('stopZ').value,
+    timeStopBars: +$('timeStopBars').value,
+    vixMax: +$('vixMax').value,
+    costBpsRoundTrip: +$('costBpsRoundTrip').value,
+    requireCointegration: $('requireCointegration').value === '1',
+  };
+  $('run').disabled = true; $('results').innerHTML = ''; $('legendCard').style.display = 'none';
+  $('status').textContent = 'Submitting…';
+  try {
+    const start = await fetch('/api/gold-miner-arb/run', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}).then(r => r.json());
+    if (!start.ok) throw new Error(start.error || 'failed to start');
+    const out = await poll(start.jobId);
+    LAST = out;
+    $('status').textContent = (out.log || []).join('\n');
+    renderResults(out);
+  } catch (e) {
+    $('status').innerHTML = `<span class="neg">Error: ${e.message}</span>`;
+  } finally {
+    $('run').disabled = false;
+  }
+};
+</script>
+</body>
+</html>
