@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Applied Statistics &amp; Validation / Sharpe, Sortino, Calmar &amp; the Deflated Sharpe Ratio</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Applied Statistics &amp; Validation · Lesson 5 of 7</div>
   <h1 class="tl-title">Sharpe, Sortino, Calmar &amp; the Deflated Sharpe Ratio</h1>
   <p class="tl-dek">Three ways to divide return by risk, built from scratch — then the formal answer to a question every backtest eventually has to face: how much of your best reported Sharpe ratio is just the residue of trying many variations?</p>
@@ -19,6 +20,17 @@
     <span class="tl-status concept">CONCEPT — extends this repo's js/metricsCore.js and the Multiple Testing lesson</span>
     <span>~17 min read</span>
     <span>Prereqs: Multiple Testing &amp; the Look-Elsewhere Effect, Descriptive Statistics &amp; the Normal Distribution</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Sharpe = mean excess return ÷ its std. dev., annualized by \(\sqrt{k}\) (not \(k\)) because variance, not std. dev., is what adds linearly across independent periods — this is exactly <code>js/metricsCore.js</code>'s <code>sharpeRatio</code>.</li>
+      <li>Sortino swaps in downside deviation (std. dev. computed only over below-MAR periods) so upside wobble stops counting against a strategy — matches <code>sortinoRatio</code>'s exact convention (divide by the downside count \(n_d\), not total \(n\)).</li>
+      <li>Calmar = CAGR ÷ worst peak-to-trough drawdown, a single realized event rather than an average dispersion statistic — <code>calmar(annualReturn, maxDD)</code> takes both as caller-supplied inputs rather than assuming one definition.</li>
+      <li>The Deflated Sharpe Ratio corrects a reported Sharpe for how many variations were tried before it was picked: in the lesson's worked example (\(N=50\) trials, \(\sigma_{SR}=0.66\)), pure luck alone is expected to produce a best-of-50 Sharpe of \(SR_0\approx1.50\), so a reported 1.80 only clears that bar by 0.30 — working out to \(DSR\approx0.81\), not the near-100% a naive zero-benchmark test would claim.</li>
+      <li><code>js/metricsCore.js</code> already ships the Sharpe-honesty pair (<code>sharpeStdError</code>, <code>minTrackRecordLength</code>) that DSR's non-normality correction reuses, but nothing today tracks the trial count \(N\) behind a reported Sharpe — DSR itself isn't built yet.</li>
+    </ul>
   </div>
 
   <h2>Why this matters</h2>
@@ -674,7 +686,8 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>William F. Sharpe, <em>"Mutual Fund Performance"</em>, Journal of Business, 1966 — the original "reward-to-variability ratio," the source of the Sharpe ratio's name and its first formal statement.</li>
     <li>Frank A. Sortino &amp; Robert van der Meer, <em>"Downside Risk"</em>, Journal of Portfolio Management, 1991, and Sortino &amp; Lee N. Price, <em>"Performance Measurement in a Downside Risk Framework"</em>, Journal of Investing, 1994 — the downside-deviation refinement and its formalization as the Sortino ratio.</li>
@@ -684,6 +697,7 @@
     <li>David H. Bailey &amp; Marcos López de Prado, <em>"The Deflated Sharpe Ratio: Correcting for Selection Bias, Backtest Overfitting, and Non-Normality"</em>, Journal of Portfolio Management, 2014 — the primary citation for this lesson's second half: the full DSR derivation, the extreme-value-theory approximation for \(SR_0\), and worked examples of the selection-bias correction.</li>
     <li>David H. Bailey, Jonathan M. Borwein, Marcos López de Prado &amp; Qiji Jim Zhu, <em>"Pseudo-Mathematics and Financial Charlatanism: The Effects of Backtest Overfitting on Out-of-Sample Performance"</em>, Notices of the AMS, 2014 — the broader, more accessible case for why un-deflated backtest metrics systematically mislead, with the same authors' perspective on why this matters beyond the formula itself.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="copulas.html">← Copulas &amp; Joint Tail Dependence</a>

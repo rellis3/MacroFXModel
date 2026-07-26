@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Applied Statistics &amp; Validation / Walk-Forward &amp; Purged Cross-Validation</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Applied Statistics &amp; Validation · Lesson 6 of 7</div>
   <h1 class="tl-title">Walk-Forward &amp; Purged Cross-Validation</h1>
   <p class="tl-dek">A chronological train/test split looks rigorous — but if your features are built from overlapping rolling windows, the boundary itself can leak the future into the past. This is the formal theory behind this repo's own "no lookahead" rule.</p>
@@ -19,6 +20,17 @@
     <span class="tl-status concept">CONCEPT — the theory behind this repo's own OOS discipline</span>
     <span>~16 min read</span>
     <span>Prereqs: Multiple Testing &amp; the Look-Elsewhere Effect</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Random k-fold CV assumes rows are exchangeable; time series aren't — shuffling can put day \(i+1\) in training while day \(i\) is the test row, which is literal lookahead, plus serially-correlated neighbors let a model "cheat" across the fold boundary.</li>
+      <li>Walk-forward validation fixes this by only ever training on \(\{i : i < T_k\}\) and testing on \(\{i : T_k \le i < T_k+h\}\) — the same "no lookahead" discipline CLAUDE.md already states as "σ/regime/score for window \(i\) use data \(< i\) only," applied to the whole train/evaluate cycle.</li>
+      <li>A clean chronological split alone still leaks: a training row just before the boundary can have a forward-looking label that reaches into the test window, and a training row just after the test period can have a rolling feature window that reaches back into it.</li>
+      <li>The worked example (\(n=1{,}000\), \(w=20\), \(H=5\), test = days 500–599) shows this concretely: days 495–499 are purged for a label leak, days 600–618 for a feature leak, and a further 10-day embargo (days 619–628) buffers residual serial correlation the mechanical purge formula doesn't capture — training only resumes at day 629.</li>
+      <li>This repo's own <code>summarizeSplit</code> (<code>js/honestForecastEngine.js</code>) does a single clean chronological split with no purge/embargo — an honest gap, not a bug, but a checkable refinement worth applying to strategies whose features (HV20, rolling z-scores/percentiles, day-type estimators) lean on multi-day rolling windows near the split date.</li>
+    </ul>
   </div>
 
   <h2>Why this matters</h2>
@@ -542,13 +554,15 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Marcos López de Prado, <em>Advances in Financial Machine Learning</em> (Wiley, 2018) — Chapter 7, "Cross-Validation in Finance," is the original formal treatment of purged and embargoed k-fold CV used throughout this lesson; the same author's Deflated Sharpe Ratio / Probability of Backtest Overfitting work is covered in the Multiple Testing lesson.</li>
     <li>Robert Pardo, <em>The Evaluation and Optimization of Trading Strategies</em> (Wiley, 2nd ed., 2008) — the standard algorithmic-trading-literature treatment of walk-forward optimization and walk-forward efficiency as an overfitting diagnostic.</li>
     <li>Marcos López de Prado, "The 10 Reasons Most Machine Learning Funds Fail," <em>Journal of Portfolio Management</em> (2018) — a practitioner-facing summary that includes leakage from non-purged cross-validation among the recurring, avoidable failure modes.</li>
     <li>Campbell R. Harvey &amp; Yan Liu, "Backtesting," <em>Journal of Portfolio Management</em> (2015) — broader context on why walk-forward and out-of-sample discipline specifically (not just in-sample fit quality) is what separates a real backtest from a curve-fitting exercise.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="sharpe-family-deflated.html">← The Sharpe Family &amp; the Deflated Sharpe Ratio</a>

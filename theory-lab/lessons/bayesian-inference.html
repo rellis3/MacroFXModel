@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Foundations &amp; Epistemics / Bayesian Inference</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Foundations &amp; Epistemics · Lesson 2 of 14</div>
   <h1 class="tl-title">Bayesian Inference &amp; Updating</h1>
   <p class="tl-dek">A rule for turning "here is what I believed" plus "here is what I just observed" into "here is what I should believe now" — and the reason a positive signal is almost never as strong as it feels.</p>
@@ -19,6 +20,17 @@
     <span class="tl-status concept">CONCEPT — a reasoning framework, not a signal</span>
     <span>~14 min read</span>
     <span>Prereqs: Efficient Market Hypothesis (helpful, not required)</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Bayes' theorem — \(P(H\mid E) = P(E\mid H)P(H)/P(E)\) — isn't a separate axiom, it's derived by writing \(P(H \cap E)\) two ways from the plain definition of conditional probability.</li>
+      <li>Worked example: a classifier that's 80% accurate at flagging trend days, when only 20% of days actually are trend days, gives a posterior of only <strong>50%</strong> that a flagged day is real — not 80%. That's the base-rate fallacy.</li>
+      <li>The interactive chart's sliders default to a 20% prior and 80% classifier accuracy, reproducing that same 50% posterior; drag them to see how a rarer prior or a weaker classifier pulls the posterior around.</li>
+      <li>A Bayes factor of 4 (0.80/0.20) is what actually separates the 20% prior from the 50% posterior here — "substantial" evidence on Jeffreys' scale, real but not decisive.</li>
+      <li>The repo box flags Bayesian updating as a genuine, unbuilt alternative to `computeSignalScore`'s fixed weighted sum — a design hypothesis, not a validated improvement.</li>
+    </ul>
   </div>
 
   <h2>Why this matters</h2>
@@ -571,7 +583,8 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Thomas Bayes (posthumously, via Richard Price), <em>"An Essay towards solving a Problem in the Doctrine of Chances"</em>, Philosophical Transactions of the Royal Society, 1763 — the original source, on inferring an unknown probability from observed trials.</li>
     <li>Pierre-Simon Laplace, <em>Théorie analytique des probabilités</em>, 1812 — developed the general theorem (independently of, and in more usable form than, Bayes' original essay) and applied it broadly; much of what's taught as "Bayes' theorem" today owes as much to Laplace.</li>
@@ -579,6 +592,7 @@
     <li>Nate Silver, <em>The Signal and the Noise</em>, Penguin Press, 2012 — an accessible, practitioner-facing tour of Bayesian reasoning applied to forecasting (weather, elections, poker, markets), a good bridge from the math here to real-world judgment calls.</li>
     <li>Harold Jeffreys, <em>Theory of Probability</em>, 3rd ed., Oxford University Press, 1961 — origin of the Bayes-factor interpretation scale referenced above.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="emh.html">← Efficient Market Hypothesis</a>

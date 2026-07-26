@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Macro &amp; FX Theory / Purchasing Power Parity</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Macro &amp; FX Theory · Lesson 2 of 3</div>
   <h1 class="tl-title">Purchasing Power Parity</h1>
   <p class="tl-dek">The Law of One Price, applied to whole economies — a real and well-documented anchor for where a currency "should" sit over years, and a famously bad clock for when it gets there.</p>
@@ -20,6 +21,17 @@
     <span>~15 min read</span>
     <span>Prereqs: Interest Rate Parity</span>
   </div>
+
+<div class="tl-tldr">
+  <div class="tl-tldr-label">TL;DR</div>
+  <ul>
+    <li>PPP is the Law of One Price scaled up from a single good to a whole economy's basket: an identical basket should cost the same in every currency, or the exchange rate should move until it does.</li>
+    <li><strong>Absolute PPP</strong> (\(S = P_{\text{domestic}}/P_{\text{foreign}}\)) is the strict, rarely-true version; <strong>relative PPP</strong> (\(\%\Delta S \approx \pi_{\text{domestic}} - \pi_{\text{foreign}}\)) — the currency should depreciate by roughly the inflation gap — is the weaker, more empirically useful version.</li>
+    <li>The <strong>real exchange rate</strong> (\(S \times P_{\text{foreign}}/P_{\text{domestic}}\)) is the practical "cheap or expensive" gauge: if PPP held exactly it would be constant, but in practice it wanders for years above or below its own average.</li>
+    <li>PPP deviations are real but close so slowly — Rogoff's "PPP puzzle" finds half-lives of roughly three to five years — that it is a hopeless short-run timing signal; a "20% undervalued" reading can widen for years before it narrows.</li>
+    <li>This repo has no PPP-based signal or CPI/price-level data pipeline today — it's a stated gap, not a built brick.</li>
+  </ul>
+</div>
 
   <h2>Why this matters</h2>
   <p>
@@ -385,13 +397,15 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Kenneth Rogoff, "The Purchasing Power Parity Puzzle," <em>Journal of Economic Literature</em>, 1996 — the classic, widely-cited assessment of PPP's real-world half-life problem: real exchange rates do appear to mean-revert, but far more slowly (three-to-five-year half-lives) than standard price-stickiness arguments can easily explain.</li>
     <li>The Economist, "The Big Mac Index" — the long-running, publicly updated informal illustration of absolute PPP using a single standardized good; useful as popular education, explicitly not a rigorous valuation model.</li>
     <li>Bela Balassa (1964) and Paul Samuelson (1964), independently — the structural explanation (productivity differentials driving non-tradeable-sector prices) for why richer countries have persistently higher price levels even in long-run equilibrium, a key reason absolute PPP doesn't hold even asymptotically.</li>
     <li>Alan M. Taylor and Mark P. Taylor, "The Purchasing Power Parity Debate," <em>Journal of Economic Perspectives</em>, 2004 — a readable survey of the empirical PPP literature after Rogoff, covering the econometric debates (unit roots, panel methods) around estimating just how slow the reversion really is.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="interest-rate-parity.html">← Interest Rate Parity</a>

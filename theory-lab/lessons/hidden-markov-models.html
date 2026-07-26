@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Time Series &amp; Regimes / Hidden Markov Models</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Time Series &amp; Regimes · Lesson 7 of 14</div>
   <h1 class="tl-title">Hidden Markov Models &amp; Regime Detection</h1>
   <p class="tl-dek">Markets don't announce whether they're trending or chopping — an HMM is a formal way to guess the unobserved state from what you can actually see, and to be honest about how confident that guess is.</p>
@@ -19,6 +20,17 @@
     <span class="tl-status concept">CONCEPT — not yet built in this repo</span>
     <span>~17 min read</span>
     <span>Prereqs: GARCH &amp; Volatility Clustering, Bayesian Inference</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>An HMM treats the market's regime (e.g. trending vs. choppy) as a <em>hidden</em> state that must be inferred, with each state emitting observations (returns) via its own probability distribution — a Gaussian with its own \(\mu_k,\sigma_k^2\) per state is the standard choice.</li>
+      <li>Every row of the \(N \times N\) transition matrix \(A\) sums to 1; the diagonal entries \(A_{ii}\) capture regime persistence, and expected regime duration is \(1/(1-A_{ii})\).</li>
+      <li>The worked example uses \(A_{11}=0.70\) (stay trending) and \(A_{22}=0.85\) (stay choppy), implying trending stretches last about 3.3 days on average and choppy stretches about 6.7 days — choppy is both stickier and, at a long-run share of ~66.7% vs. ~33.3%, more common.</li>
+      <li>All practical HMM use reduces to three problems: evaluation (forward algorithm — how likely is this data under the model), decoding (Viterbi — the single most likely hidden state path), and learning (Baum-Welch, an EM variant — estimate \(A\) and the emission parameters from data).</li>
+      <li>This is a concept lesson only — nothing here is built in this repo; it's an illustrative alternative to the existing hand-set <code>classifyRegime</code> and <code>dayTypeScore</code> classifiers, not a validated improvement over either.</li>
+    </ul>
   </div>
 
   <h2>Why this matters</h2>
@@ -598,7 +610,8 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Andrei A. Markov's original early-1900s work on chains of linked probabilistic events (applied first to letter sequences in Russian text) — the origin of the "Markov" in Markov chain and Markov property.</li>
     <li>Leonard E. Baum and colleagues (Baum, Petrie, Soules, Weiss), "A Maximization Technique Occurring in the Statistical Analysis of Probabilistic Functions of Markov Chains," <em>Annals of Mathematical Statistics</em>, 1970 — the foundational paper behind the Baum-Welch algorithm.</li>
@@ -606,6 +619,7 @@
     <li>James D. Hamilton, "A New Approach to the Economic Analysis of Nonstationary Time Series and the Business Cycle," <em>Econometrica</em>, 1989 — the econometrics-native regime-switching cousin of the HMM, applying Markov-switching dynamics directly to macroeconomic and financial time series (originally to model U.S. GNP growth switching between expansion and recession regimes).</li>
     <li>Robert J. Elliott, Lakhdar Aggoun, and John B. Moore, <em>Hidden Markov Models: Estimation and Control</em> — a more mathematically complete treatment of HMM theory, including continuous-time and filtering extensions, for readers who want the full derivations this lesson deliberately stayed above.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="garch-volatility.html">← GARCH &amp; Volatility Clustering</a>

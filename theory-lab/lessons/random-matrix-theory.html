@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Advanced Portfolio &amp; Market Structure / Random Matrix Theory</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Advanced Portfolio &amp; Market Structure · Lesson 1 of 5</div>
   <h1 class="tl-title">Random Matrix Theory &amp; the Marchenko-Pastur Law</h1>
   <p class="tl-dek">The PCA lesson showed how to split a correlation matrix into ranked eigenvalues. It never asked the harder question: with only a finite sample of history, how many of those eigenvalues are real, and how many are exactly what pure noise looks like when you don't have enough data?</p>
@@ -19,6 +20,16 @@
     <span class="tl-status concept">CONCEPT — extends js/diversificationCore.js's existing eigenvalue math</span>
     <span>~18 min read</span>
     <span>Prereqs: Principal Component Analysis &amp; Factor Regimes, Linear Algebra &amp; Matrices</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A correlation matrix built from finite history always spreads its eigenvalues away from 1 — even for instruments that are truly independent — purely from sampling noise, the same way 20 fair coin flips rarely land exactly 10-10.</li>
+      <li>The Marchenko-Pastur law gives the exact "noise band" \([\lambda_{\min}, \lambda_{\max}] = [(1-\sqrt{q})^2, (1+\sqrt{q})^2]\) that pure-noise eigenvalues are expected to fall inside, where \(q = N/T\) (instruments over observations).</li>
+      <li>Worked example in this lesson: \(N=30\) FX pairs, \(T=250\) days gives \(q=0.12\), so \(\lambda_{\min}\approx0.43\) and \(\lambda_{\max}\approx1.81\) — the basket's \(\lambda_1=8.2\) clears that band easily (a real factor), while \(\lambda_2\)–\(\lambda_4\) all land inside it (indistinguishable from noise).</li>
+      <li><code>js/diversificationCore.js</code>'s <code>effectiveBetsPCA</code> already consumes the full eigenvalue spectrum from <code>symmetricEigenvalues</code> but does not run this noise-band check against it — a concrete, unbuilt guardrail, not something the repo currently does.</li>
+    </ul>
   </div>
 
   <h2>Why this matters</h2>
@@ -588,7 +599,8 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Vladimir A. Marchenko &amp; Leonid A. Pastur, "Distribution of eigenvalues for some sets of random matrices," <em>Mathematics of the USSR-Sbornik</em>, 1967 — the original derivation of the eigenvalue distribution this lesson is named for, proved decades before its finance application.</li>
     <li>Laurent Laloux, Pierre Cizeau, Jean-Philippe Bouchaud &amp; Marc Potters, "Noise Dressing of Financial Correlation Matrices," <em>Physical Review Letters</em>, 1999 — the landmark, widely-cited application of Random Matrix Theory to real stock-market correlation matrices, showing the great majority of eigenvalues fall inside the Marchenko-Pastur noise band and only a handful represent genuine common factors.</li>
@@ -596,6 +608,7 @@
     <li>Jean-Philippe Bouchaud &amp; Marc Potters, <em>A First Course in Random Matrix Theory: for Physicists, Engineers and Data Scientists</em>, Cambridge University Press, 2020 — a modern, practitioner-oriented textbook covering the Marchenko-Pastur law and the eigenvalue-cleaning/shrinkage techniques mentioned but not built in this lesson.</li>
     <li><code>js/diversificationCore.js</code> and <code>diversification.html</code> in this repo — the existing eigenvalue-based "effective number of bets" implementation this lesson's repo box identifies as a concrete, not-yet-built candidate for a Marchenko-Pastur noise-band guardrail.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>

@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Macro &amp; FX Theory / Interest Rate Parity</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Macro &amp; FX Theory · Lesson 1 of 3</div>
   <h1 class="tl-title">Interest Rate Parity — Covered vs. Uncovered</h1>
   <p class="tl-dek">One of these two theories is an accounting identity enforced by riskless arbitrage and holds to within a fraction of a basis point. The other one is a genuine economic hypothesis about what markets expect — and it has failed, on average, in almost every dataset anyone has tested it on for forty years. That failure is not a footnote; it is the empirical basis of the entire FX carry trade.</p>
@@ -20,6 +21,17 @@
     <span>~17 min read</span>
     <span>Prereqs: Time Value of Money</span>
   </div>
+
+<div class="tl-tldr">
+  <div class="tl-tldr-label">TL;DR</div>
+  <ul>
+    <li>Covered interest rate parity (CIP) is a no-arbitrage identity, not a forecast: \(F = S\cdot(1+r_d)/(1+r_f)\) is pinned down today by the spot rate and the two interest rates, and it holds in liquid G10 pairs to within a sliver of a basis point.</li>
+    <li>Uncovered interest rate parity (UIP) makes the same-looking claim without the forward hedge — that the market's expected future spot rate equals the forward rate, \(E_t[S_{t+T}] = F\) — which implies the higher-yielding currency should be expected to depreciate by roughly its rate advantage. Unlike CIP, nothing forces this to be true.</li>
+    <li>The worked example prices a 1-year USD/EUR forward at \(S=1.10\), \(r_d=5\%\), \(r_f=3\%\) as \(F^\ast \approx 1.1214\), then shows a hypothetical mispriced forward of 1.15 yielding a riskless $26,818.18 arbitrage on $1,000,000 — the exact trade that keeps CIP pinned in practice.</li>
+    <li>Fama (1984) tested UIP's one-for-one prediction and found the regression coefficient is typically negative (Froot &amp; Thaler's 1990 survey reports roughly −0.8, not +1) — the forward premium puzzle: high-yielding currencies have tended to appreciate or hold flat rather than depreciate as UIP predicts, which is the empirical basis of the FX carry trade.</li>
+    <li>The JPY/AUD carry-trade scenario shows both sides at once: the interest differential (~4.2pp) was pocketed largely intact through calm 2023–mid-2024 markets, then AUD/JPY fell 10%+ in about two weeks after the BoJ's 31 July 2024 hike — the carry trade is short a fat left tail, not free money.</li>
+  </ul>
+</div>
 
   <h2>Why this matters</h2>
   <p>
@@ -637,7 +649,8 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Eugene F. Fama, <em>"Forward and Spot Exchange Rates,"</em> Journal of Monetary Economics, 1984 — the paper establishing the forward premium puzzle via the regression described above.</li>
     <li>Kenneth A. Froot and Richard H. Thaler, <em>"Anomalies: Foreign Exchange,"</em> Journal of Economic Perspectives, 1990 — the widely cited survey of the accumulated evidence against UIP across studies.</li>
@@ -646,6 +659,7 @@
     <li>Wenxin Du, Alexander Tepper, and Adrien Verdelhan, <em>"Deviations from Covered Interest Rate Parity,"</em> Journal of Finance, 2018 — documents the small, persistent post-2008 CIP deviations tied to bank balance-sheet costs, referenced in the CIP section above.</li>
     <li>Paul R. Krugman, Maurice Obstfeld, and Marc J. Melitz, <em>"International Economics: Theory and Policy,"</em> Pearson — the standard textbook treatment of covered and uncovered interest rate parity.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>

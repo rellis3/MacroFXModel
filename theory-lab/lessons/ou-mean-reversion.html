@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Time Series &amp; Regimes / Ornstein-Uhlenbeck</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Time Series &amp; Regimes · Lesson 4 of 14</div>
   <h1 class="tl-title">The Ornstein-Uhlenbeck Process &amp; Mean Reversion</h1>
   <p class="tl-dek">A price that "wants" to go somewhere and a price that just wanders are different mathematical objects — the OU process is the equation that tells them apart, and gives mean reversion an actual speed.</p>
@@ -19,6 +20,16 @@
     <span class="tl-status concept">CONCEPT — not yet fit/tested in this repo</span>
     <span>~15 min read</span>
     <span>Prereqs: none required, EMH lesson helpful for framing</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>OU process: \(dX_t = \theta(\mu - X_t)\,dt + \sigma\,dW_t\) — a drift term that pulls back toward \(\mu\) at speed \(\theta\), plus random noise scaled by \(\sigma\); setting \(\theta = 0\) collapses it to a plain random walk.</li>
+      <li>Half-life of mean reversion is \(t_{1/2} = \ln(2)/\theta\), derived by solving the drift-only decay \(\mathbb{E}[X_t-\mu] = (X_0-\mu)e^{-\theta t}\) for the time the expected deviation shrinks by half.</li>
+      <li>To fit this to daily data you regress an AR(1), \(X_t = \mu(1-\phi) + \phi X_{t-1} + \epsilon_t\), then convert \(\phi \to \theta\) via \(\theta = -\ln(\phi)/\Delta t\); the worked example uses \(\phi = 0.90 \Rightarrow \theta \approx 0.105\)/day \(\Rightarrow\) half-life \(\approx 6.58\) days (and contrasts \(\phi=0.98 \Rightarrow \approx 34.3\) days).</li>
+      <li>The interactive slider defaults to \(\theta = 0.15\), showing a half-life of \(\approx 4.6\) days for the simulated mean-reverting path.</li>
+    </ul>
   </div>
 
   <h2>Why this matters</h2>
@@ -574,7 +585,8 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>L. S. Ornstein &amp; G. E. Uhlenbeck, "On the Theory of the Brownian Motion," <em>Physical Review</em>, 1930 — the original paper defining the process (in a physics context, not finance).</li>
     <li>James D. Hamilton, <em>Time Series Analysis</em>, Princeton University Press, 1994 — the standard graduate econometrics reference covering AR(1) estimation, unit roots, and the discrete/continuous-time mapping used in this lesson.</li>
@@ -582,6 +594,7 @@
     <li>Marco Avellaneda &amp; Jeong-Hyun Lee, "Statistical Arbitrage in the U.S. Equities Market," <em>Quantitative Finance</em>, 2010 — explicitly fits an OU process to cointegration-residual spreads and uses the half-life as a trading-horizon filter; the direct template for the "fit OU, use the half-life" workflow described above.</li>
     <li><code>REVERSION_CONTINUATION_CONCEPT.md</code> and <code>js/dayTypeCore.js</code> in this repo — the existing drift/diffusion classifier this lesson's repo box contrasts with.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="multiple-testing.html">← Multiple Testing &amp; the Look-Elsewhere Effect</a>

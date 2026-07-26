@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Risk &amp; Sizing / Kelly Criterion</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Risk &amp; Sizing · Lesson 13 of 14</div>
   <h1 class="tl-title">The Kelly Criterion &amp; Position Sizing</h1>
   <p class="tl-dek">The formula for the bet size that maximizes long-run growth rate — and why betting exactly that size, on purpose, is usually a mistake.</p>
@@ -19,6 +20,17 @@
     <span class="tl-status concept">CONCEPT — a sizing framework, only valid once a real edge exists</span>
     <span>~16 min read</span>
     <span>Prereqs: Bayesian Inference</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>For an even-money bet with win probability \(p\), the growth-optimal bet size is \(f^* = 2p - 1\) — bet a fraction of bankroll equal to your edge over 50/50.</li>
+      <li>For a continuous return stream with drift \(\mu\) and variance \(\sigma^2\), the same logic gives \(f^* = \mu/\sigma^2\): optimal leverage is edge divided by variance, not volatility.</li>
+      <li>Compounding costs you: the geometric growth rate is approximately \(g \approx \mu - \sigma^2/2\) (volatility drag), which is why a bumpy return stream compounds slower than a steady one with the same average return.</li>
+      <li>Overbetting isn't just riskier, it's provably worse — growth rises up to \(f^*\), then falls, hitting zero exactly at \(2f^*\) and going negative beyond it, even though every individual bet still has positive expected value.</li>
+      <li>Worked example in this lesson: \(p=0.55\) gives full Kelly \(f^*=10\%\) of bankroll; half-Kelly (5%) captures ~75% of full Kelly's growth rate while cutting typical drawdown by roughly half or more.</li>
+    </ul>
   </div>
 
   <h2>Why this matters</h2>
@@ -725,7 +737,8 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>John L. Kelly Jr., <em>"A New Interpretation of Information Rate"</em>, Bell System Technical Journal, 1956 — the original paper, framed in information-theory terms (channel capacity and a gambler's optimal growth rate) rather than as investment advice; the source of the formula's name.</li>
     <li>Edward O. Thorp, <em>"The Kelly Criterion in Blackjack, Sports Betting, and the Stock Market"</em>, in <em>Handbook of Asset and Liability Management</em>, 2008 (widely circulated earlier as a standalone paper) — the applied bridge from Kelly's information-theory result to real betting and investing, including the case for fractional Kelly in practice.</li>
@@ -733,6 +746,7 @@
     <li>William Poundstone, <em>Fortune's Formula</em>, Hill and Wang, 2005 — an accessible narrative history of the Kelly criterion, from Bell Labs through Thorp's blackjack and Wall Street careers; a good on-ramp before returning to the primary sources above.</li>
     <li>Leonard C. MacLean, Edward O. Thorp, and William T. Ziemba (eds.), <em>The Kelly Capital Growth Investment Criterion: Theory and Practice</em>, World Scientific, 2011 — the comprehensive academic anthology, including the drawdown-versus-fractional-Kelly analysis referenced in the worked example above.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="merton-jump-diffusion.html">← Merton Jump-Diffusion Model</a>

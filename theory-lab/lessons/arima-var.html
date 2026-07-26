@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Applied Statistics &amp; Validation / ARIMA &amp; VAR</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Applied Statistics &amp; Validation · Lesson 3 of 7</div>
   <h1 class="tl-title">ARIMA &amp; Vector Autoregression (VAR)</h1>
   <p class="tl-dek">AR(1) told you one series pulls back toward one mean. Real data is rarely that clean — shocks echo forward after the level has already reverted, raw price levels need differencing before "mean reversion" even applies, and in FX and macro almost nothing moves in isolation. ARIMA and VAR are the two directions single-series mean reversion generalizes in.</p>
@@ -19,6 +20,17 @@
     <span class="tl-status concept">CONCEPT — not yet built in this repo</span>
     <span>~17 min read</span>
     <span>Prereqs: Stationarity, ACF/PACF &amp; the AR(1) signature; Ornstein-Uhlenbeck &amp; Mean Reversion</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>ARIMA generalizes single-series AR(1)/OU mean reversion two ways: more lags of the level (AR(<i>p</i>)), a second kind of memory for past <em>shocks</em> rather than past levels (MA(<i>q</i>)), and differencing (the "I") to make a non-stationary series like a raw price level stationary before fitting.</li>
+      <li>The order (<i>p</i>,<i>d</i>,<i>q</i>) is read off the data via the Box-Jenkins loop — ACF/PACF cutoff patterns, a unit-root check for <i>d</i>, Ljung-Box residual diagnostics — not guessed or assumed to be (1,1,0).</li>
+      <li>VAR is the orthogonal generalization: instead of one series on its own lags, it regresses a whole system of series (e.g. the DE–US yield spread and EUR/USD) each on lagged values of itself <em>and</em> every other series, so it can reveal bidirectional feedback a single "Y on lagged X" regression can never see.</li>
+      <li>Granger causality tests whether one series's lags significantly improve forecasting another beyond its own history — it is explicitly a statistical/predictive claim, <strong>not</strong> true structural causation, since an unobserved common driver can produce the same result.</li>
+      <li>The lesson's running example — does the yield spread lead EUR/USD, or the reverse — is this repo's own <code>macro-deep-dives-notes.md</code> lead-lag case study formalized as a testable VAR/Granger question; no such fit has actually been run in this repo yet.</li>
+    </ul>
   </div>
 
   <h2>Why this matters</h2>
@@ -655,7 +667,8 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>George E. P. Box &amp; Gwilym M. Jenkins, <em>Time Series Analysis: Forecasting and Control</em>, 1970 — the original Box-Jenkins ARIMA methodology, already cited in the Stationarity/ACF-PACF lesson.</li>
     <li>Christopher A. Sims, "Macroeconomics and Reality," <em>Econometrica</em>, 1980 — the paper that introduced VAR into macroeconomics, part of the body of work behind Sims's 2011 Nobel Memorial Prize in Economic Sciences.</li>
@@ -664,6 +677,7 @@
     <li>James D. Hamilton, <em>Time Series Analysis</em>, Princeton University Press, 1994 — already cited in the OU lesson; its ARIMA and VAR chapters are the standard graduate reference for everything covered here.</li>
     <li><code>education/macro-deep-dives-notes.md</code> (Lessons 2–3) and <code>credit-leadlag.html</code> in this repo — the existing qualitative lead-lag work this lesson's VAR/Granger causality section formalizes.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="model-selection-aic-bic.html">← Model Selection: AIC, BIC &amp; Cross-Validation</a>

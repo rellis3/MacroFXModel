@@ -12,6 +12,7 @@
 <body>
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Options &amp; Derivatives / Merton Jump-Diffusion</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Options &amp; Derivatives · Lesson 12 of 14</div>
   <h1 class="tl-title">The Merton Jump-Diffusion Model</h1>
   <p class="tl-dek">Black-Scholes assumes price paths never tear — Merton's 1976 fix bolts a random-jump process onto ordinary diffusion so a model can finally admit that FX gaps on NFP day.</p>
@@ -20,6 +21,16 @@
     <span>~16 min read</span>
     <span>Prereqs: Black-Scholes-Merton Option Pricing, Extreme Value Theory helpful</span>
   </div>
+
+<div class="tl-tldr">
+  <div class="tl-tldr-label">TL;DR</div>
+  <ul>
+    <li>Merton (1976) bolts a Poisson-driven jump term \(dJ_t\) onto ordinary geometric Brownian motion, so a price process can admit genuine discontinuities (like an NFP gap) instead of only continuous wiggling.</li>
+    <li>Three parameters drive the jump: \(\lambda\) (jump intensity — how often jumps arrive), and \(\mu_J,\sigma_J\) (the mean and standard deviation of the lognormal jump size once one occurs).</li>
+    <li>Mixing rare, wider jump outcomes into ordinary diffusion produces a taller, narrower center plus fatter tails than a single normal distribution — that's excess kurtosis (leptokurtosis) — and is one of the two classical explanations for the volatility smile in option markets.</li>
+    <li>This repo doesn't fit a jump-diffusion model anywhere, but <code>js/metricsCore.js</code>'s Tier-1 primitives (<code>skewness</code>, <code>excessKurtosis</code>, <code>histVaR</code>, <code>histCVaR</code>) already catch the same fat-tail symptom empirically in a trade-return series, without ever estimating \(\lambda, \mu_J, \sigma_J\).</li>
+  </ul>
+</div>
 
   <h2>Why this matters</h2>
   <p>
@@ -617,7 +628,8 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Robert C. Merton, "Option Pricing When Underlying Stock Returns Are Discontinuous," <em>Journal of Financial Economics</em>, 1976 — the original paper defining the jump-diffusion model covered in this lesson.</li>
     <li>S. G. Kou, "A Jump-Diffusion Model for Option Pricing," <em>Management Science</em>, 2002 — the widely cited double-exponential jump-size refinement, allowing separate, asymmetric parameters for up-jumps and down-jumps.</li>
@@ -625,6 +637,7 @@
     <li><code>js/metricsCore.js</code> in this repo — the built, tested Tier-1 fat-tail primitives (<code>skewness</code>, <code>excessKurtosis</code>, <code>histVaR</code>, <code>histCVaR</code>) this lesson's repo box connects to.</li>
     <li><code>fill-realism.html</code> and <code>CLAUDE.md</code>'s anti-pattern list in this repo — the concrete intrabar-fill instance of the same continuity assumption discussed above.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="black-scholes.html">← Black-Scholes-Merton Option Pricing</a>
