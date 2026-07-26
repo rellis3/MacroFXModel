@@ -33,20 +33,40 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     Every lesson in this series after this one uses \(\sigma\), variance, and
-    "standard deviations away from the mean" without re-explaining them. The
-    Ornstein-Uhlenbeck lesson talks about a stationary variance
-    \(\sigma^2/2\theta\). The GARCH lesson forecasts \(\sigma\) itself, one day
-    at a time. The Hurst / variance-ratio lesson is built entirely out of how
-    variance scales with time. If any of those sentences made you pause and
-    think "wait, what exactly is a standard deviation, and why is it computed
-    the way it's computed, and not some simpler way" — that pause is exactly
-    what this page exists to remove. It is where \(\sigma\), variance, and
-    z-scores get explained once, properly, from nothing, so every later lesson
-    can use them without re-deriving them.
+    "standard deviations away from the mean" without re-explaining them. If
+    any of the sentences below made you pause and think "wait, what exactly
+    is a standard deviation, and why is it computed the way it's computed,
+    and not some simpler way" — that pause is exactly what this page exists
+    to remove.
   </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📉</div>
+      <h4>Ornstein-Uhlenbeck</h4>
+      <p>Talks about a stationary variance \(\sigma^2/2\theta\) — meaningless until you know what variance itself is.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📊</div>
+      <h4>GARCH</h4>
+      <p>Forecasts \(\sigma\) itself, one day at a time — the whole model is a machine for predicting this page's central number.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📈</div>
+      <h4>Hurst / Variance Ratio</h4>
+      <p>Built entirely out of how variance scales with time — you can't read it without this page's vocabulary first.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🧭</div>
+      <h4>Every z-score gate, everywhere</h4>
+      <p>Bollinger Bands, VaR statements, "is this move unusual" filters — all just this page's z-score, reused.</p>
+    </div>
+  </div>
+
   <p>
     This is not a strategy page and it doesn't reference a trading edge. It is
     the vocabulary and the arithmetic underneath the vocabulary. Read it once,
@@ -54,6 +74,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>A number that answers "how spread out is this data, in one summary figure?"</h3>
     <p>
@@ -80,6 +101,28 @@
     </p>
   </div>
 
+  <div class="tl-chart">
+    <div class="tl-chart-label">Same shape of week, very different σ</div>
+    <svg viewBox="0 0 640 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two narrow bell curves side by side, one much narrower than the other">
+      <text x="160" y="18" text-anchor="middle" style="fill:var(--text);font-size:12px;font-weight:600">Calm week</text>
+      <path style="fill:var(--blue);opacity:.25" d="M50,150 L70,148 L90,140 L110,115 L130,75 L150,45 L160,35 L170,45 L190,75 L210,115 L230,140 L250,148 L270,150 Z"/>
+      <path style="fill:none;stroke:var(--blue);stroke-width:2" d="M50,150 L70,148 L90,140 L110,115 L130,75 L150,45 L160,35 L170,45 L190,75 L210,115 L230,140 L250,148 L270,150"/>
+      <line x1="30" y1="150" x2="300" y2="150" style="stroke:var(--border);stroke-width:1"/>
+      <text x="480" y="18" text-anchor="middle" style="fill:var(--text);font-size:12px;font-weight:600">Wild week</text>
+      <path style="fill:var(--amber);opacity:.25" d="M370,150 L390,145 L410,132 L430,110 L450,90 L470,72 L480,65 L490,72 L510,90 L530,110 L550,132 L570,145 L590,150 Z"/>
+      <path style="fill:none;stroke:var(--amber);stroke-width:2" d="M370,150 L390,145 L410,132 L430,110 L450,90 L470,72 L480,65 L490,72 L510,90 L530,110 L550,132 L570,145 L590,150"/>
+      <line x1="350" y1="150" x2="620" y2="150" style="stroke:var(--border);stroke-width:1"/>
+      <text x="160" y="180" text-anchor="middle" style="fill:var(--text3);font-size:11px">five +0.1%-ish days</text>
+      <text x="480" y="180" text-anchor="middle" style="fill:var(--text3);font-size:11px">+5%, -4%, +3%, -3%, +0.1%</text>
+    </svg>
+    <div style="display:flex;gap:12px;justify-content:center;margin-top:8px">
+      <span class="tl-pill blue">σ ≈ 0.08%</span>
+      <span class="tl-pill amber">σ ≈ 3.7%</span>
+    </div>
+    <div class="tl-chart-caption">Both weeks can share the exact same mean (≈0.1%) — the mean alone can't tell them apart. Only σ, the width of the curve, captures the difference between a calm week and a wild one.</div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     Start with the mean, because everything else is built on top of it. Given
@@ -121,11 +164,12 @@
     <div class="tl-eq-chip c1"><code>xᵢ − x̄</code><span>one point's signed distance from the mean</span></div>
     <div class="tl-eq-chip c4"><code>= 0</code><span>the positives and negatives always cancel exactly</span></div>
   </div>
-  <p>
-    So the plain average deviation is always exactly zero, no matter how
-    spread out or tightly clustered the data is — it is useless as a measure
-    of spread. Two fixes are possible, and both are used in practice:
-  </p>
+  <div class="tl-solid red">
+    <strong>The trap:</strong> the plain average deviation is always exactly
+    zero, no matter how spread out or tightly clustered the data really is —
+    it is completely useless as a measure of spread. Two fixes are possible,
+    and both are used in practice:
+  </div>
 
   <div class="tl-compare">
     <div class="tl-compare-card amber">
@@ -334,11 +378,25 @@
   <div class="tl-math">
     \[ z = \frac{x - \mu}{\sigma} \]
   </div>
-  <div class="tl-eq-break">
-    <div class="tl-eq-chip c1"><code>z</code><span>the z-score — "how many sigmas away," unitless</span></div>
-    <div class="tl-eq-chip c3"><code>x</code><span>the value you're scoring</span></div>
-    <div class="tl-eq-chip c2"><code>σ</code><span>the yardstick the deviation is measured in</span></div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">x − μ</div>
+      <div class="tl-fp-name">The deviation</div>
+      <div class="tl-fp-desc">How far the value sits from the mean, in original units</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">σ</div>
+      <div class="tl-fp-name">The yardstick</div>
+      <div class="tl-fp-desc">Also in original units — dividing by it cancels the units out</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">z</div>
+      <div class="tl-fp-name">The result</div>
+      <div class="tl-fp-desc">A pure, unitless "how many sigmas away" number</div>
+    </div>
   </div>
+
   <p>
     This takes a deviation from the mean (\(x - \mu\), in the original units)
     and divides it by \(\sigma\) (also in the original units), so the units
@@ -452,6 +510,7 @@
   </div>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Mean, variance, standard deviation and a z-score, by hand</h3>
     <p>
@@ -548,6 +607,7 @@
     </div>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Z-scores are the standard building block for a huge share of quantitative
@@ -597,6 +657,7 @@
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
     <h3>This is the math behind <code>js/statsCore.js</code>'s z-score bricks</h3>
     <p>
@@ -627,6 +688,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where this goes wrong in practice</h3>
     <p>
@@ -670,6 +732,18 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Square deviations, don't average them raw.</strong> Raw deviations from the mean always sum to zero — squaring (variance) fixes that and disproportionately punishes big moves, which is exactly the risk behavior you want.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Divide by \(n-1\) for a sample, not \(n\).</strong> Bessel's correction — because the sample mean was itself estimated from the same data, and understates spread if you don't correct for it.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A z-score is a universal ruler.</strong> \(z=(x-\mu)/\sigma\) turns any move, on any instrument, into "how many sigmas away" — the one number every rolling z-score gate, Bollinger Band, and VaR statement is built from.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>68/95/99.7 is the ruler's scale.</strong> About 68% of a normal distribution sits within ±1σ, 95% within ±2σ, 99.7% within ±3σ — memorize this once, use it everywhere.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Real FX/equity returns are fatter-tailed than normal.</strong> A "should happen 0.3% of the time" \(z=3\) move happens more often than that in practice — the 68/95/99.7 rule is a normal-distribution idealization, not a guarantee.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Standard deviation ≠ standard error.</strong> One measures spread in the data; the other measures uncertainty in an estimate, and shrinks as the sample grows. Mixing them up is one of the most common statistics mistakes.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why do we square deviations from the mean instead of just averaging \(|x_i - \bar{x}|\)?</summary>
