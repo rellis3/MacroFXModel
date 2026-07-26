@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data Foundations DF-01 — The Institutional Data Hierarchy</title>
+<style>
+  :root{
+    --bg:#0b0e13; --card:#12161d; --card2:#1a2029; --border:#232b36; --border2:#2d3644;
+    --text:#dde3ea; --text2:#aab4c0; --text3:#6b7684;
+    --blue:#6ea8fe; --cyan:#22d3ee; --green:#4ade80; --amber:#fbbf24; --red:#f87171;
+    --purple:#a78bfa; --pink:#f472b6;
+    --blue-bg:rgba(110,168,254,.10); --green-bg:rgba(74,222,128,.09); --amber-bg:rgba(251,191,36,.09);
+    --red-bg:rgba(248,113,113,.09); --purple-bg:rgba(167,139,250,.10); --cyan-bg:rgba(34,211,238,.09);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:15px/1.65 system-ui,-apple-system,'Segoe UI',sans-serif;
+    background-image:radial-gradient(ellipse 60% 40% at 70% -5%, rgba(110,168,254,.07), transparent),
+                     radial-gradient(ellipse 50% 35% at 10% 20%, rgba(167,139,250,.05), transparent)}
+  .wrap{max-width:980px;margin:0 auto;padding:26px 18px 80px}
+
+  /* ── Header ─────────────────────────────────────────── */
+  .crumb{font-size:12px;color:var(--text3);margin-bottom:18px}
+  .crumb a{color:var(--blue);text-decoration:none}
+  .lesson-kicker{font-size:11px;letter-spacing:.22em;color:var(--cyan);text-transform:uppercase;margin-bottom:6px}
+  h1{font-size:clamp(26px,4.5vw,38px);font-weight:800;line-height:1.15;margin-bottom:10px;
+     background:linear-gradient(90deg,var(--text),var(--blue));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .lede{color:var(--text2);font-size:16px;max-width:760px}
+
+  /* ── Section headers ─────────────────────────────────── */
+  .sec{margin-top:52px}
+  .sec-head{display:flex;align-items:center;gap:13px;margin-bottom:6px}
+  .sec-num{width:36px;height:36px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:16px;color:#0b0e13}
+  .sec-head h2{font-size:clamp(19px,3vw,25px);font-weight:750}
+  .sec-kicker{font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;margin-left:49px}
+  .n1{background:linear-gradient(135deg,var(--cyan),var(--blue))}
+  .n2{background:linear-gradient(135deg,var(--green),var(--cyan))}
+  .n3{background:linear-gradient(135deg,var(--purple),var(--pink))}
+  .n4{background:linear-gradient(135deg,var(--blue),var(--purple))}
+  .n5{background:linear-gradient(135deg,var(--amber),var(--pink))}
+  .n6{background:linear-gradient(135deg,var(--green),var(--blue))}
+  p{margin:10px 0;color:var(--text2)} p b, p strong{color:var(--text)}
+  .sec > p{max-width:820px}
+
+  /* ── Cards & grids ───────────────────────────────────── */
+  .grid{display:grid;gap:12px;margin:16px 0}
+  .g2{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+  .g3{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+  .g4{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:16px 17px}
+  .card h4{font-size:14.5px;margin-bottom:7px;color:var(--text)}
+  .card p{font-size:13px;margin:4px 0}
+  .card .k{font-size:10px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;margin-bottom:8px}
+
+  /* stat tiles */
+  .stat{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:18px 14px;text-align:center}
+  .stat .v{font-size:27px;font-weight:800;margin-bottom:3px}
+  .stat .l{font-size:12.5px;color:var(--text)} .stat .s{font-size:11px;color:var(--text3)}
+
+  /* callouts */
+  .co{border-radius:12px;padding:15px 18px;margin:16px 0;border:1px solid var(--border);border-left:4px solid var(--blue);background:var(--blue-bg)}
+  .co .t{font-size:11px;letter-spacing:.16em;text-transform:uppercase;font-weight:800;margin-bottom:6px;color:var(--blue)}
+  .co p{font-size:13.5px;margin:5px 0}
+  .co.green{border-left-color:var(--green);background:var(--green-bg)} .co.green .t{color:var(--green)}
+  .co.amber{border-left-color:var(--amber);background:var(--amber-bg)} .co.amber .t{color:var(--amber)}
+  .co.red{border-left-color:var(--red);background:var(--red-bg)} .co.red .t{color:var(--red)}
+  .co.purple{border-left-color:var(--purple);background:var(--purple-bg)} .co.purple .t{color:var(--purple)}
+
+  /* tables */
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px}
+  th{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);text-align:left;
+     padding:9px 11px;border-bottom:1px solid var(--border2);background:var(--card2)}
+  td{padding:9px 11px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top}
+  td b{color:var(--text)}
+  tr:nth-child(even) td{background:rgba(255,255,255,.015)}
+  .tblwrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px}
+  .tblwrap table{margin:0}
+  code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;background:var(--card2);
+       border:1px solid var(--border);border-radius:5px;padding:1px 6px;color:var(--cyan)}
+
+  /* chips & badges */
+  .chip{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:600;
+        border:1px solid var(--border2);background:var(--card2);color:var(--text2);margin:3px 3px 0 0}
+  .badge{display:inline-block;padding:2px 9px;border-radius:6px;font-size:11px;font-weight:800}
+  .badge.green{background:var(--green-bg);color:var(--green);border:1px solid rgba(74,222,128,.35)}
+  .badge.red{background:var(--red-bg);color:var(--red);border:1px solid rgba(248,113,113,.35)}
+  .badge.amber{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(251,191,36,.35)}
+  .badge.blue{background:var(--blue-bg);color:var(--blue);border:1px solid rgba(110,168,254,.35)}
+  .badge.purple{background:var(--purple-bg);color:var(--purple);border:1px solid rgba(167,139,250,.35)}
+
+  /* provenance chain */
+  .chain{display:flex;gap:0;align-items:stretch;flex-wrap:wrap;margin:18px 0}
+  .hop{flex:1;min-width:170px;background:var(--card);border:1px solid var(--border);border-radius:13px;padding:14px;margin:5px;position:relative}
+  .hop .hn{font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:800;margin-bottom:5px}
+  .hop .hv{font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px}
+  .hop .hc{font-size:12px;color:var(--text3)}
+  .hop:not(:last-child)::after{content:'→';position:absolute;right:-13px;top:50%;transform:translateY(-50%);
+    color:var(--text3);font-size:18px;z-index:2}
+  @media(max-width:640px){.hop:not(:last-child)::after{content:'↓';right:50%;top:auto;bottom:-16px;transform:translateX(50%)}}
+
+  /* tier cards */
+  .tier{border-radius:13px;padding:16px 17px;border:1px solid var(--border);background:var(--card);position:relative;overflow:hidden}
+  .tier::before{content:'';position:absolute;inset:0 auto 0 0;width:4px}
+  .tier.t1::before{background:var(--purple)} .tier.t2::before{background:var(--green)}
+  .tier.t3::before{background:var(--amber)} .tier.t4::before{background:var(--blue)}
+  .tier .tn{font-size:24px;font-weight:800;opacity:.28;position:absolute;top:8px;right:14px}
+  .tier h4{margin-bottom:2px;padding-right:42px} .tier .cost{font-size:12.5px;font-weight:700;margin-bottom:7px}
+  .tier.t1 .cost{color:var(--purple)} .tier.t2 .cost{color:var(--green)}
+  .tier.t3 .cost{color:var(--amber)} .tier.t4 .cost{color:var(--blue)}
+  .tier p{font-size:12.5px}
+
+  /* lists */
+  ul.nice{margin:10px 0 10px 4px;list-style:none}
+  ul.nice li{padding:5px 0 5px 26px;position:relative;color:var(--text2);font-size:13.5px}
+  ul.nice li b{color:var(--text)}
+  ul.nice.good li::before{content:'✓';position:absolute;left:2px;color:var(--green);font-weight:800}
+  ul.nice.bad li::before{content:'✕';position:absolute;left:2px;color:var(--red);font-weight:800}
+  ul.nice.dot li::before{content:'•';position:absolute;left:6px;color:var(--blue);font-weight:800}
+
+  /* numbered steps */
+  .steps{margin:16px 0}
+  .step{display:flex;gap:13px;padding:11px 0;border-bottom:1px dashed var(--border)}
+  .step:last-child{border-bottom:none}
+  .step .sn{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--cyan),var(--blue));
+    color:#0b0e13;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+  .step h5{font-size:14px;color:var(--text);margin-bottom:2px}
+  .step p{font-size:13px;margin:2px 0}
+
+  /* equation blocks — formula + per-term legend */
+  .eq{background:var(--card);border:1px solid var(--border2);border-radius:13px;margin:16px 0;overflow:hidden}
+  .eq .eq-t{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;font-weight:800;color:var(--cyan);
+    padding:10px 16px 0}
+  .eq .eq-f{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15.5px;padding:12px 16px 14px;color:var(--text);
+    border-bottom:1px solid var(--border);overflow-x:auto;white-space:nowrap}
+  .eq .eq-f .hl-a{color:var(--cyan)} .eq .eq-f .hl-b{color:var(--amber)} .eq .eq-f .hl-c{color:var(--green)}
+  .eq .eq-f .hl-d{color:var(--purple)} .eq .eq-f .hl-e{color:var(--pink)}
+  .eq .eq-l{padding:6px 16px 12px}
+  .eq .eq-row{display:flex;gap:12px;padding:6px 0;border-bottom:1px dashed var(--border);font-size:13px}
+  .eq .eq-row:last-child{border-bottom:none}
+  .eq .eq-term{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;min-width:110px;font-weight:700;flex-shrink:0}
+  .eq .eq-mean{color:var(--text2)}
+  .eq .eq-why{padding:10px 16px;background:var(--card2);border-top:1px solid var(--border);font-size:12.5px;color:var(--text2)}
+  .eq .eq-why b{color:var(--amber)}
+
+  /* checkpoint / encouragement */
+  .checkpoint{border-radius:13px;border:1px solid rgba(74,222,128,.3);background:linear-gradient(135deg,rgba(74,222,128,.08),rgba(34,211,238,.06));
+    padding:16px 18px;margin:26px 0}
+  .checkpoint .t{font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:800;color:var(--green);margin-bottom:6px}
+  .checkpoint p{font-size:13.5px}
+
+  /* self-test */
+  details{background:var(--card);border:1px solid var(--border);border-radius:11px;margin:8px 0;padding:0}
+  summary{cursor:pointer;padding:12px 15px;font-size:13.5px;color:var(--text);font-weight:600;list-style:none;position:relative;padding-right:36px}
+  summary::after{content:'▾';position:absolute;right:15px;color:var(--text3);transition:transform .15s}
+  details[open] summary::after{transform:rotate(180deg)}
+  details .ans{padding:2px 15px 13px;font-size:13px;color:var(--text2);border-top:1px dashed var(--border);margin-top:2px;padding-top:10px}
+  details .ans b{color:var(--text)}
+
+  /* vocab grid */
+  .vocab{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));margin:16px 0}
+  .vword{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:12px 14px}
+  .vword .w{font-size:13px;font-weight:800;color:var(--purple);margin-bottom:3px}
+  .vword p{font-size:12.5px;margin:0}
+
+  .foot{margin-top:60px;padding-top:18px;border-top:1px solid var(--border);font-size:12.5px;color:var(--text3)}
+  .foot a{color:var(--blue);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="crumb"><a href="index.html">← Dashboard</a> &nbsp;·&nbsp; Education &nbsp;·&nbsp; Data Foundations</div>
+  <div class="lesson-kicker">Data Foundations · Lesson DF-01</div>
+  <h1>The Institutional Data Hierarchy</h1>
+  <p class="lede">Where financial data <b>actually</b> comes from — and why some of the most valuable
+  macro data in the world is completely free. By the end of this lesson you'll know the four tiers of the
+  data world, which ones you already have access to, and how to avoid the silent data mistakes that make
+  strategies look brilliant in a backtest and bleed in real life.</p>
+
+  <div class="co purple" style="margin-top:18px">
+    <div class="t">📌 Note</div>
+    <p>These are study notes, not conclusions — nothing here has been tested or judged yet. The frameworks
+    are durable; specific prices and vendor costs drift over time.</p>
+  </div>
+
+  <!-- ══ 1 ══════════════════════════════════════════════ -->
+  <div class="sec">
+    <div class="sec-head"><div class="sec-num n1">1</div><h2>Data sourcing is a risk function</h2></div>
+    <div class="sec-kicker">First principles</div>
+
+    <p>At professional quant desks, choosing and checking data is <b>not an IT chore</b> — it's treated like
+    risk management, with documented processes, validation steps and clear ownership. The reason is simple:
+    <b>your output can never be more reliable than your input.</b></p>
+
+    <div class="grid g3">
+      <div class="stat"><div class="v" style="color:var(--red)">$500M</div><div class="l">Knight Capital, 2012</div><div class="s">lost in 45 minutes — a data &amp; deployment failure. The firm didn't survive.</div></div>
+      <div class="stat"><div class="v" style="color:var(--amber)">45 min</div><div class="l">is all it took</div><div class="s">bad data doesn't fail slowly</div></div>
+      <div class="stat"><div class="v" style="color:var(--purple)">$24k/yr</div><div class="l">one Bloomberg seat</div><div class="s">the institutional standard — but keep reading…</div></div>
+    </div>
+
+    <div class="co green">
+      <div class="t">💡 The Data Quality Principle — memorise this</div>
+      <p>"A sophisticated model applied to corrupted, misaligned, or biased data does not produce
+      sophisticated analysis. It produces <b>sophisticated-looking noise with a false sense of precision</b>."</p>
+    </div>
+
+    <p>A signal that looks exceptional may be built on data that was <b>unavailable at signal time</b>
+    (look-ahead bias), that <b>excludes dead instruments</b> (survivorship bias), or that was
+    <b>heavily revised after publication</b> (revision blindspot). The model can't detect any of this
+    on its own — <b>you</b> catch it, with process.</p>
+
+    <div class="co amber">
+      <div class="t">⚠ Why this matters for trading</div>
+      <p>Look-ahead bias has been documented in many published backtests. It is a plausible reason so many
+      strategies look strong in testing and disappoint live. Data governance is the defence — and it's a
+      skill, which means you can learn it. That's this whole block.</p>
+    </div>
+  </div>
+
+  <!-- ══ 2 ══════════════════════════════════════════════ -->
+  <div class="sec">
+    <div class="sec-head"><div class="sec-num n2">2</div><h2>Provenance — where data actually comes from</h2></div>
+    <div class="sec-kicker">Follow the chain</div>
+
+    <p>Most people consume data through Bloomberg or Refinitiv without ever asking: <b>where did Bloomberg
+    get it?</b> For US government macro data, the chain looks like this:</p>
+
+    <div class="chain">
+      <div class="hop"><div class="hn" style="color:var(--green)">Primary source</div><div class="hv">BLS · BEA · Fed</div><div class="hc">free, authoritative — the actual publishers</div></div>
+      <div class="hop"><div class="hn" style="color:var(--cyan)">Aggregator / API</div><div class="hv">FRED</div><div class="hc">free, 800k+ series, one API</div></div>
+      <div class="hop"><div class="hn" style="color:var(--purple)">Tier-1 vendor</div><div class="hv">Bloomberg / Refinitiv</div><div class="hc">~$24k per seat per year</div></div>
+      <div class="hop"><div class="hn" style="color:var(--blue)">End user</div><div class="hv">You / your model</div><div class="hc">same numbers for these series</div></div>
+    </div>
+
+    <div class="grid g2">
+      <div class="card" style="border-left:4px solid var(--green)">
+        <div class="k" style="color:var(--green)">✓ What this means</div>
+        <p>For CPI, GDP, payrolls, unemployment, Treasury yields and the Fed Funds Rate, Bloomberg aggregates
+        data that <b>originates from the same public sources you can reach through FRED</b>. The underlying
+        numbers are identical. The premium buys normalisation, delivery and unified access — <b>not exclusive data</b>.</p>
+      </div>
+      <div class="card" style="border-left:4px solid var(--red)">
+        <div class="k" style="color:var(--red)">✕ What it does NOT mean</div>
+        <p>Bloomberg is not just a relay. For <b>tick-level prices, OTC fixed income, global corporate
+        fundamentals, analyst estimates and real-time exchange feeds</b>, it provides genuine access with
+        <b>no meaningful free equivalent</b>. The free-data argument applies to government macro statistics
+        specifically.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 3 ══════════════════════════════════════════════ -->
+  <div class="sec">
+    <div class="sec-head"><div class="sec-num n3">3</div><h2>The four tiers of the data world</h2></div>
+    <div class="sec-kicker">The complete institutional hierarchy</div>
+
+    <p>Group every source by <b>reliability, latency, publication governance, revision practice and cost</b>.
+    The tier a source sits in tells you how to use it and how much to trust it.</p>
+
+    <div class="grid g2">
+      <div class="tier t1"><div class="tn">T1</div><h4>Institutional premium vendors</h4><div class="cost">$15,000 – $30,000+ / year per seat</div>
+        <p>Bloomberg, Refinitiv/LSEG, FactSet, S&amp;P Global, Morningstar Direct, ICE, MSCI, IHS Markit.
+        The infrastructure layer used by funds and banks.</p></div>
+      <div class="tier t2"><div class="tn">T2</div><h4>Primary government &amp; central-bank sources</h4><div class="cost">Free — the actual publishers</div>
+        <p>BLS, BEA, the Fed, Treasury, ECB, World Bank, OECD. Authoritative by definition — everyone
+        else quotes <b>them</b>.</p></div>
+      <div class="tier t3"><div class="tn">T3</div><h4>Exchange, derivatives &amp; positioning data</h4><div class="cost">$0 – $5,000 / year</div>
+        <p>Exchange feeds and positioning reports. Star of this lesson: the <b>CFTC COT report</b> —
+        institutional-grade positioning data, completely free (§5).</p></div>
+      <div class="tier t4"><div class="tn">T4</div><h4>Accessible APIs &amp; retail aggregators</h4><div class="cost">Free / freemium</div>
+        <p>The retail-accessible layer. Perfectly usable when you know each feed's provenance and limits.</p></div>
+    </div>
+
+    <h2 style="font-size:18px;margin:26px 0 4px">Tier 1 under the microscope</h2>
+    <p>These platforms <b>do not create macro data</b> — they ingest it from primary sources, clean it,
+    normalise it, and deliver it fast with service guarantees. <b>The premium pays for infrastructure,
+    not data exclusivity.</b></p>
+
+    <div class="grid g2">
+      <div class="card">
+        <div class="k" style="color:var(--green)">What Tier 1 gives you</div>
+        <ul class="nice good">
+          <li>Point-in-time <b>vintage data</b> with full revision history</li>
+          <li><b>Tick-level resolution</b> for equities, FX and rates</li>
+          <li><b>Cross-asset coverage</b> from a single endpoint</li>
+          <li>Fundamentals with <b>standardised accounting</b></li>
+          <li>Real-time delivery, <b>&lt;100ms</b> latency guarantees</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="k" style="color:var(--red)">What Tier 1 cannot give you</div>
+        <ul class="nice bad">
+          <li>A better model</li>
+          <li>Better analytical judgment</li>
+          <li>Protection against look-ahead bias <b>in your pipeline</b></li>
+          <li>Statistical validity of your backtest</li>
+          <li>"Any of the things that actually determine whether a systematic strategy works"</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="checkpoint">
+      <div class="t">🎯 Checkpoint — the big idea so far</div>
+      <p>The <b>Tier 2 → Tier 4 path is entirely viable for macro systematic research.</b> Pulling CPI from
+      FRED reaches the same government numbers the $24k terminal shows. What you give up is tooling and
+      latency — not truth. For a systematic macro stack like this one, that's a trade you can make
+      deliberately, and it's why this platform already runs on FRED + free feeds.</p>
+    </div>
+  </div>
+
+  <!-- ══ 4 ══════════════════════════════════════════════ -->
+  <div class="sec">
+    <div class="sec-head"><div class="sec-num n4">4</div><h2>FRED — your free Tier-2 superpower</h2></div>
+    <div class="sec-kicker">Federal Reserve Bank of St. Louis Economic Data</div>
+
+    <div class="grid g3">
+      <div class="stat"><div class="v" style="color:var(--cyan)">800k+</div><div class="l">economic series</div><div class="s">one authenticated API</div></div>
+      <div class="stat"><div class="v" style="color:var(--blue)">100+</div><div class="l">sources</div><div class="s">BLS, BEA, Treasury, ECB, World Bank, OECD…</div></div>
+      <div class="stat"><div class="v" style="color:var(--green)">$0</div><div class="l">cost</div><div class="s">the sensible start before any paid feed</div></div>
+    </div>
+
+    <p>The lesson's canonical series IDs — worth learning cold. This is the working vocabulary of macro data:</p>
+
+    <div class="tblwrap"><table>
+      <tr><th>Category</th><th>ID</th><th>What it is</th></tr>
+      <tr><td rowspan="5"><span class="badge purple">Inflation</span></td><td><code>CPIAUCSL</code></td><td>Headline CPI, seasonally adjusted</td></tr>
+      <tr><td><code>CPILFESL</code></td><td>Core CPI</td></tr>
+      <tr><td><code>PCEPI</code></td><td>PCE price index</td></tr>
+      <tr><td><code>PCEPILFE</code></td><td><b>Core PCE — the Fed's actual target</b></td></tr>
+      <tr><td><code>T5YIE</code></td><td>5-year inflation breakeven</td></tr>
+      <tr><td rowspan="5"><span class="badge blue">Rates</span></td><td><code>FEDFUNDS</code></td><td>Effective Fed Funds Rate</td></tr>
+      <tr><td><code>DGS2</code></td><td>2Y Treasury yield, daily</td></tr>
+      <tr><td><code>DGS10</code></td><td>10Y Treasury yield, daily</td></tr>
+      <tr><td><code>T10Y2Y</code></td><td>2s10s curve spread, pre-computed</td></tr>
+      <tr><td><code>SOFR</code></td><td>Overnight funding rate</td></tr>
+      <tr><td rowspan="3"><span class="badge green">Growth &amp; labour</span></td><td><code>GDPC1</code></td><td>Real GDP, quarterly</td></tr>
+      <tr><td><code>PAYEMS</code> · <code>UNRATE</code></td><td>Nonfarm payrolls · unemployment U-3</td></tr>
+      <tr><td><code>ICSA</code> · <code>JTSJOL</code></td><td>Weekly initial claims · JOLTS job openings</td></tr>
+      <tr><td rowspan="3"><span class="badge amber">Financial conditions</span></td><td><code>NFCI</code></td><td>Chicago Fed financial conditions</td></tr>
+      <tr><td><code>WALCL</code> · <code>VIXCLS</code></td><td>Fed balance sheet · VIX close</td></tr>
+      <tr><td><code>BAMLH0A0HYM2</code></td><td>High-yield credit OAS — the credit-stress gauge</td></tr>
+      <tr><td rowspan="2"><span class="badge red">International (~180k)</span></td><td><code>ECBDFR</code> · <code>IRLTLT01DEM156N</code></td><td>ECB deposit rate · Germany 10Y</td></tr>
+      <tr><td><code>DEXUSEU</code> · <code>DCOILWTICO</code></td><td>EUR/USD daily · WTI crude</td></tr>
+    </table></div>
+
+    <h2 style="font-size:18px;margin:26px 0 4px">Vintages — the feature that makes honest backtesting possible</h2>
+    <p>FRED stores the <b>full revision history</b> of most series — called <b>vintages</b> — so you can pull
+    <b>exactly what was known on any historical date</b>. GDP gets revised. Payrolls get revised. If your
+    backtest uses today's revised numbers for a 2019 signal, it "knows" things nobody knew in 2019.</p>
+
+    <div class="eq">
+      <div class="eq-t">The one API call to remember</div>
+      <div class="eq-f"><span class="hl-a">fred</span>.<span class="hl-c">get_series_vintage_dates</span>(<span class="hl-b">"GDPC1"</span>)</div>
+      <div class="eq-l">
+        <div class="eq-row"><span class="eq-term hl-a">fred</span><span class="eq-mean">the authenticated FRED client (our <code>FRED_KEY</code> is already configured in Railway)</span></div>
+        <div class="eq-row"><span class="eq-term hl-c">get_series_vintage_dates</span><span class="eq-mean">returns every date this series was revised — the doorway into the revision archive</span></div>
+        <div class="eq-row"><span class="eq-term hl-b">"GDPC1"</span><span class="eq-mean">the series ID — here real GDP, one of the most heavily revised series there is</span></div>
+      </div>
+      <div class="eq-why"><b>Why you care:</b> pick any historical signal date, pull the vintage that existed that day,
+      and your backtest sees only what the market saw. That's the honesty upgrade Tier-1 vendors charge for — free.</div>
+    </div>
+  </div>
+
+  <!-- ══ 5 ══════════════════════════════════════════════ -->
+  <div class="sec">
+    <div class="sec-head"><div class="sec-num n5">5</div><h2>The COT report — free institutional positioning</h2></div>
+    <div class="sec-kicker">Tier 3's hidden gem</div>
+
+    <p>Every week the CFTC publishes who holds what across the major futures markets — FX, rates, indices,
+    energy, metals, ags. Macro funds read it. CTAs read it. Most retail traders have never opened it.
+    <b>It's free, and it goes back to 1986.</b></p>
+
+    <div class="grid g4">
+      <div class="stat"><div class="v" style="color:var(--cyan)">Tue</div><div class="l">data as-of day</div></div>
+      <div class="stat"><div class="v" style="color:var(--blue)">Fri 3:30pm</div><div class="l">published (ET)</div></div>
+      <div class="stat"><div class="v" style="color:var(--amber)">3 days</div><div class="l">effective lag</div><div class="s">handle this in backtests!</div></div>
+      <div class="stat"><div class="v" style="color:var(--green)">1986</div><div class="l">history starts</div><div class="s">cftc.gov — free</div></div>
+    </div>
+
+    <h2 style="font-size:18px;margin:24px 0 4px">Who's in the report — three kinds of player</h2>
+    <div class="grid g3">
+      <div class="card" style="border-top:3px solid var(--green)">
+        <div class="k" style="color:var(--green)">Commercial hedgers</div>
+        <h4>The "smart money"</h4>
+        <p>Businesses with real exposure: corn producers hedging harvest, airlines hedging fuel, corporates
+        hedging FX. They trade from <b>need, not opinion</b> — but at extremes they signal important fundamentals.</p>
+      </div>
+      <div class="card" style="border-top:3px solid var(--amber)">
+        <div class="k" style="color:var(--amber)">Large speculators</div>
+        <h4>The most-watched</h4>
+        <p>Hedge funds, CTAs, managed money. Extreme net positioning here has <b>historically been contrarian
+        at major turning points</b> — when everyone is already long, who's left to buy?</p>
+      </div>
+      <div class="card" style="border-top:3px solid var(--text3)">
+        <div class="k" style="color:var(--text3)">Non-reportable</div>
+        <h4>The noise category</h4>
+        <p>Small specs below reporting thresholds. Treated as noise — computed as what's left over
+        (see the formula below).</p>
+      </div>
+    </div>
+
+    <div class="eq">
+      <div class="eq-t">Where "non-reportable" comes from</div>
+      <div class="eq-f"><span class="hl-e">non-reportable</span> = <span class="hl-a">total open interest</span> − <span class="hl-c">commercial</span> − <span class="hl-b">non-commercial</span></div>
+      <div class="eq-l">
+        <div class="eq-row"><span class="eq-term hl-a">open interest</span><span class="eq-mean">every futures contract currently outstanding in that market — the whole pie</span></div>
+        <div class="eq-row"><span class="eq-term hl-c">commercial</span><span class="eq-mean">the hedgers' slice (reported to the CFTC)</span></div>
+        <div class="eq-row"><span class="eq-term hl-b">non-commercial</span><span class="eq-mean">the large specs' slice (also reported)</span></div>
+        <div class="eq-row"><span class="eq-term hl-e">non-reportable</span><span class="eq-mean">whoever's left — too small to report individually: retail and small institutions</span></div>
+      </div>
+    </div>
+
+    <h2 style="font-size:18px;margin:24px 0 4px">The six-step systematic method</h2>
+    <p>This is the lesson's full recipe for turning raw positioning into a usable input — each step exists
+    to fix a specific problem with the step before it:</p>
+
+    <div class="card steps">
+      <div class="step"><div class="sn">1</div><div><h5>Compute net speculator position</h5><p>Longs minus shorts for the non-commercial category. Raw direction of the crowd.</p></div></div>
+      <div class="step"><div class="sn">2</div><div><h5>Normalise by open interest</h5><p>50,000 contracts is huge in one market, trivial in another. Dividing by OI makes markets comparable.</p></div></div>
+      <div class="step"><div class="sn">3</div><div><h5>Apply a rolling z-score</h5><p>"Is this position unusual <b>for this market</b>?" — the formula below.</p></div></div>
+      <div class="step"><div class="sn">4</div><div><h5>Percentile rank vs 3-year history</h5><p>The threshold: 95th percentile means specs have rarely been this stretched in three years.</p></div></div>
+      <div class="step"><div class="sn">5</div><div><h5>Combine with price momentum</h5><p>Extreme positioning alone is not a trigger — pairing it with momentum avoids catching falling knives.</p></div></div>
+      <div class="step"><div class="sn">6</div><div><h5>Watch the commercials</h5><p>Hedger extremes are the leading indicator — the people with real exposure repositioning first.</p></div></div>
+    </div>
+
+    <div class="eq">
+      <div class="eq-t">Step 3 unpacked — the positioning z-score</div>
+      <div class="eq-f"><span class="hl-e">z</span> = ( <span class="hl-a">net%</span> − <span class="hl-c">mean(net%, 3y)</span> ) ÷ <span class="hl-b">stdev(net%, 3y)</span></div>
+      <div class="eq-l">
+        <div class="eq-row"><span class="eq-term hl-a">net%</span><span class="eq-mean">this week's net spec position as a share of open interest (that's steps 1 and 2 combined)</span></div>
+        <div class="eq-row"><span class="eq-term hl-c">mean(net%, 3y)</span><span class="eq-mean">what "normal" positioning has looked like in this market over the last 3 years</span></div>
+        <div class="eq-row"><span class="eq-term hl-b">stdev(net%, 3y)</span><span class="eq-mean">how much positioning usually wobbles — the yardstick for "unusual"</span></div>
+        <div class="eq-row"><span class="eq-term hl-e">z</span><span class="eq-mean">how many yardsticks from normal we are right now. z = +2 → more crowded-long than ~97% of normal weeks</span></div>
+      </div>
+      <div class="eq-why"><b>Why a z-score and not the raw number?</b> Because "specs are net long 120k contracts" means
+      nothing without context. The z-score answers the only question that matters: <i>is this extreme for this market?</i>
+      In this repo, that's <code>statsCore.rollingZScore</code> — never re-write it inline.</div>
+    </div>
+
+    <div class="co red">
+      <div class="t">⚠ Honest caveat</div>
+      <p>Extreme positioning has <b>sometimes</b> preceded reversals — the lesson is explicit that this is
+      <b>not reliable enough to trade in isolation</b>. It's one input into a bigger picture, and any use here
+      goes through the house harness: real costs, true out-of-sample split, ≥30 OOS trades.</p>
+    </div>
+  </div>
+
+  <!-- ══ 6 ══════════════════════════════════════════════ -->
+  <div class="sec">
+    <div class="sec-head"><div class="sec-num n6">6</div><h2>Key takeaways &amp; vocabulary</h2></div>
+    <div class="sec-kicker">What to keep</div>
+
+    <ul class="nice dot">
+      <li><b>Data sourcing is a risk function.</b> Output quality is bounded above by input quality — always.</li>
+      <li><b>Government macro data is the same numbers everywhere.</b> Bloomberg's edge for CPI/GDP/payrolls is plumbing, not access.</li>
+      <li><b>FRED is the sensible start</b>: 800k+ series, vintages included, before paying for anything.</li>
+      <li><b>The Tier 2 → 4 path is viable</b> for macro systematic research — this platform is proof-in-progress.</li>
+      <li><b>COT is free institutional positioning</b> since 1986 — one input, not a standalone edge.</li>
+      <li><b>Provenance before trust.</b> Can't name the primary source? Then you can't assess revision risk, reliability, or fit.</li>
+    </ul>
+
+    <div class="vocab">
+      <div class="vword"><div class="w">Look-ahead bias</div><p>Using data in a backtest that wasn't available at signal time.</p></div>
+      <div class="vword"><div class="w">Survivorship bias</div><p>Data that quietly drops dead/delisted instruments, flattering history.</p></div>
+      <div class="vword"><div class="w">Revision blindspot</div><p>Building on a series that was materially revised after first publication.</p></div>
+      <div class="vword"><div class="w">Provenance</div><p>The chain from primary publisher to you — who actually originated the series.</p></div>
+      <div class="vword"><div class="w">Vintage</div><p>The version of a series exactly as it existed on a given historical date.</p></div>
+      <div class="vword"><div class="w">Point-in-time data</div><p>Data reconstructed to show only what was known at each moment.</p></div>
+      <div class="vword"><div class="w">Open interest</div><p>Total outstanding futures contracts — the normaliser for COT comparisons.</p></div>
+      <div class="vword"><div class="w">Primary source</div><p>The original publisher (BLS, BEA, Fed…) — not an aggregator or vendor.</p></div>
+    </div>
+
+    <div class="checkpoint">
+      <div class="t">🏁 You made it — and here's the encouraging part</div>
+      <p>You now understand data provenance better than most funded retail traders. Nothing in this lesson
+      required a terminal or a budget — the whole Tier-2/Tier-3 layer (FRED with vintages, COT since 1986) is
+      already reachable from this platform's stack, and the two research leads below are concrete next steps
+      when we want them.</p>
+    </div>
+  </div>
+
+  <!-- ══ Self-test ══════════════════════════════════════ -->
+  <div class="sec">
+    <div class="sec-head"><div class="sec-num n1" style="background:linear-gradient(135deg,var(--pink),var(--purple))">?</div><h2>Test yourself</h2></div>
+    <div class="sec-kicker">Closed book first — then tap to check</div>
+
+    <details><summary>1 · State the Data Quality Principle. What does a sophisticated model on bad data produce?</summary>
+      <div class="ans">"Sophisticated-looking noise with a <b>false sense of precision</b>" — not sophisticated analysis.</div></details>
+    <details><summary>2 · Knight Capital, 2012 — how much, how fast, and what happened to the firm?</summary>
+      <div class="ans"><b>$500M in 45 minutes</b>, from a data &amp; software deployment failure. The firm did not survive.</div></details>
+    <details><summary>3 · Draw the provenance chain for US macro data. Where does it stop being free?</summary>
+      <div class="ans">BLS/BEA/Fed → FRED → Bloomberg/Refinitiv → you. It stops being free at the <b>Tier-1 vendor</b> hop —
+      which for these series adds normalisation and delivery, <b>not different numbers</b>.</div></details>
+    <details><summary>4 · Name the four tiers with cost bands and an example of each.</summary>
+      <div class="ans">T1 premium vendors ($15–30k+/seat — Bloomberg); T2 primary government sources (free — BLS, Fed);
+      T3 exchange/derivatives/positioning ($0–5k — CFTC COT); T4 accessible APIs (free/freemium).</div></details>
+    <details><summary>5 · List five things Tier 1 <i>cannot</i> give you.</summary>
+      <div class="ans">A better model · better judgment · look-ahead protection in <b>your</b> pipeline ·
+      backtest validity · "any of the things that actually determine whether a strategy works."</div></details>
+    <details><summary>6 · Series-ID quiz: core PCE? weekly claims? pre-computed 2s10s? HY credit OAS? Germany 10Y?</summary>
+      <div class="ans"><code>PCEPILFE</code> · <code>ICSA</code> · <code>T10Y2Y</code> · <code>BAMLH0A0HYM2</code> · <code>IRLTLT01DEM156N</code></div></details>
+    <details><summary>7 · What is a FRED vintage and why does it make honest backtesting possible?</summary>
+      <div class="ans">The version of a series as it existed on a given date. It lets a backtest see <b>only what was
+      known at signal time</b>, killing revision look-ahead. <code>fred.get_series_vintage_dates(id)</code> lists the revision dates.</div></details>
+    <details><summary>8 · COT mechanics: as-of day, publication, lag, source, history?</summary>
+      <div class="ans">As-of <b>Tuesday</b>, published <b>Friday 3:30pm ET</b> → <b>3 trading days</b> lag; free at cftc.gov; history to <b>1986</b>.</div></details>
+    <details><summary>9 · The three COT categories — which is contrarian at extremes, and which trades from need?</summary>
+      <div class="ans"><b>Large specs</b> are the contrarian tell at extremes; <b>commercial hedgers</b> trade from business
+      need (and lead at hedging extremes); non-reportables are noise.</div></details>
+    <details><summary>10 · Reproduce the six-step COT method. Why does normalising come before comparing?</summary>
+      <div class="ans">Net position → normalise by OI → rolling z-score → 3y percentile → momentum filter → watch commercials.
+      Normalising first because raw contract counts are incomparable across markets of different size.</div></details>
+  </div>
+
+  <!-- ══ Research leads ═════════════════════════════════ -->
+  <div class="sec">
+    <div class="sec-head"><div class="sec-num n2" style="background:linear-gradient(135deg,var(--amber),var(--green))">→</div><h2>Where this leads</h2></div>
+    <div class="sec-kicker">Open research leads — untested, honestly labelled</div>
+    <div class="grid g2">
+      <div class="card"><h4>🧪 Run the six-step COT method on our FX pairs</h4><p>The full recipe is free to try (CFTC data since 1986).
+        Through the standard harness — costs on, IS/OOS split — a null result is the base-rate expectation, and finding it cheaply is a win.</p></div>
+      <div class="card"><h4>📜 Pull FRED vintages and see the revision problem first-hand</h4><p>Compare first-print vs revised GDP or payrolls
+        and measure how different a simple signal looks on each. The revision blindspot, made concrete.</p></div>
+      <div class="card"><h4>🔍 Trace the provenance of every feed this repo uses</h4><p>OANDA, Finnhub, news, Myfxbook — who originates each
+        series, what's its revision policy, which tier is it. Takeaway #6 applied to our own stack.</p></div>
+      <div class="card"><h4>🌍 Explore FRED's ~180k international series</h4><p>ECB rates, Bund yields, FX fixes, commodities — a free
+        Tier-2 layer for the macro side of FX work.</p></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    Colez Trades · Quantitative &amp; Macro Insights — Data Foundations, Lesson DF-01.
+    Source notes: <code>education/data-foundations-notes.md</code> · <a href="index.html">← back to the dashboard</a><br>
+    Study notes, not conclusions — nothing on this page has been tested or judged yet.
+  </div>
+</div>
+</body>
+</html>
