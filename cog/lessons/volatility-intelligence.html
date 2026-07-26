@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Volatility Intelligence — Applied Practice — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/theory.css">
+<link rel="stylesheet" href="../../theory-lab/assets/theory.css">
 <style>
   /* Scoped to this page only — the shared stylesheet has no pseudocode block
      convention yet (most lessons are pure-math and don't need one). Uses the
@@ -23,8 +23,8 @@
 </head>
 <body>
 <div id="page">
-  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Course Notes / Volatility Intelligence — Applied Practice</div>
-  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-crumb"><a href="../../theory-lab/hub.html">Theory Lab</a> / Course Notes / Volatility Intelligence — Applied Practice</div>
+  <div class="tl-glosslink">🔎 <a href="../../theory-lab/glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Course Notes · Lesson 4 of 10</div>
   <h1 class="tl-title">Volatility Intelligence — Applied Practice</h1>
   <p class="tl-dek">Direction is close to a coin flip; the size of tomorrow's move is not. This is the applied, practitioner-workflow layer built on that asymmetry — daily and weekly range forecasting, session structure, regime classification and vol-adjusted position sizing — not another derivation of the clustering math itself.</p>
@@ -38,7 +38,7 @@
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
       <li>Volatility is predictable in a way direction isn't: forecasting tomorrow's <em>return sign</em> runs ≈51% accuracy (a coin flip), while forecasting tomorrow's <em>range/volatility</em> runs ≈70%+ — because big moves cluster with big moves and quiet spells cluster with quiet spells. That asymmetry is the whole basis for everything below.</li>
-      <li><strong>Daily forecasting practice:</strong> True Range (not simple High−Low, which misses gaps) smoothed with an EMA at α≈0.15 (~12-day effective window) is the recommended day-to-day estimator — simple, and close to as good as heavier models for this purpose. See <a href="garch-volatility.html">GARCH &amp; Volatility Clustering</a> for the formal model this generalizes toward.</li>
+      <li><strong>Daily forecasting practice:</strong> True Range (not simple High−Low, which misses gaps) smoothed with an EMA at α≈0.15 (~12-day effective window) is the recommended day-to-day estimator — simple, and close to as good as heavier models for this purpose. See <a href="../../theory-lab/lessons/garch-volatility.html">GARCH &amp; Volatility Clustering</a> for the formal model this generalizes toward.</li>
       <li><strong>Weekly regimes:</strong> classify current volatility by where today's ATR sits in its own 6–12 month percentile history (&lt;25th = low, &gt;75th = high), and note that weekly range runs ~2–3× the daily range, not 5×, because of mean reversion within the week.</li>
       <li><strong>The Asia session as a daily anchor:</strong> the quietest session (Tokyo, ~00:00–06:00 GMT) sets a range that London and New York then expand — typically 2–3.5×. It's context for sizing expectations, not a mechanical entry trigger.</li>
       <li><strong>Position sizing with volatility:</strong> size inversely to ATR (<code>Risk$ ÷ (ATR × stop multiplier)</code>) so dollar risk per trade stays constant whether the market is calm or turbulent — this is a risk-consistency practice, not a directional edge.</li>
@@ -69,7 +69,7 @@
   <p>Why clustering exists (mechanisms the course points to): information arrives in bursts; fear and uncertainty are
   contagious; leverage and margin calls create cascades; participants adapt slowly to a new volatility regime. The
   formal model of this exact phenomenon — reacting to a shock immediately and decaying it smoothly rather than
-  dropping it off a rolling-window cliff — is <a href="garch-volatility.html">GARCH</a>; this lesson stays at the
+  dropping it off a rolling-window cliff — is <a href="../../theory-lab/lessons/garch-volatility.html">GARCH</a>; this lesson stays at the
   practitioner level.</p>
 
   <h3>1.3 The evidence, visualized</h3>
@@ -91,7 +91,7 @@
     <tr><td>Yesterday's vol</td><td>Tomorrow ≈ today</td><td>Simple</td><td>Quick estimate, stable regimes</td></tr>
     <tr><td>Simple moving average</td><td>Average of last N days</td><td>Simple</td><td>Smoother, less noisy</td></tr>
     <tr><td>Exponential smoothing</td><td>Weighted avg, recent = more weight</td><td>Medium</td><td>Balance of responsiveness and stability</td></tr>
-    <tr><td>GARCH</td><td>Econometric model with mean reversion</td><td>Complex</td><td>Research, formal risk models — see <a href="garch-volatility.html">GARCH &amp; Volatility Clustering</a></td></tr>
+    <tr><td>GARCH</td><td>Econometric model with mean reversion</td><td>Complex</td><td>Research, formal risk models — see <a href="../../theory-lab/lessons/garch-volatility.html">GARCH &amp; Volatility Clustering</a></td></tr>
   </table></div>
   <p>The course's stated takeaway: <strong>simple models often perform nearly as well as complex ones.</strong> A
   10-day ATR captures most of the predictable variation in volatility — you don't need GARCH to get practical
@@ -250,11 +250,11 @@ mean_error = average(error)   <span class="c"># compare to naive long-term-avera
   <p>The EMA approach is the foundation; the course notes this is the same persistence property professionals build
   on more formally, in each case with a deeper treatment already in this Theory Lab rather than repeated here:</p>
   <ul>
-    <li><strong>GARCH</strong> — formal volatility clustering model → <a href="garch-volatility.html">GARCH &amp; Volatility Clustering</a>.</li>
-    <li><strong>Kalman filters</strong> — state-space models for real-time estimation with noisy observations → <a href="kalman-filter.html">Kalman Filter</a>.</li>
-    <li><strong>Regime-switching</strong> — Markov models capturing distinct high/low vol states → <a href="hidden-markov-models.html">Hidden Markov Models &amp; Regime Detection</a>.</li>
-    <li><strong>Stochastic volatility</strong> (Heston, SABR) — vol as a random process, derivatives pricing → <a href="heston-model.html">Heston Model</a> / <a href="sabr-model.html">SABR Model</a>.</li>
-    <li><strong>VECM</strong> — long-run equilibrium relationships, related to the cointegration family → <a href="cointegration.html">Cointegration</a>.</li>
+    <li><strong>GARCH</strong> — formal volatility clustering model → <a href="../../theory-lab/lessons/garch-volatility.html">GARCH &amp; Volatility Clustering</a>.</li>
+    <li><strong>Kalman filters</strong> — state-space models for real-time estimation with noisy observations → <a href="../../theory-lab/lessons/kalman-filter.html">Kalman Filter</a>.</li>
+    <li><strong>Regime-switching</strong> — Markov models capturing distinct high/low vol states → <a href="../../theory-lab/lessons/hidden-markov-models.html">Hidden Markov Models &amp; Regime Detection</a>.</li>
+    <li><strong>Stochastic volatility</strong> (Heston, SABR) — vol as a random process, derivatives pricing → <a href="../../theory-lab/lessons/heston-model.html">Heston Model</a> / <a href="../../theory-lab/lessons/sabr-model.html">SABR Model</a>.</li>
+    <li><strong>VECM</strong> — long-run equilibrium relationships, related to the cointegration family → <a href="../../theory-lab/lessons/cointegration.html">Cointegration</a>.</li>
     <li><strong>Realized volatility</strong> (high-frequency intraday estimation) and <strong>HAR models</strong>
     (combining daily/weekly/monthly vol) and <strong>ML approaches</strong> (neural nets, gradient boosting) don't
     have dedicated lessons here yet — noted as gaps, not covered further in this course.</li>
@@ -697,18 +697,18 @@ mean_error = average(error)   <span class="c"># compare to naive long-term-avera
     daily to refine the expansion ratio over time.</li>
   </ol>
   <p>Areas flagged for deeper study beyond this course's own scope (each links to the Theory Lab lesson that
-  already covers it where one exists): GARCH (<a href="garch-volatility.html">lesson</a>), regime-switching Markov
-  models (<a href="hidden-markov-models.html">lesson</a>), Kalman filters / state-space estimation
-  (<a href="kalman-filter.html">lesson</a>), stochastic volatility — Heston/SABR
-  (<a href="heston-model.html">Heston</a>, <a href="sabr-model.html">SABR</a>), VECM-adjacent long-run equilibrium
-  ideas (<a href="cointegration.html">cointegration</a>), and — with no dedicated lesson yet — HAR models
+  already covers it where one exists): GARCH (<a href="../../theory-lab/lessons/garch-volatility.html">lesson</a>), regime-switching Markov
+  models (<a href="../../theory-lab/lessons/hidden-markov-models.html">lesson</a>), Kalman filters / state-space estimation
+  (<a href="../../theory-lab/lessons/kalman-filter.html">lesson</a>), stochastic volatility — Heston/SABR
+  (<a href="../../theory-lab/lessons/heston-model.html">Heston</a>, <a href="../../theory-lab/lessons/sabr-model.html">SABR</a>), VECM-adjacent long-run equilibrium
+  ideas (<a href="../../theory-lab/lessons/cointegration.html">cointegration</a>), and — with no dedicated lesson yet — HAR models
   (combining daily/weekly/monthly vol), realized volatility from intraday data, and ML approaches to vol
   forecasting (the course's own caveat: simple methods get close, with far less overfitting risk).</p>
   </details>
 
   <div class="tl-footer-nav">
     <a href="regression-analysis-course.html">← Regression Analysis — Applied Practice</a>
-    <a href="../hub.html">Theory Lab hub</a>
+    <a href="../../theory-lab/hub.html">Theory Lab hub</a>
     <a href="forecaster-walkthrough.html">Forecaster Walkthrough →</a>
   </div>
 </div>

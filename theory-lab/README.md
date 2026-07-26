@@ -1,14 +1,19 @@
 # Theory Lab
 
 A from-scratch, math-explained curriculum in the quantitative concepts behind
-this repo's FX/macro research — 34 numbered theory lessons, 8 background
-primers, 10 applied Course Notes lessons, and 2 lessons documenting this
-repo's own COG case study. Covers everything from standard deviation to the
-Heston model, Random Matrix Theory, Merton's continuous-time portfolio
-problem, alpha/beta separation, and a real reverse-engineered trading system.
+this repo's FX/macro research — 34 numbered theory lessons plus 8 background
+primers. Covers everything from standard deviation to the Heston model,
+Random Matrix Theory, Merton's continuous-time portfolio problem, and alpha
+vs. beta separation.
 
 **Start at [`hub.html`](./hub.html)** (also linked from the dashboard's
 **Learn ▾** nav menu on `index.html`).
+
+Looking for the applied, practitioner-workflow lessons converted from this
+repo's own raw study notes, or the "COG" case study (a real trader's
+reverse-engineered forecast and the gated trading system it inspired)? Those
+live in the sibling **[COG Hub](../cog/hub.html)**, not here — see
+`../cog/README.md`.
 
 ## What every lesson page contains
 
@@ -22,9 +27,7 @@ problem, alpha/beta separation, and a real reverse-engineered trading system.
   (the amber `.tl-box.scenario` box).
 - An honest note on where the idea connects to an actual module in this
   repo — clearly marked as either **already in use** (a real, running
-  brick), a **concept/candidate** (explained here, not built or tested), or
-  **course notes** (applied practice, converted from this repo's own study
-  notes rather than derived from scratch).
+  brick) or a **concept/candidate** (explained here, not built or tested).
 - Common pitfalls, a self-test, and further reading (real, correctly
   attributed sources).
 - A TL;DR at the top and the Further Reading section collapsed by default,
@@ -61,23 +64,6 @@ problem, alpha/beta separation, and a real reverse-engineered trading system.
   fractional Brownian motion & long memory, market microstructure,
   Markowitz & Black-Litterman, alpha vs. beta separation (portable alpha),
   Merton's continuous-time portfolio problem.
-- **10 · Course Notes — Applied Practice** (10) — practitioner-workflow
-  lessons converted from this repo's own raw study notes (`education/*.md`)
-  into the same format as everything else here: data foundations,
-  quant/macro plumbing, applied regression, volatility forecasting, the
-  daily forecaster workflow, range extension levels, open interest, the
-  cross-asset options diagnostic, macro deep dives, and why public
-  strategies decay. Each cross-links back to the from-scratch theory lesson
-  it builds on instead of re-deriving it.
-- **11 · COG — This Repo's Own Case Study** (2) — not textbook theory: an
-  honest documentation of a real, already-built subsystem. "COG" is the
-  trader whose published daily forecast this repo reverse-engineered
-  (`js/cogBands.js`, `js/cogReverseEngineer.js`) and the gated Nasdaq
-  trading system it inspired. Features the actual back-solved constants,
-  the already-tested null result (reproducing his line is *not* a better
-  tradeable fade), and the real "zero trades from over-conjoined gates"
-  architecture lesson — a concrete example of this repo's own "built ≠
-  works ≠ has edge" discipline.
 
 Nothing in this folder is a trading signal. A lesson explaining a technique
 well is not evidence the technique works here — per `CLAUDE.md`'s Lego
@@ -89,9 +75,9 @@ and cleared the repo's real out-of-sample bar.
 ```
 theory-lab/
   hub.html            — curriculum map, linked from index.html
-  glossary.html        — searchable notation glossary
+  glossary.html       — searchable notation glossary
   assets/theory.css   — shared stylesheet (dark theme, MathJax, interactive-
                          chart, real-world-scenario, and skim-path classes)
-  lessons/*.html       — 54 lesson files (8 primers/foundations + 34
-                         numbered theory lessons + 10 Course Notes + 2 COG)
+  lessons/*.html      — 42 lesson files (8 primers/foundations + 34
+                        numbered theory lessons)
 ```

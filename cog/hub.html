@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COG Hub — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../theory-lab/assets/theory.css">
+</head>
+<body>
+<div id="page">
+
+  <div class="tl-crumb"><a href="../index.html">MacroFX Dashboard</a> / COG Hub</div>
+
+  <div class="tl-hub-hero">
+    <div class="tl-kicker">Education · Applied Practice &amp; Case Study</div>
+    <h1>COG Hub</h1>
+    <p>Two things live here, both one step removed from the from-scratch math in <a href="../theory-lab/hub.html">Theory Lab</a>: applied practitioner-workflow lessons converted from this repo's own raw study notes, and an honest documentation of "COG" — a real trader whose published forecasts this repo reverse-engineered, and the gated trading system that reverse-engineering inspired.</p>
+    <div class="tl-callout">
+      <strong>How this differs from Theory Lab.</strong> Theory Lab builds ideas up from first principles (Itô's Lemma, GARCH, Kelly). Everything here starts from applied practice or from this repo's own code instead — the workflow of actually reading a forecast, the mechanics of open interest, the architecture of a real gated trading system — and cross-links back to the relevant from-scratch Theory Lab lesson rather than re-deriving the math. Nothing here is a trading signal either: the Course Notes are practitioner frameworks, not validated edge, and COG's own tested result is an honest <strong>null</strong> (see Lesson 1 below) — see <a href="../CLAUDE.md">CLAUDE.md</a>'s "built ≠ works ≠ has edge" discipline.
+    </div>
+    <a class="tl-gloss-hero-link" href="../theory-lab/glossary.html">🔎 Notation Glossary — what σ, Δ, θ and the rest actually mean</a>
+  </div>
+
+  <div class="tl-cat">
+    <h2>Course Notes — Applied Practice</h2>
+    <div class="tl-cat-sub">Applied lesson notes, converted from this repo's own raw study notes (<a href="../education/">education/*.md</a> — the originals are still there, unedited) into the same format as everything else here — practitioner workflow and case studies on top of the from-scratch math in Theory Lab. Each cross-links back to the relevant theory lesson instead of re-deriving it.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="lessons/data-foundations.html">
+        <div class="tl-card-num">Course Notes 1</div>
+        <h3>Data Foundations</h3>
+        <p>Where financial data actually comes from — a four-tier map from the $24k-a-seat terminal to free government APIs, and why a model can't rescue a signal built on bad data.</p>
+      </a>
+      <a class="tl-card" href="lessons/quant-macro-lessons.html">
+        <div class="tl-card-num">Course Notes 2</div>
+        <h3>Quantitative &amp; Macro Foundations</h3>
+        <p>Signal vs. noise, the capital-flow hierarchy, central bank mechanics, and the validation funnel — the plumbing of macro markets.</p>
+      </a>
+      <a class="tl-card" href="lessons/regression-analysis-course.html">
+        <div class="tl-card-num">Course Notes 3</div>
+        <h3>Regression Analysis — Applied Practice</h3>
+        <p>Picks up where the Correlation &amp; Regression primer stops: factor models, diagnostics in practice, and the bias-variance tradeoff.</p>
+      </a>
+      <a class="tl-card" href="lessons/volatility-intelligence.html">
+        <div class="tl-card-num">Course Notes 4</div>
+        <h3>Volatility Intelligence — Applied Practice</h3>
+        <p>Direction is close to a coin flip; the size of tomorrow's move is not — daily/weekly range forecasting and vol-based sizing in practice.</p>
+      </a>
+      <a class="tl-card" href="lessons/forecaster-walkthrough.html">
+        <div class="tl-card-num">Course Notes 5</div>
+        <h3>The Daily Forecaster Walkthrough</h3>
+        <p>The mechanical workflow for turning a published High-Low/Open-Close forecast into a chart-markup and range-budget routine.</p>
+      </a>
+      <a class="tl-card" href="lessons/range-extension-levels.html">
+        <div class="tl-card-num">Course Notes 6</div>
+        <h3>Range Extension Levels</h3>
+        <p>Projecting a completed session's range forward as clean multiples, and reading where two different projections align.</p>
+      </a>
+      <a class="tl-card" href="lessons/open-interest-course.html">
+        <div class="tl-card-num">Course Notes 7</div>
+        <h3>Open Interest — Applied Practice</h3>
+        <p>Reading real exchange positioning data — futures-to-CFD conversion, the OI matrix, and gamma/dealer dynamics on top of Black-Scholes.</p>
+      </a>
+      <a class="tl-card" href="lessons/cross-asset-options-diagnostic.html">
+        <div class="tl-card-num">Course Notes 8</div>
+        <h3>Cross-Asset Options Diagnostic</h3>
+        <p>Reading the same macro world through three options markets and five lenses — OI, CVOL, term structure, vol cone, skew.</p>
+      </a>
+      <a class="tl-card" href="lessons/macro-deep-dives.html">
+        <div class="tl-card-num">Course Notes 9</div>
+        <h3>Macro Deep Dives</h3>
+        <p>Regime detection and validation through the rates lens, plus a real live case study of the US10Y-Bund spread moving before EUR/USD.</p>
+      </a>
+      <a class="tl-card" href="lessons/companion-insights.html">
+        <div class="tl-card-num">Course Notes 10 (final)</div>
+        <h3>Companion Insights — Why Retail Underperforms</h3>
+        <p>The retail/institutional gap, why a chart pattern isn't a framework, and why a strategy's edge decays the moment it goes public.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>COG — This Repo's Own Case Study</h2>
+    <div class="tl-cat-sub">Not textbook theory — an honest documentation of a real, already-built subsystem of this repo. "COG" is the trader whose published daily forecast this repo reverse-engineered; these two lessons cover that reverse-engineering and the gated trading system it inspired, including the tested null result and the architecture lessons learned building it.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="lessons/cog-reverse-engineering.html">
+        <div class="tl-card-num">COG 1</div>
+        <h3>COG: Reverse-Engineering a Trader's Black-Box Forecast</h3>
+        <p>Recovering an unknown formula from nothing but its own published outputs — and the already-tested result that reproducing it isn't a better tradeable fade.</p>
+      </a>
+      <a class="tl-card" href="lessons/cog-gate-system.html">
+        <div class="tl-card-num">COG 2 (final)</div>
+        <h3>Inside the COG-Inspired Gate System</h3>
+        <p>An architecture case study in explainable, gated decision-making — and the "zero trades" lesson learned from over-conjoining independent gates.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>Where this sits next to Theory Lab</h2>
+    <div class="tl-cat-sub"></div>
+    <p style="color:var(--text2);max-width:760px">This folder is deliberately separate from <a href="../theory-lab/hub.html">Theory Lab</a>, which builds the underlying math up from scratch. Read a Theory Lab lesson first for the "why," then come here for the applied workflow or the real case study — or read this hub on its own if you just want the practitioner-level view. Both fold back into the same discipline: an idea only earns trust once it's built and cleared this repo's real out-of-sample bar, per <a href="../CLAUDE.md">CLAUDE.md</a>'s Lego Principle #5.</p>
+  </div>
+
+</div>
+</body>
+</html>

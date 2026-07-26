@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Regression Analysis — Applied Practice — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/theory.css">
+<link rel="stylesheet" href="../../theory-lab/assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
 <body>
 <div id="page">
-  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Course Notes / Regression Analysis — Applied Practice</div>
-  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-crumb"><a href="../../theory-lab/hub.html">Theory Lab</a> / Course Notes / Regression Analysis — Applied Practice</div>
+  <div class="tl-glosslink">🔎 <a href="../../theory-lab/glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Course Notes · Lesson 3 of 10</div>
   <h1 class="tl-title">Regression Analysis — Applied Practice</h1>
   <p class="tl-dek">The Correlation &amp; Linear Regression primer derives where \(\hat\beta=\mathrm{Cov}(X,Y)/\mathrm{Var}(X)\) and \(R^2\) actually come from. This course picks up from there and stays on the applied side: how quant desks actually use regression for factor discovery and alpha measurement, why the textbook standard errors are usually wrong in finance, how multiple regression turns into a factor model (and where it breaks), the full diagnostic checklist, and what separates a regression that survives contact with live trading from one that only ever worked on a spreadsheet.</p>
@@ -52,7 +52,7 @@
     factors it was actually exposed to.
   </p>
   <p>
-    This page assumes the <a href="primer-correlation-regression.html">Correlation
+    This page assumes the <a href="../../theory-lab/lessons/primer-correlation-regression.html">Correlation
     &amp; Linear Regression primer</a>'s derivation of \(\hat\beta\), \(\hat\alpha\),
     and \(R^2=1-\mathrm{SSR}/\mathrm{SST}\) — it does not re-derive any of
     that math. What follows is the applied layer built on top of it: how the
@@ -238,7 +238,7 @@
     variable is added, that variable is probably noise. Use adjusted
     \(R^2\) — or RMSE/MAE for practical prediction accuracy, or AIC/BIC when
     comparing models with different variable counts (derived in the
-    <a href="model-selection-aic-bic.html">Model Selection: AIC &amp; BIC</a>
+    <a href="../../theory-lab/lessons/model-selection-aic-bic.html">Model Selection: AIC &amp; BIC</a>
     lesson) — rather than chasing plain \(R^2\) upward. The classic
     overfitting signature is a complex model scoring in-sample \(R^2=0.99\)
     and out-of-sample \(R^2=0.25\), against a simple model scoring 0.65
@@ -294,7 +294,7 @@
   <p>
     <strong>The multiple-testing problem</strong> is the central challenge in
     factor research, covered in full in the
-    <a href="multiple-testing.html">Multiple Testing &amp; the Look-Elsewhere
+    <a href="../../theory-lab/lessons/multiple-testing.html">Multiple Testing &amp; the Look-Elsewhere
     Effect</a> lesson — the short version here: at \(\alpha=5\%\), testing
     100 true nulls produces roughly 5 false positives by chance alone; 1,000
     produces roughly 50. Publishing only the significant results fills the
@@ -413,7 +413,7 @@
     The formal derivation and testing procedure for the first two —
     Durbin-Watson for autocorrelation, Breusch-Pagan for heteroskedasticity,
     plus Jarque-Bera for residual normality — lives in the
-    <a href="regression-diagnostics.html">Regression Diagnostics</a> lesson
+    <a href="../../theory-lab/lessons/regression-diagnostics.html">Regression Diagnostics</a> lesson
     and isn't repeated here; the short version is that both violations leave
     \(\hat\beta\) unbiased but make the reported standard error wrong
     (usually too small), which inflates t-stats and produces false
@@ -504,7 +504,7 @@
     forward, and repeats, exactly mimicking how a strategy would actually be
     traded live; the full mechanics, plus the purged/embargoed refinements
     needed when features come from overlapping windows, are in the
-    <a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged
+    <a href="../../theory-lab/lessons/walk-forward-purged-cv.html">Walk-Forward &amp; Purged
     Cross-Validation</a> lesson.
   </p>
   <p>
@@ -566,7 +566,7 @@
       fit noise than a 50-factor one.</li>
     <li><strong>Penalize complexity</strong> — adjusted \(R^2\), AIC, BIC all
       guard against "just one more factor" (see
-      <a href="model-selection-aic-bic.html">Model Selection: AIC &amp;
+      <a href="../../theory-lab/lessons/model-selection-aic-bic.html">Model Selection: AIC &amp;
       BIC</a> for the formal derivation of the second and third).</li>
     <li><strong>A genuine holdout</strong> — a truly untouched test set,
       checked once, at the very end.</li>
@@ -838,7 +838,7 @@
 
   <div class="tl-footer-nav">
     <a href="quant-macro-lessons.html">← Quantitative &amp; Macro Foundations</a>
-    <a href="../hub.html">Theory Lab hub</a>
+    <a href="../../theory-lab/hub.html">Theory Lab hub</a>
     <a href="volatility-intelligence.html">Volatility Intelligence →</a>
   </div>
 </div>
