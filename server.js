@@ -160,6 +160,7 @@ import { loadHistoricalCogDataset } from './js/cogHistoricalDataLoader.js';
 import { runPivotSpike } from './js/pivotSpikeEngine.js';
 import { COG_V2_TRIGGER_WINDOW, COG_V2_NY_OPEN_MINUTE, COG_V2_ENTRY_DEADLINE_MINUTE, COG_V2_SETUP_NOTE, COG_V2_RISK_NOTE, COG_V2_IMPULSE_PARAMS, COG_V2_TRIGGER_SCORE, COG_V2_SETUP_HYSTERESIS, COG_V2_SLOW_SMOOTH, COG_V2_CONFIDENCE, COG_V2_MIN_SETUP_PERSIST_BARS } from './js/cogV2Config.js';
 import { liveSignal as hedgeV2Live, runComparison as hedgeV2Comparison, V2_DEFAULTS as HEDGE_V2_DEFAULTS } from './js/hedgeSignalV2Engine.js';
+import { runGoldMinerArbSuite, GMA_DEFAULTS } from './js/goldMinerArbEngine.js';
 import { decide as tdeDecide } from './Trade_Decision_Engine/decisionCore.js';
 import { MODEL_V0 as TDE_MODEL } from './Trade_Decision_Engine/modelV0.js';
 import { getState as tdeGetState, refreshPair as tdeRefreshPair, syntheticSnapshot as tdeSyntheticSnapshot, stateSummary as tdeStateSummary, TDE_DEFAULT_PAIRS } from './Trade_Decision_Engine/featureState.js';
@@ -10393,6 +10394,69 @@ app.post('/api/vol-backtest-v2/run', express.json({ limit: '256kb' }), (req, res
 
 app.get('/api/vol-backtest-v2/status/:jobId', (req, res) => {
   const job = v2Jobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Gold vs Gold-Miners (GDX/Gold) stat-arb backtester ───────────────────────
+// Owner-supplied spec mechanised over goldMinerArbEngine.js — rolling
+// hedge-ratio z-score, an Engle-Granger-style cointegration gate (reusing
+// hedgeSignalV2Engine's OU half-life primitive, not a new ADF implementation),
+// scale-in/scale-out tranches, VIX macro filter, $ risk sizing, IS/OOS A/B vs
+// a naive baseline. Gold leg is OANDA XAU_USD (spot proxy for GC futures —
+// see goldMinerArbEngine.js header for why); GDX + VIX are Yahoo daily bars.
+// Same async-job pattern as vol-backtest-v2 / hedge-signals-v2.
+const gmaJobs = new Map();
+function _purgeStaleGmaJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of gmaJobs) if (job.startedAt < cutoff) gmaJobs.delete(id);
+}
+
+app.post('/api/gold-miner-arb/run', express.json({ limit: '64kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) {
+    return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch XAU_USD (gold leg)' });
+  }
+  const b = req.body ?? {};
+  const num = (v, d) => (v === undefined || v === '' || isNaN(+v) ? d : +v);
+  const opts = { ...GMA_DEFAULTS };
+  if (b.start) opts.start = String(b.start);
+  opts.accountEquity = num(b.accountEquity, GMA_DEFAULTS.accountEquity);
+  opts.riskPct = Math.min(Math.max(num(b.riskPct, GMA_DEFAULTS.riskPct), 0.001), 0.10);
+  opts.oosFrac = Math.min(Math.max(num(b.oosFrac, GMA_DEFAULTS.oosFrac), 0.1), 0.6);
+  opts.vixMax = num(b.vixMax, GMA_DEFAULTS.vixMax);
+  opts.costBpsRoundTrip = num(b.costBpsRoundTrip, GMA_DEFAULTS.costBpsRoundTrip);
+  opts.entryZ1 = num(b.entryZ1, GMA_DEFAULTS.entryZ1);
+  opts.entryZ2 = num(b.entryZ2, GMA_DEFAULTS.entryZ2);
+  opts.entryZ3 = num(b.entryZ3, GMA_DEFAULTS.entryZ3);
+  opts.stopZ = num(b.stopZ, GMA_DEFAULTS.stopZ);
+  opts.timeStopBars = num(b.timeStopBars, GMA_DEFAULTS.timeStopBars);
+  opts.requireCointegration = b.requireCointegration !== false;
+
+  const jobId     = `gma_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleGmaJobs();
+  gmaJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    try {
+      const result = await runGoldMinerArbSuite(opts);
+      gmaJobs.set(jobId, { status: 'done', result, startedAt });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[gold-miner-arb/run]', msg, e?.stack ?? '');
+      gmaJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/gold-miner-arb/status/:jobId', (req, res) => {
+  const job = gmaJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') {
     return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });

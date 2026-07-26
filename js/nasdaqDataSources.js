@@ -85,10 +85,15 @@ export async function fetchYahooChart(ticker, { interval = '1d', range, period1,
     if (!result) throw new Error(`Yahoo ${ticker}: no data in response`);
     const ts = result.timestamp || [];
     const q = result.indicators?.quote?.[0] || {};
+    const adj = result.indicators?.adjclose?.[0]?.adjclose;
     return ts
       .map((t, i) => ({
         t: t * 1000,
         open: q.open?.[i], high: q.high?.[i], low: q.low?.[i], close: q.close?.[i], volume: q.volume?.[i],
+        // Split/dividend-adjusted close, when Yahoo returns it (daily bars only —
+        // intraday responses have no adjclose series). Falls back to raw close so
+        // existing callers that only ever used `close` see no change.
+        adjclose: Number.isFinite(adj?.[i]) ? adj[i] : q.close?.[i],
       }))
       .filter(b => Number.isFinite(b.close) && Number.isFinite(b.high) && Number.isFinite(b.low));
   });

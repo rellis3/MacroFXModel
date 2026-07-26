@@ -140,6 +140,8 @@ export function rollingSpread(closesA, closesB, opts = {}) {
 // residual at i, and z-score it against the trailing zWindow of residuals built
 // with the SAME (α,β). This keeps the z reference and the held spread on one
 // consistent, stationary definition — no rolling-β drift. Returns null until warm.
+// Exported as `residualZAt` (below) so other pairs-style engines can reuse the
+// exact no-lookahead pattern instead of re-deriving it (Lego Principle 1).
 function _residualZ(la, lb, i, o) {
   if (i < o.hlWindow) return null;
   const fit = olsFit(la.slice(i - o.hlWindow, i), lb.slice(i - o.hlWindow, i));
@@ -152,6 +154,12 @@ function _residualZ(la, lb, i, o) {
   if (std < 1e-12) return null;
   return { z: (resid(i) - mean) / std, alpha: fit.alpha, beta: fit.beta };
 }
+
+// Public alias of the residual-z helper above — takes LOG series (la, lb) at
+// bar i. Callers with raw (non-log) series should call `olsFit`/`halfLife`
+// directly instead (see goldMinerArbEngine.js), since this helper's log
+// transform is baked into its two internal callers here.
+export const residualZAt = _residualZ;
 
 // ── Per-pair backtest (the v2 state machine) ─────────────────────────────────
 // Walks one pair's aligned closes, opens on |z|≥entryZ only when the trailing
