@@ -23,6 +23,8 @@
  * Pure: no network/clock/DOM; offline-testable.
  */
 
+import { oiPriceConfirmation } from './oiConfluence.js';
+
 const _TIER_RANK = { weak: 1, moderate: 2, strong: 3 };
 const _rank = t => _TIER_RANK[t] || 0;
 
@@ -85,6 +87,14 @@ export function buildOIZones(inst, price, cfg = {}) {
 
   const isLiquidating = (strike, kind) => avoidLiquidating &&
     (change?.events || []).some(e => e.type === 'liquidation' && e.kind === kind && Math.abs(e.strike - strike) <= tol);
+  // OI flow AT a wall strike: +1 = OI building here (fresh money), −1 = unwinding,
+  // 0 = no change signal. Reads the classifyOIChange events the producer injected.
+  const wallOIFlow = (strike, kind) => {
+    const ev = (change?.events || []).filter(e => e.kind === kind && Math.abs(e.strike - strike) <= tol);
+    if (ev.some(e => e.type === 'fresh_wall' || e.type === 'fresh_positioning')) return 1;
+    if (ev.some(e => e.type === 'liquidation')) return -1;
+    return 0;
+  };
   const isEstablished = (strike, kind) => !requireEstablished ||
     (stability || []).some(w => w.kind === kind && Math.abs(w.strike - strike) <= tol && w.established);
   // A wall present across many expiries is a durable structural level, not a one-day
@@ -146,18 +156,27 @@ export function buildOIZones(inst, price, cfg = {}) {
   }
 
   // ── Mode B — BREAKOUT: follow a decisive wall break (gamma squeeze) ──────────
+  // A break is only "backed" if OI is BUILDING at the wall (new money forcing through).
+  // A break on FALLING OI is short-covering / long-liquidation — the wall is dissolving
+  // rather than being overpowered, so the follow-through is weaker: annotate + trim size.
   if (followBreaks && regime === 'BREAKOUT') {
+    const breakNote = (strike, kind, dir) => {
+      const conf = oiPriceConfirmation(wallOIFlow(strike, kind), dir);
+      return conf ? { note: ` · ${conf.read} (${conf.trust})`, trim: conf.trust === 'weak' ? 0.85 : 1 } : { note: '', trim: 1 };
+    };
     for (const w of calls) {
+      const bn = breakNote(w.strike, 'call', +1);
       add({ mode: 'break', side: 'buy', level: w.strike, entry: w.strike + brk, sl: w.strike - buf,
         tp1: calls.filter(c => c.strike > w.strike).sort((a, b) => a.strike - b.strike)[0]?.strike ?? null, tp2: null,
-        sizeFactor: sizeFactor(w),
-        rationale: `${regime} · call wall ${w.strike} ${w.tier} → follow the break UP (short-gamma squeeze) past ${+(w.strike + brk).toFixed(6)}${persNote(w)}` });
+        sizeFactor: +(sizeFactor(w) * bn.trim).toFixed(2),
+        rationale: `${regime} · call wall ${w.strike} ${w.tier} → follow the break UP (short-gamma squeeze) past ${+(w.strike + brk).toFixed(6)}${persNote(w)}${bn.note}` });
     }
     for (const w of puts) {
+      const bn = breakNote(w.strike, 'put', -1);
       add({ mode: 'break', side: 'sell', level: w.strike, entry: w.strike - brk, sl: w.strike + buf,
         tp1: puts.filter(p => p.strike < w.strike).sort((a, b) => b.strike - a.strike)[0]?.strike ?? null, tp2: null,
-        sizeFactor: sizeFactor(w),
-        rationale: `${regime} · put wall ${w.strike} ${w.tier} → follow the break DOWN (short-gamma squeeze) past ${+(w.strike - brk).toFixed(6)}${persNote(w)}` });
+        sizeFactor: +(sizeFactor(w) * bn.trim).toFixed(2),
+        rationale: `${regime} · put wall ${w.strike} ${w.tier} → follow the break DOWN (short-gamma squeeze) past ${+(w.strike - brk).toFixed(6)}${persNote(w)}${bn.note}` });
     }
   }
 

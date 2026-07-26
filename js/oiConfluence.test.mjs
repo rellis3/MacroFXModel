@@ -1,6 +1,6 @@
 // Synthetic test for the OI forward-test tagging brick (no network).
 //   node js/oiConfluence.test.mjs
-import { parseOILevels, normOIType, nearRoundNumber, tagTradeOI, tradePctReturn, oiAudit, oiStoreToLevels, oiBias, oiDeltas, wallStrengthTier, oiSkew, classifyOIChange, oiConcentration, clusterStrikes, oiWallStability, wallFreshness, volumePCRatio } from './oiConfluence.js';
+import { parseOILevels, normOIType, nearRoundNumber, tagTradeOI, tradePctReturn, oiAudit, oiStoreToLevels, oiBias, oiDeltas, wallStrengthTier, oiSkew, classifyOIChange, oiConcentration, clusterStrikes, oiWallStability, wallFreshness, volumePCRatio, oiPriceConfirmation } from './oiConfluence.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -237,6 +237,15 @@ console.log('[volumePCRatio — today flow]');
   ok('put-heavy flow → ratio > 1', volumePCRatio(1000, 2500) === 2.5);
   ok('call-heavy → < 1', volumePCRatio(2000, 800) === 0.4);
   ok('no call volume → null', volumePCRatio(0, 500) === null);
+}
+
+console.log('[oiPriceConfirmation — move backed by fresh positioning?]');
+{
+  ok('up + building OI → new longs, confirmed', (() => { const r = oiPriceConfirmation(500, 3); return r.read === 'new longs' && r.trust === 'confirmed'; })());
+  ok('up + falling OI → short covering, weak', (() => { const r = oiPriceConfirmation(-500, 3); return r.read === 'short covering' && r.trust === 'weak'; })());
+  ok('down + building OI → new shorts, confirmed', oiPriceConfirmation(500, -3).read === 'new shorts');
+  ok('down + falling OI → long liquidation, weak', oiPriceConfirmation(-500, -3).trust === 'weak');
+  ok('flat OI or flat price → null', oiPriceConfirmation(0, 3) === null && oiPriceConfirmation(500, 0) === null);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' FAILED ✗'}`);

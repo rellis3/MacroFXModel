@@ -1546,7 +1546,7 @@ function oiFor(name, sym) {
   let change = null;
   if (oiHistory) {
     const hk = Object.keys(oiHistory).find(k => normK(k) === normK(lvlKey(name, sym)) || normK(k) === normK(sym) || normK(k) === normK(sym.replace('_', '/')));
-    if (hk && oiHistory[hk]?.deltas) change = { ...oiHistory[hk].deltas, fromDate: oiHistory[hk].prevDate, toDate: oiHistory[hk].curDate, classify: oiHistory[hk].classify, stability: oiHistory[hk].stability };
+    if (hk && oiHistory[hk]?.deltas) change = { ...oiHistory[hk].deltas, fromDate: oiHistory[hk].prevDate, toDate: oiHistory[hk].curDate, classify: oiHistory[hk].classify, confirm: oiHistory[hk].confirm, stability: oiHistory[hk].stability };
   }
   return { inst, ageH, stale: ageH > OI_FRESH_H, gex, regime, change,
     maxPain: inst.maxPain, callWall: inst.callWall, putWall: inst.putWall,
@@ -2640,6 +2640,8 @@ function oiChangeLine(o, dp) {
   // Established (multi-day) walls — more reliable than overnight ones.
   const est = (c.stability || []).filter(w => w.established).slice(0, 2);
   if (est.length) bits.push(`<span title="wall persisted ≥5 days — established, more reliable">established</span> ${est.map(w => `${fmtN(w.strike, dp)} (${w.daysPresent}d)`).join(', ')}`);
+  // OI-change × price-direction: is the move backed by fresh money or hollow (covering)?
+  if (c.confirm) bits.push(`<span style="color:${c.confirm.trust === 'confirmed' ? 'var(--green)' : 'var(--amber)'}" title="${c.confirm.note}">${c.confirm.read}${c.confirm.trust === 'weak' ? ' (weak)' : ''}</span>`);
   if (!bits.length && !c.classify) return '';
   const head = c.classify ? `<b>${c.classify}</b>${bits.length ? ' · ' : ''}` : '';
   return `<div class="muted" style="margin-top:3px;font-size:11px">Δ vs ${c.fromDate || 'prior'}: ${head}${bits.join(' · ')}</div>`;
