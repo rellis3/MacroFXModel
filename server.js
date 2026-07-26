@@ -177,11 +177,15 @@ const MACRO_REFRESH_MS        = parseInt(process.env.MACRO_REFRESH_MS    || Stri
 const HMM5M_ALERT_COOLDOWN_MS = 15 * 60 * 1000; // min gap between regime-change Telegram alerts per pair
 
 // ── Site login gate ──────────────────────────────────────────────────────────
-// Two independent password zones: 'main' (dashboard + everything else) and
-// 'education' (education/ + theory-lab/). A zone's cookie only unlocks that
-// zone — the education password never grants dashboard access and vice versa.
-// Disabled entirely (no login required) unless all three env vars below are
-// set, so local/sandbox dev is never accidentally locked out.
+// Two independent password zones: 'main' (dashboard + cog/ + everything else)
+// and 'education' (education/ + theory-lab/ only). A zone's cookie only
+// unlocks that zone — the education password never grants dashboard (or cog)
+// access and vice versa. cog/ deliberately sits in the 'main' zone, not
+// 'education': it documents this repo's own trading-system internals
+// (the COG case study) and is not meant to be handed out with the
+// shareable Theory Lab curriculum. Disabled entirely (no login required)
+// unless all three env vars below are set, so local/sandbox dev is never
+// accidentally locked out.
 const AUTH_COOKIE_NAME   = 'mfx_session';
 const AUTH_COOKIE_MAX_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const AUTH_SECRET        = process.env.COOKIE_SIGNING_SECRET || '';
@@ -190,7 +194,13 @@ const AUTH_PASSWORDS     = {
   education: process.env.EDUCATION_PASSWORD  || '',
 };
 const AUTH_ENABLED = !!AUTH_SECRET && !!AUTH_PASSWORDS.main && !!AUTH_PASSWORDS.education;
-const AUTH_EDU_PREFIXES = ['/education', '/theory-lab', '/cog'];
+const AUTH_EDU_PREFIXES = ['/education', '/theory-lab'];
+// Shared presentational assets (no lesson content, just CSS) that a page in
+// any zone may reference across zone boundaries — e.g. cog/hub.html (zone
+// 'main') loads its stylesheet from theory-lab/assets/ (zone 'education').
+// Gating these would break cross-zone rendering for no security benefit,
+// since the file carries no informational content of its own.
+const AUTH_EXEMPT_PREFIXES = ['/theory-lab/assets/'];
 
 function authZoneForPath(pathName) {
   return AUTH_EDU_PREFIXES.some(p => pathName === p || pathName.startsWith(p + '/'))
@@ -355,6 +365,7 @@ document.getElementById('f').addEventListener('submit', async (e) => {
 
 function requireAuth(req, res, next) {
   if (!AUTH_ENABLED) return next();
+  if (AUTH_EXEMPT_PREFIXES.some(p => req.path.startsWith(p))) return next();
   const zone    = authZoneForPath(req.path);
   const cookies = authParseCookies(req);
   if (authVerifyCookie(cookies[`${AUTH_COOKIE_NAME}_${zone}`], zone)) return next();
