@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ornstein-Uhlenbeck &amp; Mean Reversion — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Time Series &amp; Regimes / Ornstein-Uhlenbeck</div>
+  <div class="tl-kicker">Time Series &amp; Regimes · Lesson 4 of 14</div>
+  <h1 class="tl-title">The Ornstein-Uhlenbeck Process &amp; Mean Reversion</h1>
+  <p class="tl-dek">A price that "wants" to go somewhere and a price that just wanders are different mathematical objects — the OU process is the equation that tells them apart, and gives mean reversion an actual speed.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not yet fit/tested in this repo</span>
+    <span>~15 min read</span>
+    <span>Prereqs: none required, EMH lesson helpful for framing</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    Half of trading-strategy design boils down to one question asked over and over
+    at different timescales: <em>if price is away from "normal," does it tend to come
+    back, and if so how fast?</em> "Fade the move" and "follow the move" are opposite
+    bets on the answer. Right now in this codebase that question is answered by a
+    same-day heuristic — <code>dayTypeCore.js</code>'s trend-day-ness score
+    <code>T</code> = drift ÷ diffusion, blended from several rolling-window
+    estimators (efficiency ratio, variance ratio, Hurst exponent, and friends).
+    Those are all reasonable proxies, but none of them produce a number you can
+    say out loud to a non-quant: "this pair tends to revert halfway back to its
+    mean every <em>N</em> days."
+  </p>
+  <p>
+    The Ornstein-Uhlenbeck (OU) process is the textbook model that <em>does</em>
+    produce that number. It is not a trading strategy by itself — it is a precise
+    mathematical description of "mean reversion" that lets you (a) test whether a
+    series reverts at all, (b) measure how fast, in real time units, and (c)
+    compute a half-life you can compare across instruments and horizons. It shows
+    up constantly in the literature this repo already leans on for regime and
+    reversion-vs-continuation logic, so it is worth having the actual equation in
+    your head rather than just the word "mean-reverting" as a vibe.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A rubber band attached to a moving average</h3>
+    <p>
+      Picture a ball tied to a fixed post by a rubber band, sitting in a tub of
+      water that's constantly being jostled by random currents. Two things act on
+      the ball every instant: the rubber band, which pulls it back toward the post
+      in proportion to how far away it currently is (the further away, the harder
+      the pull), and the random jostling, which pushes it in an unpredictable
+      direction by an unpredictable amount. The ball never sits still at the post —
+      the jostling keeps knocking it away — but it also never wanders off to
+      infinity, because the rubber band always drags it back. Its position over
+      time traces out a wobbly path that hovers around the post forever.
+    </p>
+    <p>
+      That is an OU process. The "post" is the long-run mean \(\mu\) (mu). The
+      "stiffness of the rubber band" is the mean-reversion speed \(\theta\) (theta)
+      — a bigger \(\theta\) means a stiffer band, meaning the price snaps back
+      faster. The "random jostling" is Brownian noise scaled by \(\sigma\) (sigma),
+      the same volatility concept used everywhere else in this repo. A plain random
+      walk (ordinary Brownian motion, the model behind "prices don't have memory")
+      is the special case where you cut the rubber band entirely: \(\theta = 0\),
+      nothing pulls the ball back, and it really can wander off forever.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    The OU process is defined by a stochastic differential equation (SDE) — an
+    equation that describes how a random quantity changes over an infinitesimally
+    small instant of time \(dt\). If SDE notation is new to you, read it exactly
+    like a normal differential equation ("the rate of change of \(X\) equals...")
+    except one of the terms is explicitly random noise instead of a deterministic
+    force. Here it is:
+  </p>
+  <div class="tl-math">
+    \[ dX_t = \theta(\mu - X_t)\,dt + \sigma\,dW_t \]
+  </div>
+  <p>
+    Read this left to right: <code>dX_t</code> is the tiny change in the process's
+    value \(X\) that happens over the next tiny instant of time. The right-hand
+    side says that change is the sum of two pieces — a predictable "drift" piece
+    and a random "diffusion" piece. Every symbol, spelled out:
+  </p>
+  <div class="tl-symbols"><table>
+    <tr><td>\(X_t\)</td><td>The value of the process at time \(t\) — think "today's price," or more precisely a price-like quantity such as a spread, a z-scored deviation from a moving average, or a log-price. OU is usually applied to something that plausibly has a stable center, not to a raw trending price level.</td></tr>
+    <tr><td>\(dX_t\)</td><td>The infinitesimal change in \(X\) over the next instant — "how much \(X\) moves in the next tiny tick of time."</td></tr>
+    <tr><td>\(\mu\)</td><td>(mu) The long-run mean — the level \(X\) is being pulled toward. This is the "post" the rubber band is tied to. Estimated in practice as a sample mean, a moving average, or a fair-value/equilibrium level from some other model.</td></tr>
+    <tr><td>\(\theta\)</td><td>(theta) The mean-reversion speed, a positive number. Larger \(\theta\) = stiffer pull back to \(\mu\) = faster reversion. \(\theta = 0\) means no pull at all — see the random-walk comparison below. \(\theta\) has units of "1 / time" (e.g. "per day"), which is exactly why it converts cleanly into a half-life measured in days.</td></tr>
+    <tr><td>\((\mu - X_t)\)</td><td>The current deviation from the mean, with its sign. If price is above \(\mu\), this term is negative, pulling \(X\) down; if below \(\mu\), it's positive, pulling \(X\) up. This is the "restoring force," structurally identical to Hooke's law for a spring — the further you are from equilibrium, the harder you're pulled back, and the pull is always toward equilibrium, never away.</td></tr>
+    <tr><td>\(\theta(\mu - X_t)\,dt\)</td><td>The <strong>drift term</strong>: the deterministic, predictable part of the next instant's move — restoring speed \(\times\) current deviation \(\times\) the length of the instant.</td></tr>
+    <tr><td>\(\sigma\)</td><td>(sigma) The volatility (diffusion) coefficient — how large the random shocks are. This is the same conceptual quantity as the \(\sigma\) used throughout this repo's vol math (<code>volSigmaSeries</code>, <code>volBacktestEngine.js</code>), just in continuous-time SDE units rather than daily-bar HV/GARCH units.</td></tr>
+    <tr><td>\(W_t\)</td><td>A Wiener process (standard Brownian motion) — the formal name for "pure random-walk noise with independent, normally distributed increments and no memory." \(dW_t\) is its infinitesimal increment: mean zero, variance \(dt\), unpredictable direction.</td></tr>
+    <tr><td>\(\sigma\,dW_t\)</td><td>The <strong>diffusion term</strong>: the random, unpredictable part of the next instant's move, scaled by how volatile the process is.</td></tr>
+  </table></div>
+  <p>
+    So the whole equation says, in one sentence: <em>the next tiny move in \(X\) is
+    a predictable nudge back toward \(\mu\), sized by how far away you currently
+    are and how fast you revert, plus an unpredictable random shock sized by
+    volatility.</em> Contrast this directly with plain Brownian motion / a random
+    walk, which is the special case \(\theta = 0\):
+  </p>
+  <div class="tl-math">
+    \[ dX_t = \sigma\,dW_t \quad (\text{random walk: no drift term, no memory of } \mu) \]
+  </div>
+  <p>
+    With no drift term, there is nothing in the equation that "knows" where \(\mu\)
+    is or pulls back toward it. A random walk can wander arbitrarily far from any
+    starting point — its variance grows without bound as \(t \to \infty\). This is
+    precisely the mathematical content of the weak-form Efficient Market
+    Hypothesis: prices, if efficient, should behave like this term alone, with no
+    exploitable pull back to a mean. Whether real FX prices behave more like the
+    full OU equation (some \(\theta > 0\)) or the pure random walk (\(\theta = 0\))
+    at a given horizon is exactly the empirical question mean-reversion strategies
+    are trying to answer — and exactly what a Hurst exponent or variance-ratio test
+    (the next lesson) is designed to detect.
+  </p>
+
+  <h3>The stationary distribution — where does \(X\) settle?</h3>
+  <p>
+    Because the drift term always pulls back toward \(\mu\), an OU process does not
+    blow up over time the way a random walk does. Instead, given long enough, its
+    distribution converges to a stable, unchanging (stationary) normal
+    distribution centered at \(\mu\):
+  </p>
+  <div class="tl-math">
+    \[ X_\infty \sim \mathcal{N}\!\left(\mu,\ \frac{\sigma^2}{2\theta}\right) \]
+  </div>
+  <p>
+    The stationary variance \(\sigma^2/(2\theta)\) tells you how far \(X\)
+    typically wanders from \(\mu\) once it has "settled in": more noise
+    (\(\sigma\)) widens the resting spread, but a stronger pull-back
+    (\(\theta\)) tightens it — a stiffer rubber band keeps the ball closer to the
+    post even with the same amount of jostling. This is the formal reason "high
+    vol" and "fast mean reversion" are not opposites: a process can be both loud
+    (large \(\sigma\)) and quick to revert (large \(\theta\)), and the two combine
+    into how wide its resting range actually is.
+  </p>
+
+  <h3>Deriving the half-life</h3>
+  <p>
+    The single most useful number that falls out of this equation is the
+    <strong>half-life of mean reversion</strong>: how long it takes for the
+    <em>expected</em> deviation from \(\mu\) to shrink to half its current size.
+    Ignoring the random noise term for a moment (it averages to zero in
+    expectation) and solving the drift-only ODE
+    \( \frac{d}{dt}\mathbb{E}[X_t - \mu] = -\theta\,\mathbb{E}[X_t - \mu] \)
+    gives an exponential decay of the expected deviation:
+  </p>
+  <div class="tl-math">
+    \[ \mathbb{E}[X_t - \mu] = (X_0 - \mu)\,e^{-\theta t} \]
+  </div>
+  <p>
+    This says: whatever the initial deviation \((X_0 - \mu)\) is, its expected
+    size shrinks exponentially over time, at rate \(\theta\). To find the
+    half-life \(t_{1/2}\) — the time at which the expected deviation has shrunk
+    to exactly half — set the decay factor equal to \( \tfrac{1}{2}\) and solve
+    for \(t\):
+  </p>
+  <div class="tl-math">
+    \[ e^{-\theta\,t_{1/2}} = \frac{1}{2} \quad\Longrightarrow\quad -\theta\,t_{1/2} = \ln\!\left(\frac{1}{2}\right) = -\ln(2) \quad\Longrightarrow\quad t_{1/2} = \frac{\ln(2)}{\theta} \]
+  </div>
+  <p>
+    Walking through that: take the natural log of both sides of
+    \(e^{-\theta t_{1/2}} = 1/2\). The left side becomes \(-\theta t_{1/2}\)
+    (log undoes the exponential). The right side, \(\ln(1/2)\), equals
+    \(-\ln(2)\) by the log rule \(\ln(1/x) = -\ln(x)\). The two negative signs
+    cancel, leaving \(\theta t_{1/2} = \ln(2)\), and dividing both sides by
+    \(\theta\) isolates the half-life. \(\ln(2) \approx 0.6931\) is just a
+    constant that falls out of the algebra — it is the same constant that shows
+    up in radioactive-decay half-life and drug-elimination half-life formulas,
+    because they are the same exponential-decay math applied to a different
+    physical quantity.
+  </p>
+  <p>
+    <strong>Intuitively:</strong> a half-life is not "the time until the
+    deviation is fully gone" — under continuous exponential decay it's never
+    exactly zero, only asymptotically closer. It's "the time until you'd expect
+    the current gap to \(\mu\) to be cut in half." A short half-life (say, 1 day)
+    describes a snappy, fast-reverting series where a deviation today is mostly
+    gone within a couple of days. A long half-life (say, 60 days) describes a
+    lazy reversion — technically present, but far too slow to trade on a
+    multi-day horizon; by the time it pulls back, the world has moved on. As
+    \(\theta \to 0\), \(t_{1/2} = \ln(2)/\theta \to \infty\): the half-life
+    blows up to infinity, consistent with the random-walk limit having no
+    reversion at all — there is no time by which a deviation is "expected" to
+    shrink, because nothing is pulling it back.
+  </p>
+
+  <h3>The discrete-time analogue: AR(1)</h3>
+  <p>
+    You almost never fit the continuous-time SDE directly to daily bars — instead
+    you fit its well-known discrete-time twin, the first-order autoregressive
+    model AR(1), and convert. If you sample an OU process at regular intervals
+    \(\Delta t\) (e.g. \(\Delta t = 1\) day), the exact solution to the SDE is:
+  </p>
+  <div class="tl-math">
+    \[ X_t = \mu(1-\phi) + \phi\,X_{t-1} + \epsilon_t, \qquad \phi = e^{-\theta \Delta t} \]
+  </div>
+  <p>
+    Here \(\phi\) (phi) is the AR(1) autoregressive coefficient — the ordinary
+    "regress today's value on yesterday's value" coefficient you'd get from a
+    linear regression of \(X_t\) on \(X_{t-1}\) — and \(\epsilon_t\) is the
+    regression's noise term (the discrete-time stand-in for \(\sigma\,dW_t\)).
+    This equation should look familiar: it's exactly the AR(1) form referenced in
+    <code>REVERSION_CONTINUATION_CONCEPT.md</code>'s framing of drift versus
+    diffusion, just written out with the mean term made explicit. The relationship
+    \(\phi = e^{-\theta \Delta t}\) is the bridge between "a regression
+    coefficient you can estimate from data" and "a mean-reversion speed with
+    physical time units," and inverting it gives you \(\theta\) from a fitted
+    \(\phi\):
+  </p>
+  <div class="tl-math">
+    \[ \theta = -\frac{\ln(\phi)}{\Delta t} \]
+  </div>
+  <p>
+    Reading the map between the two worlds: \(\phi\) close to 1 means today's
+    value is almost entirely explained by yesterday's value with little pull back
+    to \(\mu\) — slow reversion, small \(\theta\), long half-life. \(\phi\) close
+    to 0 means almost no persistence — the series snaps back to \(\mu\) almost
+    immediately, large \(\theta\), short half-life. \(\phi \geq 1\) is not
+    mean-reverting at all (\(\phi = 1\) is exactly the random walk; \(\phi > 1\)
+    is explosive) — the log in \(\theta = -\ln(\phi)/\Delta t\) is undefined or
+    negative there, which is the algebra's way of telling you the OU model doesn't
+    apply.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>From a fitted AR(1) coefficient to a half-life in days</h3>
+    <p>
+      Suppose you take a candidate mean-reverting series — say, a z-scored spread
+      or a deviation-from-moving-average series on daily closes — and run the
+      simplest possible regression: today's value against yesterday's value,
+      \(X_t = c + \phi X_{t-1} + \epsilon_t\). Suppose the fit comes back with
+      \(\phi = 0.90\) (a plausible, moderately-persistent daily value; a pure
+      noise series would fit closer to \(\phi = 0\), a near-random-walk series
+      closer to \(\phi = 1\)).
+    </p>
+    <p>
+      Step 1 — convert to the continuous-time reversion speed, with \(\Delta t = 1\)
+      day since the data is daily:
+    </p>
+    <div class="tl-math">
+      \[ \theta = -\frac{\ln(0.90)}{1} \]
+    </div>
+    <p>
+      \(\ln(0.90) \approx -0.10536\) (the natural log of a number just under 1 is
+      a small negative number — you can sanity-check this because \(\ln(1) = 0\)
+      exactly, and \(\ln\) is a smooth, slowly-changing function near 1). Negating
+      that gives:
+    </p>
+    <div class="tl-math">
+      \[ \theta \approx 0.10536 \ \text{per day} \]
+    </div>
+    <p>
+      Step 2 — convert \(\theta\) to a half-life using the formula derived above:
+    </p>
+    <div class="tl-math">
+      \[ t_{1/2} = \frac{\ln(2)}{\theta} \approx \frac{0.6931}{0.10536} \approx 6.58 \ \text{days} \]
+    </div>
+    <p>
+      So a daily AR(1) fit of \(\phi = 0.90\) implies a half-life of roughly
+      6.6 trading days: if this series is 40 pips away from its estimated
+      long-run mean today, the OU model's expectation is that the deviation
+      will be down to roughly 20 pips in about 6–7 trading days (assuming
+      \(\mu\) itself doesn't move — a real fair-value or moving-average mean
+      typically does drift, which is a limitation covered in the pitfalls
+      below), roughly 10 pips after another 6–7 days, and so on. For
+      comparison, if the same regression had come back with \(\phi = 0.98\)
+      (much more persistent), the half-life would stretch to
+      \(\ln(2)/(-\ln(0.98)) \approx 0.6931/0.0202 \approx 34.3\) days — a
+      genuinely slow reversion, far too sluggish to be the basis of a
+      multi-day fade trade, even though the series is still technically
+      mean-reverting in the statistical sense.
+    </p>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    OU fitting shows up most visibly in <strong>statistical arbitrage / pairs
+    trading</strong>: you construct a spread between two related instruments
+    (e.g. a hedge ratio between two correlated FX crosses, or a cointegrated
+    equity pair), then fit an OU process to that spread's history. The fitted
+    \(\theta\) tells you whether the spread mean-reverts fast enough to trade,
+    the half-life tells you a sane holding-period expectation, and the
+    stationary standard deviation \(\sqrt{\sigma^2/2\theta}\) gives you natural
+    entry/exit thresholds in the same way a Bollinger Band or z-score gives
+    thresholds — e.g. enter when the spread is 2 stationary-standard-deviations
+    from \(\mu\), exit near \(\mu\). Avellaneda &amp; Lee's statistical
+    arbitrage paper (cited below) is the standard reference for exactly this
+    workflow applied to equity residuals.
+  </p>
+  <p>
+    More generally, quant desks use the half-life as a <em>horizon filter</em>
+    before anything else: if a signal's estimated half-life is 2 days, a strategy
+    that holds for 3 weeks is fighting the wrong timescale, and a strategy that
+    exits in 10 minutes never lets the edge play out. The half-life is a
+    principled way to pick "how long should I hold this trade" instead of
+    guessing or hand-tuning it. It's also used diagnostically: if you fit OU to a
+    series and get \(\phi \geq 1\) (or a negative/undefined \(\theta\)), that's
+    evidence the series is behaving like a random walk rather than
+    mean-reverting — a useful, humbling null result rather than something to
+    explain away.
+  </p>
+  <p>
+    A standard caveat practitioners build in from day one: real \(\phi\)
+    estimates from short, noisy financial samples are themselves noisy and
+    biased toward 1 in finite samples (this is a known small-sample bias in
+    AR(1)/unit-root estimation). A single point estimate of \(\theta\) or a
+    half-life should come with a confidence interval or a bootstrap, not be
+    treated as a fixed physical constant — and per this repo's validation
+    discipline, any resulting trading rule needs the same in-sample/out-of-sample
+    split and minimum trade count as everything else here, not just a good-looking
+    in-sample fit.
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+    <h3>An unbuilt candidate next to <code>dayTypeCore.js</code>'s drift/diffusion score</h3>
+    <p>
+      <code>js/dayTypeCore.js</code> already estimates something conceptually
+      adjacent to \(\theta\): its <code>dayTypeScore</code> blends several
+      rolling-window estimators (efficiency ratio, variance ratio, Hurst
+      exponent, etc.) into a single \(T \in [0,1]\) trend-day-ness score — high
+      \(T\) meaning drift-dominated (follow), low \(T\) meaning diffusion-dominated
+      / mean-reverting (fade), all computed fresh within each day's window with
+      no explicit reversion-speed or half-life concept. It answers "is today more
+      trend or more chop," not "if this reverts, how many bars until it's halfway
+      back."
+    </p>
+    <p>
+      A fitted OU half-life is a different, complementary kind of number: instead
+      of a same-window relative score, it is an estimable, physically-interpretable
+      quantity — actual trading days — that could in principle be computed
+      per-instrument (e.g. rolling AR(1) fits on daily closes or on a
+      deviation-from-moving-average series) and compared against what
+      <code>dayTypeScore</code>'s low-T / fade regime implicitly assumes about how
+      fast reversion happens. If an instrument's fitted half-life is very long
+      (say 30+ days) even when <code>dayTypeScore</code> currently flags it as
+      low-\(T\)/fade-favoring, that would be worth knowing — the "fade" bet might
+      be directionally right but too slow for the exit logic the fade legs
+      actually use.
+    </p>
+    <p>
+      <strong>To be explicit about what this is and isn't:</strong> this is a
+      candidate connection, not a claim that <code>dayTypeCore.js</code> already
+      does OU fitting, and not a claim that layering an OU half-life on top of it
+      would improve anything. Per the Lego Principle, that would need to be built
+      as a proper Tier-1 estimator (a pure function, unit-tested on synthetic
+      OU-generated data so you can verify the fit recovers a known \(\theta\),
+      before ever touching real prices), then validated OOS with a non-trivial
+      trade count against the existing selector — not assumed to help because the
+      math is elegant. It is currently unbuilt and untested here; treat it as a
+      research candidate for <code>LEGO_MODULES.md §2</code>, not as a described
+      feature.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where OU fitting goes wrong in practice</h3>
+    <p>
+      <strong>Treating \(\mu\) as fixed when it isn't.</strong> The whole
+      derivation assumes a constant long-run mean. Real fair-value levels,
+      moving averages, and cointegrating relationships drift over time. Fitting
+      OU to a series whose "true" mean has quietly shifted will misestimate
+      \(\theta\) — often making reversion look stronger (or weaker) than it
+      really is, because some of what looks like "pulling back to the old mean"
+      is actually "chasing a new mean." Re-estimate \(\mu\) on a rolling basis
+      and check it isn't the dominant source of the fit.
+    </p>
+    <p>
+      <strong>Small-sample bias in \(\phi\).</strong> OLS estimates of AR(1)
+      coefficients on short, noisy samples are biased toward 1 (toward "looks
+      more like a random walk than it is"), which pushes the implied half-life
+      artificially high. This gets worse the more autocorrelated and the shorter
+      the sample. Don't trust a single-sample point estimate; check stability
+      across sub-periods or use a bias-corrected estimator.
+    </p>
+    <p>
+      <strong>Confusing "the null can't be rejected" with "it's a random walk."</strong>
+      Failing to statistically distinguish \(\phi\) from 1 in a small sample is
+      not the same as proving \(\theta = 0\) — it may just mean you don't have
+      enough data to tell a slow-but-real reversion from none at all. This is the
+      same logic as failing to reject the EMH lesson's null: absence of evidence
+      isn't evidence of absence.
+    </p>
+    <p>
+      <strong>Regime dependence.</strong> \(\theta\), \(\mu\), and \(\sigma\) are
+      all assumed constant in the basic OU model, but real market reversion speed
+      changes across regimes — a spread might revert briskly in calm markets and
+      barely at all in a trending or crisis regime. A single full-sample \(\theta\)
+      averages across regimes and can be a poor guide to what's happening right
+      now, echoing this repo's general caution about pooled-sample nulls hiding
+      subset behavior.
+    </p>
+    <p>
+      <strong>Half-life is an expectation about the mean path, not a promise
+      about any one trade.</strong> \(t_{1/2}\) describes how the <em>expected
+      value</em> of the deviation decays; any individual path is still buffeted
+      by \(\sigma\,dW_t\) and can widen before it narrows, or never fully revert
+      within your holding period. Sizing a stop or a max-hold purely off the
+      half-life without accounting for the noise term's dispersion is a common
+      way to get stopped out right before the "expected" reversion would have
+      arrived.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What happens to the OU process, and to its half-life, as \(\theta \to 0\)?</summary>
+    <div class="tl-answer">
+      As \(\theta \to 0\), the drift term \(\theta(\mu - X_t)\,dt\) shrinks toward
+      zero regardless of how far \(X\) is from \(\mu\) — the "rubber band" goes
+      slack. The SDE collapses to \(dX_t = \sigma\,dW_t\), pure Brownian motion
+      with no pull back to any mean: a random walk. Correspondingly, the half-life
+      \(t_{1/2} = \ln(2)/\theta\) grows without bound (division by a number
+      approaching zero) — there is no finite time by which the deviation is
+      expected to halve, consistent with there being no reversion at all.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why is a random walk considered a limiting (degenerate) case of the OU process rather than a completely different model?</summary>
+    <div class="tl-answer">
+      Because it falls directly out of the same SDE by setting one parameter,
+      \(\theta\), to zero — nothing else about the equation's structure changes.
+      This means OU strictly generalizes the random walk: every random walk is an
+      OU process with \(\theta = 0\), but not every OU process is a random walk.
+      Practically, this is why fitting OU (or its AR(1) analogue) to data and
+      finding \(\phi \approx 1\) (equivalently \(\theta \approx 0\)) is exactly
+      the statistical signature of "this series doesn't detectably mean-revert" —
+      you're not switching models, you're finding the fitted parameter sitting at
+      the edge of the same model's parameter space.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. A spread has an estimated half-life of 3 trading days. What does that actually tell a trader about holding period, and what does it NOT tell them?</summary>
+    <div class="tl-answer">
+      It tells them that, on average, the current deviation from the estimated
+      mean is expected to shrink by half roughly every 3 trading days — so a
+      trade betting on reversion to \(\mu\) has a natural timescale of a few days
+      to a couple of weeks, not minutes and not months; holding much longer than
+      several half-lives captures rapidly diminishing expected benefit since the
+      deviation is expected to already be mostly gone. It does NOT tell them that
+      any individual trade will actually revert on that schedule — the diffusion
+      term \(\sigma\,dW_t\) means any specific path can widen further before
+      narrowing, revert faster, or fail to revert within a reasonable window at
+      all. Nor does it account for the mean \(\mu\) itself potentially drifting
+      during the trade.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. If an AR(1) regression on daily data returns \(\phi = 1.02\), what does that mean for the OU half-life formula, and what should a careful analyst conclude?</summary>
+    <div class="tl-answer">
+      \(\phi = 1.02 > 1\) implies \(\ln(\phi) > 0\), which makes
+      \(\theta = -\ln(\phi)/\Delta t\) negative — a negative mean-reversion
+      speed, which is nonsensical in the OU model (it would imply the "restoring
+      force" pushes away from the mean, i.e. explosive, not mean-reverting). The
+      half-life formula breaks down because the model no longer applies: a
+      careful analyst should conclude the series shows no evidence of stationary
+      mean reversion in this sample (it looks explosive or at best like a random
+      walk with estimation noise pushing the point estimate slightly above 1),
+      not attempt to force a half-life number out of it. This is also a strong
+      cue to check for small-sample bias and re-estimate rather than trust a
+      single point estimate near the \(\phi = 1\) boundary.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why does the stationary variance formula \(\sigma^2/(2\theta)\) make intuitive sense — specifically, why does a bigger \(\theta\) mean a SMALLER resting spread?</summary>
+    <div class="tl-answer">
+      \(\theta\) sits in the denominator, so increasing it decreases the
+      stationary variance. Intuitively, \(\theta\) is how hard the process gets
+      pulled back toward \(\mu\) whenever noise knocks it away. A stiffer
+      restoring force (larger \(\theta\)) corrects deviations faster, so the
+      process doesn't have time to wander as far from \(\mu\) before being pulled
+      back in, even though the noise (\(\sigma\)) hitting it every instant is the
+      same size. Conversely, for fixed \(\theta\), more noise (larger \(\sigma\))
+      widens the resting spread because there's simply more random energy pushing
+      the ball away from the post for the same rubber band to fight against.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why can't you just fit \(\theta\) once and treat it as a fixed, permanent property of an instrument or spread?</summary>
+    <div class="tl-answer">
+      Because the constant-parameter assumption is itself a modeling
+      simplification, not a fact about markets. Reversion speed plausibly
+      changes across volatility regimes, changes if the underlying relationship
+      driving the mean reversion (e.g. a hedge ratio, a cointegration link, a
+      macro relationship) weakens or breaks, and is estimated with small-sample
+      noise and bias in any given fit. A single \(\theta\) from one sample window
+      is a snapshot, not a law — this repo's discipline around disaggregating
+      pooled nulls and re-validating out-of-sample applies directly here: a fit
+      that looked stable in one period needs to be checked again in fresh data,
+      not assumed to persist.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>L. S. Ornstein &amp; G. E. Uhlenbeck, "On the Theory of the Brownian Motion," <em>Physical Review</em>, 1930 — the original paper defining the process (in a physics context, not finance).</li>
+    <li>James D. Hamilton, <em>Time Series Analysis</em>, Princeton University Press, 1994 — the standard graduate econometrics reference covering AR(1) estimation, unit roots, and the discrete/continuous-time mapping used in this lesson.</li>
+    <li>Evan Gatev, William N. Goetzmann &amp; K. Geert Rouwenhorst, "Pairs Trading: Performance of a Relative-Value Arbitrage Rule," <em>Review of Financial Studies</em>, 2006 — the widely-cited empirical study of distance-based pairs trading that the OU-based approach is often contrasted with.</li>
+    <li>Marco Avellaneda &amp; Jeong-Hyun Lee, "Statistical Arbitrage in the U.S. Equities Market," <em>Quantitative Finance</em>, 2010 — explicitly fits an OU process to cointegration-residual spreads and uses the half-life as a trading-horizon filter; the direct template for the "fit OU, use the half-life" workflow described above.</li>
+    <li><code>REVERSION_CONTINUATION_CONCEPT.md</code> and <code>js/dayTypeCore.js</code> in this repo — the existing drift/diffusion classifier this lesson's repo box contrasts with.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="multiple-testing.html">← Multiple Testing &amp; the Look-Elsewhere Effect</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="hurst-variance-ratio.html">Hurst Exponent &amp; Variance Ratio Test →</a>
+  </div>
+</div>
+</body>
+</html>

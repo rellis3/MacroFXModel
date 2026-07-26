@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cointegration &amp; Statistical Arbitrage — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Cross-Asset &amp; Structure / Cointegration</div>
+  <div class="tl-kicker">Cross-Asset &amp; Structure · Lesson 9 of 14</div>
+  <h1 class="tl-title">Cointegration &amp; Statistical Arbitrage</h1>
+  <p class="tl-dek">Two series can drift together for years with a 95% correlation and still have no stable relationship at all — cointegration is the specific, testable condition that tells you whether a spread has a home to come back to, or is just two random walks that happened to lean the same way.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not yet tested in this repo</span>
+    <span>~16 min read</span>
+    <span>Prereqs: Ornstein-Uhlenbeck &amp; Mean Reversion</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    A huge amount of cross-asset reasoning in trading — "EUR/USD tracks the
+    US-Germany yield spread," "AUD/USD tracks copper," "credit leads
+    risk-vol" — implicitly assumes two series have a durable relationship
+    worth trading against. The tool almost everyone reaches for first to check
+    that assumption is a correlation coefficient. This lesson exists because
+    that tool answers the wrong question. Correlation tells you whether two
+    series' <em>changes</em> tend to move in the same direction. It says
+    nothing about whether their <em>levels</em> are anchored to each other —
+    whether, if the spread between them gets too wide, some force pulls it
+    back. Two series can be highly correlated in returns and have a spread
+    that wanders off to new extremes forever, never returning. Trading that
+    spread as if it were mean-reverting is not a subtle mistake; it's betting
+    real money on a coin flip you've mislabeled as a law of physics.
+  </p>
+  <p>
+    Cointegration is the formal statistical condition that separates "these
+    two things happen to be trending together" from "these two things have an
+    equilibrium relationship that reasserts itself." It is the mathematical
+    backbone of pairs trading and, more broadly, of every claim in this repo's
+    own notes that a cross-asset spread is tradeable as mean reversion rather
+    than just narratively appealing. The previous lesson on
+    Ornstein-Uhlenbeck mean reversion described how to model and trade a
+    single stationary, mean-reverting series once you have one. This lesson
+    is about the step before that: how do you know two non-stationary price
+    series combine into a genuinely stationary, mean-reverting spread in the
+    first place, rather than assuming it because a chart looked convincing?
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Two drunks and a dog on a leash</h3>
+    <p>
+      A well-known analogy (attributed to Michael Murray's 1994 teaching note
+      "A Drunk and Her Dog") makes the distinction concrete. Imagine a drunk
+      person wandering randomly — each step in an unpredictable direction,
+      with no destination. That's a random walk: at any point in time you
+      genuinely cannot predict which way they'll go next, and over a long
+      enough walk they could end up arbitrarily far from where they started.
+      Now imagine a second drunk, wandering independently, on a different
+      street. Also a random walk. If you happened to record both of their
+      positions over an evening, you might well see the two paths <em>look</em>
+      similar in the sense that both drift generally further from their
+      starting points as time passes — plot "distance traveled" for each and
+      the two lines can look statistically related even though the two
+      people have never met and are doing nothing but stumbling
+      independently. That's the spurious-correlation trap.
+    </p>
+    <p>
+      Now change the picture: it's the same one drunk, but she has a dog on a
+      leash. The drunk still wanders unpredictably — still a random walk on
+      her own. The dog also wanders unpredictably — also a random walk on its
+      own. But the <em>distance between them</em> is bounded by the leash. It
+      can stretch and slacken, but it cannot grow without limit, because
+      there's an actual mechanical constraint pulling them back together. The
+      drunk's position and the dog's position are each individually
+      unpredictable and non-stationary — but the gap between them is
+      stationary: it has a stable average length (the leash's slack) and it
+      reverts toward that average whenever it stretches too far. That gap is
+      what cointegration is about. The two prices don't have to be
+      individually predictable, and they don't even need identical short-term
+      moves. What matters is whether the specific combination of them —
+      their spread — is tied to something, the way the dog is tied to the
+      leash.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    This section builds up four ideas in order: what "stationary" means,
+    why a non-stationary series creates the spurious-regression trap, what
+    cointegration formally is, and the two-step test (Engle-Granger) for
+    detecting it — plus a conceptual note on its multi-series generalization
+    (Johansen).
+  </p>
+
+  <p><strong>1. Stationarity.</strong> A time series \(X_t\) is (weakly, or
+  "covariance") <strong>stationary</strong> if three statistical properties
+  are constant through time — they don't depend on which point in time \(t\)
+  you're looking at, only on how far apart in time two observations are:</p>
+  <div class="tl-math">\[ E[X_t] = \mu, \qquad \mathrm{Var}(X_t) = \sigma^2, \qquad \mathrm{Cov}(X_t, X_{t+k}) = \gamma(k) \]</div>
+  <p>
+    In words: the series has one fixed long-run mean \(\mu\) it fluctuates
+    around, one fixed variance \(\sigma^2\) describing how far it typically
+    strays from that mean, and its autocovariance \(\gamma(k)\) — how related
+    an observation is to the one \(k\) periods later — depends only on the
+    lag \(k\), never on the calendar date. Practically: a stationary series
+    has a meaningful "normal level." You can compute a mean or a z-score
+    against it and expect that number to still mean something next year. A
+    daily interest-rate <em>level</em> is usually not stationary (it drifts
+    for years); a well-specified mean-reverting spread, or most return
+    series, typically are (or are close enough, in practice, to be treated
+    that way).
+  </p>
+
+  <p><strong>2. The unit root — why a random walk is not stationary.</strong>
+  The simplest non-stationary model is the <strong>random walk</strong>:
+  each step is the previous value plus an unpredictable, independent shock
+  \(\epsilon_t\) (mean zero, constant variance \(\sigma^2\), uncorrelated
+  across time):</p>
+  <div class="tl-math">\[ X_t = X_{t-1} + \epsilon_t, \qquad \epsilon_t \sim \text{i.i.d.}(0,\sigma^2) \]</div>
+  <p>
+    Unroll this recursively back to a starting point \(X_0\) and \(X_t\) is
+    just the sum of every shock that's happened since:
+  </p>
+  <div class="tl-math">\[ X_t = X_0 + \sum_{i=1}^{t}\epsilon_i \quad\Longrightarrow\quad \mathrm{Var}(X_t) = t\,\sigma^2 \]</div>
+  <p>
+    That last step follows because the shocks are independent, so variances
+    of a sum of independent things just add: \(t\) shocks, each contributing
+    variance \(\sigma^2\), gives total variance \(t\sigma^2\). The variance
+    <strong>grows linearly with \(t\)</strong> — it is not a fixed constant,
+    so the first requirement of stationarity (constant variance) is already
+    violated. There is no fixed "normal level" for a random walk to revert
+    to; the further out in time you look, the wider the range of plausible
+    values becomes, without bound. This is exactly the behavior most raw
+    asset price <em>levels</em> — an FX rate, a bond yield, an equity index —
+    are usually treated as having (an unpredictable, roughly additive
+    increment each period), which is why price levels themselves are
+    generally treated as non-stationary.
+  </p>
+  <p>
+    This is usually written more generally as an autoregressive model,
+    \(X_t = \phi X_{t-1} + \epsilon_t\). If \(|\phi| < 1\), shocks decay away
+    over time and the series is stationary — it has a fixed mean it keeps
+    returning to (this is the AR(1) case underlying the Ornstein-Uhlenbeck
+    process from the previous lesson). If \(\phi = 1\) exactly, you get the
+    random walk above: shocks never decay, they accumulate forever. The name
+    <strong>"unit root"</strong> comes from writing the model as
+    \((1 - \phi L)X_t = \epsilon_t\) (where \(L\) is the lag operator,
+    \(LX_t = X_{t-1}\)) and noting the characteristic equation
+    \(1-\phi z = 0\) has root \(z = 1/\phi\); when \(\phi=1\) that root
+    equals exactly 1 — a "unit" root. A series requiring one round of
+    differencing (\(\Delta X_t = X_t - X_{t-1}\)) to become stationary is
+    called <strong>integrated of order 1</strong>, written \(I(1)\); an
+    already-stationary series is \(I(0)\). Most raw FX/rate/index levels are
+    treated as \(I(1)\); their returns (differences) are typically \(I(0)\).
+  </p>
+
+  <p><strong>3. Spurious regression — Granger &amp; Newbold (1974).</strong>
+  Ordinary least squares (OLS) regression, and the classical machinery
+  built on top of it (R², t-statistics, p-values), assumes the variables
+  involved are stationary. Granger and Clive Newbold showed, first by
+  simulation and later formalized rigorously by Peter Phillips (1986), what
+  happens when you ignore that and regress one <em>independent, unrelated</em>
+  random walk on another in levels: you very often get a
+  <strong>high R², a "significant"-looking t-statistic, and a regression
+  that looks like a real relationship — despite the two series having
+  absolutely nothing to do with each other.</strong> The reason is that the
+  standard distribution theory behind those t-statistics and R² values is
+  derived assuming stationary inputs; feed it two random walks instead and
+  the t-statistics don't converge to the familiar bell-shaped distribution at
+  all — they diverge as the sample grows, so a "significant" result becomes
+  more, not less, likely with more data, which is the opposite of what a
+  real relationship's evidence should do. Two unrelated random walks tend
+  to look related purely because <em>any</em> random walk trends for
+  stretches, and any two trending lines will show substantial apparent
+  comovement over a shared window, entirely by chance. This single 1974
+  result is the reason "I regressed X on Y in levels and got R² = 0.90"
+  is not, by itself, evidence of anything when X and Y are both
+  non-stationary price-like series.
+  </p>
+
+  <p><strong>4. Correlation vs. cointegration — the crucial distinction.</strong>
+  Correlation, as computed in a rolling-window Pearson coefficient, is
+  normally applied to <em>returns</em> (differences) — it measures whether
+  the short-run <em>changes</em> in two series tend to move together.
+  Two series can have highly correlated returns for years — both generally
+  rising, or both whipping around together during risk-off episodes —
+  without their <em>levels</em> ever having a stable relationship at all.
+  <strong>Cointegration is a statement about the levels, not the returns.</strong>
+  Formally: if \(X_t\) and \(Y_t\) are each individually non-stationary
+  (say, both \(I(1)\)), they are <strong>cointegrated</strong> if there
+  exists some coefficient \(\beta\) such that the linear combination
+  \(Y_t - \beta X_t\) is itself <strong>stationary</strong> — \(I(0)\).
+  Two individually unpredictable, unbounded-variance series combine, in the
+  right proportion, into something with a fixed mean and bounded variance —
+  a "leash." That's a much stronger, much rarer condition than return
+  correlation, because it requires an actual structural or economic force
+  — arbitrage, an accounting identity, a shared driver that keeps the ratio
+  in place — anchoring the two together, not just a shared trend over one
+  particular sample window.
+  </p>
+
+  <p><strong>5. The Engle-Granger two-step method.</strong> Robert Engle
+  and Clive Granger (1987) turned this into a concrete, testable procedure.</p>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(Y_t, X_t\)</td><td>The two price/level series being tested, e.g. two FX pairs or a pair and a related macro series. Assumed individually non-stationary, \(I(1)\).</td></tr>
+      <tr><td>\(\alpha\)</td><td>The regression intercept — the constant offset between the two series.</td></tr>
+      <tr><td>\(\beta\)</td><td>The <strong>cointegrating coefficient</strong> — the hedge ratio: how many units of \(X\) offset one unit of \(Y\) in the long-run equilibrium.</td></tr>
+      <tr><td>\(\epsilon_t\)</td><td>The regression error / residual — if \(X\) and \(Y\) are cointegrated, this is the equilibrium "spread," expected to be stationary.</td></tr>
+      <tr><td>\(\hat\alpha, \hat\beta, \hat\epsilon_t\)</td><td>The OLS-estimated versions of the above, obtained from Step 1.</td></tr>
+      <tr><td>\(\Delta\)</td><td>The first-difference operator: \(\Delta z_t = z_t - z_{t-1}\).</td></tr>
+      <tr><td>\(\gamma\)</td><td>The coefficient in the Step 2 test regression on \(\hat\epsilon_{t-1}\) — its sign and significance is what the whole test hinges on.</td></tr>
+      <tr><td>\(I(0)\) / \(I(1)\)</td><td>"Integrated of order 0/1" — already stationary, vs. requiring one differencing to become stationary.</td></tr>
+      <tr><td>\(H_0\)</td><td>The null hypothesis being tested in Step 2: \(\gamma = 0\), i.e. "there is a unit root, the spread does not mean-revert, not cointegrated."</td></tr>
+    </table>
+  </div>
+
+  <p><strong>Step 1 — regress the levels.</strong> Run an ordinary OLS
+  regression of one raw price/level series on the other, in levels
+  (not returns):</p>
+  <div class="tl-math">\[ Y_t = \alpha + \beta X_t + \epsilon_t \]</div>
+  <p>
+    This looks exactly like the setup Granger &amp; Newbold warned about in
+    point 3 — and by itself, it is just as vulnerable to a spuriously high
+    R². The crucial move Engle and Granger made is <em>not</em> trusting
+    this regression's R² or t-statistics at all. Instead they proved a
+    separate, useful fact: <em>if</em> \(X_t\) and \(Y_t\) genuinely are
+    cointegrated, OLS applied this way is <strong>"super-consistent"</strong>
+    — the estimate \(\hat\beta\) converges to the true cointegrating
+    coefficient unusually fast (at rate \(T\), the sample size, rather than
+    the usual \(\sqrt{T}\) of ordinary regression) even though the classical
+    standard errors around it are not reliable. In plain terms: this
+    regression is good enough to get a usable estimate of the hedge ratio
+    \(\beta\), but you cannot yet trust it as evidence that a relationship
+    exists — that's what Step 2 is for.
+  </p>
+  <p><strong>Step 2 — test the residual for a unit root.</strong> Take the
+  fitted residuals from Step 1 — the estimated spread on every day in the
+  sample:</p>
+  <div class="tl-math">\[ \hat\epsilon_t = Y_t - \hat\alpha - \hat\beta X_t \]</div>
+  <p>
+    and test <em>this residual series itself</em> for stationarity, using
+    the <strong>Augmented Dickey-Fuller (ADF) test</strong>. The conceptual
+    idea, without deriving the full test statistic: regress the residual's
+    change on its own lagged level, plus enough lagged differences to soak
+    up any short-run autocorrelation,
+  </p>
+  <div class="tl-math">\[ \Delta \hat\epsilon_t = \gamma\,\hat\epsilon_{t-1} + \sum_{i=1}^{p}\delta_i\,\Delta \hat\epsilon_{t-i} + u_t \]</div>
+  <p>
+    and ask: does today's <em>change</em> in the spread depend on
+    <em>yesterday's level</em> of the spread? If the spread mean-reverts,
+    then when it's far above its long-run average, the next change should on
+    average be negative (pulling it back down), and vice versa — that shows
+    up as \(\gamma\) being reliably <strong>negative</strong>. If the spread
+    is really just a random walk with no memory of a "correct" level, its
+    change should be unrelated to its current level, and \(\gamma\) should
+    be statistically indistinguishable from zero. The test is:
+  </p>
+  <div class="tl-math">\[ H_0: \gamma = 0 \ \text{(unit root — not cointegrated)} \qquad\text{vs.}\qquad H_1: \gamma < 0 \ \text{(stationary — cointegrated)} \]</div>
+  <p>
+    A wrinkle that matters in practice: because \(\hat\epsilon_t\) here is
+    not an independently observed series but the leftover residual from a
+    regression that already chose \(\hat\beta\) specifically to make the
+    residual as small (and therefore as "well-behaved") as possible, the
+    ordinary Dickey-Fuller critical values are too lenient — they'd falsely
+    reject the unit-root null too often. Engle and Granger derived their own,
+    stricter critical values for exactly this two-step situation (refined
+    later by James MacKinnon's widely used response-surface tables), and any
+    correct implementation of this test — including, for example, Python's
+    <code>statsmodels.tsa.stattools.coint</code> — uses those adjusted
+    critical values, not the plain ADF ones.
+  </p>
+  <p>
+    If the test statistic clears that stricter bar (i.e. \(\gamma\) is
+    negative enough to reject \(H_0\)), you have real evidence that
+    \(X_t\) and \(Y_t\) are cointegrated: the spread \(\hat\epsilon_t\) is
+    stationary, has a genuine long-run mean, and behaves like the
+    OU-process-like mean-reverting object covered in the previous lesson —
+    something you can z-score, put bands around, and trade with an actual
+    statistical basis for expecting reversion, rather than a chart that
+    happens to look mean-reverting over one convenient window.
+  </p>
+
+  <p><strong>6. Johansen's test — generalizing beyond two series.</strong>
+  Engle-Granger has two structural limitations once you move past a single
+  pair: it forces you to arbitrarily pick which series is "\(Y\)" and which
+  is "\(X\)" (regressing \(Y\) on \(X\) is not the same regression as \(X\)
+  on \(Y\) in finite samples, so the choice matters and there's no principled
+  way to make it for more than two series), and it can only ever test for
+  <em>one</em> cointegrating relationship at a time. A basket of three or
+  more series (say, a set of commodity-bloc currencies, or a term structure
+  of multiple yields) can have <em>more than one</em> independent equilibrium
+  relationship living inside it simultaneously. Søren Johansen (1988, 1991)
+  built the proper generalization: instead of a single OLS regression, it
+  works from a <strong>Vector Autoregression (VAR)</strong> fit to the whole
+  basket of series jointly, rewritten in a form called a Vector Error
+  Correction Model (VECM) that separates short-run dynamics from a matrix
+  \(\Pi\) governing the long-run levels relationship. The <strong>rank</strong>
+  of that matrix — how many of its eigenvalues are meaningfully different
+  from zero, assessed via the eigenvalues of a matrix built from canonical
+  correlations between the levels and their differences — tells you exactly
+  how many independent stationary linear combinations (cointegrating
+  vectors) exist among the whole basket, via two standard test statistics
+  (the "trace" test and the "maximum eigenvalue" test). You don't need to
+  derive the eigenvalue algebra to use the result correctly: Johansen's test
+  answers "given this whole group of series, how many genuine long-run
+  equilibria are hiding inside it, and what are they," symmetrically across
+  all series at once, instead of Engle-Granger's asymmetric, one-pair-at-a-
+  time answer.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>AUD/USD and NZD/USD — telling a real spread from a shared trend</h3>
+    <p>
+      AUD/USD and NZD/USD are two commodity-bloc currency pairs that are
+      routinely observed to be highly correlated — both currencies are
+      exposed to similar drivers (Chinese demand, global risk sentiment,
+      commodity export revenue, similar central-bank cycles). Suppose you
+      take two years of daily closing levels for both and run the
+      Engle-Granger procedure.
+    </p>
+    <p>
+      <strong>Step 1.</strong> Regress \(\text{AUDUSD}_t = \alpha + \beta\,
+      \text{NZDUSD}_t + \epsilon_t\) in levels. Because both series have
+      genuinely trended together for long stretches of the sample, this
+      regression will very plausibly return something like
+      \(\hat\beta \approx 1.05\)–\(1.15\) and a striking \(R^2\) north of
+      0.85–0.90. On its own, per Granger &amp; Newbold, that R² is not yet
+      meaningful — it's exactly the number two correlated-but-not-necessarily-
+      cointegrated random walks would tend to produce.
+    </p>
+    <p>
+      <strong>Step 2.</strong> Compute the residual spread on every day,
+      \(\hat\epsilon_t = \text{AUDUSD}_t - \hat\alpha - \hat\beta\,
+      \text{NZDUSD}_t\), and look at it as its own time series. This is the
+      step that actually discriminates between the two possible worlds:
+    </p>
+    <p>
+      <strong>World A — not cointegrated.</strong> The residual spread drifts
+      to a new multi-month high in year one, sits there for months, then
+      drifts to a new low in year two, never really returning to its early
+      level. Run the ADF test on it and \(\gamma\) comes out close to zero
+      and statistically indistinguishable from it — you fail to reject the
+      unit-root null. The two currencies' high R² in Step 1 was driven by
+      both trending against a common third factor over that particular
+      two-year window (say, broad USD strength through most of it) rather
+      than any structural link tying <em>their ratio to each other</em>.
+      Trading this spread as mean-reverting would mean betting on a leash
+      that, this test says, isn't actually attached to anything.
+    </p>
+    <p>
+      <strong>World B — cointegrated.</strong> The residual spread, instead,
+      oscillates in a visibly bounded band — it drifts a few standard
+      deviations away from its average every few weeks and then comes back,
+      repeatedly, throughout the whole two years, never establishing a new
+      permanent level. The ADF statistic on \(\hat\epsilon_t\) is negative
+      enough to clear the (stricter, Engle-Granger) critical value, rejecting
+      the unit-root null. Now the spread is a legitimate stationary,
+      mean-reverting object — you could take its rolling mean and standard
+      deviation, form a z-score, and treat it with exactly the OU-process
+      toolkit from the previous lesson: enter when \(|z|\) exceeds some
+      threshold betting on reversion toward zero, size the trade using the
+      spread's estimated half-life, exit near the mean.
+    </p>
+    <p>
+      The point of walking through both outcomes is that <strong>you cannot
+      tell which world you're in from the Step 1 R² or from eyeballing a
+      correlated-looking chart</strong> — that's precisely the trap this
+      lesson opened with. The ADF test on the residual is the step that does
+      the actual discriminating, and this example is illustrative of the
+      procedure, not a reported result — running it for real on live AUD/USD
+      and NZD/USD data (or any other candidate pair) is exactly the kind of
+      check that would need to happen before treating any specific pair as
+      tradeable.
+    </p>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    <strong>Pairs trading</strong> is the flagship application: find two
+    (or more) instruments with an economically sensible link — two share
+    classes of the same company, an ETF and its underlying basket, two
+    similar commodity producers, related sovereign bonds — test the spread
+    for cointegration rather than assuming it from correlation or a
+    plausible story, and if it passes, trade the z-scored spread as a
+    market-neutral position (long the relatively cheap leg, short the
+    relatively expensive one, sized by the cointegrating \(\beta\)). Gatev,
+    Goetzmann &amp; Rouwenhorst's widely cited 1998/2006 study documented
+    this approach's historical performance in US equities using a simpler
+    distance-based pair-selection method, and the more rigorous
+    cointegration-based version became standard in quant desks through the
+    2000s.
+  </p>
+  <p>
+    <strong>Index arbitrage and ETF/underlying spreads</strong> use the same
+    logic where the cointegrating relationship is close to mechanically
+    guaranteed (an ETF's price is contractually tied to its basket's NAV),
+    making the "is it really cointegrated" question closer to a formality —
+    the interesting part becomes the speed and cost of executing the
+    arbitrage before it closes on its own, not whether the relationship is
+    real.
+  </p>
+  <p>
+    <strong>Macro and cross-asset relative value</strong> uses cointegration
+    on genuinely non-obvious pairs where the underlying economic link is a
+    hypothesis, not a guarantee — a currency against a commodity it's
+    correlated to by export exposure, a corporate bond spread against an
+    equity volatility index, one country's yield curve against another's.
+    Here the test is doing real work, distinguishing a durable structural
+    link from two series that have simply been trending together for
+    unrelated reasons over the sample you happened to look at — exactly the
+    distinction this lesson has been building toward.
+  </p>
+  <p>
+    <strong>Error-correction models</strong> are the natural next step once
+    cointegration is established: rather than modeling each series'
+    short-run changes independently, an Error Correction Model regresses
+    each series' change partly on how far the previous period's spread was
+    from equilibrium — the same \(\hat\epsilon_{t-1}\) term from Step 2 —
+    formalizing "when the spread is stretched, expect a correction" as an
+    actual forecasting equation rather than just a trading rule layered on
+    top.
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+    <h3>The repo already flags this exact gap in its own notes — it just hasn't been built</h3>
+    <p>
+      This isn't a hypothetical extension — <code>education/macro-deep-dives-notes.md</code>
+      names the gap directly. Its stat-arb entry-model section states the
+      requirement plainly: <em>"Key requirements: cointegration (not just
+      correlation), an economic linkage explaining the relationship,
+      sufficient liquidity in both legs"</em>; its quick-revision sheet
+      repeats it as a bare fact to remember — <em>"Stat arb needs
+      cointegration, not correlation. Lead-lag needs Granger causality"</em>;
+      and its own "areas of interest to read deeper on" list ends with
+      <em>"Cointegration vs correlation — the formal tests (Engle-Granger,
+      Johansen) that stat arb requires."</em> This lesson is, in effect, the
+      deep dive that item was asking for.
+    </p>
+    <p>
+      Three existing tools in this repo currently answer adjacent but
+      different questions, and it's worth being precise about which question
+      each one answers so a future extension doesn't conflate them:
+    </p>
+    <p>
+      <code>correlations.html</code> (the Correlation Lab) computes a
+      rolling Pearson correlation on <em>log returns</em> over a 60-bar
+      window, and its "hedge score" blends that correlation with a beta
+      spread to rank pairs as hedge candidates. That is a well-posed answer
+      to "do these two pairs' short-term moves tend to offset each other" —
+      it is not a test of whether either pair's <em>level</em> relationship
+      to the other is stationary. A pair the tool ranks as a strong hedge on
+      return correlation could still have a spread, in levels, that is a
+      pure random walk with no equilibrium to revert to.
+    </p>
+    <p>
+      <code>cross-pair-research.html</code> already states the principle in
+      its own UI copy — <em>"Correlation ≠ edge"</em> — and runs an
+      independent-bets gate off the participation ratio of the
+      return-correlation matrix plus a fade/follow sign-test between pairs.
+      That's a sound check for a different failure mode (treating correlated
+      bets as independent bets), but it is, again, working from a
+      return-correlation matrix, not a cointegration test on levels.
+    </p>
+    <p>
+      <code>credit-leadlag.html</code> is the closest of the three in spirit
+      — it deliberately does not run a naive level correlation, and instead
+      tests whether credit-spread <em>velocity</em> (a differenced,
+      largely-stationary transform) leads risk-instrument forward volatility
+      out-of-sample, reporting a genuine IS/OOS information coefficient. That
+      is squarely a <strong>lead-lag / Granger-causality-style</strong>
+      question, which macro-deep-dives-notes.md correctly separates from the
+      cointegration question — different tool, for a different family of
+      relationship (does A's <em>change</em> predict B's future
+      <em>change</em>, versus does A and B's combined <em>level</em> have a
+      stable equilibrium).
+    </p>
+    <p>
+      The suggested validation check, to be explicit: before any of this
+      repo's cross-asset pages (or the Transatlantic Yield Spread lesson in
+      <code>macro-deep-dives-notes.md</code>, which currently reasons about
+      the US-Germany yield spread leading EUR/USD narratively and via
+      cross-correlation) treats a relationship as tradeable mean-reversion
+      rather than a shared-trend coincidence, running the actual
+      Engle-Granger (or, for a basket, Johansen) test on the levels would be
+      the correct next check — the honest reading of "is there an
+      equilibrium here" that a rolling correlation coefficient cannot
+      provide by itself. This is a statement about what a rigorous next step
+      would look like, not a claim that any of these three pages is currently
+      wrong or incomplete for what it's built to do — each already does its
+      own stated job. And per this repo's Lego Principle 5, none of that
+      would be worth anything without the usual discipline: build it as a
+      shared brick (not a bespoke test bolted onto one page), and prove any
+      cointegration-filtered pair selection beats the incumbent approach on
+      true out-of-sample Sharpe with a non-trivial OOS trade count before
+      treating it as an improvement, not just a more theoretically satisfying
+      story.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where cointegration testing quietly goes wrong</h3>
+    <p>
+      <strong>Re-estimating \(\beta\) with data you wouldn't have had yet.</strong>
+      The cointegrating coefficient in Step 1 must be estimated only on data
+      available up to the point you'd actually be trading — fitting it once
+      on the full historical sample (including the future relative to any
+      earlier trade) is lookahead, and it will make every historical spread
+      look tighter and more mean-reverting than it would have looked live.
+      Worse, \(\beta\) itself is not guaranteed to be stable — a genuinely
+      cointegrating relationship can still see its hedge ratio drift over
+      time, which is exactly the problem the Kalman Filter lesson's adaptive,
+      time-varying-coefficient approach exists to handle.
+    </p>
+    <p>
+      <strong>Structural breaks silently killing a relationship.</strong> A
+      pair can be genuinely cointegrated for years and then permanently stop
+      being so — a currency peg removed, a company delisted or merged, a
+      commodity-currency's export mix shifting. A cointegration test run
+      once on the full historical sample can pass while masking a break that
+      already ended the relationship going forward; the same regime-
+      conditioning discipline the macro-deep-dives-notes.md yield-spread
+      lesson calls "mandatory" for lead-lag relationships applies equally
+      here — test on rolling or recent windows, not just the full history.
+    </p>
+    <p>
+      <strong>Data-mining a large universe of candidate pairs.</strong>
+      Testing cointegration across every pair in a large basket (all FX
+      crosses × macro series, say) and keeping only the ones that pass at
+      the 5% significance level is a textbook multiple-comparisons problem —
+      by construction, roughly 1 in 20 genuinely unrelated pairs will pass a
+      5% test purely by chance. See this repo's own
+      <a href="multiple-testing.html">Multiple Testing &amp; the Look-Elsewhere
+      Effect</a> lesson: the number of pairs tested, and a correspondingly
+      stricter significance bar, has to be reported alongside any list of
+      "cointegrated pairs found," not just the survivors.
+    </p>
+    <p>
+      <strong>Engle-Granger's asymmetry.</strong> Regressing \(Y\) on
+      \(X\) versus \(X\) on \(Y\) is not guaranteed to give the same
+      residual, the same estimated \(\beta\), or even the same conclusion
+      about cointegration in a finite sample — OLS only minimizes error in
+      one direction. This is a real limitation of the two-step method for
+      more than two series (part of why Johansen exists), and even for a
+      single pair it's worth being aware the choice of dependent variable is
+      not neutral.
+    </p>
+    <p>
+      <strong>A stationary-looking residual is not automatically a tradeable
+      edge.</strong> Even a genuinely cointegrated spread can mean-revert so
+      slowly (a very long half-life) that round-trip costs, funding/carry,
+      and slippage eat the edge before reversion completes. And exactly like
+      every other strategy in this repo, an in-sample-passing cointegration
+      test is not itself evidence of a trading edge — it only clears the
+      first bar (a real statistical relationship exists). It still has to
+      clear this repo's full honest-harness discipline — realistic fills,
+      real costs, a true out-of-sample split, ≥30 OOS trades — before being
+      treated as validated, per Lego Principle 5.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why can two completely unrelated random walks show a high R² when you regress one on the other in levels?</summary>
+    <div class="tl-answer">
+      Because the classical distribution theory behind R² and t-statistics
+      assumes stationary inputs, and a random walk isn't stationary — its
+      variance grows with time and it has no fixed mean to anchor to. Granger
+      &amp; Newbold (1974) showed, and Phillips (1986) later proved formally,
+      that regressing one independent random walk on another produces
+      t-statistics that don't converge to the usual distribution at all —
+      they diverge as the sample grows, so "significant"-looking results
+      become <em>more</em> likely with more data, the opposite of a real
+      relationship's behavior. Any two series that each drift for stretches
+      of time will tend to show substantial apparent comovement over a
+      shared window purely by chance, with nothing connecting them.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What does it formally mean for a linear combination of two non-stationary series to be "stationary," and why does that condition get the name cointegration?</summary>
+    <div class="tl-answer">
+      If \(X_t\) and \(Y_t\) are each individually non-stationary (e.g. both
+      \(I(1)\) — each requires one differencing to become stationary), they
+      are cointegrated if there exists a coefficient \(\beta\) such that
+      \(Y_t - \beta X_t\) is itself stationary (\(I(0)\)) — it has a fixed
+      mean and bounded variance even though \(X_t\) and \(Y_t\) individually
+      do not. The name reflects that: the two series are each "integrated"
+      (non-stationary) on their own, but move together closely enough in the
+      right proportion that a specific combination of them cancels out the
+      non-stationarity — they are integrated <em>together</em>, in a way
+      that removes the unit root from the combination even though neither
+      series loses it on its own.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why does cointegration matter more than simple return correlation for building a pairs trade?</summary>
+    <div class="tl-answer">
+      A pairs trade bets on the <em>spread</em> between two prices reverting
+      to a stable level — that only makes statistical sense if the spread
+      actually has a stable level to revert to, which is exactly what
+      cointegration tests for. Return correlation only tells you the two
+      series' short-term changes tend to move together; two series can have
+      highly correlated returns for years while their levels drift apart
+      without limit (both trending the same direction due to a shared but
+      unrelated driver), leaving no equilibrium for a pairs trade to bet on.
+      Trading a merely-correlated (not cointegrated) spread as if it were
+      mean-reverting is betting on a relationship that has no mechanism
+      pulling it back together.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. In the Engle-Granger method, why is the Step 2 ADF test run on the regression residuals with adjusted (Engle-Granger/MacKinnon) critical values, rather than the standard Dickey-Fuller critical values?</summary>
+    <div class="tl-answer">
+      Because the residual series being tested isn't an independently
+      observed series — it's the leftover error from a Step 1 OLS regression
+      that already chose \(\hat\beta\) specifically to make that residual as
+      small (and therefore as well-behaved-looking) as possible. That
+      built-in bias toward a "nicer" residual means the ordinary
+      Dickey-Fuller critical values would reject the unit-root null too
+      easily — falsely finding cointegration more often than the true 5%
+      rate implies. Engle and Granger derived stricter critical values
+      specific to this two-step situation (later refined by MacKinnon's
+      response-surface tables) to correct for that, and correct
+      implementations of the test — e.g. <code>statsmodels</code>'s
+      <code>coint</code> function — use those adjusted values.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. What extra capability does Johansen's test give you over Engle-Granger for a basket of more than two series?</summary>
+    <div class="tl-answer">
+      Two things Engle-Granger structurally can't do for a basket. First,
+      Engle-Granger forces an arbitrary choice of which series is the
+      regression's dependent variable, and that choice isn't neutral in
+      finite samples — OLS only minimizes residuals in one direction, so
+      regressing Y on X can give a different answer than X on Y. Johansen
+      works symmetrically across the whole basket via a jointly-fit VAR/VECM,
+      with no dependent-variable choice needed. Second, Engle-Granger can
+      only ever test for one cointegrating relationship at a time; Johansen
+      estimates the full rank of the system — via eigenvalues of a matrix
+      built from canonical correlations between the levels and their
+      differences — telling you how many independent cointegrating
+      relationships exist among the whole basket simultaneously, which
+      matters because a group of three or more series can easily have more
+      than one genuine equilibrium relationship living inside it.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why isn't a high in-sample R² from Engle-Granger's Step 1 regression, by itself, evidence of cointegration?</summary>
+    <div class="tl-answer">
+      Because Step 1 is exactly the levels-on-levels regression Granger
+      &amp; Newbold's spurious-regression result warns about — two
+      non-stationary series can produce a high R² there purely because both
+      happened to trend over the sample window, with nothing structurally
+      tying them together. Engle and Granger's actual insight was narrower:
+      <em>if</em> the two series truly are cointegrated, this regression
+      happens to give a "super-consistent" estimate of the hedge ratio
+      \(\beta\) — but that consistency result doesn't validate the R² or
+      t-statistics as evidence a relationship exists. Only Step 2 — testing
+      whether the residual spread is stationary via the ADF test — actually
+      discriminates a real cointegrating relationship from a spurious one;
+      the R² from Step 1 alone tells you nothing reliable either way.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Clive W.J. Granger and Paul Newbold, <em>"Spurious Regressions in Econometrics,"</em> Journal of Econometrics, 1974 — the original demonstration that regressing unrelated non-stationary series produces misleadingly significant results.</li>
+    <li>David A. Dickey and Wayne A. Fuller, <em>"Distribution of the Estimators for Autoregressive Time Series with a Unit Root,"</em> Journal of the American Statistical Association, 1979 — the origin of the (later "augmented") unit-root test used in Engle-Granger's Step 2.</li>
+    <li>Robert F. Engle and Clive W.J. Granger, <em>"Co-integration and Error Correction: Representation, Estimation, and Testing,"</em> Econometrica, 1987 — the paper defining cointegration formally and introducing the two-step method; this work contributed to Granger's share of the 2003 Nobel Memorial Prize in Economic Sciences.</li>
+    <li>Søren Johansen, <em>"Statistical Analysis of Cointegration Vectors,"</em> Journal of Economic Dynamics and Control, 1988, and <em>"Estimation and Hypothesis Testing of Cointegration Vectors in Gaussian Vector Autoregressive Models,"</em> Econometrica, 1991 — the likelihood-based, multi-series generalization referenced conceptually above.</li>
+    <li>James G. MacKinnon, <em>"Numerical Distribution Functions for Unit Root and Cointegration Tests,"</em> Journal of Applied Econometrics, 1996 — the practical response-surface critical values used by most software implementations of these tests.</li>
+    <li>Evan Gatev, William N. Goetzmann, and K. Geert Rouwenhorst, <em>"Pairs Trading: Performance of a Relative-Value Arbitrage Rule,"</em> Review of Financial Studies, 2006 — the widely cited practitioner-facing empirical study of pairs-trading performance.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="kalman-filter.html">← Kalman Filter &amp; Adaptive Relationships</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="pca-factors.html">Principal Component Analysis &amp; Factor Regimes →</a>
+  </div>
+</div>
+</body>
+</html>

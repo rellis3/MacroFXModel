@@ -1,0 +1,92 @@
+/* Theory Lab — shared stylesheet. Dark theme, self-contained, matches the
+   MacroFX dashboard palette (css/index.css) but this folder is deliberately
+   standalone so it can be read on its own. */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--s1:#1a1d27;--s2:#22263a;--s3:#2a2f45;
+  --border:#2a2f45;--border2:#343958;
+  --text:#e8eaf2;--text2:#9ba3bf;--text3:#5a6380;
+  --blue:#4f7df0;--blue2:#3b6de8;--blue-bg:#1a2240;--blue-bd:#2a3a6a;
+  --green:#10b981;--green-bg:#0d2b22;--green-bd:#1a4a38;
+  --red:#f87171;--red-bg:#2b1a1a;--red-bd:#4a2828;
+  --amber:#fbbf24;--amber-bg:#2b2212;--amber-bd:#4a3a18;
+  --purple:#a78bfa;--purple-bg:#1e1a2e;--purple-bd:#4c3a7a;
+  --r:8px;--rl:12px;--rxl:16px;
+}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',-apple-system,sans-serif;font-size:15px;line-height:1.65}
+#page{max-width:880px;margin:0 auto;padding:28px 20px 80px}
+a{color:var(--blue)}
+a:hover{color:var(--blue2)}
+
+/* breadcrumb / header */
+.tl-crumb{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:.05em;margin-bottom:14px}
+.tl-crumb a{color:var(--text3);text-decoration:none}
+.tl-crumb a:hover{color:var(--blue)}
+.tl-kicker{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--purple);margin-bottom:8px}
+h1.tl-title{font-size:28px;font-weight:700;line-height:1.25;margin-bottom:10px}
+.tl-dek{font-size:16px;color:var(--text2);margin-bottom:22px}
+.tl-meta{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.05em;margin-bottom:26px;padding-bottom:20px;border-bottom:1.5px solid var(--border)}
+
+/* status badge — sets the epistemic honesty expectation up front */
+.tl-status{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;font-family:'DM Mono',monospace}
+.tl-status.concept{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd)}
+.tl-status.candidate{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd)}
+
+/* headings + body */
+h2{font-size:20px;font-weight:700;margin:36px 0 12px;padding-top:4px}
+h3{font-size:15px;font-weight:700;margin:22px 0 8px;color:var(--text)}
+p{margin-bottom:14px;color:var(--text2)}
+strong{color:var(--text);font-weight:600}
+ul,ol{margin:0 0 14px 22px;color:var(--text2)}
+li{margin-bottom:6px}
+code{font-family:'DM Mono',monospace;background:var(--s2);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:.9em;color:var(--amber)}
+
+/* boxes */
+.tl-box{background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);padding:16px 18px;margin:18px 0}
+.tl-box.intuition{border-left:3px solid var(--blue)}
+.tl-box.pitfall{border-left:3px solid var(--red)}
+.tl-box.repo{border-left:3px solid var(--green)}
+.tl-box.example{border-left:3px solid var(--purple)}
+.tl-box h3{margin-top:0}
+.tl-box-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
+
+/* math */
+.tl-math{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:14px 18px;margin:14px 0;overflow-x:auto;text-align:center}
+.tl-symbols{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:4px 16px;margin:14px 0}
+.tl-symbols table{width:100%;border-collapse:collapse}
+.tl-symbols td{padding:8px 6px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:top}
+.tl-symbols tr:last-child td{border-bottom:none}
+.tl-symbols td:first-child{font-family:'DM Mono',monospace;color:var(--amber);white-space:nowrap;width:1%}
+
+/* self-test */
+.tl-quiz{border:1px solid var(--border);border-radius:var(--r);margin:10px 0;overflow:hidden}
+.tl-quiz summary{cursor:pointer;padding:12px 16px;font-size:13px;font-weight:600;background:var(--s1);list-style:none}
+.tl-quiz summary::-webkit-details-marker{display:none}
+.tl-quiz summary::before{content:"▸ ";color:var(--blue)}
+.tl-quiz[open] summary::before{content:"▾ "}
+.tl-quiz .tl-answer{padding:12px 16px;background:var(--s2);color:var(--text2);font-size:13.5px;border-top:1px solid var(--border)}
+
+/* further reading */
+.tl-refs{font-size:13px;color:var(--text3)}
+.tl-refs li{margin-bottom:8px}
+
+.tl-footer-nav{display:flex;justify-content:space-between;gap:12px;margin-top:48px;padding-top:20px;border-top:1.5px solid var(--border);font-size:13px}
+.tl-footer-nav a{text-decoration:none;color:var(--text2);padding:8px 14px;border:1px solid var(--border);border-radius:var(--r)}
+.tl-footer-nav a:hover{border-color:var(--blue);color:var(--blue)}
+
+/* hub-only styles */
+.tl-hub-hero{margin-bottom:34px}
+.tl-hub-hero h1{font-size:32px;margin-bottom:12px}
+.tl-hub-hero p{font-size:16px;max-width:680px}
+.tl-cat{margin:34px 0 18px}
+.tl-cat h2{margin:0 0 4px;font-size:18px}
+.tl-cat .tl-cat-sub{font-size:13px;color:var(--text3);margin-bottom:16px}
+.tl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.tl-card{display:block;text-decoration:none;background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);padding:16px 18px;transition:border-color .15s,transform .1s}
+.tl-card:hover{border-color:var(--blue);transform:translateY(-1px)}
+.tl-card .tl-card-num{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:6px}
+.tl-card h3{margin:0 0 6px;font-size:14.5px;color:var(--text)}
+.tl-card p{margin:0;font-size:12.5px;color:var(--text3);line-height:1.5}
+
+.tl-callout{background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:var(--rl);padding:16px 18px;margin:18px 0;font-size:13.5px;color:var(--text2)}
+.tl-callout strong{color:var(--purple)}
