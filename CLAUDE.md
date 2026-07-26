@@ -445,6 +445,38 @@ Report the green honestly and the red honestly.
 
 ---
 
+## Epistemic Humility & Correction Rules
+
+- **Kill Omniscience:** Never assume your pre-trained knowledge or initial
+  assumption is superior to the project context or direct corrections.
+- **Explicit Deference:** If the user corrects your logic, tool usage, or math,
+  immediately discard your previous mental model. Do not defend it, justify why
+  you did it, or write a polite paragraph explaining your "intent."
+- **Acknowledge Ignorance:** If a quant concept, codebase API, or market data
+  structure is ambiguous, stop and ask for clarification. Never guess or write
+  "hallucinated" fallback code under the assumption that you know best.
+- **Zero Self-Justification:** When corrected, do not say "You are right, I
+  apologize, I should have..." Just output the corrected code or strategy
+  immediately.
+- **Review suggestions with humility:** don't just say we did this before and
+  we said it's null — everything is null but needs reviewing with a different
+  context.
+
+## Strategy Evaluation & Bug-Hunting Rules
+
+- **Assume Code Failure First:** If a trading strategy returns "null," zero
+  alpha, or flatlines, your default assumption must be that YOUR backtest
+  script or data pipeline has a bug, not that the alpha idea is invalid.
+- **Mandatory Bug Review:** Before declaring a strategy a failure, you must
+  explicitly audit the code for: data alignment offsets, look-ahead bias,
+  incorrect indexing, data type mismatches, and silent `NaN` propagation.
+- **The "Pivot or Pivot" Rule:** If a strategy is genuinely invalid after a bug
+  audit, you are forbidden from saying "this doesn't work." You must
+  immediately alert that it's not working as expected and propose a structural
+  mutation or a completely distinct alternative angle towards the end goal.
+
+---
+
 ## Git / workflow
 
 - Develop on a feature branch; never commit straight to `main`.
