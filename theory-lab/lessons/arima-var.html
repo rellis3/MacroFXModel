@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARIMA &amp; Vector Autoregression (VAR) — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Applied Statistics &amp; Validation / ARIMA &amp; VAR</div>
+  <div class="tl-kicker">Applied Statistics &amp; Validation · Lesson 3 of 7</div>
+  <h1 class="tl-title">ARIMA &amp; Vector Autoregression (VAR)</h1>
+  <p class="tl-dek">AR(1) told you one series pulls back toward one mean. Real data is rarely that clean — shocks echo forward after the level has already reverted, raw price levels need differencing before "mean reversion" even applies, and in FX and macro almost nothing moves in isolation. ARIMA and VAR are the two directions single-series mean reversion generalizes in.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not yet built in this repo</span>
+    <span>~17 min read</span>
+    <span>Prereqs: Stationarity, ACF/PACF &amp; the AR(1) signature; Ornstein-Uhlenbeck &amp; Mean Reversion</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    The OU/AR(1) lesson gave you one number, \(\phi\), and one behavior: a
+    series either gets pulled back toward a mean \(\mu\) at speed
+    \(\theta = -\ln(\phi)/\Delta t\), or (if \(\phi \geq 1\)) it doesn't. That's
+    already a genuinely useful model — but it has two hard limits baked in.
+    First, it only remembers <em>one</em> lag: today depends on yesterday and
+    nothing further back. Second, it only describes <em>one</em> series in
+    isolation — there is no second variable in the equation for anything to
+    lead or lag.
+  </p>
+  <p>
+    Both limits show up directly in work already sitting in this repo. This
+    codebase's macro notes (<code>education/macro-deep-dives-notes.md</code>,
+    Lessons 2–3) build a detailed, dated, qualitative case that the DE–US
+    yield spread leads EUR/USD by roughly a trading session — but the argument
+    stops at "the spread moved first, then FX followed," a narrative reading
+    of a chart, not a fitted model. <code>credit-leadlag.html</code> in this
+    repo does the same kind of thing for a credit-spread/vol pair. Neither one
+    has a model with two variables in it that could answer, formally,
+    "how much does the spread's <em>own</em> past explain FX beyond what FX's
+    own history already explains, and does the reverse hold too?" AR(1)/OU
+    literally cannot represent that question — it has no second series.
+  </p>
+  <p>
+    ARIMA is the generalization that stays inside the single-series world but
+    relaxes the "only one lag, only remembers levels" restriction: more lags
+    (AR(<i>p</i>)), a second kind of memory for past <em>shocks</em> rather
+    than past <em>levels</em> (MA(<i>q</i>)), and a systematic recipe,
+    differencing, for handling series that aren't stationary to begin with
+    (the "I"). VAR is the orthogonal generalization: instead of widening how
+    many of one series's own lags you use, it widens how many <em>series</em>
+    you model jointly, so each variable's forecast can depend on lagged values
+    of every variable in the system — itself included. This lesson builds
+    ARIMA first, since it slots directly on top of the AR(1)/OU lesson, then
+    VAR — the tool this repo's yield-spread/FX question actually needs.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>More memory, and more posts to be pulled toward</h3>
+    <p>
+      Recall the OU rubber-band ball: pulled back toward a fixed post, jostled
+      by random noise. ARIMA adds two extra pieces of physics to that same
+      ball. First, give it a fading echo: a push applied a few instants ago
+      can still be nudging the ball right now, even though the push itself is
+      long gone and the ball has already drifted back near the post — that's
+      the MA term, a memory of past <em>forces</em>, distinct from the AR
+      term's memory of past <em>positions</em>. Second, sometimes the post
+      itself isn't standing still — it's slowly sliding across the floor. No
+      amount of rubber-band physics makes sense against a moving post; you
+      first have to track the post's own drift and subtract it out (difference
+      the series) before "pull back toward a fixed point" is even the right
+      description. That's the "I" — make the series stationary first, then do
+      the OU/AR(1)-style physics on what's left.
+    </p>
+    <p>
+      VAR asks a different kind of question. Forget one ball on one post — now
+      picture two balls, each tied to its own post, but <em>also</em> connected
+      to each other by a second elastic band. Tug ball X, and a moment later
+      ball Y feels a pull too, through that connecting band. Tug Y instead, and
+      X may or may not feel anything back — the connection can run one way,
+      both ways, or (if the band is slack) not really at all. You cannot tell
+      which of those is true by watching either ball on its own; you have to
+      model both balls, and both bands, together. That is exactly what a VAR
+      does, and exactly what a single-equation regression of "Y on lagged X"
+      alone cannot do — it can only ever look for the one arrow it was told to
+      look for.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A single-equation regression can only see one arrow — VAR estimates the whole system</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram of a two-variable VAR(1) system: box X and box Y, each with a self-loop labeled a11 and a22 respectively, an arrow from X to Y labeled a21, an arrow from Y to X labeled a12, and small noise arrows epsilon-1 and epsilon-2 entering each box.">
+      <defs>
+        <marker id="arrX2Y" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="var(--blue)"/></marker>
+        <marker id="arrY2X" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="var(--red)"/></marker>
+        <marker id="arrSelf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="var(--text3)"/></marker>
+      </defs>
+
+      <!-- boxes -->
+      <rect x="50" y="110" width="170" height="80" rx="10" style="fill:var(--s2);stroke:var(--blue);stroke-width:1.5"/>
+      <rect x="420" y="110" width="170" height="80" rx="10" style="fill:var(--s2);stroke:var(--red);stroke-width:1.5"/>
+      <text x="135" y="148" text-anchor="middle" font-size="22" font-weight="700" font-family="'DM Mono',monospace" fill="var(--blue)">X</text>
+      <text x="135" y="170" text-anchor="middle" font-size="10.5" fill="var(--text3)">e.g. yield spread</text>
+      <text x="505" y="148" text-anchor="middle" font-size="22" font-weight="700" font-family="'DM Mono',monospace" fill="var(--red)">Y</text>
+      <text x="505" y="170" text-anchor="middle" font-size="10.5" fill="var(--text3)">e.g. EUR/USD</text>
+
+      <!-- cross arrows -->
+      <path d="M220,128 C300,95 340,95 417,128" fill="none" style="stroke:var(--blue);stroke-width:2" marker-end="url(#arrX2Y)"/>
+      <text x="318" y="83" text-anchor="middle" font-size="13" font-family="'DM Mono',monospace" fill="var(--blue)">a21 (X leads Y)</text>
+
+      <path d="M417,174 C340,208 300,208 220,174" fill="none" style="stroke:var(--red);stroke-width:2" marker-end="url(#arrY2X)"/>
+      <text x="318" y="228" text-anchor="middle" font-size="13" font-family="'DM Mono',monospace" fill="var(--red)">a12 (Y leads X)</text>
+
+      <!-- self loops -->
+      <path d="M95,110 C80,72 155,72 172,110" fill="none" style="stroke:var(--text3);stroke-width:1.6" marker-end="url(#arrSelf)"/>
+      <text x="133" y="55" text-anchor="middle" font-size="12" font-family="'DM Mono',monospace" fill="var(--text3)">a11</text>
+
+      <path d="M465,110 C450,72 525,72 542,110" fill="none" style="stroke:var(--text3);stroke-width:1.6" marker-end="url(#arrSelf)"/>
+      <text x="503" y="55" text-anchor="middle" font-size="12" font-family="'DM Mono',monospace" fill="var(--text3)">a22</text>
+
+      <!-- noise -->
+      <path d="M105,270 L105,192" fill="none" style="stroke:var(--text3);stroke-width:1.4;stroke-dasharray:3,2" marker-end="url(#arrSelf)"/>
+      <text x="105" y="286" text-anchor="middle" font-size="12" font-family="'DM Mono',monospace" fill="var(--text3)">&#949;&#8321;&#7863;</text>
+      <path d="M535,270 L535,192" fill="none" style="stroke:var(--text3);stroke-width:1.4;stroke-dasharray:3,2" marker-end="url(#arrSelf)"/>
+      <text x="535" y="286" text-anchor="middle" font-size="12" font-family="'DM Mono',monospace" fill="var(--text3)">&#949;&#8322;&#7863;</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>X's past &#8594; Y (a21)</span>
+      <span><i style="background:var(--red)"></i>Y's past &#8594; X (a12)</span>
+      <span><i style="background:var(--text3)"></i>own-lag / noise</span>
+    </div>
+    <div class="tl-chart-caption">
+      Four coefficients, estimated jointly from one system, not four separate
+      regressions run in isolation. A single-equation regression of "FX on
+      lagged spread" can only ever report on the blue arrow, because that is
+      the only arrow it was set up to look for — it has no way to also check
+      whether the red arrow exists. A VAR estimates <b>both</b> directions at
+      once from the same data, which is exactly what's needed to answer "does
+      the spread lead FX, does FX lead the spread, or both" rather than
+      assuming the answer before you look.
+    </div>
+  </div>
+
+  <h2>The math, step by step</h2>
+
+  <h3>From AR(1) to a general AR(<i>p</i>)</h3>
+  <p>
+    Recall the discrete-time AR(1) form from the OU lesson:
+    \(X_t = c + \phi X_{t-1} + \epsilon_t\) — today's value depends on
+    <em>yesterday's</em> value and nothing further back. The natural
+    generalization is to let today depend on several past values, each with
+    its own coefficient:
+  </p>
+  <div class="tl-math">
+    \[ X_t = c + \phi_1 X_{t-1} + \phi_2 X_{t-2} + \cdots + \phi_p X_{t-p} + \epsilon_t \]
+  </div>
+  <p>
+    This is AR(<i>p</i>), an autoregressive model of order <i>p</i>. Each
+    \(\phi_i\) measures how much of the value from \(i\) periods ago still
+    explains today's value, <em>after</em> accounting for everything the
+    intervening lags already explain — it is not simply "does yesterday
+    correlate with \(i\) days ago," it is "does \(i\) days ago add anything
+    once you already know all the lags in between." That distinction is
+    exactly why you don't eyeball raw autocorrelations to choose \(p\); you
+    use the <strong>partial</strong> autocorrelation function (PACF) instead.
+    The Stationarity/ACF-PACF lesson's AR(1) signature — a single significant
+    spike in the PACF at lag 1, then a sharp drop to ~zero, alongside an ACF
+    that decays smoothly — generalizes directly: for a general AR(<i>p</i>),
+    the PACF shows significant spikes at lags \(1,\ldots,p\) and then cuts off
+    sharply, while the ACF keeps decaying gradually (geometrically, or as a
+    mix of decaying terms) well past lag \(p\). That PACF-cutoff / ACF-decay
+    contrast is the data-driven way to read off \(p\), rather than assuming
+    \(p=1\) because that's the case you happen to already know.
+  </p>
+
+  <h3>The other kind of memory: MA(<i>q</i>)</h3>
+  <p>
+    AR(<i>p</i>) only ever uses past <em>levels</em> of \(X\). But some series
+    carry a second, different kind of memory: a shock hits, and even once
+    whatever caused it has fully dissipated from the level of \(X\), the
+    shock's effect keeps echoing through the error structure for a few more
+    periods. Moving-average models formalize exactly that:
+  </p>
+  <div class="tl-math">
+    \[ X_t = \epsilon_t + \theta_1 \epsilon_{t-1} + \cdots + \theta_q \epsilon_{t-q} \]
+  </div>
+  <p>
+    Read the distinction carefully, because it's the crux of the whole ARMA
+    idea: an <strong>AR term</strong> says "today depends on where \(X\)
+    <em>was</em> \(i\) days ago" — a memory of past <em>levels</em>, the
+    rubber-band-to-a-post mechanism from the OU lesson. An
+    <strong>MA term</strong> says "today depends on how large the
+    <em>surprise</em> was \(j\) days ago" — a memory of past
+    <em>shocks</em>, which can persist even after the level itself has fully
+    reverted. Concretely: a news shock that fully passes through price by the
+    next bar, but whose noisy aftereffects (a temporary bid/ask imbalance, a
+    liquidity gap slowly refilling) keep nudging returns for one or two more
+    bars, is MA-like behavior. A price that sits persistently away from fair
+    value and slowly closes that gap over many days is AR-like behavior. Real
+    series can carry both mechanisms at once, which is exactly the motivation
+    for combining them rather than picking only one.
+  </p>
+  <p>
+    The identification signature flips for MA(<i>q</i>): its <strong>ACF</strong>
+    cuts off sharply after lag \(q\) (spikes at \(1,\ldots,q\), then ~zero),
+    while its PACF decays gradually. Put the four canonical shapes side by
+    side — PACF cutoff (pure AR), ACF cutoff (pure MA), both decaying
+    gradually (mixed ARMA), neither cutting off at all (probably still
+    non-stationary, more below) — and that four-way pattern-match, applied to
+    real ACF/PACF plots, <em>is</em> the "identification" step of the
+    Box-Jenkins methodology described next.
+  </p>
+
+  <h3>Combining: ARMA(<i>p</i>,<i>q</i>)</h3>
+  <div class="tl-math">
+    \[ X_t = c + \sum_{i=1}^{p} \phi_i X_{t-i} \; + \; \epsilon_t + \sum_{j=1}^{q} \theta_j \epsilon_{t-j} \]
+  </div>
+  <p>
+    ARMA blends both memories in one equation. The practical reason to allow
+    mixed models at all, rather than always fitting a pure AR or a pure MA, is
+    <strong>parsimony</strong>: a series that would need a high-order pure
+    AR(10) or MA(10) to fit well is often described just as accurately by a
+    low-order ARMA(1,1) — fewer parameters estimated from the same amount of
+    data, and fewer free parameters is directly less overfitting risk, the
+    exact concern this repo's minimal-DOF-first discipline is built around.
+    Box and Jenkins allowing \(q>0\) at all, rather than restricting attention
+    to ever-larger pure-AR models, is precisely this parsimony trade.
+  </p>
+
+  <h3>Handling non-stationary series: the "I" in ARIMA</h3>
+  <p>
+    Everything above — AR, MA, ARMA — assumes \(X_t\) is already stationary:
+    constant mean, constant variance, autocorrelation that depends only on lag,
+    not on calendar time (per the Stationarity lesson). Most raw financial
+    series fail that outright: a raw price level trends over time with no
+    fixed mean to revert to; in AR(1)/OU terms that's the \(\phi \geq 1\)
+    boundary case the OU lesson's Q4 flags as "the model doesn't apply here."
+    Box and Jenkins's fix is not to force a mean-reverting model onto a series
+    that structurally has no fixed mean — it's to <strong>difference the
+    series until it does</strong>:
+  </p>
+  <div class="tl-math">
+    \[ \Delta X_t = X_t - X_{t-1} \qquad (\text{first difference}, \ d=1); \quad \text{repeat} \to \Delta^d X_t \ \text{if needed} \]
+  </div>
+  <p>
+    "Differencing \(d\) times until stationary" is meant literally and
+    iteratively: check the raw series for stationarity (informally via ACF
+    decay behavior, formally via a unit-root test like the Augmented
+    Dickey-Fuller test — per the Stationarity lesson); if it fails, take one
+    difference and check again; repeat until it passes. Most daily financial
+    series need only \(d=1\) — returns/changes are typically far closer to
+    stationary than raw levels. \(d=2\) is uncommon and is usually a sign
+    something is off in the transformation choice rather than a genuine
+    property of the data.
+  </p>
+  <p>
+    Once the differenced series passes the stationarity check, you fit an
+    ordinary ARMA(<i>p</i>,<i>q</i>) to <em>that</em> differenced series — this
+    is precisely what ARIMA(\(p,d,q\)) means: <strong>I</strong>ntegrated
+    (differenced \(d\) times), <strong>A</strong>uto<strong>R</strong>egressive
+    (order \(p\)), <strong>M</strong>oving <strong>A</strong>verage (order
+    \(q\)):
+  </p>
+  <div class="tl-math">
+    \[ \Delta^d X_t = c + \sum_{i=1}^{p} \phi_i\,\Delta^d X_{t-i} \; + \; \epsilon_t + \sum_{j=1}^{q} \theta_j \epsilon_{t-j} \]
+  </div>
+  <p>
+    Crucially, the "identify \(p\) and \(q\) from the ACF/PACF shape" step
+    described above is always applied to the <em>differenced</em> series,
+    never the raw one. Running that identification on a non-stationary raw
+    series produces a meaningless, slowly-decaying ACF at every single lag —
+    the classic "everything looks significant forever" signature of
+    non-stationarity — rather than one of the clean cutoff/decay patterns
+    described above. Skipping this step and reading ACF/PACF shapes off a
+    trending raw price series is one of the most common ways an ARIMA fit
+    goes wrong before it even starts.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(p\)</td><td>AR order — how many past <em>levels</em> (lags of \(X\)) enter the equation. Identified from where the PACF of the (differenced) series cuts off.</td></tr>
+    <tr><td>\(d\)</td><td>Differencing (integration) order — how many times the raw series must be differenced before it's stationary. Identified via a stationarity check (ACF decay / unit-root test), not guessed.</td></tr>
+    <tr><td>\(q\)</td><td>MA order — how many past <em>shocks</em> (lags of \(\epsilon\)) enter the equation. Identified from where the ACF of the (differenced) series cuts off.</td></tr>
+    <tr><td>\(\phi_i\)</td><td>AR coefficients — weight on the level \(i\) periods back.</td></tr>
+    <tr><td>\(\theta_j\)</td><td>MA coefficients — weight on the shock \(j\) periods back.</td></tr>
+    <tr><td>\(\epsilon_t\)</td><td>The white-noise innovation at time \(t\) — mean zero, uncorrelated with its own past, the same conceptual "unpredictable shock" as \(dW_t\) in the OU lesson, in discrete time.</td></tr>
+  </table></div>
+
+  <p>
+    Put together, this is the <strong>Box-Jenkins methodology</strong>, a
+    three-step iterative recipe rather than a single formula: (1)
+    <strong>identification</strong> — difference until stationary, then
+    pattern-match the ACF/PACF shapes to propose candidate \(p,q\); (2)
+    <strong>estimation</strong> — fit the candidate model's coefficients (by
+    maximum likelihood or conditional sum of squares); (3)
+    <strong>diagnostic checking</strong> — the fitted model's residuals should
+    look like white noise, no leftover autocorrelation; a Ljung-Box test on
+    the residuals checks this formally. If diagnostics still show structure,
+    you go back to step 1 and revise \(p\) or \(q\) — the loop repeats until
+    the residuals are clean. ARIMA is the <em>model</em>; Box-Jenkins is the
+    <em>recipe</em> for choosing \(p,d,q\) from the data rather than guessing.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>Walking the Box-Jenkins identification loop</h3>
+    <p>
+      Suppose you take a candidate FX-related series and, following the
+      recipe above, first check it for stationarity and find it needs one
+      difference (\(d=1\)) — you work from daily <em>changes</em>, not raw
+      levels, from here on. You plot the ACF and PACF of that differenced
+      series. Suppose the PACF shows a single significant spike at lag 1 and
+      then drops to ~zero, while the ACF decays smoothly across many lags —
+      that is exactly the AR(1) signature already familiar from the OU
+      lesson, so the provisional model is ARIMA(1,1,0): one AR lag, one
+      difference, no MA term.
+    </p>
+    <p>
+      Now suppose, on a different candidate series, the PACF instead shows
+      significant spikes at <em>both</em> lag 1 <strong>and</strong> lag 2
+      before cutting off to ~zero at lag 3, with the ACF again decaying
+      smoothly. That's the AR(2) signature — the provisional model becomes
+      ARIMA(2,1,0). You estimate it, then run diagnostic checking: a
+      Ljung-Box test on the residuals still flags statistically significant
+      leftover autocorrelation at lag 3. That's the model telling you it
+      isn't done — you go back to step 1, and either extend to AR(3) or
+      consider a mixed ARMA term to explain the lag-3 residual structure more
+      parsimoniously, then re-estimate and re-check. This loop — identify,
+      estimate, check, revise — not a single one-shot fit, is what "doing
+      Box-Jenkins properly" means in practice.
+    </p>
+  </div>
+
+  <h3>Vector Autoregression (VAR): the multivariate extension</h3>
+  <p>
+    Everything above still describes <em>one</em> series' own history. But
+    the question this repo's macro notes actually pose — does the yield
+    spread lead EUR/USD, does EUR/USD lead the spread, or both — is
+    inherently about <em>two</em> series and how each one's past predicts the
+    other. VAR is the natural generalization: instead of regressing one series
+    on its own lags, you regress a whole <em>system</em> of \(k\) series, each
+    one on lagged values of <strong>itself and every other series</strong> in
+    the system. Written out explicitly for the two-variable VAR(1) case (one
+    lag, two series \(X\) and \(Y\) — say, the yield spread and EUR/USD):
+  </p>
+  <div class="tl-math">
+    \[ X_t = a_{11}X_{t-1} + a_{12}Y_{t-1} + \epsilon_{1,t} \]
+    \[ Y_t = a_{21}X_{t-1} + a_{22}Y_{t-1} + \epsilon_{2,t} \]
+  </div>
+  <p>
+    Read each coefficient by what it connects: \(a_{11}\) is \(X\)'s own AR(1)
+    coefficient (does \(X\)'s own past predict \(X\)), \(a_{22}\) is the same
+    for \(Y\). \(a_{12}\) is the cross-effect of <em>\(Y\)'s past on \(X\)</em>
+    — "does yesterday's FX help predict today's spread." \(a_{21}\) is the
+    cross-effect of <em>\(X\)'s past on \(Y\)</em> — "does yesterday's spread
+    help predict today's FX." All four coefficients (plus the two intercepts,
+    omitted above for clarity) are estimated <em>jointly</em>, from the same
+    two-equation system, which is exactly what lets a VAR reveal bidirectional
+    feedback — \(a_{12}\) and \(a_{21}\) both nonzero — that a single
+    regression equation, by construction, can never see, because it was only
+    ever set up to look for one direction. The general VAR(\(p\)) with \(k\)
+    series extends this the same way AR(1) extended to AR(<i>p</i>): each
+    series regressed on \(p\) lags of every series in the system, with a
+    coefficient matrix per lag rather than a single scalar \(\phi\).
+  </p>
+  <p>
+    This is exactly the right tool for the question this repo's Interest Rate
+    Parity lesson and <code>education/macro-deep-dives-notes.md</code>'s
+    Transatlantic Yield Spread lesson both raise but never formally test: does
+    the yield spread lead FX, does FX lead the spread, or does the influence
+    run both ways? A VAR fit on the two series doesn't just answer "are they
+    correlated" — it answers, coefficient by coefficient, which lags of which
+    series carry genuine incremental predictive power over the other.
+  </p>
+  <p>
+    The classic diagnostic built on top of a fitted VAR is
+    <strong>Granger causality testing</strong>. Concretely: to test whether
+    \(X\) "Granger-causes" \(Y\), you compare two regressions of \(Y\) — one
+    using only \(Y\)'s own lags (the restricted model), one adding \(X\)'s
+    lags too (the unrestricted model) — and run an F-test on whether the
+    added \(X\) lags improve the fit by a statistically significant amount.
+    If they do, \(X\) is said to "Granger-cause" \(Y\). It is essential to be
+    precise about what that phrase means and doesn't mean: Granger causality
+    is a strictly <strong>statistical, predictive</strong> notion — "does
+    knowing \(X\)'s past significantly improve forecasting \(Y\), beyond
+    \(Y\)'s own history" — and is explicitly <strong>not</strong> a claim of
+    true, structural, mechanistic causation. Clive Granger, who introduced the
+    test, was careful about exactly this distinction; a third, unobserved
+    common driver hitting both series with slightly different timing can
+    produce a "Granger-causes" result with no direct causal link between them
+    at all. It's a real and useful diagnostic — just a narrower claim than the
+    word "causality" in its name suggests.
+  </p>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    ARIMA is the standard classical baseline for single-series forecasting in
+    macro and finance — still the model quant desks fit first and compare
+    fancier approaches against. Per this repo's "name the benchmark before
+    claiming improvement" discipline, if a more elaborate model (an ML
+    forecaster, a regime-switching model) can't beat a properly Box-Jenkins-fit
+    ARIMA at the same horizon, the elaborate model hasn't yet demonstrated it
+    adds anything — ARIMA is the honest floor to clear, not a strawman to
+    wave past.
+  </p>
+  <p>
+    VAR's home turf is macroeconomics, where it displaced an older generation
+    of large simultaneous-equation models built on many hard-to-defend
+    structural assumptions about which variables affect which others and how.
+    Christopher Sims's "Macroeconomics and Reality" (1980) made exactly this
+    case: let a comparatively unrestricted VAR, estimated straight from the
+    data, reveal the dynamic relationships among a handful of macro variables
+    (output, prices, interest rates) via its fitted coefficients and impulse
+    response functions, rather than assuming the structure up front. That
+    paper is part of the body of work behind Sims's 2011 Nobel Memorial Prize.
+    In trading and macro research specifically, two-or-more-variable VARs are
+    the standard tool for exactly the lead-lag questions this repo already
+    raises informally: a policy-rate differential against a currency pair, a
+    credit spread against an equity index (this repo's own
+    <code>credit-leadlag.html</code> measures a lead-lag empirically without a
+    VAR/Granger structure underneath it yet), a term spread against a growth
+    proxy.
+  </p>
+
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Does the yield spread lead EUR/USD, or is it the other way around?</h3>
+    <p>
+      This is the exact question <code>education/macro-deep-dives-notes.md</code>'s
+      Transatlantic Yield Spread lesson poses and answers only qualitatively:
+      its Lesson 3 case study walks through a dated example (17–18 Feb 2026)
+      where the DE–US yield spread fell steadily on the Tuesday while EUR/USD
+      stayed range-bound, then EUR/USD sold off hard on the Wednesday — read
+      as "the spread led FX by about 24 hours." That's a real, useful
+      observation, but it's a single narrated instance, not a tested
+      relationship with a known lag and known direction.
+    </p>
+    <p>
+      A researcher wanting a genuine answer would fit a VAR(2) system on daily
+      changes in the 2-year DE–US yield spread and EUR/USD log returns (both
+      differenced/returned first, per the stationarity discussion above), then
+      run Granger causality tests in <strong>both</strong> directions: does
+      adding two days of lagged spread changes significantly improve
+      forecasting EUR/USD returns beyond EUR/USD's own history, and separately,
+      does adding two days of lagged EUR/USD returns significantly improve
+      forecasting the spread beyond its own history? Suppose the result comes
+      back asymmetric — the spread Granger-causes FX at a 2-day lag, but the
+      reverse test is not significant. That is a materially different, more
+      useful finding than "the spread sometimes seems to move first": it says
+      the lead-lag relationship has a specific direction and a specific
+      horizon, which would directly justify treating the spread as a genuine
+      <strong>leading</strong> indicator with an explicit ~2-day timing window
+      — size a signal off the spread and expect its FX effect to show up over
+      the following two trading days — rather than as a same-day coincident
+      confirmation check, changing exactly how a signal built on this
+      relationship should be timed and evaluated.
+    </p>
+    <p>
+      To be clear about what this is: the 2-day, one-directional result above
+      is an illustration of what a VAR + Granger causality test <em>could</em>
+      show, chosen to make the payoff concrete — not a result already produced
+      in this repo. No such fit has been run here yet; see the repo box below
+      for what that would actually require.
+    </p>
+  </div>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+    <h3>The formal upgrade from macro-deep-dives-notes.md's qualitative lead-lag case study</h3>
+    <p>
+      <code>education/macro-deep-dives-notes.md</code>'s Lesson 2
+      (Transatlantic Yield Spread) and Lesson 3 (the Feb 2026 live case study)
+      already build a detailed narrative case that the DE–US yield spread
+      leads EUR/USD, complete with a five-channel transmission-speed table and
+      a real dated example of an ~24-hour lead. Its own §3.5 "next steps"
+      section explicitly names <strong>rolling lag correlation</strong> and
+      <strong>Granger causality testing</strong> as the intended quantitative
+      follow-up to that qualitative case study — this lesson's VAR/Granger
+      causality section is exactly that follow-up, written out formally.
+      <code>credit-leadlag.html</code> in this repo does a structurally similar
+      thing for a different pair (credit spreads vs. risk-vol), again as an
+      empirical, descriptive lead-lag measurement without a VAR/Granger
+      structure underneath it.
+    </p>
+    <p>
+      <strong>To be explicit about what this is and isn't:</strong> none of
+      that VAR/Granger fitting has been built here. Doing it honestly would
+      need real daily (or intraday) yield-spread and FX data pulled and
+      aligned the way this repo's data-modeling discipline requires (matched
+      update cadence, no lookahead), a stationarity check before fitting —
+      most likely on daily <em>changes</em> in the spread and log-returns in
+      FX, not raw levels, exactly per this lesson's differencing step —
+      Granger tests run on rolling windows rather than one full-sample test
+      (since macro-deep-dives-notes.md's own §2.7 notes causality direction
+      can reverse in risk-off regimes), and the same true in-sample/
+      out-of-sample split with a non-trivial trade count this repo requires of
+      every other strategy before a Granger-causality finding becomes the
+      basis for a live signal's timing. This is currently a research candidate
+      for <code>LEGO_MODULES.md §2</code>, not a described feature.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where ARIMA/VAR fitting goes wrong in practice</h3>
+    <p>
+      <strong>Spurious regression on non-stationary series.</strong> Fitting
+      AR/VAR-family models directly to raw, trending price levels rather than
+      differenced/stationary series can produce impressively high \(R^2\) and
+      significant-looking coefficients that are pure statistical mirage — the
+      classic Granger &amp; Newbold (1974) "spurious regression" result. The
+      "I" step in ARIMA, and the equivalent stationarity check before fitting
+      a VAR, exists precisely to prevent this. Skipping it is the single most
+      common way this family of models goes wrong before estimation even
+      starts.
+    </p>
+    <p>
+      <strong>The curse of dimensionality in VAR.</strong> A VAR's parameter
+      count grows roughly as \(k^2 \times p\) (\(k\) series, \(p\) lags): a
+      VAR(4) across 5 series already needs on the order of 100 coefficients
+      (\(5 \times 5 \times 4\)). On daily FX/macro data, where a few thousand
+      usable observations is generous, that's a lot of parameters chasing not
+      much data — a direct overfitting risk this repo's minimal-DOF-first
+      discipline exists to catch. Adding more series to a VAR "just in case"
+      is not free; each one squares the parameter growth, not adds to it
+      linearly.
+    </p>
+    <p>
+      <strong>Granger causality is not true causation — restated precisely.</strong>
+      The test measures whether lagged \(X\) significantly improves
+      forecasting \(Y\) beyond \(Y\)'s own history — a statistical,
+      predictive-incremental-value claim, not a structural or mechanistic one.
+      A textbook failure mode: an unobserved common driver (say, a shared
+      macro-regime shock) hits both series with slightly different delays,
+      producing a clean "X Granger-causes Y" result with no direct causal
+      link between them at all. Treat a Granger result as "X's history has
+      genuine forecasting content for Y" — a real and useful finding — never
+      as "X makes Y happen."
+    </p>
+    <p>
+      <strong>Cointegrated series need a VECM, not a differenced VAR.</strong>
+      Two series that are each individually non-stationary but move together
+      in the long run (cointegrated — see the Cointegration lesson) lose that
+      long-run relationship if you naively difference both before fitting a
+      plain VAR. The correct tool there is a Vector Error-Correction Model
+      (VECM), which keeps the long-run equilibrium relationship as an explicit
+      term rather than differencing it away. Picking a plain differenced VAR
+      when the pair is actually cointegrated throws away real information the
+      data contains.
+    </p>
+    <p>
+      <strong>Regime dependence / parameter instability.</strong> Exactly the
+      caution <code>macro-deep-dives-notes.md</code> itself gives (§2.7's
+      breakdown modes — risk-off flights to safety, central-bank intervention,
+      extreme positioning, geopolitical shocks) applies directly to any
+      VAR/Granger fit: a lead-lag relationship estimated over one regime is
+      not guaranteed to hold in the next, and a single full-sample coefficient
+      or Granger-test result can hide a regime-dependent reversal exactly the
+      way a pooled null can hide a subset effect elsewhere in this repo's
+      validation discipline.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What's the practical difference between an AR term and an MA term in an ARMA model?</summary>
+    <div class="tl-answer">
+      An AR term ties today's value to past <em>levels</em> of the series
+      itself — a memory of where \(X\) has been, the same rubber-band-to-a-post
+      mechanism as OU/AR(1). An MA term ties today's value to past
+      <em>shocks</em> (innovations) — a memory of how large recent surprises
+      were, which can keep echoing through the current value even after the
+      level itself has already fully reverted. Practically, a persistently
+      mispriced series slowly closing a gap looks AR-like; a one-off shock
+      whose noisy aftereffects (a liquidity gap, a bid/ask imbalance) linger
+      for a bar or two after the level has already normalized looks MA-like.
+      The two mechanisms are structurally different and a real series can
+      carry both at once, which is why ARMA allows combining them.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why does ARIMA add a differencing step (the "I") that plain ARMA doesn't have, and how do you know how many times (d) to difference?</summary>
+    <div class="tl-answer">
+      AR, MA, and ARMA all assume the series is already stationary — constant
+      mean, constant variance, lag-dependent-only autocorrelation. Most raw
+      financial levels (a raw price, a raw log-price) fail that outright:
+      they have no fixed mean to revert to, the AR(1)/OU boundary case of
+      \(\phi \geq 1\). Differencing (\(X_t - X_{t-1}\), repeated \(d\) times)
+      removes that trend/non-stationarity so the ARMA machinery becomes valid
+      on what's left. You don't guess \(d\) — you check stationarity on the
+      raw series (ACF decay behavior, or formally a unit-root test like ADF);
+      if it fails, difference once and re-check; repeat until it passes. Most
+      daily financial series need only \(d=1\).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. You plot the ACF and PACF of a (already-differenced) series: the PACF shows two significant spikes and then cuts off to ~zero, while the ACF decays smoothly across many lags. What ARIMA order does that suggest, and why?</summary>
+    <div class="tl-answer">
+      That's the AR(2) signature: for a pure AR(<i>p</i>) process, the PACF
+      shows significant spikes at exactly lags \(1,\ldots,p\) and then cuts
+      off sharply, while the ACF decays gradually rather than cutting off —
+      here \(p=2\). Since the series was already differenced once (\(d=1\)
+      assumed from the setup) and there's no evidence of the MA
+      ACF-cuts-off-sharply signature, the provisional model is ARIMA(2,1,0) —
+      two AR lags, one difference, no MA term. This would still be checked
+      with diagnostic residual testing (e.g. Ljung-Box) before being accepted.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. In the two-variable VAR(1) system \(X_t = a_{11}X_{t-1}+a_{12}Y_{t-1}+\epsilon_{1,t}\), \(Y_t=a_{21}X_{t-1}+a_{22}Y_{t-1}+\epsilon_{2,t}\), what would it mean if \(a_{12}\) were estimated as essentially zero but \(a_{21}\) were large and statistically significant?</summary>
+    <div class="tl-answer">
+      \(a_{12}\) near zero means \(Y\)'s past has no meaningful predictive
+      power for \(X\) — knowing yesterday's \(Y\) doesn't help forecast
+      today's \(X\) beyond what \(X\)'s own past already explains. \(a_{21}\)
+      large and significant means \(X\)'s past strongly predicts \(Y\) —
+      knowing yesterday's \(X\) meaningfully improves forecasting today's
+      \(Y\). Together, that's a one-directional lead-lag relationship: \(X\)
+      leads \(Y\), not the reverse, and there's no feedback loop — exactly the
+      pattern the yield-spread scenario above illustrates (spread leads FX,
+      not the other way around).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why is "the yield spread Granger-causes EUR/USD" not the same statement as "the yield spread causes EUR/USD to move"?</summary>
+    <div class="tl-answer">
+      Granger causality is defined purely in predictive/statistical terms:
+      adding lagged spread values to a regression of EUR/USD significantly
+      improves the forecast beyond EUR/USD's own history. That is an
+      incremental-forecasting-value claim, not a claim about mechanism. It's
+      entirely possible for X to Granger-cause Y with no direct causal link at
+      all — a third, unobserved common driver (a shared macro shock, a
+      regime change) could hit both series with slightly different timing and
+      produce exactly this statistical signature. Granger causality is a real
+      and useful diagnostic for "does X's history carry information about Y's
+      future," but the word "causes" in its name is doing narrower work than
+      it sounds like — it says nothing about the true underlying mechanism.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why is a VAR fit across many lags and many series a bigger overfitting risk than a single-series AR(p) with the same number of lags?</summary>
+    <div class="tl-answer">
+      A single-series AR(<i>p</i>) has \(p\) coefficients (plus an intercept)
+      — parameter count scales linearly with the number of lags. A VAR with
+      \(k\) series and \(p\) lags needs a full \(k \times k\) coefficient
+      matrix per lag, so parameter count scales as \(k^2 \times p\) —
+      <em>quadratically</em> in the number of series. Adding a third or
+      fourth series to "see more of the system" therefore multiplies the
+      parameter count far faster than the data available to estimate it grows,
+      making a many-variable VAR a much faster route to overfitting than
+      simply adding more lags to one series.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>George E. P. Box &amp; Gwilym M. Jenkins, <em>Time Series Analysis: Forecasting and Control</em>, 1970 — the original Box-Jenkins ARIMA methodology, already cited in the Stationarity/ACF-PACF lesson.</li>
+    <li>Christopher A. Sims, "Macroeconomics and Reality," <em>Econometrica</em>, 1980 — the paper that introduced VAR into macroeconomics, part of the body of work behind Sims's 2011 Nobel Memorial Prize in Economic Sciences.</li>
+    <li>Clive W. J. Granger, "Investigating Causal Relations by Econometric Models and Cross-Spectral Methods," <em>Econometrica</em>, 1969 — the original Granger causality test, part of the body of work behind Granger's 2003 Nobel Memorial Prize.</li>
+    <li>C. W. J. Granger &amp; P. Newbold, "Spurious Regressions in Econometrics," <em>Journal of Econometrics</em>, 1974 — the classic warning about fitting AR/VAR-family models to non-stationary data without differencing first, directly motivating the "I" in ARIMA and the pitfalls above.</li>
+    <li>James D. Hamilton, <em>Time Series Analysis</em>, Princeton University Press, 1994 — already cited in the OU lesson; its ARIMA and VAR chapters are the standard graduate reference for everything covered here.</li>
+    <li><code>education/macro-deep-dives-notes.md</code> (Lessons 2–3) and <code>credit-leadlag.html</code> in this repo — the existing qualitative lead-lag work this lesson's VAR/Granger causality section formalizes.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="model-selection-aic-bic.html">← Model Selection: AIC, BIC &amp; Cross-Validation</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="copulas.html">Copulas &amp; Joint Tail Dependence →</a>
+  </div>
+</div>
+</body>
+</html>

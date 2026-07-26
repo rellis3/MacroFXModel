@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bootstrapping &amp; Monte Carlo — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Applied Statistics &amp; Validation / Bootstrapping &amp; Monte Carlo</div>
+  <div class="tl-kicker">Applied Statistics &amp; Validation · Lesson 7 of 7</div>
+  <h1 class="tl-title">Bootstrapping &amp; Monte Carlo Simulation</h1>
+  <p class="tl-dek">Two ways to manufacture "many possible outcomes" out of a single dataset — and the one, easy-to-miss reason neither one tells you whether a signal will work on data it has never seen.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — formalizes a rule this repo's CLAUDE.md already states in prose</span>
+    <span>~15 min read</span>
+    <span>Prereqs: Probability &amp; Random Variables primer</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    A backtest produces exactly one number for "the Sharpe ratio" and exactly
+    one equity curve, computed from exactly one historical sample. That
+    immediately raises an honest question: if history had unfolded even
+    slightly differently — a few different trades, a slightly different
+    ordering of the same market moves — how much would that Sharpe ratio have
+    moved around? Bootstrapping and Monte Carlo simulation are the two
+    standard tools for answering variants of that question without needing a
+    second, independent dataset. They are genuinely useful, widely used in
+    finance, and completely legitimate techniques. They are also, this
+    project's own <code>CLAUDE.md</code> states plainly, not a substitute for
+    testing whether a signal generalizes:
+  </p>
+  <p>
+    <em>"Don't let Monte Carlo stand in for OOS. Resampling from a strategy's
+    own realized return distribution shows the range of outcomes consistent
+    with that mean/std — it says nothing about whether the signal generalizes
+    to data it hasn't seen. It's a legitimate expectation-setting tool; label
+    it as that, not as robustness evidence."</em>
+  </p>
+  <p>
+    That sentence is asserted in this repo's house rules without derivation.
+    This lesson is the from-scratch statistical explanation of exactly why
+    it's correct — what the bootstrap and Monte Carlo simulation each
+    mechanically do, what question each one actually answers, and why that
+    question is a different question from "does this signal have real,
+    generalizable edge." Status badge above is set to CONCEPT rather than
+    ALREADY IN USE for a specific reason: this lesson formalizes a rule the
+    repo already follows in prose (the quoted paragraph above), rather than
+    describing a new brick or module.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>One bag of marbles, reached into many times — versus a dice machine run many times</h3>
+    <p>
+      Imagine you have exactly one bag of marbles pulled from some larger,
+      unknown population, and you want to know how much the average marble
+      weight in "a bag like this" would bounce around if you'd happened to
+      draw a different bag. You don't have access to more bags. The
+      bootstrap's trick is to pretend your one bag <em>is</em> the population:
+      reach into it, pull out a marble, note its weight, put it back, and
+      repeat until you've "filled" a new bag the same size as the original.
+      Compute the average weight of that new bag. Do this thousands of times
+      and you get thousands of averages — a whole distribution of plausible
+      averages, built entirely out of the one bag you actually have. That's
+      the bootstrap, and the same idea applies word-for-word to a strategy's
+      historical trades: reach into your one set of realized trades, with
+      replacement, over and over, and see how much the Sharpe ratio (or the
+      mean, or the max drawdown) wobbles across those reaches.
+    </p>
+    <p>
+      Monte Carlo simulation starts from a different place. Instead of
+      reaching into a bag of real observations, you build a small machine —
+      an assumed model, like a GARCH process or geometric Brownian motion,
+      fit with parameters estimated from your data — and you run that machine
+      thousands of times, each run generating a brand-new, entirely synthetic
+      path. Neither approach requires new, real, unseen data. That's exactly
+      their appeal, and exactly their limit: both describe what's plausible
+      <em>given what you already have</em> — the one sample, or the one fitted
+      model built from that sample — never what would happen against a market
+      condition that sample never contained.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    <strong>The setup.</strong> You observe one sample of \(n\) values,
+    \(x_1, x_2, \dots, x_n\) — daily returns, closed-trade P&amp;Ls, whatever
+    the unit of the strategy is — drawn from some true, unknown distribution
+    \(F\). You compute a statistic of interest, \(T\) — the sample mean, a
+    Sharpe ratio, a max drawdown, a hit rate — and you get one number,
+    \(T(x_1,\dots,x_n)\). The question that matters for judging that number is:
+    how much would \(T\) itself have varied if you'd drawn a different sample
+    of size \(n\) from \(F\)? That's asking for the <strong>sampling
+    distribution</strong> of \(T\) — and classically, answering it required
+    either assuming \(F\) is some known shape (normal, and lean on the CLT
+    from the Probability primer for an analytic standard error) or deriving a
+    statistic-specific formula by hand. Neither option exists cleanly for
+    something like a Sharpe ratio or a max drawdown computed on a short,
+    lumpy, possibly non-normal trade sequence.
+  </p>
+  <p>
+    <strong>Efron's bootstrap (1979).</strong> Bradley Efron's insight was to
+    stop trying to know \(F\) at all. Instead, treat the
+    <strong>empirical distribution</strong> of the sample you already have —
+    written \(\hat F_n\), which just means "put probability \(1/n\) on each of
+    your \(n\) observed values" — as a stand-in for the true \(F\):
+  </p>
+  <div class="tl-math">\[ \hat{F}_n(x) = \frac{1}{n}\sum_{i=1}^n \mathbb{1}(x_i \le x) \]</div>
+  <p>
+    A <strong>bootstrap resample</strong> is then built by drawing \(n\) new
+    observations independently from \(\hat F_n\) — which, mechanically, just
+    means drawing \(n\) values <strong>with replacement</strong> from your
+    original \(n\) observations, each one equally likely to be picked every
+    time:
+  </p>
+  <div class="tl-math">\[ x_1^{*},\, x_2^{*},\, \dots,\, x_n^{*} \;\overset{\text{iid}}{\sim}\; \hat{F}_n \]</div>
+  <p>
+    Because the draw is with replacement, a resample of size \(n\) will
+    typically contain some original observations more than once and leave
+    some out entirely — that's expected and is exactly what makes the
+    resample a genuinely different sample from the original, rather than a
+    reshuffled copy of it. Compute the same statistic \(T\) on this resample
+    to get one <strong>bootstrap replicate</strong>, \(T^*\). Repeat the whole
+    draw-and-compute step \(B\) times (in practice, \(B\) = 1,000 to 10,000 or
+    more, since it's cheap to do on a computer):
+  </p>
+  <div class="tl-math">\[ T^*_b = T\big(x_1^{*(b)}, \dots, x_n^{*(b)}\big), \qquad b = 1, \dots, B \]</div>
+  <p>
+    The collection \(\{T^*_1, \dots, T^*_B\}\) is the bootstrap's answer: an
+    approximation to the sampling distribution of \(T\), built entirely out of
+    the one dataset you actually had, with no assumption about \(F\)'s shape.
+    From that collection you get two of the most commonly reported outputs.
+    The <strong>bootstrap standard error</strong> is simply the standard
+    deviation of the replicates:
+  </p>
+  <div class="tl-math">\[ SE_{boot} = \sqrt{\frac{1}{B-1}\sum_{b=1}^{B}\big(T^*_b - \bar{T}^{*}\big)^2}\,, \qquad \bar{T}^{*} = \frac{1}{B}\sum_{b=1}^{B} T^*_b \]</div>
+  <p>
+    And a <strong>percentile confidence interval</strong> is read straight off
+    the sorted replicates — for a 95% interval, take the value at the 2.5th
+    percentile and the value at the 97.5th percentile of \(\{T^*_1,\dots,T^*_B\}\):
+  </p>
+  <div class="tl-math">\[ \text{95\% bootstrap CI} \;=\; \big[\, T^{*}_{(0.025)},\; T^{*}_{(0.975)} \,\big] \]</div>
+  <p>
+    Notice what this does and does not require. It requires only the original
+    \(n\) observations and a rule for computing \(T\) — it works identically
+    whether \(T\) is a simple mean with a known analytic formula or a Sharpe
+    ratio, a max-drawdown, or a Deflated Sharpe Ratio with no clean closed-form
+    sampling distribution at all. That generality, not needing to assume a
+    parametric shape for \(F\) or derive a statistic-specific formula, is the
+    entire reason the bootstrap became one of the most widely used tools in
+    applied statistics after 1979.
+  </p>
+
+  <p>
+    <strong>The block bootstrap — for data that isn't independent.</strong>
+    The plain bootstrap above assumes each \(x_i\) is drawn independently, and
+    that assumption is baked into the resampling step: picking \(x_7^{*}\) has
+    no effect on the chance of picking \(x_{12}^{*}\) next. Financial time
+    series routinely violate that assumption in exactly the way this repo's
+    other lessons describe elsewhere in this tier: adjacent observations carry
+    real serial correlation — volatility clustering, trending runs, mean-
+    reverting bounces — so treating each day or each trade as an
+    interchangeable, independent marble in the bag destroys information that
+    was actually in the data. Shuffling a volatility-clustered return series
+    into independent single-day draws and resampling from that shuffled bag
+    produces synthetic paths with the clustering structure erased, which
+    understates how much a real block of bad days can compound together — the
+    plain bootstrap's confidence interval ends up too narrow, quietly
+    overconfident, for exactly the reason a naive CLT-based calculation does
+    (a point this tier's ARIMA/VAR material develops further under
+    autocorrelation).
+  </p>
+  <p>
+    The fix, due to Hans Künsch (1989), is the <strong>block bootstrap</strong>:
+    instead of resampling single, independent observations, resample
+    contiguous <strong>blocks</strong> of \(l\) consecutive observations at a
+    time. Concretely: fix a block length \(l\) (say, 10 trading days), form
+    every overlapping contiguous block of that length from the original series
+    (\(\{x_1,\dots,x_l\}, \{x_2,\dots,x_{l+1}\}\), and so on), draw
+    \(k = \lceil n/l \rceil\) of those blocks with replacement, and concatenate
+    them (trimming to length \(n\)) to build one resampled series. Because
+    each block is a real, intact, consecutive run lifted straight out of
+    history, whatever short-term serial dependence existed inside that run —
+    the day-to-day correlation the plain bootstrap would have shuffled away —
+    survives inside the resample. Compute \(T\) on the resampled series exactly
+    as before, repeat \(B\) times, and read off \(SE_{boot}\) or the percentile
+    CI the same way. (A related refinement, Politis &amp; Romano's 1994
+    "stationary bootstrap," draws block lengths themselves at random from a
+    geometric distribution rather than fixing one \(l\), which avoids the
+    plain block bootstrap's sensitivity to picking exactly the right block
+    length — too short and the correlation still leaks out at the block
+    boundaries, too long and there are too few distinct blocks left to
+    resample meaningfully.)
+  </p>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(n\)</td><td>Sample size — the number of observations (returns, trades) in the one real dataset you have.</td></tr>
+      <tr><td>\(F\)</td><td>The true, unknown distribution the data was actually generated from.</td></tr>
+      <tr><td>\(\hat{F}_n\)</td><td>The <strong>empirical distribution</strong> of the observed sample — probability \(1/n\) on each observed value; the bootstrap's stand-in for \(F\).</td></tr>
+      <tr><td>\(x_i\)</td><td>One specific observed value in the original sample, \(i = 1,\dots,n\).</td></tr>
+      <tr><td>\(x_i^{*}\)</td><td>One value in a <strong>bootstrap resample</strong> — drawn with replacement from \(\{x_1,\dots,x_n\}\).</td></tr>
+      <tr><td>\(T\)</td><td>The statistic of interest computed on a sample — a mean, a Sharpe ratio, a max drawdown, a hit rate.</td></tr>
+      <tr><td>\(T^*_b\)</td><td>The value of \(T\) computed on the \(b\)-th bootstrap resample (a <strong>replicate</strong>).</td></tr>
+      <tr><td>\(B\)</td><td>Number of bootstrap resamples drawn, typically 1,000–10,000+.</td></tr>
+      <tr><td>\(SE_{boot}\)</td><td>The <strong>bootstrap standard error</strong> — the standard deviation of \(\{T^*_1,\dots,T^*_B\}\).</td></tr>
+      <tr><td>\(l\)</td><td>Block length in a <strong>block bootstrap</strong> — the number of contiguous, consecutive observations resampled together as one unit.</td></tr>
+      <tr><td>\(\hat\theta\)</td><td>Parameters fitted to an assumed model (e.g. GARCH, GBM) from the observed data, used to generate Monte Carlo paths.</td></tr>
+    </table>
+  </div>
+
+  <p>
+    <strong>Monte Carlo simulation.</strong> The bootstrap resamples the
+    <em>actual observed values</em>, over and over, with replacement. Monte
+    Carlo simulation is a different move: instead of resampling real
+    observations, fit a parametric model to the data — a GARCH(1,1) process
+    for volatility, geometric Brownian motion for a price path, an assumed
+    return distribution with an estimated mean and standard deviation — and
+    then generate brand-new, entirely synthetic observations directly from
+    that fitted model, using freshly drawn random innovations at each step:
+  </p>
+  <div class="tl-math">\[ r_t^{(sim)} = \hat\mu + \hat\sigma_t \, z_t, \qquad z_t \overset{\text{iid}}{\sim} \mathcal{N}(0,1) \ \text{(or a fitted residual distribution)} \]</div>
+  <p>
+    Running that recursion forward many times, independently, produces many
+    synthetic return/price/equity paths, \(S^{(1)}, S^{(2)}, \dots, S^{(M)}\),
+    each one a plausible trajectory <em>under the assumed model</em>. Looking
+    across those \(M\) paths at the spread of terminal outcomes, drawdowns, or
+    any other path-dependent statistic gives a Monte Carlo estimate of the
+    range of outcomes the model considers plausible — exactly analogous to
+    what the bootstrap's replicates give you, but generated from a fitted
+    model's assumed mechanics rather than resampled from the raw data itself.
+  </p>
+  <p>
+    <strong>The critical distinction — read this paragraph twice.</strong>
+    Both techniques answer some version of the same question: "given what I
+    already have — one historical sample, or one fitted model built from that
+    sample — what range of outcomes is consistent with it?" That is a real,
+    useful, well-posed statistical question, and both tools answer it validly.
+    It is <em>not</em> the same question as "will this signal work on a
+    market, or a time period, it has never seen?" Every bootstrap resample is
+    built from the same \(n\) original observations, generated by the same
+    signal, over the same historical period — reshuffling and re-drawing from
+    that fixed pool cannot create information about a regime that pool never
+    contained. Every Monte Carlo path is generated from a model whose
+    parameters were themselves estimated from that same historical sample —
+    if the fitted \(\hat\mu\), \(\hat\sigma\), or GARCH parameters are wrong
+    for tomorrow's regime, every synthetic path inherits that same
+    mis-specification, no matter how many thousands of paths you generate.
+    Neither procedure has any mechanism for learning about data outside the
+    sample it started from. That is exactly why this repo's <code>CLAUDE.md</code>
+    states the rule quoted at the top of this lesson, and the rest of this
+    page exists to make precisely why that rule is true, not just asserted,
+    fully explicit.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A historical equity curve fanning into simulated forward paths</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A solid blue historical equity curve running into a cone of many faint amber simulated forward paths spreading out to the right, like a Monte Carlo fan chart">
+      <line x1="10" y1="250" x2="630" y2="250" stroke="var(--border)" stroke-width="1.5"/>
+      <line x1="260" y1="15" x2="260" y2="245" stroke="var(--border2)" stroke-width="1.5" stroke-dasharray="4 4"/>
+
+      <!-- fan of simulated forward paths, drawn first so the historical line sits on top at the seam -->
+      <polyline points="260,130 350,95 440,68 530,48 620,32" style="fill:none;stroke:var(--amber);stroke-width:1.3;opacity:.30"/>
+      <polyline points="260,130 350,100 440,78 530,60 620,46" style="fill:none;stroke:var(--amber);stroke-width:1.3;opacity:.30"/>
+      <polyline points="260,130 350,108 440,90 530,74 620,60" style="fill:none;stroke:var(--amber);stroke-width:1.3;opacity:.35"/>
+      <polyline points="260,130 350,115 440,102 530,90 620,78" style="fill:none;stroke:var(--amber);stroke-width:1.3;opacity:.35"/>
+      <polyline points="260,130 350,120 440,112 530,102 620,92" style="fill:none;stroke:var(--amber);stroke-width:1.3;opacity:.4"/>
+      <polyline points="260,130 350,124 440,120 530,114 620,106" style="fill:none;stroke:var(--amber);stroke-width:1.3;opacity:.4"/>
+      <polyline points="260,130 350,126 440,124 530,120 620,118" style="fill:none;stroke:var(--amber);stroke-width:2;opacity:.8"/>
+      <polyline points="260,130 350,132 440,136 530,138 620,140" style="fill:none;stroke:var(--amber);stroke-width:1.3;opacity:.4"/>
+      <polyline points="260,130 350,138 440,148 530,158 620,168" style="fill:none;stroke:var(--amber);stroke-width:1.3;opacity:.35"/>
+      <polyline points="260,130 350,145 440,162 530,180 620,196" style="fill:none;stroke:var(--amber);stroke-width:1.3;opacity:.35"/>
+      <polyline points="260,130 350,152 440,178 530,204 620,222" style="fill:none;stroke:var(--amber);stroke-width:1.3;opacity:.30"/>
+      <polyline points="260,130 350,160 440,195 530,222 620,238" style="fill:none;stroke:var(--amber);stroke-width:1.3;opacity:.30"/>
+
+      <!-- historical, realized equity curve -->
+      <polyline points="20,200 60,190 100,175 140,182 180,155 220,145 260,130" style="fill:none;stroke:var(--blue);stroke-width:3" stroke-linejoin="round"/>
+      <circle cx="260" cy="130" r="4" style="fill:var(--blue)"/>
+
+      <text x="120" y="228" text-anchor="middle" font-size="11" fill="var(--text2)">historical (realized)</text>
+      <text x="440" y="20" text-anchor="middle" font-size="11" fill="var(--text2)">10,000 simulated forward paths</text>
+      <text x="260" y="12" text-anchor="middle" font-size="10" fill="var(--text3)">today / simulation start</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i> realized historical equity — one real sample</span>
+      <span><i style="background:var(--amber)"></i> bootstrap / Monte Carlo paths built from that same sample</span>
+    </div>
+    <div class="tl-chart-caption">Schematic, not simulated data. Every faint amber path in the cone is generated from the same historical sample (or a model fitted to it) that produced the blue line — the cone's width is a genuine, useful measure of variability <strong>within</strong> that sample's own statistical character (its realized mean, volatility, serial correlation), not a measure of how the strategy would perform under market conditions, regimes, or a future period that sample never contained. A wide cone and a narrow cone are both compatible with a signal that has zero out-of-sample edge.</div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>Bootstrapping the mean of five trade returns, by hand</h3>
+    <p>
+      Suppose a strategy has closed exactly five trades, with percentage
+      returns \(x = \{2,\, -1,\, 3,\, -2,\, 1\}\) (in percent). The sample mean
+      is:
+    </p>
+    <div class="tl-math">\[ \bar{x} = \frac{2 + (-1) + 3 + (-2) + 1}{5} = \frac{3}{5} = 0.6 \]</div>
+    <p>
+      That's the one number a backtest report would show: "average trade
+      return = 0.6%." The bootstrap asks: how much would that 0.6% wobble if
+      the five trades had come out slightly differently? Draw three resamples
+      by hand, each one five values pulled with replacement from the same
+      five original numbers:
+    </p>
+    <div class="tl-math">
+      \[
+      \begin{aligned}
+      x^{*(1)} &= \{2,\, 2,\, -1,\, 1,\, 3\} &&\Rightarrow \bar{x}^{*(1)} = \tfrac{2+2-1+1+3}{5} = \tfrac{7}{5} = 1.4 \\
+      x^{*(2)} &= \{-2,\, -2,\, 1,\, -1,\, -2\} &&\Rightarrow \bar{x}^{*(2)} = \tfrac{-2-2+1-1-2}{5} = \tfrac{-6}{5} = -1.2 \\
+      x^{*(3)} &= \{3,\, 1,\, 3,\, 2,\, -1\} &&\Rightarrow \bar{x}^{*(3)} = \tfrac{3+1+3+2-1}{5} = \tfrac{8}{5} = 1.6
+      \end{aligned}
+      \]
+    </div>
+    <p>
+      Notice each resample reuses the same five original values — nothing new
+      has entered — yet the resample means already range from \(-1.2\) to
+      \(1.6\), swinging well past the original \(0.6\) in both directions,
+      just from which values happened to repeat and which happened to be
+      left out. In practice you would not stop at three: you would draw
+      \(B = 10{,}000\) such resamples, collect all 10,000 resample means
+      \(\bar{x}^{*}_1, \dots, \bar{x}^{*}_{10{,}000}\), and then read off
+      \(SE_{boot}\) as the standard deviation of that whole collection, and a
+      95% confidence interval as its 2.5th and 97.5th percentiles. The exact
+      same mechanical procedure, with \(T\) swapped from "sample mean" to
+      "Sharpe ratio computed on the resampled sequence of trades," is precisely
+      how a bootstrap confidence interval for a strategy's Sharpe ratio is
+      built — and precisely the technique the Repo Connection box below warns
+      against over-trusting. Five trades is a deliberately extreme example to
+      make the mechanism vivid; the same logic, and the same limitation, apply
+      identically whether \(n\) is 5 or 500 — resampling can characterize the
+      spread <em>within</em> the sample you have, but it cannot conjure a
+      sixth, genuinely new trade that never happened.
+    </p>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    <strong>Performance-metric confidence intervals.</strong> Efron &amp;
+    Tibshirani's own textbook (Further Reading) popularized using the
+    bootstrap for exactly the metrics that don't have clean analytic sampling
+    distributions — a Sharpe ratio, a max drawdown, a hit rate on a modest
+    number of trades. A bootstrap CI around a reported Sharpe ratio is a
+    standard, legitimate risk-desk request, precisely because it's honest
+    about sampling uncertainty in a way a single point estimate never is.
+    <strong>Monte Carlo option pricing and risk</strong> is one of finance's
+    oldest applied uses of simulation: pricing a path-dependent derivative (an
+    Asian option, a barrier option) by simulating thousands of price paths
+    under a risk-neutral process and averaging the discounted payoff, and
+    computing portfolio Value-at-Risk by simulating thousands of joint
+    scenarios across a book's risk factors rather than relying on a single
+    closed-form formula. <strong>Block bootstrapping in econometrics</strong>
+    is the standard fix wherever a time series' own serial correlation would
+    otherwise be silently discarded — bootstrapping the standard errors of a
+    fitted GARCH or ARIMA coefficient, for instance, needs the block variant
+    for exactly the reason described above. <strong>Sequence-of-returns /
+    retirement planning</strong> is a widely visible use of Monte Carlo
+    outside trading proper: simulating thousands of possible future market
+    paths to show a saver the range of retirement-portfolio outcomes
+    consistent with an assumed return and volatility — a legitimate
+    expectation-setting exercise that, just as CLAUDE.md's rule states, is
+    never sold as a guarantee the future will resemble any one simulated path.
+  </p>
+
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>The reassuringly narrow bootstrap interval that proved nothing about tomorrow</h3>
+    <p>
+      A researcher backtests a strategy and reports an attractive Sharpe
+      ratio. Wanting to check how solid that number is, they bootstrap the
+      strategy's trade returns 10,000 times, compute the Sharpe ratio on each
+      resample, and get back a tight, reassuring-looking 95% confidence
+      interval — the resampled Sharpe barely moves across all 10,000 draws.
+      "The range of outcomes is narrow," the researcher concludes, "this looks
+      robust."
+    </p>
+    <p>
+      It doesn't, or at least not in the way that conclusion implies. Every
+      one of those 10,000 resamples was built by reaching into the exact same
+      bag of trades — generated by the exact same signal, over the exact same
+      historical period. A tight bootstrap interval is genuine evidence that
+      the <em>sample</em> is internally consistent: the trades don't include
+      one or two outlier events so extreme that resampling them in and out
+      wildly swings the Sharpe ratio. That is a real, useful, and legitimately
+      reassuring fact about data quality and outlier sensitivity. It is a
+      completely different fact from whether the <em>signal</em> that
+      generated those trades would produce anything like that same Sharpe
+      ratio on a market, or a regime, or a time period it has never traded
+      through — a question the bootstrap has no way to touch, because it
+      never leaves the historical sample it started from.
+    </p>
+    <p>
+      A narrow, confidence-inspiring bootstrap band and genuine out-of-sample
+      validity are two different questions with two different answers, and
+      conflating them — treating "the resample is stable" as if it meant "the
+      strategy is robust" — is a documented, easy-to-fall-into way backtests
+      mislead their own authors. The fix is not to distrust the bootstrap; the
+      fix is to be precise about which of the two questions it just answered.
+    </p>
+  </div>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>The rule this lesson formalizes, and the tool that actually tests generalization</h3>
+    <p>
+      This repo's <code>CLAUDE.md</code> states, in the "Backtest build
+      discipline" section:
+    </p>
+    <p>
+      <em>"Don't let Monte Carlo stand in for OOS. Resampling from a strategy's
+      own realized return distribution shows the range of outcomes consistent
+      with that mean/std — it says nothing about whether the signal
+      generalizes to data it hasn't seen. It's a legitimate expectation-setting
+      tool; label it as that, not as robustness evidence."</em>
+    </p>
+    <p>
+      Everything above this box is the from-scratch statistical justification
+      for why that sentence is true rather than merely asserted: a bootstrap
+      resample and a Monte Carlo path are both, mechanically, incapable of
+      containing information the original sample or its fitted model didn't
+      already have. Neither can substitute for what this repo's Lego Principle
+      #5 actually requires — judging a strategy against a <strong>true
+      in-sample / out-of-sample split</strong>, with a non-trivial OOS trade
+      count, on data the signal was never fit to. This tier's Walk-Forward
+      Validation &amp; Purged Cross-Validation lesson is the tool built to test
+      exactly that different question — repeatedly re-fitting on one stretch
+      of real history and testing, un-touched, on a later stretch it never
+      saw, with a purge gap to prevent leakage across the split. Bootstrapping
+      and Monte Carlo cannot stand in for that, no matter how many replicates
+      are run, because they were never built to touch data outside the
+      original sample in the first place. Use them for exactly what they're
+      good at — an honest confidence interval, an expectation-setting
+      distribution of outcomes given what you already believe — and reach for
+      walk-forward validation, not a bigger \(B\), whenever the actual question
+      is generalization.
+    </p>
+    <p>
+      Zooming out: this is the seventh and final lesson in this Applied
+      Statistics &amp; Validation tier, and read in order the seven lessons
+      trace one continuous validation toolkit rather than seven unrelated
+      topics — checking a fitted model's residuals for autocorrelation and
+      heteroskedasticity, choosing between competing models honestly rather
+      than by in-sample fit alone, modeling a time series' own dynamics with
+      ARIMA/VAR, capturing how markets move together beyond a single
+      correlation number with copulas, judging a strategy's risk-adjusted
+      return with a Sharpe ratio corrected for multiple testing (the Deflated
+      Sharpe Ratio), testing whether a signal survives on data it never saw
+      with walk-forward and purged cross-validation, and — here — being
+      precise about what resampling your own results can and cannot tell you
+      once that OOS test is done. None of the seven replaces the others; each
+      one closes a different way a backtest can quietly lie to its author.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where these ideas quietly get misapplied</h3>
+    <p>
+      <strong>Reporting a tight bootstrap or Monte Carlo interval as
+      "robustness evidence."</strong> This is the scenario above, generalized:
+      a narrow interval says the original sample is internally consistent, not
+      that the underlying signal has out-of-sample edge. State plainly which
+      claim a given number supports — sample consistency, or generalization —
+      and never let the first stand in for the second.
+    </p>
+    <p>
+      <strong>Using a plain (i.i.d.) bootstrap on serially correlated data.</strong>
+      Resampling single, independent observations from a return series that
+      exhibits volatility clustering or autocorrelation destroys exactly the
+      dependence structure that mattered, and understates the true variability
+      — the resulting confidence interval looks tighter and more confident
+      than it should be, for the same underlying reason a naive CLT-based
+      standard error is too optimistic on dependent data. Use the block
+      bootstrap (or the stationary bootstrap) for time series, and choose a
+      block length long enough to capture the relevant serial correlation.
+    </p>
+    <p>
+      <strong>Treating a Monte Carlo model's assumptions as settled fact.</strong>
+      Every synthetic path in a Monte Carlo simulation inherits whatever
+      mis-specification exists in the fitted model — a GARCH model that
+      understates tail risk, a GBM assumption that ignores jumps, drift or
+      volatility parameters estimated over a calm period. Thousands of paths
+      generated from a wrong model produce a precise-looking, wrong answer;
+      more simulated paths reduce simulation noise around the model's own
+      implied distribution, they do not correct the model's mis-specification.
+    </p>
+    <p>
+      <strong>Expecting the bootstrap to manufacture information that isn't in
+      a small original sample.</strong> Resampling 20 real trades 10,000 times
+      produces 10,000 numbers, but every one of them is built from the same 20
+      underlying data points. A small \(n\) means the empirical distribution
+      \(\hat F_n\) is itself a noisy, coarse approximation of the true \(F\) —
+      the bootstrap faithfully reflects the uncertainty already present in a
+      small sample, it cannot shrink that uncertainty below what 20 real
+      observations can actually support, however large \(B\) is set.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why does bootstrapping a strategy's own historical trades NOT prove it will work on new, unseen data?</summary>
+    <div class="tl-answer">
+      Because every bootstrap resample is built by drawing, with replacement,
+      from that same fixed set of original trades — generated by the same
+      signal, over the same historical period. No amount of reshuffling or
+      re-drawing from a fixed pool of observations can introduce information
+      about a market condition, regime, or time period that pool never
+      contained. The bootstrap characterizes sampling variability
+      <em>within</em> the sample you have; it has no mechanism for testing
+      generalization to data outside that sample, which is a structurally
+      different question that only a true out-of-sample test (walk-forward
+      validation, a held-out period the signal was never fit to) can answer.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why do you need a BLOCK bootstrap instead of a plain bootstrap for time series data?</summary>
+    <div class="tl-answer">
+      The plain bootstrap draws single observations independently, which
+      implicitly assumes the original observations were independent of each
+      other. Financial time series routinely violate that assumption —
+      volatility clustering and other serial correlation mean adjacent
+      observations carry real information about each other. Resampling single
+      points independently shuffles that structure away, so the resampled
+      series understates how a real, contiguous run of bad days can compound —
+      producing a confidence interval that's falsely narrow. The block
+      bootstrap resamples contiguous blocks of consecutive observations
+      instead of single independent points, so whatever short-term serial
+      dependence existed inside each block survives intact in the resample.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What is Monte Carlo simulation actually simulating, and what does that make it a legitimate test of — versus not a test of?</summary>
+    <div class="tl-answer">
+      Monte Carlo simulation generates synthetic paths from an assumed,
+      fitted model (e.g. GARCH or GBM with parameters estimated from the
+      historical data) rather than resampling the real observations directly.
+      It is a legitimate test of "what range of outcomes is plausible if the
+      fitted model's assumptions hold" — an expectation-setting exercise. It
+      is not a test of whether the model's assumptions themselves are correct
+      for the future, and it is not a test of whether the underlying trading
+      signal generalizes to conditions the historical data used to fit the
+      model never contained — the model was estimated from the same sample
+      the strategy was built and tested on.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. If you bootstrap 10,000 resamples from only 20 original trades, what have you actually learned, and what's the limit of what you can learn?</summary>
+    <div class="tl-answer">
+      You've learned an approximation of how much a statistic (say, the mean
+      return or the Sharpe ratio) would plausibly vary if drawn repeatedly
+      from a population that looks like those 20 trades — a genuine,
+      useful measure of sampling uncertainty given a small sample. The limit
+      is that all 10,000 resamples are still built from the same 20
+      underlying data points; the empirical distribution of 20 observations
+      is itself a coarse, noisy stand-in for the true underlying distribution,
+      and no amount of resampling can shrink that underlying coarseness — it
+      is not equivalent to having collected 10,000 (or even 1,000) genuinely
+      new, independent trades.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why would you prefer a bootstrap standard error over an analytic, CLT-based standard error for something like a Sharpe ratio or a max drawdown?</summary>
+    <div class="tl-answer">
+      A CLT-based analytic standard error typically requires assuming a
+      specific distributional shape (often normality) and, for many
+      statistics of practical interest — a Sharpe ratio, a max drawdown, a hit
+      rate on a modest trade count — a clean closed-form formula for the
+      sampling distribution simply doesn't exist, or exists only under
+      assumptions that don't hold for real, often skewed or fat-tailed,
+      trading returns. The bootstrap sidesteps both problems: it makes no
+      distributional assumption about the underlying data and works
+      identically regardless of how complicated the statistic \(T\) is,
+      because it never needs an analytic formula for T's sampling
+      distribution — it estimates that distribution empirically, by
+      resampling.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Given CLAUDE.md's rule, what tool should actually be used to test whether a signal generalizes, and how does it differ structurally from bootstrapping or Monte Carlo?</summary>
+    <div class="tl-answer">
+      Walk-forward validation with a purged cross-validation split (this
+      tier's previous lesson) is the tool built for that question. It differs
+      structurally in exactly the way that matters: instead of resampling or
+      simulating from the same historical sample the signal was fit to, it
+      splits real history into a fitting period and a genuinely separate,
+      later testing period (with a purge gap to prevent information leaking
+      across the boundary), refits or re-runs the strategy only on the
+      fitting side, and evaluates performance strictly on the held-out side
+      the strategy never touched. Bootstrapping and Monte Carlo never leave
+      the original sample; walk-forward validation's entire purpose is to
+      test performance on data structurally outside it.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Bradley Efron, "Bootstrap Methods: Another Look at the Jackknife," <em>Annals of Statistics</em>, 1979 — the original paper introducing the bootstrap.</li>
+    <li>Bradley Efron &amp; Robert J. Tibshirani, <em>An Introduction to the Bootstrap</em>, Chapman &amp; Hall/CRC, 1993 — the standard textbook treatment, covering standard errors, confidence intervals, and the bootstrap's theoretical justification in far more depth than this lesson.</li>
+    <li>Hans R. Künsch, "The Jackknife and the Bootstrap for General Stationary Observations," <em>Annals of Statistics</em>, 1989 — the original moving block bootstrap for dependent, time-series data.</li>
+    <li>Dimitris N. Politis &amp; Joseph P. Romano, "The Stationary Bootstrap," <em>Journal of the American Statistical Association</em>, 1994 — the random block-length refinement of the block bootstrap.</li>
+    <li>Oliver Ledoit &amp; Michael Wolf, "Robust Performance Hypothesis Testing with the Sharpe Ratio," <em>Journal of Empirical Finance</em>, 2008 — a direct finance application of resampling-based inference to Sharpe ratio comparisons, including the serial-correlation caveats covered above.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="walk-forward-purged-cv.html">← Walk-Forward Validation &amp; Purged Cross-Validation</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+</body>
+</html>

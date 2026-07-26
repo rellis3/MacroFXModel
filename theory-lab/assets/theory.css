@@ -47,6 +47,7 @@ code{font-family:'DM Mono',monospace;background:var(--s2);border:1px solid var(-
 .tl-box.pitfall{border-left:3px solid var(--red)}
 .tl-box.repo{border-left:3px solid var(--green)}
 .tl-box.example{border-left:3px solid var(--purple)}
+.tl-box.scenario{border-left:3px solid var(--amber)}
 .tl-box h3{margin-top:0}
 .tl-box-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
 
@@ -104,6 +105,8 @@ code{font-family:'DM Mono',monospace;background:var(--s2);border:1px solid var(-
 /* primer-tier hub card accent */
 .tl-cat.primer .tl-grid .tl-card{border-color:var(--purple-bd)}
 .tl-cat.primer .tl-grid .tl-card:hover{border-color:var(--purple)}
+.tl-cat.deeper .tl-grid .tl-card{border-color:var(--green-bd)}
+.tl-cat.deeper .tl-grid .tl-card:hover{border-color:var(--green)}
 
 /* interactive chart controls — vanilla JS, no libs */
 .tl-chart.interactive{border-color:var(--blue-bd)}

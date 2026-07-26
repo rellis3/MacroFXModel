@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Purchasing Power Parity — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Macro &amp; FX Theory / Purchasing Power Parity</div>
+  <div class="tl-kicker">Macro &amp; FX Theory · Lesson 2 of 3</div>
+  <h1 class="tl-title">Purchasing Power Parity</h1>
+  <p class="tl-dek">The Law of One Price, applied to whole economies — a real and well-documented anchor for where a currency "should" sit over years, and a famously bad clock for when it gets there.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — a long-run anchor, not a timing signal</span>
+    <span>~15 min read</span>
+    <span>Prereqs: Interest Rate Parity</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+  The previous lesson, Interest Rate Parity, showed that the forward FX rate is pinned down almost
+  mechanically by two interest rates and a no-arbitrage condition — a relationship that holds to the
+  penny, continuously, because it's enforced by riskless covered arbitrage. Purchasing Power Parity
+  (PPP) is the other half of classical international finance, and it could not be more different in
+  character. PPP is also a "prices should equalize across currencies" idea, but instead of anchoring
+  a forward rate to interest rates, it anchors the <em>spot</em> rate to relative price levels — the
+  cost of a common basket of goods in each country. And unlike covered interest parity, nothing forces
+  PPP to hold quickly. There is no riskless arbitrage that closes a PPP gap in seconds the way there is
+  for covered interest parity; closing it requires real goods to physically flow, real wages and
+  prices to adjust, and real capital to reallocate, all of which take years. PPP is one of the oldest
+  and best-documented ideas in international economics, and it is also one of the clearest cases in
+  this entire Theory Lab where "the theory is basically right over the long run" and "the theory is
+  nearly useless for timing a trade" are both true at once. Holding those two facts together, without
+  collapsing one into the other, is the actual point of this lesson.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>If a coffee costs $3 in the US and £3 in the UK, something has to give</h3>
+    <p>
+    Imagine, ridiculously, that an identical cup of coffee — same beans, same size, same everything —
+    costs exactly $3 in New York and exactly £3 in London, and the GBP/USD exchange rate is 1.50 (one
+    pound buys $1.50). Converting the London coffee's price into dollars, it costs $4.50 — 50% more
+    than the New York coffee, for a genuinely identical good. That's the <strong>Law of One Price</strong>:
+    once you strip away transport costs, tariffs, and taxes, an identical, freely tradeable good should
+    cost the same everywhere when priced in a common currency, because if it didn't, someone could buy
+    it where it's cheap and sell it where it's dear until the price gap closed. Purchasing Power Parity
+    is just the Law of One Price scaled up from a single good to an entire economy's basket of goods —
+    instead of one coffee, compare the general price level (something like a CPI basket) in each
+    country. If a whole economy's basket is systematically cheaper once converted to a common currency,
+    PPP says either the price levels have to converge, or the exchange rate has to move to make the
+    comparison fair again — the same "buy low, sell high" logic as the single-coffee case, just applied
+    to millions of goods and services and taking a lot longer to actually play out, because you can't
+    physically arbitrage a haircut or a hospital visit across a border the way you can a tradeable
+    commodity.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+  PPP comes in two versions — a strict, "in theory" version and a looser, "in practice" version —
+  and the gap between them is exactly where the theory's real-world usefulness lives.
+  </p>
+
+  <h3>Absolute PPP</h3>
+  <p>
+  The strict version says the nominal exchange rate should exactly equal the ratio of the two
+  countries' price levels:
+  </p>
+
+  <div class="tl-math">\[ S = \frac{P_{\text{domestic}}}{P_{\text{foreign}}} \]</div>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(S\)</td><td>The nominal spot exchange rate, expressed as units of foreign currency per unit of domestic currency (or however the pair is quoted — the convention just has to stay consistent through the derivation).</td></tr>
+      <tr><td>\(P_{\text{domestic}}\)</td><td>The domestic price level — the cost, in domestic currency, of a representative basket of goods and services (conceptually, a CPI index level).</td></tr>
+      <tr><td>\(P_{\text{foreign}}\)</td><td>The foreign price level — the cost, in foreign currency, of the same representative basket.</td></tr>
+    </table>
+  </div>
+
+  <p>
+  Read it plainly: the exchange rate should be whatever number makes the same basket cost the same
+  amount in either currency. This is the "one price for one basket" idea taken completely literally.
+  It is also, empirically, close to never exactly true, for reasons that are well understood and not
+  particularly mysterious: national consumption baskets differ (a Japanese basket and an Argentine
+  basket don't contain the same goods in the same proportions), a large share of any real economy is
+  non-tradeable (haircuts, rent, a restaurant meal, most healthcare and construction — services that
+  simply cannot be shipped across a border to arbitrage a price gap), and tariffs, transport costs,
+  and taxes drive a further wedge between "priced the same" and "priced the same once you account for
+  friction." Absolute PPP is the clean textbook statement, but it's best treated as a limiting case
+  rather than something you'd expect to hold to the decimal in real data.
+  </p>
+
+  <h3>Relative PPP — the version that's actually useful</h3>
+  <p>
+  Because absolute PPP requires measuring identical baskets in identical proportions across countries
+  — something real CPI baskets don't do — economists lean on a weaker, more empirically tractable
+  version instead. Take absolute PPP and convert it into a statement about <em>rates of change</em>
+  rather than <em>levels</em>. Starting from \(S = P_{\text{domestic}}/P_{\text{foreign}}\), take logs
+  of both sides and then differentiate (or, more simply, difference) with respect to time. The ratio
+  becomes a difference, and the level becomes a growth rate — inflation is, after all, just the growth
+  rate of the price level:
+  </p>
+
+  <div class="tl-math">\[ \%\Delta S \;\approx\; \pi_{\text{domestic}} - \pi_{\text{foreign}} \]</div>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(\%\Delta S\)</td><td>The percentage rate of change of the nominal exchange rate over some period (e.g. year-over-year).</td></tr>
+      <tr><td>\(\pi_{\text{domestic}}\)</td><td>The domestic inflation rate over the same period (read the Greek letter as "pi" — the growth rate of \(P_{\text{domestic}}\)).</td></tr>
+      <tr><td>\(\pi_{\text{foreign}}\)</td><td>The foreign inflation rate over the same period.</td></tr>
+    </table>
+  </div>
+
+  <p>
+  This is <strong>relative PPP</strong>, and it's the version that shows up in almost every practical
+  discussion of PPP because it sidesteps the "identical basket in identical proportions" problem —
+  it never requires the level of prices to match, only that the currency of the higher-inflation
+  country should <em>depreciate</em> by roughly the size of the inflation gap. The intuition: if
+  domestic prices are rising 8% a year and foreign prices are rising 2% a year, and nothing happens
+  to the exchange rate, the domestic economy's goods become steadily, mechanically more expensive
+  relative to the foreign economy's goods every year — a widening Law-of-One-Price violation. Relative
+  PPP says the currency should depreciate by roughly the 6-point gap to keep the <em>relative</em>
+  competitiveness position unchanged, even if the absolute price levels were never comparable to begin
+  with. This is weaker than absolute PPP (it says nothing about whether \(S\) currently equals
+  \(P_{\text{domestic}}/P_{\text{foreign}}\) in levels, only about the direction and rough size of
+  future changes), which is exactly why it survives contact with real data better — a claim about a
+  growth-rate differential is testable and roughly sensible in a way a claim about matching absolute
+  price levels across two different consumption baskets simply isn't.
+  </p>
+
+  <h3>The real exchange rate</h3>
+  <p>
+  PPP's most useful practical construct is the <strong>real exchange rate</strong> — the nominal rate
+  adjusted for the two countries' price levels, which turns "is this currency cheap or expensive"
+  into a number you can actually track over time:
+  </p>
+
+  <div class="tl-math">\[ \text{Real FX} = S \times \frac{P_{\text{foreign}}}{P_{\text{domestic}}} \]</div>
+
+  <p>
+  If PPP held exactly at all times, the real exchange rate would be a constant — nominal moves would
+  always exactly offset the inflation differential, leaving the "real" cost comparison unchanged. In
+  practice, the real exchange rate wanders, sometimes for years, away from any constant, and that
+  wandering is precisely what "a currency is overvalued or undervalued in PPP terms" means: not that
+  the currency has broken some law of physics, but that the real exchange rate currently sits far
+  from its own historical average, on the view that it should eventually revert toward that average
+  as goods markets, wages, and relative competitiveness re-equilibrate. "Overvalued" means the real
+  rate is unusually high relative to its history (domestic goods currently look expensive to
+  foreigners on a PPP basis); "undervalued" means the opposite. Nothing about this says anything about
+  <em>when</em> reversion happens — that's the subject of the chart and the trading-scenario box below.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Stylized real exchange rate vs. PPP fair value, 24-year horizon</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart of a stylized real exchange rate over 24 years, wandering slowly above and below a horizontal dashed PPP fair-value line in long multi-year swings rather than fast oscillations, illustrating that PPP reversion is glacial compared to fast mean-reverting processes.">
+      <line x1="55" y1="150" x2="610" y2="150" style="stroke:var(--text3);stroke-dasharray:3,3" stroke-width="1.5"/>
+      <text x="614" y="154" font-size="11" fill="var(--text3)">PPP fair value</text>
+      <polyline points="55,150 78,146 101,138 124,128 147,118 170,112 193,108 216,112 239,122 262,136 285,152 308,168 331,180 354,186 377,182 400,170 423,152 446,132 469,114 492,100 515,92 538,96 561,110 584,128 607,144" style="fill:none;stroke:var(--blue);stroke-width:2.2;opacity:.9"/>
+      <text x="60" y="105" fill="var(--text3)" font-size="10">yr 0</text>
+      <text x="150" y="105" fill="var(--text3)" font-size="10">yr 5</text>
+      <text x="260" y="105" fill="var(--text3)" font-size="10">yr 10</text>
+      <text x="380" y="290" fill="var(--text3)" font-size="10">yr 15</text>
+      <text x="490" y="290" fill="var(--text3)" font-size="10">yr 20</text>
+      <text x="580" y="290" fill="var(--text3)" font-size="10">yr 24</text>
+      <text x="95" y="70" fill="var(--text2)" font-size="11" font-style="italic">"undervalued" leg lasts ~8 years</text>
+      <text x="330" y="220" fill="var(--text2)" font-size="11" font-style="italic">"overvalued" leg lasts ~7 years</text>
+    </svg>
+    <div class="tl-chart-caption">Illustrative, not real market data. Notice the shape: one long, slow swing below the dashed fair-value line lasting most of a decade, then a slow multi-year climb through fair value into an extended overvalued stretch, then a slow multi-year decline back down — a handful of long cycles across 24 years, not a fast, jittery oscillation. Contrast this deliberately with the Ornstein-Uhlenbeck lesson's mean-reversion chart, where the pull back to the mean is visibly fast and constant. PPP reversion is real in the data literature, but it operates on a completely different clock — multi-year half-lives, not days or weeks.</div>
+  </div>
+
+  <h3>The Big Mac Index</h3>
+  <p>
+  The most famous informal illustration of absolute PPP is <em>The Economist</em>'s Big Mac Index,
+  published since 1986. The idea is disarmingly literal: a McDonald's Big Mac is a near-identical,
+  standardized product assembled from broadly similar inputs (beef, bread, cheese, labor, rent) in
+  dozens of countries, so comparing its price converted to a common currency gives a rough, easy-to-
+  communicate absolute-PPP check — if a Big Mac costs $5.50 in the US and the equivalent of $3.20 in
+  another country at the current exchange rate, that currency is "cheap" by roughly 42% on a Big Mac
+  basis. It is genuinely useful as popular education and as a rough, transparent cross-check, precisely
+  because everyone understands what a Big Mac is. It is explicitly <strong>not</strong> a rigorous
+  economic instrument: it's one good (not a representative basket), it embeds a lot of non-tradeable
+  local input costs (rent, labor) that have nothing to do with currency valuation, and it says nothing
+  about timing. Treat it the way its creators intend it — a memorable illustration of the Law of One
+  Price, not a model to trade off.
+  </p>
+
+  <h3>The PPP puzzle — why it holds so slowly</h3>
+  <p>
+  The honest empirical finding, well established in the international-finance literature, is that PPP
+  deviations are large, persistent, and take a very long time to close. Kenneth Rogoff's widely cited
+  1996 review coined this the <strong>"PPP puzzle"</strong>: real exchange rates do appear to mean-
+  revert over long enough samples, but the estimated half-life of a PPP deviation is typically found
+  to be somewhere in the range of three to five years — remarkably slow compared to how fast standard
+  macro models suggest prices and nominal exchange rates ought to adjust, and slow enough that it's
+  genuinely difficult to reconcile with plausible degrees of price stickiness alone. The puzzle isn't
+  "does PPP hold" (the reversion shows up reasonably robustly given a long enough sample) — it's "why
+  does it take so absurdly long," given that nothing in standard theory obviously predicts a
+  multi-year half-life. That slowness is the central empirical fact this lesson is built around: PPP
+  is a real, long-run regularity and a hopeless short-run clock, simultaneously.
+  </p>
+
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>"This currency looks 20% undervalued on PPP" — what does that actually license you to do?</h3>
+    <p>
+    Suppose a macro analyst publishes a note: based on the Big Mac Index (or a more careful relative-
+    PPP calculation using FRED-style CPI data), Currency X looks roughly 20% undervalued against the
+    dollar. What does that actually tell a trader, concretely?
+    </p>
+    <p>
+    On a normal trading horizon — days to a few months — the honest answer is: almost nothing. PPP
+    deviations of 20%, 30%, even more, have historically persisted for years, and have been known to
+    <em>widen</em> further before eventually narrowing — there is no mechanism that stops an
+    undervalued currency from becoming more undervalued next month, next quarter, or even next year.
+    "Cheap on PPP" is not a timing signal, and a short-term trader who shorts the expensive side (or
+    goes long the cheap side) purely because of a PPP reading, with no other entry logic, can be
+    wrong — and lose money — for years before the reversion Rogoff documented ever shows up. Being
+    "right" on a three-to-five-year half-life is cold comfort to a position sized and risk-managed for
+    a multi-week trading horizon; the mark-to-market drawdown along the way can be larger than most
+    trading books are built to absorb, long before the thesis pays off, if it ever does inside the
+    trader's remaining career or capital.
+    </p>
+    <p>
+    Where the same 20% reading <em>is</em> a genuinely useful, real input: a multi-year strategic FX
+    view, or a hedging decision with a matching time horizon. A corporate treasurer deciding whether
+    to hedge a five-year foreign-currency liability is exactly the kind of decision-maker for whom a
+    slow, multi-year reversion tendency is actually relevant information — they're not trying to time
+    a three-week entry, they're trying to form a view about where a currency is more or less likely to
+    sit, on average, over a horizon long enough for PPP's glacial clock to plausibly matter. The same
+    is true for a pension fund or sovereign wealth fund setting a strategic (not tactical) currency
+    hedge ratio, or a long-horizon asset allocator deciding how much currency risk to run passively.
+    The lesson isn't "PPP is useless" — it's "PPP's usefulness is horizon-conditional," and confusing
+    a multi-year anchor for a trading signal is a well-known way to lose money being directionally
+    correct.
+    </p>
+  </div>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>This repo has no PPP-based signal or price-level data pipeline today</h3>
+    <p>
+    To be direct about it: nothing in this codebase currently ingests CPI or price-level data, computes
+    a real exchange rate, or builds a PPP-based fair-value estimate for any pair. This is a genuine gap,
+    not a built brick with caveats — there is no <code>pppCore.js</code> or equivalent to point to, and
+    this lesson is not describing something already wired into the forecaster or any backtest engine.
+    </p>
+    <p>
+    If a PPP-based fair-value view were ever built here, the natural data feed already exists as a
+    named environment variable in <code>CLAUDE.md</code>'s data-source table: <code>FRED_KEY</code>,
+    which is listed for "macro / quotes / news data feeds" and is the standard source for national CPI
+    series. Building it properly would mean pulling CPI for each side of a pair from FRED, resampling
+    to a common release frequency (per this repo's data-modeling discipline — never hold a monthly CPI
+    print "live" against daily bars), constructing the real exchange rate above, and — per Lego
+    Principle 5 and this project's honest-teammate contract — proving any resulting signal on a true
+    out-of-sample split with a non-trivial trade count before calling it anything more than a candidate.
+    Given the multi-year half-lives documented above, an honest OOS test of a PPP-based signal would
+    also need a matching multi-year evaluation horizon and a will to accept that most trading-frequency
+    backtests simply cannot validate a signal this slow — a scope/data limitation to state plainly
+    rather than paper over with a lookalike fast-horizon test.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Ways PPP gets misused or misunderstood</h3>
+    <ul>
+      <li>
+      <strong>Treating "undervalued on PPP" as a buy signal on a trading horizon.</strong> This is the
+      single most common misuse, and the scenario box above walks through exactly why it's wrong: a
+      real, multi-year-average regularity says nothing about the next weeks or months, during which the
+      deviation can easily widen rather than close.
+      </li>
+      <li>
+      <strong>Confusing absolute PPP with relative PPP.</strong> Absolute PPP (exchange rate equals the
+      ratio of price <em>levels</em>) is a much stronger and less realistic claim than relative PPP
+      (the exchange rate's <em>change</em> tracks the inflation differential). Citing a Big Mac "20%
+      undervalued" reading as if it were a precise, levels-based absolute-PPP fact overstates what a
+      single-good comparison with non-tradeable local input costs can actually establish.
+      </li>
+      <li>
+      <strong>Ignoring non-tradeable goods and productivity differences (the Balassa-Samuelson
+      effect).</strong> A meaningful share of any CPI basket — rent, haircuts, healthcare, most
+      services — can't be arbitraged across borders at all, and richer, more productive countries
+      tend to have structurally higher price levels for these goods even in long-run equilibrium (higher
+      wages in the productive tradeable sector pull up wages, and therefore prices, in the
+      non-tradeable sector too). A currency that looks "PPP-rich" may partly just reflect this
+      structural effect rather than a temporary mispricing that will revert.
+      </li>
+      <li>
+      <strong>Forgetting that PPP deviations can widen, not just narrow.</strong> Mean reversion over
+      a multi-year sample is a statement about the eventual, average tendency in the data — it doesn't
+      mean every current deviation is at or near its turning point. Nothing in the PPP literature
+      claims a deviation can't grow larger before it starts to close.
+      </li>
+      <li>
+      <strong>Using PPP as a fair-value anchor without checking the horizon of the decision it's
+      informing.</strong> The theory doesn't become wrong when applied to a hedging or strategic-
+      allocation decision — it becomes <em>appropriate</em>, because the decision horizon finally
+      matches PPP's own multi-year clock. The error is using the same reading to inform decisions at
+      the wrong horizon, not the reading itself.
+      </li>
+    </ul>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why is relative PPP more useful in practice than absolute PPP?</summary>
+    <div class="tl-answer">
+    Absolute PPP requires the exchange rate to equal the ratio of price <em>levels</em>, which in turn
+    requires comparable, identically-weighted consumption baskets across countries — something real
+    CPI baskets don't provide, since countries consume different goods in different proportions and
+    a large share of any basket (services, rent, healthcare) is non-tradeable and can't be arbitraged
+    across borders anyway. Relative PPP sidesteps this by only claiming something about <em>rates of
+    change</em> — that the exchange rate's percentage change should track the inflation differential
+    between the two countries — which doesn't require the absolute levels to ever have matched, or the
+    baskets to be identical, only that the growth rates move together. That weaker, differenced claim
+    survives contact with real, imperfectly comparable data far better than the levels-based version.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why can a currency stay "PPP-cheap" for a decade or more?</summary>
+    <div class="tl-answer">
+    Because nothing forces the correction quickly. Unlike covered interest parity, which is enforced
+    by near-riskless arbitrage that closes gaps in seconds, PPP is only enforced by slow real-economy
+    channels: relative prices and wages adjusting, trade flows and competitiveness shifting, capital
+    reallocating, and non-tradeable-sector prices catching up. None of that happens fast, and empirical
+    work (Rogoff's "PPP puzzle") finds real exchange rate deviations have half-lives typically
+    estimated around three to five years — meaning it can easily take a decade or more for a
+    substantial deviation to fully close, and there is no mechanism guaranteeing it won't widen further
+    first.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What does it mean for a currency to be "overvalued" or "undervalued" in PPP terms?</summary>
+    <div class="tl-answer">
+    It means the real exchange rate — the nominal rate adjusted for the ratio of the two countries'
+    price levels — currently sits far from its own historical average. "Overvalued" means the real
+    rate is unusually high (domestic goods look expensive to foreigners on a PPP basis); "undervalued"
+    means unusually low. It is a statement about distance from a historical norm with an expectation
+    of eventual reversion, not a statement about a precise, objectively "correct" level, and it carries
+    no information on its own about when that reversion will happen.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Is the Big Mac Index a rigorous test of PPP? What is it actually good for?</summary>
+    <div class="tl-answer">
+    No — it's a famous, informal illustration of absolute PPP, not a rigorous economic instrument. It
+    compares the price of a single standardized good rather than a representative basket, and that
+    good's price embeds a lot of non-tradeable local input costs (rent, labor) that have little to do
+    with currency valuation, which the Balassa-Samuelson effect explains structurally. What it's
+    genuinely good for is popular education and a quick, transparent, easy-to-communicate cross-check
+    on the Law of One Price idea — not for precisely quantifying misvaluation or informing a trade.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. A trader shorts a currency purely because it looks "PPP-rich." What's the realistic risk in that trade, and why might it still be a defensible input for someone else?</summary>
+    <div class="tl-answer">
+    The realistic risk is that "PPP-rich" says nothing about timing: the deviation can persist or even
+    widen for years, so the trader can be losing money on a directionally "correct" thesis for far
+    longer than most trading books, risk limits, or careers can tolerate — being eventually right on a
+    three-to-five-year half-life is not the same as being profitably positioned on a normal trading
+    horizon. The same PPP reading is a far more defensible input for a decision-maker whose horizon
+    actually matches PPP's slow clock — e.g. a corporate treasurer setting a multi-year hedge ratio on
+    a long-dated foreign-currency liability, or a long-horizon strategic asset allocator — where the
+    slow reversion tendency is exactly the kind of information that decision needs.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Does MacroFXModel currently have a working PPP-based fair-value signal? What would it take to build one honestly?</summary>
+    <div class="tl-answer">
+    No — there is no PPP module, real-exchange-rate computation, or CPI data pipeline anywhere in this
+    repo today; this is a stated gap, not an existing brick. Building one honestly would mean sourcing
+    national CPI series (FRED is the natural feed, via the already-listed <code>FRED_KEY</code> env
+    var), resampling to the CPI release's true cadence rather than holding a monthly print "live"
+    against daily bars, computing the real exchange rate, and then validating any resulting signal on
+    a true out-of-sample split with a non-trivial trade count — and, given PPP's multi-year half-lives,
+    accepting that the evaluation horizon itself would need to be multi-year to be a fair test, which
+    is a real scope constraint most fast-cadence backtests in this repo aren't built to accommodate.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Kenneth Rogoff, "The Purchasing Power Parity Puzzle," <em>Journal of Economic Literature</em>, 1996 — the classic, widely-cited assessment of PPP's real-world half-life problem: real exchange rates do appear to mean-revert, but far more slowly (three-to-five-year half-lives) than standard price-stickiness arguments can easily explain.</li>
+    <li>The Economist, "The Big Mac Index" — the long-running, publicly updated informal illustration of absolute PPP using a single standardized good; useful as popular education, explicitly not a rigorous valuation model.</li>
+    <li>Bela Balassa (1964) and Paul Samuelson (1964), independently — the structural explanation (productivity differentials driving non-tradeable-sector prices) for why richer countries have persistently higher price levels even in long-run equilibrium, a key reason absolute PPP doesn't hold even asymptotically.</li>
+    <li>Alan M. Taylor and Mark P. Taylor, "The Purchasing Power Parity Debate," <em>Journal of Economic Perspectives</em>, 2004 — a readable survey of the empirical PPP literature after Rogoff, covering the econometric debates (unit roots, panel methods) around estimating just how slow the reversion really is.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="interest-rate-parity.html">← Interest Rate Parity</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="taylor-rule.html">The Taylor Rule →</a>
+  </div>
+</div>
+</body>
+</html>

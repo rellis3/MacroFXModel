@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Linear Algebra &amp; Matrices — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Deeper Foundations / Linear Algebra &amp; Matrices</div>
+  <div class="tl-kicker">Deeper Foundations · Lesson 1 of 4</div>
+  <h1 class="tl-title">Linear Algebra &amp; Matrices</h1>
+  <p class="tl-dek">Vectors, matrices, and eigenvectors are not a math-class prerequisite this repo makes you sit through for its own sake — they are the exact vocabulary the PCA, Kalman Filter, and Hidden Markov Model lessons in this Theory Lab quietly assume you already have.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">DEEPER FOUNDATION — read before PCA, Kalman Filter, or Hidden Markov Models</span>
+    <span>~15 min read</span>
+    <span>Prereqs: none</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    Open the PCA lesson in this Theory Lab and within a few paragraphs you hit
+    "eigenvector," "eigenvalue," and a 3&#215;3 covariance matrix. Open the Kalman
+    Filter lesson and you hit a state vector, a transition matrix, an observation
+    matrix, and a covariance matrix that gets multiplied through every update step.
+    Open the Hidden Markov Model lesson and you hit an \(N \times N\) transition
+    matrix whose rows are probability distributions, and a "stationary
+    distribution" that turns out to be nothing more exotic than a specific
+    eigenvector of that matrix. None of those three lessons stop to explain what a
+    matrix actually <em>is</em> or why "eigenvector" means anything at all — they
+    assume it, the same way a lesson on options pricing assumes you already know
+    what a derivative (calculus, not the financial kind) is.
+  </p>
+  <p>
+    This lesson is the "Deeper Foundations" tier's answer to that gap: not a new
+    trading concept, but the mathematical vocabulary underneath several of the
+    concepts this Theory Lab already covers. It is written for zero prior linear
+    algebra, built up geometrically rather than as a wall of matrix-algebra rules
+    to memorize, and it worked every piece of arithmetic below by hand so you can
+    check it against your own. Read it once, and "eigenvector of the correlation
+    matrix" in the PCA lesson, "propagate the covariance matrix" in the Kalman
+    Filter lesson, and "stationary distribution of the transition matrix" in the
+    Hidden Markov Model lesson should all read as instances of the same small set
+    of ideas rather than three separate walls of jargon.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A vector is an arrow, a matrix is a machine that moves arrows</h3>
+    <p>
+      A <strong>vector</strong> is just an ordered list of numbers — \((3, 1)\),
+      say. Two equivalent ways to picture it, and you'll want both: as a
+      <em>point</em> in space (walk 3 units along one axis, 1 unit along the
+      other, and put a dot there), or as an <em>arrow</em> from the origin to
+      that point, carrying both a direction and a length. In this repo, a vector
+      might be two FX pairs' daily returns on a single day, a 2-D
+      hidden-state estimate in a Kalman filter, or a row of loadings across
+      several instruments — different meanings, identical arithmetic.
+    </p>
+    <p>
+      A <strong>matrix</strong> is a rectangular table of numbers, but the useful
+      way to think about it is not "a table of numbers" — it's a <em>machine that
+      takes any vector in and produces another vector out</em>, always by the
+      same fixed rule (a "linear transformation"). Feed a matrix a vector, and it
+      hands back a new vector that has been rotated, stretched, shrunk, sheared,
+      or some mix of all of those, in a way that's completely determined by the
+      matrix's entries. A 2&#215;2 matrix acting on the whole 2-D plane at once
+      is the picture to hold in your head for everything that follows: it takes
+      <em>every</em> point in the plane and moves it somewhere else, all in one
+      consistent motion — circles become ellipses, squares become
+      parallelograms, straight lines stay straight lines (that's what "linear"
+      means here), but the origin never moves.
+    </p>
+    <p>
+      Almost everything below is one question asked about that machine:
+      <em>is there some special direction the machine doesn't rotate at all — a
+      line through the origin that the machine only stretches or shrinks, but
+      never tilts off of itself?</em> If such a direction exists, it's called an
+      eigenvector, and the amount of stretching along it is called an
+      eigenvalue. That's the whole punchline of this lesson, arrived at
+      properly below.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    Work through this in order — matrix-vector multiplication first (the basic
+    operation), then matrix-matrix multiplication and the identity matrix
+    (composing two machines, and the machine that does nothing), and only then
+    eigenvectors and eigenvalues, which are a question you can only ask once
+    you understand what the machine does to an arbitrary vector.
+  </p>
+  <div class="tl-symbols"><table>
+    <tr><td>\(v\)</td><td>A vector — an ordered list of numbers, e.g. \(v = (v_1, v_2)\) in 2-D. Written as a column when it multiplies a matrix.</td></tr>
+    <tr><td>\(A\)</td><td>A matrix — here always \(2 \times 2\), i.e. 2 rows and 2 columns, entries \(A = \begin{pmatrix} a & b \\ c & d \end{pmatrix}\). "\(m \times n\)" always means \(m\) rows, \(n\) columns.</td></tr>
+    <tr><td>\(Av\)</td><td>The matrix \(A\) applied to the vector \(v\) — "\(A\) acting on \(v\)," read right to left. This is matrix-vector multiplication, defined below. The output is always another vector.</td></tr>
+    <tr><td>\(I\)</td><td>The identity matrix, \(\begin{pmatrix} 1 & 0 \\ 0 & 1 \end{pmatrix}\) in 2-D — the one matrix for which \(Iv = v\) for every \(v\). The matrix equivalent of multiplying a number by 1.</td></tr>
+    <tr><td>\(\det(A)\)</td><td>The determinant of \(A\) — for a \(2\times2\) matrix, \(\det(A) = ad - bc\). Tells you (among other things) whether \(A\) is invertible: \(\det(A) = 0\) means \(A\) squashes the plane down onto a line or a point, losing information, and cannot be undone.</td></tr>
+    <tr><td>\(\lambda\)</td><td>(lambda) An eigenvalue of \(A\) — a scalar (an ordinary number) such that some nonzero vector is only scaled, not rotated, by \(A\).</td></tr>
+    <tr><td>\(v\) (as eigenvector)</td><td>An eigenvector of \(A\) — a nonzero vector whose direction is unchanged by \(A\); it may be lengthened, shortened, or flipped end-to-end, but it stays on the same line through the origin.</td></tr>
+    <tr><td>\(\det(A - \lambda I) = 0\)</td><td>The characteristic equation — the algebraic condition that pins down every eigenvalue of \(A\), derived below.</td></tr>
+  </table></div>
+
+  <h3>Matrix-vector multiplication, by hand</h3>
+  <p>
+    For a \(2\times2\) matrix \(A = \begin{pmatrix} a & b \\ c & d \end{pmatrix}\)
+    and a vector \(v = \begin{pmatrix} v_1 \\ v_2 \end{pmatrix}\), the product
+    \(Av\) is defined by:
+  </p>
+  <div class="tl-math">
+    \[ Av = \begin{pmatrix} a & b \\ c & d \end{pmatrix}\begin{pmatrix} v_1 \\ v_2 \end{pmatrix} = \begin{pmatrix} a v_1 + b v_2 \\ c v_1 + d v_2 \end{pmatrix} \]
+  </div>
+  <p>
+    Read it as: the first entry of the output is "row 1 of \(A\), dotted with
+    \(v\)" (multiply matching entries, add the results); the second entry is
+    "row 2 of \(A\), dotted with \(v\)." Concretely, with
+    \(A = \begin{pmatrix} 2 & 3 \\ 1 & 4 \end{pmatrix}\) and
+    \(v = \begin{pmatrix} 5 \\ 1 \end{pmatrix}\):
+  </p>
+  <div class="tl-math">
+    \[ Av = \begin{pmatrix} 2 & 3 \\ 1 & 4 \end{pmatrix}\begin{pmatrix} 5 \\ 1 \end{pmatrix} = \begin{pmatrix} 2(5) + 3(1) \\ 1(5) + 4(1) \end{pmatrix} = \begin{pmatrix} 13 \\ 9 \end{pmatrix} \]
+  </div>
+  <p>
+    The input arrow \((5,1)\) — mostly horizontal, barely tilted up — comes out
+    as \((13,9)\), a different length pointing in a different direction. That's
+    the whole operation: two multiplications and one addition per output row,
+    always.
+  </p>
+
+  <h3>Matrix-matrix multiplication: chaining two machines</h3>
+  <p>
+    If \(A\) is one transformation and \(B\) is another, applying \(B\) first
+    and then \(A\) to the result is itself a single linear transformation — call
+    it \(AB\) — computed by treating each <em>column</em> of \(B\) as a vector,
+    multiplying \(A\) into it, and stacking the results back up as columns:
+  </p>
+  <div class="tl-math">
+    \[ (AB)_{ij} = \sum_k A_{ik} B_{kj} \quad\text{(row } i \text{ of } A \text{ dotted with column } j \text{ of } B\text{)} \]
+  </div>
+  <p>
+    The dimensions have to line up: an \(m \times n\) matrix can only multiply
+    an \(n \times p\) matrix (the inner dimensions must match), and the result
+    is \(m \times p\). For two \(2\times2\) matrices this is always defined. The
+    one fact that trips people up the first time: <strong>matrix multiplication
+    is generally not commutative</strong> — \(AB \neq BA\) in general, unlike
+    ordinary numbers where \(3 \times 5 = 5 \times 3\). "Apply \(B\) then \(A\)"
+    is a genuinely different machine from "apply \(A\) then \(B\)." Check it
+    with \(M = \begin{pmatrix} 1 & 2 \\ 0 & 1 \end{pmatrix}\) and
+    \(N = \begin{pmatrix} 1 & 0 \\ 1 & 1 \end{pmatrix}\):
+  </p>
+  <div class="tl-math">
+    \[ MN = \begin{pmatrix} 1(1)+2(1) & 1(0)+2(1) \\ 0(1)+1(1) & 0(0)+1(1) \end{pmatrix} = \begin{pmatrix} 3 & 2 \\ 1 & 1 \end{pmatrix} \qquad NM = \begin{pmatrix} 1(1)+0(0) & 1(2)+0(1) \\ 1(1)+1(0) & 1(2)+1(1) \end{pmatrix} = \begin{pmatrix} 1 & 2 \\ 1 & 3 \end{pmatrix} \]
+  </div>
+  <p>
+    \(MN = \begin{pmatrix} 3 & 2 \\ 1 & 1 \end{pmatrix}\) and
+    \(NM = \begin{pmatrix} 1 & 2 \\ 1 & 3 \end{pmatrix}\) are not the same
+    matrix — order matters. This is why, in the Kalman Filter lesson, the exact
+    order a state vector gets multiplied through a transition matrix, an
+    observation matrix, and a covariance matrix is written with care rather than
+    treated as interchangeable arithmetic.
+  </p>
+  <p>
+    The <strong>identity matrix</strong> \(I = \begin{pmatrix} 1 & 0 \\ 0 & 1 \end{pmatrix}\)
+    is the one matrix that changes nothing: \(Iv = v\) for any vector \(v\), and
+    \(AI = IA = A\) for any matrix \(A\). It is the matrix equivalent of the
+    number 1, and it shows up below as the tool for isolating eigenvalues.
+  </p>
+
+  <h3>Eigenvectors and eigenvalues, built geometrically</h3>
+  <p>
+    Take the "machine" picture seriously: a \(2\times2\) matrix \(A\) takes every
+    vector in the plane and moves it somewhere else. Pick almost any starting
+    vector and its direction will change — the output arrow points a different
+    way than the input arrow did. But for most matrices that actually arise from
+    real data (in particular, for the symmetric matrices — where \(A\) equals its
+    own transpose, \(A_{ij}=A_{ji}\) — that covariance and correlation matrices
+    always are), there exist one or more special directions where this
+    <em>doesn't</em> happen: feed the matrix a vector lying exactly along one of
+    those directions, and the output is a scaled copy of the same vector, still
+    on the exact same line through the origin, just longer, shorter, or
+    flipped to point the opposite way.
+  </p>
+  <p>
+    That special vector is an <strong>eigenvector</strong> of \(A\), and the
+    scaling factor is its <strong>eigenvalue</strong> \(\lambda\). Formally:
+  </p>
+  <div class="tl-math">
+    \[ Av = \lambda v \qquad (v \neq 0) \]
+  </div>
+  <p>
+    Read this literally: "the matrix \(A\) acting on \(v\) produces the same
+    thing as just multiplying \(v\) by the plain number \(\lambda\)." The
+    left-hand side is a full matrix-vector multiplication (rotate-and-scale, in
+    general); the right-hand side is pure scaling, no rotation at all. An
+    eigenvector is precisely a \(v\) for which those two operations — the
+    matrix's full action, and mere scaling — happen to produce an identical
+    result. A generic 2&#215;2 matrix has (at most) two such directions, and,
+    critically, <strong>a matrix only has eigenvectors in this sense because it
+    is square</strong> — \(Av\) and \(v\) have to be able to sit in the same
+    space and be directly compared (and possibly be equal) for
+    "\(Av = \lambda v\)" to even be a meaningful statement, which requires \(A\)
+    to map that space back into itself.
+  </p>
+
+  <h3>Solving for eigenvalues: the characteristic equation</h3>
+  <p>
+    \(Av = \lambda v\) can be rewritten with everything on one side. Since
+    \(\lambda v = \lambda I v\) (multiplying by the identity first changes
+    nothing), subtract:
+  </p>
+  <div class="tl-math">
+    \[ Av - \lambda v = 0 \quad\Longrightarrow\quad Av - \lambda I v = 0 \quad\Longrightarrow\quad (A - \lambda I)v = 0 \]
+  </div>
+  <p>
+    This says: some matrix, \((A - \lambda I)\), multiplied by a <em>nonzero</em>
+    vector \(v\), produces the zero vector. A matrix can only crush a nonzero
+    vector down to zero if it "squashes" some direction entirely flat — which is
+    exactly the condition \(\det(A - \lambda I) = 0\) (recall from the symbols
+    table: zero determinant means the matrix loses a dimension). For a general
+    \(2\times2\) matrix \(A = \begin{pmatrix} a & b \\ c & d \end{pmatrix}\):
+  </p>
+  <div class="tl-math">
+    \[ \det(A - \lambda I) = \det\begin{pmatrix} a-\lambda & b \\ c & d-\lambda \end{pmatrix} = (a-\lambda)(d-\lambda) - bc = 0 \]
+  </div>
+  <p>
+    Expanding \((a-\lambda)(d-\lambda) = ad - a\lambda - d\lambda + \lambda^2\)
+    and collecting terms gives the <strong>characteristic equation</strong>, a
+    plain quadratic in \(\lambda\):
+  </p>
+  <div class="tl-math">
+    \[ \lambda^2 - (a+d)\lambda + (ad - bc) = 0 \qquad\text{i.e.}\qquad \lambda^2 - \operatorname{trace}(A)\,\lambda + \det(A) = 0 \]
+  </div>
+  <p>
+    where \(\operatorname{trace}(A) = a + d\) (the sum of the diagonal entries).
+    Solve this ordinary quadratic for \(\lambda\) and you have every eigenvalue
+    of \(A\) — an ordinary \(2\times2\) matrix has (up to) two of them. Once a
+    specific \(\lambda\) is known, plug it back into \((A - \lambda I)v = 0\) and
+    solve that (now perfectly ordinary) system of two linear equations for \(v\)
+    to get the matching eigenvector. The full arithmetic, with real numbers
+    instead of letters, is worked end to end in the box below.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A unit circle of vectors, and where a matrix sends every one of them</div>
+    <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A dashed unit circle of vectors around a center point, and the ellipse that the matrix A equals 3,1,1,3 transforms it into. Eight thin spokes mark sample input vectors on the circle; a purple ellipse traces where the whole circle lands. A red arrow along the ellipse's long axis and a blue arrow along its short axis mark the two eigenvector directions, the only directions the transformation stretches without rotating.">
+      <ellipse cx="320" cy="160" rx="160" ry="80" transform="rotate(-45 320 160)" style="stroke:var(--purple);stroke-width:2" fill="none"/>
+      <circle cx="320" cy="160" r="40" style="stroke:var(--text3);stroke-width:1.5;stroke-dasharray:4,3" fill="none"/>
+      <line x1="320" y1="160" x2="360" y2="160" style="stroke:var(--text3);stroke-width:1" opacity=".55"/>
+      <line x1="320" y1="160" x2="348.28" y2="131.72" style="stroke:var(--text3);stroke-width:1" opacity=".55"/>
+      <line x1="320" y1="160" x2="320" y2="120" style="stroke:var(--text3);stroke-width:1" opacity=".55"/>
+      <line x1="320" y1="160" x2="291.72" y2="131.72" style="stroke:var(--text3);stroke-width:1" opacity=".55"/>
+      <line x1="320" y1="160" x2="280" y2="160" style="stroke:var(--text3);stroke-width:1" opacity=".55"/>
+      <line x1="320" y1="160" x2="291.72" y2="188.28" style="stroke:var(--text3);stroke-width:1" opacity=".55"/>
+      <line x1="320" y1="160" x2="320" y2="200" style="stroke:var(--text3);stroke-width:1" opacity=".55"/>
+      <line x1="320" y1="160" x2="348.28" y2="188.28" style="stroke:var(--text3);stroke-width:1" opacity=".55"/>
+      <line x1="320" y1="160" x2="440" y2="120" style="stroke:var(--text2);stroke-width:1.25;stroke-dasharray:2,2" opacity=".7"/>
+      <line x1="320" y1="160" x2="200" y2="200" style="stroke:var(--text2);stroke-width:1.25;stroke-dasharray:2,2" opacity=".7"/>
+      <line x1="320" y1="160" x2="280" y2="280" style="stroke:var(--text2);stroke-width:1.25;stroke-dasharray:2,2" opacity=".7"/>
+      <circle cx="440" cy="120" r="3" style="fill:var(--text2)"/>
+      <circle cx="200" cy="200" r="3" style="fill:var(--text2)"/>
+      <circle cx="280" cy="280" r="3" style="fill:var(--text2)"/>
+      <line x1="206.86" y1="273.14" x2="433.14" y2="46.86" style="stroke:var(--red);stroke-width:2.5"/>
+      <polygon points="433.14,46.86 428.69,62.21 417.79,51.31" style="fill:var(--red)"/>
+      <text x="440" y="42" font-size="13" font-family="'DM Mono',monospace" font-weight="600" fill="var(--red)">v&#8321; (&#955;=4)</text>
+      <line x1="263.43" y1="103.43" x2="376.57" y2="216.57" style="stroke:var(--blue);stroke-width:2.5"/>
+      <polygon points="376.57,216.57 361.22,212.12 372.12,201.22" style="fill:var(--blue)"/>
+      <text x="382" y="234" font-size="13" font-family="'DM Mono',monospace" font-weight="600" fill="var(--blue)">v&#8322; (&#955;=2)</text>
+      <circle cx="320" cy="160" r="3" style="fill:var(--text)"/>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--red)"></i>Eigenvector v&#8321;, &#955;=4 — stretched 4&#215;, never rotated</span>
+      <span><i style="background:var(--blue)"></i>Eigenvector v&#8322;, &#955;=2 — stretched 2&#215;, never rotated</span>
+      <span><i style="background:var(--purple)"></i>Image of the unit circle (an ellipse)</span>
+      <span><i style="background:var(--text2)"></i>A generic vector — rotated off its original line</span>
+    </div>
+    <div class="tl-chart-caption">
+      The dashed circle is every unit vector, all directions at once. The matrix
+      \(A = \begin{pmatrix} 3 & 1 \\ 1 & 3 \end{pmatrix}\) (the same matrix worked
+      by hand below) sends that whole circle to the purple ellipse. Follow any
+      one of the grey spokes: the vector pointing due right (0&#176;) lands on the
+      dashed grey line pointing up and to the right — its direction changed, it
+      got rotated. But the two colored spokes, sitting exactly on the ellipse's
+      long and short axes, land on themselves, only longer: the red spoke is
+      stretched exactly 4&#215; and the blue spoke exactly 2&#215;, and neither
+      one rotates even slightly off its own line. Those two directions are
+      \(A\)'s eigenvectors, and 4 and 2 are their eigenvalues — this picture
+      <em>is</em> \(Av = \lambda v\).
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>Finding both eigenvalues and eigenvectors of a symmetric 2&#215;2 matrix, by hand</h3>
+    <p>
+      Take the matrix from the chart above, chosen to be symmetric (so its
+      eigenvectors come out guaranteed perpendicular — more on why below) and to
+      produce clean integers throughout:
+    </p>
+    <div class="tl-math">
+      \[ A = \begin{pmatrix} 3 & 1 \\ 1 & 3 \end{pmatrix} \]
+    </div>
+    <p>
+      <strong>Step 1 — set up the characteristic equation.</strong> Using the
+      general formula derived above, \(\lambda^2 - \operatorname{trace}(A)\lambda + \det(A) = 0\),
+      with \(\operatorname{trace}(A) = 3+3 = 6\) and
+      \(\det(A) = (3)(3) - (1)(1) = 9 - 1 = 8\):
+    </p>
+    <div class="tl-math">
+      \[ \lambda^2 - 6\lambda + 8 = 0 \]
+    </div>
+    <p>
+      <strong>Step 2 — solve the quadratic.</strong> This factors cleanly:
+      \(\lambda^2 - 6\lambda + 8 = (\lambda - 4)(\lambda - 2)\) — check it by
+      expanding: \((\lambda-4)(\lambda-2) = \lambda^2 - 2\lambda - 4\lambda + 8
+      = \lambda^2 - 6\lambda + 8\), which matches. So:
+    </p>
+    <div class="tl-math">
+      \[ \lambda_1 = 4, \qquad \lambda_2 = 2 \]
+    </div>
+    <p>
+      <strong>Step 3 — find the eigenvector for \(\lambda_1 = 4\).</strong>
+      Substitute into \((A - \lambda I)v = 0\):
+    </p>
+    <div class="tl-math">
+      \[ (A - 4I) = \begin{pmatrix} 3-4 & 1 \\ 1 & 3-4 \end{pmatrix} = \begin{pmatrix} -1 & 1 \\ 1 & -1 \end{pmatrix} \]
+    </div>
+    <p>
+      Multiplying this by \(v = (v_1, v_2)\) and setting the result to zero, the
+      first row gives \(-v_1 + v_2 = 0\), i.e. \(v_2 = v_1\) (the second row,
+      \(v_1 - v_2 = 0\), says exactly the same thing — expected, since a
+      singular \(2\times2\) matrix's two rows must be proportional). Any vector
+      with equal components works; take the simplest, \(v = (1, 1)\), or its
+      unit-length version \(\left(\tfrac{1}{\sqrt2}, \tfrac{1}{\sqrt2}\right)\).
+      <strong>Check:</strong> \(Av = \begin{pmatrix} 3(1)+1(1) \\ 1(1)+3(1) \end{pmatrix} = \begin{pmatrix} 4 \\ 4 \end{pmatrix} = 4 \begin{pmatrix} 1 \\ 1 \end{pmatrix} = 4v\). Confirmed.
+    </p>
+    <p>
+      <strong>Step 4 — find the eigenvector for \(\lambda_2 = 2\).</strong>
+    </p>
+    <div class="tl-math">
+      \[ (A - 2I) = \begin{pmatrix} 3-2 & 1 \\ 1 & 3-2 \end{pmatrix} = \begin{pmatrix} 1 & 1 \\ 1 & 1 \end{pmatrix} \]
+    </div>
+    <p>
+      The first row gives \(v_1 + v_2 = 0\), i.e. \(v_2 = -v_1\). Take
+      \(v = (1, -1)\), or unit-length
+      \(\left(\tfrac{1}{\sqrt2}, -\tfrac{1}{\sqrt2}\right)\).
+      <strong>Check:</strong> \(Av = \begin{pmatrix} 3(1)+1(-1) \\ 1(1)+3(-1) \end{pmatrix} = \begin{pmatrix} 2 \\ -2 \end{pmatrix} = 2 \begin{pmatrix} 1 \\ -1 \end{pmatrix} = 2v\). Confirmed.
+    </p>
+    <p>
+      <strong>Notice the two eigenvectors, \((1,1)\) and \((1,-1)\), are
+      perpendicular</strong> — their dot product is \((1)(1) + (1)(-1) = 0\).
+      That's not a coincidence of these particular numbers: it's a general
+      theorem that <em>any</em> symmetric matrix (\(A = A^\top\)) has mutually
+      perpendicular eigenvectors, and real eigenvalues. Covariance and
+      correlation matrices are always symmetric, which is exactly why the PCA
+      lesson in this Theory Lab can promise that its principal components come
+      out perpendicular to each other with no extra assumption required — it's
+      inherited directly from this fact.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>The same matrix, reframed as two FX pairs' return covariance</h3>
+    <p>
+      Now put a trading interpretation on the exact numbers just solved by hand.
+      Suppose \(A = \begin{pmatrix} 3 & 1 \\ 1 & 3 \end{pmatrix}\) is the daily
+      return <em>covariance</em> matrix of two positions in your book — say
+      EUR/USD and GBP/USD — in some return-variance units. Diagonal entries are
+      each pair's own variance (3 and 3 — by coincidence of these clean numbers,
+      equal daily variance for both pairs); the off-diagonal entry, 1, is their
+      covariance. That implies a correlation of
+      \(1/\sqrt{3 \times 3} = 1/3 \approx 0.33\) — a real, moderate, unremarkable
+      positive correlation for two dollar-crosses, not an extreme one.
+    </p>
+    <p>
+      The eigen-decomposition just computed by hand says something concrete
+      about that book that the raw covariance numbers alone don't make obvious.
+      The total variance of the two-pair book is
+      \(\operatorname{trace}(A) = 3+3 = 6\), and the eigenvalues split that total
+      exactly along the two eigenvector directions: \(\lambda_1=4\) along
+      \((1,1)/\sqrt2\) — both pairs moving in the <em>same</em> direction by
+      similar amounts, a shared "risk-on / dollar" move — and \(\lambda_2=2\)
+      along \((1,-1)/\sqrt2\) — the two pairs moving in <em>opposite</em>
+      directions, i.e. genuinely diverging from each other. As a share of the
+      book's total variance: \(4/6 \approx 66.7\%\) shared-direction,
+      \(2/6 \approx 33.3\%\) divergence-direction.
+    </p>
+    <p>
+      Concretely: if you're holding roughly equal-sized long EUR/USD and long
+      GBP/USD positions, your combined book sits close to the \((1,1)\)
+      direction — the dominant eigenvector — almost by construction, since
+      "both pairs up together" <em>is</em> that direction. That means about
+      two-thirds of your daily P&amp;L variance from this pair of trades is
+      coming from one shared factor (call it "long the dollar bloc"), and only
+      about one-third is coming from the pairs actually behaving differently
+      from each other. Using the same effective-bets formula this repo already
+      computes for a strategy book
+      (<code>effectiveBetsPCA = (&#931;&#955;)&#178; / &#931;&#955;&#178;</code> in
+      <code>js/diversificationCore.js</code>): \((\Sigma\lambda)^2/\Sigma\lambda^2 = 6^2/(4^2+2^2) = 36/20 = 1.8\).
+      Two nominal positions, but only about 1.8 <em>effective</em>, independent
+      bets — not the dramatic "really just one big bet" story a much higher
+      correlation would tell (that would need \(\lambda_1\) much closer to 6 and
+      \(\lambda_2\) close to 0), but a real, quantified statement that this
+      "two positions" book is somewhat less diversified than two fully
+      independent trades would be, and by exactly how much. If you sized both
+      legs assuming two uncorrelated units of risk, you are carrying about 10%
+      more concentrated exposure to the shared factor than that assumption
+      implies — worth knowing before you also add a third dollar-cross and
+      assume it adds a full third independent bet.
+    </p>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Nobody on a trading desk solves a characteristic equation by hand day to
+    day — software libraries (or, in this repo, a hand-rolled numerical routine)
+    do the arithmetic. What the desk-level intuition actually is: <strong>an
+    eigenvector of a covariance or correlation matrix is a portfolio</strong> —
+    a specific combination of the underlying instruments — and its
+    <strong>eigenvalue is how much of the book's total variance that portfolio
+    accounts for</strong>. Ranking eigenvectors by eigenvalue, largest first,
+    answers "if I had to describe this basket's risk in the fewest possible
+    independent moves, what are those moves, and how much does each one
+    matter?" — which is precisely what the PCA lesson in this Theory Lab builds
+    out in full, instrument by instrument, for a basket of FX pairs.
+  </p>
+  <p>
+    The same machinery reappears with a different vocabulary in two other
+    lessons here. In the Kalman Filter, the state vector is repeatedly
+    multiplied through a transition matrix (predicting the next state) and a
+    covariance matrix is propagated through matrix multiplication at every
+    step — the filter's entire update cycle is matrix-vector and matrix-matrix
+    multiplication, nothing more exotic. In the Hidden Markov Model lesson, the
+    transition matrix's "stationary distribution" — the long-run fraction of
+    time spent in each regime — is literally the eigenvector of the transition
+    matrix (transposed appropriately) whose eigenvalue is exactly 1; every
+    valid transition matrix is guaranteed to have such an eigenvector because
+    its rows are probability distributions that must sum to 1. Once you've
+    solved \(Av = \lambda v\) by hand once, "the stationary distribution is the
+    eigenvector for eigenvalue 1" stops being a magic phrase and becomes a
+    direct application of the definition above.
+  </p>
+  <p>
+    More generally, quant risk teams use eigen-decomposition anywhere they need
+    to answer "how many genuinely different things are actually happening in
+    this basket," which is the mathematical core of Markowitz-style portfolio
+    theory (diversification benefit comes from off-diagonal covariance terms,
+    and eigen-decomposition is exactly how you separate "shared" variance from
+    "idiosyncratic" variance) and of statistical factor-risk models like Barra's
+    (covered in more depth in the PCA lesson's further reading).
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this is actually used in MacroFXModel</div>
+    <h3><code>symmetricEigenvalues</code> in <code>js/diversificationCore.js</code></h3>
+    <p>
+      This is not a hypothetical connection — <code>js/diversificationCore.js</code>
+      already runs exactly the eigenvalue math from this lesson on a real
+      correlation matrix. Its <code>symmetricEigenvalues(mat)</code> function is a
+      cyclic Jacobi rotation: a numerical algorithm that repeatedly applies small
+      rotations to zero out a symmetric matrix's off-diagonal entries, converging
+      on its eigenvalues without ever writing down a characteristic equation
+      (the by-hand approach above is fine for a \(2\times2\), but becomes
+      impractical past 3&#215;3 or 4&#215;4 — Jacobi rotation, QR algorithms, and
+      similar iterative methods are how real software finds eigenvalues of
+      larger matrices). Those eigenvalues feed directly into
+      <code>effectiveBetsPCA</code> and <code>effectiveBetsEntropy</code>, the
+      "how many independent bets do I actually have" metrics wired into
+      <code>diversification.html</code> — the exact \((\Sigma\lambda)^2/\Sigma\lambda^2\)
+      formula used in the scenario box above, on this repo's own strategy
+      correlation matrix rather than a two-pair toy example.
+    </p>
+    <p>
+      One honest gap, noted here and covered in more depth in the PCA lesson's
+      own repo box: <code>symmetricEigenvalues</code> currently returns
+      <em>only</em> the eigenvalues, not the eigenvectors — sufficient for the
+      effective-bets metrics, which only need "how much variance," not "in
+      which combination of instruments." The eigenvectors (the accumulated
+      rotation matrix from the same Jacobi sweeps) are a documented, unbuilt
+      candidate in <code>LEGO_MODULES.md §2</code> for anyone who wants the
+      "which strategies actually make up this dominant risk factor" loadings,
+      not just its size.
+    </p>
+    <p>
+      This lesson is Lesson 1 of the Deeper Foundations tier specifically
+      because the PCA lesson (<code>pca-factors.html</code>), the Kalman Filter
+      lesson (<code>kalman-filter.html</code>), and the Hidden Markov Model
+      lesson (<code>hidden-markov-models.html</code>) each build directly on
+      top of the vocabulary here — vectors, matrices, matrix multiplication,
+      and eigenvectors/eigenvalues — without re-deriving any of it. If a term
+      in one of those three lessons is unclear, it is very likely defined
+      properly here rather than there.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where the intuition here breaks if pushed too far</h3>
+    <p>
+      <strong>Not every matrix has "nice" eigenvectors.</strong> The guarantee
+      that eigenvalues are real and eigenvectors are perpendicular is specific
+      to <em>symmetric</em> matrices. A general (non-symmetric) matrix can have
+      complex eigenvalues, or eigenvectors that aren't perpendicular, or in
+      degenerate cases fewer independent eigenvectors than its dimension.
+      Covariance and correlation matrices are always symmetric by construction,
+      so this repo's uses of eigen-decomposition stay in the well-behaved case —
+      but the geometric picture in this lesson (an ellipse, two perpendicular
+      axes) is specifically the symmetric-matrix picture, not the fully general
+      one.
+    </p>
+    <p>
+      <strong>Only square matrices have eigenvectors in this sense.</strong>
+      \(Av = \lambda v\) requires \(Av\) and \(v\) to live in the same space so
+      they can be compared and potentially be scalar multiples of each other. A
+      non-square matrix maps between spaces of different dimension (say, 3
+      instruments' returns projected down to 2 factor scores) and simply has no
+      eigenvectors to solve for — a different, related toolkit (singular value
+      decomposition) is the generalization used there, and is out of scope for
+      this lesson.
+    </p>
+    <p>
+      <strong>Equal eigenvalues mean "no preferred direction," not "an error."</strong>
+      If a \(2\times2\) symmetric matrix's two eigenvalues come out equal
+      (\(\lambda_1 = \lambda_2\)), the transformation stretches every direction
+      by the same amount — geometrically, the "ellipse" is actually a circle,
+      and any direction (not just two special ones) is an eigenvector. This
+      happens for a correlation matrix precisely when the two series are
+      exactly uncorrelated (a diagonal matrix with equal diagonal entries) — a
+      case worth recognizing rather than treating as a computational glitch.
+    </p>
+    <p>
+      <strong>An eigen-decomposition describes the matrix you fed it, not a law
+      of nature.</strong> A correlation matrix estimated from a rolling window
+      of returns is a sample statistic — it changes as the window rolls forward,
+      and its eigenvectors and eigenvalues change with it, sometimes sharply,
+      especially when two eigenvalues are close together (small perturbations to
+      the data can then swap or rotate the corresponding eigenvectors
+      noticeably, even though the eigenvalues themselves barely move). Treat any
+      single eigen-decomposition as a snapshot of a particular estimation
+      window, not a permanent structural fact about the instruments involved —
+      the same discipline this repo applies to any other rolling-window
+      estimate.
+    </p>
+    <p>
+      <strong>"Stretch factor" is about the linear map, not about price moving
+      in a straight line.</strong> None of this says anything about whether a
+      price series trends, mean-reverts, or does either predictably over time —
+      that's a different question (see the OU, Hurst/variance-ratio, and
+      day-type lessons). Eigen-decomposition here describes the
+      <em>instantaneous covariance structure</em> across instruments at a point
+      in time, not their dynamics through time.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why must a matrix be square for "eigenvectors" (in the \(Av = \lambda v\) sense) to make sense at all?</summary>
+    <div class="tl-answer">
+      \(Av = \lambda v\) requires comparing \(Av\) directly to \(v\) — asking
+      whether \(Av\) happens to be a scalar multiple of \(v\) itself. That
+      comparison only type-checks if \(Av\) lives in the same space as \(v\)
+      does, which requires the matrix to map that space back into itself (an
+      \(n \times n\) matrix takes an \(n\)-dimensional vector to another
+      \(n\)-dimensional vector). A non-square, say \(3 \times 2\), matrix maps a
+      2-D vector to a 3-D output — there is no meaningful sense in which a 3-D
+      vector could equal \(\lambda\) times the original 2-D input, so the
+      equation \(Av = \lambda v\) is not even well-formed for a non-square
+      matrix.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What does it mean geometrically if a symmetric 2&#215;2 matrix has two equal eigenvalues, \(\lambda_1 = \lambda_2\)?</summary>
+    <div class="tl-answer">
+      It means the transformation stretches every direction in the plane by
+      the exact same factor — there is no "preferred" axis at all. The unit
+      circle maps to another circle (a degenerate ellipse whose major and minor
+      axes are equal), not a genuinely elongated ellipse, and literally
+      <em>every</em> nonzero vector is an eigenvector with that shared
+      eigenvalue, not just two special ones. In the correlation-matrix
+      interpretation, this is exactly what happens when two series are
+      completely uncorrelated with equal variance: there is no direction along
+      which they move together more than any other, so no single portfolio
+      combination of the two stands out as the dominant risk factor.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why is matrix multiplication generally not commutative (\(AB \neq BA\)), and why does that matter in practice rather than just being a textbook curiosity?</summary>
+    <div class="tl-answer">
+      Each matrix represents a specific transformation of the plane, and
+      "apply \(B\), then apply \(A\) to the result" (that's \(AB\), read right
+      to left) is a genuinely different composite motion from "apply \(A\),
+      then apply \(B\)" (\(BA\)) — rotating then stretching is not the same
+      overall move as stretching then rotating, in general. This is worked
+      concretely above with \(M\) and \(N\), which give different results
+      (\(MN \neq NM\)) despite both being simple integer matrices. It matters
+      in practice anywhere a computation involves multiple matrices chained
+      together — for instance, a Kalman filter's predict/update equations
+      multiply a state through a transition matrix, an observation matrix, and
+      covariance matrices in a specific, load-bearing order; silently swapping
+      the order of two matrix multiplications there is a real bug, not a
+      harmless simplification.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. In the worked example, \(A = \begin{pmatrix} 3 & 1 \\ 1 & 3 \end{pmatrix}\) has eigenvalues 4 and 2, with eigenvectors \((1,1)\) and \((1,-1)\). Without recomputing from scratch, what would you expect to happen to the eigenvalues (and the eigenvectors) if you instead used \(2A = \begin{pmatrix} 6 & 2 \\ 2 & 6 \end{pmatrix}\)?</summary>
+    <div class="tl-answer">
+      The eigenvalues would double, to 8 and 4, while the eigenvectors stay
+      exactly the same, \((1,1)\) and \((1,-1)\). This follows directly from
+      \(Av = \lambda v\): if \((2A)v = 2(Av) = 2(\lambda v) = (2\lambda)v\),
+      then \(v\) is still an eigenvector of \(2A\), now with eigenvalue
+      \(2\lambda\) instead of \(\lambda\) — scaling a matrix by a constant
+      scales every eigenvalue by that same constant and leaves every
+      eigenvector's direction untouched. This is exactly why the effective-bets
+      ratio \((\Sigma\lambda)^2/\Sigma\lambda^2\) used in the trading scenario
+      above is scale-invariant: multiplying every eigenvalue by the same
+      constant leaves that ratio unchanged, which is what lets it be computed
+      indifferently from a covariance matrix or a rescaled correlation matrix.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. A trader says "these two positions are basically one bet." Translate that sentence into a precise statement about the eigenvalues of their 2&#215;2 covariance matrix.</summary>
+    <div class="tl-answer">
+      It translates to: one eigenvalue is close to the matrix's full trace
+      (nearly all of the combined variance), and the other eigenvalue is close
+      to zero (almost no variance left along the perpendicular direction) — the
+      "ellipse" of possible joint moves has become almost a flat line segment,
+      because the two positions move together almost perfectly. In the
+      effective-bets formula, \((\Sigma\lambda)^2/\Sigma\lambda^2\) then comes
+      out close to 1 rather than close to 2, quantifying "basically one bet"
+      as a number instead of a figure of speech. The worked scenario in this
+      lesson (eigenvalues 4 and 2, giving 1.8 effective bets) is deliberately
+      the more moderate, honest middle case, not this extreme one.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why does a Hidden Markov Model's transition matrix always have an eigenvalue of exactly 1, and why is the corresponding eigenvector called the "stationary distribution"?</summary>
+    <div class="tl-answer">
+      Every row of a valid transition matrix is a probability distribution
+      (the probabilities of moving from that state to every state, including
+      itself) and therefore sums to exactly 1; this structural property
+      guarantees the matrix always has 1 as an eigenvalue (a standard result
+      for any matrix whose rows, or whose columns depending on convention, sum
+      to 1). The eigenvector paired with that eigenvalue-1, once normalized to
+      sum to 1 itself, is a distribution over states that the transition
+      matrix maps back to itself unchanged: \(A^\top \pi = 1 \cdot \pi = \pi\).
+      That is precisely the definition of a stationary distribution — the
+      long-run mix of time spent in each regime that, once reached, the
+      dynamics no longer disturb. It is exactly the same equation,
+      \(Av = \lambda v\), just with \(\lambda\) fixed at 1 and the vector
+      reinterpreted as a probability distribution rather than a return or a
+      price.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Gilbert Strang, <em>Introduction to Linear Algebra</em>, Wellesley-Cambridge Press — the standard accessible textbook for exactly this material, built around the same geometric intuition (matrices as transformations) used in this lesson; Strang's freely available MIT OpenCourseWare lectures cover the same ground.</li>
+    <li>David C. Lay, Steven R. Lay &amp; Judi J. McDonald, <em>Linear Algebra and Its Applications</em>, Pearson — another widely used undergraduate reference, with a strong applications focus that includes finance-adjacent examples.</li>
+    <li>Harry M. Markowitz, "Portfolio Selection," <em>Journal of Finance</em>, 1952 — the origin of modern portfolio theory; its diversification argument is, underneath the notation, exactly the eigen-decomposition of a covariance matrix separating shared from idiosyncratic variance, formalized generally decades later.</li>
+    <li>The PCA lesson in this Theory Lab (<code>pca-factors.html</code>) — the direct continuation of this lesson's eigenvector/eigenvalue material, applied specifically to a covariance matrix of FX returns and connected to <code>js/diversificationCore.js</code>.</li>
+    <li><code>js/diversificationCore.js</code> and <code>diversification.html</code> in this repo — the existing eigenvalue-based "effective number of bets" implementation this lesson's repo box builds on.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">&#8592; Theory Lab hub</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="calculus-for-finance.html">Calculus for Finance &#8594;</a>
+  </div>
+</div>
+</body>
+</html>

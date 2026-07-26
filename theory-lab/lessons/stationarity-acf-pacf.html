@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stationarity, ACF &amp; PACF — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Deeper Foundations / Stationarity, ACF &amp; PACF</div>
+  <div class="tl-kicker">Deeper Foundations · Lesson 3 of 4</div>
+  <h1 class="tl-title">Stationarity, ACF &amp; PACF</h1>
+  <p class="tl-dek">Every mean-reversion signal, every lookback window, every Cointegration test and every ARIMA/GARCH model quietly assumes something about how a series behaves through time — the ACF and PACF are the two plain diagnostic plots that check whether that assumption holds, and if it does, exactly how much of a series' own past is genuinely informative rather than noise carried along for the ride.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">DEEPER FOUNDATION — read before Cointegration, ARIMA/VAR</span>
+    <span>~16 min read</span>
+    <span>Prereqs: Correlation &amp; Linear Regression primer</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    Almost every piece of time-series machinery in this repo and in
+    quantitative finance generally — a rolling z-score, a lookback-window
+    feature, an AR/ARIMA model, a GARCH volatility forecast, and the
+    Cointegration lesson's residual test — rests on an assumption that rarely
+    gets stated out loud: that the statistical properties of the series being
+    modeled don't themselves drift over time. If they do drift, a "20-day
+    average" computed today doesn't mean the same thing it meant a year ago,
+    and any model fit on the whole history is quietly averaging together
+    several different regimes as if they were one. <strong>Stationarity</strong>
+    is the formal name for the assumption holding; this lesson defines it
+    precisely, contrasts it with the non-stationary case already introduced
+    informally by this Theory Lab's random-walk and Ornstein-Uhlenbeck
+    material, and then introduces the two diagnostic tools — the
+    <strong>autocorrelation function (ACF)</strong> and the
+    <strong>partial autocorrelation function (PACF)</strong> — that let you
+    look at a series and answer a very practical question: how far back does
+    this series' own history actually carry usable information, and where
+    does it stop?
+  </p>
+  <p>
+    That practical question shows up constantly and usually gets answered by
+    guesswork instead of evidence — "let's use a 20-day lookback" is a
+    decision made in almost every rolling-window feature in this codebase,
+    and it is, whether stated or not, an implicit claim about
+    autocorrelation structure. The ACF and PACF are the tools that let you
+    check that claim against the data rather than assume it. They are also
+    the direct prerequisite for reading the Cointegration lesson's Step 2
+    with real understanding: the Augmented Dickey-Fuller test used there to
+    test a spread's residual for stationarity is, under the hood, built from
+    exactly the autocorrelation ideas developed here.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Does today's weather tell you anything about next Tuesday's?</h3>
+    <p>
+      Think about how useful yesterday's temperature is for predicting
+      today's temperature, compared to how useful the temperature from ten
+      days ago is. Intuitively, yesterday matters a lot — weather has real
+      short-run persistence, a hot day is usually followed by another warm
+      one. Ten days ago matters much less directly, but it isn't zero either,
+      because of the chain in between: ten days ago influenced nine days ago,
+      which influenced eight days ago, and so on, link by link, down to
+      yesterday, which influences today. Some of the apparent relationship
+      between "ten days ago" and "today" is real direct memory, and some of
+      it is just riding along on that chain of intermediate days. The ACF
+      measures the <em>total</em> relationship at each lag — direct memory
+      plus everything carried through the chain. The PACF asks the sharper
+      question: once you already know all the days in between, does the
+      value from exactly \(k\) days ago add anything <em>extra</em>? For
+      weather (and for a great many financial series), the honest answer
+      past a short horizon is no — the intervening days already captured
+      everything the more distant one had to offer. That's exactly the
+      distinction this lesson formalizes.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    This section builds up four ideas in order: what stationarity means
+    precisely, how it applies to processes already seen elsewhere in this
+    Theory Lab, what the ACF is and what its shape reveals, and what the
+    PACF adds on top — culminating in the classic Box-Jenkins identification
+    rule that ties ACF and PACF shape directly to model order.
+  </p>
+
+  <p><strong>1. Stationarity, precisely.</strong> A time series \(X_t\) is
+  (weakly, or "covariance") <strong>stationary</strong> if three statistical
+  properties hold constant through time — they depend only on how far apart
+  two observations are, never on the calendar date itself:</p>
+  <div class="tl-math">\[ E[X_t] = \mu, \qquad \mathrm{Var}(X_t) = \sigma^2, \qquad \mathrm{Cov}(X_t, X_{t+k}) = \gamma(k) \]</div>
+  <p>
+    In words: a fixed long-run mean \(\mu\) the series fluctuates around, a
+    fixed variance \(\sigma^2\) describing how far it typically strays from
+    that mean, and an autocovariance \(\gamma(k)\) — how related an
+    observation is to the one \(k\) periods away — that depends only on the
+    lag \(k\), not on which point in the sample you check it at. This is
+    exactly the same definition the Cointegration lesson opens with, because
+    it is the same concept doing double duty: it's the property a
+    mean-reverting spread needs in order to be tradeable at all, and it's
+    also the property the ACF and PACF below are only meaningfully
+    interpretable <em>under</em>. Compute an ACF on a non-stationary series
+    and the plot itself becomes unreliable, for reasons this lesson returns
+    to below.
+  </p>
+
+  <p><strong>2. Two processes already in this Theory Lab, reframed as
+  stationary vs. not.</strong> The Ornstein-Uhlenbeck (OU) lesson's process
+  and the pure random walk covered in the Cointegration lesson are the
+  cleanest possible contrast. An OU process, \(dX_t = \theta(\mu - X_t)\,dt +
+  \sigma\,dW_t\), has a pull-back-to-\(\mu\) term built directly into its
+  drift: the further \(X_t\) strays from \(\mu\), the harder it gets pulled
+  back. That mechanism gives it a fixed long-run mean and a variance that
+  settles to a constant \(\sigma^2/2\theta\) rather than growing forever — it
+  is stationary by construction, which is precisely why the OU lesson could
+  treat "the mean" and "the standard deviation" of the process as fixed
+  numbers worth trading bands around. A pure random walk, \(X_t = X_{t-1} +
+  \epsilon_t\), has no such pull-back term at all; as the Cointegration
+  lesson derives, its variance grows linearly with \(t\) — \(\mathrm{Var}(X_t)
+  = t\sigma^2\) — so there is no fixed "normal level" for it to revert to,
+  and the first requirement of stationarity (constant variance) fails
+  outright. Every raw FX rate, equity index, or bond-yield <em>level</em> in
+  this repo is generally treated as behaving like the second case; most
+  well-specified spreads, and most return series, are treated as closer to
+  the first. The ACF and PACF below are the tools that let you check which
+  world a given series is actually in, rather than assuming it.
+  </p>
+
+  <p><strong>3. The autocorrelation function (ACF).</strong> For a
+  (assumed-stationary) series \(X_t\), the ACF at lag \(k\) is simply the
+  correlation between the series and a copy of itself shifted back \(k\)
+  steps:</p>
+  <div class="tl-math">\[ \mathrm{ACF}(k) \;=\; \mathrm{Corr}(X_t, X_{t-k}) \;=\; \frac{\gamma(k)}{\gamma(0)} \;=\; \frac{\mathrm{Cov}(X_t, X_{t-k})}{\mathrm{Var}(X_t)} \]</div>
+  <p>
+    \(\mathrm{ACF}(0)\) is always exactly 1 (any series is perfectly
+    correlated with itself at zero lag); every other lag's value falls
+    between -1 and 1 and answers "how related is today's value to the value
+    \(k\) steps back." Plotting \(\mathrm{ACF}(k)\) against \(k\) for a range
+    of lags — usually the first 10-40 — produces what's called a
+    <strong>correlogram</strong>, and its shape is genuinely diagnostic
+    rather than decorative:
+  </p>
+  <ul>
+    <li><strong>White noise</strong> (no memory at all — each value is an
+    independent draw) produces a correlogram that's near zero at every lag
+    beyond zero, scattered randomly inside a thin significance band around
+    zero, with no discernible pattern.</li>
+    <li><strong>An AR(1)-like stationary series</strong> (this period's value
+    depends partly on last period's, with a fixed pull toward a mean)
+    produces a correlogram that <strong>decays gradually</strong> — high at
+    lag 1, smaller at lag 2, smaller still at lag 3, and so on, typically
+    shrinking roughly geometrically (each lag's value roughly a constant
+    fraction of the previous one) toward zero, eventually disappearing into
+    the noise band at higher lags.</li>
+    <li><strong>A trending or non-stationary series</strong> produces a
+    correlogram that decays <strong>very slowly</strong> — still
+    meaningfully elevated even 20 or 30 lags out, refusing to die down toward
+    zero within any reasonable window. This is the classic visual tell-tale
+    of non-stationarity: a series with a genuine unit root (a random walk, or
+    close to one) is correlated with its own distant past not because of any
+    real short-memory structure, but because a random walk's whole history is
+    baked into its current level — today's value literally contains the sum
+    of every shock since the series began, so it is mechanically related to
+    everything that came before it, at every lag, forever. Practitioners
+    often check a correlogram <em>before</em> running a formal unit-root test
+    like ADF for exactly this reason — a slowly-decaying ACF is the cheap
+    first-pass signal that a stationarity test is worth running properly.</li>
+  </ul>
+
+  <p><strong>4. The partial autocorrelation function (PACF).</strong> The ACF
+  at lag \(k\) mixes together the direct relationship between \(X_t\) and
+  \(X_{t-k}\) with everything carried indirectly through the intervening
+  lags \(1, \ldots, k-1\) — exactly the weather-chain intuition above. The
+  <strong>PACF</strong> at lag \(k\) is the correlation between \(X_t\) and
+  \(X_{t-k}\) <em>after removing (partialling out) the linear effect of every
+  lag in between</em>. Conceptually, one way to get there: regress \(X_t\) on
+  \(X_{t-1}, X_{t-2}, \ldots, X_{t-k}\) all at once, and the coefficient on
+  the very last term, \(X_{t-k}\), is the PACF at lag \(k\) — it captures
+  whatever \(X_{t-k}\) still explains about \(X_t\) once every closer lag has
+  already had its say. (In practice this is computed more efficiently via the
+  Durbin-Levinson recursion rather than one large regression per lag, but the
+  regression framing is the right way to understand what the number means.)
+  Because it strips out the indirect, chained-through-intermediate-lags
+  contribution that the plain ACF cannot separate out, the PACF answers a
+  sharper question than the ACF does: not "is lag \(k\) related to today," but
+  "does lag \(k\) add anything <em>beyond</em> what the closer lags already
+  told you."
+  </p>
+
+  <p><strong>5. The Box-Jenkins identification rule — why the contrast
+  matters.</strong> This is the payoff of defining both functions rather than
+  just one: for a genuine <strong>AR(\(p\))</strong> process (today's value
+  depends directly on the last \(p\) values plus noise), the two functions
+  behave in a specifically different way, and that difference is what lets
+  you read the model's order directly off the two plots:
+  </p>
+  <ul>
+    <li>The <strong>ACF decays gradually</strong> — it never cleanly stops,
+    because the direct dependence at lag \(p\) still echoes forward through
+    every later lag via the same chained-correlation mechanism described
+    above (an AR(1) process, for instance, has \(\mathrm{ACF}(k) = \phi^k\), a
+    smooth geometric decay that is technically nonzero at every lag, however
+    small).</li>
+    <li>The <strong>PACF cuts off sharply</strong> after lag \(p\) — once
+    you've partialled out lags \(1\) through \(p\), there's genuinely nothing
+    left for lag \(p+1\) to explain, because the true process only ever
+    depended on the first \(p\) lags directly. For an AR(1) process
+    specifically, this means the PACF is large at lag 1 and then drops
+    abruptly to (statistically indistinguishable from) zero at every lag from
+    2 onward — even though the ACF at lag 2, 3, 4… is still visibly nonzero
+    from the decay described above.</li>
+  </ul>
+  <p>
+    That contrast — <strong>ACF decays, PACF cuts off</strong> — is the
+    classic Box-Jenkins signature of an autoregressive process, and reading
+    where the PACF cuts off is the standard way to identify \(p\), the
+    order of an AR model, directly from data rather than by guessing a
+    lookback window. (The mirror-image rule holds for a moving-average
+    MA(\(q\)) process — ACF cuts off after lag \(q\), PACF decays gradually —
+    which is why the two plots together, not either alone, are the classical
+    starting point for choosing an ARIMA model's \((p,q)\) before ever
+    running a fit.)
+  </p>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(X_t\)</td><td>The time series being examined, observed at time \(t\).</td></tr>
+      <tr><td>\(k\)</td><td>The lag — how many periods back the comparison is made.</td></tr>
+      <tr><td>\(\mu, \sigma^2\)</td><td>The series' mean and variance — required constant (not time-dependent) for stationarity.</td></tr>
+      <tr><td>\(\gamma(k)\)</td><td>The autocovariance at lag \(k\): \(\mathrm{Cov}(X_t, X_{t-k})\) — required to depend only on \(k\), never on \(t\), for stationarity.</td></tr>
+      <tr><td>\(\mathrm{ACF}(k)\)</td><td>The autocorrelation function at lag \(k\): \(\gamma(k)/\gamma(0)\) — the total (direct + chained-through) relationship between \(X_t\) and \(X_{t-k}\).</td></tr>
+      <tr><td>\(\mathrm{PACF}(k)\)</td><td>The partial autocorrelation at lag \(k\) — the relationship between \(X_t\) and \(X_{t-k}\) after netting out lags \(1,\ldots,k-1\).</td></tr>
+      <tr><td>\(\phi\)</td><td>The AR(1) coefficient — under \(|\phi|<1\) the process is stationary, with \(\mathrm{ACF}(k)=\phi^k\).</td></tr>
+      <tr><td>\(p\), \(q\)</td><td>AR order and MA order — the two integers the ACF/PACF shapes are classically used to identify before fitting an ARIMA\((p,d,q)\) model.</td></tr>
+      <tr><td>\(N\)</td><td>Sample size — the ACF/PACF significance band under the white-noise null is approximately \(\pm 1.96/\sqrt{N}\).</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>How many days actually matter for a mean-reversion signal?</h3>
+    <p>
+      A trader is building a mean-reversion signal on a spread — say, a
+      cross-asset spread that has already cleared a Cointegration-style
+      stationarity check, or a stationary residual from some other model.
+      The natural next question is a design choice every such signal has to
+      make somehow: how far back should the signal look? Ten days? Twenty?
+      A common but unexamined approach is to just pick a round number that
+      "feels reasonable" and move on, or to grid-search a handful of window
+      lengths and keep whichever number back-tested best — the latter is
+      itself a quiet form of overfitting, since it is fitting a tunable
+      parameter to history rather than reading the answer off the series'
+      actual structure.
+    </p>
+    <p>
+      Plotting the spread's own ACF and PACF answers the question directly
+      instead of guessing. Suppose the correlogram looks close to the
+      AR(1) signature described above: the ACF is meaningfully elevated at
+      lag 1, decays gradually through lags 2-5, and fades into the noise
+      band by lag 7 or so — that alone might tempt a 5-to-7-day lookback.
+      But the PACF tells a sharper story: it shows one tall, clearly
+      significant bar at lag 1, and then drops inside the noise band at
+      every lag from 2 onward. That combination is the textbook signature of
+      an AR(1) process — the spread's own history has real, direct
+      predictive structure only at lag 1 (yesterday); everything the ACF
+      shows at lags 2 through 7 is the same lag-1 relationship echoing
+      forward through the chain, not new independent information at those
+      later lags. A signal that looks back 10 days on this spread is mostly
+      re-adding information the model already has from yesterday alone,
+      several times over, while contributing very little that's genuinely
+      new — extra parameters (and extra estimation noise) bought for very
+      little real signal. The PACF is what tells you "stop at lag 1" with
+      actual evidence, instead of guessing a window and hoping it holds up
+      out of sample.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The classic AR(1) signature — ACF decays, PACF cuts off</div>
+    <svg viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two side-by-side bar charts for the same AR(1)-like series. Left panel, the ACF, shows bars at lags 1 through 10 that decay gradually and smoothly toward zero, still faintly visible by lag 10. Right panel, the PACF, shows a single tall bar at lag 1 and then near-zero bars, some slightly positive and some slightly negative, at every lag from 2 through 10, all inside a dashed significance band. A dashed horizontal significance-band line runs across each panel.">
+      <text x="40" y="18" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">ACF (autocorrelation) — decays gradually</text>
+      <text x="360" y="18" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">PACF (partial autocorrelation) — cuts off after lag 1</text>
+
+      <!-- ACF panel -->
+      <line x1="40" y1="210" x2="284" y2="210" style="stroke:var(--text3)"/>
+      <line x1="40" y1="193.2" x2="284" y2="193.2" style="stroke:var(--border);stroke-dasharray:3,3"/>
+      <rect x="43"  y="100.8" width="14" height="109.2" style="fill:var(--blue)"/>
+      <rect x="67"  y="126"   width="14" height="84"    style="fill:var(--blue)"/>
+      <rect x="91"  y="145.6" width="14" height="64.4"  style="fill:var(--blue)"/>
+      <rect x="115" y="161"   width="14" height="49"    style="fill:var(--blue)"/>
+      <rect x="139" y="172.2" width="14" height="37.8"  style="fill:var(--blue)"/>
+      <rect x="163" y="182"   width="14" height="28"    style="fill:var(--blue)"/>
+      <rect x="187" y="189"   width="14" height="21"    style="fill:var(--blue)"/>
+      <rect x="211" y="194.6" width="14" height="15.4"  style="fill:var(--blue)"/>
+      <rect x="235" y="198.8" width="14" height="11.2"  style="fill:var(--blue)"/>
+      <rect x="259" y="201.6" width="14" height="8.4"   style="fill:var(--blue)"/>
+      <text x="50"  y="222" font-size="9" text-anchor="middle" fill="var(--text3)">1</text>
+      <text x="74"  y="222" font-size="9" text-anchor="middle" fill="var(--text3)">2</text>
+      <text x="98"  y="222" font-size="9" text-anchor="middle" fill="var(--text3)">3</text>
+      <text x="122" y="222" font-size="9" text-anchor="middle" fill="var(--text3)">4</text>
+      <text x="146" y="222" font-size="9" text-anchor="middle" fill="var(--text3)">5</text>
+      <text x="170" y="222" font-size="9" text-anchor="middle" fill="var(--text3)">6</text>
+      <text x="194" y="222" font-size="9" text-anchor="middle" fill="var(--text3)">7</text>
+      <text x="218" y="222" font-size="9" text-anchor="middle" fill="var(--text3)">8</text>
+      <text x="242" y="222" font-size="9" text-anchor="middle" fill="var(--text3)">9</text>
+      <text x="266" y="222" font-size="9" text-anchor="middle" fill="var(--text3)">10</text>
+
+      <!-- PACF panel -->
+      <line x1="360" y1="210" x2="604" y2="210" style="stroke:var(--text3)"/>
+      <line x1="360" y1="193.2" x2="604" y2="193.2" style="stroke:var(--border);stroke-dasharray:3,3"/>
+      <rect x="363" y="100.8" width="14" height="109.2" style="fill:var(--purple)"/>
+      <rect x="387" y="204.4" width="14" height="5.6"   style="fill:var(--purple)"/>
+      <rect x="411" y="210"   width="14" height="4.2"   style="fill:var(--purple)"/>
+      <rect x="435" y="203"   width="14" height="7"     style="fill:var(--purple)"/>
+      <rect x="459" y="210"   width="14" height="5.6"   style="fill:var(--purple)"/>
+      <rect x="483" y="205.8" width="14" height="4.2"   style="fill:var(--purple)"/>
+      <rect x="507" y="210"   width="14" height="2.8"   style="fill:var(--purple)"/>
+      <rect x="531" y="207.2" width="14" height="2.8"   style="fill:var(--purple)"/>
+      <rect x="555" y="210"   width="14" height="1.4"   style="fill:var(--purple)"/>
+      <rect x="579" y="208.6" width="14" height="1.4"   style="fill:var(--purple)"/>
+      <text x="370" y="222" font-size="9" text-anchor="middle" fill="var(--text3)">1</text>
+      <text x="394" y="222" font-size="9" text-anchor="middle" fill="var(--text3)">2</text>
+      <text x="418" y="222" font-size="9" text-anchor="middle" fill="var(--text3)">3</text>
+      <text x="442" y="222" font-size="9" text-anchor="middle" fill="var(--text3)">4</text>
+      <text x="466" y="222" font-size="9" text-anchor="middle" fill="var(--text3)">5</text>
+      <text x="490" y="222" font-size="9" text-anchor="middle" fill="var(--text3)">6</text>
+      <text x="514" y="222" font-size="9" text-anchor="middle" fill="var(--text3)">7</text>
+      <text x="538" y="222" font-size="9" text-anchor="middle" fill="var(--text3)">8</text>
+      <text x="562" y="222" font-size="9" text-anchor="middle" fill="var(--text3)">9</text>
+      <text x="586" y="222" font-size="9" text-anchor="middle" fill="var(--text3)">10</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>ACF</span>
+      <span><i style="background:var(--purple)"></i>PACF</span>
+      <span><i style="background:var(--border)"></i>≈95% significance band</span>
+    </div>
+    <div class="tl-chart-caption">
+      Same underlying AR(1)-like series, two different questions asked of it.
+      The dashed line in each panel marks the approximate 95% significance
+      band under a white-noise null (\(\pm 1.96/\sqrt{N}\)) — bars inside it
+      are not reliably distinguishable from zero. The <strong>left panel</strong>
+      (ACF) decays smoothly and stays outside the band for several lags,
+      because each lag's value partly reflects the direct lag-1 relationship
+      echoing forward through the chain. The <strong>right panel</strong> (PACF)
+      shows that echo stripped out: one clearly significant bar at lag 1, then
+      every later lag falls inside the noise band. That's the Box-Jenkins
+      AR(1) signature — ACF decays, PACF cuts off — and it's what tells you
+      the series' genuine own-history structure stops at lag 1, not further out.
+    </div>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    <strong>Model order identification (Box-Jenkins).</strong> Before fitting
+    an ARIMA\((p,d,q)\) model, plotting the (differenced, if necessary)
+    series' ACF and PACF is the classical first step: a PACF that cuts off
+    after lag \(p\) with a decaying ACF suggests an AR\((p)\) component; an
+    ACF that cuts off after lag \(q\) with a decaying PACF suggests an
+    MA\((q)\) component; both decaying gradually suggests a mixed ARMA
+    process, where the cutoff heuristic weakens and information criteria
+    (AIC/BIC) across candidate orders typically take over.
+  </p>
+  <p>
+    <strong>Checking a modeling assumption before it's used, not after.</strong>
+    GARCH volatility models, VAR systems, and the Cointegration lesson's
+    residual test all assume some notion of stationarity for the object being
+    modeled. Looking at a correlogram is the cheapest possible sanity check
+    before committing to any of those — a series whose ACF hasn't meaningfully
+    decayed by lag 20 or 30 is telling you, visually, that whatever comes next
+    (a differencing step, a detrending step, a formal ADF test) needs to
+    happen before the fancier model is trusted.
+  </p>
+  <p>
+    <strong>Choosing lag length for the Augmented Dickey-Fuller test itself.</strong>
+    The Cointegration lesson's Step 2 regression, \(\Delta \hat\epsilon_t =
+    \gamma\,\hat\epsilon_{t-1} + \sum_{i=1}^{p}\delta_i\,\Delta
+    \hat\epsilon_{t-i} + u_t\), needs enough lagged difference terms \(p\) to
+    soak up any short-run autocorrelation left in the residual — too few and
+    the test statistic is distorted by that leftover structure; too many and
+    the test loses power. The PACF of the differenced residual is a standard,
+    principled way to gauge how many lags actually need including, rather
+    than picking \(p\) arbitrarily.
+  </p>
+  <p>
+    <strong>Feature and lookback-window design generally.</strong> Any
+    quantitative feature built from "the last \(N\) periods" of some series —
+    a rolling volatility estimate, a momentum score, a mean-reversion
+    z-score — is implicitly assuming that periods within that window carry
+    real information and periods beyond it don't. The ACF/PACF pair is the
+    direct, checkable version of that assumption, as the trading scenario
+    above works through concretely.
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this could plug into MacroFXModel</div>
+    <h3>Background literacy for choices this repo already makes, and the step before Cointegration</h3>
+    <p>
+      This lesson is framed as foundational reading rather than a proposed
+      new module, but the connection to existing code is real and specific,
+      not decorative. <code>js/statsCore.js</code>'s
+      <code>rollingZScore(arr, period, clipAt, ddof)</code> and
+      <code>linregSlope(values)</code> are both, structurally, "look back over
+      a window of length <code>period</code> and summarize it" functions —
+      exactly the family of lookback-window choice this lesson's trading
+      scenario is about. Neither function, nor most of the places that call
+      them across the regime classifiers and day-type estimators built on
+      top of <code>statsCore.js</code>, currently derives its window length
+      from an ACF/PACF read of the underlying series; the window is chosen
+      the ordinary way most of this codebase chooses windows — by convention,
+      by what a related published estimator uses, or by what back-tested
+      acceptably. That is not a defect being flagged here — it is simply the
+      literacy gap this lesson exists to close: any such window is an
+      implicit claim about how much of a series' own history is genuinely
+      informative, and the ACF/PACF pair is the tool that would let that
+      claim be checked against data rather than asserted by convention, the
+      next time a lookback parameter in this family is revisited.
+    </p>
+    <p>
+      The tighter, more concrete connection is to the Cointegration lesson
+      that immediately follows this one in the reading order. Its Step 2 asks
+      whether a spread's residual \(\hat\epsilon_t\) is stationary, and does
+      so with the Augmented Dickey-Fuller test — which is not a separate,
+      unrelated piece of machinery. The ADF test <em>is</em> a stationarity
+      test built directly from the ideas in this lesson: it regresses the
+      series' change on its own lagged level (asking, in effect, "does this
+      series revert, the way a stationary series with a decaying ACF would,
+      or does it wander, the way a series with a slowly-decaying ACF would")
+      plus enough lagged difference terms to absorb the residual's own
+      short-run autocorrelation — the same \(p\) that a PACF read of the
+      differenced residual would help choose, as noted above. Anyone reading
+      the Cointegration lesson's Step 2 without having first internalized
+      what "testing a series for stationarity" concretely means, and what an
+      autocorrelation structure looks like when it's present versus absent,
+      is taking that step largely on faith. This lesson is meant to remove
+      that faith requirement before it's needed.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where reading an ACF/PACF plot quietly goes wrong</h3>
+    <p>
+      <strong>Interpreting an ACF/PACF computed on a non-stationary series.</strong>
+      The ACF and PACF are only cleanly interpretable under the stationarity
+      assumption this lesson opens with. Run them on a raw, trending price
+      level instead of a return or a properly-tested spread, and the
+      correlogram's slow decay mostly just reflects the trend/unit-root
+      behavior described above, not any genuine short-memory structure worth
+      building a lookback window around. The standard fix is to difference
+      (or otherwise detrend) the series first, and check the ACF/PACF of the
+      transformed series, not the raw one.
+    </p>
+    <p>
+      <strong>Treating every bar near the significance band as meaningful.</strong>
+      The \(\pm1.96/\sqrt{N}\) band is the threshold for a single lag tested
+      in isolation under a white-noise null. Checking 20 or 40 lags at once
+      and treating every bar that pokes outside the band as "real" ignores
+      that testing many lags simultaneously is itself a multiple-comparisons
+      problem — see this repo's own <a href="multiple-testing.html">Multiple
+      Testing &amp; the Look-Elsewhere Effect</a> lesson. Roughly 1 in 20
+      lags will clear a 5% band by chance alone even for genuine white noise;
+      an isolated spike at, say, lag 17 with nothing meaningful at nearby
+      lags is a much weaker claim than a clean, monotonic decay pattern.
+    </p>
+    <p>
+      <strong>Seasonal or periodic spikes mistaken for short-memory structure.</strong>
+      A distinct ACF spike at a specific lag — say, lag 5 in a daily series,
+      or a lag corresponding to a weekly/monthly cycle — often reflects
+      genuine periodicity (a weekday-of-week effect, a monthly rebalancing
+      flow) rather than the smooth AR-style decay this lesson describes.
+      That's a real and sometimes tradeable pattern, but it's a different
+      phenomenon from generic serial correlation and calling for different
+      handling (a seasonal term, not a longer plain AR lookback).
+    </p>
+    <p>
+      <strong>Expecting the clean Box-Jenkins cutoff from a real market series.</strong>
+      The sharp "ACF decays, PACF cuts off" signature is exact for a pure
+      AR(1) process and close to exact for low-order AR processes generally,
+      but most real financial series are not a clean textbook AR(\(p\)) —
+      they're closer to a mixed, noisy approximation of one, at best. In
+      practice both functions typically show some decay and the "cutoff" is a
+      fade into the noise band rather than a hard stop. Use the shapes as a
+      strong heuristic for where a lookback window's information content
+      runs out, not as literal proof of an exact underlying model order.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why does a random walk's ACF decay so slowly compared to a stationary AR(1) process's ACF?</summary>
+    <div class="tl-answer">
+      A random walk's current value is literally the sum of every shock
+      since the series began, \(X_t = X_0 + \sum_{i=1}^t \epsilon_i\), so it
+      is mechanically tied to its entire history — there is no decaying
+      "memory," just an ever-accumulating sum, and its correlation with
+      values many lags back stays high because those past values are still
+      fully embedded in the current level. A stationary AR(1) process, by
+      contrast, has a pull-back term (\(|\phi|<1\)) that causes each shock's
+      influence to shrink geometrically over time (\(\mathrm{ACF}(k) =
+      \phi^k\)), so its correlation with the distant past genuinely fades
+      out rather than persisting. The slow-decay ACF is a direct symptom of
+      the same non-stationarity (growing, unbounded variance) the
+      Cointegration lesson describes for a random walk.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What does a PACF cutting off after lag 2 (with nonzero values at lags 1 and 2, then dropping into the noise band from lag 3 onward) suggest about model order?</summary>
+    <div class="tl-answer">
+      By the Box-Jenkins identification rule, a PACF that stays significant
+      through lag 2 and then cuts off is the signature of an AR(2) process —
+      today's value directly depends on the last two values, and once those
+      two lags are partialled out, no further lag adds anything. The
+      accompanying ACF for such a process would be expected to decay
+      gradually (not cut off) rather than dropping sharply, since the AR(2)
+      dependence still echoes forward through later lags via the chained
+      correlation mechanism, the same way it does for AR(1).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why is a slowly-decaying, still-elevated-at-large-lags ACF considered a classic visual sign of non-stationarity?</summary>
+    <div class="tl-answer">
+      Because that shape is exactly what a unit-root (random-walk-like)
+      process produces: since today's value carries forward the accumulated
+      sum of essentially all past shocks rather than letting their influence
+      decay, correlation with distant lags stays meaningfully above zero for
+      far longer than a genuinely stationary, mean-reverting series would
+      allow. A properly stationary series' ACF fades into the significance
+      band within a modest number of lags; a series whose ACF is still
+      clearly outside the band 20-30 lags out is showing the telltale
+      fingerprint of a unit root, and is the cheap first-pass check
+      practitioners run before committing to a formal test like ADF.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What does "partial" mean in "partial autocorrelation," and how does that make PACF a different question from ACF?</summary>
+    <div class="tl-answer">
+      "Partial" refers to partialling out — statistically removing — the
+      linear effect of the intervening lags before measuring the
+      relationship at lag \(k\). The ACF at lag \(k\) measures the total
+      relationship between \(X_t\) and \(X_{t-k}\), which mixes together
+      whatever direct effect exists at lag \(k\) with everything carried
+      indirectly through the chain of lags \(1,\ldots,k-1\) in between. The
+      PACF strips that indirect, chained-through contribution out first (via
+      the coefficient on \(X_{t-k}\) in a regression of \(X_t\) on
+      \(X_{t-1},\ldots,X_{t-k}\)) and reports only what's left — the effect
+      lag \(k\) has <em>beyond</em> what the closer lags already explain.
+      That's why an AR(1) process can show a decaying ACF at every lag while
+      its PACF is essentially zero past lag 1: the ACF is still picking up
+      the lag-1 relationship's echo, but the PACF has already accounted for
+      it.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why can't you just always use a longer lookback window "to be safe" when building a feature off a series' own history?</summary>
+    <div class="tl-answer">
+      Because, per the trading scenario above, a longer window on a series
+      whose PACF cuts off early (say, at lag 1) mostly re-adds information
+      the model already has from the closer lags, restated several times
+      over through the chained-correlation mechanism the ACF picks up — it
+      does not add proportionally more genuine information. What it does add
+      is estimation noise (each extra lag/parameter is estimated from finite,
+      noisy data) and slower adaptation to a change in the series' own
+      dynamics, since a longer window smooths over more history that may no
+      longer be representative. The PACF is the tool that tells you where
+      the genuinely new information actually runs out, so extra lookback
+      beyond that point is closer to overfitting risk than to added signal.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why doesn't a single bar clearing the significance band in an ACF or PACF plot prove that lag is a "real" effect?</summary>
+    <div class="tl-answer">
+      The standard \(\pm1.96/\sqrt{N}\) band is the threshold for one lag
+      tested on its own under a white-noise null at roughly 5% significance
+      — but a correlogram typically shows many lags at once (10, 20, 40),
+      and checking many thresholds simultaneously is a multiple-comparisons
+      problem: by chance alone, about 1 in 20 lags will clear a 5% band even
+      for a series with no real autocorrelation at any lag. A single
+      isolated spike with no supporting pattern at nearby lags is much
+      weaker evidence than a smooth, sustained decay (or a clean early
+      cutoff) across several consecutive lags, which is far less likely to
+      arise from chance alone. This is the same look-elsewhere logic this
+      repo's Multiple Testing lesson applies to scanning many trading
+      strategies or many candidate pairs.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>George E.P. Box and Gwilym M. Jenkins, <em>"Time Series Analysis: Forecasting and Control,"</em> Holden-Day, 1970 (subsequent editions with Gregory C. Reinsel and Greta M. Ljung) — the foundational text defining the ACF/PACF-based model identification methodology this lesson's Box-Jenkins rule is named for.</li>
+    <li>James D. Hamilton, <em>"Time Series Analysis,"</em> Princeton University Press, 1994 — the standard graduate-level treatment of stationarity, autocorrelation, and ARIMA/VAR modeling; Chapters 3-4 cover the material in this lesson rigorously.</li>
+    <li>Peter J. Brockwell and Richard A. Davis, <em>"Introduction to Time Series and Forecasting,"</em> Springer, 2nd ed. 2002 — a more applied, practitioner-accessible treatment of the same ACF/PACF identification methodology, with worked examples.</li>
+    <li>David A. Dickey and Wayne A. Fuller, <em>"Distribution of the Estimators for Autoregressive Time Series with a Unit Root,"</em> Journal of the American Statistical Association, 1979 — the formal unit-root (stationarity) test referenced above and used directly in this repo's Cointegration lesson.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="calculus-for-finance.html">← Calculus for Finance</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="time-value-of-money.html">Time Value of Money →</a>
+  </div>
+</div>
+</body>
+</html>

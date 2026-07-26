@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Regression Diagnostics — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Applied Statistics &amp; Validation / Regression Diagnostics</div>
+  <div class="tl-kicker">Applied Statistics &amp; Validation · Lesson 1 of 7</div>
+  <h1 class="tl-title">Regression Diagnostics: Durbin-Watson, Breusch-Pagan &amp; Jarque-Bera</h1>
+  <p class="tl-dek">A regression's p-value is not a fact about the world — it's a fact about a model of the world, and that model comes with fine print. This lesson derives, from scratch, the three checks that verify the fine print actually holds before you trust the headline number: is the error serially correlated (Durbin-Watson), does its variance change across the sample (Breusch-Pagan), and does it look enough like a bell curve for small-sample inference to be valid (Jarque-Bera).</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — formalizes a rule this repo's CLAUDE.md already enforces in prose</span>
+    <span>~17 min read</span>
+    <span>Prereqs: Correlation &amp; Linear Regression primer</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    Ordinary least squares gives you two different kinds of output, and it is
+    easy to conflate them. The first is the <strong>point estimate</strong> —
+    the fitted slope \(\hat\beta\), the number that says "for a one-unit move
+    in X, Y tends to move this much." The second is an <strong>inference
+    claim</strong> built on top of that estimate — a standard error, a
+    t-statistic, a p-value, a confidence interval — the number that says "and
+    here's how sure we should be that this isn't zero." The Correlation &amp;
+    Linear Regression primer derived the first kind in full: \(\hat\beta =
+    \mathrm{Cov}(X,Y)/\mathrm{Var}(X)\), obtained purely by minimizing the sum
+    of squared residuals, with no assumption about the residuals' distribution
+    required anywhere in that derivation. That's worth sitting with, because
+    it means the point estimate is fairly robust — it doesn't know or care
+    whether its own residuals are well-behaved.
+  </p>
+  <p>
+    The second kind of output is not robust in the same way. The textbook
+    formula for a regression's standard error — the one every stats package
+    prints next to \(\hat\beta\) without comment — is derived under a specific
+    set of assumptions about the error term \(\epsilon\): that it has constant
+    variance across every observation (<strong>homoskedasticity</strong>),
+    that it is uncorrelated with itself across observations (<strong>no
+    autocorrelation</strong>), and — for small samples specifically, where the
+    Central Limit Theorem hasn't yet had enough observations to kick in — that
+    it is approximately <strong>normally distributed</strong>. Those three
+    assumptions are exactly what let the classical formula translate "how
+    spread out are the residuals" into "how uncertain am I about
+    \(\hat\beta\)." When any of the three assumptions is badly violated, that
+    translation breaks, and the standard error the software prints is simply
+    the wrong number for the true sampling uncertainty in \(\hat\beta\) — most
+    often too small, which makes a t-statistic look bigger and a p-value look
+    smaller than the evidence actually supports. The point estimate
+    \(\hat\beta\) can still be a perfectly reasonable guess at the slope while
+    the significance claim built on top of it is fiction.
+  </p>
+  <p>
+    This is precisely the gap this repo's own build discipline calls out by
+    name. <code>CLAUDE.md</code>'s backtest-build-discipline section states
+    plainly: <em>"Add residual diagnostics to any regression-based signal:
+    Durbin-Watson (autocorrelation), Jarque-Bera (residual normality),
+    Breusch-Pagan (heteroskedasticity) before trusting its p-value/coefficient.
+    A statistically 'significant' coefficient on a heteroskedastic fit has
+    optimistic standard errors — check before leaning on it."</em> That rule
+    is stated in prose, as something to <em>do</em>. This lesson is where it
+    gets derived — what each of the three tests is actually checking, why a
+    failure specifically inflates apparent significance rather than just
+    "being bad in general," and what the fix looks like once a test flags a
+    problem.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>All three tests are asking the same underlying question about the leftovers</h3>
+    <p>
+      A regression's residuals — \(e_i = y_i - \hat y_i\), the part of \(Y\)
+      the fitted line doesn't explain — are supposed to look like structureless
+      noise. Not "small," necessarily, just <em>patternless</em>: no
+      systematic wave through time, no systematic fanning-out as the fitted
+      value gets larger, no lopsided pile-up of extreme values on one side.
+      If the residuals show a pattern, that pattern is information the model
+      failed to capture — and worse, that leftover information corrupts the
+      one part of OLS that assumed there'd be nothing left to find.
+    </p>
+    <p>
+      <strong>Durbin-Watson</strong> asks: does today's residual predict
+      tomorrow's? Line the residuals up in time order and check whether
+      consecutive ones tend to sit close together (both positive in a
+      stretch, then both negative in a stretch — a slow wave) rather than
+      bouncing around independently. If they do, the model's errors are
+      "sticky" — whatever caused today's miss is still partly causing
+      tomorrow's.
+    </p>
+    <p>
+      <strong>Breusch-Pagan</strong> asks: does the <em>size</em> of the
+      typical residual depend on where you are in the data? Plot the
+      residuals against the fitted values (or against the predictors
+      directly) and check whether they stay in a uniform band or visibly
+      fan out — small and tight for some values of X, wide and scattered for
+      others. If the spread isn't constant, treating one single number as
+      "the" standard error for the whole sample is averaging over
+      observations that don't actually share the same amount of noise.
+    </p>
+    <p>
+      <strong>Jarque-Bera</strong> asks: aside from spread and stickiness,
+      does the overall <em>shape</em> of the residual distribution look
+      normal — symmetric, without an unusually heavy tail on one side? This
+      matters most in small samples, where the formulas for the t-statistic
+      and its p-value lean on the residuals being approximately normal to be
+      exactly right; with enough data the Central Limit Theorem bails you out
+      regardless, but "enough data" is doing real work in that sentence and a
+      trading dataset's usable, non-overlapping sample is often smaller than
+      it looks.
+    </p>
+    <p>
+      All three are really the same diagnostic act performed on three
+      different axes of the same object — the residual series — because all
+      three are checking the same underlying promise: that what's left over
+      after fitting the line really is noise, and not a second signal the
+      inference machinery is silently mistaking for confidence.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    Each test below follows the same shape: state what "well-behaved" would
+    look like, build a statistic that measures the departure from that, and
+    say what a bad value implies about the p-value you were about to trust.
+  </p>
+
+  <p><strong>1. Durbin-Watson — testing for autocorrelation.</strong> Take the
+  residuals from a fitted regression, in their natural time order,
+  \(e_1, e_2, \dots, e_n\). The Durbin-Watson statistic compares the size of
+  the changes between consecutive residuals to the size of the residuals
+  themselves:</p>
+  <div class="tl-math">\[ DW = \frac{\sum_{t=2}^{n}(e_t - e_{t-1})^2}{\sum_{t=1}^{n} e_t^2} \]</div>
+  <p>
+    To see why this measures autocorrelation, consider the two extremes.
+    If consecutive residuals are <em>independent</em> — no relationship
+    between \(e_t\) and \(e_{t-1}\) — then on average \((e_t - e_{t-1})^2 =
+    e_t^2 - 2 e_t e_{t-1} + e_{t-1}^2\), and the cross term \(e_t e_{t-1}\)
+    averages to roughly zero because there's no systematic tendency for
+    \(e_t\) and \(e_{t-1}\) to share a sign. That leaves the numerator
+    averaging to about \(2\sum e_t^2\) (each residual contributing to two
+    consecutive squared-difference terms), which makes \(DW \approx 2\) — the
+    textbook "no autocorrelation" benchmark. Now suppose residuals are
+    <strong>positively autocorrelated</strong> — a positive residual tends to
+    be followed by another positive one, a negative by another negative (the
+    wavy, sticky pattern from the intuition section). Then \(e_t\) and
+    \(e_{t-1}\) tend to share a sign, so the cross term \(e_t e_{t-1}\) is
+    usually positive, which makes \((e_t - e_{t-1})^2\) smaller on average
+    than it would be under independence (consecutive values are closer
+    together) — pushing \(DW\) below 2, toward 0 in the extreme case of
+    residuals that barely change from one period to the next. The mirror
+    case, <strong>negative autocorrelation</strong> (residuals that
+    alternate sign, overcorrecting each period), pushes \(e_t e_{t-1}\)
+    negative, inflates \((e_t-e_{t-1})^2\), and pushes \(DW\) above 2, toward
+    its upper bound of 4.
+  </p>
+  <div class="tl-math">\[ DW \approx 2(1-\hat\rho), \qquad \hat\rho = \text{lag-1 autocorrelation of the residuals} \]</div>
+  <p>
+    That approximation makes the whole scale readable at a glance: \(\hat\rho
+    \approx 0\) (no autocorrelation) gives \(DW \approx 2\); \(\hat\rho
+    \approx 1\) (residuals barely distinguishable period to period) gives
+    \(DW \approx 0\); \(\hat\rho \approx -1\) (residuals alternate almost
+    perfectly) gives \(DW \approx 4\). \(DW\) always falls in the range
+    \([0, 4]\) by construction, and in practice, a value comfortably near 2
+    (commonly, roughly 1.5–2.5, though exact critical values depend on sample
+    size and the number of predictors and are read off a Durbin-Watson
+    table) is treated as consistent with no meaningful autocorrelation.
+  </p>
+  <p>
+    <strong>Why does positive autocorrelation specifically make the p-value
+    look too good?</strong> The classical standard-error formula for
+    \(\hat\beta\) assumes each residual is a fresh, independent draw of
+    information — \(n\) observations means \(n\) independent pieces of
+    evidence about the relationship, and more independent evidence means a
+    tighter, more confident standard error. When residuals are positively
+    autocorrelated, consecutive observations are substantially re-stating the
+    same information rather than each contributing something new — the true
+    number of <em>independent</em> pieces of evidence in the sample (the
+    "effective sample size") is smaller than the raw row count \(n\). The
+    classical formula, however, still divides by the raw \(n\), so it reports
+    a standard error calibrated to more independent information than the
+    sample actually contains. A standard error that's too small makes the
+    t-statistic (\(\hat\beta\) divided by that standard error) too large,
+    which makes the p-value look smaller — more significant — than the true,
+    effective amount of independent evidence justifies. This is the same
+    underlying failure mode the Multiple Testing lesson in this Theory Lab
+    warns about from the opposite direction: that lesson shows how testing
+    many independent slices inflates the chance of a false positive by
+    <em>overcounting how many genuinely separate chances you gave the null
+    hypothesis to fail</em>; positive residual autocorrelation inflates
+    significance by the mirror mechanism — <em>undercounting</em> how few
+    genuinely separate, independent observations actually back a single
+    test. Both errors are a mismatch between the sample size a p-value
+    formula assumes and the amount of independent information the data
+    actually contains.
+  </p>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(e_t\)</td><td>The residual at time \(t\): \(e_t = y_t - \hat y_t\), the part of \(y_t\) the fitted regression doesn't explain.</td></tr>
+      <tr><td>\(DW\)</td><td>The Durbin-Watson statistic, ranging \([0,4]\); \(\approx 2\) means no first-order autocorrelation, toward 0 means positive, toward 4 means negative.</td></tr>
+      <tr><td>\(\hat\rho\)</td><td>The estimated lag-1 autocorrelation of the residuals; \(DW \approx 2(1-\hat\rho)\).</td></tr>
+      <tr><td>\(\hat u_i^2\)</td><td>The squared residual for observation \(i\) — the dependent variable in the Breusch-Pagan auxiliary regression.</td></tr>
+      <tr><td>\(X_i\)</td><td>The original regression's predictor(s) — reused as predictors again in the Breusch-Pagan auxiliary regression.</td></tr>
+      <tr><td>\(R^2_{aux}\)</td><td>The \(R^2\) of the Breusch-Pagan auxiliary regression (squared residuals on \(X\)) — the raw material for the BP test statistic.</td></tr>
+      <tr><td>\(LM\)</td><td>The Breusch-Pagan Lagrange Multiplier statistic, \(LM = n \cdot R^2_{aux}\), tested against a \(\chi^2\) distribution.</td></tr>
+      <tr><td>\(S\)</td><td>Sample skewness of the residuals — asymmetry; 0 for a perfectly symmetric distribution.</td></tr>
+      <tr><td>\(K\)</td><td>Sample <em>excess</em> kurtosis of the residuals (normal = 0); positive means fatter tails than a normal distribution.</td></tr>
+      <tr><td>\(JB\)</td><td>The Jarque-Bera statistic combining \(S\) and \(K\) into one normality test, tested against a \(\chi^2_2\) distribution.</td></tr>
+    </table>
+  </div>
+
+  <p><strong>2. Breusch-Pagan — testing for heteroskedasticity.</strong> The
+  classical standard-error formula also assumes the residual variance,
+  \(\mathrm{Var}(\epsilon_i)\), is the same constant number for every
+  observation \(i\) — homoskedasticity. Breusch-Pagan tests this with a
+  deliberately simple, almost sly, trick: if the residual variance depends on
+  \(X\), then the <em>squared</em> residuals themselves — which are, on
+  average, an estimate of that variance at each point — should show a
+  detectable relationship with \(X\). So the test:</p>
+  <ol>
+    <li>Fits the original regression \(Y = \hat\alpha + \hat\beta X + e\) and keeps the residuals \(e_i\).</li>
+    <li>Runs a brand-new, second ("auxiliary") regression: the <em>squared</em> residuals \(e_i^2\) as the dependent variable, regressed on the same predictor(s) \(X_i\) used in the original model.</li>
+    <li>Takes that auxiliary regression's \(R^2_{aux}\) and forms the test statistic \(LM = n \cdot R^2_{aux}\), which under the null hypothesis of homoskedasticity follows a \(\chi^2\) distribution with degrees of freedom equal to the number of predictors in the auxiliary regression.</li>
+  </ol>
+  <div class="tl-math">\[ e_i^2 = \gamma_0 + \gamma_1 X_i + v_i \qquad LM = n \cdot R^2_{aux} \ \sim\ \chi^2_{k} \text{ under } H_0 \]</div>
+  <p>
+    The logic is exactly the same OLS machinery from the primer, just pointed
+    at a different dependent variable. If the true residual variance is
+    constant, there is nothing for \(X\) to predict about \(e_i^2\) beyond
+    chance — the auxiliary regression's \(R^2_{aux}\) should be small, and
+    \(LM\) small and unremarkable against the \(\chi^2\) benchmark. If the
+    residual variance genuinely grows (or shrinks) as \(X\) changes — the
+    classic "fan" shape, common in return series where volatility itself
+    varies with the level of some driver — then \(X\) has real, systematic
+    power to predict \(e_i^2\), \(R^2_{aux}\) comes out larger than chance
+    alone would produce, and a large \(LM\) rejects the homoskedasticity
+    null. A significant Breusch-Pagan result means the single "one standard
+    error fits all observations" number the classical formula reports is
+    wrong in the same direction as before — it understates the true
+    uncertainty in the regions of \(X\) where variance is actually largest,
+    again making the coefficient look more precisely estimated, and its
+    p-value more impressive, than it should.
+  </p>
+
+  <p><strong>3. Jarque-Bera — testing for residual normality.</strong> This
+  test asks a different kind of question: not about serial structure or
+  variance, but about the overall <em>shape</em> of the residual
+  distribution. It combines two moments beyond mean and variance — skewness
+  and kurtosis — into a single statistic:</p>
+  <div class="tl-math">\[ JB = \frac{n}{6}\left(S^2 + \frac{K^2}{4}\right) \]</div>
+  <p>
+    \(S\) is sample skewness (a measure of lopsidedness — a long tail
+    stretching out to one side of the mean while the bulk of the mass sits on
+    the other), and \(K\) is sample <em>excess</em> kurtosis (how much fatter
+    the tails are than a normal distribution's, with the normal itself
+    defined as 0 on this "excess" scale). A perfectly normal distribution has
+    \(S = 0\) and \(K = 0\), so under the null hypothesis of normality,
+    \(JB\) should be small; large residual skew or excess kurtosis, or both,
+    pushes \(JB\) up, and the statistic is compared against a \(\chi^2_2\)
+    distribution to get a p-value for "these residuals are consistent with
+    being drawn from a normal distribution."
+  </p>
+  <p>
+    Both ingredient statistics are already built, tested, and in production
+    in this repo — <code>js/metricsCore.js</code>'s <code>skewness(xs)</code>
+    (Fisher-Pearson sample skewness; positive means a longer right tail,
+    negative a fatter <em>left</em> tail — the direction that matters most
+    for a strategy's downside) and <code>excessKurtosis(xs)</code> (kurtosis
+    minus 3, so a normal distribution reads exactly 0 and any positive value
+    means fatter-than-normal tails). Jarque-Bera is nothing more than those
+    same two quantities, computed on a regression's <em>residuals</em>
+    specifically, squared, weighted, and summed into one number with a known
+    reference distribution to test against — the identical building blocks
+    this repo already uses to describe a strategy's raw return distribution
+    (`summarizeTrades`'s <code>skew</code>/<code>excessKurt</code> fields)
+    repurposed to describe a regression's leftover error instead of a
+    strategy's P&amp;L.
+  </p>
+  <p>
+    <strong>Why does this matter more in small samples?</strong> The classical
+    t-test and its p-value for \(\hat\beta\) are exact when the underlying
+    errors are normally distributed, and are otherwise justified only
+    asymptotically — by the Central Limit Theorem, which says that as sample
+    size grows, the sampling distribution of \(\hat\beta\) itself approaches
+    normality <em>regardless</em> of the residuals' own shape, because
+    \(\hat\beta\) is built from a sum (a weighted average) of many
+    observations. With enough data, non-normal residuals stop mattering much
+    for inference on \(\hat\beta\), because the averaging in the CLT smooths
+    the irregularity away. With a small sample — few, non-overlapping trading
+    periods being the common case in this repo, since resampling to a
+    signal's true release frequency, per the backtest-build-discipline
+    guidance above the diagnostics section in <code>CLAUDE.md</code>, often
+    leaves far fewer independent rows than the raw daily bar count suggests —
+    that averaging hasn't had enough terms to do its smoothing work yet, so a
+    skewed or fat-tailed residual distribution translates more directly into
+    a distorted t-statistic and an unreliable p-value. Jarque-Bera is the
+    check for exactly that failure mode: it doesn't matter as much once \(n\)
+    is large, but it can matter a great deal when it's small — which is
+    precisely when a "significant" result is most tempting to over-trust.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">What "bad" looks like for each of the three diagnostics</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three side-by-side panels: a residuals-vs-time plot with a wavy serially-correlated pattern failing Durbin-Watson, a residuals-vs-fitted plot with a fan shape failing Breusch-Pagan, and a skewed residual histogram failing Jarque-Bera">
+      <!-- Panel 1: Durbin-Watson failure — wavy residuals vs time -->
+      <g>
+        <line x1="20" y1="150" x2="200" y2="150" style="stroke:var(--border)"></line>
+        <line x1="20" y1="30" x2="20" y2="230" style="stroke:var(--border)"></line>
+        <path d="M 20 150 Q 40 100, 60 120 T 100 145 Q 120 190, 140 205 T 200 130" fill="none" style="stroke:var(--red);stroke-width:2"></path>
+        <text x="110" y="255" fill="var(--text3)" font-size="11" text-anchor="middle">time →</text>
+        <text x="110" y="20" fill="var(--text2)" font-size="11.5" text-anchor="middle" font-weight="600">Fails Durbin-Watson</text>
+        <text x="110" y="272" fill="var(--text3)" font-size="10" text-anchor="middle">residuals vs. time — wavy, sticky pattern (DW ≈ 0.6)</text>
+      </g>
+      <!-- Panel 2: Breusch-Pagan failure — fan shape vs fitted -->
+      <g transform="translate(220,0)">
+        <line x1="20" y1="150" x2="200" y2="150" style="stroke:var(--border)"></line>
+        <line x1="20" y1="30" x2="20" y2="230" style="stroke:var(--border)"></line>
+        <circle cx="35" cy="148" r="2.5" style="fill:var(--amber)"></circle>
+        <circle cx="45" cy="152" r="2.5" style="fill:var(--amber)"></circle>
+        <circle cx="55" cy="149" r="2.5" style="fill:var(--amber)"></circle>
+        <circle cx="65" cy="151" r="2.5" style="fill:var(--amber)"></circle>
+        <circle cx="80" cy="140" r="2.5" style="fill:var(--amber)"></circle>
+        <circle cx="90" cy="160" r="2.5" style="fill:var(--amber)"></circle>
+        <circle cx="100" cy="145" r="2.5" style="fill:var(--amber)"></circle>
+        <circle cx="110" cy="158" r="2.5" style="fill:var(--amber)"></circle>
+        <circle cx="125" cy="120" r="2.5" style="fill:var(--amber)"></circle>
+        <circle cx="130" cy="178" r="2.5" style="fill:var(--amber)"></circle>
+        <circle cx="140" cy="100" r="2.5" style="fill:var(--amber)"></circle>
+        <circle cx="145" cy="195" r="2.5" style="fill:var(--amber)"></circle>
+        <circle cx="160" cy="85" r="2.5" style="fill:var(--amber)"></circle>
+        <circle cx="165" cy="210" r="2.5" style="fill:var(--amber)"></circle>
+        <circle cx="180" cy="70" r="2.5" style="fill:var(--amber)"></circle>
+        <circle cx="185" cy="225" r="2.5" style="fill:var(--amber)"></circle>
+        <circle cx="195" cy="60" r="2.5" style="fill:var(--amber)"></circle>
+        <line x1="20" y1="150" x2="200" y2="150" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:2,3"></line>
+        <text x="110" y="255" fill="var(--text3)" font-size="11" text-anchor="middle">fitted value →</text>
+        <text x="110" y="20" fill="var(--text2)" font-size="11.5" text-anchor="middle" font-weight="600">Fails Breusch-Pagan</text>
+        <text x="110" y="272" fill="var(--text3)" font-size="10" text-anchor="middle">residuals vs. fitted — variance fans out (growing spread)</text>
+      </g>
+      <!-- Panel 3: Jarque-Bera failure — skewed histogram -->
+      <g transform="translate(440,0)">
+        <line x1="20" y1="230" x2="200" y2="230" style="stroke:var(--border)"></line>
+        <line x1="20" y1="30" x2="20" y2="230" style="stroke:var(--border)"></line>
+        <rect x="24" y="205" width="10" height="25" style="fill:var(--purple)"></rect>
+        <rect x="36" y="185" width="10" height="45" style="fill:var(--purple)"></rect>
+        <rect x="48" y="150" width="10" height="80" style="fill:var(--purple)"></rect>
+        <rect x="60" y="100" width="10" height="130" style="fill:var(--purple)"></rect>
+        <rect x="72" y="60" width="10" height="170" style="fill:var(--purple)"></rect>
+        <rect x="84" y="80" width="10" height="150" style="fill:var(--purple)"></rect>
+        <rect x="96" y="140" width="10" height="90" style="fill:var(--purple)"></rect>
+        <rect x="108" y="175" width="10" height="55" style="fill:var(--purple)"></rect>
+        <rect x="120" y="195" width="10" height="35" style="fill:var(--purple)"></rect>
+        <rect x="132" y="208" width="10" height="22" style="fill:var(--purple)"></rect>
+        <rect x="144" y="216" width="10" height="14" style="fill:var(--purple)"></rect>
+        <rect x="156" y="221" width="10" height="9" style="fill:var(--purple)"></rect>
+        <rect x="168" y="224" width="10" height="6" style="fill:var(--purple)"></rect>
+        <rect x="182" y="219" width="10" height="11" style="fill:var(--red)"></rect>
+        <text x="110" y="255" fill="var(--text3)" font-size="11" text-anchor="middle">residual value →</text>
+        <text x="110" y="20" fill="var(--text2)" font-size="11.5" text-anchor="middle" font-weight="600">Fails Jarque-Bera</text>
+        <text x="110" y="272" fill="var(--text3)" font-size="10" text-anchor="middle">histogram — right-skewed, with a fat outlying left tail</text>
+      </g>
+    </svg>
+    <div class="tl-chart-caption">Illustrative shapes, not fitted data. Left: residuals plotted against time show a slow wave — positive runs followed by negative runs — the signature Durbin-Watson catches. Middle: residual spread visibly widens as the fitted value increases — the "fan" Breusch-Pagan's squared-residuals-on-X regression detects. Right: the residual histogram piles up on one side with a lone bar (red) stretched out as a fat tail — the asymmetry and excess mass Jarque-Bera's skewness/kurtosis combination flags.</div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A p-value of 0.01 that isn't what it looks like</h3>
+    <p>
+      A researcher regresses next-day FX returns for a currency pair on a
+      yield-spread signal — the idea being that a widening rate differential
+      should predict tomorrow's direction. Running the regression on two
+      years of daily data produces a coefficient with a p-value of 0.01: by
+      the conventional 5% threshold, a strikingly significant result, the
+      kind of number that gets an idea greenlit for further development
+      without a second look.
+    </p>
+    <p>
+      Before trusting it, the researcher checks the residual diagnostics, as
+      the house rule requires. Durbin-Watson comes back at \(DW = 0.6\) — far
+      below the "no autocorrelation" benchmark of 2, squarely in
+      strongly-positive-autocorrelation territory. Using the approximation
+      \(DW \approx 2(1-\hat\rho)\), that implies \(\hat\rho \approx 0.7\): a
+      given day's residual is strongly predictive of the next day's residual,
+      which makes sense here — a yield-spread signal changes slowly from day
+      to day, so a persistent pricing error against it (the model
+      consistently over- or under-predicting for a stretch) is exactly the
+      kind of slow-moving mis-specification this test is built to catch.
+    </p>
+    <p>
+      What that means concretely: with roughly 500 trading days in the
+      sample and \(\hat\rho \approx 0.7\), the residuals are behaving less
+      like 500 independent observations and more like a much smaller number
+      of effectively independent "blocks" of correlated days. A standard
+      rule-of-thumb adjustment for the effective sample size under AR(1)-type
+      autocorrelation is \(n_{eff} \approx n \cdot \frac{1-\hat\rho}{1+\hat\rho}\)
+      — here, \(n_{eff} \approx 500 \times \frac{0.3}{1.7} \approx 88\). The
+      regression's classical standard error was computed as though it had
+      500 independent observations backing it; the honest number is closer to
+      what 88 independent observations would support. Recomputing the
+      t-statistic and p-value off that much smaller effective sample size —
+      or, more directly, using Newey-West heteroskedasticity-and-autocorrelation-consistent
+      (HAC) standard errors, which correct for exactly this — the p-value is
+      nowhere near 0.01 once corrected; it's plausibly back in "not
+      distinguishable from noise" territory. The point estimate \(\hat\beta\)
+      itself hasn't changed and might still be a reasonable read on the
+      relationship's direction and rough size — but the confidence the raw
+      p-value implied was manufactured by the autocorrelation, not earned by
+      the data.
+    </p>
+    <p>
+      This is exactly the trap <code>CLAUDE.md</code>'s "add residual
+      diagnostics... before trusting its p-value/coefficient" rule exists to
+      prevent — not as an abstract statistical nicety, but as the specific
+      mechanism by which a signal with a genuinely unremarkable relationship
+      can produce an impressive-looking p-value purely from serially sticky
+      errors, and get mistaken for a discovery.
+    </p>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    <strong>As a pre-trust gate, not a post-mortem.</strong> The standard
+    workflow is: fit the regression, then before quoting the p-value or
+    coefficient to anyone (including yourself, in a design doc), run all
+    three residual checks. A clean pass on all three is what makes the
+    classical p-value trustworthy at face value; a failure on any one doesn't
+    necessarily kill the finding, but it does mean the reported significance
+    needs a correction or a different inference method before it's used to
+    make a decision.
+  </p>
+  <p>
+    <strong>Fixes, once a test flags a problem.</strong> Autocorrelation
+    (Durbin-Watson) is most commonly addressed with Newey-West
+    (HAC-consistent) standard errors, which explicitly correct for both
+    autocorrelation and heteroskedasticity without needing to respecify the
+    model, or by adding lagged terms that soak up the serial structure so the
+    remaining residual is closer to white noise. Heteroskedasticity
+    (Breusch-Pagan) is commonly addressed with heteroskedasticity-robust
+    ("White") standard errors, or by modeling the variance directly (a
+    GARCH-type approach, covered in this Theory Lab's GARCH &amp; Volatility
+    Clustering lesson, is the time-series analogue of exactly this problem).
+    Non-normality (Jarque-Bera) in a small sample is addressed by collecting
+    more independent observations if possible (letting the CLT do its job),
+    using a distribution-free method (bootstrap standard errors resample the
+    data itself rather than assuming a shape), or simply reporting the result
+    with the appropriate caveat rather than leaning on the exact p-value.
+  </p>
+  <p>
+    <strong>A screening step before, not a substitute for, out-of-sample
+    validation.</strong> Passing all three diagnostics only means the
+    in-sample significance claim is honestly computed — it says nothing about
+    whether the relationship holds up on data the model hasn't seen. A
+    regression can have perfectly well-behaved, homoskedastic, normally
+    distributed, non-autocorrelated residuals in-sample and still fail
+    completely out-of-sample, because the diagnostics check the <em>validity
+    of the inference procedure</em>, not the <em>existence of a durable
+    relationship</em>. Both checks matter, and they check different things —
+    consistent with this repo's own discipline that an in-sample number,
+    however carefully diagnosed, is not evidence on its own (Lego Principle
+    5).
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>The from-scratch math behind an existing house rule</h3>
+    <p>
+      <code>CLAUDE.md</code>'s backtest-build-discipline section states the
+      rule this lesson exists to formalize, word for word: <em>"Add residual
+      diagnostics to any regression-based signal: Durbin-Watson
+      (autocorrelation), Jarque-Bera (residual normality), Breusch-Pagan
+      (heteroskedasticity) before trusting its p-value/coefficient. A
+      statistically 'significant' coefficient on a heteroskedastic fit has
+      optimistic standard errors — check before leaning on it."</em> That
+      sentence has been sitting in this repo's prose discipline as a rule to
+      follow; this lesson is the derivation underneath it — where each
+      statistic comes from, why the specific formula catches the specific
+      failure it's named for, and why a failure specifically inflates
+      apparent significance rather than just generically "being a problem."
+    </p>
+    <p>
+      The Jarque-Bera test in particular reuses building blocks that already
+      exist in this codebase rather than introducing new ones:
+      <code>js/metricsCore.js</code>'s <code>skewness</code> and
+      <code>excessKurtosis</code> functions — built 2026-07-21 as Tier-1
+      primitives, unit-tested in <code>legoBricks.test.mjs</code>, and already
+      wired into <code>summarizeTrades</code>'s <code>skew</code>/
+      <code>excessKurt</code> output fields — are the exact two ingredients
+      the \(JB = \tfrac{n}{6}(S^2 + K^2/4)\) formula combines. The only
+      difference between how this repo currently uses them and what
+      Jarque-Bera does is the input series: today they describe the shape of
+      a strategy's realized trade P&amp;L; Jarque-Bera applies the identical
+      math to a regression's residual series instead. Nothing new needs
+      building to compute \(S\) and \(K\) for a regression's residuals — the
+      brick already exists.
+    </p>
+    <p>
+      <code>education/regression-analysis-course-notes.md</code> covers the
+      applied, practical side of regression work in this repo — how to set
+      up and interpret a regression for a trading signal day to day. This
+      lesson is deliberately the theory layer underneath that practice: the
+      three checks a regression should pass before its p-value is quoted
+      anywhere, derived from first principles rather than invoked as a
+      checklist item.
+    </p>
+    <p>
+      This is Lesson 1 of a new <strong>Applied Statistics &amp;
+      Validation</strong> category — the from-scratch math behind the
+      broader honest-harness discipline (Lego Principle 5, the
+      backtest-build-discipline section) that this repo already enforces in
+      prose across every regression-based signal it builds.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where these three diagnostics get misread</h3>
+    <p>
+      <strong>Treating a diagnostic failure as proof the relationship is
+      fake.</strong> A significant Durbin-Watson or Breusch-Pagan result
+      means the classical standard error is wrong, not that \(\hat\beta\)
+      itself is meaningless. The point estimate can still be a reasonable
+      read on the relationship's direction and rough magnitude; what's broken
+      is specifically the machinery that translates spread-of-residuals into
+      confidence-about-\(\hat\beta\). The correct response is to recompute
+      inference with a robust method (HAC/Newey-West, White standard errors),
+      not to throw the coefficient away.
+    </p>
+    <p>
+      <strong>Assuming Durbin-Watson near 2 means the model is well
+      specified.</strong> \(DW \approx 2\) only rules out simple first-order
+      (lag-1) autocorrelation. It says nothing about longer-lag structure
+      (e.g. a weekly seasonal pattern that shows up at lag 5), and it says
+      nothing about heteroskedasticity or normality at all — those are
+      separate axes, checked by separate tests. A clean Durbin-Watson number
+      is one necessary check passed, not a general "all clear."
+    </p>
+    <p>
+      <strong>Running Breusch-Pagan (or any of these) on a regression with a
+      badly wrong functional form.</strong> If the true relationship between
+      \(X\) and \(Y\) is nonlinear and a straight line is forced through it,
+      the residuals can show fan-shaped or patterned behavior that looks like
+      a variance problem but is really a specification problem — the model
+      is systematically wrong in different ways at different values of \(X\),
+      not just noisier there. Always look at the actual residuals-vs-fitted
+      scatter plot (the middle panel style above), not just the test
+      p-value, to distinguish "genuinely non-constant noise" from "wrong
+      functional form masquerading as non-constant noise."
+    </p>
+    <p>
+      <strong>Over-weighting Jarque-Bera in a large sample.</strong> Because
+      \(JB\) scales with \(n\), a trivially small amount of skew or excess
+      kurtosis can still produce a "significant" (rejecting-normality) result
+      once the sample is large enough — precisely the regime where
+      non-normality matters <em>least</em> for the validity of the
+      t-statistic, thanks to the Central Limit Theorem. A significant
+      Jarque-Bera on a dataset of 10,000 observations is a much smaller
+      practical concern than the identical p-value on a dataset of 40. Read
+      the actual skewness and excess kurtosis numbers themselves, not just
+      the test's binary reject/fail-to-reject verdict, and weight the concern
+      by how small the sample actually is.
+    </p>
+    <p>
+      <strong>Diagnosing in-sample and calling it done.</strong> All three
+      tests are computed on the same fitted sample the regression was
+      estimated on. A clean pass confirms the in-sample p-value is honestly
+      computed; it is not, and was never meant to be, evidence that the
+      relationship generalizes out of sample. Residual diagnostics and
+      out-of-sample validation answer different questions and this repo
+      requires both, not one in place of the other.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why does positive residual autocorrelation make a regression's p-value look better (more significant) than it actually is?</summary>
+    <div class="tl-answer">
+      The classical standard-error formula assumes each residual contributes
+      a fresh, independent piece of information, so it divides by the raw
+      observation count \(n\) — more observations means a tighter standard
+      error. When residuals are positively autocorrelated, consecutive
+      observations are substantially restating the same information rather
+      than each adding something new, so the true number of independent
+      pieces of evidence (the effective sample size) is smaller than \(n\).
+      The classical formula still computes as if it had \(n\) independent
+      observations, so it reports a standard error that's too small for the
+      amount of independent information actually present. A too-small
+      standard error inflates the t-statistic and deflates the p-value,
+      making the coefficient look more precisely estimated and more
+      significant than the effective sample size justifies.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What does the Breusch-Pagan test actually do — what gets regressed on what, and what does a significant result mean?</summary>
+    <div class="tl-answer">
+      It takes the residuals \(e_i\) from the original fitted regression,
+      squares them, and runs a second ("auxiliary") regression of those
+      squared residuals \(e_i^2\) on the same predictor(s) \(X_i\) used in
+      the original model. If the true residual variance is constant
+      (homoskedastic), \(X\) should have no systematic power to predict
+      \(e_i^2\), so the auxiliary regression's \(R^2_{aux}\) should be small
+      and the test statistic \(LM = n \cdot R^2_{aux}\) unremarkable against
+      its \(\chi^2\) reference distribution. A significant result means \(X\)
+      does systematically predict the squared residuals — the residual
+      variance genuinely changes across the sample (heteroskedasticity),
+      which means the single standard error the classical formula reports is
+      wrong for at least part of the data, usually understating uncertainty
+      where variance is actually largest.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why does Jarque-Bera matter more in a small sample than a large one, even though the formula itself doesn't change?</summary>
+    <div class="tl-answer">
+      The classical t-test and p-value for \(\hat\beta\) are exact under
+      normally distributed errors, and are otherwise justified only
+      asymptotically by the Central Limit Theorem — as sample size grows,
+      the sampling distribution of \(\hat\beta\) (built from an average over
+      many observations) approaches normality regardless of the residuals'
+      own shape. With a large sample, that averaging smooths over non-normal
+      residuals and inference stays approximately valid even if Jarque-Bera
+      flags a departure from normality. With a small sample, the CLT hasn't
+      had enough observations to do that smoothing, so a skewed or
+      fat-tailed residual distribution translates more directly into a
+      distorted, unreliable t-statistic and p-value — exactly the regime
+      where a low p-value is most tempting to over-trust and least backed by
+      the assumptions it needs.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. A regression fails Durbin-Watson but passes Breusch-Pagan and Jarque-Bera cleanly. Is the coefficient's point estimate necessarily wrong?</summary>
+    <div class="tl-answer">
+      No. The point estimate \(\hat\beta = \mathrm{Cov}(X,Y)/\mathrm{Var}(X)\)
+      is derived purely from minimizing the sum of squared residuals and
+      doesn't assume anything about the residuals' serial structure,
+      variance pattern, or shape — it can be a perfectly reasonable estimate
+      of the true slope even when one or more of the three diagnostics fails.
+      What's unreliable is specifically the classical standard error, and by
+      extension the t-statistic and p-value built on top of it — those
+      assume no autocorrelation to be valid, and a Durbin-Watson failure
+      means that assumption is broken. The fix is to recompute inference
+      with an autocorrelation-robust method (Newey-West/HAC standard errors)
+      rather than to discard the coefficient itself.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why is a residuals-vs-fitted-value scatter plot a useful check even after running the Breusch-Pagan test formally?</summary>
+    <div class="tl-answer">
+      Because a "fan" pattern in the residuals can come from two different
+      underlying causes that Breusch-Pagan's p-value alone doesn't
+      distinguish: genuine heteroskedasticity (the true noise variance really
+      does change across the sample), or a misspecified functional form (the
+      true relationship is nonlinear, and forcing a straight line through it
+      produces residuals that are systematically larger in some regions
+      simply because the line is wrong there, not because the noise is
+      inherently more variable there). Both can trigger a significant
+      Breusch-Pagan statistic. Looking at the actual scatter plot helps tell
+      the two apart — a genuine variance change usually looks like uniform
+      fanning around a flat zero line, while a misspecification problem often
+      shows a curved or patterned mean residual, not just a widening spread —
+      and the right fix differs (robust standard errors for the first,
+      respecifying the model for the second).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. In the FX yield-spread scenario, why doesn't a good Durbin-Watson-adjusted p-value estimate mean the original 0.01 p-value was fraudulent or the researcher did anything wrong by computing it?</summary>
+    <div class="tl-answer">
+      The original 0.01 p-value was computed correctly according to the
+      classical OLS formula — it's an honest answer to the wrong question,
+      not a miscalculation. The classical formula answers "how significant
+      would this coefficient be if the residuals were independent," and the
+      regression's residuals simply weren't independent in this case, which
+      is a fact about the data (a slow-moving yield-spread signal producing
+      slow-moving pricing errors), not an error in arithmetic. Checking
+      Durbin-Watson before trusting the p-value is exactly the step that
+      catches this — it's the difference between quoting a number at face
+      value and verifying the assumptions that number depends on actually
+      hold, which is the entire point of running residual diagnostics before
+      leaning on a regression's significance claim.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>James Durbin &amp; Geoffrey S. Watson, <em>"Testing for Serial Correlation in Least Squares Regression, I,"</em> Biometrika, 1950, and <em>"...II,"</em> Biometrika, 1951 — the original two-part paper deriving the Durbin-Watson statistic and its bounds tables, the source of the test used throughout this lesson.</li>
+    <li>Trevor S. Breusch &amp; Adrian R. Pagan, <em>"A Simple Test for Heteroscedasticity and Random Coefficient Variation,"</em> Econometrica, 1979 — the original derivation of the auxiliary-regression Lagrange Multiplier test for heteroskedasticity described in this lesson.</li>
+    <li>Carlos M. Jarque &amp; Anil K. Bera, <em>"Efficient Tests for Normality, Homoscedasticity and Serial Independence of Regression Residuals,"</em> Economics Letters, 1980, and <em>"A Test for Normality of Observations and Regression Residuals,"</em> International Statistical Review, 1987 — the original and follow-up papers formalizing the skewness/kurtosis-based normality test.</li>
+    <li>Jeffrey M. Wooldridge, <em>Introductory Econometrics: A Modern Approach</em> — the standard textbook treatment of all three diagnostics, the classical OLS assumptions they test, and heteroskedasticity/autocorrelation-robust standard errors (White, Newey-West) as the practical remedy once a test flags a violation.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="model-selection-aic-bic.html">Model Selection: AIC &amp; BIC →</a>
+  </div>
+</div>
+</body>
+</html>

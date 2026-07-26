@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Taylor Rule — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Macro &amp; FX Theory / The Taylor Rule</div>
+  <div class="tl-kicker">Macro &amp; FX Theory · Lesson 3 of 3</div>
+  <h1 class="tl-title">The Taylor Rule</h1>
+  <p class="tl-dek">A formula that turns two macro numbers — how far inflation sits from target, and how hot the economy is running — into what a central bank's policy rate "should" be, and why the GAP between that number and what a central bank is actually doing is one of the most closely watched signals in FX.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — the mechanism behind this repo's yield-spread/FX lead-lag notes</span>
+    <span>~15 min read</span>
+    <span>Prereqs: None required — Interest Rate Parity helpful for framing</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    Every "rates drive FX" story — carry trades, yield-spread momentum, hawkish/dovish repricing, the whole
+    apparatus this repo's own <code>education/macro-deep-dives-notes.md</code> spends two lessons on — takes one
+    thing as given: that a central bank sets its policy rate in response to inflation and the state of the real
+    economy. That response is not just a vague tendency traders intuit from experience; economists have a specific,
+    almost embarrassingly simple formula for it, published by the Stanford economist John B. Taylor in 1993, that
+    describes — and, remarkably often, roughly predicts — how a rate-setting committee actually behaves. It is not a
+    law of physics and no central bank is bound by it, but it is close enough to how real committees think that
+    every major central bank publishes its own version, financial media quotes it during every hiking or cutting
+    cycle, and trading desks recompute it the moment a CPI or GDP print lands.
+  </p>
+  <p>
+    The reason a builder on this repo should care is specific: the Transatlantic Yield Spread lesson
+    (<code>education/macro-deep-dives-notes.md</code>, Lesson 2) treats the US 10-year vs Bund spread — and the Fed
+    vs ECB rate paths behind it — as an observed input, something you read off a screen and trade the lead-lag
+    relationship of. It never asks the prior question: what actually generates a central bank's rate path in the
+    first place? The Taylor Rule is the textbook answer to that prior question. It is the mechanism underneath the
+    mechanism — not a replacement for the yield-spread work already in this repo, but the theory that explains why
+    the spread moves the way it does, and gives you a way to ask, independently, whether the current rate path looks
+    "caught up" with the data or not.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A thermostat for the economy</h3>
+    <p>
+      Think of a central bank as running a thermostat with two sensors instead of one. The first sensor reads
+      "room temperature" — current inflation compared with the target temperature the central bank has publicly
+      committed to (2% for the Fed, ECB, BoE, and most developed-market inflation-targeters). The second sensor
+      reads "how hard the furnace/AC is already working relative to what the room can comfortably handle" — the
+      output gap, how far the economy is running above or below its sustainable capacity. When the room is too hot
+      (inflation above target) <em>or</em> the system is already straining above capacity (positive output gap), the
+      thermostat calls for more cooling: raise the policy rate. When the room is too cold or slack, it calls for
+      less cooling, or active heating: cut the rate. The Taylor Rule is just that thermostat's control law written
+      down as an equation, with two dials (one per sensor) and one lever (the policy rate).
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    Taylor's 1993 paper (formally titled "Discretion versus Policy Rules in Practice," presented at a
+    Carnegie-Rochester conference and built around observed Fed behavior in the years just prior) proposed a single
+    linear equation for the short-term nominal policy rate:
+  </p>
+  <div class="tl-math">\[ i = r^{*} + \pi + a(\pi - \pi^{*}) + b(y - y^{*}) \]</div>
+  <p>
+    Every symbol here is a real, publicly trackable quantity (or an estimate of one) — that observability is the
+    whole reason the rule is so widely used outside academia, not just inside it.
+  </p>
+  <div class="tl-symbols"><table>
+    <tr><td>\(i\)</td><td>The <strong>policy rate</strong> the rule prescribes — the short-term nominal interest rate a central bank should set (e.g. the Fed funds rate, the ECB deposit rate). This is the rule's single output.</td></tr>
+    <tr><td>\(r^{*}\)</td><td>The <strong>neutral (equilibrium) real rate</strong> — the short-term real interest rate consistent with the economy running at full employment/potential with stable inflation, once any transitory shocks have faded. It is not directly observable; it is estimated (e.g. via Laubach-Williams-style models) and moves slowly over time as the economy's long-run growth potential shifts. Taylor's original paper simply assumed \(r^{*}=2\%\).</td></tr>
+    <tr><td>\(\pi\)</td><td>The <strong>current (realized) inflation rate</strong> — Taylor used the GDP deflator over the trailing four quarters; modern trackers commonly substitute headline or core CPI/PCE.</td></tr>
+    <tr><td>\(\pi^{*}\)</td><td>The <strong>inflation target</strong> — the central bank's explicit (or, historically, implicit) target, e.g. the Fed's 2% average PCE inflation objective.</td></tr>
+    <tr><td>\(\pi - \pi^{*}\)</td><td>The <strong>inflation gap</strong> — how far current inflation is running above (positive) or below (negative) target.</td></tr>
+    <tr><td>\(y - y^{*}\)</td><td>The <strong>output gap</strong> — the percentage deviation of actual real GDP (\(y\)) from an estimate of potential/full-employment GDP (\(y^{*}\)). Positive means the economy is running hotter than its sustainable capacity ("overheating"); negative means there is economic slack.</td></tr>
+    <tr><td>\(a, b\)</td><td>Taylor's <strong>response coefficients</strong> — how aggressively the rule reacts to each gap. A larger coefficient means a given gap moves the prescribed rate by more. Taylor's original paper set \(a = b = 0.5\): each percentage point of either gap moves the prescribed rate by half a percentage point.</td></tr>
+  </table></div>
+
+  <h3>Reading the rule: two dials, one lever</h3>
+  <p>
+    Read the equation as a baseline plus two independent corrections. The baseline, \(r^{*}+\pi\), is roughly "the
+    real neutral rate, expressed in today's inflation terms" — an application of the (approximate) Fisher relation
+    that a nominal rate is a real rate plus expected inflation. On top of that baseline sit two additive dials:
+  </p>
+  <ul>
+    <li><strong>The inflation dial, \(a(\pi-\pi^{*})\).</strong> Positive when inflation runs above target — the
+    rule adds extra tightening on top of the baseline. Negative when inflation runs below target — it subtracts,
+    calling for easier policy.</li>
+    <li><strong>The output-gap dial, \(b(y-y^{*})\).</strong> Positive when the economy is running above potential —
+    add tightening pre-emptively, on the logic that an overheating economy tends to generate inflation pressure
+    before it fully shows up in the \(\pi\) term itself (tight labor markets, capacity constraints pushing up wages
+    and prices). Negative when there is slack — add easing.</li>
+  </ul>
+  <p>
+    Either dial alone can push the rate up; both can reinforce each other (as in the worked example below), or they
+    can partially offset (self-test Q3 works through exactly that case). The rule never asks the committee to
+    look at anything beyond these two gaps — that minimalism is precisely why it is treatable as a simple, publicly
+    replicable benchmark rather than a black box.
+  </p>
+
+  <h3>The neutral case: what the rule collapses to when nothing is out of line</h3>
+  <p>
+    Set \(\pi=\pi^{*}\) and \(y=y^{*}\) — inflation exactly on target, output exactly at potential. Both correction
+    terms vanish, and the rule reduces to:
+  </p>
+  <div class="tl-math">\[ i = r^{*} + \pi^{*} \]</div>
+  <p>
+    This is the <strong>neutral nominal rate</strong> — the rate the rule says to hold at when the economy needs
+    neither tightening nor easing. It is a genuinely useful anchor: any live policy rate can be read as "the neutral
+    nominal rate, plus whatever the two gaps are currently adding or subtracting."
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>Taylor's own coefficients, applied to a clean set of numbers</h3>
+    <p>
+      Take \(r^{*}=2\%\), current inflation \(\pi=3\%\), target \(\pi^{*}=2\%\), and an output gap of
+      \(y-y^{*}=+1\%\) (the economy running one percentage point above potential), with Taylor's original
+      \(a=b=0.5\). First, the inflation gap:
+    </p>
+    <div class="tl-math">\[ \pi - \pi^{*} = 3\% - 2\% = 1\text{pp} \]</div>
+    <p>Now plug everything into the rule:</p>
+    <div class="tl-math">\[ i = r^{*} + \pi + a(\pi-\pi^{*}) + b(y-y^{*}) = 2 + 3 + 0.5(1) + 0.5(1) \]</div>
+    <div class="tl-math">\[ i = 2 + 3 + 0.5 + 0.5 = 6\% \]</div>
+    <p>
+      Notice what each piece contributed. The neutral nominal rate here would be only
+      \(r^{*}+\pi^{*} = 2+2 = 4\%\) — the rate consistent with inflation sitting right at target and no output gap
+      at all. The rule prescribes 6%, a full two points higher, because <em>both</em> dials are active in the same
+      direction at once: the 1pp inflation overshoot adds \(0.5\times1=0.5\)pp, and the 1pp positive output gap adds
+      another \(0.5\times1=0.5\)pp — together lifting the baseline neutral rate of 4% up to 5% via the two 0.5pp
+      corrections... plus the fact that the baseline itself already embeds the higher \(\pi=3\%\) rather than
+      \(\pi^{*}=2\%\) (that's the extra point between 4% and 6%). Every one of those three additions is doing
+      separate, identifiable work — none of it is a fudge factor.
+    </p>
+  </div>
+
+  <h3>The number that moves markets isn't \(i\) — it's \(i_{\text{implied}} - i_{\text{actual}}\)</h3>
+  <p>
+    No real central bank is bound by this formula. Actual committees weigh dual or multiple mandates, financial
+    stability, forward-guidance credibility already given to markets, and — especially since 2009 — an effective
+    lower bound on rates that the rule itself knows nothing about. So actual policy rates routinely sit away from
+    whatever a plugged-in Taylor Rule spits out. That gap is not noise to be ignored — it is precisely what desks
+    and macro traders watch, because history shows deviations tend to get corrected as the underlying data force
+    the committee's hand, even if the correction takes months to arrive. Two names describe the two directions:
+  </p>
+  <ul>
+    <li><strong>"Behind the curve"</strong> — the actual policy rate sits <em>below</em> the Taylor-implied rate.
+    Policy is looser than the inflation/output-gap data would justify. Markets read this as a signal that more
+    tightening (or a slower pace of cuts) is likely still needed to bring policy back in line — hawkish repricing
+    risk skewed higher than what is currently priced.</li>
+    <li><strong>"Ahead of the curve"</strong> — the actual policy rate sits <em>above</em> the Taylor-implied rate.
+    Policy is already tighter than the gaps justify, which commonly happens late in a hiking cycle once growth and
+    inflation cool faster than the policy rate itself is cut. Markets read this as disinflationary/cut risk skewed
+    higher than what is currently priced.</li>
+  </ul>
+  <p>
+    This is not an abstract distinction. Taylor himself argued in his widely cited 2007 Jackson Hole paper
+    ("Housing and Monetary Policy") that the Fed held rates well below the rule-implied level from roughly
+    2003–2005, and the phrase "behind the curve" was in constant use across financial media in 2021–2022 as CPI
+    accelerated sharply while policy rates sat near zero. Whichever direction it runs, the point traders act on is
+    the same: the gap is a measure of <em>unresolved pressure</em> on the policy rate, not a claim about this
+    week's meeting specifically.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Taylor-implied rate vs. actual policy rate — a stylized hiking/cutting cycle</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A stylized line chart over twelve quarters comparing a Taylor Rule implied policy rate (blue) against an actual policy rate (amber). In the first half, the implied rate rises quickly above the actual rate as inflation and the output gap pick up, shaded red and labeled behind the curve, meaning the central bank is holding rates below what the rule prescribes. In the second half, as the implied rate falls back down during a disinflation phase, the actual rate stays elevated above it for a stretch, shaded purple and labeled ahead of the curve. A dashed horizontal reference line marks the neutral nominal rate of about four percent.">
+      <text x="20" y="14" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">Policy rate (%)</text>
+      <text x="620" y="14" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace" text-anchor="end">quarters →</text>
+
+      <line x1="20" y1="240" x2="620" y2="240" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="20" y1="130" x2="620" y2="130" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+      <text x="624" y="134" fill="var(--text3)" font-size="9" font-family="'DM Mono',monospace">neutral (r*+π*) ≈ 4%</text>
+
+      <rect x="74.5" y="20" width="272.8" height="220" style="fill:var(--red);opacity:.10"/>
+      <rect x="347.3" y="20" width="163.6" height="220" style="fill:var(--purple);opacity:.10"/>
+      <text x="210" y="35" fill="var(--red)" font-size="9.5" font-family="'DM Mono',monospace" text-anchor="middle" letter-spacing="0.05em">BEHIND THE CURVE</text>
+      <text x="429" y="35" fill="var(--purple)" font-size="9.5" font-family="'DM Mono',monospace" text-anchor="middle" letter-spacing="0.05em">AHEAD OF THE CURVE</text>
+
+      <polyline points="20,157.5 74.5,143.8 129.1,116.3 183.6,88.8 238.2,61.3 292.7,75.0 347.3,102.5 401.8,130.0 456.4,157.5 510.9,143.8 565.5,116.3 620,102.5" style="fill:none;stroke:var(--blue);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round"/>
+      <polyline points="20,157.5 74.5,157.5 129.1,157.5 183.6,150.6 238.2,143.8 292.7,130.0 347.3,116.3 401.8,116.3 456.4,123.1 510.9,130.0 565.5,123.1 620,109.4" style="fill:none;stroke:var(--amber);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round"/>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>Taylor Rule implied rate</span>
+      <span><i style="background:var(--amber)"></i>Actual policy rate</span>
+      <span><i style="background:var(--red);opacity:.5"></i>Actual below implied (behind the curve)</span>
+      <span><i style="background:var(--purple);opacity:.5"></i>Actual above implied (ahead of the curve)</span>
+    </div>
+    <div class="tl-chart-caption">
+      Stylized illustration, not fitted to any real economy's data. In the red zone the implied rate races ahead
+      of the actual rate as inflation and the output gap both pick up during a hiking cycle — the central bank
+      is behind the curve, and the gap keeps widening for several quarters before the actual rate catches up. In
+      the purple zone, once inflation and the output gap start cooling, the implied rate falls faster than the
+      actual policy rate is cut — a common late-cycle pattern where the bank is, briefly, ahead of the curve. By
+      the final quarters the two lines converge again as the economy reheats slightly, illustrating that "behind"
+      and "ahead" are not permanent states of a bank, but a gap that opens and closes as the underlying data move.
+    </div>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    The Taylor Rule's appeal to practitioners is exactly its minimalism: anyone with a CPI/PCE print, a GDP or
+    unemployment-based output-gap proxy, and a calculator can reproduce a rough version of it in real time, which is
+    why regional Federal Reserve banks (the Cleveland Fed and the Atlanta Fed both publish live "Taylor Rule
+    Utility" trackers) and sell-side economists maintain running estimates. The Fed itself goes further: its
+    semiannual <em>Monetary Policy Report</em> to Congress includes a section of "reference rules," presenting
+    several Taylor-style variants side by side — the classic rule above, an "inertial" version that partially
+    anchors on the previous rate to avoid abrupt jumps, and a "balanced approach" rule that doubles the output-gap
+    coefficient (\(b=1\) instead of 0.5), reflecting a heavier weight on labor-market slack. The Fed publishing
+    several competing rules rather than one is itself the practitioner's central caveat: there is no single
+    "correct" Taylor Rule, only a family of them, and which one a given desk quotes depends on its choice of
+    inflation measure, output-gap proxy, and coefficients.
+  </p>
+  <p>
+    On a trading desk, the rule's real use is comparative and dynamic, not a single-country snapshot: computing
+    (even roughly) a Taylor-implied rate for two economies at once — say the US and the euro area — turns directly
+    into an expected relative rate-path story, which is the theoretical engine behind the rate-differential /
+    yield-spread trades this repo's own education notes already study empirically. A widening gap between one
+    country's implied-minus-actual rate and another's is a candidate <em>leading</em> explanation for why a yield
+    spread between the two might be about to move, before the spread itself has visibly shifted.
+  </p>
+
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A hot CPI print reprices the front end</h3>
+    <p>
+      Pick up the worked example exactly where it left off: \(r^{*}=2\%\), \(\pi^{*}=2\%\), output gap
+      \(y-y^{*}=+1\%\), \(a=b=0.5\), and inflation currently at \(\pi=3\%\), giving a Taylor-implied rate of 6% (as
+      derived above). Suppose the central bank's current policy rate sits at 4.50%, and the front end of the rate
+      curve — the short-dated OIS/futures strip the market actually trades — is pricing a terminal rate of about
+      4.75% over the next few meetings (the market already expects roughly one more quarter-point move, then a
+      pause). Even before any new data, there is an existing gap: \(6\% - 4.75\% = 1.25\)pp of Taylor-implied
+      tightening that the market is not yet pricing.
+    </p>
+    <p>Now the scenario: a CPI print lands hotter than expected, and headline inflation jumps from 3% to 4%,
+      while the output gap is unchanged at +1% (the labor market hasn't cooled). A trader who has internalized the
+      rule recomputes the implied rate in the seconds after the print — that is the entire point of a formula this
+      simple:
+    </p>
+    <div class="tl-math">\[ i_{\text{new}} = r^{*} + \pi + a(\pi-\pi^{*}) + b(y-y^{*}) = 2 + 4 + 0.5(2) + 0.5(1) = 2+4+1+0.5 = 7.5\% \]</div>
+    <p>The inference chain from there is concrete and mechanical:</p>
+    <ul>
+      <li><strong>1. Recompute, don't re-guess.</strong> The Taylor-implied rate jumps from 6% to 7.5% purely
+      from the inflation-gap term growing (\(0.5\times2=1\)pp instead of \(0.5\times1=0.5\)pp) — a full extra point,
+      derived, not felt.</li>
+      <li><strong>2. Compare against what's actually priced,</strong> not against the current policy rate alone.
+      The front end still shows a 4.75% terminal rate — nothing has repriced yet in the minutes after the print.</li>
+      <li><strong>3. The gap has more than doubled overnight</strong>: from \(6\%-4.75\%=1.25\)pp to
+      \(7.5\%-4.75\%=2.75\)pp. The implied rate now sits meaningfully above what the front end has priced in.</li>
+      <li><strong>4. Read the gap as a signal, not a forecast of the next meeting.</strong> A 2.75pp
+      implied-minus-priced gap says the central bank looks more behind the curve than the market currently
+      reflects — the data now justify materially more tightening than is priced, so the risk to the front end of
+      the curve is skewed toward a hawkish repricing (the market catching up to the same 7.5% conclusion the
+      trader just computed), not a certainty about the very next decision.</li>
+      <li><strong>5. Connect it to the currency.</strong> Per the same rate-differential mechanism the
+      Transatlantic Yield Spread lesson documents (education/macro-deep-dives-notes.md, Lesson 2, §2.2–2.3):
+      capital flows toward the higher, or the higher-<em>expected</em>, yield. If the front end is under-pricing
+      how much tightening the data justify, the trader's view is that yields here are more likely to rise than
+      fall from current levels relative to a peer currency whose own Taylor gap didn't just move — which, all
+      else equal, is currency-supportive. A trader acting on this either leans long the currency outright, or
+      expresses the rate view more directly (e.g. positioned for front-end yields to rise, such as being short
+      short-dated rate-future duration), rather than the FX view alone.</li>
+    </ul>
+    <p>
+      Nothing in this chain claims the central bank will hike at the very next meeting, nor does it say the
+      currency rallies immediately — the yield-spread lesson's own lead-lag table (§2.4) is explicit that
+      institutional repricing after a shift like this can take anywhere from hours (fast money) to months (real
+      money, reserve managers). What the Taylor Rule gives the trader is a fast, mechanical way to size <em>how
+      large</em> the unresolved gap just became, the moment the data changed — before waiting for the yield
+      spread itself to visibly move.
+    </p>
+  </div>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>The theory behind two existing lessons — not yet a built calculator</h3>
+    <p>
+      This repo has <strong>no Taylor-Rule-implied-rate calculator</strong> anywhere in the codebase today. What it
+      does have is <code>education/macro-deep-dives-notes.md</code>'s Lesson 1, "Macro Drivers, Regime Detection
+      &amp; Validation," and Lesson 2, "The Transatlantic Yield Spread" — both of which study rate expectations and
+      the US-German yield spread empirically, as observed market data, without deriving what actually generates a
+      central bank's rate path. This lesson is that missing derivation. Lesson 2's own §2.8 ("What moves the spread
+      itself") lists "monetary policy — Fed vs ECB rate paths" and "inflation gap ... inflation surprise = spread
+      move" as upstream drivers of the spread — in the vocabulary of this lesson, that is precisely the
+      \(a(\pi-\pi^{*})\) term (plus the growth-differential language in the same section echoing the
+      \(b(y-y^{*})\) term) doing the work behind an applied trading lesson's own bullet points.
+    </p>
+    <p>
+      That makes a Taylor-Rule-implied-rate tracker a natural, currently-missing companion piece to the existing
+      yield-spread machinery: computing an implied-minus-actual policy gap for both economies side by side would
+      let a future version of this repo test whether that gap <em>leads</em> the yield spread's own moves, rather
+      than only trading the spread once it has already shifted. It is not, however, a small addition to bolt on
+      casually. Building it honestly needs FRED-sourced inflation data (headline/core CPI or PCE, per the
+      currency's central bank convention) and an output-gap proxy (CBO potential GDP, Okun's-law unemployment gap,
+      or an HP-filtered GDP series — each a real, debatable choice, not a single obvious number), the same
+      "boring parsing done correctly and visibly" discipline <code>CLAUDE.md</code> calls out for macro data
+      (currency/whitespace stripping, explicit date formats, matching resample frequency to each series' true
+      release cadence), and — per this repo's Lego Principle 5 — a genuine walk-forward out-of-sample test with a
+      non-trivial trade count before any implied-minus-actual gap is trusted as an FX signal rather than an
+      interesting number on a chart.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where the Taylor Rule gets over-trusted</h3>
+    <p>
+      <strong>Treating \(r^{*}\) and the output gap as observed facts.</strong> Neither is directly measurable —
+      both are model-based estimates. Different proxies (Laubach-Williams \(r^{*}\), CBO potential GDP vs. an
+      Okun's-law unemployment-gap proxy vs. an HP-filtered GDP trend) can move the implied rate by a full
+      percentage point or more from the exact same CPI print. Never treat one desk's Taylor number as <em>the</em>
+      number without checking which proxies it used.
+    </p>
+    <p>
+      <strong>Ignoring real-time data revisions.</strong> GDP and the output gap are substantially revised after
+      the fact; a well-known critique (Athanasios Orphanides' real-time analysis of Fed policy history) shows the
+      same historical episode can look very different in a Taylor Rule computed with the data as it was known in
+      real time versus the data as later revised. A backward-looking Taylor Rule chart quietly assumes information
+      the committee did not actually have on the day.
+    </p>
+    <p>
+      <strong>Treating the rule as a binding reaction function.</strong> Dual/multiple mandates, financial-stability
+      concerns, the effective lower bound, and forward-guidance credibility all cause real, deliberate, communicated
+      deviations from any single formula — which is exactly why the Fed itself publishes several competing
+      reference rules rather than treating one as gospel.
+    </p>
+    <p>
+      <strong>Assuming \(a=b=0.5\) is universal.</strong> Taylor's original coefficients were illustrative of
+      observed 1980s–90s Fed behavior, not a law; other specifications (the Fed's own "balanced approach" rule uses
+      \(b=1\)) use different weights, and the implied rate is sensitive to which set is chosen. State the
+      coefficients being used before quoting a number.
+    </p>
+    <p>
+      <strong>Confusing "the gap is wide" with "a move is imminent."</strong> As the yield-spread lesson's own
+      lead-lag table shows, institutional repricing after a shift in rate expectations can take anywhere from hours
+      to months depending on market conditions. A wide Taylor gap says pressure is building and unresolved — it is
+      not a dated forecast of the next policy meeting.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What does a positive output gap (\(y-y^{*}\)) mean, and why does the rule respond to it?</summary>
+    <div class="tl-answer">
+      A positive output gap means actual real GDP is running above the economy's estimated potential/full-employment
+      level — the economy is "overheating." Historically this tends to build inflationary pressure before it fully
+      shows up in current inflation itself (tight labor markets and capacity constraints push wages and prices up).
+      The rule responds to it directly through the \(b(y-y^{*})\) term so that policy leans against overheating
+      pre-emptively, rather than waiting for the inflation print itself to confirm the pressure.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why does the rule use the inflation GAP, \(\pi-\pi^{*}\), rather than responding to the level of \(\pi\) alone?</summary>
+    <div class="tl-answer">
+      Inflation already enters once as a level, in the \(r^{*}+\pi\) baseline — that term is what keeps the real
+      policy rate hovering near \(r^{*}\) whenever inflation is on target. The \(a(\pi-\pi^{*})\) term is the
+      <em>additional</em> correction layered on top of that baseline, and it should only activate to the extent
+      inflation is running away from (or below) the explicit target — not every time inflation is simply nonzero,
+      which would double-count the baseline term for no reason.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Using the worked-example parameters (\(r^{*}=2\%\), \(\pi^{*}=2\%\), \(a=b=0.5\), output gap \(+1\%\)), what does the rule imply if inflation cools to 1.5%? Show the arithmetic.</summary>
+    <div class="tl-answer">
+      \(i = r^{*}+\pi+a(\pi-\pi^{*})+b(y-y^{*}) = 2 + 1.5 + 0.5(1.5-2) + 0.5(1) = 2+1.5-0.25+0.5 = 3.75\%\).
+      Cooling inflation below target pulls the implied rate down through a now-<em>negative</em> inflation-gap term
+      (\(-0.25\)pp), even while the still-positive output gap keeps pulling it back up somewhat (\(+0.5\)pp) — the
+      two dials can partially offset rather than always reinforcing each other.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why might traders care more about the GAP between the Taylor-implied rate and actual policy than about the rule's level on its own?</summary>
+    <div class="tl-answer">
+      The level alone says nothing about whether current policy already reflects the data — it's the deviation
+      between what the data justify and what the bank is actually doing (and what the curve has already priced)
+      that signals unresolved pressure. A bank sitting well below its own implied rate signals unfinished
+      tightening, skewing hawkish-repricing risk higher than what's priced; sitting above it signals unfinished
+      easing. The gap is the tradable information; the raw level in isolation tells you comparatively little.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. What's the difference between a central bank being "behind the curve" and "ahead of the curve," and what does each typically imply for the currency?</summary>
+    <div class="tl-answer">
+      Behind the curve: the actual policy rate sits below the Taylor-implied rate — policy is looser than the data
+      justify, so more tightening (or slower cuts) is likely still needed, skewing hawkish-repricing risk higher —
+      typically currency-supportive as expected yields rise. Ahead of the curve: the actual rate sits above the
+      implied rate — policy is already tighter than the gaps justify, skewing cut risk higher — typically a drag on
+      the currency as expected yields fall, via the same rate-differential mechanism documented in the Transatlantic
+      Yield Spread lesson.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why should the Taylor Rule be treated as a diagnostic benchmark rather than a mechanical prediction of what a central bank will do next?</summary>
+    <div class="tl-answer">
+      Because \(r^{*}\) and the output gap are unobservable estimates that vary meaningfully by proxy and get
+      revised after the fact, real central banks weigh mandates and considerations beyond any single formula (the
+      Fed itself publishes several competing reference rules rather than committing to one), and historically,
+      real deviations from the rule have persisted for years before correcting. The rule tells you the direction
+      and rough size of unresolved policy pressure — it is not a dated, certain forecast of the committee's next
+      decision.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>John B. Taylor, "Discretion versus Policy Rules in Practice," <em>Carnegie-Rochester Conference Series on Public Policy</em>, 39, 1993 — the original paper introducing the rule and its illustrative \(a=b=0.5\), \(r^{*}=2\%\) coefficients.</li>
+    <li>John B. Taylor, "Housing and Monetary Policy," Federal Reserve Bank of Kansas City's Jackson Hole Economic Symposium, 2007 — Taylor's own argument that the Fed held rates well below the rule-implied level in 2003–2005, an example of the "behind the curve" gap discussed above.</li>
+    <li>Board of Governors of the Federal Reserve System, <em>Monetary Policy Report</em> (submitted semiannually to Congress) — see the section on "Monetary Policy Rules and Their Role in the Federal Reserve's Policy Process," which publishes and compares the classic rule alongside the "balanced approach" and other reference-rule variants.</li>
+    <li>Athanasios Orphanides, "Monetary Policy Rules Based on Real-Time Data," <em>American Economic Review</em>, 91(4), 2001 — the standard critique showing how large a difference real-time vs. later-revised output-gap estimates make to a computed Taylor Rule.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="purchasing-power-parity.html">← Purchasing Power Parity</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+</body>
+</html>

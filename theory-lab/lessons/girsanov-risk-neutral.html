@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Girsanov's Theorem &amp; the Risk-Neutral Measure — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Advanced Stochastic Calculus &amp; Derivatives / Girsanov's Theorem &amp; the Risk-Neutral Measure</div>
+  <div class="tl-kicker">Advanced Stochastic Calculus &amp; Derivatives · Lesson 2 of 4</div>
+  <h1 class="tl-title">Girsanov's Theorem &amp; the Risk-Neutral Measure</h1>
+  <p class="tl-dek">The Black-Scholes lesson called \(N(d_2)\) "the risk-neutral probability the option finishes in the money" and moved on. This lesson is about that phrase specifically — what a "risk-neutral probability" formally is, why it's legitimate to price with it instead of your actual view of the market, and the 1960 theorem that makes the substitution rigorous rather than a hand-wave.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — the theorem behind Black-Scholes' "risk-neutral probability" claim</span>
+    <span>~17 min read</span>
+    <span>Prereqs: Itô's Lemma, Black-Scholes-Merton Option Pricing</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    The Black-Scholes lesson derived the no-arbitrage PDE and, in passing,
+    made a fairly remarkable claim: the underlying's true expected return
+    \(\mu\) — the number every market forecaster argues about — cancels out
+    of the option-pricing formula entirely, replaced by the risk-free rate
+    \(r\). That lesson called this "pricing under the risk-neutral measure"
+    and explained the mechanical reason it happens (the replication argument
+    only needs the hedge to cancel randomness, not to bet on direction), but
+    it deliberately left one thing unexplained: <em>what is a "measure,"
+    formally, and what licenses you to swap one out for another and still
+    call the result a legitimate price rather than a convenient fiction?</em>
+  </p>
+  <p>
+    That question has a precise answer, and it is not a trick. <strong>Girsanov's
+    theorem</strong> (1960) is the mathematical result that makes "price as if
+    everything grew at the risk-free rate" rigorous rather than a plausible-sounding
+    shortcut. It says you can take the exact same underlying random process —
+    same volatility, same source of randomness, same set of possible future
+    paths — and legally re-describe it under a different probability
+    weighting in which its drift is whatever you need it to be, provided you
+    reweight consistently. Applied to option pricing, the theorem is what
+    turns "assume everything drifts at \(r\)" from a suspicious sleight of
+    hand into a specific, correct answer to a specific, well-posed
+    mathematical question. This lesson derives that answer and connects it to
+    a concept already built in this Theory Lab: the martingale property from
+    the Efficient Market Hypothesis lesson, which turns out to be exactly what
+    the risk-neutral measure is engineered to produce.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Same coin, different odds you're allowed to use</h3>
+    <p>
+      A <strong>probability measure</strong>, informally, is nothing more than
+      a specific weighting of how likely you consider each possible future
+      outcome to be. For a stock's price path over the next year, the
+      <strong>real-world measure</strong> (mathematicians write it
+      \(\mathbb{P}\)) is whatever weighting reflects what investors actually,
+      truly expect — a genuinely risky stock has some expected return above
+      the risk-free rate, because investors demand compensation (a risk
+      premium) for bearing uncertainty they can't diversify away. That
+      expected-return-above-\(r\) is the \(\mu\) from the Black-Scholes SDE,
+      and it is a fact (or at least a belief) about the real economy.
+    </p>
+    <p>
+      Girsanov's theorem says something that sounds almost too convenient at
+      first: you can take that exact same stock — same volatility, same
+      randomness, same possible paths from here to expiry — and describe it
+      under a <em>different</em> weighting, one under which its expected
+      return is exactly \(r\) instead of \(\mu\). Critically, this new
+      weighting isn't a different stock, or a fantasy stock, or an
+      approximation. It assigns different <em>probabilities</em> to the same
+      paths (paths that end up far above where \(\mu\)-drift would put them
+      become less likely; paths that end up lower become more likely), but it
+      never invents a new path that couldn't happen under the real-world
+      measure, and never rules out a path that could. That's the technical
+      meaning of "equivalent" measures: \(\mathbb{P}\) and \(\mathbb{Q}\)
+      agree on which outcomes are possible at all — probability zero stays
+      probability zero both ways — they only disagree on how likely the
+      possible ones are. Think of it as the same set of racehorses and the
+      same race, but a bookmaker's odds sheet redrawn so that, mathematically,
+      "average return" comes out to exactly the risk-free rate. Nobody is
+      claiming that's what will actually happen. It's a deliberately
+      constructed accounting device — and the next section shows precisely
+      why that particular device, and no other, is the one a no-arbitrage
+      price needs.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+  <p>
+    Three pieces, in order: (1) the same SDE written under two different
+    drifts, (2) Girsanov's theorem, which says the shift between them is a
+    legitimate change of measure, and (3) the payoff — why the specific shift
+    to drift \(r\) makes the discounted price process a martingale, which is
+    the entire reason risk-neutral pricing works.
+  </p>
+
+  <h3>1. Same process, two measures</h3>
+  <p>
+    Recall the underlying's real-world dynamics from the Black-Scholes lesson,
+    written here with an explicit \(\mathbb{P}\) superscript on the Brownian
+    motion to flag which measure it lives under:
+  </p>
+  <div class="tl-math">
+    \[ dS_t = \mu S_t\,dt + \sigma S_t\,dW_t^{\mathbb{P}} \]
+  </div>
+  <p>
+    Girsanov's theorem lets you construct an equivalent measure
+    \(\mathbb{Q}\) under which the <strong>same</strong> underlying — same
+    \(\sigma\), same source of randomness — instead satisfies:
+  </p>
+  <div class="tl-math">
+    \[ dS_t = r S_t\,dt + \sigma S_t\,dW_t^{\mathbb{Q}} \]
+  </div>
+  <p>
+    The relationship between the two driving Brownian motions is a simple
+    shift:
+  </p>
+  <div class="tl-math">
+    \[ W_t^{\mathbb{Q}} = W_t^{\mathbb{P}} + \theta t, \qquad \theta = \frac{\mu - r}{\sigma} \]
+  </div>
+  <div class="tl-symbols"><table>
+    <tr><td>\(\mathbb{P}\)</td><td>The real-world probability measure — the weighting that reflects investors' true expected returns and genuine risk premia. This is the measure under which \(\mu\) is a meaningful, arguable-over forecast.</td></tr>
+    <tr><td>\(\mathbb{Q}\)</td><td>The risk-neutral measure — an equivalent but different weighting, constructed specifically so the underlying's drift becomes \(r\) instead of \(\mu\). "Risk-neutral" is a description of this measure's mathematical property (every asset drifts at the risk-free rate under it), not a claim that real investors are indifferent to risk.</td></tr>
+    <tr><td>\(W_t^{\mathbb{P}}\), \(W_t^{\mathbb{Q}}\)</td><td>Standard Brownian motion under \(\mathbb{P}\) and under \(\mathbb{Q}\) respectively. The content of Girsanov's theorem, precisely, is that \(W_t^{\mathbb{Q}}\) — defined as \(W_t^{\mathbb{P}}\) plus a deterministic shift — is <em>itself</em> a valid, standard Brownian motion, just under the new measure \(\mathbb{Q}\) rather than \(\mathbb{P}\). That is the non-obvious part: shifting a Brownian motion by a constant rate doesn't merely look like a new random process, it provably still has all of Brownian motion's defining properties (mean-zero increments, variance \(t\), independent increments) once you're willing to reweight the underlying probabilities to match.</td></tr>
+    <tr><td>\(\theta\)</td><td>The <strong>market price of risk</strong> — how much extra expected return, per unit of volatility, the real world demands for holding this asset (it's the asset's Sharpe ratio in these units: excess return \(\mu - r\) divided by \(\sigma\)). \(\theta\) is exactly the size of the drift shift needed to move from \(\mathbb{P}\) to \(\mathbb{Q}\), and the next section shows why that specific size is the one that matters for pricing.</td></tr>
+    <tr><td>\(\sigma\)</td><td>Volatility — identical in both SDEs. This is the concrete content of "same randomness": the diffusion term \(\sigma S_t\,dW_t\) is untouched by the change of measure. Only the drift term changes; the model's uncertainty about how <em>much</em> the price moves around is not up for renegotiation, only its center.</td></tr>
+  </table></div>
+  <p>
+    Notice what did <em>not</em> change: \(\sigma\) is identical in both
+    equations, and the set of possible future paths for \(S_t\) is identical
+    (a Brownian motion shifted by a deterministic drift traces out the same
+    family of continuous paths either way — only which paths get more or less
+    probability weight differs). Only the drift term moved, from \(\mu\) to
+    \(r\). That is the precise sense in which risk-neutral pricing "ignores
+    the real-world expected return" — it isn't ignoring information by
+    accident or by approximation, it is deliberately re-describing the same
+    randomness under a measure where drift has been relabeled to \(r\), and
+    the next section explains exactly why that relabeling is the economically
+    correct one for pricing.
+  </p>
+
+  <h3>2. Girsanov's theorem — why the shift is a legitimate change of measure</h3>
+  <p>
+    Girsanov's theorem (Igor Girsanov, 1960) is the general result that
+    licenses the move above. Stated informally but precisely enough to use:
+    given a Brownian motion \(W_t^{\mathbb{P}}\) under a measure
+    \(\mathbb{P}\), and a reasonably well-behaved process \(\theta_t\) (in the
+    Black-Scholes setting, a constant, but the theorem allows it to vary),
+    there exists an <strong>equivalent</strong> probability measure
+    \(\mathbb{Q}\) under which
+  </p>
+  <div class="tl-math">
+    \[ W_t^{\mathbb{Q}} \;=\; W_t^{\mathbb{P}} + \int_0^t \theta_s\,ds \]
+  </div>
+  <p>
+    is itself a standard Brownian motion. "Equivalent" is doing precise work
+    here: \(\mathbb{P}\) and \(\mathbb{Q}\) assign different probabilities to
+    most events, but they agree exactly on which events have probability zero
+    — nothing \(\mathbb{P}\) rules out becomes possible under \(\mathbb{Q}\),
+    and nothing \(\mathbb{Q}\) rules out was possible under \(\mathbb{P}\).
+    The object that formally carries out the reweighting between the two
+    measures — the precise multiplicative factor you'd apply to a
+    \(\mathbb{P}\)-probability of any given path to get its \(\mathbb{Q}\)-probability
+    — is called the <strong>Radon-Nikodym derivative</strong>, written
+    \(d\mathbb{Q}/d\mathbb{P}\). In this setting it takes the explicit form
+  </p>
+  <div class="tl-math">
+    \[ \left.\frac{d\mathbb{Q}}{d\mathbb{P}}\right|_{\mathcal{F}_T} = \exp\!\left(-\theta W_T^{\mathbb{P}} - \tfrac{1}{2}\theta^2 T\right) \]
+  </div>
+  <p>
+    Deriving that this exponential is exactly the right reweighting factor —
+    and proving it's a well-defined probability change at all — is a genuine
+    stochastic-calculus result (it relies on the Radon-Nikodym derivative
+    itself being a \(\mathbb{P}\)-martingale, plus a technical integrability
+    condition called Novikov's condition, ensuring the reweighting doesn't
+    "leak" probability); that full derivation is outside this lesson's scope.
+    The operational fact worth taking away is narrower and more useful: this
+    object <strong>exists</strong>, is unique for a given \(\theta\), and its
+    existence is exactly what makes "shift the drift, keep everything else"
+    a legitimate mathematical operation rather than a plausible-looking
+    substitution. \(\mathcal{F}_T\) here denotes the information available up
+    to time \(T\) — the same filtration notation the EMH lesson uses for "everything
+    observable so far."
+  </p>
+
+  <h3>3. Why this particular shift — the discounted price becomes a martingale</h3>
+  <p>
+    Girsanov's theorem says <em>a</em> drift shift by any \(\theta\) produces
+    <em>some</em> equivalent measure. It does not, by itself, say which
+    \(\theta\) you should use for pricing. That choice — \(\theta = (\mu-r)/\sigma\),
+    landing the underlying's drift exactly on \(r\) — is pinned down by a
+    single requirement: it is the unique shift that makes the underlying's
+    <strong>discounted</strong> price process a martingale under the new
+    measure. Define the discounted price \(\tilde{S}_t = e^{-rt}S_t\) — today's
+    dollars, stripping out the pure time-value-of-money growth every asset
+    earns regardless of risk. Applying the product rule (no stochastic
+    correction needed here, since \(e^{-rt}\) is deterministic) to
+    \(\tilde{S}_t\) under the \(\mathbb{Q}\)-dynamics from step 1:
+  </p>
+  <div class="tl-math">
+    \[ d\tilde{S}_t = -re^{-rt}S_t\,dt + e^{-rt}\,dS_t = -r\tilde{S}_t\,dt + e^{-rt}\big(rS_t\,dt + \sigma S_t\,dW_t^{\mathbb{Q}}\big) = \sigma\tilde{S}_t\,dW_t^{\mathbb{Q}} \]
+  </div>
+  <p>
+    The two \(r\tilde{S}_t\,dt\) drift terms — one from differentiating the
+    discount factor, one from the underlying's own \(\mathbb{Q}\)-drift —
+    cancel <em>exactly</em>. What's left has no drift term at all: the
+    discounted price moves purely on the random shock \(\sigma\tilde{S}_t\,dW_t^{\mathbb{Q}}\),
+    with expected instantaneous change of zero. A process with zero drift is,
+    by definition, a martingale:
+  </p>
+  <div class="tl-math">
+    \[ \mathbb{E}^{\mathbb{Q}}\big[\tilde{S}_T \mid \mathcal{F}_t\big] = \tilde{S}_t \]
+  </div>
+  <p>
+    This is the direct callback promised at the top of the lesson: it is
+    <em>exactly</em> the martingale property from the Efficient Market
+    Hypothesis lesson (\(\mathbb{E}[P_t \mid \mathcal{F}_{t-1}] = P_{t-1}\)),
+    applied to the discounted price under \(\mathbb{Q}\). The EMH lesson
+    treated "prices are a martingale" as an empirical, testable claim about
+    real markets under \(\mathbb{P}\) (and one that mostly, if imperfectly,
+    holds up — see that lesson's autocorrelation tests). Here, the martingale
+    property under \(\mathbb{Q}\) is not an empirical claim at all — it is
+    <strong>true by construction</strong>, the entire reason \(\mathbb{Q}\)
+    was built the way it was. Girsanov's theorem supplies the "you're allowed
+    to do this" license; choosing \(\theta = (\mu-r)/\sigma\) specifically is
+    what cashes that license in for a discounted price process that is a
+    fair game, under \(\mathbb{Q}\), for every tradeable asset simultaneously
+    (the same construction applies to any asset in the same economy, since
+    they all share the same risk-free discounting).
+  </p>
+  <p>
+    The payoff is now direct. If a derivative's own discounted price must
+    also be a martingale under \(\mathbb{Q}\) — which the fundamental theorem
+    of asset pricing (Harrison &amp; Kreps, 1979; not derived here) shows is
+    forced by no-arbitrage, since the derivative and its hedge portfolio must
+    move together — then a derivative paying \(V_T\) at time \(T\) has today's
+    price given by a discounted <strong>conditional expectation</strong>,
+    computed under \(\mathbb{Q}\):
+  </p>
+  <div class="tl-math">
+    \[ V_0 = e^{-rT}\,\mathbb{E}^{\mathbb{Q}}\big[V_T\big] \]
+  </div>
+  <p>
+    Nowhere in that formula does \(\mu\) — the real-world expected return —
+    appear. It has been replaced entirely by \(r\), not as an approximation
+    or a simplifying assumption of convenience, but because \(r\) is
+    precisely the drift that makes the discounted price process a martingale,
+    which is precisely the property no-arbitrage pricing requires. This is
+    the rigorous version of what the Black-Scholes lesson stated as a fact
+    about the PDE: pricing an option needs a volatility estimate, never a
+    directional forecast, because the entire pricing framework is built on
+    a measure engineered so that direction, by construction, doesn't matter.
+  </p>
+  <p>
+    It also completes the earlier lesson's unfinished sentence about
+    \(N(d_2)\). Under \(\mathbb{Q}\), \(\ln S_T\) is normally distributed with
+    mean \(\ln S_0 + (r - \sigma^2/2)T\) — the same lognormal shape as under
+    \(\mathbb{P}\), but centered on \(r\) instead of \(\mu\). \(N(d_2)\) is
+    literally \(\mathbb{Q}(S_T > K)\): the actual, well-defined probability,
+    under the actual, well-defined measure \(\mathbb{Q}\), that the option
+    finishes in the money. There is nothing fictitious about the number
+    \(N(d_2)\) — what's fictitious (deliberately, usefully so) is the
+    <em>measure</em> it's computed under.
+  </p>
+
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A bullish EUR/USD view is a separate bet, not a pricing input</h3>
+    <p>
+      Suppose a trader has a genuinely bullish real-world view on EUR/USD —
+      they believe, based on their own macro read, that the pair will
+      appreciate more over the next six months than the two currencies'
+      interest-rate differential implies. That view is a statement about
+      \(\mu\) under \(\mathbb{P}\): a real, arguable, potentially valuable
+      opinion about the real world.
+    </p>
+    <p>
+      It is <strong>not</strong>, however, a reason to price or hedge a EUR/USD
+      option any differently. The option's no-arbitrage price and its hedge
+      ratios (delta, gamma, from the Black-Scholes lesson) are computed under
+      \(\mathbb{Q}\), where by construction EUR/USD drifts at the
+      interest-rate differential (the FX risk-free rate, as that lesson
+      noted) regardless of the trader's bullish view. If the trader instead
+      prices the option using their own higher \(\mu\) — effectively
+      substituting their view for \(r\) in the pricing formula — they will
+      compute a call price that is too high relative to what the market (and
+      any correctly-hedged counterparty) will actually pay, and a hedge ratio
+      that is systematically wrong, since \(N(d_1)\) computed under the
+      "wrong" measure no longer matches the delta a replicating portfolio
+      actually needs. Their bullish view doesn't disappear — it's a real,
+      separate directional bet, correctly expressed by simply <em>buying
+      EUR/USD</em>, or buying a call and <em>not</em> delta-hedging it (an
+      intentionally directional options position). What the theorem rules
+      out is doing both at once inside a single mispriced number: using a
+      real-world view to justify a different price for the derivative itself,
+      rather than layering the view on top of a correctly no-arbitrage-priced
+      instrument. Conflating "my view on the market" with "the no-arbitrage
+      price of this derivative" is exactly the mistake Girsanov's theorem, and
+      the whole risk-neutral pricing apparatus built on it, exists to make
+      precise and avoidable — and it is a genuinely costly mistake in
+      practice: a desk that lets a directional house view leak into its
+      pricing models will misprice consistently in the direction of that
+      view, and get picked off by counterparties who hedge correctly.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Same underlying, two measures — same shape, shifted center</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two overlaid bell-shaped probability curves over the same underlying's future price. The real-world measure curve, in blue, is centered further to the right, reflecting a positive real-world risk premium pulling expected price higher. The risk-neutral measure curve, in red, has the identical shape and spread but is centered further to the left, reflecting drift at only the risk-free rate. Both curves span the same price axis and have the same width, differing only in where they're centered.">
+      <line x1="40" y1="260" x2="620" y2="260" style="stroke:var(--text3);stroke-width:1"/>
+      <text x="620" y="278" text-anchor="end" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Underlying price at horizon T →</text>
+      <text x="14" y="150" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 14 150)">Probability density</text>
+      <line x1="280" y1="20" x2="280" y2="260" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"/>
+      <text x="280" y="14" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--red)">S&#x2080;&#183;e^(r&#183;T)</text>
+      <line x1="400" y1="20" x2="400" y2="260" style="stroke:var(--blue);stroke-width:1;stroke-dasharray:3,3"/>
+      <text x="400" y="14" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--blue)">S&#x2080;&#183;e^(&#956;&#183;T)</text>
+      <polyline points="40,259.5 48,259.2 56,258.8 64,258.3 72,257.6 80,256.7 88,255.5 96,253.8 104,251.7 112,249.1 120,245.7 128,241.5 136,236.5 144,230.5 152,223.4 160,215.1 168,205.8 176,195.3 184,183.9 192,171.5 200,158.5 208,145.1 216,131.6 224,118.4 232,105.9 240,94.4 248,84.3 256,76.1 264,70.0 272,66.3 280,65.0 288,66.3 296,70.0 304,76.1 312,84.3 320,94.4 328,105.9 336,118.4 344,131.6 352,145.1 360,158.5 368,171.5 376,183.9 384,195.3 392,205.8 400,215.1 408,223.4 416,230.5 424,236.5 432,241.5 440,245.7 448,249.1 456,251.7 464,253.8 472,255.5 480,256.7 488,257.6 496,258.3 504,258.8 512,259.2 520,259.5 528,259.6 536,259.8 544,259.8 552,259.9 560,259.9 568,260.0 576,260.0 584,260.0 592,260.0 600,260.0" style="stroke:var(--red);stroke-width:2.5" fill="none"/>
+      <polyline points="40,260.0 48,260.0 56,260.0 64,260.0 72,260.0 80,260.0 88,260.0 96,260.0 104,260.0 112,260.0 120,259.9 128,259.9 136,259.8 144,259.8 152,259.6 160,259.5 168,259.2 176,258.8 184,258.3 192,257.6 200,256.7 208,255.5 216,253.8 224,251.7 232,249.1 240,245.7 248,241.5 256,236.5 264,230.5 272,223.4 280,215.1 288,205.8 296,195.3 304,183.9 312,171.5 320,158.5 328,145.1 336,131.6 344,118.4 352,105.9 360,94.4 368,84.3 376,76.1 384,70.0 392,66.3 400,65.0 408,66.3 416,70.0 424,76.1 432,84.3 440,94.4 448,105.9 456,118.4 464,131.6 472,145.1 480,158.5 488,171.5 496,183.9 504,195.3 512,205.8 520,215.1 528,223.4 536,230.5 544,236.5 552,241.5 560,245.7 568,249.1 576,251.7 584,253.8 592,255.5 600,256.7" style="stroke:var(--blue);stroke-width:2.5" fill="none"/>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>Real-world measure &#x2119; — drift &#956; (includes risk premium)</span>
+      <span><i style="background:var(--red)"></i>Risk-neutral measure &#x211A; — drift r (risk-free rate only)</span>
+    </div>
+    <div class="tl-chart-caption">
+      Same underlying, same volatility \(\sigma\) (both curves have identical
+      width and shape), same set of possible future prices. The only
+      difference is <strong>where the probability mass is centered</strong>:
+      the real-world curve sits further right because \(\mu > r\) for a
+      genuinely risky asset (investors demand a risk premium), while the
+      risk-neutral curve is centered exactly at the risk-free forward price.
+      Girsanov's theorem is the statement that you're allowed to relabel one
+      curve's probabilities into the other's without changing the underlying
+      randomness at all — nothing about \(\sigma\) or the shape moves, only
+      the center.
+    </div>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    No trading desk sits down and derives the Radon-Nikodym derivative before
+    pricing a swap. Girsanov's theorem is infrastructure, not a daily
+    calculation — but the practices it justifies are used constantly and
+    industry-wide: (1) <strong>risk-neutral valuation is the universal
+    default for pricing</strong> — every derivatives pricing model, from
+    plain Black-Scholes through the local-volatility and stochastic-volatility
+    models mentioned in the Black-Scholes lesson's "how practitioners use
+    this" section, computes a discounted expectation under some
+    \(\mathbb{Q}\)-measure, never under \(\mathbb{P}\); (2) <strong>Monte
+    Carlo pricing engines simulate under \(\mathbb{Q}\)</strong>, not
+    \(\mathbb{P}\) — when a desk prices a path-dependent exotic by simulating
+    thousands of price paths and averaging the discounted payoff, those
+    simulated paths are drawn using drift \(r\) (or, for FX, the relevant
+    interest-rate differential), specifically because that is what the
+    theorem says makes the average converge to the correct no-arbitrage
+    price; (3) <strong>calibration works "backwards" through \(\mathbb{Q}\)</strong>
+    — when a desk backs out implied volatility from a traded option price,
+    they are inferring a parameter of the risk-neutral measure that
+    reproduces the market price, not measuring anything about \(\mathbb{P}\);
+    this is why implied volatility and realized (historical, real-world)
+    volatility are related but conceptually distinct objects; and (4)
+    <strong>risk management deliberately switches back to \(\mathbb{P}\)</strong>
+    — a desk's VaR, stress tests, and real-world scenario probabilities
+    (unlike its pricing) are computed under the actual, historical/estimated
+    real-world measure, because "how likely is this loss, really" is a
+    \(\mathbb{P}\)-question, not a \(\mathbb{Q}\)-question. A single derivatives
+    book routinely uses both measures for different jobs in the same day:
+    \(\mathbb{Q}\) to price and hedge, \(\mathbb{P}\) to ask "how bad could
+    this actually get."
+  </p>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>The theory underneath a phrase the Black-Scholes lesson used and moved past</h3>
+    <p>
+      This lesson has no direct module in this repo, and it's worth being
+      plain about that: MacroFXModel doesn't price options anywhere in its
+      codebase — there is no <code>optionPricingEngine.js</code>, no Greeks
+      calculator wired into a live bot, nothing that would call a
+      risk-neutral expectation in production. This is pure derivation,
+      one layer underneath the Black-Scholes lesson's own claim that
+      "\(N(d_2)\) is the risk-neutral probability the option finishes in the
+      money" — a sentence that lesson stated and used, but did not fully
+      justify. This lesson is that justification.
+    </p>
+    <p>
+      The genuine repo connection is conceptual rather than a code module,
+      and it's a real one: the martingale definition from the
+      <code>emh.html</code> lesson (\(\mathbb{E}[P_t \mid \mathcal{F}_{t-1}]
+      = P_{t-1}\)) is not just a loose analogy to what happens under
+      \(\mathbb{Q}\) — it is the <em>literal same object</em>, applied to the
+      discounted price process instead of the raw one. The EMH lesson treats
+      the martingale property as an empirical claim about \(\mathbb{P}\),
+      testable with autocorrelations and variance-ratio tests on real return
+      series (the same kind of honest, OOS-checkable claim this repo insists
+      on everywhere else). This lesson shows the same property holding under
+      \(\mathbb{Q}\) by mathematical construction rather than empirical
+      accident. That is arguably the moment this Theory Lab's two separate
+      threads — market-efficiency theory (is <em>this actual market</em> a
+      fair game?) and derivatives-pricing theory (can I legitimately price
+      <em>this option</em> as if the world were a fair game?) — formally
+      meet: they turn out to be the same mathematical object, asked about
+      under two different measures, for two entirely different purposes.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where the risk-neutral measure is misunderstood or misused</h3>
+    <p>
+      <strong>Treating \(\mathbb{Q}\)-probabilities as forecasts.</strong>
+      \(N(d_2)\), or any risk-neutral probability computed from a pricing
+      model, is not a statement about what will actually happen. It's the
+      probability under a measure specifically constructed so that
+      discounted prices are martingales — a pricing device, not a forecast.
+      Reading a rising risk-neutral probability of some event as "the market
+      thinks this is getting more likely" conflates \(\mathbb{Q}\) with
+      \(\mathbb{P}\); it can be directionally suggestive in practice (the two
+      aren't wholly unrelated — a genuine shift in real-world odds often does
+      move option-implied probabilities too) but it is not the same claim,
+      and the gap between them is exactly the risk premium \(\theta\sigma =
+      \mu - r\).
+    </p>
+    <p>
+      <strong>Believing "risk-neutral" means investors are risk-neutral.</strong>
+      The name is a description of the measure's mathematical property (every
+      asset drifts at \(r\) under it), not a claim about actual investor
+      psychology. Real investors are risk-averse — that's precisely why
+      \(\mu > r\) under \(\mathbb{P}\) in the first place, and precisely why
+      a nontrivial shift \(\theta\) is needed to get from \(\mathbb{P}\) to
+      \(\mathbb{Q}\) at all. If investors really were risk-neutral, \(\mu\)
+      would already equal \(r\) and the two measures would coincide.
+    </p>
+    <p>
+      <strong>Assuming any drift can be shifted away for free.</strong> Girsanov's
+      theorem requires a technical condition (Novikov's condition, or a
+      weaker sufficient variant) on the process \(\theta_t\) for the
+      change-of-measure exponential to be a genuine, "no probability
+      leakage" martingale. It isn't automatic for arbitrary, badly-behaved
+      drift processes. In the constant-\(\theta\) Black-Scholes setting this
+      is a non-issue, but the condition becomes a real constraint in more
+      exotic models (certain stochastic-volatility or interest-rate models)
+      where it can fail — flagged here as a reason "just apply Girsanov"
+      isn't always as free as the constant-drift case makes it look.
+    </p>
+    <p>
+      <strong>Layering a directional view into the pricing model instead of
+      on top of it.</strong> As the trading scenario above shows, the
+      failure mode isn't abstract — it's a specific, repeatable trading
+      mistake: substituting a personal or house view of \(\mu\) into a
+      pricing or hedging calculation that is supposed to run under
+      \(\mathbb{Q}\). The correct place for a directional view is a separate,
+      explicit position (spot, forwards, an undelta-hedged option), never a
+      silent adjustment to the assumed drift inside a pricing model.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why doesn't an option's real-world expected-return view belong in its no-arbitrage price?</summary>
+    <div class="tl-answer">
+      Because the no-arbitrage price is defined as a discounted expectation
+      under the risk-neutral measure \(\mathbb{Q}\), and \(\mathbb{Q}\) is
+      constructed — via Girsanov's theorem, choosing \(\theta = (\mu-r)/\sigma\)
+      — specifically so that every tradeable asset's discounted price is a
+      martingale under it. That construction replaces \(\mu\) with \(r\) by
+      design; it isn't that the real-world view is irrelevant to the world,
+      it's that the no-arbitrage price is answering a different question
+      ("what price makes replication/hedging arguments consistent") than "what
+      do I expect this asset to do." The real-world \(\mu\) still matters
+      enormously for risk management and for directional trading — just not
+      for this specific price.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What does it mean, precisely, for the discounted price process to be a martingale under the risk-neutral measure?</summary>
+    <div class="tl-answer">
+      Defining \(\tilde{S}_t = e^{-rt}S_t\) (the underlying's price expressed
+      in today's dollars, stripping out risk-free growth), the martingale
+      property is \(\mathbb{E}^{\mathbb{Q}}[\tilde{S}_T \mid \mathcal{F}_t] =
+      \tilde{S}_t\): given everything observable up to time \(t\), the best
+      \(\mathbb{Q}\)-expected value of the discounted price at any future
+      time \(T\) is simply today's discounted price — no predictable drift
+      left after discounting. This is the exact same mathematical property
+      the EMH lesson defines for real-world prices (a "fair game"), except
+      here it holds for the discounted process under \(\mathbb{Q}\) by
+      mathematical construction, not as an empirical claim about real markets
+      that needs testing.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What is the market price of risk \(\theta\), and what specific role does it play in moving from \(\mathbb{P}\) to \(\mathbb{Q}\)?</summary>
+    <div class="tl-answer">
+      \(\theta = (\mu - r)/\sigma\) is the asset's excess expected return
+      (over the risk-free rate) per unit of volatility — its Sharpe ratio in
+      these units. It is exactly the size of the deterministic shift applied
+      to the real-world Brownian motion (\(W_t^{\mathbb{Q}} = W_t^{\mathbb{P}}
+      + \theta t\)) to construct the risk-neutral measure. Girsanov's theorem
+      guarantees that this shifted process is itself a valid Brownian motion
+      under the new measure \(\mathbb{Q}\); the specific choice of \(\theta\)
+      (rather than some other shift) is what makes the underlying's drift
+      under \(\mathbb{Q}\) land exactly on \(r\), which in turn is what makes
+      the discounted price a martingale.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What does Girsanov's theorem actually assert, and what role does the Radon-Nikodym derivative play?</summary>
+    <div class="tl-answer">
+      Girsanov's theorem asserts that given a Brownian motion under a measure
+      \(\mathbb{P}\) and a suitably well-behaved drift-shift process
+      \(\theta_t\), there exists an equivalent measure \(\mathbb{Q}\) — one
+      agreeing with \(\mathbb{P}\) on which outcomes are possible at all —
+      under which the shifted process \(W_t^{\mathbb{P}} + \int_0^t\theta_s\,ds\)
+      is itself a standard Brownian motion. The Radon-Nikodym derivative
+      \(d\mathbb{Q}/d\mathbb{P}\) is the specific object that formally
+      reweights probabilities between the two measures — the exact
+      multiplicative factor converting a \(\mathbb{P}\)-probability into the
+      corresponding \(\mathbb{Q}\)-probability for any event. Its existence
+      (subject to a technical integrability condition) is what makes the
+      change of measure a rigorous mathematical operation rather than an
+      informal relabeling.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why is \(N(d_2)\) not the real-world probability that an option finishes in the money?</summary>
+    <div class="tl-answer">
+      \(N(d_2)\) is \(\mathbb{Q}(S_T > K)\) — a probability computed from
+      \(\ln S_T\)'s distribution under the risk-neutral measure, which has
+      mean \(\ln S_0 + (r - \sigma^2/2)T\), using \(r\) rather than \(\mu\).
+      The real-world probability of finishing in the money would instead use
+      \(\ln S_T\)'s distribution under \(\mathbb{P}\), with mean
+      \(\ln S_0 + (\mu - \sigma^2/2)T\). Since \(\mu \geq r\) for a typical
+      risky asset (a positive risk premium), the real-world probability of
+      finishing in the money is generally higher than \(N(d_2)\); the two
+      coincide only in the special case \(\mu = r\), i.e. \(\theta = 0\), no
+      measure change needed at all.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. In the EUR/USD trading scenario, what specific mistake does the theorem prevent, and what should the trader do instead?</summary>
+    <div class="tl-answer">
+      The mistake is substituting a personal bullish view (a higher \(\mu\))
+      into the pricing or hedging of the option itself — effectively pricing
+      as if the real-world measure, not the risk-neutral measure, governed
+      the no-arbitrage relationship. That produces a systematically
+      mispriced option and a wrong hedge ratio, since delta/gamma computed
+      off the "wrong" drift no longer match what a genuine replicating
+      portfolio needs. The correct approach is to price and hedge the option
+      under \(\mathbb{Q}\) exactly as the no-arbitrage argument requires, and
+      to express the bullish view as a separate position — outright spot or
+      forward exposure, or a deliberately un-hedged (or partially hedged)
+      option position — rather than folding the view into the pricing model
+      where it silently corrupts the "fair value" the desk is quoting.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Igor V. Girsanov, "On Transforming a Certain Class of Stochastic Processes by Absolutely Continuous Substitution of Measures," <em>Theory of Probability &amp; Its Applications</em>, 1960 — the original theorem.</li>
+    <li>Steven Shreve, <em>Stochastic Calculus for Finance II: Continuous-Time Models</em>, Springer — the standard, rigorous treatment (Chapter 5 covers Girsanov's theorem and risk-neutral pricing directly); the same reference this Theory Lab's Itô's Lemma lesson points to.</li>
+    <li>J. Michael Harrison &amp; David M. Kreps, "Martingales and Arbitrage in Multiperiod Securities Markets," <em>Journal of Economic Theory</em>, 1979 — the fundamental theorem of asset pricing connecting no-arbitrage to the existence of an equivalent martingale measure, referenced above.</li>
+    <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson — the "Risk-Neutral Valuation" chapter gives the standard practitioner-level treatment, less formal than Shreve but the reference most trading desks point newcomers to first.</li>
+    <li><code>theory-lab/lessons/emh.html</code> in this repo — the martingale definition this lesson shows re-appearing, by construction, under the risk-neutral measure.</li>
+    <li><code>theory-lab/lessons/black-scholes.html</code> in this repo — the lesson whose "risk-neutral probability" claim about \(N(d_2)\) this lesson exists to justify.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="ito-lemma.html">← Itô's Lemma</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="heston-model.html">Heston Model →</a>
+  </div>
+</div>
+</body>
+</html>

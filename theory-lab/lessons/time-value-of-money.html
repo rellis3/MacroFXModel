@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Time Value of Money — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Deeper Foundations / Time Value of Money</div>
+  <div class="tl-kicker">Deeper Foundations · Lesson 4 of 4</div>
+  <h1 class="tl-title">Time Value of Money</h1>
+  <p class="tl-dek">A dollar today is worth more than a dollar next year — not as a saying, but as an arithmetic fact with a precise formula. That formula is where the risk-free rate \(r\) in Black-Scholes comes from, and it is the entire foundation Interest Rate Parity is built on.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">DEEPER FOUNDATION — read before Black-Scholes or Interest Rate Parity</span>
+    <span>~13 min read</span>
+    <span>Prereqs: Returns, Log-Returns &amp; Compounding</span>
+  </div>
+
+  <h2>Why this matters</h2>
+  <p>
+    The Black-Scholes lesson in this series introduces a term \(Ke^{-rT}\) —
+    "the strike price discounted back to today at the risk-free rate" — and
+    moves on quickly, because deriving option pricing theory isn't the place
+    to also derive what discounting <em>is</em>. That derivation belongs here.
+    Every discount factor, every present-value calculation, every "the market
+    is pricing in X%" statement in finance rests on the same four-hundred-year-old
+    idea: money has a price, that price is the interest rate, and moving money
+    across time changes its value in a way you can compute exactly. Get this
+    mechanical and it stops being a footnote you skip past in every other
+    lesson — it becomes the thing you instantly recognize whenever an \(r\),
+    an \(e^{-rt}\), or a "3-month forward" shows up anywhere else in this
+    series.
+  </p>
+  <p>
+    This lesson also exists specifically to set up the next one. Interest
+    Rate Parity — the theory that pins down FX forward rates from nothing
+    more than two countries' interest rates — is <em>entirely</em> a
+    time-value-of-money argument applied to two currencies at once. If
+    "a dollar today is worth more than a dollar in a year because it earns
+    interest" isn't automatic and comfortable by the end of this page, IRP
+    will feel like a new, separate idea instead of what it actually is: this
+    same idea, run twice, once per currency, and compared.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Why a dollar today beats a dollar next year</h3>
+    <p>
+      Suppose someone offers you a choice: $100 in your hand right now, or a
+      guaranteed $100 exactly one year from today. Take the $100 now. Not
+      because a bird in hand is worth two in the bush as a matter of
+      psychology, but because of what you can <em>do</em> with the $100 in
+      the meantime: put it in a bank account paying, say, 5% interest, and in
+      a year it has become $105. The person who waited for their $100 is now
+      strictly poorer than you, by $5, for having made an economically
+      identical promise a year earlier. "A dollar today is worth more than a
+      dollar tomorrow" is just this: today's dollar can be lent, invested, or
+      deposited, and interest is the price the world pays you for the use of
+      it while you wait.
+    </p>
+    <p>
+      Turn that around and you get discounting for free. If $100 today grows
+      to $105 in a year at 5%, then $105 arriving in a year must be worth
+      exactly $100 today — no more, no less, because $100 today can be turned
+      into exactly $105 in a year and nothing about waiting for the $105
+      changes that equivalence. Every present-value calculation in finance is
+      this same statement run in reverse: given a future amount and a rate,
+      what amount today would grow into it? That single question — and its
+      mirror image, what does today's amount grow into? — is the entire
+      subject of this lesson.
+    </p>
+  </div>
+
+  <h2>The math, step by step</h2>
+
+  <h3>1. Future value — the compounding argument</h3>
+  <p>
+    Let \(PV\) be an amount of money today, and let \(r\) be the interest
+    rate it earns per period (a year, unless stated otherwise). After one
+    period, that amount has grown by \(r\) — the original amount plus its
+    interest:
+  </p>
+  <div class="tl-math">\[ PV + PV\cdot r = PV(1+r) \]</div>
+  <p>
+    The important step is what happens in period two. The interest paid in
+    period two is <em>not</em> earned only on the original \(PV\) — it is
+    earned on the whole balance carried forward, \(PV(1+r)\), including the
+    interest period one already added. That is the entire meaning of
+    "compounding": interest earns interest. So after period two:
+  </p>
+  <div class="tl-math">\[ \big[PV(1+r)\big](1+r) = PV(1+r)^2 \]</div>
+  <p>
+    Repeating this \(t\) times — each period multiplying the running balance
+    by another factor of \((1+r)\) — gives the future value formula:
+  </p>
+  <div class="tl-math">\[ FV = PV(1+r)^t \]</div>
+  <div class="tl-symbols"><table>
+    <tr><td>\(PV\)</td><td>Present value — an amount of money today.</td></tr>
+    <tr><td>\(FV\)</td><td>Future value — what that amount grows into after \(t\) periods of compounding at rate \(r\).</td></tr>
+    <tr><td>\(r\)</td><td>The interest (or discount, or risk-free) rate per period, expressed as a decimal (5% = 0.05). This is the exact same symbol \(r\) that appears in the Black-Scholes formula's \(Ke^{-rT}\) term.</td></tr>
+    <tr><td>\(t\)</td><td>The number of compounding periods — years, if \(r\) is an annual rate. \(t\) does not have to be a whole number; three months is \(t=0.25\) years, used directly below in the FX forward scenario.</td></tr>
+    <tr><td>\((1+r)^t\)</td><td>The <strong>growth factor</strong> — how many dollars \(t\) periods from now one dollar today turns into. Always strictly greater than 1 whenever \(r>0\) and \(t>0\).</td></tr>
+  </table></div>
+  <p>
+    Notice the formula is exponential — \((1+r)\) raised to the power \(t\) —
+    not \(PV(1+rt)\), which would just add \(r\) once per period rather than
+    letting each period's gain itself start earning \(r\). That distinction,
+    "simple" versus "compound" interest, is exactly the additive-versus-multiplicative
+    gap the Returns &amp; Compounding primer built its entire volatility-drag
+    argument around, just running in the opposite direction: there, compounding
+    a volatile <em>return</em> series pulled the geometric mean <em>below</em>
+    the arithmetic mean; here, compounding a fixed, certain <em>interest rate</em>
+    every period makes an investment grow <em>faster</em> than simply adding
+    \(r\) once per period would. Same multiplicative mechanism, opposite-looking
+    consequence, because certainty and variance behave differently once you
+    start multiplying instead of adding.
+  </p>
+
+  <h3>2. Present value — discounting</h3>
+  <p>
+    Present value is nothing more than the future-value formula solved for
+    \(PV\) instead of \(FV\). Divide both sides of \(FV = PV(1+r)^t\) by
+    \((1+r)^t\):
+  </p>
+  <div class="tl-math">\[ PV = \frac{FV}{(1+r)^t} \]</div>
+  <p>
+    The quantity \((1+r)^{-t} = 1/(1+r)^t\) that \(FV\) gets multiplied by
+    here is called the <strong>discount factor</strong>:
+  </p>
+  <div class="tl-math">\[ DF(r,t) = \frac{1}{(1+r)^t} \]</div>
+  <p>
+    A discount factor answers one specific question: "what is one dollar,
+    to be received \(t\) periods from now, worth today?" Multiply any future
+    cash flow by the discount factor for its arrival date and you get its
+    present value — this is literally the entire operation underneath every
+    bond price, every discounted-cash-flow valuation, and (as the Black-Scholes
+    lesson's \(Ke^{-rT}\) term shows) every option-pricing formula that
+    involves a future strike or payoff.
+  </p>
+  <p>
+    <strong>A discount factor is always strictly less than 1 whenever \(r>0\)
+    and \(t>0\).</strong> This isn't a modeling choice, it falls straight out
+    of the algebra: if \(r>0\) then \((1+r)>1\), and raising a number greater
+    than 1 to a positive power \(t\) produces a number still greater than 1,
+    so dividing 1 by it must give something strictly between 0 and 1. Two
+    limiting cases are worth holding onto because the chart below is built
+    entirely out of them: as \(t\to 0\) (nothing to wait for), \(DF\to 1\) —
+    a dollar due immediately is worth a dollar; as \(t\to\infty\) with
+    \(r>0\) fixed, \(DF\to 0\) — a dollar due arbitrarily far in the future
+    is worth arbitrarily little today, no matter how large it nominally is.
+    The higher \(r\) is, the faster that decay toward zero happens for any
+    given \(t\), which is exactly the "low-rate curve declines slowly,
+    high-rate curve declines fast" shape in the chart.
+  </p>
+
+  <h3>3. Continuous compounding — the limit, and why it's the same object as a log return</h3>
+  <p>
+    So far compounding has happened once per period (once per year, say).
+    Nothing forces that — a bank could compound semiannually, quarterly,
+    monthly, daily, or in principle infinitely often. If a nominal annual
+    rate \(r\) compounds \(n\) times per year, each sub-period earns \(r/n\),
+    and over \(t\) years there are \(nt\) sub-periods, so:
+  </p>
+  <div class="tl-math">\[ FV = PV\left(1+\frac{r}{n}\right)^{nt} \]</div>
+  <p>
+    (Note this "nominal" means the stated annual rate before adjusting for
+    how often it compounds — a different sense of "nominal" from the
+    nominal-vs-real, inflation-adjusted meaning used in the next section;
+    both uses are standard in finance and worth keeping straight.) Taking
+    the number of compounding periods \(n\) to infinity — compounding
+    continuously — invokes a standard calculus limit (the same limit that
+    defines the constant \(e\) itself, not re-derived here):
+  </p>
+  <div class="tl-math">\[ \lim_{n\to\infty}\left(1+\frac{r}{n}\right)^{n} = e^{r} \quad\Rightarrow\quad FV = PV\cdot e^{rt} \]</div>
+  <p>
+    This convergence is fast and, past a point, practically invisible. Take
+    \(r=6\%\) over one year and watch the effective annual growth factor as
+    compounding frequency \(n\) increases:
+  </p>
+  <div class="tl-symbols"><table>
+    <tr><td>\(n=1\) (annual)</td><td>\((1.06)^1 = 1.06000\)</td></tr>
+    <tr><td>\(n=2\) (semiannual)</td><td>\((1.03)^2 = 1.06090\)</td></tr>
+    <tr><td>\(n=4\) (quarterly)</td><td>\((1.015)^4 \approx 1.06136\)</td></tr>
+    <tr><td>\(n=12\) (monthly)</td><td>\((1.005)^{12} \approx 1.06168\)</td></tr>
+    <tr><td>\(n=365\) (daily)</td><td>\((1+0.06/365)^{365} \approx 1.06183\)</td></tr>
+    <tr><td>\(n\to\infty\) (continuous)</td><td>\(e^{0.06} \approx 1.06184\)</td></tr>
+  </table></div>
+  <p>
+    Daily compounding is already within a thousandth of the continuous
+    limit — which is exactly why quoted textbook formulas (including
+    Black-Scholes) default to continuous compounding: it's the clean,
+    closed-form limiting case of something real-world compounding already
+    approximates closely at any ordinary frequency.
+  </p>
+  <p>
+    <strong>Here is the connection the Returns &amp; Compounding primer set
+    up directly.</strong> Take logs of both sides of \(FV = PV\cdot e^{rt}\):
+  </p>
+  <div class="tl-math">\[ \ln\!\left(\frac{FV}{PV}\right) = rt \]</div>
+  <p>
+    Recall the primer's definition of a log return over a horizon:
+    \(r_t = \ln(P_t/P_{t-1})\), generalized to any horizon as
+    \(\ln(P_{\text{end}}/P_{\text{start}})\). The left-hand side above,
+    \(\ln(FV/PV)\), <em>is</em> exactly that log return, applied to a risk-free
+    deposit growing from \(PV\) to \(FV\). The right-hand side, \(rt\), says
+    that log return accrues at a constant rate \(r\) per unit time. This is
+    not an analogy or a resemblance — <strong>a continuously-compounded
+    interest rate is a log return per unit time, the identical mathematical
+    object</strong>, and the reason it's additive across time (2 years at a
+    continuously-compounded 5% gives exactly the same growth as two separate
+    1-year periods at 5% each, with no cross term to worry about) is the
+    exact log-additivity property the primer derived from
+    \(\ln(ab)=\ln a + \ln b\). A "risk-free rate of 5%, continuously
+    compounded" is precisely a claim that a riskless bond's log return
+    accrues at a constant 0.05 per year — nothing more exotic than that.
+  </p>
+
+  <h3>4. Nominal vs. real rates — a forward-reference to Fisher and Purchasing Power Parity</h3>
+  <p>
+    Everything above assumes the interest rate \(r\) buys you something
+    real — that $105 next year genuinely lets you purchase 5% more goods
+    than $100 buys today. That's only true if prices haven't risen in the
+    meantime. If inflation runs at rate \(\pi\) over the same period, part of
+    that 5% growth is just keeping pace with rising prices, not actually
+    making you richer in purchasing-power terms. The relationship between
+    the <strong>nominal</strong> rate you're quoted, the <strong>real</strong>
+    rate you actually experience, and inflation is the Fisher equation
+    (named for economist Irving Fisher, cited in Further Reading):
+  </p>
+  <div class="tl-math">\[ (1+i_{\text{nominal}}) = (1+i_{\text{real}})(1+\pi) \]</div>
+  <p>
+    which rearranges to \(i_{\text{real}} = \dfrac{1+i_{\text{nominal}}}{1+\pi}-1\),
+    and for small rates is well approximated by simple subtraction:
+    \(i_{\text{real}} \approx i_{\text{nominal}} - \pi\). A nominal rate of
+    5% with 3% inflation gives an exact real rate of \(1.05/1.03 - 1\approx
+    1.94\%\), close to (but not exactly) the naive \(5\%-3\%=2\%\)
+    approximation. The point to carry forward, not derive fully here: every
+    \(r\) used in this lesson's formulas is, strictly, a <em>nominal</em>
+    rate unless stated otherwise, and the compounding math is identical
+    either way — only the economic interpretation of what you actually gained
+    changes. This exact nominal/real split, and how it plays out when two
+    countries have different inflation rates, is the subject of the upcoming
+    Purchasing Power Parity lesson; it isn't needed for Interest Rate Parity
+    (which works entirely with quoted nominal rates), but it's the natural
+    next question once you've internalized that "the rate" a market quotes
+    is never automatically "the value you actually gain."
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Discount factor vs. time, at two different rates</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two downward-sloping curves showing the discount factor from 1.0 at time zero declining toward zero as years increase. The low-rate 3% curve declines gradually; the high-rate 10% curve declines much faster, reaching a small fraction of 1.0 within about 15 years.">
+      <line x1="40" y1="250" x2="620" y2="250" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="40" y1="250" x2="40" y2="20" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="40" y1="135" x2="620" y2="135" style="stroke:var(--text3);stroke-dasharray:3,3;stroke-width:1"/>
+      <text x="34" y="24" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">1.0</text>
+      <text x="34" y="139" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0.5</text>
+      <text x="34" y="254" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+      <text x="14" y="135" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 14 135)">Discount factor</text>
+      <text x="40" y="267" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+      <text x="233.33" y="267" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">10</text>
+      <text x="426.67" y="267" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">20</text>
+      <text x="620" y="267" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">30</text>
+      <text x="620" y="284" text-anchor="end" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Years →</text>
+      <polyline points="40.00,20.00 78.67,33.39 117.33,46.01 156.00,57.89 194.67,69.08 233.33,79.61 272.00,89.53 310.67,98.88 349.33,107.68 388.00,115.97 426.67,123.77 465.33,131.12 504.00,138.05 542.67,144.57 581.33,150.71 620.00,156.49" style="stroke:var(--blue);stroke-width:2.5" fill="none"/>
+      <polyline points="40.00,20.00 78.67,61.69 117.33,95.83 156.00,123.77 194.67,146.65 233.33,165.39 272.00,180.73 310.67,193.28 349.33,203.56 388.00,211.98 426.67,218.87 465.33,224.52 504.00,229.14 542.67,232.92 581.33,236.01 620.00,238.55" style="stroke:var(--amber);stroke-width:2.5" fill="none"/>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>Low rate (r = 3%)</span>
+      <span><i style="background:var(--amber)"></i>High rate (r = 10%)</span>
+    </div>
+    <div class="tl-chart-caption">
+      Both curves are \(DF(t) = e^{-rt}\) (the continuous-compounding
+      discount factor), starting at exactly 1.0 when \(t=0\) — a dollar due
+      right now needs no discounting. The 10% curve falls to roughly 0.37 by
+      year 10 and under 0.14 by year 20; the 3% curve is still above 0.74 at
+      year 10 and above 0.54 at year 20. <strong>The rate you discount at
+      changes how quickly a distant dollar becomes economically negligible</strong> —
+      the same shape difference that makes long-dated bonds far more
+      sensitive to interest-rate moves than short-dated ones.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-box-label">Worked example</div>
+    <h3>Growing $1,000 for 5 years at 6% — annual vs. continuous compounding</h3>
+    <p>
+      Take \(PV = \$1{,}000\), \(r = 6\%\) (0.06), \(t = 5\) years, compounded
+      annually first:
+    </p>
+    <div class="tl-math">\[ FV = 1000\times(1.06)^5 = 1000\times1.3382256 \approx \$1{,}338.23 \]</div>
+    <p>
+      Check the discount factor runs the arithmetic in reverse:
+      \(DF = 1/(1.06)^5 = 1/1.3382256 \approx 0.74726\), and
+      \(1338.23\times 0.74726 \approx \$1{,}000.00\) — the original \(PV\),
+      recovered exactly, which is exactly what "present value" and "future
+      value" being inverses of each other means.
+    </p>
+    <p>
+      Now compound the same nominal 6% <em>continuously</em> instead of
+      annually, everything else unchanged:
+    </p>
+    <div class="tl-math">\[ FV = 1000\times e^{0.06\times 5} = 1000\times e^{0.3} \approx 1000\times1.349859 \approx \$1{,}349.86 \]</div>
+    <p>
+      Continuous compounding gives \(\$1{,}349.86\) versus annual
+      compounding's \(\$1{,}338.23\) — a difference of \(\$11.63\) on the
+      same stated 6% rate, purely because continuous compounding lets
+      interest start earning interest immediately rather than waiting a
+      full year between compounding dates. This is the same convergence
+      table from above, just carried out to 5 years instead of 1: the
+      stated ("nominal") rate is identical in both cases, but the
+      <em>effective</em> annual growth differs because compounding
+      frequency is a separate lever from the quoted rate itself — exactly
+      the distinction flagged when continuous compounding was introduced.
+    </p>
+  </div>
+
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Time value of money is the mechanical foundation underneath essentially
+    all of fixed income and corporate finance: a bond's price is the sum of
+    its coupon and principal cash flows, each individually discounted back
+    to today by the discount factor for its payment date; a company's net
+    present value (NPV) for a capital project is its projected future cash
+    flows, discounted the same way, minus the upfront cost; a yield curve is
+    nothing more than a table of discount factors (or, equivalently, the
+    rates that produce them) at different maturities, extracted from
+    observed bond prices. None of this requires a forecast of where markets
+    are going — like the risk-neutral pricing in Black-Scholes, discounting
+    is a mechanical, no-forecast-needed operation on <em>known</em> future
+    cash flows and a <em>quoted</em> rate. The judgment in real finance is
+    almost entirely about which rate to use and how certain the future cash
+    flow really is — the arithmetic of discounting itself is not in dispute.
+  </p>
+
+  <div class="tl-box scenario">
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Why does the 3-month USD/JPY forward differ from spot with zero directional view?</h3>
+    <p>
+      Suppose USD/JPY spot is \(S_0 = 150.00\) (150 yen buys 1 dollar), the
+      USD deposit rate is 5% annualized, and the JPY deposit rate is 0.1%
+      annualized. A trader with no opinion at all about which way USD/JPY is
+      headed still needs to know: what is the fair 3-month (\(t=0.25\) year)
+      forward rate? The answer is not 150.00, even with zero directional
+      view, because the two currencies pay different rates of interest, and
+      the forward rate must exactly reflect that PV/FV gap or a riskless
+      arbitrage opens up.
+    </p>
+    <p>
+      Here is the no-arbitrage argument, run with these exact numbers.
+      Suppose (hypothetically, incorrectly) the forward rate were quoted
+      equal to spot, 150.00. A trader could: borrow 150 JPY for 3 months at
+      0.1% (owing back \(150\times(1+0.001\times0.25) = 150\times1.00025 =
+      150.0375\) JPY); immediately convert the borrowed 150 JPY to \$1 at
+      spot; invest that \$1 at the 5% USD rate for 3 months, growing to
+      \(1\times(1+0.05\times0.25) = 1.0125\) USD; then convert that \$1.0125
+      back to JPY at the (mispriced) 150.00 forward, receiving
+      \(1.0125\times150 = 151.875\) JPY. Repaying the 150.0375 JPY loan
+      leaves \(151.875 - 150.0375 = 1.8375\) JPY of pure, riskless profit,
+      for zero net capital committed — free money, funded entirely by
+      borrowing the low-rate currency and investing in the high-rate one.
+    </p>
+    <p>
+      The market closes that gap by pricing the forward <em>below</em> spot
+      instead. The correct no-arbitrage forward solves for the rate at which
+      this trade earns exactly zero:
+    </p>
+    <div class="tl-math">\[ F = S_0\times\frac{1+r_{\text{JPY}}\,t}{1+r_{\text{USD}}\,t} = 150\times\frac{1+0.001\times0.25}{1+0.05\times0.25} = 150\times\frac{1.00025}{1.0125} \approx 148.19 \]</div>
+    <p>
+      That's a forward rate about 1.81 yen <em>below</em> spot — roughly
+      −181 forward points (in the standard 0.01-yen "pip" convention for
+      USD/JPY) for a 3-month tenor. Check the arbitrage really is closed at
+      this rate: converting the same \$1.0125 back to JPY at 148.185 gives
+      \(1.0125\times148.185\approx150.0375\) JPY — <em>exactly</em> enough
+      to repay the 150.0375 JPY loan, with nothing left over. The forward
+      discount is not a market forecast that USD will weaken against JPY; it
+      is the precise present-value/future-value adjustment that makes
+      borrowing the low-rate currency to fund an investment in the high-rate
+      currency a break-even trade rather than free money. A rough rule of
+      thumb — forward points \(\approx -S_0\times(r_{\text{USD}}-r_{\text{JPY}})\times t
+      = -150\times0.049\times0.25\approx-1.84\) yen — lands close to the
+      exact figure and is useful for a quick sanity check, but the exact
+      ratio formula above is what actually holds without approximation.
+      This is precisely what the upcoming Interest Rate Parity lesson
+      formalizes and generalizes: forward points are a direct, mechanical
+      readout of an interest-rate differential, not a view on direction.
+    </p>
+  </div>
+
+  <div class="tl-box repo">
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>Background literacy — no module in this repo computes forward points today</h3>
+    <p>
+      Nothing in this repo currently prices FX forwards, builds a discount
+      curve, or computes covered-interest-parity forward points — this
+      lesson is background literacy, not a description of an existing
+      brick, and should be read that way: <span class="tl-status concept">CONCEPT</span>
+      only. What it <em>does</em> underpin directly: the Black-Scholes
+      lesson's risk-free rate \(r\) — and its <code>Ke^{-rT}</code> discount
+      term specifically — is exactly the present-value machinery derived
+      here, and that lesson's own symbols table already notes that for FX
+      options, \(r\) is really a domestic/foreign rate <em>differential</em>,
+      which is precisely the two-currency setup worked through in the
+      scenario box above. The upcoming Interest Rate Parity lesson depends
+      on this page even more directly: it has no separate math to introduce
+      beyond applying the future-value/discounting formulas above to two
+      currencies simultaneously and comparing the results — everything
+      genuinely new in that lesson is the cross-currency bookkeeping, not
+      new arithmetic. If this page's \(FV=PV(1+r)^t\), discount factors, and
+      the arbitrage argument in the scenario box aren't already second
+      nature, that is exactly where to pause before continuing.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where time-value reasoning quietly goes wrong</h3>
+    <p>
+      <strong>Reading a forward discount or premium as a directional
+      forecast.</strong> The scenario box above should make this concrete:
+      USD/JPY trading forward <em>below</em> spot says nothing about anyone
+      expecting the dollar to weaken. It is the mechanical consequence of
+      USD paying a higher deposit rate than JPY, full stop — exactly the
+      same category of mistake as reading a Black-Scholes price as a market
+      forecast when \(\mu\) never entered that formula either.
+    </p>
+    <p>
+      <strong>Conflating nominal-vs-compounding-frequency with
+      nominal-vs-real (inflation).</strong> This lesson uses "nominal" in
+      two genuinely different, both-standard senses: the stated rate before
+      adjusting for compounding frequency (Section 3), and the stated rate
+      before adjusting for inflation (Section 4, the Fisher equation). They
+      are unrelated adjustments that happen to share a name. Mixing them up —
+      for instance, assuming continuous compounding somehow "accounts for"
+      inflation — produces confidently wrong numbers.
+    </p>
+    <p>
+      <strong>Ignoring how much a small rate difference compounds over long
+      horizons.</strong> The discount-factor chart makes this visible
+      directly: at 3 years the 3% and 10% curves are still fairly close
+      (0.914 vs. 0.741), but by 20 years they've diverged to 0.549 vs. 0.135 —
+      a 4x gap that started as a 7-percentage-point rate difference. Present
+      values of long-dated cash flows (a 30-year bond, a pension liability,
+      a long-dated FX forward) are far more sensitive to the discount rate
+      assumption than short-dated ones, purely because \((1+r)^t\) is
+      exponential in \(t\).
+    </p>
+    <p>
+      <strong>Using simple interest and compound interest interchangeably.</strong>
+      Money-market conventions (the FX forward scenario above, most bank
+      deposits under a year) typically use <em>simple</em> interest,
+      \((1+rt)\), for a single sub-annual period — there's no compounding
+      date to speak of within the term. Multi-year investments almost always
+      compound, \((1+r)^t\). Applying the wrong convention to the wrong
+      horizon is a common, avoidable source of a wrong present value, even
+      though a 3-month gap between the two conventions is usually small.
+    </p>
+  </div>
+
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why is future value \(PV(1+r)^t\) rather than the simpler \(PV(1+rt)\), and what economic mechanism does the exponent capture that the simpler formula misses?</summary>
+    <div class="tl-answer">
+      \(PV(1+r)^t\) captures compounding: interest earned in an earlier
+      period becomes part of the balance that itself earns interest in
+      later periods. Each period multiplies the running balance by another
+      factor of \((1+r)\), which is what turns the growth into an exponential
+      function of \(t\) rather than a straight line. \(PV(1+rt)\) — simple
+      interest — only ever pays \(r\) on the original \(PV\), never on
+      previously accrued interest, so it grows linearly and understates
+      true compounded growth for any \(t>1\) period (the two formulas agree
+      only within a single period, where there's no prior interest yet to
+      compound).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why is a discount factor always strictly between 0 and 1 whenever \(r>0\) and \(t>0\), and what happens to it in the limits \(t\to 0\) and \(t\to\infty\)?</summary>
+    <div class="tl-answer">
+      \(DF(r,t)=1/(1+r)^t\). Since \(r>0\) makes \((1+r)>1\), raising it to
+      any positive power \(t\) keeps it greater than 1, so its reciprocal
+      must lie strictly between 0 and 1. As \(t\to 0\), \((1+r)^t\to 1\), so
+      \(DF\to 1\) — a dollar due essentially immediately needs essentially
+      no discounting. As \(t\to\infty\) with \(r\) fixed and positive,
+      \((1+r)^t\to\infty\), so \(DF\to 0\) — an arbitrarily distant dollar is
+      worth arbitrarily little today, however large its face amount, which
+      is exactly the asymptotic behavior both curves in the chart show.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. In what precise sense is "a continuously-compounded interest rate" the same mathematical object as "a log return per unit time" from the Returns &amp; Compounding primer?</summary>
+    <div class="tl-answer">
+      Continuous compounding gives \(FV=PV\cdot e^{rt}\). Taking the natural
+      log of both sides gives \(\ln(FV/PV)=rt\). The primer defines a log
+      return as \(\ln(P_{\text{end}}/P_{\text{start}})\) over any horizon;
+      \(\ln(FV/PV)\) is exactly that quantity, applied to a bond growing
+      from \(PV\) to \(FV\). So \(rt\) — rate times time — <em>is</em> the
+      log return over the horizon \(t\), meaning \(r\) itself is a log
+      return per unit time. This is why continuously-compounded rates are
+      additive across time with no cross term (two years at 5% continuously
+      compounded gives exactly the same total growth as year one at 5% plus
+      year two at 5%) — it's the identical log-additivity property the
+      primer proved from \(\ln(ab)=\ln a + \ln b\), not a separate fact that
+      happens to look similar.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. If the nominal interest rate is 7% and inflation runs at 4%, what is the approximate real rate, what is the more precise real rate, and why does someone who cares about purchasing power need the real rate rather than the nominal one?</summary>
+    <div class="tl-answer">
+      The quick approximation is \(i_{\text{real}}\approx i_{\text{nominal}}-\pi
+      = 7\%-4\%=3\%\). The exact Fisher relationship,
+      \(i_{\text{real}}=(1+i_{\text{nominal}})/(1+\pi)-1\), gives
+      \(1.07/1.04-1\approx 2.88\%\), slightly below the naive subtraction —
+      the approximation always overstates the real rate a little because it
+      ignores the cross term in the exact formula. The nominal rate tells
+      you how many more dollars you'll have; the real rate tells you how
+      much more you can actually buy with them, since prices rose too. A 7%
+      nominal return sitting next to 4% inflation is a much smaller genuine
+      gain in purchasing power (about 2.9%) than the headline 7% figure
+      alone suggests.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In the USD/JPY scenario (USD 5%, JPY 0.1%, spot 150.00), why does the 3-month forward come in below spot rather than above it — and what specific arbitrage would exist if the forward were instead quoted equal to spot?</summary>
+    <div class="tl-answer">
+      The forward comes in below spot because USD pays the higher interest
+      rate. If it were quoted equal to spot instead, a trader could borrow
+      JPY (the cheap, low-rate currency), convert to USD at spot, invest the
+      USD at the higher 5% rate, and convert the proceeds back to JPY at the
+      (too-generous) 150.00 forward — netting a riskless profit funded
+      entirely by the interest-rate gap, as the arithmetic in the scenario
+      box shows explicitly (a 1.8375 JPY profit on zero net capital). The
+      market prevents this by pricing the forward at roughly 148.19 instead,
+      exactly low enough that converting the USD proceeds back to JPY at
+      that rate only just covers the JPY loan repayment — zero arbitrage
+      profit, which is the actual condition that pins down the forward
+      rate. The general rule: the higher-yielding currency (here, USD)
+      always trades at a forward <em>discount</em>, never a premium, given
+      this setup.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. The Black-Scholes call formula contains the term \(Ke^{-rT}\). Using only the time-value-of-money concepts from this lesson — not the option-pricing logic itself — what does that term compute, and why must some version of it appear in any correctly-priced claim on a future cash flow?</summary>
+    <div class="tl-answer">
+      \(Ke^{-rT}\) is simply the present value of the strike price \(K\),
+      to be potentially paid \(T\) years from now, discounted back to today
+      using the continuous-compounding discount factor \(e^{-rT}\) at the
+      risk-free rate \(r\) — exactly the \(PV=FV\times DF(r,t)\) machinery
+      derived in this lesson, with \(FV=K\), rate \(r\), and horizon \(T\).
+      Some version of this term must appear in any correctly-priced claim on
+      a future cash flow because comparing a dollar amount due in the future
+      to a price quoted today, without first converting them to the same
+      point in time via discounting, is comparing two different kinds of
+      quantities as if they were the same thing — exactly the "$100 now vs.
+      $100 in a year" mistake this lesson opened with, just embedded inside
+      a more complicated formula.
+    </div>
+  </details>
+
+  <h2>Further reading</h2>
+  <ul class="tl-refs">
+    <li>Richard A. Brealey, Stewart C. Myers, and Franklin Allen, <em>Principles of Corporate Finance</em>, McGraw-Hill (any recent edition) — the standard MBA-level treatment of present value, future value, and discounted cash flow, including the compounding-frequency and annuity/perpetuity extensions not covered in depth on this page.</li>
+    <li>Irving Fisher, <em>The Theory of Interest</em>, Macmillan, 1930 — the original formalization of the nominal/real/inflation relationship (the "Fisher equation") introduced above; also the historical source of the "Fisher effect" (nominal rates adjusting to expected inflation) that the upcoming Purchasing Power Parity lesson builds on.</li>
+    <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson — the chapter on determining forward and futures prices derives covered interest rate parity from the identical no-arbitrage argument used in the USD/JPY scenario above, generalized beyond the simple-interest, single-period case shown here.</li>
+    <li>This repo's Black-Scholes lesson (<code>black-scholes.html</code>) — the direct downstream consumer of the discounting math on this page, and the reason \(r\) shows up in an option-pricing formula at all.</li>
+  </ul>
+
+  <div class="tl-footer-nav">
+    <a href="stationarity-acf-pacf.html">← Stationarity, ACF &amp; PACF</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+</body>
+</html>
