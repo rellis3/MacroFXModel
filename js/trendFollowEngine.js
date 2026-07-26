@@ -122,6 +122,44 @@ export function buildPortfolioReturns(markets, c) {
   return { ok: true, per, L, aligned, combined, scaled };
 }
 
+// ── Date-keyed portfolio returns ──────────────────────────────────────────────
+// Same per-market math as buildPortfolioReturns (reuses backtestMarket — no copy),
+// but aggregates across markets by ACTUAL calendar date and returns a {date,ret}[]
+// series. Needed to correlate the trend book against another dated stream (e.g. the
+// per-line fade book) on their common trading days — index alignment would silently
+// mismatch across markets with different holiday calendars. Vol-targets the combined
+// series exactly like buildPortfolioReturns (strictly-past window). No lookahead.
+// markets: [{ symbol, closes:number[], dates:string[] }] (closes & dates same length,
+// oldest-first). Returns { ok, series:[{date,ret}] } or { ok:false, error }.
+export function portfolioReturnsByDate(markets, cfg = {}) {
+  const c = { ...DEFAULTS, ...cfg };
+  const perDate = new Map();   // date → { sum, k } of per-market returns
+  for (const m of markets) {
+    if (!m.closes || !m.dates || m.closes.length !== m.dates.length) continue;
+    const { dailyRet } = backtestMarket(m.closes, c);
+    for (let i = 0; i < dailyRet.length; i++) {
+      const r = dailyRet[i];
+      if (!Number.isFinite(r)) continue;
+      const d = m.dates[i];
+      const cur = perDate.get(d) || { sum: 0, k: 0 };
+      cur.sum += r; cur.k += 1; perDate.set(d, cur);
+    }
+  }
+  const dates = [...perDate.keys()].sort((a, b) => (a < b ? -1 : 1));
+  if (dates.length < 260) return { ok: false, error: `need ≥260 aligned dates, got ${dates.length}` };
+  const combined = dates.map(d => { const e = perDate.get(d); return e.k ? e.sum / e.k : 0; });
+
+  // Vol-target the combined series on a strictly-past window (mirrors buildPortfolioReturns).
+  const volWin = 126;
+  const series = combined.map((ret, t) => {
+    const w = combined.slice(Math.max(0, t - volWin), t);   // strictly past
+    const v = w.length >= 20 ? stdev(w, 1) * Math.sqrt(DAY) : null;
+    const scaled = v && v > 0 ? ret * (c.volTargetPort / v) : ret;
+    return { date: dates[t], ret: scaled };
+  });
+  return { ok: true, series };
+}
+
 // ── Basket backtest ──────────────────────────────────────────────────────────
 export function backtestBasket(markets, cfg = {}) {
   const c = { ...DEFAULTS, ...cfg };

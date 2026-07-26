@@ -60,7 +60,8 @@ import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _r
 import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS, BM_P75 as _BM_P75 } from './js/volBacktestEngine.js';
 import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED } from './js/mve/liveAdapter.js';
 import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency } from './js/mve/validateInstrument.js';
-import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS, buildPortfolioReturns as _trendBuildPortfolio } from './js/trendFollowEngine.js';
+import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS, buildPortfolioReturns as _trendBuildPortfolio, portfolioReturnsByDate as _trendReturnsByDate } from './js/trendFollowEngine.js';
+import { blendStreams as _blendStreams } from './js/streamBlend.js';
 import { runGauntlet as _runStrategyGauntlet, GAUNTLET_SPECS as _GAUNTLET_SPECS, SIGNALS as _LAB_SIGNALS } from './js/strategyLabEngine.js';
 import { runTrendAB as _runTrendAB } from './js/trendFollowV2Engine.js';
 import { volSigmaSeries as _volSigmaSeries, nextSigma as _nextSigma } from './js/forecastCore.js';
@@ -6566,6 +6567,79 @@ app.get('/api/trend-v2/backtest', async (req, res) => {
 app.post('/api/vol-forecast/refresh', async (_req, res) => {
   res.json({ ok: true, status: 'running', message: 'Recompute triggered — poll /api/vol-forecast in ~30s' });
   runVolForecast().catch(e => console.error('[VOL-FORECAST] Manual refresh error:', e.message));
+});
+
+// ── /api/combine/mom-rev — momentum × reversion diversification blend ──────────
+// The honest "risk is the edge" test: take two ALREADY-VALIDATED daily return
+// streams — the diversified trend book (/api/trend, time-series momentum) and the
+// per-line fade book (intraday mean-reversion, 33/33 pairs OOS) — and measure
+// whether combining them yields a higher risk-adjusted return than either alone.
+// It only does when their returns are lowly/negatively correlated (drawdowns don't
+// coincide). This creates NO new edge; it measures diversification between two
+// existing ones. Both streams' daily returns are scaled to a common daily vol
+// first, so the blend weights are RISK weights (equal-weight == equal-risk).
+// Pure math in js/streamBlend.js (unit-tested); here we assemble the two real
+// series server-side. Needs OANDA_KEY (trend D1) + a stored per-line book (R2) —
+// 502 in the sandbox is env, not a bug.
+const _blendCache = new Map();
+app.get('/api/combine/mom-rev', async (req, res) => {
+  const horizon = String(req.query.horizon || 'daily');
+  const key = `momrev|${horizon}`;
+  try {
+    const hit = _blendCache.get(key);
+    if (hit && Date.now() - hit.at < 6 * 60 * 60 * 1000 && req.query.fresh !== '1') {
+      return res.json({ ...hit.data, cached: true });
+    }
+    // 1) Fade book daily series (stored) — book.equity is [{date,pnl}] summed across pairs.
+    const book = await getPerLineBook(horizon);
+    const fade = (book?.equity || []).filter(e => e && e.date != null && Number.isFinite(e.pnl))
+      .map(e => ({ date: e.date, ret: e.pnl }));
+    if (fade.length < 100) {
+      return res.status(502).json({ ok: false, error: `per-line book has ${fade.length} daily points for horizon "${horizon}" — rebuild the Book first`, needs: 'stored per-line book (R2)' });
+    }
+    // 2) Trend book daily series (live D1) — reuse the trend universe + engine.
+    if (!process.env.OANDA_KEY) return res.status(502).json({ ok: false, error: 'OANDA_KEY not configured', needs: 'OANDA_KEY (trend D1)' });
+    const markets = [], skipped = [];
+    for (const sym of _TREND_UNIVERSE) {
+      try {
+        const bars = await _btFetchD1(sym, 5000);
+        if (bars && bars.length >= 300) markets.push({ symbol: sym, closes: bars.map(b => b.close), dates: bars.map(b => b.date) });
+        else skipped.push(`${sym} (${bars?.length ?? 0})`);
+      } catch (e) { skipped.push(`${sym} (${e.message})`); }
+    }
+    if (markets.length < 3) return res.status(502).json({ ok: false, error: `only ${markets.length} trend markets fetched`, skipped });
+    const tr = _trendReturnsByDate(markets, {});
+    if (!tr.ok) return res.status(502).json({ ok: false, error: `trend series: ${tr.error}` });
+    const trend = tr.series;   // [{date,ret}]
+
+    // 3) Scale each stream to a common daily vol (1%) so blend weights = risk weights.
+    const norm = (series) => {
+      const rs = series.map(x => x.ret).filter(Number.isFinite);
+      const m = rs.reduce((s, x) => s + x, 0) / (rs.length || 1);
+      let v = 0; for (const x of rs) v += (x - m) ** 2;
+      const sd = Math.sqrt(v / Math.max(1, rs.length - 1)) || 1;
+      const k = 0.01 / sd;
+      return series.map(x => ({ date: x.date, ret: x.ret * k }));
+    };
+    // Weight grid labelled A=trend(momentum), B=fade(reversion): w = weight on trend.
+    const rep = _blendStreams(norm(trend), norm(fade));
+    if (!rep.ok) return res.status(502).json({ ok: false, error: rep.error });
+
+    const out = {
+      ok: true,
+      horizon,
+      legend: { A: 'trend book (time-series momentum, /api/trend)', B: 'per-line fade book (intraday reversion)' },
+      note: 'Streams vol-normalised to 1% daily before blending, so weight w is the RISK weight on momentum (1−w on reversion). corr is the crux; maxSharpe is in-sample-optimistic — read equalWeight & riskParity as the honest blend.',
+      bookGeneratedAt: book.generatedAt || null,
+      trendUniverse: markets.map(m => m.symbol),
+      trendSkipped: skipped,
+      ...rep,
+    };
+    _blendCache.set(key, { at: Date.now(), data: out });
+    res.json(out);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // ── Credit → risk-vol lead-lag study (async-job) ──────────────────────────────

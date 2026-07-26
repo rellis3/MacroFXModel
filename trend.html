@@ -46,6 +46,21 @@
   </div>
 
   <div id="out"></div>
+
+  <div class="panel" style="border-color:#7c3aed55">
+    <div style="font-weight:700;color:#a78bfa;margin-bottom:4px">🧪 Momentum × Reversion — diversification blend</div>
+    <div style="font-size:12px;color:#cdd3dc;margin-bottom:10px;line-height:1.5">
+      The "risk is the edge" test: combine this trend book (momentum) with the per-line fade book (intraday reversion) and
+      measure whether the <b>blend</b> beats either alone. It only can if their daily returns are lowly/negatively correlated
+      — i.e. their drawdowns don't coincide. Creates no new edge; measures diversification between two existing ones.
+      Both streams are vol-normalised first, so the weight is a <b>risk</b> weight on momentum. <b>Deployed server only</b>
+      (needs live trend D1 + a stored per-line Book).
+    </div>
+    <label>Fade horizon</label>
+    <select id="bh"><option value="daily">daily</option><option value="weekly">weekly</option><option value="20day">20-day</option></select>
+    <button id="brun" style="margin-left:12px;background:#7c3aed">Run blend</button>
+    <div id="bout" style="margin-top:12px"></div>
+  </div>
 </div>
 
 <script>
@@ -132,6 +147,42 @@ function verdict(p) {
   if (p.sharpe >= 0.2) return `<b style="color:#f59e0b">Weak</b> — net Sharpe ${p.sharpe}. Below the historical trend-following band; costs or the recent choppy regime may be eating it. Not compelling on its own.`;
   return `<b style="color:#ef4444">No edge here</b> — net Sharpe ${p.sharpe}. Either costs dominate or this basket/period didn't trend. Honest null.`;
 }
+async function runBlend() {
+  $('bout').innerHTML = '⏳ Assembling both books & blending… (fetches ~20y D1 for the trend leg — can take a minute)';
+  try {
+    const r = await (await fetch(`/api/combine/mom-rev?horizon=${$('bh').value}`)).json();
+    if (!r.ok) { $('bout').innerHTML = `<div style="color:#f59e0b">Cannot run: ${r.error}${r.needs ? ' — needs ' + r.needs : ''}<br><span style="color:#5b6270">This is the deployed server with OANDA + a rebuilt per-line Book, not the sandbox.</span></div>`; return; }
+    const kpi = (l, v, c) => `<div><div class="l">${l}</div><div class="v"${c?` style="color:${c}"`:''}>${v}</div></div>`;
+    const corr = r.corr;
+    // Honest verdict: diversification helps only if corr is meaningfully < the streams' own, AND a blend Sharpe beats both legs.
+    const bestLeg = Math.max(r.a.sharpe, r.b.sharpe);
+    const helps = r.riskParity.sharpe > bestLeg + 0.05 || r.equalWeight.sharpe > bestLeg + 0.05;
+    const corrCol = corr == null ? '#8891a0' : corr < 0 ? '#22c55e' : corr < 0.3 ? '#a3e635' : corr < 0.6 ? '#f59e0b' : '#ef4444';
+    const verdict = corr == null ? 'Not enough overlap to judge.'
+      : helps ? `<b style="color:#22c55e">Diversification helps.</b> Correlation ${corr} means the drawdowns partly offset — the risk-parity blend Sharpe (${r.riskParity.sharpe}) beats the better single book (${bestLeg}). This is the one free lunch worth taking: run BOTH, risk-weighted. Forward-test the pair, not just the pieces.`
+      : corr < 0.3 ? `<b style="color:#f59e0b">Low correlation but no free Sharpe.</b> Returns are nearly independent (${corr}), yet the blend doesn't clearly beat the best single book (${bestLeg}) — usually because one leg is much weaker. Blending still cuts drawdown; it just won't lift return-per-risk much here.`
+      : `<b style="color:#ef4444">No diversification benefit.</b> The two books move together (corr ${corr}) — combining them doesn't reduce risk. Pick the better single book (${bestLeg>0?'':'neither is compelling'}).`;
+    const grow = r.grid.map(g => `<tr${g.w===0.5?' style="background:rgba(124,58,237,.12)"':''}><td class="mono">${(g.w*100).toFixed(0)}% / ${((1-g.w)*100).toFixed(0)}%</td><td class="mono" style="color:${g.sharpe>bestLeg?'#22c55e':'#cdd3dc'}">${g.sharpe}</td><td class="mono">${g.annReturn}%</td><td class="mono">${g.annVol}%</td></tr>`).join('');
+    $('bout').innerHTML = `
+      <div class="kpi" style="margin-bottom:12px">
+        ${kpi('Return correlation', corr ?? '—', corrCol)}
+        ${kpi('Momentum Sharpe', r.a.sharpe)}
+        ${kpi('Reversion Sharpe', r.b.sharpe)}
+        ${kpi('Equal-risk blend', r.equalWeight.sharpe, r.equalWeight.sharpe>bestLeg?'#22c55e':'')}
+        ${kpi('Risk-parity blend', r.riskParity.sharpe, r.riskParity.sharpe>bestLeg?'#22c55e':'')}
+        ${kpi('Diversification ratio', r.diversificationRatio ?? '—', (r.diversificationRatio>1.1)?'#22c55e':'')}
+        ${kpi('Overlap (days)', r.nObs)}
+      </div>
+      <div style="font-size:12.5px;color:#cdd3dc;margin-bottom:12px;line-height:1.5">${verdict}</div>
+      <table style="width:auto"><thead><tr><th>Mom / Rev weight</th><th>Blend Sharpe</th><th>Ann.Ret</th><th>Ann.Vol</th></tr></thead><tbody>${grow}</tbody></table>
+      <div style="margin-top:8px;font-size:10.5px;color:#5b6270">
+        Weights are risk weights (streams vol-normalised to 1%/day). <b>corr</b> is the crux — negative = the books cover each other.
+        The 50/50 row is highlighted; the max-Sharpe weight (${(r.maxSharpe.w*100).toFixed(0)}% momentum) is in-sample-optimistic, don't trust it as a target.
+        Overlap ${r.nObs} common trading days${r.bookGeneratedAt?` · book built ${r.bookGeneratedAt.substring(0,10)}`:''}. Ex-post — forward-test the combined book before sizing.
+      </div>`;
+  } catch(e) { $('bout').innerHTML = `Fetch failed: ${e.message}`; }
+}
+$('brun').onclick = runBlend;
 $('run').onclick = run;
 run();
 </script>
