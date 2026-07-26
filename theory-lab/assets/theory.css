@@ -79,6 +79,52 @@ details.tl-section-collapse[open] summary{margin-bottom:10px}
 .tl-symbols tr:last-child td{border-bottom:none}
 .tl-symbols td:first-child{font-family:'DM Mono',monospace;color:var(--amber);white-space:nowrap;width:1%}
 
+/* equation breakdown — a colored chip per symbol, sitting right under a
+   .tl-math block so a reader never has to jump away to decode a formula */
+.tl-eq-break{display:flex;flex-wrap:wrap;gap:8px;margin:-6px 0 18px}
+.tl-eq-chip{display:flex;align-items:baseline;gap:7px;background:var(--s1);border:1px solid var(--border);border-radius:20px;padding:5px 12px 5px 6px;font-size:12.5px;color:var(--text2)}
+.tl-eq-chip code{font-family:'DM Mono',monospace;font-size:12.5px;font-weight:600;padding:2px 8px;border-radius:14px;background:var(--s2)}
+.tl-eq-chip.c1 code{color:var(--blue);background:var(--blue-bg)}
+.tl-eq-chip.c2 code{color:var(--green);background:var(--green-bg)}
+.tl-eq-chip.c3 code{color:var(--purple);background:var(--purple-bg)}
+.tl-eq-chip.c4 code{color:var(--amber);background:var(--amber-bg)}
+
+/* stat tiles — a row of big colored numbers with a label, for breaking up
+   a dense paragraph into scannable at-a-glance facts */
+.tl-stat-row{display:flex;flex-wrap:wrap;gap:12px;margin:18px 0}
+.tl-stat{flex:1 1 130px;background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);padding:16px 14px;text-align:center}
+.tl-stat-num{font-family:'DM Mono',monospace;font-size:26px;font-weight:700;line-height:1.2}
+.tl-stat-label{font-size:11.5px;color:var(--text2);margin-top:4px}
+.tl-stat-sub{font-size:10.5px;color:var(--text3);margin-top:2px}
+.tl-stat.blue .tl-stat-num{color:var(--blue)}
+.tl-stat.green .tl-stat-num{color:var(--green)}
+.tl-stat.purple .tl-stat-num{color:var(--purple)}
+.tl-stat.amber .tl-stat-num{color:var(--amber)}
+
+/* numbered steps — a vertical walkthrough with a colored circle badge,
+   for "do this, then this" sequences instead of a run-on paragraph */
+.tl-steps{display:flex;flex-direction:column;gap:14px;margin:18px 0}
+.tl-step{display:flex;gap:14px;align-items:flex-start}
+.tl-step-num{flex:none;width:28px;height:28px;border-radius:50%;background:var(--blue-bg);border:1px solid var(--blue-bd);color:var(--blue);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-weight:700;font-size:13px;margin-top:1px}
+.tl-step-body h4{font-size:14px;margin-bottom:3px;color:var(--text)}
+.tl-step-body p{margin-bottom:0;font-size:13.5px}
+
+/* side-by-side comparison cards — two competing options/definitions read
+   far faster next to each other than as consecutive paragraphs */
+.tl-compare{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+@media (max-width:600px){.tl-compare{grid-template-columns:1fr}}
+.tl-compare-card{background:var(--s1);border:1px solid var(--border);border-top:3px solid var(--border2);border-radius:var(--rl);padding:16px 18px}
+.tl-compare-card h4{font-size:14px;margin-bottom:8px}
+.tl-compare-card p,.tl-compare-card ul{font-size:13.5px;margin-bottom:0}
+.tl-compare-card.blue{border-top-color:var(--blue)}
+.tl-compare-card.blue h4{color:var(--blue)}
+.tl-compare-card.green{border-top-color:var(--green)}
+.tl-compare-card.green h4{color:var(--green)}
+.tl-compare-card.amber{border-top-color:var(--amber)}
+.tl-compare-card.amber h4{color:var(--amber)}
+.tl-compare-card.purple{border-top-color:var(--purple)}
+.tl-compare-card.purple h4{color:var(--purple)}
+
 /* self-test */
 .tl-quiz{border:1px solid var(--border);border-radius:var(--r);margin:10px 0;overflow:hidden}
 .tl-quiz summary{cursor:pointer;padding:12px 16px;font-size:13px;font-weight:600;background:var(--s1);list-style:none}
