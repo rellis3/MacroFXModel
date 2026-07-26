@@ -21,6 +21,33 @@
     <span>Prereqs: Correlation &amp; Linear Regression</span>
   </div>
 
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Simple returns (% change) compound multiplicatively and pick up a
+      cross term when chained; log returns (\(\ln(P_t/P_{t-1})\)) are exactly
+      time-additive — a \(T\)-period log return is just the sum of the
+      one-period log returns, no approximation needed.</li>
+      <li>The arithmetic mean (\(\bar{R}\)) describes a typical single period;
+      the geometric mean (\(g\)) describes what actually happened to
+      compounded wealth, and the two coincide only when variance is zero:
+      \(g \approx \bar{R} - \sigma^2/2\) (volatility drag), a gap that grows
+      with variance, not with the mean.</li>
+      <li>Worked example: +50% then −50% has a 0% arithmetic mean but a real
+      25% loss ($100 → $150 → $75), because the −50% is taken off a bigger
+      base than the +50% was added to — the whole primer distilled into one
+      trade.</li>
+      <li>Volatility scales with the square root of time (\(\sigma_T =
+      \sigma\sqrt{T}\)), not time itself, because variances of independent
+      periods add while standard deviations don't — the exact reason this
+      repo's engines scale daily σ by √5 for weekly and √20 for 20-day
+      horizons instead of re-estimating from scratch.</li>
+      <li>The page's interactive chart lets you drag an annualized-volatility
+      slider and watch the compounded-value line pull away from the fixed
+      arithmetic-mean projection as σ²/2 drag grows quadratically with σ.</li>
+    </ul>
+  </div>
+
   <h2>Why this matters</h2>
   <p>
     Every lesson from here on describes a price series with a mean and a
@@ -500,13 +527,15 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Zvi Bodie, Alex Kane, and Alan J. Marcus, <em>Investments</em>, McGraw-Hill (any recent edition) — the standard MBA-level textbook treatment of arithmetic vs. geometric mean returns, including the standard worked examples this primer's own example follows the spirit of.</li>
     <li>William J. Bernstein, <em>"The Volatility Drag/Variance Drain Trap"</em> and related writing (see also his book <em>The Four Pillars of Investing</em>, McGraw-Hill, 2002) — the accessible, practitioner-facing source most associated with popularizing "volatility drag" / "variance drain" as a named concept for retail and institutional investors alike.</li>
     <li>Paul A. Samuelson, <em>"The 'Fallacy' of Maximizing the Geometric Mean in Long Sequences of Investing or Gambling"</em>, Proceedings of the National Academy of Sciences, 1971 — Samuelson's classic, sharp clarification of exactly when maximizing geometric mean growth is and isn't the correct objective for an investor, a necessary counterweight before treating "maximize compounded growth" as an unconditional rule.</li>
     <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson (any recent edition) — Chapter on "The Black-Scholes-Merton Model" derives the lognormal price / normal log-return assumption from first principles, the direct bridge from this primer to the upcoming options-pricing lesson.</li>
   </ul>
+  </details>
 
   <h2>You're ready for Lesson 1</h2>
   <div class="tl-callout">

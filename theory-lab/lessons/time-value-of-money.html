@@ -21,6 +21,17 @@
     <span>Prereqs: Returns, Log-Returns &amp; Compounding</span>
   </div>
 
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Future value compounds: \(FV = PV(1+r)^t\); present value runs it in reverse, \(PV = FV/(1+r)^t\), and the multiplier \(DF(r,t)=1/(1+r)^t\) is the discount factor — always strictly between 0 and 1 when \(r,t>0\).</li>
+      <li>Compounding infinitely often (continuously) gives \(FV=PV\cdot e^{rt}\); taking logs shows \(\ln(FV/PV)=rt\), meaning a continuously-compounded rate \(r\) <em>is</em> a log return per unit time — the same object the Returns &amp; Compounding primer defined.</li>
+      <li>Worked example: $1,000 at a nominal 6% for 5 years grows to \$1,338.23 compounded annually vs. \$1,349.86 compounded continuously — an \$11.63 gap from the same stated rate, purely from compounding frequency.</li>
+      <li>USD/JPY scenario: spot 150.00, USD deposits at 5%, JPY at 0.1% — the no-arbitrage 3-month forward is about 148.19 (≈ −181 forward points), <em>below</em> spot, because the higher-rate currency (USD) must trade forward at a discount or a riskless borrow-JPY/invest-USD arbitrage opens up.</li>
+      <li>The forward discount is not a directional forecast — it's the mechanical PV/FV adjustment that keeps the interest-rate differential from being free money, and it's exactly the machinery behind Black-Scholes's \(Ke^{-rT}\) term and the upcoming Interest Rate Parity lesson.</li>
+    </ul>
+  </div>
+
   <h2>Why this matters</h2>
   <p>
     The Black-Scholes lesson in this series introduces a term \(Ke^{-rT}\) —
@@ -560,13 +571,15 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Richard A. Brealey, Stewart C. Myers, and Franklin Allen, <em>Principles of Corporate Finance</em>, McGraw-Hill (any recent edition) — the standard MBA-level treatment of present value, future value, and discounted cash flow, including the compounding-frequency and annuity/perpetuity extensions not covered in depth on this page.</li>
     <li>Irving Fisher, <em>The Theory of Interest</em>, Macmillan, 1930 — the original formalization of the nominal/real/inflation relationship (the "Fisher equation") introduced above; also the historical source of the "Fisher effect" (nominal rates adjusting to expected inflation) that the upcoming Purchasing Power Parity lesson builds on.</li>
     <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson — the chapter on determining forward and futures prices derives covered interest rate parity from the identical no-arbitrage argument used in the USD/JPY scenario above, generalized beyond the simple-interest, single-period case shown here.</li>
     <li>This repo's Black-Scholes lesson (<code>black-scholes.html</code>) — the direct downstream consumer of the discounting math on this page, and the reason \(r\) shows up in an option-pricing formula at all.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="stationarity-acf-pacf.html">← Stationarity, ACF &amp; PACF</a>

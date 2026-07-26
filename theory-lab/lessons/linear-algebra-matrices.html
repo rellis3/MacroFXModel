@@ -21,6 +21,17 @@
     <span>Prereqs: none</span>
   </div>
 
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A matrix is a machine that takes every vector in the plane and moves it somewhere else (rotate, stretch, shrink, shear); an <strong>eigenvector</strong> is the special direction the matrix only stretches or shrinks along, never rotates off, and the stretch amount is its <strong>eigenvalue</strong>.</li>
+      <li>Matrix-vector multiplication (<code>Av</code>) and matrix-matrix multiplication are worked by hand, and matrix multiplication is shown to be non-commutative: <code>MN &#8800; NM</code> for concrete 2&#215;2 examples.</li>
+      <li>The worked example solves <code>A = [[3,1],[1,3]]</code>: the characteristic equation <code>&#955;&#178; - 6&#955; + 8 = 0</code> factors to eigenvalues <strong>&#955;&#8321; = 4</strong> (eigenvector <code>(1,1)</code>) and <strong>&#955;&#8322; = 2</strong> (eigenvector <code>(1,-1)</code>), which come out perpendicular because <code>A</code> is symmetric.</li>
+      <li>Reframed as a two-FX-pair covariance matrix (correlation &#8776; 0.33), those eigenvalues split the book's total variance (trace = 6) into 66.7% shared-direction and 33.3% divergence-direction, giving 1.8 effective independent bets via <code>(&#931;&#955;)&#178;/&#931;&#955;&#178; = 36/20</code>.</li>
+      <li>This vocabulary is the direct prerequisite for three other Theory Lab lessons: PCA (eigenvectors of a correlation matrix), the Kalman Filter (chained matrix multiplication), and Hidden Markov Models (the stationary distribution is the eigenvector with eigenvalue 1).</li>
+    </ul>
+  </div>
+
   <h2>Why this matters</h2>
   <p>
     Open the PCA lesson in this Theory Lab and within a few paragraphs you hit
@@ -656,7 +667,8 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Gilbert Strang, <em>Introduction to Linear Algebra</em>, Wellesley-Cambridge Press — the standard accessible textbook for exactly this material, built around the same geometric intuition (matrices as transformations) used in this lesson; Strang's freely available MIT OpenCourseWare lectures cover the same ground.</li>
     <li>David C. Lay, Steven R. Lay &amp; Judi J. McDonald, <em>Linear Algebra and Its Applications</em>, Pearson — another widely used undergraduate reference, with a strong applications focus that includes finance-adjacent examples.</li>
@@ -664,6 +676,7 @@
     <li>The PCA lesson in this Theory Lab (<code>pca-factors.html</code>) — the direct continuation of this lesson's eigenvector/eigenvalue material, applied specifically to a covariance matrix of FX returns and connected to <code>js/diversificationCore.js</code>.</li>
     <li><code>js/diversificationCore.js</code> and <code>diversification.html</code> in this repo — the existing eigenvalue-based "effective number of bets" implementation this lesson's repo box builds on.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="../hub.html">&#8592; Theory Lab hub</a>

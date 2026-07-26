@@ -21,6 +21,17 @@
     <span>Prereqs: none</span>
   </div>
 
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Standard deviation squares deviations from the mean instead of averaging them raw (which always sums to zero) or taking their absolute value — squaring makes every term positive and penalizes big deviations disproportionately more than small ones (2× the deviation ⇒ 4× the contribution), which is exactly why it's the default risk measure.</li>
+      <li>Sample variance divides by \(n-1\), not \(n\) (Bessel's correction), because the sample mean used in the formula is estimated from the same data and by construction minimizes the squared deviations — dividing by \(n\) would systematically understate the true variance, and the gap is largest on small samples.</li>
+      <li>A z-score, \(z=(x-\mu)/\sigma\), is a unitless "how many standard deviations from the mean" number — it's what lets you compare a move across instruments or timeframes on the same ruler, and it's the building block behind rolling z-score gates, Bollinger Bands, and VaR-style statements.</li>
+      <li>For a normal distribution, about 68% of values fall within ±1σ of the mean, 95% within ±2σ, and 99.7% within ±3σ — but real FX/equity returns have fatter tails than normal, so extreme z-scores happen more often than that rule predicts.</li>
+      <li>The worked example (returns +1, +2, −1, +3, 0, +1%) gets mean = 1.0%, sample variance = 2.0 (%)² (dividing by \(n-1=5\)), σ ≈ 1.414%, and a z-score of ≈1.41 for the best day — solidly between the ±1σ and ±2σ bands, not an extreme outlier.</li>
+    </ul>
+  </div>
+
   <h2>Why this matters</h2>
   <p>
     Every lesson in this series after this one uses \(\sigma\), variance, and
@@ -632,13 +643,15 @@
     </div>
   </details>
 
-  <h2>Further reading</h2>
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>David Freedman, Robert Pisani &amp; Roger Purves, <em>Statistics</em>, 4th ed., W. W. Norton, 2007 — a widely used, notably careful and non-mathematical introductory statistics textbook; its treatment of the standard deviation and the normal approximation is the standard "start from zero" reference this primer follows in spirit.</li>
     <li>Abraham de Moivre, <em>The Doctrine of Chances</em>, 1733 supplement — the earliest known derivation of the normal curve, as an approximation to the binomial distribution for large numbers of coin flips, predating Gauss by roughly three-quarters of a century.</li>
     <li>Carl Friedrich Gauss, <em>Theoria Motus Corporum Coelestium</em>, 1809 — Gauss's development of the normal distribution as the error law of astronomical measurement, in service of predicting orbits from imprecise observations; the distribution bears his name from this work, though de Moivre's result came first in a different context.</li>
     <li><code>js/statsCore.js</code> in this repo — the shared Tier-1 brick (<code>rollingZScore</code>, <code>rollingZAt</code>, <code>rollingPercentile</code>, moments with a <code>ddof</code> parameter) implementing exactly the z-score and variance math this lesson derives.</li>
   </ul>
+  </details>
 
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>
