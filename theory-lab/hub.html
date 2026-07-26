@@ -22,6 +22,38 @@
     <a class="tl-gloss-hero-link" href="glossary.html">🔎 Lost in the Greek letters? Open the Notation Glossary</a>
   </div>
 
+  <div class="tl-cat">
+    <h2>Foundation Mathematics</h2>
+    <div class="tl-cat-sub">Only done GCSE-level maths? Start here, before the Math Primer below — algebra, trigonometry, logs, complex numbers, multivariable calculus, and optimization, all built from nothing. Without these, Itô's Lemma and stochastic calculus later in this curriculum are very hard going.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="lessons/foundation-algebra-functions.html">
+        <div class="tl-card-num">Foundation 1</div>
+        <h3>Algebra &amp; Functions Refresher</h3>
+        <p>Manipulating equations, what a function actually is, and reading a graph's slope and curvature — the toolkit every later lesson quietly assumes.</p>
+      </a>
+      <a class="tl-card" href="lessons/foundation-trig-logs-exponentials.html">
+        <div class="tl-card-num">Foundation 2</div>
+        <h3>Trigonometry, Logarithms &amp; Exponentials</h3>
+        <p>Why continuous compounding uses \(e^{rt}\), and why log-returns — not simple returns — are the ones that add up across time.</p>
+      </a>
+      <a class="tl-card" href="lessons/foundation-complex-numbers.html">
+        <div class="tl-card-num">Foundation 3</div>
+        <h3>Complex Numbers</h3>
+        <p>The complex plane, Euler's formula, and why option-pricing characteristic functions and the Fourier Transform both need \(i=\sqrt{-1}\).</p>
+      </a>
+      <a class="tl-card" href="lessons/foundation-multivariable-calculus.html">
+        <div class="tl-card-num">Foundation 4</div>
+        <h3>Partial Derivatives &amp; Multivariable Calculus</h3>
+        <p>The exact vocabulary behind every option "Greek" you've ever seen quoted — gradients, Hessians, and the multivariable chain rule.</p>
+      </a>
+      <a class="tl-card" href="lessons/foundation-optimization-basics.html">
+        <div class="tl-card-num">Foundation 5</div>
+        <h3>Optimization Basics: Unconstrained &amp; Constrained</h3>
+        <p>First-order conditions and Lagrange multipliers — why minimizing portfolio variance for a target return is a Lagrangian problem in disguise.</p>
+      </a>
+    </div>
+  </div>
+
   <div class="tl-cat primer">
     <h2>0 · Math Primer</h2>
     <div class="tl-cat-sub">New to statistics? Start here — four short lessons covering everything the rest of this curriculum assumes you already know: standard deviation, probability, correlation/regression, and returns math.</div>
@@ -274,7 +306,7 @@
 
   <div class="tl-cat">
     <h2>9 · Advanced Portfolio &amp; Market Structure</h2>
-    <div class="tl-cat-sub">The rigorous sequels to PCA, the Hurst exponent, and the Kelly Criterion — plus the market-structure theory behind realistic fills and portfolio construction.</div>
+    <div class="tl-cat-sub">The rigorous sequels to PCA, the Hurst exponent, and the Kelly Criterion.</div>
     <div class="tl-grid">
       <a class="tl-card" href="lessons/random-matrix-theory.html">
         <div class="tl-card-num">Lesson 29</div>
@@ -286,25 +318,111 @@
         <h3>Fractional Brownian Motion &amp; Long Memory</h3>
         <p>The rigorous generating model behind the Hurst exponent, and ARFIMA as its discrete-time cousin.</p>
       </a>
-      <a class="tl-card" href="lessons/market-microstructure.html">
-        <div class="tl-card-num">Lesson 31</div>
-        <h3>Market Microstructure</h3>
-        <p>Kyle's Lambda and the Glosten-Milgrom model — the theory behind this repo's slippage and fill-realism assumptions.</p>
-      </a>
       <a class="tl-card" href="lessons/markowitz-black-litterman.html">
-        <div class="tl-card-num">Lesson 32</div>
+        <div class="tl-card-num">Lesson 31</div>
         <h3>Markowitz &amp; Black-Litterman</h3>
         <p>Modern Portfolio Theory's efficient frontier, and the Bayesian fix for its famous extreme-weight instability.</p>
       </a>
       <a class="tl-card" href="lessons/alpha-beta-separation.html">
-        <div class="tl-card-num">Lesson 33</div>
+        <div class="tl-card-num">Lesson 32</div>
         <h3>Alpha vs. Beta Separation</h3>
         <p>Every return stream is a market bet plus a residual — the regression that tells them apart, and the portable-alpha technique for hedging the bet away.</p>
       </a>
       <a class="tl-card" href="lessons/merton-portfolio-problem.html">
-        <div class="tl-card-num">Lesson 34 (final)</div>
+        <div class="tl-card-num">Lesson 33</div>
         <h3>Merton's Continuous-Time Portfolio Problem</h3>
         <p>The rigorous, utility-theoretic generalization of the Kelly Criterion — and where "half-Kelly" actually comes from.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>10 · Fixed Income Mathematics</h2>
+    <div class="tl-cat-sub">A whole category this FX/macro-focused curriculum was missing — bond pricing, duration/convexity, and the yield-curve machinery every rates and macro desk runs on.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="lessons/bond-pricing-ytm.html">
+        <div class="tl-card-num">Fixed Income 1</div>
+        <h3>Bond Pricing &amp; Yield to Maturity</h3>
+        <p>Discounting coupons and face value to a price, and why yield to maturity has to be solved for, not looked up.</p>
+      </a>
+      <a class="tl-card" href="lessons/duration-convexity.html">
+        <div class="tl-card-num">Fixed Income 2</div>
+        <h3>Duration &amp; Convexity</h3>
+        <p>Bond-price sensitivity as a Taylor expansion in yield — duration is the tangent line, convexity is the curve.</p>
+      </a>
+      <a class="tl-card" href="lessons/yield-curve-construction.html">
+        <div class="tl-card-num">Fixed Income 3</div>
+        <h3>Bootstrapping the Yield Curve</h3>
+        <p>Why one bond's YTM can't discount every cashflow, and the sequential solve that extracts a real zero curve.</p>
+      </a>
+      <a class="tl-card" href="lessons/nelson-siegel-svensson.html">
+        <div class="tl-card-num">Fixed Income 4</div>
+        <h3>Curve Fitting: Nelson-Siegel &amp; Svensson</h3>
+        <p>Four parameters — level, slope, curvature, decay — that describe an entire central-bank yield curve.</p>
+      </a>
+      <a class="tl-card" href="lessons/swap-curves-ois.html">
+        <div class="tl-card-num">Fixed Income 5 (final)</div>
+        <h3>Swap Curves &amp; OIS Discounting</h3>
+        <p>Why swaps replaced government bonds as the discounting curve, and what changed after the LIBOR-to-SOFR transition.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>11 · Numerical Methods</h2>
+    <div class="tl-cat-sub">The tools underpinning portfolio optimization, calibration, pricing, and machine learning — Newton-Raphson, gradient descent, convex/linear/quadratic programming, and numerical integration.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="lessons/newton-raphson-gradient-descent.html">
+        <div class="tl-card-num">Numerical Methods 1</div>
+        <h3>Newton-Raphson &amp; Gradient Descent</h3>
+        <p>Solving for bond YTM and implied volatility by iteration, and the learning-rate tradeoff behind every gradient-based optimizer.</p>
+      </a>
+      <a class="tl-card" href="lessons/convex-optimization.html">
+        <div class="tl-card-num">Numerical Methods 2</div>
+        <h3>Convex Optimization</h3>
+        <p>Why a convex problem's local optimum is always the global one — and why Markowitz's variance objective qualifies.</p>
+      </a>
+      <a class="tl-card" href="lessons/linear-quadratic-programming.html">
+        <div class="tl-card-num">Numerical Methods 3</div>
+        <h3>Linear &amp; Quadratic Programming</h3>
+        <p>Why real portfolio construction needs a QP solver the moment box constraints show up, not just the closed-form Markowitz formula.</p>
+      </a>
+      <a class="tl-card" href="lessons/numerical-integration.html">
+        <div class="tl-card-num">Numerical Methods 4 (final)</div>
+        <h3>Numerical Integration</h3>
+        <p>Trapezoidal and Simpson's rule vs. Monte Carlo — and why simulation wins the moment a payoff depends on many underlyings.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>12 · Market Microstructure</h2>
+    <div class="tl-cat-sub">Kyle's Lambda and Glosten-Milgrom, promoted into their own category alongside limit order books, market impact, order-flow toxicity, and execution algorithms.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="lessons/market-microstructure.html">
+        <div class="tl-card-num">Market Microstructure 1</div>
+        <h3>Market Microstructure: Price Impact &amp; the Bid-Ask Spread</h3>
+        <p>Kyle's Lambda and the Glosten-Milgrom model — why an anonymous order's uncertainty is the formal origin of the bid-ask spread.</p>
+      </a>
+      <a class="tl-card" href="lessons/limit-order-books.html">
+        <div class="tl-card-num">Market Microstructure 2</div>
+        <h3>Limit Order Books &amp; Queue Dynamics</h3>
+        <p>Price-time priority, queue position, and how a market order actually walks the book.</p>
+      </a>
+      <a class="tl-card" href="lessons/market-impact-almgren-chriss.html">
+        <div class="tl-card-num">Market Microstructure 3</div>
+        <h3>Market Impact Models &amp; Almgren-Chriss</h3>
+        <p>The square-root law of impact, and the optimal execution trajectory that trades off impact cost against timing risk.</p>
+      </a>
+      <a class="tl-card" href="lessons/vpin-order-flow-toxicity.html">
+        <div class="tl-card-num">Market Microstructure 4</div>
+        <h3>Order Flow Toxicity &amp; VPIN</h3>
+        <p>Volume-bucketed order imbalance as an early-warning signal — and the real academic debate over whether it actually works.</p>
+      </a>
+      <a class="tl-card" href="lessons/execution-algorithms.html">
+        <div class="tl-card-num">Market Microstructure 5 (final)</div>
+        <h3>Execution Algorithms: TWAP, VWAP, POV, IS</h3>
+        <p>TWAP, VWAP, POV, and Implementation Shortfall — how urgency versus impact concern actually picks the algorithm.</p>
       </a>
     </div>
   </div>

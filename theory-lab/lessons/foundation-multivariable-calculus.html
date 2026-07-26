@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Partial Derivatives &amp; Multivariable Calculus — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Foundation Mathematics / Partial Derivatives &amp; Multivariable Calculus</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Foundation Mathematics · Lesson 4 of 5</div>
+  <h1 class="tl-title">Partial Derivatives &amp; Multivariable Calculus</h1>
+  <p class="tl-dek">What happens to ordinary calculus once a function depends on more than one thing at once — and the exact vocabulary behind every option "Greek" you've ever seen quoted.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span>~14 min read</span>
+    <span>Prereqs: Complex Numbers; Calculus for Finance (Deeper Foundations) for Taylor series</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A <strong>partial derivative</strong> of a multivariable function is an ordinary derivative taken with respect to one variable while every other variable is held fixed, written \(\partial f/\partial x\).</li>
+      <li>The <strong>gradient</strong> stacks every partial derivative of a function into one vector, \(\nabla f\), which points in the direction the function increases fastest — the direction gradient descent (a later Numerical Methods lesson) walks in reverse to find a minimum.</li>
+      <li>The <strong>Hessian</strong> stacks every <em>second</em> partial derivative into a matrix — the multivariable version of curvature, used to check whether a stationary point is a genuine minimum, a maximum, or a saddle.</li>
+      <li>An option's Delta, Gamma, Theta, and Vega are not four separate special concepts — they are literally the partial derivatives of the option-value function \(V(S,t,\sigma,\dots)\) with respect to the underlying, time, and volatility, respectively.</li>
+      <li>Worked example: for \(V(S,t) = S e^{-\delta t}\) (a dividend-paying asset's forward value), \(\partial V/\partial S = e^{-\delta t}\) and \(\partial V/\partial t = -\delta S e^{-\delta t}\) — two different partial derivatives of the exact same function, holding the other variable fixed each time.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Every function studied so far in this curriculum's foundation depended on
+    exactly one input variable: \(f(x)\). But almost nothing in real finance
+    is that simple. An option's value depends on the underlying price
+    <em>and</em> time remaining <em>and</em> volatility <em>and</em> the
+    interest rate, all at once. A portfolio's value depends on every
+    position's size at once. A bond's price depends on both yield and time to
+    maturity. The moment a function depends on more than one thing, a plain
+    question like "the derivative of \(f\)" stops being well-defined — the
+    derivative <em>with respect to what</em>, holding <em>what else</em>
+    fixed? Multivariable calculus is the small, precise set of tools that
+    answers exactly that question, and it turns out to already be hiding in
+    plain sight in a piece of vocabulary you may already have seen quoted on a
+    trading screen: the option "Greeks."
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🇬🇷</div>
+      <h4>The option Greeks</h4>
+      <p>Delta, Gamma, Theta, Vega — the existing Black-Scholes lesson in this curriculum quotes all four without pausing to say what they structurally are: partial derivatives of one function, taken with respect to different variables.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">⛰️</div>
+      <h4>Gradient descent</h4>
+      <p>A later Numerical Methods lesson walks "downhill" to minimize a loss function — that walking direction is exactly the negative of the gradient vector built on this page.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🔍</div>
+      <h4>Convex optimization</h4>
+      <p>Checking whether a fitted model's optimum is genuinely a minimum (not a saddle point) is a Hessian-matrix question — this page builds the Hessian; a later lesson uses it to certify convexity.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📐</div>
+      <h4>The chain rule, multivariable version</h4>
+      <p>Itô's Lemma (built from the Taylor series covered in this curriculum's Calculus for Finance lesson) and portfolio-level risk aggregation both lean on the multivariable chain rule built here.</p>
+    </div>
+  </div>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>The temperature in a room depends on where you stand — and on which direction you're asking about</h3>
+    <p>
+      Picture a room where the temperature isn't the same everywhere — warmer
+      near the radiator, cooler near the window, and it also changes over the
+      course of the day. Temperature here is a function of more than one
+      thing at once: your position in the room (two coordinates, say east-west
+      and north-south) and the time of day. Ask "how fast is the temperature
+      changing?" and the honest answer is: it depends which direction you
+      mean. If you walk directly toward the radiator, it's rising quickly. If
+      you walk parallel to the wall, at the same distance from the radiator
+      the whole way, it might not change much at all. If you stand
+      completely still and just wait an hour, it might rise slowly as the
+      heating warms the whole room.
+    </p>
+    <p>
+      A <strong>partial derivative</strong> answers one very specific version
+      of that question: "if I only let <em>one</em> of these variables
+      change — say, my east-west position — and freeze everything else
+      exactly where it is, how fast does the temperature change?" You get a
+      different answer for each variable you could have picked (east-west,
+      north-south, time-of-day), and each one is computed by the exact same
+      ordinary single-variable derivative rules already built in this
+      curriculum's calculus lesson — you're just temporarily treating every
+      other variable as if it were a fixed constant, not a variable at all.
+      The <strong>gradient</strong>, covered below, is what you get if you
+      stop asking about one direction at a time and instead ask "which single
+      direction, out of every possible direction I could walk, makes the
+      temperature rise the fastest?" — it turns out that question has one
+      clean answer, built directly from the partial derivatives.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>Functions of several variables</h3>
+  <p>
+    A function of several variables simply takes more than one input and
+    produces one output — written \(f(x, y)\) for two variables, or
+    \(f(x_1, x_2, \dots, x_n)\) for \(n\) of them. In finance, an option's
+    value is a function of the underlying price \(S\), time to expiry \(t\),
+    volatility \(\sigma\), and the interest rate \(r\), all at once:
+    \(V(S, t, \sigma, r)\). Nothing about the idea of "a function" changes —
+    it still just maps inputs to a single output — but the geometric picture
+    changes: instead of a curve in a flat 2-D plane, a two-variable function
+    is a <em>surface</em> in 3-D space (imagine the temperature example
+    above as a bumpy landscape, with height representing temperature).
+  </p>
+
+  <h3>Partial derivatives — one variable at a time, everything else frozen</h3>
+  <p>
+    The <strong>partial derivative</strong> of \(f(x, y)\) with respect to
+    \(x\), written \(\partial f/\partial x\), is defined exactly like the
+    ordinary single-variable derivative from the calculus lesson, except
+    \(y\) is held completely fixed while \(x\) is nudged:
+  </p>
+  <div class="tl-math">
+    \[ \frac{\partial f}{\partial x} = \lim_{h \to 0} \frac{f(x+h,\, y) - f(x,\, y)}{h} \qquad \text{(} y \text{ held fixed)} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>∂f/∂x</code><span>"partial f, partial x" — the derivative with respect to x alone</span></div>
+    <div class="tl-eq-chip c2"><code>y held fixed</code><span>the entire trick — every other variable is temporarily treated as a constant</span></div>
+    <div class="tl-eq-chip c3"><code>lim h→0</code><span>the identical limit machinery from ordinary single-variable calculus</span></div>
+  </div>
+  <p>
+    Practically, this means: to compute \(\partial f/\partial x\), apply the
+    ordinary single-variable differentiation rules from the calculus lesson
+    to \(x\), treating every other letter in the expression (\(y\), \(t\),
+    \(\sigma\), whatever else appears) exactly as if it were a plain number
+    like 5 or \(\pi\) — because for the purposes of this one partial
+    derivative, it is being held constant. To get \(\partial f/\partial y\)
+    instead, do the same thing in reverse: differentiate with respect to
+    \(y\), and now treat \(x\) as the fixed constant. Nothing new needs to be
+    learned about differentiation itself — the entire new idea is
+    "differentiate one variable, freeze the rest."
+  </p>
+
+  <h3>A first, deliberately simple example</h3>
+  <p>
+    Take a two-asset portfolio whose value is a weighted sum of two asset
+    prices, \(V(S_1, S_2) = w_1 S_1 + w_2 S_2\), with fixed weights \(w_1\)
+    and \(w_2\). Differentiating with respect to \(S_1\), treating \(S_2\)
+    (and the constants \(w_1, w_2\)) as fixed:
+  </p>
+  <div class="tl-math">
+    \[ \frac{\partial V}{\partial S_1} = w_1 \qquad \frac{\partial V}{\partial S_2} = w_2 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>∂V/∂S₁ = w₁</code><span>the w₂S₂ term vanishes entirely — it doesn't depend on S₁ at all</span></div>
+    <div class="tl-eq-chip c4"><code>∂V/∂S₂ = w₂</code><span>symmetric — the w₁S₁ term vanishes when differentiating with respect to S₂</span></div>
+  </div>
+  <p>
+    This is deliberately the simplest possible case: because \(V\) is
+    linear, the partial derivative with respect to each asset price is just
+    that asset's own weight, and the mechanics amount to noticing that the
+    <em>other</em> term in the sum doesn't involve the variable being
+    differentiated at all, so it contributes exactly zero. The point of
+    starting here is to see the "hold the other variable fixed" rule applied
+    in its most transparent form before moving to a case where the two
+    variables interact.
+  </p>
+
+  <h3>A richer example: a dividend-paying asset's forward value</h3>
+  <p>
+    Now take a function where the two variables genuinely interact:
+    \(V(S, t) = S\, e^{-\delta t}\) — the forward (time-\(t\)) value of one
+    unit of an asset currently worth \(S\), paying a continuous dividend
+    yield \(\delta\), where lost dividends compound away the asset's forward
+    value over time. Differentiate with respect to \(S\) first, holding
+    \(t\) (and the constant \(\delta\)) fixed — since \(e^{-\delta t}\)
+    doesn't involve \(S\) at all, it's just a fixed multiplying constant from
+    \(S\)'s point of view:
+  </p>
+  <div class="tl-math">
+    \[ \frac{\partial V}{\partial S} = e^{-\delta t} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>∂V/∂S</code><span>treats e^(−δt) as a fixed constant multiplying S</span></div>
+    <div class="tl-eq-chip c3"><code>e^(−δt)</code><span>the discount factor for lost dividends — a plain number once t is frozen</span></div>
+  </div>
+  <p>
+    Now differentiate with respect to \(t\) instead, holding \(S\) fixed —
+    here \(S\) is the fixed constant multiplying a function of \(t\), and the
+    ordinary chain rule for \(e^{-\delta t}\) (derivative of \(e^{ku}\) with
+    respect to \(u\) is \(k e^{ku}\), with \(k=-\delta\) here) applies:
+  </p>
+  <div class="tl-math">
+    \[ \frac{\partial V}{\partial t} = S \cdot (-\delta) e^{-\delta t} = -\delta S e^{-\delta t} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>∂V/∂t</code><span>treats S as a fixed constant multiplying a function of t</span></div>
+    <div class="tl-eq-chip c4"><code>−δSe^(−δt)</code><span>negative — the forward value decays as more dividends are given up over time</span></div>
+  </div>
+  <p>
+    Two genuinely different numbers come out of differentiating the exact
+    same function — one measures sensitivity to the spot price, the other to
+    the passage of time — and each is computed by the identical mechanical
+    rule: differentiate with respect to the variable named, freeze
+    everything else. This is precisely the structure behind an option's
+    Delta (\(\partial V/\partial S\)) and Theta (\(\partial V/\partial t\)),
+    covered explicitly below.
+  </p>
+
+  <h3>The gradient — every partial derivative, stacked into one vector</h3>
+  <p>
+    For a function of several variables, stacking <em>all</em> of its
+    partial derivatives into a single vector gives the <strong>gradient</strong>,
+    written \(\nabla f\) (the symbol is called "nabla" or "del"):
+  </p>
+  <div class="tl-math">
+    \[ \nabla f = \left( \frac{\partial f}{\partial x_1},\ \frac{\partial f}{\partial x_2},\ \dots,\ \frac{\partial f}{\partial x_n} \right) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>∇f</code><span>"grad f" — the vector of every partial derivative</span></div>
+    <div class="tl-eq-chip c3"><code>(∂f/∂x₁, …, ∂f/∂xₙ)</code><span>one entry per input variable, each computed by freezing all the others</span></div>
+  </div>
+  <p>
+    The gradient is more than bookkeeping — it has a genuine geometric
+    meaning, directly answering the "which direction rises fastest?" question
+    from the temperature intuition above: <strong>the gradient vector points
+    in the direction the function increases fastest</strong>, and its length
+    (magnitude) tells you exactly how fast the function is increasing in that
+    best direction. Walking in the exact opposite direction, \(-\nabla f\),
+    is the direction the function <em>decreases</em> fastest — which is
+    precisely the "downhill" direction that gradient descent, a later
+    Numerical Methods lesson's core optimization algorithm, repeatedly steps
+    in to hunt for a minimum.
+  </p>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">∂f/∂xᵢ</div>
+      <div class="tl-fp-name">One partial derivative</div>
+      <div class="tl-fp-desc">Sensitivity to variable i alone, every other variable frozen</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">∇f</div>
+      <div class="tl-fp-name">The gradient</div>
+      <div class="tl-fp-desc">All partials stacked — points in the direction of steepest increase</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">−∇f</div>
+      <div class="tl-fp-name">Steepest descent</div>
+      <div class="tl-fp-desc">The opposite direction — what gradient descent walks along</div>
+    </div>
+  </div>
+
+  <h3>The Hessian — second partial derivatives, and checking convexity</h3>
+  <p>
+    Just as the second derivative \(f''(x)\) of a single-variable function
+    measured curvature (the central idea of this curriculum's Calculus for Finance lesson), a
+    multivariable function has a whole grid of second partial derivatives —
+    one for every pair of variables, including differentiating with respect
+    to the same variable twice. Stacking all of them into a matrix gives the
+    <strong>Hessian</strong>, \(H\):
+  </p>
+  <div class="tl-math">
+    \[ H = \begin{pmatrix} \dfrac{\partial^2 f}{\partial x^2} & \dfrac{\partial^2 f}{\partial x \partial y} \\[8pt] \dfrac{\partial^2 f}{\partial y \partial x} & \dfrac{\partial^2 f}{\partial y^2} \end{pmatrix} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>∂²f/∂x²</code><span>curvature in the pure-x direction, y frozen throughout</span></div>
+    <div class="tl-eq-chip c2"><code>∂²f/∂x∂y</code><span>a "mixed" partial — how ∂f/∂x itself changes as y moves</span></div>
+    <div class="tl-eq-chip c4"><code>H</code><span>the Hessian — every second partial derivative, in one matrix</span></div>
+  </div>
+  <p>
+    Under mild smoothness conditions the two mixed partials are always equal
+    (\(\partial^2 f/\partial x\partial y = \partial^2 f/\partial y\partial x\)),
+    which is why the Hessian above is symmetric — the exact same property the
+    Deeper Foundations linear algebra lesson proved guarantees real
+    eigenvalues and perpendicular eigenvectors. That connection is not
+    decorative: the Hessian's eigenvalues are precisely what a later
+    Numerical Methods lesson's convex-optimization material checks to
+    certify whether a stationary point (where the gradient is zero) is a
+    genuine minimum, a maximum, or a saddle point — all-positive eigenvalues
+    mean every direction curves upward (a minimum), all-negative means every
+    direction curves downward (a maximum), and mixed signs mean a saddle:
+    curving up in some directions and down in others.
+  </p>
+
+  <h3>The multivariable chain rule</h3>
+  <p>
+    The ordinary chain rule from the calculus lesson (differentiating a
+    function of a function) has a multivariable version needed whenever
+    several variables all depend, in turn, on some other underlying
+    variable — for instance, an option's value \(V(S, t)\) where \(S\) itself
+    might be modeled as changing with \(t\). If \(f\) depends on \(x\) and
+    \(y\), and both \(x\) and \(y\) depend on some variable \(u\), the total
+    rate of change of \(f\) with respect to \(u\) sums the contribution
+    through <em>each</em> path:
+  </p>
+  <div class="tl-math">
+    \[ \frac{df}{du} = \frac{\partial f}{\partial x}\frac{dx}{du} + \frac{\partial f}{\partial y}\frac{dy}{du} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>(∂f/∂x)(dx/du)</code><span>the part of f's change coming through x</span></div>
+    <div class="tl-eq-chip c2"><code>(∂f/∂y)(dy/du)</code><span>the part of f's change coming through y</span></div>
+    <div class="tl-eq-chip c3"><code>sum both</code><span>every path a change can travel through gets added, not chosen between</span></div>
+  </div>
+  <p>
+    Read this as: if \(u\) nudges both \(x\) and \(y\), the total effect on
+    \(f\) is the sum of the effect flowing through the \(x\) channel and the
+    effect flowing through the \(y\) channel — you don't pick one path, you
+    add up every path's contribution. This exact rule, extended to a
+    randomly-moving \(x\), is the multivariable machinery Itô's Lemma (built
+    from the Taylor series covered in Calculus for Finance) builds on.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(f(x,y)\)</td><td>A function of two (or more) variables — an option value, a portfolio value, anything depending on more than one input.</td></tr>
+    <tr><td>\(\partial f/\partial x\)</td><td>The partial derivative of \(f\) with respect to \(x\) — the ordinary derivative taken with every other variable held fixed.</td></tr>
+    <tr><td>\(\nabla f\)</td><td>("nabla f," or "grad f") The gradient — the vector of all of \(f\)'s partial derivatives; points in the direction of steepest increase.</td></tr>
+    <tr><td>\(H\)</td><td>The Hessian matrix — every second partial derivative of \(f\), used to check curvature/convexity at a point.</td></tr>
+    <tr><td>\(S\)</td><td>The underlying asset price — a common input variable for a derivative's value function.</td></tr>
+    <tr><td>\(t\)</td><td>Time (often time remaining to expiry) — another common input variable.</td></tr>
+    <tr><td>\(\sigma\)</td><td>(sigma) Volatility — a third common input variable for an option-pricing function.</td></tr>
+    <tr><td>\(\delta\)</td><td>(delta, the Greek letter) A continuous dividend yield in the forward-value example — not to be confused with the option Greek "Delta."</td></tr>
+  </table></div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A bumpy surface: partial derivatives are the slope along one axis at a time</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="An illustrative 3D-style surface plot with two highlighted slice curves: one showing the surface's slope moving along the x-direction at a fixed y, and one showing the slope along the y-direction at a fixed x, illustrating that a partial derivative is the ordinary slope of one such slice curve">
+      <polygon points="90,230 550,230 480,90 160,90" style="fill:var(--blue);opacity:.10;stroke:var(--border)"/>
+      <path style="fill:none;stroke:var(--text3);stroke-width:1" d="M120,222 L490,222"/>
+      <path style="fill:none;stroke:var(--text3);stroke-width:1" d="M150,190 L520,190"/>
+      <path style="fill:none;stroke:var(--text3);stroke-width:1" d="M180,158 L550,158"/>
+      <path style="fill:none;stroke:var(--text3);stroke-width:1" d="M210,126 L580,126"/>
+      <path style="fill:none;stroke:var(--text3);stroke-width:1" d="M150,225 L220,105"/>
+      <path style="fill:none;stroke:var(--text3);stroke-width:1" d="M260,225 L330,105"/>
+      <path style="fill:none;stroke:var(--text3);stroke-width:1" d="M370,225 L440,105"/>
+      <path style="fill:none;stroke:var(--text3);stroke-width:1" d="M480,225 L550,105"/>
+      <path style="fill:none;stroke:var(--amber);stroke-width:3" d="M150,190 Q260,150 380,168 Q450,178 520,150"/>
+      <text x="522" y="145" style="fill:var(--amber);font-size:11px;font-weight:600">slice at fixed y: slope = ∂f/∂x</text>
+      <path style="fill:none;stroke:var(--green);stroke-width:3" d="M330,215 Q300,180 320,150 Q335,125 355,100"/>
+      <text x="360" y="98" style="fill:var(--green);font-size:11px;font-weight:600">slice at fixed x: slope = ∂f/∂y</text>
+      <circle cx="330" cy="176" r="5" style="fill:var(--text)"/>
+      <text x="316" y="200" style="fill:var(--text);font-size:11px">(x₀,y₀)</text>
+    </svg>
+    <div class="tl-chart-caption">The grid represents a surface \(f(x,y)\) — height is the function's value. Freezing \(y\) at some fixed value and only moving along \(x\) traces the amber slice curve; its ordinary slope at the marked point is \(\partial f/\partial x\). Freezing \(x\) instead and moving along \(y\) traces the green slice curve, with slope \(\partial f/\partial y\). Each partial derivative is nothing more exotic than an ordinary single-variable slope, read off one slice of the full surface.</div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Two portfolio value functions, two sets of partial derivatives</h3>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>The trivial case — a linear two-asset portfolio</h4>
+          <p>\(V(S_1, S_2) = w_1 S_1 + w_2 S_2\), with weights \(w_1 = 0.6\), \(w_2 = 0.4\):</p>
+          <div class="tl-math">
+            \[ \frac{\partial V}{\partial S_1} = 0.6 \qquad \frac{\partial V}{\partial S_2} = 0.4 \]
+          </div>
+          <p>Each partial derivative is simply that asset's fixed weight — a $1 move in \(S_1\) alone moves the portfolio by exactly \$0.60, regardless of \(S_2\)'s value, because the two terms don't interact at all in a linear sum.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>The richer case — a dividend-paying forward value</h4>
+          <p>\(V(S,t) = S e^{-\delta t}\), with \(S = \$100\), \(\delta = 0.03\) (a 3% continuous dividend yield), \(t = 2\) years:</p>
+          <div class="tl-math">
+            \[ \frac{\partial V}{\partial S} = e^{-\delta t} = e^{-0.03 \times 2} = e^{-0.06} \approx 0.9418 \]
+          </div>
+          <div class="tl-math">
+            \[ \frac{\partial V}{\partial t} = -\delta S e^{-\delta t} = -0.03 \times 100 \times 0.9418 \approx -2.825 \]
+          </div>
+          <p>
+            Read plainly: at \(S=100\), \(t=2\), a \$1 rise in the spot price
+            raises the forward value by about \$0.9418 (slightly less than
+            dollar-for-dollar, because two more years of dividends are still
+            being given up); holding the spot price fixed, each additional
+            year that passes lowers the forward value by about \$2.825, as
+            more dividend payments are foregone. Two completely different
+            numbers, from differentiating the exact same function with
+            respect to two different variables — the entire mechanical
+            content of this lesson, worked with real numbers.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>The Greeks on a risk screen are partial derivatives, not four unrelated numbers</h3>
+    <p>
+      An option's value is a function of several variables at once,
+      \(V(S, t, \sigma, r)\) — the underlying price, time to expiry,
+      volatility, and interest rate, in the notation the existing
+      Black-Scholes lesson in this curriculum already uses. Every "Greek"
+      quoted on a live option risk screen is, without exception, one partial
+      derivative of that single function, with respect to one of those
+      variables, everything else held fixed:
+    </p>
+    <div class="tl-compare">
+      <div class="tl-compare-card blue">
+        <h4>Delta, \(\Delta = \partial V/\partial S\)</h4>
+        <p>Sensitivity to the underlying price alone — time, volatility, and rates frozen. Exactly the same partial-derivative mechanics as \(\partial V/\partial S\) in the dividend-forward worked example above.</p>
+      </div>
+      <div class="tl-compare-card green">
+        <h4>Theta, \(\Theta = \partial V/\partial t\)</h4>
+        <p>Sensitivity to the passage of time alone — the spot price, volatility, and rates frozen. The exact same partial-derivative mechanics as \(\partial V/\partial t\) above, just applied to an option's value function instead of a forward value.</p>
+      </div>
+      <div class="tl-compare-card amber">
+        <h4>Vega, \(\text{Vega} = \partial V/\partial \sigma\)</h4>
+        <p>Sensitivity to volatility alone — spot, time, and rates frozen. Not usually written with a Greek letter (vega isn't actually one), but structurally identical: one more partial derivative of the same \(V\).</p>
+      </div>
+      <div class="tl-compare-card purple">
+        <h4>Gamma, \(\Gamma = \partial^2 V/\partial S^2\)</h4>
+        <p>The curvature of \(V\) with respect to \(S\) — a second partial derivative, one diagonal entry of \(V\)'s Hessian with respect to its variables, exactly the second-order Taylor correction term covered in Calculus for Finance.</p>
+      </div>
+    </div>
+    <p>
+      A trader reading "Delta 0.60, Gamma 0.04, Theta −0.03, Vega 0.12" off a
+      screen is reading four entries from the same gradient-and-Hessian
+      structure built on this page, evaluated at today's spot, today's time
+      remaining, and today's volatility — not four independent facts about
+      the option that happen to share a Greek-letter naming convention. This
+      is exactly why a full risk report can combine them into a single
+      multivariable Taylor approximation for how the option's value would
+      move under a joint shock to spot, time, and volatility at once — sum
+      each variable's own partial-derivative contribution, precisely the
+      structure the multivariable chain rule above describes for several
+      inputs moving together.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Multivariable calculus is the load-bearing vocabulary behind three
+    distinct, common desk-level activities, each of which reuses the exact
+    same partial-derivative/gradient/Hessian machinery built above:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🇬🇷</div>
+      <h4>Risk decomposition via the Greeks</h4>
+      <p>A derivatives book's total risk is reported as a set of partial derivatives (Delta, Gamma, Theta, Vega, Rho) with respect to each market input, precisely so a desk can see which single input is driving P&amp;L without repricing the whole book for every scenario.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">⛰️</div>
+      <h4>Model fitting via gradient descent</h4>
+      <p>Fitting almost any statistical or machine-learning model reduces to minimizing some error function of many parameters at once — gradient descent repeatedly steps in the direction \(-\nabla f\) (built above) until the gradient is (near) zero.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🔍</div>
+      <h4>Certifying a genuine optimum</h4>
+      <p>Once an optimizer reports a stationary point (gradient ≈ 0), checking the Hessian's eigenvalues there is standard practice to confirm it's actually a minimum, not a saddle point a naive gradient-only check would miss.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📊</div>
+      <h4>Scenario and stress-testing grids</h4>
+      <p>A "what happens if spot moves 2% <em>and</em> volatility jumps 5 points" question is a multivariable question by construction — answered with the multivariable chain rule/Taylor structure, summing each input's own partial contribution.</p>
+    </div>
+  </div>
+  <p>
+    The habit worth internalizing from real practice: whenever a model or a
+    risk report has more than one input, the honest first question is
+    "sensitivity with respect to <em>which</em> variable, holding <em>what</em>
+    else fixed?" — a single unqualified word like "sensitivity" or "risk" is
+    ambiguous the moment more than one variable is in play, and a partial
+    derivative is precisely the tool that removes that ambiguity by making
+    the "holding what else fixed" part of the question explicit rather than
+    implied.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this goes wrong in practice</h3>
+    <p>
+      <strong>Treating one Greek in isolation when the market moves several
+      things at once.</strong> Delta alone describes a move in spot with time
+      and volatility held perfectly still — but a real market move almost
+      never holds those other variables still. A large spot move is often
+      accompanied by a volatility move too (in either direction, depending on
+      the market), and reading Delta alone as "the" answer to "what will this
+      option do" quietly assumes an all-else-equal condition that may not
+      hold at all.
+    </p>
+    <p>
+      <strong>Forgetting that a stationary gradient doesn't guarantee a
+      minimum.</strong> \(\nabla f = 0\) only says the function is flat in
+      every direction at that point — it could be a genuine minimum, a
+      maximum, or a saddle point (curving up in some directions, down in
+      others). The Hessian's eigenvalues are what actually distinguish these
+      cases; stopping an optimizer the moment the gradient is small, without
+      checking the Hessian, can silently report a saddle point as if it were
+      a solved minimum.
+    </p>
+    <p>
+      <strong>Mixing up which variables are held fixed.</strong> The entire
+      meaning of a partial derivative depends on exactly which other
+      variables are frozen — \(\partial V/\partial S\) computed with
+      volatility held constant is a genuinely different number from a
+      "sensitivity to spot" computed while also letting an implied-volatility
+      surface shift with spot (a real, common practitioner adjustment called
+      a "sticky" convention). Quoting a partial derivative without being
+      explicit about what's held fixed is a common source of confusion when
+      comparing numbers from two different models or desks.
+    </p>
+    <p>
+      <strong>Confusing a mixed partial derivative's symmetry with a claim
+      about causation.</strong> \(\partial^2 f/\partial x \partial y =
+      \partial^2 f/\partial y \partial x\) is a mathematical fact about how a
+      smooth function's curvature works, not a statement that changes in
+      \(x\) and \(y\) cause each other symmetrically in the real world — it's
+      purely a property of the function \(f\) being differentiated, not of
+      whatever real-world quantities \(x\) and \(y\) happen to represent.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A partial derivative is an ordinary derivative with everything else frozen.</strong> \(\partial f/\partial x\) applies the exact same single-variable rules from the calculus lesson, treating every other variable as a fixed constant.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The gradient stacks every partial derivative into one vector.</strong> \(\nabla f\) points in the direction the function increases fastest — the negative of that direction is what gradient descent walks along.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The Hessian is the multivariable version of curvature.</strong> Its eigenvalues distinguish a genuine minimum from a maximum or a saddle point at a stationary point — a direct forward-pointer to convex optimization.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The option Greeks are literally partial derivatives.</strong> Delta, Theta, and Vega are first partial derivatives of the option value with respect to spot, time, and volatility; Gamma is a second partial derivative — not four separate special ideas.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked forward-value example shows two different partials of one function.</strong> \(\partial V/\partial S \approx 0.9418\) and \(\partial V/\partial t \approx -2.825\) for the same \(V(S,t)=Se^{-\delta t}\) — the mechanics only ever differ in which variable is frozen.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A stationary gradient alone doesn't certify a minimum.</strong> \(\nabla f = 0\) is consistent with a minimum, a maximum, or a saddle point — the Hessian is what tells them apart.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. In plain language, what is the difference between an ordinary derivative \(f'(x)\) and a partial derivative \(\partial f/\partial x\)?</summary>
+    <div class="tl-answer">
+      An ordinary derivative applies to a function of a single variable — there is
+      nothing else to hold fixed, because there is nothing else. A partial
+      derivative applies to a function of several variables, and the entire
+      extra idea is that every variable other than the one you're
+      differentiating with respect to is held completely constant while you
+      compute it. Mechanically, once the other variables are frozen, the
+      actual differentiation step uses the identical rules as ordinary,
+      single-variable calculus — the only new concept is the freezing.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why does the gradient \(\nabla f\) point in the direction of steepest increase, rather than, say, the direction of the largest single partial derivative?</summary>
+    <div class="tl-answer">
+      The gradient combines every partial derivative into a single vector,
+      and it can be shown (via the multivariable chain rule applied along an
+      arbitrary direction) that the rate of increase of \(f\) along any given
+      direction equals the gradient's length times the cosine of the angle
+      between that direction and the gradient — which is maximized exactly
+      when the direction chosen lines up with the gradient itself (cosine of
+      zero degrees is 1, the largest possible value). No single partial
+      derivative alone captures this, because a partial derivative only
+      reports the rate of change along one specific coordinate axis, not
+      along every possible diagonal direction in between.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. For \(V(S,t) = Se^{-\delta t}\), why is \(\partial V/\partial t\) negative while \(\partial V/\partial S\) is positive?</summary>
+    <div class="tl-answer">
+      \(\partial V/\partial S = e^{-\delta t}\) is always positive (it's an
+      exponential of a real number), meaning the forward value always rises
+      when the spot price rises, holding time fixed — an intuitive result,
+      since the forward value is directly proportional to the spot price.
+      \(\partial V/\partial t = -\delta S e^{-\delta t}\) carries a minus
+      sign because as more time passes, more dividend payments have been (or
+      will be) given up, which continually erodes the forward value relative
+      to simply holding the spot price itself — holding \(S\) fixed, letting
+      \(t\) grow makes the discount factor \(e^{-\delta t}\) shrink, so the
+      forward value shrinks too.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why is it accurate to say an option's Gamma is "a second partial derivative" rather than just "a second derivative"?</summary>
+    <div class="tl-answer">
+      Because the option's value function \(V(S,t,\sigma,r)\) depends on
+      several variables at once, and Gamma specifically measures curvature
+      with respect to just one of them — the underlying price \(S\) — while
+      time, volatility, and rates are all held fixed throughout. Calling it
+      simply "a second derivative" would drop that essential detail about
+      which variable is being varied and which are frozen; "partial" is the
+      word that carries exactly that information, distinguishing Gamma
+      (\(\partial^2V/\partial S^2\)) from, say, a hypothetical
+      volatility-curvature term (\(\partial^2V/\partial\sigma^2\)), which is
+      a different, less commonly quoted quantity entirely.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. An optimizer reports that it found a point where the gradient of a loss function is (numerically) zero. Is this enough to conclude the point is a minimum? What else would you check?</summary>
+    <div class="tl-answer">
+      No — a zero gradient only means the function is momentarily flat in
+      every direction at that point; it is equally consistent with a genuine
+      minimum, a maximum, or a saddle point (curving upward in some
+      directions and downward in others). To tell these apart, check the
+      Hessian matrix's eigenvalues at that point: all-positive eigenvalues
+      indicate a genuine minimum (every direction curves upward), all-negative
+      indicate a maximum, and a mix of signs indicates a saddle point —
+      exactly the check a later Numerical Methods lesson's convex-optimization
+      material formalizes.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>James Stewart, <em>Multivariable Calculus</em>, Cengage Learning (any recent edition) — the standard textbook covering partial derivatives, gradients, and the Hessian in full generality and rigor, well beyond what this lesson needs.</li>
+    <li>Gilbert Strang, <em>Calculus</em> (freely available MIT OpenCourseWare materials) — includes an accessible treatment of the gradient as "direction of steepest ascent," built on the same geometric intuition used in this lesson.</li>
+    <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson (any recent edition) — the standard derivatives-pricing textbook; its treatment of the Greeks as sensitivities is the direct financial application of the partial-derivative machinery built here.</li>
+    <li>Stephen Boyd &amp; Lieven Vandenberghe, <em>Convex Optimization</em>, Cambridge University Press, 2004 (freely available from the authors) — the standard reference for using the gradient and Hessian to characterize and solve optimization problems, the direct continuation of this lesson's forward-pointers.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="foundation-complex-numbers.html">← Complex Numbers</a>
+    <a href="foundation-optimization-basics.html">Optimization Basics →</a>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Duration &amp; Convexity — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Fixed Income Mathematics / Duration &amp; Convexity</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Fixed Income Mathematics · Lesson 2 of 5</div>
+  <h1 class="tl-title">Duration &amp; Convexity</h1>
+  <p class="tl-dek">Duration is a bond's average cash-flow timing, in disguise — and, in a completely different disguise, the first term of a Taylor expansion of price around yield. Convexity is the second term, and it's the reason a duration-only estimate always underestimates a bond's true price after a yield move.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span>~17 min read</span>
+    <span>Prereqs: Bond Pricing &amp; Yield to Maturity</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Macaulay duration \(D_{Mac}\) is the weighted-average time to a bond's cash flows, where each cash flow's weight is its present value divided by the bond's total price — a "center of mass" for the bond's payment schedule, measured in years.</li>
+      <li>Modified duration \(D_{mod} = D_{Mac}/(1+y)\) converts that timing measure into a direct price-sensitivity number: \(\frac{\Delta P}{P} \approx -D_{mod}\,\Delta y\) — the first-order (linear) Taylor term of price as a function of yield.</li>
+      <li>Convexity \(C\) is the second-order Taylor term, giving the fuller approximation \(\frac{\Delta P}{P} \approx -D_{mod}\Delta y + \frac{1}{2}C(\Delta y)^2\) — and because \(C>0\) always for a plain bond, this term is always positive, meaning duration alone always underestimates the bond's true price after any yield move, up or down.</li>
+      <li>DV01 (dollar value of a basis point, also called PVBP) is duration expressed in dollars per 1bp of yield move — the practical, position-sizing version of the same sensitivity.</li>
+      <li>The worked example reuses Lesson 1's 5-year, 4% coupon, $1,000 face bond at 5% YTM (\(P=\$956.71\)): Macaulay duration ≈ 4.62 years, modified duration ≈ 4.40 years. For a 100bp yield rise, duration-only predicts \$914.61; duration+convexity predicts \$915.78; the exact re-priced value (at 6% YTM) is \$915.75 — convexity closes nearly the entire \$1.14 gap.</li>
+      <li>The interactive chart overlays the true price-yield curve with the duration-only tangent line and the duration+convexity quadratic, both recomputed live as you drag the current-yield slider.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Lesson 1 established that bond prices move opposite to yields, and that
+    the relationship curves rather than running straight. That lesson left
+    two questions unanswered on purpose: <em>how much</em> does price move for
+    a given yield change, and how good is a straight-line estimate of that
+    move? Duration answers the first question to a first approximation;
+    convexity answers exactly how wrong that first approximation is, and
+    fixes most of the error. Together they are the single most-used risk
+    measure in fixed income — every bond, bond fund, and bond futures
+    position on a rates desk is sized and hedged primarily in duration terms,
+    long before anyone reaches for a full re-pricing model.
+  </p>
+  <p>
+    This lesson also connects directly to this curriculum's calculus
+    material: duration and convexity are not a bond-specific invention, they
+    are literally the first two terms of the <strong>Taylor series</strong>
+    expansion of the pricing function \(P(y)\) around the current yield —
+    the exact same "linear approximation, then a curvature correction" idea
+    covered generally elsewhere in this curriculum's foundation mathematics,
+    applied here to one specific, very consequential function.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Duration is "how long, on average, do you have to wait to get your money back?"</h3>
+    <p>
+      Imagine two bonds, both maturing in 10 years. One is a zero-coupon
+      bond — you get nothing until year 10, then one lump sum. The other
+      pays a generous coupon every year along the way. Which one is more
+      sensitive to a change in interest rates? The zero-coupon bond, clearly
+      — every dollar of its value is tied up ten years out, fully exposed to
+      whatever happens to rates between now and then. The coupon bond gets
+      some of its money back earlier, so less of its value is exposed to
+      that far-off uncertainty. Duration is the number that captures exactly
+      this: it's the payment-weighted average time you wait to receive the
+      bond's cash flows. A zero-coupon bond's duration equals its maturity
+      exactly (all the weight sits at one single date); a coupon bond's
+      duration is always shorter than its maturity, because some cash
+      arrives earlier and pulls the average forward.
+    </p>
+    <p>
+      Convexity answers a subtler, related question: does that "average
+      wait time" sensitivity estimate stay accurate for a big rate move, or
+      only a tiny one? It doesn't stay accurate for a big move — and
+      convexity is the number that says by how much, and in which direction,
+      duration alone gets it wrong. It turns out bonds are always a little
+      bit better than a simple duration estimate predicts, in both
+      directions (yields up or down) — an asymmetry worth understanding
+      precisely, not just memorizing.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>Macaulay duration — a weighted-average payment date</h3>
+  <p>
+    Recall from Lesson 1 that a bond's price is the sum of the present values
+    of its individual cash flows. Each cash flow \(CF_t\) (a coupon, or the
+    final coupon-plus-face-value payment at maturity) contributes some share
+    of the bond's total price — specifically, \(PV(CF_t)/P\). Macaulay
+    duration weights each cash flow's <em>timing</em> \(t\) by that share, and
+    sums:
+  </p>
+  <div class="tl-math">
+    \[ D_{Mac} = \sum_{t=1}^{n} t \cdot \frac{PV(CF_t)}{P} = \frac{1}{P}\sum_{t=1}^{n} \frac{t \cdot CF_t}{(1+y)^t} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>D_Mac</code><span>Macaulay duration — a weighted-average payment time, in years</span></div>
+    <div class="tl-eq-chip c2"><code>PV(CF_t)/P</code><span>the weight — what fraction of the bond's total value this cash flow represents</span></div>
+    <div class="tl-eq-chip c3"><code>t</code><span>how far in the future (in years) that cash flow arrives</span></div>
+  </div>
+  <p>
+    Every weight \(PV(CF_t)/P\) is a genuine probability-like weight — all the
+    weights are positive and, by construction, sum to exactly 1 (since they
+    partition the bond's total price into shares). \(D_{Mac}\) is therefore a
+    true weighted average, in exactly the same sense as the sample mean from
+    this curriculum's statistics primer is a weighted average of data points
+    — here the "data points" are payment dates, and the "weights" are each
+    payment's share of present value instead of \(1/n\) each.
+  </p>
+
+  <h3>Modified duration — turning timing into price sensitivity</h3>
+  <p>
+    Macaulay duration is measured in years — a statement about timing, not
+    yet directly a statement about price sensitivity. <strong>Modified
+    duration</strong> rescales it by one factor of \((1+y)\) to convert it
+    into exactly that: a direct measure of how much the bond's price moves,
+    in percentage terms, for a small change in yield.
+  </p>
+  <div class="tl-math">
+    \[ D_{mod} = \frac{D_{Mac}}{1+y} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>1+y</code><span>rescales a timing measure into a direct yield-sensitivity measure</span></div>
+  </div>
+  <p>
+    This rescaling isn't arbitrary — it falls directly out of differentiating
+    the price formula with respect to \(y\). Take the pricing formula from
+    Lesson 1, \(P = \sum_t CF_t (1+y)^{-t}\), and differentiate term by term:
+  </p>
+  <div class="tl-math">
+    \[ \frac{dP}{dy} = \sum_{t=1}^{n} -t\, CF_t (1+y)^{-t-1} = -\frac{1}{1+y}\sum_{t=1}^{n} t \cdot \frac{CF_t}{(1+y)^t} = -\frac{1}{1+y}\left(D_{Mac}\cdot P\right) = -D_{mod}\cdot P \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>dP/dy</code><span>the exact slope of the price-yield curve at the current yield</span></div>
+    <div class="tl-eq-chip c3"><code>= −D_mod · P</code><span>duration is nothing but that slope, rescaled to be a percentage rather than a dollar figure</span></div>
+  </div>
+  <p>
+    Rearranged, \(dP/P = -D_{mod}\,dy\), or, for a small but non-infinitesimal
+    move \(\Delta y\):
+  </p>
+  <div class="tl-math">
+    \[ \frac{\Delta P}{P} \approx -D_{mod}\,\Delta y \]
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">−D_mod</div>
+      <div class="tl-fp-name">The slope</div>
+      <div class="tl-fp-desc">How many percent the price moves per unit of yield change, near the current yield</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">Δy</div>
+      <div class="tl-fp-name">The yield move</div>
+      <div class="tl-fp-desc">How far yield actually moves from where duration was measured</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">ΔP/P</div>
+      <div class="tl-fp-name">The estimate</div>
+      <div class="tl-fp-desc">The predicted percentage price change — exact only in the limit of an infinitesimal move</div>
+    </div>
+  </div>
+
+  <div class="tl-solid blue">
+    <strong>This is a Taylor series, not a bond-specific trick.</strong> A
+    first-order Taylor expansion of any smooth function \(f(y)\) around a
+    point \(y_0\) is \(f(y_0+\Delta y) \approx f(y_0) + f'(y_0)\Delta y\).
+    Apply that generic formula to the bond pricing function \(P(y)\), and
+    \(f'(y_0) = dP/dy = -D_{mod}\cdot P\) is exactly the derivative computed
+    above. Duration <em>is</em> the first-order Taylor term of the bond
+    pricing function — nothing more exotic than that. This curriculum's
+    Taylor series lesson (foundation mathematics tier) derives the general
+    result; this page is one specific, high-stakes application of it.
+  </div>
+
+  <h3>Why the linear approximation isn't enough — convexity as the second Taylor term</h3>
+  <p>
+    A first-order Taylor term is only exact in the limit of an infinitesimally
+    small \(\Delta y\). For any real, finite yield move, the true function
+    \(P(y)\) deviates from its tangent line by an amount that grows with the
+    <em>square</em> of the distance moved — precisely the curvature Lesson 1's
+    chart showed visually. The second-order Taylor term captures that
+    curvature using the function's second derivative:
+  </p>
+  <div class="tl-math">
+    \[ \frac{d^2P}{dy^2} = \sum_{t=1}^{n} t(t+1)\, CF_t (1+y)^{-t-2} \]
+  </div>
+  <p>
+    <strong>Convexity</strong> is defined as this second derivative, rescaled
+    (analogously to how modified duration rescaled the first derivative) so
+    that it plugs cleanly into a percentage-price-change formula:
+  </p>
+  <div class="tl-math">
+    \[ C = \frac{1}{P}\frac{d^2P}{dy^2} = \frac{1}{P(1+y)^2}\sum_{t=1}^{n} t(t+1)\cdot\frac{CF_t}{(1+y)^t} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>C</code><span>convexity — the curvature of the price-yield relationship, rescaled to be usable directly</span></div>
+    <div class="tl-eq-chip c4"><code>t(t+1)</code><span>weights later cash flows even more heavily than duration's plain t does</span></div>
+  </div>
+  <p>
+    A full second-order Taylor expansion of \(P(y)\) around the current
+    yield \(y_0\) is \(P(y_0+\Delta y) \approx P(y_0) + P'(y_0)\Delta y +
+    \frac{1}{2}P''(y_0)(\Delta y)^2\). Dividing through by \(P(y_0)\) and
+    substituting \(P'/P=-D_{mod}\) and \(P''/P = C\) gives the fuller
+    approximation this lesson is built around:
+  </p>
+  <div class="tl-math">
+    \[ \frac{\Delta P}{P} \approx -D_{mod}\,\Delta y + \frac{1}{2}\,C\,(\Delta y)^2 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>−D_mod Δy</code><span>the linear (first-order) term — same as before</span></div>
+    <div class="tl-eq-chip c3"><code>½C(Δy)²</code><span>the curvature (second-order) correction — always non-negative for a plain bond</span></div>
+  </div>
+  <p>
+    Notice the correction term is always <strong>positive</strong>, because
+    it's one-half times a positive number \(C\) times a squared quantity
+    \((\Delta y)^2\), which can never be negative — and \(C\) itself is
+    always positive for an ordinary fixed-coupon bond with no embedded
+    options, because every term inside its defining sum is a positive cash
+    flow, a positive discount factor, and a positive \(t(t+1)\) weight. This
+    is the precise, mechanical reason duration alone always
+    <strong>underestimates</strong> a plain bond's true price after any yield
+    move, whether yields rise or fall: the true price-yield curve always
+    lies on or above its own tangent line (this is exactly what "convex"
+    means geometrically), so the straight-line duration estimate is always a
+    lower bound on the truth, and the convexity term is precisely the
+    missing piece that closes most of that gap.
+  </p>
+
+  <h3>DV01 / PVBP — the practical dollar version</h3>
+  <p>
+    Trading desks rarely think in percentage sensitivity; they think in
+    dollars per basis point, because that's what position sizing and hedging
+    actually require. <strong>DV01</strong> (dollar value of a basis point,
+    also called <strong>PVBP</strong>, price value of a basis point) is
+    exactly modified duration, restated as a dollar figure for a one
+    basis-point (0.01%) yield move:
+  </p>
+  <div class="tl-math">
+    \[ DV01 \approx D_{mod}\cdot P \cdot 0.0001 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>0.0001</code><span>one basis point, expressed as a decimal (0.01%)</span></div>
+  </div>
+  <p>
+    DV01 answers the question a trader actually asks — "if yields move 1bp,
+    how many dollars does this position gain or lose?" — directly, without
+    requiring anyone on the desk to re-derive the percentage math each time.
+    It's the same information as modified duration, just denominated the way
+    a risk book is actually managed.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(D_{Mac}\)</td><td>Macaulay duration — the payment-weighted average time (in years) to a bond's cash flows.</td></tr>
+    <tr><td>\(D_{mod}\)</td><td>Modified duration — \(D_{Mac}/(1+y)\), the first-order (linear) price sensitivity to yield.</td></tr>
+    <tr><td>\(C\)</td><td>Convexity — the second-order (curvature) term of the price-yield relationship; always positive for a plain bond.</td></tr>
+    <tr><td>\(\Delta y\)</td><td>A change in yield, e.g. \(+0.01\) for a 100bp (1 percentage point) rise.</td></tr>
+    <tr><td>\(\Delta P/P\)</td><td>The resulting percentage change in the bond's price.</td></tr>
+    <tr><td>\(CF_t\)</td><td>The cash flow paid at time \(t\) — a coupon, or coupon-plus-face-value at maturity.</td></tr>
+    <tr><td>DV01 / PVBP</td><td>Dollar value of a basis point — modified duration restated in dollars per 1bp yield move.</td></tr>
+  </table></div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">True price-yield curve vs. duration-only tangent vs. duration+convexity — 5-year, 4% coupon, $1,000 face bond</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Curved true price line with a straight tangent line and a curved quadratic approximation overlaid, all recomputed around a movable current-yield point">
+      <line x1="70" y1="250" x2="600" y2="250" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="70" y1="20" x2="70" y2="250" style="stroke:var(--border);stroke-width:1"/>
+      <text x="335" y="280" text-anchor="middle" style="fill:var(--text3);font-size:11px">Yield to maturity (%)</text>
+      <text x="20" y="135" text-anchor="middle" style="fill:var(--text3);font-size:11px" transform="rotate(-90 20 135)">Price ($)</text>
+      <text x="70" y="264" text-anchor="middle" style="fill:var(--text3);font-size:10px">1%</text>
+      <text x="600" y="264" text-anchor="middle" style="fill:var(--text3);font-size:10px">12%</text>
+      <path id="dc-true-path" style="fill:none;stroke:var(--blue);stroke-width:2.5" d=""/>
+      <path id="dc-tangent-path" style="fill:none;stroke:var(--amber);stroke-width:2;stroke-dasharray:5,4" d=""/>
+      <path id="dc-quad-path" style="fill:none;stroke:var(--purple);stroke-width:2;stroke-dasharray:2,3" d=""/>
+      <circle id="dc-y0-dot" cx="0" cy="0" r="5" style="fill:var(--text);stroke:var(--s1);stroke-width:1.5"/>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>True price (exact formula)</span>
+      <span><i style="background:var(--amber)"></i>Duration-only tangent</span>
+      <span><i style="background:var(--purple)"></i>Duration + convexity</span>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Current yield (tangent point)</span><span class="tl-live" id="dc-y0-val">y₀ = 5.00%</span></div>
+        <input type="range" id="dc-y0-slider" min="100" max="1100" step="5" value="500">
+        <div class="tl-hint">Drag to move the tangent point. Both approximation lines recompute live from the exact duration and convexity formulas above, evaluated at whatever yield you pick.</div>
+      </div>
+    </div>
+    <div class="tl-readout">At y₀: \(D_{mod}\) = <b id="dc-dmod-val">4.40</b> years, \(C\) = <b id="dc-conv-val">24.47</b> — true price $<b id="dc-p0-val">956.71</b></div>
+    <div class="tl-chart-caption">The blue curve is the exact price from Lesson 1's formula. The dashed amber line is the duration-only linear approximation — accurate very close to the tangent point, but it visibly peels away from the true curve as yield moves further in either direction, always sitting below the true (convex) curve. The dotted purple curve adds the convexity correction and hugs the true curve far more closely over a wider range.</div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Duration, convexity, and a 100bp shock — using Lesson 1's exact bond</h3>
+    <p>
+      Same bond as Lesson 1: 5-year, $1,000 face, 4% annual coupon
+      (\(C=\$40\)), currently priced at \(P=\$956.71\) at a 5% YTM
+      (\(y=0.05\)). Its five discounted cash flows (from Lesson 1) were
+      \$38.10, \$36.28, \$34.56, \$32.91, and a final \$814.87 (the last
+      coupon plus face value, \$1,040, discounted five years) — using more
+      precise intermediate figures of \$38.10, \$36.28, \$34.55, \$32.91,
+      \$31.34 (coupon-only) and \$783.53 (face-only) for the final year.
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Weight each cash flow's timing by its share of price</h4>
+          <p>Multiply each cash flow's present value by its own \(t\), then sum: \(1\times38.10 + 2\times36.28 + 3\times34.56 + 4\times32.91 + 5\times814.87\).</p>
+          <div class="tl-math">
+            \[ 38.10 + 72.56 + 103.66 + 131.63 + 4074.34 = 4420.29 \]
+          </div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Divide by the price to get Macaulay duration</h4>
+          <div class="tl-math">
+            \[ D_{Mac} = \frac{4420.29}{956.71} \approx 4.62\ \text{years} \]
+          </div>
+          <p>Sanity check: 4.62 years is comfortably less than the bond's 5-year maturity, exactly as expected for any coupon-paying bond — some value arrives before the final year, which pulls the weighted average forward from 5.00.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Convert to modified duration</h4>
+          <div class="tl-math">
+            \[ D_{mod} = \frac{4.62}{1.05} \approx 4.40\ \text{years} \]
+          </div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Compute convexity</h4>
+          <p>Weight each cash flow's present value by \(t(t+1)\) this time — \(2\times38.10+6\times36.28+12\times34.56+20\times32.91+30\times814.87 = 25{,}812.69\) — then divide by \(P\cdot(1+y)^2\):</p>
+          <div class="tl-math">
+            \[ C = \frac{25{,}812.69}{956.71 \times 1.05^2} = \frac{25{,}812.69}{1054.77} \approx 24.47 \]
+          </div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">5</div>
+        <div class="tl-step-body">
+          <h4>Estimate the price after a 100bp (1 percentage point) yield rise — duration only</h4>
+          <div class="tl-math">
+            \[ \frac{\Delta P}{P} \approx -4.40 \times 0.01 = -4.40\% \quad\Rightarrow\quad P \approx 956.71 \times (1-0.0440) \approx \$914.61 \]
+          </div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">6</div>
+        <div class="tl-step-body">
+          <h4>Now add the convexity correction</h4>
+          <div class="tl-math">
+            \[ \frac{\Delta P}{P} \approx -4.40\times0.01 + \tfrac{1}{2}\times24.47\times(0.01)^2 = -0.0440 + 0.00122 = -0.04278 \]
+          </div>
+          <div class="tl-math">
+            \[ P \approx 956.71\times(1-0.04278) \approx \$915.78 \]
+          </div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">7</div>
+        <div class="tl-step-body">
+          <h4>Compare both estimates to the exact re-priced value</h4>
+          <p>Plugging \(y=0.06\) directly into Lesson 1's exact pricing formula gives \(P(0.06) = \$915.75\) — the true value, no approximation.</p>
+          <div class="tl-compare">
+            <div class="tl-compare-card amber">
+              <h4>Duration only: $914.61</h4>
+              <p>Off by about \$1.14 (understates the true price) — the straight-line tangent estimate misses the curvature entirely.</p>
+            </div>
+            <div class="tl-compare-card purple">
+              <h4>Duration + convexity: $915.78</h4>
+              <p>Off by only about \$0.03 — the second-order correction closes nearly the entire gap left by the linear estimate.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-stat-row">
+    <div class="tl-stat blue"><div class="tl-stat-num">4.62y</div><div class="tl-stat-label">Macaulay duration</div><div class="tl-stat-sub">payment-weighted average time</div></div>
+    <div class="tl-stat green"><div class="tl-stat-num">4.40y</div><div class="tl-stat-label">Modified duration</div><div class="tl-stat-sub">≈ % price move per 100bp</div></div>
+    <div class="tl-stat purple"><div class="tl-stat-num">24.47</div><div class="tl-stat-label">Convexity</div><div class="tl-stat-sub">the curvature correction term</div></div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Hedging a bond book with futures, and getting the size wrong without convexity</h3>
+    <p>
+      A fixed-income desk holds a large position in a 30-year Treasury bond
+      — a maturity where both duration and convexity are large — and wants
+      to hedge against a surprise rate move using Treasury futures. The
+      standard approach is a <strong>duration-neutral hedge</strong>: size
+      the futures position so the portfolio's total DV01 nets to roughly
+      zero, meaning a small parallel shift in yields produces close to no
+      P&amp;L either way.
+    </p>
+    <p>
+      That hedge works well for the kind of small, everyday yield wiggle it
+      was sized for. It works far less well for a large, sudden shock — say,
+      a surprise 75bp move in a single session, of the kind that can occur
+      around an unexpected central bank decision. Because the desk's actual
+      bond position has meaningfully more convexity than the futures
+      contract used to hedge it (convexity itself varies by instrument and
+      isn't automatically matched just because DV01 is), the portfolio isn't
+      truly flat for a large move — it has a residual, positive convexity
+      exposure that shows up as a P&amp;L gain in <em>either</em> direction
+      once the move is big enough for the second-order term to matter, an
+      effect a duration-only (DV01) hedge is blind to by construction. This
+      is exactly why credit and mortgage-derivatives desks in particular
+      quote and trade convexity explicitly as its own risk factor, not merely
+      as a footnote to duration — a large book that is duration-neutral but
+      convexity-mismatched has real, quantifiable exposure to how big a rate
+      move turns out to be, not just which direction it goes.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    <strong>Duration is the primary risk-sizing unit on every fixed-income
+    desk.</strong> Positions, portfolios, and even entire fund mandates are
+    routinely quoted and constrained in duration terms ("this fund runs
+    roughly 6 years of duration," "we're currently 0.5 years short of
+    benchmark duration") well before anyone re-prices a single bond off its
+    full cash-flow schedule. DV01 is the trade-level version of the exact
+    same idea, used to size hedges: a trader who is long \$50,000 of DV01 in
+    cash bonds sells futures with a matching \$50,000 DV01 to flatten rate
+    exposure.
+  </p>
+  <p>
+    <strong>Duration matching / immunization</strong> is a classic
+    liability-driven-investing technique: a pension fund or insurer with
+    known future cash obligations builds a bond portfolio whose duration
+    matches the duration of those liabilities, so that a parallel shift in
+    rates moves the value of assets and liabilities by roughly the same
+    amount, protecting the fund's net funding position against exactly the
+    first-order risk this lesson quantifies.
+  </p>
+  <p>
+    <strong>Convexity is bought and sold as its own factor</strong>,
+    particularly in mortgage-backed securities (where prepayment behavior
+    can make convexity <em>negative</em> — a crucial exception to the "always
+    positive for a plain bond" result derived above, because an embedded
+    prepayment option changes the cash-flow schedule itself as yields move)
+    and in the options market, where a long options position is engineered
+    to have large positive convexity ("long gamma," the options-pricing
+    cousin of this same second-order idea). Desks that are structurally
+    short convexity (many mortgage originators, for instance) actively hedge
+    that exposure rather than simply reporting a DV01 and calling the risk
+    fully described.
+  </p>
+  <p>
+    <strong>Barbell vs. bullet portfolio construction</strong> uses convexity
+    explicitly: a "barbell" (combining very short- and very long-maturity
+    bonds) can be built to match the same duration as a "bullet" (a single
+    intermediate maturity) while carrying meaningfully higher convexity,
+    because convexity grows faster with maturity than duration does — a
+    standard relative-value lever fixed-income portfolio managers use even
+    when two portfolios look identical on a duration-only basis.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this goes wrong in practice</h3>
+    <p>
+      <strong>Using duration alone for a large or fast-moving yield shock.</strong>
+      The whole point of this lesson's worked example is that the linear
+      approximation's error grows with the square of the yield move — fine
+      for a 5-10bp daily wiggle, increasingly wrong for a 100bp+ shock. Any
+      stress test or scenario analysis covering a large hypothetical rate
+      move needs the convexity term (or, better, full re-pricing) to be
+      taken seriously.
+    </p>
+    <p>
+      <strong>Assuming convexity is always positive.</strong> It is, for a
+      plain-vanilla, option-free bond — but mortgage-backed securities and
+      any bond with an embedded call option can have <em>negative</em>
+      convexity, because the issuer's option to call/prepay changes the
+      bond's actual cash-flow schedule as yields move, breaking the fixed-CF
+      assumption this lesson's formulas rely on. Applying this lesson's
+      "always underestimates the price" conclusion to a callable or
+      mortgage instrument without checking for negative convexity first is a
+      real, common mistake.
+    </p>
+    <p>
+      <strong>Treating duration and convexity as accurate for a
+      non-parallel yield curve move.</strong> Both measures, as derived here,
+      assume every point on the yield curve shifts by the same \(\Delta y\)
+      (a "parallel shift"). Real yield curve moves usually aren't parallel —
+      short rates and long rates often move by different amounts, sometimes
+      in different directions (a curve steepening or flattening). A
+      portfolio can be perfectly duration-neutral to a parallel shift and
+      still lose money on a steepening or flattening move; this is exactly
+      why Lesson 3's bootstrapped curve, and key-rate ("partial") durations
+      built on it, exist as a finer-grained tool.
+    </p>
+    <p>
+      <strong>Forgetting duration and convexity are themselves yield-dependent.</strong>
+      Both are computed <em>at</em> a specific current yield and change as
+      yield moves — the interactive chart above makes this visible directly:
+      drag the tangent point and both \(D_{mod}\) and \(C\) recompute to
+      different values. A duration figure quoted today is a local snapshot,
+      not a fixed property of the bond.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Macaulay duration is a payment-weighted average time.</strong> Each cash flow's weight is its share of the bond's present value — a genuine weighted average, in years.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Modified duration IS the first-order Taylor term of price w.r.t. yield.</strong> \(D_{mod}=D_{Mac}/(1+y)\) and \(\Delta P/P \approx -D_{mod}\Delta y\) — nothing more exotic than a tangent-line approximation.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Convexity is the second-order term, and it's always positive for a plain bond.</strong> The true price-yield curve always sits on or above its own tangent line — duration alone always underestimates price, in either direction of yield move.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Duration + convexity beats duration alone, by a lot, for a real-sized shock.</strong> The worked example's 100bp move: duration-only missed by \$1.14; adding convexity closed the gap to \$0.03.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>DV01/PVBP is duration in dollars-per-basis-point.</strong> Same information, denominated the way trading desks actually size hedges.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Both measures assume a parallel yield-curve shift.</strong> Real curve moves are rarely perfectly parallel — a duration-neutral book can still lose money on a steepening or flattening.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Convexity can be negative for callable/mortgage instruments.</strong> An embedded prepayment or call option changes the bond's cash-flow schedule as yields move, which can flip the "always positive" result this lesson derives for a plain bond.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why is a coupon-paying bond's Macaulay duration always less than its time to maturity?</summary>
+    <div class="tl-answer">
+      Because Macaulay duration is a weighted average of every cash flow's
+      timing, weighted by each cash flow's share of present value, and a
+      coupon-paying bond has cash flows arriving before maturity (the
+      coupons themselves) in addition to the final maturity payment. Those
+      earlier cash flows pull the weighted average forward from the final
+      maturity date. Only a zero-coupon bond, with a single cash flow at
+      maturity and 100% of the weight on that one date, has Macaulay
+      duration exactly equal to its maturity.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. In what precise sense is duration "the first-order Taylor term" of the bond pricing function?</summary>
+    <div class="tl-answer">
+      A first-order Taylor expansion of any function \(f(y)\) around \(y_0\)
+      is \(f(y_0+\Delta y)\approx f(y_0)+f'(y_0)\Delta y\). Differentiating
+      the bond pricing function \(P(y) = \sum_t CF_t(1+y)^{-t}\) term by term
+      gives \(dP/dy = -D_{mod}\cdot P\) exactly — so the linear
+      price-sensitivity formula \(\Delta P/P \approx -D_{mod}\Delta y\) is
+      literally the generic first-order Taylor formula applied to this one
+      specific function, with \(-D_{mod}\cdot P\) playing the role of
+      \(f'(y_0)\). There is no separate "duration mathematics" — it is
+      calculus's linear approximation, applied to price-as-a-function-of-yield.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why does duration alone always underestimate a plain bond's true price after a yield move, regardless of whether yields rose or fell?</summary>
+    <div class="tl-answer">
+      Because the full approximation is \(\Delta P/P \approx -D_{mod}\Delta y
+      + \frac{1}{2}C(\Delta y)^2\), and the correction term \(\frac12
+      C(\Delta y)^2\) is always non-negative — \(C\) is positive for a plain
+      bond, and \((\Delta y)^2\) can never be negative regardless of which
+      direction yield moved. Geometrically, this is exactly what it means
+      for the price-yield curve to be convex: it always lies on or above its
+      own tangent line at every point, so the tangent-line (duration-only)
+      estimate is always a lower bound on the true price, whether the yield
+      shock is up or down.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What does it mean for a mortgage-backed security to have negative convexity, and why does it break the "always positive" result derived in this lesson?</summary>
+    <div class="tl-answer">
+      This lesson's convexity formula assumes the bond's cash flows
+      \(CF_t\) are fixed, contractual amounts that don't change as yield
+      moves — true for a plain bond, false for a mortgage security, where
+      falling yields trigger more homeowner prepayment/refinancing, which
+      shortens the actual expected cash-flow schedule right when the bond
+      would otherwise be gaining the most value. That schedule-shortening
+      effect works against the bondholder exactly when it matters most,
+      which can make the security's actual price-yield curve bend the
+      "wrong" way (concave rather than convex) over some yield range —
+      negative convexity. The derivation in this lesson assumes fixed \(CF_t\)
+      throughout, so it simply doesn't apply once the cash flows themselves
+      are yield-dependent.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. A portfolio is built to be exactly duration-neutral (net DV01 ≈ 0) to a parallel yield curve shift. Is it necessarily protected against all realistic yield curve moves? Why or why not?</summary>
+    <div class="tl-answer">
+      No. Duration-neutrality, as derived in this lesson, specifically
+      protects against a <em>parallel</em> shift — every maturity's yield
+      moving by the same \(\Delta y\). Real yield curve moves are frequently
+      non-parallel (a steepening, where long rates move more than short
+      rates, or a flattening, the reverse), and a portfolio can be perfectly
+      duration-neutral to a parallel shift while still having real, unhedged
+      exposure to a steepening or flattening, since duration is a single
+      number summarizing sensitivity to one uniform shift, not to the shape
+      of the curve. Finer tools — key-rate or "partial" durations, built on
+      the bootstrapped zero curve from Lesson 3 — are needed to hedge
+      non-parallel curve risk.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Frank J. Fabozzi, <em>Bond Markets, Analysis, and Strategies</em>, 9th ed., Pearson, 2016 — the standard treatment of duration, convexity, and DV01/PVBP, including the immunization and barbell/bullet applications referenced above.</li>
+    <li>Bruce Tuckman &amp; Angel Serrat, <em>Fixed Income Securities: Tools for Today's Markets</em>, 3rd ed., Wiley, 2011 — derives duration and convexity rigorously as derivatives of the pricing function, the same approach this lesson takes.</li>
+    <li>Frederick Macaulay, <em>Some Theoretical Problems Suggested by the Movements of Interest Rates, Bond Yields and Stock Prices in the United States since 1856</em>, NBER, 1938 — the original source of the duration concept that bears Macaulay's name.</li>
+    <li>Lakhbir S. Hayre (ed.), <em>Salomon Smith Barney Guide to Mortgage-Backed and Asset-Backed Securities</em>, Wiley, 2001 — a standard reference for negative convexity in mortgage securities, referenced in the pitfalls above.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="yield-curve-construction.html">Bootstrapping the Yield Curve →</a>
+  </div>
+</div>
+<script>
+(function(){
+  // Same bond as Lesson 1: 5-year, 4% annual coupon on $1,000 face.
+  var C = 40, F = 1000, n = 5;
+
+  function price(y){
+    var p = 0;
+    for (var t = 1; t <= n; t++) p += C / Math.pow(1+y, t);
+    p += F / Math.pow(1+y, n);
+    return p;
+  }
+  function cashFlow(t){ return t === n ? (C + F) : C; }
+  function macDuration(y){
+    var p = price(y), num = 0;
+    for (var t = 1; t <= n; t++) num += t * cashFlow(t) / Math.pow(1+y, t);
+    return num / p;
+  }
+  function modDuration(y){ return macDuration(y) / (1+y); }
+  function convexity(y){
+    var p = price(y), num = 0;
+    for (var t = 1; t <= n; t++) num += t*(t+1) * cashFlow(t) / Math.pow(1+y, t);
+    return num / (p * Math.pow(1+y, 2));
+  }
+
+  var slider = document.getElementById('dc-y0-slider');
+  var y0Val = document.getElementById('dc-y0-val');
+  var dmodVal = document.getElementById('dc-dmod-val');
+  var convVal = document.getElementById('dc-conv-val');
+  var p0Val = document.getElementById('dc-p0-val');
+  var truePath = document.getElementById('dc-true-path');
+  var tangentPath = document.getElementById('dc-tangent-path');
+  var quadPath = document.getElementById('dc-quad-path');
+  var y0Dot = document.getElementById('dc-y0-dot');
+  if (!slider) return;
+
+  // Chart pixel mapping: x in [70,600] maps to yield in [0.01, 0.12]; y in [250,20] maps to price in [700, 1200]
+  var X0 = 70, X1 = 600, YMIN = 0.01, YMAX = 0.12;
+  var PY0 = 250, PY1 = 20, PMIN = 700, PMAX = 1200;
+
+  function xForY(y){ return X0 + (y - YMIN) / (YMAX - YMIN) * (X1 - X0); }
+  function yForP(p){
+    var py = PY0 + (p - PMIN) / (PMAX - PMIN) * (PY1 - PY0);
+    if (py < PY1) py = PY1; // clip so extreme approximations don't fly off the chart
+    if (py > PY0) py = PY0;
+    return py;
+  }
+
+  function buildTrueCurve(){
+    var d = '';
+    var steps = 120;
+    for (var i = 0; i <= steps; i++) {
+      var y = YMIN + (YMAX - YMIN) * i / steps;
+      var p = price(y);
+      d += (i === 0 ? 'M' : 'L') + xForY(y).toFixed(2) + ',' + yForP(p).toFixed(2) + ' ';
+    }
+    truePath.setAttribute('d', d);
+  }
+
+  function buildApproxCurves(y0){
+    var p0 = price(y0);
+    var dmod = modDuration(y0);
+    var conv = convexity(y0);
+    var steps = 60;
+    var dTan = '', dQuad = '';
+    for (var i = 0; i <= steps; i++) {
+      var y = YMIN + (YMAX - YMIN) * i / steps;
+      var dy = y - y0;
+      var pTan = p0 * (1 - dmod * dy);
+      var pQuad = p0 * (1 - dmod * dy + 0.5 * conv * dy * dy);
+      dTan += (i === 0 ? 'M' : 'L') + xForY(y).toFixed(2) + ',' + yForP(pTan).toFixed(2) + ' ';
+      dQuad += (i === 0 ? 'M' : 'L') + xForY(y).toFixed(2) + ',' + yForP(pQuad).toFixed(2) + ' ';
+    }
+    tangentPath.setAttribute('d', dTan);
+    quadPath.setAttribute('d', dQuad);
+    return { p0: p0, dmod: dmod, conv: conv };
+  }
+
+  function update(){
+    var y0 = parseInt(slider.value, 10) / 10000;
+    var stats = buildApproxCurves(y0);
+    y0Val.textContent = 'y₀ = ' + (y0*100).toFixed(2) + '%';
+    dmodVal.textContent = stats.dmod.toFixed(2);
+    convVal.textContent = stats.conv.toFixed(2);
+    p0Val.textContent = stats.p0.toFixed(2);
+    y0Dot.setAttribute('cx', xForY(y0));
+    y0Dot.setAttribute('cy', yForP(stats.p0));
+  }
+
+  buildTrueCurve();
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trigonometry, Logarithms &amp; Exponentials — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Foundation Mathematics / Trigonometry, Logarithms &amp; Exponentials</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Foundation Mathematics · Lesson 2 of 6</div>
+  <h1 class="tl-title">Trigonometry, Logarithms &amp; Exponentials</h1>
+  <p class="tl-dek">Sine, cosine, \(e^x\) and \(\ln x\) — the three functions behind cycles, continuous growth, and why log-returns are the honest way to add up performance over time.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span>~16 min read</span>
+    <span>Prereqs: Algebra &amp; Functions Refresher</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Sine and cosine measure the vertical and horizontal position of a point moving around the unit circle (radius 1) as its angle \(\theta\) increases — they're periodic, repeating identically every \(2\pi\) radians (360°), which is exactly why anything cyclical (seasons, intraday patterns) gets modeled with them.</li>
+      <li><strong>Radians</strong> measure angle by arc length instead of degrees — \(2\pi\) radians is a full circle, and radians are what calculus-based formulas use natively, so degrees need converting first.</li>
+      <li>\(e^x\) (the natural exponential) and \(\ln x\) (its inverse, the natural logarithm) undo each other exactly: \(\ln(e^x)=x\) and \(e^{\ln x}=x\). The log rules — \(\ln(ab)=\ln a+\ln b\), \(\ln(a/b)=\ln a - \ln b\), \(\ln(a^n)=n\ln a\) — turn multiplication into addition.</li>
+      <li><strong>Continuous compounding</strong>, \(e^{rt}\), is the limit of compounding more and more frequently (yearly → monthly → daily → every instant) — derived directly from the definition of \(e\) as that limit.</li>
+      <li><strong>Log-returns are additive across time</strong> — sum daily log-returns and you get the total log-return over the whole period, exactly, with no compounding correction needed. Simple (percentage) returns don't have this property; they compound multiplicatively instead.</li>
+      <li>The worked example converts a 5% annual simple rate to its continuously-compounded equivalent (≈4.879%), and sums four daily log-returns to confirm they equal the 4-day total log-return exactly.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Two unrelated-looking topics live in this lesson because they show up
+    everywhere else in this curriculum for the same underlying reason: both
+    describe things that grow or repeat in a structured, mathematically
+    precise way. Sine and cosine describe anything that cycles — and cyclical
+    behavior (seasonality, intraday rhythms, mean-reverting oscillation) is
+    modeled with exactly these functions later in this curriculum's signal
+    processing material. \(e^x\) and \(\ln x\) describe anything that
+    compounds continuously — and almost every pricing model, growth-rate
+    calculation, and returns series in finance is built on the natural
+    exponential and its inverse. Get comfortable with both here, in their
+    plainest form, and the notation stops being a barrier everywhere else.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">〰️</div>
+      <h4>Cycles &amp; seasonality, later in this curriculum</h4>
+      <p>Any model of a repeating pattern — seasonal, intraday, or otherwise cyclical — is built from sine and cosine waves, exactly as introduced here.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📈</div>
+      <h4>Continuous-time pricing models</h4>
+      <p>Almost every option-pricing and continuous-growth formula later in this curriculum is expressed using \(e^{x}\) — this lesson is where that notation first becomes second nature.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">➕</div>
+      <h4>The returns primer, elsewhere in this curriculum</h4>
+      <p>The returns primer builds an entire argument about compounding on log-returns' additivity — this lesson derives exactly why that additivity holds.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🌀</div>
+      <h4>Complex numbers, next lesson</h4>
+      <p>Euler's formula fuses \(e^x\) and the trig functions from this lesson into one identity — the very next lesson in this tier picks up exactly where this one leaves off.</p>
+    </div>
+  </div>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A point going around a circle, and money growing every instant instead of once a year</h3>
+    <p>
+      Imagine a point starting at the 3 o'clock position on a circle of radius
+      1, then walking counterclockwise around the rim. At any moment, that
+      point has a height above the center and a horizontal distance from the
+      center. <strong>Sine</strong> is that height; <strong>cosine</strong> is
+      that horizontal distance. As the point keeps walking around and around,
+      both values rise and fall in a smooth, repeating wave — and because the
+      circle is the same shape every time around, the wave repeats <em>exactly</em>,
+      forever. That's periodicity: whatever the sine and cosine values were one
+      full lap ago, they're identical again now.
+    </p>
+    <p>
+      \(e^x\) and \(\ln x\) come from a completely different question: what
+      happens to compound interest if, instead of compounding once a year, you
+      compound twice a year, then monthly, then daily, then every single
+      instant, with no gaps at all? Each time you compound more often, you earn
+      a little more (interest on interest, more often) — but the gains from
+      compounding more frequently get smaller and smaller each time, and the
+      whole thing settles down to a specific, finite number as the compounding
+      frequency goes to infinity. That settled-down number is \(e\)
+      (approximately 2.71828), and \(e^{rt}\) is the formula for "growing at
+      rate \(r\) continuously, with no gaps, for time \(t\)." The natural
+      logarithm \(\ln x\) is simply the question run backwards: "what
+      continuous growth rate, over what time, would it take to reach \(x\)
+      starting from 1?"
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>The unit circle, sine, and cosine</h3>
+  <p>
+    Draw a circle of radius 1 centered at the origin — the <strong>unit
+    circle</strong>. Pick an angle \(\theta\), measured counterclockwise from
+    the positive horizontal axis, and walk that far around the circle's edge.
+    The point you land on has coordinates \((\cos\theta, \sin\theta)\) —
+    that's the definition, full stop. Cosine is the horizontal (\(x\))
+    coordinate; sine is the vertical (\(y\)) coordinate.
+  </p>
+  <div class="tl-math">
+    \[ (\text{point on unit circle at angle } \theta) = (\cos\theta,\ \sin\theta) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>θ</code><span>(theta) the angle swept counterclockwise from the 3 o'clock position</span></div>
+    <div class="tl-eq-chip c2"><code>cos θ</code><span>the horizontal coordinate of the point at that angle</span></div>
+    <div class="tl-eq-chip c3"><code>sin θ</code><span>the vertical coordinate of the point at that angle</span></div>
+  </div>
+  <p>
+    <strong>Tangent</strong> is defined as the ratio \(\tan\theta =
+    \sin\theta/\cos\theta\) — geometrically, the slope of the line from the
+    origin through that point. Because it's a ratio, tangent is undefined
+    wherever \(\cos\theta = 0\) (dividing by zero) — exactly the points where
+    the line through the origin is perfectly vertical, at \(\theta = 90°\) and
+    \(270°\).
+  </p>
+  <div class="tl-math">
+    \[ \tan\theta = \frac{\sin\theta}{\cos\theta} \]
+  </div>
+
+  <h3>Radians vs. degrees</h3>
+  <p>
+    Degrees split a full circle into 360 arbitrary pieces (a convention
+    inherited from ancient Babylonian astronomy). <strong>Radians</strong>
+    instead measure angle by the actual arc length traveled around a
+    unit-radius circle — an angle of 1 radian sweeps out an arc exactly 1 unit
+    long. Since the full circumference of a unit circle is \(2\pi\) (from
+    \(C = 2\pi r\) with \(r=1\)), a full circle is exactly \(2\pi\) radians.
+  </p>
+  <div class="tl-math">
+    \[ 2\pi \text{ radians} = 360° \qquad\Rightarrow\qquad \text{radians} = \text{degrees} \times \frac{\pi}{180} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>π</code><span>(pi) ≈ 3.14159, the ratio of a circle's circumference to its diameter</span></div>
+    <div class="tl-eq-chip c2"><code>2π rad</code><span>one full trip around the circle — 360°</span></div>
+  </div>
+  <p>
+    Radians aren't just an alternate convention chosen for style — every
+    calculus-based trig formula elsewhere in this curriculum (derivatives of
+    \(\sin\) and \(\cos\), the Taylor series behind Euler's formula in the next
+    lesson) is only clean and correct when the angle is in radians. Plugging
+    degrees into those formulas silently gives a wrong answer, so the habit of
+    converting first is worth building now.
+  </p>
+
+  <h3>Periodicity — why cycles use sine and cosine</h3>
+  <p>
+    Because walking one full \(2\pi\) radians around the circle returns you to
+    exactly the same point, sine and cosine repeat their values identically
+    every \(2\pi\) radians:
+  </p>
+  <div class="tl-math">
+    \[ \sin(\theta + 2\pi) = \sin\theta \qquad \cos(\theta + 2\pi) = \cos\theta \]
+  </div>
+  <div class="tl-solid blue">
+    <strong>Foreshadowing:</strong> this exact repeating property — a function
+    that returns to the same value after a fixed interval — is why cycle and
+    seasonality analysis later in this curriculum is built out of sine and
+    cosine waves of different frequencies added together. A repeating pattern
+    in data (a weekly rhythm, a seasonal effect) is modeled as a wave with a
+    matching period; decomposing a messy series into a sum of such waves is
+    the whole idea behind spectral/Fourier-style analysis, covered properly in
+    a later Signal Processing lesson.
+  </div>
+
+  <h3>The natural exponential, \(e^x\)</h3>
+  <p>
+    The number \(e \approx 2.71828\) is defined as the limit of compounding
+    100% growth over more and more sub-periods within one unit of time:
+  </p>
+  <div class="tl-math">
+    \[ e = \lim_{n\to\infty}\left(1+\frac{1}{n}\right)^n \approx 2.71828\ldots \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>n</code><span>the number of compounding sub-periods — the limit lets this grow without bound</span></div>
+    <div class="tl-eq-chip c2"><code>e</code><span>the settled-down value the expression approaches — irrational, never terminates or repeats</span></div>
+  </div>
+  <p>
+    \(e^x\) is the function "raise \(e\) to the power \(x\)" — the
+    <strong>natural exponential</strong>. Its defining property, and the whole
+    reason it's "natural" rather than an arbitrary choice of base, is that its
+    own rate of change at any point equals its own value at that point (a
+    calculus fact, not needed to use the function here, but the reason it
+    appears constantly in growth models). For this lesson, treat \(e^x\)
+    simply as continuous, unbounded growth: it's always positive, always
+    increasing, and grows faster and faster as \(x\) increases.
+  </p>
+
+  <h3>The natural logarithm, \(\ln x\), and the log rules</h3>
+  <p>
+    The <strong>natural logarithm</strong> \(\ln x\) is defined as the inverse
+    of \(e^x\) — exactly the "swap and rearrange" construction from the
+    previous lesson, applied to this specific function:
+  </p>
+  <div class="tl-math">
+    \[ \ln(e^x) = x \qquad\qquad e^{\ln x} = x \quad (x>0) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>ln x</code><span>"what power must \(e\) be raised to, to get \(x\)?"</span></div>
+    <div class="tl-eq-chip c4"><code>x &gt; 0</code><span>\(\ln x\) is only defined for positive \(x\) — \(e^{\text{anything}}\) is never zero or negative</span></div>
+  </div>
+  <p>
+    Three log rules follow directly from the corresponding rules for
+    exponents, and they matter enough to memorize — they're what turns
+    multiplicative problems into additive ones throughout this curriculum:
+  </p>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">ln(ab) = ln a + ln b</div><div class="tl-fp-name">Product rule</div><div class="tl-fp-desc">Log of a product is the sum of the logs</div></div>
+    <div class="tl-fp green"><div class="tl-fp-term">ln(a/b) = ln a − ln b</div><div class="tl-fp-name">Quotient rule</div><div class="tl-fp-desc">Log of a ratio is the difference of the logs</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">ln(aⁿ) = n·ln a</div><div class="tl-fp-name">Power rule</div><div class="tl-fp-desc">An exponent inside the log becomes a multiplier outside it</div></div>
+  </div>
+  <p>
+    These follow because \(\ln\) undoes \(e^x\), and exponents themselves obey
+    \(e^a \cdot e^b = e^{a+b}\) — multiplying two exponentials adds their
+    exponents. Taking \(\ln\) of both sides of that fact is exactly the
+    product rule above.
+  </p>
+
+  <h3>Continuous compounding — deriving \(e^{rt}\)</h3>
+  <p>
+    Compounding a rate \(r\) per year, \(m\) times per year, for \(t\) years,
+    gives the standard compound-growth formula:
+  </p>
+  <div class="tl-math">
+    \[ \left(1+\frac{r}{m}\right)^{mt} \]
+  </div>
+  <p>
+    As the compounding frequency \(m\) increases without bound — compounding
+    monthly, then daily, then every second, then continuously — this
+    expression approaches a limit. Substitute \(n = m/r\) (so \(m = nr\)) and
+    the exponent becomes \(mt = nrt\):
+  </p>
+  <div class="tl-math">
+    \[ \left(1+\frac{r}{m}\right)^{mt} = \left[\left(1+\frac{1}{n}\right)^{n}\right]^{rt} \xrightarrow{\ m\to\infty\ (n\to\infty)\ } e^{rt} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>m</code><span>compounding frequency per year — the thing being pushed to infinity</span></div>
+    <div class="tl-eq-chip c3"><code>[(1+1/n)ⁿ]</code><span>exactly the limit-definition of \(e\) from above, raised to the power \(rt\)</span></div>
+    <div class="tl-eq-chip c2"><code>e^{rt}</code><span>the continuously-compounded growth factor — the limit of ever-more-frequent compounding</span></div>
+  </div>
+  <p>
+    This is not a coincidence or a separate formula to memorize — it's
+    literally the definition of \(e\) from a few paragraphs above, appearing
+    inside the ordinary compound-interest formula once the compounding
+    frequency is pushed to infinity. \(e^{rt}\) is what "growing continuously
+    at rate \(r\) for time \(t\), with compounding happening every infinitesimal
+    instant rather than at discrete intervals" actually means, spelled out.
+  </p>
+
+  <h3>Log-returns vs. simple returns, and why log-returns add</h3>
+  <p>
+    A <strong>simple return</strong> over one period is the familiar percentage
+    change: \(R = (P_1 - P_0)/P_0\), equivalently \(P_1/P_0 = 1+R\). A
+    <strong>log-return</strong> is defined instead as the natural log of the
+    price ratio:
+  </p>
+  <div class="tl-math">
+    \[ r = \ln\left(\frac{P_1}{P_0}\right) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>r</code><span>the log-return over one period</span></div>
+    <div class="tl-eq-chip c2"><code>P₀, P₁</code><span>the price at the start and end of the period</span></div>
+  </div>
+  <p>
+    Chain two periods together — price moves from \(P_0\) to \(P_1\) to
+    \(P_2\). The total log-return over both periods is \(\ln(P_2/P_0)\).
+    Rewrite the ratio inside the log as a product of the two one-period ratios,
+    then apply the product rule from above:
+  </p>
+  <div class="tl-math">
+    \[ \ln\!\left(\frac{P_2}{P_0}\right) = \ln\!\left(\frac{P_2}{P_1}\cdot\frac{P_1}{P_0}\right) = \ln\!\left(\frac{P_2}{P_1}\right) + \ln\!\left(\frac{P_1}{P_0}\right) = r_2 + r_1 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>P₂/P₀ = (P₂/P₁)(P₁/P₀)</code><span>the total price ratio is the product of the two step ratios — plain algebra</span></div>
+    <div class="tl-eq-chip c3"><code>r₁ + r₂</code><span>the log product rule turns that product straight into a sum of log-returns</span></div>
+  </div>
+  <p>
+    That's the whole reason log-returns are additive: the log rules convert
+    multiplication of price ratios (how compounding actually works) directly
+    into addition of returns. Simple returns don't have this property —
+    compounding two simple returns is \((1+R_1)(1+R_2)-1\), which is <em>not</em>
+    \(R_1+R_2\) except as a rough approximation for very small returns. The
+    returns primer elsewhere in this curriculum builds an entire argument
+    about the gap between arithmetic and geometric compounding on exactly this
+    distinction — this lesson is the algebraic reason that distinction exists
+    in the first place.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(\theta\)</td><td>(theta) An angle, typically measured in radians in this lesson.</td></tr>
+    <tr><td>\(\sin\theta,\cos\theta\)</td><td>The vertical and horizontal coordinates of the point at angle \(\theta\) on the unit circle.</td></tr>
+    <tr><td>\(\tan\theta\)</td><td>\(\sin\theta/\cos\theta\) — undefined wherever \(\cos\theta=0\).</td></tr>
+    <tr><td>\(\pi\)</td><td>(pi) ≈ 3.14159 — a circle's circumference divided by its diameter; \(2\pi\) radians is a full circle.</td></tr>
+    <tr><td>\(e\)</td><td>≈ 2.71828 — the limit of \((1+1/n)^n\) as \(n\to\infty\); the base of the natural exponential.</td></tr>
+    <tr><td>\(e^x\)</td><td>The natural exponential — continuous, unbounded growth.</td></tr>
+    <tr><td>\(\ln x\)</td><td>The natural logarithm — the inverse of \(e^x\); "what power of \(e\) gives \(x\)."</td></tr>
+    <tr><td>\(r\)</td><td>Interest/growth rate per period (trig/compounding sections), or a log-return (returns section) — context-dependent, defined at first use each time.</td></tr>
+    <tr><td>\(m, n\)</td><td>Compounding frequency (times per year) and the limit variable used in deriving \(e\).</td></tr>
+    <tr><td>\(t\)</td><td>Time, in years, over which growth is compounded.</td></tr>
+    <tr><td>\(P_0, P_1, P_2\)</td><td>Prices at successive points in time, used to define simple and log returns.</td></tr>
+  </table></div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Compounding frequency approaching continuous growth, \(e^{rt}\)</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Growth curves for increasing compounding frequency converging toward the smooth continuous-compounding curve">
+      <line x1="50" y1="220" x2="600" y2="220" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="50" y1="20" x2="50" y2="220" style="stroke:var(--border);stroke-width:1"/>
+      <text x="600" y="234" text-anchor="end" style="fill:var(--text3);font-size:11px">years →</text>
+      <text x="54" y="30" text-anchor="start" style="fill:var(--text3);font-size:11px">value</text>
+      <path style="fill:none;stroke:var(--text3);stroke-width:2;stroke-dasharray:4,3" d="M50,220 L600,50" id="fa2-cont-curve"/>
+      <text x="605" y="46" text-anchor="start" style="fill:var(--text3);font-size:10px">e^(rt), continuous</text>
+      <path id="fa2-freq-curve" style="fill:none;stroke:var(--blue);stroke-width:2.5" d="M50,220 L600,58"/>
+      <circle id="fa2-dot" cx="600" cy="58" r="5" style="fill:var(--blue);stroke:var(--s1);stroke-width:1.5"/>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Compounding frequency per year</span><span class="tl-live" id="fa2-m-val">m = 1 (annual)</span></div>
+        <input type="range" id="fa2-m-slider" min="0" max="4" step="1" value="0">
+        <div class="tl-hint">Drag right: 1 (annual) → 4 (quarterly) → 12 (monthly) → 252 (daily) → continuous. Same 8%/year rate throughout — only the compounding frequency changes. Watch the blue curve converge onto the dashed continuous-compounding curve.</div>
+      </div>
+    </div>
+    <div class="tl-readout">Ending value after 10 years on $100: <b id="fa2-val">$215.89</b> · continuous limit: <b>$222.55</b></div>
+    <div class="tl-chart-caption">Illustrative, not fitted to real data. At \(r=8\%\)/year over 10 years, compounding annually gives \((1.08)^{10}\times100\); compounding daily (\(m=252\)) already gets within a few cents of the continuous limit \(100\,e^{0.8}\) — most of the gain from compounding more often happens quickly, and the remaining gap to "infinitely often" is small.</div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Converting an annual rate to continuous compounding, and checking log-return additivity</h3>
+    <p><strong>Part 1 — 5% simple annual rate to its continuously-compounded equivalent.</strong>
+    Find the continuous rate \(r_c\) that grows $1 by the same factor in one
+    year as a 5% simple annual rate does. Simple annual growth factor:
+    \(1+0.05=1.05\). Set the continuous formula equal to it and solve for
+    \(r_c\):</p>
+    <div class="tl-math">
+      \[ e^{r_c \cdot 1} = 1.05 \quad\Rightarrow\quad r_c = \ln(1.05) \]
+    </div>
+    <p>Computing \(\ln(1.05)\) (e.g. via a calculator, or the series
+    \(\ln(1+x)\approx x - x^2/2 + x^3/3-\dots\) for small \(x\)):</p>
+    <div class="tl-math">
+      \[ r_c = \ln(1.05) \approx 0.04879 = 4.879\% \]
+    </div>
+    <p>
+      Check: \(e^{0.04879} \approx 1.05000\) — matches. A 4.879% continuously
+      compounded rate grows money exactly as fast over one year as a 5% simple
+      annual rate — continuous compounding always needs a slightly
+      <em>smaller</em> quoted rate to match a given simple rate, because it's
+      compounding infinitely often rather than once.
+    </p>
+    <p><strong>Part 2 — log-returns over a 4-day price series sum to the total log-return.</strong>
+    Suppose a price series over 4 days is: \(P_0=100\), \(P_1=102\),
+    \(P_2=101\), \(P_3=104\), \(P_4=103\). Compute each day's log-return:</p>
+    <div class="tl-math">
+      \[ r_1=\ln\!\frac{102}{100}=0.019803,\quad r_2=\ln\!\frac{101}{102}=-0.009852,\quad r_3=\ln\!\frac{104}{101}=0.029266,\quad r_4=\ln\!\frac{103}{104}=-0.009662 \]
+    </div>
+    <p>Sum the four daily log-returns:</p>
+    <div class="tl-math">
+      \[ r_1+r_2+r_3+r_4 = 0.019803 - 0.009852 + 0.029266 - 0.009662 = 0.029555 \]
+    </div>
+    <p>Now compute the total log-return directly from the start and end prices:</p>
+    <div class="tl-math">
+      \[ \ln\!\left(\frac{P_4}{P_0}\right) = \ln\!\left(\frac{103}{100}\right) = \ln(1.03) \approx 0.029559 \]
+    </div>
+    <p>
+      The two match (0.029555 vs. 0.029559 — the tiny gap is only rounding in
+      the intermediate steps). Summing four daily log-returns gives exactly
+      the whole period's log-return, with no separate compounding calculation
+      needed — precisely the additivity property derived above.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Aggregating a month of daily performance without a compounding error</h3>
+    <p>
+      A trader wants to report a month's performance from 21 daily returns.
+      Two colleagues do it two different ways. Colleague A sums the 21
+      <em>simple</em> daily percentage returns and reports that total as "the
+      month's return." Colleague B converts each day to a log-return, sums
+      those 21 numbers, then converts the sum back with \(e^{(\cdot)}-1\) to
+      get a simple return for the month.
+    </p>
+    <p>
+      Colleague A's number is wrong, and increasingly wrong the more volatile
+      the month was — summing simple returns silently ignores that gains and
+      losses compound multiplicatively, not additively (this is exactly the
+      "+50% then −50% is a real loss, not a wash" trap covered in the returns
+      primer elsewhere in this curriculum). Colleague B's number is exact,
+      because log-returns really do sum across time, as derived above — the
+      only extra step is converting the summed log-return back into a simple
+      percentage at the very end, using \(e^{(\cdot)}-1\), the inverse of how
+      log-returns were defined in the first place.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Quant desks default to log-returns for almost every statistical
+    calculation on a return series — computing volatility, correlating two
+    instruments, running a regression — specifically because of the
+    additivity property derived above: it lets multi-period statements (a
+    week's return, a month's return) be built by simple addition instead of a
+    compounding correction, and it also makes returns symmetric in a way
+    simple returns aren't (a log-return of \(+x\) and a log-return of \(-x\)
+    are exact opposites in a way \(+x\%\) and \(-x\%\) simple returns are not,
+    once you check what price they actually imply). Continuous compounding,
+    \(e^{rt}\), is likewise the default convention inside most pricing models
+    — a bond's discount factor, an option's risk-free growth term, any
+    "grows at rate \(r\)" assumption in a continuous-time model — because
+    continuous-time mathematics (calculus, differential equations) is far
+    cleaner to work with than a formula that has to specify a compounding
+    frequency.
+  </p>
+  <p>
+    Sine and cosine waves are the standard building block for modeling any
+    known-period cycle in a time series — a seasonal effect, an intraday
+    volatility pattern, a repeating cross-asset relationship — by fitting a
+    wave of the matching period (or a sum of several waves of different
+    periods, letting each capture a different cycle length) and checking how
+    much of the data's variation that wave actually explains. That
+    decomposition, applied systematically across many frequencies at once, is
+    exactly what the Fourier Transform does — the tool a later Signal
+    Processing lesson in this curriculum covers properly, building directly on
+    the sine/cosine vocabulary from this page.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this goes wrong in practice</h3>
+    <p>
+      <strong>Feeding degrees into a formula that expects radians.</strong>
+      Most calculus-based trig formulas, and most programming languages'
+      built-in \(\sin\)/\(\cos\) functions, assume the input is in radians.
+      Passing in a raw degree value silently produces a completely wrong
+      number with no error raised — always convert first.
+    </p>
+    <p>
+      <strong>Summing simple returns instead of log-returns.</strong> As shown
+      in the scenario above, adding raw percentage returns across multiple
+      periods systematically misstates the true compounded outcome, and the
+      error grows with volatility — a calm series barely notices, a volatile
+      one is noticeably wrong.
+    </p>
+    <p>
+      <strong>Forgetting that \(\ln x\) is undefined for \(x\le0\).</strong>
+      A log-return requires a positive price ratio; if a series ever contains
+      a zero or negative "price" (common with spreads, or with data quality
+      issues), \(\ln\) of that value is undefined or produces \(-\infty\),
+      and silently propagating a resulting \(\text{NaN}\) or infinity through
+      a downstream calculation is a real, common bug.
+    </p>
+    <p>
+      <strong>Treating a converted continuous rate as "the same number" as
+      the simple rate.</strong> A continuously-compounded rate is always
+      slightly smaller than the equivalent simple annual rate (as the worked
+      example showed, 4.879% vs. 5%) — quoting one convention's number as if
+      it were the other, without converting, understates or overstates the
+      true growth.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Sine and cosine are coordinates on the unit circle.</strong> \((\cos\theta,\sin\theta)\) is the point at angle \(\theta\) — periodic every \(2\pi\) radians, which is exactly why cyclical data gets modeled with them.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Radians, not degrees, are the native unit for calculus-based formulas.</strong> Convert before plugging an angle into anything beyond basic geometry.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(e^x\) and \(\ln x\) are exact inverses.</strong> The log rules (product → sum, quotient → difference, power → multiply) are the reason logs turn multiplicative problems into additive ones.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(e^{rt}\) is the limit of compounding infinitely often.</strong> It falls straight out of the definition of \(e\) itself — not a separate formula to memorize.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Log-returns are additive across time; simple returns are not.</strong> Sum log-returns for an exact multi-period total; summing simple returns is only a rough approximation, worse the more volatile the series.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A continuously-compounded rate is always a bit smaller than the equivalent simple rate.</strong> 5% simple ≈ 4.879% continuous over one year — the two conventions are not interchangeable numbers.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Convert 90° to radians, and state what point on the unit circle that angle corresponds to.</summary>
+    <div class="tl-answer">
+      \(90° \times \pi/180 = \pi/2\) radians. At \(\theta = \pi/2\), the point
+      on the unit circle is \((\cos(\pi/2), \sin(\pi/2)) = (0, 1)\) — straight
+      up from the center, a quarter of the way around the circle from the
+      starting 3 o'clock position.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why does \(\ln(ab) = \ln a + \ln b\)? Derive it from the fact that \(e^a \cdot e^b = e^{a+b}\).</summary>
+    <div class="tl-answer">
+      Let \(a = \ln x\) and \(b = \ln y\), so \(x = e^a\) and \(y=e^b\). Then
+      \(xy = e^a \cdot e^b = e^{a+b}\) (exponent rule). Taking \(\ln\) of both
+      sides: \(\ln(xy) = a+b = \ln x + \ln y\). The log product rule is just
+      the exponent-addition rule, viewed through the inverse relationship
+      between \(e^x\) and \(\ln x\).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. A rate of 6% is compounded continuously for 2 years on $500. What's the ending value?</summary>
+    <div class="tl-answer">
+      \(FV = 500 \times e^{0.06\times2} = 500\times e^{0.12} \approx 500 \times
+      1.1275 \approx \$563.75\). This uses \(e^{rt}\) directly, with \(r=0.06\)
+      and \(t=2\).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. A price moves from 50 to 55 in one period, then from 55 to 55 in the next (no change). What is the total log-return over both periods, computed two ways?</summary>
+    <div class="tl-answer">
+      Way 1 (directly): \(\ln(55/50) = \ln(1.10) \approx 0.09531\). Way 2
+      (summing daily log-returns): period 1 is \(\ln(55/50)\approx0.09531\);
+      period 2 is \(\ln(55/55)=\ln(1)=0\). Sum: \(0.09531+0=0.09531\) — matches
+      exactly, confirming additivity even when one period has zero return.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why is a degree-based angle dangerous to plug directly into a formula like \(\sin\theta\) inside a programming language or calculus formula?</summary>
+    <div class="tl-answer">
+      Most calculus identities and most programming languages' built-in
+      trigonometric functions assume the input angle is already in radians,
+      not degrees. Plugging in "90" meaning 90 degrees, when the function
+      expects radians, silently computes \(\sin(90\text{ radians})\) instead
+      of \(\sin(90°)\) — a completely different, essentially arbitrary number
+      (90 radians is many full trips around the circle past \(90°\)), with no
+      error raised to flag the mistake. Always convert degrees to radians
+      first: multiply by \(\pi/180\).
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Gilbert Strang, <em>Calculus</em>, Wellesley-Cambridge Press (open-access edition via MIT OpenCourseWare) — a widely used text with a clean, geometric build-up of the unit circle, \(e^x\), and \(\ln x\) from first principles.</li>
+    <li>Steven Strogatz, "Change We Can Believe In," <em>The New York Times</em> (Opinionator series on mathematics), 2010 — an accessible, well-known essay on \(e\) and continuous growth, aimed at exactly the intuition this lesson tries to build.</li>
+    <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson (any recent edition) — the standard quantitative-finance reference for continuous compounding and log-return conventions as used in pricing models.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="foundation-algebra-functions.html">← Algebra &amp; Functions Refresher</a>
+    <a href="foundation-complex-numbers.html">Complex Numbers →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var slider = document.getElementById('fa2-m-slider');
+  var mVal = document.getElementById('fa2-m-val');
+  var curve = document.getElementById('fa2-freq-curve');
+  var dot = document.getElementById('fa2-dot');
+  var valLabel = document.getElementById('fa2-val');
+  if (!slider) return;
+
+  var freqs = [1, 4, 12, 252, Infinity];
+  var freqLabels = ['1 (annual)', '4 (quarterly)', '12 (monthly)', '252 (daily)', '∞ (continuous)'];
+  var r = 0.08, t = 10, P0 = 100;
+  var X0 = 50, X1 = 600, Y0 = 220;
+  var N = 40; // curve sample points
+
+  function valueAt(m, years){
+    if (m === Infinity) return P0 * Math.exp(r*years);
+    return P0 * Math.pow(1 + r/m, m*years);
+  }
+
+  function buildPath(m){
+    var maxVal = P0 * Math.exp(r*t);
+    var minVal = P0;
+    var d = '';
+    for (var i = 0; i <= N; i++){
+      var yrs = (i/N) * t;
+      var v = valueAt(m, yrs);
+      var px = X0 + (i/N) * (X1 - X0);
+      var frac = (v - minVal) / (maxVal - minVal);
+      var py = Y0 - frac * (Y0 - 20);
+      d += (i === 0 ? 'M' : 'L') + px.toFixed(1) + ',' + py.toFixed(1) + ' ';
+    }
+    return { d: d, endY: Y0 - ((valueAt(m,t) - minVal)/(maxVal-minVal)) * (Y0-20), endVal: valueAt(m,t) };
+  }
+
+  function update(){
+    var idx = parseInt(slider.value, 10);
+    var m = freqs[idx];
+    mVal.textContent = 'm = ' + freqLabels[idx];
+    var result = buildPath(m);
+    curve.setAttribute('d', result.d);
+    dot.setAttribute('cx', X1);
+    dot.setAttribute('cy', result.endY);
+    valLabel.textContent = '$' + result.endVal.toFixed(2);
+  }
+
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
+</body>
+</html>
+</content>

@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bootstrapping the Yield Curve — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Fixed Income Mathematics / Bootstrapping the Yield Curve</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Fixed Income Mathematics · Lesson 3 of 5</div>
+  <h1 class="tl-title">Bootstrapping the Yield Curve</h1>
+  <p class="tl-dek">A single bond's yield to maturity is a blended average across every one of its cash flows' maturities — never the "true" rate for any one point in time. Bootstrapping is the sequential algorithm that untangles a handful of bond prices into a genuine per-maturity zero curve, and the forward rates embedded inside it.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span>~17 min read</span>
+    <span>Prereqs: Bond Pricing &amp; Yield to Maturity (Duration &amp; Convexity helpful but not required)</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Par rates are the YTM of a bond priced at par; spot (zero) rates are the discount rate for a single cash flow at a single maturity; forward rates are the rate implied, today, for borrowing/lending between two future dates. All three are different things, and only spot rates are the "correct" discount rate for a cash flow of a given maturity.</li>
+      <li>A single bond's YTM is a weighted blend of the zero rates across all of its cash flows' maturities — using one bond's YTM to discount every cash flow on a whole portfolio is a real, common error, because two bonds with the same YTM but different coupons imply different zero curves.</li>
+      <li>Bootstrapping solves this by working from the shortest maturity outward: the shortest instrument's zero rate is solved first (trivial, since it has only one cash flow), then each successive zero rate is solved using only the previously-solved, shorter zero rates plus that maturity's own market price.</li>
+      <li>The forward rate between two zero-rate maturities follows directly from a no-arbitrage identity: \((1+z_2)^2 = (1+z_1)(1+f_{1,2})\) — investing for 2 years directly must equal investing for 1 year and then rolling over into a locked-in 1-year rate.</li>
+      <li>The worked example bootstraps a 3-point zero curve from three hypothetical par bonds (1-year at 3.00%, 2-year at 3.50%, 3-year at 4.00%, all annual coupons, face 100) and gets \(z_1=3.00\%\), \(z_2\approx3.51\%\), \(z_3\approx4.03\%\) — then computes the 1-year-forward-in-1-year rate as \(f_{1,2}\approx4.02\%\) and the 1-year-forward-in-2-years rate as \(f_{2,3}\approx5.07\%\).</li>
+      <li>Because the par/zero curve here is upward sloping, every forward rate sits above the corresponding spot rate for that horizon — forwards embed the market's expectation (under a pure-expectations reading, a simplification covered in the pitfalls) that future short rates will be higher than today's.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Lessons 1 and 2 both used a single yield \(y\) to discount every one of a
+    bond's cash flows. That's a convenient simplification for pricing one
+    bond in isolation, but it quietly hides a real problem: a 5-year cash
+    flow and a 1-year cash flow shouldn't actually be discounted at the same
+    rate, because the market doesn't charge the same "rent on money" for one
+    year as it does for five. A full, internally consistent term structure —
+    a genuine rate for every maturity — is what every serious fixed-income
+    pricing, hedging, and relative-value operation is actually built on, and
+    bootstrapping is the standard, foundational technique for building one
+    from a handful of observed bond (or swap) prices.
+  </p>
+  <p>
+    This lesson also directly motivates the next one in this category:
+    bootstrapping produces a zero rate only at the specific maturities where
+    you happen to have an instrument (here, exactly three points). Pricing
+    or hedging a cash flow that lands <em>between</em> those points requires
+    a smooth curve fitted through them — which is exactly the problem the
+    Nelson-Siegel-Svensson lesson takes on next.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>You can't use one average rate to price a payment that isn't due for years</h3>
+    <p>
+      Imagine you're renting storage lockers, and the landlord quotes you one
+      "average" monthly rate for a bundle that includes a locker you can use
+      starting today and a much bigger locker you won't get access to for
+      three years. That blended average rate is a real, honest number for
+      the bundle as a whole — but it would be wrong to use it to answer "what
+      does the 3-year locker alone actually cost, per month?" You'd need the
+      landlord to quote each locker separately, at its own rate, to answer
+      that. A bond's yield to maturity is exactly the blended, bundled rate;
+      a zero rate is the rate for one single locker (one single cash flow,
+      at one single maturity) alone.
+    </p>
+    <p>
+      Bootstrapping is how you back out those individual locker rates when
+      all the landlord ever quotes you is bundle prices. Start with the
+      simplest bundle — one that's really just a single locker (the shortest
+      bond, which has only one cash flow left) — and its rate is
+      immediately obvious. Then take the next bundle up, which mixes that
+      already-known short locker with one new, longer one; since you already
+      know the short locker's true rate, you can subtract its cost out and
+      isolate the new, longer locker's rate on its own. Keep doing this,
+      one bundle at a time, moving from short to long, and you build up the
+      whole set of individual rates — the zero curve — one solved rate at a
+      time.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>Three different "rates" that get confused with each other</h3>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Par rate</h4>
+      <p>The coupon rate that would make a bond of a given maturity price exactly at face value (\(P=F\)) — equivalently, the YTM of a par bond of that maturity. It's a real, quotable market rate, but it's a <em>blend</em> across every cash flow the bond pays, not a rate for any single date.</p>
+    </div>
+    <div class="tl-compare-card green">
+      <h4>Spot (zero) rate</h4>
+      <p>The discount rate for a single cash flow arriving at a single future date — the rate on a hypothetical zero-coupon bond of that exact maturity. This is the "true," per-maturity rate: the correct discount rate for a cash flow due at time \(t\) is always \(z_t\), never a blended YTM from some other bond.</p>
+    </div>
+    <div class="tl-compare-card amber">
+      <h4>Forward rate</h4>
+      <p>The rate, agreed today, for lending or borrowing between two <em>future</em> dates — e.g. "the 1-year rate starting one year from now." It's derived entirely from today's zero curve via no-arbitrage; it doesn't require waiting until that future date arrives to know what it is.</p>
+    </div>
+  </div>
+  <p>
+    Why the distinction matters in practice: a coupon-paying bond's YTM
+    mixes together the discount rates for every one of its cash flows — its
+    year-1 coupon, its year-2 coupon, and so on — into one single blended
+    number. Two bonds of the <em>same</em> maturity but different coupons
+    will, in general, have slightly different YTMs even in a market with one
+    single true zero curve, purely because their cash flows are weighted
+    differently across maturities (a higher-coupon bond gets more of its
+    value back earlier, so its YTM leans more toward short rates; recall
+    this is exactly Lesson 2's duration idea — a bond's YTM sensitivity is
+    itself a cash-flow-weighted quantity). Using one bond's YTM as "the"
+    discount rate for a <em>different</em> cash flow at a <em>different</em>
+    maturity is therefore not just imprecise, it's a genuine mismatch between
+    what the number represents and what it's being used for.
+  </p>
+
+  <h3>The bootstrapping algorithm</h3>
+  <p>
+    Bootstrapping recovers the true per-maturity zero rates from a set of
+    observed bond (or swap) prices, working strictly from the shortest
+    maturity to the longest, using each newly solved zero rate to help solve
+    the next one:
+  </p>
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Start with the shortest-maturity instrument</h4>
+        <p>A 1-year bond has exactly one cash flow left (its final coupon plus face value). Its price equation has exactly one unknown, \(z_1\), so it can be solved directly — no bootstrapping needed yet, this step is just ordinary YTM solving from Lesson 1 with \(n=1\).</p>
+        <div class="tl-math">\[ P_1 = \frac{C_1 + F}{(1+z_1)^1} \quad\Rightarrow\quad z_1 = \frac{C_1+F}{P_1} - 1 \]</div>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>Move to the next-shortest instrument</h4>
+        <p>A 2-year bond has two cash flows: a coupon at year 1, and a coupon-plus-face at year 2. Its year-1 coupon should be discounted at \(z_1\) — already known from step 1 — leaving exactly one new unknown, \(z_2\), in its price equation:</p>
+        <div class="tl-math">\[ P_2 = \frac{C_2}{(1+z_1)^1} + \frac{C_2+F}{(1+z_2)^2} \]</div>
+        <p>Rearranged, this isolates \(z_2\) directly, since every other quantity (\(P_2\), \(C_2\), \(F\), and now \(z_1\)) is known:</p>
+        <div class="tl-math">\[ z_2 = \left(\frac{C_2+F}{P_2 - \frac{C_2}{1+z_1}}\right)^{1/2} - 1 \]</div>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>Repeat outward, one maturity at a time</h4>
+        <p>A 3-year bond's year-1 and year-2 coupons are discounted using the already-known \(z_1\) and \(z_2\); the only new unknown left is \(z_3\), solved the same way. In general, at each step, every earlier cash flow uses an already-solved shorter zero rate, and exactly one new unknown — that maturity's own zero rate — remains to be isolated. This is what makes the algorithm "sequential": each solve depends on every solve before it, and cannot be done out of order.</p>
+      </div>
+    </div>
+  </div>
+  <div class="tl-solid blue">
+    <strong>Why this always works, structurally:</strong> at every step, the
+    number of unknowns in the price equation is exactly one — the current
+    maturity's own zero rate — because every shorter-maturity cash flow's
+    discount rate was already pinned down at an earlier step. One equation,
+    one unknown, at every stage: that's precisely what makes each individual
+    solve as simple as Lesson 1's single-bond YTM problem, even though the
+    curve being built up is genuinely multi-point.
+  </div>
+
+  <h3>Forward rates — what the zero curve implies about future rates</h3>
+  <p>
+    Once you have zero rates for two different maturities, you can ask: what
+    rate is <em>implied</em>, today, for lending between those two future
+    dates? Consider two ways to turn one dollar into a value two years from
+    now, using only today's zero rates and a locked-in forward agreement:
+  </p>
+  <p>
+    <strong>Route 1 — invest directly for 2 years</strong> at the known
+    2-year zero rate: one dollar grows to \((1+z_2)^2\).
+  </p>
+  <p>
+    <strong>Route 2 — invest for 1 year, then roll over</strong> at a
+    forward rate \(f_{1,2}\) agreed today (but only realized starting in
+    year 1): one dollar grows to \((1+z_1)^1\) after year 1, then to
+    \((1+z_1)(1+f_{1,2})\) after year 2.
+  </p>
+  <p>
+    Both routes start with one dollar today and involve no risk in between —
+    every rate is either already known (\(z_1, z_2\)) or locked in today
+    (\(f_{1,2}\)). By the same no-arbitrage logic used throughout this
+    curriculum (identical to the covered interest rate parity argument
+    elsewhere in this curriculum's macro/FX theory, applied here to time
+    instead of currencies), both riskless routes must pay the same:
+  </p>
+  <div class="tl-math">
+    \[ (1+z_2)^2 = (1+z_1)(1+f_{1,2}) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>(1+z_2)²</code><span>growth from investing directly at the 2-year zero rate</span></div>
+    <div class="tl-eq-chip c2"><code>(1+z_1)(1+f_1,2)</code><span>growth from 1 year at z₁, then 1 more year at the locked-in forward</span></div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">(1+z₂)²</div>
+      <div class="tl-fp-name">Direct 2-year growth</div>
+      <div class="tl-fp-desc">Observable today from the 2-year zero rate alone</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">(1+z₁)</div>
+      <div class="tl-fp-name">Known 1-year leg</div>
+      <div class="tl-fp-desc">Already solved in the bootstrap's first step</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">f₁,₂</div>
+      <div class="tl-fp-name">The forward rate</div>
+      <div class="tl-fp-desc">The only unknown — solved directly once z₁ and z₂ are both known</div>
+    </div>
+  </div>
+
+  <p>Rearranged to isolate the forward rate directly:</p>
+  <div class="tl-math">
+    \[ f_{1,2} = \frac{(1+z_2)^2}{1+z_1} - 1 \]
+  </div>
+  <p>
+    This generalizes to any two maturities \(t_1 < t_2\): \((1+z_{t_2})^{t_2}
+    = (1+z_{t_1})^{t_1}(1+f_{t_1,t_2})^{t_2-t_1}\), with the same
+    no-arbitrage argument behind it — investing to \(t_2\) directly must
+    match investing to \(t_1\) and then rolling over at the locked-in
+    forward rate for the remaining period. Forward rates are therefore not
+    an independent market observation to be separately calibrated — they
+    are entirely <em>derived</em> from the zero curve you already
+    bootstrapped, via pure algebra.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(z_t\)</td><td>The spot (zero) rate for a single cash flow at maturity \(t\) — the "true," per-maturity discount rate.</td></tr>
+    <tr><td>\(f_{t_1,t_2}\)</td><td>The forward rate between two future dates \(t_1\) and \(t_2\), implied today by the zero curve.</td></tr>
+    <tr><td>\(C_t\)</td><td>The coupon paid by the maturity-\(t\) bond used at that step of the bootstrap.</td></tr>
+    <tr><td>\(P_t\)</td><td>The observed market price of the maturity-\(t\) instrument used at that step.</td></tr>
+    <tr><td>\(F\)</td><td>Face value, assumed 100 throughout the worked example below.</td></tr>
+    <tr><td>Par rate</td><td>The YTM of a bond priced exactly at face value — a blended rate across all of that bond's cash flows, not a single-maturity rate.</td></tr>
+  </table></div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Bootstrapping a 3-point zero curve from three par bonds</h3>
+    <p>
+      Three hypothetical bonds, each priced exactly at par (\(P=100\), face
+      value \(F=100\)), all paying annual coupons: a 1-year bond with a 3.00%
+      coupon, a 2-year bond with a 3.50% coupon, and a 3-year bond with a
+      4.00% coupon. Because every bond is priced at par, its coupon rate
+      <em>is</em> its par yield by definition — but, per the distinction
+      above, not automatically its zero rate (except, as it happens, for the
+      1-year bond).
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Solve \(z_1\) from the 1-year bond</h4>
+          <p>One cash flow: a $3 coupon plus $100 face, both at year 1, totaling $103. Priced at par ($100):</p>
+          <div class="tl-math">\[ 100 = \frac{103}{1+z_1} \quad\Rightarrow\quad z_1 = \frac{103}{100} - 1 = 3.00\% \]</div>
+          <p>For a single-cash-flow instrument, the zero rate and the par yield are one and the same — this is the trivial base case every bootstrap starts from.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Solve \(z_2\) from the 2-year bond, using \(z_1\)</h4>
+          <p>Cash flows: $3.50 at year 1, $103.50 at year 2. Discount the year-1 coupon at the now-known \(z_1=3.00\%\):</p>
+          <div class="tl-math">\[ \frac{3.50}{1.03} = 3.398 \]</div>
+          <p>Subtract that from the $100 price to isolate the year-2 cash flow's present value, then solve for \(z_2\):</p>
+          <div class="tl-math">\[ 100 - 3.398 = 96.602 = \frac{103.50}{(1+z_2)^2} \quad\Rightarrow\quad (1+z_2)^2 = \frac{103.50}{96.602} = 1.07141 \]</div>
+          <div class="tl-math">\[ z_2 = \sqrt{1.07141} - 1 \approx 3.51\% \]</div>
+          <p>Notice \(z_2 \approx 3.51\%\) is slightly <em>above</em> the 2-year bond's own 3.50% par yield/coupon — a direct, numerical illustration of the point above that a bond's blended YTM and its maturity's true zero rate are two different numbers, even though they're close.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Solve \(z_3\) from the 3-year bond, using \(z_1\) and \(z_2\)</h4>
+          <p>Cash flows: $4 at year 1, $4 at year 2, $104 at year 3. Discount the first two coupons at \(z_1\) and \(z_2\):</p>
+          <div class="tl-math">\[ \frac{4}{1.03} + \frac{4}{(1.0351)^2} \approx 3.883 + 3.733 = 7.617 \]</div>
+          <p>Subtract from the $100 price and solve for \(z_3\):</p>
+          <div class="tl-math">\[ 100 - 7.617 = 92.383 = \frac{104}{(1+z_3)^3} \quad\Rightarrow\quad (1+z_3)^3 = \frac{104}{92.383} \approx 1.12572 \]</div>
+          <div class="tl-math">\[ z_3 = 1.12572^{1/3} - 1 \approx 4.03\% \]</div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Compute the 1-year-forward-in-1-year rate, \(f_{1,2}\)</h4>
+          <p>Using the two now-known zero rates and the forward-rate identity:</p>
+          <div class="tl-math">\[ f_{1,2} = \frac{(1+z_2)^2}{1+z_1} - 1 = \frac{1.07141}{1.03} - 1 \approx 4.02\% \]</div>
+          <p>The market's zero curve implies a 1-year rate of about 4.02% starting one year from now — noticeably above today's 1-year rate of 3.00%, and even above today's 2-year zero rate of 3.51%. (The same identity applied one maturity further out gives \(f_{2,3} = (1+z_3)^3/(1+z_2)^2 - 1 \approx 5.07\%\), used in the chart below.)</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-stat-row">
+    <div class="tl-stat blue"><div class="tl-stat-num">3.00%</div><div class="tl-stat-label">z₁ (1yr zero)</div><div class="tl-stat-sub">= the 1yr par yield, trivially</div></div>
+    <div class="tl-stat green"><div class="tl-stat-num">3.51%</div><div class="tl-stat-label">z₂ (2yr zero)</div><div class="tl-stat-sub">above the 3.50% 2yr par yield</div></div>
+    <div class="tl-stat purple"><div class="tl-stat-num">4.03%</div><div class="tl-stat-label">z₃ (3yr zero)</div><div class="tl-stat-sub">above the 4.00% 3yr par yield</div></div>
+    <div class="tl-stat amber"><div class="tl-stat-num">4.02% / 5.07%</div><div class="tl-stat-label">f₁,₂ / f₂,₃</div><div class="tl-stat-sub">forwards implied by the zero curve</div></div>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Spot (zero) curve vs. the forward curve it implies</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart with an upward-sloping spot rate curve at three points (3.00%, 3.51%, 4.03%) and a forward rate curve running above it at the later two points (4.02%, 5.07%), illustrating that forward rates sit above spot rates when the spot curve is upward sloping">
+      <line x1="70" y1="250" x2="600" y2="250" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="70" y1="20" x2="70" y2="250" style="stroke:var(--border);stroke-width:1"/>
+      <text x="335" y="280" text-anchor="middle" style="fill:var(--text3);font-size:11px">Maturity (years)</text>
+      <text x="20" y="135" text-anchor="middle" style="fill:var(--text3);font-size:11px" transform="rotate(-90 20 135)">Rate (%)</text>
+
+      <text x="187" y="264" text-anchor="middle" style="fill:var(--text3);font-size:10px">1</text>
+      <text x="335" y="264" text-anchor="middle" style="fill:var(--text3);font-size:10px">2</text>
+      <text x="483" y="264" text-anchor="middle" style="fill:var(--text3);font-size:10px">3</text>
+      <text x="60" y="254" text-anchor="end" style="fill:var(--text3);font-size:10px">0</text>
+      <text x="60" y="24" text-anchor="end" style="fill:var(--text3);font-size:10px">6</text>
+
+      <!-- spot curve: (1,3.00) (2,3.51) (3,4.03) mapped y: 250 - rate*38.3 approx (0%->250, 6%->20 => scale 38.33 px per %) -->
+      <path style="fill:none;stroke:var(--blue);stroke-width:2.5" d="M187,134.1 L335,115.6 L483,96.6"/>
+      <circle cx="187" cy="134.1" r="4.5" style="fill:var(--blue)"/>
+      <circle cx="335" cy="115.6" r="4.5" style="fill:var(--blue)"/>
+      <circle cx="483" cy="96.6" r="4.5" style="fill:var(--blue)"/>
+
+      <!-- forward curve: f(0,1)=z1=3.00 at t=1 (same point), f(1,2)=4.02 at t=2, f(2,3)=5.07 at t=3 -->
+      <path style="fill:none;stroke:var(--amber);stroke-width:2.5;stroke-dasharray:6,4" d="M187,134.1 L335,96.9 L483,55.7"/>
+      <circle cx="335" cy="96.9" r="4.5" style="fill:var(--amber)"/>
+      <circle cx="483" cy="55.7" r="4.5" style="fill:var(--amber)"/>
+
+      <text x="187" y="118" text-anchor="middle" style="fill:var(--text3);font-size:9px">3.00%</text>
+      <text x="335" y="130" text-anchor="middle" style="fill:var(--blue);font-size:9px">3.51%</text>
+      <text x="483" y="111" text-anchor="middle" style="fill:var(--blue);font-size:9px">4.03%</text>
+      <text x="335" y="83" text-anchor="middle" style="fill:var(--amber);font-size:9px">4.02%</text>
+      <text x="483" y="42" text-anchor="middle" style="fill:var(--amber);font-size:9px">5.07%</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>Bootstrapped spot (zero) curve</span>
+      <span><i style="background:var(--amber)"></i>Implied forward curve (1-year forwards)</span>
+    </div>
+    <div class="tl-chart-caption">The blue line is the zero curve solved in the worked example above (3.00% / 3.51% / 4.03%). The dashed amber line is the 1-year forward rate starting at each later date (\(f_{0,1}=z_1\) trivially at year 1, then \(f_{1,2}\approx4.02\%\), then \(f_{2,3}\approx5.07\%\)) — each one solved directly from the zero curve via the no-arbitrage identity above. Because the spot curve slopes upward, every forward rate sits above the spot rate for that same horizon: the market's zero curve is embedding an expectation that future short-term rates will run higher than today's.</div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Pricing a swap's floating leg off a bootstrapped curve, and reading the forward curve for a rate view</h3>
+    <p>
+      A rates desk needs to value the floating leg of an interest-rate swap
+      — a series of future floating-rate payments whose size isn't known
+      yet, but whose fair <em>expected</em> value, under standard swap
+      pricing convention, is set equal to the forward rate for each future
+      period. Rather than guessing at those future rates, the desk
+      bootstraps a zero curve from a set of liquid, observable instruments
+      (in practice, deposit rates and swap rates rather than the toy par
+      bonds here — the exact instrument set differs, but the sequential
+      solve is the same algorithm), then reads off each period's forward
+      rate directly using this lesson's identity. This is precisely why
+      bootstrapping matters operationally: without a full per-maturity zero
+      curve, there is no principled way to price a multi-period floating
+      cash flow at all.
+    </p>
+    <p>
+      Separately, a macro trader reads the <em>shape</em> of the resulting
+      forward curve itself as a market-implied view: an upward-sloping zero
+      curve, of the kind bootstrapped above, produces forward rates above
+      today's spot rates at every horizon — a market that is, in a
+      pure-expectations reading, pricing in higher short rates down the
+      road. If the trader's own view is that rates will rise by <em>less</em>
+      than the forward curve implies, a position that receives the forward
+      rate (is "long" the view that realized rates undershoot the forward)
+      is a direct, standard way to express that view — precisely the same
+      "compare your own forecast to what's already priced in" logic used
+      throughout macro trading, just applied here to the rates curve itself
+      rather than to FX or equities.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    <strong>Every discounting and swap-pricing system on a rates desk is
+    built on a bootstrapped (or otherwise constructed) zero curve</strong> —
+    not on any single bond's YTM. Modern curve construction in practice
+    typically bootstraps from a blend of short-dated deposit/OIS rates,
+    exchange-traded futures, and swap rates rather than a handful of
+    coupon bonds (the specifics of using overnight-indexed-swap discounting
+    are their own, more involved topic, covered in the swap-curve lesson
+    later in this category), but the underlying sequential logic — solve
+    the shortest point first, use it to solve the next, work steadily
+    outward — is unchanged from the toy example built here.
+  </p>
+  <p>
+    <strong>Forward rates are the market's pricing mechanism for anything
+    settling in the future</strong> — FX forwards (per this curriculum's
+    interest rate parity lesson), swap floating legs, forward rate
+    agreements, and futures all reduce, in one way or another, to "what rate
+    does the current curve imply between these two future dates," which is
+    exactly this lesson's forward-rate formula, generalized to whichever
+    underlying is being priced.
+  </p>
+  <p>
+    <strong>The shape of the curve is itself a standard piece of macro
+    signal.</strong> A steep, upward-sloping curve (short rates well below
+    long rates) is widely read as the market pricing in future rate hikes or
+    a return to more "normal" rate levels; an inverted curve (short rates
+    above long rates) has, going back decades, been one of the most closely
+    watched recession-warning signals in macro research, precisely because
+    it says the market expects short rates to be <em>cut</em> from here.
+    None of that macro reading is possible without first separating par
+    yields into genuine, per-maturity zero rates the way bootstrapping does.
+  </p>
+  <p>
+    <strong>Key-rate (partial) duration</strong>, the finer-grained successor
+    to Lesson 2's single-number duration, is defined directly on a
+    bootstrapped curve: the sensitivity of a portfolio's value to a small
+    bump in <em>one specific</em> zero rate on the curve, holding all the
+    others fixed — precisely the tool needed to hedge the non-parallel
+    curve moves Lesson 2 flagged as outside plain duration's reach.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this goes wrong in practice</h3>
+    <p>
+      <strong>Using a single bond's YTM to discount an unrelated cash flow.</strong>
+      This is the exact mistake bootstrapping exists to prevent. A 5-year
+      bond's YTM is a blend across its own 1-through-5-year cash flows —
+      using that blended number to discount, say, an unrelated 5-year
+      liability cash flow (rather than the bootstrapped 5-year zero rate) is
+      a subtle but real source of mispricing, larger the more the discounting
+      bond's coupon and cash-flow profile differ from the cash flow actually
+      being valued.
+    </p>
+    <p>
+      <strong>Treating forward rates as a forecast, not an arbitrage-free
+      identity.</strong> A forward rate is exactly what today's zero curve
+      implies under no-arbitrage — it is not, on its own, a probability-
+      weighted market forecast of the future spot rate, and it is not
+      guaranteed to be realized. (This is the same distinction this
+      curriculum's interest rate parity lesson draws between covered and
+      uncovered interest rate parity: the forward computed here is the
+      "covered," no-arbitrage-pinned number; whether it equals the market's
+      true rate expectation is a separate, much less certain claim, and
+      historically an unreliable one for currency forwards specifically.)
+    </p>
+    <p>
+      <strong>Compounding-convention mismatches.</strong> This lesson uses
+      simple annual compounding throughout for clarity, matching Lessons 1
+      and 2. Real curve construction has to be scrupulous about which
+      compounding and day-count convention each input instrument actually
+      uses (annual bond-equivalent, semiannual, continuously-compounded,
+      Actual/360 vs. 30/360, etc.) — mixing conventions across instruments
+      silently corrupts every zero rate solved downstream of the mismatch,
+      the same category of "boring parsing" error this project's own
+      backtest-discipline notes warn about for any data pipeline.
+    </p>
+    <p>
+      <strong>Assuming the shortest few instruments are liquid and reliable.</strong>
+      Bootstrapping is strictly sequential — an error or a stale/illiquid
+      price in the shortest-maturity instrument propagates into every
+      zero rate solved after it, since each step depends on every prior
+      step's result. A curve built from a thin, poorly-traded short end is
+      unreliable at every longer maturity too, not just at the short end
+      where the bad input actually sits.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Par, spot, and forward rates are three different things.</strong> A par rate is a par bond's blended YTM; a spot (zero) rate is the true rate for one single cash flow at one maturity; a forward rate is implied, today, between two future dates.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Bootstrapping solves shortest-to-longest, sequentially.</strong> Each new zero rate is the only unknown left once every shorter cash flow is discounted at its own already-solved zero rate.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Forward rates fall straight out of a no-arbitrage identity.</strong> \((1+z_2)^2=(1+z_1)(1+f_{1,2})\) — investing directly for 2 years must match investing 1 year and rolling into a locked-in forward.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>An upward-sloping spot curve implies forward rates above spot at every horizon.</strong> The worked example's 4.02%/5.07% forwards both sit above their corresponding zero rates.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A bond's own YTM is not the right discount rate for someone else's cash flow.</strong> Even a par bond's zero rate came out slightly different from its own coupon/par yield in the worked example (3.51% zero vs. 3.50% par).</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A forward rate is a no-arbitrage identity, not a forecast.</strong> It says nothing, on its own, about what the market actually expects to happen to rates — the same covered-vs-uncovered distinction this curriculum's interest rate parity lesson draws for currencies applies here too.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>An error at the short end propagates through the whole curve.</strong> Bootstrapping's sequential dependency means a bad short-maturity input corrupts every zero rate solved after it, not just the short end.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why can't you just use a 5-year bond's YTM as "the" discount rate for a 5-year cash flow from some other source?</summary>
+    <div class="tl-answer">
+      Because the 5-year bond's YTM is a single blended rate that reflects
+      the discounting of <em>all</em> of that bond's cash flows — its
+      1-year, 2-year, 3-year, 4-year, and 5-year coupons, plus the final
+      face value — not a rate specific to a cash flow arriving in exactly
+      year 5. Two bonds with different coupons but the same 5-year maturity
+      will generally have slightly different YTMs even when there's a single
+      true zero curve underlying both, because their cash flows are weighted
+      differently across maturities. The correct discount rate for a cash
+      flow due at year 5 is the bootstrapped 5-year zero rate, \(z_5\), which
+      applies to that maturity alone.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why must bootstrapping proceed from the shortest maturity to the longest, and not in some other order?</summary>
+    <div class="tl-answer">
+      Each step's price equation has exactly one unknown — that step's own
+      zero rate — only because every shorter-maturity cash flow inside that
+      instrument has already been discounted using a zero rate solved at an
+      earlier step. If you tried to solve a longer maturity first, you'd
+      have multiple unknown zero rates (the shorter ones plus the new one)
+      in a single equation with no way to isolate any of them. Working
+      strictly shortest-to-longest is what keeps every individual step down
+      to one equation, one unknown.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. In the worked example, why is \(z_2\) (≈3.51%) slightly higher than the 2-year bond's own coupon/par yield of 3.50%?</summary>
+    <div class="tl-answer">
+      Because the 2-year bond's par yield of 3.50% is a blended rate across
+      its year-1 coupon and its year-2 (coupon+face) cash flow, while
+      \(z_2\) is the rate for the year-2 cash flow alone. Since the
+      previously-solved 1-year zero rate (3.00%) sits below the 2-year par
+      yield, and the year-1 coupon is discounted at that lower 3.00% rate,
+      more of the "discounting work" has to be done by the year-2 cash
+      flow's own rate to make the bond's total price come out to par — which
+      pushes \(z_2\) slightly above the blended 3.50% par yield. This is a
+      direct, numerical illustration of par rate and zero rate being
+      genuinely different quantities, even for the same maturity.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Derive, in words, why \((1+z_2)^2 = (1+z_1)(1+f_{1,2})\) has to hold, assuming no arbitrage.</summary>
+    <div class="tl-answer">
+      Consider two riskless ways to turn one dollar into a value two years
+      from now using only today's known rates: invest directly for two years
+      at the known 2-year zero rate, ending with \((1+z_2)^2\); or invest for
+      one year at the known 1-year zero rate, then roll the proceeds into a
+      forward rate \(f_{1,2}\) locked in today (even though it only takes
+      effect starting in year 1), ending with \((1+z_1)(1+f_{1,2})\). Both
+      routes start with the same one dollar today and involve no risk in
+      between — every rate used is either already known or locked in in
+      advance. If the two riskless payoffs weren't equal, there would be a
+      genuine, riskless arbitrage: borrow via the cheaper route, invest via
+      the more expensive one, and pocket the difference for free. No such
+      free lunch can persist, so the two payoffs must be equal, giving the
+      identity.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Is a forward rate the same thing as the market's expected future spot rate? Why does this matter?</summary>
+    <div class="tl-answer">
+      No — a forward rate, as derived in this lesson, is purely a
+      no-arbitrage identity computed from today's zero curve; it is
+      guaranteed to hold today by construction, regardless of anyone's
+      beliefs about the future. Whether it also equals the market's true
+      expectation of the future spot rate is a separate, much stronger claim
+      — precisely analogous to the covered-vs-uncovered interest rate parity
+      distinction elsewhere in this curriculum, where the covered forward
+      rate is pinned down by arbitrage but the claim that it equals the
+      expected future spot rate (uncovered parity) is a behavioral hypothesis
+      that has failed empirically, on average, in FX markets for decades.
+      Treating a rates forward curve as a reliable rate forecast, rather than
+      as an arbitrage-free pricing input, risks the same kind of
+      overconfidence.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Bruce Tuckman &amp; Angel Serrat, <em>Fixed Income Securities: Tools for Today's Markets</em>, 3rd ed., Wiley, 2011 — the standard rigorous treatment of par/spot/forward rates and the bootstrapping algorithm.</li>
+    <li>Frank J. Fabozzi, <em>Bond Markets, Analysis, and Strategies</em>, 9th ed., Pearson, 2016 — a practitioner-oriented walkthrough of bootstrapping the Treasury spot curve from observed bond prices.</li>
+    <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, 10th ed., Pearson, 2017 — covers zero-curve bootstrapping and forward rate agreements as used in swap and derivatives pricing.</li>
+    <li>Campbell R. Harvey, <em>"The Real Term Structure and Consumption Growth,"</em> Journal of Financial Economics, 1988 — early, widely cited empirical work on the term structure's predictive content for the macro economy, relevant to the "curve shape as a macro signal" discussion above.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="nelson-siegel-svensson.html">Nelson-Siegel-Svensson →</a>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optimization Basics: Unconstrained &amp; Constrained — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Foundation Mathematics / Optimization Basics: Unconstrained &amp; Constrained</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Foundation Mathematics · Lesson 5 of 5</div>
+  <h1 class="tl-title">Optimization Basics: Unconstrained &amp; Constrained</h1>
+  <p class="tl-dek">How calculus finds the "best" value of something — with no restrictions, and then with a restriction bolted on via Lagrange multipliers, the exact machinery behind portfolio optimization.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span>~15 min read</span>
+    <span>Prereqs: Partial Derivatives &amp; Multivariable Calculus</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>An unconstrained optimum satisfies the <strong>first-order condition</strong> — the derivative (or gradient) is zero — and the <strong>second-order condition</strong> checks whether that flat point is a genuine minimum, a maximum, or a saddle.</li>
+      <li><strong>Constrained</strong> optimization — finding the best value of \(f(x)\) while requiring some condition \(g(x)=k\) to hold exactly — is solved with the <strong>Lagrangian</strong>, \(\mathcal{L} = f(x) - \lambda\,(g(x)-k)\), whose own first-order conditions recover the constraint alongside a new, principled equation.</li>
+      <li>The Lagrange-multiplier intuition: at the constrained optimum, the objective's gradient and the constraint's gradient point along the exact same line — if they didn't, you could nudge along the constraint and still improve the objective, so that point couldn't have been optimal.</li>
+      <li>KKT conditions are the version of this same logic for <em>inequality</em> constraints (≤ or ≥ instead of an exact =) — name-checked here, fully treated in a later Numerical Methods lesson.</li>
+      <li>Markowitz portfolio optimization — minimizing a portfolio's variance subject to hitting a target expected return — is exactly this lesson's Lagrange-multiplier problem, worked fully by hand here with two made-up but plausible assets.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    "Find the best \(x\)" is one of the most common questions in quantitative
+    finance, and it always turns out to mean one of two more precise things.
+    Sometimes it means "find the \(x\) that makes \(f(x)\) as large (or
+    small) as possible, with no restrictions at all" — an <em>unconstrained</em>
+    problem. More often, in practice, it means "find the best \(x\) subject
+    to some condition that must hold exactly" — a <em>constrained</em>
+    problem: the best portfolio weights that hit a target return, the
+    best-fit line subject to passing through a fixed point, the optimal
+    trade size subject to a fixed risk budget. This lesson builds both cases
+    from the ground up, using only the gradient and Hessian machinery from
+    the previous lesson, and ends at the exact piece of math underneath
+    Markowitz portfolio theory — one of the most widely used ideas in this
+    curriculum's later portfolio-construction material.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📈</div>
+      <h4>Markowitz portfolio optimization</h4>
+      <p>Minimizing portfolio variance subject to a target-return constraint — covered in a later portfolio-theory lesson in this curriculum — is exactly the Lagrange-multiplier problem this page builds and solves by hand.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🔍</div>
+      <h4>Convex optimization</h4>
+      <p>A later Numerical Methods lesson formalizes when the first- and second-order conditions here are guaranteed to find a true global optimum, not just a local one — the "convex" case.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">⚖️</div>
+      <h4>KKT conditions</h4>
+      <p>The generalization of this page's Lagrange multipliers to inequality (≤/≥) constraints, rather than exact equalities — named here, fully built in a later Numerical Methods lesson.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">⛰️</div>
+      <h4>Gradient descent</h4>
+      <p>The previous lesson's gradient vector is the direction of steepest change; this page's first-order condition, \(\nabla f = 0\), is exactly the stopping condition a gradient-descent algorithm is searching for.</p>
+    </div>
+  </div>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>The top of a hill has no uphill direction left — and a fence changes where "the top" even is</h3>
+    <p>
+      Imagine standing somewhere on a hilly landscape and being asked to walk
+      to the highest point. As long as there's an uphill direction available
+      to you, you haven't found the top yet — by definition, you could still
+      improve. The genuine summit is recognizable by exactly one property:
+      every direction from there is flat or downhill. There is no direction
+      left that still goes up. That's the entire content of the first-order
+      condition for an unconstrained optimum: a flat gradient means no
+      direction improves things any further, which is exactly what "optimal"
+      should mean, with nothing else restricting where you're allowed to
+      stand.
+    </p>
+    <p>
+      Now put a fence around part of the landscape — you're only allowed to
+      stand somewhere along a specific path (a ridge line, say), not
+      anywhere on the whole hillside. The unrestricted summit might not even
+      be on that path at all. The best point <em>on the path</em> is instead
+      the spot where walking further along the path, in either direction,
+      stops helping — even though, if you could step off the path, you might
+      still be able to climb higher. At that best-on-the-path point, a
+      striking geometric fact holds: the "uphill" direction of the
+      landscape and the direction the path is heading both point along the
+      exact same line (they're either the same direction or exact opposites).
+      If they didn't — if the path still had a component heading uphill —
+      you could walk a little further along the path and gain height, so you
+      wouldn't have been at the best point on the path yet. That alignment of
+      two different gradients — the landscape's and the path's — is the
+      entire geometric idea behind a Lagrange multiplier, made precise below.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>Unconstrained optimization: the first-order condition</h3>
+  <p>
+    For a single-variable function \(f(x)\), the point where \(f\) is
+    locally largest or smallest — with no restriction on \(x\) at all — must
+    be a point where the tangent line is perfectly flat, i.e. where the
+    derivative is exactly zero. This is the <strong>first-order condition</strong>
+    (FOC):
+  </p>
+  <div class="tl-math">
+    \[ f'(x^*) = 0 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>x*</code><span>the candidate optimal point — a "stationary point"</span></div>
+    <div class="tl-eq-chip c2"><code>f'(x*) = 0</code><span>no uphill or downhill direction left at x* — the flat-tangent condition</span></div>
+  </div>
+  <p>
+    For a multivariable function, the identical idea generalizes directly
+    using the gradient from the previous lesson: every partial derivative
+    must be zero at once, i.e. the entire gradient vector must vanish:
+  </p>
+  <div class="tl-math">
+    \[ \nabla f(x^*) = 0 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>∇f(x*) = 0</code><span>every partial derivative is zero — no direction, in any variable, still improves f</span></div>
+  </div>
+  <p>
+    A point satisfying the first-order condition is called a <strong>stationary
+    point</strong> — but "stationary" is deliberately not the same word as
+    "optimal." A flat tangent line (or a flat gradient) is equally consistent
+    with a minimum, a maximum, or — in more than one dimension — a saddle
+    point. The first-order condition <em>narrows down</em> the candidates; it
+    does not, by itself, tell you which kind of candidate you've found.
+  </p>
+
+  <h3>The second-order condition: telling a minimum from a maximum from a saddle</h3>
+  <p>
+    For a single-variable function, the <strong>second derivative</strong>
+    \(f''(x^*)\) resolves the ambiguity, using exactly the curvature idea
+    from the Taylor-series lesson: a positive second derivative means the
+    function curves upward at \(x^*\) (a bowl shape — a genuine local
+    minimum); a negative second derivative means it curves downward (a
+    genuine local maximum); a second derivative of exactly zero is
+    inconclusive and needs a higher-order check.
+  </p>
+  <div class="tl-math">
+    \[ f''(x^*) > 0 \Rightarrow \text{local minimum} \qquad f''(x^*) < 0 \Rightarrow \text{local maximum} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>f''(x*) &gt; 0</code><span>curves upward like a bowl — a genuine minimum</span></div>
+    <div class="tl-eq-chip c4"><code>f''(x*) &lt; 0</code><span>curves downward like a dome — a genuine maximum</span></div>
+  </div>
+  <p>
+    In more than one variable, the previous lesson's <strong>Hessian
+    matrix</strong> plays exactly this role: check its eigenvalues at the
+    stationary point. All positive means the function curves upward in
+    <em>every</em> direction (a genuine minimum); all negative means every
+    direction curves downward (a genuine maximum); a mix of positive and
+    negative eigenvalues means the function curves upward in some directions
+    and downward in others — a <strong>saddle point</strong>, which the
+    first-order condition alone cannot distinguish from a true optimum. This
+    Hessian-eigenvalue check is precisely what a later Numerical Methods
+    lesson's "convex optimization" material formalizes and builds algorithms
+    around — a function whose Hessian has all-positive eigenvalues
+    <em>everywhere</em> (not just at one point) is called convex, and for a
+    convex function, any stationary point found is guaranteed to be the true
+    global minimum, not just a local one.
+  </p>
+
+  <h3>Constrained optimization: the Lagrangian</h3>
+  <p>
+    Now add a restriction: find the \(x\) that optimizes \(f(x)\), but only
+    among the \(x\) that satisfy some constraint \(g(x) = k\) exactly (a
+    fixed target value \(k\)). The unconstrained first-order condition,
+    \(\nabla f = 0\), is generally the wrong thing to check now — the
+    unconstrained optimum may not even satisfy the constraint at all, and
+    even where it's feasible, moving along the constraint might still allow
+    improvement.
+  </p>
+  <p>
+    The method of <strong>Lagrange multipliers</strong> solves this by
+    building a new function, the <strong>Lagrangian</strong> \(\mathcal{L}\),
+    that folds the constraint into the objective using a new variable
+    \(\lambda\) (the "Lagrange multiplier"):
+  </p>
+  <div class="tl-math">
+    \[ \mathcal{L}(x, \lambda) = f(x) - \lambda\,\big(g(x) - k\big) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>f(x)</code><span>the original objective — what you actually want to optimize</span></div>
+    <div class="tl-eq-chip c2"><code>g(x) − k</code><span>the constraint, rewritten so it equals zero exactly when satisfied</span></div>
+    <div class="tl-eq-chip c4"><code>λ</code><span>the Lagrange multiplier — a new, to-be-solved-for variable</span></div>
+  </div>
+  <p>
+    Now take the unconstrained first-order condition of \(\mathcal{L}\), but
+    with respect to <em>both</em> \(x\) and \(\lambda\) at once — treating
+    \(\mathcal{L}\) as an ordinary multivariable function with one extra
+    input, \(\lambda\):
+  </p>
+  <div class="tl-math">
+    \[ \frac{\partial \mathcal{L}}{\partial x} = f'(x) - \lambda g'(x) = 0 \qquad \frac{\partial \mathcal{L}}{\partial \lambda} = -(g(x) - k) = 0 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>∂L/∂x = 0</code><span>gives f'(x) = λg'(x) — the parallel-gradients condition, explained below</span></div>
+    <div class="tl-eq-chip c2"><code>∂L/∂λ = 0</code><span>gives back g(x) = k exactly — the original constraint, recovered automatically</span></div>
+  </div>
+  <p>
+    Two things worth noticing about this construction, because they're easy
+    to take on faith without seeing why they work: first, differentiating
+    \(\mathcal{L}\) with respect to the new variable \(\lambda\) hands back
+    the original constraint exactly — the Lagrangian is built precisely so
+    that this happens, guaranteeing feasibility is enforced automatically by
+    the same first-order-condition machinery used everywhere else in this
+    lesson, rather than needing to be checked separately. Second,
+    differentiating with respect to \(x\) gives \(f'(x) = \lambda g'(x)\) —
+    read plainly, <strong>the objective's gradient and the constraint's
+    gradient must be parallel</strong> (scalar multiples of one another,
+    with \(\lambda\) as the scaling factor) at the constrained optimum. This
+    is exactly the fence/ridge-line intuition above, made algebraic: if the
+    two gradients weren't parallel, the objective's gradient would have some
+    leftover component running <em>along</em> the constraint, and moving a
+    little further along the constraint in that direction would still
+    improve \(f\) — meaning the point couldn't have been optimal yet.
+  </p>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">f(x)</div>
+      <div class="tl-fp-name">The objective</div>
+      <div class="tl-fp-desc">What's actually being optimized — variance, cost, error, etc.</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">g(x) − k</div>
+      <div class="tl-fp-name">The constraint</div>
+      <div class="tl-fp-desc">The condition that must hold exactly — folded in so it equals zero when satisfied</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">λ</div>
+      <div class="tl-fp-name">The multiplier</div>
+      <div class="tl-fp-desc">Scales the constraint's gradient to match the objective's — its size measures the constraint's "shadow price"</div>
+    </div>
+  </div>
+
+  <h3>A brief word on KKT conditions</h3>
+  <p>
+    Everything above assumes the constraint is an exact equality,
+    \(g(x)=k\). Many real problems instead have an <em>inequality</em>
+    constraint — "risk must be <em>at most</em> some budget," "a weight must
+    be <em>at least</em> zero (no short-selling)." The generalization of
+    Lagrange multipliers to that case is called the
+    <strong>Karush-Kuhn-Tucker (KKT) conditions</strong>. In plain language,
+    KKT conditions add one new idea on top of everything above: an
+    inequality constraint is either "active" (binding exactly, behaving just
+    like the equality case above) or "slack" (not binding at all, in which
+    case its multiplier is simply zero and it drops out of the problem
+    entirely) — and the conditions specify exactly how to tell which case
+    you're in. The full mechanics are deferred to a later Numerical Methods
+    lesson in this curriculum; the one thing worth carrying forward from
+    here is that KKT conditions are not a different idea from Lagrange
+    multipliers, they are the same parallel-gradients logic, extended to
+    handle constraints that don't have to bind exactly.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(f(x)\)</td><td>The objective function — the thing being maximized or minimized.</td></tr>
+    <tr><td>\(x^*\)</td><td>A stationary point — a candidate optimum where the first-order condition holds.</td></tr>
+    <tr><td>\(f'(x^*)=0\)</td><td>The first-order condition (FOC) — the derivative (or gradient, in several variables) is zero at the optimum candidate.</td></tr>
+    <tr><td>\(f''(x^*)\)</td><td>The second-order condition — its sign (or, in several variables, the Hessian's eigenvalue signs) distinguishes a minimum from a maximum from a saddle.</td></tr>
+    <tr><td>\(g(x) = k\)</td><td>A constraint — a condition that must hold exactly, with \(k\) a fixed target value.</td></tr>
+    <tr><td>\(\mathcal{L}(x,\lambda)\)</td><td>The Lagrangian — the objective with the constraint folded in via a multiplier.</td></tr>
+    <tr><td>\(\lambda\)</td><td>(lambda) The Lagrange multiplier — a new variable solved for alongside \(x\); its value measures how much the optimal objective would change per unit change in the constraint's target \(k\).</td></tr>
+    <tr><td>KKT conditions</td><td>The generalization of Lagrange multipliers to inequality (≤ or ≥) constraints — named here, built in a later lesson.</td></tr>
+  </table></div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Unconstrained optimum vs. the best point along a constraint</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Contour-style rings representing an objective function's level curves around an unconstrained peak, with a straight diagonal line representing a constraint. The best point along the constraint line is marked where the constraint line is tangent to one of the contour rings, and arrows show the objective's gradient and the constraint's gradient pointing along the exact same direction at that point.">
+      <ellipse cx="320" cy="150" rx="220" ry="120" style="fill:none;stroke:var(--text3);stroke-width:1;stroke-dasharray:3,3"/>
+      <ellipse cx="320" cy="150" rx="170" ry="92" style="fill:none;stroke:var(--text3);stroke-width:1;stroke-dasharray:3,3"/>
+      <ellipse cx="320" cy="150" rx="120" ry="65" style="fill:none;stroke:var(--text3);stroke-width:1;stroke-dasharray:3,3"/>
+      <ellipse cx="320" cy="150" rx="70" ry="38" style="fill:none;stroke:var(--blue);stroke-width:2"/>
+      <circle cx="320" cy="150" r="4" style="fill:var(--blue)"/>
+      <text x="320" y="130" text-anchor="middle" style="fill:var(--blue);font-size:11px;font-weight:600">unconstrained peak of f</text>
+      <line x1="120" y1="270" x2="560" y2="40" style="stroke:var(--amber);stroke-width:2.5"/>
+      <text x="565" y="38" style="fill:var(--amber);font-size:11px;font-weight:600">constraint g(x) = k</text>
+      <ellipse cx="320" cy="150" rx="205" ry="111" transform="rotate(0 320 150)" style="fill:none;stroke:var(--green);stroke-width:2"/>
+      <circle cx="447" cy="88" r="5" style="fill:var(--green)"/>
+      <text x="452" y="80" style="fill:var(--green);font-size:11px;font-weight:600">best feasible point x*</text>
+      <line x1="447" y1="88" x2="447" y2="48" style="stroke:var(--red);stroke-width:2"/>
+      <polygon points="447,48 442,58 452,58" style="fill:var(--red)"/>
+      <text x="452" y="46" style="fill:var(--red);font-size:10px">∇f</text>
+      <line x1="447" y1="88" x2="480" y2="61" style="stroke:var(--purple);stroke-width:2;stroke-dasharray:2,2"/>
+      <polygon points="480,61 470,64 474,54" style="fill:var(--purple)"/>
+      <text x="484" y="58" style="fill:var(--purple);font-size:10px">∇g</text>
+    </svg>
+    <div class="tl-chart-caption">The dashed rings are the objective \(f\)'s level curves (points of equal value), rising toward the blue unconstrained peak. The amber line is the constraint \(g(x)=k\) — only points on this line are allowed. The best <em>feasible</em> point, \(x^*\), is where the constraint line is exactly tangent to one of \(f\)'s level curves (the green ring) — at that single point, the objective's gradient (red) and the constraint's gradient (purple) point along the same line, exactly the Lagrange condition \(f'(x^*) = \lambda g'(x^*)\) derived above. Anywhere else on the amber line, the two gradients would diverge and sliding along the constraint would still improve \(f\).</div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Minimum-variance portfolio for a target return — solved with Lagrange multipliers</h3>
+    <p>
+      Two assets, made-up but plausible: Asset 1 has expected return
+      \(\mu_1 = 8\%\) and volatility \(\sigma_1 = 20\%\); Asset 2 has expected
+      return \(\mu_2 = 4\%\) and volatility \(\sigma_2 = 10\%\); their
+      returns have correlation \(\rho = 0.30\). Find the portfolio weights
+      \(w_1, w_2\) (with \(w_1 + w_2 = 1\)) that achieve a target expected
+      return of \(6\%\) with the smallest possible variance.
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Write down the objective and the constraints</h4>
+          <p>Portfolio variance, with \(w_2 = 1 - w_1\) substituted in so there's only one free weight, \(w_1\):</p>
+          <div class="tl-math">
+            \[ \sigma_p^2(w_1) = w_1^2\sigma_1^2 + (1-w_1)^2\sigma_2^2 + 2w_1(1-w_1)\rho\sigma_1\sigma_2 \]
+          </div>
+          <p>and the return constraint, \(w_1 \mu_1 + (1-w_1)\mu_2 = 6\%\).</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Solve the return constraint for \(w_1\) directly</h4>
+          <p>Because there's only one free weight after substituting \(w_2=1-w_1\), the return constraint alone pins down \(w_1\) exactly — no Lagrange multiplier is even needed for this simplified two-asset, one-target-return version (the multiplier becomes essential once a third asset, or a second constraint like "weights sum to 1" treated separately, is added — shown in step 4):</p>
+          <div class="tl-math">
+            \[ w_1(8) + (1-w_1)(4) = 6 \ \Longrightarrow\ 4 + 4w_1 = 6 \ \Longrightarrow\ w_1 = 0.5,\quad w_2 = 0.5 \]
+          </div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Compute the resulting minimum variance</h4>
+          <p>With \(\sigma_1=0.20\), \(\sigma_2=0.10\), \(\rho=0.30\), \(w_1=w_2=0.5\):</p>
+          <div class="tl-math">
+            \[ \sigma_p^2 = (0.5)^2(0.20)^2 + (0.5)^2(0.10)^2 + 2(0.5)(0.5)(0.30)(0.20)(0.10) \]
+          </div>
+          <div class="tl-math">
+            \[ = 0.25(0.04) + 0.25(0.01) + 0.5(0.30)(0.02) = 0.01 + 0.0025 + 0.003 = 0.0155 \]
+          </div>
+          <p>So \(\sigma_p = \sqrt{0.0155} \approx 12.4\%\) — a portfolio volatility below Asset 1's own 20% and even below a naive average of the two (15%), because the correlation is well below 1 and diversification genuinely helps.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Where the Lagrange multiplier actually earns its keep</h4>
+          <p>With exactly two assets and exactly one return target, the return equation alone already pins down the one free weight, so \(\lambda\) drops out of the arithmetic — but the full Lagrangian machinery is what justifies solving it that way, and becomes indispensable the moment there's more than one free weight (three or more assets) plus a return-target constraint plus the separate "weights sum to 1" constraint simultaneously. Setting up \(\mathcal{L} = \sigma_p^2(w) - \lambda_1(\mu^\top w - 6\%) - \lambda_2(\mathbf{1}^\top w - 1)\) and solving \(\nabla_w \mathcal{L} = 0\) alongside both constraints is exactly the general \(N\)-asset Markowitz problem — the two-asset case above is the smallest possible instance of it, worked by hand so every step is checkable, before the full \(N\)-asset linear-algebra machinery (a later portfolio-theory lesson) is needed.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Markowitz portfolio construction is this lesson's Lagrangian, at institutional scale</h3>
+    <p>
+      A portfolio manager overseeing dozens of positions faces exactly the
+      constrained-optimization structure built above, just with many more
+      assets: minimize the portfolio's overall variance,
+      \(w^\top \Sigma w\) (where \(\Sigma\) is the full covariance matrix —
+      the Deeper Foundations linear algebra lesson's central object),
+      subject to hitting a specific target expected return,
+      \(w^\top \mu = \text{target}\), and subject to the weights summing to
+      1 (fully invested, no cash left over). This is precisely the
+      Lagrangian problem from step 4 of the worked example above, just with
+      \(N\) weights instead of one free weight and two constraints folded in
+      via two separate multipliers instead of one.
+    </p>
+    <p>
+      The Lagrange multiplier attached to the return constraint has a
+      genuine economic meaning a portfolio manager cares about directly: it
+      measures, at the margin, how much extra portfolio variance must be
+      accepted to push the target return up by one more unit — literally the
+      "price," in variance terms, of demanding a higher return. This is not
+      an abstract mathematical side effect; it's exactly the slope of the
+      efficient frontier (the curve of best possible risk-return trade-offs)
+      at the specific target return being solved for, and it's precisely
+      why the efficient frontier gets flatter (each extra unit of return
+      costs more variance) as the target return is pushed higher and
+      higher above the minimum-variance portfolio's own return.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Nobody solves a Lagrangian by hand for a 50-asset portfolio — a numerical
+    optimizer (a quadratic program, in Markowitz's case, since the objective
+    is a quadratic function of the weights) does the algebra. What survives
+    into daily practitioner use is the vocabulary and the intuition, not the
+    hand-derivation:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📈</div>
+      <h4>The efficient frontier</h4>
+      <p>Solving the Lagrangian problem above for many different target returns at once traces out the entire efficient frontier — one Lagrange multiplier value per point on the curve.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">💰</div>
+      <h4>Shadow prices</h4>
+      <p>A Lagrange multiplier's value is routinely read as a "shadow price" — how much the optimal objective would improve per unit of relaxing a binding constraint (a risk budget, a leverage cap, a sector exposure limit).</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧮</div>
+      <h4>Numerical solvers, not hand algebra</h4>
+      <p>Real portfolio optimizers, risk-parity solvers, and calibration routines use numerical quadratic/convex-programming software that implements KKT conditions internally — the hand-derivation here is what to check the output against conceptually, not a step performed live.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🚧</div>
+      <h4>Binding vs. non-binding constraints</h4>
+      <p>Practitioners routinely check which constraints in a large optimization are actually "binding" (a nonzero multiplier) versus slack (multiplier zero, not actually limiting anything) — exactly the KKT active/inactive distinction name-checked above.</p>
+    </div>
+  </div>
+  <p>
+    The habit worth carrying forward: whenever a portfolio, risk, or
+    calibration problem is described as finding the "best" something
+    "subject to" some condition, that's a signal the Lagrangian/KKT
+    machinery is running underneath, whether or not the report ever uses the
+    word "Lagrangian" — and any reported "marginal cost" or "shadow price"
+    of a constraint is, structurally, exactly the multiplier \(\lambda\)
+    built on this page.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this goes wrong in practice</h3>
+    <p>
+      <strong>Treating a stationary point of the Lagrangian as automatically
+      optimal.</strong> Just as with the unconstrained case, \(\nabla\mathcal{L}=0\)
+      identifies a <em>candidate</em>, not a guarantee — without checking a
+      second-order condition (or confirming the problem is convex), a
+      Lagrangian stationary point could be a saddle rather than a genuine
+      constrained optimum.
+    </p>
+    <p>
+      <strong>Forgetting an inequality constraint can be non-binding.</strong>
+      A common mistake when moving from this lesson's exact-equality case to
+      a real problem with inequality (KKT) constraints is assuming every
+      constraint is active. A "risk must be at most X" constraint is often
+      slack at the optimum (the true best portfolio doesn't even need the
+      full risk budget) — forcing it to bind exactly, when it needn't,
+      produces a worse, needlessly constrained solution.
+    </p>
+    <p>
+      <strong>Over-trusting an in-sample Markowitz solution.</strong> The
+      minimum-variance-for-a-target-return machinery is exact <em>given</em>
+      the inputs \(\mu\), \(\Sigma\) — but those inputs are themselves
+      estimates from historical data, and Markowitz optimization is well
+      known to be highly sensitive to small errors in the estimated expected
+      returns \(\mu\) especially. A mathematically optimal solution to the
+      wrong (mis-estimated) inputs is not the same thing as a good real
+      portfolio — a distinct problem from anything covered in this lesson's
+      pure optimization mechanics.
+    </p>
+    <p>
+      <strong>Reading the Lagrange multiplier's sign backwards.</strong> The
+      sign convention in \(\mathcal{L} = f(x) - \lambda(g(x)-k)\) is a choice
+      (some texts write \(+\lambda\) instead) — the multiplier's numerical
+      value and its interpretation as a shadow price depend on which sign
+      convention was used to set up the problem, so comparing a \(\lambda\)
+      from one source against another without checking the sign convention
+      each used is a subtle, common error.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>An unconstrained optimum has a zero derivative (or gradient).</strong> The first-order condition, \(f'(x^*)=0\) or \(\nabla f(x^*)=0\), says no direction still improves the objective.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The second-order condition tells minimum from maximum from saddle.</strong> The sign of \(f''(x^*)\), or the Hessian's eigenvalue signs in several variables, resolves what the first-order condition alone leaves ambiguous.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Lagrange multipliers fold a constraint into the objective.</strong> \(\mathcal{L}=f(x)-\lambda(g(x)-k)\); its own first-order conditions recover the constraint automatically and force the objective's and constraint's gradients to be parallel at the optimum.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Markowitz portfolio optimization is exactly this Lagrangian problem.</strong> Minimizing portfolio variance subject to a target-return constraint (and a weights-sum-to-1 constraint) is the direct \(N\)-asset generalization of the two-asset worked example.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A Lagrange multiplier is a shadow price.</strong> Its value measures how much the optimal objective would change per unit change in the constraint's target — a genuinely useful economic number, not just algebra bookkeeping.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>KKT conditions (inequality constraints) are only name-checked here, not fully derived.</strong> A binding vs. slack distinction — new relative to this page's exact-equality case — is deferred to a later Numerical Methods lesson.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A mathematically exact optimum is only as good as its inputs.</strong> Markowitz's clean algebra is well known to be highly sensitive to estimation error in expected returns — a distinct, practical concern from the pure optimization mechanics covered here.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why isn't a zero derivative, \(f'(x^*)=0\), enough by itself to conclude \(x^*\) is a minimum?</summary>
+    <div class="tl-answer">
+      A zero derivative only says the function is momentarily flat at
+      \(x^*\) — the tangent line has no slope there. That flatness is
+      equally consistent with a local minimum (curving upward on both
+      sides), a local maximum (curving downward on both sides), or, in more
+      than one variable, a saddle point (curving upward in some directions
+      and downward in others). Distinguishing which one actually holds
+      requires the second-order condition — the sign of \(f''(x^*)\) in one
+      variable, or the signs of the Hessian's eigenvalues in several.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. In plain language, why must the objective's gradient and the constraint's gradient be parallel at a constrained optimum?</summary>
+    <div class="tl-answer">
+      If the two gradients were not parallel, the objective's gradient would
+      have some non-zero component running along the direction of the
+      constraint itself (the "ridge line" from the intuition box). That
+      would mean you could move a small step further along the constraint —
+      staying feasible the whole time — and still increase (or decrease,
+      whichever is being optimized) the objective, which would contradict
+      the point being optimal in the first place. Only when the objective's
+      gradient has no leftover component along the constraint — i.e. the two
+      gradients point along the exact same line — is there no feasible
+      direction left that still improves things.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. In the two-asset minimum-variance worked example, why did the Lagrange multiplier not actually need to be computed?</summary>
+    <div class="tl-answer">
+      Because with exactly two assets constrained to sum to 1 (\(w_2=1-w_1\))
+      and exactly one additional return-target constraint, there was only
+      one genuinely free variable (\(w_1\)) and one equation relating it to
+      the target return — that single equation alone was enough to solve
+      for \(w_1\) directly, with no optimization needed at all in this
+      restricted two-asset case. The Lagrangian machinery becomes
+      indispensable once there are more free weights than constraints (three
+      or more assets), where minimizing variance subject to the constraints
+      genuinely requires balancing a trade-off rather than just solving a
+      determined system of equations.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What is the practical difference between an "active" (binding) and a "slack" (non-binding) inequality constraint in a KKT-type problem?</summary>
+    <div class="tl-answer">
+      A binding (active) constraint holds with exact equality at the
+      optimum — for example, a risk budget that is fully used up — and its
+      Lagrange multiplier is generally nonzero, carrying a genuine shadow
+      price. A slack (non-binding) constraint holds with room to spare at
+      the optimum — the true best solution simply doesn't need to push up
+      against that limit — and its multiplier is exactly zero, meaning the
+      constraint has no marginal effect on the optimal objective at all. A
+      common practical mistake is assuming every stated constraint must be
+      binding, when in reality the optimizer may find a better solution
+      well inside some of them.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why does the Lagrange multiplier on a Markowitz return-target constraint have an economic meaning, rather than just being a bookkeeping variable?</summary>
+    <div class="tl-answer">
+      The multiplier's value equals the rate at which the optimal (minimum)
+      portfolio variance changes as the return target is nudged up by a
+      small amount — in other words, it is exactly the marginal "cost," in
+      variance terms, of demanding one more unit of expected return. That is
+      precisely the slope of the efficient frontier at the target return
+      being solved for, which is a real, economically meaningful quantity a
+      portfolio manager cares about directly (how much more risk must be
+      accepted to chase a higher return target), not an artifact of the
+      algebra used to solve the constrained problem.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Harry M. Markowitz, "Portfolio Selection," <em>Journal of Finance</em>, 1952 — the original paper; the minimum-variance-for-a-target-return problem worked by hand on this page is a direct, small-scale instance of Markowitz's general framework.</li>
+    <li>Stephen Boyd &amp; Lieven Vandenberghe, <em>Convex Optimization</em>, Cambridge University Press, 2004 (freely available from the authors) — the standard modern reference for Lagrangians, duality, and KKT conditions in full generality, the direct continuation of this lesson's deferred material.</li>
+    <li>David G. Luenberger, <em>Investment Science</em>, Oxford University Press, 2nd edition, 2013 — a finance-first treatment that derives the Markowitz mean-variance problem via Lagrange multipliers in exactly the style built up on this page, with the full \(N\)-asset generalization worked out.</li>
+    <li>William Karush's 1939 master's thesis (University of Chicago) and Harold W. Kuhn &amp; Albert W. Tucker's 1951 paper "Nonlinear Programming" — the two independent origins of what are now jointly called the KKT conditions, the inequality-constraint generalization named but not fully derived on this page.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="foundation-multivariable-calculus.html">← Partial Derivatives &amp; Multivariable Calculus</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+</body>
+</html>

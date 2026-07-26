@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Limit Order Books &amp; Queue Dynamics — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  .tl-table-wrap{overflow-x:auto;margin:14px 0}
+  table.tl-tbl{width:100%;border-collapse:collapse;font-size:13px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r)}
+  table.tl-tbl th,table.tl-tbl td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+  table.tl-tbl th{color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;background:var(--s2)}
+  table.tl-tbl tr:last-child td{border-bottom:none}
+  table.tl-tbl td{color:var(--text2)}
+  table.tl-tbl td:first-child{color:var(--text);font-weight:600;white-space:nowrap}
+  table.tl-tbl td.tl-num{font-family:'DM Mono',monospace;text-align:right}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Market Microstructure / Limit Order Books &amp; Queue Dynamics</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Market Microstructure · Lesson 2 of 5</div>
+  <h1 class="tl-title">Limit Order Books &amp; Queue Dynamics</h1>
+  <p class="tl-dek">Every quoted price hides a whole ladder of resting orders underneath it — how that ladder is organized, what happens when a market order tears through it, and why the order sitting first in line at a price gets treated completely differently from the order sitting last.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span>~15 min read</span>
+    <span>Prereqs: <a href="market-microstructure.html">Market Microstructure</a></span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A limit order book is two ladders of resting orders — bids below the market, asks above it — each level holding a queue of orders at one exact price, ranked strictly by arrival time within that price (price-time priority, first-in-first-out).</li>
+      <li>The best bid and best ask define the <strong>spread</strong>; the total size resting at and near those prices is the book's <strong>depth</strong> — together they measure how much size can trade before the price has to move.</li>
+      <li>A limit order rests and waits, providing liquidity at a chosen price; a market order takes immediately, consuming whatever size is resting, walking through successively worse price levels if one level alone isn't enough to fill it.</li>
+      <li>Queue position is not a detail — it is often the entire economics of a passive order. Two identical resting orders at the identical price can have completely different fill probabilities purely because of how many shares/contracts are queued ahead of one versus the other.</li>
+      <li>Worked example: a 600-unit market buy order against a small three-level ask ladder walks through all of level 1, all of level 2, and part of level 3, landing at a volume-weighted average price about 0.8 pips worse than the best quoted ask — a concrete illustration of "walking the book."</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The <a href="market-microstructure.html">Market Microstructure</a> lesson derived
+    <em>why</em> a bid-ask spread exists (Glosten-Milgrom: compensation for adverse
+    selection) and <em>why</em> a bigger order costs more to execute (Kyle's Lambda:
+    price impact scales with size and inversely with liquidity depth). Both of those
+    results treat the market as a single number — one spread, one impact coefficient.
+    Neither one describes the actual mechanical object those numbers are being read
+    off of: a real limit order book, which is not one price but a whole ladder of
+    prices, each with its own queue of waiting orders.
+  </p>
+  <p>
+    This lesson opens up that object. Once you can see the ladder itself — price
+    levels, sizes at each level, and the strict first-in-first-out rule that governs
+    who gets filled first at a given price — Kyle's Lambda stops being an abstract
+    coefficient and becomes something you can compute directly by walking down the
+    book level by level, exactly as the worked example below does. It is also the
+    necessary foundation for the next lesson in this sequence, <a
+    href="market-impact-almgren-chriss.html">Market Impact Models &amp; Almgren-Chriss</a>,
+    which is entirely about optimizing <em>how</em> to execute a large order against
+    a book like this one over time.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Think of it as a deli counter with a numbered ticket at every price</h3>
+    <p>
+      Imagine a deli counter that sells one item, but at several different prices
+      simultaneously, each price having its own separate line of customers. At
+      $5.00 there's a line of three people; at $5.05 there's a line of seven; at
+      $5.10 a line of two. A new customer joining the $5.05 line doesn't cut in —
+      they take a ticket and go to the <em>back</em> of that specific line. If you
+      want to be served next at $5.05, you need everyone ahead of you in that
+      specific line to either get served or walk away first. That's <strong>queue
+      position</strong>, and it's exactly how a real exchange's matching engine
+      treats resting limit orders at the same price: strict, first-come-first-served,
+      no cutting.
+    </p>
+    <p>
+      Now imagine a customer who doesn't want to wait in any line at all — they
+      walk up and say "I'll pay whatever it costs, serve me now." The counter fills
+      them from the cheapest available line first ($5.00), and if that line runs out
+      of stock before the order is filled, moves on to the next cheapest line
+      ($5.05), and so on, until the whole order is filled. That impatient customer
+      is a <strong>market order</strong>: it "walks the book," and the price it
+      actually pays, averaged across everyone it bought from, is worse than the very
+      first price it touched, precisely because it kept having to reach for
+      progressively less favorable lines to get fully served. Everyone who was
+      willing to simply wait in a line instead — the resting limit orders — is
+      called <strong>liquidity</strong>; the impatient order that eats through those
+      lines is said to <strong>consume</strong> it.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>1. The structure of the book: two ladders, many levels, one queue per level</h3>
+  <p>
+    A limit order book (LOB) is organized around two sides. The <strong>bid
+    side</strong> holds every resting order to <em>buy</em>, sorted from the highest
+    price (the <strong>best bid</strong>, closest to the market) down to progressively
+    lower, less attractive prices. The <strong>ask side</strong> (also called the
+    <strong>offer side</strong>) holds every resting order to <em>sell</em>, sorted
+    from the lowest price (the <strong>best ask</strong>) up to progressively higher
+    prices. Each distinct price on either side is called a <strong>level</strong>, and
+    a level's <strong>size</strong> is the total quantity resting there, summed across
+    every order queued at that exact price.
+  </p>
+  <p>
+    Critically, a level is not one order — it is a queue of potentially many separate
+    orders from many separate participants, all willing to trade at that exact price,
+    waiting their turn. How that queue is ordered internally is the subject of the
+    next section.
+  </p>
+
+  <div class="tl-table-wrap"><table class="tl-tbl">
+    <tr><th>Side</th><th>Level</th><th>Price</th><th>Size at level</th><th>Cumulative size</th></tr>
+    <tr><td>Ask</td><td>3 (worst)</td><td class="tl-num">1.1007</td><td class="tl-num">500</td><td class="tl-num">1,000</td></tr>
+    <tr><td>Ask</td><td>2</td><td class="tl-num">1.1006</td><td class="tl-num">300</td><td class="tl-num">500</td></tr>
+    <tr><td>Ask</td><td>1 (best)</td><td class="tl-num">1.1005</td><td class="tl-num">200</td><td class="tl-num">200</td></tr>
+    <tr><td>— spread —</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>Bid</td><td>1 (best)</td><td class="tl-num">1.1004</td><td class="tl-num">400</td><td class="tl-num">400</td></tr>
+    <tr><td>Bid</td><td>2</td><td class="tl-num">1.1003</td><td class="tl-num">250</td><td class="tl-num">650</td></tr>
+    <tr><td>Bid</td><td>3 (worst)</td><td class="tl-num">1.1002</td><td class="tl-num">600</td><td class="tl-num">1,250</td></tr>
+  </table></div>
+  <p>
+    This small, hypothetical FX snapshot is the one used throughout this lesson,
+    including the worked example below. Two numbers fall directly out of it, and
+    both are the standard liquidity measures every desk watches:
+  </p>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">Spread = Ask₁ − Bid₁</div>
+      <div class="tl-fp-name">Bid-ask spread</div>
+      <div class="tl-fp-desc">1.1005 − 1.1004 = 0.0001 (1 pip) — the cost of demanding immediacy in either direction right now</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">Σ size, near touch</div>
+      <div class="tl-fp-name">Market depth</div>
+      <div class="tl-fp-desc">How much size is resting at and near the best prices — 200 on the ask touch, 400 on the bid touch here</div>
+    </div>
+  </div>
+  <p>
+    A <strong>tight</strong> spread with <strong>deep</strong> resting size on both
+    sides is the signature of a liquid market — small orders barely move the price
+    at all. A <strong>wide</strong> spread with <strong>thin</strong> size is the
+    signature of an illiquid one — precisely the low-\(\sigma_u\), high-\(\lambda\)
+    regime from the Kyle's Lambda derivation in the prior lesson. Depth and the
+    spread are two different numbers measuring the same underlying thing —
+    how expensive it is, right now, to trade a given amount immediately — and a
+    market maker's decision about how far to space each level, and how much size to
+    post at each one, is exactly the practical implementation of the adverse-selection
+    and price-impact logic from that lesson.
+  </p>
+
+  <h3>2. Price-time priority: the matching rule almost every modern exchange uses</h3>
+  <p>
+    When a market order (or an aggressively priced limit order) arrives and needs to
+    be matched against resting liquidity, the exchange's matching engine has to decide
+    <em>which specific resting orders</em> get filled first. Two rules apply, in strict
+    order:
+  </p>
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Price priority</h4>
+        <p>Better prices are always filled before worse ones. An incoming market buy
+        always takes the lowest resting ask price first, in full, before it is ever
+        allowed to touch the next-lowest ask price — no incoming order can "skip" a
+        better-priced resting order to reach a worse-priced one.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>Time priority, within a price</h4>
+        <p>Among every order resting at the exact same price, the one that arrived
+        <strong>first</strong> is filled first — strictly first-in-first-out (FIFO).
+        An order placed a millisecond earlier at the same price is filled completely
+        ahead of one placed a millisecond later, regardless of size, account type, or
+        anything else about either order.</p>
+      </div>
+    </div>
+  </div>
+  <p>
+    Together these two rules are called <strong>price-time priority</strong> (also
+    "FIFO matching"), and it is the default matching algorithm at the large majority
+    of modern electronic exchanges and ECNs across equities, futures, and FX. A very
+    small number of venues use variants (e.g. pro-rata matching, common in some
+    futures markets, which allocates fills proportionally to order size at a price
+    level rather than strictly by arrival time), but price-time priority is the rule
+    to know first, because it is both the most common and the one every other variant
+    is defined as a departure from.
+  </p>
+  <div class="tl-solid amber">
+    <strong>The consequence that matters in practice:</strong> under strict FIFO,
+    <em>when</em> you joined a price level is as economically important as
+    <em>what price</em> you joined at. An order resting at the very back of a long
+    queue at the best price can, in a slow market, wait through the entire rest of
+    the trading session without a single fill, while a newer, smaller order at a
+    slightly worse price two ticks away gets filled first simply because its own
+    queue happened to clear faster. Price alone does not tell you your fill
+    probability — position in the queue does too, and often dominates.
+  </div>
+
+  <h3>3. Market orders vs. limit orders: taking liquidity vs. providing it</h3>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Limit order — provides liquidity</h4>
+      <p>Specifies a price (and side) and <strong>rests</strong> in the book until it
+      either gets matched against an incoming order, is cancelled, or expires. The
+      trader who posts it accepts uncertainty about <em>whether</em> and <em>when</em>
+      it fills, in exchange for a better price than crossing the spread would give
+      them, and in exchange for not moving the price against themselves the way a
+      market order does.</p>
+    </div>
+    <div class="tl-compare-card amber">
+      <h4>Market order — takes liquidity</h4>
+      <p>Specifies only a size (and side), no price, and demands to trade
+      <strong>immediately</strong> against whatever is currently resting, at whatever
+      price that requires. It accepts price uncertainty (how far will I have to walk
+      down the book?) in exchange for certainty of immediate execution.</p>
+    </div>
+  </div>
+  <p>
+    A market order large enough to exceed the size resting at the best price does not
+    fail or wait — it "<strong>walks the book</strong>": it fills against the entire
+    best level, then the entire next level, and so on, at successively worse prices,
+    until the full requested size is filled or the book is exhausted. The
+    volume-weighted average price (VWAP) actually paid across all of those levels is
+    the real execution price, and it is always at least as bad as the best price the
+    order started at — worked through with real numbers below.
+  </p>
+
+  <h3>4. Queue position and fill probability</h3>
+  <p>
+    For a resting limit order, the single most useful number to reason about is not
+    just "is my price close to the market" but "how much size is ahead of me in my
+    own queue." Call that ahead-of-you size \(A\) (measured in the same units as order
+    size), and the pace at which orders at that level get matched or cancelled the
+    level's <strong>attrition rate</strong>. Your order cannot receive a single unit
+    of fill until \(A\) units directly ahead of you have first been matched away or
+    cancelled — your own size only starts filling once \(A\) reaches zero.
+  </p>
+  <div class="tl-math">
+    \[ A_{\text{new}} = A_{\text{old}} - (\text{matched against incoming orders}) - (\text{cancelled by the orders ahead of you}) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>A</code><span>total size resting ahead of your order, at your exact price</span></div>
+    <div class="tl-eq-chip c2"><code>matched</code><span>shrinks only when an incoming order actually trades against that queue</span></div>
+    <div class="tl-eq-chip c3"><code>cancelled</code><span>also shrinks it — orders ahead of you leaving voluntarily helps you too</span></div>
+  </div>
+  <p>
+    A small numeric illustration: suppose your order joins the back of the best-bid
+    queue with 800 units already resting ahead of you (\(A=800\)). A market sell
+    order for 300 units arrives and matches against that level. Because of strict
+    time priority, every one of those 300 units is taken from the front of the queue
+    — from the orders that arrived before yours — so your ahead-of-you size drops
+    from 800 to 500. You have moved 300 units closer to being filled, but you are
+    still 500 units away from receiving a single fill yourself, and nothing about
+    your own order changed at all. This is why queue position is sometimes described
+    as "waiting for other people's trades to happen to you" — your fill depends
+    entirely on order flow arriving that is unrelated to, and ahead of, your own
+    order.
+  </p>
+  <p>
+    This is precisely why queue position matters enormously for passive
+    (liquidity-providing) strategies specifically: a market-making or resting-limit
+    strategy's realized fill rate — and therefore its realized profitability — can
+    differ substantially between two orders posted at the identical price, purely
+    as a function of when each order joined the queue and how much size has since
+    queued up ahead of it. A strategy that only ever measures "did the market trade
+    through my price" without also tracking queue position will systematically
+    overestimate how often it would actually have been filled.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>Bid / Ask</td><td>The buy side / sell side of the book. Best bid = highest resting buy price; best ask (offer) = lowest resting sell price.</td></tr>
+    <tr><td>Level</td><td>One distinct price on either side, holding a queue of one or more resting orders all willing to trade at that exact price.</td></tr>
+    <tr><td>Spread</td><td>Best ask minus best bid — the cost of demanding immediate execution in either direction right now.</td></tr>
+    <tr><td>Depth</td><td>The total size resting at (or within some distance of) the best prices — how much can trade before price has to move further.</td></tr>
+    <tr><td>Price-time priority</td><td>The matching rule: better prices fill first; within an identical price, earlier-arriving orders fill first (FIFO).</td></tr>
+    <tr><td>\(A\)</td><td>Ahead-of-you size — the total quantity resting in front of your order at your exact price level.</td></tr>
+    <tr><td>Walking the book</td><td>What a market order does when it's larger than the size resting at the best price: it fills against level 1, then level 2, etc., at successively worse prices.</td></tr>
+    <tr><td>VWAP (execution)</td><td>The volume-weighted average price actually paid across every level a market order walked through to get filled.</td></tr>
+  </table></div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Book depth, and a 600-unit market buy order eating into the ask side</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Order book depth chart. Bid side on the left with cumulative size rising from 400 at the best bid to 1250 three levels out. Ask side on the right with cumulative size rising from 200 at the best ask to 1000 three levels out. A highlighted region on the ask side shows a 600-unit market buy order consuming all of level 1, all of level 2, and one fifth of level 3.">
+      <line x1="40" y1="260" x2="600" y2="260" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="320" y1="260" x2="320" y2="40" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
+      <text x="320" y="30" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">mid</text>
+      <text x="14" y="150" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 14 150)">Cumulative size</text>
+      <text x="140" y="285" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--green)">bids ←</text>
+      <text x="500" y="285" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--red)">→ asks</text>
+
+      <!-- bid bars: level1 (1.1004) x260-320 h=64, level2 (1.1003) x200-260 h=104, level3 (1.1002) x140-200 h=200 -->
+      <rect x="260" y="196" width="60" height="64" style="fill:var(--green);opacity:.30;stroke:var(--green);stroke-width:1"/>
+      <rect x="200" y="156" width="60" height="104" style="fill:var(--green);opacity:.30;stroke:var(--green);stroke-width:1"/>
+      <rect x="140" y="60" width="60" height="200" style="fill:var(--green);opacity:.30;stroke:var(--green);stroke-width:1"/>
+      <text x="290" y="252" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text)">1.1004</text>
+      <text x="230" y="252" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text)">1.1003</text>
+      <text x="170" y="252" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text)">1.1002</text>
+
+      <!-- ask bars, unconsumed base color: level1 x320-380 h=32, level2 x380-440 h=80, level3 x440-500 h=160 -->
+      <rect x="320" y="228" width="60" height="32" style="fill:var(--red);opacity:.22;stroke:var(--red);stroke-width:1"/>
+      <rect x="380" y="180" width="60" height="80" style="fill:var(--red);opacity:.22;stroke:var(--red);stroke-width:1"/>
+      <rect x="440" y="100" width="60" height="160" style="fill:var(--red);opacity:.22;stroke:var(--red);stroke-width:1"/>
+      <!-- highlight: consumed portion of the market buy order, drawn on top -->
+      <rect x="320" y="228" width="60" height="32" style="fill:var(--amber);opacity:.65"/>
+      <rect x="380" y="180" width="60" height="80" style="fill:var(--amber);opacity:.65"/>
+      <rect x="440" y="100" width="12" height="160" style="fill:var(--amber);opacity:.65"/>
+      <text x="350" y="252" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text)">1.1005</text>
+      <text x="410" y="252" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text)">1.1006</text>
+      <text x="470" y="252" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text)">1.1007</text>
+
+      <line x1="34" y1="260" x2="34" y2="60" style="stroke:var(--text3);stroke-width:1"/>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--green)"></i>resting bids (cumulative size, deeper away from mid)</span>
+      <span><i style="background:var(--red)"></i>resting asks (unconsumed)</span>
+      <span><i style="background:var(--amber)"></i>consumed by the 600-unit market buy order</span>
+    </div>
+    <div class="tl-chart-caption">
+      Both sides step up in cumulative size moving away from the mid-price — a classic
+      depth-chart shape. The amber region shows the 600-unit market buy order from the
+      worked example below: it fully consumes level 1 (200 units) and level 2 (300
+      units), then takes only 100 of the 500 units resting at level 3 — shown as a
+      partial-width shading within that bar, since the fill stops partway through that
+      level's queue (there is no fractional price level; the partial width is purely an
+      illustration of "not all of this level's queue got taken").
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Walking the book: the VWAP execution price of a 600-unit market buy order</h3>
+    <p>
+      Using the ask-side snapshot from the table above, a trader submits a market buy
+      order for 600 units. Level 1 only has 200 units — nowhere near enough — so the
+      order has to walk through multiple levels. Work through it level by level.
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Level 1 — 1.1005, size 200</h4>
+          <p>The order takes the entire 200 units resting here — it is not remotely
+          filled yet, so it must continue to the next level.</p>
+          <div class="tl-math">\[ \text{filled so far} = 200,\quad \text{remaining} = 600-200 = 400 \]</div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Level 2 — 1.1006, size 300</h4>
+          <p>The order takes the entire 300 units resting here too — still not fully
+          filled.</p>
+          <div class="tl-math">\[ \text{filled so far} = 200+300=500,\quad \text{remaining} = 600-500 = 100 \]</div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Level 3 — 1.1007, size 500</h4>
+          <p>Only 100 units are needed to complete the order, so it takes just 100 of
+          the 500 resting here and stops — the remaining 400 units at this level are
+          untouched, still resting in the book for the next order.</p>
+          <div class="tl-math">\[ \text{filled so far} = 500+100=600 = \text{done} \]</div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Volume-weighted average execution price</h4>
+          <p>Weight each level's price by how many units were actually filled there,
+          divide by the total size:</p>
+          <div class="tl-math">
+            \[ \text{VWAP} = \frac{200(1.1005) + 300(1.1006) + 100(1.1007)}{600} = \frac{220.10+330.18+110.07}{600} = \frac{660.35}{600} \approx 1.10058 \]
+          </div>
+          <div class="tl-eq-break">
+            <div class="tl-eq-chip c1"><code>200(1.1005)</code><span>units filled at level 1, times that level's price</span></div>
+            <div class="tl-eq-chip c2"><code>300(1.1006)</code><span>units filled at level 2, times that level's price</span></div>
+            <div class="tl-eq-chip c3"><code>100(1.1007)</code><span>units filled at level 3, times that level's price</span></div>
+            <div class="tl-eq-chip c4"><code>÷ 600</code><span>total units filled — turns the weighted sum back into an average price</span></div>
+          </div>
+          <p>
+            The order's real average execution price, 1.10058, is about 0.8 pips worse
+            than the 1.1005 best ask it started at (\((1.10058-1.10050)/0.0001 \approx
+            0.83\) pips) — the exact, quantifiable cost of walking the book, computed
+            directly from the ladder rather than inferred from an abstract impact
+            coefficient. This is the mechanical, level-by-level reality that Kyle's
+            Lambda, \(\Delta p = \lambda Q\), is a smooth, tractable approximation of.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Two market makers, same price, very different economics</h3>
+    <p>
+      A market-making desk posts a resting limit buy order at the current best bid
+      the moment the book opens for the session, when the queue at that price is
+      empty — their order becomes the very first in line. Thirty seconds later, a
+      second desk posts an identically-sized limit buy order at the exact same
+      price. By now, a wave of other resting orders has already queued up ahead of
+      the second desk's order at that price — call it 2,000 units of ahead-of-you
+      size.
+    </p>
+    <p>
+      Over the next few minutes, only 1,500 units of market sell orders arrive and
+      trade against that price level. Because of strict price-time priority, every
+      one of those 1,500 units is matched against the queue from front to back: the
+      first desk's order — first in line — is filled completely and immediately
+      captures the spread it was quoting for. The second desk's order has moved from
+      2,000 units behind to 500 units behind, and has not received a single unit of
+      fill. Both desks quoted the identical price, took the identical directional
+      risk, and posted the identical size — but one of them made money on the trade
+      and the other is still waiting, purely as a function of thirty seconds of
+      queue position. This is not a hypothetical edge case; it is the everyday
+      reality of running a passive, liquidity-providing strategy on any exchange
+      that uses price-time priority, and it is exactly why sophisticated
+      market-making operations invest heavily in being first to a new price level
+      rather than only in picking a good price.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Understanding the book as a live, level-by-level structure — rather than as a
+    single quoted price — changes how a desk actually routes and manages orders:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📊</div>
+      <h4>Reading depth before sizing an order</h4>
+      <p>A desk checks how much size is actually resting at and near the touch before
+      sending a market order, precisely to estimate in advance how many levels it
+      will have to walk and what the resulting VWAP execution price is likely to
+      be — the same arithmetic as the worked example above, run live against the
+      current book.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🧭</div>
+      <h4>Choosing limit vs. market deliberately</h4>
+      <p>A trader who can tolerate waiting posts a limit order to avoid paying the
+      spread and walking the book; a trader who needs certainty of execution accepts
+      the worse expected price of a market order. Most professional execution
+      algorithms are, at their core, a policy for deciding this trade-off order by
+      order rather than committing to one type for an entire parent order.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">⏱️</div>
+      <h4>Racing to be first in queue</h4>
+      <p>Because queue position at a good price can matter more than the price
+      itself, market-making and passive-execution operations invest heavily in
+      being among the first to join a new or improved price level, and in
+      estimating their own current queue position in real time to judge how likely
+      a resting order is to fill soon versus needing to be cancelled and replaced.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🧩</div>
+      <h4>Splitting an order across levels deliberately</h4>
+      <p>Rather than sending one market order that mechanically walks the book,
+      execution logic can choose to rest part of a large order as limit orders at
+      or near the touch, only crossing the spread with a market order for the
+      urgent remainder — trading off certainty of execution against the added cost
+      of walking multiple levels, one level at a time.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this goes wrong in practice</h3>
+    <p>
+      <strong>Assuming the quoted best price is the price you'll actually pay.</strong>
+      The best bid/ask only tells you the price for the <em>first</em> unit of size.
+      Any order larger than what's resting at that single level will walk the book
+      and pay a worse VWAP, exactly as in the worked example — quoting "the price"
+      without reference to size is quietly assuming an order small enough to never
+      touch a second level.
+    </p>
+    <p>
+      <strong>Treating displayed depth as static or fully reliable.</strong> A book
+      snapshot is a photograph of one instant; resting orders are cancelled and
+      replaced constantly (this is sometimes called "phantom" or "flickering"
+      liquidity when it happens especially fast), and the size resting a moment
+      before an order arrives is not a guarantee of the size still there when it's
+      actually matched. Backtests or execution-cost estimates that treat a single
+      stale book snapshot as available liquidity for the whole trade will
+      systematically overstate how much size was really there to trade against.
+    </p>
+    <p>
+      <strong>Ignoring queue position when estimating a passive strategy's fill
+      rate.</strong> A common and costly modeling mistake is assuming any resting
+      limit order fills whenever the market subsequently trades through its price,
+      with no accounting for how much size was queued ahead of it first. As the
+      scenario box above shows, two orders at the identical price can have wildly
+      different real fill outcomes — a backtest that ignores queue position will
+      overstate a passive strategy's realized fill rate, sometimes dramatically.
+    </p>
+    <p>
+      <strong>Confusing price-time priority with the only possible matching rule.</strong>
+      It is the most common rule, but not universal — some futures markets use
+      pro-rata matching (allocating fills proportional to order size at a level
+      rather than strictly by arrival time), which changes the queue-position
+      logic above substantially. Always confirm which matching rule a specific
+      venue actually uses before assuming FIFO applies.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The book is two ladders of price levels, each holding a queue.</strong> Bids sorted highest-to-lowest, asks sorted lowest-to-highest, and every level's size is the sum of possibly many separate resting orders.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Price-time priority governs who fills first.</strong> Better prices always fill before worse ones; at the identical price, strictly first-arrived, first-filled (FIFO) — the dominant matching rule across modern electronic exchanges.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Market orders walk the book; limit orders provide liquidity and wait.</strong> A market order large enough to exceed the best level's size pays a volume-weighted average price across every level it had to consume — always at least as bad as the first price it touched.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Queue position can dominate price for a passive order's real economics.</strong> Two identical resting orders at the identical price can have very different fill probabilities purely due to how much size queued up ahead of each one.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Depth and the spread are two different, complementary liquidity measures.</strong> A tight spread with thin depth can still be expensive to trade in any real size — always check both, not just the quoted spread.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A book snapshot is a photograph, not a guarantee.</strong> Resting size can be cancelled or replaced before an order actually reaches it — treating a stale snapshot as available liquidity overstates what a trade will really get filled against.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What does "price-time priority" actually guarantee, in order?</summary>
+    <div class="tl-answer">
+      Two rules, applied strictly in this order. First, price priority: a better
+      price always fills before a worse one — an incoming market buy must fully
+      consume the lowest resting ask price before it is ever allowed to trade
+      against the next-lowest ask price. Second, time priority within an identical
+      price: among all the resting orders queued at the exact same price, the one
+      that arrived earliest is filled first, strictly first-in-first-out, regardless
+      of size, account, or anything else about the competing orders. It does not
+      guarantee any particular order will fill at all — only the sequence in which
+      resting orders get matched if and when trading reaches their price and their
+      position in the queue.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Using this lesson's ask-side snapshot (200 @ 1.1005, 300 @ 1.1006, 500 @ 1.1007), what VWAP would a market buy order for only 450 units pay, and why is that different from the 600-unit example worked through above?</summary>
+    <div class="tl-answer">
+      450 units: take all 200 at level 1, all 300 at level 2 — wait, that's already
+      500, more than needed. Correctly: take all 200 at level 1 (remaining 250), then
+      250 of the 300 at level 2 (remaining 0) — fully filled without ever touching
+      level 3. VWAP = [200(1.1005) + 250(1.1006)] / 450 = [220.10 + 275.15] / 450 =
+      495.25 / 450 ≈ 1.10056. This is closer to the best ask than the 600-unit
+      example's 1.10058, because a smaller order that stops within level 2 never
+      pays level 3's worse price at all — illustrating directly that execution cost
+      rises with order size, exactly the qualitative claim Kyle's Lambda makes, now
+      visible as simple arithmetic over the actual ladder rather than an abstract
+      coefficient.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Two limit buy orders rest at the identical best bid price. Order A joined when the queue was empty; Order B joined later behind 2,000 units of size already queued. What single number best explains why they can have very different fill outcomes, and what does that number depend on?</summary>
+    <div class="tl-answer">
+      The ahead-of-you size, \(A\) — how much size is queued in front of your own
+      order at that exact price. Order A has \(A=0\) and fills immediately against
+      the very next matching sell order; Order B has \(A=2{,}000\) and cannot
+      receive a single fill until that entire 2,000 units has first been matched
+      away by incoming sell orders or cancelled by the traders who placed it. That
+      number depends purely on arrival time relative to other orders at the same
+      price and on how quickly the orders ahead get matched or cancelled (the
+      level's attrition rate) — not on anything about Order B's own price, size, or
+      quality as an order.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why does a market order's true execution price always look at least as bad as the best quoted price it started at, and when does that gap become large?</summary>
+    <div class="tl-answer">
+      Because price priority forces the order to consume the best-priced level
+      completely before it is allowed to trade at any worse price — the very first
+      units always fill at the best available price, and every unit after that,
+      if any is needed, can only fill at that price or worse (never better). The
+      volume-weighted average across all levels touched is therefore a mix of the
+      best price and some number of worse prices, which can only pull the average
+      away from (never toward) the best price. The gap becomes large exactly when
+      the order size is large relative to the size resting at the first few levels
+      — a small order relative to depth barely walks the book at all (see Q2's
+      450-unit example), while a large order relative to depth walks through many
+      levels and its VWAP diverges substantially from the best quoted price, as in
+      the 600-unit worked example.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why might a matching engine that uses pro-rata priority instead of strict price-time priority change how a trader should think about queue position?</summary>
+    <div class="tl-answer">
+      Under strict FIFO, being first at a price is what matters — a huge order
+      placed later at the same price still waits behind a tiny order placed
+      earlier, in full. Under pro-rata matching, incoming size is instead allocated
+      across all resting orders at a price <em>in proportion to their size</em>,
+      regardless of arrival order — a large resting order gets a proportionally
+      large slice of any incoming fill immediately, without needing to "wait its
+      turn" the way FIFO requires. This flips the practical strategy: FIFO rewards
+      being early to a price; pro-rata rewards being large at a price. A trader who
+      assumes FIFO-style queue mechanics on a venue that actually uses pro-rata
+      matching will misjudge their own expected fill rate.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Larry Harris, <em>Trading and Exchanges: Market Microstructure for Practitioners</em>, Oxford University Press, 2003 — the standard practitioner-facing reference on order types, matching rules, and how real exchanges are actually organized mechanically.</li>
+    <li>Álvaro Cartea, Sebastian Jaimungal &amp; José Penalva, <em>Algorithmic and High-Frequency Trading</em>, Cambridge University Press, 2015 — a rigorous treatment of limit order book dynamics, queueing behavior, and optimal order placement built directly on top of the book structure covered here.</li>
+    <li>Robert Almgren, "Execution Costs" (in <em>Encyclopedia of Quantitative Finance</em>, 2010) — a concise, practitioner-oriented survey connecting book structure and walking-the-book mechanics to formal transaction-cost models, bridging directly into the next lesson.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="market-microstructure.html">← Market Microstructure</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="market-impact-almgren-chriss.html">Market Impact Models &amp; Almgren-Chriss →</a>
+  </div>
+</div>
+</body>
+</html>
