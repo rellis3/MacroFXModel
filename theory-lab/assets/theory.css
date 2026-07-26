@@ -125,6 +125,78 @@ details.tl-section-collapse[open] summary{margin-bottom:10px}
 .tl-compare-card.purple{border-top-color:var(--purple)}
 .tl-compare-card.purple h4{color:var(--purple)}
 
+/* section divider — a small colored kicker + rule ahead of an <h2>, so a
+   new section announces itself instead of just being the next heading down */
+.tl-section-mark{display:flex;align-items:center;gap:10px;margin:40px 0 10px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--purple)}
+.tl-section-mark::after{content:"";flex:1;height:1px;background:var(--border2)}
+h2:first-of-type{margin-top:0}
+
+/* icon badges — a colored rounded-square emoji glyph, used standalone or as
+   the lead element of an icon card, so a card reads at a glance before the
+   words do */
+.tl-icon-badge{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:11px;font-size:20px;margin-bottom:10px}
+.tl-icon-badge.blue{background:var(--blue-bg)}
+.tl-icon-badge.green{background:var(--green-bg)}
+.tl-icon-badge.red{background:var(--red-bg)}
+.tl-icon-badge.amber{background:var(--amber-bg)}
+.tl-icon-badge.purple{background:var(--purple-bg)}
+
+/* icon cards — a small grid of icon + title + description, for "here are
+   3-4 related facts" instead of a bulleted list */
+.tl-icard-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+@media (max-width:600px){.tl-icard-grid{grid-template-columns:1fr}}
+.tl-icard{background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);padding:18px}
+.tl-icard h4{font-size:14.5px;margin-bottom:6px}
+.tl-icard p{font-size:13.5px;margin-bottom:0}
+
+/* key takeaways — full-tint colored rows (not just a left border), the
+   bullet-point "what to remember" list for the end of a section */
+.tl-takeaways{display:flex;flex-direction:column;gap:8px;margin:18px 0}
+.tl-takeaway{display:flex;gap:12px;align-items:flex-start;padding:13px 16px;border-radius:var(--r);font-size:13.5px}
+.tl-takeaway-icon{flex:none;font-size:14px;line-height:1.4}
+.tl-takeaway.green{background:var(--green-bg);border:1px solid var(--green-bd);color:var(--text)}
+.tl-takeaway.green .tl-takeaway-icon{color:var(--green)}
+.tl-takeaway.red{background:var(--red-bg);border:1px solid var(--red-bd);color:var(--text)}
+.tl-takeaway.red .tl-takeaway-icon{color:var(--red)}
+.tl-takeaway.amber{background:var(--amber-bg);border:1px solid var(--amber-bd);color:var(--text)}
+.tl-takeaway.amber .tl-takeaway-icon{color:var(--amber)}
+.tl-takeaway.blue{background:var(--blue-bg);border:1px solid var(--blue-bd);color:var(--text)}
+.tl-takeaway.blue .tl-takeaway-icon{color:var(--blue)}
+.tl-takeaway strong{color:var(--text)}
+
+/* formula-part cards — a bigger, bolder sibling of .tl-eq-chip for a
+   lesson's single most central formula: one colored card per term */
+.tl-formula-parts{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0 18px}
+@media (max-width:640px){.tl-formula-parts{grid-template-columns:1fr}}
+.tl-fp{border-radius:var(--rl);padding:16px;text-align:center;border:1px solid var(--border)}
+.tl-fp-term{font-family:'DM Mono',monospace;font-size:16px;font-weight:700;margin-bottom:6px}
+.tl-fp-name{font-size:12.5px;font-weight:600;color:var(--text);margin-bottom:4px}
+.tl-fp-desc{font-size:11.5px;color:var(--text2)}
+.tl-fp.blue{background:var(--blue-bg);border-color:var(--blue-bd)}
+.tl-fp.blue .tl-fp-term{color:var(--blue)}
+.tl-fp.green{background:var(--green-bg);border-color:var(--green-bd)}
+.tl-fp.green .tl-fp-term{color:var(--green)}
+.tl-fp.amber{background:var(--amber-bg);border-color:var(--amber-bd)}
+.tl-fp.amber .tl-fp-term{color:var(--amber)}
+.tl-fp.purple{background:var(--purple-bg);border-color:var(--purple-bd)}
+.tl-fp.purple .tl-fp-term{color:var(--purple)}
+
+/* solid callouts — a full tinted-background box (bolder than .tl-box's
+   thin left-border accent), for a single sharp warning/insight statement */
+.tl-solid{border-radius:var(--rl);padding:16px 18px;margin:18px 0;font-size:13.5px;border:1px solid var(--border)}
+.tl-solid strong{color:var(--text)}
+.tl-solid.red{background:var(--red-bg);border-color:var(--red-bd)}
+.tl-solid.green{background:var(--green-bg);border-color:var(--green-bd)}
+.tl-solid.amber{background:var(--amber-bg);border-color:var(--amber-bd)}
+.tl-solid.blue{background:var(--blue-bg);border-color:var(--blue-bd)}
+
+/* inline pill — a small colored badge for a value inside a sentence or table cell */
+.tl-pill{display:inline-flex;align-items:center;font-family:'DM Mono',monospace;font-size:12px;font-weight:600;padding:2px 9px;border-radius:20px}
+.tl-pill.blue{background:var(--blue-bg);color:var(--blue)}
+.tl-pill.green{background:var(--green-bg);color:var(--green)}
+.tl-pill.red{background:var(--red-bg);color:var(--red)}
+.tl-pill.amber{background:var(--amber-bg);color:var(--amber)}
+
 /* self-test */
 .tl-quiz{border:1px solid var(--border);border-radius:var(--r);margin:10px 0;overflow:hidden}
 .tl-quiz summary{cursor:pointer;padding:12px 16px;font-size:13px;font-weight:600;background:var(--s1);list-style:none}
