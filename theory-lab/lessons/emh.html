@@ -58,52 +58,95 @@
     </p>
   </div>
 
-  <div class="tl-chart">
+  <div class="tl-chart interactive">
     <div class="tl-chart-label">Today's return vs. tomorrow's return (illustrative)</div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter plot of today's return against tomorrow's return for a currency pair, showing a shapeless, uncorrelated cloud of points centered near zero with no visible diagonal trend">
       <line x1="60" y1="150" x2="600" y2="150" style="stroke:var(--border)" stroke-width="1.5"/>
       <line x1="330" y1="20" x2="330" y2="280" style="stroke:var(--border)" stroke-width="1.5"/>
-      <circle cx="390" cy="150" r="5" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="436" cy="178" r="5" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="399" cy="190" r="5" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="413" cy="250" r="5" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="347" cy="197" r="5" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="321" cy="250" r="5" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="289" cy="263" r="5" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="285" cy="204" r="5" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="235" cy="205" r="5" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="241" cy="166" r="5" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="202" cy="127" r="5" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="278" cy="120" r="5" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="266" cy="73" r="5" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="289" cy="37" r="5" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="330" cy="70" r="5" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="367" cy="47" r="5" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="375" cy="96" r="5" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="443" cy="85" r="5" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="419" cy="134" r="5" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="358" cy="160" r="4" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="337" cy="190" r="4" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="310" cy="166" r="4" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="297" cy="138" r="4" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="327" cy="130" r="4" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="365" cy="122" r="4" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="345" cy="163" r="4" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="292" cy="164" r="4" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="307" cy="131" r="4" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="336" cy="116" r="4" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="379" cy="159" r="4" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="325" cy="180" r="4" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="310" cy="147" r="4" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="313" cy="103" r="4" style="fill:var(--blue);opacity:.7"/>
-      <circle cx="363" cy="138" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-0" cx="390" cy="150" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-1" cx="436" cy="178" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-2" cx="399" cy="190" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-3" cx="413" cy="250" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-4" cx="347" cy="197" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-5" cx="321" cy="250" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-6" cx="289" cy="263" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-7" cx="285" cy="204" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-8" cx="235" cy="205" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-9" cx="241" cy="166" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-10" cx="202" cy="127" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-11" cx="278" cy="120" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-12" cx="266" cy="73" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-13" cx="289" cy="37" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-14" cx="330" cy="70" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-15" cx="367" cy="47" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-16" cx="375" cy="96" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-17" cx="443" cy="85" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-18" cx="419" cy="134" r="5" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-19" cx="358" cy="160" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-20" cx="337" cy="190" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-21" cx="310" cy="166" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-22" cx="297" cy="138" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-23" cx="327" cy="130" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-24" cx="365" cy="122" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-25" cx="345" cy="163" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-26" cx="292" cy="164" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-27" cx="307" cy="131" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-28" cx="336" cy="116" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-29" cx="379" cy="159" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-30" cx="325" cy="180" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-31" cx="310" cy="147" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-32" cx="313" cy="103" r="4" style="fill:var(--blue);opacity:.7"/>
+      <circle id="emh-pt-33" cx="363" cy="138" r="4" style="fill:var(--blue);opacity:.7"/>
       <text x="336" y="146" fill="var(--text3)" font-size="10">0</text>
       <text x="562" y="170" fill="var(--text3)" font-size="11">Return(t)</text>
       <text x="336" y="30" fill="var(--text3)" font-size="11">Return(t+1)</text>
       <text x="392" y="228" fill="var(--text3)" font-size="11" font-style="italic">no visible relationship</text>
     </svg>
-    <div class="tl-chart-caption">Illustrative, not real market data. If today's return told you anything reliable about tomorrow's, this scatter would show a visible slope — a diagonal cloud instead of a shapeless one. Weak-form efficiency predicts exactly this shapeless cloud; consistently finding a slope here (net of costs, out of sample) is what a real anomaly would look like.</div>
+    <div class="tl-controls">
+      <div class="tl-btnrow">
+        <button id="emh-regen-btn" type="button" class="tl-btn">🔀 Regenerate</button>
+      </div>
+    </div>
+    <div class="tl-chart-caption">Illustrative, not real market data. If today's return told you anything reliable about tomorrow's, this scatter would show a visible slope — a diagonal cloud instead of a shapeless one. Weak-form efficiency predicts exactly this shapeless cloud; consistently finding a slope here (net of costs, out of sample) is what a real anomaly would look like. Click "Regenerate" as many times as you like — the points re-scatter to new random positions, but the cloud stays shapeless every time. That's the point: there's no pattern to eventually stumble onto.</div>
   </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Five simulated random-walk price paths, same starting point</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart of five simulated random walk price paths that all start from the same point and fan out to visibly different endpoints, some higher and some lower than the start, with a dashed reference line at the starting level">
+      <line x1="60" y1="150" x2="600" y2="150" style="stroke:var(--border);stroke-dasharray:3,3" stroke-width="1.5"/>
+      <polyline points="60,150 114,130 168,145 222,110 276,125 330,95 384,105 438,80 492,90 546,75 600,70" style="fill:none;stroke:var(--blue);stroke-width:1.8;opacity:.85"/>
+      <polyline points="60,150 114,165 168,140 222,155 276,130 330,140 384,120 438,130 492,115 546,105 600,110" style="fill:none;stroke:var(--green);stroke-width:1.8;opacity:.85"/>
+      <polyline points="60,150 114,140 168,160 222,150 276,170 330,155 384,175 438,160 492,150 546,160 600,155" style="fill:none;stroke:var(--amber);stroke-width:1.8;opacity:.85"/>
+      <polyline points="60,150 114,160 168,175 222,165 276,185 330,175 384,195 438,180 492,200 546,190 600,205" style="fill:none;stroke:var(--purple);stroke-width:1.8;opacity:.85"/>
+      <polyline points="60,150 114,170 168,185 222,200 276,190 330,210 384,195 438,220 492,210 546,230 600,245" style="fill:none;stroke:var(--red);stroke-width:1.8;opacity:.85"/>
+      <circle cx="60" cy="150" r="4" style="fill:var(--text)"/>
+      <text x="40" y="176" fill="var(--text3)" font-size="10">t = 0</text>
+      <text x="564" y="290" fill="var(--text3)" font-size="10">t = T</text>
+      <text x="392" y="30" fill="var(--text3)" font-size="11" font-style="italic">same start, no shared destination</text>
+    </svg>
+    <div class="tl-chart-caption">All five paths begin at the exact same price and are generated by the exact same random-walk process — yet by the end they've drifted to five different levels, some above the dashed starting line and some below it, with no systematic push in either direction. Nothing about the process changed mid-path; the divergence is purely the accumulation of unpredictable, zero-mean shocks (\(\epsilon_t\)) compounding step by step. There was no single "true path" anyone could have forecast from the starting point — under EMH's random-walk implication, identical starting information still produces genuinely different outcomes, which is the practical, visual meaning of unpredictability.</div>
+  </div>
+
+  <script>
+    (function () {
+      var EMH_POINT_COUNT = 34;
+      var EMH_CX_CENTER = 330, EMH_CX_SPREAD = 260;
+      var EMH_CY_CENTER = 150, EMH_CY_SPREAD = 230;
+
+      function regenerate() {
+        for (var i = 0; i < EMH_POINT_COUNT; i++) {
+          var pt = document.getElementById('emh-pt-' + i);
+          if (!pt) continue;
+          var cx = EMH_CX_CENTER + (Math.random() - 0.5) * EMH_CX_SPREAD;
+          var cy = EMH_CY_CENTER + (Math.random() - 0.5) * EMH_CY_SPREAD;
+          pt.setAttribute('cx', cx.toFixed(1));
+          pt.setAttribute('cy', cy.toFixed(1));
+        }
+      }
+
+      document.getElementById('emh-regen-btn').addEventListener('click', regenerate);
+    })();
+  </script>
 
   <h2>The math, step by step</h2>
   <p>

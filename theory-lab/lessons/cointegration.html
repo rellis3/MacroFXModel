@@ -392,8 +392,14 @@
 
       <line x1="40" y1="240" x2="600" y2="240" style="stroke:var(--text3);stroke-dasharray:3,3"/>
       <text x="10" y="194" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">Residual spread (stationary)</text>
-      <polyline points="40,245 70,225 100,255 130,235 160,210 190,250 220,230 250,260 280,220 310,245 340,215 370,255 400,235 430,210 460,250 490,225 520,260 550,220 580,245 600,235" style="stroke:var(--green);stroke-width:2" fill="none"/>
+      <polyline id="coint-spread-line" points="40,245 70,225 100,255 130,235 160,210 190,250 220,230 250,260 280,220 310,245 340,215 370,255 400,235 430,210 460,250 490,225 520,260 550,220 580,245 600,235" style="stroke:var(--green);stroke-width:2" fill="none"/>
     </svg>
+    <div class="tl-controls">
+      <div class="tl-btnrow">
+        <button class="tl-btn active" id="coint-btn-yes">Cointegrated</button>
+        <button class="tl-btn" id="coint-btn-no">Spurious (not cointegrated)</button>
+      </div>
+    </div>
     <div class="tl-legend">
       <span><i style="background:var(--blue)"></i>Series A</span>
       <span><i style="background:var(--purple)"></i>Series B</span>
@@ -402,15 +408,60 @@
     <div class="tl-chart-caption">
       Top panel: both raw price series wander upward with no fixed mean of
       their own — each is individually non-stationary, and neither one ever
-      settles back toward an earlier level in any predictable way. Bottom
-      panel: the specific linear combination between them, <strong>Series A
-      − β·Series B</strong>, does not wander the same way — it keeps
-      snapping back toward the dashed mean line instead of drifting off with
-      the two series above it. That gap, between "neither series alone is
-      mean-reverting" and "the right combination of them is," is exactly
-      what cointegration means.
+      settles back toward an earlier level in any predictable way.
+      <span id="coint-caption-detail">Bottom panel: the specific linear
+      combination between them, <strong>Series A − β·Series B</strong>, does
+      not wander the same way — it keeps snapping back toward the dashed
+      mean line instead of drifting off with the two series above it. That
+      gap, between "neither series alone is mean-reverting" and "the right
+      combination of them is," is exactly what cointegration means.</span>
     </div>
   </div>
+
+  <script>
+  (function(){
+    var lineYes = [40,245,70,225,100,255,130,235,160,210,190,250,220,230,250,260,280,220,310,245,340,215,370,255,400,235,430,210,460,250,490,225,520,260,550,220,580,245,600,235];
+    var lineNo = [40,238,70,245,100,242,130,252,160,248,190,258,220,253,250,262,280,257,310,266,340,261,370,270,400,264,430,272,460,267,490,275,520,270,550,278,580,273,600,282];
+    function toPoints(arr){
+      var out = [];
+      for (var i = 0; i < arr.length; i += 2) out.push(arr[i] + ',' + arr[i+1]);
+      return out.join(' ');
+    }
+    var captionYes = 'Bottom panel: the specific linear ' +
+      'combination between them, <strong>Series A − β·Series B</strong>, does ' +
+      'not wander the same way — it keeps snapping back toward the dashed ' +
+      'mean line instead of drifting off with the two series above it. That ' +
+      'gap, between "neither series alone is mean-reverting" and "the right ' +
+      'combination of them is," is exactly what cointegration means.';
+    var captionNo = 'Bottom panel: here, the same linear ' +
+      'combination, <strong>Series A − β·Series B</strong>, has no such ' +
+      'anchor — it drifts away from the dashed mean line and never returns, ' +
+      'wandering off on its own like an independent random walk. That’s the ' +
+      'spurious case: a plausible-looking combination with no equilibrium ' +
+      'actually pulling it back, exactly what an Engle-Granger test on the ' +
+      'residual would reject as a unit root.';
+
+    var spreadLine = document.getElementById('coint-spread-line');
+    var caption = document.getElementById('coint-caption-detail');
+    var btnYes = document.getElementById('coint-btn-yes');
+    var btnNo = document.getElementById('coint-btn-no');
+
+    function showCointegrated(){
+      spreadLine.setAttribute('points', toPoints(lineYes));
+      if (caption) caption.innerHTML = captionYes;
+      btnYes.classList.add('active');
+      btnNo.classList.remove('active');
+    }
+    function showSpurious(){
+      spreadLine.setAttribute('points', toPoints(lineNo));
+      if (caption) caption.innerHTML = captionNo;
+      btnNo.classList.add('active');
+      btnYes.classList.remove('active');
+    }
+    btnYes.addEventListener('click', showCointegrated);
+    btnNo.addEventListener('click', showSpurious);
+  })();
+  </script>
 
   <h2>How practitioners actually use this</h2>
   <p>

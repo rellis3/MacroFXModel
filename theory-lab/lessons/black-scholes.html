@@ -393,8 +393,19 @@
       <text x="14" y="135" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 14 135)">Option value</text>
       <text x="34" y="254" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
       <polyline points="40,250 330,250 620,50" style="stroke:var(--text2);stroke-width:2" fill="none"/>
-      <path d="M40,242 C59.3,240.3 117.3,236.3 156,232 C194.7,227.7 243,219.7 272,216 C301,212.3 310.7,216.7 330,210 C349.3,203.3 359,192.3 388,176 C417,159.7 465.3,134.3 504,112 C542.7,89.7 600.7,53.7 620,42" style="stroke:var(--blue);stroke-width:2.5" fill="none"/>
+      <polyline id="bs-current-value-curve" points="40.00,250.00 70.53,250.00 101.05,249.99 131.58,249.91 162.11,249.59 192.63,248.62 223.16,246.39 253.68,242.20 284.21,235.51 314.74,226.05 345.26,213.86 375.79,199.28 406.32,182.74 436.84,164.71 467.37,145.62 497.89,125.80 528.42,105.50 558.95,84.89 589.47,64.11 620.00,43.21" style="stroke:var(--blue);stroke-width:2.5" fill="none"/>
     </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Volatility &sigma;</span><span class="tl-live" id="bs-sigma-val">20%</span></div>
+        <input type="range" id="bs-sigma-slider" min="5" max="60" step="1" value="20">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Time to expiry T</span><span class="tl-live" id="bs-T-val">1.00y</span></div>
+        <input type="range" id="bs-T-slider" min="1" max="100" step="1" value="100">
+      </div>
+    </div>
+    <div class="tl-readout">Call price (S=K=100, r=2%) &asymp; $<b id="bs-price-val">8.92</b></div>
     <div class="tl-legend">
       <span><i style="background:var(--text2)"></i>Payoff at expiry</span>
       <span><i style="background:var(--blue)"></i>Current value (includes time value)</span>
@@ -681,5 +692,68 @@
     <a href="merton-jump-diffusion.html">Merton Jump-Diffusion Model →</a>
   </div>
 </div>
+<script>
+(function(){
+  // Standard normal CDF via the Abramowitz & Stegun erf approximation
+  // (max error ~1.5e-7 — plenty for this diagram).
+  function erf(x){
+    var sign = x < 0 ? -1 : 1;
+    x = Math.abs(x);
+    var a1=0.254829592, a2=-0.284496736, a3=1.421413741, a4=-1.453152027, a5=1.061405429, p=0.3275911;
+    var t = 1/(1+p*x);
+    var y = 1 - (((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+    return sign*y;
+  }
+  function normCDF(x){ return 0.5*(1+erf(x/Math.SQRT2)); }
+
+  // Black-Scholes European call: C = S*N(d1) - K*e^(-rT)*N(d2)
+  function bsCall(S,K,r,sigma,T){
+    if (T<=0) return Math.max(S-K,0);
+    if (sigma<=0) return Math.max(S-K*Math.exp(-r*T),0);
+    var d1 = (Math.log(S/K) + (r+sigma*sigma/2)*T) / (sigma*Math.sqrt(T));
+    var d2 = d1 - sigma*Math.sqrt(T);
+    return S*normCDF(d1) - K*Math.exp(-r*T)*normCDF(d2);
+  }
+
+  var K = 100, r = 0.02;
+  // SVG coordinate scale, read off the static axes/hockey-stick in the chart
+  // above: x=40..620 spans underlying price S=40..160 (K=100 sits at x=330),
+  // y=250 is option value 0, and the hockey stick's K->620 leg (330,250) to
+  // (620,50) spans a $60 payoff over 200px, i.e. 200/60 px per dollar.
+  var S_LEFT = 40, S_RIGHT = 160, X_LEFT = 40, X_RIGHT = 620;
+  var Y_ZERO = 250, PX_PER_DOLLAR = 200/60;
+  function sToX(S){ return X_LEFT + (S-S_LEFT)/(S_RIGHT-S_LEFT)*(X_RIGHT-X_LEFT); }
+  function valToY(v){ return Y_ZERO - v*PX_PER_DOLLAR; }
+
+  var sigmaSlider = document.getElementById('bs-sigma-slider');
+  var tSlider = document.getElementById('bs-T-slider');
+  var sigmaVal = document.getElementById('bs-sigma-val');
+  var tVal = document.getElementById('bs-T-val');
+  var priceVal = document.getElementById('bs-price-val');
+  var curve = document.getElementById('bs-current-value-curve');
+
+  function updateChart(){
+    var sigma = parseFloat(sigmaSlider.value)/100;
+    var T = parseFloat(tSlider.value)/100;
+    sigmaVal.textContent = sigmaSlider.value + '%';
+    tVal.textContent = T.toFixed(2) + 'y';
+
+    var price = bsCall(100, K, r, sigma, T);
+    priceVal.textContent = price.toFixed(2);
+
+    var N = 20, pts = [];
+    for (var i=0; i<N; i++){
+      var S = S_LEFT + (i/(N-1))*(S_RIGHT-S_LEFT);
+      var v = bsCall(S, K, r, sigma, T);
+      pts.push(sToX(S).toFixed(2) + ',' + valToY(v).toFixed(2));
+    }
+    curve.setAttribute('points', pts.join(' '));
+  }
+
+  sigmaSlider.addEventListener('input', updateChart);
+  tSlider.addEventListener('input', updateChart);
+  updateChart();
+})();
+</script>
 </body>
 </html>

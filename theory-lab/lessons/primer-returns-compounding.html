@@ -241,25 +241,33 @@
     horizon, not the horizon itself.
   </p>
 
-  <div class="tl-chart">
+  <div class="tl-chart interactive">
     <div class="tl-chart-label">Arithmetic mean vs. compounded (geometric) growth</div>
-    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two lines diverging over time: naive arithmetic-mean projection vs actual compounded value with volatility drag">
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two lines diverging over time: naive arithmetic-mean projection vs actual compounded value with volatility drag, with a slider to change annualized volatility">
       <line x1="40" y1="260" x2="600" y2="260" style="stroke:var(--border)" stroke-width="1.5"></line>
       <line x1="40" y1="30" x2="40" y2="260" style="stroke:var(--border)" stroke-width="1.5"></line>
       <text x="600" y="278" fill="var(--text3)" font-size="11" text-anchor="end" font-family="DM Mono, monospace">time (periods) →</text>
       <text x="20" y="30" fill="var(--text3)" font-size="11" text-anchor="middle" font-family="DM Mono, monospace" transform="rotate(-90 20 145)">value →</text>
       <path d="M 40 240 C 140 210, 220 175, 300 140 C 380 105, 460 68, 600 34" fill="none" style="stroke:var(--text3);stroke-width:2;stroke-dasharray:5,4"></path>
-      <path d="M 40 240 C 140 224, 220 205, 300 188 C 380 170, 480 148, 600 112" fill="none" style="stroke:var(--blue);stroke-width:2.5"></path>
+      <polyline id="ret-geo-line" points="40,240.0 68,236.5 96,232.8 124,228.9 152,224.8 180,220.4 208,215.7 236,210.8 264,205.6 292,200.0 320,194.1 348,187.9 376,181.3 404,174.3 432,166.9 460,159.0 488,150.7 516,141.8 544,132.4 572,122.5 600,112.0" fill="none" style="stroke:var(--blue);stroke-width:2.5"></polyline>
       <text x="480" y="60" fill="var(--text3)" font-size="11" font-family="DM Sans, sans-serif">arithmetic-mean projection</text>
       <text x="420" y="200" fill="var(--blue)" font-size="11" font-family="DM Sans, sans-serif">actual compounded value</text>
       <text x="420" y="214" fill="var(--blue)" font-size="11" font-family="DM Sans, sans-serif">(with volatility drag)</text>
       <circle cx="40" cy="240" r="3" fill="var(--text2)"></circle>
     </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Annualized volatility σ</span><span class="tl-live" id="ret-sigma-val">20%</span></div>
+        <input type="range" id="ret-sigma-slider" min="5" max="50" step="1" value="20">
+        <div class="tl-hint">Drag to change annualized volatility. The dashed arithmetic-mean projection is fixed (it doesn't depend on σ); the solid compounded-value line redraws using g ≈ μ − σ²/2, holding the 8%/year arithmetic mean μ fixed.</div>
+      </div>
+    </div>
+    <div class="tl-readout">Volatility drag ≈ σ²/2 = <b id="ret-drag-val">2.00</b>% per year</div>
     <div class="tl-legend">
       <span><i style="background:var(--text3)"></i>Arithmetic-mean projection</span>
       <span><i style="background:var(--blue)"></i>Actual compounded value</span>
     </div>
-    <div class="tl-chart-caption">Illustrative, not real data. Two paths with the exact same average per-period return diverge once volatility is added, because compounding is multiplicative — this is exactly the geometric-vs-arithmetic-mean gap the Kelly Criterion lesson later builds a whole sizing argument around.</div>
+    <div class="tl-chart-caption">Illustrative, not real data. Two paths with the exact same 8%/year arithmetic mean diverge once volatility is added, because compounding is multiplicative — this is exactly the geometric-vs-arithmetic-mean gap the Kelly Criterion lesson later builds a whole sizing argument around. Drag the slider: at low σ the two lines nearly coincide, and by σ = 50% the drag (σ²/2 = 12.5%) exceeds the 8% arithmetic mean entirely, so the compounded line ends up <em>below</em> its $100 starting value despite a positive average return every period.</div>
   </div>
 
   <div class="tl-box example">
@@ -527,5 +535,55 @@
     <a href="emh.html">Lesson 1: The Efficient Market Hypothesis →</a>
   </div>
 </div>
+<script>
+(function () {
+  var slider = document.getElementById('ret-sigma-slider');
+  var sigmaReadout = document.getElementById('ret-sigma-val');
+  var dragReadout = document.getElementById('ret-drag-val');
+  var geoLine = document.getElementById('ret-geo-line');
+  if (!slider || !sigmaReadout || !dragReadout || !geoLine) return;
+
+  // Fixed chart assumptions (illustrative, not fitted to real data): a
+  // constant arithmetic-mean return MU = 8%/year over T = 20 years from a
+  // $100 start. Only the compounded (geometric) line depends on sigma; the
+  // dashed arithmetic-mean projection is never touched by this script.
+  var MU = 0.08;
+  var T = 20;                  // periods (years) plotted, t = 0..T
+  var V0 = 100;                 // starting value
+  var X0 = 40, X1 = 600;        // pixel x-range, matches the chart's axes
+  var Y0 = 240;                  // pixel y at t=0 (matches the start-marker circle)
+  var K = 0.58;                  // px per unit of value — calibrated so the
+                                  // geometric line reproduces the chart's
+                                  // original endpoint at the default sigma=20%
+  var Y_MIN = 34, Y_MAX = 256;   // clamp so the line stays within the axes
+
+  function buildPoints(ratePerPeriod) {
+    var pts = [];
+    for (var t = 0; t <= T; t++) {
+      var v = V0 * Math.pow(1 + ratePerPeriod, t);
+      var x = X0 + (X1 - X0) * (t / T);
+      var y = Y0 - K * (v - V0);
+      if (y < Y_MIN) y = Y_MIN;
+      if (y > Y_MAX) y = Y_MAX;
+      pts.push(x.toFixed(1) + ',' + y.toFixed(1));
+    }
+    return pts.join(' ');
+  }
+
+  function update() {
+    var sigmaPct = parseInt(slider.value, 10);
+    var sigma = sigmaPct / 100;
+    var dragPct = (sigma * sigma / 2) * 100;
+    var g = MU - (sigma * sigma) / 2; // geometric_growth_per_period ≈ arithmetic_mean - sigma^2/2
+
+    sigmaReadout.textContent = sigmaPct + '%';
+    dragReadout.textContent = dragPct.toFixed(2);
+    geoLine.setAttribute('points', buildPoints(g));
+  }
+
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
 </body>
 </html>

@@ -194,20 +194,27 @@
     a heteroskedasticity-robust version of the test statistic is preferred over the simple homoskedastic one.
   </p>
 
-  <div class="tl-chart">
+  <div class="tl-chart interactive">
     <div class="tl-chart-label">R/S scaling on log-log axes — the slope IS the Hurst exponent</div>
-    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Log-log plot of log(n) versus log(R/S) showing three straight reference lines from a common origin at different slopes: a steep red line for H greater than 0.5, a dashed 45-degree line for H equal to 0.5, and a shallow blue line for H less than 0.5">
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Log-log plot of log(n) versus log(R/S) showing three straight reference lines from a common origin at different slopes: a steep red line for H greater than 0.5, a slider-driven amber line whose slope tracks the chosen H, and a shallow blue line for H less than 0.5">
       <line x1="60" y1="20" x2="60" y2="250" style="stroke:var(--border)" />
       <line x1="60" y1="250" x2="610" y2="250" style="stroke:var(--border)" />
       <line x1="100" y1="240" x2="220" y2="40" style="stroke:var(--red);stroke-width:2" />
-      <line x1="100" y1="240" x2="300" y2="40" style="stroke:var(--text3);stroke-width:2;stroke-dasharray:4,3" />
+      <line id="hurst-active-line" x1="100" y1="240" x2="300" y2="40" style="stroke:var(--amber);stroke-width:2.5" />
       <line x1="100" y1="240" x2="580" y2="40" style="stroke:var(--blue);stroke-width:2" />
       <text x="214" y="34" font-size="12" text-anchor="end" fill="var(--red)">H &gt; 0.5 (trending)</text>
-      <text x="306" y="58" font-size="12" fill="var(--text3)">H = 0.5 (random walk)</text>
+      <text id="hurst-active-label" x="306" y="58" font-size="12" fill="var(--amber)">H = 0.50 (random walk)</text>
       <text x="430" y="95" font-size="12" fill="var(--blue)">H &lt; 0.5 (mean-reverting)</text>
       <text x="560" y="272" font-size="12" fill="var(--text3)">log(n)</text>
       <text x="20" y="140" font-size="12" fill="var(--text3)" transform="rotate(-90 20 140)">log(R/S)</text>
     </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Hurst exponent H</span><span class="tl-live" id="hurst-h-val">H = 0.50</span></div>
+        <input type="range" id="hurst-h-slider" min="10" max="90" step="1" value="50">
+        <div class="tl-hint">Drag to move the middle line's slope — steeper toward H=0.9 (trending), shallower toward H=0.1 (mean-reverting), bounded by the two static reference lines.</div>
+      </div>
+    </div>
     <div class="tl-chart-caption">
       Because \((R/S)_n \approx c \cdot n^H\), taking logs of both sides turns the power law into a straight line —
       and the <strong>slope</strong> of that line is the Hurst exponent \(H\) itself, which is exactly why the
@@ -215,6 +222,31 @@
       tendency, a shallower slope means stronger mean reversion, and a slope of exactly 0.5 (45° here) is
       statistically indistinguishable from a random walk. This is a schematic of the three regimes, not a fit to
       real data.
+    </div>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">What each Hurst regime actually looks like as a price path</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three side-by-side sample price paths illustrating what different Hurst exponent regimes look like: a tightly oscillating mean-reverting path for H around 0.3, a moderately wandering random-walk path for H around 0.5, and a smoothly drifting trending path for H around 0.7">
+      <line x1="220" y1="20" x2="220" y2="240" style="stroke:var(--border)" />
+      <line x1="430" y1="20" x2="430" y2="240" style="stroke:var(--border)" />
+      <line x1="20" y1="130" x2="210" y2="130" style="stroke:var(--border);stroke-dasharray:3,3" />
+      <text x="20" y="20" font-size="12" fill="var(--blue)">H &#8776; 0.3 (mean-reverting)</text>
+      <polyline points="20,130 35,110 50,145 65,120 80,150 95,115 110,140 125,118 140,148 155,122 170,138 185,115 200,135 210,128" fill="none" style="stroke:var(--blue);stroke-width:2" />
+      <text x="230" y="20" font-size="12" fill="var(--text3)">H &#8776; 0.5 (random walk)</text>
+      <polyline points="230,130 248,115 266,150 284,135 302,160 320,140 338,165 356,145 374,120 392,150 410,125 420,140" fill="none" style="stroke:var(--text3);stroke-width:2" />
+      <text x="440" y="20" font-size="12" fill="var(--red)">H &#8776; 0.7 (trending)</text>
+      <polyline points="440,190 460,185 480,170 500,150 520,155 540,130 560,110 580,115 600,90 620,70 630,60" fill="none" style="stroke:var(--red);stroke-width:2" />
+    </svg>
+    <div class="tl-chart-caption">
+      Same underlying idea as the log-log chart above, just seen as a chart instead of a regression slope. The
+      left panel snaps back toward a flat level over and over (small, frequent reversals) — that tight snapping
+      is what a low, anti-persistent \(H\) looks like on a screen, not just a shallow line in log-log space. The
+      middle panel wanders with no consistent tendency to reverse or extend — the visual signature of \(H
+      \approx 0.5\). The right panel shows fewer, longer, smoother swings that persist in one direction before
+      eventually reversing — that's what a high, persistent \(H\) looks like: momentum that keeps compounding
+      instead of getting undone. The abstract slope above and the path shape here are the same measurement,
+      described two different ways.
     </div>
   </div>
 
@@ -436,5 +468,52 @@
     <a href="garch-volatility.html">GARCH &amp; Volatility Clustering →</a>
   </div>
 </div>
+<script>
+(function () {
+  var slider = document.getElementById('hurst-h-slider');
+  var readout = document.getElementById('hurst-h-val');
+  var line = document.getElementById('hurst-active-line');
+  var label = document.getElementById('hurst-active-label');
+  if (!slider || !readout || !line || !label) return;
+
+  var originX = 100, originY = 240, topY = 40;
+  // dx (screen x-delta from the shared origin) at the three anchor points —
+  // dxBlue/dxRed match the two static reference lines' endpoints exactly, and
+  // dxMid reproduces the original 45-degree "random walk" line at H = 0.5.
+  var dxBlue = 580 - originX; // 480 — H=0.1 anchor, matches the shallow blue H<0.5 line
+  var dxMid  = 300 - originX; // 200 — H=0.5 anchor, the classic 45-degree position
+  var dxRed  = 220 - originX; // 120 — H=0.9 anchor, matches the steep red H>0.5 line
+
+  function dxForH(h) {
+    if (h <= 0.5) {
+      var t = (h - 0.1) / 0.4; // 0 at H=0.1 .. 1 at H=0.5
+      return dxBlue + (dxMid - dxBlue) * t;
+    }
+    var t2 = (h - 0.5) / 0.4; // 0 at H=0.5 .. 1 at H=0.9
+    return dxMid + (dxRed - dxMid) * t2;
+  }
+
+  function regimeWord(h) {
+    if (h > 0.55) return 'trending';
+    if (h < 0.45) return 'mean-reverting';
+    return 'random walk';
+  }
+
+  function update() {
+    var h = parseInt(slider.value, 10) / 100;
+    var x2 = originX + dxForH(h);
+    var y2 = topY;
+    line.setAttribute('x2', x2);
+    line.setAttribute('y2', y2);
+    label.setAttribute('x', x2 + 6);
+    label.setAttribute('y', y2 + 18);
+    label.textContent = 'H = ' + h.toFixed(2) + ' (' + regimeWord(h) + ')';
+    readout.textContent = 'H = ' + h.toFixed(2);
+  }
+
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
 </body>
 </html>

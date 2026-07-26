@@ -247,8 +247,18 @@
       <text x="620" y="218" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">1</text>
       <text x="340" y="234" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">p-value</text>
     </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head">Number of tests (m) <span class="tl-live" id="mt-m-val">70</span></div>
+        <input type="range" id="mt-m-slider" min="5" max="200" step="5" value="70">
+        <div class="tl-hint">Drag to see how fast the chance of at least one false positive grows with the number of tests.</div>
+      </div>
+    </div>
+    <div class="tl-readout">
+    FWER = 1 &minus; (1&minus;0.05)<sup>m</sup> = <b id="mt-fwer-val">97.2%</b> &mdash; expected false positives &approx; <b id="mt-expected-val">3.5</b>
+    </div>
     <div class="tl-legend">
-      <span><i style="background:var(--red)"></i>p &lt; 0.05 (~3-4 of 70, by chance)</span>
+      <span><i style="background:var(--red)"></i>p &lt; 0.05 (~<span id="mt-legend-count">3-4</span> of <span id="mt-legend-m">70</span>, by chance)</span>
       <span><i style="background:var(--blue)"></i>p &#8805; 0.05</span>
     </div>
     <div class="tl-chart-caption">
@@ -257,8 +267,61 @@
     same count; purely by chance, about 3-4 of the 70 land below \(\alpha=0.05\) and would read as
     "significant" if reported alone. That's exactly the "few winners among 70 slices" this repo's
     own house rule warns about. The histogram is illustrative/schematic, not drawn from an actual run.
+    Use the slider above to see how the family-wise error rate and expected false-positive count
+    change as \(m\) changes.
     </div>
   </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Family-wise error rate climbs fast as you add more tests</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Curve of family-wise error rate, 1 minus 0.95 to the power m, rising steeply from 0 at m=1 toward 100% as m approaches 100, with m=70 marked at approximately 97%">
+      <line x1="60" y1="20" x2="60" y2="200" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="60" y1="200" x2="620" y2="200" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="452" y1="200" x2="452" y2="20" style="stroke:var(--amber);stroke-dasharray:3,3"/>
+      <path d="M 60.00,200.00 L 65.60,191.00 L 71.20,182.45 L 76.80,174.33 L 82.40,166.61 L 88.00,159.28 L 93.60,152.32 L 99.20,145.70 L 104.80,139.42 L 110.40,133.44 L 116.00,127.77 L 121.60,122.38 L 127.20,117.26 L 132.80,112.40 L 138.40,107.78 L 144.00,103.39 L 149.60,99.22 L 155.20,95.26 L 160.80,91.50 L 166.40,87.92 L 172.00,84.53 L 177.60,81.30 L 183.20,78.24 L 188.80,75.32 L 194.40,72.56 L 200.00,69.93 L 205.60,67.43 L 211.20,65.06 L 216.80,62.81 L 222.40,60.67 L 228.00,58.63 L 233.60,56.70 L 239.20,54.87 L 244.80,53.12 L 250.40,51.47 L 256.00,49.90 L 261.60,48.40 L 267.20,46.98 L 272.80,45.63 L 278.40,44.35 L 284.00,43.13 L 289.60,41.98 L 295.20,40.88 L 300.80,39.83 L 306.40,38.84 L 312.00,37.90 L 317.60,37.00 L 323.20,36.15 L 328.80,35.35 L 334.40,34.58 L 340.00,33.85 L 345.60,33.16 L 351.20,32.50 L 356.80,31.87 L 362.40,31.28 L 368.00,30.72 L 373.60,30.18 L 379.20,29.67 L 384.80,29.19 L 390.40,28.73 L 396.00,28.29 L 401.60,27.88 L 407.20,27.48 L 412.80,27.11 L 418.40,26.75 L 424.00,26.42 L 429.60,26.10 L 435.20,25.79 L 440.80,25.50 L 446.40,25.23 L 452.00,24.97 L 457.60,24.72 L 463.20,24.48 L 468.80,24.26 L 474.40,24.04 L 480.00,23.84 L 485.60,23.65 L 491.20,23.47 L 496.80,23.29 L 502.40,23.13 L 508.00,22.97 L 513.60,22.82 L 519.20,22.68 L 524.80,22.55 L 530.40,22.42 L 536.00,22.30 L 541.60,22.19 L 547.20,22.08 L 552.80,21.97 L 558.40,21.87 L 564.00,21.78 L 569.60,21.69 L 575.20,21.61 L 580.80,21.53 L 586.40,21.45 L 592.00,21.38 L 597.60,21.31 L 603.20,21.24 L 608.80,21.18 L 614.40,21.12 L 620.00,21.07" fill="none" style="stroke:var(--red);stroke-width:2.5"/>
+      <circle cx="452" cy="24.97" r="4" style="fill:var(--amber)"/>
+      <text x="456" y="17" style="fill:var(--amber);font-family:'DM Mono',monospace;font-size:10px">m=70 &#8594; 97%</text>
+      <text x="52" y="203" text-anchor="end" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">0%</text>
+      <text x="52" y="114" text-anchor="end" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">50%</text>
+      <text x="52" y="24" text-anchor="end" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">100%</text>
+      <text x="22" y="110" text-anchor="middle" transform="rotate(-90 22 110)" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">P(at least one false positive)</text>
+      <text x="60" y="218" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">0</text>
+      <text x="340" y="218" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">50</text>
+      <text x="620" y="218" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">100</text>
+      <text x="340" y="234" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">number of tests m</text>
+    </svg>
+    <div class="tl-chart-caption">
+    The FWER curve, \(1-(0.95)^m\), for \(m\) from 1 to 100. It rises steeply at first — even a
+    handful of tests already carries meaningful false-positive risk — then flattens as it approaches
+    100%, because once a false positive is nearly certain, adding more tests can't push the
+    probability past 1. The dashed amber line marks \(m=70\), the worked example above: at that
+    point the curve has already climbed to roughly 97%, matching the interactive readout when the
+    slider above is set to 70.
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    var slider = document.getElementById('mt-m-slider');
+    var mVal = document.getElementById('mt-m-val');
+    var fwerVal = document.getElementById('mt-fwer-val');
+    var expVal = document.getElementById('mt-expected-val');
+    var legendCount = document.getElementById('mt-legend-count');
+    var legendM = document.getElementById('mt-legend-m');
+    function update(){
+      var m = parseInt(slider.value, 10);
+      var fwer = 1 - Math.pow(0.95, m);
+      var expected = m * 0.05;
+      mVal.textContent = m;
+      fwerVal.textContent = (fwer * 100).toFixed(1) + '%';
+      expVal.textContent = expected.toFixed(1);
+      if (legendCount) legendCount.textContent = Math.round(expected);
+      if (legendM) legendM.textContent = m;
+    }
+    slider.addEventListener('input', update);
+    update();
+  })();
+  </script>
 
   <h2>How practitioners actually use this</h2>
   <p>

@@ -296,12 +296,12 @@
     </p>
   </div>
 
-  <div class="tl-chart">
+  <div class="tl-chart interactive">
     <div class="tl-chart-label">Kalman-filtered hedge ratio vs. noisy daily observations</div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter plot of noisy hedge-ratio observations over time, with a smooth Kalman-filtered estimate line threading through them and a shaded uncertainty band that starts wide on the left and narrows toward the right as more observations accumulate">
       <line x1="60" y1="20" x2="60" y2="230" style="stroke:var(--border2);stroke-width:1"/>
       <line x1="60" y1="230" x2="610" y2="230" style="stroke:var(--border2);stroke-width:1"/>
-      <polygon points="70,105 114,106 158,105 203,105 247,103 291,104 335,104 379,103 423,103 468,101 512,100 556,99 600,98 600,110 556,115 512,120 468,125 423,131 379,137 335,144 291,150 247,157 203,167 158,175 114,186 70,195" style="fill:var(--blue);opacity:.15"/>
+      <polygon id="kf-uncertainty-band" points="70,105 114,106 158,105 203,105 247,103 291,104 335,104 379,103 423,103 468,101 512,100 556,99 600,98 600,110 556,115 512,120 468,125 423,131 379,137 335,144 291,150 247,157 203,167 158,175 114,186 70,195" style="fill:var(--blue);opacity:.15"/>
       <circle cx="70" cy="126" r="3.5" style="fill:var(--text3);opacity:.6"/>
       <circle cx="70" cy="169" r="3.5" style="fill:var(--text3);opacity:.6"/>
       <circle cx="114" cy="166" r="3.5" style="fill:var(--text3);opacity:.6"/>
@@ -328,10 +328,17 @@
       <circle cx="556" cy="87" r="3.5" style="fill:var(--text3);opacity:.6"/>
       <circle cx="600" cy="82" r="3.5" style="fill:var(--text3);opacity:.6"/>
       <circle cx="600" cy="119" r="3.5" style="fill:var(--text3);opacity:.6"/>
-      <polyline points="70,150 114,146 158,140 203,136 247,130 291,127 335,124 379,120 423,117 468,113 512,110 556,107 600,104" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+      <polyline id="kf-filtered-line" points="70,150 114,146 158,140 203,136 247,130 291,127 335,124 379,120 423,117 468,113 512,110 556,107 600,104" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
       <text x="335" y="255" text-anchor="middle" font-size="11" fill="var(--text3)">time</text>
       <text x="18" y="125" text-anchor="middle" font-size="11" fill="var(--text3)" transform="rotate(-90 18 125)">hedge ratio</text>
     </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Trust in new data (R⁻¹ relative to Q)</span><span class="tl-live" id="kf-gain-val">K ≈ 0.50</span></div>
+        <input type="range" id="kf-gain-slider" min="1" max="99" step="1" value="50">
+        <div class="tl-hint">Low = smoother but slower to react. High = reacts fast but tracks noise.</div>
+      </div>
+    </div>
     <div class="tl-legend">
       <span><i style="background:var(--text3);opacity:.6"></i>Noisy observations</span>
       <span><i style="background:var(--blue)"></i>Filtered estimate</span>
@@ -345,7 +352,10 @@
       \(P_{t\mid t}\): wide on the left, when few observations have accumulated,
       and visibly narrower on the right, as the predict/update recursion keeps
       folding in evidence and the filter grows more confident in its running
-      estimate.
+      estimate. Drag the slider above to see the trade-off directly: it
+      re-runs the same blend recursion, \(\hat{x}_t = (1-K)\hat{x}_{t-1} + K
+      y_t\), over the fixed noisy observations with a chosen gain \(K\) instead
+      of the derived per-step Kalman gain.
     </div>
   </div>
 
@@ -619,5 +629,86 @@
     <a href="cointegration.html">Cointegration &amp; Statistical Arbitrage →</a>
   </div>
 </div>
+<script>
+(function(){
+  var slider = document.getElementById('kf-gain-slider');
+  var gainVal = document.getElementById('kf-gain-val');
+  var line = document.getElementById('kf-filtered-line');
+  var band = document.getElementById('kf-uncertainty-band');
+
+  // Fixed noisy observations — read directly off the static SVG's <circle>
+  // points, in the order they appear (13 time-ticks, 2 observations each).
+  var OBS = [
+    {x:70,  y:126}, {x:70,  y:169},
+    {x:114, y:166}, {x:114, y:131},
+    {x:158, y:124}, {x:158, y:161},
+    {x:203, y:158}, {x:203, y:118},
+    {x:247, y:111}, {x:247, y:144},
+    {x:291, y:142}, {x:291, y:105},
+    {x:335, y:101}, {x:335, y:140},
+    {x:379, y:138}, {x:379, y:107},
+    {x:423, y:103}, {x:423, y:137},
+    {x:468, y:134}, {x:468, y:97},
+    {x:512, y:93},  {x:512, y:122},
+    {x:556, y:126}, {x:556, y:87},
+    {x:600, y:82},  {x:600, y:119}
+  ];
+
+  // Original static band's half-width at each of the 13 x-ticks (px), and
+  // the x-ticks themselves — read off the original polygon. The band is
+  // centered on the filtered line and shrinks left-to-right in the static
+  // chart; that shrinking-over-time shape is kept, and only its width is
+  // rescaled by the slider (see update() below).
+  var TICK_X = [70,114,158,203,247,291,335,379,423,468,512,556,600];
+  var BASE_HALF_WIDTH = [45,40,35,31,27,23,20,17,14,12,10,8,6];
+
+  function update(){
+    var pct = parseFloat(slider.value);
+    var K = pct / 100; // 0.01..0.99
+    gainVal.textContent = 'K ≈ ' + K.toFixed(2);
+
+    // Recompute the filtered line: simple exponential-smoothing recursion
+    // estimate_i = (1-K)*estimate_{i-1} + K*obs_i, seeded at the first
+    // observation, run over the FIXED observation array above (not the
+    // Kalman P/Q/R machinery — an illustrative single-parameter blend).
+    var estimates = new Array(OBS.length);
+    estimates[0] = OBS[0].y;
+    for (var i = 1; i < OBS.length; i++){
+      estimates[i] = (1 - K) * estimates[i - 1] + K * OBS[i].y;
+    }
+    var linePts = [];
+    for (var i = 0; i < OBS.length; i++){
+      linePts.push(OBS[i].x + ',' + estimates[i].toFixed(1));
+    }
+    line.setAttribute('points', linePts.join(' '));
+
+    // Uncertainty band: keep the original shrinking-over-time shape (the
+    // per-tick half-widths in BASE_HALF_WIDTH), but scale that half-width by
+    // (0.5 + K) — a simple, illustrative choice, not a derived Kalman P.
+    // At K=0.50 the scale factor is exactly 1.0, so the band's WIDTH at each
+    // tick matches the original static chart's; the band narrows toward
+    // K=0.01 (smoother line reads as a more confident average) and widens
+    // toward K=0.99 (jagged line tracking noise reads as a less confident
+    // running estimate). It is recentered on the recomputed filtered value
+    // at each tick (the estimate after both observations at that tick have
+    // been folded in), so its on-screen position also shifts with K, not
+    // just its width.
+    var scale = 0.5 + K;
+    var top = [];
+    var bottom = [];
+    for (var t = 0; t < TICK_X.length; t++){
+      var center = estimates[2 * t + 1];
+      var hw = BASE_HALF_WIDTH[t] * scale;
+      top.push(TICK_X[t] + ',' + (center - hw).toFixed(1));
+      bottom.push(TICK_X[t] + ',' + (center + hw).toFixed(1));
+    }
+    bottom.reverse();
+    band.setAttribute('points', top.concat(bottom).join(' '));
+  }
+
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
 </body>
 </html>

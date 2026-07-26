@@ -298,43 +298,42 @@
       <text x="330" y="288" fill="var(--text3)" font-size="13" text-anchor="middle">X</text>
       <text x="26" y="140" fill="var(--text3)" font-size="13" text-anchor="middle" transform="rotate(-90 26 140)">Y</text>
 
-      <line x1="80" y1="235" x2="580" y2="55" style="stroke:var(--amber);stroke-width:2"></line>
+      <line id="reg-ols-line" x1="80" y1="235" x2="580" y2="55" style="stroke:var(--amber);stroke-width:2"></line>
 
+      <g id="reg-residuals-group">
       <line x1="118" y1="225" x2="118" y2="205" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"></line>
-      <circle cx="118" cy="225" r="4" style="fill:var(--blue)"></circle>
-
-      <circle cx="150" cy="210" r="4" style="fill:var(--blue)"></circle>
-
       <line x1="182" y1="165" x2="182" y2="197" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"></line>
-      <circle cx="182" cy="165" r="4" style="fill:var(--blue)"></circle>
-
-      <circle cx="214" cy="188" r="4" style="fill:var(--blue)"></circle>
-
-      <circle cx="246" cy="178" r="4" style="fill:var(--blue)"></circle>
-
       <line x1="278" y1="188" x2="278" y2="164" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"></line>
-      <circle cx="278" cy="188" r="4" style="fill:var(--blue)"></circle>
-
-      <circle cx="310" cy="150" r="4" style="fill:var(--blue)"></circle>
-
-      <circle cx="342" cy="140" r="4" style="fill:var(--blue)"></circle>
-
       <line x1="374" y1="105" x2="374" y2="132" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"></line>
-      <circle cx="374" cy="105" r="4" style="fill:var(--blue)"></circle>
-
-      <circle cx="406" cy="122" r="4" style="fill:var(--blue)"></circle>
-
-      <circle cx="438" cy="108" r="4" style="fill:var(--blue)"></circle>
-
-      <circle cx="470" cy="95" r="4" style="fill:var(--blue)"></circle>
-
       <line x1="502" y1="70" x2="502" y2="93" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"></line>
+      </g>
+
+      <g id="reg-points-group">
+      <circle cx="118" cy="225" r="4" style="fill:var(--blue)"></circle>
+      <circle cx="150" cy="210" r="4" style="fill:var(--blue)"></circle>
+      <circle cx="182" cy="165" r="4" style="fill:var(--blue)"></circle>
+      <circle cx="214" cy="188" r="4" style="fill:var(--blue)"></circle>
+      <circle cx="246" cy="178" r="4" style="fill:var(--blue)"></circle>
+      <circle cx="278" cy="188" r="4" style="fill:var(--blue)"></circle>
+      <circle cx="310" cy="150" r="4" style="fill:var(--blue)"></circle>
+      <circle cx="342" cy="140" r="4" style="fill:var(--blue)"></circle>
+      <circle cx="374" cy="105" r="4" style="fill:var(--blue)"></circle>
+      <circle cx="406" cy="122" r="4" style="fill:var(--blue)"></circle>
+      <circle cx="438" cy="108" r="4" style="fill:var(--blue)"></circle>
+      <circle cx="470" cy="95" r="4" style="fill:var(--blue)"></circle>
       <circle cx="502" cy="70" r="4" style="fill:var(--blue)"></circle>
-
       <circle cx="534" cy="75" r="4" style="fill:var(--blue)"></circle>
-
       <circle cx="566" cy="60" r="4" style="fill:var(--blue)"></circle>
+      </g>
     </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Noise level (lower = tighter fit)</span><span class="tl-live" id="reg-noise-val">30%</span></div>
+        <input type="range" id="reg-noise-slider" min="0" max="100" step="5" value="30">
+        <div class="tl-hint">Drag right to add scatter around the fitted line; drag left to tighten it.</div>
+      </div>
+    </div>
+    <div class="tl-readout">R&sup2; &approx; <b id="reg-r2-val">0.91</b></div>
     <div class="tl-chart-caption">Illustrative data. OLS picks the line that minimizes the sum of the squared vertical distances (the red dashed segments, the residuals) from each point to the line — not the line that looks closest by eye, and not the line minimizing absolute distance.</div>
   </div>
 
@@ -655,5 +654,65 @@
     <a href="primer-returns-compounding.html">Returns, Log-Returns &amp; Compounding →</a>
   </div>
 </div>
+<script>
+(function(){
+  // Fixed underlying trend: same slope/intercept as the static chart's OLS
+  // line (80,235) -> (580,55), i.e. y = 235 + slope*(x-80).
+  var X0 = 80, Y0 = 235, SLOPE = (55 - 235) / (580 - 80); // -0.36
+  function trendY(x){ return Y0 + SLOPE * (x - X0); }
+
+  // Same 15 x-positions as the original static scatter (118..566 step 32).
+  var XS = [];
+  for (var i = 0; i < 15; i++) XS.push(118 + 32 * i);
+
+  var Y_MIN = 22, Y_MAX = 258; // keep points inside the axes
+
+  var noiseSlider = document.getElementById('reg-noise-slider');
+  var noiseVal = document.getElementById('reg-noise-val');
+  var r2Val = document.getElementById('reg-r2-val');
+  var pointsGroup = document.getElementById('reg-points-group');
+  var residualsGroup = document.getElementById('reg-residuals-group');
+
+  function updateReg(){
+    var noise = parseFloat(noiseSlider.value); // 0..100
+    noiseVal.textContent = noise + '%';
+
+    // Illustrative mapping only (not re-fit each draw): R^2 falls smoothly
+    // from ~1 at noise=0 to ~0 at noise=100, clamped to [0,1].
+    var r2 = 1 - Math.pow(noise / 100, 1.5);
+    r2 = Math.max(0, Math.min(1, r2));
+    r2Val.textContent = r2.toFixed(2);
+
+    // Jitter amplitude scales with the noise slider; at noise=30 this lands
+    // close to the original static chart's residual sizes (~20-30px).
+    var jitterAmp = (noise / 100) * 90;
+
+    var ys = [];
+    var pointsHTML = '';
+    for (var i = 0; i < XS.length; i++){
+      var x = XS[i];
+      var y = trendY(x) + (Math.random() * 2 - 1) * jitterAmp;
+      y = Math.max(Y_MIN, Math.min(Y_MAX, y));
+      ys.push(y);
+      pointsHTML += '<circle cx="' + x + '" cy="' + y.toFixed(1) + '" r="4" style="fill:var(--blue)"></circle>';
+    }
+    pointsGroup.innerHTML = pointsHTML;
+
+    // A handful of residual segments (every 3rd point) so they visibly
+    // lengthen as noise increases, drawn from the fixed trend line.
+    var residualsHTML = '';
+    for (var j = 0; j < XS.length; j++){
+      if (j % 3 !== 0) continue;
+      var rx = XS[j];
+      var lineY = trendY(rx);
+      residualsHTML += '<line x1="' + rx + '" y1="' + ys[j].toFixed(1) + '" x2="' + rx + '" y2="' + lineY.toFixed(1) + '" style="stroke:var(--red);stroke-width:1;stroke-dasharray:3,3"></line>';
+    }
+    residualsGroup.innerHTML = residualsHTML;
+  }
+
+  noiseSlider.addEventListener('input', updateReg);
+  updateReg();
+})();
+</script>
 </body>
 </html>

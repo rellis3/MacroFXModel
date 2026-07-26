@@ -330,9 +330,9 @@
     elsewhere in this series gets measured against.
   </p>
 
-  <div class="tl-chart">
+  <div class="tl-chart interactive">
     <div class="tl-chart-label">The normal distribution &amp; the 68/95/99.7 rule</div>
-    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bell curve with shaded standard deviation bands">
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bell curve with shaded standard deviation bands and a movable z-score marker">
       <line x1="90" y1="240" x2="550" y2="240" style="stroke:var(--border);stroke-width:1"/>
       <line x1="110" y1="30" x2="110" y2="240" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
       <line x1="180" y1="30" x2="180" y2="240" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
@@ -355,8 +355,38 @@
       <text x="390" y="256" text-anchor="middle" style="fill:var(--text3);font-size:11px">1σ</text>
       <text x="460" y="256" text-anchor="middle" style="fill:var(--text3);font-size:11px">2σ</text>
       <text x="530" y="256" text-anchor="middle" style="fill:var(--text3);font-size:11px">3σ</text>
+      <line id="stats-z-marker" x1="390" y1="20" x2="390" y2="240" style="stroke:var(--amber);stroke-width:1.5;stroke-dasharray:2,2"/>
+      <circle id="stats-z-dot" cx="390" cy="118.69" r="5" style="fill:var(--amber);stroke:var(--s1);stroke-width:1.5"/>
     </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>z-score</span><span class="tl-live" id="stats-z-val">z = 1.00</span></div>
+        <input type="range" id="stats-z-slider" min="-300" max="300" step="5" value="100">
+        <div class="tl-hint">Drag the slider to move the marker along the curve and see the percentile and tail probability update for a standard normal distribution.</div>
+      </div>
+    </div>
+    <div class="tl-readout">≈ <b id="stats-pct-val">84.1</b>th percentile · about <b id="stats-tail-val">15.9</b>% of a normal distribution lies beyond this point</div>
     <div class="tl-chart-caption">Illustrative, not fitted to real data. About 68% of a normal distribution's mass falls within ±1σ of the mean (darkest band), 95% within ±2σ, 99.7% within ±3σ — this is the ruler every z-score, VaR estimate, and "how unusual was this move" question in later lessons is measured against.</div>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A real (small) sample never looks perfectly smooth — that's expected</div>
+    <svg viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bumpy histogram of a small sample with a smooth fitted normal curve overlay">
+      <line x1="40" y1="200" x2="610" y2="200" style="stroke:var(--border);stroke-width:1"/>
+      <rect x="62" y="190" width="36" height="10" style="fill:var(--s3);stroke:var(--border)"/>
+      <rect x="112" y="172" width="36" height="28" style="fill:var(--s3);stroke:var(--border)"/>
+      <rect x="162" y="148" width="36" height="52" style="fill:var(--s3);stroke:var(--border)"/>
+      <rect x="212" y="108" width="36" height="92" style="fill:var(--s3);stroke:var(--border)"/>
+      <rect x="262" y="62" width="36" height="138" style="fill:var(--s3);stroke:var(--border)"/>
+      <rect x="312" y="22" width="36" height="178" style="fill:var(--s3);stroke:var(--border)"/>
+      <rect x="362" y="48" width="36" height="152" style="fill:var(--s3);stroke:var(--border)"/>
+      <rect x="412" y="112" width="36" height="88" style="fill:var(--s3);stroke:var(--border)"/>
+      <rect x="462" y="138" width="36" height="62" style="fill:var(--s3);stroke:var(--border)"/>
+      <rect x="512" y="174" width="36" height="26" style="fill:var(--s3);stroke:var(--border)"/>
+      <rect x="562" y="186" width="36" height="14" style="fill:var(--s3);stroke:var(--border)"/>
+      <path style="fill:none;stroke:var(--blue);stroke-width:2" d="M30,199.06 L45,198.46 L60,197.53 L75,196.14 L90,194.12 L105,191.26 L120,187.33 L135,182.08 L150,175.29 L165,166.75 L180,156.37 L195,144.16 L210,130.29 L225,115.11 L240,99.18 L255,83.20 L270,68.02 L285,54.55 L300,43.64 L315,36.05 L330,32.33 L345,32.75 L360,37.28 L375,45.58 L390,57.06 L405,70.95 L420,86.36 L435,102.39 L450,118.23 L465,133.18 L480,146.74 L495,158.60 L510,168.61 L525,176.78 L540,183.25 L555,188.21 L570,191.91 L585,194.59 L600,196.47"/>
+    </svg>
+    <div class="tl-chart-caption">This is a plausible histogram for a modest real sample — say, a few hundred daily returns — with the normal curve fitted to the same mean and standard deviation drawn on top. Notice the bars are lumpy: they don't fall in a perfectly smooth staircase around the curve, some are a little too tall, some a little too short, the way real data always looks next to an idealized curve. That lumpiness is expected sampling noise, not evidence the underlying distribution isn't approximately normal — a small sample from a genuinely normal population will still look bumpy like this. Telling "just sampling noise" apart from "this isn't actually normal" needs either a much larger sample (the bars smooth out as <em>n</em> grows) or a formal goodness-of-fit test (e.g. Jarque-Bera, referenced elsewhere in this series' residual-diagnostics guidance), not a visual read of one modest histogram.</div>
   </div>
 
   <div class="tl-box example">
@@ -616,5 +646,55 @@
     <a href="primer-probability.html">Probability &amp; Random Variables →</a>
   </div>
 </div>
+<script>
+(function(){
+  // Standard normal CDF via the Abramowitz & Stegun 7.1.26 erf approximation.
+  // Sanity checks: Phi(0)=0.5, Phi(1)=0.8413447, Phi(2)=0.9772499.
+  function erf(x){
+    var sign = x >= 0 ? 1 : -1;
+    x = Math.abs(x);
+    var a1=0.254829592, a2=-0.284496736, a3=1.421413741, a4=-1.453152027, a5=1.061405429, p=0.3275911;
+    var t = 1/(1+p*x);
+    var y = 1 - (((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+    return sign*y;
+  }
+  function normalCdf(z){ return 0.5*(1+erf(z/Math.SQRT2)); }
+
+  var slider = document.getElementById('stats-z-slider');
+  var zVal = document.getElementById('stats-z-val');
+  var pctVal = document.getElementById('stats-pct-val');
+  var tailVal = document.getElementById('stats-tail-val');
+  var marker = document.getElementById('stats-z-marker');
+  var dot = document.getElementById('stats-z-dot');
+  if (!slider) return;
+
+  // Chart's existing pixel mapping: x=320 is 0sigma, x=110 is -3sigma, x=530 is +3sigma
+  // (70px per sigma). Curve height uses the same simplified Gaussian the hand-drawn
+  // path already uses: y = 240 - 200*exp(-z^2/2) (peak 200px above the y=240 baseline).
+  var X0 = 320, PX_PER_SIGMA = 70, BASELINE_Y = 240, PEAK_HEIGHT = 200;
+
+  function update(){
+    var z = parseInt(slider.value, 10) / 100;
+    var percentile = normalCdf(z) * 100;
+    var tail = z >= 0 ? (100 - percentile) : percentile;
+
+    zVal.textContent = 'z = ' + z.toFixed(2);
+    pctVal.textContent = percentile.toFixed(1);
+    tailVal.textContent = tail.toFixed(1);
+
+    var x = X0 + z * PX_PER_SIGMA;
+    var y = BASELINE_Y - PEAK_HEIGHT * Math.exp(-(z*z)/2);
+    marker.setAttribute('x1', x);
+    marker.setAttribute('x2', x);
+    marker.setAttribute('y1', y - 20 < 20 ? 20 : y - 20);
+    marker.setAttribute('y2', 240);
+    dot.setAttribute('cx', x);
+    dot.setAttribute('cy', y);
+  }
+
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
 </body>
 </html>

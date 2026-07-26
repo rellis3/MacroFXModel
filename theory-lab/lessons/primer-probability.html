@@ -291,6 +291,87 @@
     <div class="tl-chart-caption">Schematic, not simulated data. Average one die roll and you get a flat distribution (1 through 6, equally likely). Average 30 independent die rolls and the distribution of that average is already close to normal — this is the Central Limit Theorem, and it's why so many aggregated financial quantities (a day's return summed from many small trades, a portfolio's return summed from many positions) end up looking roughly normal even though no single ingredient is.</div>
   </div>
 
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Watch the distribution of the average converge as n grows</div>
+    <svg viewBox="0 0 640 260" id="clt-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Interactive histogram morphing from a flat distribution at n=1 to a narrow bell shape at n=30">
+      <line x1="40" y1="200" x2="594" y2="200" stroke="var(--border)" stroke-width="1.5"/>
+      <rect id="clt-bar-0"  x="50"  y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-1"  x="86"  y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-2"  x="122" y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-3"  x="158" y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-4"  x="194" y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-5"  x="230" y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-6"  x="266" y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-7"  x="302" y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-8"  x="338" y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-9"  x="374" y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-10" x="410" y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-11" x="446" y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-12" x="482" y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-13" x="518" y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <rect id="clt-bar-14" x="554" y="200" width="30" height="0" style="fill:var(--blue)"/>
+      <text x="65"  y="216" text-anchor="middle" font-size="11" fill="var(--text3)">1</text>
+      <text x="317" y="216" text-anchor="middle" font-size="11" fill="var(--text3)">3.5</text>
+      <text x="569" y="216" text-anchor="middle" font-size="11" fill="var(--text3)">6</text>
+      <text x="317" y="234" text-anchor="middle" font-size="10" fill="var(--text3)">value of the average of n dice</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Number of dice averaged (n)</span><span class="tl-live" id="clt-n-val">1</span></div>
+        <input type="range" id="clt-n-slider" min="1" max="30" step="1" value="1">
+      </div>
+    </div>
+    <div class="tl-chart-caption">Not a literal Monte Carlo simulation — the bars are a discretized normal approximation, \(\mathcal{N}(3.5,\, \sigma_{die}^2/n)\), using \(\sigma_{die} \approx 1.708\) from the worked example below. As \(n\) grows the spread narrows in proportion to \(1/\sqrt{n}\) while the shape sharpens from the die's near-uniform flatness (\(n=1\)) toward a tall, narrow bell centered on 3.5 (\(n=30\)) — the same convergence pictured schematically in the three static panels above, now continuous.</div>
+    <script>
+      (function(){
+        var SIGMA_DIE = 1.708;
+        var BIN_COUNT = 15;
+        var X_MIN = 1, X_MAX = 6;
+        var BASELINE_Y = 200;
+        var MAX_BAR_H = 150;
+        var MIN_BAR_H = 2;
+
+        function normalPDF(x, mean, sigma) {
+          var z = (x - mean) / sigma;
+          return Math.exp(-0.5 * z * z) / (sigma * Math.sqrt(2 * Math.PI));
+        }
+
+        var binCenters = [];
+        for (var i = 0; i < BIN_COUNT; i++) {
+          binCenters.push(X_MIN + (i + 0.5) * (X_MAX - X_MIN) / BIN_COUNT);
+        }
+
+        // Calibrate the height scale so the n=30 peak (bin 7, centered on 3.5)
+        // fills MAX_BAR_H — this is what makes the histogram visibly grow
+        // taller and narrower (not just narrower) as n increases, matching
+        // how a normal PDF's peak height must rise as its variance shrinks.
+        var sigma30 = SIGMA_DIE / Math.sqrt(30);
+        var peakPdf30 = normalPDF(3.5, 3.5, sigma30);
+        var SCALE = MAX_BAR_H / peakPdf30;
+
+        function updateChart(n) {
+          var sigma = SIGMA_DIE / Math.sqrt(n);
+          for (var i = 0; i < BIN_COUNT; i++) {
+            var pdf = normalPDF(binCenters[i], 3.5, sigma);
+            var h = pdf * SCALE;
+            if (h < MIN_BAR_H) h = MIN_BAR_H;
+            if (h > MAX_BAR_H) h = MAX_BAR_H;
+            var bar = document.getElementById('clt-bar-' + i);
+            bar.setAttribute('height', h.toFixed(2));
+            bar.setAttribute('y', (BASELINE_Y - h).toFixed(2));
+          }
+          document.getElementById('clt-n-val').textContent = n;
+        }
+
+        var slider = document.getElementById('clt-n-slider');
+        slider.addEventListener('input', function() {
+          updateChart(parseInt(slider.value, 10));
+        });
+        updateChart(parseInt(slider.value, 10));
+      })();
+    </script>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-box-label">Worked example</div>
     <h3>Expectation and variance of a fair six-sided die, computed by hand</h3>

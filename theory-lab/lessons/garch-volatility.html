@@ -300,17 +300,106 @@
       <text x="20" y="164" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">GARCH conditional volatility σₜ</text>
       <line x1="20" y1="255" x2="620" y2="255" style="stroke:var(--text3);stroke-dasharray:3,3"/>
       <text x="590" y="250" fill="var(--text3)" font-size="9" font-family="'DM Mono',monospace" text-anchor="end">long-run σ</text>
-      <polyline points="20,255 65,253 110,256 155,254 200,255 215,250 230,200 245,155 260,132 275,128 290,125 305,130 320,135 350,148 380,165 410,180 440,195 470,207 500,217 530,225 560,231 590,236 620,240" style="fill:none;stroke:var(--blue);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round"/>
+      <polyline id="garch-vol-line" points="20,255 65,253 110,256 155,254 200,255 215,250 230,200 245,155 260,132 275,128 290,125 305,130 320,135 350,148 380,165 410,180 440,195 470,207 500,217 530,225 560,231 590,236 620,240" style="fill:none;stroke:var(--blue);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round"/>
     </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head">
+          <span>α (shock sensitivity)</span>
+          <span class="tl-live" id="garch-alpha-val">0.08</span>
+        </div>
+        <input type="range" id="garch-alpha-slider" min="1" max="30" step="1" value="8">
+        <div class="tl-hint">Weight on yesterday's squared shock — higher α means a bigger initial spike in σₜ.</div>
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head">
+          <span>β (persistence)</span>
+          <span class="tl-live" id="garch-beta-val">0.90</span>
+        </div>
+        <input type="range" id="garch-beta-slider" min="50" max="97" step="1" value="90">
+        <div class="tl-hint">Weight carried over from yesterday's variance — higher β means a slower decay back to the long-run level.</div>
+      </div>
+    </div>
+    <div class="tl-readout">α+β = <b id="garch-persist-val">0.98</b> · half-life ≈ <b id="garch-halflife-val">34</b> days</div>
     <div class="tl-chart-caption">
       The bottom panel's σ<sub>t</sub> estimate reacts immediately to the cluster of large returns in the top
       panel, then decays gradually — not instantly — back toward the dashed long-run level rather than
       snapping back the moment the market goes quiet. That gradual, slower-than-a-cliff decay <em>is</em> the
       persistence (\(\alpha+\beta\) close to 1) the math above describes, and it's exactly the shape a flat
       trailing HV20 average can't replicate: HV20 would barely move on the shock day and then only fully
-      "forget" it once the shock rolls off the window 20 days later, not smoothly in between.
+      "forget" it once the shock rolls off the window 20 days later, not smoothly in between. Drag the sliders
+      above to see how α and β each reshape the post-shock curve.
     </div>
   </div>
+
+  <script>
+  (function () {
+    var VBAR = 5.0e-5;             // fixed long-run variance, matches the worked example's σ̄ ≈ 0.71%
+    var SIGMA_BAR = Math.sqrt(VBAR);
+    var SHOCK_SQ = 0.000625;       // fixed 2.5% shock, matches the worked example
+    var Y_BASE = 255;              // dashed long-run σ line, unchanged
+    var Y_MIN = 45;                // clamp so an extreme spike stays inside the panel
+    var X_START = 20, X_END = 620;
+    var PRE_SHOCK_STEPS = 5;       // flat lead-in points before the shock
+    var DECAY_STEPS = 20;          // discrete GARCH recursion steps (shock step + 19 decay steps)
+    var K = 46500;                 // px-per-unit-of-σ scale, tuned to match the static chart's peak
+
+    var alphaSlider = document.getElementById('garch-alpha-slider');
+    var betaSlider = document.getElementById('garch-beta-slider');
+    var alphaVal = document.getElementById('garch-alpha-val');
+    var betaVal = document.getElementById('garch-beta-val');
+    var persistVal = document.getElementById('garch-persist-val');
+    var halflifeVal = document.getElementById('garch-halflife-val');
+    var volLine = document.getElementById('garch-vol-line');
+
+    function updateGarchChart() {
+      var alpha = parseFloat(alphaSlider.value) / 100;
+      var beta = parseFloat(betaSlider.value) / 100;
+      var persistence = alpha + beta;
+
+      alphaVal.textContent = alpha.toFixed(2);
+      betaVal.textContent = beta.toFixed(2);
+      persistVal.textContent = persistence.toFixed(2);
+
+      if (persistence >= 1) {
+        halflifeVal.textContent = '∞ (non-stationary)';
+      } else {
+        halflifeVal.textContent = String(Math.round(Math.log(0.5) / Math.log(persistence)));
+      }
+
+      // Illustrative-decay clamp only — keeps the drawn curve well-behaved at slider
+      // extremes where α+β can exceed 1 (max 0.30+0.97=1.27). The readout above still
+      // reports the true, unclamped persistence and half-life.
+      var decayRate = Math.min(persistence, 0.995);
+
+      var variances = [alpha * (SHOCK_SQ - VBAR) + VBAR];
+      for (var r = 1; r < DECAY_STEPS; r++) {
+        variances.push(VBAR + decayRate * (variances[r - 1] - VBAR));
+      }
+
+      var totalPoints = PRE_SHOCK_STEPS + DECAY_STEPS;
+      var dx = (X_END - X_START) / (totalPoints - 1);
+      var pts = [];
+      var i;
+      for (i = 0; i < PRE_SHOCK_STEPS; i++) {
+        pts.push((X_START + i * dx).toFixed(1) + ',' + Y_BASE);
+      }
+      for (r = 0; r < DECAY_STEPS; r++) {
+        var sigma = Math.sqrt(Math.max(variances[r], 0));
+        var y = Y_BASE - K * (sigma - SIGMA_BAR);
+        y = Math.max(Y_MIN, Math.min(Y_BASE, y));
+        var x = X_START + (PRE_SHOCK_STEPS + r) * dx;
+        pts.push(x.toFixed(1) + ',' + y.toFixed(1));
+      }
+
+      volLine.setAttribute('points', pts.join(' '));
+    }
+
+    alphaSlider.addEventListener('input', updateGarchChart);
+    betaSlider.addEventListener('input', updateGarchChart);
+    updateGarchChart();
+  })();
+  </script>
 
   <h2>How practitioners actually use this</h2>
   <p>

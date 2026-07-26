@@ -91,15 +91,21 @@
     </p>
   </div>
 
-  <div class="tl-chart">
+  <div class="tl-chart interactive">
     <div class="tl-chart-label">Same start, one calendar shock</div>
     <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two simulated price paths starting at the same point: a pure-diffusion GBM path that wiggles smoothly with no breaks, and a jump-diffusion path that tracks it closely until a marked NFP release, then steps sharply down and resumes smooth wiggling at the new, lower level.">
-      <line x1="340" y1="24" x2="340" y2="250" style="stroke:var(--amber);stroke-dasharray:3,3"/>
-      <text x="346" y="34" font-size="11" font-family="'DM Mono',monospace" fill="var(--amber)">NFP release</text>
+      <line id="jump-marker-line" x1="340" y1="24" x2="340" y2="250" style="stroke:var(--amber);stroke-dasharray:3,3"/>
+      <text id="jump-marker-label" x="346" y="34" font-size="11" font-family="'DM Mono',monospace" fill="var(--amber)">NFP release</text>
       <polyline points="40,140 80,130 120,145 160,125 200,135 240,150 280,130 320,140 360,128 400,142 440,122 480,138 520,118 560,132 600,115" style="stroke:var(--blue);stroke-width:2" fill="none"/>
-      <polyline points="40,140 80,132 120,143 160,127 200,137 240,148 280,132 320,138 340,138 340,220 360,225 400,210 440,230 480,215 520,235 560,220 600,230" style="stroke:var(--red);stroke-width:2.5" fill="none"/>
+      <polyline id="jump-path-line" points="40,140 80,132 120,143 160,127 200,137 240,148 280,132 320,138 340,138 340,220 360,225 400,210 440,230 480,215 520,235 560,220 600,230" style="stroke:var(--red);stroke-width:2.5" fill="none"/>
       <circle cx="40" cy="140" r="3.5" fill="var(--text2)"/>
     </svg>
+    <div class="tl-controls">
+      <div class="tl-btnrow">
+        <button class="tl-btn" id="jump-trigger-btn">⚡ Trigger a jump</button>
+        <span class="tl-hint">Click to resimulate — the jump lands at a new random point and direction each time.</span>
+      </div>
+    </div>
     <div class="tl-legend">
       <span><i style="background:var(--blue)"></i>Pure diffusion (GBM)</span>
       <span><i style="background:var(--red)"></i>Jump-diffusion</span>
@@ -111,7 +117,40 @@
       The red path shows what actually happens around a scheduled release like
       NFP: a real discontinuity (the vertical step at the dashed line) that a
       continuous-path model treats as effectively impossible — exactly the gap
-      jump-diffusion adds back in.
+      jump-diffusion adds back in. Click "Trigger a jump" to resimulate: the
+      red path resets to track the blue one with no gap at all, then a new
+      jump — random location, random direction, random size — lands a moment
+      later, exactly the "when" and "how big" randomness \(\lambda\) and
+      \(Y_i\) describe above.
+    </div>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">What jump risk does to the return distribution's tails</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two overlaid return-distribution curves centered at zero: a smooth dashed normal bell curve with thin tails that flattens out near the baseline, and a solid red jump-diffusion curve with a taller, narrower peak in the middle and small elevated bumps out in both tails.">
+      <line x1="40" y1="250" x2="600" y2="250" style="stroke:var(--border)"/>
+      <line x1="320" y1="20" x2="320" y2="250" style="stroke:var(--border);stroke-dasharray:2,3"/>
+      <text x="320" y="266" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0 (mean daily return)</text>
+      <polyline points="40,250.0 48,250.0 56,250.0 64,250.0 72,250.0 80,249.9 88,249.9 96,249.8 104,249.7 112,249.5 120,249.2 128,248.8 136,248.3 144,247.5 152,246.4 160,245.0 168,243.1 176,240.6 184,237.4 192,233.4 200,228.5 208,222.6 216,215.7 224,207.8 232,198.9 240,189.1 248,178.7 256,167.8 264,156.9 272,146.3 280,136.3 288,127.5 296,120.1 304,114.6 312,111.2 320,110.0 328,111.2 336,114.6 344,120.1 352,127.5 360,136.3 368,146.3 376,156.9 384,167.8 392,178.7 400,189.1 408,198.9 416,207.8 424,215.7 432,222.6 440,228.5 448,233.4 456,237.4 464,240.6 472,243.1 480,245.0 488,246.4 496,247.5 504,248.3 512,248.8 520,249.2 528,249.5 536,249.7 544,249.8 552,249.9 560,249.9 568,250.0 576,250.0 584,250.0 592,250.0 600,250.0" style="stroke:var(--text3);stroke-width:2;stroke-dasharray:4,3" fill="none"/>
+      <polyline points="40,248.7 48,247.9 56,246.7 64,245.1 72,242.9 80,240.3 88,237.1 96,233.6 104,230.0 112,226.5 120,223.5 128,221.3 136,220.1 144,220.1 152,221.3 160,223.4 168,226.3 176,229.5 184,232.6 192,235.3 200,237.1 208,237.6 216,236.4 224,233.1 232,227.3 240,218.5 248,206.7 256,191.6 264,173.7 272,153.6 280,132.4 288,111.6 296,92.9 304,77.9 312,68.3 320,65.0 328,68.3 336,77.9 344,92.9 352,111.6 360,132.4 368,153.6 376,173.7 384,191.6 392,206.7 400,218.5 408,227.3 416,233.1 424,236.4 432,237.6 440,237.1 448,235.3 456,232.6 464,229.5 472,226.3 480,223.4 488,221.3 496,220.1 504,220.1 512,221.3 520,223.5 528,226.5 536,230.0 544,233.6 552,237.1 560,240.3 568,242.9 576,245.1 584,246.7 592,247.9 600,248.7" style="stroke:var(--red);stroke-width:2.5" fill="none"/>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--text3)"></i>Pure diffusion (GBM) — thin tails</span>
+      <span><i style="background:var(--red)"></i>Jump-diffusion — peaked center + fat tails</span>
+    </div>
+    <div class="tl-chart-caption">
+      Mixing a low-probability jump component into ordinary daily diffusion
+      produces exactly this shape. The center is <strong>taller and
+      narrower</strong> than the normal curve, because most days have no jump
+      at all and cluster tighter around zero than a single flat-\(\sigma\)
+      model would predict. Out in both wings, the jump-diffusion curve sits
+      visibly <strong>above</strong> the normal curve — small bumps built from
+      the rare days a jump actually lands. High center, fat tails: that
+      combination is <strong>excess kurtosis</strong> (leptokurtosis), the
+      same signature this lesson's repo box above already covers — see it for
+      how <code>skewness</code>/<code>excessKurtosis</code> in
+      <code>js/metricsCore.js</code> catch this empirically in a real return
+      series without ever fitting \(\lambda, \mu_J, \sigma_J\).
     </div>
   </div>
 
@@ -593,5 +632,70 @@
     <a href="kelly-criterion.html">Kelly Criterion &amp; Position Sizing →</a>
   </div>
 </div>
+
+<script>
+  (function () {
+    var X_POINTS = [40, 80, 120, 160, 200, 240, 280, 320, 360, 400, 440, 480, 520, 560, 600];
+    var BASE_Y   = [140, 130, 145, 125, 135, 150, 130, 140, 128, 142, 122, 138, 118, 132, 115];
+    var OFFSETS  = [0, 2, -2, 2, 2, -2, 2, -2, -2, 2, -2, 2, 2, -2, 2];
+
+    function smoothPoints() {
+      var pts = [];
+      for (var i = 0; i < X_POINTS.length; i++) {
+        pts.push(X_POINTS[i] + ',' + (BASE_Y[i] + OFFSETS[i]));
+      }
+      return pts.join(' ');
+    }
+
+    function jumpPoints(jumpIdx, dir, mag) {
+      var pts = [];
+      for (var i = 0; i < X_POINTS.length; i++) {
+        var x = X_POINTS[i];
+        if (i < jumpIdx) {
+          pts.push(x + ',' + (BASE_Y[i] + OFFSETS[i]));
+        } else if (i === jumpIdx) {
+          var preY = BASE_Y[i] + OFFSETS[i];
+          var postY = Math.max(25, Math.min(255, preY + dir * mag));
+          pts.push(x + ',' + preY.toFixed(1));
+          pts.push(x + ',' + postY.toFixed(1));
+        } else {
+          var y = Math.max(25, Math.min(255, BASE_Y[i] + OFFSETS[i] + dir * mag));
+          pts.push(x + ',' + y.toFixed(1));
+        }
+      }
+      return pts.join(' ');
+    }
+
+    var line = document.getElementById('jump-path-line');
+    var markerLine = document.getElementById('jump-marker-line');
+    var markerLabel = document.getElementById('jump-marker-label');
+    var btn = document.getElementById('jump-trigger-btn');
+    if (!line || !markerLine || !markerLabel || !btn) return;
+
+    function triggerJump() {
+      btn.disabled = true;
+      // Reset: track the GBM path closely, no visible gap, for the full length.
+      line.setAttribute('points', smoothPoints());
+
+      setTimeout(function () {
+        // Randomize where along the path the jump lands, which way it goes,
+        // and roughly how big it is — a fresh draw of (jump time, Y_i) each click.
+        var jumpIdx = 2 + Math.floor(Math.random() * 12); // index 2..13
+        var dir = Math.random() < 0.5 ? 1 : -1;            // +1 = gaps down, -1 = gaps up
+        var mag = 45 + Math.random() * 50;                 // 45..95px jump size
+        var x = X_POINTS[jumpIdx];
+
+        line.setAttribute('points', jumpPoints(jumpIdx, dir, mag));
+        markerLine.setAttribute('x1', x);
+        markerLine.setAttribute('x2', x);
+        markerLabel.setAttribute('x', x + 6);
+
+        btn.disabled = false;
+      }, 600);
+    }
+
+    btn.addEventListener('click', triggerJump);
+  })();
+</script>
 </body>
 </html>

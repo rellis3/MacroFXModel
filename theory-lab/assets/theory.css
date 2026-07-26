@@ -104,3 +104,20 @@ code{font-family:'DM Mono',monospace;background:var(--s2);border:1px solid var(-
 /* primer-tier hub card accent */
 .tl-cat.primer .tl-grid .tl-card{border-color:var(--purple-bd)}
 .tl-cat.primer .tl-grid .tl-card:hover{border-color:var(--purple)}
+
+/* interactive chart controls — vanilla JS, no libs */
+.tl-chart.interactive{border-color:var(--blue-bd)}
+.tl-controls{display:flex;flex-wrap:wrap;gap:16px 28px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+.tl-control{display:flex;flex-direction:column;gap:5px;min-width:170px;flex:1}
+.tl-control-head{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;color:var(--text2)}
+.tl-control-head span.tl-live{font-family:'DM Mono',monospace;color:var(--blue);font-weight:600;font-size:12px}
+.tl-control input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;background:var(--s3);outline:none;cursor:pointer}
+.tl-control input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:15px;height:15px;border-radius:50%;background:var(--blue);border:2px solid var(--s1);cursor:pointer;box-shadow:0 0 0 1px var(--blue)}
+.tl-control input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:var(--blue);border:2px solid var(--s1);cursor:pointer;box-shadow:0 0 0 1px var(--blue)}
+.tl-btnrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tl-btn{background:var(--s2);border:1px solid var(--border);border-radius:20px;color:var(--text2);font-size:11.5px;font-weight:600;padding:6px 14px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:border-color .15s,color .15s}
+.tl-btn:hover{border-color:var(--blue);color:var(--blue)}
+.tl-btn.active{background:var(--blue);border-color:var(--blue);color:#fff}
+.tl-readout{font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;margin-top:10px}
+.tl-readout b{color:var(--text);font-weight:600}
+.tl-hint{font-size:10.5px;color:var(--text3);font-style:italic;margin-top:2px}

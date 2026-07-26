@@ -285,21 +285,35 @@
     </p>
   </div>
 
-  <div class="tl-chart">
+  <div class="tl-chart interactive">
     <div class="tl-chart-label">The regime is never observed — only the price line is</div>
     <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A single price line drawn over alternating background bands: narrow blue bands where the hidden state is trending and the line climbs steadily, and wider amber bands where the hidden state is choppy and the line chops sideways with noise. The trending bands are about half the width of the choppy bands, matching the worked example's expected durations of about 3.3 days trending versus about 6.7 days choppy.">
-      <rect x="20" y="20" width="65" height="220" style="fill:var(--blue);opacity:.12"/>
-      <rect x="85" y="20" width="130" height="220" style="fill:var(--amber);opacity:.12"/>
-      <rect x="215" y="20" width="65" height="220" style="fill:var(--blue);opacity:.12"/>
-      <rect x="280" y="20" width="130" height="220" style="fill:var(--amber);opacity:.12"/>
-      <rect x="410" y="20" width="65" height="220" style="fill:var(--blue);opacity:.12"/>
-      <rect x="475" y="20" width="145" height="220" style="fill:var(--amber);opacity:.12"/>
+      <rect id="hmm-band-0" x="20" y="20" width="65" height="220" style="fill:var(--blue);opacity:.12"/>
+      <rect id="hmm-band-1" x="85" y="20" width="130" height="220" style="fill:var(--amber);opacity:.12"/>
+      <rect id="hmm-band-2" x="215" y="20" width="65" height="220" style="fill:var(--blue);opacity:.12"/>
+      <rect id="hmm-band-3" x="280" y="20" width="130" height="220" style="fill:var(--amber);opacity:.12"/>
+      <rect id="hmm-band-4" x="410" y="20" width="65" height="220" style="fill:var(--blue);opacity:.12"/>
+      <rect id="hmm-band-5" x="475" y="20" width="145" height="220" style="fill:var(--amber);opacity:.12"/>
       <polyline points="20,200 35,190 50,175 65,160 85,140 100,155 120,130 140,150 160,125 180,148 200,132 215,145 230,135 245,120 260,105 280,90 300,105 320,80 340,100 360,78 380,98 400,85 410,92 425,80 440,72 460,58 475,50 495,68 515,45 535,65 555,42 575,60 595,48 620,55" style="fill:none;stroke:var(--text);stroke-width:2"/>
     </svg>
     <div class="tl-legend">
       <span><i style="background:var(--blue)"></i>Trending state</span>
       <span><i style="background:var(--amber)"></i>Choppy state</span>
     </div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>P(stay trending)</span><span class="tl-live" id="hmm-a11-val">0.70</span></div>
+        <input type="range" id="hmm-a11-slider" min="50" max="95" step="1" value="70">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>P(stay choppy)</span><span class="tl-live" id="hmm-a22-val">0.85</span></div>
+        <input type="range" id="hmm-a22-slider" min="50" max="95" step="1" value="85">
+      </div>
+    </div>
+    <div class="tl-readout">
+      Expected duration — trending: <b id="hmm-dur1-val">3.3</b> steps · choppy: <b id="hmm-dur2-val">6.7</b> steps
+    </div>
+    <div class="tl-hint">Drag either slider to change the self-transition probability \(A_{11}\)/\(A_{22}\) — the shaded band widths above rescale to match the new expected regime durations. The price line itself is illustrative and stays fixed; only the band widths respond.</div>
     <div class="tl-chart-caption">
     The shading is what an HMM has to infer, not what it's given — in real data there
     are no colored bands, only the price line. Here the bands follow the worked
@@ -312,6 +326,57 @@
     hidden state produced each stretch of it?
     </div>
   </div>
+  <script>
+  (function(){
+    var bandDefs = [
+      {id:'hmm-band-0', type:'T'},
+      {id:'hmm-band-1', type:'C'},
+      {id:'hmm-band-2', type:'T'},
+      {id:'hmm-band-3', type:'C'},
+      {id:'hmm-band-4', type:'T'},
+      {id:'hmm-band-5', type:'C'}
+    ];
+    var chartX0 = 20, chartTotalWidth = 600;
+    var a11Slider = document.getElementById('hmm-a11-slider');
+    var a22Slider = document.getElementById('hmm-a22-slider');
+    var a11Val = document.getElementById('hmm-a11-val');
+    var a22Val = document.getElementById('hmm-a22-val');
+    var dur1Val = document.getElementById('hmm-dur1-val');
+    var dur2Val = document.getElementById('hmm-dur2-val');
+
+    function updateHmmChart(){
+      var a11 = parseInt(a11Slider.value, 10) / 100;
+      var a22 = parseInt(a22Slider.value, 10) / 100;
+      var durT = 1 / (1 - a11);
+      var durC = 1 / (1 - a22);
+      var tCount = bandDefs.filter(function(b){ return b.type === 'T'; }).length;
+      var cCount = bandDefs.filter(function(b){ return b.type === 'C'; }).length;
+      var sumDur = tCount * durT + cCount * durC;
+      var widthT = chartTotalWidth * durT / sumDur;
+      var widthC = chartTotalWidth * durC / sumDur;
+
+      a11Val.textContent = a11.toFixed(2);
+      a22Val.textContent = a22.toFixed(2);
+      dur1Val.textContent = durT.toFixed(1);
+      dur2Val.textContent = durC.toFixed(1);
+
+      var x = chartX0;
+      bandDefs.forEach(function(b){
+        var el = document.getElementById(b.id);
+        var w = b.type === 'T' ? widthT : widthC;
+        if (el) {
+          el.setAttribute('x', x);
+          el.setAttribute('width', w);
+        }
+        x += w;
+      });
+    }
+
+    a11Slider.addEventListener('input', updateHmmChart);
+    a22Slider.addEventListener('input', updateHmmChart);
+    updateHmmChart();
+  })();
+  </script>
 
   <h2>How practitioners actually use this</h2>
   <p>
