@@ -48,6 +48,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Lesson 1 — Macro Drivers, Regime Detection &amp; Validation</h2>
 
   <h3>1.1 The drivers of asset prices (six macro factor families)</h3>
@@ -86,6 +87,7 @@
     <tr><td>Bull steepening</td><td>Rate cuts, early recovery. Asset map: risk assets, small cap.</td></tr>
   </table></div>
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Revision point</div>
     <p>Bear steepening = long end rises (inflation fear); bull steepening = short end falls (cuts arriving). Same
       shape change, opposite cause, opposite asset map.</p>
@@ -156,6 +158,7 @@
       bank easing. Duration: 3–6 months. Shift: add risk, reduce duration, favour cyclicals.</td></tr>
   </table></div>
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Revision point</div>
     <p>Stagflation→deflation is the fastest transition and is credit-driven — the early warnings are
       <strong>market prices</strong> (credit spreads, breakevens), not survey data.</p>
@@ -183,6 +186,14 @@
 
   <h3>1.7 Entry models — the four systematic strategy families</h3>
   <p>Different market inefficiencies require different exploitation methods.</p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard"><div class="tl-icon-badge blue">⟲</div><h4>Mean reversion</h4><p>Extreme deviations from a central tendency tend to revert — z-score/RSI/Bollinger entries, best in range-bound, low-vol regimes.</p></div>
+    <div class="tl-icard"><div class="tl-icon-badge green">↗</div><h4>Momentum / trend</h4><p>Winners keep winning via behavioural biases and slow information diffusion — 12-1 momentum, golden cross, breakout systems.</p></div>
+    <div class="tl-icard"><div class="tl-icon-badge purple">⇌</div><h4>Statistical arbitrage</h4><p>Related securities revert to a stable relationship — pairs, basket-vs-component, factor residuals; needs cointegration, not just correlation.</p></div>
+    <div class="tl-icard"><div class="tl-icon-badge amber">⏱</div><h4>Lead–lag</h4><p>Information propagates with a delay between related assets/markets — needs Granger causality, OOS stability, and an economic rationale.</p></div>
+  </div>
+
   <p><strong>⟲ Mean reversion</strong> — prices oscillate around a central tendency; extreme deviations tend to
     revert. Signals: z-score from MA (<code>Z = (Price − MA) / σ</code>, entry when |Z| &gt; 2); RSI extremes
     (&lt;30 oversold, &gt;70 overbought); Bollinger penetration with volume confirmation; pairs spread deviation
@@ -219,6 +230,12 @@
     never have future information). <strong>Walk-forward efficiency:</strong>
     <code>WFE = OOS performance / IS performance</code>. Target <strong>WFE &gt; 0.5</strong>; below
     <strong>0.3</strong> suggests severe overfitting.</p>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">OOS</div><div class="tl-fp-name">Out-of-sample performance</div><div class="tl-fp-desc">Result on the final holdout the strategy never touched during development</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">IS</div><div class="tl-fp-name">In-sample performance</div><div class="tl-fp-desc">Result on the training/optimisation data — almost always the flattering number</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">WFE</div><div class="tl-fp-name">Walk-forward efficiency</div><div class="tl-fp-desc">The ratio itself — &gt;0.5 target, &lt;0.3 flags severe overfitting</div></div>
+  </div>
   <div class="tl-symbols"><table>
     <tr><td>Sharpe ratio</td><td>(R − Rf) / σ — good &gt; 1.0, excellent &gt; 2.0. Measures risk-adjusted return
       (total vol).</td></tr>
@@ -237,6 +254,7 @@
     confirmed · Monte Carlo stress tested · paper trading completed (3+ months) · risk limits and kill switches
     set.</p>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>Lesson 2 — The Transatlantic Yield Spread (US 10Y vs. German Bund)</h2>
   <p>"The most important spread in global macro, and why it leads EUR/USD."</p>
 
@@ -281,6 +299,8 @@
     <em>continued</em> EUR/USD movement even after the initial FX reaction. <strong>Spread momentum — not just
     level — is the powerful signal</strong>: a widening spread that keeps widening implies more USD strength
     ahead as slower capital catches up.</p>
+
+  <div class="tl-solid amber"><strong>The tradable signal:</strong> it's the spread's <em>momentum</em>, not its level, that matters most — a widening spread that keeps widening implies more USD strength still ahead as the slower legs of institutional capital (funds, pensions, reserves, corporates) keep catching up.</div>
   <div class="tl-callout">
     <strong>Carry-trade mechanics live one lesson over.</strong> Channel #1 above is exactly the covered/uncovered
     interest-rate-parity trade: borrow the low-yield currency, hold the high-yield one, and the expected-return
@@ -330,6 +350,15 @@
     <li><strong>T+1 month+</strong> — new equilibrium; the spread move is fully reflected; the trade is "done"
       until the next catalyst.</li>
   </ul>
+  <div class="tl-steps">
+    <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body"><h4>T+0</h4><p>Powell suggests inflation is stickier; markets reprice; US 2Y jumps 15 bps within minutes.</p></div></div>
+    <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body"><h4>T+0 → 1hr</h4><p>Term structure adjusts: US 10Y +8–10 bps; Bunds unchanged; spread widens 8–10 bps.</p></div></div>
+    <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body"><h4>T+1hr → 1 day</h4><p>Fast money moves: macro funds and CTAs short EUR/USD for carry and momentum; −50–80 pips — the "obvious" quick move.</p></div></div>
+    <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body"><h4>T+1 day → 1 week</h4><p>Asset managers rebalance Bunds → Treasuries; each purchase buys USD / sells EUR; EUR/USD drifts lower.</p></div></div>
+    <div class="tl-step"><div class="tl-step-num">5</div><div class="tl-step-body"><h4>T+1 week → 1 month</h4><p>Real money (pensions, insurers) executes strategic rebalancing over weeks; EUR/USD grinds lower even as news flow quiets.</p></div></div>
+    <div class="tl-step"><div class="tl-step-num">6</div><div class="tl-step-body"><h4>T+1 month+</h4><p>New equilibrium; the spread move is fully reflected; the trade is "done" until the next catalyst.</p></div></div>
+  </div>
+
   <p><strong>Key insight:</strong> EUR/USD keeps falling long after the initial reaction. Traders who understand
     this can hold through the "boring" period — the flows are still coming.</p>
 
@@ -360,6 +389,7 @@
       reverses.</strong></td></tr>
   </table></div>
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Critical rule</div>
     <p>Never treat the spread–FX relationship as mechanical. It's a <strong>tendency, not a law</strong>. When
       correlation breaks down, ask why — the answer often reveals important information about market regime and
@@ -408,6 +438,7 @@
       the spread widens again.</li>
   </ul>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>Lesson 3 — Live Case Study: The Spread Moved First (17–18 Feb 2026)</h2>
   <p>A real-time example of the yield spread leading EUR/USD by ~24 hours.</p>
 
@@ -529,11 +560,13 @@
       signals.</li>
   </ol>
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Closing line (as given)</div>
     <p>"Rates moved Tuesday. FX followed Wednesday. The spread gave you a full session to position before the
       currency caught up. That's not luck — that's the lead-lag working exactly as it should."</p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Key facts — quick revision sheet</h2>
   <div class="tl-symbols"><table>
     <tr><td>Yield curve</td><td>Term spread = 10Y − 2Y; inversion leads recession by 12–24 months.</td></tr>
@@ -564,6 +597,7 @@
   </table></div>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Real-time implementation notes — using the lessons live</div>
     <h3>What this repo actually has built, and what it doesn't</h3>
     <p><strong>Daily routine:</strong> know the current regime quadrant (monthly data), the current spread
@@ -652,6 +686,19 @@
   </ul>
   </details>
 
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Six driver families feed one regime quadrant.</strong> Growth, inflation, policy, liquidity, sentiment and flows combine into a four-quadrant growth×inflation regime (Goldilocks/Reflation/Stagflation/Deflation) — and the <em>transition</em> between regimes, not the regime itself, carries the highest-value signal.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Detect regime by rate of change, not level.</strong> A 55 ISM falling from 60 is deteriorating growth even though the level is still expansionary — trajectory is what the framework scores.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The US10Y−Bund spread is EUR/USD's fundamental anchor.</strong> Because institutional flows (carry → funds → pensions → reserves → corporates) take days to quarters to fully execute, the yield move happens first and the FX adjustment follows.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Spread momentum, not just level, is the tradable signal.</strong> A widening spread that keeps widening implies more USD strength still ahead as slower capital keeps catching up.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The Feb 2026 case study showed the mechanism firing live.</strong> The DE−US spread fell all through Tuesday while EUR/USD ranged and mean-reverted; the currency didn't capitulate until Wednesday — a ~24-hour lead between the rates move and the FX confirmation.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The relationship is a tendency, not a law.</strong> It breaks down in risk-off events (safe-haven USD demand), central bank intervention, extreme positioning, and geopolitical shocks — when correlation breaks, ask why rather than trusting the signal mechanically.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>None of this is a validated edge yet.</strong> Every systematic idea here (mean reversion, momentum, stat arb, lead-lag) must clear in-sample → walk-forward → out-of-sample → Monte Carlo → sensitivity → paper trade with WFE &gt; 0.5 before it's trusted; per the repo notes above, the coupling/regime infrastructure exists, but the formal Granger-causality test and a real walk-forward OOS run on it do not yet.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Name the six macro driver families and the representative series for each.</summary>

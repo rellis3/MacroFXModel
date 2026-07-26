@@ -45,6 +45,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>The idea in one paragraph</h2>
   <p>
     Direction is extremely noisy, and even professional models struggle to
@@ -61,6 +62,7 @@
     not a directional model. It is a range-exhaustion model.
   </p>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>Part 1 — The core idea</h2>
   <ul>
     <li>Short-term direction is close to unforecastable; range/volatility is
@@ -74,6 +76,7 @@
     range-exhaustion model.</strong></li>
   </ul>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>Part 2 — The three numbers needed before the session</h2>
   <div class="tl-dt-wrap">
     <table class="tl-dt">
@@ -96,29 +99,64 @@
   <p><strong>Rule:</strong> get all three numbers the evening before or early
   the same morning. Do not enter the session without them.</p>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Part 3 — Chart markup, step by step (the H-L walkthrough)</h2>
   <p>Tools: a charting platform with a price-range tool, a horizontal ray, and a vertical line.</p>
-  <ol>
-    <li><strong>Bound the session.</strong> Draw verticals at <code>00:00</code> → the next <code>00:00</code>. Everything lives inside these two lines.
-      <br>Why 00:00? The forecast anchors to the full 24-hour calendar-day candle. Reading the open from any other candle (e.g. a 14:30 UTC session open) makes <strong>every</strong> level drift. Non-negotiable.</li>
-    <li><strong>Mark the session open.</strong> Draw a horizontal ray at the 00:00 candle's open, labelled <code>Open</code>. This is the denominator for every percentage calculation that follows.</li>
-    <li><strong>Wait for the first extreme to print.</strong> Do not project any level immediately. Let price establish the first genuinely significant high or low — "significant" meaning it hasn't yet been broken when you check.</li>
-    <li><strong>Project the opposite extreme</strong> with the price-range tool:
-      <ul>
-        <li>First extreme is a <strong>HIGH</strong> → drag the H-L% <strong>down</strong> from it → the bottom of the range is the <strong>Expected Low</strong>.</li>
-        <li>First extreme is a <strong>LOW</strong> → drag the H-L% <strong>up</strong> from it → the top of the range is the <strong>Expected High</strong>.</li>
-        <li>Extend a horizontal ray at the projected level and label it.</li>
-      </ul>
-    </li>
-    <li><strong>Apply the O-C envelope</strong> symmetrically around the open (see Part 7).</li>
-    <li><strong>Re-anchor dynamically all session</strong> — the source calls this "the most important mechanical discipline in the whole strategy":
-      <ul>
-        <li>New low below the anchor low → move the anchor to the new low, re-project the Expected High from there.</li>
-        <li>New high above the anchor high → move the anchor, re-project the Expected Low.</li>
-        <li>Why? You don't know in advance which low will turn out to be THE low of the day. Projecting from the most recent extreme keeps the Expected level valid no matter what comes next.</li>
-      </ul>
-    </li>
-  </ol>
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Bound the session</h4>
+        <p>Draw verticals at <code>00:00</code> → the next <code>00:00</code>. Everything lives inside these two lines.
+        <br>Why 00:00? The forecast anchors to the full 24-hour calendar-day candle. Reading the open from any other candle (e.g. a 14:30 UTC session open) makes <strong>every</strong> level drift. Non-negotiable.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>Mark the session open</h4>
+        <p>Draw a horizontal ray at the 00:00 candle's open, labelled <code>Open</code>. This is the denominator for every percentage calculation that follows.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>Wait for the first extreme to print</h4>
+        <p>Do not project any level immediately. Let price establish the first genuinely significant high or low — "significant" meaning it hasn't yet been broken when you check.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">4</div>
+      <div class="tl-step-body">
+        <h4>Project the opposite extreme</h4>
+        <p>With the price-range tool:</p>
+        <ul>
+          <li>First extreme is a <strong>HIGH</strong> → drag the H-L% <strong>down</strong> from it → the bottom of the range is the <strong>Expected Low</strong>.</li>
+          <li>First extreme is a <strong>LOW</strong> → drag the H-L% <strong>up</strong> from it → the top of the range is the <strong>Expected High</strong>.</li>
+          <li>Extend a horizontal ray at the projected level and label it.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">5</div>
+      <div class="tl-step-body">
+        <h4>Apply the O-C envelope</h4>
+        <p>Symmetrically around the open (see Part 7).</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">6</div>
+      <div class="tl-step-body">
+        <h4>Re-anchor dynamically all session</h4>
+        <p>The source calls this "the most important mechanical discipline in the whole strategy":</p>
+        <ul>
+          <li>New low below the anchor low → move the anchor to the new low, re-project the Expected High from there.</li>
+          <li>New high above the anchor high → move the anchor, re-project the Expected Low.</li>
+          <li>Why? You don't know in advance which low will turn out to be THE low of the day. Projecting from the most recent extreme keeps the Expected level valid no matter what comes next.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
   <p>Worked re-anchoring sequence (EUR/USD downtrend day, forecast 0.53%):</p>
   <div class="tl-dt-wrap">
     <table class="tl-dt">
@@ -130,6 +168,7 @@
     </table>
   </div>
 
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Part 4 — Reading price exhaustion (the trade signal)</h2>
   <p>At the Expected High / Expected Low, watch for evidence the day has <strong>used its range budget</strong>:</p>
   <ul>
@@ -148,11 +187,18 @@
     </table>
   </div>
 
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Part 5 — The range budget</h2>
   <p>The source material calls this <strong>"the most powerful intraday filter"</strong> in the whole approach:</p>
   <div class="tl-math">
     budget consumed&nbsp;&nbsp;=&nbsp;&nbsp;(current high − current low) / daily open<br>
     budget remaining&nbsp;&nbsp;=&nbsp;&nbsp;forecast H-L%&nbsp;&nbsp;−&nbsp;&nbsp;budget consumed
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>consumed</code><span>how much of today's expected amplitude has already been travelled</span></div>
+    <div class="tl-eq-chip c2"><code>high − low</code><span>the day's actual range so far</span></div>
+    <div class="tl-eq-chip c3"><code>open</code><span>the denominator — same 00:00 anchor as every other level</span></div>
+    <div class="tl-eq-chip c4"><code>remaining</code><span>forecast H-L% minus what's already consumed — the room left to travel</span></div>
   </div>
   <p>As the budget gets consumed:</p>
   <ul>
@@ -174,6 +220,7 @@
     of today's statistically typical move has already happened."
   </p>
 
+  <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>Part 6 — The two-sided distribution rule</h2>
   <p>Always maintain both sides of the projection simultaneously:</p>
   <ul>
@@ -187,6 +234,7 @@
     <li>If the low-to-high distance already equals or exceeds the forecast H-L%, the probability of a <em>new</em> low is now very low — a natural point to stop adding to shorts.</li>
   </ul>
 
+  <div class="tl-section-mark"><span>Section 08</span></div>
   <h2>Part 7 — The Open-to-Close overlay</h2>
   <p>Project <strong>±O-C%</strong> symmetrically around the open (two rays, or a box). On a median day, the close is expected to land inside it.</p>
   <div class="tl-dt-wrap">
@@ -208,6 +256,7 @@
     more likely.
   </p>
 
+  <div class="tl-section-mark"><span>Section 09</span></div>
   <h2>Part 8 — Common mistakes</h2>
   <div class="tl-dt-wrap">
     <table class="tl-dt">
@@ -221,9 +270,11 @@
     </table>
   </div>
 
+  <div class="tl-section-mark"><span>Section 10</span></div>
   <h2>Part 9 — Worked examples</h2>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Case study 1</div>
     <h3>EUR/USD, 0.53% forecast — the high holds</h3>
     <p>
@@ -235,6 +286,7 @@
     </p>
   </div>
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Case study 2</div>
     <h3>EUR/USD, 0.52% forecast — two re-anchors, then rejection</h3>
     <p>
@@ -246,6 +298,7 @@
     </p>
   </div>
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Case study 3</div>
     <h3>2.65% (NQ-type) volatility — the low holds since 1 AM</h3>
     <p>
@@ -257,6 +310,7 @@
     </p>
   </div>
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Case study 4</div>
     <h3>Gold — the H-L + O-C overlay together</h3>
     <p>
@@ -335,6 +389,7 @@
     </div>
   </div>
 
+  <div class="tl-section-mark"><span>Section 11</span></div>
   <h2>Part 10 — Daily workflow checklist</h2>
   <h3>Pre-session</h3>
   <ul>
@@ -373,6 +428,7 @@
     <li>Grade accuracy over the sample — not off any single day.</li>
   </ul>
 
+  <div class="tl-section-mark"><span>Section 12</span></div>
   <h2>Part 11 — Key principles to internalise</h2>
   <p>The source material's own six, worth repeating verbatim in spirit:</p>
   <ol>
@@ -385,6 +441,7 @@
   </ol>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this lives in the codebase</div>
     <h3>The band math is a coded brick; the discretionary trade rules above are not</h3>
     <p>
@@ -413,6 +470,17 @@
       the house working agreement: this is study material, not a validated
       edge.
     </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 13</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This is a range-exhaustion model, not a directional one.</strong> Direction is close to unforecastable day to day; range/volatility is persistent and forecastable, so the method bypasses direction entirely and trades exhaustion at both ends of the expected journey.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Re-anchoring is "the most important mechanical discipline."</strong> Every new extreme moves the anchor and re-projects the opposite side — you never know in advance which extreme is THE extreme of the day.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A touch is a watch zone, never a signal by itself.</strong> Confirmation requires all three: price reaches the level, reverses, and closes back on the correct side.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The range budget is the most powerful intraday filter.</strong> Past roughly 80% of the forecast H-L% consumed, breakout odds collapse and the checklist's rule shifts to fading extensions.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Stay two-sided — never guess which end gets hit first.</strong> Project the Expected Low from the day's high and the Expected High from the day's low simultaneously; predicting which side hits first is listed as one of the common mistakes.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The band math is a coded brick — the trade rules are not backtested anywhere in this repo.</strong> <code>computeBands</code> (Feller + per-asset-class σ) is the real, shared brick behind the levels; the chart-markup workflow, exhaustion rules, and range-budget fade filter are a discretionary reading of price action, not validated edge. The estimator-benchmarking claim ("outperforms GARCH, realised vol, Parkinson, Harvey") is also unverified against this repo's own data.</span></div>
   </div>
 
   <div class="tl-footer-nav">

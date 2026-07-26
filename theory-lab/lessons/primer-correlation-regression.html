@@ -33,6 +33,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     Nearly every piece of quantitative reasoning in this repo eventually rests
@@ -66,6 +67,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>Covariance is "do they move together," correlation is that idea rescaled to fit between -1 and 1</h3>
     <p>
@@ -109,6 +111,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     Everything here builds on the variance and expectation machinery from the
@@ -123,6 +126,10 @@
   average tendency of the two variables to deviate from their own means in
   the same direction at the same time:</p>
   <div class="tl-math">\[ \mathrm{Cov}(X,Y) = E\big[(X-\mu_X)(Y-\mu_Y)\big] \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>X−μX, Y−μY</code><span>each variable's deviation from its own mean</span></div>
+    <div class="tl-eq-chip c4"><code>E[…]</code><span>average the product of the two deviations across all observations</span></div>
+  </div>
   <p>
     Notice this is a direct generalization of variance, not a new idea
     bolted on next to it: variance is just the covariance of a variable with
@@ -156,6 +163,11 @@
   <p><strong>2. The correlation coefficient.</strong> Divide covariance by
   the product of each variable's own standard deviation:</p>
   <div class="tl-math">\[ r = \frac{\mathrm{Cov}(X,Y)}{\sigma_X\,\sigma_Y} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>Cov(X,Y)</code><span>the raw, unit-dependent co-movement</span></div>
+    <div class="tl-eq-chip c1"><code>σX σY</code><span>rescales by both variables' own spread, cancelling units</span></div>
+    <div class="tl-eq-chip c3"><code>r ∈ [−1,1]</code><span>a unitless, bounded number — comparable across any two series</span></div>
+  </div>
   <p>
     Dividing by \(\sigma_X\) and \(\sigma_Y\) cancels the units of \(X\) and
     \(Y\) out of the result entirely — \(r\) is a pure, unitless number. It
@@ -197,6 +209,10 @@
   step further and gives you a specific, usable line — a rule for predicting
   \(Y\) from \(X\). The model is:</p>
   <div class="tl-math">\[ Y = \alpha + \beta X + \epsilon \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>α, β</code><span>intercept and slope — the two numbers OLS fits</span></div>
+    <div class="tl-eq-chip c4"><code>ε</code><span>everything about Y this straight line doesn't capture</span></div>
+  </div>
   <p>
     \(\alpha\) is the intercept (the predicted \(Y\) when \(X=0\)), \(\beta\)
     is the slope (the predicted change in \(Y\) per one-unit change in
@@ -214,6 +230,10 @@
     residuals</em> across every observation in the sample —
   </p>
   <div class="tl-math">\[ \mathrm{SSR}(\hat\alpha, \hat\beta) = \sum_{i=1}^{n} e_i^2 = \sum_{i=1}^{n}\big(y_i - \hat\alpha - \hat\beta x_i\big)^2 \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>eᵢ²</code><span>each observation's squared vertical distance to the line</span></div>
+    <div class="tl-eq-chip c3"><code>SSR</code><span>the total OLS minimizes, over every choice of α̂ and β̂</span></div>
+  </div>
   <p>
     Two things are worth being explicit about before minimizing this.
     <em>Why squared</em>, rather than just summing the raw (signed) residuals
@@ -257,6 +277,25 @@
     line-by-line here) collapses to a remarkably clean result:
   </p>
   <div class="tl-math">\[ \hat\beta = \frac{\sum_i (x_i-\bar x)(y_i-\bar y)}{\sum_i (x_i - \bar x)^2} = \frac{\mathrm{Cov}(X,Y)}{\mathrm{Var}(X)} \]</div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">Cov(X,Y)</div>
+      <div class="tl-fp-name">Shared variation</div>
+      <div class="tl-fp-desc">How much X and Y move together</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">Var(X)</div>
+      <div class="tl-fp-name">X's own spread</div>
+      <div class="tl-fp-desc">Normalizes by X alone — not both variables, unlike r</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">β̂</div>
+      <div class="tl-fp-name">The OLS slope</div>
+      <div class="tl-fp-desc">The exact formula js/statsCore.js's linregSlope implements</div>
+    </div>
+  </div>
+
   <p>
     This is the payoff of the whole derivation: the least-squares slope is
     exactly the covariance between \(X\) and \(Y\), divided by the variance
@@ -279,6 +318,11 @@
   the fitted values \(\hat y_i\) themselves vary) and the part left over in
   the residuals (SSR). \(R^2\) is the explained fraction:</p>
   <div class="tl-math">\[ R^2 = 1 - \frac{\mathrm{SSR}}{\mathrm{SST}} = 1 - \frac{\sum_i (y_i-\hat y_i)^2}{\sum_i (y_i-\bar y)^2} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>SSR</code><span>variation left over in the residuals</span></div>
+    <div class="tl-eq-chip c1"><code>SST</code><span>total variation in Y around its own mean</span></div>
+    <div class="tl-eq-chip c4"><code>R²</code><span>the fraction of that total variation the line explains</span></div>
+  </div>
   <p>
     \(R^2 = 1\) means the line passes through every point exactly (zero
     residual variance); \(R^2 = 0\) means the line explains nothing beyond
@@ -289,6 +333,9 @@
     from step 2:
   </p>
   <div class="tl-math">\[ R^2 = r^2 \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>R² = r²</code><span>exact only for simple (one-predictor) regression</span></div>
+  </div>
   <p>
     This is not a coincidence or an approximation — it falls directly out of
     substituting the OLS formulas for \(\hat\alpha\) and \(\hat\beta\) back
@@ -350,6 +397,7 @@
   </div>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Covariance, r, β, α, and R² by hand for five points</h3>
     <p>
@@ -399,7 +447,32 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📈</div>
+      <h4>Beta and factor exposure</h4>
+      <p>Regress an asset's returns on a benchmark's returns — the OLS slope is the asset's sensitivity to that factor. This is literally CAPM beta.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">⚖️</div>
+      <h4>Hedge ratios</h4>
+      <p>The regression slope of one instrument against a correlated hedge instrument tells you the ratio of units to use — Step 1 of Engle-Granger cointegration.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🧮</div>
+      <h4>Risk/return decomposition</h4>
+      <p>Regressing returns on known factors splits performance into an explained part and an unexplained residual — sometimes optimistically labeled "alpha."</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🔎</div>
+      <h4>Screening and pair discovery</h4>
+      <p>A rolling correlation matrix is the standard cheap first pass for finding candidate relationships worth investigating further.</p>
+    </div>
+  </div>
+
   <p>
     <strong>Beta and factor exposure.</strong> The single most common use of
     this exact machinery in finance is estimating a "beta" — regress an
@@ -445,6 +518,7 @@
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
     <h3>The primer behind an existing brick, an existing course note, and three upcoming lessons</h3>
     <p>
@@ -495,6 +569,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where correlation and regression get misread</h3>
     <p>
@@ -514,6 +589,14 @@
       these, and treating a high \(r\) as proof of a causal or structural
       link is the single most common misuse of this tool.
     </p>
+
+    <div class="tl-solid red">
+      <strong>The trap:</strong> a high correlation between two currencies proves
+      only that they moved together over the sample window — not that one
+      causes the other, not that a shared factor drives both, and not that the
+      relationship survives into the next window. Confounding is the default
+      explanation to rule out, not the exception.
+    </div>
     <p>
       <strong>Correlation only captures linear relationships.</strong> A
       variable can depend on another extremely strongly and predictably while
@@ -564,6 +647,18 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Covariance measures co-movement; correlation rescales it to [-1, 1].</strong> Dividing by \(\sigma_X\sigma_Y\) cancels the units out, making \(r\) comparable across any two series regardless of what they're measured in.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The OLS slope IS covariance, just normalized differently.</strong> \(\hat\beta = \mathrm{Cov}(X,Y)/\mathrm{Var}(X)\) — the exact formula <code>js/statsCore.js</code>'s <code>linregSlope</code> implements.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(R^2 = r^2\) only for simple (one-predictor) regression.</strong> The identity breaks the moment a second predictor is added — that's exactly why R² can't be trusted blindly with more predictors in the model.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>\(r=0\) means no linear relationship, not "no relationship."</strong> \(y=x^2\) is a perfect deterministic relationship with \(r\approx0\) — always look at a scatter plot, not just the coefficient.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Adding predictors always weakly increases R², even useless ones.</strong> OLS can always set a new coefficient to zero, so the fit never gets worse — a high in-sample R² with many predictors proves nothing on its own.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Correlation is never proof of causation.</strong> Confounding (a shared third driver) is the default explanation to rule out, not a rare edge case — treating a high r as a causal link is the single most common misuse of this tool.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does \(R^2 = r^2\) hold for simple linear regression (one predictor), and why does that identity break once a second predictor is added?</summary>

@@ -33,6 +33,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     The Black-Scholes lesson derived the no-arbitrage PDE and, in passing,
@@ -64,6 +65,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>Same coin, different odds you're allowed to use</h3>
     <p>
@@ -103,6 +105,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     Three pieces, in order: (1) the same SDE written under two different
@@ -136,6 +139,30 @@
   <div class="tl-math">
     \[ W_t^{\mathbb{Q}} = W_t^{\mathbb{P}} + \theta t, \qquad \theta = \frac{\mu - r}{\sigma} \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>W^ℚ</code><span>the shifted process — a valid Brownian motion under ℚ</span></div>
+    <div class="tl-eq-chip c2"><code>θt</code><span>the deterministic drift shift applied to W^ℙ</span></div>
+    <div class="tl-eq-chip c3"><code>θ</code><span>market price of risk — excess return per unit of vol</span></div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">μ − r</div>
+      <div class="tl-fp-name">The risk premium</div>
+      <div class="tl-fp-desc">Extra expected return over the risk-free rate, in original units</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">σ</div>
+      <div class="tl-fp-name">The yardstick</div>
+      <div class="tl-fp-desc">Volatility — dividing by it cancels the units, same as a z-score</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">θ</div>
+      <div class="tl-fp-name">Market price of risk</div>
+      <div class="tl-fp-desc">The exact size of the drift shift needed to move ℙ → ℚ</div>
+    </div>
+  </div>
+
   <div class="tl-symbols"><table>
     <tr><td>\(\mathbb{P}\)</td><td>The real-world probability measure — the weighting that reflects investors' true expected returns and genuine risk premia. This is the measure under which \(\mu\) is a meaningful, arguable-over forecast.</td></tr>
     <tr><td>\(\mathbb{Q}\)</td><td>The risk-neutral measure — an equivalent but different weighting, constructed specifically so the underlying's drift becomes \(r\) instead of \(\mu\). "Risk-neutral" is a description of this measure's mathematical property (every asset drifts at the risk-free rate under it), not a claim that real investors are indifferent to risk.</td></tr>
@@ -185,6 +212,10 @@
   <div class="tl-math">
     \[ \left.\frac{d\mathbb{Q}}{d\mathbb{P}}\right|_{\mathcal{F}_T} = \exp\!\left(-\theta W_T^{\mathbb{P}} - \tfrac{1}{2}\theta^2 T\right) \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>dℚ/dℙ</code><span>Radon-Nikodym derivative — the reweighting factor itself</span></div>
+    <div class="tl-eq-chip c4"><code>ℱ_T</code><span>everything observable up to time T</span></div>
+  </div>
   <p>
     Deriving that this exponential is exactly the right reweighting factor —
     and proving it's a well-defined probability change at all — is a genuine
@@ -229,6 +260,11 @@
   <div class="tl-math">
     \[ \mathbb{E}^{\mathbb{Q}}\big[\tilde{S}_T \mid \mathcal{F}_t\big] = \tilde{S}_t \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>S̃_t</code><span>discounted price, e⁻ʳᵗS_t — today's dollars</span></div>
+    <div class="tl-eq-chip c2"><code>𝔼^ℚ[·|ℱ_t]</code><span>expectation under ℚ given everything known at t</span></div>
+    <div class="tl-eq-chip c4"><code>= S̃_t</code><span>no predictable drift left — the martingale property</span></div>
+  </div>
   <p>
     This is the direct callback promised at the top of the lesson: it is
     <em>exactly</em> the martingale property from the Efficient Market
@@ -258,6 +294,11 @@
   <div class="tl-math">
     \[ V_0 = e^{-rT}\,\mathbb{E}^{\mathbb{Q}}\big[V_T\big] \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>V_0</code><span>the derivative's no-arbitrage price today</span></div>
+    <div class="tl-eq-chip c2"><code>e⁻ʳᵀ</code><span>discounting back to today's dollars at the risk-free rate</span></div>
+    <div class="tl-eq-chip c3"><code>𝔼^ℚ[V_T]</code><span>expected payoff at T, computed under ℚ — never 𝔼^ℙ</span></div>
+  </div>
   <p>
     Nowhere in that formula does \(\mu\) — the real-world expected return —
     appear. It has been replaced entirely by \(r\), not as an approximation
@@ -282,6 +323,7 @@
   </p>
 
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
     <h3>A bullish EUR/USD view is a separate bet, not a pricing input</h3>
     <p>
@@ -353,40 +395,45 @@
     </div>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     No trading desk sits down and derives the Radon-Nikodym derivative before
     pricing a swap. Girsanov's theorem is infrastructure, not a daily
     calculation — but the practices it justifies are used constantly and
-    industry-wide: (1) <strong>risk-neutral valuation is the universal
-    default for pricing</strong> — every derivatives pricing model, from
-    plain Black-Scholes through the local-volatility and stochastic-volatility
-    models mentioned in the Black-Scholes lesson's "how practitioners use
-    this" section, computes a discounted expectation under some
-    \(\mathbb{Q}\)-measure, never under \(\mathbb{P}\); (2) <strong>Monte
-    Carlo pricing engines simulate under \(\mathbb{Q}\)</strong>, not
-    \(\mathbb{P}\) — when a desk prices a path-dependent exotic by simulating
-    thousands of price paths and averaging the discounted payoff, those
-    simulated paths are drawn using drift \(r\) (or, for FX, the relevant
-    interest-rate differential), specifically because that is what the
-    theorem says makes the average converge to the correct no-arbitrage
-    price; (3) <strong>calibration works "backwards" through \(\mathbb{Q}\)</strong>
-    — when a desk backs out implied volatility from a traded option price,
-    they are inferring a parameter of the risk-neutral measure that
-    reproduces the market price, not measuring anything about \(\mathbb{P}\);
-    this is why implied volatility and realized (historical, real-world)
-    volatility are related but conceptually distinct objects; and (4)
-    <strong>risk management deliberately switches back to \(\mathbb{P}\)</strong>
-    — a desk's VaR, stress tests, and real-world scenario probabilities
-    (unlike its pricing) are computed under the actual, historical/estimated
-    real-world measure, because "how likely is this loss, really" is a
-    \(\mathbb{P}\)-question, not a \(\mathbb{Q}\)-question. A single derivatives
-    book routinely uses both measures for different jobs in the same day:
-    \(\mathbb{Q}\) to price and hedge, \(\mathbb{P}\) to ask "how bad could
-    this actually get."
+    industry-wide:
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">💰</div>
+      <h4>Risk-neutral valuation is the default</h4>
+      <p>Every derivatives pricing model, from plain Black-Scholes through local-volatility and stochastic-volatility models, computes a discounted expectation under some \(\mathbb{Q}\)-measure, never under \(\mathbb{P}\).</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🎲</div>
+      <h4>Monte Carlo engines simulate under ℚ</h4>
+      <p>Pricing a path-dependent exotic by averaging a discounted payoff over simulated paths uses drift \(r\) (or the FX rate differential) in every path — never \(\mathbb{P}\)'s \(\mu\).</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🔄</div>
+      <h4>Calibration works "backwards" through ℚ</h4>
+      <p>Backing out implied volatility from a traded price infers a parameter of \(\mathbb{Q}\), not \(\mathbb{P}\) — why implied and realized volatility are related but distinct objects.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📉</div>
+      <h4>Risk management switches back to ℙ</h4>
+      <p>VaR, stress tests, and real-world scenario probabilities are computed under the actual historical/estimated measure — "how bad could this get" is a \(\mathbb{P}\)-question.</p>
+    </div>
+  </div>
+  <p>
+    A single derivatives book routinely uses both measures for different jobs
+    in the same day: \(\mathbb{Q}\) to price and hedge, \(\mathbb{P}\) to ask
+    "how bad could this actually get."
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
     <h3>The theory underneath a phrase the Black-Scholes lesson used and moved past</h3>
     <p>
@@ -422,8 +469,14 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where the risk-neutral measure is misunderstood or misused</h3>
+    <div class="tl-solid red">
+      <strong>The trap:</strong> confusing "risk-neutral" (a mathematical property
+      of a measure) with "investors don't care about risk" (a false claim about
+      psychology) is the single most common misreading in this lesson — see below.
+    </div>
     <p>
       <strong>Treating \(\mathbb{Q}\)-probabilities as forecasts.</strong>
       \(N(d_2)\), or any risk-neutral probability computed from a pricing
@@ -472,6 +525,19 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Girsanov's theorem licenses shifting a Brownian motion's drift</strong> by \(\theta=(\mu-r)/\sigma\) and still have a valid Brownian motion — just under a different, equivalent measure \(\mathbb{Q}\).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The specific shift matters, not just any shift.</strong> \(\theta=(\mu-r)/\sigma\) is the unique choice that makes the discounted price \(\tilde S_t=e^{-rt}S_t\) a martingale under \(\mathbb{Q}\) — that martingale property is why pricing "ignores" \(\mu\).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(\mathbb{P}\) and \(\mathbb{Q}\) are equivalent, not different worlds.</strong> They agree on which outcomes are possible at all — probability zero stays probability zero both ways — they only reweight how likely the possible ones are.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(N(d_2)\) is a real probability, \(\mathbb{Q}(S_T>K)\).</strong> What's a deliberate pricing device is the measure it's computed under, not the number itself.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The same martingale property reappears under \(\mathbb{Q}\)</strong> that the EMH lesson treats as an empirical, testable claim under \(\mathbb{P}\) — here it holds by construction, not by observation.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>"Risk-neutral" describes the measure, not investor psychology.</strong> Real investors are risk-averse — that's exactly why \(\mu>r\) under \(\mathbb{P}\) and a nontrivial shift is needed at all.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A real-world view is a separate bet, never a pricing input.</strong> Substituting a personal \(\mu\) into a pricing/hedging calculation produces a systematically mispriced option and a wrong hedge ratio.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why doesn't an option's real-world expected-return view belong in its no-arbitrage price?</summary>

@@ -46,6 +46,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Lesson 1 — Why Volatility Is Predictable</h2>
   <p><em>Foundational · application: position sizing, risk management.</em></p>
 
@@ -143,6 +144,7 @@ mean_error = average(error)   <span class="c"># compare to naive long-term-avera
   </ul>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Lesson 1 key takeaways</div>
     <ol>
       <li>Volatility is predictable, returns are not — don't waste energy predicting direction; focus on predicting range.</li>
@@ -154,6 +156,7 @@ mean_error = average(error)   <span class="c"># compare to naive long-term-avera
     </ol>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>Lesson 2 — Daily Volatility Forecasting</h2>
   <p><em>Practical · focus: forecasting methods.</em></p>
 
@@ -166,6 +169,25 @@ mean_error = average(error)   <span class="c"># compare to naive long-term-avera
     <li><strong>Standard deviation</strong> — the classic statistical vol metric on return dispersion; more
     sensitive to outliers.</li>
   </ul>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📏</div>
+      <h4>Simple range</h4>
+      <p>High − Low. Simplest measure, easy, but misses gaps.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">⚡</div>
+      <h4>True Range</h4>
+      <p>Accounts for gaps against the prior close — the gap-aware upgrade to simple range.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📐</div>
+      <h4>Standard deviation</h4>
+      <p>The classic statistical vol metric on return dispersion; more sensitive to outliers.</p>
+    </div>
+  </div>
+
   <div class="tl-table-wrap"><table class="tl-tbl">
     <tr><th>Measure</th><th>Best for</th><th>Limitation</th><th>Typical use</th></tr>
     <tr><td>Simple range</td><td>Intraday analysis</td><td>Misses gaps</td><td>Session-based targets</td></tr>
@@ -264,6 +286,7 @@ mean_error = average(error)   <span class="c"># compare to naive long-term-avera
   complex approaches with far less overfitting risk.</p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Lesson 2 key takeaways</div>
     <ol>
       <li>True Range captures gaps — use it instead of simple range for overnight and swing positions.</li>
@@ -275,6 +298,7 @@ mean_error = average(error)   <span class="c"># compare to naive long-term-avera
     </ol>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>Lesson 3 — Weekly Regimes &amp; Multi-Day Structure</h2>
   <p><em>Intermediate · focus: regime classification.</em></p>
 
@@ -353,6 +377,7 @@ mean_error = average(error)   <span class="c"># compare to naive long-term-avera
     return { regime, percentile, current_atr, median_atr: historical.median() }</pre>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Lesson 3 key takeaways</div>
     <ol>
       <li>Three regimes — high, normal, low — each need a fundamentally different approach.</li>
@@ -364,6 +389,7 @@ mean_error = average(error)   <span class="c"># compare to naive long-term-avera
     </ol>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Lesson 4 — Session Structure: Asia Range as Daily Anchor</h2>
   <p><em>Intermediate · focus: intraday structure. Times ≈ GMT; adjust for timezone/DST.</em></p>
 
@@ -479,18 +505,28 @@ mean_error = average(error)   <span class="c"># compare to naive long-term-avera
   </ul>
 
   <h3>4.5 Daily prep using sessions</h3>
-  <ol>
-    <li><strong>Mark the Asia range</strong> — at (or before) London open, draw Asia session high and low as
-    horizontal lines. These are the day's reference levels.</li>
-    <li><strong>Calculate expected expansion</strong> — Asia range × typical ratio (2–3×) → expected daily range
-    and potential targets beyond the Asia levels.</li>
-    <li><strong>Note the context</strong> — current vol regime? scheduled news today? higher timeframe trend?
-    These affect how to interpret Asia breaks.</li>
-    <li><strong>Watch the London reaction</strong> — first 1–2 hours of London: how does price interact with the
-    Asia levels? Often sets the tone for the day.</li>
-    <li><strong>Adjust through the day</strong> — expected range reached early → reduce expectations; range
-    compressed late → opportunity may have passed.</li>
-  </ol>
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body"><h4>Mark the Asia range</h4><p>At (or before) London open, draw Asia session high and low as horizontal lines. These are the day's reference levels.</p></div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body"><h4>Calculate expected expansion</h4><p>Asia range × typical ratio (2–3×) → expected daily range and potential targets beyond the Asia levels.</p></div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body"><h4>Note the context</h4><p>Current vol regime? Scheduled news today? Higher timeframe trend? These affect how to interpret Asia breaks.</p></div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">4</div>
+      <div class="tl-step-body"><h4>Watch the London reaction</h4><p>First 1–2 hours of London: how does price interact with the Asia levels? Often sets the tone for the day.</p></div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">5</div>
+      <div class="tl-step-body"><h4>Adjust through the day</h4><p>Expected range reached early → reduce expectations; range compressed late → opportunity may have passed.</p></div>
+    </div>
+  </div>
 
   <h3>4.6 Data requirements &amp; framework</h3>
   <p>Data: minimum 15-min or hourly bars with timestamps, better 5-min for precise session boundaries, 20–30 days
@@ -507,6 +543,7 @@ mean_error = average(error)   <span class="c"># compare to naive long-term-avera
     return { asia_high, asia_low, asia_range, projected_high, projected_low }</pre>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
     <p>
       "Asia range as a daily anchor" isn't a new idea to introduce here — this repo already computes real Asia
@@ -520,6 +557,7 @@ mean_error = average(error)   <span class="c"># compare to naive long-term-avera
   </div>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Lesson 4 key takeaways</div>
     <ol>
       <li>Asia sets the table — the quietest session establishes the range London and NY expand; typical expansion 2–3.5×.</li>
@@ -531,6 +569,7 @@ mean_error = average(error)   <span class="c"># compare to naive long-term-avera
     </ol>
   </div>
 
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Lesson 5 — Position Sizing with Volatility</h2>
   <p><em>Practical · focus: risk management.</em></p>
 
@@ -551,8 +590,35 @@ mean_error = average(error)   <span class="c"># compare to naive long-term-avera
     timing.
   </p>
 
+  <div class="tl-solid amber">
+    <strong>The trap:</strong> fixed position sizing ("always 1 lot", "always risk 2%") ties your real dollar risk
+    per trade to whatever the market's volatility happens to be that day, not to a decision you made — the same
+    "1 lot" is a small risk in a calm regime and a large one in a turbulent one, so P&amp;L swings with market
+    conditions rather than skill, and it becomes hard to tell whether an edge is real or you just got lucky on vol
+    timing.
+  </div>
+
   <h3>5.2 The core formula</h3>
   <div class="tl-math" style="font-family:'DM Mono',monospace">Position Size = Risk Amount ÷ (ATR × Multiplier)</div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">Risk $</div>
+      <div class="tl-fp-name">Risk amount</div>
+      <div class="tl-fp-desc">Max acceptable dollar loss per trade</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">ATR</div>
+      <div class="tl-fp-name">Volatility forecast</div>
+      <div class="tl-fp-desc">Average True Range — today's expected range</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">× Mult.</div>
+      <div class="tl-fp-name">Stop multiplier</div>
+      <div class="tl-fp-desc">Stop distance in ATR units — your choice</div>
+    </div>
+  </div>
+
   <div class="tl-table-wrap"><table class="tl-tbl">
     <tr><th>Component</th><th>What it is</th><th>How to determine</th></tr>
     <tr><td>Risk amount ($)</td><td>Max acceptable loss per trade</td><td>Usually 0.5–2% of account, e.g. $500 on $50k (1%)</td></tr>
@@ -564,6 +630,7 @@ mean_error = average(error)   <span class="c"># compare to naive long-term-avera
   same either way.</p>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked examples</div>
     <p><strong>Example 1 — EUR/USD, normal vol:</strong> $50,000 account, 1% risk = $500; ATR 65 pips; stop 1.5×
     ATR = 97.5 pips; pip value $10/std lot. <code>$500 ÷ (97.5 × $10) = 0.51 lots</code>. Risk if stopped: ~$500.</p>
@@ -639,6 +706,7 @@ mean_error = average(error)   <span class="c"># compare to naive long-term-avera
   </ul>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Lesson 5 key takeaways</div>
     <ol>
       <li>Fixed sizing creates inconsistency — risk exposure changes with vol, obscuring your true edge.</li>
@@ -648,6 +716,18 @@ mean_error = average(error)   <span class="c"># compare to naive long-term-avera
       <li>ATR for stops and targets too — stay grounded in reality.</li>
       <li>Set a maximum size — cap positions against sudden regime changes.</li>
     </ol>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Volatility is predictable, direction isn't.</strong> Return-sign forecasts sit near a 51% coin flip; range/volatility forecasts run 70%+ — that asymmetry is why this whole applied layer focuses on sizing, stops and targets rather than calling direction.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>True Range, not simple High−Low, is the base unit.</strong> TR folds in the overnight/weekend gap that simple range misses, and an EMA at α≈0.15 (~12-day effective window) on top of it is the course's recommended day-to-day estimator.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Classify the regime by percentile, not by feel.</strong> Rank today's ATR against its own 6–12 month history — &lt;25th percentile = low, &gt;75th = high — and adapt size, stops, targets and hold time to whichever regime you're in.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Asia range is a context anchor, not a signal.</strong> Asia range × expansion ratio (typically 2–3.5×, wider in high-vol regimes) sets expectations for the day's likely range — it is not a mechanical entry trigger.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Size inversely to ATR to hold dollar risk constant.</strong> <code>Size = Risk$ ÷ (ATR × stop multiplier)</code> — when ATR roughly doubles, size roughly halves, keeping the loss-if-stopped dollar amount the same across calm and turbulent conditions.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Low → High vol transitions are the dangerous one.</strong> Traders get complacent and oversized during extended calm; when vol explodes, stops can slip badly and losses accumulate fast — the asymmetric risk isn't in the high-vol regime itself, it's in being caught still sized for the low-vol one.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>None of these numbers are validated on this repo's data yet.</strong> α≈0.15, the 25/75 percentile split, 2–3× weekly-to-daily, and 2–3.5× Asia expansion are course-taught heuristics with their own "test on your data" caveats — see the calibration checklist below before treating any of them as more than a starting point.</span></div>
   </div>
 
   <details class="tl-section-collapse">

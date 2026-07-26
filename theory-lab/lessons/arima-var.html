@@ -33,6 +33,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     The OU/AR(1) lesson gave you one number, \(\phi\), and one behavior: a
@@ -72,6 +73,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>More memory, and more posts to be pulled toward</h3>
     <p>
@@ -158,6 +160,7 @@
     </div>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
 
   <h3>From AR(1) to a general AR(<i>p</i>)</h3>
@@ -170,6 +173,12 @@
   </p>
   <div class="tl-math">
     \[ X_t = c + \phi_1 X_{t-1} + \phi_2 X_{t-2} + \cdots + \phi_p X_{t-p} + \epsilon_t \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Xₜ</code><span>today's value</span></div>
+    <div class="tl-eq-chip c2"><code>φᵢ</code><span>weight on the level i periods back</span></div>
+    <div class="tl-eq-chip c4"><code>p</code><span>how many past lags enter the equation</span></div>
+    <div class="tl-eq-chip c3"><code>εₜ</code><span>this period's white-noise shock</span></div>
   </div>
   <p>
     This is AR(<i>p</i>), an autoregressive model of order <i>p</i>. Each
@@ -201,6 +210,11 @@
   <div class="tl-math">
     \[ X_t = \epsilon_t + \theta_1 \epsilon_{t-1} + \cdots + \theta_q \epsilon_{t-q} \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Xₜ</code><span>today's value</span></div>
+    <div class="tl-eq-chip c3"><code>θⱼ</code><span>weight on the shock j periods back</span></div>
+    <div class="tl-eq-chip c4"><code>q</code><span>how many past shocks enter the equation</span></div>
+  </div>
   <p>
     Read the distinction carefully, because it's the crux of the whole ARMA
     idea: an <strong>AR term</strong> says "today depends on where \(X\)
@@ -221,16 +235,41 @@
     The identification signature flips for MA(<i>q</i>): its <strong>ACF</strong>
     cuts off sharply after lag \(q\) (spikes at \(1,\ldots,q\), then ~zero),
     while its PACF decays gradually. Put the four canonical shapes side by
-    side — PACF cutoff (pure AR), ACF cutoff (pure MA), both decaying
-    gradually (mixed ARMA), neither cutting off at all (probably still
-    non-stationary, more below) — and that four-way pattern-match, applied to
-    real ACF/PACF plots, <em>is</em> the "identification" step of the
-    Box-Jenkins methodology described next.
+    side, and that four-way pattern-match, applied to real ACF/PACF plots,
+    <em>is</em> the "identification" step of the Box-Jenkins methodology
+    described next.
   </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📌</div>
+      <h4>PACF cutoff, ACF decays</h4>
+      <p>Pure AR(<i>p</i>) — PACF spikes at lags \(1,\ldots,p\) then drops to ~zero; ACF decays gradually.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📌</div>
+      <h4>ACF cutoff, PACF decays</h4>
+      <p>Pure MA(<i>q</i>) — ACF spikes at lags \(1,\ldots,q\) then drops to ~zero; PACF decays gradually.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📌</div>
+      <h4>Both decay gradually</h4>
+      <p>Mixed ARMA(<i>p</i>,<i>q</i>) — neither function cuts off sharply; both taper off over several lags.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📌</div>
+      <h4>Neither cuts off at all</h4>
+      <p>Probably still non-stationary — difference the series again before trusting any ACF/PACF read.</p>
+    </div>
+  </div>
 
   <h3>Combining: ARMA(<i>p</i>,<i>q</i>)</h3>
   <div class="tl-math">
     \[ X_t = c + \sum_{i=1}^{p} \phi_i X_{t-i} \; + \; \epsilon_t + \sum_{j=1}^{q} \theta_j \epsilon_{t-j} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>Σφᵢ Xₜ₋ᵢ</code><span>the AR piece — memory of past levels</span></div>
+    <div class="tl-eq-chip c3"><code>Σθⱼ εₜ₋ⱼ</code><span>the MA piece — memory of past shocks</span></div>
   </div>
   <p>
     ARMA blends both memories in one equation. The practical reason to allow
@@ -259,6 +298,17 @@
   <div class="tl-math">
     \[ \Delta X_t = X_t - X_{t-1} \qquad (\text{first difference}, \ d=1); \quad \text{repeat} \to \Delta^d X_t \ \text{if needed} \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>ΔXₜ</code><span>one differencing pass — this period minus last</span></div>
+    <div class="tl-eq-chip c4"><code>d</code><span>how many differencing passes until it's stationary</span></div>
+  </div>
+  <div class="tl-solid amber">
+    <strong>The trap:</strong> identifying \(p\) and \(q\) off the ACF/PACF of
+    a raw, non-stationary price level — before checking stationarity or
+    differencing — produces a meaningless, slowly-decaying ACF at every lag
+    (the "everything looks significant forever" signature) rather than a real
+    cutoff pattern. Always difference (or check via a unit-root test) first.
+  </div>
   <p>
     "Differencing \(d\) times until stationary" is meant literally and
     iteratively: check the raw series for stationarity (informally via ACF
@@ -281,6 +331,25 @@
   <div class="tl-math">
     \[ \Delta^d X_t = c + \sum_{i=1}^{p} \phi_i\,\Delta^d X_{t-i} \; + \; \epsilon_t + \sum_{j=1}^{q} \theta_j \epsilon_{t-j} \]
   </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">p</div>
+      <div class="tl-fp-name">AR order</div>
+      <div class="tl-fp-desc">How many past levels enter — read off the PACF cutoff</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">d</div>
+      <div class="tl-fp-name">Differencing order</div>
+      <div class="tl-fp-desc">How many times to difference until stationary — from a unit-root check</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">q</div>
+      <div class="tl-fp-name">MA order</div>
+      <div class="tl-fp-desc">How many past shocks enter — read off the ACF cutoff</div>
+    </div>
+  </div>
+
   <p>
     Crucially, the "identify \(p\) and \(q\) from the ACF/PACF shape" step
     described above is always applied to the <em>differenced</em> series,
@@ -318,6 +387,7 @@
   </p>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Walking the Box-Jenkins identification loop</h3>
     <p>
@@ -362,6 +432,11 @@
   <div class="tl-math">
     \[ X_t = a_{11}X_{t-1} + a_{12}Y_{t-1} + \epsilon_{1,t} \]
     \[ Y_t = a_{21}X_{t-1} + a_{22}Y_{t-1} + \epsilon_{2,t} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>a₁₁, a₂₂</code><span>each series' own AR(1) coefficient</span></div>
+    <div class="tl-eq-chip c2"><code>a₁₂</code><span>Y's past → X (cross-effect)</span></div>
+    <div class="tl-eq-chip c4"><code>a₂₁</code><span>X's past → Y (cross-effect)</span></div>
   </div>
   <p>
     Read each coefficient by what it connects: \(a_{11}\) is \(X\)'s own AR(1)
@@ -408,6 +483,7 @@
     word "causality" in its name suggests.
   </p>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     ARIMA is the standard classical baseline for single-series forecasting in
@@ -439,6 +515,7 @@
   </p>
 
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
     <h3>Does the yield spread lead EUR/USD, or is it the other way around?</h3>
     <p>
@@ -481,6 +558,7 @@
   </div>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this could plug into MacroFXModel</div>
     <h3>The formal upgrade from macro-deep-dives-notes.md's qualitative lead-lag case study</h3>
     <p>
@@ -517,6 +595,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where ARIMA/VAR fitting goes wrong in practice</h3>
     <p>
@@ -577,6 +656,19 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>ARIMA generalizes AR(1)/OU two ways.</strong> More lags of the level (AR(<i>p</i>)), a second memory for past shocks (MA(<i>q</i>)), and differencing (the "I") to make a non-stationary series stationary first.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The order (p,d,q) is read off the data, never guessed.</strong> The Box-Jenkins loop — ACF/PACF cutoff patterns, a unit-root check for d, Ljung-Box residual diagnostics — identifies it, then estimates, then checks, then revises.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>VAR is the orthogonal generalization.</strong> Instead of widening one series' own lags, it widens how many series are modeled jointly, so each variable's forecast can depend on lagged values of every variable — itself included.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A single-equation regression can only see one arrow.</strong> A VAR estimates both cross-effects (\(a_{12}\) and \(a_{21}\)) jointly, revealing bidirectional feedback a "Y on lagged X" regression never could.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Granger causality is a statistical claim, not a structural one.</strong> It means "X's lags improve forecasting Y" — not "X makes Y happen." An unobserved common driver can produce the same result with no real causal link.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>VAR parameter count grows as \(k^2 \times p\).</strong> Adding series to "see more of the system" is not free — it squares the parameter growth, a fast route to overfitting on the modest sample sizes daily FX/macro data provides.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>None of this has actually been fitted in this repo yet.</strong> The yield-spread/EUR-USD lead-lag question is currently a narrated, qualitative case study — a real VAR/Granger fit with an honest OOS split is a research candidate, not a shipped result.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. What's the practical difference between an AR term and an MA term in an ARMA model?</summary>

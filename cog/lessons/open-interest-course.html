@@ -45,6 +45,7 @@
   </ul>
 </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Lesson 01 — Foundations of Open Interest</h2>
 
   <h3>Definition</h3>
@@ -80,6 +81,7 @@
   </p>
 
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Lesson example</div>
     <h3>Same price move, opposite meanings</h3>
     <p>Price rises 100 → 105 in both cases below — the OI reading is what tells them apart:</p>
@@ -99,6 +101,24 @@ Case B: OI −15,000  → shorts covering, rally may be exhausted</pre>
     <li>This is where institutions hedge risk, express macro views, take leveraged exposure, and where market makers dynamically hedge their books.</li>
     <li>Three drivers of institutional activity: <strong>hedging</strong> (large put positions show where smart money sees risk), <strong>leverage/exposure</strong> (futures on margin), and <strong>market making</strong> (dealer hedging around key strikes creates predictable price behaviour).</li>
   </ul>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge red">🛡️</div>
+      <h4>Hedging</h4>
+      <p>Large put positions show where smart money sees risk — a defensive footprint left in the open-interest data.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📐</div>
+      <h4>Leverage / exposure</h4>
+      <p>Futures on margin — institutions expressing macro views or taking directional size without the capital of the cash market.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">⚙️</div>
+      <h4>Market making</h4>
+      <p>Dealer hedging around key strikes creates the predictable price behaviour — the wall, magnet, and squeeze mechanism this whole course is built on.</p>
+    </div>
+  </div>
 
   <h3>Why retail misses this (the blind spot)</h3>
   <ol>
@@ -129,6 +149,7 @@ Case B: OI −15,000  → shorts covering, rally may be exhausted</pre>
     covers reading it.
   </p>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>Lesson 02 — Reading the CME</h2>
 
   <h3>Why the CME</h3>
@@ -229,6 +250,7 @@ Case B: OI −15,000  → shorts covering, rally may be exhausted</pre>
     </table>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>Lesson 03 — Futures to CFD Conversion</h2>
 
   <h3>The problem</h3>
@@ -258,11 +280,17 @@ Case B: OI −15,000  → shorts covering, rally may be exhausted</pre>
   </p>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">The formula, worked</div>
     <h3>EUR/USD basis conversion</h3>
     <div class="tl-math">
       <pre style="margin:0;text-align:left;font-family:'DM Mono',monospace;font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.7">Basis      = Current futures price − Current spot price
 Spot level = Futures strike − Basis</pre>
+    </div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>Basis</code><span>futures price minus spot price, measured, not modeled</span></div>
+      <div class="tl-eq-chip c2"><code>Futures strike</code><span>the raw level read off the CME heatmap</span></div>
+      <div class="tl-eq-chip c4"><code>Spot level</code><span>the converted level that actually belongs on a broker's chart</span></div>
     </div>
     <div class="tl-math">
       <pre style="margin:0;text-align:left;font-family:'DM Mono',monospace;font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.7">6E futures:      1.1520
@@ -331,6 +359,7 @@ CME strike 0.006667 → inverted = 150.00 → spot level = 150.00 − 0.25 = 149
     <li>Indices/commodities: same formula; basis often smaller for index CFDs</li>
   </ul>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Lesson 04 — The Open Interest Matrix</h2>
 
   <h3>The framework — four core concepts</h3>
@@ -375,6 +404,25 @@ CME strike 0.006667 → inverted = 150.00 → spot level = 150.00 − 0.25 = 149
 Max pain strike = strike with LOWEST total pain
 (in practice: use online calculators or estimate visually from the heatmap)</pre>
   </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">Call pain</div>
+      <div class="tl-fp-name">Call OI × max(0, Strike − Price)</div>
+      <div class="tl-fp-desc">Zero if the strike is below current price — those calls are already in the money</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">Put pain</div>
+      <div class="tl-fp-name">Put OI × max(0, Price − Strike)</div>
+      <div class="tl-fp-desc">Zero if the strike is above current price — mirror image of call pain</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">Total pain</div>
+      <div class="tl-fp-name">Call pain + Put pain</div>
+      <div class="tl-fp-desc">Max pain is the candidate strike where this sum is lowest, not highest</div>
+    </div>
+  </div>
+
   <p>
     Why price gravitates there: option <strong>sellers</strong> (market
     makers, institutions) profit when options expire worthless. The course
@@ -410,6 +458,7 @@ Max pain strike = strike with LOWEST total pain
   </div>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Systematic heatmap read (front-month EUR/USD)</h3>
     <p>Steps applied to a sample grid:</p>
@@ -457,6 +506,7 @@ Max pain strike = strike with LOWEST total pain
   </ul>
 
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Lesson scenario</div>
     <h3>A wall that defends once, then fails</h3>
     <p style="margin-bottom:0">
@@ -583,6 +633,7 @@ Max pain strike = strike with LOWEST total pain
     </div>
   </div>
 
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Lesson 05 — Gamma &amp; Dealer Dynamics</h2>
 
   <h3>The core concept</h3>
@@ -644,6 +695,7 @@ Max pain strike = strike with LOWEST total pain
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>Walls don't push back — they run out of fuel</h3>
     <p style="margin-bottom:0">
@@ -670,6 +722,14 @@ Max pain strike = strike with LOWEST total pain
     selling at the level — it's the disappearance of the buying that was
     supporting the move. The market loses its fuel.
   </p>
+
+  <div class="tl-solid amber">
+    <strong>The misconception to drop:</strong> a wall is not a wall of
+    sellers waiting to push price back down. It's the point where dealer
+    hedging <em>demand</em> runs out — the mechanism is an absence of further
+    buying, not the appearance of selling. Get this backwards and "why did it
+    stall right there with no seller in sight" stops making sense.
+  </div>
 
   <h3>Why put walls are support (mirror image)</h3>
   <p>
@@ -729,6 +789,7 @@ Rapid catch-up buying → price accelerates higher</pre>
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to Theory Lab</div>
     <h3>This lesson is the applied layer; Black-Scholes is the pricing theory underneath it</h3>
     <p style="margin-bottom:0">
@@ -749,18 +810,37 @@ Rapid catch-up buying → price accelerates higher</pre>
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Lesson 06 — Trading Frameworks</h2>
   <p>Five frameworks; use the ones that fit your style, and integrate them gradually.</p>
 
   <h3>Framework 5 first — the daily prep ritual (10–15 min, non-negotiable)</h3>
-  <ol>
-    <li><strong>Heatmap</strong> — front month (or the weekly if within ~5 days of expiry).</li>
-    <li><strong>Key levels</strong> — largest call OI (call wall), largest put OI (put wall), max pain zone; note secondary walls.</li>
-    <li><strong>Basis</strong> — current futures vs. broker spot.</li>
-    <li><strong>Convert</strong> — CW/PW/MP → spot equivalents (<code>spot = strike − basis</code>).</li>
-    <li><strong>Plot &amp; label</strong> — CW / PW / MP lines on the chart.</li>
-    <li><strong>Context</strong> — where is price in the structure? Near a wall? Between walls? Above/below max pain?</li>
-  </ol>
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body"><h4>Heatmap</h4><p>Front month (or the weekly if within ~5 days of expiry).</p></div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body"><h4>Key levels</h4><p>Largest call OI (call wall), largest put OI (put wall), max pain zone; note secondary walls.</p></div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body"><h4>Basis</h4><p>Current futures vs. broker spot.</p></div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">4</div>
+      <div class="tl-step-body"><h4>Convert</h4><p>CW/PW/MP → spot equivalents (<code>spot = strike − basis</code>).</p></div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">5</div>
+      <div class="tl-step-body"><h4>Plot &amp; label</h4><p>CW / PW / MP lines on the chart.</p></div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">6</div>
+      <div class="tl-step-body"><h4>Context</h4><p>Where is price in the structure? Near a wall? Between walls? Above/below max pain?</p></div>
+    </div>
+  </div>
   <p>Daily record: CW level · PW level · MP level · DTE · P/C ratio · OI changes vs. yesterday.</p>
 
   <h3>Framework 1 — Wall-to-Wall Range Trading</h3>
@@ -772,6 +852,7 @@ Rapid catch-up buying → price accelerates higher</pre>
     <li><strong>Invalidation:</strong> a decisive close beyond a wall → range broken → switch to Framework 3.</li>
   </ul>
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Lesson example trade</div>
     <p style="margin-bottom:0">
       PW 1.1350 / CW 1.1550 / MP 1.1450 → long 1.1360, stop 1.1330, T1 1.1450
@@ -825,6 +906,7 @@ Rapid catch-up buying → price accelerates higher</pre>
   </ul>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>The six pitfalls</h3>
     <ol style="margin-bottom:0">
@@ -865,6 +947,7 @@ Rapid catch-up buying → price accelerates higher</pre>
     one framework, and build from there.
   </p>
 
+  <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>Key formulas &amp; numbers (reference card)</h2>
   <div class="tl-datatable-wrap">
     <table class="tl-datatable">
@@ -884,6 +967,19 @@ Rapid catch-up buying → price accelerates higher</pre>
     </table>
   </div>
 
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>OI measures commitment, volume measures activity.</strong> Rising OI means new money is entering; falling OI means positions are closing — the same price move implies opposite things depending on which one moved with it.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>CME strikes are futures prices, not spot.</strong> A level has to be converted with <code>spot = futures strike − basis</code> (basis = futures − spot) before it means anything on a broker's chart — with an extra inversion step for JPY pairs.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Walls are relative outliers, not big absolute numbers.</strong> The 3× rule of thumb — a strike needs roughly 3× the OI of its neighbours before it counts as a strong, high-probability level.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Gamma hedging is the mechanism behind walls, not folklore.</strong> Dealers who sold options must rehedge as price moves; that mechanical buying/selling is what creates — and then exhausts — the pressure at a wall.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A wall breaking flips the same mechanism into a squeeze.</strong> The positioning that created resistance becomes fuel once breached — the bigger the wall, the bigger the potential squeeze.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The heatmap is a day old and a snapshot, not a promise.</strong> It updates once daily off the previous close, and max pain shifts as OI changes — treat every level as probabilistic and always use a stop.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>None of the five trading frameworks have been run through this repo's honest OOS harness.</strong> These are applied study notes from an external course, not a validated MacroFXModel strategy — per the Lego Principle, an idea only counts as edge after realistic fills, real costs, and a true in-sample/out-of-sample split, none of which have been done here yet (see the real-time implementation ideas appendix below for what that would take).</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 09</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Define open interest and state the three ways a contract stops counting.</summary>

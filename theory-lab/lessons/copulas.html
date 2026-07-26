@@ -40,6 +40,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     Every correlation number this repo computes — the rolling Pearson
@@ -77,6 +78,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>Same weather report, very different storm behavior</h3>
     <p>
@@ -110,6 +112,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     This lesson deliberately does not derive the underlying theorem — that
@@ -150,6 +153,23 @@
   </p>
   <div class="tl-math">
     \[ H(x,y) = C\big(F_X(x),\, F_Y(y)\big) \]
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">H(x,y)</div>
+      <div class="tl-fp-name">The joint distribution</div>
+      <div class="tl-fp-desc">Everything about how X and Y behave together</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">F_X, F_Y</div>
+      <div class="tl-fp-name">The marginals</div>
+      <div class="tl-fp-desc">Each variable's own distribution, ignoring the other entirely</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">C</div>
+      <div class="tl-fp-name">The copula</div>
+      <div class="tl-fp-desc">Captures only the dependence — nothing about what the variables look like</div>
+    </div>
   </div>
   <p>
     Read this as a recipe, not a proof: to build the full joint behavior of
@@ -193,6 +213,11 @@
   <div class="tl-math">
     \[ C_\rho^{\text{Ga}}(u,v) = \Phi_\rho\big(\Phi^{-1}(u),\, \Phi^{-1}(v)\big) \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>u, v</code><span>each variable's marginal probability, in [0,1]</span></div>
+    <div class="tl-eq-chip c2"><code>Φ⁻¹</code><span>inverse standard normal CDF — turns u, v into normal variables</span></div>
+    <div class="tl-eq-chip c4"><code>ρ</code><span>the single correlation parameter driving the whole dependence structure</span></div>
+  </div>
   <p>
     where \(\Phi^{-1}\) is the inverse standard normal CDF and \(\Phi_\rho\) is
     the joint CDF of a standard bivariate normal with correlation \(\rho\). The
@@ -220,6 +245,10 @@
   <div class="tl-math">
     \[ \lambda_L = \lim_{q \to 0^+} P\big(Y \le F_Y^{-1}(q) \mid X \le F_X^{-1}(q)\big) \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>q → 0⁺</code><span>look further and further into the joint lower tail</span></div>
+    <div class="tl-eq-chip c3"><code>λ_L</code><span>the limiting conditional probability — 0 (independent) to 1 (near-certain joint crash)</span></div>
+  </div>
   <p>
     (\(\lambda_U\), the upper tail dependence coefficient, is the mirror-image
     definition at the top of the distribution.) \(\lambda_L\) ranges from 0
@@ -242,6 +271,11 @@
   <div class="tl-math">
     \[ C_\theta^{\text{Cl}}(u,v) = \big(u^{-\theta} + v^{-\theta} - 1\big)^{-1/\theta}, \qquad \lambda_L = 2^{-1/\theta}, \qquad \lambda_U = 0 \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>θ &gt; 0</code><span>the dependence parameter — larger θ means stronger lower-tail clustering</span></div>
+    <div class="tl-eq-chip c3"><code>λ_L = 2^(-1/θ)</code><span>a fixed positive lower-tail dependence — doesn't shrink deep in the tail</span></div>
+    <div class="tl-eq-chip c2"><code>λ_U = 0</code><span>no matching upper-tail dependence — asymmetric by construction</span></div>
+  </div>
   <p>
     Read the qualitative shape, not the algebra: larger \(\theta\) means
     stronger lower-tail clustering. Unlike the Gaussian copula, \(\lambda_L\)
@@ -260,6 +294,24 @@
     hoc fix.
   </p>
 
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📐</div>
+      <h4>Gaussian copula</h4>
+      <p>Zero tail dependence for any ρ &lt; 1 — symmetric, tractable, the industry-standard baseline.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📉</div>
+      <h4>Clayton copula</h4>
+      <p>Nonzero, asymmetric lower-tail dependence — built for "crash together, don't necessarily rally together."</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🎓</div>
+      <h4>Student-t copula</h4>
+      <p>Nonzero tail dependence in <em>both</em> tails, symmetric, strength set by a degrees-of-freedom parameter.</p>
+    </div>
+  </div>
+
   <div class="tl-symbols"><table>
     <tr><td>\(X, Y\)</td><td>Two return series (e.g. two FX pairs) whose joint dependence is being modeled.</td></tr>
     <tr><td>\(F_X, F_Y\)</td><td>The marginal CDFs of \(X\) and \(Y\) — each series' own individual distribution, ignoring the other.</td></tr>
@@ -272,6 +324,7 @@
   </table></div>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Same overall dependence strength, very different tail behavior</h3>
     <p>
@@ -474,6 +527,7 @@
     </div>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Copulas show up wherever a joint model is needed but the honest
@@ -522,7 +576,16 @@
     in this repo's honest-validation discipline.
   </p>
 
+  <div class="tl-solid amber">
+    <strong>The real lesson from 2008:</strong> the failure wasn't that
+    copulas are unsound math — it's that a specific, thin-tailed (Gaussian)
+    dependence choice was trusted well past the calm regime it was
+    calibrated on. Any copula's parameter fit only on normal-market data can
+    make the same mistake, regardless of which family it is.
+  </div>
+
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
     <h3>A "diversified" book that isn't, exactly when it matters</h3>
     <p>
@@ -553,6 +616,7 @@
   </div>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this could plug into MacroFXModel</div>
     <h3>A genuine gap next to the existing correlation tools — not yet built</h3>
     <p>
@@ -606,6 +670,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where copula modeling goes wrong in practice</h3>
     <p>
@@ -656,6 +721,19 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Correlation only sees the average, roughly-linear relationship.</strong> It cannot tell you whether two series crash together far more often than that correlation number would ever suggest.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Sklar's theorem splits any joint distribution in two.</strong> Each variable's own marginal distribution, plus a copula capturing only the dependence — model them independently, then combine.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The Gaussian copula has zero tail dependence for any ρ &lt; 1.</strong> Extreme joint moves become asymptotically independent no matter how high the correlation runs.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The Clayton copula is built for crash clustering.</strong> Nonzero lower-tail dependence, zero upper-tail dependence — "crash together, don't necessarily rally together."</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Same headline number, very different tail risk.</strong> Two structures tuned to identical Kendall's τ=0.40 can imply 0% versus roughly 60% joint-crash probability.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The 2008 Gaussian-copula/CDO history is a real cautionary tale.</strong> A thin-tailed model fit on calm historical data understated mortgage-default tail dependence at systemic scale.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This is a flagged gap, not a built or validated tool.</strong> This repo has no copula implementation yet — any future module needs real crisis-period data and full OOS validation before it informs sizing.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why can two variable pairs have the exact same Pearson correlation but very different "crash together" behavior?</summary>

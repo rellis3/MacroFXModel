@@ -34,6 +34,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this course matters</h2>
   <p>
     Regression is the framework quant finance uses to answer one question:
@@ -63,6 +64,7 @@
     traded.
   </p>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>Lesson 01 — Why regression matters: decomposition, CAPM, and the factor zoo</h2>
   <p>
     Three headline uses show up at every quant shop and every allocator,
@@ -83,6 +85,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>Correlation is not causation — three specific ways it fails</h3>
     <p>
@@ -111,6 +114,25 @@
     later factor model follows:
   </p>
   <div class="tl-math">\[ R_i - R_f = \alpha + \beta(R_m - R_f) + \epsilon \]</div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">α</div>
+      <div class="tl-fp-name">The intercept</div>
+      <div class="tl-fp-desc">Return unexplained by the market — potential skill</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">β</div>
+      <div class="tl-fp-name">The slope</div>
+      <div class="tl-fp-desc">Sensitivity to market moves — &gt;1 aggressive, &lt;1 defensive</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">ε</div>
+      <div class="tl-fp-name">The residual</div>
+      <div class="tl-fp-desc">Idiosyncratic noise — everything the market factor doesn't explain</div>
+    </div>
+  </div>
+
   <p>
     \(R_i-R_f\) is the asset's excess return (the \(Y\)); \(\alpha\), the
     intercept, is return unexplained by the market — potential skill;
@@ -153,6 +175,7 @@
     Lesson 04's multiple-testing discussion below.
   </p>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>Lessons 02–03 — OLS mechanics and measuring fit, applied</h2>
   <p>
     The primer already derives \(\hat\beta=\mathrm{Cov}(X,Y)/\mathrm{Var}(X)=
@@ -224,11 +247,28 @@
     Plain \(R^2\) has a structural flaw: it can never fall when a variable is
     added, even a column of pure noise, because OLS can always set that
     variable's coefficient to exactly zero and reproduce the old fit — so
-    there's a perverse incentive to keep adding variables. <strong>Adjusted
+    there's a perverse incentive to keep adding variables.
+  </p>
+
+  <div class="tl-solid red">
+    <strong>The trap:</strong> plain \(R^2\) can never fall when you add a
+    variable — even a column of pure noise — because OLS can always assign it
+    a coefficient of exactly zero and reproduce the old fit. Chasing plain
+    \(R^2\) upward rewards adding anything, useful or not; that's exactly the
+    incentive adjusted \(R^2\) exists to correct.
+  </div>
+
+  <p><strong>Adjusted
     \(R^2\)</strong> fixes the incentive by charging a penalty for each added
     predictor:
   </p>
   <div class="tl-math">\[ \bar R^2 = 1 - \frac{(1-R^2)(n-1)}{n-k-1} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>R̄²</code><span>adjusted R² — penalized for predictor count</span></div>
+    <div class="tl-eq-chip c2"><code>R²</code><span>the plain, unpenalized fit ratio</span></div>
+    <div class="tl-eq-chip c3"><code>n</code><span>number of observations</span></div>
+    <div class="tl-eq-chip c4"><code>k</code><span>number of predictors — the thing being penalized</span></div>
+  </div>
   <p>
     with \(k\) the predictor count. Concretely: a market-only model at
     \(R^2=0.45\)/adj. \(R^2=0.44\); adding a genuine size factor moves it to
@@ -249,6 +289,7 @@
     below.
   </p>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Lesson 04 — Statistical inference &amp; significance</h2>
   <p>
     The t-statistic is a signal-to-noise ratio: \(t=\hat\beta/SE(\hat\beta)\)
@@ -323,6 +364,7 @@
     </table>
   </div>
 
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Lesson 05 — Multiple regression &amp; factor models</h2>
   <p>
     Moving from \(Y=\alpha+\beta_1X_1+\epsilon\) (CAPM) to
@@ -375,18 +417,30 @@
     be pulled apart.
   </p>
   <p>Building a factor model, the process:</p>
-  <ol>
-    <li><strong>Start with theory</strong> — what should logically predict
-      returns? Factors with an economic story are more likely to persist
-      than ones discovered by search alone.</li>
-    <li><strong>Get clean factor data</strong> — no look-ahead bias, handle
-      delistings properly.</li>
-    <li><strong>Run the regression</strong> — OLS with Newey-West SEs; check
-      VIF; examine residuals.</li>
-    <li><strong>Validate extensively</strong> — out-of-sample is mandatory;
-      different periods, different markets. Working in only one sample is
-      overfitting, not validation.</li>
-  </ol>
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body"><h4>Start with theory</h4><p>What should logically predict
+        returns? Factors with an economic story are more likely to persist
+        than ones discovered by search alone.</p></div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body"><h4>Get clean factor data</h4><p>No look-ahead bias, handle
+        delistings properly.</p></div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body"><h4>Run the regression</h4><p>OLS with Newey-West SEs; check
+        VIF; examine residuals.</p></div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">4</div>
+      <div class="tl-step-body"><h4>Validate extensively</h4><p>Out-of-sample is mandatory;
+        different periods, different markets. Working in only one sample is
+        overfitting, not validation.</p></div>
+    </div>
+  </div>
   <p>Common factor-model pitfalls worth naming explicitly:</p>
   <div class="tl-symbols">
     <table>
@@ -397,6 +451,7 @@
     </table>
   </div>
 
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Lesson 06 — Regression diagnostics &amp; pitfalls</h2>
   <p>
     Three violations dominate financial regressions, and in financial data
@@ -421,17 +476,28 @@
     diagnostic habit worth building into every regression:
   </p>
   <p><strong>The four residual plots, always drawn:</strong></p>
-  <ol>
-    <li><strong>Residuals vs. fitted</strong> — want random scatter around
-      zero; curves or funnels signal misspecification or heteroskedasticity.</li>
-    <li><strong>Residuals vs. time</strong> — want independence; trends,
-      cycles, or clusters signal autocorrelation or a structural break.</li>
-    <li><strong>Scale-location</strong> (\(\sqrt{|e|}\) vs. fitted) — want
-      constant spread; a funnel again signals heteroskedasticity.</li>
-    <li><strong>Q-Q plot</strong> — want normality; tail deviations signal fat
-      tails, common in finance and capable of distorting small-sample
-      inference.</li>
-    </ol>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📉</div>
+      <h4>Residuals vs. fitted</h4>
+      <p>Want random scatter around zero; curves or funnels signal misspecification or heteroskedasticity.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📈</div>
+      <h4>Residuals vs. time</h4>
+      <p>Want independence; trends, cycles, or clusters signal autocorrelation or a structural break.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📐</div>
+      <h4>Scale-location</h4>
+      <p>(\(\sqrt{|e|}\) vs. fitted) — want constant spread; a funnel again signals heteroskedasticity.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📊</div>
+      <h4>Q-Q plot</h4>
+      <p>Want normality; tail deviations signal fat tails, common in finance and capable of distorting small-sample inference.</p>
+    </div>
+  </div>
   <p>
     Statistical tests can miss patterns that are visually obvious — plot
     residuals before trusting a test result, not instead of it.
@@ -479,6 +545,7 @@
     know which without doing the diagnostics.
   </p>
 
+  <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>Lesson 07 — From regression to production models</h2>
   <p>
     An in-sample \(R^2\) of 0.9 means nothing on its own if the
@@ -600,6 +667,7 @@
     building, is the bridge across it.
   </p>
 
+  <div class="tl-section-mark"><span>Section 08</span></div>
   <h2>Lesson 08 — Advanced extensions &amp; what's next</h2>
   <p>
     OLS is the trunk; several specialized branches exist for specific
@@ -671,6 +739,7 @@
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
     <h3>The same discipline this repo's own build rules already state in prose</h3>
     <p>
@@ -691,6 +760,19 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 09</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Regression decomposes returns into explained and unexplained.</strong> The explained part is factor exposure (the β's you're compensated for holding); the unexplained residual ε is where idiosyncratic risk and any real alpha both live — CAPM through Fama-French/Carhart/FF5 is one continuous history of finding a systematic pattern left in that residual and adding a factor to absorb it.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(R^2\) measures fit, not correctness, and "good" is entirely context-dependent.</strong> 0.03–0.10 is normal for cross-sectional return prediction, 0.30–0.70 for a CAPM time-series fit — a suspiciously high \(R^2\) (&gt;0.95) is a trigger for skepticism, not celebration. Adjusted \(R^2\) is the cheap first guard against variables that raise plain \(R^2\) for free.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Newey-West (HAC) standard errors are the finance default.</strong> Classical OLS SEs assume homoskedastic, independent errors — virtually never true of financial returns, where volatility clusters and residuals correlate across time; using classical-only SEs means the reported t-stats are likely inflated.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The multiple-testing problem pushes the factor-discovery bar to \(|t|&gt;3\), not the classroom's 2.</strong> Testing 1,000 true nulls produces roughly 50 false positives by chance alone; most published factors with \(2&lt;|t|&lt;3\) fail to replicate out-of-sample.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A significant joint F-test can sit on top of no individually significant coefficient at all.</strong> That's the multicollinearity paradox — the factors jointly matter but OLS can't cleanly separate which one deserves the credit. Check VIF (above 10 is serious to severe) before trusting individual coefficients.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Walk-forward analysis, not standard K-fold CV, is the valid out-of-sample scheme for financial time series.</strong> K-fold shuffles across folds without respecting time order, letting a training fold peek at the future; walk-forward trains on data up to time \(t\), predicts \(t+1\), and rolls forward — exactly mimicking live trading.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">⚠</span><span><strong>Implementation friction is where paper returns actually die.</strong> Transaction costs, implementation lag, capacity constraints, and post-publication decay separate a research finding from what's achievable live — disciplined validation and monitoring, not more building, is the bridge across that gap.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 10</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. 200 candidate signals are tested and 12 come back with p &lt; 0.05. Should you be impressed?</summary>

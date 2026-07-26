@@ -33,6 +33,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     Every "rates drive FX" story — carry trades, yield-spread momentum, hawkish/dovish repricing, the whole
@@ -57,6 +58,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>A thermostat for the economy</h3>
     <p>
@@ -72,6 +74,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     Taylor's 1993 paper (formally titled "Discretion versus Policy Rules in Practice," presented at a
@@ -79,6 +82,35 @@
     linear equation for the short-term nominal policy rate:
   </p>
   <div class="tl-math">\[ i = r^{*} + \pi + a(\pi - \pi^{*}) + b(y - y^{*}) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>r*+π</code><span>neutral baseline, expressed in today's inflation terms</span></div>
+    <div class="tl-eq-chip c2"><code>a(π−π*)</code><span>inflation-gap dial — extra tightening if inflation runs hot</span></div>
+    <div class="tl-eq-chip c3"><code>b(y−y*)</code><span>output-gap dial — extra tightening if the economy overheats</span></div>
+    <div class="tl-eq-chip c4"><code>i</code><span>the prescribed policy rate — the rule's single output</span></div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">r*+π</div>
+      <div class="tl-fp-name">The baseline</div>
+      <div class="tl-fp-desc">Neutral real rate, expressed in today's inflation terms (the Fisher relation)</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">a(π−π*)</div>
+      <div class="tl-fp-name">Inflation dial</div>
+      <div class="tl-fp-desc">Adds tightening when inflation overshoots target, subtracts when it undershoots</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">b(y−y*)</div>
+      <div class="tl-fp-name">Output-gap dial</div>
+      <div class="tl-fp-desc">Adds tightening pre-emptively when the economy runs above potential</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">i</div>
+      <div class="tl-fp-name">Prescribed rate</div>
+      <div class="tl-fp-desc">Baseline plus whichever way the two dials are currently pushing</div>
+    </div>
+  </div>
   <p>
     Every symbol here is a real, publicly trackable quantity (or an estimate of one) — that observability is the
     whole reason the rule is so widely used outside academia, not just inside it.
@@ -121,6 +153,10 @@
     terms vanish, and the rule reduces to:
   </p>
   <div class="tl-math">\[ i = r^{*} + \pi^{*} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>r*</code><span>neutral real rate</span></div>
+    <div class="tl-eq-chip c4"><code>π*</code><span>the inflation target — both gap terms have vanished</span></div>
+  </div>
   <p>
     This is the <strong>neutral nominal rate</strong> — the rate the rule says to hold at when the economy needs
     neither tightening nor easing. It is a genuinely useful anchor: any live policy rate can be read as "the neutral
@@ -128,6 +164,7 @@
   </p>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Taylor's own coefficients, applied to a clean set of numbers</h3>
     <p>
@@ -152,6 +189,12 @@
   </div>
 
   <h3>The number that moves markets isn't \(i\) — it's \(i_{\text{implied}} - i_{\text{actual}}\)</h3>
+  <div class="tl-solid blue">
+    <strong>The key insight:</strong> no desk trades the Taylor Rule's level in
+    isolation — they trade the GAP between what the rule prescribes and what
+    the central bank is actually doing. That gap is a measure of unresolved
+    pressure on the policy rate, not a forecast of the next meeting.
+  </div>
   <p>
     No real central bank is bound by this formula. Actual committees weigh dual or multiple mandates, financial
     stability, forward-guidance credibility already given to markets, and — especially since 2009 — an effective
@@ -214,6 +257,7 @@
     </div>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     The Taylor Rule's appeal to practitioners is exactly its minimalism: anyone with a CPI/PCE print, a GDP or
@@ -228,6 +272,24 @@
     "correct" Taylor Rule, only a family of them, and which one a given desk quotes depends on its choice of
     inflation measure, output-gap proxy, and coefficients.
   </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📐</div>
+      <h4>Classic rule</h4>
+      <p>Taylor's original 1993 specification — \(a=b=0.5\), the version derived above.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🐢</div>
+      <h4>Inertial rule</h4>
+      <p>Partially anchors on the previous policy rate to avoid abrupt jumps meeting to meeting.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">⚖️</div>
+      <h4>Balanced-approach rule</h4>
+      <p>Doubles the output-gap coefficient (\(b=1\)), leaning more heavily on labor-market slack.</p>
+    </div>
+  </div>
   <p>
     On a trading desk, the rule's real use is comparative and dynamic, not a single-country snapshot: computing
     (even roughly) a Taylor-implied rate for two economies at once — say the US and the euro area — turns directly
@@ -238,6 +300,7 @@
   </p>
 
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
     <h3>A hot CPI print reprices the front end</h3>
     <p>
@@ -256,28 +319,43 @@
     </p>
     <div class="tl-math">\[ i_{\text{new}} = r^{*} + \pi + a(\pi-\pi^{*}) + b(y-y^{*}) = 2 + 4 + 0.5(2) + 0.5(1) = 2+4+1+0.5 = 7.5\% \]</div>
     <p>The inference chain from there is concrete and mechanical:</p>
-    <ul>
-      <li><strong>1. Recompute, don't re-guess.</strong> The Taylor-implied rate jumps from 6% to 7.5% purely
-      from the inflation-gap term growing (\(0.5\times2=1\)pp instead of \(0.5\times1=0.5\)pp) — a full extra point,
-      derived, not felt.</li>
-      <li><strong>2. Compare against what's actually priced,</strong> not against the current policy rate alone.
-      The front end still shows a 4.75% terminal rate — nothing has repriced yet in the minutes after the print.</li>
-      <li><strong>3. The gap has more than doubled overnight</strong>: from \(6\%-4.75\%=1.25\)pp to
-      \(7.5\%-4.75\%=2.75\)pp. The implied rate now sits meaningfully above what the front end has priced in.</li>
-      <li><strong>4. Read the gap as a signal, not a forecast of the next meeting.</strong> A 2.75pp
-      implied-minus-priced gap says the central bank looks more behind the curve than the market currently
-      reflects — the data now justify materially more tightening than is priced, so the risk to the front end of
-      the curve is skewed toward a hawkish repricing (the market catching up to the same 7.5% conclusion the
-      trader just computed), not a certainty about the very next decision.</li>
-      <li><strong>5. Connect it to the currency.</strong> Per the same rate-differential mechanism the
-      Transatlantic Yield Spread lesson documents (education/macro-deep-dives-notes.md, Lesson 2, §2.2–2.3):
-      capital flows toward the higher, or the higher-<em>expected</em>, yield. If the front end is under-pricing
-      how much tightening the data justify, the trader's view is that yields here are more likely to rise than
-      fall from current levels relative to a peer currency whose own Taylor gap didn't just move — which, all
-      else equal, is currency-supportive. A trader acting on this either leans long the currency outright, or
-      expresses the rate view more directly (e.g. positioned for front-end yields to rise, such as being short
-      short-dated rate-future duration), rather than the FX view alone.</li>
-    </ul>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body"><h4>Recompute, don't re-guess</h4><p>The Taylor-implied rate jumps from 6% to 7.5% purely
+        from the inflation-gap term growing (\(0.5\times2=1\)pp instead of \(0.5\times1=0.5\)pp) — a full extra point,
+        derived, not felt.</p></div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body"><h4>Compare against what's actually priced</h4><p>Not against the current policy rate alone.
+        The front end still shows a 4.75% terminal rate — nothing has repriced yet in the minutes after the print.</p></div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body"><h4>The gap has more than doubled overnight</h4><p>From \(6\%-4.75\%=1.25\)pp to
+        \(7.5\%-4.75\%=2.75\)pp. The implied rate now sits meaningfully above what the front end has priced in.</p></div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body"><h4>Read the gap as a signal, not a forecast of the next meeting</h4><p>A 2.75pp
+        implied-minus-priced gap says the central bank looks more behind the curve than the market currently
+        reflects — the data now justify materially more tightening than is priced, so the risk to the front end of
+        the curve is skewed toward a hawkish repricing (the market catching up to the same 7.5% conclusion the
+        trader just computed), not a certainty about the very next decision.</p></div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">5</div>
+        <div class="tl-step-body"><h4>Connect it to the currency</h4><p>Per the same rate-differential mechanism the
+        Transatlantic Yield Spread lesson documents (education/macro-deep-dives-notes.md, Lesson 2, §2.2–2.3):
+        capital flows toward the higher, or the higher-<em>expected</em>, yield. If the front end is under-pricing
+        how much tightening the data justify, the trader's view is that yields here are more likely to rise than
+        fall from current levels relative to a peer currency whose own Taylor gap didn't just move — which, all
+        else equal, is currency-supportive. A trader acting on this either leans long the currency outright, or
+        expresses the rate view more directly (e.g. positioned for front-end yields to rise, such as being short
+        short-dated rate-future duration), rather than the FX view alone.</p></div>
+      </div>
+    </div>
     <p>
       Nothing in this chain claims the central bank will hike at the very next meeting, nor does it say the
       currency rallies immediately — the yield-spread lesson's own lead-lag table (§2.4) is explicit that
@@ -289,6 +367,7 @@
   </div>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
     <h3>The theory behind two existing lessons — not yet a built calculator</h3>
     <p>
@@ -319,6 +398,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where the Taylor Rule gets over-trusted</h3>
     <p>
@@ -355,6 +435,19 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The rule is a baseline plus two dials.</strong> \(i = r^{*}+\pi+a(\pi-\pi^{*})+b(y-y^{*})\) — a neutral rate, corrected for how far inflation and output sit from target/potential.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Both gaps can reinforce or offset.</strong> In the worked example, a hot inflation gap and a positive output gap both add tightening (2→6%); they can just as easily pull in opposite directions.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>What moves markets is the GAP, not the level.</strong> Traders watch \(i_{\text{implied}} - i_{\text{actual}}\) — a measure of unresolved policy pressure, not the rule's raw output in isolation.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>"Behind the curve" vs. "ahead of the curve."</strong> Actual policy below the implied rate signals more tightening still needed (hawkish-repricing risk); above it signals cut risk.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo has no Taylor-Rule calculator built yet.</strong> This lesson is the theory behind the existing yield-spread notes — a natural, currently-missing companion piece, not a shipped tool.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>\(r^{*}\) and the output gap are estimates, not observed facts.</strong> Different proxies can shift the implied rate by a full percentage point or more from the same CPI print.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A wide gap is not a dated forecast.</strong> The Fed itself publishes several competing reference rules — real deviations from any one of them can persist for years before correcting.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. What does a positive output gap (\(y-y^{*}\)) mean, and why does the rule respond to it?</summary>

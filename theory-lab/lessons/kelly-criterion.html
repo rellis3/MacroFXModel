@@ -33,6 +33,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     Every strategy in this repo eventually produces the same two outputs: a
@@ -70,6 +71,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>Why "always bet everything" is wrong even with a real edge</h3>
     <p>
@@ -98,6 +100,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     <strong>Setting up the objective — why maximize the log of wealth, not
@@ -109,6 +112,11 @@
     <em>product</em> of all those per-round factors, not a sum:
   </p>
   <div class="tl-math">\[ W_n = W_0 \prod_{i=1}^{n} (1 + f X_i) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Wₙ</code><span>bankroll after n rounds — a product, not a sum</span></div>
+    <div class="tl-eq-chip c2"><code>f</code><span>the fraction of current bankroll risked each round</span></div>
+    <div class="tl-eq-chip c3"><code>Xᵢ</code><span>round i's outcome: +1 on a win, −1 on a loss</span></div>
+  </div>
   <p>
     where each \(X_i\) is \(+1\) on a win and \(-1\) on a loss for that round.
     Maximizing the plain <em>expected value</em> of \(W_n\) is exactly the
@@ -133,6 +141,10 @@
     wealth equation:
   </p>
   <div class="tl-math">\[ \ln W_n = \ln W_0 + \sum_{i=1}^{n} \ln(1 + f X_i) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>ln Wₙ</code><span>log of ending wealth — turns the product above into a sum</span></div>
+    <div class="tl-eq-chip c4"><code>Σ ln(1+fXᵢ)</code><span>sum of each round's log-growth contribution</span></div>
+  </div>
   <p>
     Dividing by \(n\), the average per-round log-growth is
     \(\frac{1}{n}\sum \ln(1+fX_i)\), and by the law of large numbers this
@@ -166,6 +178,11 @@
     the expected log-growth as a function of \(f\) is:
   </p>
   <div class="tl-math">\[ g(f) = p \ln(1+f) + q \ln(1-f) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>g(f)</code><span>expected log-growth rate as a function of bet size f</span></div>
+    <div class="tl-eq-chip c2"><code>p ln(1+f)</code><span>win branch — probability p, bankroll multiplies by (1+f)</span></div>
+    <div class="tl-eq-chip c3"><code>q ln(1-f)</code><span>loss branch — probability q, bankroll multiplies by (1-f)</span></div>
+  </div>
   <p>
     This says: with probability \(p\) your bankroll multiplies by \((1+f)\)
     and contributes \(\ln(1+f)\) to the expected log-growth; with probability
@@ -177,16 +194,28 @@
     flat spot):
   </p>
   <div class="tl-math">\[ g'(f) = \frac{p}{1+f} - \frac{q}{1-f} = 0 \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>g'(f)=0</code><span>setting the derivative to zero to locate g(f)'s peak</span></div>
+  </div>
   <p>
     Cross-multiply to clear the denominators — \(p(1-f) = q(1+f)\) — then
     expand and collect the \(f\) terms:
   </p>
   <div class="tl-math">\[ p - pf = q + qf \quad\Longrightarrow\quad p - q = pf + qf = f(p+q) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>clearing denominators</code><span>cross-multiplying, then collecting the f terms to isolate f</span></div>
+  </div>
   <p>
     Since \(p+q=1\) by definition (win and lose are the only two outcomes),
     this collapses immediately to:
   </p>
   <div class="tl-math">\[ f^* = p - q = p - (1-p) = 2p - 1 \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>f*</code><span>Kelly-optimal fraction of bankroll to bet</span></div>
+    <div class="tl-eq-chip c2"><code>p</code><span>win probability</span></div>
+    <div class="tl-eq-chip c3"><code>q</code><span>loss probability, q = 1−p</span></div>
+    <div class="tl-eq-chip c4"><code>p−q</code><span>the edge over 50/50 — how far above breakeven you sit</span></div>
+  </div>
   <p>
     This is the classic even-money Kelly formula: bet a fraction equal to
     your <strong>edge</strong> (\(p-q\), how far your win probability sits
@@ -201,6 +230,11 @@
     procedure on \(g(f) = p\ln(1+bf) + q\ln(1-f)\) yields:
   </p>
   <div class="tl-math">\[ f^* = \frac{bp - q}{b} = p - \frac{q}{b} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>f*</code><span>Kelly-optimal fraction for a non-even-money bet</span></div>
+    <div class="tl-eq-chip c2"><code>b</code><span>payoff odds — units won per unit staked on a win</span></div>
+    <div class="tl-eq-chip c3"><code>bp−q</code><span>expected value per unit staked — the bet's true edge</span></div>
+  </div>
   <p>
     Read this as "edge over odds": the numerator \(bp-q\) is the bet's
     expected value per unit staked (win \(b\) with probability \(p\), lose 1
@@ -224,6 +258,30 @@
     setting — gives the continuous-time Kelly fraction:
   </p>
   <div class="tl-math">\[ f^* = \frac{\mu}{\sigma^2} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>f*</code><span>Kelly-optimal fraction of capital to allocate</span></div>
+    <div class="tl-eq-chip c2"><code>μ</code><span>expected excess return (drift) per period</span></div>
+    <div class="tl-eq-chip c3"><code>σ²</code><span>variance of the return stream per period</span></div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">μ</div>
+      <div class="tl-fp-name">The edge</div>
+      <div class="tl-fp-desc">Expected excess return (drift) — the numerator, your edge in the trade</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">σ²</div>
+      <div class="tl-fp-name">The risk</div>
+      <div class="tl-fp-desc">Variance of the return stream — the denominator, penalizing size for risk</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">f*</div>
+      <div class="tl-fp-name">The result</div>
+      <div class="tl-fp-desc">Optimal fraction of capital to allocate — edge divided by variance</div>
+    </div>
+  </div>
+
   <p>
     This is the form actually used in trading and portfolio theory: the
     optimal leverage is <strong>expected excess return divided by
@@ -232,6 +290,11 @@
     deviation</em>, not variance). Substitute \(\mu = S\sigma\):
   </p>
   <div class="tl-math">\[ f^* = \frac{S\sigma}{\sigma^2} = \frac{S}{\sigma} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>S</code><span>Sharpe ratio, μ/σ — return per unit of volatility</span></div>
+    <div class="tl-eq-chip c2"><code>σ</code><span>standard deviation of returns (not variance) — the denominator here</span></div>
+    <div class="tl-eq-chip c3"><code>f*=S/σ</code><span>optimal leverage rises with Sharpe, falls with volatility</span></div>
+  </div>
   <p>
     In words: the Kelly-optimal leverage on a strategy is its Sharpe ratio
     divided by its volatility. A higher Sharpe ratio justifies more leverage;
@@ -254,6 +317,11 @@
     (geometric) growth rate is approximately:
   </p>
   <div class="tl-math">\[ g \approx \mu - \frac{\sigma^2}{2} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>g</code><span>geometric (compounded) growth rate — what wealth actually does</span></div>
+    <div class="tl-eq-chip c2"><code>μ</code><span>arithmetic mean return per period</span></div>
+    <div class="tl-eq-chip c4"><code>σ²/2</code><span>volatility drag — the compounding cost of variance</span></div>
+  </div>
   <p>
     The arithmetic mean \(\mu\) is what you'd compute by averaging returns
     directly — it answers "what's the average return per period?" The
@@ -293,6 +361,15 @@
     precise version of "more size is not always better," and it is why the
     curve's shape — not just its peak — matters for the next topic.
   </p>
+  <div class="tl-solid red">
+    <strong>Overbetting isn't just riskier, it's provably worse.</strong>
+    Growth rises with bet size only up to \(f^*\). Bet exactly \(2f^*\) — twice
+    the growth-optimal size — and the drag term exactly cancels the drift
+    term, so the long-run growth rate falls to precisely zero. Bet any larger
+    and compounded wealth shrinks toward zero over time, even though every
+    single bet in isolation still has positive expected value. The edge never
+    changed; only the size did.
+  </div>
   <p>
     <strong>Fractional Kelly.</strong> Because \(g(f)\) is a smooth peaked
     curve (a parabola in the approximation above, and single-peaked exactly
@@ -319,6 +396,7 @@
   </p>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>A 55%-edge coin flip: full Kelly, half-Kelly, and what half-Kelly buys you</h3>
     <p>
@@ -326,6 +404,10 @@
       money (\(b=1\)). Using the derived formula:
     </p>
     <div class="tl-math">\[ f^* = 2p - 1 = 2(0.55) - 1 = 0.10 \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>p=0.55</code><span>55% win probability, even-money payoff</span></div>
+      <div class="tl-eq-chip c2"><code>f*=10%</code><span>full-Kelly stake as a fraction of bankroll</span></div>
+    </div>
     <p>
       Full Kelly says bet <strong>10% of your current bankroll</strong> on
       each flip. Note "current bankroll," not "starting bankroll" — Kelly
@@ -340,6 +422,10 @@
       <strong>Half-Kelly</strong> is simply \(c=0.5\) applied to \(f^*\):
     </p>
     <div class="tl-math">\[ f_{half} = 0.5 \times 0.10 = 0.05 \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c3"><code>c=0.5</code><span>the fraction of full Kelly being taken</span></div>
+      <div class="tl-eq-chip c4"><code>5%</code><span>half-Kelly stake as a fraction of bankroll</span></div>
+    </div>
     <p>
       Bet 5% instead of 10%. What does that trade away, and what does it buy?
       Using the quadratic approximation from above, \(g(f) \approx f\mu -
@@ -349,6 +435,10 @@
       \(2c - c^2\) of the maximum achievable growth rate. At \(c=0.5\):
     </p>
     <div class="tl-math">\[ 2(0.5) - (0.5)^2 = 1 - 0.25 = 0.75 \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c2"><code>2c−c²</code><span>fraction of full-Kelly growth rate captured at scale c</span></div>
+      <div class="tl-eq-chip c4"><code>75%</code><span>growth retained at half-Kelly (c=0.5)</span></div>
+    </div>
     <p>
       Half-Kelly captures roughly <strong>75% of full Kelly's growth
       rate</strong> — giving up about a quarter of the theoretical best-case
@@ -490,6 +580,7 @@
   })();
   </script>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Kelly's original 1956 paper wasn't about gambling or investing at all —
@@ -527,6 +618,7 @@
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this could plug into MacroFXModel</div>
     <h3>Formalizes a principle CLAUDE.md already states — but it needs an honestly-estimated edge as input, and there isn't one built yet</h3>
     <p>
@@ -592,6 +684,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where Kelly sizing quietly goes wrong</h3>
     <p>
@@ -647,6 +740,19 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Maximize expected log growth, not raw expected value.</strong> Wealth compounds multiplicatively, so betting everything (which maximizes plain expected value) eventually meets a loss and wipes you out with probability 1 — log-growth is the objective whose maximization actually tracks long-run compounded wealth.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(f^*=2p-1\) (even money) and \(f^*=\mu/\sigma^2\) (continuous) are both "edge over variance."</strong> Bet a fraction proportional to how far your true edge sits above breakeven, scaled down by how much variance that edge has to survive.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Volatility drag, \(g\approx\mu-\sigma^2/2\), is a real, mechanical cost.</strong> The geometric (compounded) growth rate always sits below the arithmetic mean whenever there's variance — a bumpy return stream compounds slower than a steady one with the same average return.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Growth goes negative past \(2f^*\), even with positive edge.</strong> Drift scales linearly with bet size but variance drag scales quadratically — overbet enough and a genuinely profitable bet compounds your account toward zero.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Half-Kelly captures ~75% of full Kelly's growth at much lower drawdown.</strong> Because \(g(f)\) is flat near its peak, sizing down costs little growth but cuts variance (and typical drawdown) by roughly half or more — the standard practitioner default.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Kelly needs an honestly out-of-sample edge, not a backtested one.</strong> Plugging an in-sample win rate or Sharpe ratio into the formula produces a confidently oversized bet — the formula does exactly what it's told, and an inflated \(p\) or \(\mu\) is exactly the overbetting regime where growth turns negative.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Correlated book-level positions shouldn't each get standalone Kelly sizing.</strong> Sizing every position to its own independent \(f^*\) and holding them all at once ignores shared variance across the book — the combined portfolio ends up overbet relative to what any single position's Kelly calculation intended.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does betting exactly full Kelly, repeatedly, still produce large, painful drawdowns even though it's growth-optimal?</summary>

@@ -33,6 +33,7 @@
   </ul>
 </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     Almost every serious conversation about currencies eventually touches
@@ -65,6 +66,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>Interest rates are the rental price of money</h3>
     <p>
@@ -96,6 +98,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     This section builds up three ideas in order: the no-arbitrage argument
@@ -151,12 +154,38 @@
     to pay the same:
   </p>
   <div class="tl-math">\[ 1 + r_d \;=\; \frac{F}{S}\,(1+r_f) \quad\Longrightarrow\quad \boxed{\dfrac{F}{S} = \dfrac{1+r_d}{1+r_f}} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>F/S</code><span>forward priced relative to spot</span></div>
+    <div class="tl-eq-chip c4"><code>(1+r_d)/(1+r_f)</code><span>ratio of the two riskless growth factors — no forecast involved</span></div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">F</div>
+      <div class="tl-fp-name">Forward rate</div>
+      <div class="tl-fp-desc">Fully pinned down today — no belief or expectation required</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">S</div>
+      <div class="tl-fp-name">Spot rate</div>
+      <div class="tl-fp-desc">Today's observable exchange rate</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">r_d, r_f</div>
+      <div class="tl-fp-name">The two rates</div>
+      <div class="tl-fp-desc">Domestic and foreign risk-free rates — also observable today</div>
+    </div>
+  </div>
+
   <p>
     Rearranged, \(F = S\cdot\dfrac{1+r_d}{1+r_f}\). Under continuous
     compounding this is usually written in its more compact exponential
     form, which converges to the same relationship as \(T\) shrinks:
   </p>
   <div class="tl-math">\[ F = S\,e^{(r_d - r_f)T} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>e^((r_d−r_f)T)</code><span>continuous-compounding form of the same identity</span></div>
+  </div>
   <p>
     Two things follow immediately and are worth internalizing before
     anything else in this lesson. First, <strong>this formula requires
@@ -203,11 +232,19 @@
   today's forward rate:
   </p>
   <div class="tl-math">\[ E_t[S_{t+T}] = F \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>E_t[S_t+T]</code><span>the market's expectation of the future spot rate — never observable directly</span></div>
+    <div class="tl-eq-chip c4"><code>= F</code><span>UIP's claim — not enforced by any arbitrage</span></div>
+  </div>
   <p>
     Combine this with the CIP identity above (substituting \(F\)) and UIP's
     real content becomes explicit as a statement purely about expectations:
   </p>
   <div class="tl-math">\[ \frac{E_t[S_{t+T}]}{S} = \frac{1+r_d}{1+r_f} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>&gt;1</code><span>if r_d &gt; r_f, the market must expect S to rise</span></div>
+    <div class="tl-eq-chip c2"><code>⇒ depreciate</code><span>the higher-yielding domestic currency is expected to weaken</span></div>
+  </div>
   <p>
     Read this the way a carry trader has to: if the domestic currency's rate
     \(r_d\) is higher than the foreign rate \(r_f\), the right-hand side is
@@ -228,6 +265,7 @@
   </p>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Checking the identity, and forcing it back into line</h3>
     <p>
@@ -351,6 +389,7 @@
   </div>
 
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
     <h3>The JPY/AUD carry trade — and the day it stopped working</h3>
     <p>
@@ -404,6 +443,13 @@
       changed was the market's tolerance for holding the funding-currency
       short, all at once.
     </p>
+    <div class="tl-solid amber">
+      <strong>The trap:</strong> reading the calm-market carry pickup as free money.
+      Nothing about the interest-rate differential changed on 31 July 2024 —
+      what changed was the market's tolerance for holding the funding-currency
+      short, all at once. The carry trade is short a fat, left-tail event, not
+      a mispricing to arbitrage.
+    </div>
     <p>
       That is the honest shape of the trade in both directions: the forward
       premium puzzle describes a real, replicated empirical tendency for the
@@ -420,6 +466,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     <strong>The FX carry trade</strong> — long a basket of high-yielding
@@ -462,6 +509,7 @@
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this could plug into MacroFXModel</div>
     <h3>A genuine gap — no file here computes CIP, UIP, or a carry signal</h3>
     <p>
@@ -510,6 +558,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where CIP and UIP get mixed up in practice</h3>
     <p>
@@ -555,6 +604,19 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>CIP is a no-arbitrage identity, not a forecast.</strong> \(F=S\cdot(1+r_d)/(1+r_f)\) is pinned down today by observable prices and holds to within a sliver of a basis point in liquid G10 pairs.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>UIP makes the same-looking claim without the hedge</strong> — \(E_t[S_{t+T}]=F\) — and nothing forces it to be true. Unlike CIP it's a behavioral hypothesis, testable against data.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Fama (1984) found the wrong sign.</strong> The forward-premium regression coefficient is typically negative (roughly −0.8, not +1) — high-yielding currencies have tended to appreciate or hold flat, not depreciate as UIP predicts. This is the empirical basis of the FX carry trade.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The higher-yielding currency trades forward at a discount, mechanically.</strong> This falls straight out of the no-arbitrage derivation and says nothing yet about where spot actually ends up.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The carry trade is short a fat left tail, not free money.</strong> The AUD/JPY unwind after the BoJ's 31 July 2024 hike erased years of accumulated carry in about two weeks.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A UIP "failure" is not an arbitrage opportunity.</strong> CIP is enforced by riskless arbitrage; a UIP deviation is a risk-bearing bet with a real downside, not a free lunch — and a "peso problem" can make a historical average look cleaner than the true underlying odds.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Nothing in this repo computes CIP, UIP, or a carry signal yet.</strong> The forward premium puzzle is well-replicated in the broader literature — that is a different claim from a validated OOS edge on this repo's own data.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does CIP hold almost exactly while UIP fails empirically — what's actually different about the two claims?</summary>

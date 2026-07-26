@@ -33,6 +33,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     The Kelly Criterion lesson derived a clean, practical formula —
@@ -72,6 +73,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>What a "value function" is, and why a GPS is the right analogy</h3>
     <p>
@@ -108,6 +110,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     <strong>Setting up the control problem.</strong> An investor holds wealth
@@ -122,6 +125,11 @@
     continuous form:
   </p>
   <div class="tl-math">\[ dW_t = \big[(r + f_t\mu)W_t - C_t\big]\,dt + f_t\sigma W_t\,dZ_t \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>dWₜ</code><span>the instantaneous change in wealth</span></div>
+    <div class="tl-eq-chip c2"><code>(r+fₜμ)Wₜ−Cₜ</code><span>the deterministic drift: riskless plus risky return, minus consumption</span></div>
+    <div class="tl-eq-chip c4"><code>fₜσWₜ dZₜ</code><span>the random shock from holding the risky asset</span></div>
+  </div>
   <p>
     The investor's objective is to choose the entire future path of
     \(\{C_t, f_t\}\) — not just their values right now, but the whole
@@ -130,6 +138,11 @@
     utility of whatever wealth is left at the terminal date \(T\)):
   </p>
   <div class="tl-math">\[ \max_{\{C_s,f_s\}} \; E_t\!\left[\int_t^T e^{-\rho(s-t)}U(C_s)\,ds \;+\; e^{-\rho(T-t)}B(W_T)\right] \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>E_t[…]</code><span>expectation over future randomness, as of today</span></div>
+    <div class="tl-eq-chip c3"><code>e^{-ρ(s-t)}U(C_s)</code><span>discounted utility of consumption at each future instant</span></div>
+    <div class="tl-eq-chip c2"><code>e^{-ρ(T-t)}B(W_T)</code><span>discounted utility of whatever wealth remains at the horizon</span></div>
+  </div>
   <p>
     <strong>The value function.</strong> Define \(J(W,t)\) as the value of
     that maximized objective, starting from wealth \(W\) at time \(t\) — the
@@ -156,6 +169,11 @@
     equation for this problem:
   </p>
   <div class="tl-math">\[ 0 = \max_{C,f}\left\{\, U(C) - \rho J + J_t + J_W\big[(r+f\mu)W - C\big] + \tfrac{1}{2}J_{WW}f^2\sigma^2 W^2 \,\right\} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>J, J_t, J_W, J_WW</code><span>the value function and its time/wealth derivatives</span></div>
+    <div class="tl-eq-chip c1"><code>U(C) − ρJ</code><span>flow utility of consuming now, minus discounting the future</span></div>
+    <div class="tl-eq-chip c2"><code>max_{C,f}{…}</code><span>choose consumption and allocation to make this zero-sum balance hold optimally</span></div>
+  </div>
   <p>
     This is a nonlinear partial differential equation in the unknown function
     \(J(W,t)\), and it is exactly the calculus-textbook idea "set the
@@ -179,6 +197,10 @@
     terms of \(J\)'s derivatives:
   </p>
   <div class="tl-math">\[ f^* \;=\; -\,\frac{J_W}{W\,J_{WW}}\;\cdot\;\frac{\mu}{\sigma^2} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>−J_W/(W J_WW)</code><span>the investor's relative risk tolerance, implied by J</span></div>
+    <div class="tl-eq-chip c1"><code>μ/σ²</code><span>the same Sharpe-ratio-like edge term from the Kelly lesson</span></div>
+  </div>
   <p>
     The term \(-J_W/(W J_{WW})\) is the investor's <strong>relative risk
     tolerance</strong> implied by their value function — the reciprocal of the
@@ -203,6 +225,30 @@
     turns the general expression above into Merton's headline result:
   </p>
   <div class="tl-math">\[ f^* \;=\; \frac{\mu}{\gamma\,\sigma^2} \]</div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">μ</div>
+      <div class="tl-fp-name">The edge</div>
+      <div class="tl-fp-desc">Expected excess return of the risky asset over the riskless rate</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">γ</div>
+      <div class="tl-fp-name">The risk-aversion dial</div>
+      <div class="tl-fp-desc">Constant relative risk aversion — bigger γ means a more cautious investor</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">σ²</div>
+      <div class="tl-fp-name">The risk</div>
+      <div class="tl-fp-desc">Variance of the risky asset's return — the same denominator Kelly uses</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">f*</div>
+      <div class="tl-fp-name">The Merton fraction</div>
+      <div class="tl-fp-desc">The constant, wealth- and horizon-independent optimal risky-asset weight</div>
+    </div>
+  </div>
+
   <p>
     This is a genuinely notable result on its own, independent of anything to
     do with Kelly: for CRRA utility, the optimal fraction of wealth held in
@@ -237,6 +283,14 @@
     framework, for the specific investor Kelly's original derivation was
     describing all along.
   </p>
+
+  <div class="tl-solid green">
+    <strong>The key insight:</strong> Kelly and Merton were never two
+    different ideas that happen to line up — they are the same expected-utility
+    optimization, and "Kelly sizing" is simply Merton's framework evaluated at
+    the single risk-aversion value \(\gamma=1\).
+  </div>
+
   <p>
     <strong>What \(\gamma \ne 1\) means — fractional Kelly, justified rather
     than assumed.</strong> The Kelly lesson introduced fractional Kelly
@@ -282,6 +336,7 @@
   </div>
 
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
     <h3>Two traders, identical edge, different risk aversion — and two different, both-correct bet sizes</h3>
     <p>
@@ -410,6 +465,7 @@
   })();
   </script>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Merton's 1969 and 1971 papers are foundational texts in continuous-time
@@ -446,6 +502,7 @@
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this could plug into MacroFXModel</div>
     <h3>The theoretical ceiling the Kelly lesson's formula sits under — still nothing built</h3>
     <p>
@@ -492,6 +549,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where the Merton framework quietly goes wrong</h3>
     <p>
@@ -544,6 +602,19 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Merton generalizes Kelly, it doesn't compete with it.</strong> Kelly's \(f^*=\mu/\sigma^2\) is the exact \(\gamma=1\) special case of Merton's \(f^*=\mu/(\gamma\sigma^2)\) — a literal algebraic identity, not an approximation.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The HJB equation solves for a whole function, not a number.</strong> \(J(W,t)\) is the best-achievable utility from wealth \(W\) at time \(t\) — the "GPS" that lets today's decision be made without re-solving the entire future.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>For CRRA utility, the optimal allocation is a constant fraction.</strong> \(f^*=\mu/(\gamma\sigma^2)\) doesn't depend on current wealth or time remaining — a strong, CRRA-specific result, often called the Merton fraction.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Fractional Kelly is a mathematically exact optimum, not a discount.</strong> An investor with \(\gamma=2\) betting half-Kelly isn't being cautious relative to "the" right answer — half-Kelly is their own personal, exact optimum.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>γ is elicited, not observed.</strong> Just like \(\mu\) and \(\sigma^2\) are estimates, an investor's risk aversion must be inferred indirectly (surveys, revealed behavior, risk-premia calibration) — plugging in an over-precise γ overstates confidence in \(f^*\).</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The clean constant-fraction result assumes away real frictions.</strong> Transaction costs turn the optimal policy into a "no-trade region"; time-varying \(\mu,\sigma\) (regimes, jumps) mean the "optimal constant" is only as stable as the return distribution actually is.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Nothing here is built or validated in this repo.</strong> This lesson closes a theoretical loop; a sizing layer only ever gets applied on top of a signal that has already proven itself on real OOS Sharpe with a non-trivial trade count.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does Merton's formula \(f^*=\mu/(\gamma\sigma^2)\) reduce exactly to Kelly's \(f^*=\mu/\sigma^2\) when \(\gamma=1\), rather than just approximately?</summary>

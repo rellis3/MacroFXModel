@@ -33,6 +33,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     Open the PCA lesson in this Theory Lab and within a few paragraphs you hit
@@ -60,7 +61,26 @@
     of ideas rather than three separate walls of jargon.
   </p>
 
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📊</div>
+      <h4>PCA</h4>
+      <p>The principal components <em>are</em> the eigenvectors of a covariance matrix, ranked by their eigenvalues — the whole lesson is this page's vocabulary applied to a real FX correlation matrix.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🧭</div>
+      <h4>Kalman Filter</h4>
+      <p>The state vector is repeatedly multiplied through a transition matrix and an observation matrix, and a covariance matrix is propagated through matrix multiplication at every update step — nothing but <code>Av</code> and <code>AB</code>, chained.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🔀</div>
+      <h4>Hidden Markov Models</h4>
+      <p>The "stationary distribution" of a regime-transition matrix is nothing more exotic than the eigenvector whose eigenvalue is exactly 1 — a direct application of <code>Av = λv</code>.</p>
+    </div>
+  </div>
+
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>A vector is an arrow, a matrix is a machine that moves arrows</h3>
     <p>
@@ -98,6 +118,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     Work through this in order — matrix-vector multiplication first (the basic
@@ -126,6 +147,11 @@
   <div class="tl-math">
     \[ Av = \begin{pmatrix} a & b \\ c & d \end{pmatrix}\begin{pmatrix} v_1 \\ v_2 \end{pmatrix} = \begin{pmatrix} a v_1 + b v_2 \\ c v_1 + d v_2 \end{pmatrix} \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>A</code><span>the matrix — the fixed machine doing the moving</span></div>
+    <div class="tl-eq-chip c2"><code>v</code><span>the input vector, written as a column</span></div>
+    <div class="tl-eq-chip c3"><code>Av</code><span>the output — each row of A dotted with v</span></div>
+  </div>
   <p>
     Read it as: the first entry of the output is "row 1 of \(A\), dotted with
     \(v\)" (multiply matching entries, add the results); the second entry is
@@ -135,6 +161,10 @@
   </p>
   <div class="tl-math">
     \[ Av = \begin{pmatrix} 2 & 3 \\ 1 & 4 \end{pmatrix}\begin{pmatrix} 5 \\ 1 \end{pmatrix} = \begin{pmatrix} 2(5) + 3(1) \\ 1(5) + 4(1) \end{pmatrix} = \begin{pmatrix} 13 \\ 9 \end{pmatrix} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>(5, 1)</code><span>the input arrow — mostly horizontal, barely tilted up</span></div>
+    <div class="tl-eq-chip c4"><code>(13, 9)</code><span>the output arrow — a different length, a different direction</span></div>
   </div>
   <p>
     The input arrow \((5,1)\) — mostly horizontal, barely tilted up — comes out
@@ -153,6 +183,11 @@
   <div class="tl-math">
     \[ (AB)_{ij} = \sum_k A_{ik} B_{kj} \quad\text{(row } i \text{ of } A \text{ dotted with column } j \text{ of } B\text{)} \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>B</code><span>applied first — its columns are the vectors being fed in</span></div>
+    <div class="tl-eq-chip c2"><code>A</code><span>applied second, to whatever B just produced</span></div>
+    <div class="tl-eq-chip c3"><code>AB</code><span>the single composite machine — one matrix, same rule as before</span></div>
+  </div>
   <p>
     The dimensions have to line up: an \(m \times n\) matrix can only multiply
     an \(n \times p\) matrix (the inner dimensions must match), and the result
@@ -166,6 +201,11 @@
   </p>
   <div class="tl-math">
     \[ MN = \begin{pmatrix} 1(1)+2(1) & 1(0)+2(1) \\ 0(1)+1(1) & 0(0)+1(1) \end{pmatrix} = \begin{pmatrix} 3 & 2 \\ 1 & 1 \end{pmatrix} \qquad NM = \begin{pmatrix} 1(1)+0(0) & 1(2)+0(1) \\ 1(1)+1(0) & 1(2)+1(1) \end{pmatrix} = \begin{pmatrix} 1 & 2 \\ 1 & 3 \end{pmatrix} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>MN</code><span>apply N first, then M — one specific composite machine</span></div>
+    <div class="tl-eq-chip c2"><code>NM</code><span>apply M first, then N — a different composite machine</span></div>
+    <div class="tl-eq-chip c4"><code>MN ≠ NM</code><span>order matters here, unlike ordinary number multiplication</span></div>
   </div>
   <p>
     \(MN = \begin{pmatrix} 3 & 2 \\ 1 & 1 \end{pmatrix}\) and
@@ -203,6 +243,25 @@
   <div class="tl-math">
     \[ Av = \lambda v \qquad (v \neq 0) \]
   </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">A</div>
+      <div class="tl-fp-name">The machine</div>
+      <div class="tl-fp-desc">The matrix — its full action is rotate-and-scale, in general</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">v</div>
+      <div class="tl-fp-name">The eigenvector</div>
+      <div class="tl-fp-desc">The special direction A only scales, never rotates off its own line</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">λ</div>
+      <div class="tl-fp-name">The eigenvalue</div>
+      <div class="tl-fp-desc">The plain number A stretches v by along that direction</div>
+    </div>
+  </div>
+
   <p>
     Read this literally: "the matrix \(A\) acting on \(v\) produces the same
     thing as just multiplying \(v\) by the plain number \(\lambda\)." The
@@ -227,6 +286,11 @@
   <div class="tl-math">
     \[ Av - \lambda v = 0 \quad\Longrightarrow\quad Av - \lambda I v = 0 \quad\Longrightarrow\quad (A - \lambda I)v = 0 \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>A − λI</code><span>A with λ subtracted off its diagonal entries</span></div>
+    <div class="tl-eq-chip c2"><code>v</code><span>the (unknown, nonzero) eigenvector being solved for</span></div>
+    <div class="tl-eq-chip c4"><code>= 0</code><span>the zero vector — A−λI must crush v flat</span></div>
+  </div>
   <p>
     This says: some matrix, \((A - \lambda I)\), multiplied by a <em>nonzero</em>
     vector \(v\), produces the zero vector. A matrix can only crush a nonzero
@@ -238,6 +302,11 @@
   <div class="tl-math">
     \[ \det(A - \lambda I) = \det\begin{pmatrix} a-\lambda & b \\ c & d-\lambda \end{pmatrix} = (a-\lambda)(d-\lambda) - bc = 0 \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>det(A−λI)</code><span>determinant of the shifted matrix</span></div>
+    <div class="tl-eq-chip c3"><code>(a−λ)(d−λ)−bc</code><span>the ordinary 2×2 determinant formula, ad−bc, applied to the shifted entries</span></div>
+    <div class="tl-eq-chip c4"><code>= 0</code><span>the condition that pins down every eigenvalue of A</span></div>
+  </div>
   <p>
     Expanding \((a-\lambda)(d-\lambda) = ad - a\lambda - d\lambda + \lambda^2\)
     and collecting terms gives the <strong>characteristic equation</strong>, a
@@ -245,6 +314,11 @@
   </p>
   <div class="tl-math">
     \[ \lambda^2 - (a+d)\lambda + (ad - bc) = 0 \qquad\text{i.e.}\qquad \lambda^2 - \operatorname{trace}(A)\,\lambda + \det(A) = 0 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>trace(A)</code><span>sum of the diagonal entries, a+d</span></div>
+    <div class="tl-eq-chip c3"><code>det(A)</code><span>ad − bc, the determinant</span></div>
+    <div class="tl-eq-chip c1"><code>λ</code><span>solve this ordinary quadratic to get every eigenvalue of A</span></div>
   </div>
   <p>
     where \(\operatorname{trace}(A) = a + d\) (the sum of the diagonal entries).
@@ -305,6 +379,7 @@
   </div>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Finding both eigenvalues and eigenvectors of a symmetric 2&#215;2 matrix, by hand</h3>
     <p>
@@ -315,6 +390,11 @@
     <div class="tl-math">
       \[ A = \begin{pmatrix} 3 & 1 \\ 1 & 3 \end{pmatrix} \]
     </div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>3, 3</code><span>diagonal entries — each pair's own variance in the trading scenario below</span></div>
+      <div class="tl-eq-chip c2"><code>1</code><span>off-diagonal — the shared covariance term</span></div>
+      <div class="tl-eq-chip c3"><code>A = Aᵀ</code><span>symmetric — guarantees real eigenvalues and perpendicular eigenvectors, proven below</span></div>
+    </div>
     <p>
       <strong>Step 1 — set up the characteristic equation.</strong> Using the
       general formula derived above, \(\lambda^2 - \operatorname{trace}(A)\lambda + \det(A) = 0\),
@@ -323,6 +403,11 @@
     </p>
     <div class="tl-math">
       \[ \lambda^2 - 6\lambda + 8 = 0 \]
+    </div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>trace(A) = 6</code><span>3+3, sum of the diagonal</span></div>
+      <div class="tl-eq-chip c2"><code>det(A) = 8</code><span>(3)(3)−(1)(1)</span></div>
+      <div class="tl-eq-chip c3"><code>λ²−6λ+8=0</code><span>the concrete quadratic to solve</span></div>
     </div>
     <p>
       <strong>Step 2 — solve the quadratic.</strong> This factors cleanly:
@@ -333,12 +418,21 @@
     <div class="tl-math">
       \[ \lambda_1 = 4, \qquad \lambda_2 = 2 \]
     </div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>λ₁ = 4</code><span>larger eigenvalue — more stretch, the dominant direction</span></div>
+      <div class="tl-eq-chip c2"><code>λ₂ = 2</code><span>smaller eigenvalue — less stretch</span></div>
+    </div>
     <p>
       <strong>Step 3 — find the eigenvector for \(\lambda_1 = 4\).</strong>
       Substitute into \((A - \lambda I)v = 0\):
     </p>
     <div class="tl-math">
       \[ (A - 4I) = \begin{pmatrix} 3-4 & 1 \\ 1 & 3-4 \end{pmatrix} = \begin{pmatrix} -1 & 1 \\ 1 & -1 \end{pmatrix} \]
+    </div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>A − 4I</code><span>A with 4 subtracted off its diagonal</span></div>
+      <div class="tl-eq-chip c2"><code>−v₁+v₂=0</code><span>row 1 of the resulting system — pins down the eigenvector's direction</span></div>
+      <div class="tl-eq-chip c3"><code>v = (1, 1)</code><span>the eigenvector for λ=4 — equal components, "both pairs move together"</span></div>
     </div>
     <p>
       Multiplying this by \(v = (v_1, v_2)\) and setting the result to zero, the
@@ -354,6 +448,11 @@
     </p>
     <div class="tl-math">
       \[ (A - 2I) = \begin{pmatrix} 3-2 & 1 \\ 1 & 3-2 \end{pmatrix} = \begin{pmatrix} 1 & 1 \\ 1 & 1 \end{pmatrix} \]
+    </div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>A − 2I</code><span>A with 2 subtracted off its diagonal</span></div>
+      <div class="tl-eq-chip c2"><code>v₁+v₂=0</code><span>row 1 of the resulting system</span></div>
+      <div class="tl-eq-chip c3"><code>v = (1, −1)</code><span>the eigenvector for λ=2 — opposite components, "pairs diverge"</span></div>
     </div>
     <p>
       The first row gives \(v_1 + v_2 = 0\), i.e. \(v_2 = -v_1\). Take
@@ -375,6 +474,7 @@
   </div>
 
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
     <h3>The same matrix, reframed as two FX pairs' return covariance</h3>
     <p>
@@ -426,6 +526,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Nobody on a trading desk solves a characteristic equation by hand day to
@@ -467,6 +568,7 @@
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this is actually used in MacroFXModel</div>
     <h3><code>symmetricEigenvalues</code> in <code>js/diversificationCore.js</code></h3>
     <p>
@@ -510,6 +612,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where the intuition here breaks if pushed too far</h3>
     <p>
@@ -568,6 +671,20 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A matrix is a machine that transforms every vector.</strong> Feed it any vector in the plane and it hands back a rotated, stretched, shrunk, or sheared version — always by the same fixed rule, and the origin never moves.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>An eigenvector is the one direction that only gets scaled, never rotated.</strong> Formally, \(Av = \lambda v\): the matrix's full action and plain multiplication by a number produce an identical result.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The eigenvalue \(\lambda\) is the amount of stretch.</strong> Larger \(\lambda\) means that direction is stretched more — and, in a covariance matrix, accounts for more of the total variance.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Symmetric matrices are guaranteed well-behaved.</strong> Covariance and correlation matrices are always symmetric (\(A = A^\top\)), which guarantees real eigenvalues and mutually perpendicular eigenvectors — no extra assumption required.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Eigenvalues of a covariance matrix split total variance across independent directions.</strong> The worked example's \(\lambda_1=4\), \(\lambda_2=2\) splits a two-pair book's variance 66.7%/33.3% across a shared-direction and a divergence-direction, working out to 1.8 effective independent bets.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This vocabulary is the direct prerequisite for PCA, the Kalman Filter, and Hidden Markov Models.</strong> "Eigenvector of the correlation matrix," "propagate the covariance matrix," and "stationary distribution" are all instances of the same small set of ideas covered here.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>An eigen-decomposition is a snapshot, not a permanent structural fact.</strong> It describes one rolling estimation window and can shift — sometimes sharply — when two eigenvalues are close together, even if the eigenvalues themselves barely move.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Non-square matrices have no eigenvectors in this sense.</strong> \(Av = \lambda v\) requires \(Av\) and \(v\) to live in the same space; singular value decomposition (SVD) is the generalization for non-square matrices, out of scope here.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why must a matrix be square for "eigenvectors" (in the \(Av = \lambda v\) sense) to make sense at all?</summary>

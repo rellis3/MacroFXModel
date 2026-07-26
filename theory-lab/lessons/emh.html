@@ -33,6 +33,7 @@
   </ul>
 </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
   Every lesson after this one in the Theory Lab describes a way to look at price data and try to
@@ -48,6 +49,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>If a $20 bill is lying on a busy sidewalk, why is it still there?</h3>
     <p>
@@ -160,6 +162,7 @@
     })();
   </script>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
   EMH itself is a qualitative claim about information, but it has a precise, testable mathematical
@@ -173,6 +176,10 @@
   </p>
 
   <div class="tl-math">\[ P_t = P_{t-1} + \epsilon_t \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>P_t</code><span>today's price, built from yesterday's price plus a surprise</span></div>
+    <div class="tl-eq-chip c4"><code>ε_t</code><span>the innovation — the genuinely unknown part of the price change</span></div>
+  </div>
 
   <div class="tl-symbols">
     <table>
@@ -192,6 +199,23 @@
   </p>
 
   <div class="tl-math">\[ E[\epsilon_t \mid \mathcal{F}_{t-1}] = 0 \]</div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">ε_t</div>
+      <div class="tl-fp-name">The shock</div>
+      <div class="tl-fp-desc">Today's unpredictable price surprise</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">F_{t-1}</div>
+      <div class="tl-fp-name">The information set</div>
+      <div class="tl-fp-desc">Everything knowable and public as of yesterday's close</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">= 0</div>
+      <div class="tl-fp-name">The prediction</div>
+      <div class="tl-fp-desc">Your best forecast of the shock, given everything you know, is zero</div>
+    </div>
+  </div>
 
   <p>
   This says: <em>conditional on</em> everything you knew at time \(t-1\) — including the entire
@@ -218,6 +242,10 @@
   </p>
 
   <div class="tl-math">\[ \rho_1 = \mathrm{Corr}(r_t,\, r_{t-1}) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>ρ₁</code><span>lag-1 autocorrelation — does yesterday's return predict today's?</span></div>
+    <div class="tl-eq-chip c3"><code>r_t, r_{t-1}</code><span>today's and yesterday's returns</span></div>
+  </div>
 
   <p>
   If the weak-form martingale property holds, \(\rho_1\) (and every \(\rho_k\) for \(k \ge 1\))
@@ -235,36 +263,23 @@
   by <em>what information</em> is assumed to already be reflected in price. Each form is a stronger
   claim than the one before it, and each rules out a different category of strategy:
   </p>
-  <ul>
-    <li>
-      <strong>Weak form.</strong> Current prices reflect all information contained in the
-      <em>history of past prices and volumes</em>. If true, this rules out
-      <strong>technical analysis</strong> — chart patterns, moving-average crossovers, momentum
-      signals built purely from price history — as a source of riskless, cost-free edge, because any
-      predictable pattern in past prices would already be arbitraged away. This is the form the
-      random-walk math above directly tests.
-    </li>
-    <li>
-      <strong>Semi-strong form.</strong> Current prices reflect all <em>publicly available</em>
-      information — not just past prices, but earnings reports, macro releases, news, analyst
-      research, everything anyone can legally read. If true, this rules out
-      <strong>fundamental analysis</strong> on public data as a source of riskless edge: by the time
-      you've read the earnings report and formed a view, the price has already moved to reflect it.
-      This is tested differently — classically via <em>event studies</em>, which check how fast and
-      how completely prices adjust after a public information release (e.g. an earnings surprise or a
-      central bank announcement).
-    </li>
-    <li>
-      <strong>Strong form.</strong> Current prices reflect <em>all</em> information, public
-      <em>and private</em> — including material non-public information. If true, even corporate
-      insiders trading on undisclosed information could not systematically outperform. This form is
-      essentially never taken as literally true; well-documented cases of profitable insider trading
-      show private information does have value the market hasn't priced in. Strong-form EMH is
-      included mainly as the logical extreme of the framework, and as the reason insider-trading law
-      exists in the first place — regulators implicitly agree the strong form is false and act to
-      limit its exploitation.
-    </li>
-  </ul>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📈</div>
+      <h4>Weak form</h4>
+      <p>Current prices reflect all information in the <em>history of past prices and volumes</em>. If true, this rules out <strong>technical analysis</strong> — chart patterns, moving-average crossovers, momentum signals built purely from price history — as a source of riskless, cost-free edge, because any predictable pattern in past prices would already be arbitraged away. This is the form the random-walk math above directly tests.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📰</div>
+      <h4>Semi-strong form</h4>
+      <p>Current prices reflect all <em>publicly available</em> information — earnings reports, macro releases, news, analyst research, everything anyone can legally read. If true, this rules out <strong>fundamental analysis</strong> on public data as a source of riskless edge. Tested classically via <em>event studies</em>, checking how fast and completely prices adjust after a public information release.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🔒</div>
+      <h4>Strong form</h4>
+      <p>Current prices reflect <em>all</em> information, public <em>and private</em>. If true, even corporate insiders trading on undisclosed information could not systematically outperform. Essentially never taken as literally true — well-documented profitable insider trading shows private information has value the market hasn't priced in. Included mainly as the logical extreme, and the reason insider-trading law exists at all.</p>
+    </div>
+  </div>
 
   <h3>The joint-hypothesis problem</h3>
   <p>
@@ -276,6 +291,12 @@
   equilibrium model (CAPM, a multi-factor model, a discounted-cash-flow model, whatever). Every test
   of EMH is therefore secretly a <em>joint test</em> of two things at once:
   </p>
+
+  <div class="tl-solid amber">
+    <strong>The joint-hypothesis problem:</strong> every test of EMH is secretly a test of two things
+    bundled together — "is the market efficient" and "is the pricing model used to define 'normal'
+    correct." An anomalous result can never tell you which one failed.
+  </div>
   <ol>
     <li>Is the market efficient (given the assumed pricing model)?</li>
     <li>Is the assumed pricing model itself correct?</li>
@@ -293,6 +314,7 @@
   </p>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>A back-of-envelope autocorrelation check</h3>
     <p>
@@ -320,6 +342,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
   Nobody at a real trading desk spends their day debating whether EMH is "true." It's used as a
@@ -358,6 +381,7 @@
   </ul>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
     <h3>The house discipline in <code>CLAUDE.md</code> is EMH turned into engineering practice</h3>
     <p>
@@ -402,6 +426,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Ways people misuse or misunderstand EMH</h3>
     <ul>
@@ -447,6 +472,19 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>EMH's testable core is a martingale.</strong> \(E[\epsilon_t \mid \mathcal{F}_{t-1}] = 0\) — return autocorrelation should be statistically indistinguishable from zero if the weak form holds.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Fama's three nested forms rule out different strategies.</strong> Weak (past prices) rules out technical analysis, semi-strong (all public info) rules out fundamental analysis on public data, strong (public + private) would rule out even insider trading.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The joint-hypothesis problem is unavoidable.</strong> You can never test market efficiency in isolation — only "efficiency + the assumed pricing model" together.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A statistically significant autocorrelation is a start, not an edge.</strong> Clearing ~3 standard errors (like \(\hat\rho_1=0.15\) on 500 observations) says nothing yet about OOS survival, costs, or mechanism.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>EMH forbids the free lunch, not all profit.</strong> Genuine risk premia — carry, illiquidity, tail risk — are entirely compatible with efficient markets.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo's validation discipline is EMH turned into engineering.</strong> The OOS split, the ≥30-trade gate, a named no-skill benchmark, and costs-on-by-default are the joint-hypothesis and free-lunch logic made into hard rules.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Adaptive Markets reframes efficiency as variable, not fixed.</strong> Inefficiencies can appear, get arbitraged away, and reappear as the competitive landscape shifts — don't treat EMH as a single permanent verdict.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why can't EMH ever be conclusively falsified by a single empirical test?</summary>

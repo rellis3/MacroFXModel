@@ -32,6 +32,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>0. One-paragraph summary of the lesson</h2>
   <p>
     Three of the most liquid listed derivatives markets — SR3 (3-Month SOFR
@@ -53,6 +54,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Data &amp; sourcing note</div>
     <p>
       All readings below are as taught in the source lecture: CME Group
@@ -67,6 +69,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>1. The five-lens framework (the core teachable)</h2>
   <p>
     Options markets price <strong>probability distributions</strong>. Five
@@ -74,6 +77,35 @@
     diagnostic. Ordering is by <em>increasing inferential power</em> &mdash;
     later lenses need the earlier ones to be interpretable.
   </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📍</div>
+      <h4>01 · Open Interest</h4>
+      <p>WHERE is the positioning? Scale by strike/expiry — ambiguous on direction alone.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📏</div>
+      <h4>02 · CVOL</h4>
+      <p>HOW MUCH risk overall? 30-day constant-maturity IV, comparable across products.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📅</div>
+      <h4>03 · Term structure</h4>
+      <p>WHEN is the risk? Steps/humps in the forward calendar = event pricing.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📈</div>
+      <h4>04 · Vol cones</h4>
+      <p>RICH or CHEAP? Today's vol vs its own historical distribution, as a percentile.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge red">🧭</div>
+      <h4>05 · Skew (RR + BF)</h4>
+      <p>WHICH WAY? The directional signal — the lens that reveals intent.</p>
+    </div>
+  </div>
+
   <div class="tl-symbols"><table>
     <tr><td>01 &middot; Open Interest</td><td><strong>WHERE</strong> is the positioning? Scale by strike/expiry, gamma walls. Ambiguous on direction &mdash; a big put block could be a bet, a hedge, a spread leg, or structured-product residue.</td></tr>
     <tr><td>02 &middot; CVOL aggregate</td><td><strong>HOW MUCH</strong> risk overall? 30-day constant-maturity IV, comparable across asset classes. Blind to <em>where in the curve</em> risk sits.</td></tr>
@@ -89,6 +121,7 @@
     <li>All five together = minimum viable diagnostic.</li>
   </ul>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>2. The three products &amp; critical conventions</h2>
   <div class="tl-symbols"><table>
     <tr><td>SR3</td><td>3-Month SOFR futures options. Deepest US front-end rates market post-Eurodollar. Each contract prices a specific FOMC meeting window. <strong>Price = 100 &minus; rate &rArr; SR3 calls pay when rates FALL (dovish).</strong></td></tr>
@@ -115,6 +148,7 @@
     point: the value is the disciplined reading, not privileged data.
   </p>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>3. Lens 01 &mdash; Open Interest readings</h2>
   <p>
     What OI is: the <strong>stock</strong> of live contracts per
@@ -146,6 +180,7 @@
     feature of the ecosystem, not a problem."
   </p>
 
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>4. Lens 02 &mdash; CVOL readings</h2>
   <h3>Concept primer (as taught)</h3>
   <ul>
@@ -181,6 +216,7 @@
     <li><strong>Conclusion as taught:</strong> the rates vol surge is <strong>specific and idiosyncratic</strong> &mdash; a repricing of the Fed's near-term path &mdash; the kind of move that shows up first and biggest in front-end rates options.</li>
   </ul>
 
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>5. Lens 03 &mdash; Term structure readings</h2>
   <h3>Four shapes worth recognising (concept primer)</h3>
   <ol>
@@ -218,6 +254,7 @@
     source's words, "the report's central observation."
   </p>
 
+  <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>6. Lens 04 &mdash; Vol cone readings</h2>
   <h3>How to read a cone (concept primer)</h3>
   <ul>
@@ -253,6 +290,7 @@
     transmission has genuinely changed (the &sect;9 regime question below).
   </p>
 
+  <div class="tl-section-mark"><span>Section 08</span></div>
   <h2>7. Lens 05 &mdash; Skew readings</h2>
   <h3>Concept primer &mdash; decomposing the smile</h3>
   <p>The smile is a <strong>shape</strong>, not a price. Two numbers summarise it:</p>
@@ -263,6 +301,7 @@
   <p>Read together they describe the whole smile; separately each is half a story.</p>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Exam-critical &mdash; the SR3 sign-convention trap</div>
     <p>
       SR3 price = 100 &minus; rate &rArr; an SR3 <strong>call</strong> pays
@@ -367,6 +406,7 @@
     </div>
   </div>
 
+  <div class="tl-section-mark"><span>Section 09</span></div>
   <h2>8. The synthesis matrix &mdash; 5 lenses &times; 3 products</h2>
   <p>Compressed one-liner per cell (the diagonal story worth remembering):</p>
   <div style="overflow-x:auto">
@@ -417,8 +457,10 @@
     divergence is the next section's job.
   </p>
 
+  <div class="tl-section-mark"><span>Section 10</span></div>
   <h2>9. Regime interpretation &mdash; four hypotheses (one analyst's own weights)</h2>
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Framing note &mdash; read this before the table</div>
     <p>
       The probabilities and the "modal" call below are <strong>the source
@@ -488,6 +530,7 @@
     dates.
   </p>
 
+  <div class="tl-section-mark"><span>Section 11</span></div>
   <h2>10. Forward scenarios &mdash; the priced distribution (author's weights)</h2>
   <div style="overflow-x:auto">
   <table style="width:100%;border-collapse:collapse;margin:14px 0;font-size:12.5px;min-width:720px">
@@ -534,8 +577,10 @@
     priced for that 50% tail, or only for the 50% mode?
   </p>
 
+  <div class="tl-section-mark"><span>Section 12</span></div>
   <h2>11. Falsification &amp; monitoring</h2>
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">What would prove this read wrong &mdash; six failure modes of the "asymmetric conviction" thesis</div>
     <div class="tl-symbols"><table>
       <tr><td>1</td><td><strong>Vol-selling saturation</strong> &mdash; NQ vol structurally suppressed by put-write ETFs / vol-control mandates / dealer hedging, i.e. "cheap" from supply, not benign outlook. Asymmetry persists without resolution (kills A/B/C). <em>Watch:</em> realized&ndash;implied spread; dealer gamma positioning.</td></tr>
@@ -586,6 +631,7 @@
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
     <h3>A method to study, not a signal wired into anything here</h3>
     <p>
@@ -604,6 +650,17 @@
       they are recorded as one analyst's documented judgment on one date, for
       study, not as validated forward guidance this repo stands behind.
     </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 13</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Read the five lenses in order, never in isolation.</strong> Open Interest (where) → CVOL (how much) → term structure (when) → vol cones (rich or cheap) → skew (which way). Any single lens misleads on its own.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>On 21 Apr 2026 the three products disagreed.</strong> SR3 read event-rich and directionally biased but fairly priced; TN read neutral and OTC-driven; NQ read quiet and structurally cheap — the same macro world, three different lenses.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>SR3's sign convention inverts the usual intuition.</strong> Price = 100 − rate, so a positive SR3 risk reversal means dovish scenarios are bid, not hawkish — failing to invert the sign flips the entire rates read.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Vol cones resolve "is this level actually expensive?"</strong> An absolute vol reading means little on its own — converting it to a percentile against the product's own 30-day history is what tells you rich, cheap, or fair.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The regime read (B, 45%) is one analyst's judgment call, not a tested forecast.</strong> The source's own framing is explicit: reasonable observers could weight the four hypotheses differently, and none of it has been run through this repo's own out-of-sample discipline.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Nothing here is wired into this repo, and nothing has been tested.</strong> This repo has no options-pricing or listed-options-data module of any kind — no CVOL feed, no OI matrix, no skew computation. This is course material to study, not a signal or forecast this repo endorses or validates.</span></div>
   </div>
 
   <div class="tl-footer-nav">

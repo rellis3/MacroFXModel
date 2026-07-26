@@ -33,6 +33,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     Every backtest in this repo ends the same way: a single number that's
@@ -61,6 +62,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>Three ratios, three different denominators — plus one correction that changes what "good" means</h3>
     <p>
@@ -96,6 +98,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     <strong>Sharpe ratio.</strong> For a series of per-period returns
@@ -104,6 +107,29 @@
     return divided by its standard deviation:
   </p>
   <div class="tl-math">\[ SR = \frac{\bar{X}}{\sigma_X} = \frac{\text{mean per-period excess return}}{\text{std. dev. of per-period excess return}} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>X̄</code><span>mean per-period excess return — the numerator</span></div>
+    <div class="tl-eq-chip c2"><code>σₓ</code><span>std. dev. of per-period excess return — the risk denominator</span></div>
+    <div class="tl-eq-chip c3"><code>SR</code><span>the result — return earned per unit of total wobble</span></div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">X̄</div>
+      <div class="tl-fp-name">The reward</div>
+      <div class="tl-fp-desc">Mean excess return over the risk-free rate, per period</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">σₓ</div>
+      <div class="tl-fp-name">The risk</div>
+      <div class="tl-fp-desc">Standard deviation of that same excess return — total up-and-down wobble</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">SR</div>
+      <div class="tl-fp-name">The ratio</div>
+      <div class="tl-fp-desc">Reward per unit of risk — the single most-quoted number on any tearsheet</div>
+    </div>
+  </div>
   <p>
     This is a per-period number — computed on whatever bar the returns are
     sampled at (daily, weekly, per-trade). To compare strategies sampled at
@@ -160,6 +186,11 @@
     (MAR), typically zero:
   </p>
   <div class="tl-math">\[ DD = \sqrt{\frac{1}{n_d}\sum_{i:\,X_i < MAR} (X_i - MAR)^2}, \qquad Sortino = \frac{\bar{X} - MAR}{DD}\times\sqrt{k} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>DD</code><span>downside deviation — std. dev. computed only over below-MAR periods</span></div>
+    <div class="tl-eq-chip c2"><code>MAR</code><span>minimum acceptable return threshold — zero in this repo</span></div>
+    <div class="tl-eq-chip c4"><code>n_d</code><span>count of periods that fell below the MAR — the divisor</span></div>
+  </div>
   <p>
     where \(n_d\) is the count of periods that fell below the MAR. This
     matches <code>js/metricsCore.js</code>'s <code>sortinoRatio</code> exactly
@@ -185,6 +216,10 @@
     single worst realized peak-to-trough decline in the equity curve.
   </p>
   <div class="tl-math">\[ Calmar = \frac{CAGR}{|MaxDD|} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>CAGR</code><span>compound annual growth rate</span></div>
+    <div class="tl-eq-chip c4"><code>MaxDD</code><span>worst realized peak-to-trough equity decline, one specific event</span></div>
+  </div>
   <p>
     matching <code>js/metricsCore.js</code>'s <code>calmar(annualReturn,
     maxDD)</code>, which takes both quantities from the caller rather than
@@ -273,6 +308,14 @@
     population Sharpe ratio of the selected strategy is actually above zero,
     after both corrections.
   </p>
+
+  <div class="tl-solid amber">
+    <strong>The trap:</strong> a Sharpe ratio carries no visible record of how
+    many variations were tried to produce it. A 1.8 that's the only thing ever
+    backtested and a 1.8 that's the surviving best-of-50 look identical on the
+    page — but they are not the same claim, and only DSR tells them apart.
+  </div>
+
   <p>
     <strong>How \(SR_0\), the chance-expected ceiling, is built.</strong>
     This step is a direct application of extreme value theory (the subject of
@@ -284,6 +327,12 @@
     Prado's approximation:
   </p>
   <div class="tl-math">\[ SR_0 \;\approx\; \sigma_{SR}\Big[(1-\gamma_E)\,\Phi^{-1}\!\Big(1-\tfrac{1}{N}\Big) \;+\; \gamma_E\,\Phi^{-1}\!\Big(1-\tfrac{1}{Ne}\Big)\Big] \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>N</code><span>number of variations tried before reporting the best one</span></div>
+    <div class="tl-eq-chip c2"><code>σ_SR</code><span>spread of the N trials' own Sharpe ratios</span></div>
+    <div class="tl-eq-chip c3"><code>γ_E</code><span>Euler-Mascheroni constant, ≈0.5772</span></div>
+    <div class="tl-eq-chip c4"><code>SR₀</code><span>the chance-expected ceiling — what luck alone should produce</span></div>
+  </div>
   <p>
     Both terms increase with \(N\) (more trials, more room for an extreme
     draw) and the whole expression is scaled by \(\sigma_{SR}\) (more
@@ -302,6 +351,12 @@
     or fat tails, rather than assuming Gaussian returns:
   </p>
   <div class="tl-math">\[ DSR(\widehat{SR}) \;=\; \Phi\!\left(\frac{(\widehat{SR}-SR_0)\sqrt{T-1}}{\sqrt{1-\gamma_3\widehat{SR}+\frac{\gamma_4-1}{4}\widehat{SR}^2}}\right) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>ŜR − SR₀</code><span>the gap the reported Sharpe clears above the chance ceiling</span></div>
+    <div class="tl-eq-chip c2"><code>T</code><span>number of return observations in the track record</span></div>
+    <div class="tl-eq-chip c3"><code>γ₃, γ₄</code><span>skew and kurtosis — widen the standard error for fat tails</span></div>
+    <div class="tl-eq-chip c4"><code>DSR</code><span>probability the true Sharpe exceeds zero, after both corrections</span></div>
+  </div>
   <p>
     The denominator inside that square root is not a new idea introduced just
     for DSR — it is the exact same skew/kurtosis-adjusted variance-inflation
@@ -319,6 +374,7 @@
   </p>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Computing all three ratios from one hypothetical daily return series</h3>
     <p>
@@ -403,6 +459,7 @@
   </div>
 
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world scenario</div>
     <h3>50 variations of a mean-reversion signal, one reported Sharpe of 1.8 — how impressive is it really?</h3>
     <p>
@@ -456,6 +513,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Sharpe, Sortino and Calmar are reported side by side on essentially every
@@ -472,6 +530,24 @@
     benchmark before claiming improvement" discipline CLAUDE.md's own working
     agreement already asks for.
   </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📊</div>
+      <h4>Sharpe</h4>
+      <p>The default, general-purpose risk-adjusted-return comparison — use when there's no known asymmetry to account for.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📈</div>
+      <h4>Sortino</h4>
+      <p>Reach for this when the return profile is known or suspected asymmetric — options-selling, trend-following, convex or concave payoffs.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🩹</div>
+      <h4>Calmar</h4>
+      <p>Use when the audience cares most about the worst realized outcome — an allocator, a risk committee, a trader who has to live through the drawdown.</p>
+    </div>
+  </div>
   <p>
     The Deflated Sharpe Ratio, and the broader research program it comes
     from (Bailey, Borwein, López de Prado &amp; Zhu's related work on
@@ -489,6 +565,7 @@
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this could plug into MacroFXModel</div>
     <h3>metricsCore.js already has the Sharpe honesty pair — DSR is the next layer, and it isn't built yet</h3>
     <p>
@@ -538,6 +615,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where the Sharpe family, and its deflated version, quietly go wrong</h3>
     <p>
@@ -595,6 +673,19 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Three ratios, three different questions.</strong> Sharpe divides by total wobble, Sortino by downside-only wobble, Calmar by the single worst realized drawdown — none subsumes the others.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Annualize Sharpe by \(\sqrt{k}\), not \(k\).</strong> Variance adds linearly across independent periods, standard deviation doesn't — the same square-root-of-time scaling behind this repo's own vol math.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Sortino stops charging a strategy for good months.</strong> By only accumulating deviations below the MAR, it rewards asymmetric, upside-heavy return profiles that Sharpe penalizes.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Calmar surfaces the worst realized event, not an average.</strong> A high-Sharpe strategy can still be practically unusable if its one bad stretch was brutal — Calmar is built to catch exactly that.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A reported Sharpe hides how many variations produced it.</strong> The Deflated Sharpe Ratio benchmarks the reported Sharpe against \(SR_0\), the chance-expected ceiling for a best-of-\(N\) search — not against zero.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Undercounting \(N\) silently inflates DSR.</strong> Informal reruns and "nudge it by feel" iterations count as trials too — leaving them out understates \(SR_0\) and overstates the resulting probability.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A high DSR is not proof, and it isn't a substitute for OOS.</strong> It only corrects for the selection bias of trying \(N\) variations — costs, regime shift, and this repo's own out-of-sample bar (Lego Principle 5) are separate, still-mandatory hurdles.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does annualizing a Sharpe ratio use \(\sqrt{k}\) rather than \(k\) itself?</summary>

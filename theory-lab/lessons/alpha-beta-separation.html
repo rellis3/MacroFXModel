@@ -33,6 +33,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     Ask a trader "how did you do this year?" and the honest answer is almost
@@ -56,6 +57,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>The rising-tide test</h3>
     <p>
@@ -69,6 +71,13 @@
     </p>
   </div>
 
+  <div class="tl-solid blue">
+    <strong>The one-line test:</strong> if you could have bought this return
+    stream directly and cheaply with an index future, it's beta, not skill —
+    alpha is only what's left after that's honestly subtracted out.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     Start from the single-index / market model — the same linear-regression
@@ -77,6 +86,30 @@
     sides are measuring compensation for risk, not raw return):
   </p>
   <div class="tl-math">\[ r_{i,t} - r_f = \alpha_i + \beta_i (r_{m,t} - r_f) + \varepsilon_t \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>rᵢ,ₜ − r_f</code><span>the strategy's excess return, period t</span></div>
+    <div class="tl-eq-chip c2"><code>βᵢ</code><span>market exposure — the slope</span></div>
+    <div class="tl-eq-chip c4"><code>rₘ,ₜ − r_f</code><span>the market/factor's excess return</span></div>
+    <div class="tl-eq-chip c3"><code>αᵢ</code><span>what's left after β is removed — the intercept</span></div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp green">
+      <div class="tl-fp-term">αᵢ</div>
+      <div class="tl-fp-name">Alpha</div>
+      <div class="tl-fp-desc">The intercept — genuine skill, what's left after the market's contribution is removed</div>
+    </div>
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">βᵢ</div>
+      <div class="tl-fp-name">Beta</div>
+      <div class="tl-fp-desc">The slope — market/systematic exposure, cheap to buy directly</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">εₜ</div>
+      <div class="tl-fp-name">Residual noise</div>
+      <div class="tl-fp-desc">Whatever the market factor alone doesn't explain, period to period</div>
+    </div>
+  </div>
   <div class="tl-symbols">
     <table>
       <tr><td>\(r_{i,t}\)</td><td>The strategy/asset's return in period \(t\).</td></tr>
@@ -153,6 +186,7 @@
   </div>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>A long-only strategy, decomposed</h3>
     <p>
@@ -179,6 +213,7 @@
   </div>
 
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
     <h3>A discretionary FX macro trader, decomposed</h3>
     <p>
@@ -197,6 +232,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Institutional allocators run exactly this regression on every manager in
@@ -214,6 +250,7 @@
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this could plug into MacroFXModel</div>
     <h3>An honest, currently-missing decomposition</h3>
     <p>
@@ -237,6 +274,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where alpha-beta separation goes wrong</h3>
     <ul>
@@ -262,6 +300,18 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Every return stream is beta plus alpha.</strong> \(r_i - r_f = \alpha_i + \beta_i(r_m - r_f) + \varepsilon\) — regress excess returns on the market's excess returns to split the two apart.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Beta is cheap; alpha is what's worth paying for.</strong> Beta can be bought directly with an index future or ETF — no skill required. Alpha is the residual left over after that's subtracted.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Beta is hedgeable.</strong> Short the market/factor sized to the estimated β and the β terms cancel, leaving (in expectation) just α plus noise — a market-neutral version of the same strategy.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>"Portable alpha" means alpha severed from any one beta.</strong> Once hedged market-neutral, the isolated alpha stream can sit on top of any beta exposure you actually want — or none at all.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This is a repackaging technique, not a source of edge.</strong> It only works once a genuine, statistically real alpha already exists — check the intercept's standard error before trusting it.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Hedging isn't free.</strong> Shorting the beta leg carries real financing/borrow costs and slippage, and a hedge sized to a stale, drifted β under- or over-hedges the true current exposure.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz"><summary>Q1. Why is beta described as "cheap" and alpha as "the part worth paying for"?</summary><div class="tl-answer">Beta is exposure to something you could buy directly yourself, at low cost, with an index future or ETF — no manager skill required to obtain it. Alpha is the residual return left over after that easily-purchased exposure has been subtracted out; if it's real, it represents something a passive position couldn't have given you, which is what a fee is actually paying for.</div></details>
   <details class="tl-quiz"><summary>Q2. In the market-model regression, what does the slope represent and what does the intercept represent?</summary><div class="tl-answer">The slope (β) represents systematic/market exposure — how many units of the market's risk one unit of the strategy carries. The intercept (α) represents the average return left over after that market exposure's contribution has been subtracted out period by period — the "Jensen's alpha."</div></details>

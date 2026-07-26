@@ -33,6 +33,7 @@
   </ul>
 </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
   The previous lesson, Interest Rate Parity, showed that the forward FX rate is pinned down almost
@@ -52,6 +53,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>If a coffee costs $3 in the US and £3 in the UK, something has to give</h3>
     <p>
@@ -73,6 +75,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
   PPP comes in two versions — a strict, "in theory" version and a looser, "in practice" version —
@@ -86,6 +89,11 @@
   </p>
 
   <div class="tl-math">\[ S = \frac{P_{\text{domestic}}}{P_{\text{foreign}}} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>S</code><span>the nominal spot exchange rate</span></div>
+    <div class="tl-eq-chip c2"><code>P_domestic</code><span>cost of the basket, in domestic currency</span></div>
+    <div class="tl-eq-chip c3"><code>P_foreign</code><span>cost of the same basket, in foreign currency</span></div>
+  </div>
 
   <div class="tl-symbols">
     <table>
@@ -121,6 +129,24 @@
 
   <div class="tl-math">\[ \%\Delta S \;\approx\; \pi_{\text{domestic}} - \pi_{\text{foreign}} \]</div>
 
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">%ΔS</div>
+      <div class="tl-fp-name">Currency's move</div>
+      <div class="tl-fp-desc">The exchange rate's percentage change over the period</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">π_domestic</div>
+      <div class="tl-fp-name">Domestic inflation</div>
+      <div class="tl-fp-desc">Growth rate of the domestic price level</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">π_foreign</div>
+      <div class="tl-fp-name">Foreign inflation</div>
+      <div class="tl-fp-desc">Growth rate of the foreign price level</div>
+    </div>
+  </div>
+
   <div class="tl-symbols">
     <table>
       <tr><td>\(\%\Delta S\)</td><td>The percentage rate of change of the nominal exchange rate over some period (e.g. year-over-year).</td></tr>
@@ -154,6 +180,11 @@
   </p>
 
   <div class="tl-math">\[ \text{Real FX} = S \times \frac{P_{\text{foreign}}}{P_{\text{domestic}}} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>S</code><span>the nominal exchange rate</span></div>
+    <div class="tl-eq-chip c3"><code>P_foreign/P_domestic</code><span>the inflation-differential adjustment</span></div>
+    <div class="tl-eq-chip c4"><code>Real FX</code><span>would be constant if PPP held exactly</span></div>
+  </div>
 
   <p>
   If PPP held exactly at all times, the real exchange rate would be a constant — nominal moves would
@@ -202,6 +233,24 @@
   Price, not a model to trade off.
   </p>
 
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🍔</div>
+      <h4>One good, not a basket</h4>
+      <p>A single standardized product isn't a representative sample of an entire economy's consumption.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🏠</div>
+      <h4>Non-tradeable inputs</h4>
+      <p>Rent and labor costs are baked into the price and have nothing to do with currency valuation.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">⏱️</div>
+      <h4>Says nothing about timing</h4>
+      <p>Even a genuine reading gives no clock for when — or whether — the gap actually closes.</p>
+    </div>
+  </div>
+
   <h3>The PPP puzzle — why it holds so slowly</h3>
   <p>
   The honest empirical finding, well established in the international-finance literature, is that PPP
@@ -217,7 +266,15 @@
   is a real, long-run regularity and a hopeless short-run clock, simultaneously.
   </p>
 
+  <div class="tl-solid red">
+    <strong>The trap:</strong> PPP deviations can widen before they narrow. Nothing in the literature
+    says a currently-undervalued currency is at or near its turning point — a "20% undervalued" reading
+    has historically stretched wider, for years, before ever closing. Mean reversion over a multi-year
+    sample is a statement about eventual tendency, not a timing signal for the next trade.
+  </div>
+
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
     <h3>"This currency looks 20% undervalued on PPP" — what does that actually license you to do?</h3>
     <p>
@@ -254,6 +311,7 @@
   </div>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
     <h3>This repo has no PPP-based signal or price-level data pipeline today</h3>
     <p>
@@ -279,6 +337,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Ways PPP gets misused or misunderstood</h3>
     <ul>
@@ -320,6 +379,19 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>PPP is the Law of One Price, scaled up.</strong> An identical basket should cost the same in every currency, or the exchange rate should move until it does.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Relative PPP is the version that survives contact with data.</strong> \(\%\Delta S \approx \pi_{\text{domestic}} - \pi_{\text{foreign}}\) doesn't require matching absolute price levels, only that the higher-inflation currency should depreciate roughly by the inflation gap.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The real exchange rate is the practical "cheap or expensive" gauge.</strong> If PPP held exactly it would be constant; in practice it wanders for years above or below its own average.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>PPP closes glacially.</strong> Rogoff's "PPP puzzle" finds half-lives of three to five years — real, but a hopeless short-run timing signal.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A PPP deviation can widen before it narrows.</strong> There's no mechanism that stops an undervalued currency from becoming more undervalued next month or next year.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>PPP's usefulness is horizon-conditional.</strong> Nearly useless for a trading-horizon decision; a genuinely relevant input for a multi-year strategic hedge or allocation decision.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This repo has no PPP module today.</strong> No CPI data pipeline, no real-exchange-rate computation — a stated gap, not a built brick.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why is relative PPP more useful in practice than absolute PPP?</summary>

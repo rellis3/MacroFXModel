@@ -33,6 +33,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     The Black-Scholes lesson in this series introduces a term \(Ke^{-rT}\) —
@@ -60,6 +61,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>Why a dollar today beats a dollar next year</h3>
     <p>
@@ -88,6 +90,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
 
   <h3>1. Future value — the compounding argument</h3>
@@ -111,6 +114,29 @@
     by another factor of \((1+r)\) — gives the future value formula:
   </p>
   <div class="tl-math">\[ FV = PV(1+r)^t \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>PV</code><span>present value — an amount of money today</span></div>
+    <div class="tl-eq-chip c2"><code>(1+r)ᵗ</code><span>the growth factor — always &gt;1 when r,t&gt;0</span></div>
+    <div class="tl-eq-chip c4"><code>FV</code><span>future value — what PV grows into after t periods</span></div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">PV</div>
+      <div class="tl-fp-name">Today's amount</div>
+      <div class="tl-fp-desc">Money in hand right now, before any growth</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">(1+r)ᵗ</div>
+      <div class="tl-fp-name">The growth factor</div>
+      <div class="tl-fp-desc">How many dollars t periods from now one dollar today turns into</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">FV</div>
+      <div class="tl-fp-name">Future value</div>
+      <div class="tl-fp-desc">What PV compounds into — the entire lesson's central equation</div>
+    </div>
+  </div>
   <div class="tl-symbols"><table>
     <tr><td>\(PV\)</td><td>Present value — an amount of money today.</td></tr>
     <tr><td>\(FV\)</td><td>Future value — what that amount grows into after \(t\) periods of compounding at rate \(r\).</td></tr>
@@ -140,11 +166,18 @@
     \((1+r)^t\):
   </p>
   <div class="tl-math">\[ PV = \frac{FV}{(1+r)^t} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>FV</code><span>the known future amount</span></div>
+    <div class="tl-eq-chip c4"><code>(1+r)ᵗ</code><span>divide by the same growth factor to run it in reverse</span></div>
+  </div>
   <p>
     The quantity \((1+r)^{-t} = 1/(1+r)^t\) that \(FV\) gets multiplied by
     here is called the <strong>discount factor</strong>:
   </p>
   <div class="tl-math">\[ DF(r,t) = \frac{1}{(1+r)^t} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>DF(r,t)</code><span>discount factor — always strictly between 0 and 1</span></div>
+  </div>
   <p>
     A discount factor answers one specific question: "what is one dollar,
     to be received \(t\) periods from now, worth today?" Multiply any future
@@ -189,6 +222,10 @@
     defines the constant \(e\) itself, not re-derived here):
   </p>
   <div class="tl-math">\[ \lim_{n\to\infty}\left(1+\frac{r}{n}\right)^{n} = e^{r} \quad\Rightarrow\quad FV = PV\cdot e^{rt} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>e^r</code><span>the limit of ever-more-frequent compounding</span></div>
+    <div class="tl-eq-chip c4"><code>PV·e^{rt}</code><span>continuous-compounding future value — the closed-form limit</span></div>
+  </div>
   <p>
     This convergence is fast and, past a point, practically invisible. Take
     \(r=6\%\) over one year and watch the effective annual growth factor as
@@ -214,6 +251,10 @@
     up directly.</strong> Take logs of both sides of \(FV = PV\cdot e^{rt}\):
   </p>
   <div class="tl-math">\[ \ln\!\left(\frac{FV}{PV}\right) = rt \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>ln(FV/PV)</code><span>the log return over the horizon — same object as the Returns primer's</span></div>
+    <div class="tl-eq-chip c3"><code>rt</code><span>rate times time — the constant-rate accrual that produces it</span></div>
+  </div>
   <p>
     Recall the primer's definition of a log return over a horizon:
     \(r_t = \ln(P_t/P_{t-1})\), generalized to any horizon as
@@ -245,6 +286,11 @@
     (named for economist Irving Fisher, cited in Further Reading):
   </p>
   <div class="tl-math">\[ (1+i_{\text{nominal}}) = (1+i_{\text{real}})(1+\pi) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>i_nominal</code><span>the quoted rate — what a market or deposit actually states</span></div>
+    <div class="tl-eq-chip c2"><code>i_real</code><span>the purchasing-power rate you actually experience</span></div>
+    <div class="tl-eq-chip c4"><code>π</code><span>inflation over the same period</span></div>
+  </div>
   <p>
     which rearranges to \(i_{\text{real}} = \dfrac{1+i_{\text{nominal}}}{1+\pi}-1\),
     and for small rates is well approximated by simple subtraction:
@@ -298,6 +344,7 @@
   </div>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Growing $1,000 for 5 years at 6% — annual vs. continuous compounding</h3>
     <p>
@@ -331,6 +378,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Time value of money is the mechanical foundation underneath essentially
@@ -341,7 +389,29 @@
     flows, discounted the same way, minus the upfront cost; a yield curve is
     nothing more than a table of discount factors (or, equivalently, the
     rates that produce them) at different maturities, extracted from
-    observed bond prices. None of this requires a forecast of where markets
+    observed bond prices.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">💵</div>
+      <h4>Bond pricing</h4>
+      <p>Sum of coupon and principal cash flows, each discounted back to today by the discount factor for its payment date.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🏗️</div>
+      <h4>Capital project NPV</h4>
+      <p>Projected future cash flows, discounted the same way, minus the upfront cost.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📈</div>
+      <h4>The yield curve</h4>
+      <p>Nothing more than a table of discount factors (or the rates producing them) at different maturities, extracted from observed bond prices.</p>
+    </div>
+  </div>
+
+  <p>
+    None of this requires a forecast of where markets
     are going — like the risk-neutral pricing in Black-Scholes, discounting
     is a mechanical, no-forecast-needed operation on <em>known</em> future
     cash flows and a <em>quoted</em> rate. The judgment in real finance is
@@ -350,6 +420,7 @@
   </p>
 
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
     <h3>Why does the 3-month USD/JPY forward differ from spot with zero directional view?</h3>
     <p>
@@ -382,6 +453,12 @@
       this trade earns exactly zero:
     </p>
     <div class="tl-math">\[ F = S_0\times\frac{1+r_{\text{JPY}}\,t}{1+r_{\text{USD}}\,t} = 150\times\frac{1+0.001\times0.25}{1+0.05\times0.25} = 150\times\frac{1.00025}{1.0125} \approx 148.19 \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>S₀</code><span>spot rate today</span></div>
+      <div class="tl-eq-chip c2"><code>1+r_JPY t</code><span>growth factor of the low-rate currency (numerator)</span></div>
+      <div class="tl-eq-chip c3"><code>1+r_USD t</code><span>growth factor of the high-rate currency (denominator)</span></div>
+      <div class="tl-eq-chip c4"><code>F</code><span>the no-arbitrage forward — the higher-rate currency trades at a discount</span></div>
+    </div>
     <p>
       That's a forward rate about 1.81 yen <em>below</em> spot — roughly
       −181 forward points (in the standard 0.01-yen "pip" convention for
@@ -403,7 +480,15 @@
     </p>
   </div>
 
+  <div class="tl-solid amber">
+    <strong>The trap:</strong> a forward trading below spot is not a market
+    call that the currency will weaken. It's the mechanical PV/FV adjustment
+    that keeps borrowing the low-rate currency to fund the high-rate one from
+    being free money — nothing more, nothing less.
+  </div>
+
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
     <h3>Background literacy — no module in this repo computes forward points today</h3>
     <p>
@@ -429,6 +514,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where time-value reasoning quietly goes wrong</h3>
     <p>
@@ -473,6 +559,19 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(FV = PV(1+r)^t\) is compounding — interest earning interest.</strong> That's why growth is exponential in \(t\), not the linear \(PV(1+rt)\) of simple interest.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Present value just runs future value backward.</strong> The discount factor \(DF(r,t)=1/(1+r)^t\) is always strictly between 0 and 1 whenever \(r,t>0\).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A continuously-compounded rate IS a log return per unit time.</strong> \(\ln(FV/PV)=rt\) is the identical object the Returns &amp; Compounding primer already defined — not an analogy.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Nominal ≠ real.</strong> The Fisher equation strips out inflation to get the purchasing-power rate you actually experience — and this "nominal" is a different split from nominal-vs-compounding-frequency.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>An FX forward is priced by no-arbitrage, not by forecast.</strong> The higher-rate currency always trades forward at a discount — otherwise a riskless borrow-low/invest-high trade would print free money.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Don't read a forward discount as a directional view.</strong> USD/JPY trading below spot says nothing about anyone expecting the dollar to weaken — it's mechanical, full stop.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Small rate gaps compound into large present-value gaps over long horizons.</strong> A 7-point rate difference is a modest gap at 3 years but a 4x discount-factor gap by year 20 — long-dated cash flows are far more rate-sensitive than short-dated ones.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why is future value \(PV(1+r)^t\) rather than the simpler \(PV(1+rt)\), and what economic mechanism does the exponent capture that the simpler formula misses?</summary>

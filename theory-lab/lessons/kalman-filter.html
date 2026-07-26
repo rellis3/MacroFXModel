@@ -33,6 +33,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     Suppose you believe two assets move together — a currency pair and a rate
@@ -79,6 +80,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>A GPS for a number you can't see directly</h3>
     <p>
@@ -105,7 +107,22 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🔮</div>
+      <h4>Predict</h4>
+      <p>Carry yesterday's estimate forward unchanged (\(\hat{x}_{t\mid t-1} = \hat{x}_{t-1\mid t-1}\)), but inflate its uncertainty by the process variance \(Q\). No new data is used yet — this step only accounts for time having passed.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🎯</div>
+      <h4>Update</h4>
+      <p>The new observation \(y_t\) arrives. Blend it into the prediction by the derived Kalman gain \(K_t\), then shrink the uncertainty accordingly. This is where the "surprise" \(e_t\) actually moves the estimate.</p>
+    </div>
+  </div>
+
   <p>
     A Kalman filter is built on a <strong>state-space model</strong> — two
     equations that separate "the thing you actually care about but can't see"
@@ -121,6 +138,11 @@
     quantity evolves from one time step to the next:
   </p>
   <div class="tl-math">\[ x_t = x_{t-1} + w_t, \qquad w_t \sim \mathcal{N}(0, Q) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>x_t</code><span>hidden true state today (e.g. the true hedge ratio)</span></div>
+    <div class="tl-eq-chip c2"><code>w_t</code><span>random process noise, drawn from N(0,Q)</span></div>
+    <div class="tl-eq-chip c3"><code>Q</code><span>process variance — how much the state is believed to drift per step</span></div>
+  </div>
   <p>
     Read this as: "the true hedge ratio today equals the true hedge ratio
     yesterday, plus a small random nudge." The nudge \(w_t\) is drawn from a
@@ -139,6 +161,12 @@
     connects to something you can actually measure:
   </p>
   <div class="tl-math">\[ y_t = H_t\, x_t + v_t, \qquad v_t \sim \mathcal{N}(0, R) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>y_t</code><span>the observable, noisy quantity you actually have data for</span></div>
+    <div class="tl-eq-chip c1"><code>H_t</code><span>observation scalar linking the hidden state to what's observed</span></div>
+    <div class="tl-eq-chip c2"><code>v_t</code><span>observation noise, drawn from N(0,R)</span></div>
+    <div class="tl-eq-chip c3"><code>R</code><span>observation variance — how noisy a single reading is believed to be</span></div>
+  </div>
   <p>
     Read this as: "what I actually observe today, \(y_t\) — say, today's price
     move in asset B — is approximately \(H_t\) times the hidden true ratio,
@@ -183,6 +211,10 @@
     state may have wandered:
   </p>
   <div class="tl-math">\[ \hat{x}_{t\mid t-1} = \hat{x}_{t-1\mid t-1} \qquad\qquad P_{t\mid t-1} = P_{t-1\mid t-1} + Q \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>x̂_t|t-1</code><span>a priori predicted estimate — unchanged from yesterday's posterior</span></div>
+    <div class="tl-eq-chip c2"><code>P_t|t-1</code><span>a priori error variance — yesterday's uncertainty plus Q</span></div>
+  </div>
   <p>
     The left equation says "predict no change." The right equation is the
     important one: it <em>inflates</em> the uncertainty by exactly \(Q\), the
@@ -197,15 +229,43 @@
     what the prediction implied should have been seen — and its variance:
   </p>
   <div class="tl-math">\[ e_t = y_t - H_t\hat{x}_{t\mid t-1} \qquad\qquad S_t = H_t^2 P_{t\mid t-1} + R \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>e_t</code><span>the innovation — the surprise: observed minus predicted</span></div>
+    <div class="tl-eq-chip c4"><code>S_t</code><span>innovation variance — total uncertainty in that surprise</span></div>
+  </div>
   <p>
     Then compute the Kalman gain — the heart of the whole method:
   </p>
   <div class="tl-math">\[ K_t = \frac{P_{t\mid t-1}\, H_t}{S_t} = \frac{P_{t\mid t-1}\, H_t}{H_t^2 P_{t\mid t-1} + R} \]</div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">P H_t</div>
+      <div class="tl-fp-name">The numerator</div>
+      <div class="tl-fp-desc">Prediction uncertainty, scaled by how the state maps to the observation</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">S_t</div>
+      <div class="tl-fp-name">The denominator</div>
+      <div class="tl-fp-desc">Total uncertainty in the innovation — prediction uncertainty plus observation noise R</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">K_t</div>
+      <div class="tl-fp-name">The result</div>
+      <div class="tl-fp-desc">A ratio between 0 and 1 — how much of the surprise to actually believe</div>
+    </div>
+  </div>
+
   <p>
     Finally, blend the prediction with the observation, weighted by that gain,
     and shrink the uncertainty accordingly:
   </p>
   <div class="tl-math">\[ \hat{x}_{t\mid t} = \hat{x}_{t\mid t-1} + K_t\, e_t \qquad\qquad P_{t\mid t} = (1 - K_t H_t)\, P_{t\mid t-1} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>x̂_t|t</code><span>a posteriori updated estimate — the answer you actually use</span></div>
+    <div class="tl-eq-chip c3"><code>K_t e_t</code><span>the gain-weighted correction pulled in from the surprise</span></div>
+    <div class="tl-eq-chip c2"><code>P_t|t</code><span>a posteriori error variance — shrinks after the update</span></div>
+  </div>
   <p>
     Look closely at what the gain formula is actually doing. \(K_t\) is a
     ratio: the uncertainty in the <em>prediction</em>, \(P_{t\mid t-1}H_t\), over
@@ -253,6 +313,7 @@
   </p>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Tracking a drifting hedge ratio through two updates</h3>
     <p>
@@ -274,10 +335,25 @@
     <p><strong>Day 1: observation \(y_1 = 1.35\).</strong></p>
     <p><em>Predict:</em></p>
     <div class="tl-math">\[ \hat{x}_{1\mid 0} = 1.20 \qquad P_{1\mid 0} = 0.0400 + 0.0009 = 0.0409 \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>x̂_1|0 = 1.20</code><span>predicted estimate — unchanged from the initial 1.20</span></div>
+      <div class="tl-eq-chip c2"><code>P_1|0 = 0.0409</code><span>predicted uncertainty — 0.0400 inflated by Q=0.0009</span></div>
+    </div>
     <p><em>Update:</em></p>
     <div class="tl-math">\[ e_1 = 1.35 - 1.20 = 0.15 \qquad S_1 = 0.0409 + 0.0100 = 0.0509 \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c3"><code>e_1 = 0.15</code><span>Day 1's surprise — observed 1.35 minus predicted 1.20</span></div>
+      <div class="tl-eq-chip c4"><code>S_1 = 0.0509</code><span>total innovation variance — prediction uncertainty plus R</span></div>
+    </div>
     <div class="tl-math">\[ K_1 = \frac{0.0409}{0.0509} \approx 0.804 \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>K_1 ≈ 0.804</code><span>Day 1's gain — large, since prior uncertainty (0.0409) still exceeds R (0.0100)</span></div>
+    </div>
     <div class="tl-math">\[ \hat{x}_{1\mid 1} = 1.20 + 0.804 \times 0.15 \approx 1.321 \qquad P_{1\mid 1} = (1-0.804)\times 0.0409 \approx 0.0080 \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c2"><code>x̂_1|1 ≈ 1.321</code><span>Day 1's posterior estimate — the updated hedge-ratio read</span></div>
+      <div class="tl-eq-chip c3"><code>P_1|1 ≈ 0.0080</code><span>Day 1's posterior uncertainty — shrunk after the observation</span></div>
+    </div>
     <p>
       Notice the gain is large — 0.804 — because the prior uncertainty
       (\(P_{1\mid 0}=0.0409\)) was still larger than the observation noise
@@ -289,10 +365,20 @@
     <p><strong>Day 2: observation \(y_2 = 1.30\).</strong></p>
     <p><em>Predict</em> (carry forward Day 1's posterior as today's prior):</p>
     <div class="tl-math">\[ \hat{x}_{2\mid 1} = 1.321 \qquad P_{2\mid 1} = 0.0080 + 0.0009 = 0.0089 \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c4"><code>x̂_2|1 = 1.321</code><span>today's prior — carried forward from Day 1's posterior</span></div>
+    </div>
     <p><em>Update:</em></p>
     <div class="tl-math">\[ e_2 = 1.30 - 1.321 = -0.021 \qquad S_2 = 0.0089 + 0.0100 = 0.0189 \]</div>
     <div class="tl-math">\[ K_2 = \frac{0.0089}{0.0189} \approx 0.471 \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>K_2 ≈ 0.471</code><span>Day 2's gain — smaller than Day 1's because P shrank after the first update</span></div>
+    </div>
     <div class="tl-math">\[ \hat{x}_{2\mid 2} = 1.321 + 0.471\times(-0.021) \approx 1.311 \qquad P_{2\mid 2} = (1-0.471)\times 0.0089 \approx 0.0047 \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c2"><code>x̂_2|2 ≈ 1.311</code><span>Day 2's posterior estimate</span></div>
+      <div class="tl-eq-chip c3"><code>P_2|2 ≈ 0.0047</code><span>Day 2's posterior uncertainty — still shrinking</span></div>
+    </div>
     <p>
       The gain dropped from 0.804 to 0.471 in a single step, with no manual
       adjustment — it fell purely because \(P\) shrank after Day 1's update, so
@@ -371,6 +457,7 @@
     </div>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     The Kalman filter was developed by Rudolf Kálmán in 1960 for control and
@@ -421,6 +508,7 @@
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this could plug into MacroFXModel</div>
     <h3>An adaptive coefficient for a lead-lag relationship whose strength already varies with regime</h3>
     <p>
@@ -476,6 +564,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where "adaptive" quietly stops meaning "principled"</h3>
     <p>
@@ -537,6 +626,18 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>It's just predict, then update.</strong> Carry the estimate forward and inflate its uncertainty by \(Q\) (predict); blend in the new observation by the gain \(K_t\), then shrink the uncertainty (update). Run that recursion once per new data point, forever.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The gain is derived, not chosen.</strong> \(K_t = P_{t\mid t-1}H_t / S_t\) is a ratio of prediction uncertainty to total uncertainty — it isn't a fixed smoothing constant picked in advance, the way an EMA's is.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The update step is exact Bayesian updating.</strong> Predicted state = prior, observation model = likelihood, updated state = posterior — and because both are Gaussian and linearly related (conjugacy), the posterior comes out Gaussian too, with a closed form instead of a numerical integral.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The gain settles toward a \(Q/R\) steady state.</strong> The worked example's gain fell from 0.804 (Day 1) to 0.471 (Day 2) with no parameter touched — purely because \(P\) shrank. Keep iterating and it approaches a steady state set entirely by \(Q/R\), which is the filter's self-chosen "effective window length."</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Grid-searching \(Q\) and \(R\) against backtest performance is overfitting in disguise.</strong> It relocates the same window-length-tuning risk into a less legible, more sophisticated-looking parameterization — it does not remove it.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Not built, not prototyped, not validated in this repo.</strong> The credit-leadlag / yield-spread lead-lag application described above is a genuine candidate, not a claim of improvement — any real use needs to beat the incumbent on true OOS performance first (Lego Principle 5).</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. What happens to the Kalman gain \(K_t\) if the observation noise \(R\) is huge relative to the process noise \(Q\)?</summary>

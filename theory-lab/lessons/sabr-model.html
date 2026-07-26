@@ -33,6 +33,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     The Heston lesson built a genuine stochastic-volatility model: volatility
@@ -70,6 +71,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>A volatility model built to be fit fast, not to be exhaustively "correct"</h3>
     <p>
@@ -97,6 +99,15 @@
     </p>
   </div>
 
+  <div class="tl-solid blue">
+    <strong>The key distinction:</strong> SABR is not "better" than Heston —
+    it answers a different question. Heston gets the risk-neutral dynamics
+    right at the cost of a slow, numerical calibration; SABR trades away some
+    of that dynamical rigor for a closed-form formula fast enough to refit
+    continuously against a live, moving market. Neither wins in the abstract.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     Three things to cover in order: (1) the SABR stochastic differential
@@ -119,6 +130,25 @@
     \[ d\alpha_t = \nu\,\alpha_t\,dW_t^{2} \]
     \[ \mathbb{E}\big[dW_t^{1}\,dW_t^{2}\big] = \rho\,dt \]
   </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">dFₜ</div>
+      <div class="tl-fp-name">The forward's SDE</div>
+      <div class="tl-fp-desc">Driven by its own random volatility level αₜ</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">dαₜ</div>
+      <div class="tl-fp-name">Volatility's own SDE</div>
+      <div class="tl-fp-desc">A driftless random walk, scaled by vol-of-vol ν</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">ρ</div>
+      <div class="tl-fp-name">The coupling</div>
+      <div class="tl-fp-desc">Correlation between the forward's shocks and volatility's shocks</div>
+    </div>
+  </div>
+
   <div class="tl-symbols"><table>
     <tr><td>\(F_t\)</td><td>The forward price or forward rate at time \(t\) — e.g. the 3-month forward EUR/USD rate, or a forward swap rate for a swaption. SABR is specified for the <em>forward</em>, not the spot, and deliberately gives it zero drift (there is no \(\mu\,dt\) or \(r\,dt\) term on \(F_t\) at all) — under the appropriate forward or swap measure a forward price is, by no-arbitrage construction, already a martingale, so this is the natural measure to model it in directly rather than a simplification.</td></tr>
     <tr><td>\(\alpha_t\)</td><td>(alpha) The instantaneous volatility level of the forward at time \(t\). \(\alpha_0\) (today's value, usually just written \(\alpha\)) is one of the four calibrated parameters and is, roughly, "today's at-the-money volatility level" — though not exactly equal to it once the correction terms below are included.</td></tr>
@@ -150,6 +180,30 @@
     expiry). Understanding what's genuinely separable between them is most of
     what's needed to use the model sensibly.
   </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📏</div>
+      <h4>α — level</h4>
+      <p>Sets the smile's overall height, roughly the at-the-money implied vol.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🦴</div>
+      <h4>β — backbone</h4>
+      <p>Controls how vol scales with the forward's own level; usually fixed by convention.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📐</div>
+      <h4>ρ — skew</h4>
+      <p>Sets the sign and strength of the smile's asymmetry between low and high strikes.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🌊</div>
+      <h4>ν — curvature</h4>
+      <p>Controls how U-shaped the smile is around its at-the-money point.</p>
+    </div>
+  </div>
+
   <p>
     <strong>\(\alpha\) — the current volatility level.</strong> This sets the
     overall height of the smile: roughly, the at-the-money implied volatility
@@ -228,8 +282,18 @@
   <div class="tl-math">
     \[ \sigma_B(K,F) \approx \frac{\alpha}{(FK)^{\frac{1-\beta}{2}}\Big[1+\frac{(1-\beta)^2}{24}\ln^2\frac{F}{K}+\frac{(1-\beta)^4}{1920}\ln^4\frac{F}{K}\Big]}\cdot\left(\frac{z}{x(z)}\right)\cdot\left[1+\left(\frac{(1-\beta)^2}{24}\frac{\alpha^2}{(FK)^{1-\beta}}+\frac{1}{4}\frac{\rho\beta\nu\alpha}{(FK)^{\frac{1-\beta}{2}}}+\frac{2-3\rho^2}{24}\nu^2\right)T\right] \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>(FK)^((1−β)/2)</code><span>the moneyness-adjusted scaling factor</span></div>
+    <div class="tl-eq-chip c2"><code>z/x(z)</code><span>the term carrying the smile's characteristic shape</span></div>
+    <div class="tl-eq-chip c4"><code>[1+(...)T]</code><span>the T-scaled correction bracket — flatter for short-dated options</span></div>
+  </div>
   <div class="tl-math">
     \[ z=\frac{\nu}{\alpha}(FK)^{\frac{1-\beta}{2}}\ln\frac{F}{K}, \qquad x(z)=\ln\left(\frac{\sqrt{1-2\rho z+z^2}+z-\rho}{1-\rho}\right) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>z</code><span>carries ν's effect, vanishing exactly at K=F</span></div>
+    <div class="tl-eq-chip c3"><code>x(z)</code><span>a further transform of z, built from ρ</span></div>
+    <div class="tl-eq-chip c4"><code>z/x(z)</code><span>the ratio responsible for the smile's shape away from ATM</span></div>
   </div>
   <div class="tl-symbols"><table>
     <tr><td>\(\sigma_B(K,F)\)</td><td>The (Black-76) implied volatility this approximation predicts for an option struck at \(K\), forward at \(F\) — this is the number that finally goes on the desk's quote screen, the entire output the formula exists to produce.</td></tr>
@@ -258,6 +322,10 @@
   <div class="tl-math">
     \[ \sigma_{ATM} \approx \frac{\alpha}{F^{1-\beta}}\left[1+\left(\frac{(1-\beta)^2}{24}\frac{\alpha^2}{F^{2-2\beta}}+\frac{1}{4}\frac{\rho\beta\nu\alpha}{F^{1-\beta}}+\frac{2-3\rho^2}{24}\nu^2\right)T\right] \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>α/F^(1−β)</code><span>the level, simplified at K=F</span></div>
+    <div class="tl-eq-chip c4"><code>[1+(...)T]</code><span>the same T-scaled correction, evaluated at the money</span></div>
+  </div>
   <p>
     This is why calibration is so fast in practice. With \(\beta\) fixed by
     convention, only three unknowns remain — \(\alpha\), \(\rho\), \(\nu\) —
@@ -282,6 +350,7 @@
   </p>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Solving for \(\alpha\) and reading off two off-market-strike vols</h3>
     <p>
@@ -362,6 +431,7 @@
     </div>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     SABR's daily job on an options desk is narrow and specific: given a
@@ -382,6 +452,7 @@
   </p>
 
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
     <h3>Quoting a full USD/JPY smile from three numbers, live</h3>
     <p>
@@ -418,6 +489,7 @@
   </div>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
     <h3>SABR is background theory, not a built module — and it's the practical layer under the OI course's gamma story</h3>
     <p>
@@ -458,6 +530,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where the model is misused or over-trusted</h3>
     <p>
@@ -511,6 +584,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Closing this tier: from Itô's Lemma to the market's smile</h2>
   <p>
     This is the last lesson in the Advanced Stochastic Calculus &amp;
@@ -544,6 +618,19 @@
     actual takeaway of this tier.
   </p>
 
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>SABR's whole advantage is speed, not superior realism.</strong> The Hagan et al. closed-form approximation replaces Heston's Fourier inversion with pure algebra — exponents, logs, a square root.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Four parameters, four distinct jobs.</strong> α sets the level, β the backbone (vol-vs-forward scaling), ρ the skew, ν the curvature — not four interchangeable dials.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Fixing β by convention makes calibration well-identified.</strong> β and ρ are close to redundant on skew; fixing β leaves a small, fast, three-unknown fit against three standard FX quotes.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked example: α≈9.98% reproduces a 10% ATM quote</strong>, then reads off 9.92%/10.09% at 200-pip strikes either side — one algebraic evaluation each, no repricing loop.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The formula is an approximation, not exact.</strong> It can misbehave — even imply arbitrage — at extreme strikes/maturities or high ν, which "Arbitrage-Free SABR" (2014) patches numerically.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A good same-day fit isn't the same as a correct smile-dynamics model.</strong> SABR's backbone prediction for how the whole smile should move doesn't always match how real markets shift as the underlying moves.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This repo has no options-pricing or smile-calibration module today.</strong> This lesson and the Heston lesson are pure theory background, not a description of anything built or validated here.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why do practitioners often prefer SABR to Heston for day-to-day smile quoting, even though Heston is arguably the more complete stochastic-volatility model?</summary>

@@ -33,6 +33,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
   A huge amount of trading logic — in this repo and everywhere else — is secretly a <em>regime</em>
@@ -57,6 +58,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>You can't see the weather in another city, only what people are wearing</h3>
     <p>
@@ -79,6 +81,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
   We'll build the model in three layers: first the plain Markov chain (a chain of <em>observed</em>
@@ -96,6 +99,10 @@
   </p>
 
   <div class="tl-math">\[ P(S_t \mid S_{t-1}, S_{t-2}, \ldots, S_1) = P(S_t \mid S_{t-1}) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>S_t</code><span>the hidden state at time t</span></div>
+    <div class="tl-eq-chip c4"><code>= P(S_t∣S_{t-1})</code><span>only yesterday's state matters — the Markov property</span></div>
+  </div>
 
   <p>
   Read this in words: "the probability of tomorrow's state, given the entire history of states up to
@@ -117,6 +124,9 @@
   </p>
 
   <div class="tl-math">\[ A_{ij} = P(S_t = j \mid S_{t-1} = i) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>A_ij</code><span>probability of moving from state i to state j in one step</span></div>
+  </div>
 
   <p>
   Read \(A_{ij}\) as "the probability that, given you're in state \(i\) today, you'll be in state
@@ -126,6 +136,9 @@
   </p>
 
   <div class="tl-math">\[ \sum_{j=1}^{N} A_{ij} = 1 \quad \text{for every state } i \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>Σⱼ A_ij</code><span>every row is a full probability distribution — sums to 1</span></div>
+  </div>
 
   <p>
   For our 2-state trending/choppy example, \(A\) is a 2×2 matrix. The diagonal entries \(A_{11}\)
@@ -153,6 +166,28 @@
   </p>
 
   <div class="tl-math">\[ P(O_t \mid S_t = k) = \mathcal{N}(O_t;\ \mu_k,\ \sigma_k^2) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>O_t</code><span>the observation (e.g. today's return) — the thing you actually see</span></div>
+    <div class="tl-eq-chip c2"><code>μ_k, σ_k²</code><span>state k's own mean/variance — a different emission per regime</span></div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">A</div>
+      <div class="tl-fp-name">Transition matrix</div>
+      <div class="tl-fp-desc">How the hidden state moves from one step to the next</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">π</div>
+      <div class="tl-fp-name">Initial distribution</div>
+      <div class="tl-fp-desc">Where the chain starts, before any data is observed</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">μ_k, σ_k²</div>
+      <div class="tl-fp-name">Emission parameters</div>
+      <div class="tl-fp-desc">What each state looks like once you can observe it</div>
+    </div>
+  </div>
 
   <div class="tl-symbols">
     <table>
@@ -240,6 +275,7 @@
   </ul>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>A 2-state trending/choppy transition matrix, by hand</h3>
     <p>
@@ -267,6 +303,9 @@
     is \(1/(1-p)\)) is:
     </p>
     <div class="tl-math">\[ \text{Expected duration}_i = \frac{1}{1 - A_{ii}} \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c4"><code>A_ii</code><span>self-transition probability — how sticky the regime is</span></div>
+    </div>
     <p>
     For trending: \(1/(1-0.70) = 1/0.30 \approx 3.33\) periods. For choppy: \(1/(1-0.85) = 1/0.15
     \approx 6.67\) periods. If each period is one trading day, this transition matrix implies trending
@@ -390,49 +429,38 @@
   })();
   </script>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
   In real quantitative research, HMMs (and their econometric cousin, Markov-switching regression) show
   up in a fairly consistent set of roles:
   </p>
-  <ul>
-    <li>
-    <strong>Regime-conditional position sizing or strategy selection.</strong> Rather than running one
-    strategy all the time, fit an HMM to identify high-vol vs. low-vol, or trending vs. mean-reverting
-    regimes, and switch which strategy is active — or how large a position is taken — based on the
-    <em>current smoothed state probability</em> (from the forward-backward pass), not a hard Viterbi
-    label, since the soft probability naturally expresses "I'm 80% sure we're trending" rather than
-    forcing a binary call.
-    </li>
-    <li>
-    <strong>Post-hoc regime labeling for research, not live decisioning.</strong> Because Viterbi
-    decoding uses information from the <em>entire</em> sequence (including data after the point being
-    labeled) to find the single best full path, a plain Viterbi-labeled history has lookahead baked
-    in — it "knows" the future when labeling the past. This is legitimate for understanding history
-    (e.g. "label all of 2020–2024 to see how the strategy would have performed conditional on each
-    regime"), but it is <strong>not</strong> a valid live signal without care: a live system needs the
-    <em>filtered</em> state probability, \(P(S_t \mid O_{1:t})\) — using only data up to and including
-    today — not the <em>smoothed</em> probability \(P(S_t \mid O_{1:T})\) that Viterbi and the full
-    forward-backward pass compute using the whole sample. Conflating the two is a classic, easy-to-miss
-    source of lookahead bias in regime-based backtests.
-    </li>
-    <li>
-    <strong>Model comparison via likelihood.</strong> The evaluation problem (forward algorithm) gives
-    a principled way to compare, e.g., a 2-state vs. a 3-state model, or a Gaussian-emission model vs.
-    a fatter-tailed emission distribution, using the data likelihood (often penalized for the number of
-    parameters via AIC/BIC, since a bigger model with more states will almost always fit historical
-    data at least as well simply by having more freedom).
-    </li>
-    <li>
-    <strong>As one voice among several, not a sole trigger.</strong> Practitioners rarely bet size
-    purely on an HMM's regime call. It's more commonly blended with other regime signals (realized
-    vol, trend strength, macro indicators) — treating the HMM's output as one input to a broader
-    decision process, which mirrors this repo's own philosophy of scores/selectors composed from
-    multiple signals rather than a single indicator making the whole call.
-    </li>
-  </ul>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📊</div>
+      <h4>Regime-conditional sizing/selection</h4>
+      <p>Fit an HMM to identify high-vol vs. low-vol or trending vs. mean-reverting regimes, and switch strategy or size based on the <em>current smoothed state probability</em>, not a hard Viterbi label.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge red">🔍</div>
+      <h4>Post-hoc labeling, not live decisioning</h4>
+      <p>Viterbi decoding uses the entire sequence — including the future — so a Viterbi-labeled history has lookahead baked in. A live system needs the <em>filtered</em> probability \(P(S_t\mid O_{1:t})\), not the smoothed one.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">⚖️</div>
+      <h4>Model comparison via likelihood</h4>
+      <p>The forward algorithm gives a principled way to compare a 2-state vs. 3-state model, penalized for parameter count via AIC/BIC.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🧭</div>
+      <h4>One voice among several</h4>
+      <p>Practitioners rarely bet size purely on an HMM's call — it's blended with other regime signals, mirroring this repo's own scores/selectors philosophy.</p>
+    </div>
+  </div>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this could plug into MacroFXModel</div>
     <h3>A statistically fitted alternative to the existing threshold rules — genuinely unbuilt, not a plan</h3>
     <p>
@@ -487,6 +515,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Ways HMMs get misused, in trading and elsewhere</h3>
     <ul>
@@ -534,6 +563,19 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>An HMM infers a hidden regime from observable data</strong> instead of reading it off a hand-set rule — each state emits observations via its own probability distribution.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The transition matrix's diagonal is regime persistence.</strong> Expected regime duration is \(1/(1-A_{ii})\) — the worked example's \(A_{11}=0.70\), \(A_{22}=0.85\) implies trending lasts ~3.3 days, choppy ~6.7 days.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Three canonical problems cover all practical use:</strong> evaluation (forward algorithm — how likely is this data), decoding (Viterbi — the single best hidden path), and learning (Baum-Welch — estimate the parameters from data).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Baum-Welch is Expectation-Maximization</strong>: guess the state probabilities (E-step), refit the parameters as if the guess were truth (M-step), repeat until convergence to at least a local optimum.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Smoothed/Viterbi labels use future data — never use them live.</strong> A live signal needs the filtered probability \(P(S_t\mid O_{1:t})\), computed with only data up to now.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>More states always raise the likelihood — that's not evidence they're real.</strong> Use AIC/BIC and, above all, genuine OOS validation before trusting a richer state structure.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This is a concept lesson only.</strong> Nothing here is built in this repo — it's an illustrative alternative to <code>classifyRegime</code>/<code>dayTypeScore</code>, not a validated improvement over either.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. State the Markov property in your own words, and explain what it assumes away.</summary>

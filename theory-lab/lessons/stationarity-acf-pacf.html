@@ -33,6 +33,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     Almost every piece of time-series machinery in this repo and in
@@ -68,6 +69,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>Does today's weather tell you anything about next Tuesday's?</h3>
     <p>
@@ -92,6 +94,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     This section builds up four ideas in order: what stationarity means
@@ -106,6 +109,11 @@
   properties hold constant through time — they depend only on how far apart
   two observations are, never on the calendar date itself:</p>
   <div class="tl-math">\[ E[X_t] = \mu, \qquad \mathrm{Var}(X_t) = \sigma^2, \qquad \mathrm{Cov}(X_t, X_{t+k}) = \gamma(k) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>μ</code><span>fixed long-run mean, constant through time</span></div>
+    <div class="tl-eq-chip c2"><code>σ²</code><span>fixed variance, doesn't grow or drift over time</span></div>
+    <div class="tl-eq-chip c4"><code>γ(k)</code><span>autocovariance — depends only on the lag k, never on the date</span></div>
+  </div>
   <p>
     In words: a fixed long-run mean \(\mu\) the series fluctuates around, a
     fixed variance \(\sigma^2\) describing how far it typically strays from
@@ -148,6 +156,30 @@
   correlation between the series and a copy of itself shifted back \(k\)
   steps:</p>
   <div class="tl-math">\[ \mathrm{ACF}(k) \;=\; \mathrm{Corr}(X_t, X_{t-k}) \;=\; \frac{\gamma(k)}{\gamma(0)} \;=\; \frac{\mathrm{Cov}(X_t, X_{t-k})}{\mathrm{Var}(X_t)} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>γ(k)</code><span>autocovariance at lag k</span></div>
+    <div class="tl-eq-chip c2"><code>γ(0)</code><span>variance — autocovariance at lag zero, used to normalize</span></div>
+    <div class="tl-eq-chip c3"><code>ACF(k)</code><span>the normalized result — a pure correlation between -1 and 1</span></div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">γ(k)</div>
+      <div class="tl-fp-name">Autocovariance at lag k</div>
+      <div class="tl-fp-desc">How related X_t is to X_{t-k}, in raw (unnormalized) units</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">γ(0)</div>
+      <div class="tl-fp-name">Variance</div>
+      <div class="tl-fp-desc">Autocovariance at lag zero — just the series' own variance, used to normalize</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">ACF(k)</div>
+      <div class="tl-fp-name">The result</div>
+      <div class="tl-fp-desc">A pure correlation between -1 and 1 — total relationship, direct plus chained-through</div>
+    </div>
+  </div>
+
   <p>
     \(\mathrm{ACF}(0)\) is always exactly 1 (any series is perfectly
     correlated with itself at zero lag); every other lag's value falls
@@ -239,6 +271,13 @@
     running a fit.)
   </p>
 
+  <div class="tl-solid blue">
+    <strong>The signature to memorize:</strong> ACF decays, PACF cuts off —
+    that single contrast is what lets you read an AR model's order \(p\)
+    straight off two plots, instead of guessing a lookback window or
+    grid-searching one.
+  </div>
+
   <div class="tl-symbols">
     <table>
       <tr><td>\(X_t\)</td><td>The time series being examined, observed at time \(t\).</td></tr>
@@ -254,6 +293,7 @@
   </div>
 
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
     <h3>How many days actually matter for a mean-reversion signal?</h3>
     <p>
@@ -366,7 +406,32 @@
     </div>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🔢</div>
+      <h4>Model order identification</h4>
+      <p>Box-Jenkins: a PACF cutoff plus a decaying ACF picks the AR order \(p\) directly off the plots.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">✅</div>
+      <h4>Pre-model sanity check</h4>
+      <p>GARCH, VAR and the Cointegration residual test all assume stationarity — a correlogram is the cheapest check before trusting any of them.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📏</div>
+      <h4>ADF lag length</h4>
+      <p>The PACF of a differenced residual is a principled way to choose how many lagged-difference terms the Dickey-Fuller regression needs.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🪟</div>
+      <h4>Lookback-window design</h4>
+      <p>Any "last N periods" feature is an implicit autocorrelation claim — ACF/PACF is the checkable version of that assumption.</p>
+    </div>
+  </div>
+
   <p>
     <strong>Model order identification (Box-Jenkins).</strong> Before fitting
     an ARIMA\((p,d,q)\) model, plotting the (differenced, if necessary)
@@ -409,6 +474,7 @@
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this could plug into MacroFXModel</div>
     <h3>Background literacy for choices this repo already makes, and the step before Cointegration</h3>
     <p>
@@ -454,6 +520,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where reading an ACF/PACF plot quietly goes wrong</h3>
     <p>
@@ -502,6 +569,19 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Stationarity means constant mean, variance, and autocovariance.</strong> All three must depend only on lag \(k\), never on the calendar date — most time-series modeling quietly assumes it.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The ACF measures total relationship.</strong> Correlation between a series and its \(k\)-lagged self, mixing direct dependence with everything carried through intervening lags.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The PACF strips out the chain.</strong> It measures only what lag \(k\) adds beyond what closer lags already explain — the sharper of the two questions.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>ACF decays, PACF cuts off — the AR(\(p\)) signature.</strong> Reading where the PACF cuts off tells you the model order \(p\) directly from data, not a guess.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A slowly-decaying ACF is the cheap first-pass unit-root tell.</strong> Still elevated 20-30 lags out means run a formal test (ADF) before trusting anything downstream.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Many lags at once is a multiple-comparisons problem.</strong> About 1 in 20 lags clears a 5% significance band by chance alone, even for genuine white noise — a single isolated spike is weak evidence.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Real market series rarely show the clean textbook cutoff.</strong> Expect a fade into the noise band, not a hard stop — use the shapes as a strong heuristic, not literal proof of an exact model order.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does a random walk's ACF decay so slowly compared to a stationary AR(1) process's ACF?</summary>

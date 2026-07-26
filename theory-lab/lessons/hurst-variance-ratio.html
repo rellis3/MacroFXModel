@@ -33,6 +33,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     Almost every trading decision in this repo boils down to one binary question asked over and over: at this level,
@@ -47,6 +48,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>A drunk person's walk vs. a drunk person on a leash</h3>
     <p>
@@ -65,6 +67,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     We'll build this in three passes: (1) the rescaled-range statistic and how it's used to estimate <em>H</em>, the
@@ -94,6 +97,11 @@
   <div class="tl-math">
     \[ \left(\frac{R}{S}\right)_n = \frac{R(n)}{S(n)} \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Y_t</code><span>detrended cumulative walk built from the chunk</span></div>
+    <div class="tl-eq-chip c2"><code>R(n)</code><span>that walk's total swing — max minus min</span></div>
+    <div class="tl-eq-chip c3"><code>S(n)</code><span>the chunk's own standard deviation — puts R on a scale-free footing</span></div>
+  </div>
   <p>
     \(Y_t\) is a "detrended cumulative walk" built from the chunk — start at zero, and at each step add that day's
     deviation from the chunk's own mean. \(R(n)\) is simply the highest point that walk reaches minus the lowest point
@@ -112,6 +120,23 @@
   </p>
   <div class="tl-math">
     \[ \log\left(\frac{R}{S}\right)_n = \log c + H \log n \]
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">log(R/S)ₙ</div>
+      <div class="tl-fp-name">The y-axis</div>
+      <div class="tl-fp-desc">Rescaled range for window length n, on a log scale</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">H</div>
+      <div class="tl-fp-name">The slope</div>
+      <div class="tl-fp-desc">The regression slope IS the Hurst exponent — the whole point of taking logs</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">log n</div>
+      <div class="tl-fp-name">The x-axis</div>
+      <div class="tl-fp-desc">Window length, on a log scale</div>
+    </div>
   </div>
   <p>
     In practice you don't estimate this from one chunk. You split the series into windows of several different lengths
@@ -185,6 +210,11 @@
   </p>
   <div class="tl-math">
     \[ VR(q) = \frac{\operatorname{Var}(r_t^{(q)})}{q \cdot \operatorname{Var}(r_t^{(1)})} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>r_t^(q)</code><span>the q-period return, e.g. 5-day</span></div>
+    <div class="tl-eq-chip c2"><code>q·Var(r_t^(1))</code><span>what variance should be under a random walk</span></div>
+    <div class="tl-eq-chip c4"><code>VR(q)</code><span>= 1 under the random-walk null; deviations are directly interpretable</span></div>
   </div>
   <p>
     where \(r_t^{(q)}\) is the <em>q</em>-period return (e.g. the 5-day return) and \(r_t^{(1)}\) is the 1-period
@@ -263,6 +293,7 @@
   </div>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>A tiny variance-ratio calculation by hand</h3>
     <p>
@@ -301,6 +332,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Neither the Hurst exponent nor the variance ratio is, by itself, a trading signal — both are diagnostic /
@@ -328,6 +360,7 @@
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
     <h3>This is the one lesson describing a feature already running here</h3>
     <p>
@@ -358,8 +391,17 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where R/S and variance-ratio estimates go wrong</h3>
+    <div class="tl-solid red">
+      <strong>The trap:</strong> R/S is systematically biased toward finding
+      \(H > 0.5\) on data from a true random walk when the sample is short — and
+      a live feature computed on lags of 2–16 bars over 20–60 daily bars is
+      squarely in that small-sample regime. A single reading of \(H=0.55\) from
+      a short window is much weaker evidence than the same number from thousands
+      of observations.
+    </div>
     <ul>
       <li><strong>R/S is biased in small samples.</strong> The classical R/S estimator is known (from simulation
         studies going back to the 1990s, notably by Lo himself) to be biased toward finding \(H > 0.5\) even on data
@@ -389,6 +431,18 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>H is the slope of log(R/S)ₙ regressed on log n.</strong> \(H<0.5\) is anti-persistent/mean-reverting, \(H=0.5\) is a random walk, \(H>0.5\) is persistent/trending.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The variance ratio test asks the identical question more rigorously.</strong> Under a random walk \(VR(q)=1\) exactly, and Lo &amp; MacKinlay's asymptotic distribution gives you an actual standard error and z-statistic, not an eyeballed slope.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This isn't just theory here.</strong> <code>js/rangeBiasCore.js</code>'s <code>computeHurst</code> already runs live R/S analysis (lags 2/4/8/16) as one of five entry-bias features, shared by <code>levels.js</code> and <code>asiaRangeEngine</code>.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Neither statistic predicts direction.</strong> Both only measure whether the recent path has memory that reinforces (trending) or undoes (mean-reverting) past moves — that licenses which strategy family has a right to work, not which way price goes next.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>R/S is biased toward finding H&gt;0.5 in small samples</strong> — exactly the regime a live feature computed on a few dozen daily bars sits in.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A single H or VR reading is noisy and can flip on estimation noise alone.</strong> Treat it as a decaying prior about the current regime, never a fact about the market's permanent nature.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. What Hurst exponent would a pure, noiseless sine wave have, versus pure white noise?</summary>

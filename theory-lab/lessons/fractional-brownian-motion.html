@@ -39,6 +39,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     The previous lesson in this series measured how "persistent" a price path has been using R/S analysis and the
@@ -58,6 +59,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>A random walk that never fully forgets</h3>
     <p>
@@ -77,6 +79,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     Four steps: (1) the precise definition of fractional Brownian motion via its covariance function, and the
@@ -96,6 +99,23 @@
     \[ \operatorname{Cov}\big(B_H(s), B_H(t)\big) = \tfrac{1}{2}\Big(|s|^{2H} + |t|^{2H} - |t-s|^{2H}\Big), \qquad
     s, t \ge 0,\ H \in (0,1) \]
   </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">Cov(B_H(s), B_H(t))</div>
+      <div class="tl-fp-name">The whole process</div>
+      <div class="tl-fp-desc">Everything about fBm is a consequence of this one covariance formula</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">H</div>
+      <div class="tl-fp-name">The Hurst index</div>
+      <div class="tl-fp-desc">A parameter of the process itself, not a slope fit after the fact</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">|t−s|^(2H)</div>
+      <div class="tl-fp-name">The memory term</div>
+      <div class="tl-fp-desc">Cancels exactly at H=0.5 — everywhere else it encodes real correlation</div>
+    </div>
+  </div>
   <p>
     This single formula is the entire definition — everything else in this lesson is a consequence of it. \(H\) is
     called the <strong>Hurst index</strong> (or self-similarity index) of the process, and it is the same \(H\) the
@@ -109,6 +129,10 @@
   <div class="tl-math">
     \[ \operatorname{Cov}\big(B_{0.5}(s), B_{0.5}(t)\big) = \tfrac{1}{2}\Big(s + t - (t-s)\Big)
     = \tfrac{1}{2}\big(2s\big) = s = \min(s,t) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>s + t − (t−s)</code><span>the −(t−s) term cancels t and reinforces s</span></div>
+    <div class="tl-eq-chip c2"><code>= min(s,t)</code><span>exactly ordinary Brownian motion's covariance</span></div>
   </div>
   <p>
     That is exactly the covariance function of ordinary (standard) Brownian motion, \(\operatorname{Cov}(W(s),W(t)) =
@@ -125,6 +149,9 @@
   </p>
   <div class="tl-math">
     \[ \operatorname{Var}\big(B_H(t) - B_H(s)\big) = |t-s|^{2H} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>|t−s|^(2H)</code><span>increment variance over a span of n scales as n^H</span></div>
   </div>
   <p>
     which says the standard deviation of an increment over a span of length \(n\) scales as \(n^H\) — exactly the
@@ -179,22 +206,33 @@
   <div class="tl-math">
     \[ \sum_{k=-\infty}^{\infty} |\gamma(k)| = \infty \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>γ(k)</code><span>the autocovariance at lag k</span></div>
+    <div class="tl-eq-chip c1"><code>Σ = ∞</code><span>the sum diverges — this is the strict definition of long memory</span></div>
+  </div>
   <p>
     For fractional Gaussian noise, \(\gamma(k)\) behaves asymptotically like \(H(2H-1)\,k^{2H-2}\) for large \(k\).
     Whether that sum diverges or converges is a direct, checkable consequence of the exponent \(2H-2\): the sum
     \(\sum_k k^{2H-2}\) diverges exactly when \(2H-2 \ge -1\), i.e. when \(H \ge 0.5\). This gives a precise,
     non-obvious refinement of the persistent/anti-persistent split from the section above:
   </p>
-  <ul>
-    <li><strong>\(H > 0.5\)</strong> gives \(2H-2 > -1\): the autocovariance sum diverges. This is genuine long
-      memory in the strict, formal sense.</li>
-    <li><strong>\(H < 0.5\)</strong> gives \(2H-2 < -1\): the autocovariance sum converges absolutely, even though the
-      correlations are negative and real. Anti-persistence is a genuine, useful, mean-reverting property — but it is
-      technically <em>short</em> memory by this definition, not long memory with a negative sign. "Long memory"
-      strictly names the \(H>0.5\) case.</li>
-    <li><strong>\(H = 0.5\)</strong>: \(\gamma(k)=0\) for all \(k \ne 0\) — no memory of any kind, the sum is trivially
-      finite (it's zero).</li>
-  </ul>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge red">📉</div>
+      <h4>H &gt; 0.5 — diverges</h4>
+      <p>\(2H-2 &gt; -1\): the autocovariance sum diverges. This is genuine long memory in the strict, formal sense.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">➖</div>
+      <h4>H &lt; 0.5 — converges</h4>
+      <p>\(2H-2 &lt; -1\): the sum converges absolutely, even though correlations are negative and real. Genuine, useful, mean-reverting — but technically <em>short</em> memory, not long memory with a negative sign.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🧱</div>
+      <h4>H = 0.5 — trivial</h4>
+      <p>\(\gamma(k)=0\) for all \(k \ne 0\) — no memory of any kind, the sum is trivially finite (it's zero).</p>
+    </div>
+  </div>
   <p>
     Now contrast this with any finite-order, stationary ARMA process (the AR(1)/OU and ARIMA machinery from earlier
     lessons in this Theory Lab). A stationary ARMA process's autocorrelation function is always a mixture of damped
@@ -208,6 +246,12 @@
     a formal distinction, not a matter of degree, and it is the reason this lesson exists as a separate piece of
     machinery rather than "just use a higher-order AR model."
   </p>
+
+  <div class="tl-solid blue">
+    <strong>The crux:</strong> no finite-order ARMA model, however many lags it's given, can ever produce true long
+    memory. Exponential decay is always absolutely summable — adding more parameters only changes the rate of decay,
+    never its fundamentally summable character. Long memory needs a genuinely different kind of process.
+  </div>
 
   <div class="tl-chart">
     <div class="tl-chart-label">Exponential decay (short memory) vs. power-law decay (long memory)</div>
@@ -255,6 +299,9 @@
   <div class="tl-math">
     \[ d = H - 0.5 \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>d</code><span>ARFIMA's fractional differencing order — any real number, not just an integer</span></div>
+  </div>
   <p>
     so \(d \in (0, 0.5)\) corresponds to \(H \in (0.5, 1)\) — genuine long memory, positive \(d\) meaning the series
     needs a fraction of a differencing pass to induce stationarity, less than the whole integer difference an
@@ -266,6 +313,7 @@
   </p>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Converting between \(H\) and \(d\), and checking the covariance reduction numerically</h3>
     <p>
@@ -286,6 +334,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     In practice, almost nobody trades a literal simulated path of fractional Brownian motion — it shows up as the
@@ -304,6 +353,7 @@
   </p>
 
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
     <h3>A GARCH residual that refuses to go away</h3>
     <p>
@@ -335,6 +385,7 @@
   </div>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
     <h3>A descriptive statistic already in production, a generative model not yet built</h3>
     <p>
@@ -363,6 +414,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where fBm and ARFIMA reasoning goes wrong in practice</h3>
     <ul>
@@ -397,6 +449,19 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>fBm gives H a real generating process.</strong> A Gaussian process defined entirely by its covariance function, which collapses exactly to ordinary Brownian motion at H=0.5.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Long memory has a precise formal definition.</strong> The autocovariance sum \(\sum_k|\gamma(k)|=\infty\) — not just "somewhat persistent" or "somewhat autocorrelated."</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This is categorical, not a matter of degree.</strong> No finite-order ARMA model, however many lags it's given, can ever exhibit true long memory — exponential decay is always absolutely summable.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>ARFIMA is the discrete-time tool that fits this to real data.</strong> Its fractional order \(d = H - 0.5\), so \(d\in(0,0.5)\) corresponds exactly to genuine long memory.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo's <code>computeHurst</code> is the descriptive statistic, not the generative model.</strong> fBm/ARFIMA is background theory here — not yet fit or wired into any live forecaster.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Anti-persistence (H&lt;0.5) is short memory, not "long memory with a minus sign."</strong> And structural breaks/regime switching can produce an ACF that looks identical to true long memory — check for regime instability first.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A good ARFIMA/FIGARCH in-sample fit is a methodological upgrade, not evidence of edge.</strong> It's a better-specified model of volatility's dependence structure — trading on it still needs a real, costed, out-of-sample test.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does fBm reduce to ordinary Brownian motion exactly at H = 0.5, algebraically?</summary>

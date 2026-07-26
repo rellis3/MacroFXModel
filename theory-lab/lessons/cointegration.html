@@ -33,6 +33,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     A huge amount of cross-asset reasoning in trading — "EUR/USD tracks the
@@ -64,6 +65,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>Two drunks and a dog on a leash</h3>
     <p>
@@ -101,6 +103,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     This section builds up four ideas in order: what "stationary" means,
@@ -115,6 +118,11 @@
   are constant through time — they don't depend on which point in time \(t\)
   you're looking at, only on how far apart in time two observations are:</p>
   <div class="tl-math">\[ E[X_t] = \mu, \qquad \mathrm{Var}(X_t) = \sigma^2, \qquad \mathrm{Cov}(X_t, X_{t+k}) = \gamma(k) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>μ</code><span>one fixed long-run mean, same at every t</span></div>
+    <div class="tl-eq-chip c2"><code>σ²</code><span>one fixed variance, same at every t</span></div>
+    <div class="tl-eq-chip c3"><code>γ(k)</code><span>autocovariance depends only on lag k, never the calendar date</span></div>
+  </div>
   <p>
     In words: the series has one fixed long-run mean \(\mu\) it fluctuates
     around, one fixed variance \(\sigma^2\) describing how far it typically
@@ -135,11 +143,20 @@
   \(\epsilon_t\) (mean zero, constant variance \(\sigma^2\), uncorrelated
   across time):</p>
   <div class="tl-math">\[ X_t = X_{t-1} + \epsilon_t, \qquad \epsilon_t \sim \text{i.i.d.}(0,\sigma^2) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>X_t</code><span>today's level — yesterday's level plus a fresh shock</span></div>
+    <div class="tl-eq-chip c4"><code>ε_t</code><span>an unpredictable, independent shock, mean zero</span></div>
+  </div>
   <p>
     Unroll this recursively back to a starting point \(X_0\) and \(X_t\) is
     just the sum of every shock that's happened since:
   </p>
   <div class="tl-math">\[ X_t = X_0 + \sum_{i=1}^{t}\epsilon_i \quad\Longrightarrow\quad \mathrm{Var}(X_t) = t\,\sigma^2 \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>X_0</code><span>the starting value</span></div>
+    <div class="tl-eq-chip c1"><code>Σεᵢ</code><span>the sum of every shock since the start</span></div>
+    <div class="tl-eq-chip c4"><code>t·σ²</code><span>variance grows without bound as t grows — no fixed "normal level"</span></div>
+  </div>
   <p>
     That last step follows because the shocks are independent, so variances
     of a sum of independent things just add: \(t\) shocks, each contributing
@@ -217,6 +234,15 @@
   particular sample window.
   </p>
 
+  <div class="tl-solid blue">
+    <strong>The crucial distinction:</strong> cointegration is a statement
+    about the <em>levels</em>, not the returns. Two series can have highly
+    correlated returns for years while their levels drift apart without
+    limit — return correlation and cointegration answer different
+    questions, and only the second one tells you whether a spread has an
+    equilibrium to actually revert to.
+  </div>
+
   <p><strong>5. The Engle-Granger two-step method.</strong> Robert Engle
   and Clive Granger (1987) turned this into a concrete, testable procedure.</p>
 
@@ -238,6 +264,23 @@
   regression of one raw price/level series on the other, in levels
   (not returns):</p>
   <div class="tl-math">\[ Y_t = \alpha + \beta X_t + \epsilon_t \]</div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">α</div>
+      <div class="tl-fp-name">Intercept</div>
+      <div class="tl-fp-desc">The constant offset between the two series</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">β</div>
+      <div class="tl-fp-name">The hedge ratio</div>
+      <div class="tl-fp-desc">Units of X that offset one unit of Y in the long-run equilibrium</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">ε_t</div>
+      <div class="tl-fp-name">The spread</div>
+      <div class="tl-fp-desc">The leftover residual — if cointegrated, this is the tradeable, stationary "leash"</div>
+    </div>
+  </div>
   <p>
     This looks exactly like the setup Granger &amp; Newbold warned about in
     point 3 — and by itself, it is just as vulnerable to a spuriously high
@@ -257,6 +300,10 @@
   fitted residuals from Step 1 — the estimated spread on every day in the
   sample:</p>
   <div class="tl-math">\[ \hat\epsilon_t = Y_t - \hat\alpha - \hat\beta X_t \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>ε̂_t</code><span>the day-by-day estimated spread, from Step 1's fitted values</span></div>
+    <div class="tl-eq-chip c2"><code>α̂, β̂</code><span>the OLS-estimated intercept and hedge ratio from Step 1</span></div>
+  </div>
   <p>
     and test <em>this residual series itself</em> for stationarity, using
     the <strong>Augmented Dickey-Fuller (ADF) test</strong>. The conceptual
@@ -265,6 +312,11 @@
     up any short-run autocorrelation,
   </p>
   <div class="tl-math">\[ \Delta \hat\epsilon_t = \gamma\,\hat\epsilon_{t-1} + \sum_{i=1}^{p}\delta_i\,\Delta \hat\epsilon_{t-i} + u_t \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>Δε̂_t</code><span>today's change in the spread — what we're explaining</span></div>
+    <div class="tl-eq-chip c4"><code>γ·ε̂_{t-1}</code><span>the key term — does yesterday's level predict today's change?</span></div>
+    <div class="tl-eq-chip c1"><code>Σδᵢ·Δε̂_{t-i}</code><span>lagged differences, soaking up short-run autocorrelation</span></div>
+  </div>
   <p>
     and ask: does today's <em>change</em> in the spread depend on
     <em>yesterday's level</em> of the spread? If the spread mean-reverts,
@@ -276,6 +328,10 @@
     be statistically indistinguishable from zero. The test is:
   </p>
   <div class="tl-math">\[ H_0: \gamma = 0 \ \text{(unit root — not cointegrated)} \qquad\text{vs.}\qquad H_1: \gamma < 0 \ \text{(stationary — cointegrated)} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>H₀: γ=0</code><span>the null — spread has no memory, a random walk</span></div>
+    <div class="tl-eq-chip c2"><code>H₁: γ&lt;0</code><span>the alternative — spread mean-reverts, cointegrated</span></div>
+  </div>
   <p>
     A wrinkle that matters in practice: because \(\hat\epsilon_t\) here is
     not an independently observed series but the leftover residual from a
@@ -329,6 +385,7 @@
   </p>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>AUD/USD and NZD/USD — telling a real spread from a shared trend</h3>
     <p>
@@ -475,7 +532,30 @@
   })();
   </script>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🔀</div>
+      <h4>Pairs trading</h4>
+      <p>Two economically linked instruments, tested for cointegration rather than assumed from correlation — trade the z-scored spread market-neutral.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📦</div>
+      <h4>Index / ETF arbitrage</h4>
+      <p>The cointegrating relationship is close to mechanically guaranteed by contract (ETF price vs. basket NAV) — the real question becomes execution speed and cost.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🌍</div>
+      <h4>Macro / cross-asset relative value</h4>
+      <p>Non-obvious pairs where the economic link is a hypothesis, not a guarantee — the test does real work separating structural link from coincidental co-trending.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🛠️</div>
+      <h4>Error-correction models</h4>
+      <p>Once cointegration is established, model each series' change partly on how far last period's spread sat from equilibrium — a forecasting equation, not just a trading rule.</p>
+    </div>
+  </div>
   <p>
     <strong>Pairs trading</strong> is the flagship application: find two
     (or more) instruments with an economically sensible link — two share
@@ -523,6 +603,7 @@
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this could plug into MacroFXModel</div>
     <h3>The repo already flags this exact gap in its own notes — it just hasn't been built</h3>
     <p>
@@ -600,6 +681,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where cointegration testing quietly goes wrong</h3>
     <p>
@@ -661,6 +743,19 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Correlation ≠ cointegration.</strong> Correlation measures whether short-run changes move together; cointegration measures whether the levels have a stable, bounded spread — a much stronger, rarer condition.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Regressing two random walks in levels can lie to you.</strong> Granger &amp; Newbold (1974) showed unrelated non-stationary series can produce a deceptively high R² and "significant" t-statistics purely by chance.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The Engle-Granger two-step method is the concrete test.</strong> Step 1 regresses the levels for a hedge ratio β; Step 2 runs an ADF test on the residual spread, using stricter Engle-Granger/MacKinnon critical values, not plain Dickey-Fuller.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Johansen generalizes to baskets of three or more series.</strong> It avoids Engle-Granger's arbitrary Y-vs-X choice and finds how many independent cointegrating relationships exist at once, via a jointly-fit VAR/VECM.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A high Step-1 R² proves nothing on its own.</strong> Only the Step-2 ADF test on the residual actually discriminates a real equilibrium relationship from two series that merely trended together over one convenient window.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Passing a cointegration test is not itself a trading edge.</strong> It only clears the first bar — a real statistical relationship — and still needs this repo's full honest-harness discipline (real costs, true OOS split, ≥30 trades) before being treated as validated.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo's own notes already flag the gap.</strong> <code>correlations.html</code>, <code>cross-pair-research.html</code> and <code>credit-leadlag.html</code> all currently work from return correlation or lead-lag, not a levels cointegration test — a named, not-yet-built extension.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why can two completely unrelated random walks show a high R² when you regress one on the other in levels?</summary>

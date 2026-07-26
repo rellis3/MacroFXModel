@@ -33,6 +33,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     A backtest produces exactly one number for "the Sharpe ratio" and exactly
@@ -67,6 +68,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>One bag of marbles, reached into many times — versus a dice machine run many times</h3>
     <p>
@@ -99,6 +101,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     <strong>The setup.</strong> You observe one sample of \(n\) values,
@@ -124,6 +127,10 @@
     your \(n\) observed values" — as a stand-in for the true \(F\):
   </p>
   <div class="tl-math">\[ \hat{F}_n(x) = \frac{1}{n}\sum_{i=1}^n \mathbb{1}(x_i \le x) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>F̂ₙ</code><span>empirical distribution — the bootstrap's stand-in for the true F</span></div>
+    <div class="tl-eq-chip c4"><code>1/n</code><span>probability mass put on each observed value</span></div>
+  </div>
   <p>
     A <strong>bootstrap resample</strong> is then built by drawing \(n\) new
     observations independently from \(\hat F_n\) — which, mechanically, just
@@ -132,6 +139,9 @@
     time:
   </p>
   <div class="tl-math">\[ x_1^{*},\, x_2^{*},\, \dots,\, x_n^{*} \;\overset{\text{iid}}{\sim}\; \hat{F}_n \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>xᵢ*</code><span>one value in a resample — drawn with replacement from the originals</span></div>
+  </div>
   <p>
     Because the draw is with replacement, a resample of size \(n\) will
     typically contain some original observations more than once and leave
@@ -143,6 +153,34 @@
     more, since it's cheap to do on a computer):
   </p>
   <div class="tl-math">\[ T^*_b = T\big(x_1^{*(b)}, \dots, x_n^{*(b)}\big), \qquad b = 1, \dots, B \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>T*ᵦ</code><span>one bootstrap replicate — T computed on the b-th resample</span></div>
+    <div class="tl-eq-chip c4"><code>B</code><span>how many resamples you draw, typically 1,000–10,000+</span></div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">x*</div>
+      <div class="tl-fp-name">Resample</div>
+      <div class="tl-fp-desc">n values drawn with replacement from the original data</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">T*ᵦ</div>
+      <div class="tl-fp-name">Replicate</div>
+      <div class="tl-fp-desc">The statistic recomputed on that resample</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">SEᵦₒₒₜ</div>
+      <div class="tl-fp-name">Bootstrap SE</div>
+      <div class="tl-fp-desc">Standard deviation across all B replicates</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">CI</div>
+      <div class="tl-fp-name">Percentile interval</div>
+      <div class="tl-fp-desc">The 2.5th/97.5th percentile of the replicates, directly</div>
+    </div>
+  </div>
+
   <p>
     The collection \(\{T^*_1, \dots, T^*_B\}\) is the bootstrap's answer: an
     approximation to the sampling distribution of \(T\), built entirely out of
@@ -152,12 +190,19 @@
     deviation of the replicates:
   </p>
   <div class="tl-math">\[ SE_{boot} = \sqrt{\frac{1}{B-1}\sum_{b=1}^{B}\big(T^*_b - \bar{T}^{*}\big)^2}\,, \qquad \bar{T}^{*} = \frac{1}{B}\sum_{b=1}^{B} T^*_b \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>T̄*</code><span>the average replicate across all B resamples</span></div>
+    <div class="tl-eq-chip c2"><code>SEᵦₒₒₜ</code><span>ordinary standard deviation of the replicates</span></div>
+  </div>
   <p>
     And a <strong>percentile confidence interval</strong> is read straight off
     the sorted replicates — for a 95% interval, take the value at the 2.5th
     percentile and the value at the 97.5th percentile of \(\{T^*_1,\dots,T^*_B\}\):
   </p>
   <div class="tl-math">\[ \text{95\% bootstrap CI} \;=\; \big[\, T^{*}_{(0.025)},\; T^{*}_{(0.975)} \,\big] \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>T*₍₀.₀₂₅₎, T*₍₀.₉₇₅₎</code><span>read straight off the sorted replicates — no formula needed</span></div>
+  </div>
   <p>
     Notice what this does and does not require. It requires only the original
     \(n\) observations and a rule for computing \(T\) — it works identically
@@ -238,6 +283,10 @@
     that fitted model, using freshly drawn random innovations at each step:
   </p>
   <div class="tl-math">\[ r_t^{(sim)} = \hat\mu + \hat\sigma_t \, z_t, \qquad z_t \overset{\text{iid}}{\sim} \mathcal{N}(0,1) \ \text{(or a fitted residual distribution)} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>μ̂, σ̂ₜ</code><span>parameters fitted to the same historical sample</span></div>
+    <div class="tl-eq-chip c4"><code>zₜ</code><span>a freshly drawn random innovation at each step</span></div>
+  </div>
   <p>
     Running that recursion forward many times, independently, produces many
     synthetic return/price/equity paths, \(S^{(1)}, S^{(2)}, \dots, S^{(M)}\),
@@ -270,6 +319,13 @@
     page exists to make precisely why that rule is true, not just asserted,
     fully explicit.
   </p>
+
+  <div class="tl-solid red">
+    <strong>The trap:</strong> a narrow bootstrap or Monte Carlo interval
+    proves the sample (or the fitted model) is internally consistent — it
+    proves nothing about whether the signal that generated it will work on
+    data it has never seen. Neither tool can leave the sample it started from.
+  </div>
 
   <div class="tl-chart">
     <div class="tl-chart-label">A historical equity curve fanning into simulated forward paths</div>
@@ -307,6 +363,7 @@
   </div>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Bootstrapping the mean of five trade returns, by hand</h3>
     <p>
@@ -315,6 +372,9 @@
       is:
     </p>
     <div class="tl-math">\[ \bar{x} = \frac{2 + (-1) + 3 + (-2) + 1}{5} = \frac{3}{5} = 0.6 \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c2"><code>0.6%</code><span>the one number a backtest report would show — nothing about its stability</span></div>
+    </div>
     <p>
       That's the one number a backtest report would show: "average trade
       return = 0.6%." The bootstrap asks: how much would that 0.6% wobble if
@@ -330,6 +390,9 @@
       x^{*(3)} &= \{3,\, 1,\, 3,\, 2,\, -1\} &&\Rightarrow \bar{x}^{*(3)} = \tfrac{3+1+3+2-1}{5} = \tfrac{8}{5} = 1.6
       \end{aligned}
       \]
+    </div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>1.4, −1.2, 1.6</code><span>three resample means, from the exact same five original values</span></div>
     </div>
     <p>
       Notice each resample reuses the same five original values — nothing new
@@ -353,7 +416,32 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📏</div>
+      <h4>Performance-metric confidence intervals</h4>
+      <p>Bootstrapping a Sharpe ratio, max drawdown, or hit rate — metrics with no clean analytic sampling distribution — is a standard, legitimate risk-desk request.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🎲</div>
+      <h4>Monte Carlo option pricing &amp; risk</h4>
+      <p>Pricing path-dependent derivatives and computing portfolio VaR by simulating thousands of joint scenarios rather than a single closed-form formula.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧱</div>
+      <h4>Block bootstrapping in econometrics</h4>
+      <p>The standard fix wherever a time series' own serial correlation would otherwise be silently discarded — GARCH/ARIMA coefficient standard errors, for instance.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🏖️</div>
+      <h4>Retirement planning</h4>
+      <p>Simulating thousands of possible future market paths to show a saver the range of outcomes — an expectation-setting exercise, never a guarantee.</p>
+    </div>
+  </div>
+
   <p>
     <strong>Performance-metric confidence intervals.</strong> Efron &amp;
     Tibshirani's own textbook (Further Reading) popularized using the
@@ -382,6 +470,7 @@
   </p>
 
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
     <h3>The reassuringly narrow bootstrap interval that proved nothing about tomorrow</h3>
     <p>
@@ -419,6 +508,7 @@
   </div>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
     <h3>The rule this lesson formalizes, and the tool that actually tests generalization</h3>
     <p>
@@ -472,6 +562,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where these ideas quietly get misapplied</h3>
     <p>
@@ -515,6 +606,18 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The bootstrap resamples your one dataset with replacement.</strong> Thousands of resamples approximate a statistic's sampling distribution — a Sharpe ratio, a mean, a max drawdown — with no assumption about its shape.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Use the block bootstrap for time series.</strong> A plain bootstrap shuffles away volatility clustering and serial correlation, understating true uncertainty; resampling contiguous blocks preserves it.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Monte Carlo simulates from a fitted model, not real observations.</strong> It generates brand-new synthetic paths from an assumed process (GARCH, GBM) rather than resampling actual data.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Neither tool can leave the sample it started from.</strong> Both describe what's plausible given what you already have — never what would happen under conditions that sample never contained.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A narrow bootstrap interval is not robustness evidence.</strong> It proves the sample is internally consistent, not that the underlying signal generalizes — conflating the two is a documented, easy way backtests mislead their own authors.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Walk-forward validation is the tool that actually tests generalization.</strong> It splits real history into a fitting period and a genuinely separate later testing period the signal never touched — bootstrapping and Monte Carlo cannot substitute for that, no matter how many replicates are run.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does bootstrapping a strategy's own historical trades NOT prove it will work on new, unseen data?</summary>

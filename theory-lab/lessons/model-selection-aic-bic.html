@@ -32,6 +32,7 @@
   </ul>
 </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
   Every model-fitting procedure you'll use here — OLS regression, an ARIMA order, a GARCH
@@ -58,7 +59,7 @@
   competing models of different sizes.
   </p>
 
-  <div class="tl-box intuition"><div class="tl-box-label">Plain-English intuition</div>
+  <div class="tl-box intuition"><div class="tl-icon-badge blue">💡</div><div class="tl-box-label">Plain-English intuition</div>
     <h3>Connect-the-dots with enough dots</h3>
     <p>
     Give a curve enough free parameters and it will pass through every single data point exactly —
@@ -76,6 +77,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
   Start with the <strong>likelihood</strong> of a fitted model: given the model's estimated
@@ -95,6 +97,10 @@
   happens to exist in this particular sample:
   </p>
   <div class="tl-math">\[ \ln \hat L_{B} \ \ge\ \ln \hat L_{A} \quad \text{whenever B nests A} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>ln L̂_B, ln L̂_A</code><span>the two models' maximized log-likelihoods</span></div>
+    <div class="tl-eq-chip c4"><code>≥</code><span>B can always match A's fit, and generically beats it, purely by having more parameters</span></div>
+  </div>
   <p>
   This is the log-likelihood analogue of the \(R^2\) fact from the regression primer, and it is
   exactly why raw log-likelihood (or raw \(R^2\), or raw sum-of-squared-residuals) is not a valid
@@ -133,6 +139,25 @@
   scale used for likelihood-ratio tests) gives:
   </p>
   <div class="tl-math">\[ \text{AIC} = 2k - 2\ln\hat L \]</div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">2k</div>
+      <div class="tl-fp-name">The complexity penalty</div>
+      <div class="tl-fp-desc">A flat charge of 2 points per free parameter, regardless of sample size</div>
+    </div>
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">−2ln L̂</div>
+      <div class="tl-fp-name">The deviance</div>
+      <div class="tl-fp-desc">In-sample badness-of-fit — can only fall (or stay flat) as k grows</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">AIC</div>
+      <div class="tl-fp-name">The score</div>
+      <div class="tl-fp-desc">Lower is better — an estimate of expected out-of-sample badness-of-fit</div>
+    </div>
+  </div>
+
   <p>
   Read AIC as "twice the number of parameters, plus the deviance" — the deviance is the in-sample
   badness-of-fit, and \(2k\) is the estimated correction needed to make that number a fair estimate
@@ -157,6 +182,11 @@
   Doubling that (again, to match the \(-2\ln\hat L\) convention) gives:
   </p>
   <div class="tl-math">\[ \text{BIC} = k\ln(n) - 2\ln\hat L \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>k ln(n)</code><span>the penalty — grows with sample size, unlike AIC's flat 2 per parameter</span></div>
+    <div class="tl-eq-chip c1"><code>−2ln L̂</code><span>the same deviance term AIC uses</span></div>
+    <div class="tl-eq-chip c3"><code>BIC</code><span>lower is better; asymptotically picks the true model if it's in the candidate set</span></div>
+  </div>
   <p>
   Read BIC as "the deviance, plus a penalty of \(\ln(n)\) per parameter" rather than AIC's flat 2
   per parameter. Because it approximates a Bayesian posterior-probability comparison under
@@ -197,7 +227,7 @@
   happens to endorse the model you already wanted.
   </p>
 
-  <div class="tl-box example"><div class="tl-box-label">Worked example</div>
+  <div class="tl-box example"><div class="tl-icon-badge purple">🧮</div><div class="tl-box-label">Worked example</div>
     <h3>A genuine tie on AIC, a clear preference on BIC</h3>
     <p>
     Suppose you have two candidate models fit to the same \(n=100\) observations. Model A has
@@ -230,6 +260,13 @@
     simpler model — because BIC's penalty for those three extra parameters is more than double
     AIC's at this sample size.
     </p>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>The takeaway:</strong> the same data, the same two models, and the same 6-point
+    deviance improvement read as "a dead heat" under AIC and "a clear win for the simpler model"
+    under BIC — the two criteria aren't reporting the same thing, they're pricing complexity
+    differently.
   </div>
 
   <div class="tl-chart">
@@ -267,6 +304,7 @@
     </div>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
   In applied work, AIC and BIC are computed for every model in a candidate set (e.g. every ARIMA
@@ -274,11 +312,29 @@
   regression), and the model with the <em>lowest</em> value is preferred. A common refinement,
   from Burnham &amp; Anderson's model-selection literature, is to look at the gap
   \(\Delta_i = \text{AIC}_i - \text{AIC}_{\min}\) for every model rather than just crowning the
-  single winner: a rule of thumb treats \(\Delta \le 2\) as "substantial support, effectively tied
-  with the best model," \(4\text{–}7\) as "considerably less support," and \(\Delta > 10\) as
-  "essentially no support" — the same "don't over-read one number" discipline as reading a p-value
-  without its context. Two further practical caveats matter as much as the formula itself:
+  single winner — the same "don't over-read one number" discipline as reading a p-value
+  without its context:
   </p>
+
+  <div class="tl-stat-row">
+    <div class="tl-stat green">
+      <div class="tl-stat-num">Δ ≤ 2</div>
+      <div class="tl-stat-label">substantial support</div>
+      <div class="tl-stat-sub">effectively tied with the best model</div>
+    </div>
+    <div class="tl-stat amber">
+      <div class="tl-stat-num">Δ 4–7</div>
+      <div class="tl-stat-label">considerably less support</div>
+      <div class="tl-stat-sub">a real but not overwhelming gap</div>
+    </div>
+    <div class="tl-stat purple">
+      <div class="tl-stat-num">Δ &gt; 10</div>
+      <div class="tl-stat-label">essentially no support</div>
+      <div class="tl-stat-sub">safely ruled out relative to the leader</div>
+    </div>
+  </div>
+
+  <p>Two further practical caveats matter as much as the formula itself:</p>
   <p>
   <strong>AIC/BIC only rank a candidate set against each other — they say nothing about whether
   any of them fit well in an absolute sense.</strong> The best model in a set of five bad models is
@@ -295,7 +351,7 @@
   parameters being estimated.
   </p>
 
-  <div class="tl-box scenario"><div class="tl-box-label">Real-world trading scenario</div>
+  <div class="tl-box scenario"><div class="tl-icon-badge amber">🎯</div><div class="tl-box-label">Real-world trading scenario</div>
     <h3>Choosing a mean-reversion spread's lag length</h3>
     <p>
     A researcher is deciding how many lags to use in an autoregressive model of a mean-reversion
@@ -335,7 +391,7 @@
     </p>
   </div>
 
-  <div class="tl-box repo"><div class="tl-box-label">Where this connects to MacroFXModel</div>
+  <div class="tl-box repo"><div class="tl-icon-badge green">🧩</div><div class="tl-box-label">Where this connects to MacroFXModel</div>
     <h3>The formal version of a rule this repo already states in prose</h3>
     <p>
     To be direct about what is and isn't built here: <strong>there is currently no coded AIC/BIC
@@ -364,7 +420,7 @@
     </p>
   </div>
 
-  <div class="tl-box pitfall"><div class="tl-box-label">Common pitfalls</div>
+  <div class="tl-box pitfall"><div class="tl-icon-badge red">⚠️</div><div class="tl-box-label">Common pitfalls</div>
     <h3>Where this goes wrong in practice</h3>
     <p>
     <strong>Treating AIC/BIC as an absolute goodness-of-fit measure.</strong> A low AIC only means
@@ -402,6 +458,19 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Raw fit always favors the bigger model.</strong> A nesting model can match or beat a smaller one's log-likelihood by construction — raw likelihood or \(R^2\) alone can never validly choose between models of different sizes.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>AIC and BIC both do "fit minus a complexity penalty," they just price it differently.</strong> AIC charges a flat \(2\) per parameter; BIC charges \(\ln(n)\) per parameter — stricter than AIC for any \(n>e^2\approx7.4\).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>AIC and BIC optimize different targets.</strong> AIC is tuned for out-of-sample predictive accuracy (≈ leave-one-out CV); BIC is tuned for recovering the true, most-parsimonious model and is consistent as \(n\to\infty\), which AIC is not.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked example shows they can disagree outright.</strong> A tie on AIC (104 vs. 104) becomes a clear ~7.8-point BIC win for the simpler model — same data, same fit improvement, different verdict.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>AIC/BIC only rank a candidate set against itself.</strong> A low AIC is a relative statement — the best of five bad models still "wins," which doesn't make it a good model.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Comparisons require identical usable data.</strong> An AR(1) vs. AR(5) comparison is invalid unless both are re-fit on the same trimmed, aligned sample — the AR(5) model otherwise silently loses observations to lagged inputs.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Neither criterion replaces a genuine OOS check.</strong> Per Lego Principle 5, a model that "wins" on AIC/BIC still has to prove itself on a true in-sample/out-of-sample split with real costs before it earns any trust — and this repo has no coded AIC/BIC step yet.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz"><summary>Q1. Why does raw log-likelihood (or raw \(R^2\)) always weakly favor a model with more parameters, even parameters that describe nothing real?</summary>
     <div class="tl-answer">Whenever one model nests another (the larger model reduces to the smaller one by setting some parameters to a fixed value, typically zero), the larger model's maximum-likelihood search happens over a strictly larger parameter space that includes every point the smaller model could reach. It can therefore always match the smaller model's fit exactly and, generically, do at least marginally better by moving the extra parameters away from zero to track whatever pattern — real or pure sampling noise — exists in that specific sample. This is a mechanical consequence of optimizing over a bigger space, not evidence the extra parameters are meaningful; it's the same reason OLS \(R^2\) can never fall when a predictor is added.</div>

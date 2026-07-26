@@ -32,6 +32,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     Stare at almost any daily return chart for a currency pair, an index, or a commodity and one pattern jumps
@@ -62,7 +63,14 @@
     fix exactly this lag.
   </p>
 
+  <div class="tl-solid blue">
+    <strong>The whole idea in one line:</strong> returns themselves stay close to unpredictable from their own
+    past, but the <em>size</em> of returns — volatility — is highly predictable from its own recent past. GARCH
+    models that second moment, on top of a first moment (direction) assumed to be roughly unforecastable.
+  </div>
+
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>Volatility has momentum; returns (mostly) don't</h3>
     <p>
@@ -77,6 +85,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     We need a bit of notation before writing any model down. Let \(P_t\) be the closing price on day \(t\), and
@@ -85,6 +94,10 @@
     the return into a mean part and a shock part:
   </p>
   <div class="tl-math">\[ r_t = \mu + \epsilon_t \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>μ</code><span>the small, usually near-zero average daily drift</span></div>
+    <div class="tl-eq-chip c4"><code>ε_t</code><span>the day's unpredictable shock — the part GARCH models</span></div>
+  </div>
   <p>
     \(\mu\) is the (usually assumed-small, sometimes assumed-zero) average daily drift, and \(\epsilon_t\) is the
     day's unpredictable shock — the residual, the part of the return not explained by a constant drift. For a
@@ -94,6 +107,10 @@
     <strong>conditional variance</strong>:
   </p>
   <div class="tl-math">\[ \sigma_t^2 = \mathrm{Var}(\epsilon_t \mid \mathcal{F}_{t-1}) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>σ_t²</code><span>today's conditional variance — a forecast, not a historical average</span></div>
+    <div class="tl-eq-chip c3"><code>F_{t-1}</code><span>everything observable through yesterday's close</span></div>
+  </div>
   <p>
     Read this as: "\(\sigma_t^2\) is the variance of today's shock, conditional on \(\mathcal{F}_{t-1}\)" — where
     \(\mathcal{F}_{t-1}\) (a standard notation in time-series stats, the "filtration" or information set) just means
@@ -103,6 +120,10 @@
     Contrast that with a flat historical-volatility window (e.g. an HV20 estimate):
   </p>
   <div class="tl-math">\[ \hat\sigma_{HV20}^2 = \frac{1}{20}\sum_{i=1}^{20} \epsilon_{t-i}^2 \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>1/20</code><span>equal weight on every one of the last 20 days</span></div>
+    <div class="tl-eq-chip c4"><code>Σ</code><span>no concept of "conditional on what just happened"</span></div>
+  </div>
   <p>
     HV20 gives the last 20 days <strong>equal weight</strong> — day \(t{-}1\) counts exactly as much as day
     \(t{-}20\) — and it has no concept of "conditional on what just happened." It also has a well-known
@@ -119,6 +140,10 @@
     a function of yesterday's <em>squared</em> shock.
   </p>
   <div class="tl-math">\[ \sigma_t^2 = \omega + \alpha\,\epsilon_{t-1}^2 \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>ω</code><span>the floor — variance never falls below a quiet-market baseline</span></div>
+    <div class="tl-eq-chip c4"><code>α·ε_{t-1}²</code><span>how strongly one big day pushes tomorrow's forecast up</span></div>
+  </div>
   <p>
     Squaring is not cosmetic — it's the load-bearing idea. A raw shock \(\epsilon_{t-1}\) can be positive or
     negative, but "how much variance should this generate" doesn't care about sign: a −2% day and a +2% day should
@@ -142,6 +167,23 @@
     its own recent level, not just of the last shock:
   </p>
   <div class="tl-math">\[ \sigma_t^2 = \omega + \alpha\,\epsilon_{t-1}^2 + \beta\,\sigma_{t-1}^2 \]</div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">ω</div>
+      <div class="tl-fp-name">The floor</div>
+      <div class="tl-fp-desc">Baseline variance, anchors the long-run level</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">α·ε_{t-1}²</div>
+      <div class="tl-fp-name">The reaction</div>
+      <div class="tl-fp-desc">How sharply the model responds to yesterday's fresh shock</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">β·σ_{t-1}²</div>
+      <div class="tl-fp-name">The inertia</div>
+      <div class="tl-fp-desc">Momentum carried over from wherever variance already was</div>
+    </div>
+  </div>
   <p>
     This is <strong>GARCH(1,1)</strong> — "(1,1)" meaning one lag of the squared shock and one lag of the variance
     itself; higher-order GARCH(p,q) variants exist but (1,1) is by far the most widely used in practice and is
@@ -170,6 +212,9 @@
     down toward a stable long-run level rather than wandering off to infinity or zero — the parameters must satisfy
   </p>
   <div class="tl-math">\[ \alpha + \beta < 1 \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>α+β &lt; 1</code><span>required for variance to mean-revert instead of exploding</span></div>
+  </div>
   <p>
     Intuitively: each day, a fraction \(\alpha+\beta\) of "how far variance currently is from its long-run
     average" carries forward into tomorrow (proof of that exact statement is the persistence derivation two
@@ -191,6 +236,9 @@
     \(\bar\sigma^2\):
   </p>
   <div class="tl-math">\[ \bar\sigma^2 = \omega + \alpha\bar\sigma^2 + \beta\bar\sigma^2 \;\;\Longrightarrow\;\; \bar\sigma^2(1-\alpha-\beta) = \omega \;\;\Longrightarrow\;\; \bar\sigma^2 = \frac{\omega}{1-\alpha-\beta} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>σ̄²</code><span>the long-run variance — what the model reverts to with no new shocks</span></div>
+  </div>
   <p>
     This is the number the model would forecast on an infinitely quiet day with no recent shocks to react to — the
     steady-state variance. Every GARCH(1,1) forecast can be read as "the long-run variance, nudged up or down by
@@ -203,6 +251,9 @@
     substitute out \(\omega\); a few lines of algebra collapse to:
   </p>
   <div class="tl-math">\[ \sigma_t^2 - \bar\sigma^2 \;=\; \alpha\big(\epsilon_{t-1}^2-\bar\sigma^2\big) + \beta\big(\sigma_{t-1}^2 - \bar\sigma^2\big) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>σ_t² − σ̄²</code><span>the excess over the long-run level, decaying at rate α+β</span></div>
+  </div>
   <p>
     Taking expectations forward (using \(E[\epsilon_{t-1}^2]=E[\sigma_{t-1}^2]\) again) shows that the
     <em>expected deviation from the long-run level decays geometrically, at rate \(\alpha+\beta\) per day</em>:
@@ -213,6 +264,9 @@
     excess variance to fall to half its initial size:
   </p>
   <div class="tl-math">\[ n_{1/2} = \frac{\ln(0.5)}{\ln(\alpha+\beta)} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>n₁/₂</code><span>days for a shock's excess variance to fall to half its size</span></div>
+  </div>
   <p>
     When \(\alpha+\beta\) is close to 1 (say 0.97–0.99, common for daily equity/index data), the half-life stretches
     to weeks — a volatility spike from a single event lingers in the forecast for a long time. When \(\alpha+\beta\)
@@ -223,6 +277,7 @@
   </p>
 
   <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Forecasting tomorrow's σ after a shock day, then watching it decay</h3>
     <p>
@@ -412,19 +467,39 @@
   })();
   </script>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     GARCH(1,1) and its many variants are estimated in practice by maximum likelihood — choosing
     \(\omega,\alpha,\beta\) to make the observed sequence of returns as probable as possible under the model's
     implied variance path, typically on a rolling or expanding window of historical daily returns, re-fit
-    periodically as new data arrives. The forecast \(\sigma_t\) it produces feeds directly into things a desk cares
-    about every day: scaling position size inversely to expected volatility ("vol targeting," so a fixed-dollar-risk
-    position gets smaller automatically when the market gets choppier), setting stop distances and option-implied
-    fair-value comparisons, computing Value-at-Risk, and — the use case most directly relevant here — setting the
-    width of a probabilistic price band around a forecast level. A model that reacts to a shock the same day
-    (rather than 20 days later, on a lag, the way a flat trailing window does) is the entire point when the band
-    needs to be honest the day after a surprise, not three weeks after.
+    periodically as new data arrives. A model that reacts to a shock the same day (rather than 20 days later, on a
+    lag, the way a flat trailing window does) is the entire point when a downstream use needs to be honest the day
+    after a surprise, not three weeks after.
   </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📏</div>
+      <h4>Vol targeting</h4>
+      <p>Scale position size inversely to expected volatility, so a fixed-dollar-risk position shrinks automatically when the market gets choppier.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🛑</div>
+      <h4>Stop distances &amp; option fair value</h4>
+      <p>Set stop distances and compare against option-implied volatility using the same forecast.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📊</div>
+      <h4>Value-at-Risk</h4>
+      <p>Feed the day's conditional variance forecast directly into a VaR calculation.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📐</div>
+      <h4>Probabilistic price bands</h4>
+      <p>Set the width of a forecast band around a level — the use case most directly relevant to this repo.</p>
+    </div>
+  </div>
   <p>
     In practice GARCH(1,1) is rarely the last word — desks commonly extend it to
     <strong>asymmetric</strong> variants (EGARCH, GJR-GARCH) that let a negative shock raise volatility more than a
@@ -435,6 +510,7 @@
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
     <h3>One of three sigma estimators feeding the live forecaster's bands</h3>
     <p>
@@ -473,6 +549,7 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where GARCH gets misread or misused</h3>
     <p>
@@ -508,6 +585,19 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Volatility clusters.</strong> Big moves of either sign follow big moves, and calm follows calm — even though the direction of the next move stays close to unpredictable.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>GARCH(1,1) has three additive pieces.</strong> A floor (ω), a reaction to yesterday's squared shock (α), and inertia from yesterday's own variance level (β).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>α+β is the persistence.</strong> It's the day-over-day decay rate of a volatility shock's excess over normal, and the half-life falls straight out of it: \(n_{1/2}=\ln(0.5)/\ln(\alpha+\beta)\).</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Stationarity requires α+β &lt; 1.</strong> At exactly 1 (IGARCH) a shock never decays; above 1 the model isn't valid at all — always sanity-check this on any parameter set.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo already runs GARCH(1,1) in production.</strong> <code>js/volBacktestEngine.js</code> uses <code>G_ALPHA=0.06</code>, <code>G_BETA=0.91</code> (persistence 0.97, half-life ≈ 23 days) as one of three sigma estimators, applied to the index asset class.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Plain GARCH(1,1) is symmetric.</strong> It can't capture the leverage effect (down moves raising volatility more than equal-sized up moves) — EGARCH/GJR-GARCH exist specifically to address that.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This isn't a claim GARCH beats the alternatives OOS.</strong> It's one of three estimators (alongside HV20 and Yang-Zhang) compared under the same walk-forward harness — which wins is an empirical question, not assumed from the math.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does ARCH square the shock, \(\epsilon_{t-1}^2\), instead of just using \(\epsilon_{t-1}\) directly?</summary>

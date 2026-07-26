@@ -32,6 +32,7 @@
   </ul>
 </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
   Every statistical test you run has some chance of being wrong even when it is done correctly.
@@ -55,7 +56,7 @@
   standard corrections (Bonferroni and False Discovery Rate) for keeping it under control.
   </p>
 
-  <div class="tl-box intuition"><div class="tl-box-label">Plain-English intuition</div>
+  <div class="tl-box intuition"><div class="tl-icon-badge blue">💡</div><div class="tl-box-label">Plain-English intuition</div>
     <h3>The lottery-ticket analogy</h3>
     <p>
     Imagine a lottery where each ticket has a 5% chance of winning, purely by chance, with no
@@ -71,6 +72,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
   Start with a single hypothesis test. You have a <strong>null hypothesis</strong> — call it
@@ -112,11 +114,34 @@
   "avoid it" probability:
   </p>
   <div class="tl-math">\[ P(\text{no false positives in } m \text{ tests}) = (1-\alpha)^m \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>1−α</code><span>chance one test avoids a false positive</span></div>
+    <div class="tl-eq-chip c4"><code>(1−α)^m</code><span>chance ALL m tests avoid one, if they're independent</span></div>
+  </div>
   <p>
   The family-wise error rate (FWER) is the complement — the probability that <em>at least one</em>
   of the \(m\) tests produces a false positive purely by chance:
   </p>
   <div class="tl-math">\[ \text{FWER} = 1-(1-\alpha)^m \]</div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">α</div>
+      <div class="tl-fp-name">Per-test false-positive rate</div>
+      <div class="tl-fp-desc">The risk you accept on any one test — never changes</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">m</div>
+      <div class="tl-fp-name">Number of tests</div>
+      <div class="tl-fp-desc">Every slice, regime, or parameter combination is one more roll of the dice</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">FWER</div>
+      <div class="tl-fp-name">Family-wise error rate</div>
+      <div class="tl-fp-desc">Chance at least one of the m tests is a false alarm — climbs toward 1 fast</div>
+    </div>
+  </div>
+
   <p>
   This function grows toward 1 quickly as \(m\) increases, even though each individual test is
   still exactly as reliable as it was on its own — \(\alpha\) per test never changed. What changed
@@ -137,6 +162,10 @@
   per-test threshold to:
   </p>
   <div class="tl-math">\[ \alpha_{\text{Bonf}} = \frac{\alpha}{m} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>α_Bonf</code><span>the new, much stricter per-test bar</span></div>
+    <div class="tl-eq-chip c1"><code>α/m</code><span>the original threshold, divided by how many tests you ran</span></div>
+  </div>
   <p>
   and only calls a test significant if \(p < \alpha_{\text{Bonf}}\). This is derived from a
   simple inequality (Boole's inequality / the union bound): the probability of at least one
@@ -174,6 +203,10 @@
     <li>Find the largest rank \(k\) such that:</li>
   </ol>
   <div class="tl-math">\[ p_{(k)} \le \frac{k}{m} \, q \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>p_(k)</code><span>the k-th smallest p-value in the sorted list</span></div>
+    <div class="tl-eq-chip c2"><code>(k/m)q</code><span>a staircase threshold — more lenient the higher the rank k</span></div>
+  </div>
   <ol start="4">
     <li>Declare every test with rank \(1, 2, \dots, k\) (i.e. every p-value at or below that
         cutoff p-value) significant. Everything ranked above \(k\) is not.</li>
@@ -188,7 +221,7 @@
   many-slice research.
   </p>
 
-  <div class="tl-box example"><div class="tl-box-label">Worked example</div>
+  <div class="tl-box example"><div class="tl-icon-badge purple">🧮</div><div class="tl-box-label">Worked example</div>
     <h3>Seventy slices, one significance threshold</h3>
     <p>
     Suppose you slice your data 70 ways — say 7 pairs × 5 regimes × 2 holding periods, or any
@@ -334,6 +367,7 @@
   })();
   </script>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
   In quantitative finance this problem has its own well-developed vocabulary, most notably
@@ -345,20 +379,39 @@
   discounts for the number of trials run and the variance across them, conceptually the same move
   as Bonferroni/BH but tailored to Sharpe ratios instead of p-values. The practical habits that
   follow from this literature, and from the physics/biostatistics multiple-testing tradition more
-  broadly, are: (1) <strong>log every test you run</strong>, including the ones that failed — a
-  file of "here are the 70 slices I checked" is what lets you compute \(m\) honestly later; (2)
-  <strong>pre-register</strong> what counts as a discovery before looking at results, so you can't
-  quietly redefine "significant" after seeing which slice happened to win; (3) treat the single
-  best-performing slice out of many with real suspicion — its rank alone (being #1 of 70) tells
-  you almost nothing, because the best of many noise draws is expected to look good by
-  construction, regardless of whether any of the draws contain real signal; and (4) prefer
-  <strong>out-of-sample</strong> confirmation on data that had no part in the slicing/selection
-  process over any post-hoc statistical correction — corrections manage the false-positive rate
-  of the searches you already ran, they do not manufacture the OOS evidence a real effect would
-  produce on fresh data.
+  broadly, are these four:
   </p>
 
-  <div class="tl-box repo"><div class="tl-box-label">Where this connects to MacroFXModel</div>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📋</div>
+      <h4>Log every test you run</h4>
+      <p>Including the ones that failed — a file of "here are the 70 slices I checked" is what lets you compute \(m\) honestly later.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📝</div>
+      <h4>Pre-register the discovery rule</h4>
+      <p>Decide what counts as a discovery before looking at results, so you can't quietly redefine "significant" after seeing which slice won.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🥇</div>
+      <h4>Distrust the single best slice</h4>
+      <p>Its rank alone (#1 of 70) tells you almost nothing — the best of many noise draws is expected to look good by construction.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🔬</div>
+      <h4>Prefer real out-of-sample confirmation</h4>
+      <p>Corrections manage the false-positive rate of searches you already ran — they don't manufacture the OOS evidence a real effect would produce on fresh data.</p>
+    </div>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>The trap:</strong> being #1 out of 70 slices is not, by itself, evidence of anything —
+    the best of many pure-noise draws is <em>expected</em> to look good. Rank alone never tells you
+    whether you found an edge or just found the winner of a lottery you didn't know you entered.
+  </div>
+
+  <div class="tl-box repo"><div class="tl-icon-badge green">🧩</div><div class="tl-box-label">Where this connects to MacroFXModel</div>
     <h3>The theory behind a rule this repo already writes in prose</h3>
     <p>
     This lesson is the mathematics behind a working agreement already stated in this repo's own
@@ -385,7 +438,7 @@
     </p>
   </div>
 
-  <div class="tl-box pitfall"><div class="tl-box-label">Common pitfalls</div>
+  <div class="tl-box pitfall"><div class="tl-icon-badge red">⚠️</div><div class="tl-box-label">Common pitfalls</div>
     <h3>Where this goes wrong in practice</h3>
     <p>
     <strong>Reporting only the winners.</strong> The single most common failure is simply not
@@ -424,6 +477,18 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Running more tests makes a false "significant" result likely, not surprising.</strong> \(\text{FWER}=1-(1-\alpha)^m\) climbs toward 1 fast — at \(m=70\) it's already ≈97.2%, even when nothing real is happening.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>"3 out of 70 slices look significant" is what noise does.</strong> The expected number of false positives among 70 pure-noise slices at \(\alpha=0.05\) is \(70\times0.05=3.5\) — matching that count is not a discovery.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Bonferroni (\(\alpha/m\)) is the strict, correlation-agnostic fix.</strong> It guarantees FWER ≤ α even in the worst case, at the cost of being needlessly harsh on correlated tests (like FX pairs sharing a USD factor).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Benjamini-Hochberg (FDR) is the more forgiving alternative.</strong> Its rank-dependent staircase, \(p_{(k)}\le\frac{k}{m}q\), controls the expected proportion of false discoveries rather than banning any false positive outright — usually more useful for correlated, exploratory FX slicing.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The best of many is expected to look good, by construction.</strong> Being rank #1 of 70 tells you almost nothing on its own — someone has to be the minimum of 70 noise draws.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Surviving a correction is necessary, not sufficient.</strong> A statistically valid discovery still has to hold up in-sample consistently and on a genuine out-of-sample split with real costs before it's a tradeable edge (Lego Principle 5).</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz"><summary>Q1. In your own words, what does \(\alpha = 0.05\) promise you for a single hypothesis test — and what does it NOT promise once you've run many tests?</summary>
     <div class="tl-answer">It promises that <em>if</em> the null hypothesis is actually true, there is a 5% chance this one test will incorrectly reject it — a false-positive rate of 5% <em>per test</em>. It does not promise anything about the chance of a false positive across a whole batch of tests: run enough tests at \(\alpha=0.05\) and a false "significant" result becomes likely, even though each individual test is still exactly as reliable as advertised (5% per test never changed). The mistake is applying the single-test guarantee to a multi-test situation.</div>

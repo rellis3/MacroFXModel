@@ -32,6 +32,7 @@
     </ul>
   </div>
 
+  <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
     The PCA lesson in this Theory Lab ends on a clean, useful result: sort a
@@ -61,6 +62,7 @@
   </p>
 
   <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
     <h3>Flipping coins tells you what "no pattern" looks like, too</h3>
     <p>
@@ -86,6 +88,7 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
     Everything below builds directly on the PCA lesson's setup: \(N\)
@@ -151,6 +154,11 @@
   <div class="tl-math">
     \[ q = \frac{N}{T} \]
   </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>N</code><span>number of instruments in the basket</span></div>
+    <div class="tl-eq-chip c2"><code>T</code><span>number of independent observations used</span></div>
+    <div class="tl-eq-chip c4"><code>q</code><span>instruments relative to history — the shape parameter</span></div>
+  </div>
   <p>
     the empirical distribution of that matrix's eigenvalues converges to the
     <strong>Marchenko-Pastur distribution</strong> — and critically, that
@@ -161,6 +169,25 @@
   <div class="tl-math">
     \[ \lambda_{\min} = (1 - \sqrt{q})^2 \qquad\qquad \lambda_{\max} = (1 + \sqrt{q})^2 \]
   </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">q</div>
+      <div class="tl-fp-name">Shape parameter</div>
+      <div class="tl-fp-desc">N/T — instruments relative to history</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">λ_min</div>
+      <div class="tl-fp-name">Lower noise edge</div>
+      <div class="tl-fp-desc">(1 − √q)² — the band's floor</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">λ_max</div>
+      <div class="tl-fp-name">Upper noise edge</div>
+      <div class="tl-fp-desc">(1 + √q)² — the band's ceiling</div>
+    </div>
+  </div>
+
   <p>
     Read \(q = N/T\) exactly as "how many instruments you're trying to
     estimate simultaneous pairwise relationships for, relative to how many
@@ -195,6 +222,14 @@
     window doesn't just have a wide noise band, it has structurally
     unrecoverable directions).
   </p>
+
+  <div class="tl-solid blue">
+    <strong>The insight:</strong> it's not \(N\) alone, and not \(T\) alone —
+    only their ratio \(q=N/T\) determines the noise band's width. A basket of
+    100 instruments over 100,000 days and a basket of 3 instruments over
+    3,000 days can share the same \(q\) and the same noise band, even though
+    their \(N\) and \(T\) individually look nothing alike.
+  </div>
 
   <h3>Step 4 — the practical decision rule</h3>
   <p>
@@ -232,6 +267,7 @@
   </table></div>
 
   <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
     <h3>Thirty FX pairs, one year of daily returns</h3>
     <p>
@@ -335,6 +371,7 @@
     </div>
   </div>
 
+  <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     The best-known application of this exact idea to real markets is Laloux,
@@ -379,6 +416,7 @@
   </p>
 
   <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this could plug into MacroFXModel</div>
     <h3>A concrete, unbuilt guardrail for the existing effective-bets metric</h3>
     <p>
@@ -431,8 +469,38 @@
   </div>
 
   <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where the noise-band rule is misapplied</h3>
+
+    <div class="tl-icard-grid">
+      <div class="tl-icard">
+        <div class="tl-icon-badge red">🚫</div>
+        <h4>"Inside the band" ≠ proof of nothing</h4>
+        <p>It's a statistical-power limit, not a certainty — a real, modest factor can still hide there at small T.</p>
+      </div>
+      <div class="tl-icard">
+        <div class="tl-icon-badge amber">♾️</div>
+        <h4>It's an asymptotic result</h4>
+        <p>Finite N,T means edge effects (Tracy-Widom fluctuations) — treat values right at λ_max as ambiguous.</p>
+      </div>
+      <div class="tl-icard">
+        <div class="tl-icon-badge purple">📉</div>
+        <h4>Real returns aren't i.i.d.</h4>
+        <p>Time-varying volatility and fat tails aren't in the textbook derivation, but the band still holds up as a practical benchmark.</p>
+      </div>
+      <div class="tl-icard">
+        <div class="tl-icon-badge blue">🔢</div>
+        <h4>Use the true independent T</h4>
+        <p>Overlapping windows inflate the effective T you'd plug in, making the band look narrower than the data supports.</p>
+      </div>
+      <div class="tl-icard">
+        <div class="tl-icon-badge green">🧹</div>
+        <h4>Binary screen ≠ denoised matrix</h4>
+        <p>Flagging in/out of band is not the same as building a cleaned, shrinkage-adjusted correlation matrix.</p>
+      </div>
+    </div>
+
     <p>
       <strong>Treating "inside the band" as proof of no structure.</strong>
       The Marchenko-Pastur test is a statistical power statement, not a
@@ -495,6 +563,18 @@
     </p>
   </div>
 
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Finite samples always spread eigenvalues away from 1.</strong> Even truly independent instruments produce a spread of eigenvalues, purely from sampling noise — the correlation-matrix equivalent of 20 coin flips rarely landing exactly 10-10.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The Marchenko-Pastur law gives the exact noise band.</strong> \([\lambda_{\min},\lambda_{\max}]=[(1-\sqrt q)^2,(1+\sqrt q)^2]\), where \(q=N/T\) — instruments relative to history.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Only the ratio q=N/T matters</strong>, not N or T individually — more history per instrument narrows the band; more instruments relative to history widens it.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked scenario: N=30, T=250 gives q=0.12.</strong> λ₁=8.2 clears the ~0.43–1.81 band easily (a real factor); λ₂–λ₄ all land inside it (indistinguishable from noise).</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>"Inside the band" doesn't prove there's no structure.</strong> It means this sample can't currently distinguish that eigenvalue from noise — a real but modest factor can still hide there.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This noise-band check is not currently run in this repo.</strong> <code>js/diversificationCore.js</code>'s <code>effectiveBetsPCA</code> already has the eigenvalues it would need — this is a concrete, unbuilt guardrail, not a claim about existing behavior.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does a correlation matrix built from truly independent random series still produce a spread of nonzero, non-identical eigenvalues, instead of a flat spectrum at exactly 1?</summary>
