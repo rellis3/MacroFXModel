@@ -15,19 +15,34 @@
  * and are deliberately NOT here — this module is the no-new-data layer.
  */
 
-// Zero-gamma crossing: the first strike where net GEX flips sign — the regime
-// boundary (above = long-gamma/dampening, below = short-gamma/amplifying). Picks the
-// side of the crossing whose |netGex| is nearer zero. Pure fn of the profile.
-export function gammaFlip(gexProfile) {
-  const gp = Array.isArray(gexProfile) ? gexProfile : [];
+// Zero-gamma crossing of the per-strike net-GEX profile — the regime boundary
+// (above = long-gamma/dampening, below = short-gamma/amplifying).
+//
+// It used to return the FIRST sign change walking up from the lowest strike, snapped
+// to a strike. In the tails net GEX is noise flickering around zero, so it latched on
+// far below the money — gold returned 3,655 against another desk's 4,118. Now every
+// crossing is interpolated to its true zero and the one NEAREST SPOT is returned
+// (largest-magnitude swing when no spot is given).
+//
+// NB this is the cheap read off an existing profile. `gexFlipPrice` (js/gammaGreeks.js)
+// is the rigorous one: gamma depends on where spot IS, so the honest flip re-evaluates
+// the whole book at candidate prices instead of scanning the ladder once at today's.
+export function gammaFlip(gexProfile, spot = null) {
+  const gp = (Array.isArray(gexProfile) ? gexProfile : [])
+    .filter(r => Number.isFinite(r?.strike) && Number.isFinite(r?.netGex))
+    .sort((a, b) => a.strike - b.strike);
+  const hits = [];
   for (let i = 1; i < gp.length; i++) {
-    const a = gp[i - 1]?.netGex, b = gp[i]?.netGex;
-    if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
-    if (Math.sign(a) !== 0 && Math.sign(b) !== Math.sign(a)) {
-      return Math.abs(b) < Math.abs(a) ? gp[i].strike : gp[i - 1].strike;
-    }
+    const a = gp[i - 1].netGex, b = gp[i].netGex;
+    if (a === 0 || Math.sign(b) === Math.sign(a)) continue;
+    const t = Math.abs(a) / (Math.abs(a) + Math.abs(b));
+    hits.push({ price: gp[i - 1].strike + t * (gp[i].strike - gp[i - 1].strike),
+                mag: Math.abs(a) + Math.abs(b) });
   }
-  return null;
+  if (!hits.length) return null;
+  return (Number.isFinite(spot)
+    ? hits.reduce((m, h) => (Math.abs(h.price - spot) < Math.abs(m.price - spot) ? h : m))
+    : hits.reduce((m, h) => (h.mag > m.mag ? h : m))).price;
 }
 
 // Distance from spot to the flip: absolute, % of spot, and (if an ATR is supplied)

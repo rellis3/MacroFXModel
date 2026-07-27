@@ -2,7 +2,7 @@ import { S } from './state.js';
 import { kvGet, kvSet } from './utils.js';
 import { wallStrengthTier, oiSkew, oiConcentration, clusterStrikes, wallFreshness, volumePCRatio } from './oiConfluence.js';
 import { gammaFlip } from './gammaFlow.js';
-import { charmVannaExposure } from './gammaGreeks.js';
+import { charmVannaExposure, gexFlipPrice } from './gammaGreeks.js';
 import { expectedMove, expectedMoveFromStraddle, ivTermStructure, ivDynamics, riskReversal, vannaState } from './ivMetrics.js';
 
 // ── Storage ──────────────────────────────────────────────────────────────────
@@ -931,9 +931,17 @@ function isFDAX(pair) { return pair === 'FDAX' || pair === 'DE30_USD'; }
 function isFTSE(pair) { return pair === 'FTSE' || pair === 'UK100_GBP'; }
 function isIndexFutures(pair) { return isNQ(pair) || isES(pair) || isYM(pair) || isRTY(pair) || isFDAX(pair) || isFTSE(pair); }
 
+// Flat-vol assumption shared by every Greek here, exported so the GEX-flip root-find
+// uses the SAME sigma/T as the profile it's meant to describe (two different vols
+// would put the flip somewhere the chart's own bars don't support).
+export function oiFlatVol(pair) {
+  return isIndexFutures(pair) ? 0.20 : pair.includes('XAU') ? 0.18 : 0.12;
+}
+export const OI_GREEK_T = 14 / 365;   // documented limitation: fixed 14-DTE assumption
+
 export function oiGreeks(strike, spot, pair) {
-  const sigma = isIndexFutures(pair) ? 0.20 : pair.includes('XAU') ? 0.18 : 0.12;
-  const T = 14/365;
+  const sigma = oiFlatVol(pair);
+  const T = OI_GREEK_T;
   const d1 = (Math.log(spot/strike) + 0.5*sigma*sigma*T) / (sigma*Math.sqrt(T));
   const nd1 = Math.exp(-0.5*d1*d1) / Math.sqrt(2*Math.PI);
   const gamma = nd1 / (spot*sigma*Math.sqrt(T));
@@ -1416,7 +1424,15 @@ export function processOIData() {
     futuresStale,    // live-title minus heatmap-settle, when both are available (how wrong the fallback would be)
     basisAt: Date.now(),   // the basis is only valid for the moment both legs were read (course L229)
     maxPain, exposures, topLevels, gexProfile,
-    gammaFlip: gammaFlip(gexProfile),   // zero-GEX crossing (regime boundary) — one source for brief/export/bot/dashboard
+    gammaFlip: gammaFlip(gexProfile, spot),   // nearest-spot interpolated crossing of the per-strike profile
+    // The rigorous flip: total net GEX re-evaluated at candidate prices, root-found.
+    // Gamma depends on where spot IS, so scanning the ladder once at today's spot
+    // (gammaFlip above) answers a different question and can land hundreds of points
+    // away — gold: 3,655 vs ~4,100. Same flat sigma/T as the profile, so the two are
+    // describing one book. Kept ALONGSIDE gammaFlip rather than replacing it, because
+    // the bot and export already consume that field.
+    gexFlip: gexFlipPrice(parsed.strikes, parsed.calls, parsed.puts, {
+      sigma: oiFlatVol(pair), T: OI_GREEK_T, mult: cs, spot }),
     dataWarning,   // ⚠ set when spot is far outside the strike range (stale/mis-scaled paste) — flag, don't silently analyse
     greeksFlow,   // charm/vanna exposure from a pasted IV surface (null unless the IV box is filled)
     expectedMove: expMove,   // ATM straddle → option-implied ± range to expiry
