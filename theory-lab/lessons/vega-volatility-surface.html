@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vega &amp; the Volatility Surface — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / The Greeks / Vega &amp; the Volatility Surface</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">The Greeks · Deep Dive 2 of 3</div>
+  <h1 class="tl-title">Vega &amp; the Volatility Surface</h1>
+  <p class="tl-dek">Every option carries a bet on volatility itself, not just on direction — and the market's refusal to price that bet with one flat number, strike after strike and expiry after expiry, is what the "volatility surface" actually is.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span>~20 min read</span>
+    <span>Prereqs: Black-Scholes-Merton Option Pricing, Gamma Exposure &amp; Dealer Hedging Flows</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Vega is \(\nu = \partial C/\partial\sigma = S\varphi(d_1)\sqrt{T}\) — the dollar change in an option's value per unit change in implied volatility \(\sigma\). Unlike delta, it is <em>exactly</em> the same formula for a call and a put at the same strike and expiry, a direct consequence of put-call parity.</li>
+      <li>Vega grows roughly with \(\sqrt{T}\) for a fixed near-the-money strike (longer-dated options carry more absolute vega risk), and for a fixed expiry it peaks at-the-money and decays toward zero for deep in- or out-of-the-money strikes, because \(\varphi(d_1)\) is a bell curve centered at \(d_1=0\).</li>
+      <li>Real markets don't quote one \(\sigma\); they quote a different implied \(\sigma\) for every (strike, expiry) pair — the <strong>volatility surface</strong>. Its two axes are the strike-wise <strong>skew/smile</strong> (an empirical, post-1987 market fact Black-Scholes itself cannot produce) and the expiry-wise <strong>term structure</strong> (near-dated vol spikes around event risk; longer-dated vol is smoother, an averaging effect).</li>
+      <li>Vega is fundamentally different from delta in one crucial way: <strong>the underlying itself has zero vega</strong>, so a vega-exposed book can only be hedged by trading <em>other options</em>, never by trading more or less of the underlying. Delta is an underlying-hedging problem; vega is an options-against-options problem.</li>
+      <li>The genuine new-value piece here: an analogue of dealer gamma exposure, dollar <strong>vega</strong> exposure at a strike, \(\text{VegaExposure}_k = \nu_k\times\text{OI}_k\times100\) — heavy open interest concentrates a dealer's vega risk exactly the way it concentrates gamma risk, but the fix looks completely different (buy/sell other options, not the underlying).</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The <a href="black-scholes.html">Black-Scholes-Merton</a> lesson derives
+    delta and gamma in full and names vega only in passing — "sensitivity to
+    \(\sigma\)" — because at that point in the curriculum \(\sigma\) is still
+    treated as a single constant input to one formula. The
+    <a href="gamma-exposure-dealer-hedging.html">Gamma Exposure &amp; Dealer
+    Hedging</a> lesson picks up gamma and shows what happens when you sum it
+    across an entire open-interest book: a real, mechanical source of dealer
+    hedging flow. Neither lesson stops to ask the two questions this one is
+    built around: what exactly is vega, as a formula and as a shape — and why
+    does the market that trades these options never actually agree on a
+    single \(\sigma\) in the first place?
+  </p>
+  <p>
+    That second question turns out to matter more than it sounds. Every
+    option-pricing formula in the previous two lessons takes \(\sigma\) as a
+    given input. In practice, \(\sigma\) is never given — it is the one
+    number in the whole model that has to be <em>inferred</em> from the
+    price the market is already charging, and the market charges a
+    <em>different</em> implied \(\sigma\) for almost every strike and every
+    expiry on the same underlying, on the same day. That entire grid of
+    implied volatilities — the <strong>volatility surface</strong> — is the
+    market's honest admission that the flat-\(\sigma\) assumption underneath
+    Black-Scholes is false, priced directly into every quote. Understanding
+    vega properly, and understanding why the surface looks the way it does,
+    is the direct prerequisite for the two stochastic-volatility lessons
+    already in this curriculum (<a href="heston-model.html">The Heston
+    Model</a>, <a href="sabr-model.html">The SABR Model</a>) — both of which
+    exist specifically to generate a surface that a single constant
+    \(\sigma\) cannot.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Options are also a bet on "how much," not just "which way"</h3>
+    <p>
+      Delta answers "if the underlying moves $1, how much does my option
+      move?" Vega answers a completely different question: "if the market's
+      collective opinion about how <em>volatile</em> this underlying will be
+      changes — with the underlying's price staying exactly where it is
+      right now — how much does my option move?" That's a strange thing to
+      have a price sensitivity to at all. Volatility isn't a price; it's a
+      forecast of how much a price will jump around. Yet options are worth
+      more when that forecast rises and worth less when it falls, holding
+      everything else fixed, because a wider range of plausible future prices
+      makes the option's asymmetric payoff (capped loss, open-ended gain for
+      a long call) more valuable. Vega is the size of that effect in dollars.
+    </p>
+    <p style="margin-bottom:0">
+      Now stretch that idea across every strike and every expiry a market
+      trades at once, and a second, subtler fact emerges: the market doesn't
+      apply the <em>same</em> volatility forecast everywhere. It charges more
+      implied volatility for a strike that would only pay off in a crash than
+      for the mirror-image strike that would pay off in an equally-sized
+      rally. It charges more implied volatility for an option expiring right
+      after a central bank meeting than for one expiring a week later, once
+      the news is old. Both of those are real, tradable facts about how
+      option prices behave that a single flat \(\sigma\), the same number
+      everywhere, simply cannot produce. That gap between "one number" and
+      "the market's actual grid of numbers" is the volatility surface, and
+      it's the second half of this lesson.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    Four pieces build on the Black-Scholes formula and its \(d_1, d_2\) (used
+    here exactly as defined in that lesson, not redefined): the closed-form
+    vega, why it's identical for calls and puts, its shape across time and
+    moneyness, and the two-dimensional surface real markets actually quote.
+  </p>
+
+  <h3>Vega — the closed-form result</h3>
+  <p>
+    As with delta and gamma, vega is simply a partial derivative of the
+    Black-Scholes call price with respect to one input — here, volatility
+    \(\sigma\) — with everything else held fixed. Differentiating
+    \(C = S_0N(d_1) - Ke^{-rT}N(d_2)\) with respect to \(\sigma\) (a
+    calculus step not carried out in full here, since it requires
+    differentiating through both \(d_1\) and \(d_2\) and a good deal of the
+    algebra cancels — this is a standard result, not derived from scratch, the
+    same way Black-Scholes' own \(d_1,d_2\) formulas were stated as results
+    rather than derived term-by-term) collapses to a remarkably clean closed
+    form:
+  </p>
+  <div class="tl-math">
+    \[ \nu \;=\; \frac{\partial C}{\partial \sigma} \;=\; S\,\varphi(d_1)\,\sqrt{T} \]
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">S</div>
+      <div class="tl-fp-name">Underlying price</div>
+      <div class="tl-fp-desc">Scales vega up in dollar terms — a $1,000 underlying's options are worth more vega per point than a $10 underlying's</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">φ(d₁)</div>
+      <div class="tl-fp-name">The moneyness weight</div>
+      <div class="tl-fp-desc">Standard normal density at d₁ — largest when d₁≈0 (at-the-money), shrinks toward zero the further away d₁ moves</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">√T</div>
+      <div class="tl-fp-name">Time scaling</div>
+      <div class="tl-fp-desc">Grows monotonically (never decays) with time to expiry — longer-dated options carry strictly more vega, all else equal</div>
+    </div>
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(\nu\)</td><td>(nu) Vega — not actually a Greek letter, market convention borrowed one anyway (as noted in the Black-Scholes lesson). The dollar change in an option's price per unit (1.00, i.e. 100 percentage points) change in \(\sigma\).</td></tr>
+    <tr><td>\(\varphi(\cdot)\)</td><td>The <strong>standard normal probability density function</strong> (PDF), \(\varphi(x)=\frac{1}{\sqrt{2\pi}}e^{-x^2/2}\) — distinct from \(N(\cdot)\), the cumulative distribution function used in the Black-Scholes price formula itself. \(\varphi(0)=1/\sqrt{2\pi}\approx0.3989\), its maximum value, the same constant already used in the Gamma Exposure lesson's at-the-money approximation.</td></tr>
+    <tr><td>\(d_1\)</td><td>Exactly the \(d_1\) from the Black-Scholes-Merton lesson: \(d_1=[\ln(S_0/K)+(r+\sigma^2/2)T]/(\sigma\sqrt{T})\). Reused here unchanged — see that lesson for its derivation.</td></tr>
+    <tr><td>\(T\)</td><td>Time to expiry in years — identical usage to the Black-Scholes lesson (some texts use \(\tau\) interchangeably for "time remaining"; this page keeps \(T\) for consistency with the rest of the curriculum).</td></tr>
+  </table></div>
+
+  <h3>Why vega is identical for a call and a put</h3>
+  <p>
+    The Gamma Exposure lesson proved \(\Gamma_{\text{call}}=\Gamma_{\text{put}}\)
+    by differentiating put-call parity twice with respect to \(S\). The same
+    trick, differentiating once with respect to \(\sigma\) instead of
+    \(S\), proves the same fact for vega — and the argument is arguably even
+    cleaner, since \(\sigma\) doesn't appear on the right-hand side at all:
+  </p>
+  <div class="tl-math">
+    \[ C - P = S - Ke^{-rT} \quad\Longrightarrow\quad \frac{\partial C}{\partial\sigma} - \frac{\partial P}{\partial\sigma} = \frac{\partial}{\partial\sigma}\big(S - Ke^{-rT}\big) = 0 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>S − Ke⁻ʳᵀ</code><span>no σ term anywhere in this expression</span></div>
+    <div class="tl-eq-chip c4"><code>∂/∂σ of a constant = 0</code><span>the right side vanishes completely</span></div>
+    <div class="tl-eq-chip c3"><code>ν_call = ν_put</code><span>exact, not approximate — holds at any strike/expiry</span></div>
+  </div>
+  <p>
+    Put-call parity's right-hand side, \(S - Ke^{-rT}\), doesn't contain
+    \(\sigma\) at all — \(S\), \(K\), and \(e^{-rT}\) are simply not
+    functions of volatility — so differentiating it with respect to
+    \(\sigma\) gives exactly zero, for <em>any</em> value of \(\sigma\), not
+    just approximately near some particular value. That's a stronger
+    statement than "a call and put usually have similar vega": vega is
+    <strong>identical</strong> for the two, always, at the same strike and
+    expiry. This is the flip side of the reason delta is <em>not</em> the
+    same for calls and puts: delta is the parity identity's <em>first</em>
+    derivative with respect to \(S\), and \(\partial(S-Ke^{-rT})/\partial S=1\),
+    not zero — so \(\Delta_{\text{call}}-\Delta_{\text{put}}=1\), a genuine
+    difference. Vega skips that difference entirely because \(\sigma\)
+    simply never enters the no-arbitrage relationship that defines parity in
+    the first place.
+  </p>
+
+  <h3>Vega's shape — time and moneyness</h3>
+  <p>
+    Two separate questions live inside the closed form \(\nu=S\varphi(d_1)
+    \sqrt{T}\): how does vega behave as expiry gets further away (for a fixed
+    strike near the money), and how does it behave across strikes (for a
+    fixed expiry)? They have different answers, and both matter for
+    different practical reasons.
+  </p>
+  <p>
+    <strong>Across time, for a fixed near-the-money strike:</strong> take
+    \(S=K\) (at-the-money) so \(\ln(S_0/K)=0\), leaving
+    \(d_1=(r+\sigma^2/2)\sqrt{T}/\sigma\). For realistic \(r\) and \(\sigma\)
+    and expiries out to a year or so, this stays close to zero, which means
+    \(\varphi(d_1)\) stays close to its maximum, roughly
+    \(\varphi(0)\approx0.3989\), across that whole range. With \(\varphi(d_1)\)
+    nearly constant, the entire time-dependence of vega comes from the
+    \(\sqrt{T}\) term alone: <strong>vega grows roughly proportionally to
+    \(\sqrt{T}\)</strong> for an at-the-money option as expiry lengthens. It
+    never decays with more time to expiry, unlike gamma or theta — a
+    longer-dated option always carries more absolute dollar vega than a
+    shorter-dated one on the same strike, which is exactly why event-vol
+    traders describe far-dated options as "carrying more vega risk" even
+    though their gamma is comparatively tame.
+  </p>
+  <p>
+    <strong>Across strikes, for a fixed expiry:</strong> \(\varphi(\cdot)\)
+    is the standard normal bell curve, maximized at zero and monotonically
+    decreasing as its argument moves away from zero in either direction. So
+    vega is largest exactly where \(d_1\approx0\) — economically, close to
+    at-the-money — and shrinks toward zero the deeper an option gets, in
+    either direction. A deep in-the-money option behaves almost exactly like
+    owning the underlying outright (its value barely depends on the vol
+    forecast at all, since the outcome is nearly certain either way); a deep
+    out-of-the-money option is worth close to nothing regardless of the vol
+    forecast (there's so little chance of finishing in the money that a
+    change in that forecast barely moves the price). The at-the-money strike
+    is the one point where the outcome is genuinely uncertain, which is
+    exactly where the market's opinion about "how much" the underlying will
+    move matters most.
+  </p>
+
+  <div class="tl-section-mark"><span>Section 02b</span></div>
+  <h2>The volatility surface</h2>
+  <p>
+    Black-Scholes assumes one constant \(\sigma\) — flat across every strike,
+    flat across every expiry. Real options markets do not quote one number.
+    They quote a different implied volatility for essentially every (strike,
+    expiry) pair on the same underlying, on the same day — a full
+    two-dimensional grid, \(\sigma(K,T)\), universally called the
+    <strong>volatility surface</strong>. It has two genuinely distinct axes,
+    and they come from different economics.
+  </p>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card amber">
+      <h4>Axis 1 — the skew / smile (across strikes, fixed expiry)</h4>
+      <p>
+        Plot implied volatility against strike at one fixed expiry and, for
+        equity/index underlyings, it is <strong>not flat</strong>. Deep
+        out-of-the-money puts trade at persistently higher implied vol than
+        the mirror-image out-of-the-money calls — a downward-sloping curve
+        often called the <strong>volatility smirk</strong> (a lopsided
+        cousin of a symmetric "smile"). This is an <em>empirical, observed
+        market fact</em>, not something Black-Scholes predicts or can even
+        produce — the model's constant \(\sigma\) is, by construction, the
+        same number at every strike. The smirk has to be taken as a
+        real feature of how the market prices these contracts, layered on
+        top of the model rather than derived from it.
+      </p>
+    </div>
+    <div class="tl-compare-card blue">
+      <h4>Axis 2 — the term structure (across expiries, fixed moneyness)</h4>
+      <p>
+        Plot implied volatility against time-to-expiry at one fixed
+        moneyness (say, at-the-money) instead, and it also moves — but for a
+        different reason. Near-dated implied vol jumps around ahead of
+        concentrated event risk (earnings, a central bank meeting, an
+        election); longer-dated implied vol is comparatively smooth. This is
+        a dilution/averaging effect, not a fear premium: a single high-impact
+        day contributes disproportionately to a <em>short</em> expiry's
+        average variance and gets diluted away inside a <em>long</em>
+        expiry's average variance, explained numerically below.
+      </p>
+    </div>
+  </div>
+
+  <p>
+    Take the skew first. Before October 1987, index options traded close to
+    a flat smile — implied vol barely varied by strike. After the 1987 crash
+    (a single-day move far larger than a lognormal, constant-\(\sigma\) model
+    would ever assign meaningful probability to), the market's pricing
+    permanently changed: out-of-the-money puts have traded at a persistent
+    implied-vol premium over out-of-the-money calls ever since, on
+    essentially every major equity index. Mark Rubinstein's 1994 study
+    "Implied Binomial Trees" is the standard empirical documentation of this
+    shift — worth citing honestly here as evidence of <em>when</em> and
+    <em>how much</em> the market's pricing changed, not as a theoretical
+    derivation of why it had to. Two economic stories are commonly offered as
+    color for <em>why</em> the skew persists, and both are worth knowing
+    without treating either as proven: the <strong>leverage effect</strong>
+    (as an equity's price falls, its financial leverage ratio mechanically
+    rises, which itself raises the equity's volatility — a real, negative
+    price-volatility correlation that skew pricing reflects) and a
+    "crash-o-phobia" story (the market permanently re-priced tail risk higher
+    after 1987 taught it that far-left-tail moves are more real than a
+    lognormal model implies, so protection against them stays structurally
+    bid). Neither story is derived from Black-Scholes — both are read off
+    what the market actually charges.
+  </p>
+  <p>
+    The term structure's event-risk spikes have a cleaner, more mechanical
+    explanation. Treat variance as roughly additive across trading
+    days — each day contributes some expected variance to the total, and an
+    expiry's average annualized implied vol is, loosely, driven by the sum
+    of those daily contributions divided by the number of days. A single
+    event day (say, an FOMC decision) carries far more expected variance
+    than an ordinary trading day. If only five trading days remain before a
+    weekly expiry and that event day is expected to contribute variance
+    equivalent to three ordinary days, that one day accounts for roughly
+    <span class="tl-pill amber">60%</span> of the whole period's expected
+    variance — a huge share, and the near-dated implied vol reflects it
+    directly. The same event, priced into an expiry 60 trading days out,
+    contributes only a small fraction of that period's total expected
+    variance — the other 59-ish ordinary days swamp it, an averaging effect
+    that leaves longer-dated implied vol comparatively smooth. That's why
+    term-structure "humps" right around a known event date collapse quickly
+    once the event passes and that particular expiry is no longer the
+    near-dated one carrying it.
+  </p>
+  <p>
+    Neither axis is reproducible from a single constant \(\sigma\), which is
+    the entire point: a one-parameter model has exactly one degree of
+    freedom, and the surface needs (at minimum) one degree of freedom per
+    strike <em>and</em> a separate one per expiry. This is precisely why
+    stochastic-volatility models exist — models where \(\sigma\) itself
+    follows its own random process rather than sitting fixed. <a
+    href="heston-model.html">The Heston Model</a> lets variance mean-revert
+    around a long-run level with its own volatility-of-volatility and a
+    correlation with the underlying's return, which jointly generates both a
+    skew (through that correlation) and a term structure (through the mean
+    reversion) endogenously, rather than fitting one by hand. <a
+    href="sabr-model.html">The SABR Model</a> takes a related but distinct
+    local-stochastic-volatility approach, popular specifically because it
+    fits an observed smile/skew shape well and prices consistently across
+    nearby strikes — both lessons cover the formal machinery in full; this
+    page only needs the reader to know <em>why</em> that machinery is
+    necessary in the first place.
+  </p>
+
+  <h3>Portfolio vega — an options-against-options hedging problem</h3>
+  <p>
+    A book's total vega is simply the sum of every position's vega, weighted
+    by the size (contracts × multiplier, signed long/short) of each
+    position — no different in principle from summing delta or gamma across
+    a book. What <em>is</em> different, and worth stating plainly because
+    it's frequently under-stated, is how that risk gets hedged.
+  </p>
+  <div class="tl-solid blue">
+    <strong>The underlying itself has zero vega.</strong> A share of stock, a
+    futures contract, a spot FX position — none of these have any time value
+    or any dependence on an implied-volatility input, because none of them
+    are options. Their price sensitivity to a change in "the market's vol
+    forecast," holding their own price fixed, is exactly zero. That means no
+    amount of buying or selling the underlying can ever offset a book's vega
+    exposure — not partially, not approximately, not at all. Delta can
+    always be hedged with the underlying; vega structurally <strong>cannot
+    be</strong>. The only way to flatten vega risk is to trade
+    <em>other options</em> — any option, at any strike or expiry, carries
+    some vega, so an options book's vega risk can only ever be offset by
+    another options position, never by the underlying.
+  </div>
+  <p>
+    This is the single clearest way vega management differs from delta
+    management, and it's why an options desk that's badly vega-exposed
+    reaches for a different toolkit than one that's badly delta-exposed. A
+    delta problem is solved by trading the underlying — fast, liquid, cheap.
+    A vega problem is solved by trading more options — which themselves
+    carry their own new delta and gamma that then need managing, and which
+    are generally less liquid and more expensive to transact in size than
+    the underlying. Vega risk is, structurally, an options-against-options
+    hedging problem in a way delta and gamma simply are not.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A stylized equity-index implied volatility smile/skew</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Implied volatility plotted against strike-to-spot moneyness. The curve is high on the far left (deep out-of-the-money puts, around 29-30% implied vol), falls steeply to a minimum near 19% right at the at-the-money strike, then rises again more gently toward the far right (deep out-of-the-money calls, around 25% implied vol) — a lopsided smirk rather than a symmetric smile.">
+      <line x1="40" y1="250" x2="620" y2="250" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="40" y1="250" x2="40" y2="20" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="330" y1="20" x2="330" y2="250" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+      <text x="330" y="267" text-anchor="middle" font-size="12" font-family="'DM Mono',monospace" fill="var(--text3)">ATM (K=S)</text>
+      <text x="620" y="288" text-anchor="end" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Strike / Spot (moneyness) →</text>
+      <text x="14" y="135" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 14 135)">Implied volatility</text>
+      <text x="40" y="266" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">0.75</text>
+      <text x="620" y="266" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">1.25</text>
+      <text x="34" y="254" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">15%</text>
+      <text x="34" y="127" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">24%</text>
+      <text x="34" y="24" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">32%</text>
+      <polyline points="40.00,53.82 98.00,80.88 156.00,114.71 214.00,141.76 272.00,168.82 330.00,195.88 388.00,187.76 446.00,175.59 504.00,158.00 562.00,137.71 620.00,114.71" style="stroke:var(--amber);stroke-width:2.5" fill="none"/>
+      <circle cx="40.00" cy="53.82" r="4" style="fill:var(--amber)"/>
+      <circle cx="330.00" cy="195.88" r="4" style="fill:var(--blue)"/>
+      <circle cx="620.00" cy="114.71" r="4" style="fill:var(--amber)"/>
+      <text x="60" y="45" font-size="10" font-family="'DM Sans',sans-serif" fill="var(--amber)">OTM put wing (rich)</text>
+      <text x="470" y="106" font-size="10" font-family="'DM Sans',sans-serif" fill="var(--amber)">OTM call wing (milder)</text>
+      <text x="335" y="212" font-size="10" font-family="'DM Sans',sans-serif" fill="var(--blue)">minimum, near ATM</text>
+    </svg>
+    <div class="tl-chart-caption">
+      A single flat \(\sigma\) would be a horizontal line on this chart. Real
+      equity/index markets instead show this lopsided "smirk": richer implied
+      vol on the downside-protection strikes (left), a minimum near the money,
+      and a gentler upward tilt on the upside strikes (right) — the strike
+      axis of the volatility surface. FX and commodity underlyings often show
+      a more symmetric smile rather than this one-sided equity smirk, since
+      the leverage-effect/crash-risk asymmetry that shapes equity skew is
+      weaker or absent in those markets.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Vega across three expiries, then across three strikes</h3>
+    <p>
+      Fix \(S=100\), \(\sigma=20\%\), \(r=2\%\) throughout — the same
+      parameters as the Black-Scholes lesson's own worked example — using
+      \(\nu = S\varphi(d_1)\sqrt{T}\) with \(\varphi(x)=\frac{1}{\sqrt{2\pi}}
+      e^{-x^2/2}\).
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>At-the-money (K=100), varying time to expiry</h4>
+          <div class="tl-math">
+            <pre style="margin:0;text-align:left;font-family:'DM Mono',monospace;font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.7">DTE    T        d₁       φ(d₁)     ν (per 1.00σ)   ν (per vol pt)
+30d    0.0822   0.0573   0.3983    11.42           0.1142
+90d    0.2466   0.0993   0.3970    19.71           0.1971
+365d   1.0000   0.2000   0.3910    39.10           0.3910</pre>
+          </div>
+          <p>
+            Going from 30 to 90 days, \(\sqrt{T}\) rises from 0.287 to 0.497
+            (a 1.73× ratio) and vega rises from 11.42 to 19.71 (a 1.73×
+            ratio) — an almost exact match, since \(\varphi(d_1)\) barely
+            moved (0.3983 → 0.3970). Going all the way out to 365 days,
+            vega has more than tripled to 39.10 — <strong>growing with
+            \(\sqrt{T}\), never decaying</strong>, unlike gamma or theta.
+            The small shortfall from a perfect \(\sqrt{T}\) ratio at the
+            longest expiry (3.43× actual vs. 3.49× predicted by \(\sqrt{T}\)
+            alone) is exactly the modest drift in \(\varphi(d_1)\) as
+            \(d_1\) itself grows away from zero at longer \(T\) — the
+            "roughly proportional to \(\sqrt{T}\)" claim is an
+            approximation, not an identity.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Fixed 90-day expiry, varying strike</h4>
+          <div class="tl-math">
+            <pre style="margin:0;text-align:left;font-family:'DM Mono',monospace;font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.7">Strike   d₁        φ(d₁)     ν (per 1.00σ)   ν (per vol pt)
+90       1.1602    0.2035    10.11           0.1011
+100      0.0993    0.3970    19.71           0.1971
+110     −0.8604    0.2755    13.68           0.1368</pre>
+          </div>
+          <p style="margin-bottom:0">
+            Vega peaks at the 100 (at-the-money) strike and falls off in
+            <em>both</em> directions — down to 10.11 at the 90 strike (now
+            comfortably in the money) and to 13.68 at the 110 strike (out of
+            the money), exactly the \(\varphi(d_1)\) bell-curve shape
+            predicted above. Note the asymmetry: 90 and 110 are equally far
+            from spot in dollar terms, but not in \(d_1\) terms (which is
+            driven by log-moneyness), so their vegas aren't identical either
+            — a small, real reminder that "distance from the money" is a
+            log-scale concept in this model, not a linear dollar one.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A dealer's short-vega book heading into an FOMC week</h3>
+    <p>
+      A dealer's book shows a large concentration of open interest at the
+      100-strike weekly options on an index, expiring two days after an
+      upcoming FOMC rate decision — the same 90-day-out-turned-near-dated
+      strike from the worked example, now sitting close to expiry with its
+      gamma and vega both elevated. The dealer wrote most of that open
+      interest to customers and is net short it, meaning short both gamma
+      and vega at that strike (mirroring the standard "dealer net short"
+      convention from the Gamma Exposure lesson).
+    </p>
+    <p>
+      Two separate questions land on the desk the same week. First: the
+      term-structure discussion above predicts near-dated implied vol should
+      richen ahead of the meeting — the desk has to judge whether the
+      current implied-vol premium on that near-dated strike is a fair price
+      for the event's actual expected variance contribution, or whether the
+      market has overpaid for an event that (as often happens) turns out to
+      be a non-event once it passes. That's a genuine trading judgment, not
+      a formula output — the term-structure math above explains
+      <em>why</em> near-dated vol moves, not whether today's specific level
+      is cheap or rich.
+    </p>
+    <p style="margin-bottom:0">
+      Second, and separately: whatever the desk decides about the event
+      itself, the concentrated short-vega position at that strike is a real
+      risk that has to be managed regardless. Unlike the delta/gamma risk at
+      the same strike — which the desk manages by trading the index future,
+      per the Gamma Exposure lesson's hedging mechanics — the vega risk
+      cannot be touched by trading the future at all. The desk instead has
+      to buy back options (the same strike, a different strike, or a
+      further-dated expiry — any option carries vega) to bring the book's
+      net vega down to a size it's willing to carry through the event. The
+      two risks at the identical strike are managed with two completely
+      different instruments, precisely because the underlying has zero
+      vega.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Dollar vega exposure — the OI angle</h2>
+  <p>
+    The Gamma Exposure lesson built \(\text{GEX}_k = \Gamma_k\times
+    \text{OI}_k\times100\times S^2\times0.01\) — dollar gamma exposure at a
+    strike, rescaled from "per $1 move" to "per 1% move" of the underlying.
+    Vega has a genuine analogue, and it's worth deriving rather than
+    memorizing, because the rescaling needed turns out to be much simpler
+    than gamma's — vega is already a dollar quantity.
+  </p>
+  <p>
+    Start from the raw per-contract vega, \(\nu_k = S\varphi(d_1)\sqrt{T}\),
+    a dollar figure <em>per 1.00 change in \(\sigma\)</em> (i.e. per 100
+    percentage points, since \(\sigma\) is expressed as a decimal). Implied
+    vol moves are quoted in <strong>vol points</strong> (a 1-percentage-point
+    move), so convert by dividing by 100: \(\nu_k/100\) is the dollar
+    sensitivity per one vol point, for one unit (one share) of the
+    underlying. Multiply by the standard 100-share contract multiplier and
+    that factor of 100 exactly cancels the division:
+    \((\nu_k/100)\times100=\nu_k\). Then aggregate over the open interest
+    sitting at that strike:
+  </p>
+  <div class="tl-math">
+    \[ \text{VegaExposure}_k \;=\; \underbrace{\left(\frac{\nu_k}{100}\right)}_{\text{per vol pt, per share}} \times\; \underbrace{100}_{\text{contract multiplier}} \;\times\; \text{OI}_k \;=\; \nu_k \times \text{OI}_k \times 100 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>νₖ/100</code><span>rescale from "per 1.00σ" to "per 1 vol point"</span></div>
+    <div class="tl-eq-chip c2"><code>×100</code><span>the contract multiplier cancels the rescaling exactly</span></div>
+    <div class="tl-eq-chip c4"><code>×OIₖ</code><span>aggregate over every outstanding contract at the strike</span></div>
+  </div>
+  <p>
+    The clean cancellation is worth noticing explicitly: because vega is
+    already denominated in dollars (unlike gamma, which starts as a pure
+    "delta per $1 move" number with no dollar units at all), the per-vol-point
+    rescale and the per-contract multiplier undo each other exactly, leaving
+    \(\text{VegaExposure}_k=\nu_k\times\text{OI}_k\times100\) as the working
+    formula — the dollar P&amp;L change, for the open interest sitting at
+    strike \(k\), from a 1-vol-point move in implied volatility. As with
+    dealer GEX, this number needs an assumed sign (\(s_k=-1\) for the
+    standard "dealer wrote it, is net short" case) to say whether a rising
+    or falling vol environment helps or hurts the dealer at that strike —
+    the same unverifiable-assumption caveat from the Gamma Exposure lesson
+    applies here without modification.
+  </p>
+  <p>
+    Reusing the fixed-90-day-expiry vegas from the worked example above
+    (0.1011, 0.1971, 0.1368 per vol point at strikes 90/100/110) with a toy
+    combined call+put open-interest distribution:
+  </p>
+  <div class="tl-math">
+    <pre style="margin:0;text-align:left;font-family:'DM Mono',monospace;font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.7">Strike   ν (per vol pt)   Combined OI   VegaExposure = ν·OI·100
+90       0.1011           3,000         0.1011×3,000×100  ≈ $30,330
+100      0.1971           8,500         0.1971×8,500×100  ≈ $167,535
+110      0.1368           5,000         0.1368×5,000×100  ≈ $68,400
+                                        Total ≈ $266,265 per 1 vol point</pre>
+  </div>
+  <p>
+    The 100-strike again dominates the total, exactly as the 100-strike
+    dominated the toy dealer-GEX table in the Gamma Exposure lesson — and
+    for the identical underlying reason: vega itself is nearly double what
+    it is at the neighboring strikes, so the open-interest-weighted total
+    concentrates there even though its OI (8,500) isn't dramatically larger
+    than the other two strikes'. Heavy open interest at a strike concentrates
+    a dealer's vega risk the same way it concentrates gamma risk — the
+    difference, restated one more time because it's the point of this whole
+    section, is that the dealer fixes a concentrated <em>gamma</em> problem
+    by trading the underlying, and fixes a concentrated <em>vega</em>
+    problem by trading other options at that strike, a neighboring strike,
+    or a different expiry entirely.
+  </p>
+  <p>
+    Vega itself has second-order sensitivities, the same way price itself has
+    delta and gamma. How vega changes as the underlying moves is a named
+    cross-Greek, <strong>Vanna</strong> (\(\partial\nu/\partial S=
+    \partial\Delta/\partial\sigma\) — the same mixed partial derivative
+    either way it's taken); how delta itself decays purely with the passage
+    of time is <strong>Charm</strong>. Both are part of a broader family of
+    second-order "Greeks of Greeks" that this lesson doesn't derive — a
+    further deep-dive, <a href="second-order-greeks.html">Second-Order
+    Greeks: Vanna, Charm &amp; the Cross-Greeks</a>, covers them properly.
+  </p>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Vega and the surface show up constantly in how options desks actually
+    talk and trade, well beyond the single-Greek bookkeeping above:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🗣️</div>
+      <h4>The surface as the quoting language</h4>
+      <p>Traders quote and think in implied vol per strike/expiry, not dollar premiums — the surface itself, not any single option's price, is the object being traded and risk-managed.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">⚖️</div>
+      <h4>Vega spreads, not underlying trades</h4>
+      <p>A desk expressing a view on volatility (or hedging an existing vega imbalance) trades calendar spreads, strangles, or straddles — combinations of options designed to isolate vega risk — precisely because the underlying can't do the job.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📅</div>
+      <h4>Event-vol trading around the term structure</h4>
+      <p>Whether a near-dated implied-vol premium ahead of a known event (earnings, a central bank decision) is over- or under-priced relative to the event's plausible realized-variance contribution is a standing, actively debated trade at every options desk.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where vega and the surface get misused</h3>
+    <p>
+      <strong>Trying to hedge vega with the underlying.</strong> Stated
+      plainly because it bears repeating: the underlying has zero vega. No
+      amount of buying or selling stock, futures, or spot FX reduces a
+      book's vega exposure by even a cent. Only other options can do that.
+    </p>
+    <p>
+      <strong>Expecting a flat single-\(\sigma\) model to reproduce the
+      smile.</strong> Plain Black-Scholes, by construction, prices every
+      strike and expiry off the same \(\sigma\). It cannot generate a skew
+      or a term structure on its own — don't be surprised when a
+      constant-vol model's output doesn't match a market quote that has
+      both; that's not a bug in the model, it's the model's known,
+      documented limitation, which is exactly why the smile/skew has to be
+      taken as market data rather than derived.
+    </p>
+    <p>
+      <strong>Confusing implied vol with realized vol.</strong> A rich
+      near-dated implied vol ahead of an event is the market's forward-looking
+      <em>price</em> of volatility, not a guarantee of how much the
+      underlying will actually move. Implied volatility has historically
+      tended to run above subsequently realized volatility on average (often
+      discussed as a "variance risk premium") — being short vega structurally
+      collects that premium on average, at the cost of real tail risk when
+      realized volatility does spike beyond what was priced in.
+    </p>
+    <p>
+      <strong>Treating open interest's dealer sign as observed fact.</strong>
+      As with dealer GEX, "the dealer is net short this strike" is a standard
+      but unverifiable assumption layered on raw OI, not something read
+      directly off the data — every dollar-vega-exposure figure inherits
+      that same uncertainty.
+    </p>
+    <p style="margin-bottom:0">
+      <strong>Extrapolating the surface past where options actually
+      trade.</strong> A model fit to the visible strikes/expiries can output
+      a number for a strike or expiry with no real liquidity — that output is
+      a mathematical extrapolation, not a tradable quote, and treating it as
+      one is a common, costly mistake.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Vega is \(\nu=S\varphi(d_1)\sqrt{T}\) — identical for a call and put.</strong> Put-call parity's right side has no \(\sigma\) term, so \(\partial C/\partial\sigma-\partial P/\partial\sigma=0\) exactly, not approximately.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Vega grows with \(\sqrt{T}\) and peaks at-the-money.</strong> Both fall directly out of the closed form: \(\sqrt{T}\) never decays, and \(\varphi(d_1)\) is a bell curve centered at \(d_1=0\).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The volatility surface has two distinct axes with different causes.</strong> Strike-wise skew/smile is an empirical, post-1987 market fact; expiry-wise term structure is a variance-averaging/dilution effect around event risk.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Vega cannot be hedged with the underlying — ever.</strong> The underlying has exactly zero vega; only other options can offset a vega-exposed book, structurally unlike delta.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Dollar vega exposure at a strike, \(\nu_k\times\text{OI}_k\times100\), concentrates the same way GEX does.</strong> Heavy open interest near the money dominates a book's vega risk, but the fix is other options, not the underlying.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Implied vol is a price, not a forecast guarantee — and the dealer's assumed sign is still an assumption.</strong> A rich event-vol premium can be over- or under-priced either way, and every GEX-style figure here inherits the same unverifiable long/short assumption flagged in the Gamma Exposure lesson.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why is vega exactly the same value for a call and a put at the same strike and expiry, and how does that argument differ from the one showing gamma is the same for both?</summary>
+    <div class="tl-answer">
+      Both arguments start from put-call parity, \(C-P=S-Ke^{-rT}\), and
+      differentiate both sides. The gamma argument differentiates
+      <em>twice with respect to \(S\)</em>; since the right side is linear
+      in \(S\), its second derivative is zero, giving
+      \(\Gamma_{\text{call}}=\Gamma_{\text{put}}\). The vega argument
+      differentiates <em>once with respect to \(\sigma\)</em> instead; since
+      the right side (\(S-Ke^{-rT}\)) doesn't contain \(\sigma\) at all, that
+      derivative is zero on the first pass, giving
+      \(\nu_{\text{call}}=\nu_{\text{put}}\) even more directly than the
+      gamma case, which needed a second derivative to kill off the linear
+      term.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why does vega grow roughly with \(\sqrt{T}\) for a fixed at-the-money strike, and why is that only an approximation rather than an exact relationship?</summary>
+    <div class="tl-answer">
+      At the money, \(d_1=(r+\sigma^2/2)\sqrt{T}/\sigma\), which stays close
+      to zero for realistic \(r,\sigma\) over moderate expiries, so
+      \(\varphi(d_1)\) stays close to its maximum \(\varphi(0)\approx0.3989\)
+      and is roughly constant across different \(T\). With \(\varphi(d_1)\)
+      treated as fixed, \(\nu=S\varphi(d_1)\sqrt{T}\) scales with
+      \(\sqrt{T}\) alone. It's only approximate because \(d_1\) does grow
+      slowly away from zero as \(T\) grows (as the worked example shows:
+      d₁ rose from 0.057 at 30 days to 0.20 at 365 days), which nudges
+      \(\varphi(d_1)\) down slightly and makes the actual vega ratio between
+      a long-dated and short-dated option a little less than the pure
+      \(\sqrt{T}\) ratio would predict.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What are the two distinct axes of the volatility surface, and why does each one require a fundamentally different kind of explanation?</summary>
+    <div class="tl-answer">
+      The strike axis (skew/smile, fixed expiry) is an empirical market
+      fact — out-of-the-money puts trading at persistently higher implied
+      vol than out-of-the-money calls on equity/index underlyings, a pattern
+      that emerged specifically after the 1987 crash and has to be taken as
+      observed market data, since Black-Scholes' constant \(\sigma\) cannot
+      produce a strike-dependent quantity at all. The expiry axis (term
+      structure, fixed moneyness) has a cleaner mechanical explanation: a
+      concentrated event's expected variance contribution is a much larger
+      share of a near-dated expiry's total expected variance than of a
+      far-dated expiry's, so near-dated implied vol spikes around event risk
+      while longer-dated implied vol, averaged over many more ordinary days,
+      stays comparatively smooth.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why can't a dealer with a large, unwanted vega exposure at one strike simply trade the underlying to flatten it, the way they would for an unwanted delta or gamma exposure?</summary>
+    <div class="tl-answer">
+      Vega measures sensitivity to a change in implied volatility, holding
+      the underlying's own price fixed. A position in the underlying itself
+      (shares, futures, spot FX) has no time value and no dependence on any
+      volatility input at all — its vega is exactly zero, not small. Trading
+      more or less of the underlying therefore cannot change a book's total
+      vega by any amount, no matter how much is traded. The only positions
+      with nonzero vega are other options, so the only way to offset an
+      unwanted vega exposure is to trade other options — at the same strike,
+      a different strike, or a different expiry — which is structurally
+      different from delta and gamma management, both of which reduce, one
+      way or another, to trading the underlying.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In the toy three-strike dollar-vega-exposure table, why does the 100 strike dominate the total even though its open interest (8,500) isn't overwhelmingly larger than the other two strikes' (3,000 and 5,000)?</summary>
+    <div class="tl-answer">
+      Because vega itself, not just open interest, varies sharply across
+      strikes for a fixed expiry — the 100 strike's per-contract vega
+      (0.1971 per vol point) is nearly double the 110 strike's (0.1368) and
+      almost twice the 90 strike's (0.1011), since vega peaks at the money
+      per the \(\varphi(d_1)\) bell-curve shape. The dollar exposure at each
+      strike is the <em>product</em> of vega and OI, so a strike with both
+      moderately larger OI and substantially larger vega dominates the sum
+      by more than either factor would alone — exactly the same mathematical
+      reason the at-the-money strike dominated the toy dealer-GEX table in
+      the Gamma Exposure lesson.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. A near-dated option's implied vol is trading rich just ahead of a central bank meeting. Is that, by itself, evidence the market has mispriced the option? Why or why not?</summary>
+    <div class="tl-answer">
+      Not by itself. The term-structure math in this lesson explains
+      <em>why</em> near-dated implied vol should rise ahead of a
+      concentrated event — it's the honest, expected mechanical consequence
+      of one high-variance day being a large share of a short expiry's total
+      expected variance. Whether that specific richening is a fair price for
+      the event's plausible realized-variance contribution, an overpay (the
+      event turns out calmer than priced), or an underpay (the event turns
+      out more volatile than priced) is a separate judgment the term-structure
+      formula alone cannot answer — it explains the shape of the effect, not
+      whether today's specific level is cheap or expensive.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li><a href="black-scholes.html">Black-Scholes-Merton Option Pricing</a> — the \(d_1,d_2\) notation and closed-form price this lesson's vega is differentiated from.</li>
+    <li><a href="gamma-exposure-dealer-hedging.html">Gamma Exposure &amp; Dealer Hedging Flows</a> — the put-call-parity gamma argument this lesson's vega argument mirrors, and the dealer-sign assumption this lesson's dollar-vega-exposure figure inherits unchanged.</li>
+    <li><a href="heston-model.html">The Heston Model</a> and <a href="sabr-model.html">The SABR Model</a> — the formal stochastic-volatility machinery that generates a genuine surface, referenced here but not re-derived.</li>
+    <li>Sheldon Natenberg, <em>Option Volatility and Pricing</em>, 2nd ed., McGraw-Hill, 1994 — the standard practitioner reference specifically for vega, the volatility surface, and how real options desks trade and hedge implied volatility.</li>
+    <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson — the standard textbook treatment of the Greeks, including vega's closed form and its role in hedging.</li>
+    <li>Mark Rubinstein, "Implied Binomial Trees," <em>The Journal of Finance</em>, 1994 — the standard empirical documentation of the post-1987 emergence of the equity-index volatility skew/smirk.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="theta-decay.html">← Theta Decay</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="second-order-greeks.html">Second-Order Greeks: Vanna, Charm &amp; the Cross-Greeks →</a>
+  </div>
+</div>
+</body>
+</html>

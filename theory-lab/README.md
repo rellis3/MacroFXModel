@@ -92,6 +92,11 @@ markup, the house content order, and a verification checklist.
   dealer-GEX formula, hedge-flow-rate, the gamma-flip level), open interest
   walls & max pain (the economic derivation, plus squeeze mechanics). Builds
   on Black-Scholes-Merton's own Greeks derivation rather than repeating it.
+  Three further "deep dive" lessons — Theta Decay, Vega & the Volatility
+  Surface, and Second-Order Greeks (Vanna/Charm/Vomma/Speed/Color/Zomma) —
+  exist in `lessons/` and are cross-linked from within these two, but are
+  deliberately not surfaced as their own hub cards, to keep this category's
+  footprint on the curriculum map to the two core lessons.
 
 Nothing in this folder is a trading signal. A lesson explaining a technique
 well is not evidence the technique works here — per `CLAUDE.md`'s Lego
@@ -106,9 +111,10 @@ theory-lab/
   glossary.html       — searchable notation glossary
   assets/theory.css   — shared stylesheet (dark theme, MathJax, interactive-
                          chart, real-world-scenario, and skim-path classes)
-  lessons/*.html      — 63 lesson files (5 Foundation Mathematics + 8
+  lessons/*.html      — 66 lesson files (5 Foundation Mathematics + 8
                         primers/foundations + 34 numbered theory lessons +
                         5 Fixed Income Mathematics + 4 Numerical Methods +
                         4 further Market Microstructure lessons alongside
-                        the pre-existing one + 2 The Greeks lessons)
+                        the pre-existing one + 2 The Greeks lessons + 3
+                        Greeks deep-dive lessons not listed on hub.html)
 ```
