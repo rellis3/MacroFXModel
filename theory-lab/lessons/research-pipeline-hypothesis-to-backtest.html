@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Research Pipeline: Hypothesis to Honest Backtest — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Quantitative Research Process / The Research Pipeline: Hypothesis to Honest Backtest</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Research Process 1 of 2</div>
+  <h1 class="tl-title">The Research Pipeline: Hypothesis to Honest Backtest</h1>
+  <p class="tl-dek">A disciplined path from "I have an idea" to "here is what the evidence actually says" — five stages, in order, where skipping the order is the most common way a research process quietly turns into curve-fitting.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — a research methodology, not a signal</span>
+    <span>~14 min read</span>
+    <span>Prereqs: Multiple Testing &amp; the Look-Elsewhere Effect</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A hypothesis needs an economic or behavioral mechanism stated <em>before</em> the data is searched — "why would this be true" — not a pattern discovered by scanning charts until something lines up.</li>
+      <li>Test the minimal-degrees-of-freedom version first: a bare rule with no lookback, no threshold, no smoothing constant is close to impossible to overfit because there's nothing in it to fit to noise.</li>
+      <li>Add parameters only after that baseline number is measured and recorded — every parameter added afterward is overfitting risk being purchased, not free improvement.</li>
+      <li>Validate out-of-sample with realistic costs and a genuine train/test boundary — see <a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged Cross-Validation</a> for why even a clean-looking chronological split can still leak.</li>
+      <li>Pre-register what "it worked" and "it didn't work" each look like <em>before</em> running the test — otherwise a null result quietly gets re-narrated into "promising, needs more tuning."</li>
+      <li>The best-of-many-variations number needs a multiple-testing correction before it means anything — see <a href="sharpe-family-deflated.html">the Deflated Sharpe Ratio</a> and <a href="multiple-testing.html">Multiple Testing</a>.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+  Every quantitative strategy that ever gets traded starts as an idea, and every idea eventually has
+  to answer the same question: does this actually work on data it hasn't seen, under costs that are
+  real? The gap between those two points — "I have an idea" and "here is honest evidence" — is where
+  almost all of the damage in quantitative research happens, and it happens quietly. A researcher
+  rarely sets out to fool themselves. Far more often, a perfectly reasonable-sounding sequence of
+  steps — try a rule, tune it a little, try a slightly different version, tune that too, report the
+  best one — turns an idea with no real edge into a backtest that looks fantastic, entirely by
+  accident. This lesson is about the sequence of steps that keeps that from happening: not a specific
+  strategy, not a piece of math to memorize, but an <strong>order of operations</strong> for research
+  itself. Get the order right and a null result stays a visible null result. Get it wrong — even with
+  every individual step done "correctly" in isolation — and noise reliably disguises itself as signal.
+  </p>
+  <p>
+  This lesson is deliberately light on new formulas. Most of the hard mathematics it leans on already
+  has its own lesson elsewhere in this Theory Lab — <a href="walk-forward-purged-cv.html">Walk-Forward
+  &amp; Purged Cross-Validation</a> for the out-of-sample mechanics, <a href="sharpe-family-deflated.html">the
+  Deflated Sharpe Ratio</a> and <a href="multiple-testing.html">Multiple Testing</a> for what happens
+  when many variations get tried. What this lesson adds is the connective tissue: <em>where</em> each
+  of those tools belongs in the sequence, and why doing them out of order defeats the purpose of doing
+  them at all.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A locksmith who tries every key before deciding which lock it "fits"</h3>
+    <p>
+    Imagine someone hands you a lock and a bag of a thousand keys, and asks you to find the key that
+    opens it. You try key after key. Eventually, on attempt 640, one of them turns. Have you learned
+    that key 640 is "the" key to that lock — some special, meaningful pairing? Not really. Given a
+    big enough bag of keys, <em>something</em> was always going to turn eventually, purely from trying
+    enough of them — that's just what a large search does, whether or not any key was actually cut for
+    that lock. A disciplined locksmith works the other way around: they look at the lock first, reason
+    about what kind of key it's built to accept, and try a specific, motivated guess — and if that
+    doesn't work, they say so plainly rather than quietly reaching for key 641, 642, 643… and reporting
+    only the one that eventually clicked. The research pipeline in this lesson is the disciplined
+    locksmith's process, applied to trading ideas: reason about the mechanism first, test the plainest
+    version of it honestly, and if you do end up trying many variations, say how many you tried and
+    correct for it — rather than presenting the one key that happened to turn as if it were the only
+    key you ever tried.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The five stages, in order</h2>
+  <p>
+  The pipeline has five stages. Each one exists to close a specific way the previous stages can
+  quietly mislead. Doing them out of order — especially skipping straight to "add complexity" before
+  the minimal version has been honestly measured, or skipping straight to "validate" without ever
+  pre-registering what a pass or fail looks like — is the single most common way a research process
+  degrades into curve-fitting without anyone involved intending it to.
+  </p>
+
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Hypothesis formation — grounded in a mechanism, not a pattern</h4>
+        <p>
+        Before touching any data, state <em>why</em> the effect should exist: what economic behavior,
+        structural constraint, or persistent incentive would produce it. "Central banks defend a
+        stated inflation target, so a widening gap between policy rate and target creates a
+        directional pressure on the currency" is a mechanism. "This 14-day moving-average crossover
+        made money in the data I looked at" is not a mechanism — it's a pattern, and a pattern found
+        by first looking at the data and then explaining it afterward is exactly backwards. The
+        distinction matters because a mechanism-first hypothesis is falsifiable in a meaningful way
+        (the mechanism can plausibly stop holding, or fail to show up, and that's informative) while a
+        pattern-first "hypothesis" is really just a description of the specific historical sample it
+        was read off of, dressed up as a prediction about the future.
+        </p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>The minimal-degrees-of-freedom first test</h4>
+        <p>
+        Once the mechanism is stated, build the plainest possible rule that expresses it — ideally a
+        bare sign or zero-crossing rule with no lookback window to choose, no threshold to calibrate,
+        no smoothing constant to pick. A rule with zero free parameters is close to impossible to
+        overfit, for a simple reason: overfitting means tuning a parameter until it flatters a specific
+        historical sample, and there is nothing here to tune. Measure this version's raw performance
+        — return, Sharpe, drawdown, whatever the honest headline numbers are — <em>before</em> adding
+        anything. This number is the baseline every later, more complicated version has to beat, and it
+        is the cleanest signal available for whether the underlying mechanism has any real content at
+        all.
+        </p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>Add complexity deliberately, one parameter at a time</h4>
+        <p>
+        Only after the zero-parameter baseline is measured and recorded does it make sense to add a
+        lookback length, an entry threshold, a filter, a position-sizing rule. Each parameter added is
+        a deliberate purchase: it buys the possibility of a better fit to the specific sample being
+        tested, and it buys, in the exact same transaction, a fresh chance of that fit being noise
+        rather than signal. This isn't a reason never to add parameters — most usable strategies need a
+        few — but it is a reason to add them slowly, to record what each one changes relative to the
+        baseline, and to keep an honest running count of how many were tried. That count becomes the
+        input to the multiple-testing correction in Stage 4.
+        </p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">4</div>
+      <div class="tl-step-body">
+        <h4>True out-of-sample validation, with realistic costs</h4>
+        <p>
+        Split the data chronologically into a period the rule was built and tuned on, and a period it
+        never touched during development — then measure performance only on the untouched period, with
+        realistic transaction costs and slippage included, not a frictionless fill. This is the
+        subject of <a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged Cross-Validation</a>
+        in full: a plain chronological split date is necessary but not sufficient, because features and
+        labels built from rolling windows can still straddle the boundary and leak test-period
+        information backward into training even when the split date itself looks clean. This step is
+        also exactly where a best-of-many-variations result needs the correction covered in
+        <a href="sharpe-family-deflated.html">the Deflated Sharpe Ratio</a> lesson — a Sharpe ratio that
+        is the survivor of \(N\) tried variations has to clear a chance-expected ceiling that rises with
+        \(N\), not the much lower bar of "is it above zero."
+        </p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">5</div>
+      <div class="tl-step-body">
+        <h4>Pre-registration — say what "worked" and "didn't work" mean, before running the test</h4>
+        <p>
+        Before the out-of-sample test is run, write down, concretely, what result counts as the
+        hypothesis being supported and what result counts as it failing — a specific OOS Sharpe range,
+        a minimum trade count, a maximum acceptable drawdown, whatever the honest bar is for this idea.
+        This has to happen <em>before</em> the number comes back. A researcher who only decides after
+        seeing an OOS Sharpe of 0.3 that "well, 0.3 is actually pretty good for this asset class" has
+        just re-narrated a marginal or null result into a maybe, using knowledge that didn't exist when
+        the bar should have been set. Pre-registration is what keeps a null result a null result — it
+        removes the wiggle room that turns "this didn't clear the bar" into "this is promising and
+        needs a bit more tuning," which quietly restarts Stage 3 with the OOS data now contaminated as
+        a second round of in-sample tuning.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The five-stage research pipeline, and the specific failure each stage exists to close</div>
+    <svg viewBox="0 0 640 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flow diagram of five sequential boxes: Hypothesis (mechanism-first), Minimal test (zero parameters), Add complexity (one parameter at a time, cost tracked), Out-of-sample validation (realistic costs, purge/embargo), and Pre-registered verdict (worked or didn't, decided before the test ran). Arrows connect each stage to the next in order, with a red warning arrow looping from Add complexity back to Hypothesis labeled skipping the order reintroduces curve fitting.">
+      <defs>
+        <marker id="rp-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" style="fill:var(--text3)"/>
+        </marker>
+        <marker id="rp-arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" style="fill:var(--red)"/>
+        </marker>
+      </defs>
+
+      <rect x="20" y="20" width="120" height="64" rx="6" style="fill:var(--blue);opacity:.2;stroke:var(--blue)"/>
+      <text x="80" y="44" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">1. Hypothesis</text>
+      <text x="80" y="60" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9.5px">mechanism, not</text>
+      <text x="80" y="72" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9.5px">a data pattern</text>
+
+      <line x1="140" y1="52" x2="172" y2="52" style="stroke:var(--text3)" stroke-width="1.4" marker-end="url(#rp-arrow)"/>
+
+      <rect x="175" y="20" width="120" height="64" rx="6" style="fill:var(--purple);opacity:.2;stroke:var(--purple)"/>
+      <text x="235" y="44" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">2. Minimal test</text>
+      <text x="235" y="60" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9.5px">zero free</text>
+      <text x="235" y="72" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9.5px">parameters</text>
+
+      <line x1="295" y1="52" x2="327" y2="52" style="stroke:var(--text3)" stroke-width="1.4" marker-end="url(#rp-arrow)"/>
+
+      <rect x="330" y="20" width="130" height="64" rx="6" style="fill:var(--amber);opacity:.2;stroke:var(--amber)"/>
+      <text x="395" y="40" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">3. Add</text>
+      <text x="395" y="52" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">complexity</text>
+      <text x="395" y="68" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9.5px">one parameter, N tracked</text>
+
+      <line x1="460" y1="52" x2="492" y2="52" style="stroke:var(--text3)" stroke-width="1.4" marker-end="url(#rp-arrow)"/>
+
+      <rect x="495" y="20" width="125" height="64" rx="6" style="fill:var(--green);opacity:.2;stroke:var(--green)"/>
+      <text x="557" y="40" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">4. Out-of-</text>
+      <text x="557" y="52" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">sample</text>
+      <text x="557" y="68" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9.5px">real costs, purge/embargo</text>
+
+      <line x1="557" y1="84" x2="557" y2="116" style="stroke:var(--text3)" stroke-width="1.4" marker-end="url(#rp-arrow)"/>
+
+      <rect x="300" y="120" width="320" height="64" rx="6" style="fill:var(--blue);opacity:.2;stroke:var(--blue)"/>
+      <text x="460" y="144" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">5. Pre-registered verdict</text>
+      <text x="460" y="160" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9.5px">"worked" / "didn't work" defined before Stage 4 ran</text>
+      <text x="460" y="174" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9.5px">— no re-narrating a null into a maybe</text>
+
+      <path d="M 330,152 C 260,220 120,220 80,148 C 60,110 65,95 78,84" style="fill:none;stroke:var(--red)" stroke-width="1.4" stroke-dasharray="4,3" marker-end="url(#rp-arrow-red)"/>
+      <text x="185" y="248" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px;font-weight:600">the failure mode: skipping straight from "add complexity" back</text>
+      <text x="185" y="262" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px;font-weight:600">to trying new hypotheses on the same data reintroduces the</text>
+      <text x="185" y="276" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px;font-weight:600">exact search-and-report problem Stage 1's mechanism-first rule exists to prevent</text>
+
+      <text x="320" y="330" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10.5px;font-style:italic">Each stage closes a specific way the earlier stages, done alone, would mislead.</text>
+    </svg>
+    <div class="tl-chart-caption">
+    The five stages run in order, left to right, top to bottom. The dashed red arrow marks the
+    dangerous shortcut: reaching a disappointing result at Stage 3 or 4 and, instead of recording it
+    honestly, quietly going back to try a new variant or a new "hypothesis" on the same dataset. That
+    loop is not wrong because looking for a better idea is wrong — it's wrong because it turns an
+    apparently disciplined pipeline back into an undisclosed search, the exact thing Stage 1's
+    mechanism-first requirement and Stage 5's pre-registration are built to prevent.
+    </div>
+  </div>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>Mechanism</td><td>The stated economic or behavioral reason a hypothesis should be true, written down before the data is searched.</td></tr>
+      <tr><td>Degrees of freedom</td><td>The number of free parameters (lookbacks, thresholds, smoothing constants) a rule has available to fit to a specific historical sample.</td></tr>
+      <tr><td>Baseline</td><td>The zero-(or minimal-)parameter version's honestly-measured performance — the number every later, more complex version has to beat.</td></tr>
+      <tr><td>\(N\)</td><td>The number of variations tried before reporting a result — the input the multiple-testing / Deflated Sharpe correction needs (see linked lessons).</td></tr>
+      <tr><td>Pre-registration</td><td>Writing down, before a test runs, exactly what result counts as support and what counts as failure.</td></tr>
+      <tr><td>Out-of-sample (OOS)</td><td>Data the rule's development process — including all tuning in Stage 3 — never touched, reserved purely for the Stage 4 verdict.</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Running the pipeline on a rate-differential FX hypothesis, stage by stage</h3>
+    <p>
+    <strong>Stage 1 — hypothesis.</strong> The mechanism: when a country's central bank policy rate
+    sits meaningfully above a peer's, capital tends to flow toward the higher-yielding currency over
+    medium horizons, all else equal — a textbook uncovered-interest-parity-violation carry argument,
+    not a pattern read off a chart. This is stated before any return series is pulled.
+    </p>
+    <p>
+    <strong>Stage 2 — minimal test.</strong> The bare rule: go long the currency with the higher
+    policy rate whenever the differential is positive, flat otherwise — no lookback, no threshold on
+    "how much higher," no position sizing beyond a fixed unit. Measured honestly over the full sample
+    with round-trip costs included, suppose this returns a raw annualized Sharpe of 0.35 with 40
+    holding periods. That number, however modest, is now the baseline every more complex version must
+    beat — and its very modesty is informative: a mechanism with a real, if small, edge in this
+    minimal form is a different animal from one that shows nothing until a dozen parameters are
+    tuned into it.
+    </p>
+    <p>
+    <strong>Stage 3 — add complexity, tracked.</strong> A researcher adds one filter — only take the
+    trade when the differential exceeds 50bp, rather than any positive value — and records this as
+    trial 2 of a running count. Sharpe improves to 0.52. A second filter — skip trades during the
+    top decile of realized volatility — is trial 3; Sharpe improves again to 0.61. Both changes are
+    logged, including the ones that were tried and discarded along the way (an under-counted \(N\) is
+    exactly the failure the Deflated Sharpe Ratio lesson warns about).
+    </p>
+    <p>
+    <strong>Stage 4 — out-of-sample, real costs.</strong> The final three-parameter version (basic
+    rule + 50bp filter + volatility filter) is evaluated only on a chronological holdout the tuning in
+    Stage 3 never saw, with realistic transaction costs, and — because rate-differential features are
+    typically built from a slow-moving monthly series — with the purge/embargo discipline from
+    <a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged Cross-Validation</a> applied at the
+    split boundary. Suppose the OOS Sharpe comes back at 0.40 on 34 trades — lower than the 0.61
+    in-sample number, as is typical, but still positive and with a workable trade count.
+    </p>
+    <p>
+    <strong>Stage 5 — the pre-registered verdict.</strong> Because the bar was set in advance — say,
+    "OOS Sharpe above 0.30 with at least 30 trades counts as supported; below that, or fewer trades,
+    counts as not supported, regardless of how the in-sample number looked" — the 0.40-on-34-trades
+    result has an unambiguous verdict: supported. Critically, that verdict was fixed <em>before</em>
+    Stage 4 ran. If the bar had instead been decided only after seeing the OOS number come back at
+    0.40, "supported" would carry far less weight — it would be indistinguishable from moving the
+    goalposts to wherever the ball happened to land.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">A real-world trading scenario</div>
+    <h3>The moving-average idea that "worked" after the eighth tweak</h3>
+    <p>
+    A researcher notices, informally, that a particular moving-average crossover seems to have called
+    several recent turning points in a currency pair. There is no stated mechanism — no argument for
+    why a crossover of this specific length should carry information about future price moves, just
+    an observation that it "looked right" a few times. The researcher backtests it: flat. They shorten
+    the fast average: still flat. They add a volatility filter: modestly positive in-sample. They add
+    a day-of-week filter: better. They add an ATR-based stop: better still. By the eighth adjustment,
+    the in-sample Sharpe looks respectable, and the write-up describes "a crossover strategy with a
+    Sharpe of 1.4."
+    </p>
+    <p>
+    Run through this lesson's pipeline, the same effort looks very different. Stage 1 was skipped
+    entirely — there was never a mechanism, only a pattern search dressed up after the fact as
+    intuition. Stage 2's minimal version was never measured in isolation and recorded as a baseline;
+    the "flat" first two attempts were treated as failures to fix rather than as the honest zero-edge
+    baseline this idea actually has. Stage 3 happened, but with the trial count uncounted and no
+    separation between what was tried and discarded versus what made the final cut — exactly the
+    undercounted-\(N\) failure the Deflated Sharpe Ratio lesson flags, which quietly overstates how
+    special the eighth version's result really is. And Stage 5 never happened at all: there was no bar
+    set in advance for what "this idea has nothing" would have looked like, so there was no way for the
+    process to produce that verdict even if it were true. Whatever the eventual out-of-sample test
+    shows, this idea entered it having already broken three of the five stages that keep noise from
+    disguising itself as signal.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+  Institutional quant research groups formalize versions of this same discipline under different
+  names — a "research diary" or trial log that records every variation attempted (not just the ones
+  that made the final cut), a hard separation between a "development" dataset and a "validation"
+  dataset that development never touches, and a sign-off step where the pre-registered success
+  criteria are checked against the actual production plan before capital is committed. None of this
+  is exotic; the common thread across every serious version of it is the same one this lesson builds
+  around: the order of operations is the actual safeguard, not any individual step performed with more
+  rigor. A perfectly executed out-of-sample test on a hypothesis that was mined from the same data it's
+  being tested on is still worthless — the leak happened upstream, at Stage 1, and no amount of
+  correctness at Stage 4 fixes it after the fact.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🧭</div>
+      <h4>Mechanism before data</h4>
+      <p>Write the "why" down before the "what does the data show" — reverse the order and every later step inherits the bias.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🪶</div>
+      <h4>Measure the plain version first</h4>
+      <p>A zero-parameter baseline is the cleanest read on whether a mechanism has any real content at all.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧮</div>
+      <h4>Count every trial, kept or discarded</h4>
+      <p>The Deflated Sharpe / multiple-testing correction is only as honest as the trial count fed into it.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📝</div>
+      <h4>Write the verdict criteria down first</h4>
+      <p>Pre-registration is what stops a marginal or null OOS result from being re-narrated into "promising."</p>
+    </div>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>The trap:</strong> a research process where every individual step — the backtest code, the
+    cost model, the OOS split — is technically correct can still produce a worthless result, if the
+    order was wrong: a hypothesis mined from the same data it's later "validated" on has already leaked
+    the answer, no matter how careful the validation step itself is.
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where a research pipeline quietly breaks down</h3>
+    <ul>
+      <li>
+      <strong>Reverse-engineering a mechanism to fit a pattern already found.</strong> Noticing a
+      profitable-looking pattern first and then constructing a plausible-sounding economic story for
+      it afterward is not hypothesis formation — it's the pattern-search failure mode wearing a
+      mechanism's clothing. A real mechanism should be falsifiable independent of the specific sample
+      that inspired it.
+      </li>
+      <li>
+      <strong>Skipping the minimal-parameter baseline entirely.</strong> Jumping straight to a
+      multi-parameter version means there is no honest reference point for how much of the eventual
+      performance is the mechanism itself versus the tuning applied on top of it.
+      </li>
+      <li>
+      <strong>Undercounting trials.</strong> Informally nudging a threshold "by feel" and rerunning
+      without logging it still counts as a trial — leaving it out understates \(N\) and overstates any
+      later significance or Deflated Sharpe calculation, exactly as the Deflated Sharpe Ratio lesson's
+      own pitfalls section warns.
+      </li>
+      <li>
+      <strong>Deciding the pass/fail bar after seeing the result.</strong> Setting "what counts as
+      working" only once the out-of-sample number is already in hand is functionally indistinguishable
+      from moving the goalposts — it defeats the entire purpose of pre-registration.
+      </li>
+      <li>
+      <strong>Treating a disappointing Stage 3 or Stage 4 result as a reason to go back and search for
+      a better variant on the same data.</strong> This is the dashed red loop in the diagram above — it
+      reopens the undisclosed-search problem the earlier stages exist to close, even though each
+      individual re-run looks like ordinary, reasonable iteration.
+      </li>
+      <li>
+      <strong>Reporting only the OOS result, not the full pipeline.</strong> A clean out-of-sample
+      number presented without the trial count, the baseline, or the pre-registered criteria strips out
+      exactly the context a reader needs to judge how much to trust it.
+      </li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>State the mechanism before touching the data.</strong> A hypothesis explained after the fact by a pattern already found is not a hypothesis — it's a description of one sample dressed up as a prediction.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Measure the zero-parameter version first, honestly, and record it.</strong> A rule with nothing to tune is close to impossible to overfit — it's the cleanest available read on whether the mechanism has real content.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Every added parameter is overfitting risk being purchased.</strong> Add them deliberately, one at a time, and keep an honest running count — including the ones later discarded.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Out-of-sample validation needs real costs and a genuinely leak-free split.</strong> A clean-looking chronological boundary can still leak through overlapping feature/label windows — see Walk-Forward &amp; Purged Cross-Validation.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Pre-register the verdict criteria before the test runs.</strong> This is what stops a null or marginal result from being re-narrated into "promising, needs more tuning" after the fact.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The order matters more than any single step's rigor.</strong> A technically correct OOS test on a data-mined hypothesis is still worthless — the leak happened upstream, before validation ever began.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A best-of-many-variations result needs the multiple-testing correction, not just an OOS pass.</strong> Clearing an out-of-sample bar and clearing the chance-expected ceiling for how many variations were tried are two separate hurdles — see the Deflated Sharpe Ratio lesson.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why does a hypothesis need a stated economic or behavioral mechanism, rather than just a pattern that performed well historically?</summary>
+    <div class="tl-answer">
+    A mechanism is a claim about <em>why</em> an effect should exist, stated independent of any one
+    historical sample — which makes it falsifiable in a meaningful way and gives a reason to expect it
+    might continue. A pattern found by scanning data until something looks good, and only explained
+    afterward, is really just a compact description of that specific sample. It has no independent
+    reason to generalize to new data, because it was never subjected to any test besides "did it look
+    good in the data used to find it" — which is guaranteed to be true by construction for whatever
+    pattern eventually got selected.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why measure a zero-parameter (or minimal-parameter) version of a rule before adding any tunable parameters?</summary>
+    <div class="tl-answer">
+    A rule with no free parameters has nothing available to fit to noise in a specific historical
+    sample, so its measured performance is close to the cleanest possible signal of whether the
+    underlying mechanism has any real content at all. Every parameter added afterward — a lookback
+    length, a threshold, a filter — creates a new way for the rule to accidentally flatter the sample
+    it was tuned on, so establishing the honest, un-tunable baseline first gives a genuine reference
+    point for how much of any later improvement is the mechanism itself versus the tuning layered on
+    top.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why is it not enough to run a correct out-of-sample test if the hypothesis itself was found by searching the same data?</summary>
+    <div class="tl-answer">
+    Out-of-sample validation only protects against overfitting that happens <em>during</em> the
+    validation step — it says nothing about how the hypothesis was generated in the first place. If
+    the specific rule being tested was already selected because it happened to perform well on
+    historical data (even data outside the nominal test window, if the same broad dataset informed the
+    idea), the leak already occurred upstream, before any train/test split existed. A technically
+    flawless OOS test run afterward is still evaluating a hypothesis that was effectively mined from
+    data it claims to be independent of.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What does "pre-registering" the success/failure criteria mean in practice, and what specific failure does it prevent?</summary>
+    <div class="tl-answer">
+    It means writing down, before the out-of-sample test is run, the specific numeric bar a result has
+    to clear to count as support for the hypothesis (e.g. a minimum OOS Sharpe with a minimum trade
+    count) and what result counts as the hypothesis failing. It prevents a specific and very common
+    failure: deciding, only after seeing a marginal or weak result, that the bar was actually lower
+    than it seemed — quietly re-narrating "this didn't work" into "this is promising and just needs a
+    bit more tuning." Without a bar fixed in advance, there is no way for a test to produce a genuine
+    null verdict, even when the honest answer is that the idea has nothing.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In the moving-average scenario, name two of the five pipeline stages that were skipped or broken, and explain the consequence of each.</summary>
+    <div class="tl-answer">
+    Stage 1 (mechanism-first hypothesis) was skipped: the idea came from noticing a pattern first, with
+    no economic argument stated in advance, so the later backtest is really just re-describing the
+    sample the pattern was found in. Stage 3 (add complexity, trial count tracked) was broken: the
+    eight rounds of adjustment were not logged as a running trial count, so the eventual reported Sharpe
+    understates how many variations were actually searched — the same undercounting failure that
+    inflates a Deflated Sharpe Ratio calculation. Either failure alone would be enough to make the
+    eventual "Sharpe of 1.4" a much weaker claim than it appears; having both compounds the problem.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why does a best-of-many-variations Sharpe ratio need a multiple-testing correction on top of a valid out-of-sample split?</summary>
+    <div class="tl-answer">
+    An out-of-sample split only checks whether a specific, already-selected rule generalizes to unseen
+    data with realistic costs — it doesn't account for how that rule was chosen in the first place. If
+    the rule reported is the survivor of \(N\) variations tried, the reported Sharpe (even measured
+    honestly out-of-sample) is still the maximum of \(N\) draws, and the maximum of many draws is
+    expected to look good purely from the number of chances taken, independent of whether any of the
+    variations has real edge. The Deflated Sharpe Ratio corrects for exactly this by benchmarking the
+    reported Sharpe against the chance-expected ceiling for a best-of-\(N\) search, rather than against
+    zero — a separate, additional hurdle from the OOS split itself.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Marcos López de Prado, <em>Advances in Financial Machine Learning</em> (Wiley, 2018) — Chapter 8, "Feature Importance," and Chapter 11, "The Dangers of Backtesting," lay out the broader research-process discipline this lesson's stage ordering is distilled from.</li>
+    <li>David H. Bailey, Jonathan M. Borwein, Marcos López de Prado &amp; Qiji Jim Zhu, <em>"Pseudo-Mathematics and Financial Charlatanism: The Effects of Backtest Overfitting on Out-of-Sample Performance"</em>, Notices of the AMS, 2014 — the case for treating backtest overfitting as a research-process failure, not just a statistical footnote.</li>
+    <li>Campbell R. Harvey &amp; Yan Liu, "Backtesting," <em>Journal of Portfolio Management</em>, 2015 — argues for pre-specifying a significance hurdle before running a backtest, the direct ancestor of this lesson's pre-registration stage.</li>
+    <li>Robert Pardo, <em>The Evaluation and Optimization of Trading Strategies</em> (Wiley, 2nd ed., 2008) — the walk-forward-optimization tradition this lesson's Stage 4 draws on, including the discipline of comparing in-sample to out-of-sample performance fold by fold rather than trusting one split.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility →</a>
+  </div>
+</div>
+</body>
+</html>
