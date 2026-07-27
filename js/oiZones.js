@@ -35,6 +35,44 @@ function _nearDTE(inst) {
   return dtes.length ? Math.min(...dtes) : null;
 }
 
+// Diagnostic companion to buildOIZones: when the planner returns NO zones for an
+// in-universe instrument, say WHY in one short line — so an empty plan reads as
+// "empty on purpose" (flat regime / no strong walls / walls out of range), not
+// "broken". Mirrors the planner's gates. Returns null when zones SHOULD exist
+// (the emptiness is unexplained and worth a real look). Universe membership is a
+// producer concern, handled there — this only explains an in-universe blank.
+export function explainNoZones(inst, price, cfg = {}) {
+  if (!inst || typeof inst !== 'object') return 'no OI data in store';
+  if (!(price > 0)) return 'no live price';
+  const { minTier = 'strong', requireEstablished = false,
+          fadeInPin = true, followBreaks = true } = cfg;
+  const gex = inst.exposures?.gex ?? inst.gex ?? 0;
+  const regime = gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : 'NEUTRAL';
+  const tierOK = w => _rank(w?.tier) >= _rank(minTier);
+  const calls = Array.isArray(inst.callWalls) ? inst.callWalls : [];
+  const puts = Array.isArray(inst.putWalls) ? inst.putWalls : [];
+  const strongCalls = calls.filter(tierOK), strongPuts = puts.filter(tierOK);
+  if (regime === 'NEUTRAL') return 'flat GEX (gex≈0) — no PIN/BREAKOUT regime, no fade/break zones';
+  if (!strongCalls.length && !strongPuts.length) {
+    const best = [...calls, ...puts].reduce((m, w) => Math.max(m, _rank(w?.tier)), 0);
+    const bestName = best >= 3 ? 'strong' : best >= 2 ? 'moderate' : best >= 1 ? 'weak' : 'none';
+    return (calls.length + puts.length)
+      ? `no walls ≥ ${minTier} (strongest present: ${bestName}) — lower minTier or none qualify`
+      : 'no walls detected in the OI';
+  }
+  if (regime === 'PIN') {
+    if (!fadeInPin) return 'PIN regime but fadeInPin is off';
+    const resAbove = strongCalls.some(w => w.strike > price);
+    const supBelow = strongPuts.some(w => w.strike < price);
+    if (!resAbove && !supBelow)
+      return `PIN: no ${minTier}+ wall bracketing price (need a call wall above or a put wall below ${price})`;
+    if (requireEstablished) return 'PIN: bracketing walls present but none pass the established-wall filter';
+    return null;   // fade zones should exist (unless every candidate was vetoed as liquidating)
+  }
+  if (regime === 'BREAKOUT' && !followBreaks) return 'BREAKOUT regime but followBreaks is off';
+  return null;     // BREAKOUT with strong walls → break zones expected
+}
+
 export function buildOIZones(inst, price, cfg = {}) {
   if (!inst || typeof inst !== 'object' || !(price > 0)) return [];
   const {
@@ -46,9 +84,18 @@ export function buildOIZones(inst, price, cfg = {}) {
     extendedPips = 30,             // "price extended from max pain" threshold
     fadeInPin = true, followBreaks = true, maxPainReversion = true,
     requireEstablished = false, avoidLiquidating = true,
-    maxZonesPerSide = 4,           // TRADE only the K strongest walls per side (by OI) —
-                                   // decouples what the bot trades from how many the
-                                   // analyser stores/shows (numLevels). 0 = no cap.
+    maxZonesPerSide = 4,           // TRADE only the K walls per side — for PIN fades the K
+                                   // NEAREST strong walls bracketing price (the active
+                                   // range); for breakouts the K strongest by OI. 0 = no cap.
+    secondaryTrim = 0.6,           // PIN fade: the nearest strong wall is the primary (full
+                                   // size); each further wall on that side is "secondary" and
+                                   // sized ×this (the active pin boundary is the nearest wall).
+    reachMult = 1.0,               // reachability: an entry more than reachMult × the option-
+                                   // implied move from spot is low-probability to fill BY EXPIRY
+                                   // (the option market prices it as unlikely). Flag + trim.
+    reachTrim = 0.7,               // size haircut for an entry beyond the implied-move horizon.
+    maxReachPips = 0,              // fallback reach cap in pips when no expMove/IV is present
+                                   // (0 = off → unchanged when IV wasn't pasted).
     persistenceWeight = 0.1,       // how much across-expiry durability boosts a wall's
                                    // rank/size (0 = ignore; each extra expiry ≈ +10%).
     persistentDTE = 5,             // "durable" = present in ≥ this many expiries (size bump + rationale)
@@ -135,6 +182,23 @@ export function buildOIZones(inst, price, cfg = {}) {
     return cands.sort((a, b) => Math.abs(a.strike - price) - Math.abs(b.strike - price))[0];
   };
 
+  // Reachability: is this entry so far from spot that price is unlikely to reach it by
+  // expiry? The option-implied move (expMove, per direction) IS the market's own read of
+  // how far price travels — an entry beyond reachMult × that half-move is low-probability
+  // to fill. Returns a short label when beyond (→ flag + trim, never blocks), else null.
+  // With no expMove (IV not pasted) fall back to a pip cap; maxReachPips 0 = off. maxpain
+  // enters at spot so it always passes.
+  const reachFlag = (entry) => {
+    const dist = Math.abs(entry - price);
+    if (expMove && Number.isFinite(expMove.upper) && Number.isFinite(expMove.lower)) {
+      const half = entry >= price ? (expMove.upper - price) : (price - expMove.lower);
+      if (half > 0 && dist > reachMult * half) return `~${(dist / half).toFixed(1)}× implied move`;
+      return null;
+    }
+    if (maxReachPips > 0 && dist / pip > maxReachPips) return `${Math.round(dist / pip)}pip beyond ${maxReachPips}pip reach`;
+    return null;
+  };
+
   const zones = [];
   // Fallback measured-move TP: a trade with no wall-based target (both null) would go
   // to the broker SL-only. If fallbackTpR > 0, give it a TP at fallbackTpR × the stop
@@ -162,30 +226,51 @@ export function buildOIZones(inst, price, cfg = {}) {
       rationale = `${rationale} · ⚠ ${z.blocker.tier} ${z.blocker.kind} wall ${+z.blocker.strike.toFixed(6)} in the path (price hits it first)`;
       sizeFactor = +(sizeFactor * blockTrim).toFixed(2);
     }
+    // Entry beyond the option-implied move → unlikely to fill by expiry: flag + trim.
+    const reach = reachFlag(z.entry);
+    if (reach) {
+      rationale = `${rationale} · ⚠ ${reach} — unlikely to fill by expiry`;
+      sizeFactor = +(sizeFactor * reachTrim).toFixed(2);
+    }
     zones.push({ ...z, sizeFactor, entry: +z.entry.toFixed(6), sl: +z.sl.toFixed(6),
       tp1: tp1 != null ? +tp1.toFixed(6) : null, tp2: tp2 != null ? +tp2.toFixed(6) : null, rationale, regime });
   };
 
   // ── Mode A — PIN: fade strong walls toward max pain ─────────────────────────
+  // The active pin boundary is the NEAREST strong wall bracketing price, not the
+  // strongest-by-OI (which can sit far out of range and never trade). Order resistance
+  // above / support below by DISTANCE to price: the nearest is the primary fade (full
+  // size); each further wall is "secondary" and sized ×secondaryTrim. Durability still
+  // boosts size through sizeFactor(); the reachability gate in add() trims any that sit
+  // beyond the implied move. Selecting by distance uses the FULL tierOK set (not the
+  // strength-capped calls/puts) so a near strong wall can't be cut by a far stronger one.
   if (fadeInPin && regime === 'PIN') {
-    for (const w of calls) {
-      if (!(w.strike > price)) continue;                          // resistance sits above
-      if (isLiquidating(w.strike, 'call') || !isEstablished(w.strike, 'call')) continue;
+    const resist = (Array.isArray(inst.callWalls) ? inst.callWalls : [])
+      .filter(w => tierOK(w) && w.strike > price).sort((a, b) => a.strike - b.strike);
+    const support = (Array.isArray(inst.putWalls) ? inst.putWalls : [])
+      .filter(w => tierOK(w) && w.strike < price).sort((a, b) => b.strike - a.strike);
+    const resistPin = maxZonesPerSide > 0 ? resist.slice(0, maxZonesPerSide) : resist;
+    const supportPin = maxZonesPerSide > 0 ? support.slice(0, maxZonesPerSide) : support;
+    resistPin.forEach((w, i) => {
+      if (isLiquidating(w.strike, 'call') || !isEstablished(w.strike, 'call')) return;
       const tp1 = (maxPain != null && maxPain < w.strike) ? maxPain : null;
-      const oppo = puts.filter(p => p.strike < w.strike).sort((a, b) => b.strike - a.strike)[0]?.strike ?? null;
+      const oppo = support.filter(p => p.strike < w.strike).sort((a, b) => b.strike - a.strike)[0]?.strike ?? null;
+      const sec = i > 0;
       add({ mode: 'fade', side: 'sell', level: w.strike, entry: w.strike, sl: w.strike + buf,
-        tp1, tp2: oppo, sizeFactor: sizeFactor(w), blocker: nearestBlocker(w.strike, w.strike),
-        rationale: `${regime} · call wall ${w.strike} ${w.tier}${w.mult ? ` ${w.mult}×` : ''} → fade (resistance)${tp1 != null ? ` toward max pain ${maxPain}` : ''}${conc ? ` · ${conc}` : ''}${persNote(w)}` });
-    }
-    for (const w of puts) {
-      if (!(w.strike < price)) continue;                          // support sits below
-      if (isLiquidating(w.strike, 'put') || !isEstablished(w.strike, 'put')) continue;
+        tp1, tp2: oppo, sizeFactor: +(sizeFactor(w) * (sec ? secondaryTrim : 1)).toFixed(2),
+        blocker: nearestBlocker(w.strike, w.strike),
+        rationale: `${regime} · call wall ${w.strike} ${w.tier}${w.mult ? ` ${w.mult}×` : ''} → fade (resistance)${tp1 != null ? ` toward max pain ${maxPain}` : ''}${conc ? ` · ${conc}` : ''}${persNote(w)} · ${sec ? 'secondary (further wall)' : 'primary (nearest strong wall)'}` });
+    });
+    supportPin.forEach((w, i) => {
+      if (isLiquidating(w.strike, 'put') || !isEstablished(w.strike, 'put')) return;
       const tp1 = (maxPain != null && maxPain > w.strike) ? maxPain : null;
-      const oppo = calls.filter(c => c.strike > w.strike).sort((a, b) => a.strike - b.strike)[0]?.strike ?? null;
+      const oppo = resist.filter(c => c.strike > w.strike).sort((a, b) => a.strike - b.strike)[0]?.strike ?? null;
+      const sec = i > 0;
       add({ mode: 'fade', side: 'buy', level: w.strike, entry: w.strike, sl: w.strike - buf,
-        tp1, tp2: oppo, sizeFactor: sizeFactor(w), blocker: nearestBlocker(w.strike, w.strike),
-        rationale: `${regime} · put wall ${w.strike} ${w.tier}${w.mult ? ` ${w.mult}×` : ''} → fade (support)${tp1 != null ? ` toward max pain ${maxPain}` : ''}${conc ? ` · ${conc}` : ''}${persNote(w)}` });
-    }
+        tp1, tp2: oppo, sizeFactor: +(sizeFactor(w) * (sec ? secondaryTrim : 1)).toFixed(2),
+        blocker: nearestBlocker(w.strike, w.strike),
+        rationale: `${regime} · put wall ${w.strike} ${w.tier}${w.mult ? ` ${w.mult}×` : ''} → fade (support)${tp1 != null ? ` toward max pain ${maxPain}` : ''}${conc ? ` · ${conc}` : ''}${persNote(w)} · ${sec ? 'secondary (further wall)' : 'primary (nearest strong wall)'}` });
+    });
   }
 
   // ── Mode B — BREAKOUT: follow a decisive wall break (gamma squeeze) ──────────

@@ -36,6 +36,41 @@ export function expectedMove(strikes, callPx, putPx, spot, { dte = null } = {}) 
   };
 }
 
+// Expected move straight from a KNOWN ATM straddle price (the CME "Settlements"
+// per-expiry table gives the straddle settle directly — no per-strike reconstruction
+// needed). Same shape as expectedMove() so it drops into the same slots. Pure.
+export function expectedMoveFromStraddle(spot, straddle, { dte = null, atmStrike = null } = {}) {
+  if (!(spot > 0) || !(straddle > 0)) return null;
+  const move = straddle;
+  return {
+    atmStrike: atmStrike ?? null, straddle: +move.toFixed(4),
+    move: +move.toFixed(4), pct: +(move / spot * 100).toFixed(3),
+    upper: +(spot + move).toFixed(6), lower: +(spot - move).toFixed(6),
+    daily: dte > 0 ? +(move / Math.sqrt(dte)).toFixed(4) : null, dte: dte ?? null,
+    source: 'settlement-straddle',
+  };
+}
+
+// ATM IV term structure from the per-expiry settlement rows (`[{dte, iv(%) , ivChg}]`).
+// slope = back IV − front IV: > 0 = upward-sloping (normal — calm now, uncertainty later);
+// < 0 = INVERTED (front-loaded — a near-term event/stress the market is paying up for).
+// Pure. `iv` in percent (as the table quotes it); returned unchanged.
+export function ivTermStructure(rows) {
+  const r = (Array.isArray(rows) ? rows : [])
+    .filter(x => Number.isFinite(x?.dte) && Number.isFinite(x?.iv) && x.iv > 0)
+    .sort((a, b) => a.dte - b.dte);
+  if (r.length < 2) return null;
+  const front = r[0], back = r[r.length - 1];
+  const slope = back.iv - front.iv;
+  return {
+    front: { dte: front.dte, iv: +front.iv.toFixed(2) },
+    back: { dte: back.dte, iv: +back.iv.toFixed(2) },
+    slope: +slope.toFixed(2),
+    shape: slope > 0.5 ? 'upward' : slope < -0.5 ? 'inverted' : 'flat',
+    points: r.map(x => ({ dte: x.dte, iv: +x.iv.toFixed(2), ivChg: Number.isFinite(x.ivChg) ? +x.ivChg.toFixed(2) : null })),
+  };
+}
+
 // Per-strike IV change → ATM direction + skew steepening. `wingPct` = how far OTM a
 // strike must be to count as a "wing". skewSteepening > 0 ⇒ wings' IV rising faster
 // than ATM (tail-hedging demand up).

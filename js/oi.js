@@ -3,7 +3,7 @@ import { kvGet, kvSet } from './utils.js';
 import { wallStrengthTier, oiSkew, oiConcentration, clusterStrikes, wallFreshness, volumePCRatio } from './oiConfluence.js';
 import { gammaFlip } from './gammaFlow.js';
 import { charmVannaExposure } from './gammaGreeks.js';
-import { expectedMove, ivDynamics, riskReversal, vannaState } from './ivMetrics.js';
+import { expectedMove, expectedMoveFromStraddle, ivTermStructure, ivDynamics, riskReversal, vannaState } from './ivMetrics.js';
 
 // ── Storage ──────────────────────────────────────────────────────────────────
 
@@ -32,7 +32,7 @@ function _trimStoreForLocal(store, { rawText = false, profile = false } = {}) {
   const out = {};
   for (const [k, v] of Object.entries(store)) {
     const c = { ...v };
-    if (rawText) { delete c.rawOI; delete c.rawChg; delete c.rawVol; delete c.rawIV; }
+    if (rawText) { delete c.rawOI; delete c.rawChg; delete c.rawVol; delete c.rawIV; delete c.rawIVTerm; }
     if (profile) { delete c.gexProfile; delete c.ivSmile; }
     if (c.expiries) {
       const ex = {};
@@ -118,6 +118,7 @@ async function _backfillRawFromKV(sym) {
     fill('oiChangeData', e.rawChg);
     fill('oiVolumeData', e.rawVol);
     fill('oiIVData', e.rawIV);
+    fill('oiIVTermData', e.rawIVTerm);
     const fe = document.getElementById('oiFuturesPrice');
     if (fe && !fe.value && e.futures) fe.value = e.futures;
     updateOIBasis();
@@ -166,6 +167,10 @@ export function openOIModal() {
   if (volEl) volEl.value = existing ? (existing.rawVol || '') : '';
   const ivEl = document.getElementById('oiIVData');
   if (ivEl) ivEl.value = existing ? (existing.rawIV || '') : '';
+  const ivtEl = document.getElementById('oiIVTermData');
+  if (ivtEl) ivtEl.value = existing ? (existing.rawIVTerm || '') : '';
+  const smHintEl = document.getElementById('oiSmileHint');
+  if (smHintEl) { smHintEl.style.display = 'none'; smHintEl.innerHTML = ''; }
   updateOIBasis();
   // localStorage may have been trimmed to fit its ~5MB quota (raw pastes dropped
   // locally to survive a big multi-pair store) — in that case the boxes above are
@@ -645,6 +650,41 @@ export function parseIVSettlement(raw) {
   return out.strikes.length >= 2 ? out : null;
 }
 
+// Parse the CME "Settlements" table — the per-EXPIRY ATM summary (one row per expiry,
+// NOT a per-strike chain). 17 tab columns:
+//   Symbol | DTE | ExpirationDate | Strike | Future(Settle Prior Chg) |
+//   Straddle(Settle Prior Chg) | Volatility(Settle Prior Chg) | OI(Call CallChg Put PutChg)
+// → [{symbol, dte, expiry, strike, future, straddle, straddleChg, iv%, ivPrior%, ivChg%,
+//    oiCall, oiPut}]. A data row is identified by a dd/mm/yyyy date in col 2 — that same
+// test is the discriminator vs `parseIVSettlement` (a per-strike chain has a number
+// there, so this returns null on it and the caller falls back to the per-strike parser).
+export function parseSettlementTermStructure(raw) {
+  if (!raw || !raw.trim()) return null;
+  const rows = [];
+  for (const line of raw.split('\n')) {
+    const c = line.replace(/\r$/, '').split('\t');
+    if (c.length < 14) continue;                                 // needs OI columns
+    const dateTok = String(c[2] ?? '').trim();
+    if (!/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(dateTok)) continue;   // data row ⇔ date in col 2
+    const num = j => parseFloat(String(c[j] ?? '').replace(/,/g, ''));
+    const dte = num(1), strike = num(3);
+    if (!Number.isFinite(dte) || !Number.isFinite(strike)) continue;
+    const iv = num(10), straddle = num(7);
+    rows.push({
+      symbol: String(c[0] ?? '').trim(), dte, expiry: dateTok, strike,
+      future: Number.isFinite(num(4)) ? num(4) : null,
+      straddle: Number.isFinite(straddle) && straddle > 0 ? straddle : null,
+      straddleChg: Number.isFinite(num(9)) ? num(9) : null,
+      iv: Number.isFinite(iv) && iv > 0 ? iv : null,             // percent (18.80)
+      ivPrior: Number.isFinite(num(11)) && num(11) > 0 ? num(11) : null,
+      ivChg: Number.isFinite(num(12)) ? num(12) : null,
+      oiCall: Number.isFinite(num(13)) ? num(13) : 0,
+      oiPut: Number.isFinite(num(15)) ? num(15) : 0,
+    });
+  }
+  return rows.length ? rows : null;
+}
+
 // ── Calculations ─────────────────────────────────────────────────────────────
 
 export function oiCalcMaxPain(strikes, calls, puts) {
@@ -805,6 +845,7 @@ export function processOIData() {
   const rawChg = document.getElementById('oiChangeData').value;
   const rawVol = document.getElementById('oiVolumeData')?.value || '';
   const rawIV = document.getElementById('oiIVData')?.value || '';   // optional QuikStrike settlement paste (implied vol → charm/vanna)
+  const rawIVTerm = document.getElementById('oiIVTermData')?.value || '';   // optional 2nd paste: "Settlements" per-expiry table → IV term structure
   const expiryLabel = (document.getElementById('oiExpiryLabel')?.value || '').trim();
   const dteRaw = parseFloat(document.getElementById('oiDTE')?.value);
   const spotRaw    = parseFloat(document.getElementById('oiSpotPrice').value);
@@ -920,8 +961,25 @@ export function processOIData() {
   // table). Optional — only when the IV box is filled. Self-consistent: uses the IV
   // paste's OWN strike/OI (one expiry) + the DTE field for T + the real per-strike
   // smile. Absent IV → no greeksFlow (charm/vanna simply not shown).
-  let greeksFlow = null, expMove = null, ivDyn = null, ivRR = null, ivSmile = null;
+  let greeksFlow = null, expMove = null, ivDyn = null, ivRR = null, ivSmile = null, ivTerm = null, tsRows = null;
   if (rawIV && rawIV.trim()) {
+    // Two accepted shapes. FIRST try the per-EXPIRY "Settlements" table (one ATM row per
+    // expiry): it gives the straddle → expected move + an ATM IV term structure directly,
+    // but NOT a per-strike smile (so no charm/vanna/skew from it). If it's not that shape,
+    // fall back to the per-STRIKE option-settlement chain (the full smile → charm/vanna).
+    const ts = parseSettlementTermStructure(rawIV);
+    if (ts) {
+      tsRows = ts;
+      const target = primaryExpiry?.dte ?? (Number.isFinite(dteEff) ? dteEff : (Number.isFinite(dteRaw) ? dteRaw : null));
+      const liquid = ts.filter(r => r.straddle > 0 && r.iv > 0);
+      const pick = liquid.length
+        ? (Number.isFinite(target)
+            ? liquid.slice().sort((a, b) => Math.abs(a.dte - target) - Math.abs(b.dte - target))[0]
+            : liquid.slice().sort((a, b) => a.dte - b.dte)[0])   // nearest expiry when no target DTE
+        : null;
+      if (pick) expMove = expectedMoveFromStraddle(spot, pick.straddle, { dte: pick.dte, atmStrike: pick.strike });
+      ivTerm = ivTermStructure(ts.map(r => ({ dte: r.dte, iv: r.iv, ivChg: r.ivChg })));
+    } else {
     const ivp = parseIVSettlement(rawIV);
     // DTE is auto-read: the IV paste's own header (its exact expiry) wins, then the OI
     // heatmap's known primary-expiry DTE, then the manual field as a last-resort override.
@@ -942,6 +1000,51 @@ export function processOIData() {
           source: 'iv', ivStrikes: ivp.strikes.length, dteDays,
           vanna: vannaState(ex.vex, ivDyn?.atmChg != null ? ivDyn.atmChg / 100 : null) };
       }
+    }
+    }
+  }
+  // Optional SECOND paste: the full-product "Settlements" term-structure table, in its
+  // own box, so it can sit ALONGSIDE a per-strike chain (box 1 = the smile/charm-vanna
+  // for one expiry; box 2 = the IV term structure across all expiries). Box 1's ATM
+  // straddle is the more precise expected move, so box 2 only FILLS what box 1 lacks.
+  if (rawIVTerm && rawIVTerm.trim()) {
+    const ts2 = parseSettlementTermStructure(rawIVTerm);
+    if (ts2) {
+      if (!tsRows) tsRows = ts2;
+      if (!ivTerm) ivTerm = ivTermStructure(ts2.map(r => ({ dte: r.dte, iv: r.iv, ivChg: r.ivChg })));
+      if (!expMove) {
+        const target = primaryExpiry?.dte ?? (Number.isFinite(dteEff) ? dteEff : (Number.isFinite(dteRaw) ? dteRaw : null));
+        const liquid = ts2.filter(r => r.straddle > 0 && r.iv > 0);
+        const pick = liquid.length
+          ? (Number.isFinite(target)
+              ? liquid.slice().sort((a, b) => Math.abs(a.dte - target) - Math.abs(b.dte - target))[0]
+              : liquid.slice().sort((a, b) => a.dte - b.dte)[0])
+          : null;
+        if (pick) expMove = expectedMoveFromStraddle(spot, pick.straddle, { dte: pick.dte, atmStrike: pick.strike });
+      }
+    }
+  }
+  // Which expiry to grab for the per-strike SMILE box: the one holding the walls. Prefer
+  // the auto-selected primary-expiry DTE (multi-expiry matrix), then the effective/typed
+  // DTE field (single-expiry FX or a matrix with no DTE header still has this). If a
+  // "Settlements" table is present, match that DTE to its nearest row → the exact
+  // QuikStrike CODE + date; with a table but no DTE at all, suggest the front liquid
+  // expiry. Only skip the hint entirely when we have neither a DTE nor a table.
+  const _hintDte = Number.isFinite(primaryExpiry?.dte) ? primaryExpiry.dte
+    : Number.isFinite(dteEff) ? dteEff
+    : Number.isFinite(dteRaw) ? dteRaw : null;
+  let ivPasteHint = null;
+  if (Number.isFinite(_hintDte) || (Array.isArray(tsRows) && tsRows.length)) {
+    ivPasteHint = { dte: Number.isFinite(_hintDte) ? _hintDte : null, code: null, date: null, matchedDte: null,
+                    haveSmile: !!(greeksFlow) };
+    if (Array.isArray(tsRows) && tsRows.length) {
+      const liquid = tsRows.filter(r => r.straddle > 0 && r.iv > 0);
+      const pool = liquid.length ? liquid : tsRows;
+      const m = Number.isFinite(_hintDte)
+        ? pool.slice().sort((a, b) => Math.abs(a.dte - _hintDte) - Math.abs(b.dte - _hintDte))[0]
+        : pool.slice().sort((a, b) => a.dte - b.dte)[0];   // no DTE known → nearest (front) liquid expiry
+      if (m) { ivPasteHint.code = m.symbol || null; ivPasteHint.date = m.expiry || null; ivPasteHint.matchedDte = m.dte ?? null;
+               if (ivPasteHint.dte == null) ivPasteHint.dte = m.dte ?? null; }
     }
   }
 
@@ -1064,6 +1167,8 @@ export function processOIData() {
     ivDynamics: ivDyn,       // ATM IV change + skew steepening (tail-hedge demand)
     riskReversal: ivRR,      // OTM put−call IV skew (directional sentiment tilt)
     ivSmile,                 // per-strike IV (+ prior) for the smile-curve viz — render-only
+    ivTermStructure: ivTerm, // ATM IV across expiries (from the "Settlements" per-expiry paste)
+    ivPasteHint,             // which expiry (code+date) to grab for the per-strike SMILE box
     callWall: _cwHead?.strike ?? 0, putWall: _pwHead?.strike ?? 0,
     callWallOI: _cwHead?.oi ?? 0,   putWallOI: _pwHead?.oi ?? 0,
     callWalls, putWalls, skew, volumeMagnets, concentration, clusters,
@@ -1080,7 +1185,8 @@ export function processOIData() {
     rawOI: _compactOI,
     rawChg: _compactChg,
     rawVol: _compactVol,
-    rawIV: rawIV && rawIV.trim() ? rawIV : null   // QuikStrike IV settlement paste (for charm/vanna re-parse on reopen)
+    rawIV: rawIV && rawIV.trim() ? rawIV : null,   // QuikStrike IV settlement paste (for charm/vanna re-parse on reopen)
+    rawIVTerm: rawIVTerm && rawIVTerm.trim() ? rawIVTerm : null   // "Settlements" term-structure paste (re-parse on reopen)
   };
 
   const store = oiLoadStore();
@@ -1097,16 +1203,23 @@ export function processOIData() {
   store[pair] = inst;
   const _saved = oiSaveStore(store);   // async KV union-merge + local cache
 
-  document.getElementById('oiRawData').value='';
-  document.getElementById('oiChangeData').value='';
-  document.getElementById('oiSpotPrice').value='';
-  ['oiVolumeData', 'oiExpiryLabel', 'oiDTE'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-  const futEl = document.getElementById('oiFuturesPrice');
-  if (futEl) futEl.value='';
-  const basisEl = document.getElementById('oiBasisDisplay');
-  if (basisEl) { basisEl.textContent = 'Enter CME futures price above — basis will be auto-calculated and applied to all strikes on save'; basisEl.style.color=''; }
+  // Two-stage IV flow: if we know the exact expiry to grab for the SMILE box (a
+  // Settlements table was pasted → we have the code) but it isn't pasted yet, KEEP the
+  // modal open so the user can add that one paste and re-Analyse — no close/reopen dance.
+  // The pastes + spot/futures stay put so the second Analyse has everything it needs.
+  const _keepOpen = !!(ivPasteHint && !ivPasteHint.haveSmile && ivPasteHint.code);
 
-  closeOIModal();
+  if (!_keepOpen) {
+    document.getElementById('oiRawData').value='';
+    document.getElementById('oiChangeData').value='';
+    document.getElementById('oiSpotPrice').value='';
+    ['oiVolumeData', 'oiExpiryLabel', 'oiDTE'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    const futEl = document.getElementById('oiFuturesPrice');
+    if (futEl) futEl.value='';
+    const basisEl = document.getElementById('oiBasisDisplay');
+    if (basisEl) { basisEl.textContent = 'Enter CME futures price above — basis will be auto-calculated and applied to all strikes on save'; basisEl.style.color=''; }
+    closeOIModal();
+  }
   window.renderAll();
   const basisNote = basisClamped ? ' · basis ignored (implausible — no shift applied)'
     : basis ? ` · basis ${basis >= 0 ? '+' : ''}${basis.toFixed(pair.includes('JPY') ? 2 : isIndexFutures(pair) ? 2 : 5)}` : '';
@@ -1115,7 +1228,25 @@ export function processOIData() {
   // matrix (so a full-table paste never silently reads the wrong/empty column).
   const expiryNote = Number.isFinite(primaryExpiry?.dte)
     ? ` · walls from ${primaryExpiry.dte} DTE expiry (${primaryExpiry.nearOI.toLocaleString()} near-money OI)` : '';
-  oiToast(`${pairLabel} OI saved · ${parsed.strikes.length} strikes · max pain ${oiFmtStrike(maxPain,pair)}${expiryNote}${basisNote}`, basisClamped);
+  // Point the user at the exact expiry to grab for the SMILE box (charm/vanna/skew) —
+  // only when it isn't already pasted. Code+date if a Settlements table let us decode it.
+  const smileHint = (ivPasteHint && !ivPasteHint.haveSmile)
+    ? (ivPasteHint.code
+        ? ` · 💡 smile box → paste expiry ${ivPasteHint.code}${ivPasteHint.date ? ` (${ivPasteHint.date})` : ''}`
+        : ` · 💡 smile box → paste the ~${ivPasteHint.dte} DTE expiry's per-strike chain`)
+    : '';
+  oiToast(`${pairLabel} OI saved · ${parsed.strikes.length} strikes · max pain ${oiFmtStrike(maxPain,pair)}${expiryNote}${basisNote}${smileHint}`, basisClamped);
+
+  // Modal kept open for the smile paste → show the exact expiry right by the smile box
+  // and focus it. Once the smile is pasted, the next Analyse closes normally.
+  if (_keepOpen) {
+    const hEl = document.getElementById('oiSmileHint');
+    if (hEl) {
+      hEl.innerHTML = `👉 Optional charm/vanna/skew layer: paste expiry <b>${ivPasteHint.code}</b>${ivPasteHint.date ? ` (${ivPasteHint.date})` : ''}'s per-strike chain into the <b>smile box</b> above, then Analyse again. (Or Close — the expected move + term structure are already saved.)`;
+      hEl.style.display = 'block';
+    }
+    document.getElementById('oiIVData')?.focus();
+  }
 
   // Push updated entry data to Railway bot AFTER the KV merge lands so the sync
   // reads the freshly-merged store (not a half-written one).
@@ -1243,6 +1374,29 @@ export function renderSmileChart(smile, spot, pair) {
       <polyline points="${path(today)}" fill="none" stroke="var(--teal)" stroke-width="1.6"/>
     </svg>
     <div style="font-size:9px;color:var(--text3);margin-top:4px">IV ${fmtV(vmin)}%–${fmtV(vmax)}% · strikes ${oiFmtStrike(xmin, pair)}–${oiFmtStrike(xmax, pair)} · gold line = spot. Curve asymmetry = skew; gap to the prior curve = which strikes' IV moved (steepening).</div>
+  </div>`;
+}
+
+// Compact IV-surface reads for the analyser card: expected move + IV term structure
+// (both real), charm/vanna + RR (context), and the smile-box paste hint. Returns '' if
+// nothing IV-related is available.
+function _oiIVReads(inst, pair) {
+  const rows = [];
+  const em = inst.expectedMove;
+  if (em && em.move != null) rows.push(`<b>Expected move</b> ±${(+em.move).toLocaleString()} (${em.pct}%)${em.dte != null ? ` to ${em.dte}DTE` : ''} · range ${(+em.lower).toLocaleString()}–${(+em.upper).toLocaleString()}`);
+  const its = inst.ivTermStructure;
+  if (its) rows.push(`<b>IV term</b> ${its.front.dte}D ${its.front.iv}% → ${its.back.dte}D ${its.back.iv}% (${its.shape === 'inverted' ? 'inverted — near-term stress priced' : its.shape === 'upward' ? 'upward — normal' : 'flat'})`);
+  const g = inst.greeksFlow;
+  if (g) rows.push(`<b>Charm/vanna</b> CEX ${g.cex >= 0 ? '+' : ''}${g.cex} · VEX ${g.vex >= 0 ? '+' : ''}${g.vex}${g.vanna ? ` · vanna ${g.vanna.state}${g.vanna.firing ? ' firing' : ''}` : ''} <span style="color:var(--text3)">(context, indices only)</span>`);
+  const rr = inst.riskReversal;
+  if (rr) rows.push(`<b>Risk reversal</b> ${rr.rr >= 0 ? '+' : ''}${rr.rr} (${rr.tilt}) <span style="color:var(--text3)">(context)</span>`);
+  // Smile-box paste hint — only when the per-strike smile isn't loaded yet.
+  const h = inst.ivPasteHint;
+  const hint = (h && !h.haveSmile)
+    ? `<div style="font-size:10px;color:var(--gold);margin-top:3px">💡 For charm/vanna/skew, paste the <b>smile box</b> with expiry ${h.code ? `<b>${h.code}</b>${h.date ? ` (${h.date})` : ''}` : `~${h.dte} DTE`} — where your walls sit.</div>` : '';
+  if (!rows.length && !hint) return '';
+  return `<div class="oi-iv-reads" style="font-size:11px;padding:6px 13px;border-top:1px solid var(--border);line-height:1.6">
+    ${rows.map(r => `<div>${r}</div>`).join('')}${hint}
   </div>`;
 }
 
@@ -1425,6 +1579,7 @@ export function renderOICard(inst) {
 
   ${renderGammaChart(gexProfile, spot, pair, maxPain)}
   ${inst.ivSmile ? renderSmileChart(inst.ivSmile, spot, pair) : ''}
+  ${_oiIVReads(inst, pair)}
 
   <div class="oi-skew">
     <div class="oi-skew-hd">

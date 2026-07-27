@@ -60,7 +60,8 @@ import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _r
 import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS, BM_P75 as _BM_P75 } from './js/volBacktestEngine.js';
 import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED } from './js/mve/liveAdapter.js';
 import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency } from './js/mve/validateInstrument.js';
-import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS, buildPortfolioReturns as _trendBuildPortfolio } from './js/trendFollowEngine.js';
+import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS, buildPortfolioReturns as _trendBuildPortfolio, portfolioReturnsByDate as _trendReturnsByDate } from './js/trendFollowEngine.js';
+import { blendStreams as _blendStreams } from './js/streamBlend.js';
 import { runGauntlet as _runStrategyGauntlet, GAUNTLET_SPECS as _GAUNTLET_SPECS, SIGNALS as _LAB_SIGNALS } from './js/strategyLabEngine.js';
 import { runTrendAB as _runTrendAB } from './js/trendFollowV2Engine.js';
 import { volSigmaSeries as _volSigmaSeries, nextSigma as _nextSigma } from './js/forecastCore.js';
@@ -84,7 +85,7 @@ import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
 import { refreshRangeLineConfluence, packLiveM1 } from './js/rangeLineConfluenceProducer.js';
 import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas, classifyOIChange, oiWallStability, oiPriceConfirmation } from './js/oiConfluence.js';
 import { buildOILevelText } from './js/oiLevelExport.js';
-import { buildOIZones } from './js/oiZones.js';
+import { buildOIZones, explainNoZones } from './js/oiZones.js';
 import { gammaFlip as computeGammaFlip, distanceToFlip, flipDrift, rolloffSummary } from './js/gammaFlow.js';
 import { buildRangeZones } from './js/rangeLineZones.js';
 import { learnAndFreeze as learnAndFreezeV2, deriveBands as deriveBandsV2, flattenPolicy as flattenPolicyV2 } from './js/levelsV2Learn.js';
@@ -2004,9 +2005,10 @@ async function _injectServerContext(pair, s) {
           const per = hk ? hist[hk] : null;
           if (per) drift = flipDrift(Object.keys(per).sort().slice(-10).map(dt => ({ date: dt, flip: per[dt]?.gammaFlip, spot: per[dt]?.spot })));
         } catch {}
-        if (flip != null || rolloff || inst.expectedMove) s.oiGamma = { flip: flip ?? null, dist, drift, rolloff,
+        if (flip != null || rolloff || inst.expectedMove || inst.ivTermStructure) s.oiGamma = { flip: flip ?? null, dist, drift, rolloff,
           greeks: inst.greeksFlow ?? null, expectedMove: inst.expectedMove ?? null,
-          ivDynamics: inst.ivDynamics ?? null, riskReversal: inst.riskReversal ?? null };
+          ivDynamics: inst.ivDynamics ?? null, riskReversal: inst.riskReversal ?? null,
+          ivTermStructure: inst.ivTermStructure ?? null };
       }
     } catch { /* left absent — prompt tolerates it */ }
   }
@@ -2058,7 +2060,8 @@ Flip drift: migrating TOWARD spot (${s.oiGamma.drift.fromDate}→${s.oiGamma.dri
 OpEx roll-off: nearest expiry ${s.oiGamma.rolloff.nearDTE}DTE holds ${Math.round(s.oiGamma.rolloff.nearShare * 100)}% of OI${s.oiGamma.rolloff.rollingSoon ? ' — rolls off SOON, the near pin releases after' : ''}${s.oiGamma.rolloff.pinShift != null ? ` · next expiry (${s.oiGamma.rolloff.nextDTE}DTE) pins ${s.oiGamma.rolloff.nextMaxPain} (shift ${s.oiGamma.rolloff.pinShift >= 0 ? '+' : ''}${s.oiGamma.rolloff.pinShift})` : ''}` : ''}${s.oiGamma?.greeks ? `
 Charm/vanna (from pasted IV surface, ${s.oiGamma.greeks.dteDays}DTE): net CEX ${s.oiGamma.greeks.cex >= 0 ? '+' : ''}${s.oiGamma.greeks.cex} (charm = the clock/OpEx hedging — pin tightens into expiry, releases after)${s.oiGamma.greeks.charmFlip != null ? ` · charm flip ${s.oiGamma.greeks.charmFlip}` : ''}; net VEX ${s.oiGamma.greeks.vex >= 0 ? '+' : ''}${s.oiGamma.greeks.vex} (vanna = vol-conditional bias — as IV falls, +VEX ⇒ mechanical bid)${s.oiGamma.greeks.vannaFlip != null ? ` · vanna flip ${s.oiGamma.greeks.vannaFlip}` : ''}${s.oiGamma.greeks.vanna ? ` · vanna read: ${s.oiGamma.greeks.vanna.state}${s.oiGamma.greeks.vanna.firing ? ' FIRING' : ''} (IV ${s.oiGamma.greeks.vanna.ivFalling ? 'falling' : 'rising'}) — indices strong, gold/FX weak` : ''}` : ''}${s.oiGamma?.expectedMove ? `
 Option-implied expected move: ±${s.oiGamma.expectedMove.move} (${s.oiGamma.expectedMove.pct}%) to ${s.oiGamma.expectedMove.dte}DTE [range ${s.oiGamma.expectedMove.lower}–${s.oiGamma.expectedMove.upper}]${s.oiGamma.expectedMove.daily != null && Number.isFinite(s.atr) ? ` · implied daily ≈ ${s.oiGamma.expectedMove.daily} vs ATR ${s.atr} → options ${s.oiGamma.expectedMove.daily > s.atr * 1.1 ? 'RICH (fade-leaning, market pricing more than recent realized)' : s.oiGamma.expectedMove.daily < s.atr * 0.9 ? 'CHEAP (breakout risk under-priced)' : 'fair vs realized'}` : ''} — this is the option market's own range; targets beyond it are low-probability by expiry` : ''}${s.oiGamma?.ivDynamics?.atmChg != null ? `
-IV dynamics: ATM IV ${s.oiGamma.ivDynamics.atmIV}% (${s.oiGamma.ivDynamics.atmChg >= 0 ? '+' : ''}${s.oiGamma.ivDynamics.atmChg} today, ${s.oiGamma.ivDynamics.rising ? 'rising' : 'falling'})${s.oiGamma.ivDynamics.skewSteepening != null ? ` · skew ${s.oiGamma.ivDynamics.skewSteepening > 0 ? 'STEEPENING' : 'flattening'} (${s.oiGamma.ivDynamics.skewSteepening >= 0 ? '+' : ''}${s.oiGamma.ivDynamics.skewSteepening}, tail-hedge demand ${s.oiGamma.ivDynamics.skewSteepening > 0 ? 'up' : 'down'})` : ''}` : ''}${s.oiGamma?.riskReversal ? `
+IV dynamics: ATM IV ${s.oiGamma.ivDynamics.atmIV}% (${s.oiGamma.ivDynamics.atmChg >= 0 ? '+' : ''}${s.oiGamma.ivDynamics.atmChg} today, ${s.oiGamma.ivDynamics.rising ? 'rising' : 'falling'})${s.oiGamma.ivDynamics.skewSteepening != null ? ` · skew ${s.oiGamma.ivDynamics.skewSteepening > 0 ? 'STEEPENING' : 'flattening'} (${s.oiGamma.ivDynamics.skewSteepening >= 0 ? '+' : ''}${s.oiGamma.ivDynamics.skewSteepening}, tail-hedge demand ${s.oiGamma.ivDynamics.skewSteepening > 0 ? 'up' : 'down'})` : ''}` : ''}${s.oiGamma?.ivTermStructure ? `
+IV term structure: front ${s.oiGamma.ivTermStructure.front.dte}DTE ${s.oiGamma.ivTermStructure.front.iv}% → back ${s.oiGamma.ivTermStructure.back.dte}DTE ${s.oiGamma.ivTermStructure.back.iv}% (${s.oiGamma.ivTermStructure.shape === 'inverted' ? 'INVERTED — front vol richer, market paying up for a near-term event/stress' : s.oiGamma.ivTermStructure.shape === 'upward' ? 'upward-sloping — normal, calm now with more uncertainty priced later' : 'flat'})` : ''}${s.oiGamma?.riskReversal ? `
 Risk reversal: ${s.oiGamma.riskReversal.rr >= 0 ? '+' : ''}${s.oiGamma.riskReversal.rr} vol (${s.oiGamma.riskReversal.tilt}-skewed: ${s.oiGamma.riskReversal.tilt === 'downside' ? 'puts bid, downside protection demand → bearish tilt' : s.oiGamma.riskReversal.tilt === 'upside' ? 'calls bid, upside chase → bullish tilt' : 'balanced'}) [positioning context, not a validated signal]` : ''}${s.oi.concentration ? `
 Concentration: top-5 strikes = ${s.oi.concentration.top5Pct}% of OI (${s.oi.concentration.read}) — ${s.oi.concentration.read === 'concentrated' ? 'expect sharper reactions at the walls' : 'positioning dispersed, weaker wall influence'}` : ''}${(s.oi.clusters || []).length ? `
 Institutional cluster zones: ${s.oi.clusters.map(c => `${c.low}-${c.high} (${Math.round(c.totalOI / 1000)}k)`).join(', ')}` : ''}${(s.oi.volumeMagnets || []).length ? `
@@ -6568,6 +6571,79 @@ app.post('/api/vol-forecast/refresh', async (_req, res) => {
   runVolForecast().catch(e => console.error('[VOL-FORECAST] Manual refresh error:', e.message));
 });
 
+// ── /api/combine/mom-rev — momentum × reversion diversification blend ──────────
+// The honest "risk is the edge" test: take two ALREADY-VALIDATED daily return
+// streams — the diversified trend book (/api/trend, time-series momentum) and the
+// per-line fade book (intraday mean-reversion, 33/33 pairs OOS) — and measure
+// whether combining them yields a higher risk-adjusted return than either alone.
+// It only does when their returns are lowly/negatively correlated (drawdowns don't
+// coincide). This creates NO new edge; it measures diversification between two
+// existing ones. Both streams' daily returns are scaled to a common daily vol
+// first, so the blend weights are RISK weights (equal-weight == equal-risk).
+// Pure math in js/streamBlend.js (unit-tested); here we assemble the two real
+// series server-side. Needs OANDA_KEY (trend D1) + a stored per-line book (R2) —
+// 502 in the sandbox is env, not a bug.
+const _blendCache = new Map();
+app.get('/api/combine/mom-rev', async (req, res) => {
+  const horizon = String(req.query.horizon || 'daily');
+  const key = `momrev|${horizon}`;
+  try {
+    const hit = _blendCache.get(key);
+    if (hit && Date.now() - hit.at < 6 * 60 * 60 * 1000 && req.query.fresh !== '1') {
+      return res.json({ ...hit.data, cached: true });
+    }
+    // 1) Fade book daily series (stored) — book.equity is [{date,pnl}] summed across pairs.
+    const book = await getPerLineBook(horizon);
+    const fade = (book?.equity || []).filter(e => e && e.date != null && Number.isFinite(e.pnl))
+      .map(e => ({ date: e.date, ret: e.pnl }));
+    if (fade.length < 100) {
+      return res.status(502).json({ ok: false, error: `per-line book has ${fade.length} daily points for horizon "${horizon}" — rebuild the Book first`, needs: 'stored per-line book (R2)' });
+    }
+    // 2) Trend book daily series (live D1) — reuse the trend universe + engine.
+    if (!process.env.OANDA_KEY) return res.status(502).json({ ok: false, error: 'OANDA_KEY not configured', needs: 'OANDA_KEY (trend D1)' });
+    const markets = [], skipped = [];
+    for (const sym of _TREND_UNIVERSE) {
+      try {
+        const bars = await _btFetchD1(sym, 5000);
+        if (bars && bars.length >= 300) markets.push({ symbol: sym, closes: bars.map(b => b.close), dates: bars.map(b => b.date) });
+        else skipped.push(`${sym} (${bars?.length ?? 0})`);
+      } catch (e) { skipped.push(`${sym} (${e.message})`); }
+    }
+    if (markets.length < 3) return res.status(502).json({ ok: false, error: `only ${markets.length} trend markets fetched`, skipped });
+    const tr = _trendReturnsByDate(markets, {});
+    if (!tr.ok) return res.status(502).json({ ok: false, error: `trend series: ${tr.error}` });
+    const trend = tr.series;   // [{date,ret}]
+
+    // 3) Scale each stream to a common daily vol (1%) so blend weights = risk weights.
+    const norm = (series) => {
+      const rs = series.map(x => x.ret).filter(Number.isFinite);
+      const m = rs.reduce((s, x) => s + x, 0) / (rs.length || 1);
+      let v = 0; for (const x of rs) v += (x - m) ** 2;
+      const sd = Math.sqrt(v / Math.max(1, rs.length - 1)) || 1;
+      const k = 0.01 / sd;
+      return series.map(x => ({ date: x.date, ret: x.ret * k }));
+    };
+    // Weight grid labelled A=trend(momentum), B=fade(reversion): w = weight on trend.
+    const rep = _blendStreams(norm(trend), norm(fade));
+    if (!rep.ok) return res.status(502).json({ ok: false, error: rep.error });
+
+    const out = {
+      ok: true,
+      horizon,
+      legend: { A: 'trend book (time-series momentum, /api/trend)', B: 'per-line fade book (intraday reversion)' },
+      note: 'Streams vol-normalised to 1% daily before blending, so weight w is the RISK weight on momentum (1−w on reversion). corr is the crux; maxSharpe is in-sample-optimistic — read equalWeight & riskParity as the honest blend.',
+      bookGeneratedAt: book.generatedAt || null,
+      trendUniverse: markets.map(m => m.symbol),
+      trendSkipped: skipped,
+      ...rep,
+    };
+    _blendCache.set(key, { at: Date.now(), data: out });
+    res.json(out);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Credit → risk-vol lead-lag study (async-job) ──────────────────────────────
 // Does credit-spread Δ (HY OAS) lead a risk instrument's realized vol, beyond
 // vol's own persistence? Proven for NQ (default); parameterised so the SAME
@@ -7333,7 +7409,11 @@ const OI_BOT_CFG_DEFAULTS = {
   minTier: 'strong', slBufferPips: 15, breakPips: 20, nearExpiryDTE: 2, extendedPips: 30,
   fadeInPin: true, followBreaks: true, maxPainReversion: true,
   requireEstablished: false, avoidLiquidating: true,
-  maxZonesPerSide: 4,                // bot trades the K strongest walls per side (display count is separate)
+  maxZonesPerSide: 4,                // PIN: K NEAREST strong walls per side; breakout: K strongest by OI
+  secondaryTrim: 0.6,                // PIN fade: nearest wall = primary (full size), further walls ×this
+  reachMult: 1.0,                    // entry beyond reachMult × the implied move → flag "unlikely to fill"
+  reachTrim: 0.7,                    // size haircut for an entry beyond the implied-move reach horizon
+  maxReachPips: 0,                   // fallback reach cap in pips when no IV/expMove (0 = off)
   pathBlockCheck: true,              // flag/trim when a nearer wall sits between spot and a zone's entry
   blockMinTier: 'moderate',          // that path wall must be ≥ this tier to count (skip trivia)
   blockTrim: 0.9,                    // entry-size haircut when a blocking wall is in the path
@@ -7366,9 +7446,18 @@ async function _refreshOIBotZones() {
     const hist = histRaw ? (JSON.parse(histRaw).data ?? JSON.parse(histRaw)) : {};
     const universe = new Set([...OI_BOT_UNIVERSE, ...(cfg.fx_enabled ? (cfg.fx_pairs || []) : [])]);
     const instruments = {};
+    const skipped = {};                                          // pasted into the analyser but NOT traded — with the reason why
     for (const [pair, inst] of Object.entries(store)) {
       const key = (() => { try { return resolveKey(pair); } catch { return null; } })() || String(pair).toLowerCase().replace(/[/_]/g, '');
-      if (!universe.has(key)) continue;                          // gold+indices (+ opted-in FX) only
+      if (!universe.has(key)) {
+        // It's in oi_store (someone pasted OI for it) but out of the bot's universe.
+        // Record WHY so "no zones" reads as a setting, not a fault (the #1 confusion:
+        // FX pairs are opt-in because CME OI on FX is partial — the weak asset).
+        skipped[key] = !cfg.fx_enabled
+          ? 'FX not traded by default — enable FX on the OI Gamma tab (bot-config) to trade it'
+          : (!(cfg.fx_pairs || []).includes(key) ? `FX enabled but "${key}" is not in fx_pairs` : 'not in the OI bot universe (gold + indices)');
+        continue;                                                // gold+indices (+ opted-in FX) only
+      }
       const pip = (() => { try { return _pipSize(key) || 0; } catch { return 0; } })() || 0.0001;
       const { stability, change } = _oiBotStabilityChange(hist, key);
       // Stale-data guard: if the live spot sits OUTSIDE the option chain's own
@@ -7409,14 +7498,20 @@ async function _refreshOIBotZones() {
         expMove: inst.expectedMove ? { upper: inst.expectedMove.upper, lower: inst.expectedMove.lower } : null,
         vannaNote: _vn && _vn.firing ? `vanna ${_vn.state} firing (IV ${_vn.ivFalling ? 'falling' : 'rising'}) — indices strong, gold/FX weak` : null });
       const gex = inst.exposures?.gex ?? 0;
+      // When an in-universe instrument yields no zones, say why (flat regime / no
+      // strong walls / walls out of range) — so a blank plan is legibly intentional.
+      let diag = null;
+      if (!stale && zones.length === 0) {
+        try { diag = explainNoZones(inst, inst.spot, { ...cfg, pip }); } catch { diag = null; }
+      }
       instruments[key] = { spot: inst.spot ?? null, maxPain: inst.maxPain ?? null,
-        regime: gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : 'NEUTRAL', zones, zoneCount: zones.length, stale,
+        regime: gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : 'NEUTRAL', zones, zoneCount: zones.length, stale, diag,
         gammaFlow, termStructure: Array.isArray(inst.termStructure) ? inst.termStructure : null,
         greeksFlow: inst.greeksFlow ?? null, expectedMove: inst.expectedMove ?? null,
         ivDynamics: inst.ivDynamics ?? null, riskReversal: inst.riskReversal ?? null };
       if (stale) console.warn(`[oi-bot] ${key}: ${stale} — skipping (no zones)`);
     }
-    await kv.put('oi_bot_zones', JSON.stringify({ data: { strategy: 'oi-bot', generatedAt: new Date().toISOString(), instruments }, timestamp: Date.now() }));
+    await kv.put('oi_bot_zones', JSON.stringify({ data: { strategy: 'oi-bot', generatedAt: new Date().toISOString(), instruments, skipped }, timestamp: Date.now() }));
     const total = Object.values(instruments).reduce((a, v) => a + v.zoneCount, 0);
     console.log(`[oi-bot] zones refreshed · ${Object.keys(instruments).length} instruments · ${total} zones`);
     return Object.keys(instruments).length;
