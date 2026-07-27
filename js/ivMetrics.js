@@ -22,12 +22,29 @@ const _atmIndex = (strikes, spot) => {
 
 // Expected move ≈ the ATM straddle (call+put settle at the nearest strike) — the
 // option market's ~1σ implied range to expiry. `daily` scales it by 1/√DTE.
+// An ATM straddle can never be worth a large fraction of the underlying — a 1-month
+// ATM straddle runs a few percent of spot, and the implied move is bounded by that.
+// So a "move" anywhere near spot means the straddle column was mis-parsed, not that
+// the market expects a 100% swing. NQ stored move 28,591 on spot 28,565 (100.09%,
+// lower bound MINUS 26) because a Settlements term-structure table was pasted into the
+// per-strike smile box and `parseIVSettlement` read the futures settle as the put
+// price. Nothing checked, so it was stored, surfaced, and silently disabled the OI
+// bot's reachability gate (nothing is ever beyond a 100% move).
+//
+// Reject rather than return garbage: callers already handle null by falling back.
+export const MAX_IMPLIED_MOVE_FRAC = 0.25;   // 25% of spot — far above any real ATM straddle
+function _sane(move, spot) {
+  return Number.isFinite(move) && move > 0 && spot > 0
+    && move < spot * MAX_IMPLIED_MOVE_FRAC && (spot - move) > 0;
+}
+
 export function expectedMove(strikes, callPx, putPx, spot, { dte = null } = {}) {
   if (!Array.isArray(strikes) || !strikes.length || !(spot > 0)) return null;
   const i = _atmIndex(strikes, spot);
   const c = callPx?.[i], p = putPx?.[i];
   if (!(c >= 0) || !(p >= 0)) return null;
   const move = c + p;                                   // ± range to expiry (~1σ)
+  if (!_sane(move, spot)) return null;                  // mis-parsed column — see MAX_IMPLIED_MOVE_FRAC
   return {
     atmStrike: strikes[i], straddle: +move.toFixed(4),
     move: +move.toFixed(4), pct: +(move / spot * 100).toFixed(3),
@@ -42,6 +59,7 @@ export function expectedMove(strikes, callPx, putPx, spot, { dte = null } = {}) 
 export function expectedMoveFromStraddle(spot, straddle, { dte = null, atmStrike = null } = {}) {
   if (!(spot > 0) || !(straddle > 0)) return null;
   const move = straddle;
+  if (!_sane(move, spot)) return null;                  // mis-parsed column — see MAX_IMPLIED_MOVE_FRAC
   return {
     atmStrike: atmStrike ?? null, straddle: +move.toFixed(4),
     move: +move.toFixed(4), pct: +(move / spot * 100).toFixed(3),

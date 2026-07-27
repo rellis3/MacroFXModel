@@ -939,6 +939,29 @@ export function oiFlatVol(pair) {
 }
 export const OI_GREEK_T = 14 / 365;   // documented limitation: fixed 14-DTE assumption
 
+// REFERENCE MOVE — the distance scale everything else measures against.
+//
+// "How far can price plausibly travel?" is what decides whether a strike is a level
+// worth drawing or abandoned paper. A fixed percentage cannot answer it: EUR/USD moves
+// ~0.9% to expiry where gold moves ~2.5%, and both change with DTE and vol regime.
+//
+// Prefer the option-implied move (the ATM straddle — the market's own answer). Fall
+// back to flat vol so this NEVER depends on a paste being present or correct: the
+// index smile boxes held the wrong table and produced a 100%-of-spot "expected move",
+// and anything keyed off that number inherited the nonsense. A derived scale that is
+// always sane beats a measured one that is sometimes absurd.
+export function oiRefMove(inst, pair) {
+  const spot = inst?.spot;
+  if (!(spot > 0)) return null;
+  const em = inst?.expectedMove?.move;
+  // ivMetrics already rejects impossible straddles; re-check here so a record saved by
+  // an older build (or hand-edited) can't reintroduce one.
+  if (Number.isFinite(em) && em > 0 && em < spot * 0.25) return { move: em, source: 'implied' };
+  const dte = Number.isFinite(inst?.dte) && inst.dte > 0 ? inst.dte : 14;
+  const sig = oiFlatVol(pair || inst?.pair || '');
+  return { move: spot * sig * Math.sqrt(dte / 365), source: 'flat-vol' };
+}
+
 export function oiGreeks(strike, spot, pair) {
   const sigma = oiFlatVol(pair);
   const T = OI_GREEK_T;
@@ -1436,6 +1459,10 @@ export function processOIData() {
     dataWarning,   // ⚠ set when spot is far outside the strike range (stale/mis-scaled paste) — flag, don't silently analyse
     greeksFlow,   // charm/vanna exposure from a pasted IV surface (null unless the IV box is filled)
     expectedMove: expMove,   // ATM straddle → option-implied ± range to expiry
+    // One distance scale, computed once, shared by wall relevance / reachability /
+    // anything else that needs "how far can price plausibly go". Implied when the
+    // straddle is trustworthy, flat-vol otherwise — never absent, never absurd.
+    refMove: oiRefMove({ spot, dte: dteEff, expectedMove: expMove }, pair),
     ivDynamics: ivDyn,       // ATM IV change + skew steepening (tail-hedge demand)
     riskReversal: ivRR,      // OTM put−call IV skew (directional sentiment tilt)
     ivSmile,                 // per-strike IV (+ prior) for the smile-curve viz — render-only

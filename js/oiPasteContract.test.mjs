@@ -312,5 +312,52 @@ console.log('[wall selection — tier AND size, not a fixed count]');
     at(oiStoreToLevels(inst, { topWalls: 2 }), 'put_wall').length <= 3);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 9. SOFT NEAR-MONEY WINDOW — relevance scaled by the reference move, not a
+//    hard percentage. Gold's biggest call OI (8,008 at 5,370) was abandoned paper
+//    31% above spot on a contract expiring next day; it outranked the real wall
+//    purely on size. A hard cutoff fixes that but is knife-edge: ±7.5% put the
+//    boundary at 4,397 and ±7.6% at 4,400, flipping the answer by 100 points.
+// ─────────────────────────────────────────────────────────────────────────────
+console.log('[soft near-money window — scaled by the reference move]');
+{
+  const spot = 4079, refMove = { move: 103.3, source: 'implied' };   // gold, implied
+  const inst = {
+    spot, refMove,
+    callWall: 4300, putWall: 4000,
+    callWalls: [
+      { strike: 5370, oi: 8008, tier: 'strong' },     // 31% out, expiring tomorrow
+      { strike: 5350, oi: 8001, tier: 'strong' },
+      { strike: 4300, oi: 3188, tier: 'strong' },     // the real one
+      { strike: 4150, oi: 2829, tier: 'moderate' },
+    ],
+    putWalls: [{ strike: 4000, oi: 4171, tier: 'strong' }, { strike: 3200, oi: 2000, tier: 'strong' }],
+  };
+  const at = (lv, t) => lv.filter(l => l.type === t).map(l => l.price).sort((a, b) => a - b);
+  const lv = oiStoreToLevels(inst);
+
+  ok('abandoned deep-OTM OI is excluded despite being the LARGEST',
+    !at(lv, 'call_wall').includes(5370) && !at(lv, 'call_wall').includes(5350),
+    at(lv, 'call_wall').join(' '));
+  ok('the real near-money wall survives', at(lv, 'call_wall').includes(4300));
+  ok('far put paper excluded too', !at(lv, 'put_wall').includes(3200), at(lv, 'put_wall').join(' '));
+
+  // No cliff: nudging the scale must not flip the answer, which a hard cutoff did.
+  const near = k => at(oiStoreToLevels({ ...inst, refMove }, { nearK: k }), 'call_wall').join(',');
+  ok('a small change in the window scale does not flip the result',
+    near(2.4) === near(2.5) && near(2.5) === near(2.6), `${near(2.4)} | ${near(2.6)}`);
+
+  // Must degrade, never blank: no spot/refMove ⇒ weight 1 ⇒ size-only ranking.
+  ok('no refMove → falls back to size-only, still returns walls',
+    at(oiStoreToLevels({ ...inst, refMove: null, spot: null }), 'call_wall').length > 0);
+
+  // A wider reference move (higher vol / longer DTE) must admit more distant walls —
+  // the whole point of scaling rather than hard-coding a percentage.
+  ok('a wider reference move reaches further out', (() => {
+    const wide = oiStoreToLevels({ ...inst, refMove: { move: 600, source: 'flat-vol' } });
+    return at(wide, 'call_wall').includes(5370);
+  })());
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);
