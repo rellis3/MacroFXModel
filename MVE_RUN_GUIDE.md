@@ -127,9 +127,10 @@ full pipeline. It is **surfacing-only** — it does not feed any live signal or 
 **Endpoint (on the deployed server, needs `OANDA_KEY` + `FRED_KEY`):**
 
 ```
-GET /api/mve            → { supported:[XAUUSD,EURUSD,GBPUSD,USDJPY,AUDUSD] }
+GET /api/mve            → { supported:[XAUUSD,EURUSD,GBPUSD,USDJPY,AUDUSD,NQ] }
 GET /api/mve/EURUSD     → full valuation (fairValue, mispricing z, convergence, confidence, dataSource)
 GET /api/mve/XAUUSD?ssm=1&regime=RISK_OFF   → Kalman consensus, regime-tilted
+GET /api/mve-validate/NQ  → the OOS gate for NQ (2026-07-27 addition, see below — not yet run on real data)
 ```
 
 Results are cached 1h in memory (`?fresh=1` to bypass). In the sandbox the endpoint
@@ -145,6 +146,18 @@ Part 4:
   (T10YIE). **DXY is deliberately excluded for FX** — EUR is ~57% of DXY, so regressing
   EUR/USD on DXY would be a near-tautological (circular) fair value. OLS learns the sign,
   so differentials are passed raw (us − foreign).
+- **NQ** (added 2026-07-27, per the OU/dog-owner conversation — see chat log) → US 10y
+  **real yield** (DFII10, discount-rate channel) + **HY OAS** (BAMLH0A0HYM2, credit/
+  risk-appetite channel) + **VIX** (VIXCLS, vol risk-premium channel). Minimal-DOF first
+  pass, deliberately **3 factors, not gold's DXY-included recipe**: Nasdaq's
+  dollar-earnings-translation channel is weaker/more debated than gold's, so DXY isn't
+  added just because gold's spec has it — the discipline is "prove the narrow version
+  first" (`CLAUDE.md` backtest-build section). `js/mve/mve.test.mjs` proves the wiring
+  (spec, `buildContext`, `runMVE`, injected-fetcher `runLiveMVE`) on synthetic data —
+  **no real numbers yet**. OANDA (`NAS100_USD`) 403s in the sandbox as expected/documented;
+  `FRED_KEY` isn't set in the sandbox either. **Next action: run
+  `GET /api/mve-validate/NQ` on Railway** — that's the actual gate, same as every other
+  instrument in §10 below. Until that returns, this is infrastructure, not a result.
 
 **Still not wired** (deliberately): the signal-score blend, entry scanner, AI summary
 (§7). The adapter is the only new code that touches live feeds; the engine stays pure.
