@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Theta Decay — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / The Greeks / Theta Decay</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">The Greeks · Deep Dive 1 of 3</div>
+  <h1 class="tl-title">Theta Decay</h1>
+  <p class="tl-dek">Theta isn't a separate fact about options — it falls straight out of the same Black-Scholes PDE that gives delta and gamma, and once you rearrange it, "theta pays for gamma" stops being a slogan and becomes an equation.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span>~19 min read</span>
+    <span>Prereqs: Black-Scholes-Merton Option Pricing, Gamma Exposure &amp; Dealer Hedging Flows</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Theta is not an independent Greek to memorize — rearranging the Black-Scholes PDE gives \(\Theta = rC - rS\Delta - \tfrac{1}{2}\sigma^2S^2\Gamma\) directly, the same equation that produces delta and gamma.</li>
+      <li>The closed-form theta for a non-dividend European call is \(\Theta = -\dfrac{S\varphi(d_1)\sigma}{2\sqrt{\tau}} - rKe^{-r\tau}N(d_2)\) — state it, don't re-derive the integral.</li>
+      <li><strong>The key insight:</strong> for a delta-hedged position, \(\Theta \approx -\tfrac{1}{2}\sigma^2S^2\Gamma\) — theta and gamma are two views of the same convexity. This is the formal version of "theta pays for gamma": if realized volatility matches implied, the gamma-scalping P&amp;L and the theta bleed offset almost exactly on average.</li>
+      <li>Theta accelerates near expiry the same way gamma does, through the same \(1/\sqrt{\tau}\) term — a worked comparison at 30, 7 and 1 day to expiry shows the daily decay roughly doubling, then accelerating again, matching the acceleration already shown for gamma in the previous lesson.</li>
+      <li>Calendar spreads are built specifically to harvest that acceleration differential between a near and a far expiry; weekend theta is a related, non-universal practitioner convention worth knowing about, not treating as law.</li>
+      <li><strong>New in this lesson:</strong> combining \(\Theta\approx-\tfrac{1}{2}\sigma^2S^2\Gamma\) with the previous lesson's "dealers are typically net short gamma" gives, term by term, "dealers are typically net long theta" — the same PDE, two different partial derivatives, not two separate facts.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The <a href="black-scholes.html">Black-Scholes-Merton</a> lesson derives
+    delta and gamma as the option-pricing formula's first and second partial
+    derivatives with respect to the underlying, and states the Black-Scholes
+    PDE itself. It mentions theta only in passing — "time decay" — without
+    showing where the closed-form theta comes from or why it matters beyond
+    "options lose value as expiry approaches." The
+    <a href="gamma-exposure-dealer-hedging.html">Gamma Exposure &amp; Dealer
+    Hedging Flows</a> lesson goes deep on gamma specifically: how it
+    aggregates across an open-interest book into dealer hedging flow, and
+    why that flow intensifies as \(1/\sqrt{\tau}\) near expiry. Neither
+    lesson asks the natural next question: if gamma is the cost of convexity
+    a dealer is exposed to, what is theta, and how do the two connect?
+  </p>
+  <p>
+    This lesson answers that directly. Theta is not a fact bolted onto the
+    model after the fact — it is a term in the exact same PDE that gives
+    delta and gamma, and rearranging that PDE turns "options decay over
+    time" into a precise statement about <em>how much</em> and <em>why</em>.
+    The practical payoff is the gamma-theta identity: a delta-hedged option
+    position's theta bleed is, to a very good approximation, just its gamma
+    times a constant — which is the entire economic logic behind why
+    market-makers get paid to sell convexity, why "theta pays for gamma" is
+    said the way it is, and — the genuinely new material in this lesson —
+    why the previous lesson's "dealers are usually short gamma" and "dealers
+    are usually long theta" are not two separate empirical observations.
+    They are the same underlying fact, read off two different partial
+    derivatives of one equation. This lesson does not re-derive delta or
+    gamma from scratch; for those, see the Black-Scholes lesson linked
+    above.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Rent, not a random tax</h3>
+    <p>
+      An option is a wasting asset: hold everything else fixed, and it loses
+      a little value every single day purely because there's one fewer day
+      left for the underlying to move in your favor. That's theta. It's
+      tempting to treat it as a kind of tax you pay for holding the
+      position, disconnected from everything else about the option — but
+      that's not quite right. Theta is better understood as <em>rent</em>:
+      the price you pay for the right to a position that gains
+      disproportionately from big moves in either direction (that's
+      gamma — convexity). Nobody rents you that upside for free. The
+      option seller is, in effect, charging you the fair market rent for
+      convexity, and that rent is exactly what theta measures.
+    </p>
+    <p style="margin-bottom:0">
+      Flip it around and the whole "dealer hedging" story from the previous
+      lesson reads differently too. A dealer who wrote (sold) you that
+      option gave up the convexity — they're short gamma — and in exchange
+      they collect the rent — they're long theta. It isn't a coincidence
+      that "short gamma" and "long theta" tend to travel together for the
+      same position; by the end of this lesson that pairing will be a
+      literal equation, not just an observed pattern.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    Three things build on top of the Black-Scholes PDE: the rearrangement
+    that isolates theta, the closed-form solution for a European call, and
+    the delta-hedged approximation that connects theta back to gamma. Take
+    them in order, then look at why theta accelerates near expiry the same
+    way gamma does.
+  </p>
+
+  <h3>1. Theta falls out of the PDE — it isn't a separate fact</h3>
+  <p>
+    The Black-Scholes lesson states the no-arbitrage PDE that any correctly
+    priced option's value \(V(S,t)\) must satisfy at every instant, where
+    \(t\) is calendar time:
+  </p>
+  <div class="tl-math">
+    \[ \frac{\partial V}{\partial t} + rS\frac{\partial V}{\partial S} + \tfrac{1}{2}\sigma^2 S^2\frac{\partial^2 V}{\partial S^2} - rV = 0 \]
+  </div>
+  <p>
+    Each term is already named after a Greek in the Black-Scholes lesson:
+    \(\partial V/\partial S = \Delta\), \(\partial^2V/\partial S^2 = \Gamma\),
+    and \(\partial V/\partial t = \Theta\) (theta, defined directly as this
+    partial derivative with respect to calendar time — the same convention
+    the Black-Scholes lesson uses). Substituting those names in place of the
+    raw derivatives turns the PDE into a statement purely about the Greeks:
+  </p>
+  <div class="tl-math">
+    \[ \Theta + \tfrac{1}{2}\sigma^2S^2\Gamma + rS\Delta - rC = 0 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Θ</code><span>time decay — what this lesson isolates</span></div>
+    <div class="tl-eq-chip c2"><code>½σ²S²Γ</code><span>the convexity term — gamma's contribution</span></div>
+    <div class="tl-eq-chip c4"><code>rSΔ − rC</code><span>the financing terms — carrying the hedge and the option itself at the risk-free rate</span></div>
+  </div>
+  <p>
+    Rearranging to isolate \(\Theta\) — moving every other term to the other
+    side — gives the result this lesson is built around:
+  </p>
+  <div class="tl-math">
+    \[ \Theta = rC - rS\Delta - \tfrac{1}{2}\sigma^2S^2\Gamma \]
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">rC</div>
+      <div class="tl-fp-name">Financing the option</div>
+      <div class="tl-fp-desc">The option's own value, carried at the risk-free rate</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">−rSΔ</div>
+      <div class="tl-fp-name">Financing the hedge</div>
+      <div class="tl-fp-desc">The cost (or benefit) of carrying the ΔS shares needed to stay delta-neutral</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">−½σ²S²Γ</div>
+      <div class="tl-fp-name">The convexity term</div>
+      <div class="tl-fp-desc">Always working against a long-option (positive-gamma) position — this is the piece the rest of the lesson focuses on</div>
+    </div>
+  </div>
+  <p>
+    Read this the same way the Black-Scholes lesson reads its own PDE: this
+    is not a new assumption layered on top of delta and gamma, it is a pure
+    algebraic consequence of the same no-arbitrage replication argument. If
+    you already know \(C\), \(\Delta\) and \(\Gamma\) for an option, this
+    equation hands you \(\Theta\) for free — nothing new needs to be
+    estimated or assumed. One notational note worth being precise about:
+    the PDE's \(\partial V/\partial t\) is with respect to calendar time
+    \(t\) moving forward; the closed-form solution below is naturally
+    expressed in terms of \(\tau\), the time <em>remaining</em> to expiry
+    (\(\tau = T - t\), the same quantity the Black-Scholes lesson calls
+    \(T\)). That sign relationship (\(\partial/\partial t = -\partial/\partial
+    \tau\)) is already baked into the closed-form formula next — it doesn't
+    require re-deriving anything, just keeping straight that "time passing"
+    and "time remaining" move in opposite directions.
+  </p>
+
+  <h3>2. The closed-form theta for a European call</h3>
+  <p>
+    Solving the PDE explicitly (the same derivation that produces the
+    \(C=S_0N(d_1)-Ke^{-r\tau}N(d_2)\) formula in the Black-Scholes lesson,
+    just differentiated once more with respect to time instead of price)
+    gives the standard closed-form theta for a non-dividend European call,
+    using the same \(d_1, d_2\) as the Black-Scholes lesson:
+  </p>
+  <div class="tl-math">
+    \[ \Theta = -\frac{S\varphi(d_1)\sigma}{2\sqrt{\tau}} - rKe^{-r\tau}N(d_2) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>−Sφ(d₁)σ / (2√τ)</code><span>the convexity/diffusion term — always negative for a long call</span></div>
+    <div class="tl-eq-chip c2"><code>−rKe⁻ʳᵀN(d₂)</code><span>the financing term — pulling in the direction of −rC + rSΔ combined</span></div>
+    <div class="tl-eq-chip c4"><code>φ(d₁)</code><span>standard normal PDF at d₁, same as the Black-Scholes lesson's gamma formula uses</span></div>
+  </div>
+  <div class="tl-symbols"><table>
+    <tr><td>\(\Theta\)</td><td>Theta — \(\partial C/\partial t\), how much the option's value changes per unit of calendar time passing, everything else held fixed. Negative for a long call in the standard case, meaning value bleeds away as time passes.</td></tr>
+    <tr><td>\(\tau\)</td><td>Time remaining to expiry, in years — the same quantity the Black-Scholes lesson calls \(T\), renamed here to keep the calendar-time-vs-remaining-time distinction visible.</td></tr>
+    <tr><td>\(S, K, r, \sigma\)</td><td>Spot, strike, risk-free rate and volatility — identical meanings to the Black-Scholes lesson.</td></tr>
+    <tr><td>\(\varphi(\cdot)\)</td><td>The standard normal probability density function (the bell curve's height, not its cumulative area) — \(\varphi(x) = \frac{1}{\sqrt{2\pi}}e^{-x^2/2}\). Different from \(N(\cdot)\), the cumulative distribution used elsewhere.</td></tr>
+    <tr><td>\(d_1, d_2\)</td><td>The same intermediate quantities from the Black-Scholes closed-form price, unchanged — see that lesson for their definitions and interpretation.</td></tr>
+    <tr><td>\(\Delta, \Gamma\)</td><td>Delta and gamma, as derived in the Black-Scholes lesson — this lesson uses them, never re-derives them.</td></tr>
+  </table></div>
+  <p>
+    Both terms are negative for a standard long call with \(r,K,S,\sigma
+    \tau>0\): the first because \(\varphi(d_1)\) is always positive, the
+    second because it's minus a product of positive quantities. That's the
+    formal version of "an option is a wasting asset" — under the model's
+    own assumptions, a long call's theta genuinely cannot be positive.
+    (Certain American-style or dividend-paying structures can show positive
+    theta in edge cases; that's outside this lesson's scope, which sticks to
+    the plain European non-dividend case exactly as the Black-Scholes lesson
+    does.)
+  </p>
+
+  <div class="tl-solid amber">
+    <strong>The key insight — theta pays for gamma:</strong> strip the
+    formula down to a delta-hedged position (the \(rS\Delta\) financing term
+    is removed by construction, since a delta-hedged book has no net delta
+    to finance; the \(rC\) term is a small financing cost on the option's
+    own value, conventionally set aside for intuition since it's second-order
+    next to the convexity term for a reasonably-dated option). What's left is:
+  </div>
+  <div class="tl-math">
+    \[ \Theta \approx -\tfrac{1}{2}\sigma^2S^2\Gamma \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>Θ ≈ −½σ²S²Γ</code><span>theta and gamma are the same convexity, viewed through two different partial derivatives</span></div>
+  </div>
+  <p>
+    This is the single most practically important idea in this lesson.
+    A delta-hedged, long-option (long-gamma) position bleeds theta at a rate
+    <em>directly proportional to its own gamma</em> — not as a coincidence,
+    but because the PDE forces them to move together. That bleed is the
+    fair price of convexity: it's what the option holder pays, continuously,
+    for the right to a position whose delta improves automatically as the
+    underlying moves. The other side of that trade — a market-maker who
+    sold the option and is running the mirror-image delta-hedged book — is
+    short gamma and, by the same equation with the opposite sign, long
+    theta: they collect exactly what the long-gamma side pays.
+  </p>
+  <p>
+    Whether that rent was <em>fairly priced</em> comes down to one
+    comparison: implied volatility (the \(\sigma\) baked into the option's
+    price, and therefore into its theta) versus realized volatility (how
+    much the underlying actually moves while the position is held). A
+    long-gamma, delta-hedged position continuously rebalances — buying dips
+    and selling rallies, in effect — and each rebalance locks in a small
+    trading gain proportional to the <em>squared</em> size of the move, the
+    same \(\sigma^2S^2\) shape that appears in the theta formula above. If
+    realized volatility runs exactly at the level implied \(\sigma\) assumed,
+    those rebalancing gains offset the theta bleed almost exactly on
+    average — the position is a wash, as it should be under a fairly priced
+    no-arbitrage model. If realized volatility comes in <em>higher</em> than
+    implied, the rebalancing gains outpace the theta paid, and gamma wins.
+    If realized volatility comes in <em>lower</em>, the rebalancing gains
+    fall short of what was paid in theta, and the position loses money even
+    though it was never wrong about direction — theta wins.
+  </p>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card green">
+      <h4>Realized vol &gt; implied vol</h4>
+      <p>Gamma-scalping gains from continuous rebalancing exceed the theta paid. The long-gamma, delta-hedged position profits — it correctly paid rent for convexity that turned out to be worth more than the rent charged.</p>
+    </div>
+    <div class="tl-compare-card amber">
+      <h4>Realized vol &lt; implied vol</h4>
+      <p>Rebalancing gains fall short of the theta bled away. The position loses money on net, even with a perfectly executed hedge and zero directional error — it simply overpaid for convexity that didn't materialize.</p>
+    </div>
+  </div>
+
+  <h3>3. Why theta accelerates near expiry — the same \(1/\sqrt{\tau}\) shape as gamma</h3>
+  <p>
+    The convexity term in the closed-form theta, \(-S\varphi(d_1)\sigma /
+    (2\sqrt{\tau})\), carries a \(1/\sqrt{\tau}\) in its denominator — the
+    exact same relationship the Gamma Exposure lesson derives for
+    at-the-money gamma itself (\(\Gamma_{\text{ATM}}\approx
+    \varphi(0)/(S\sigma\sqrt{\tau})\)). That's not a coincidence: the
+    delta-hedged identity \(\Theta\approx-\tfrac{1}{2}\sigma^2S^2\Gamma\)
+    says theta and gamma must scale together, term for term, as \(\tau\)
+    shrinks. Whatever acceleration the previous lesson showed for gamma near
+    expiry, theta inherits the identical shape — it doesn't decay smoothly
+    and linearly as expiry approaches, it accelerates, with the sharpest
+    moves concentrated in the final few days rather than spread evenly
+    across the option's life. The worked example below makes this concrete
+    with the same three checkpoints (30, 7, and 1 day to expiry) the Gamma
+    Exposure lesson used for gamma.
+  </p>
+
+  <h3>4. Weekend theta — a practitioner quirk, not a universal rule</h3>
+  <p>
+    The closed-form theta above treats time as continuous — every calendar
+    day contributes the same fraction of \(\sqrt{\tau}\)'s shrinkage,
+    whether it's a trading day or not. In practice, some models and desks
+    charge theta <em>non-uniformly</em> around a weekend: since two calendar
+    days pass with no trading (and, depending on the underlying, often
+    lower realized volatility over that stretch than an average weekday),
+    some conventions front-load, back-load, or otherwise smooth the theta
+    charged on the Friday before a weekend rather than simply multiplying
+    the daily rate by three. This is a genuine market-practice detail worth
+    knowing exists — but it is a <strong>convention</strong>, not a single
+    universal rule, and different desks and platforms handle it differently.
+    Treat it as "be aware this exists and can differ" rather than a fixed
+    formula to memorize.
+  </p>
+
+  <h3>5. Calendar spreads — trading the acceleration differential directly</h3>
+  <p>
+    A calendar spread (also called a horizontal spread) is built specifically
+    to harvest the \(1/\sqrt{\tau}\) acceleration shown above: sell a
+    near-dated option and buy a longer-dated option at the <em>same</em>
+    strike. Both legs have similar delta and similar gamma if the strike is
+    close to at-the-money, but their thetas differ sharply, precisely because
+    the near leg's \(\tau\) is smaller and \(1/\sqrt{\tau}\) is larger there.
+    The near (short) leg decays faster in dollar terms than the far (long)
+    leg loses value from the same passage of time, so as long as the
+    underlying stays reasonably close to the strike, the position's net
+    theta is positive — the spread collects the differential between how
+    fast the two legs are decaying, not a directional bet on the underlying
+    at all. The position's main risk is the mirror image of the same
+    coin: a big enough move away from the strike hurts the near leg's
+    relative gamma disadvantage far more than the collected theta compensates
+    for, which is exactly the same gamma-theta tradeoff from the key insight
+    above, just expressed as a spread between two expiries instead of a
+    single delta-hedged option.
+  </p>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">ATM theta magnitude vs. time to expiry</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Rising curve of at-the-money theta magnitude against days to expiry: theta decay per day is smallest at 90 days to expiry and rises sharply toward 1 day, with a draggable marker on the curve, mirroring the same accelerating shape shown for gamma in the previous lesson">
+      <line x1="60" y1="260" x2="610" y2="260" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="60" y1="260" x2="60" y2="20" style="stroke:var(--text3);stroke-width:1"/>
+      <text x="335" y="288" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Days to expiry (DTE) →</text>
+      <text x="20" y="140" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 20 140)">ATM |Θ| ($/day)</text>
+      <text x="60" y="273" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">1</text>
+      <text x="192.5" y="273" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">23</text>
+      <text x="325" y="273" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">45</text>
+      <text x="457.5" y="273" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">68</text>
+      <text x="590" y="273" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">90</text>
+      <text x="52" y="264" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+      <text x="52" y="150" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">0.10</text>
+      <text x="52" y="41" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">0.20</text>
+      <polyline id="theta-curve" points="" style="fill:none;stroke:var(--red);stroke-width:2.5"/>
+      <line id="theta-marker" x1="60" y1="20" x2="60" y2="260" style="stroke:var(--amber);stroke-width:1.5;stroke-dasharray:2,2"/>
+      <circle id="theta-dot" cx="60" cy="20" r="5" style="fill:var(--amber);stroke:var(--s1);stroke-width:1.5"/>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Days to expiry (DTE)</span><span class="tl-live" id="theta-dte-val">DTE = 1</span></div>
+        <input type="range" id="theta-dte-slider" min="1" max="90" step="1" value="1">
+        <div class="tl-hint">S = K = 100, r = 2%, σ = 20% held fixed (the Black-Scholes lesson's own worked-example inputs) — only time to expiry changes. Drag right to see the daily decay rate shrink as expiry moves further away, or left to see it accelerate as expiry approaches.</div>
+      </div>
+    </div>
+    <div class="tl-readout">τ = <b id="theta-t-val">0.0027</b>y · ATM Θ ≈ $<b id="theta-theta-val">-0.2116</b> per day</div>
+    <div class="tl-chart-caption">
+      Computed live from the exact closed-form \(\Theta = -S\varphi(d_1)\sigma/(2\sqrt{\tau}) - rKe^{-r\tau}N(d_2)\), converted from a per-year to a per-day rate. The curve is the same \(1/\sqrt{\tau}\) acceleration shown for gamma in the previous lesson — theta's daily bleed roughly doubles from 30 to 7 days, then jumps again into the final day, not a smooth, linear decline.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>ATM theta at three expiries, cross-checked against the gamma-theta identity</h3>
+    <p>
+      Using the same inputs as the Black-Scholes lesson's own worked example
+      (\(S=K=100\), \(r=2\%\), \(\sigma=20\%\)) — and, conveniently, the same
+      coincidence that lesson flags in its own self-test (since \(r =
+      \sigma^2/2 = 0.02\) exactly for these round numbers, \(d_1 =
+      \sigma\sqrt{\tau}\) and \(d_2=0\) at every \(\tau\), so \(N(d_2)=0.5\)
+      exactly throughout this whole example).
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>30 days to expiry</h4>
+          <p>
+            \(\tau = 30/365 = 0.0822\), \(d_1 = \sigma\sqrt{\tau} = 0.0573\),
+            \(\varphi(d_1)\approx0.3983\). Plugging into the closed form:
+          </p>
+          <div class="tl-math">
+            \[ \Theta = -\frac{100(0.3983)(0.20)}{2\sqrt{0.0822}} - (0.02)(100)e^{-0.02(0.0822)}(0.5) \approx -13.89 - 1.00 = -14.89 \text{ /year} \]
+          </div>
+          <p>≈ <strong>−$0.0408 per day</strong>.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>7 days to expiry</h4>
+          <div class="tl-math">
+            \[ \Theta \approx -28.80 - 1.00 = -29.80 \text{ /year} \]
+          </div>
+          <p>≈ <strong>−$0.0816 per day</strong> — roughly <strong>2.0×</strong> the 30-day rate, for the same option.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>1 day to expiry</h4>
+          <div class="tl-math">
+            \[ \Theta \approx -76.22 - 1.00 = -77.22 \text{ /year} \]
+          </div>
+          <p>
+            ≈ <strong>−$0.2116 per day</strong> — another roughly
+            <strong>2.6×</strong> jump from the 7-day rate, and about
+            <strong>5.2×</strong> the 30-day rate. Same accelerating,
+            non-linear shape the Gamma Exposure lesson found for gamma
+            itself (there: roughly 2.1× then 2.6×, going 30→7→1 DTE) — the
+            two aren't just similarly shaped by coincidence, they're forced
+            to be, by the identity below.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Cross-check against the gamma-theta identity</h4>
+          <p>
+            The Gamma Exposure lesson's own worked example computed
+            \(\Gamma_{\text{ATM}}\) at these exact three expiries: 0.0696
+            (30 DTE), 0.1440 (7 DTE), 0.3811 (1 DTE), using \(S=100\),
+            \(\sigma=20\%\). Plugging each into
+            \(\Theta\approx-\tfrac{1}{2}\sigma^2S^2\Gamma =
+            -\tfrac12(0.04)(10{,}000)\Gamma = -200\,\Gamma\):
+          </p>
+          <div class="tl-math">
+            <pre style="margin:0;text-align:left;font-family:'DM Mono',monospace;font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.7">DTE   Γ(from gamma lesson)   −200×Γ    Full closed-form Θ   Residual (the financing term)
+30    0.0696                 −13.92     −14.89               ≈ −1.0 (≈ rC − rSΔ, set aside above)
+7     0.1440                 −28.80     −29.80               ≈ −1.0
+1     0.3811                 −76.22     −77.22                ≈ −1.0</pre>
+          </div>
+          <p style="margin-bottom:0">
+            The delta-hedged approximation \(-\tfrac{1}{2}\sigma^2S^2\Gamma\)
+            reproduces the full closed-form theta almost exactly at every
+            expiry, with a near-constant residual of about −$1.00/year —
+            precisely the small financing term (\(rC-rS\Delta\), dominated
+            here by \(rC\) since the position is delta-hedged) that the key
+            insight above set aside for intuition. This is not a
+            coincidence baked into the round numbers; it's the PDE identity
+            doing exactly what it says.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Deciding whether the theta bleed is worth paying</h3>
+    <p>
+      A trader is running a long-gamma, delta-hedged book on a single
+      at-the-money FX option seven days from expiry, using the numbers
+      above: implied volatility priced the option at \(\sigma=20\%\), and
+      per the worked example the position bleeds roughly $0.082 per day in
+      theta at this snapshot (per 100 units of notional, in the same convention
+      as the Black-Scholes lesson's dollar pricing). Every day, the trader
+      rebalances the hedge — buying a little on dips, selling a little on
+      rallies — and each rebalance banks a small gain proportional to how
+      much the underlying actually moved that day, squared.
+    </p>
+    <p>
+      Three days in, the trader checks realized volatility over the life of
+      the position so far: the underlying has been moving noticeably more
+      than a 20%-annualized pace would suggest — call it 27% realized.
+      Per the key insight above, that's the "realized &gt; implied" case:
+      the rebalancing gains from three days of larger-than-priced-for moves
+      have more than kept pace with the roughly $0.24 of theta paid over
+      those three days ($0.082 × 3, ignoring the small further acceleration
+      as \(\tau\) shrinks). The trader's read: implied volatility was priced
+      too low relative to what's actually happening, so continuing to hold
+      the long-gamma position and keep rebalancing is worth the ongoing rent,
+      at least at the current pace of realized moves. Nothing about the
+      trader's <em>directional</em> view on the underlying entered this
+      decision at all — it's a volatility comparison, exactly as the model
+      says it should be.
+    </p>
+    <p style="margin-bottom:0">
+      Had realized volatility instead come in at 14% — quieter than implied
+      — the same math would say the opposite: the rebalancing gains aren't
+      covering the rent being paid, and continuing to hold the position is a
+      bet that the recent quiet won't persist through expiry, not a free
+      lunch. Either way, the decision reduces to one comparison: realized
+      vol against implied vol, with theta as the explicit, quantified price
+      of admission.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>The OI angle: short gamma and long theta are the same fact</h2>
+  <p>
+    The <a href="gamma-exposure-dealer-hedging.html">Gamma Exposure &amp;
+    Dealer Hedging Flows</a> lesson establishes, under the standard
+    simplifying assumption that dealers are net writers of the open interest
+    they hold (\(s_k=-1\) at most strikes), that aggregate dealer gamma
+    exposure is typically negative — "dealers are usually short gamma." That
+    lesson defines, for a strike \(k\), the signed dealer gamma exposure:
+  </p>
+  <div class="tl-math">
+    \[ \text{DealerGEX}_k = s_k\,\Gamma_k\,\text{OI}_k\,100\,S^2\,(0.01) \]
+  </div>
+  <p>
+    This lesson's key insight, \(\Theta\approx-\tfrac{1}{2}\sigma^2S^2\Gamma\),
+    applies just as well to the dealer's own signed position. If the dealer
+    holds a signed gamma of \(s_k\Gamma_k\) per contract at strike \(k\) (the
+    same \(s_k\Gamma_k\) that appears inside DealerGEX above), the same
+    delta-hedged identity gives the dealer's signed theta per contract as
+    \(-\tfrac12\sigma^2S^2(s_k\Gamma_k)\). Aggregating that across the
+    strike's open interest exactly the way DealerGEX aggregates gamma
+    (same \(\text{OI}_k\times100\) scaling) defines an analogous quantity —
+    call it \(\text{ThetaExp}_k\), the dealer's aggregate theta exposure at
+    that strike, in the same delta-hedged-approximation spirit as GEX itself
+    (not a standardized industry term the way GEX is, just the same
+    construction applied to the other Greek):
+  </p>
+  <div class="tl-math">
+    \[ \text{ThetaExp}_k = s_k\,\Theta_k\,\text{OI}_k\,100 \approx -\tfrac{1}{2}\sigma^2S^2\big(s_k\Gamma_k\,\text{OI}_k\,100\big) \]
+  </div>
+  <p>
+    The bracketed term, \(s_k\Gamma_k\,\text{OI}_k\,100\), is exactly the
+    piece that DealerGEX rescales by \(S^2(0.01)\). Solving DealerGEX's own
+    formula for that same bracketed term and substituting it in gives a
+    direct, equation-level bridge between the two quantities — the \(S^2\)
+    cancels entirely, leaving only \(\sigma\):
+  </p>
+  <div class="tl-math">
+    \[ \text{ThetaExp}_k \;\approx\; -\tfrac{1}{2}\sigma^2S^2 \cdot \frac{\text{DealerGEX}_k}{0.01\,S^2} \;=\; -50\,\sigma^2 \cdot \text{DealerGEX}_k \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>−50σ²</code><span>always negative — σ² can't be negative</span></div>
+    <div class="tl-eq-chip c4"><code>ThetaExp = (−50σ²)×DealerGEX</code><span>a negative constant times DealerGEX — the sign always flips</span></div>
+  </div>
+  <p>
+    Since \(-50\sigma^2\) is strictly negative for any real \(\sigma\), this
+    equation says the sign of \(\text{ThetaExp}_k\) is <strong>always the
+    opposite</strong> of the sign of \(\text{DealerGEX}_k\) — not usually,
+    not typically, but structurally, term by term, as a direct consequence
+    of the same delta-hedged approximation used throughout this lesson.
+    Plug in the standard case: \(\text{DealerGEX}_k<0\) (dealers short
+    gamma) forces \(\text{ThetaExp}_k>0\) (dealers long theta). "Dealers are
+    usually short gamma" and "dealers are usually long theta" are not two
+    separate empirical facts about how options markets happen to behave —
+    they are the <em>same</em> fact, read off \(\partial^2V/\partial S^2\)
+    and \(\partial V/\partial t\) of one identical PDE.
+  </p>
+  <p>
+    Applying this to the toy three-strike book from the previous lesson's
+    worked example (\(\sigma=20\%\), \(\text{TotalDealerGEX}\approx
+    -\$18.51\text{B}\) at the one-week-to-expiry snapshot):
+  </p>
+  <div class="tl-math">
+    \[ \text{TotalThetaExp} \approx -50(0.20)^2 \times (-\$18.51\text{B}) = -2 \times (-\$18.51\text{B}) = +\$37.02\text{B (per year, illustrative)} \]
+  </div>
+  <p style="margin-bottom:0">
+    Under the same assumptions and the same delta-hedged approximation that
+    produced the gamma number, the dealer book that is short roughly
+    $18.51B of GEX is, at the same instant, long roughly $37.02B of
+    aggregate theta exposure — collecting time decay at that implied rate,
+    for as long as the position and the σ assumption used to build it hold.
+    This is an illustrative extension of the gamma lesson's own toy example,
+    not a claim about any real, currently outstanding book; it inherits
+    every caveat that lesson already flagged about the \(s_k\) sign being an
+    assumption rather than an observed fact, plus this lesson's own caveat
+    that the delta-hedged approximation drops the smaller financing term.
+  </p>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📉</div>
+      <h4>Gamma scalping</h4>
+      <p>A long-gamma, delta-hedged trader rebalances continuously and compares the resulting trading gains to the theta paid — the realized-vs-implied-vol comparison from the key insight above, run as an ongoing, live decision rather than a one-time calculation.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📅</div>
+      <h4>Calendar spreads</h4>
+      <p>Selling the faster-decaying near leg against a longer-dated leg at the same strike harvests the 1/√τ acceleration differential directly, as derived above — a structural theta trade rather than a directional one.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🗓️</div>
+      <h4>Weekend theta conventions</h4>
+      <p>Desks and platforms that charge theta non-uniformly around a weekend are making a practitioner adjustment to the continuous-time model's assumption that every calendar day contributes equally — worth knowing the adjustment exists, without assuming any one specific convention is universal.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where theta gets misread in practice</h3>
+    <p>
+      <strong>Theta is not linear — don't extrapolate today's rate across the
+      whole month.</strong> The worked example above shows the daily decay
+      rate itself changing sharply as expiry approaches (roughly doubling,
+      then accelerating further). Multiplying today's theta reading by "30
+      days left" systematically understates how much value is actually lost
+      near the end of that window and overstates it near the beginning.
+    </p>
+    <p>
+      <strong>The weekend-theta convention is not universal.</strong> As
+      flagged above, different desks and platforms handle the two non-trading
+      calendar days differently — don't assume a specific smoothing rule
+      without checking how the particular pricing source in front of you
+      actually handles it.
+    </p>
+    <p>
+      <strong>The delta-hedged approximation drops a real term.</strong>
+      \(\Theta\approx-\tfrac12\sigma^2S^2\Gamma\) is extremely accurate when
+      the financing term is small relative to the convexity term (as in the
+      worked example above, where it was a near-constant ≈$1/year residual),
+      but it is still an approximation — for a deep in-the-money option with
+      a large \(rC\) or a long time to expiry, that dropped term stops being
+      negligible, and the exact closed-form should be used instead.
+    </p>
+    <p style="margin-bottom:0">
+      <strong>Realized-vs-implied is a comparison over the position's
+      remaining life, not a single day's noise.</strong> One unusually quiet
+      or unusually wild day doesn't settle whether theta or gamma is
+      "winning" — the comparison in the trading scenario above is only
+      meaningful assessed over a large enough sample of the rebalancing
+      path, the same discipline this project applies to any strategy result
+      more generally: a single data point is not a track record.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Theta falls directly out of the Black-Scholes PDE.</strong> \(\Theta = rC - rS\Delta - \tfrac12\sigma^2S^2\Gamma\) — it is not an independent fact, it's an algebraic consequence of the same equation that gives delta and gamma.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The gamma-theta identity is the practical core of this lesson.</strong> For a delta-hedged position, \(\Theta\approx-\tfrac12\sigma^2S^2\Gamma\) — theta is the fair rent paid for convexity, and whether that rent was worth it depends only on realized vs. implied volatility.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Theta accelerates near expiry via the same 1/√τ term as gamma.</strong> The worked example showed the daily decay rate roughly doubling from 30→7 DTE and accelerating again into the final day — not a smooth, linear decline.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Calendar spreads harvest that acceleration differential directly.</strong> Selling the faster-decaying near leg against a longer-dated leg at the same strike is a structural theta trade built on the 1/√τ shape.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Short gamma and long theta are the same fact, not two facts.</strong> \(\text{ThetaExp}_k \approx -50\sigma^2\times\text{DealerGEX}_k\) — the sign always flips, so "dealers are typically net short gamma" (from the previous lesson) forces "dealers are typically net long theta" by the same PDE, viewed through a different partial derivative.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Theta is not linear — never assume today's decay rate holds for the rest of the month.</strong> The daily rate itself changes sharply as expiry approaches.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Weekend theta handling is a practitioner convention, not a universal rule.</strong> Different desks and platforms smooth it differently — check the specific source rather than assuming.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Starting from the Black-Scholes PDE, derive the expression for Θ, and explain in one sentence why this means theta isn't an "extra" assumption on top of delta and gamma.</summary>
+    <div class="tl-answer">
+      The PDE is \(\partial V/\partial t + rS\partial V/\partial S +
+      \tfrac12\sigma^2S^2\partial^2V/\partial S^2 - rV = 0\). Substituting
+      \(\Theta=\partial V/\partial t\), \(\Delta=\partial V/\partial S\),
+      \(\Gamma=\partial^2V/\partial S^2\) gives \(\Theta + \tfrac12\sigma^2S^2
+      \Gamma + rS\Delta - rC = 0\); isolating \(\Theta\) gives \(\Theta = rC -
+      rS\Delta - \tfrac12\sigma^2S^2\Gamma\). Because this is a pure algebraic
+      rearrangement of the same no-arbitrage PDE that produces delta and
+      gamma, theta is fully determined once \(C\), \(\Delta\) and \(\Gamma\)
+      are known — it requires no separate assumption or estimation of its
+      own.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. State the delta-hedged theta-gamma approximation and explain, in plain terms, what "theta pays for gamma" means.</summary>
+    <div class="tl-answer">
+      For a delta-hedged position, \(\Theta\approx-\tfrac12\sigma^2S^2\Gamma\)
+      (dropping the small \(rC-rS\Delta\) financing residual). It means a
+      long-gamma, delta-hedged position's continuous time decay is, to a
+      close approximation, just its own gamma scaled by a constant — the
+      holder is paying, every instant, a rent proportional to how much
+      convexity they're holding. That rent is exactly offset, on average, by
+      the gains from continuously rebalancing the hedge as the underlying
+      moves, <em>if</em> realized volatility matches the implied volatility
+      the rent was priced on. It's "payment for convexity," not an
+      arbitrary tax.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. In the worked example, why did the delta-hedged approximation −½σ²S²Γ leave almost exactly the same residual (≈−$1/year) at all three expiries (30, 7, and 1 day), rather than the residual shrinking along with everything else?</summary>
+    <div class="tl-answer">
+      The residual is the dropped financing term, \(rC - rS\Delta\), which
+      for a delta-hedged position is dominated by \(rC\): the risk-free rate
+      times the option's own value. In this worked example's round numbers
+      (\(r=\sigma^2/2\)), \(d_2=0\) exactly at every \(\tau\), which keeps
+      \(N(d_2)=0.5\) fixed and makes the financing term's shape relatively
+      stable across these particular expiries even as the convexity term
+      changes by more than 5× — a feature of this specific parameter choice
+      being highlighted for clarity, not a claim that the residual is always
+      constant in general.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why does theta accelerate as expiry approaches, and why is this the same underlying mathematical fact as gamma's own acceleration shown in the previous lesson?</summary>
+    <div class="tl-answer">
+      The closed-form theta's convexity term contains \(1/\sqrt{\tau}\) in
+      its denominator, the identical relationship the Gamma Exposure lesson
+      derives for at-the-money gamma. This isn't a separate coincidence —
+      the delta-hedged identity \(\Theta\approx-\tfrac12\sigma^2S^2\Gamma\)
+      forces theta to inherit whatever shape gamma has, since gamma is the
+      only variable quantity on the right-hand side (\(\sigma\) and \(S\)
+      are held fixed). Because \(\Gamma\propto1/\sqrt{\tau}\), and that
+      relationship blows up faster than linearly as \(\tau\to0\), the same
+      number of remaining days matters far more in the final week than three
+      weeks out — exactly the shape shown numerically in the worked example
+      (roughly 2.0× then 2.6× stepwise increases going 30→7→1 DTE).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Explain how a calendar spread profits from time decay, using the 1/√τ relationship explicitly.</summary>
+    <div class="tl-answer">
+      A calendar spread sells a near-dated option and buys a longer-dated
+      option at the same strike. Because theta's magnitude scales with
+      \(1/\sqrt{\tau}\), the near leg's smaller \(\tau\) gives it a
+      substantially larger daily theta than the far leg's larger \(\tau\)
+      gives its own decay — the two legs are not decaying at comparable
+      rates even though they share a strike. As long as the underlying
+      stays reasonably close to that strike, the position collects the
+      faster-decaying near leg's theta while paying the far leg's much
+      slower decay, netting a positive theta position built entirely from
+      the acceleration differential rather than from any directional view.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Derive why "dealers are typically net short gamma" and "dealers are typically net long theta" are the same fact rather than two separate empirical observations.</summary>
+    <div class="tl-answer">
+      Applying the delta-hedged identity to a dealer's own signed position
+      at strike \(k\) gives \(\text{ThetaExp}_k\approx-\tfrac12\sigma^2S^2
+      (s_k\Gamma_k\,\text{OI}_k\,100)\), and substituting the same bracketed
+      term from the previous lesson's \(\text{DealerGEX}_k = s_k\Gamma_k\,
+      \text{OI}_k\,100\,S^2(0.01)\) formula gives \(\text{ThetaExp}_k\approx
+      -50\sigma^2\times\text{DealerGEX}_k\). Since \(-50\sigma^2\) is always
+      strictly negative, this equation forces \(\text{ThetaExp}_k\) and
+      \(\text{DealerGEX}_k\) to always carry opposite signs — not usually,
+      always, as a direct algebraic consequence. Plugging in the standard
+      assumption that \(\text{DealerGEX}_k\) is typically negative (dealers
+      short gamma) therefore forces \(\text{ThetaExp}_k\) to be typically
+      positive (dealers long theta) — the two statements are the same PDE
+      fact, read off \(\partial^2V/\partial S^2\) versus \(\partial
+      V/\partial t\), not two independent empirical claims about how
+      options markets happen to behave.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li><a href="black-scholes.html">Black-Scholes-Merton Option Pricing</a> — the PDE and the closed-form price this lesson's theta derivation builds directly on top of; read it first for delta and gamma.</li>
+    <li><a href="gamma-exposure-dealer-hedging.html">Gamma Exposure &amp; Dealer Hedging Flows</a> — the dealer-GEX formula and the "dealers are typically short gamma" assumption this lesson's OI-angle section extends into a theta statement.</li>
+    <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson — the standard textbook derivation of the Greeks, including theta, from the Black-Scholes PDE.</li>
+    <li>Espen Gaarder Haug, <em>The Complete Guide to Option Pricing Formulas</em>, 2nd ed., McGraw-Hill, 2007 — a comprehensive reference for closed-form Greek formulas (including theta) across option types and model variants, useful once the plain European case here needs extending.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="open-interest-walls-max-pain.html">← Open Interest Walls, Max Pain &amp; Squeeze Trading</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="vega-volatility-surface.html">Vega &amp; the Volatility Surface →</a>
+  </div>
+</div>
+<script>
+(function(){
+  // Standard normal CDF via the Abramowitz & Stegun erf approximation
+  // (same helper used in black-scholes.html) plus the standard normal PDF,
+  // needed for the exact closed-form theta.
+  function erf(x){
+    var sign = x < 0 ? -1 : 1;
+    x = Math.abs(x);
+    var a1=0.254829592, a2=-0.284496736, a3=1.421413741, a4=-1.453152027, a5=1.061405429, p=0.3275911;
+    var t = 1/(1+p*x);
+    var y = 1 - (((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+    return sign*y;
+  }
+  function normCDF(x){ return 0.5*(1+erf(x/Math.SQRT2)); }
+  function normPDF(x){ return Math.exp(-x*x/2)/Math.sqrt(2*Math.PI); }
+
+  var S = 100, K = 100, r = 0.02, SIGMA = 0.20;
+
+  // Exact closed-form European call theta (per year): Theta = -S*phi(d1)*sigma/(2*sqrt(T)) - r*K*e^(-rT)*N(d2)
+  function bsThetaPerYear(dte){
+    var T = dte/365;
+    if (T<=0) return 0;
+    var d1 = (Math.log(S/K) + (r + SIGMA*SIGMA/2)*T) / (SIGMA*Math.sqrt(T));
+    var d2 = d1 - SIGMA*Math.sqrt(T);
+    var term1 = -(S*normPDF(d1)*SIGMA)/(2*Math.sqrt(T));
+    var term2 = -r*K*Math.exp(-r*T)*normCDF(d2);
+    return term1 + term2;
+  }
+
+  var X_LEFT = 60, X_RIGHT = 610, DTE_MIN = 1, DTE_MAX = 90;
+  var Y_BASE = 260, Y_TOP = 20, G_MAX = 0.22;
+
+  function dteToX(dte){ return X_LEFT + (dte - DTE_MIN)/(DTE_MAX - DTE_MIN)*(X_RIGHT - X_LEFT); }
+  function thetaToY(mag){ return Y_BASE - Math.min(mag, G_MAX)/G_MAX*(Y_BASE - Y_TOP); }
+
+  var curve = document.getElementById('theta-curve');
+  var marker = document.getElementById('theta-marker');
+  var dot = document.getElementById('theta-dot');
+  var slider = document.getElementById('theta-dte-slider');
+  var dteVal = document.getElementById('theta-dte-val');
+  var tVal = document.getElementById('theta-t-val');
+  var thetaVal = document.getElementById('theta-theta-val');
+  if (!slider) return;
+
+  function buildCurve(){
+    var pts = [];
+    var N = 90;
+    for (var i=0; i<N; i++){
+      var dte = DTE_MIN + (i/(N-1))*(DTE_MAX - DTE_MIN);
+      var mag = Math.abs(bsThetaPerYear(dte))/365;
+      pts.push(dteToX(dte).toFixed(2) + ',' + thetaToY(mag).toFixed(2));
+    }
+    curve.setAttribute('points', pts.join(' '));
+  }
+
+  function update(){
+    var dte = parseInt(slider.value, 10);
+    var thetaYear = bsThetaPerYear(dte);
+    var thetaDay = thetaYear/365;
+    var T = dte/365;
+
+    dteVal.textContent = 'DTE = ' + dte;
+    tVal.textContent = T.toFixed(4);
+    thetaVal.textContent = thetaDay.toFixed(4);
+
+    var x = dteToX(dte);
+    var y = thetaToY(Math.abs(thetaDay));
+    marker.setAttribute('x1', x);
+    marker.setAttribute('x2', x);
+    marker.setAttribute('y1', 20);
+    marker.setAttribute('y2', 260);
+    dot.setAttribute('cx', x);
+    dot.setAttribute('cy', y);
+  }
+
+  buildCurve();
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
+</body>
+</html>

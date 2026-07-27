@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Second-Order Greeks: Vanna, Charm, Vomma &amp; More — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / The Greeks / Second-Order Greeks</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">The Greeks · Deep Dive 3 of 3 (final)</div>
+  <h1 class="tl-title">Second-Order Greeks: Vanna, Charm, Vomma &amp; More</h1>
+  <p class="tl-dek">Gamma already asks how Delta responds to price. Six more named Greeks ask the same question for every other pair of inputs — and two of them generalize the dealer-hedging mechanism from a price-driven flow into a volatility-driven and a pure-time-driven one.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here, not built or tested anywhere in this repo</span>
+    <span>~20 min read</span>
+    <span>Prereqs: Black-Scholes-Merton Option Pricing, Gamma Exposure &amp; Dealer Hedging Flows</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Second-order Greeks ask how a <em>first-order</em> Greek (Delta, Gamma, Vega) itself responds to price, volatility, or time — one derivative deeper than the Black-Scholes lesson went.</li>
+      <li><strong>Vanna</strong> (\(\partial\Delta/\partial\sigma = \partial\nu/\partial S\)) and <strong>Charm</strong> (\(\partial\Delta/\partial t\)) are the two that show up most in real dealer-flow discussion — they generalize the gamma-exposure mechanism from "price move triggers rehedging" to "a vol move alone triggers rehedging" and "time passing alone triggers rehedging."</li>
+      <li><strong>Vomma</strong> (\(\partial\nu/\partial\sigma\)) is vega's own convexity — the formal basis for "volga trades" and other vol-of-vol positioning.</li>
+      <li><strong>Speed, Color, and Zomma</strong> are gamma's sensitivities to price, time, and vol respectively — genuinely niche in daily practice, but real for very large books or fast-moving vol regimes.</li>
+      <li>Vanna and vega are literally the same mixed partial derivative computed two different ways — \(\partial^2C/\partial S\partial\sigma = \partial^2C/\partial\sigma\partial S\) — a non-trivial, testable symmetry (Clairaut's/Schwarz's theorem), not a coincidence of notation.</li>
+      <li>Aggregated across open interest, Vanna and Charm exposure generalize dealer-GEX into "vanna flows" and "charm flows" — real, mechanically sound, and typically <em>smaller in dollar magnitude</em> than gamma flows, not a claim that they're separately tradeable on their own.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The <a href="black-scholes.html">Black-Scholes-Merton</a> lesson derives
+    Delta, Gamma, Theta, Vega, and Rho as the option-pricing formula's first
+    partial derivatives with respect to price, price again, time, volatility,
+    and rate. The <a href="gamma-exposure-dealer-hedging.html">Gamma Exposure
+    &amp; Dealer Hedging Flows</a> lesson then took exactly one of those —
+    Gamma — and showed what happens when you aggregate it across an entire
+    open-interest book: a real, mechanical forecast of how much forced buying
+    or selling a price move will trigger from dealers rehedging.
+  </p>
+  <p>
+    That lesson only ever asked "what happens when <em>price</em> moves?"
+    Price is not the only thing that moves. Implied volatility moves — often
+    sharply, around macro data releases, central bank decisions, or earnings —
+    independent of where spot itself sits. And time passes, every single day,
+    with total certainty, regardless of what price or volatility do. Gamma
+    tells you nothing about either of those. The six Greeks in this lesson
+    fill that gap: they are the second derivatives that answer "how does the
+    dealer's hedge respond to a vol move alone, or to a day passing alone,"
+    generalizing the exact same rehedging mechanism the gamma lesson
+    established into two more dimensions. Two of the six — Vanna and Charm —
+    are genuinely important for anyone reading real options-flow commentary;
+    the other four are covered honestly, including an honest statement of how
+    rarely they come up in daily practice.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>The same question, asked one level further</h3>
+    <p>
+      Gamma is Delta's sensitivity to price: "if the underlying moves $1, how
+      much does my hedge ratio itself need to change?" That's already a
+      second derivative of the option's price — but it only asks about price
+      moving twice. These six Greeks ask the same <em>kind</em> of question
+      about every other pair of inputs the option cares about: how does
+      <strong>Delta</strong> respond to a <em>volatility</em> move, or to
+      <em>time</em> passing? How does <strong>Vega</strong> respond to a
+      further volatility move? How does <strong>Gamma itself</strong> —
+      already a rate of change — keep changing as price moves further, as
+      time passes, or as volatility shifts?
+    </p>
+    <p style="margin-bottom:0">
+      None of this is exotic new math. Every one of these six is just another
+      partial derivative of the exact same Black-Scholes formula, taken with
+      respect to a different pair of variables than Delta or Gamma used. What
+      makes two of them — Vanna and Charm — worth knowing well is that they
+      describe real forces on a dealer's hedge that have nothing to do with
+      price moving at all: a vol spike alone, or a day passing alone, each
+      force a dealer to trade, exactly the way a price move forces gamma
+      hedging. The other four are genuinely more of a curiosity for most
+      traders — worth knowing they exist, rarely worth tracking daily.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    Each of these six is a standard, published closed form for a
+    non-dividend European option — none of them are derived from first
+    principles here (that would mean re-deriving the Black-Scholes PDE's
+    higher-order sensitivities from the integral, which is outside this
+    lesson's scope, exactly as the original Greeks were presented as derived
+    results in the Black-Scholes lesson). What <em>is</em> shown explicitly
+    for each is the definitional relationship — which first-order Greek,
+    differentiated with respect to which variable, produces it — since that
+    relationship is what makes each one meaningful rather than an arbitrary
+    formula to memorize. All six reuse \(d_1\) and \(d_2\) exactly as defined
+    in the Black-Scholes lesson, and \(\varphi(\cdot)\) is the standard normal
+    <em>density</em> (not the CDF \(N(\cdot)\) used there) — the height of the
+    bell curve at a point, \(\varphi(x) = \frac{1}{\sqrt{2\pi}}e^{-x^2/2}\).
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Which first-order Greek, differentiated with respect to what, gives which second-order Greek</div>
+    <svg viewBox="0 0 640 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hierarchy diagram. Top row: five first-order Greeks, Delta, Gamma, Theta, Vega, Rho. Bottom row: six second-order Greeks, Vanna, Charm, Vomma, Speed, Color, Zomma. Arrows connect Delta to Vanna (labelled partial sigma) and to Charm (labelled partial t); Vega to Vanna (labelled partial S) and to Vomma (labelled partial sigma); Gamma to Speed (labelled partial S), Color (labelled partial t) and Zomma (labelled partial sigma). Theta and Rho have no outgoing arrows in this diagram.">
+      <defs>
+        <marker id="soga-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0L10,5L0,10z" fill="var(--text3)"/>
+        </marker>
+      </defs>
+
+      <!-- top row: first-order Greeks -->
+      <rect x="50" y="30" width="100" height="40" rx="8" style="fill:var(--blue-bg);stroke:var(--blue-bd);stroke-width:1.5"/>
+      <text x="100" y="55" text-anchor="middle" font-size="13" font-family="'DM Mono',monospace" fill="var(--blue)">Delta</text>
+      <rect x="160" y="30" width="100" height="40" rx="8" style="fill:var(--green-bg);stroke:var(--green-bd);stroke-width:1.5"/>
+      <text x="210" y="55" text-anchor="middle" font-size="13" font-family="'DM Mono',monospace" fill="var(--green)">Gamma</text>
+      <rect x="270" y="30" width="100" height="40" rx="8" style="fill:var(--s2);stroke:var(--border2);stroke-width:1.5;opacity:0.55"/>
+      <text x="320" y="55" text-anchor="middle" font-size="13" font-family="'DM Mono',monospace" fill="var(--text3)">Theta</text>
+      <rect x="380" y="30" width="100" height="40" rx="8" style="fill:var(--purple-bg);stroke:var(--purple-bd);stroke-width:1.5"/>
+      <text x="430" y="55" text-anchor="middle" font-size="13" font-family="'DM Mono',monospace" fill="var(--purple)">Vega</text>
+      <rect x="490" y="30" width="100" height="40" rx="8" style="fill:var(--s2);stroke:var(--border2);stroke-width:1.5;opacity:0.55"/>
+      <text x="540" y="55" text-anchor="middle" font-size="13" font-family="'DM Mono',monospace" fill="var(--text3)">Rho</text>
+      <text x="320" y="14" text-anchor="middle" font-size="10.5" font-family="'DM Sans',sans-serif" fill="var(--text3)">First-order Greeks</text>
+
+      <!-- bottom row: second-order Greeks -->
+      <rect x="13" y="300" width="95" height="45" rx="8" style="fill:var(--s1);stroke:var(--border2);stroke-width:1.5"/>
+      <text x="60.5" y="327" text-anchor="middle" font-size="12.5" font-family="'DM Mono',monospace" fill="var(--text)">Vanna</text>
+      <rect x="117" y="300" width="95" height="45" rx="8" style="fill:var(--s1);stroke:var(--border2);stroke-width:1.5"/>
+      <text x="164.5" y="327" text-anchor="middle" font-size="12.5" font-family="'DM Mono',monospace" fill="var(--text)">Charm</text>
+      <rect x="221" y="300" width="95" height="45" rx="8" style="fill:var(--s1);stroke:var(--border2);stroke-width:1.5"/>
+      <text x="268.5" y="327" text-anchor="middle" font-size="12.5" font-family="'DM Mono',monospace" fill="var(--text)">Vomma</text>
+      <rect x="325" y="300" width="95" height="45" rx="8" style="fill:var(--s1);stroke:var(--border2);stroke-width:1.5"/>
+      <text x="372.5" y="327" text-anchor="middle" font-size="12.5" font-family="'DM Mono',monospace" fill="var(--text)">Speed</text>
+      <rect x="429" y="300" width="95" height="45" rx="8" style="fill:var(--s1);stroke:var(--border2);stroke-width:1.5"/>
+      <text x="476.5" y="327" text-anchor="middle" font-size="12.5" font-family="'DM Mono',monospace" fill="var(--text)">Color</text>
+      <rect x="533" y="300" width="95" height="45" rx="8" style="fill:var(--s1);stroke:var(--border2);stroke-width:1.5"/>
+      <text x="580.5" y="327" text-anchor="middle" font-size="12.5" font-family="'DM Mono',monospace" fill="var(--text)">Zomma</text>
+      <text x="320" y="370" text-anchor="middle" font-size="10.5" font-family="'DM Sans',sans-serif" fill="var(--text3)">Second-order Greeks (this lesson)</text>
+
+      <!-- arrows -->
+      <line x1="100" y1="70" x2="66" y2="300" style="stroke:var(--blue);stroke-width:1.5" marker-end="url(#soga-arrow)"/>
+      <text x="66" y="151" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--blue)">&#8706;/&#8706;&#963;</text>
+
+      <line x1="430" y1="70" x2="70" y2="300" style="stroke:var(--purple);stroke-width:1.5" marker-end="url(#soga-arrow)"/>
+      <text x="245" y="211" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--purple)">&#8706;/&#8706;S</text>
+
+      <line x1="112" y1="70" x2="155" y2="300" style="stroke:var(--blue);stroke-width:1.5" marker-end="url(#soga-arrow)"/>
+      <text x="132" y="171" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--blue)">&#8706;/&#8706;t</text>
+
+      <line x1="430" y1="70" x2="265" y2="300" style="stroke:var(--purple);stroke-width:1.5" marker-end="url(#soga-arrow)"/>
+      <text x="349" y="181" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--purple)">&#8706;/&#8706;&#963;</text>
+
+      <line x1="210" y1="70" x2="368" y2="300" style="stroke:var(--green);stroke-width:1.5" marker-end="url(#soga-arrow)"/>
+      <text x="291" y="191" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--green)">&#8706;/&#8706;S</text>
+
+      <line x1="222" y1="70" x2="472" y2="300" style="stroke:var(--green);stroke-width:1.5" marker-end="url(#soga-arrow)"/>
+      <text x="343" y="201" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--green)">&#8706;/&#8706;t</text>
+
+      <line x1="234" y1="70" x2="576" y2="300" style="stroke:var(--green);stroke-width:1.5" marker-end="url(#soga-arrow)"/>
+      <text x="395" y="221" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--green)">&#8706;/&#8706;&#963;</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Delta feeds Vanna (via &sigma;) and Charm (via t); Vega feeds Vanna
+      (via S — the same box Delta feeds, which is the point) and Vomma (via
+      &sigma;); Gamma feeds Speed, Color, and Zomma (via S, t, and &sigma;
+      respectively). Delta's own &sigma;-derivative and S-derivative
+      converging on the same Vanna box <em>is</em> the mixed-partial symmetry
+      derived below — it isn't a drawing coincidence. Gamma's own
+      price-derivative (the classic second-order Greek from the prior lesson)
+      isn't re-shown here since it's already covered. Theta and Rho have
+      lesser-known second derivatives of their own (sometimes called Veta and
+      Vera/Rhova) that aren't in scope for this deep dive — shown greyed out
+      only for completeness of the first-order layer.
+    </div>
+  </div>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🔄</div>
+      <h4>Vanna</h4>
+      <div class="tl-math">\[ \text{Vanna} = \frac{\partial \Delta}{\partial \sigma} = \frac{\partial \nu}{\partial S} = \frac{\partial^2 C}{\partial S\,\partial\sigma} = -\varphi(d_1)\frac{d_2}{\sigma} \]</div>
+      <p>How much Delta shifts for a 1-point change in implied vol — equivalently, how much Vega shifts for a $1 move in the underlying. Why it matters: a delta hedge computed at one implied-vol level can drift out of hedge purely from a <em>vol</em> move, with the underlying not having moved at all — an often-overlooked hedging fact.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">⏳</div>
+      <h4>Charm (delta decay)</h4>
+      <div class="tl-math">\[ \text{Charm} = \frac{\partial \Delta}{\partial t} = -\varphi(d_1)\left[\frac{2rt - d_2\sigma\sqrt{\tau}}{2\tau\sigma\sqrt{\tau}}\right] \]</div>
+      <p>How much Delta drifts from one day passing alone, all else fixed. Matters for dealers deciding overnight or weekend hedge rebalancing, and — mirroring Gamma's own late-life acceleration — is especially large in the last few days before expiry.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📈</div>
+      <h4>Vomma (Volga)</h4>
+      <div class="tl-math">\[ \text{Vomma} = \frac{\partial \nu}{\partial \sigma} = \frac{\partial^2 C}{\partial \sigma^2} = \nu\,\frac{d_1 d_2}{\sigma} \]</div>
+      <p>Vega's own sensitivity to vol — Vega's convexity. A position with positive Vomma (e.g. a long strangle) gains Vega disproportionately as vol itself rises, the formal basis of "volga trades" and other vol-of-vol positioning.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🚀</div>
+      <h4>Speed</h4>
+      <div class="tl-math">\[ \text{Speed} = \frac{\partial \Gamma}{\partial S} = -\frac{\Gamma}{S}\left(\frac{d_1}{\sigma\sqrt{\tau}} + 1\right) \]</div>
+      <p>Gamma's own rate of change with price — a third derivative of the option's price. Honestly: rarely actively traded or quoted day to day, but matters for very large gamma books, or in extreme/gap moves where Gamma itself changes fast enough within a single move to become non-negligible.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🎨</div>
+      <h4>Color</h4>
+      <div class="tl-math">\[ \text{Color} = \frac{\partial \Gamma}{\partial t} \]</div>
+      <p>Gamma's decay over calendar time — tells a gamma-scalper how their gamma exposure itself will evolve day to day even with no price move, which matters for planning a multi-day gamma-scalping strategy.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🌀</div>
+      <h4>Zomma</h4>
+      <div class="tl-math">\[ \text{Zomma} = \frac{\partial \Gamma}{\partial \sigma} \]</div>
+      <p>Gamma's sensitivity to vol. Relevant when vol itself is moving fast (e.g. a vol regime shift) — the Gamma a delta-hedger thought they had can change materially before any price move, purely from implied vol repricing.</p>
+    </div>
+  </div>
+
+  <h3>Vanna's symmetry — a genuinely elegant, testable fact</h3>
+  <p>
+    Vanna is defined two different ways in the formula above: as Delta's
+    sensitivity to vol, <em>and</em> as Vega's sensitivity to price. These
+    read like two different quantities that happen to share a name. They are
+    not — they are the exact same number, computed two different ways:
+  </p>
+  <div class="tl-math">
+    \[ \text{Vanna} = \frac{\partial}{\partial \sigma}\!\left(\frac{\partial C}{\partial S}\right) = \frac{\partial}{\partial S}\!\left(\frac{\partial C}{\partial \sigma}\right) = \frac{\partial^2 C}{\partial S\,\partial\sigma} = \frac{\partial^2 C}{\partial \sigma\,\partial S} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>&part;(&part;C/&part;S)/&part;&sigma;</code><span>shift Delta, see how it changes with vol</span></div>
+    <div class="tl-eq-chip c2"><code>&part;(&part;C/&part;&sigma;)/&part;S</code><span>shift Vega, see how it changes with price</span></div>
+    <div class="tl-eq-chip c3"><code>identical result</code><span>not a coincidence — a theorem</span></div>
+  </div>
+  <div class="tl-solid blue">
+    <strong>Why this is guaranteed, not lucky:</strong> Clairaut's theorem
+    (also called Schwarz's theorem) states that for any function with
+    continuous second partial derivatives, mixed partial derivatives are
+    equal regardless of the order you differentiate in. The Black-Scholes
+    price \(C(S,\sigma,t)\) is smooth enough (a standard, checkable property
+    of the closed-form formula) for the theorem to apply, so
+    \(\partial^2C/\partial S\partial\sigma\) and
+    \(\partial^2C/\partial\sigma\partial S\) are guaranteed equal, not merely
+    observed to be equal in this one case. Practically: you can compute
+    Vanna by asking "how does my hedge ratio move if vol jumps a point" or by
+    asking "how does my vol exposure move if the underlying jumps a dollar,"
+    and you are guaranteed to get the same number either way — which is
+    exactly why Vanna is worth a single name rather than two.
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(\Delta,\ \Gamma,\ \Theta,\ \nu,\ \rho\)</td><td>The five first-order Greeks from the Black-Scholes lesson — Delta, Gamma, Theta, Vega, Rho.</td></tr>
+    <tr><td>\(d_1, d_2\)</td><td>The same intermediate quantities defined in the Black-Scholes lesson — reused here unchanged.</td></tr>
+    <tr><td>\(\varphi(\cdot)\)</td><td>The standard normal <em>density</em> (the height of the bell curve), \(\varphi(x)=\frac{1}{\sqrt{2\pi}}e^{-x^2/2}\) — distinct from \(N(\cdot)\), the CDF used for Delta itself.</td></tr>
+    <tr><td>\(\sigma\)</td><td>Implied volatility, expressed as a decimal (0.20 for 20%) in the raw closed forms below.</td></tr>
+    <tr><td>\(S\)</td><td>The underlying's current price.</td></tr>
+    <tr><td>\(t,\ \tau,\ T\)</td><td>Time to expiration, in years — the same quantity, using whichever symbol the particular published formula traditionally uses.</td></tr>
+    <tr><td>\(r\)</td><td>The risk-free rate, as in the Black-Scholes formula.</td></tr>
+    <tr><td>\(\text{OI}_k\)</td><td>Open interest (contracts outstanding) at strike \(k\) — same object the dealer-GEX lesson aggregates.</td></tr>
+    <tr><td>\(s_k\)</td><td>The assumed sign (\(\pm1\)) of the dealer's net position at strike \(k\) — carried over from the dealer-GEX lesson's own convention.</td></tr>
+  </table></div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Computing Vanna by hand for a slightly out-of-the-money call</h3>
+    <p>
+      Take \(S=100\), \(K=105\) (a call struck a bit above spot — out of the
+      money), \(r=0.02\), \(\sigma=0.25\), \(T=0.5\) years (6 months). First,
+      \(d_1\) and \(d_2\), using the exact same formula as the Black-Scholes
+      lesson:
+    </p>
+    <div class="tl-math">
+      \[ d_1 = \frac{\ln(100/105) + (0.02+0.25^2/2)(0.5)}{0.25\sqrt{0.5}} = \frac{-0.04879 + 0.02563}{0.17678} \approx -0.1311 \]
+      \[ d_2 = d_1 - \sigma\sqrt{T} = -0.1311 - 0.17678 \approx -0.3078 \]
+    </div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>d&#8321; &asymp; &minus;0.1311</code><span>slightly negative — the call is out of the money</span></div>
+      <div class="tl-eq-chip c2"><code>d&#8322; &asymp; &minus;0.3078</code><span>more negative than d&#8321;, as always</span></div>
+    </div>
+    <p>Next, the standard normal density at \(d_1\):</p>
+    <div class="tl-math">
+      \[ \varphi(-0.1311) = \frac{1}{\sqrt{2\pi}}e^{-(-0.1311)^2/2} \approx 0.3989 \times 0.9914 \approx 0.3955 \]
+    </div>
+    <p>Now assemble Vanna:</p>
+    <div class="tl-math">
+      \[ \text{Vanna} = -\varphi(d_1)\frac{d_2}{\sigma} = -(0.3955)\left(\frac{-0.3078}{0.25}\right) = -(0.3955)(-1.2312) \approx 0.4871 \]
+    </div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c3"><code>Vanna &asymp; 0.4871</code><span>positive — makes sense for an OTM call, below</span></div>
+    </div>
+    <p style="margin-bottom:0">
+      The sign is worth checking, not just accepting: \(d_2\) here is
+      negative, so the two minus signs in \(-\varphi(d_1)(d_2/\sigma)\)
+      cancel to a positive Vanna. Economically, that's the right direction —
+      this call is out of the money, so a <em>rise</em> in implied vol raises
+      the probability of finishing in the money, which raises Delta; Vanna
+      being positive says exactly "Delta goes up when vol goes up" for this
+      option. As with Vega, this raw number is per 1.00 (a full 100 vol
+      points) of \(\sigma\); multiplying by 0.01 rescales it to "per 1 vol
+      point," the convention used below: \(0.4871 \times 0.01 \approx
+      0.00487\) — roughly half a delta-point of shift for every 1-point move
+      in implied vol (e.g. 25% &rarr; 26%), with the underlying not having
+      moved a cent.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A vol spike into a macro event, with spot barely moving</h3>
+    <p>
+      A dealer desk is short a large book of slightly out-of-the-money
+      calls on a major currency pair heading into a closely watched central
+      bank decision two days out. In the hours before the announcement,
+      implied volatility on the front-week options climbs sharply — traders
+      bidding up vol in anticipation of a large move, a completely normal
+      pre-event pattern — while spot itself drifts in a tight 20-pip range,
+      barely moving at all.
+    </p>
+    <p>
+      Per the worked example above, this book's positive Vanna means Delta on
+      those calls is rising purely because implied vol rose, with no price
+      move behind it. The desk's automated hedging system flags a growing
+      long-delta position it needs to sell down to stay flat — and to
+      whoever's watching the tape, that produces real, observable order flow
+      into the underlying on a day when price has barely moved. Anyone
+      reading that flow as "someone thinks the pair is about to break out
+      directionally" would be reading it wrong: it's a vanna flow, not a
+      gamma flow, and it says nothing about direction — it's a mechanical
+      consequence of vol repricing, not a directional signal at all.
+    </p>
+    <p style="margin-bottom:0">
+      Then the announcement lands, vol richly priced beforehand collapses
+      immediately afterward (the standard post-event "vol crush"), and the
+      same Vanna mechanism runs in reverse: Delta drifts back down purely
+      from vol falling, forcing the desk to buy back some of what it just
+      sold — again with no requirement that price itself has moved much
+      either way. A desk that only watches Gamma would have missed both legs
+      of this flow entirely, because neither leg was triggered by price.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Aggregating Vanna and Charm across open interest — a second, distinct flow mechanism</h2>
+  <p>
+    The dealer-GEX lesson built one formula, \(\text{GEX}_k = \Gamma_k \times
+    \text{OI}_k \times 100 \times S^2 \times 0.01\), that turns a single
+    option's Greek into a dollar figure describing an entire strike's
+    open-interest-driven hedging pressure. Vanna and Charm generalize
+    <em>exactly</em> the same aggregation logic — the difference is which
+    market variable is assumed to move.
+  </p>
+
+  <h3>Dollar Vanna exposure</h3>
+  <p>
+    The dollar delta-shift per 1-vol-point move, aggregated across the open
+    interest sitting at strike \(k\):
+  </p>
+  <div class="tl-math">
+    \[ \text{VannaExp}_k = \text{Vanna}_k \times \text{OI}_k \times 100 \times S \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Vanna&#8342;&times;OI&#8342;&times;100</code><span>shares' worth of delta-shift per unit &sigma;, aggregated across the strike</span></div>
+    <div class="tl-eq-chip c2"><code>&times;S</code><span>converts shares to dollars, mirroring dealer-GEX's own &times;S step</span></div>
+  </div>
+  <p>
+    One scaling note worth being explicit about, the same way the dealer-GEX
+    lesson was explicit about its own \(S^2 \times 0.01\) term: computed from
+    the raw closed form with \(\sigma\) as a decimal, this quantity is "per
+    1.00 (100 vol points) of \(\sigma\)." To read it as "per 1-vol-point
+    move" — the convention this formula is stated in, and the way
+    options-flow analytics quote it — multiply by 0.01, exactly as
+    dealer-GEX rescales from "per $1 move" to "per 1% move."
+  </p>
+  <p>
+    The mechanism this dollar figure describes is genuinely distinct from
+    gamma-driven hedging. Recall from the dealer-GEX lesson: under the
+    standard assumption that dealers are net short the OI they wrote to the
+    public, the dealer holds a long hedge position exactly matching the
+    customers' aggregate Delta. If that OI carries positive Vanna (as the
+    worked example's out-of-the-money call did), a rise in implied vol alone
+    — <strong>with spot unchanged</strong> — raises the customers' aggregate
+    Delta, which means the dealer's required hedge grows too, forcing genuine
+    buying with no price move behind it at all. This is what practitioners
+    call a <strong>vanna flow</strong>: a real, actively discussed phenomenon
+    in modern options-flow analysis, particularly relevant on days with large
+    implied-vol swings — heading into or out of major macro events — even
+    when spot itself has barely moved, exactly like the scenario above.
+  </p>
+
+  <h3>Dollar Charm exposure</h3>
+  <p>
+    The dollar delta-shift per day passing, aggregated across the open
+    interest at strike \(k\):
+  </p>
+  <div class="tl-math">
+    \[ \text{CharmExp}_k = \text{Charm}_k \times \text{OI}_k \times 100 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>Charm&#8342;&times;OI&#8342;&times;100</code><span>dollar delta-shift per day, no &times;S needed — a pure time effect, not a price-scaled one</span></div>
+  </div>
+  <p>
+    A similar scaling note applies here: the closed form for Charm above uses
+    \(t\)/\(\tau\) in <em>years</em>, so the raw output is an annualized rate.
+    Dividing by 365 converts it to "per calendar day," the convention this
+    exposure formula assumes and the way a desk actually plans day-to-day
+    rebalancing.
+  </p>
+  <p>
+    The mechanism: as expiry approaches, aggregate dealer Delta exposure
+    shifts purely from time passing — no price or vol move required at all —
+    forcing a predictable, time-driven rebalancing flow practitioners call a
+    <strong>charm flow</strong>. This mirrors, through a different partial
+    derivative, exactly the late-life acceleration the dealer-GEX lesson
+    established for Gamma itself: Gamma for an at-the-money option scales
+    roughly as \(1/\sqrt{T}\) and explodes as expiry nears (the lesson's own
+    worked example showed roughly a 5.5&times; jump from 30 days to 1 day out).
+    Charm shows the same acceleration in the same regime, for the same
+    reason — both are driven by \(T\) shrinking toward zero — so charm flows
+    tend to be largest in the final few days before expiry, the identical
+    calendar window the dealer-GEX lesson flagged for gamma-driven pinning
+    and squeeze effects.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>A toy three-strike dollar Vanna aggregation</h3>
+    <p>
+      Fix \(S=100\) (so \(S \times 0.01 = 1\), simplifying the arithmetic
+      exactly the way the dealer-GEX lesson's own toy example picked
+      \(S=100\)) and reuse the standard assumption that dealers are net short
+      the open interest at every strike (\(s_k=-1\)). Vanna at the 105 strike
+      is the 0.4871 derived above; the 95 and 100 strikes use smaller,
+      illustrative round figures for contrast, in the same spirit as the
+      dealer-GEX lesson's own toy neighboring-strike values:
+    </p>
+    <div class="tl-math">
+      <pre style="margin:0;text-align:left;font-family:'DM Mono',monospace;font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.7">Strike   Vanna    Combined OI   DealerVannaExp = -Vanna x OI x 100 x (S x 0.01)
+95       0.10     5,000         -0.10 x 5,000 x 100 x 1  = -$50,000
+100      0.30     9,000         -0.30 x 9,000 x 100 x 1  = -$270,000
+105      0.4871   7,000         -0.4871 x 7,000 x 100 x 1 = -$340,970
+                                Total Dealer Vanna Exposure  ~ -$661,000</pre>
+    </div>
+    <p style="margin-bottom:0">
+      Read this as: under the standard short-OI assumption, a full 1-point
+      rise in implied volatility across this toy book forces roughly
+      $661,000 of net delta-hedge rebalancing (here, buying, driven by the
+      negative sign and positive Vanna at every strike) — with spot
+      unchanged. Set this next to the dealer-GEX lesson's own three-strike
+      toy example, which produced roughly <strong>$18.5 billion</strong> for
+      comparable open interest: dollar Vanna exposure scales with \(S\), not
+      \(S^2\) the way dollar Gamma exposure does, which is a genuine
+      mechanical reason vanna flows run smaller in typical dollar magnitude
+      than gamma flows for similar-sized books — not merely an assertion, a
+      direct consequence of the exponent difference between the two
+      formulas.
+    </p>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>Read this plainly, not as a trading claim:</strong> vanna and
+    charm flows are directionally real and mechanically sound — they follow
+    from exactly the same aggregation logic dealer-GEX uses, over the same
+    open interest, under the same dealer-sign assumption (still an
+    assumption, not an observed fact, exactly as the dealer-GEX lesson
+    flagged). But they are a second-order effect layered on top of gamma
+    exposure: smaller in typical magnitude (illustrated numerically above),
+    harder to observe cleanly against the noise of ordinary trading flow, and
+    this lesson is explaining the <em>mechanism</em>, not claiming a specific
+    trading edge from monitoring it.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📊</div>
+      <h4>Vol-event flow commentary</h4>
+      <p>Options-flow analytics that already publish dealer GEX estimates increasingly publish a Vanna and Charm read alongside it, specifically to explain rebalancing flow on days when spot barely moved but implied vol did.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🧭</div>
+      <h4>Explaining, not predicting</h4>
+      <p>Vanna/Charm exposure is mostly used after the fact, to explain <em>why</em> a hedging flow occurred on a quiet-price day — closer to a forensic tool than a forward-looking entry signal.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📐</div>
+      <h4>Volga trades on the Vomma side</h4>
+      <p>A trading desk with a view that realized vol-of-vol will rise (not just vol itself) can build a position with deliberately positive Vomma — e.g. a long strangle — to profit disproportionately as implied vol itself becomes more volatile.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🗓️</div>
+      <h4>Charm in overnight/weekend risk</h4>
+      <p>A desk deciding how much to rebalance before a weekend (when no trading can happen but time still passes) uses Charm directly to estimate how stale its Delta hedge will be by Monday open, purely from time decay.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where people get this wrong</h3>
+    <p>
+      <strong>Assuming every desk actively monitors all six.</strong> Speed,
+      Color, and Zomma are genuinely niche in daily practice — most trading
+      desks never quote them and most retail options-flow tools don't publish
+      them. Vanna and Charm are the two that actually show up in real
+      dealer-flow discussion; treating all six as equally important overstates
+      how much of this is actively used day to day.
+    </p>
+    <p>
+      <strong>Confusing a vanna/charm flow with a directional signal.</strong>
+      Exactly like dealer GEX, these are descriptions of mechanical hedging
+      pressure, not forecasts of where price is going. A vanna-driven buy
+      order says "vol moved and dealers had to rehedge," not "the market
+      expects the pair to rally."
+    </p>
+    <p>
+      <strong>Forgetting the dealer-sign assumption travels with every one of
+      these.</strong> \(s_k\) — whether the dealer is actually net long or
+      short a given strike — is exactly as unverifiable here as it was for
+      Gamma. Every Vanna/Charm exposure estimate inherits that same
+      uncertainty; it doesn't get more certain just because the formula looks
+      more sophisticated.
+    </p>
+    <p style="margin-bottom:0">
+      <strong>Treating vanna/charm flows as comparable in size to gamma
+      flows.</strong> The toy aggregation above showed roughly $661,000 of
+      Vanna-driven flow against roughly $18.5 billion of Gamma-driven flow for
+      comparable open interest — six orders of magnitude apart. Vanna and
+      Charm explain real, distinct flow on days gamma alone can't account
+      for, but they are not a comparably sized force in typical markets.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Second-order Greeks ask how a first-order Greek itself responds to price, vol, or time.</strong> Gamma already asked this for Delta-vs-price; these six extend the same question to every other pair of inputs.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Vanna and Charm are the two that matter most in practice.</strong> They generalize the gamma-hedging mechanism into a vol-driven flow and a pure-time-driven flow, respectively — each real and mechanically distinct from price-triggered gamma hedging.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Vanna's two definitions are the same mixed partial derivative, guaranteed equal by Clairaut's/Schwarz's theorem.</strong> Not a coincidence — computing it via Delta's vol-sensitivity or Vega's price-sensitivity must give the same number.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Charm mirrors Gamma's own late-life acceleration.</strong> Both blow up as expiry nears because both are driven by \(T\to0\) — charm flows concentrate in the same final days the dealer-GEX lesson flagged for gamma effects.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Speed, Color, and Zomma are genuinely niche.</strong> Real, correctly derived, and rarely tracked by real desks day to day — don't overstate their practical relevance relative to Vanna and Charm.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Vanna/charm flows are a second-order effect on top of gamma exposure, not a comparably sized force.</strong> The toy example showed roughly six orders of magnitude smaller in dollar terms — this lesson explains the mechanism, it is not a claim of a specific tradeable edge.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Every dollar exposure figure here still inherits the dealer-sign assumption from the GEX lesson.</strong> Whether dealers are actually net long or short any given strike remains unverifiable from open interest alone.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why are Vanna computed as \(\partial\Delta/\partial\sigma\) and Vanna computed as \(\partial\nu/\partial S\) guaranteed to give the same number, rather than just happening to agree in the worked example?</summary>
+    <div class="tl-answer">
+      Both are the mixed second partial derivative of the option price \(C(S,\sigma,t)\) with respect to \(S\) and \(\sigma\), just taken in opposite orders: \(\partial^2C/\partial S\partial\sigma\) versus \(\partial^2C/\partial\sigma\partial S\). Clairaut's theorem (also called Schwarz's theorem) guarantees that for any function with continuous second partial derivatives — a property the closed-form Black-Scholes price has — mixed partials are equal regardless of differentiation order. It's a general theorem about smooth multivariable functions, not a special property of this one worked example; any correctly computed pair of numbers for Vanna, from either direction, must agree.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. In the worked example (\(S=100\), \(K=105\), \(\sigma=0.25\), \(T=0.5\)), Vanna came out positive (\(\approx0.4871\)). Explain in plain English why a positive sign makes economic sense for this specific option.</summary>
+    <div class="tl-answer">
+      The option is out of the money (\(K=105 > S=100\)). Raising implied volatility increases the probability that the underlying ends up above the strike at expiry, which raises the option's Delta (it becomes more like a real long-stock position). Vanna being positive says exactly that: "Delta increases as \(\sigma\) increases" for this option. Had the option instead been deep in the money, its Delta would already be near its ceiling of 1.0, leaving much less room for vol to push it higher — a very different, and often much smaller or negative, Vanna value.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why does dollar Vanna exposure scale with \(S\) while dollar Gamma exposure (GEX) scales with \(S^2\) — and what does that difference in exponent actually explain?</summary>
+    <div class="tl-answer">
+      Dollar Gamma exposure is built to answer "how many dollars does the hedge position change by, per 1% move in \(S\)" — converting a per-$1-move share quantity to dollars requires one factor of \(S\), and converting from "per $1 move" to "per 1%-of-S move" requires a second factor of \(S\) (via \(S\times0.01\)), giving \(S^2\) overall. Dollar Vanna exposure answers a different question — "how many dollars does the hedge position change by, per 1-vol-point move" — and a vol-point isn't itself expressed in units of \(S\), so only the first \(S\) factor (converting shares to dollars) appears; there's no second \(S\)-scaled term. That one fewer power of \(S\) is exactly why, for comparable open interest, dollar Vanna exposure figures run structurally smaller than dollar Gamma exposure figures — a mechanical consequence of the units involved, not a claim about which flow is "more important."
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why does Charm's magnitude accelerate as expiry approaches, in the same way Gamma's does — and why does that matter for a dealer specifically in the final days before expiry?</summary>
+    <div class="tl-answer">
+      Both Gamma and Charm are driven by the same \(T\to0\) behavior baked into the Black-Scholes formula's \(d_1,d_2\) terms — Gamma roughly as \(1/\sqrt{T}\) for an at-the-money option, and Charm through the same \(\sigma\sqrt{\tau}\) terms in its own closed form. As \(T\) shrinks toward zero, both blow up, and — as the dealer-GEX lesson's worked example showed numerically for Gamma (roughly 5.5&times; from 30 to 1 day to expiry) — the effect is not linear in calendar days lost; it accelerates. For a dealer, this means the pure-time-driven rebalancing that Charm describes (no price or vol move required) gets materially larger exactly in the last few days before expiry — the same calendar window where gamma-driven pinning and squeeze effects are already most intense, compounding rather than replacing that risk.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. A commentator claims "large positive dealer Vanna exposure at a strike means the market is bullish." What's wrong with that claim?</summary>
+    <div class="tl-answer">
+      It conflates a mechanical hedging description with a directional forecast — exactly the same category error the dealer-GEX lesson flags for Gamma. Dealer Vanna exposure describes how much delta-hedge rebalancing a change in implied volatility will force, given the current open interest and an assumed dealer-sign convention; it says nothing about which direction the underlying is expected to move. A large Vanna figure means "a vol move at this strike will force a large hedging flow," not "the market expects price to rise." Reading it as a bullish/bearish signal repeats the same mistake the Black-Scholes and dealer-GEX lessons both warn against: treating a hedging-consistent mechanical quantity as if it were a market forecast.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why are Speed, Color, and Zomma described as "genuinely niche" rather than being given the same practical weight as Vanna and Charm in this lesson?</summary>
+    <div class="tl-answer">
+      Speed, Color, and Zomma are all third-order derivatives of the option price (each is a first derivative of Gamma, which is itself already a second derivative) — mathematically valid and correctly derivable, but describing progressively smaller, harder-to-observe effects that matter mainly for very large gamma books or extreme, fast-moving markets. In ordinary daily practice, most trading desks and options-flow tools don't quote or monitor them, unlike Vanna and Charm, which show up regularly in real dealer-flow commentary because they explain observable rebalancing flow on quiet-price, high-vol-move or fast-approaching-expiry days. The honest distinction isn't that the other four are wrong or unimportant in principle — it's that Vanna and Charm are the two with genuine, regular practical relevance, and pretending all six are equally watched would overstate how this material is actually used.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li><a href="black-scholes.html">Black-Scholes-Merton Option Pricing</a> — the derivation of \(d_1\), \(d_2\), and the five first-order Greeks every formula on this page builds on.</li>
+    <li><a href="gamma-exposure-dealer-hedging.html">Gamma Exposure &amp; Dealer Hedging Flows</a> — the dealer-GEX formula, the dealer-sign convention, and the gamma-late-life-acceleration finding this lesson extends to Vanna and Charm.</li>
+    <li><a href="vega-volatility-surface.html">Vega &amp; the Volatility Surface</a> — the prerequisite lesson on Vega and implied-vol surfaces that Vomma's "vega's own convexity" framing builds directly on.</li>
+    <li>Espen Gaarder Haug, <em>The Complete Guide to Option Pricing Formulas</em>, 2nd ed., McGraw-Hill, 2007 — the standard reference that names and tabulates Vanna, Charm, Vomma, Speed, Color, and Zomma in exactly this form; the correctly attributed source for these closed forms.</li>
+    <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson — the standard textbook treatment of the Greeks and their higher-order extensions that most quant/trading desks point newcomers to first.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="vega-volatility-surface.html">← Vega &amp; the Volatility Surface</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+</body>
+</html>

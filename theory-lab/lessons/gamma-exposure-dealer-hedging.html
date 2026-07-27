@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gamma Exposure &amp; Dealer Hedging Flows — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / The Greeks / Gamma Exposure &amp; Dealer Hedging Flows</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">The Greeks · Lesson 1 of 2</div>
+  <h1 class="tl-title">Gamma Exposure &amp; Dealer Hedging Flows</h1>
+  <p class="tl-dek">Gamma is a second derivative of an option-pricing formula — but aggregated across an entire open-interest book, it becomes a real, mechanical forecast of how much buying or selling pressure dealer hedging will inject into a market, and where that pressure runs out.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span>~17 min read</span>
+    <span>Prereqs: Black-Scholes-Merton Option Pricing</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Dealer gamma exposure (GEX) at a strike is \(\Gamma \times \text{OI} \times 100 \times S^2 \times 0.01\) — gamma converted from "delta change per $1 move" into "dollar delta change per 1% move," scaled up by the contract multiplier and the open interest sitting at that strike.</li>
+      <li>A call and a put at the same strike and expiry have <em>identical</em> gamma (a direct consequence of put-call parity) — so it's the <strong>dealer's own long/short sign</strong>, not whether the option is a call or a put, that decides whether hedging flow amplifies or dampens a price move.</li>
+      <li>The standard simplifying assumption — dealers are net short most of the OI they wrote to a public that's net long options — makes dealer GEX negative at most strikes; that sign is an assumption baked into the convention, not something directly observable from open interest alone.</li>
+      <li>Short dealer gamma means hedging flow has the <strong>same</strong> sign as the price move (buy as it rises, sell as it falls) — destabilizing. Long dealer gamma means hedging flow has the <strong>opposite</strong> sign — stabilizing, mean-reverting.</li>
+      <li>The worked example shows ATM gamma roughly doubling from 30 to 7 days to expiry, then more than doubling again into the final day — the numeric substance behind "gamma effects intensify near expiry."</li>
+      <li>A "wall" isn't sellers pushing back — it's the point where the hedging <em>demand</em> that was fuelling a move disappears because the hedge is already complete. When a wall breaks instead, that same mechanism reverses into a squeeze.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The <a href="black-scholes.html">Black-Scholes-Merton</a> lesson derives
+    delta (\(\Delta = \partial C/\partial S\)) and gamma
+    (\(\Gamma = \partial^2 C/\partial S^2\)) as partial derivatives of the
+    option-pricing formula, and shows why gamma for an at-the-money option
+    rises as time to expiry shrinks. That lesson stops at the level of a
+    single option. This lesson picks up exactly where it left off and asks a
+    different question: what happens when you sum gamma across an <em>entire
+    open-interest book</em> — every outstanding contract at every strike —
+    held by the dealers who wrote those options to the public?
+  </p>
+  <p>
+    The answer is a real, mechanical source of market structure. A dealer who
+    sold options doesn't just hold a static hedge; the hedge has to be
+    rebalanced continuously as price moves, and gamma is precisely the rate
+    at which that rebalancing has to happen. Add up gamma times open interest
+    across a strike ladder and you get a genuine, formula-derived estimate of
+    how much forced, price-insensitive buying or selling a given move in the
+    underlying will trigger from the dealer community — not a chart pattern,
+    not folklore, a direct consequence of the calculus in the previous
+    lesson. This is the mechanism behind the "walls," "magnets," and
+    "squeezes" that show up on any sufficiently liquid options-underlying
+    chart, and this lesson formalizes it: the dealer gamma exposure (GEX)
+    formula, the rate at which hedging flow changes, the sign logic that
+    decides whether that flow calms a market or accelerates it, and the
+    "gamma-flip" level some practitioners watch as a structural pivot.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Walls don't push back — they run out of fuel</h3>
+    <p>
+      The single most counterintuitive fact in this whole subject: a "wall"
+      is not a wall of sellers lying in wait, ready to slam price back down
+      the moment it arrives. If that were true, you'd expect to see visible
+      selling pressure building as price approaches the level. What actually
+      happens is closer to the opposite — dealer hedging <em>fuels</em> the
+      move on the way in, and then that fuel simply runs out.
+    </p>
+    <p>
+      Picture a large concentration of call open interest sitting above the
+      current price. As price grinds up toward that strike, the calls'
+      delta rises — they behave more and more like owning the stock outright
+      — and the dealers who sold those calls have to keep buying the
+      underlying to stay hedged. That buying itself adds upward pressure,
+      which pushes price further toward the strike, which raises delta
+      further, which forces more buying. It's a self-reinforcing loop, and
+      from the outside it looks exactly like a rally with real conviction
+      behind it.
+    </p>
+    <p style="margin-bottom:0">
+      Then price actually reaches the strike. The calls are now deep enough
+      in the money that their delta has saturated near 1.0 — they behave
+      almost exactly like the stock itself, and there's no more "coming due"
+      delta left to hedge. The dealer's hedge is <em>complete</em>. The
+      buying that was propping up the rally simply stops — not because
+      anyone stepped in to sell, but because the mechanical demand that had
+      been pushing price higher has nothing left to do. Price stalls with no
+      obvious trigger, which is exactly why it's so often misread as
+      "sellers defending a level" when the real mechanism is an absence of
+      further buying, not the appearance of selling.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    Three pieces build on top of the Black-Scholes Greeks: a formula for a
+    single strike's dealer gamma exposure, a rule for the sign of that
+    exposure, and the rate at which it forces hedging flow as price moves.
+    Take them in order.
+  </p>
+
+  <h3>Dealer gamma exposure (GEX) — the standard formula</h3>
+  <p>
+    For a single strike \(k\), with the underlying currently at \(S\), the
+    (unsigned) dollar gamma exposure carried by the open interest at that
+    strike is:
+  </p>
+  <div class="tl-math">
+    \[ \text{GEX}_k = \Gamma_k \times \text{OI}_k \times 100 \times S^2 \times 0.01 \]
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">Γₖ</div>
+      <div class="tl-fp-name">Per-contract gamma</div>
+      <div class="tl-fp-desc">Delta-change per $1 move, from the Black-Scholes formula — always positive for a long option</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">OIₖ</div>
+      <div class="tl-fp-name">Open interest at the strike</div>
+      <div class="tl-fp-desc">How many contracts are outstanding — the size of the exposure being hedged</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">×100</div>
+      <div class="tl-fp-name">Contract multiplier</div>
+      <div class="tl-fp-desc">One standard option contract covers 100 shares (or equivalent notional units) of the underlying</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">S² × 0.01</div>
+      <div class="tl-fp-name">The rescaling term</div>
+      <div class="tl-fp-desc">Converts a per-$1-move quantity into a per-1%-move dollar quantity — derived below</div>
+    </div>
+  </div>
+
+  <p>
+    The \(S^2 \times 0.01\) term is worth deriving rather than memorizing,
+    because otherwise it looks arbitrary. Start from \(\Gamma_k \times
+    \text{OI}_k \times 100\): this is "how many shares of the underlying the
+    dealer's aggregate hedge position changes by, per $1 move in \(S\)" —
+    a share count, not a dollar figure. Multiply by \(S\) (the price of one
+    share) and it becomes "how many <em>dollars</em> the hedge position's
+    value changes by, per $1 move" — this is sometimes called <em>dollar
+    gamma</em> on its own. Options-flow analytics conventionally quote GEX
+    not per $1 move but per <strong>1% move</strong> of the underlying,
+    because a $1 move means something completely different for a $20 stock
+    than for a $2,000 one. A 1% move in dollar terms is \(S \times 0.01\).
+    So multiplying dollar gamma by \(S \times 0.01\) instead of by 1 rescales
+    the whole quantity from "per $1 move" to "per 1% move":
+  </p>
+  <div class="tl-math">
+    \[ \underbrace{\Gamma_k\,\text{OI}_k\,100}_{\text{shares per \$1 move}} \times \underbrace{S}_{\text{\$ per share}} \times \underbrace{(S \times 0.01)}_{\text{\$ representing a 1\% move}} = \Gamma_k\,\text{OI}_k\,100\,S^2\,(0.01) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>ΓₖOIₖ100</code><span>the raw hedge-flow rate, in shares per $1 move</span></div>
+    <div class="tl-eq-chip c2"><code>× S</code><span>converts shares to dollars</span></div>
+    <div class="tl-eq-chip c4"><code>× (S × 0.01)</code><span>rescales from "per $1" to "per 1%"</span></div>
+  </div>
+
+  <h3>Why calls and puts carry the same gamma</h3>
+  <p>
+    A genuinely useful fact falls straight out of put-call parity, the
+    no-arbitrage relationship between a call and a put on the same strike
+    and expiry (referenced but not derived in the Black-Scholes lesson):
+  </p>
+  <div class="tl-math">
+    \[ C - P = S - Ke^{-rT} \]
+  </div>
+  <p>
+    Differentiate both sides twice with respect to \(S\). The right-hand
+    side, \(S - Ke^{-rT}\), is <em>linear</em> in \(S\) — its second
+    derivative is exactly zero, since \(K\), \(e^{-rT}\), and the "1" from
+    differentiating \(S\) once are all constants that vanish on the second
+    pass. So:
+  </p>
+  <div class="tl-math">
+    \[ \frac{\partial^2 C}{\partial S^2} - \frac{\partial^2 P}{\partial S^2} = 0 \quad\Longrightarrow\quad \Gamma_{\text{call}} = \Gamma_{\text{put}} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>Γcall = Γput</code><span>identical at the same strike and expiry, always — not an approximation</span></div>
+  </div>
+  <p>
+    This matters because it means \(\Gamma_k\) in the GEX formula above is
+    the <em>same number</em> whether the open interest at strike \(k\) is
+    calls, puts, or a mix of both. What differs between a call and a put is
+    only <em>delta</em> — a long call and a long put have opposite-signed
+    delta, but identical, positive gamma. The consequence: the sign of
+    dealer GEX at a strike is determined entirely by <strong>who's on which
+    side of the trade</strong> (is the dealer long or short that open
+    interest), never by whether the contract happens to be a call or a put.
+  </p>
+
+  <h3>The dealer's sign — an assumption, not an observation</h3>
+  <p>
+    Any long option position (call or put) has positive gamma. A dealer who
+    <em>wrote</em> (sold) an option to a customer holds the opposite
+    position — short the option — and a short option position has
+    <strong>negative</strong> gamma, since shorting simply flips the sign of
+    every Greek. The standard simplifying assumption used across
+    options-flow analytics is that dealers exist primarily to accommodate
+    customer demand, and in aggregate, retail and institutional customers
+    are net <em>buyers</em> of both calls and puts — buying calls for
+    upside speculation, buying puts for downside protection or speculation.
+    Under that assumption, dealers are net <em>sellers</em> (writers) at
+    most strikes, which makes dealer gamma negative for both the call side
+    and the put side of the book — not because calls and puts behave
+    differently (they don't; their gamma is identical), but because the
+    dealer is short both.
+  </p>
+  <div class="tl-solid amber">
+    <strong>State this plainly:</strong> open interest tells you how many
+    contracts are outstanding at a strike. It does <em>not</em> tell you who
+    holds the long side and who holds the short side. "Dealers are net
+    short this strike" is a standard, usually-reasonable, but genuinely
+    <em>unverifiable</em> assumption layered on top of the raw OI number —
+    not a fact read directly off the data. Every GEX estimate inherits this
+    assumption, and different data providers who assume differently will
+    disagree on the sign of individual strikes even while agreeing on the
+    raw open interest.
+  </div>
+  <p>
+    Writing the sign explicitly, let \(s_k \in \{-1, +1\}\) denote the
+    assumed sign of the dealer's net position at strike \(k\) (\(-1\) for
+    the standard "dealer net short" case, \(+1\) for the less common case
+    where dealers are assumed net long, e.g. specific strikes where a
+    dealer's own hedging created a long position). The signed dealer GEX at
+    strike \(k\) is:
+  </p>
+  <div class="tl-math">
+    \[ \text{DealerGEX}_k = s_k \times \Gamma_k \times \text{OI}_k \times 100 \times S^2 \times 0.01 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>sₖ = −1</code><span>the typical case — dealer wrote the options, is net short</span></div>
+    <div class="tl-eq-chip c2"><code>sₖ = +1</code><span>the atypical case — dealer ended up net long that strike</span></div>
+  </div>
+  <p>
+    A total, book-wide dealer GEX simply sums this signed quantity across
+    every strike (and both option types, since \(\Gamma_{\text{call}} =
+    \Gamma_{\text{put}}\) makes it natural to combine call and put OI at a
+    strike into one term): \(\text{TotalDealerGEX} = \sum_k
+    \text{DealerGEX}_k\). Under the standard assumption (\(s_k = -1\)
+    everywhere), this total is negative — dealers are net short gamma
+    across the board — which is the commonly cited "dealers are usually
+    short gamma" claim, restated precisely rather than asserted.
+  </p>
+
+  <h3>The delta-hedging flow rate</h3>
+  <p>
+    Gamma isn't only useful for computing a static dollar figure — it
+    directly gives the <em>rate</em> at which a dealer's required hedge
+    position changes as price moves, which is the real mechanical content
+    behind "gamma tells you how powerful the hedging flow is." Consider the
+    open interest at one strike, all assumed held short by the dealer (the
+    standard case). Each contract's delta is \(\Delta\) (identical in
+    magnitude for the corresponding long position, whether that's a call or
+    a put), so the customers collectively hold \(\Delta \times \text{OI}
+    \times 100\) shares' worth of delta, and the dealer — the opposite side
+    — must hold that many shares <strong>long</strong> to stay flat.
+    Differentiate that required hedge position with respect to \(S\):
+  </p>
+  <div class="tl-math">
+    \[ \frac{d(\text{hedge shares})}{dS} = \frac{d}{dS}\Big[\Delta \times \text{OI} \times 100\Big] = \frac{d\Delta}{dS} \times \text{OI} \times 100 = \Gamma \times \text{OI} \times 100 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Δ×OI×100</code><span>the dealer's required long-hedge position, in shares</span></div>
+    <div class="tl-eq-chip c2"><code>dΔ/dS = Γ</code><span>gamma is exactly the derivative that matters</span></div>
+    <div class="tl-eq-chip c4"><code>Γ×OI×100</code><span>shares the dealer must buy per $1 further move — always positive when short this OI</span></div>
+  </div>
+  <p>
+    This is always positive (since \(\Gamma > 0\) and \(\text{OI} \ge 0\)):
+    for OI the dealer is short, a $1 further rise in \(S\) always demands
+    <em>more</em> buying, regardless of whether the underlying options are
+    calls or puts. What flips the direction of the resulting <em>market</em>
+    effect isn't this formula — it's whether the dealer is short (needs to
+    chase the move, buying into strength) or long (needs to fade the move,
+    selling into strength) that OI in the first place, covered next.
+  </p>
+
+  <h3>Long vs. short gamma — deriving the regime table</h3>
+  <p>
+    Put the sign logic together. If the dealer is <strong>short</strong> the
+    OI at a strike (the standard case, \(s_k=-1\)), the dealer's own gamma
+    is negative, and — as just derived — the dealer must <em>buy</em> as
+    price rises and (by the mirror-image argument, selling as delta falls)
+    <em>sell</em> as price falls. That hedging flow has the <strong>same
+    sign as the price move itself</strong>: buying while price is already
+    rising, selling while it's already falling. It adds fuel to whatever
+    direction the market is already moving in — destabilizing,
+    trend-amplifying flow.
+  </p>
+  <p>
+    If the dealer is instead <strong>long</strong> that OI (\(s_k=+1\)), the
+    dealer's own gamma is positive, and the required hedge trade flips: as
+    price rises the dealer's own delta grows on its own, so the dealer needs
+    to <em>sell</em> stock to stay flat; as price falls, the dealer needs to
+    <em>buy</em>. This hedging flow has the <strong>opposite sign</strong>
+    to the price move — selling into strength, buying into weakness. It
+    dampens the move — stabilizing, mean-reverting flow.
+  </p>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card amber">
+      <h4>Short dealer gamma (Γ_dealer &lt; 0) — the typical case</h4>
+      <p>Price rises → dealer buys. Price falls → dealer sells. Hedging flow has the <strong>same sign</strong> as the move.</p>
+      <p style="margin-top:8px"><strong>Market effect: amplifying / destabilizing.</strong> Moves tend to accelerate once they start.</p>
+    </div>
+    <div class="tl-compare-card blue">
+      <h4>Long dealer gamma (Γ_dealer &gt; 0)</h4>
+      <p>Price rises → dealer sells. Price falls → dealer buys. Hedging flow has the <strong>opposite sign</strong> to the move.</p>
+      <p style="margin-top:8px"><strong>Market effect: dampening / stabilizing.</strong> Moves tend to get faded back toward where they started.</p>
+    </div>
+  </div>
+
+  <h3>The gamma-flip level</h3>
+  <p>
+    Since \(\text{TotalDealerGEX}\) sums \(s_k \Gamma_k(S)\,\text{OI}_k\,
+    100\,S^2\,0.01\) across every strike, and \(\Gamma_k(S)\) itself (from
+    the Black-Scholes formula) depends on where the current spot \(S\) sits
+    relative to each strike \(k\) — peaking when \(S \approx k\) and decaying
+    as they move apart — the total is a genuine function of \(S\), not a
+    fixed number. As a thought experiment, evaluate that total at a range of
+    hypothetical spot levels: some strikes' contributions shrink as spot
+    moves away from them, others grow as spot approaches them, and (if the
+    signed \(s_k\) values aren't uniform, or the OI distribution is
+    lopsided enough) the running total can cross zero at some particular
+    price. That crossing point is the <strong>gamma-flip level</strong>: on
+    one side of it, aggregate dealer gamma is net positive (stabilizing
+    hedging flow dominates); on the other, net negative (destabilizing flow
+    dominates).
+  </p>
+  <p>
+    Two honest caveats belong here, not as an afterthought. First, the flip
+    level is <strong>estimated from the current OI distribution and the
+    assumed \(s_k\) signs</strong> — it is not a fixed constant, and it
+    shifts every time OI at any strike changes (a new position opens, an old
+    one closes) or every time the front-month expiry rolls. Second, it
+    inherits the same unverifiable-sign problem as any single strike's
+    dealer GEX: if the true (unobservable) mix of who's long and who's short
+    differs from the standard assumption, the true flip level differs from
+    the estimated one too.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(\Gamma\)</td><td>Per-contract gamma of a long call or put — identical for both at the same strike/expiry, by put-call parity.</td></tr>
+    <tr><td>\(\Delta\)</td><td>Per-contract delta — opposite sign for a long call vs. a long put, unlike gamma.</td></tr>
+    <tr><td>\(\text{OI}_k\)</td><td>Open interest (contracts outstanding) at strike \(k\).</td></tr>
+    <tr><td>\(S\)</td><td>The underlying's current price.</td></tr>
+    <tr><td>\(100\)</td><td>The per-contract share multiplier (standard convention — one option contract covers 100 shares/units of the underlying).</td></tr>
+    <tr><td>\(0.01\)</td><td>Converts "per $1 move" into "per 1%-of-S move," alongside the extra factor of \(S\).</td></tr>
+    <tr><td>\(s_k\)</td><td>The assumed sign (\(\pm1\)) of the dealer's net position at strike \(k\) — an assumption, not something directly observable from OI.</td></tr>
+    <tr><td>\(\text{GEX}_k\), \(\text{DealerGEX}_k\)</td><td>Unsigned and signed dollar gamma exposure at a strike — the dollar delta-change per 1% move that the OI at that strike implies.</td></tr>
+    <tr><td>\(T\), DTE</td><td>Time to expiry (years / days) — controls how large \(\Gamma\) gets for an at-the-money strike, per the Black-Scholes lesson's own derivation.</td></tr>
+    <tr><td>\(\phi(d_1)\)</td><td>The standard normal density evaluated at \(d_1\) — for an at-the-money option, \(d_1 \approx 0\), so \(\phi(d_1) \approx \phi(0) = 1/\sqrt{2\pi} \approx 0.3989\).</td></tr>
+  </table></div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">At-the-money gamma vs. time to expiry</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Decaying curve of at-the-money gamma against days to expiry: gamma is highest at 1 day to expiry and falls off toward 90 days, with a draggable marker on the curve">
+      <line x1="60" y1="260" x2="610" y2="260" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="60" y1="260" x2="60" y2="20" style="stroke:var(--text3);stroke-width:1"/>
+      <text x="335" y="288" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Days to expiry (DTE) →</text>
+      <text x="20" y="140" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 20 140)">ATM Γ (per $1 move)</text>
+      <text x="60" y="273" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">1</text>
+      <text x="192.5" y="273" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">23</text>
+      <text x="325" y="273" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">45</text>
+      <text x="457.5" y="273" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">68</text>
+      <text x="590" y="273" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">90</text>
+      <text x="52" y="264" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+      <text x="52" y="123" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">0.20</text>
+      <text x="52" y="41" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">0.40</text>
+      <polyline id="gex-curve" points="" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+      <line id="gex-marker" x1="60" y1="20" x2="60" y2="260" style="stroke:var(--amber);stroke-width:1.5;stroke-dasharray:2,2"/>
+      <circle id="gex-dot" cx="60" cy="20" r="5" style="fill:var(--amber);stroke:var(--s1);stroke-width:1.5"/>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Days to expiry (DTE)</span><span class="tl-live" id="gex-dte-val">DTE = 1</span></div>
+        <input type="range" id="gex-dte-slider" min="1" max="90" step="1" value="1">
+        <div class="tl-hint">S = 100, σ = 20% held fixed — only time to expiry changes. Drag right to see gamma collapse as expiry gets further away, or left to see it explode as expiry approaches.</div>
+      </div>
+    </div>
+    <div class="tl-readout">T = <b id="gex-t-val">0.0027</b>y · ATM Γ ≈ <b id="gex-g-val">0.3811</b> per $1 move</div>
+    <div class="tl-chart-caption">Illustrative, computed live from \(\Gamma \approx \phi(0)/(S\sigma\sqrt{T})\) with \(S=100\), \(\sigma=20\%\) — the same at-the-money approximation the Black-Scholes lesson derives, plugged into a range of expiries. Gamma roughly doubles going from 30 to 7 DTE, then more than doubles again from 7 to 1 DTE — the numeric substance behind "gamma effects intensify as expiry approaches," not just an assertion.</div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>ATM gamma at three expiries, then a toy three-strike GEX aggregation</h3>
+    <p>
+      Fix \(S = 100\), \(\sigma = 20\%\) throughout, using the at-the-money
+      approximation \(\Gamma_{\text{ATM}} \approx \phi(0)/(S\sigma\sqrt{T})
+      = 0.3989/(S\sigma\sqrt{T})\), with \(\phi(0)=1/\sqrt{2\pi}\approx
+      0.3989\) — this is exactly the approximation the Black-Scholes lesson's
+      own gamma formula reduces to when \(d_1 \approx 0\) (at the money).
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>30 days to expiry</h4>
+          <div class="tl-math">
+            \[ T=\tfrac{30}{365}=0.0822,\quad \sigma\sqrt{T}=0.20\times0.2867=0.0573 \]
+            \[ \Gamma_{\text{ATM}} = \frac{0.3989}{100 \times 0.0573} = \frac{0.3989}{5.734} \approx 0.0696 \]
+          </div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>7 days to expiry</h4>
+          <div class="tl-math">
+            \[ T=\tfrac{7}{365}=0.0192,\quad \sigma\sqrt{T}=0.20\times0.1385=0.0277 \]
+            \[ \Gamma_{\text{ATM}} = \frac{0.3989}{100 \times 0.0277} = \frac{0.3989}{2.770} \approx 0.1440 \]
+          </div>
+          <p>Roughly <strong>2.1×</strong> the 30-day value — for the same open interest, the hedging flow rate has already doubled.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>1 day to expiry</h4>
+          <div class="tl-math">
+            \[ T=\tfrac{1}{365}=0.00274,\quad \sigma\sqrt{T}=0.20\times0.0523=0.0105 \]
+            \[ \Gamma_{\text{ATM}} = \frac{0.3989}{100 \times 0.0105} = \frac{0.3989}{1.047} \approx 0.3811 \]
+          </div>
+          <p>
+            Another <strong>2.6×</strong> jump from the 7-day figure — and
+            roughly <strong>5.5×</strong> the 30-day figure. This is the
+            \(1/\sqrt{T}\) relationship doing its work: gamma doesn't rise
+            linearly as expiry approaches, it accelerates, which is exactly
+            why the final trading day before expiry behaves so differently
+            from the two weeks before it.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>A toy three-strike dealer GEX aggregation</h4>
+          <p>
+            Take the 1-week-to-expiry snapshot (\(\Gamma_{\text{ATM}}\approx
+            0.1440\) at the strike closest to spot) and build a tiny
+            three-strike book, \(S=100\), assuming the standard case
+            everywhere (\(s_k=-1\), dealer net short). Combined call+put OI
+            per strike (valid since \(\Gamma_{\text{call}}=\Gamma_{\text{put}}\)
+            lets the two sides share one \(\Gamma\)):
+          </p>
+          <div class="tl-math">
+            <pre style="margin:0;text-align:left;font-family:'DM Mono',monospace;font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.7">Strike   Γ       Combined OI   DealerGEX = −Γ·OI·100·S²·0.01
+95       0.050   4,000         −0.050×4,000×10,000  = −$2.00B
+100      0.144   9,800         −0.144×9,800×10,000  = −$14.11B
+105      0.040   6,000         −0.040×6,000×10,000  = −$2.40B
+                                Total Dealer GEX     ≈ −$18.51B</pre>
+          </div>
+          <p style="margin-bottom:0">
+            (With \(S=100\), the factor \(100\times S^2\times0.01 =
+            100\times10{,}000\times0.01 = 10{,}000\) simplifies the
+            arithmetic — real GEX figures for a broad index really do run
+            into the billions, which is why they're normally quoted that
+            way, not as a small per-share number.) Notice the 100-strike
+            dominates the total even though its OI (9,800) isn't the
+            largest single-side figure in the book — it wins because gamma
+            itself is nearly 3× higher there than at 95 or 105, which is
+            exactly the mathematical reason near-the-money open interest
+            matters disproportionately more than far-dated or far-OTM open
+            interest of similar size. All three strikes land negative here
+            because this toy example applies the standard "dealer net
+            short everywhere" assumption uniformly — a real gamma-flip
+            crossing needs either a wider strike ladder, a mix of assumed
+            signs across strikes, or spot moving far enough that some
+            strikes' contributions decay while others' grow.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>The wall becomes fuel — a gamma squeeze</h3>
+    <p>
+      A heavily traded index future sits at 4,480, grinding higher through a
+      quiet session. The nearest-expiry options chain shows a large call
+      open-interest concentration at the 4,500 strike — several multiples
+      the size of neighboring strikes, the kind of outlier that gets flagged
+      as a "call wall." Dealers are assumed net short that OI (the standard
+      case).
+    </p>
+    <p>
+      As price grinds from 4,480 toward 4,500, those calls' delta rises
+      steadily, and per the hedge-flow-rate formula above, dealers must keep
+      buying futures to stay hedged — buying that itself nudges price
+      higher, exactly the self-reinforcing loop from the intuition box.
+      Ordinarily this would stall right at 4,500: delta saturates near 1.0,
+      the hedge completes, buying demand evaporates, and the move loses its
+      fuel — the textbook "wall holds" outcome.
+    </p>
+    <p style="margin-bottom:0">
+      Instead, a stronger-than-expected data release hits mid-session and
+      price rips straight through 4,500 with real momentum. The calls that
+      were sitting comfortably at-the-money are now suddenly in-the-money
+      and gaining delta <em>faster</em> than the dealers' existing hedge
+      accounted for — gamma near that strike was near its local peak, so
+      the delta jump per additional point of price is large. Dealers who
+      thought their hedge was nearly complete now need meaningfully more
+      long exposure, immediately, and the resulting catch-up buying
+      accelerates the move well past 4,500 before it finds the next level
+      of resistance. The exact same open interest that created resistance
+      on the way up becomes the fuel for the breakout once it's breached —
+      a gamma squeeze.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Nobody trades dealer GEX as a standalone signal in isolation — the sign
+    ambiguity flagged above is too real for that — but a few applications
+    of the mechanism above are common across options-flow-aware trading
+    desks and the retail tools built to mimic them:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📊</div>
+      <h4>Options-flow / dealer-positioning analytics</h4>
+      <p>Several commercial and free data services estimate aggregate dealer gamma from public open-interest data using exactly the sign conventions above, publishing it as a daily positioning read alongside price.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🧭</div>
+      <h4>A regime filter, not an entry signal</h4>
+      <p>The estimated sign of aggregate dealer gamma (net long vs. net short) is used as context for how a given size of order flow should be expected to behave — amplified in a short-gamma regime, dampened in a long-gamma one — layered on top of an existing setup rather than traded on its own.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📐</div>
+      <h4>The gamma-flip level as a structural pivot</h4>
+      <p>Some practitioners track the estimated gamma-flip price as a level worth watching precisely because the character of price action either side of it is theorized to differ — calmer/mean-reverting on one side, choppier/trend-prone on the other — while treating the level itself as an estimate that moves, not a fixed line.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this gets over-trusted</h3>
+    <p>
+      <strong>Open interest is lagged.</strong> Public OI figures typically
+      reflect the previous session's close, not a live, intraday feed. A
+      large intraday move can already have changed the underlying
+      positioning well before the next OI update reflects it — any GEX
+      estimate built on it is describing yesterday's book, not this
+      instant's.
+    </p>
+    <p>
+      <strong>Dealer positioning is assumed, not observed.</strong> As
+      stressed above, whether dealers are actually net long or net short any
+      given strike is inferred from a standard convention about who tends to
+      buy vs. write options — never a directly observable fact from raw
+      OI. Every GEX number, every gamma-flip estimate, inherits this
+      assumption and can be meaningfully wrong if the true positioning
+      differs from it.
+    </p>
+    <p style="margin-bottom:0">
+      <strong>"Active pinning" vs. "hedging byproduct" is a genuinely open
+      question.</strong> There are two distinct stories for why price
+      sometimes gravitates toward high-OI strikes: one where dealer hedging
+      mechanically produces the effect as a byproduct (the mechanism this
+      lesson derives), and one where market participants actively trade
+      toward those levels because they expect the pattern to hold. Both are
+      discussed in academic and practitioner research on dealer gamma
+      imbalances and their relationship to realized volatility, and the
+      honest state of that discussion is unsettled, not resolved in either
+      direction — treat any confident claim that it's "definitely" one or
+      the other with real skepticism.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>GEX rescales gamma into a comparable dollar figure.</strong> \(\Gamma \times \text{OI} \times 100 \times S^2 \times 0.01\) converts "delta change per $1 move" into "dollar delta change per 1% move" — the unit options-flow analytics standardizes on.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A call and a put share the same gamma at the same strike.</strong> Put-call parity forces \(\Gamma_{\text{call}}=\Gamma_{\text{put}}\) exactly — it's the dealer's long/short sign, not the option type, that decides whether hedging flow amplifies or dampens a move.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The hedge-flow rate is literally gamma.</strong> \(d(\text{hedge shares})/dS = \Gamma \times \text{OI} \times 100\) — the formal version of "gamma tells you how powerful the hedging flow will be."</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Short gamma amplifies, long gamma dampens — derived, not asserted.</strong> The sign of dealer gamma flips the sign of the required hedge trade relative to the price move itself.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The dealer's sign is an assumption layered on top of raw OI, not an observed fact.</strong> Every GEX figure and gamma-flip estimate inherits this uncertainty.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Whether apparent "pinning" is active trading or a pure hedging byproduct is genuinely unsettled.</strong> Don't treat either explanation as the proven one.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why do a call and a put at the same strike and expiry have exactly the same gamma, even though their deltas are different (and opposite in sign)?</summary>
+    <div class="tl-answer">
+      Put-call parity states \(C - P = S - Ke^{-rT}\). The right-hand side
+      is a linear function of \(S\) (the strike and discount factor are
+      constants), so its second derivative with respect to \(S\) is exactly
+      zero. Differentiating both sides twice therefore gives
+      \(\partial^2C/\partial S^2 - \partial^2P/\partial S^2 = 0\), i.e.
+      \(\Gamma_{\text{call}} = \Gamma_{\text{put}}\), always, not just
+      approximately. Delta differs because the <em>first</em> derivative of
+      the linear right-hand side is 1, not 0 — \(\Delta_{\text{call}} -
+      \Delta_{\text{put}} = 1\) — so delta shifts by a constant between call
+      and put while gamma (the second derivative) doesn't shift at all.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why is "dealers are net short gamma" described in this lesson as an assumption rather than a fact?</summary>
+    <div class="tl-answer">
+      Open interest only reports how many contracts are outstanding at a
+      strike — it says nothing about which counterparty (customer or
+      dealer) holds the long side versus the short side. The claim that
+      dealers are net short most strikes rests on a separate, standard but
+      unverifiable assumption: that customers, in aggregate, are net buyers
+      of both calls and puts, making dealers the net writers who absorb that
+      demand. That assumption is usually reasonable but is not something
+      directly observable in the OI data itself, which is exactly why
+      different data providers can disagree about specific strikes' signs.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Derive why short dealer gamma produces "amplifying" hedging flow while long dealer gamma produces "dampening" flow.</summary>
+    <div class="tl-answer">
+      A dealer short an option has negative gamma; a dealer long an option
+      has positive gamma. The required hedge position is the negative of
+      the dealer's own delta (holding stock to offset it), so its rate of
+      change with price is \(-\Gamma_{\text{dealer}}\times\text{OI}\times
+      100\). If \(\Gamma_{\text{dealer}}<0\) (short gamma), that rate is
+      positive: the dealer must buy more as price rises and sell as it
+      falls — the same direction as the move, which is destabilizing since
+      it adds momentum to whatever's already happening. If
+      \(\Gamma_{\text{dealer}}>0\) (long gamma), the rate is negative: the
+      dealer must sell as price rises and buy as it falls — the opposite
+      direction to the move, which dampens it back toward where it started.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. In the worked example, ATM gamma went from ≈0.070 (30 DTE) to ≈0.144 (7 DTE) to ≈0.381 (1 DTE). Why does the increase accelerate rather than stay proportional to how many days were lost?</summary>
+    <div class="tl-answer">
+      Because \(\Gamma_{\text{ATM}} \propto 1/\sqrt{T}\), not \(1/T\). Going
+      from 30 to 7 days removes 23 days but \(\sqrt{T}\) only shrinks from
+      \(\sqrt{30/365}\approx0.287\) to \(\sqrt{7/365}\approx0.138\) — roughly
+      halved, so gamma roughly doubles. Going from 7 to 1 day removes only 6
+      days, but because \(T\) is already small, that's a much larger
+      <em>relative</em> shrinkage of \(\sqrt{T}\) (down to
+      \(\sqrt{1/365}\approx0.052\), well under half of the 7-day value), so
+      gamma jumps by a larger multiple even though fewer calendar days were
+      lost. The square-root relationship means the same number of remaining
+      days matters far more when there are few of them left than when there
+      are many — which is exactly why the final trading day carries
+      disproportionately more hedging intensity than an equivalent one-day
+      shift three weeks out.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. What is the gamma-flip level, and why does it move even on a day when price itself doesn't?</summary>
+    <div class="tl-answer">
+      It's the price level at which the aggregate, signed dealer GEX summed
+      across the whole open-interest ladder crosses zero — net stabilizing
+      (long gamma) on one side, net destabilizing (short gamma) on the
+      other. It's estimated, not fixed, because it depends on the current
+      OI distribution (how much is outstanding at each strike) and the
+      assumed sign at each strike, both of which can change without price
+      moving at all — new option positions opening or closing shift OI,
+      and an expiry rolling to the next contract month changes the whole
+      distribution being summed. A stale gamma-flip estimate from
+      yesterday's OI can already be wrong today even if spot hasn't moved.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. In the "wall becomes fuel" scenario, why does the wall breaking cause acceleration rather than a reversal?</summary>
+    <div class="tl-answer">
+      Approaching the wall, dealers (short those calls) are buying to keep
+      up with rising delta, which is what pushed price toward the strike in
+      the first place. Ordinarily that buying would evaporate right at the
+      strike once delta saturates near 1.0 and the hedge is complete — the
+      "wall holds" case. But because gamma is near its local peak right
+      around that strike, a strong enough move can carry price through it
+      fast enough that delta jumps by more than the dealers' existing hedge
+      already accounted for. Instead of the hedge completing gently, the
+      dealers suddenly need <em>more</em> long exposure than they have,
+      forcing urgent catch-up buying — the same mechanical demand that
+      built resistance on the way up becomes forced buying on the way
+      through, which is why a broken wall so often accelerates rather than
+      reverses.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li><a href="black-scholes.html">Black-Scholes-Merton Option Pricing</a> — the derivation of delta and gamma this lesson builds on, including the formal proof that at-the-money gamma rises as \(T\to0\).</li>
+    <li>Sheldon Natenberg, <em>Option Volatility and Pricing</em>, 2nd ed., McGraw-Hill, 1994 — the standard practitioner reference for the Greeks and how options market makers actually think about and manage gamma risk.</li>
+    <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson — the standard textbook treatment of dealer hedging and the Greeks that most quant/trading desks point newcomers to.</li>
+    <li>Academic and practitioner research on dealer gamma imbalances and their relationship to realized volatility exists and is a genuinely active area of study — cited here generically because attributing it to one specific paper would overstate how settled the "active pinning vs. hedging byproduct" question actually is (see the pitfalls above).</li>
+  </ul>
+  </details>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🔬</div>
+    <div class="tl-box-label">Deep dive</div>
+    <h3>Want to go further into the Greeks?</h3>
+    <p>
+      Three additional lessons take the mechanics on this page further, past
+      what's needed for the two core lessons in this category:
+    </p>
+    <ul>
+      <li><a href="theta-decay.html">Theta Decay</a> — derives \(\Theta\) straight out of the same Black-Scholes PDE as this lesson's gamma, and shows why dealers being short gamma means they're long theta — the same fact seen through a different partial derivative.</li>
+      <li><a href="vega-volatility-surface.html">Vega &amp; the Volatility Surface</a> — vega from scratch, the skew/smile and term-structure axes of the implied-vol surface, and why vega (unlike delta or gamma) can only be hedged with other options.</li>
+      <li><a href="second-order-greeks.html">Second-Order Greeks: Vanna, Charm, Vomma &amp; More</a> — the cross-derivatives (Vanna, Charm, Vomma, Speed, Color, Zomma), including dollar Vanna/Charm exposure formulas that generalize this lesson's dealer-GEX math to vol-driven and time-driven dealer flows.</li>
+    </ul>
+  </div>
+
+  <div class="tl-footer-nav">
+    <a href="black-scholes.html">← Black-Scholes-Merton Option Pricing</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="open-interest-walls-max-pain.html">Open Interest Walls, Max Pain &amp; Squeeze Trading →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var PHI0 = 1/Math.sqrt(2*Math.PI); // phi(0), standard normal density at 0
+  var S = 100, SIGMA = 0.20;
+
+  function atmGamma(dte){
+    var T = dte/365;
+    return PHI0/(S*SIGMA*Math.sqrt(T));
+  }
+
+  var X_LEFT = 60, X_RIGHT = 610, DTE_MIN = 1, DTE_MAX = 90;
+  var Y_BASE = 260, Y_TOP = 20, G_MAX = 0.40;
+
+  function dteToX(dte){ return X_LEFT + (dte - DTE_MIN)/(DTE_MAX - DTE_MIN)*(X_RIGHT - X_LEFT); }
+  function gToY(g){ return Y_BASE - Math.min(g, G_MAX)/G_MAX*(Y_BASE - Y_TOP); }
+
+  var curve = document.getElementById('gex-curve');
+  var marker = document.getElementById('gex-marker');
+  var dot = document.getElementById('gex-dot');
+  var slider = document.getElementById('gex-dte-slider');
+  var dteVal = document.getElementById('gex-dte-val');
+  var tVal = document.getElementById('gex-t-val');
+  var gVal = document.getElementById('gex-g-val');
+  if (!slider) return;
+
+  function buildCurve(){
+    var pts = [];
+    var N = 90;
+    for (var i=0; i<N; i++){
+      var dte = DTE_MIN + (i/(N-1))*(DTE_MAX - DTE_MIN);
+      var g = atmGamma(dte);
+      pts.push(dteToX(dte).toFixed(2) + ',' + gToY(g).toFixed(2));
+    }
+    curve.setAttribute('points', pts.join(' '));
+  }
+
+  function update(){
+    var dte = parseInt(slider.value, 10);
+    var g = atmGamma(dte);
+    var T = dte/365;
+
+    dteVal.textContent = 'DTE = ' + dte;
+    tVal.textContent = T.toFixed(4);
+    gVal.textContent = g.toFixed(4);
+
+    var x = dteToX(dte);
+    var y = gToY(g);
+    marker.setAttribute('x1', x);
+    marker.setAttribute('x2', x);
+    marker.setAttribute('y1', 20);
+    marker.setAttribute('y2', 260);
+    dot.setAttribute('cx', x);
+    dot.setAttribute('cy', y);
+  }
+
+  buildCurve();
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
+</body>
+</html>
