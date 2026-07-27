@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hierarchical Bayesian Models &amp; Partial Pooling — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Bayesian Statistics Extensions / Hierarchical Bayesian Models &amp; Partial Pooling</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Bayesian Extensions 3 of 3</div>
+  <h1 class="tl-title">Hierarchical Bayesian Models &amp; Partial Pooling</h1>
+  <p class="tl-dek">Five strategies, five trade counts, five noisy Sharpe estimates — should the one with 6 lucky-looking trades really be trusted as much as the one with 400? Partial pooling is the principled answer between "trust every estimate fully" and "ignore the differences entirely."</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here, not a claim this repo has built or validated it</span>
+    <span>~17 min read</span>
+    <span>Prereqs: Conjugate Priors &amp; Bayesian Updating in Practice</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>There are three ways to estimate several related group means at once: <strong>complete pooling</strong> (ignore group differences, one shared number), <strong>no pooling</strong> (estimate every group in total isolation), and <strong>partial pooling</strong> (the hierarchical compromise between them).</li>
+      <li>The hierarchical model states this precisely: \(y_{ij} \sim N(\theta_j, \sigma^2)\) at the observation level, with group parameters themselves drawn from a shared hyper-distribution, \(\theta_j \sim N(\mu, \tau^2)\).</li>
+      <li>The resulting shrinkage estimator is the same precision-weighted average from the Normal-Normal conjugacy lesson, applied per group: \(\hat\theta_j = B_j\,\bar{y}_j + (1-B_j)\,\mu\), where \(B_j\) grows toward 1 as that group's own sample size grows.</li>
+      <li>Worked example: five strategies with wildly different trade counts (5 to 50 trades) and raw Sharpe estimates get pulled toward a common grand mean by very different amounts — the smallest samples move the most.</li>
+      <li>This is the same idea behind the James-Stein estimator's famous, provable result: shrinking several noisy estimates toward each other, even when the underlying things being estimated have nothing to do with one another, reduces total estimation error.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The <a href="bayesian-conjugate-priors.html">Conjugate Priors &amp;
+    Bayesian Updating in Practice</a> lesson derived the Normal-Normal
+    posterior for a single parameter, combining one prior with one batch of
+    data. Real portfolios and research programs almost never involve just
+    one parameter — they involve <em>several</em> related ones at once: five
+    currency pairs' true expected returns, ten strategies' true Sharpe
+    ratios, a dozen analysts' true forecast skill. Each of these has its own
+    noisy sample estimate, and — critically — each sample is a wildly
+    different size. A strategy traded for two years has hundreds of trades
+    behind its Sharpe estimate; one launched last month might have six.
+  </p>
+  <p>
+    The naive approach — trust every group's own raw sample average and
+    treat all of them as equally reliable — badly overstates confidence in
+    the small-sample groups. The other naive approach — pool everything into
+    one number and ignore the fact that groups differ at all — throws away
+    real, informative differences the larger samples have earned the right
+    to show. <strong>Hierarchical Bayesian models</strong> formalize the
+    principled middle ground: let each group have its own parameter, but
+    assume those parameters are themselves drawn from a shared distribution,
+    so that a noisy estimate borrows strength from the rest of the group. The
+    <a href="sharpe-family-deflated.html">Sharpe, Sortino, Calmar &amp; the
+    Deflated Sharpe Ratio</a> lesson already flagged that a single strategy's
+    reported Sharpe needs a minimum track-record length before it's
+    trustworthy in isolation; this lesson is the natural next question — what
+    do you do about several strategies' Sharpe ratios at once, especially
+    when some have barely any history at all?
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A rookie's batting average shouldn't be taken at face value</h3>
+    <p>
+      A baseball player who goes 3-for-4 in their first four at-bats of the
+      season has a .750 batting average — but nobody believes they're
+      actually a .750 hitter; the number is nearly all noise from a tiny
+      sample. A player who's gone 120-for-400 over a full season, hitting
+      .300, has earned much more trust in that number reflecting something
+      real. If you had to guess both players' <em>true</em> underlying
+      ability today, the honest move isn't to take either number at face
+      value or to ignore both and guess the league average for everyone — it's
+      to pull the rookie's wild .750 most of the way back toward a sensible
+      league-average expectation (because four at-bats tell you almost
+      nothing), while barely adjusting the established player's .300 (because
+      400 at-bats is real evidence). That "pull toward the average, by an
+      amount that depends on how little data you have" is exactly what
+      partial pooling formalizes — not as a vague gut instinct, but as an
+      exact, computable weighted average.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    Suppose there are \(J\) groups (strategies, pairs, analysts), and group
+    \(j\) has \(n_j\) individual observations \(y_{1j},\dots,y_{n_j j}\)
+    (per-trade returns, say). Three distinct modeling choices are available
+    for estimating each group's true underlying parameter \(\theta_j\) (its
+    true mean return, or true Sharpe):
+  </p>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Complete pooling</h4>
+      <p>
+        Assume every group shares exactly the same true parameter —
+        \(\theta_1=\theta_2=\dots=\theta_J=\mu\). Pool all observations
+        from every group into one giant sample and estimate a single grand
+        mean. Group differences are treated as pure noise and discarded
+        entirely — a strategy with 400 trades and one with 6 trades
+        contribute to (and receive) the exact same estimate.
+      </p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>No pooling</h4>
+      <p>
+        Assume every group's parameter is entirely unrelated to the others —
+        estimate each \(\theta_j\) using only group \(j\)'s own data, as if
+        the other groups didn't exist. A group with 6 trades gets exactly
+        as much (mis)placed confidence in its raw sample average as one with
+        400 — the small-sample noise is never corrected for.
+      </p>
+    </div>
+  </div>
+
+  <p>
+    <strong>Partial pooling</strong> — the hierarchical model — sits between
+    these two extremes by treating the group parameters themselves as random
+    draws from a shared distribution, rather than fixing them to be either
+    identical or unrelated. Stated explicitly, at two levels:
+  </p>
+  <div class="tl-math">\[ y_{ij} \sim N(\theta_j,\ \sigma^2) \qquad\qquad \theta_j \sim N(\mu,\ \tau^2) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>y_ij</code><span>observation i within group j (e.g. a per-trade return), scattered around that group's own true mean θⱼ with noise σ²</span></div>
+    <div class="tl-eq-chip c2"><code>θⱼ ~ N(μ,τ²)</code><span>the hierarchical layer — each group's true parameter is itself drawn from a shared distribution centered at grand mean μ, with between-group spread τ²</span></div>
+  </div>
+  <p>
+    This is why it's called <strong>hierarchical</strong>: there are two
+    levels of randomness stacked on top of each other — individual
+    observations vary around their group's mean, and group means themselves
+    vary around a shared grand mean. Crucially, \(\mu\) (the grand mean) and
+    \(\tau^2\) (how much true group means actually differ from each other)
+    are <em>not</em> fixed in advance — they are estimated from the full
+    collection of groups (commonly by method-of-moments or maximum
+    likelihood on the observed group means, an estimation step this lesson
+    names but doesn't derive in full — the hyperparameters used below are
+    stated as given, illustrative values). Once \(\mu\) and \(\tau^2\) are in
+    hand, group \(j\)'s posterior mean, given its own sample mean
+    \(\bar{y}_j\) (with sampling variance \(\sigma^2/n_j\)), is exactly the
+    Normal-Normal precision-weighted average from the previous lesson —
+    except the "prior" is now the shared hyper-distribution instead of a
+    hand-picked belief:
+  </p>
+  <div class="tl-math">\[ \hat\theta_j = B_j\,\bar{y}_j + (1-B_j)\,\mu, \qquad B_j = \frac{\tau^2}{\tau^2 + \sigma^2/n_j} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>Bⱼ</code><span>the shrinkage weight — how much group j's own data is trusted, between 0 and 1</span></div>
+    <div class="tl-eq-chip c4"><code>σ²/nⱼ</code><span>group j's own sampling variance — shrinks as nⱼ grows, so Bⱼ rises toward 1</span></div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">nⱼ</div>
+      <div class="tl-fp-name">Group j's sample size</div>
+      <div class="tl-fp-desc">More trades/observations means group j's own data is trusted more</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">τ²</div>
+      <div class="tl-fp-name">Between-group variance</div>
+      <div class="tl-fp-desc">How much groups genuinely differ, once sampling noise is accounted for</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">Bⱼ</div>
+      <div class="tl-fp-name">Shrinkage weight</div>
+      <div class="tl-fp-desc">Weight on group j's raw estimate — near 1 for large nⱼ, near 0 for small nⱼ</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">θⱼ-hat</div>
+      <div class="tl-fp-name">Partially pooled estimate</div>
+      <div class="tl-fp-desc">A blend of group j's own average and the grand mean</div>
+    </div>
+  </div>
+
+  <p>
+    Notice \(B_j\) recovers both extremes as limiting cases, which is the
+    unifying insight of this whole lesson: as \(\tau^2 \to 0\) (assuming
+    groups don't really differ at all), \(B_j\to 0\) for every group and
+    \(\hat\theta_j\to\mu\) for all \(j\) — <strong>complete pooling</strong>.
+    As \(\tau^2\to\infty\) (assuming groups could differ arbitrarily, so the
+    shared structure carries no information), \(B_j\to 1\) and
+    \(\hat\theta_j\to\bar{y}_j\) — <strong>no pooling</strong>. Partial
+    pooling is what happens for any finite, positive \(\tau^2\) estimated
+    honestly from the data — the two "pure" strategies are just its
+    endpoints, not separate, unrelated ideas.
+  </p>
+
+  <div class="tl-solid green">
+    <strong>The James-Stein connection:</strong> James &amp; Stein (1961)
+    proved something genuinely surprising — when estimating three or more
+    group means simultaneously under total squared-error loss, shrinking
+    every raw estimate toward a common target by a factor like \(B_j\) above
+    achieves strictly lower total expected error than using each group's own
+    raw average, <em>even if the groups' true parameters have nothing to do
+    with each other</em>. This isn't an assumption that the groups are
+    related in reality — it's a mathematical fact about how squared-error
+    loss behaves in three-or-more dimensions at once, popularized by Efron
+    &amp; Morris's "Stein's Paradox" using baseball batting averages.
+  </div>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(y_{ij}\)</td><td>Observation \(i\) within group \(j\) — e.g. a single trade's return for strategy \(j\).</td></tr>
+      <tr><td>\(\theta_j\)</td><td>Group \(j\)'s true, unknown parameter (its true mean return or Sharpe ratio).</td></tr>
+      <tr><td>\(\sigma^2\)</td><td>Within-group observation variance — how noisy individual observations are around their own group's mean.</td></tr>
+      <tr><td>\(\mu\)</td><td>The grand mean — the center of the shared hyper-distribution the group parameters are drawn from.</td></tr>
+      <tr><td>\(\tau^2\)</td><td>Between-group variance — how much the groups' true parameters genuinely differ from each other.</td></tr>
+      <tr><td>\(\bar{y}_j\)</td><td>Group \(j\)'s own raw sample mean — the "no pooling" estimate on its own.</td></tr>
+      <tr><td>\(n_j\)</td><td>Number of observations in group \(j\) (e.g. trade count).</td></tr>
+      <tr><td>\(B_j\)</td><td>The shrinkage weight for group \(j\) — how much its own data is trusted versus the grand mean.</td></tr>
+      <tr><td>\(\hat\theta_j\)</td><td>The partially pooled (shrunk) estimate for group \(j\)'s true parameter.</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Shrinkage of one noisy strategy's Sharpe estimate as its trade count grows</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart with three bars: a fixed no-pooling raw Sharpe estimate, a dynamic partially-pooled estimate that changes with sample size, and a fixed complete-pooling grand mean">
+      <line x1="60" y1="20" x2="580" y2="20" style="stroke:var(--border);stroke-dasharray:2,2" />
+      <line x1="60" y1="97" x2="580" y2="97" style="stroke:var(--border);stroke-dasharray:2,2" />
+      <line x1="60" y1="173" x2="580" y2="173" style="stroke:var(--border);stroke-dasharray:2,2" />
+      <line x1="60" y1="210" x2="580" y2="210" style="stroke:var(--border)" />
+      <text x="50" y="24" fill="var(--text3)" font-size="10" text-anchor="end">2.5</text>
+      <text x="50" y="101" fill="var(--text3)" font-size="10" text-anchor="end">1.5</text>
+      <text x="50" y="177" fill="var(--text3)" font-size="10" text-anchor="end">0.5</text>
+      <text x="50" y="214" fill="var(--text3)" font-size="10" text-anchor="end">0.0</text>
+      <rect x="100" y="58" width="110" height="152" style="fill:var(--purple)" rx="2" />
+      <text x="155" y="46" fill="var(--text)" font-size="14" font-weight="700" text-anchor="middle">2.00</text>
+      <text x="155" y="232" fill="var(--text3)" font-size="11.5" text-anchor="middle">No pooling</text>
+      <text x="155" y="247" fill="var(--text3)" font-size="10" text-anchor="middle">(raw ȳⱼ)</text>
+      <rect id="hier-bar-partial" x="265" y="58" width="110" height="152" style="fill:var(--blue)" rx="2" />
+      <text id="hier-bar-partial-label" x="320" y="46" fill="var(--text)" font-size="14" font-weight="700" text-anchor="middle">2.00</text>
+      <text x="320" y="232" fill="var(--text3)" font-size="11.5" text-anchor="middle">Partial pooling</text>
+      <text x="320" y="247" fill="var(--text3)" font-size="10" text-anchor="middle">(shrunk θⱼ-hat)</text>
+      <rect x="430" y="163.4" width="110" height="46.6" style="fill:var(--green)" rx="2" />
+      <text x="485" y="151" fill="var(--text)" font-size="14" font-weight="700" text-anchor="middle">0.70</text>
+      <text x="485" y="232" fill="var(--text3)" font-size="11.5" text-anchor="middle">Complete pooling</text>
+      <text x="485" y="247" fill="var(--text3)" font-size="10" text-anchor="middle">(grand mean μ)</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Strategy's trade count (nⱼ)</span><span class="tl-live" id="hier-n-val">2</span></div>
+        <input type="range" id="hier-n" min="2" max="100" step="1" value="2">
+      </div>
+    </div>
+    <div class="tl-chart-caption">
+      A strategy with a raw Sharpe estimate of 2.00 (purple, fixed — a
+      noisy, attention-grabbing number), against a grand mean of μ=0.70
+      across the wider strategy pool (green, fixed), assuming
+      \(\tau^2=0.25\) and \(\sigma^2=1\) per the worked example below. At
+      only 2 trades, the blue "partial pooling" bar sits far below the raw
+      2.00 — almost all the way toward the grand mean, because there's
+      barely any real evidence behind the 2.00 yet. Drag the trade-count
+      slider up and watch the blue bar climb back toward the raw estimate as
+      real evidence accumulates.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Five strategies, five trade counts, one shared shrinkage rule</h3>
+    <p>
+      Assume (for illustration) an estimated grand mean \(\mu=0.70\) and
+      between-group variance \(\tau^2=0.25\) across a pool of strategies,
+      with each group's own sampling variance approximated simply as
+      \(\sigma^2/n_j\) using \(\sigma^2=1\) (a simplifying stand-in for the
+      true, more involved standard error of a Sharpe ratio estimate — stated
+      plainly as a simplification, not the exact formula). Five strategies,
+      each with a raw ("no pooling") Sharpe estimate \(\bar{y}_j\) and a
+      trade count \(n_j\):
+    </p>
+    <ul>
+      <li><strong>Strategy A</strong> — \(n=5\) trades, raw Sharpe \(\bar{y}=2.10\). \(B_A=\frac{0.25}{0.25+1/5}=\frac{0.25}{0.45}=0.556\). Shrunk: \(0.556(2.10)+0.444(0.70)=1.167+0.311=\mathbf{1.478}\).</li>
+      <li><strong>Strategy B</strong> — \(n=50\) trades, raw Sharpe \(\bar{y}=0.85\). \(B_B=\frac{0.25}{0.25+1/50}=\frac{0.25}{0.27}=0.926\). Shrunk: \(0.926(0.85)+0.074(0.70)=0.787+0.052=\mathbf{0.839}\).</li>
+      <li><strong>Strategy C</strong> — \(n=8\) trades, raw Sharpe \(\bar{y}=-0.60\). \(B_C=\frac{0.25}{0.25+1/8}=\frac{0.25}{0.375}=0.667\). Shrunk: \(0.667(-0.60)+0.333(0.70)=-0.400+0.233=\mathbf{-0.167}\).</li>
+      <li><strong>Strategy D</strong> — \(n=40\) trades, raw Sharpe \(\bar{y}=0.75\). \(B_D=\frac{0.25}{0.25+1/40}=\frac{0.25}{0.275}=0.909\). Shrunk: \(0.909(0.75)+0.091(0.70)=0.682+0.064=\mathbf{0.745}\).</li>
+      <li><strong>Strategy E</strong> — \(n=6\) trades, raw Sharpe \(\bar{y}=1.90\). \(B_E=\frac{0.25}{0.25+1/6}=\frac{0.25}{0.4167}=0.600\). Shrunk: \(0.600(1.90)+0.400(0.70)=1.140+0.280=\mathbf{1.420}\).</li>
+    </ul>
+    <p>
+      The pattern is exactly what the shrinkage weight formula predicts: the
+      two small-sample strategies with the flashiest raw numbers — A (2.10 →
+      1.478) and E (1.90 → 1.420) — get pulled down hardest, because their
+      \(n_j\) is small and \(B_j\) is furthest from 1. Strategy C's ugly-looking
+      \(-0.60\) gets pulled <em>up</em> toward positive territory (to
+      \(-0.167\)), for the same reason — a small, unlucky-looking sample is
+      untrustworthy in either direction. Meanwhile B and D, with real trade
+      histories (50 and 40), barely move at all (0.85→0.839, 0.75→0.745) —
+      their raw estimates had already earned most of the trust the grand mean
+      would otherwise contribute. No pooling would have taken A's 2.10 and
+      E's 1.90 completely at face value; complete pooling would have thrown
+      away B and D's hard-earned, largely-correct differences from the pack
+      entirely. Partial pooling did neither.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world scenario</div>
+    <h3>Sizing a multi-strategy book without over-trusting the newest strategy</h3>
+    <p>
+      A systematic allocator runs five sub-strategies side by side and wants
+      to size positions roughly in proportion to each one's expected Sharpe
+      ratio — more capital to the strategies that look better risk-adjusted.
+      Using raw, no-pooling Sharpe estimates directly (as in the worked
+      example above) would send an outsized allocation to Strategy A purely
+      because its first 5 trades happened to look spectacular — precisely
+      the kind of small-sample noise the
+      <a href="sharpe-family-deflated.html">Deflated Sharpe Ratio</a> lesson
+      already warns inflates a reported Sharpe when many variations get
+      tried. Using the partially pooled estimates instead means Strategy A
+      only receives an allocation appropriate to its <em>real</em>, much more
+      modest 1.478 shrunk estimate until more trades accumulate and its own
+      data can (if it holds up) earn back the higher allocation on its own
+      merit. This describes the logic of the approach, not a claim that this
+      specific allocation rule has been built, backtested, or is running
+      anywhere in this repo — it would still need to prove itself out of
+      sample before being trusted with real capital.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Hierarchical models and empirical-Bayes shrinkage are a standard tool
+    anywhere many related, unequally-sized samples need to be compared fairly:
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">⚾</div>
+      <h4>Sports analytics</h4>
+      <p>The original James-Stein/empirical-Bayes showcase: shrinking early-season batting averages toward the league mean predicts end-of-season performance far better than trusting small-sample averages at face value.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🗺️</div>
+      <h4>Small-area estimation</h4>
+      <p>Public-health and survey statisticians routinely need a rate (disease incidence, unemployment) for every small region, even when some regions were barely sampled — partial pooling across regions is the standard fix.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧪</div>
+      <h4>Many-variant A/B testing</h4>
+      <p>Testing dozens of website variants or ad creatives at once means most variants only get modest traffic — hierarchical shrinkage keeps a lucky-looking, low-traffic variant from being declared a winner prematurely.</p>
+    </div>
+  </div>
+  <p>
+    The common theme: whenever there are <strong>many groups, unequal sample
+    sizes, and a real (if unproven) reason to believe the groups are at least
+    somewhat related</strong>, partial pooling produces estimates with lower
+    total error than either extreme. It costs something too — a hierarchical
+    model needs \(\mu\) and \(\tau^2\) themselves estimated (adding its own
+    layer of uncertainty, and typically requiring the simulation-based tools
+    from <a href="mcmc-metropolis-gibbs.html">MCMC: Metropolis-Hastings &amp;
+    Gibbs Sampling</a> once the model is more complex than the simple Normal
+    case shown here), and it assumes the groups share enough real structure
+    for the "shared hyper-distribution" framing to be meaningful at all — a
+    handful of strategies built on genuinely unrelated market mechanisms
+    might not belong in the same hierarchy in the first place.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where partial pooling quietly goes wrong</h3>
+    <p>
+      <strong>Pooling groups that shouldn't be pooled.</strong> The entire
+      benefit of partial pooling depends on the groups genuinely being drawn
+      from a common shared distribution. Shrinking a carry-trade strategy's
+      Sharpe estimate toward a grand mean computed from four unrelated
+      momentum strategies assumes a shared structure that may not exist —
+      the wrong grouping can make estimates worse, not better, than no
+      pooling at all.
+    </p>
+    <p>
+      <strong>Treating the empirical-Bayes hyperparameters as free of
+      uncertainty.</strong> \(\mu\) and \(\tau^2\) are themselves estimated
+      from a finite number of groups (often frustratingly few — five or ten
+      strategies is a small sample for estimating a between-group variance).
+      Point-estimating them and plugging them in, as this lesson's worked
+      example does for clarity, understates the true uncertainty compared to
+      a fully Bayesian treatment that puts its own prior on \(\mu\) and
+      \(\tau^2\) and integrates over them.
+    </p>
+    <p>
+      <strong>Confusing shrinkage with validation.</strong> A partially
+      pooled Sharpe estimate is a more honest <em>point estimate</em> given
+      the data collected so far — it is not evidence the strategy will
+      perform this way going forward. The same in-sample/out-of-sample
+      discipline this curriculum applies everywhere else still applies to
+      whatever number comes out of a hierarchical model.
+    </p>
+    <p>
+      <strong>Forgetting that τ²=0 and τ²=∞ are themselves modeling
+      choices, not neutral defaults.</strong> Complete pooling and no pooling
+      both quietly assume something extreme about the world (identical
+      groups, or totally unrelated groups); the estimated, finite \(\tau^2\)
+      in a real hierarchical fit is doing real modeling work, not avoiding it.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Complete pooling, no pooling, and partial pooling are one spectrum,</strong> not three unrelated ideas — they're the τ²→0, τ²→∞, and finite-τ² cases of the same hierarchical model.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The shrinkage formula is the Normal-Normal precision-weighted average again,</strong> just applied per group with the shared hyper-distribution standing in for a hand-picked prior.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Small samples get shrunk hardest, in either direction.</strong> A flashy small-n estimate and an ugly-looking small-n estimate both get pulled toward the group mean by roughly the same mechanism.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Pooling assumes the groups actually share structure.</strong> Shrinking unrelated strategies toward each other's mean can make estimates worse, not better — the grouping choice is itself a modeling assumption.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Point-estimating μ and τ² understates uncertainty.</strong> A fully Bayesian treatment puts its own prior on the hyperparameters rather than plugging in a single estimated value, as this lesson's worked example simplifies to for clarity.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A shrunk estimate is a better point estimate, not a validated forecast.</strong> It still needs the same true OOS proof this curriculum demands everywhere else before it justifies real capital allocation.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What distinguishes complete pooling, no pooling, and partial pooling?</summary>
+    <div class="tl-answer">
+      Complete pooling assumes every group shares exactly one true parameter
+      and estimates a single number from all the data combined, discarding
+      group differences entirely. No pooling assumes every group's parameter
+      is unrelated to the others and estimates each one using only that
+      group's own data, ignoring any shared structure. Partial pooling
+      (the hierarchical model) treats group parameters as random draws from
+      a shared distribution, producing a shrinkage estimate that blends each
+      group's own data with the overall pattern across groups — with
+      complete pooling and no pooling as its two limiting cases.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. In the hierarchical model y_ij ~ N(θⱼ,σ²), θⱼ ~ N(μ,τ²), what does each level of randomness represent?</summary>
+    <div class="tl-answer">
+      The first level, y_ij ~ N(θⱼ,σ²), says individual observations within
+      group j scatter around that group's own true mean θⱼ with variance σ².
+      The second level, θⱼ ~ N(μ,τ²), says the group means themselves aren't
+      fixed, unrelated numbers — they're drawn from a shared distribution
+      centered at grand mean μ with between-group variance τ², which is what
+      lets information flow between groups during estimation.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why does a group with a small sample size get shrunk more heavily toward the grand mean than a group with a large sample size?</summary>
+    <div class="tl-answer">
+      Because the shrinkage weight Bⱼ = τ²/(τ²+σ²/nⱼ) depends on nⱼ through
+      the group's own sampling variance σ²/nⱼ. A small nⱼ makes σ²/nⱼ large,
+      so it dominates the denominator and pushes Bⱼ toward 0 — meaning most
+      of the weight in the blended estimate falls on the grand mean μ rather
+      than the noisy raw estimate ȳⱼ. A large nⱼ makes σ²/nⱼ small, pushing
+      Bⱼ toward 1 and putting most of the weight on that group's own,
+      better-supported raw average.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What is the "surprising" part of the James-Stein result?</summary>
+    <div class="tl-answer">
+      That shrinking several group estimates toward a common target reduces
+      total expected squared error even when the groups' true underlying
+      parameters have nothing to do with each other in reality — it isn't
+      a claim that the groups are secretly related, but a mathematical fact
+      about how squared-error loss behaves once three or more parameters are
+      being estimated simultaneously. This defied statisticians' initial
+      intuition that each parameter should simply be estimated on its own
+      terms, independent of the others.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why isn't a partially pooled Sharpe estimate the same thing as evidence that a strategy will keep performing that way?</summary>
+    <div class="tl-answer">
+      Because shrinkage only improves the honesty of a point estimate given
+      the data already collected — it corrects for small-sample noise in
+      what's been observed, it does not add any information about whether
+      the future will resemble the past. A strategy's true edge, shrunk or
+      not, still has to be demonstrated on genuinely new, out-of-sample data
+      before it earns trust, exactly as the house discipline in this
+      curriculum requires for every other kind of result.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Andrew Gelman &amp; Jennifer Hill, <em>Data Analysis Using Regression and Multilevel/Hierarchical Models</em>, Cambridge University Press, 2006 — the standard applied treatment of hierarchical/multilevel models and partial pooling, with worked examples across social-science and applied settings.</li>
+    <li>Andrew Gelman, John B. Carlin, Hal S. Stern, David B. Dunson, Aki Vehtari, Donald B. Rubin, <em>Bayesian Data Analysis</em>, 3rd ed., CRC Press, 2013 — Chapter 5 covers hierarchical models formally, including empirical-Bayes point estimation of hyperparameters versus full Bayesian treatment.</li>
+    <li>Willard James &amp; Charles Stein, <em>"Estimation with Quadratic Loss"</em>, Proceedings of the Fourth Berkeley Symposium on Mathematical Statistics and Probability, 1961 — the original James-Stein estimator result.</li>
+    <li>Bradley Efron &amp; Carl Morris, <em>"Stein's Paradox in Statistics"</em>, Scientific American, 1977 — the accessible, widely cited popularization using baseball batting averages, and Efron &amp; Morris, <em>"Data Analysis Using Stein's Estimator and its Generalizations"</em>, Journal of the American Statistical Association, 1975, for the original analysis.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="mcmc-metropolis-gibbs.html">← MCMC: Metropolis-Hastings &amp; Gibbs Sampling</a>
+    <a href="../hub.html">Theory Lab hub</a>
+  </div>
+</div>
+<script>
+(function(){
+  var nSlider = document.getElementById('hier-n');
+  var nVal = document.getElementById('hier-n-val');
+  var bar = document.getElementById('hier-bar-partial');
+  var label = document.getElementById('hier-bar-partial-label');
+
+  var TAU2 = 0.25;
+  var SIGMA2 = 1;
+  var MU = 0.70;
+  var Y_RAW = 2.00;
+
+  var VAL_MAX = 2.5;
+  var Y_TOP = 20, Y_BOT = 210;
+
+  function valueToY(v) {
+    var frac = v / VAL_MAX;
+    return Y_BOT - frac * (Y_BOT - Y_TOP);
+  }
+
+  function update() {
+    var n = parseInt(nSlider.value, 10);
+    nVal.textContent = n;
+
+    var seJ2 = SIGMA2 / n;
+    var B = TAU2 / (TAU2 + seJ2);
+    var shrunk = B * Y_RAW + (1 - B) * MU;
+
+    var yTopPx = valueToY(shrunk);
+    var height = Y_BOT - yTopPx;
+    bar.setAttribute('y', yTopPx);
+    bar.setAttribute('height', height);
+    label.setAttribute('y', Math.max(yTopPx - 12, 16));
+    label.textContent = shrunk.toFixed(2);
+  }
+
+  nSlider.addEventListener('input', update);
+  update();
+})();
+</script>
+</body>
+</html>

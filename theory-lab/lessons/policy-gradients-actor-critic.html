@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Policy Gradients &amp; Actor-Critic Methods — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Reinforcement Learning / Policy Gradients &amp; Actor-Critic Methods</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Reinforcement Learning 3 of 3</div>
+  <h1 class="tl-title">Policy Gradients &amp; Actor-Critic Methods</h1>
+  <p class="tl-dek">How to optimize a policy directly — including a continuous one, like a position size — by raising the probability of actions that turned out better than expected, and why this being a powerful optimizer says nothing about whether the thing being optimized is any good.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here, not built or tested anywhere in this repo</span>
+    <span>~17 min read</span>
+    <span>Prereqs: Q-Learning &amp; Temporal-Difference Methods</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Q-learning needs a \(\max_a\) over actions at every step — fine for a handful of discrete choices, awkward or impossible for a continuous action like a position size. Policy gradient methods sidestep this by directly parameterizing and optimizing a policy \(\pi_\theta(a|s)\).</li>
+      <li>The policy gradient theorem gives the exact gradient of expected return with respect to the policy's parameters: \(\nabla J(\theta) = E[\nabla_\theta \log \pi_\theta(a|s)\cdot Q^\pi(s,a)]\) — this is the REINFORCE / score-function estimator.</li>
+      <li>The intuition is one sentence: <strong>raise the probability of actions that led to higher-than-expected return, lower the probability of ones that led to lower-than-expected return.</strong></li>
+      <li>Actor-critic methods use a learned value function (the "critic") to build an advantage estimate \(A(s,a)=Q(s,a)-V(s)\), which replaces the raw, noisy return in the policy gradient — the actor is the policy being updated by that gradient; the critic is what makes the gradient estimate far less noisy.</li>
+      <li>The TD error from the previous lesson, \(r+\gamma V(s')-V(s)\), <em>is</em> a one-step estimate of the advantage — the two lessons converge on the same quantity from different directions.</li>
+      <li><strong>Mandatory honest framing:</strong> RL is a general-purpose optimizer, not a trading strategy. It will optimize whatever reward and environment you hand it — including a poorly specified reward or an unrealistic simulator — and "solve" it beautifully while still failing live. This lesson explains a method, not an edge.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Both previous lessons in this sequence solved for the best action by
+    taking a \(\max\) over a small, discrete set of choices — Stay versus
+    Open, Hold versus Close. Real position sizing isn't a menu of three
+    options; it's a continuous number, and computing \(\max_a Q(s,a)\) over
+    a continuous \(a\) is, in general, its own hard optimization problem
+    nested inside every single decision step. Policy gradient methods avoid
+    that nested optimization entirely by parameterizing the policy itself —
+    a function that outputs an action (or a distribution over actions)
+    directly from the state — and improving those parameters with gradient
+    ascent on expected return, the same general machinery used to train
+    almost every other model in this curriculum.
+  </p>
+  <p>
+    This lesson closes the loop on the whole sequence: lesson 1 defined what
+    "good" means for a state or an action (the value function); lesson 2
+    showed how to learn those values from experience without knowing the
+    model; this lesson shows how to use a value estimate to directly improve
+    a policy, including over a continuous action space — and then states
+    plainly, in the honest section below, why none of that machinery is
+    itself an edge.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>"Raise the probability of what worked" — and nothing more mysterious than that</h3>
+    <p>
+      Picture a policy as a slot machine with a dial: turning the dial
+      changes how likely the machine is to pick each available action.
+      Start with the dial in a neutral position — every action equally
+      likely. Pull the lever once, observe which action got picked and what
+      return followed. If that return was better than what you generally
+      expect from this situation, turn the dial slightly <em>toward</em>
+      that action — make it a bit more likely next time. If it was worse
+      than expected, turn the dial slightly <em>away</em> from it. Repeat
+      this over and over, and the dial gradually settles on whichever
+      actions have actually been paying off.
+    </p>
+    <p>
+      That's the entire idea behind the policy gradient theorem — it's just
+      that instead of a physical dial, the "dial" is a set of numerical
+      parameters \(\theta\) feeding into a probability distribution over
+      actions, and "turn it toward what worked" is precise calculus: nudge
+      \(\theta\) in the direction that increases the log-probability of the
+      action taken, scaled by how much better (or worse) than expected that
+      action's outcome was. No action ever needs to be the provably single
+      best one at any given moment — the policy just needs to keep shifting,
+      gradually and correctly, toward whatever has been working.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    <strong>Setting up the objective.</strong> Parameterize a policy by
+    \(\theta\) — for a discrete action set, \(\pi_\theta(a|s)\) is commonly a
+    softmax over a set of learned scores; for a continuous action like a
+    position size, it's commonly a Gaussian whose mean and (log) standard
+    deviation are both output by \(\theta\). Either way, define the
+    objective as the expected return under that policy:
+  </p>
+  <div class="tl-math">\[ J(\theta) = E_{\pi_\theta}\big[\,G_0\,\big], \qquad G_0 = \sum_{t=0}^{\infty}\gamma^t r_t \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>J(θ)</code><span>the thing we want to maximize — expected total discounted return, under policy π_θ</span></div>
+    <div class="tl-eq-chip c2"><code>G₀</code><span>the actual discounted return from a single played-out trajectory</span></div>
+  </div>
+  <p>
+    The obstacle is that \(J(\theta)\) is an expectation over an entire
+    distribution of trajectories, and that distribution itself depends on
+    \(\theta\) (a different policy visits different states with different
+    probabilities) — so it isn't obvious how to differentiate \(J(\theta)\)
+    with respect to \(\theta\) at all without also having to differentiate
+    through the environment's own transition probabilities, which are
+    unknown (exactly the gap the previous lesson's model-free framing was
+    built to avoid re-introducing).
+  </p>
+  <p>
+    <strong>The score-function trick.</strong> The policy gradient theorem
+    resolves this with a clever algebraic identity that avoids ever needing
+    to differentiate the environment. Start from the identity
+    \(\nabla_\theta \pi_\theta(a|s) = \pi_\theta(a|s)\,\nabla_\theta \log
+    \pi_\theta(a|s)\) (which follows directly from the chain rule applied to
+    \(\log\), since \(\nabla_\theta \log f(\theta) = \nabla_\theta
+    f(\theta)/f(\theta)\)). This lets a gradient of a probability be
+    rewritten as that same probability times a gradient of its
+    <em>log</em> — and because the result is again multiplied by
+    \(\pi_\theta(a|s)\), it can be folded back inside an expectation over
+    actions sampled from \(\pi_\theta\) itself, which is exactly what makes
+    it usable with sampled experience instead of an exact sum over every
+    possible action.
+  </p>
+  <div class="tl-math">\[ \nabla_\theta J(\theta) = E_{\pi_\theta}\Big[\,\nabla_\theta \log \pi_\theta(a|s)\cdot Q^{\pi_\theta}(s,a)\,\Big] \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>∇J(θ)</code><span>the gradient we actually want — which direction to move θ to increase expected return</span></div>
+    <div class="tl-eq-chip c2"><code>∇log π_θ(a|s)</code><span>the "score function" — which direction in θ-space makes this specific action more likely</span></div>
+    <div class="tl-eq-chip c3"><code>Q^π(s,a)</code><span>how good that action actually was — the weight applied to the score direction</span></div>
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">∇log π_θ(a|s)</div>
+      <div class="tl-fp-name">The direction</div>
+      <div class="tl-fp-desc">Which way to nudge θ to make this exact action more likely next time</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">Q^π(s,a)</div>
+      <div class="tl-fp-name">The weight</div>
+      <div class="tl-fp-desc">How much better (or worse) than nothing this action's outcome actually was</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">∇J(θ)</div>
+      <div class="tl-fp-name">The result</div>
+      <div class="tl-fp-desc">Average that weighted direction over experience — the gradient ascent step</div>
+    </div>
+  </div>
+  <p>
+    Read the whole expression exactly as the intuition box described: for
+    every sampled action, compute the direction in parameter space that
+    would have made that specific action more likely (\(\nabla_\theta \log
+    \pi_\theta(a|s)\)), then scale that direction by how good the action
+    actually turned out to be (\(Q^\pi(s,a)\)). Average this over many
+    sampled state-action pairs and you get an unbiased estimate of the true
+    gradient of expected return — this is the <strong>REINFORCE</strong>
+    algorithm (Williams, 1992), also called the score-function estimator.
+    Crucially, this gradient never required differentiating the environment
+    or computing a \(\max_a\) over actions at all — it only ever needs to
+    evaluate the policy's own log-probability and its gradient, both of
+    which are known exactly, since \(\theta\) is the modeler's own choice of
+    parameterization.
+  </p>
+  <p>
+    <strong>Why this handles continuous actions for free.</strong> For a
+    Gaussian policy over a continuous action (mean \(\mu_\theta(s)\), std
+    \(\sigma_\theta(s)\)), \(\log \pi_\theta(a|s)\) and its gradient with
+    respect to \(\theta\) are both simple closed-form expressions — no
+    \(\max\) over an infinite action set ever appears anywhere in the
+    method. This is the direct answer to the motivating problem: value-based
+    methods need to search over actions to act (and, for Q-learning
+    specifically, to bootstrap); policy gradient methods only ever need to
+    evaluate and differentiate their own chosen probability distribution.
+  </p>
+
+  <p>
+    <strong>Actor-critic — reducing variance with a learned baseline.</strong>
+    Raw REINFORCE, using the actual sampled return \(G_t\) (or the true
+    \(Q^\pi(s,a)\), in practice always itself estimated) as the weight, works
+    but is noisy — the weight is an entire trajectory's worth of accumulated
+    randomness. The fix follows a general and useful fact about this
+    gradient estimator: subtracting <em>any</em> quantity that doesn't
+    depend on the action \(a\) from the weight leaves the gradient's
+    expectation unchanged (because \(E_{a\sim\pi_\theta}[\nabla_\theta \log
+    \pi_\theta(a|s)] = 0\) — the log-probability gradient averages to zero
+    over the policy's own action distribution), while it can dramatically
+    reduce the estimator's variance if the subtracted quantity is
+    well-chosen. The natural choice is the state's own value, \(V^\pi(s)\),
+    giving the <strong>advantage function</strong>:
+  </p>
+  <div class="tl-math">\[ A^\pi(s,a) = Q^\pi(s,a) - V^\pi(s) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>A^π(s,a)</code><span>the advantage — how much better this specific action is than the state's average action</span></div>
+    <div class="tl-eq-chip c2"><code>Q^π(s,a)</code><span>value of this specific action</span></div>
+    <div class="tl-eq-chip c3"><code>V^π(s)</code><span>the baseline — average value of the state, over the policy's own action distribution</span></div>
+  </div>
+  <p>
+    The policy gradient becomes \(\nabla_\theta J(\theta) = E[\nabla_\theta
+    \log \pi_\theta(a|s)\cdot A^\pi(s,a)]\), which says something sharper
+    than the raw-return version: don't just reward actions that led to a
+    good outcome in absolute terms — reward actions that did
+    <strong>better than this state's own average</strong>. A state that's
+    generally excellent (every action pays off) shouldn't inflate every one
+    of its actions' gradient weight equally; only the actions that beat that
+    state's own baseline should get pushed up. This is precisely why
+    subtracting a baseline reduces variance without introducing bias: it
+    removes the part of the signal that's common to every action in a given
+    state (and therefore uninformative about <em>which</em> action to
+    prefer), leaving only the part that actually discriminates between
+    actions.
+  </p>
+  <p>
+    In practice \(V^\pi(s)\) is rarely known exactly, so it's learned
+    alongside the policy by its own separate function — the
+    <strong>critic</strong> — typically trained with exactly the TD(0) update
+    from the previous lesson: \(V(s) \leftarrow V(s) + \alpha[r+\gamma V(s')
+    - V(s)]\). The <strong>actor</strong> is the policy \(\pi_\theta\)
+    itself, updated by the policy gradient using the critic's advantage
+    estimate as the weight. This is where the two previous lessons meet:
+  </p>
+  <div class="tl-solid blue">
+    <strong>The TD error and the advantage are, to a first approximation,
+    the same quantity.</strong> A single-sample estimate of the advantage is
+    \(A(s,a) \approx r+\gamma V(s') - V(s)\) — exactly the TD error \(\delta\)
+    from the previous lesson. TD learning names this quantity "how wrong my
+    value estimate was"; actor-critic uses the identical number as "how much
+    better than expected this action's result was." Two lessons, one number,
+    two uses.
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>One REINFORCE update on a two-action softmax policy</h3>
+    <p>
+      Simplify to a single state with two actions — "small position"
+      (\(a_1\)) and "large position" (\(a_2\)) — so the update can be worked
+      by hand without a full trajectory. Use a softmax policy with logits
+      \(\theta_1,\theta_2\), starting at \(\theta_1=\theta_2=0\), which gives
+      \(\pi(a_1)=\pi(a_2)=0.5\). Suppose the critic currently estimates this
+      state's baseline value at \(V(s)=1\), the agent samples \(a_2\), and
+      observes a return of \(R=2\).
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Compute the advantage</h4>
+          <div class="tl-math">\[ A = R - V(s) = 2 - 1 = +1 \]</div>
+          <p>The large position beat this state's own expectation by one full unit of return.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Compute the score function for a softmax policy</h4>
+          <p>
+            For a softmax, \(\nabla_{\theta_i}\log\pi(a_2|s) = \mathbb{1}[i=2]
+            - \pi(a_i)\). With \(\pi(a_1)=\pi(a_2)=0.5\):
+            \(\nabla_{\theta_2}\log\pi(a_2)=1-0.5=0.5\) and
+            \(\nabla_{\theta_1}\log\pi(a_2)=0-0.5=-0.5\).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Apply the update, α = 0.1</h4>
+          <div class="tl-math">\[ \theta_2 \leftarrow 0 + 0.1(0.5)(1) = 0.05, \qquad \theta_1 \leftarrow 0 + 0.1(-0.5)(1) = -0.05 \]</div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Read off the new policy</h4>
+          <div class="tl-math">\[ \pi(a_2) = \frac{e^{0.05}}{e^{0.05}+e^{-0.05}} \approx 0.525 \]</div>
+          <p>
+            One update, from one better-than-expected sample, moved the
+            probability of choosing the large position from 50% to about
+            52.5%. Exactly the intuition-box story, made numeric: the action
+            that beat expectation got a little more likely; the one not
+            taken got a little less likely.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Repeated updates under a constant advantage: probability of the better action rises</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart showing the probability of choosing the large-position action rising from 0.5 toward higher values over 10 simulated policy gradient updates, each assuming the same constant advantage of plus one for illustration, following a logistic update recursion.">
+      <line x1="70" y1="30" x2="70" y2="230" style="stroke:var(--border)"/>
+      <line x1="70" y1="230" x2="610" y2="230" style="stroke:var(--border)"/>
+      <line x1="70" y1="155" x2="610" y2="155" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+      <text x="614" y="159" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">π = 0.5</text>
+
+      <path d="M70,155 L124,149.25 L178,143.82 L232,138.69 L286,133.91 L340,129.4 L394,125.19 L448,121.26 L502,117.6 L556,114.13 L610,110.95" style="stroke:var(--purple);stroke-width:2.5;fill:none;stroke-linecap:round"/>
+      <circle cx="70" cy="155" r="3.5" fill="var(--purple)"/>
+      <circle cx="124" cy="149.25" r="3.5" fill="var(--amber)"/>
+      <text x="124" y="138" text-anchor="middle" fill="var(--amber)" font-size="10.5" font-family="'DM Mono',monospace">update 1: 0.525</text>
+
+      <text x="340" y="252" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">update number</text>
+      <text x="26" y="130" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 26 130)">π(large position)</text>
+    </svg>
+    <div class="tl-chart-caption">
+      A deliberate simplification — holding the advantage fixed at +1 across
+      every update, purely to isolate the policy-gradient mechanism. In a
+      real run the advantage itself shrinks as the critic's baseline catches
+      up and as the policy's own outcomes change, so this curve is
+      illustrative of the direction of the effect, not a claim about its
+      real-world speed.
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A continuous position-sizing policy, in the same language as this lesson</h3>
+    <p>
+      Picture a policy that outputs a continuous position size directly —
+      say, a Gaussian with mean \(\mu_\theta(s)\) (the "center" size the
+      policy leans toward given the current state) and some spread
+      \(\sigma_\theta(s)\) (how much it randomizes around that center to keep
+      exploring). Each trade samples a size from that distribution, observes
+      a return, and updates \(\theta\) using the exact same actor-critic
+      machinery above: the critic estimates this state's baseline value, the
+      advantage compares the realized outcome to that baseline, and the
+      actor's parameters shift the distribution's mean toward sizes that
+      have been outperforming the baseline and away from ones that haven't.
+      Framed this way, position sizing and entry timing aren't two separate
+      problems bolted together — they're both just actions inside the same
+      policy, which is precisely why this framing is attractive on paper.
+      Whether it's attractive in practice depends entirely on the honest
+      section immediately below.
+    </p>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>RL is a general optimization framework, not a trading strategy —
+    keep those two claims separate.</strong> Everything in this three-lesson
+    sequence is genuinely powerful machinery for optimizing a policy against
+    <em>whatever reward function and environment model you give it</em>. It
+    has no opinion about whether that reward function is well-specified or
+    whether that environment model resembles the real market. A reward
+    defined as raw PnL with no penalty for risk will happily learn a policy
+    that takes on catastrophic tail exposure, because nothing in the reward
+    said not to. A simulated environment without realistic transaction
+    costs, market impact, or that allows any form of look-ahead will get
+    "solved" beautifully — the optimizer did exactly what it was asked, and
+    what it was asked for was wrong. This is not a caveat about a specific
+    weak implementation; it is the structural nature of what an optimizer
+    is. State it plainly: reinforcement learning is a method for solving a
+    decision problem you've already specified correctly. It cannot supply
+    the missing edge, the missing risk penalty, or the missing realism in
+    the environment it was handed, and none of the above lessons should be
+    read as evidence that a specific RL trading system has, or will have,
+    real edge.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Modern policy gradient methods rarely use vanilla REINFORCE or a single
+    fixed critic directly — Proximal Policy Optimization (PPO, Schulman et
+    al. 2017) and Trust Region Policy Optimization (TRPO) constrain each
+    update to avoid moving the policy too far in one step (a large single
+    gradient step on a policy can catastrophically change the policy and the
+    data distribution used to estimate the next gradient, an instability
+    problem the raw theorem above doesn't address on its own), and
+    Generalized Advantage Estimation (GAE, Schulman et al. 2016) blends
+    multi-step returns with the critic's baseline to trade off bias and
+    variance in the advantage estimate more carefully than a single TD step.
+    All of them are elaborations on the exact same two ideas in this lesson:
+    a score-function gradient, and a learned baseline to cut its variance.
+  </p>
+  <p>
+    Outside of games and robotics, this exact machinery underlies RLHF
+    (reinforcement learning from human feedback), one of the standard methods
+    used to align large language models with human preferences — a reward
+    model trained from human comparisons stands in for the environment's
+    reward function, and a policy gradient (commonly PPO) updates the
+    language model's own output distribution against it. The core lesson —
+    the method optimizes whatever reward it's given, correctly and
+    faithfully, with no ability to notice that the reward itself might be a
+    flawed proxy for what's actually wanted — is exactly the same caution
+    that applies to a trading reward function, described in the honest
+    section above.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where policy gradient and actor-critic methods quietly go wrong</h3>
+    <p>
+      <strong>Reward misspecification is invisible until it's too late.</strong>
+      A reward that rewards raw return with no drawdown or tail-risk penalty
+      will train a policy that looks excellent on the training environment's
+      own terms, right up until it encounters the tail event the reward
+      never penalized. This is the single most important, most repeated
+      failure mode in applied RL, and it is exactly why the honest section
+      above is mandatory rather than optional in this lesson.
+    </p>
+    <p>
+      <strong>An unrealistic simulated environment is optimized just as
+      eagerly as a realistic one.</strong> No transaction costs, no market
+      impact, or any form of look-ahead in a backtest-as-environment will get
+      exploited by a powerful enough optimizer precisely because it's
+      profitable <em>within that environment</em> — the same "free fills are
+      not honest" discipline this curriculum applies to ordinary backtests
+      applies with even more force here, since a policy gradient method will
+      actively search out and amplify whatever unrealistic edge the
+      simulator accidentally offers.
+    </p>
+    <p>
+      <strong>High variance and instability in the raw gradient estimator.</strong>
+      Even with a critic-based baseline, policy gradient estimates remain
+      noisier than value-based methods in many settings, and a single overly
+      large update can move the policy into a bad region it struggles to
+      recover from — precisely the instability problem PPO and TRPO exist to
+      constrain.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Policy gradients optimize \(\pi_\theta\) directly, avoiding the \(\max_a\) that value-based methods need.</strong> This is what makes continuous action spaces — like a position size — tractable without a nested optimization at every step.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(\nabla J(\theta)=E[\nabla_\theta\log\pi_\theta(a|s)\cdot Q^\pi(s,a)]\) is the whole idea:</strong> raise the probability of actions that led to higher-than-expected return, in exact proportion to how much better than expected they were.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Subtracting a state-dependent baseline never changes the gradient's expectation, only its variance.</strong> The advantage \(A(s,a)=Q(s,a)-V(s)\) is the natural, variance-reducing choice.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The TD error from the previous lesson is a one-step estimate of the advantage.</strong> Actor-critic methods are, in substance, TD learning's critic feeding a policy-gradient actor.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>None of this is a trading edge — it's an optimizer.</strong> RL will faithfully optimize a poorly specified reward or an unrealistic simulated environment and "solve" it beautifully while failing live. State this every time this machinery is proposed for a real strategy, not just once in a lesson.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Raw policy gradient estimates are noisy and updates can be unstable.</strong> Production methods (PPO, TRPO, GAE) exist specifically to constrain how far a single update is allowed to move the policy.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why do value-based methods like Q-learning become awkward for a continuous action space, and how does a policy gradient method avoid that problem?</summary>
+    <div class="tl-answer">
+      Q-learning's update, and acting greedily from a learned Q-function,
+      both require computing \(\max_a Q(s,a)\) — for a continuous action
+      space this is itself a nested optimization problem that has to be
+      solved at every single decision step, with no closed form in general.
+      A policy gradient method never computes this max at all: it directly
+      parameterizes a distribution over actions (e.g. a Gaussian for a
+      continuous action) and only ever needs to evaluate that distribution's
+      own log-probability and its gradient with respect to the parameters —
+      both available in closed form for common choices of policy, with no
+      search over actions required.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. In plain English, what does the policy gradient theorem actually tell you to do?</summary>
+    <div class="tl-answer">
+      For every sampled state-action pair, nudge the policy's parameters in
+      whichever direction would have made that specific action more likely,
+      scaled by how good that action's outcome actually was (or, with a
+      baseline, how much better than the state's own average it was). Good
+      outcomes get their action's probability raised; poor outcomes get
+      theirs lowered — averaged over many samples, this produces an unbiased
+      estimate of the true gradient of expected return.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why does subtracting the state value V(s) from Q(s,a) reduce the variance of the policy gradient estimator without introducing bias?</summary>
+    <div class="tl-answer">
+      Because the expected value of the score function itself, averaged over
+      actions sampled from the current policy, is exactly zero — subtracting
+      any quantity that doesn't depend on the action being taken (like
+      V(s), which only depends on the state) leaves the gradient's
+      expectation completely unchanged. What it does change is the spread of
+      the estimator: V(s) captures the part of the return that's common to
+      every action in that state and therefore uninformative about which
+      action to prefer, so removing it leaves only the action-discriminating
+      signal — the advantage — which is a much less noisy quantity to
+      average over samples.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What is the concrete link between the TD error from the Q-learning lesson and the advantage function used in actor-critic methods?</summary>
+    <div class="tl-answer">
+      A one-step, sampled estimate of the advantage is A(s,a) ≈ r + γV(s') −
+      V(s) — which is exactly the TD error. The TD-learning lesson names this
+      quantity "how wrong the current value estimate turned out to be, given
+      one real sample"; actor-critic uses the identical computed number as
+      "how much better than this state's own baseline the action's outcome
+      was." They are the same expression serving two purposes across the two
+      lessons.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why is it wrong to treat "we successfully trained a policy that maximizes reward in our simulated trading environment" as evidence the strategy has real edge?</summary>
+    <div class="tl-answer">
+      A policy-gradient method optimizes exactly and only what it is given —
+      the specified reward function inside the specified environment model —
+      with no ability to notice that either might be a flawed stand-in for
+      real trading. A reward with no risk penalty will train a policy that
+      takes on tail risk the reward never punished; an environment with no
+      realistic costs, slippage, or market impact will get exploited for
+      whatever unrealistic edge it happens to offer, precisely because the
+      optimizer is doing its job faithfully. Successfully optimizing a
+      simulated objective is evidence the method works as an optimizer; it
+      is not, by itself, evidence that the underlying reward and environment
+      were specified correctly, which is the actual determinant of whether
+      the result means anything live.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Ronald J. Williams, <em>"Simple Statistical Gradient-Following Algorithms for Connectionist Reinforcement Learning"</em>, Machine Learning, 1992 — the original REINFORCE paper and score-function gradient estimator.</li>
+    <li>Richard S. Sutton, David McAllester, Satinder Singh, and Yishay Mansour, <em>"Policy Gradient Methods for Reinforcement Learning with Function Approximation"</em>, NeurIPS, 1999 — the formal policy gradient theorem statement and proof.</li>
+    <li>Richard S. Sutton and Andrew G. Barto, <em>Reinforcement Learning: An Introduction</em> (2nd ed.), MIT Press, 2018 — Chapter 13 covers policy gradient methods and actor-critic architectures with the same notation used throughout this sequence.</li>
+    <li>John Schulman, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov, <em>"Proximal Policy Optimization Algorithms"</em>, arXiv, 2017 — the modern, widely-used constrained policy gradient method referenced in the practitioner section.</li>
+    <li>John Schulman, Philipp Moritz, Sergey Levine, Michael Jordan, and Pieter Abbeel, <em>"High-Dimensional Continuous Control Using Generalized Advantage Estimation"</em>, ICLR, 2016 — the GAE paper referenced above for blending multi-step returns with a learned baseline.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="q-learning-temporal-difference.html">← Q-Learning &amp; Temporal-Difference Methods</a>
+    <a href="../hub.html">Theory Lab hub</a>
+  </div>
+</div>
+</body>
+</html>

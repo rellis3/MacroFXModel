@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Feature Engineering, Leakage &amp; Reproducibility — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Quantitative Research Process / Feature Engineering, Leakage &amp; Reproducibility</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Research Process 2 of 2</div>
+  <h1 class="tl-title">Feature Engineering, Leakage &amp; Reproducibility</h1>
+  <p class="tl-dek">A feature built for a model has to be computable using only what was known at the moment it's dated — three specific ways that quietly fails, and the practical discipline that makes a result reproducible months later instead of a one-time accident.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — a research methodology, not a signal</span>
+    <span>~15 min read</span>
+    <span>Prereqs: Stationarity, ACF &amp; PACF; Walk-Forward &amp; Purged Cross-Validation</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A feature must be <strong>point-in-time computable</strong>: everything it uses must have genuinely existed and been knowable at the moment it's dated — the classic lookahead-bias failure is a feature that secretly reaches forward.</li>
+      <li>Many features need <strong>stationarity</strong> to mean what they claim to mean — a feature built from a non-stationary raw series can look "predictive" purely because it's tracking a trend, not a repeating pattern (see <a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a>).</li>
+      <li><strong>Target leakage</strong>: a feature that indirectly encodes the label itself, e.g. using same-day closing data to predict same-day direction.</li>
+      <li><strong>Feature-computation-stage contamination</strong>: z-scoring or normalizing using full-sample statistics instead of only-past statistics — a narrower, easier-to-miss cousin of the split-boundary leaks covered in <a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged Cross-Validation</a>.</li>
+      <li><strong>Survivorship bias</strong> in the instrument universe: testing only on assets that still exist today silently removes exactly the failure cases a strategy most needs to be tested against.</li>
+      <li>Reproducibility is a practical, non-mathematical discipline: version data, code, and parameters together, and keep point-in-time data snapshots — a feature computed "as of December" must be reproducible from exactly what was known then, not a since-revised data vintage.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+  A backtest is only as honest as the features feeding it. Even a perfectly executed out-of-sample
+  split, run with realistic costs and a genuine train/test boundary, tells you nothing useful if the
+  <em>features</em> going into the model were built with information that wasn't really available at
+  the time, or if the model universe quietly excludes the assets that would have made it look worse.
+  This lesson is about the discipline that has to happen <em>before</em> a single backtest number gets
+  produced: making sure every input a model touches is something a live, running system could have
+  actually computed on the day in question, and making sure the whole pipeline can be rebuilt later and
+  get the same answer.
+  </p>
+  <p>
+  This connects directly to two lessons already in this Theory Lab. <a href="walk-forward-purged-cv.html">Walk-Forward
+  &amp; Purged Cross-Validation</a> covers what happens when a rolling feature or label window straddles
+  a train/test split boundary — a leak at the <em>validation</em> stage. This lesson covers a related
+  but distinct set of leaks that happen earlier, at the <em>feature-construction</em> stage itself, some
+  of which would still be a problem even with a perfect validation split downstream. <a href="stationarity-acf-pacf.html">Stationarity,
+  ACF &amp; PACF</a> covers why a series' statistical properties drifting over time breaks most modeling
+  assumptions; this lesson applies that directly to what it means for a feature specifically, and why a
+  feature built on a non-stationary raw series can look predictive for reasons that have nothing to do
+  with the pattern it claims to capture.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A weather forecaster who accidentally reads tomorrow's paper</h3>
+    <p>
+    Imagine building a rule that predicts whether tomorrow will be a "good beach day" using today's
+    measurements — but one of the inputs to that rule is "how many people posted beach photos
+    today." That number isn't available until the end of the day, well after a live forecaster would
+    need to have made the call each morning. Worse, it's suspiciously close to the thing being
+    predicted — a sunny beach day is exactly when people post beach photos, so the "feature" is
+    partly just a disguised description of the outcome itself. A backtest built on historical data,
+    where every day's photo count is already sitting in a spreadsheet next to that day's actual
+    weather, will not catch either problem: the numbers line up perfectly in hindsight, because
+    hindsight is exactly the thing this failure mode smuggles in. A live system, forecasting each
+    morning with only that morning's information, would immediately expose both issues — the feature
+    wouldn't exist yet, and even if some proxy for it did, it would obviously just be echoing the
+    answer. Point-in-time discipline is the practice of building every feature as if it had to run
+    live, every single day, using only what a forecaster standing in that morning could actually see.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>Point-in-time computability — the foundational requirement</h2>
+  <p>
+  A feature \(F(i)\) computed for time index \(i\) is <strong>point-in-time computable</strong> if
+  every input it depends on was genuinely available — published, observable, and final — at or before
+  time \(i\), using only the vintage of data that actually existed then. Write this as a simple
+  constraint:
+  </p>
+  <div class="tl-math">\[ F(i) = f\big(\text{data known as of } i\big), \qquad \text{never } f\big(\text{data known as of } i + \Delta,\; \Delta > 0\big) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>F(i)</code><span>the feature value dated at time \(i\)</span></div>
+    <div class="tl-eq-chip c2"><code>data known as of i</code><span>everything actually observable at time \(i\), no later</span></div>
+    <div class="tl-eq-chip c4"><code>Δ &gt; 0</code><span>any amount of "peeking" forward — the forbidden case</span></div>
+  </div>
+  <p>
+  This sounds obvious stated abstractly, but it fails constantly in practice, for a specific, boring
+  reason: modern data pipelines join tables by <em>calendar date</em>, not by <em>information
+  availability date</em>, and those two dates are routinely different. A macro release "for March" is
+  typically published in April; a company's Q1 earnings are dated to the quarter they describe, not
+  the day they were actually announced; even a daily closing price carries an implicit assumption about
+  exactly when in the trading session it becomes knowable. A feature-construction step that joins "the
+  March CPI print" to "March 31st" instead of to the actual publication date has silently given a model
+  built on daily bars several weeks of information it would never have had live — the same lookahead
+  failure the walk-forward lesson describes for a rolling window's edges, but introduced earlier,
+  inside a single feature's own construction, before any train/test split even exists.
+  </p>
+
+  <div class="tl-solid red">
+    <strong>The trap:</strong> joining by calendar date instead of by publication/availability date is
+    the single most common source of point-in-time violations in practice — it produces a feature that
+    looks perfectly reasonable in a spreadsheet and is quietly using information from weeks in the
+    future.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Why stationarity matters for a feature specifically</h2>
+  <p>
+  <a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a> defines stationarity as a
+  series' mean, variance, and autocovariance staying constant through time rather than drifting with
+  the calendar date. That lesson's focus is diagnosing whether a raw series is stationary; the
+  consequence worth spelling out here is what happens when a <em>feature</em> is built directly from a
+  non-stationary raw input without accounting for the drift.
+  </p>
+  <p>
+  Consider a feature built as the raw level of a persistently trending series — say, a currency pair's
+  raw price level used directly as a model input, rather than a return or a level relative to some
+  local reference. If that price has trended in one direction across most of the historical sample
+  (which most FX pairs do, over long enough windows), then "price level" and "which half of the
+  sample this row falls in" are almost the same information. A model trained on this feature can
+  achieve a genuinely impressive-looking in-sample fit — not because it has found a repeating,
+  generalizable pattern, but because the feature is functioning as a disguised time index. That
+  "predictive power" evaporates exactly when it matters most: on new data, once the trend that
+  generated it changes direction or simply continues past the range the model was fit on, because the
+  model never actually learned a stationary relationship — it learned a snapshot of one non-repeating
+  historical trend.
+  </p>
+  <p>
+  This is precisely why so many standard features are built as <em>changes</em>, <em>ratios</em>, or
+  <em>z-scores</em> relative to a rolling reference rather than as raw levels: a return, a rolling
+  z-score, or a de-trended spread is a deliberate attempt to convert a non-stationary raw series into
+  something closer to stationary, so that a value observed in one part of the sample means roughly the
+  same thing as the same value observed in another part. The transformation doesn't automatically
+  guarantee stationarity — that has to be checked, using exactly the ACF/PACF and unit-root diagnostics
+  the stationarity lesson develops — but skipping the check and assuming a familiar-looking
+  transformation "fixed" the problem is itself a common failure.
+  </p>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(F(i)\)</td><td>A feature's value, dated at time index \(i\).</td></tr>
+      <tr><td>Point-in-time</td><td>Computable using only data that genuinely existed and was observable at or before \(i\) — no later revision, no later publication.</td></tr>
+      <tr><td>Vintage</td><td>The specific version of a data series as it stood on a given historical date, before any later revisions were applied.</td></tr>
+      <tr><td>Target leakage</td><td>A feature that indirectly encodes the label it's meant to predict, rather than genuinely preceding and explaining it.</td></tr>
+      <tr><td>\(\mu_{full}, \sigma_{full}\)</td><td>Mean and standard deviation computed over the <em>entire</em> sample, including future-relative-to-\(i\) data — the contaminated version of a z-score's inputs.</td></tr>
+      <tr><td>\(\mu_{<i}, \sigma_{<i}\)</td><td>Mean and standard deviation computed using only data strictly before \(i\) — the point-in-time-correct version.</td></tr>
+      <tr><td>Survivorship bias</td><td>A universe that only includes instruments that still exist today, silently excluding the ones that failed, delisted, or were discontinued.</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Lookahead bias illustrated: a feature dated to a calendar date vs. dated to its true availability date</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Timeline diagram comparing two datings of the same macro data point. The naive version dates the March inflation figure to March 31st, placing it inside the March bar and making it look available all through March. The correct version dates the same figure to its actual April 10th publication date, showing a gap of several weeks during which a live system genuinely could not have used it, and any March model row that references it has leaked forward.">
+      <text x="20" y="24" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">Naive join: by calendar date</text>
+      <rect x="20" y="34" width="600" height="30" rx="3" style="fill:var(--s2);stroke:var(--border)"/>
+      <rect x="20" y="34" width="180" height="30" rx="3" style="fill:var(--blue);opacity:.5"/>
+      <rect x="200" y="34" width="180" height="30" rx="3" style="fill:var(--red);opacity:.55"/>
+      <rect x="380" y="34" width="240" height="30" rx="3" style="fill:var(--s3)"/>
+      <text x="110" y="54" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:10px">February</text>
+      <text x="290" y="54" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px">March (CPI "dated" here)</text>
+      <text x="500" y="54" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">April</text>
+      <text x="290" y="80" text-anchor="middle" style="fill:var(--red);font-family:'DM Sans',sans-serif;font-size:10px;font-style:italic">every March model row can "see" March CPI — but it wasn't published yet</text>
+
+      <text x="20" y="120" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">Correct join: by publication/availability date</text>
+      <rect x="20" y="130" width="600" height="30" rx="3" style="fill:var(--s2);stroke:var(--border)"/>
+      <rect x="20" y="130" width="180" height="30" rx="3" style="fill:var(--blue);opacity:.5"/>
+      <rect x="200" y="130" width="180" height="30" rx="3" style="fill:var(--s3)"/>
+      <rect x="380" y="130" width="30" height="30" rx="3" style="fill:var(--green);opacity:.6"/>
+      <rect x="410" y="130" width="210" height="30" rx="3" style="fill:var(--s3)"/>
+      <text x="110" y="150" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:10px">February</text>
+      <text x="290" y="150" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">March (not yet known)</text>
+      <text x="395" y="150" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:9px;font-weight:600">Apr 10</text>
+      <text x="500" y="150" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">rest of April</text>
+      <text x="290" y="176" text-anchor="middle" style="fill:var(--green);font-family:'DM Sans',sans-serif;font-size:10px;font-style:italic">March CPI only becomes usable on its true publication date, April 10</text>
+
+      <path d="M 290,64 L 290,220" style="stroke:var(--text3)" stroke-width="1" stroke-dasharray="3,3"/>
+      <path d="M 395,160 L 395,220" style="stroke:var(--text3)" stroke-width="1" stroke-dasharray="3,3"/>
+      <text x="342" y="238" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">gap ≈ several weeks of pretend-available data in the naive version</text>
+    </svg>
+    <div class="tl-chart-caption">
+    The top timeline is what a naive date-join produces: the March inflation figure is dated to March
+    31st and looks "available" for every day of March, including days before the figure was ever
+    published. The bottom timeline dates the same figure to its true publication date (here, April
+    10th) — the honest version, where any model row before April 10th simply doesn't have this
+    number yet. The gap between the two is exactly how much forward-looking information a naive
+    calendar-date join silently hands to every affected row.
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Three specific leakage patterns, named</h2>
+
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Target leakage — the feature indirectly encodes the label</h4>
+        <p>
+        Target leakage happens when a feature, even though it's technically computed at or before the
+        prediction time, carries information that is only knowable <em>because</em> the outcome being
+        predicted has already effectively occurred. The classic version: using same-day closing-price
+        data as a feature to predict same-day direction. If the label is "did the close finish above the
+        open today," and a feature is built from the day's closing price (or anything derived from it —
+        the day's realized volatility, the day's high-low range measured through the close), the feature
+        is not really predicting the label, it's restating it. This is subtler than it sounds, because
+        the feature and the label can be built from technically different columns, computed at
+        technically the same timestamp, and still be functions of the same underlying event. The
+        practical test: could this feature's value have been known meaningfully <em>before</em> the
+        outcome it's predicting was substantially determined? If the honest answer is "not really, they
+        happen together," it's target leakage, regardless of how the code is organized.
+        </p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>Feature-computation-stage contamination — full-sample statistics instead of only-past statistics</h4>
+        <p>
+        This is a narrower, more specific cousin of what the walk-forward lesson calls out at the
+        train/test split boundary — but it can happen even with a perfect split, because it lives inside
+        a single feature's own construction rather than at the model-training boundary. A z-score is the
+        classic example: computing \(z_i = (x_i - \mu_{full})/\sigma_{full}\), where \(\mu_{full}\) and
+        \(\sigma_{full}\) are the mean and standard deviation of the <em>entire</em> sample (including
+        rows chronologically after \(i\)), rather than \(z_i = (x_i - \mu_{<i})/\sigma_{<i}\), using only
+        data strictly before \(i\). The contaminated version bakes in knowledge of the full historical
+        range — including future extremes, future regime shifts, future volatility levels — into every
+        single row's feature value, even rows dated years before those future events happened. A model
+        trained on features built this way can look artificially clean, because every row's "how extreme
+        is this" reading was calibrated with the benefit of already knowing how extreme things eventually
+        got. The fix is mechanical: any statistic used to normalize, standardize, or rank a feature must
+        be computed using an expanding or rolling window of <em>only prior</em> data, recomputed fresh at
+        every point in time, exactly the same "use data \(&lt; i\) only" discipline the walk-forward lesson
+        applies to an entire train/test split, applied here one feature-column at a time.
+        </p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>Survivorship bias — the instrument universe itself is contaminated</h4>
+        <p>
+        The first two patterns are about a single instrument's features leaking across time. Survivorship
+        bias is a different axis entirely: it's about which instruments are even included in the test
+        universe in the first place. A dataset assembled today, of "all currency pairs" or "all
+        emerging-market bonds currently tradeable," silently excludes anything that was delisted,
+        devalued into a currency peg collapse, defaulted, or otherwise discontinued along the way — which
+        is exactly the set of instruments a real strategy most needs to be tested against, because those
+        are the cases where things went wrong. A cross-sectional strategy backtested only on today's
+        survivors will look better than it would have looked live, in exact proportion to how many
+        historical failures got quietly excluded from the universe used to build the test. This is a
+        leak in the input universe rather than in any one feature's time-series construction, but it
+        produces the same effect: a backtest that looks cleaner than what a live system, operating in
+        real time with no foreknowledge of which instruments would survive, would actually have
+        experienced.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Contaminated vs. point-in-time z-scores on the same six numbers</h3>
+    <p>
+    Take a short series of a hypothetical spread reading over six days:
+    \(x = [1.0,\ 1.2,\ 0.9,\ 1.4,\ 3.8,\ 1.1]\) — day 5's reading of 3.8 is a one-off spike (say, a
+    news event), with the rest of the series sitting in a much narrower band. Suppose the goal is a
+    z-score feature for day 3 (\(x_3 = 0.9\)), meant to answer "how unusual is today's reading, given
+    only what's been observed so far."
+    </p>
+    <p>
+    <strong>Contaminated version (full-sample statistics).</strong> Using all six values,
+    \(\mu_{full} \approx 1.567\) and \(\sigma_{full} \approx 1.045\) (population std. dev.), giving:
+    </p>
+    <div class="tl-math">\[ z_3^{contaminated} = \frac{0.9 - 1.567}{1.045} \approx -0.638 \]</div>
+    <p>
+    This number is quietly using day 5's future spike to widen the denominator — day 3's z-score is
+    smaller in magnitude than it should be, specifically <em>because</em> a value that hadn't happened
+    yet made the whole series look more spread out than it actually was, as of day 3.
+    </p>
+    <p>
+    <strong>Point-in-time version (only-past statistics).</strong> Using only days 1&ndash;3,
+    \(\mu_{<3} \approx 1.033\) and \(\sigma_{<3} \approx 0.125\) (population std. dev. over days 1-3):
+    </p>
+    <div class="tl-math">\[ z_3^{point\text{-}in\text{-}time} = \frac{0.9 - 1.033}{0.125} \approx -1.06 \]</div>
+    <p>
+    The honest, point-in-time version says day 3's reading is meaningfully unusual relative to what had
+    actually been observed by day 3 — a materially different, and materially more correct, signal than
+    the contaminated version's muted -0.64. A model trained on the contaminated feature across the whole
+    history is being fed a systematically different, future-informed notion of "how unusual" every single
+    day was, one that a live system computing the same feature in real time could never have produced.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">A real-world trading scenario</div>
+    <h3>The carry-basket backtest that looked great because the crisis currencies were already gone</h3>
+    <p>
+    A researcher builds a cross-sectional emerging-market carry strategy: rank a basket of EM
+    currencies by interest-rate differential, go long the top three, short the bottom three, rebalance
+    monthly. The instrument universe is pulled from a currently-available data vendor's list of "EM FX
+    pairs" — a completely reasonable-sounding starting point. The backtest, run over the past 20 years,
+    shows a strong, consistent Sharpe ratio with only modest drawdowns even through periods that history
+    remembers as rough for EM carry trades.
+    </p>
+    <p>
+    The reason the backtest looks calmer than the real history was is survivorship bias in the universe
+    itself. Several currencies that were part of a genuine EM carry trade universe during that 20-year
+    window are not in today's vendor list at all — because they were pegged and then violently devalued,
+    or effectively ceased to trade as a liquid free-floating currency, or were replaced by a new
+    currency entirely after a crisis. Those are not random omissions; they are disproportionately the
+    exact cases where a carry strategy would have taken its worst losses, because a currency peg
+    collapsing after a period of attractive carry is close to the textbook carry-trade failure mode. By
+    testing only on the currencies that happened to still be tradeable and vendor-listed today, the
+    backtest has quietly excluded its own worst-case scenarios — not through any error in the feature
+    math or the validation split, both of which can be entirely correct, but through a contaminated
+    input universe that never gave the strategy a chance to fail the way it plausibly would have.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Reproducibility, kept practical</h2>
+  <p>
+  Reproducibility is less about proving a result wasn't leaked (that's what the sections above are
+  for) and more about a separate, equally practical problem: can this exact result be regenerated
+  months later, by someone else, or by the same researcher after they've forgotten the details? Two
+  habits carry almost all of the value here, and neither requires new mathematics.
+  </p>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Version data, code, and parameters together</h4>
+      <p>
+      A result is only reproducible if all three of "which data," "which code," and "which parameter
+      values" are pinned down as a single unit, not tracked separately. A code repository with version
+      control tells you which script produced a number, but if the underlying dataset gets silently
+      updated (a data vendor revises history, a bug fix changes a computed column) without a
+      corresponding version bump, the same script run again produces a different answer with no record
+      of why. The practical discipline: tag or snapshot the exact data version, code commit, and
+      parameter file together whenever a result is reported, so "rerun this" means something concrete
+      rather than "rerun approximately this."
+      </p>
+    </div>
+    <div class="tl-compare-card green">
+      <h4>Point-in-time data snapshots</h4>
+      <p>
+      Many data series get revised after the fact — a macro release gets a preliminary print and then
+      one or more later revisions; a company's historical financials get restated; even a price series
+      can be adjusted retroactively for corporate actions. A feature computed "as of December" using
+      today's fully-revised data vintage is not the same feature a live system in December could have
+      computed, because December's live system only had December's preliminary, unrevised numbers. True
+      reproducibility of a point-in-time backtest requires keeping (or being able to reconstruct) the
+      data exactly as it stood at each historical point in time — a full point-in-time snapshot
+      archive, not just "the current version of the historical series."
+      </p>
+    </div>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>The trap:</strong> "the data hasn't changed since I ran this" is rarely actually true for
+    macro or fundamental series — silent revisions are the norm, not the exception, and a backtest that
+    only stores the current vintage of a historical series has already lost the ability to prove it
+    wasn't accidentally using revised numbers.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+  Serious quantitative research groups build point-in-time data infrastructure specifically because
+  these failure modes are so easy to introduce by accident and so hard to spot after the fact — a
+  feature-store architecture that tags every value with both its calendar date and its true availability
+  timestamp, an explicit "as-of" query interface that refuses to return data that wouldn't have been
+  known yet, and a standard universe-construction step that deliberately includes delisted/discontinued
+  instruments rather than pulling from a "currently active" list. None of this is exotic engineering; the
+  common thread is treating "what did we actually know, and when" as a first-class question the data
+  infrastructure itself is built to answer, rather than something checked manually, backtest by
+  backtest, after the fact.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🕒</div>
+      <h4>Two dates, not one</h4>
+      <p>Track a data point's calendar date and its true availability/publication date separately — join on the latter.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📏</div>
+      <h4>Only-past statistics</h4>
+      <p>Any normalization, z-score, or rank must be computed from an expanding/rolling window of strictly prior data.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🗂️</div>
+      <h4>Include the delisted</h4>
+      <p>A universe built without failed/discontinued instruments is a universe that's already excluded the worst cases.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📦</div>
+      <h4>Snapshot, don't just save</h4>
+      <p>Keep the data vintage as it stood historically, not just the current, possibly-revised version of the same series.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where feature engineering quietly leaks</h3>
+    <ul>
+      <li>
+      <strong>Joining macro/fundamental data by calendar period instead of publication date.</strong> The
+      single most common source of point-in-time violations — a release "for" a given month is almost
+      never available on that month's last day.
+      </li>
+      <li>
+      <strong>Building a feature and a label from the same underlying event.</strong> Even when the code
+      paths look separate, if a feature and its label both depend on "how today actually turned out,"
+      it's target leakage regardless of how the columns are named.
+      </li>
+      <li>
+      <strong>Normalizing with global statistics "for convenience."</strong> Computing a single mean and
+      standard deviation once over the whole dataset, rather than recomputing them fresh at every point
+      in time from only prior data, is an easy shortcut that silently leaks every future extreme value
+      into every historical row's normalized reading.
+      </li>
+      <li>
+      <strong>Building a universe from "what's tradeable today."</strong> This one is easy to miss because
+      it doesn't look like a time-series leak at all — it's a leak in which rows exist in the dataset,
+      not in any one row's values, and it systematically removes exactly the historical failure cases a
+      strategy most needs to be tested against.
+      </li>
+      <li>
+      <strong>Treating a familiar transformation (returns, z-scores) as automatically stationary.</strong>
+      Converting a raw level into a return or a rolling z-score is a reasonable first step, but it doesn't
+      guarantee stationarity on its own — that has to be checked with the diagnostics in the Stationarity
+      lesson, not assumed from the shape of the formula.
+      </li>
+      <li>
+      <strong>Storing only the current data vintage.</strong> Without a point-in-time snapshot archive, a
+      backtest computed "as of" a historical date can never be proven free of later revisions, and can
+      never be honestly reproduced months later once the underlying series has been revised again.
+      </li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Point-in-time computability is the foundational requirement.</strong> Every input a feature uses must have genuinely existed and been knowable at or before the moment it's dated — no exceptions for "it's just the closing price."</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Non-stationary raw series can make a feature look predictive for the wrong reason.</strong> A feature that's really tracking a trend, not a repeating pattern, is a stationarity failure wearing a feature-importance costume.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Target leakage hides in same-timestamp features.</strong> If a feature and its label both depend on how the same event turned out, the feature is restating the label, not predicting it.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Normalize with only-past statistics, recomputed at every point in time.</strong> A z-score built from full-sample mean/std leaks every future extreme into every historical row.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Survivorship bias leaks through the universe, not the time series.</strong> Testing only on instruments that still exist today silently excludes the worst historical cases — a leak in which rows are present, not in what any one row contains.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>"The data hasn't changed" is usually false for macro/fundamental series.</strong> Silent revisions are the norm — reproducibility requires point-in-time snapshots, not just the current data vintage.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Version data, code, and parameters as one unit.</strong> A result is only truly reproducible if all three are pinned together, not tracked separately and assumed to still match.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What makes a feature "point-in-time computable," and what's the most common real-world way this gets violated by accident?</summary>
+    <div class="tl-answer">
+    A feature is point-in-time computable if every input it depends on was genuinely observable and
+    final at or before the moment the feature is dated — no later revision, no later publication. The
+    most common accidental violation is joining data by calendar period rather than by true
+    availability/publication date: a macro release "for March" is dated to March in most datasets but
+    is typically not actually published until weeks into April, so joining it to "March 31st" silently
+    hands a model several weeks of information it would never have had live.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why can a feature built from a non-stationary raw price level look "predictive" in a backtest without capturing any real, repeating pattern?</summary>
+    <div class="tl-answer">
+    If the raw series has trended persistently across most of the historical sample, then the raw level
+    is almost a disguised time index — knowing the level tells you roughly which part of the sample
+    you're in. A model can fit this relationship very well in-sample without learning anything that
+    generalizes, because it's really learning "later rows had higher/lower values," a fact specific to
+    that one non-repeating historical trend rather than a stationary, repeatable relationship. The
+    apparent predictive power evaporates once the trend changes direction or extends past the range the
+    model was trained on.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Explain, in your own words, why using same-day closing data to predict same-day direction is target leakage rather than a legitimate feature.</summary>
+    <div class="tl-answer">
+    Target leakage occurs when a feature indirectly encodes the label rather than genuinely preceding
+    and explaining it. If the label is "did the close finish above the open today" and the feature is
+    built from data that only exists because the day's close already happened (the day's realized
+    range, the day's own volatility measured through the close), the feature and the label are both
+    functions of the same underlying event rather than the feature causally or informationally
+    preceding the label. The practical test is whether the feature could have been meaningfully known
+    before the outcome was substantially determined — here, the honest answer is no, so it's leakage
+    regardless of how the code separates the columns.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. How does z-scoring with full-sample statistics differ from the split-boundary leak covered in the Walk-Forward &amp; Purged Cross-Validation lesson, and why is it a separate problem worth naming on its own?</summary>
+    <div class="tl-answer">
+    The walk-forward lesson's leak happens at the train/test split boundary — a rolling feature or label
+    window on one side of the boundary reaches into data on the other side. Full-sample z-scoring is a
+    narrower, feature-construction-stage version of the same underlying mistake ("using data from the
+    wrong time") that can happen even with a perfectly clean split: if every row's z-score is computed
+    using the mean and standard deviation of the <em>entire</em> series (train and test both, and every
+    time index regardless of position), then every single historical row's feature value has already
+    baked in knowledge of the full historical range, including extremes that hadn't happened yet as of
+    that row's own date. It's worth naming separately because it can contaminate a feature well before
+    any train/test split is even applied, so fixing the split alone would not fix it.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why does survivorship bias in the instrument universe count as a leakage problem, even though it doesn't involve any single time series leaking future information into the past?</summary>
+    <div class="tl-answer">
+    Survivorship bias leaks through which rows (instruments) are included in the test at all, rather
+    than through what any one row's feature values contain. Building a universe from "instruments that
+    are tradeable today" silently excludes anything that was delisted, defaulted, or discontinued along
+    the way — and those excluded cases are disproportionately the historical scenarios where a strategy
+    would have performed worst. The backtest still produces a technically well-computed result on the
+    instruments it does include, but the universe itself has quietly removed the strategy's own
+    worst-case history, producing a result systematically better than what a live system operating in
+    real time, with no foreknowledge of which instruments would survive, would actually have
+    experienced.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why isn't storing "the current version of a historical data series" sufficient for reproducibility, and what's the practical fix?</summary>
+    <div class="tl-answer">
+    Many macro and fundamental series are revised after their initial publication — preliminary prints
+    get restated, financials get corrected, and even price series can be adjusted retroactively. If only
+    the current, fully-revised vintage of a series is stored, a feature computed "as of" some historical
+    date using that current vintage is not the same feature a live system on that historical date could
+    have actually computed, because the live system only ever had access to the preliminary numbers
+    available at that time. The practical fix is keeping (or being able to reconstruct) point-in-time
+    snapshots of the data — the exact vintage as it stood at each historical date — rather than relying
+    on a single, continuously-updated copy of "the historical series."
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Marcos López de Prado, <em>Advances in Financial Machine Learning</em> (Wiley, 2018) — Chapter 5, "Fractionally Differentiated Features," discusses converting non-stationary raw series into stationary features without discarding all memory of the level; Chapter 11 covers backtesting pitfalls including leakage more broadly.</li>
+    <li>Elroy Dimson, Paul Marsh &amp; Mike Staunton, <em>Triumph of the Optimists: 101 Years of Global Investment Returns</em> (Princeton University Press, 2002) — the standard reference for how survivorship bias distorts long-run return studies when failed markets/instruments are excluded from the dataset.</li>
+    <li>Stephen Kinsella &amp; contributors, on macro data vintages and "ALFRED"-style point-in-time archives (Federal Reserve Bank of St. Louis) — the standard practitioner tool for retrieving a macro series exactly as it was published on a given historical date, rather than its current, revised value.</li>
+    <li>Sam Savage, <em>The Flaw of Averages</em> (Wiley, 2009) — an accessible, non-mathematical treatment of why using summary statistics computed over data a decision-maker didn't actually have yet produces systematically overconfident conclusions, a theme directly relevant to the full-sample-statistics contamination pattern in this lesson.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="research-pipeline-hypothesis-to-backtest.html">← The Research Pipeline: Hypothesis to Honest Backtest</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+</body>
+</html>

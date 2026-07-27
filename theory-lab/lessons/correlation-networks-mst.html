@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Correlation Networks &amp; Minimum Spanning Trees — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Graph Theory &amp; Networks / Correlation Networks &amp; Minimum Spanning Trees</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Graph Theory &amp; Networks 2 of 3</div>
+  <h1 class="tl-title">Correlation Networks &amp; Minimum Spanning Trees</h1>
+  <p class="tl-dek">A correlation matrix for even a modest basket is a wall of numbers nobody can eyeball. Turn it into a distance graph and prune it down to its minimum spanning tree, and the basket's clustering structure — who's really close to whom — becomes a picture instead of a table.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — background theory, not built or tested anywhere in this repo</span>
+    <span>~16 min read</span>
+    <span>Prereqs: Graph Theory Fundamentals &amp; Centrality Measures</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A correlation coefficient isn't a distance — high correlation should mean "close," but correlation runs the wrong way for that (1 = identical, -1 = opposite), so it needs a transform before it can be used as an edge weight in a network.</li>
+      <li>Mantegna's (1999) transform \(d_{ij}=\sqrt{2(1-\rho_{ij})}\) fixes this: perfectly correlated pairs get distance 0, uncorrelated pairs get distance \(\sqrt{2}\), perfectly anti-correlated pairs get the maximum distance 2.</li>
+      <li>The Minimum Spanning Tree (MST) is the subgraph that connects every node using the least total edge weight, with no cycles — built conceptually via Kruskal's algorithm (sort edges by distance, add the shortest one that doesn't close a loop, repeat) or Prim's (grow one connected tree outward, always adding the nearest unconnected node).</li>
+      <li>A worked 5-node example computes all 10 pairwise distances from a plausible correlation matrix, runs Kruskal's algorithm by hand, and produces a 4-edge backbone tree that reveals a hub-and-outlier structure a raw correlation table doesn't show at a glance.</li>
+      <li>Mantegna's original 1999 application was a basket of Dow Jones equities; applying the same transform to FX/cross-asset baskets is a natural extension, not one this repo has tested or validated — that's stated plainly throughout this lesson.</li>
+      <li>PCA and the MST are different lenses on the exact same correlation matrix: PCA collapses it into a handful of ranked, orthogonal factors; the MST keeps every pairwise relationship intact as a sparse graph — the two aren't competitors, they show different things.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The <a href="pca-factors.html">PCA lesson</a> in this curriculum
+    summarizes a whole correlation matrix at once — one number,
+    \(\text{EVR}_1\), for "how much of the basket is really one trade." The
+    <a href="cointegration.html">cointegration lesson</a> tests exactly one
+    pair at a time for whether their spread has an actual equilibrium.
+    Between those two — "the whole basket" and "one specific pair" — sits a
+    genuinely useful third view: the whole basket's <em>pairwise structure</em>,
+    all at once, but kept as individual relationships rather than compressed
+    into factors. A correlation heatmap technically contains this
+    information already, but a table of \(N(N-1)/2\) numbers is not
+    something a human reads and immediately understands. Turning that same
+    matrix into a graph — and then pruning the graph down to its essential
+    backbone — is the standard fix, and it's exactly what this lesson builds.
+  </p>
+  <p>
+    This is the second of three lessons in this new category. The previous
+    lesson, <a href="graph-theory-centrality.html">Graph Theory Fundamentals
+    &amp; Centrality Measures</a>, built the vocabulary (graphs, adjacency
+    matrices, "which node matters") this lesson needs. This lesson applies
+    that vocabulary to a correlation matrix specifically, and needs one new
+    idea on top: how to turn a correlation (a similarity) into a distance,
+    and how to extract a graph's "skeleton" — the Minimum Spanning Tree.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Building the cheapest road network that still reaches every town</h3>
+    <p>
+      Imagine a country planner given a map of towns and the cost of
+      building a road directly between any two of them, and told: connect
+      every town to the network, somehow, for the least total construction
+      cost. You don't need every possible road — that would be enormously
+      wasteful, most towns only need to reach the network once, not by every
+      possible route. What you actually want is the cheapest possible set of
+      roads that still lets you get from any town to any other (possibly via
+      a few hops), with absolutely no redundant loops, since any loop is, by
+      definition, at least one road too many. That specific object — the
+      lowest-total-weight way to connect every node with no cycles — is a
+      <strong>Minimum Spanning Tree</strong>.
+    </p>
+    <p>
+      Now replace "towns" with financial instruments and "road cost" with
+      "how far apart two instruments' price behavior is" (built from their
+      correlation), and the same construction answers a market-structure
+      question: which pairs are the tightest, most direct links in the whole
+      basket, and how do smaller clusters connect to the rest of the basket
+      through the fewest, cheapest bridges? The MST doesn't throw away
+      information carelessly — it keeps exactly the \(N-1\) edges (for
+      \(N\) instruments) that are individually most essential, in the sense
+      that no cheaper way exists to keep the whole basket connected.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>Step 1 — turning a correlation into a distance</h3>
+  <p>
+    A correlation coefficient \(\rho_{ij} \in [-1, 1]\) measures similarity,
+    not distance — and it runs backwards from what a graph edge weight
+    needs. In a graph, a small edge weight should mean "close" or "strongly
+    linked"; but the most similar pair (perfectly correlated, \(\rho=1\))
+    has the <em>largest</em> possible correlation value, and the least
+    similar, most oppositely-behaving pair (\(\rho=-1\)) has the smallest.
+    Using raw correlation directly as a graph distance would have highly
+    correlated pairs registering as "far apart" — backwards.
+  </p>
+  <p>
+    Rosario Mantegna's widely used fix (1999), developed for a basket of
+    equities, is a specific transform turning correlation into a proper
+    metric distance:
+  </p>
+  <div class="tl-math">\[ d_{ij} = \sqrt{2(1-\rho_{ij})} \]</div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">ρ_ij</div>
+      <div class="tl-fp-name">Correlation</div>
+      <div class="tl-fp-desc">How similarly instruments i and j move, from -1 to 1</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">1 − ρ_ij</div>
+      <div class="tl-fp-name">Dissimilarity</div>
+      <div class="tl-fp-desc">Flips the direction — 0 when perfectly correlated, 2 when perfectly anti-correlated</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">d_ij</div>
+      <div class="tl-fp-name">The distance</div>
+      <div class="tl-fp-desc">A proper metric: 0 (identical) to 2 (perfectly opposite), √2 when uncorrelated</div>
+    </div>
+  </div>
+  <p>
+    Read this in three checkpoints. When \(\rho_{ij}=1\) (perfectly
+    correlated), \(d_{ij}=\sqrt{2(1-1)}=0\) — identical behavior means zero
+    distance, exactly as a distance metric should behave. When
+    \(\rho_{ij}=0\) (uncorrelated), \(d_{ij}=\sqrt{2}\approx1.414\) — the
+    natural "neutral" distance. When \(\rho_{ij}=-1\) (perfectly
+    anti-correlated), \(d_{ij}=\sqrt{2(1-(-1))}=\sqrt{4}=2\) — the maximum
+    possible distance, since moving in perfect opposition is, in this
+    metric, as "far apart" as two series can be. The \(\sqrt{2(1-\rho)}\)
+    form specifically is a proper metric (it satisfies the triangle
+    inequality, unlike some simpler transforms such as \(1-\rho\) alone) —
+    a technical requirement for the shortest-path and spanning-tree
+    machinery below to behave the way graph theory expects.
+  </p>
+
+  <h3>Step 2 — the distance matrix becomes a complete graph</h3>
+  <p>
+    Compute \(d_{ij}\) for every pair of \(N\) instruments and the result is
+    a complete graph: every node connects to every other node (there's
+    always some distance between any two correlations), with \(N(N-1)/2\)
+    total edges. This is the same adjacency-matrix idea from the previous
+    lesson, just built from distances instead of raw connection strengths —
+    a fully-connected graph on which "closeness" is well-defined but which is
+    still too dense, at this point, to read as a picture. A 20-instrument
+    basket has 190 edges; nobody looks at that and sees a clean clustering
+    structure. The next step's job is pruning it down to what actually
+    matters.
+  </p>
+
+  <h3>Step 3 — the Minimum Spanning Tree</h3>
+  <p>
+    A <strong>spanning tree</strong> of a connected graph with \(N\) nodes is
+    any subgraph that (a) touches every node, (b) contains no cycles, and
+    (c) is therefore built from exactly \(N-1\) edges — the minimum number
+    that can still connect \(N\) nodes at all. Many different spanning trees
+    exist for a given graph (many different choices of which \(N-1\) edges
+    to keep); the <strong>Minimum Spanning Tree</strong> is specifically the
+    one whose edges sum to the lowest total weight.
+  </p>
+  <p>
+    Two classical algorithms build it, both provably optimal, differing only
+    in how they search:
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Kruskal's algorithm</h4>
+      <p>Sort every edge in the graph by weight, ascending. Walk down the sorted list and add each edge to the growing tree <em>unless</em> it would close a cycle (i.e., unless both its endpoints are already connected to each other through edges already added) — in which case skip it and move to the next. Stop once \(N-1\) edges have been added. Simple to run by hand on a small graph, and the algorithm this lesson's worked example uses.</p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>Prim's algorithm</h4>
+      <p>Start from any single node as a one-node "tree." Repeatedly find the shortest edge connecting a node already in the tree to any node not yet in it, and add that node and edge. Stop once every node has joined. Grows outward from a single seed rather than sorting the whole edge list up front — often preferred computationally for dense graphs.</p>
+    </div>
+  </div>
+  <p>
+    Both are <strong>greedy algorithms</strong> — at each step they make the
+    locally cheapest choice available, never revisiting or reconsidering a
+    prior choice — and both are mathematically guaranteed to find the true
+    global minimum-weight spanning tree, not merely a good one. That
+    guarantee (formalized by the "cut property" of matroid theory) is what
+    makes MST construction one of the cleanest results in combinatorial
+    optimization: unlike most greedy heuristics, greedy is provably optimal
+    here.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(\rho_{ij}\)</td><td>The Pearson correlation coefficient between instruments \(i\) and \(j\), in \([-1,1]\).</td></tr>
+    <tr><td>\(d_{ij}\)</td><td>The Mantegna distance between \(i\) and \(j\): \(\sqrt{2(1-\rho_{ij})}\), ranging from 0 (identical) to 2 (perfectly opposite).</td></tr>
+    <tr><td>Complete graph</td><td>A graph where every node is connected to every other node — the direct result of computing \(d_{ij}\) for all pairs.</td></tr>
+    <tr><td>Spanning tree</td><td>A subgraph touching every node with no cycles, built from exactly \(N-1\) edges.</td></tr>
+    <tr><td>MST</td><td>The Minimum Spanning Tree — the spanning tree whose total edge weight is the lowest possible.</td></tr>
+    <tr><td>Kruskal's algorithm</td><td>Builds the MST by adding the globally shortest remaining edge that doesn't create a cycle, repeated until done.</td></tr>
+    <tr><td>Prim's algorithm</td><td>Builds the MST by growing one connected tree outward, always adding the nearest node not yet in the tree.</td></tr>
+  </table></div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Five FX pairs, ten distances, one 4-edge backbone</h3>
+    <p>
+      Take five instruments — EUR, GBP, CHF, JPY, AUD — with a plausible
+      (not measured from live data) pairwise correlation matrix:
+    </p>
+    <div class="tl-math">
+      \[
+      \begin{array}{c|ccccc}
+       & \text{EUR} & \text{GBP} & \text{CHF} & \text{JPY} & \text{AUD} \\\hline
+      \text{EUR} & 1.00 & 0.80 & 0.70 & 0.30 & 0.50 \\
+      \text{GBP} & 0.80 & 1.00 & 0.60 & 0.25 & 0.45 \\
+      \text{CHF} & 0.70 & 0.60 & 1.00 & 0.20 & 0.35 \\
+      \text{JPY} & 0.30 & 0.25 & 0.20 & 1.00 & 0.40 \\
+      \text{AUD} & 0.50 & 0.45 & 0.35 & 0.40 & 1.00
+      \end{array}
+      \]
+    </div>
+    <p>
+      Applying \(d_{ij}=\sqrt{2(1-\rho_{ij})}\) to each off-diagonal entry
+      gives the ten pairwise distances, sorted ascending for Kruskal's
+      algorithm:
+    </p>
+    <div class="tl-math">
+      \[
+      \begin{array}{lc}
+      \text{EUR–GBP} & 0.63 \\
+      \text{EUR–CHF} & 0.77 \\
+      \text{GBP–CHF} & 0.89 \\
+      \text{EUR–AUD} & 1.00 \\
+      \text{GBP–AUD} & 1.05 \\
+      \text{JPY–AUD} & 1.10 \\
+      \text{CHF–AUD} & 1.14 \\
+      \text{EUR–JPY} & 1.18 \\
+      \text{GBP–JPY} & 1.22 \\
+      \text{CHF–JPY} & 1.26
+      \end{array}
+      \]
+    </div>
+    <p>
+      Running Kruskal's algorithm: add <strong>EUR–GBP (0.63)</strong> — the
+      shortest edge, no cycle risk yet. Add <strong>EUR–CHF (0.77)</strong> —
+      next shortest, connects CHF into the growing {EUR, GBP} component.
+      <strong>GBP–CHF (0.89)</strong> is next in sorted order but both
+      endpoints are already in the same component (adding it would close the
+      EUR-GBP-CHF triangle into a cycle) — skip it. Add
+      <strong>EUR–AUD (1.00)</strong> — connects AUD into the main component.
+      <strong>GBP–AUD (1.05)</strong> is skipped for the same reason as
+      GBP–CHF (cycle). Add <strong>JPY–AUD (1.10)</strong> — connects the
+      last remaining node, JPY, into the tree. That's 4 edges for 5 nodes —
+      done.
+    </p>
+    <p>
+      The resulting MST: EUR–GBP, EUR–CHF, EUR–AUD, and JPY–AUD, total
+      weight \(0.63+0.77+1.00+1.10=3.50\). Read as a picture rather than a
+      list, this says something the correlation table alone didn't make
+      obvious at a glance: EUR is the structural hub of this basket (three
+      of the four MST edges touch it), and JPY — the instrument correlated
+      most weakly with everything else — doesn't connect to the hub
+      directly at all; it attaches through its single closest relationship,
+      AUD, which happens to be its least-weak link into the rest of the
+      basket. The backbone reveals a hub-and-outlier shape that a same-sized
+      table of ten numbers doesn't visually deliver on its own.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The full distance graph (faint) with its 4-edge minimum spanning tree (bold green) highlighted</div>
+    <svg viewBox="0 0 640 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Five nodes — EUR, GBP, CHF, JPY, AUD — with all ten pairwise distance edges drawn faintly, and the four minimum spanning tree edges (EUR-GBP, EUR-CHF, EUR-AUD, JPY-AUD) highlighted in bold green with their distances labeled, showing EUR as a structural hub and JPY attached only through AUD">
+      <line x1="320" y1="60" x2="130" y2="330" style="stroke:var(--text3);stroke-width:1.5;opacity:.35"/>
+      <line x1="150" y1="150" x2="490" y2="150" style="stroke:var(--text3);stroke-width:1.5;opacity:.35"/>
+      <line x1="150" y1="150" x2="130" y2="330" style="stroke:var(--text3);stroke-width:1.5;opacity:.35"/>
+      <line x1="150" y1="150" x2="320" y2="250" style="stroke:var(--text3);stroke-width:1.5;opacity:.35"/>
+      <line x1="490" y1="150" x2="130" y2="330" style="stroke:var(--text3);stroke-width:1.5;opacity:.35"/>
+      <line x1="490" y1="150" x2="320" y2="250" style="stroke:var(--text3);stroke-width:1.5;opacity:.35"/>
+
+      <line x1="320" y1="60" x2="150" y2="150" style="stroke:var(--green);stroke-width:3.5"/>
+      <line x1="320" y1="60" x2="490" y2="150" style="stroke:var(--green);stroke-width:3.5"/>
+      <line x1="320" y1="60" x2="320" y2="250" style="stroke:var(--green);stroke-width:3.5"/>
+      <line x1="130" y1="330" x2="320" y2="250" style="stroke:var(--green);stroke-width:3.5"/>
+
+      <text x="220" y="98" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:12px;font-weight:600">0.63</text>
+      <text x="400" y="98" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:12px;font-weight:600">0.77</text>
+      <text x="335" y="160" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:12px;font-weight:600">1.00</text>
+      <text x="200" y="305" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:12px;font-weight:600">1.10</text>
+
+      <circle cx="320" cy="60" r="24" style="fill:var(--blue);stroke:var(--border2);stroke-width:2"/>
+      <text x="320" y="65" text-anchor="middle" style="fill:#fff;font-family:'DM Mono',monospace;font-size:13px;font-weight:600">EUR</text>
+
+      <circle cx="150" cy="150" r="24" style="fill:var(--blue);stroke:var(--border2);stroke-width:2"/>
+      <text x="150" y="155" text-anchor="middle" style="fill:#fff;font-family:'DM Mono',monospace;font-size:13px;font-weight:600">GBP</text>
+
+      <circle cx="490" cy="150" r="24" style="fill:var(--blue);stroke:var(--border2);stroke-width:2"/>
+      <text x="490" y="155" text-anchor="middle" style="fill:#fff;font-family:'DM Mono',monospace;font-size:13px;font-weight:600">CHF</text>
+
+      <circle cx="320" cy="250" r="24" style="fill:var(--blue);stroke:var(--border2);stroke-width:2"/>
+      <text x="320" y="255" text-anchor="middle" style="fill:#fff;font-family:'DM Mono',monospace;font-size:13px;font-weight:600">AUD</text>
+
+      <circle cx="130" cy="330" r="24" style="fill:var(--amber);stroke:var(--border2);stroke-width:2"/>
+      <text x="130" y="335" text-anchor="middle" style="fill:#1a1305;font-family:'DM Mono',monospace;font-size:13px;font-weight:600">JPY</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--text3)"></i>Non-tree distance edges (6, faint)</span>
+      <span><i style="background:var(--green)"></i>Minimum spanning tree (4 edges)</span>
+      <span><i style="background:var(--amber)"></i>JPY — the outlier, reached only through AUD</span>
+    </div>
+    <div class="tl-chart-caption">
+      All 10 pairwise distances exist (faint gray lines) since this started
+      as a complete graph, but only 4 of them — the green tree — are needed
+      to connect all five nodes at minimum total distance. EUR sits at the
+      hub of three of the four tree edges; JPY, weakly correlated with
+      everything, connects to the tree through its single least-bad
+      relationship (AUD) rather than joining the hub directly.
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">A named scenario</div>
+    <h3>Spotting redundant risk before adding a sixth pair</h3>
+    <p>
+      Suppose a discretionary desk already holds positions sized around
+      EUR, GBP, CHF, and AUD, and is considering adding JPY as a fifth,
+      "diversifying" instrument. The MST gives a fast, honest read: JPY's
+      only path into this basket's backbone is a single, comparatively long
+      edge through AUD (distance 1.10 — the second-longest edge kept in the
+      whole tree) — meaning JPY is indeed the basket's most genuinely
+      distinct instrument, its closest relationship to anything else in the
+      book is still fairly weak. That's a legitimate diversification
+      argument, and exactly the kind of structural read an MST is built to
+      surface quickly. It is <em>not</em>, on its own, evidence that adding
+      JPY improves risk-adjusted returns — that still requires testing the
+      actual combined book's performance, with costs, the same as any other
+      change to a strategy in this curriculum's house discipline. A backbone
+      picture tells you about structure; it does not replace a backtest.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this — and where it comes from</h2>
+  <p>
+    Mantegna introduced this exact distance transform and MST construction
+    in 1999, applied to a basket of stocks in the Dow Jones Industrial
+    Average, to show that the resulting tree recovers economically sensible
+    industry clusters (technology stocks clustering together, financials
+    clustering together) purely from price-correlation structure, with no
+    industry labels fed in as input — the tree "discovers" sector structure.
+    That result, and the broader "econophysics" literature that followed it,
+    is specifically an <strong>equities</strong> result. Applying the same
+    machinery to an FX or cross-asset basket — as this lesson's worked
+    example does — is a natural, structurally sound extension (currencies
+    correlate, correlation can be turned into a distance, a distance graph
+    can be pruned to an MST regardless of asset class), but it is a
+    <strong>different application than the one Mantegna tested</strong>, and
+    this repo has not validated whether an FX/cross-asset MST recovers
+    anything as clean or as tradeable as the equity-sector result. Treat the
+    FX framing here as a plausible hypothesis worth building carefully, not
+    as a proven technique simply because the underlying math is sound.
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🌳</div>
+      <h4>Hierarchical clustering visualization</h4>
+      <p>The MST is often drawn alongside a dendrogram — repeatedly merging the closest clusters gives the same backbone structure from a different algorithmic angle.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📊</div>
+      <h4>Portfolio construction sanity checks</h4>
+      <p>A basket whose MST is one long chain (each instrument barely connected to the next) looks structurally different from one with a dense hub — a fast qualitative diversification read before running any optimizer.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🔗</div>
+      <h4>Network stability monitoring</h4>
+      <p>Some studies track how MST topology itself changes across market regimes (the tree "flattens" toward one dominant hub in stressed markets) as a structural, not just numerical, crisis indicator.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧮</div>
+      <h4>PCA vs. MST — different lenses, same matrix</h4>
+      <p>PCA (previous category lesson) collapses the whole correlation matrix into a handful of ranked, mutually orthogonal factors — good for "how many independent bets do I really have." The MST keeps every individual pairwise relationship intact as a sparse graph — good for "which specific pairs are closest, and how does the whole basket connect together." Neither replaces the other; a full cross-asset structure read typically uses both.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where correlation-network analysis goes wrong in practice</h3>
+    <p>
+      <strong>Treating the MST as fixed.</strong> Exactly like the
+      correlation matrix it's built from, an MST is estimated over a
+      specific historical window and can change shape — sometimes
+      substantially — as correlations shift across regimes. A tree built on
+      calm-market data and one built on crisis data can genuinely disagree
+      about which instrument is the hub.
+    </p>
+    <p>
+      <strong>Confusing "a natural extension" with "a validated one."</strong>
+      As stated plainly above, Mantegna's original demonstration is an
+      equities result; extending the same transform to FX/cross-asset data
+      is mathematically valid but has not been tested for whether it
+      produces anything economically meaningful or tradeable in that
+      setting — that's a separate empirical question from whether the
+      algorithm runs correctly.
+    </p>
+    <p>
+      <strong>Reading tree distance as literal "how many hops away."</strong>
+      An instrument two edges away from the hub in the tree isn't
+      necessarily "half as correlated" as one directly connected to it —
+      the MST discards every non-tree edge's exact value, keeping only
+      which edges survived the pruning. For the precise pairwise number,
+      go back to the correlation matrix; use the tree for structure, not
+      for reading off exact distances between non-adjacent nodes.
+    </p>
+    <p>
+      <strong>Small-basket instability.</strong> Just as with PCA's
+      eigenvectors on a small \(N\), an MST built from only a handful of
+      instruments and a short history can be sensitive to which exact days
+      are included — two very close distances (like GBP–CHF at 0.89 versus
+      EUR–AUD at 1.00 in the worked example) can swap which one the tree
+      keeps with only modest changes to the underlying correlation
+      estimate.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Correlation needs a transform before it's a distance.</strong> Mantegna's \(d_{ij}=\sqrt{2(1-\rho_{ij})}\) turns "1 = identical" into "0 = zero distance," fixing correlation's backwards direction and satisfying the triangle inequality a proper metric needs.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The MST is the cheapest way to connect every node with no cycles.</strong> Built via Kruskal's (sort edges, add if no cycle) or Prim's (grow outward, always nearest) — both greedy, both provably optimal.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked example's backbone revealed a hub-and-outlier shape</strong> — EUR as the structural hub, JPY reached only through its single closest relationship — that the raw ten-number correlation table didn't show at a glance.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>PCA and the MST are complementary, not competing.</strong> PCA collapses a correlation matrix into ranked factors; the MST keeps every pairwise relationship as a sparse graph — different questions, same underlying matrix.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Mantegna's original result is an equities result.</strong> The FX/cross-asset framing in this lesson is a natural, structurally sound extension — it is not a technique this repo has tested or validated in that setting.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A backbone picture is not a backtest.</strong> Seeing which instrument is structurally the outlier is a genuine diversification read, but it says nothing on its own about whether adding that instrument improves risk-adjusted returns.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why can't a raw correlation coefficient be used directly as a graph edge weight representing "distance" or "closeness"?</summary>
+    <div class="tl-answer">
+      Because correlation measures similarity, and its scale runs in the
+      opposite direction a distance needs: the most similar pair
+      (\(\rho=1\)) has the <em>largest</em> correlation value, while a
+      distance should be <em>smallest</em> for the closest pair. Using raw
+      correlation directly would make highly correlated (truly close) pairs
+      register as far apart in the graph. A transform like Mantegna's
+      \(d=\sqrt{2(1-\rho)}\) is needed to flip the direction and produce a
+      proper distance, where 0 means identical and larger values mean
+      further apart.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. In the worked example, why was the edge GBP–CHF (distance 0.89) skipped by Kruskal's algorithm even though it's shorter than several edges that were kept?</summary>
+    <div class="tl-answer">
+      By the time Kruskal's algorithm reached GBP–CHF in the sorted edge
+      list, both GBP and CHF were already connected to each other indirectly
+      through the two edges added just before it (EUR–GBP and EUR–CHF) —
+      they were already in the same connected component. Adding GBP–CHF on
+      top would have closed a cycle (the EUR-GBP-CHF triangle) without
+      connecting any new node to the tree, which Kruskal's algorithm always
+      rejects regardless of how short the edge is. Being shorter than a
+      later edge doesn't matter if the edge would be redundant.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What specific reason does Mantegna's \(d_{ij}=\sqrt{2(1-\rho_{ij})}\) transform have for its exact functional form, rather than something simpler like \(1-\rho_{ij}\)?</summary>
+    <div class="tl-answer">
+      The \(\sqrt{2(1-\rho)}\) form is chosen specifically because it
+      satisfies the triangle inequality (a requirement for a proper metric:
+      the direct distance between two points can never exceed the sum of
+      distances through a third point), which a simpler transform like
+      \(1-\rho\) alone does not reliably satisfy for correlation matrices in
+      general. Since shortest-path algorithms and spanning-tree construction
+      rely on distances behaving like genuine metric distances, using a
+      transform that isn't guaranteed to satisfy the triangle inequality can
+      produce a graph where the usual intuitions about "shortest path" and
+      "closest neighbor" break down.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What does the MST in the worked example reveal about JPY that the raw correlation matrix doesn't make immediately obvious?</summary>
+    <div class="tl-answer">
+      The correlation matrix shows JPY has the lowest correlation with every
+      other instrument in the basket (0.20–0.40, versus 0.35–0.80 among the
+      other four), but that fact is buried among ten numbers and isn't
+      visually obvious. The MST makes it structural and immediate: JPY isn't
+      connected to the hub (EUR) directly at all — it only joins the tree
+      through its single least-weak relationship, to AUD, and that edge
+      (1.10) is the second-longest kept in the whole tree. The tree turns
+      "JPY has uniformly weak correlations" into a visible shape — an
+      outlier hanging off the main cluster by one thin thread — rather than
+      a pattern a reader has to notice by scanning a row of numbers.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why is Mantegna's original 1999 result specifically an equities result, and what should that caution you about applying the same MST construction to an FX basket?</summary>
+    <div class="tl-answer">
+      Mantegna built and validated the transform-and-MST approach on a
+      basket of Dow Jones equities, where the resulting tree was shown to
+      recover recognizable industry clusters purely from price correlation.
+      That empirical validation — "this specific technique produces
+      economically sensible, useful structure" — was done for stocks, not
+      currencies. Running the identical math on FX pairs is algorithmically
+      valid (correlation-to-distance and MST construction don't care what
+      asset class the data comes from), but whether the resulting FX tree
+      is similarly meaningful or useful for anything practical is a
+      separate empirical question this repo has not tested. The caution is
+      to treat the FX application as a reasonable hypothesis to test
+      carefully, not as something already proven simply because the
+      original equities version was.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Rosario N. Mantegna, <em>"Hierarchical Structure in Financial Markets,"</em> The European Physical Journal B, 1999 — the original paper introducing the \(\sqrt{2(1-\rho)}\) distance transform and MST construction, applied to Dow Jones equities.</li>
+    <li>Joseph B. Kruskal, <em>"On the Shortest Spanning Subtree of a Graph and the Traveling Salesman Problem,"</em> Proceedings of the American Mathematical Society, 1956 — the original Kruskal's algorithm paper.</li>
+    <li>Robert C. Prim, <em>"Shortest Connection Networks and Some Generalizations,"</em> Bell System Technical Journal, 1957 — the original Prim's algorithm paper.</li>
+    <li>Rosario N. Mantegna and H. Eugene Stanley, <em>An Introduction to Econophysics: Correlations and Complexity in Finance,</em> Cambridge University Press, 1999 — the standard textbook treatment situating the MST approach within the broader econophysics literature.</li>
+    <li>Gustavo Peron Tumminello, Fabrizio Lillo, and Rosario N. Mantegna, <em>"Correlation, Hierarchies, and Networks in Financial Markets,"</em> Journal of Economic Behavior &amp; Organization, 2010 — a later survey covering extensions and robustness of the original MST approach.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="graph-theory-centrality.html">← Graph Theory Fundamentals &amp; Centrality Measures</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="systemic-risk-networks.html">Systemic Risk &amp; Financial Contagion Networks →</a>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transfer Entropy &amp; Information-Theoretic Causality — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Information Theory / Transfer Entropy &amp; Information-Theoretic Causality</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Information Theory 2 of 3</div>
+  <h1 class="tl-title">Transfer Entropy &amp; Information-Theoretic Causality</h1>
+  <p class="tl-dek">Granger causality asks whether one series' past linearly improves a forecast of another. Transfer entropy asks the same directional question without assuming the relationship is linear at all — and comes with the same hard warning attached: it measures predictive information flow, never causation in the formal sense.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — background math, not built or tested anywhere in this repo</span>
+    <span>~15 min read</span>
+    <span>Prereqs: Entropy, KL Divergence &amp; Mutual Information; ARIMA &amp; VAR (for the Granger causality bridge)</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Granger causality (see <a href="arima-var.html">ARIMA &amp; VAR</a>) tests whether \(X\)'s lags significantly improve a <em>linear</em> forecast of \(Y\) beyond \(Y\)'s own history — useful, but structurally blind to nonlinear predictive relationships.</li>
+      <li>Transfer entropy is the nonlinear generalization: \(TE_{X\to Y} = I(Y_t\,;\,X_{t-1} \mid Y_{t-1})\) — the mutual information between \(Y\)'s future and \(X\)'s past, with \(Y\)'s own past held fixed (conditioned out), so only the <em>genuinely new</em> information \(X\) adds is counted.</li>
+      <li>Transfer entropy is directional and generally asymmetric: \(TE_{X\to Y} \ne TE_{Y\to X}\) — that asymmetry is exactly what gives it a causality-<em>like</em> signal, the same way Granger causality's directionality does.</li>
+      <li>The worked example below constructs an exact, fully-derived case — \(X\) is pure noise driving \(Y\) through a noisy one-step channel — where \(TE_{X\to Y}\approx 0.531\) bits while \(TE_{Y\to X}=0\) bits <em>exactly</em>, real numbers from a real (if synthetic) process, not fitted or estimated from a sample.</li>
+      <li><strong>Mandatory caveat:</strong> transfer entropy detects predictive information flow — it is not causation in the formal, interventionist (Pearl do-calculus) sense. An unobserved common driver can produce a nonzero, asymmetric transfer entropy with no direct causal link at all, exactly as with Granger causality.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+  The <a href="arima-var.html">ARIMA &amp; VAR</a> lesson built Granger causality: fit a
+  restricted VAR using only \(Y\)'s own lags, fit an unrestricted one adding \(X\)'s lags too, and
+  run an F-test on whether the added lags significantly improve the fit. That test is exactly as
+  powerful as the model underneath it — and the model underneath it is linear. If \(X\)'s past
+  predicts \(Y\)'s future through a threshold, an interaction, or any other nonlinear channel, a
+  linear VAR's coefficients can come back statistically indistinguishable from zero even though real,
+  usable predictive information is sitting right there in the data — the identical structural
+  blind spot the <a href="entropy-kl-mutual-information.html">previous lesson</a>'s \(Y=X^2\) example
+  demonstrated for correlation.
+  </p>
+  <p>
+  Transfer entropy asks the Granger-causality question — does \(X\)'s past add real predictive
+  content for \(Y\), beyond \(Y\)'s own history — using mutual information instead of a linear
+  regression's R². Because mutual information catches any form of dependence, not just a linear one,
+  transfer entropy is the model-free generalization of the same directional idea: not "does adding
+  \(X\)'s lags improve a linear fit of \(Y\)," but "does knowing \(X\)'s past reduce genuine
+  uncertainty about \(Y\)'s future, beyond what \(Y\)'s own past already tells you." Both are
+  directional, predictive-improvement tests — transfer entropy simply drops the linearity
+  assumption Granger causality is built on.
+  </p>
+
+  <div class="tl-box intuition"><div class="tl-icon-badge blue">💡</div><div class="tl-box-label">Plain-English intuition</div>
+    <h3>Does the weather report tell you anything new about tomorrow's mood, once you already know today's?</h3>
+    <p>
+    Suppose you want to know whether the weather affects someone's mood. It's not enough to check
+    whether weather and mood are related in general — moods have their own momentum; a good mood
+    today makes a good mood tomorrow more likely regardless of weather. The right question is
+    narrower: once you already know today's mood, does <em>also</em> knowing today's weather help
+    you predict tomorrow's mood <em>any better</em>? If yes — if the weather adds something mood's
+    own momentum didn't already give you — that's the transfer-entropy question, answered honestly:
+    genuinely new predictive information flowing from weather into mood, with mood's own
+    self-predictability factored out first so you don't mistake "mood predicts itself" for "weather
+    predicts mood."
+    </p>
+    <p>
+    The direction matters and doesn't have to run both ways. Weather plausibly affects mood more than
+    mood affects weather (nobody's grumpiness changes tomorrow's forecast) — a real, asymmetric,
+    one-directional flow of predictive information. Transfer entropy is built specifically to measure
+    that asymmetry: how much genuinely new information moves from \(X\)'s past into \(Y\)'s future,
+    versus how much moves the other way, computed as two separate numbers that are allowed to (and
+    usually do) disagree.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>From Granger causality to a conditional mutual information</h3>
+  <p>
+  Recall Granger causality's operational definition from the ARIMA &amp; VAR lesson: \(X\)
+  "Granger-causes" \(Y\) if adding \(X\)'s lags to a regression of \(Y\) on its own lags
+  significantly improves the fit. Rewrite that same idea using entropy instead of regression R².
+  \(Y_t\)'s own history already carries some predictive power over \(Y_t\) — measurable as the
+  <strong>mutual information between \(Y_t\) and \(Y_{t-1}\)</strong>, \(I(Y_t; Y_{t-1})\). The
+  question Granger causality asks is whether \(X_{t-1}\) adds anything <em>beyond</em> that. The
+  natural information-theoretic version of "beyond" is <strong>conditioning</strong>: hold
+  \(Y_{t-1}\) fixed, and ask how much mutual information remains between \(Y_t\) and \(X_{t-1}\)
+  once \(Y_{t-1}\)'s own contribution has been accounted for. That conditional mutual information
+  <em>is</em> transfer entropy:
+  </p>
+  <div class="tl-math">\[ TE_{X\to Y} = I(Y_t\,;\,X_{t-1} \mid Y_{t-1}) \]</div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">Y_t</div>
+      <div class="tl-fp-name">The target — Y's future value</div>
+      <div class="tl-fp-desc">What you're trying to predict</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">X_{t-1}</div>
+      <div class="tl-fp-name">The candidate source — X's past</div>
+      <div class="tl-fp-desc">Does it carry genuinely new information?</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">| Y_{t-1}</div>
+      <div class="tl-fp-name">Conditioned on Y's own past</div>
+      <div class="tl-fp-desc">Held fixed so only X's contribution is counted, not Y predicting itself</div>
+    </div>
+  </div>
+  <p>
+  Every symbol here was already defined in the previous lesson — transfer entropy adds nothing new
+  to the notation, only a conditioning term. Recall conditional mutual information generalizes the
+  ordinary mutual information from the previous lesson exactly the way conditional entropy
+  generalizes entropy: it's the mutual information you'd compute <em>within</em> each fixed value of
+  \(Y_{t-1}\), averaged over how likely each value of \(Y_{t-1}\) is:
+  </p>
+  <div class="tl-math">\[ I(Y_t;X_{t-1}\mid Y_{t-1}) = \sum_{y_{t-1}} p(y_{t-1}) \sum_{y_t,x_{t-1}} p(y_t,x_{t-1}\mid y_{t-1}) \log_2\frac{p(y_t,x_{t-1}\mid y_{t-1})}{p(y_t\mid y_{t-1})\,p(x_{t-1}\mid y_{t-1})} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>p(y_{t-1})</code><span>how likely each value of Y's past is — the outer average</span></div>
+    <div class="tl-eq-chip c2"><code>inner sum</code><span>ordinary mutual information between Y_t and X_{t-1}, computed only within that slice of Y_{t-1}</span></div>
+  </div>
+  <p>
+  Like ordinary mutual information, \(TE_{X\to Y} \ge 0\) always (it is, at its core, an average of
+  KL divergences, each individually nonnegative by Gibbs' inequality), with equality exactly when
+  \(X_{t-1}\) adds nothing to predicting \(Y_t\) beyond what \(Y_{t-1}\) already provides.
+  </p>
+
+  <h3>The directional asymmetry — why this behaves like a causality signal</h3>
+  <p>
+  Define the reverse quantity the same way, with the roles of \(X\) and \(Y\) swapped:
+  </p>
+  <div class="tl-math">\[ TE_{Y\to X} = I(X_t\,;\,Y_{t-1} \mid X_{t-1}) \]</div>
+  <p>
+  Nothing about the definitions forces \(TE_{X\to Y}\) and \(TE_{Y\to X}\) to be equal — and in
+  general, <strong>they aren't</strong>. Unlike ordinary mutual information (which is symmetric,
+  proved in the previous lesson), transfer entropy conditions each direction on a
+  <em>different</em> series' own past — \(TE_{X\to Y}\) holds \(Y_{t-1}\) fixed, \(TE_{Y\to X}\)
+  holds \(X_{t-1}\) fixed — so the two quantities are genuinely different computations, not the same
+  number viewed from two angles. That built-in asymmetry is exactly what gives transfer entropy a
+  causality-<em>like</em> character: a real driving relationship running from \(X\) to \(Y\) but not
+  the reverse should show up as \(TE_{X\to Y} > 0\) alongside \(TE_{Y\to X} \approx 0\) — a clean
+  directional signature a symmetric measure like ordinary mutual information could never produce, no
+  matter how it was computed.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Conditioning structure of TE_{X→Y}: Y's own past is held fixed, X's past is the candidate</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram with three boxes: X sub t-1 and Y sub t-1 on the left feeding into Y sub t on the right. An arrow from Y t-1 to Y t is labeled Y's own memory. An arrow from X t-1 to Y t is labeled the transfer entropy arrow, new information from X. A bracket around Y t-1 is labeled held fixed, conditioned out, so only X's added information counts.">
+      <defs>
+        <marker id="teArrBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="var(--blue)"/></marker>
+        <marker id="teArrGray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="var(--text3)"/></marker>
+      </defs>
+      <rect x="40" y="50" width="150" height="60" rx="10" style="fill:var(--s2);stroke:var(--amber);stroke-width:1.5"/>
+      <text x="115" y="86" text-anchor="middle" font-size="17" font-weight="700" font-family="'DM Mono',monospace" fill="var(--amber)">X&#8339;&#8331;&#8321;</text>
+      <rect x="40" y="180" width="150" height="60" rx="10" style="fill:var(--s2);stroke:var(--text3);stroke-width:1.5;stroke-dasharray:5,3"/>
+      <text x="115" y="216" text-anchor="middle" font-size="17" font-weight="700" font-family="'DM Mono',monospace" fill="var(--text3)">Y&#8339;&#8331;&#8321;</text>
+      <text x="115" y="256" text-anchor="middle" font-size="10.5" fill="var(--text3)">held fixed &#8212; conditioned out</text>
+      <rect x="450" y="115" width="150" height="60" rx="10" style="fill:var(--s2);stroke:var(--blue);stroke-width:1.5"/>
+      <text x="525" y="151" text-anchor="middle" font-size="17" font-weight="700" font-family="'DM Mono',monospace" fill="var(--blue)">Y&#8339;</text>
+      <path d="M190,80 C300,60 380,90 448,132" fill="none" style="stroke:var(--blue);stroke-width:2.5" marker-end="url(#teArrBlue)"/>
+      <text x="300" y="55" text-anchor="middle" font-size="12.5" font-family="'DM Mono',monospace" fill="var(--blue)">TE_(X&#8594;Y) = I(Y&#8339;; X&#8339;&#8331;&#8321; | Y&#8339;&#8331;&#8321;)</text>
+      <path d="M190,210 C300,220 380,190 448,165" fill="none" style="stroke:var(--text3);stroke-width:2" marker-end="url(#teArrGray)"/>
+      <text x="300" y="245" text-anchor="middle" font-size="11.5" font-family="'DM Mono',monospace" fill="var(--text3)">Y's own memory (already accounted for)</text>
+    </svg>
+    <div class="tl-chart-caption">
+    \(TE_{X\to Y}\) measures only the blue arrow — new information from \(X\)'s past that improves
+    predicting \(Y\)'s future — with \(Y\)'s own memory (the gray arrow, dashed box) held fixed so it
+    isn't double-counted. Swapping which series is conditioned on and which is the candidate gives
+    the reverse quantity \(TE_{Y\to X}\), generally a different number, computed from an entirely
+    different conditioning structure.
+    </div>
+  </div>
+
+  <div class="tl-box example"><div class="tl-icon-badge purple">🧮</div><div class="tl-box-label">Worked example</div>
+    <h3>A noisy one-way channel, computed exactly — not estimated from a sample</h3>
+    <p>
+    Construct a simple process where the true direction of information flow is known by
+    construction, so the transfer entropy calculation can be checked exactly rather than estimated
+    from noisy data. Let \(X_t\) be i.i.d. fair-coin flips (\(0\) or \(1\), each with probability
+    \(0.5\), completely independent across time — \(X\) has no memory of its own past at all). Let
+    \(Y_t = X_{t-1} \oplus N_t\) (XOR), where \(N_t\) is an independent "flip" with probability
+    \(\varepsilon = 0.1\) (a noisy channel: 90% of the time \(Y_t\) faithfully copies \(X_{t-1}\); 10%
+    of the time the bit is flipped in transmission).
+    </p>
+    <p>
+    <strong>Direction 1 — does \(X\)'s past inform \(Y\)'s future, beyond \(Y\)'s own past?</strong>
+    Because \(X_t\) is i.i.d. across time, \(Y_{t-1}\) (which depends only on \(X_{t-2}\) and
+    \(N_{t-1}\)) carries no information about \(X_{t-1}\) at all — conditioning on \(Y_{t-1}\)
+    changes nothing here, so \(TE_{X\to Y}\) reduces to the ordinary mutual information between
+    \(Y_t\) and \(X_{t-1}\), which is exactly the mutual information of a binary symmetric channel
+    with flip probability \(\varepsilon\):
+    </p>
+    <div class="tl-math">\[ TE_{X\to Y} = I(Y_t;X_{t-1}) = H(Y_t) - H(Y_t\mid X_{t-1}) = 1 - H(\varepsilon) = 1 - H(0.1) \approx 1 - 0.469 = 0.531 \text{ bits} \]</div>
+    <p>
+    (\(H(Y_t)=1\) bit because \(Y_t\) inherits a fair 50/50 marginal distribution from \(X_{t-1}\)
+    XORed with independent noise; \(H(Y_t\mid X_{t-1}) = H(\varepsilon)\), the binary entropy of the
+    channel's flip probability, computed exactly in the previous lesson's chart.)
+    </p>
+    <p>
+    <strong>Direction 2 — does \(Y\)'s past inform \(X\)'s future, beyond \(X\)'s own past?</strong>
+    By construction, \(X_t\) is pure i.i.d. noise — it has no memory of anything, including its own
+    past and certainly including \(Y\)'s past. So:
+    </p>
+    <div class="tl-math">\[ TE_{Y\to X} = I(X_t;Y_{t-1}\mid X_{t-1}) = 0 \text{ bits, exactly} \]</div>
+    <p>
+    <strong>\(TE_{X\to Y}\approx 0.531\) bits, \(TE_{Y\to X}=0\) bits exactly</strong> — a real,
+    provable, one-directional information flow, constructed so the arithmetic is exact rather than
+    estimated. This is what the "directional asymmetry" claim above looks like as an actual number,
+    not an assertion.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The worked example's asymmetry, drawn to scale</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart comparing transfer entropy in each direction. TE from X to Y is a tall bar at approximately 0.531 bits. TE from Y to X is a bar at exactly zero bits, drawn as a flat line at the baseline.">
+      <line x1="60" y1="20" x2="60" y2="200" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="60" y1="200" x2="620" y2="200" style="stroke:var(--border);stroke-width:1"/>
+      <rect x="180" y="43.72" width="140" height="156.28" style="fill:var(--blue)"/>
+      <text x="250" y="34" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:12px">0.531 bits</text>
+      <text x="250" y="222" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:11px">TE(X&#8594;Y)</text>
+      <rect x="400" y="199" width="140" height="1" style="fill:var(--red)"/>
+      <text x="470" y="192" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:12px">0 bits, exactly</text>
+      <text x="470" y="222" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:11px">TE(Y&#8594;X)</text>
+      <text x="52" y="203" text-anchor="end" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">0</text>
+      <text x="52" y="47" text-anchor="end" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">0.531</text>
+      <text x="22" y="110" text-anchor="middle" transform="rotate(-90 22 110)" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">bits</text>
+    </svg>
+    <div class="tl-chart-caption">
+    Both bars are exact values derived from the worked example's construction (a fair-coin \(X\)
+    driving \(Y\) through a 10%-noisy one-step channel), not fitted from a sample or drawn
+    schematically. The asymmetry is total: all 0.531 bits of genuine predictive information flow one
+    way, none flow the other, because \(X\) was built to have no memory of anything at all.
+    </div>
+  </div>
+
+  <div class="tl-solid red">
+  <strong>The mandatory caveat:</strong> transfer entropy measures whether \(X\)'s past carries
+  <em>predictive information</em> about \(Y\)'s future that isn't already in \(Y\)'s own past. It is
+  <strong>not</strong> causation in the formal, interventionist sense (Judea Pearl's do-calculus:
+  "if I intervened and forced \(X\) to a different value, would \(Y\) change"). A nonzero, asymmetric
+  transfer entropy is fully consistent with there being no direct causal link at all — an unobserved
+  common driver hitting both series with slightly different timing produces exactly this signature,
+  the same failure mode already flagged for Granger causality. Treating a transfer-entropy result as
+  proof of a causal mechanism, rather than as "X's history carries predictive content for Y," is a
+  textbook overclaim.
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(X_t, Y_t\)</td><td>the two time series at time \(t\)</td></tr>
+    <tr><td>\(TE_{X\to Y}\)</td><td>transfer entropy from \(X\) to \(Y\) — new predictive information \(X\)'s past adds about \(Y\)'s future, beyond \(Y\)'s own past</td></tr>
+    <tr><td>\(I(A;B\mid C)\)</td><td>conditional mutual information — mutual information between \(A\) and \(B\), computed within each fixed value of \(C\) and averaged</td></tr>
+    <tr><td>\(\varepsilon\)</td><td>(in the worked example) the flip probability of the noisy channel connecting \(X_{t-1}\) to \(Y_t\)</td></tr>
+    <tr><td>\(H(\varepsilon)\)</td><td>the binary entropy of the channel's flip probability — computed exactly in the previous lesson's chart</td></tr>
+    <tr><td>Granger causality</td><td>the linear-model predecessor to transfer entropy — see the <a href="arima-var.html">ARIMA &amp; VAR</a> lesson</td></tr>
+  </table></div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+  Transfer entropy was introduced by Thomas Schreiber (2000) explicitly as a model-free alternative
+  to Granger causality for nonlinear systems, and a foundational later result (Barnett, Barrett
+  &amp; Seth, 2009) proved that for jointly Gaussian variables under a linear model, transfer entropy
+  and Granger causality are mathematically equivalent up to a constant — which is a genuinely useful
+  fact, not a coincidence: it confirms transfer entropy is a strict generalization, reducing exactly
+  to the linear test in the case where linearity actually holds, and adding real detection power only
+  when it doesn't. In neuroscience and physiology, transfer entropy between recorded signals (EEG
+  channels, heart-rate and respiration) is a standard tool for mapping directional information flow
+  between subsystems where the underlying dynamics are known to be nonlinear. In econometrics and
+  quantitative finance, it has been used as a complement to Granger-causality-based lead-lag studies
+  precisely where a linear VAR is suspected to be too restrictive a model for the true relationship
+  — a candidate widening of the same yield-spread/FX lead-lag question the ARIMA &amp; VAR lesson's
+  scenario poses, done without pre-committing to linearity.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🧩</div>
+      <h4>Reduces to Granger causality for Gaussian/linear systems</h4>
+      <p>Barnett, Barrett &amp; Seth (2009) proved the equivalence — transfer entropy is the strict generalization, not a competing, unrelated idea.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🧠</div>
+      <h4>Neuroscience's standard directional-flow tool</h4>
+      <p>Widely used between EEG/physiological channels, where nonlinear coupling is the norm rather than the exception.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📈</div>
+      <h4>Needs real data, real estimation</h4>
+      <p>Unlike this lesson's exact-by-construction example, estimating transfer entropy from a real, finite, noisy sample requires binning/kernel estimators with their own bias, the same estimation caveat flagged for mutual information.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🔗</div>
+      <h4>Same causal caveat as Granger, restated</h4>
+      <p>A real, useful directional signal — never, on its own, a mechanism claim.</p>
+    </div>
+  </div>
+
+  <div class="tl-box scenario"><div class="tl-icon-badge amber">🎯</div><div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Widening the yield-spread/FX lead-lag question beyond linearity</h3>
+    <p>
+    The ARIMA &amp; VAR lesson's scenario poses a VAR(2)/Granger-causality test on the DE&#8211;US
+    yield spread and EUR/USD, asking whether the spread's lags significantly improve a linear
+    forecast of FX returns. Suppose that test came back weak or null — no significant linear
+    Granger-causal relationship in either direction. Before concluding "the spread carries no
+    predictive information for FX at all," a researcher following this lesson's logic would ask a
+    narrower, honest follow-up: is the true relationship perhaps nonlinear — for instance, the spread
+    matters only once it moves beyond some threshold, or its effect on FX depends on the sign of a
+    third, unmodeled variable (say, a broader risk-sentiment regime) — in a way a linear VAR simply
+    cannot represent? Computing \(TE_{\text{spread}\to\text{FX}}\) and \(TE_{\text{FX}\to\text{spread}}\)
+    directly would answer that question without assuming linearity first. A transfer entropy result
+    that comes back clearly asymmetric and nonzero, where the linear Granger test came back null,
+    would be a genuinely different and more informative finding than the linear result alone — though
+    it would still need the same honest treatment: a real out-of-sample check, and the causal caveat
+    above stated plainly, before it is treated as anything more than "the spread's history carries
+    predictive content for FX that a linear model missed." No such test has been run in this repo;
+    this is an illustration of what the tool is for, not a result.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall"><div class="tl-icon-badge red">⚠️</div><div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this goes wrong in practice</h3>
+    <p>
+    <strong>"Transfer entropy" being read as "proof of causation."</strong> This is the single most
+    common overclaim with this tool, and it is exactly what the mandatory caveat above exists to
+    prevent. A nonzero, directional transfer entropy is a real, useful, model-free predictive-flow
+    finding — treating it as equivalent to a controlled experiment's causal claim is not.
+    </p>
+    <p>
+    <strong>Confounding by an unobserved common driver.</strong> If a third, unmeasured process
+    drives both \(X\) and \(Y\) with slightly different timing (a shared regime shock, a macro
+    surprise both series react to at different speeds), transfer entropy can register a clean,
+    asymmetric, nonzero result in one direction with no direct link between \(X\) and \(Y\) at all —
+    structurally the same failure mode as Granger causality's confounding problem, restated for a
+    nonlinear measure rather than solved by it.
+    </p>
+    <p>
+    <strong>Estimation bias on finite, real samples.</strong> This lesson's worked example is exact
+    by construction, specifically to make the arithmetic checkable. Estimating transfer entropy from
+    a real, finite time series requires choosing a binning scheme, embedding dimension, or
+    kernel-density estimator for the joint distributions involved — every one of those choices
+    introduces estimation bias, and a naive estimator can report a spuriously large transfer entropy
+    purely from overfitting a small sample's joint density, the identical concern already flagged for
+    mutual information in the previous lesson.
+    </p>
+    <p>
+    <strong>Ignoring lag structure.</strong> The definition above uses a single lag (\(X_{t-1}\),
+    \(Y_{t-1}\)) for simplicity, matching this lesson's worked example. A real relationship may
+    operate at a different or multi-step lag; picking the wrong lag can hide a genuine directional
+    flow the same way picking the wrong VAR order can hide a genuine linear one.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Transfer entropy is Granger causality's nonlinear generalization.</strong> \(TE_{X\to Y}=I(Y_t;X_{t-1}\mid Y_{t-1})\) asks the same "does X's past add predictive value beyond Y's own history" question, using mutual information instead of a linear regression's fit.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>It reduces exactly to Granger causality in the linear/Gaussian case.</strong> Barnett, Barrett &amp; Seth (2009) proved the equivalence — transfer entropy adds detection power only when the true relationship is genuinely nonlinear.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The directional asymmetry is the whole point.</strong> \(TE_{X\to Y}\ne TE_{Y\to X}\) in general — the worked example proves it exactly: 0.531 bits one way, 0 bits the other, by construction.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Transfer entropy is not causation in the formal sense — full stop.</strong> It measures predictive information flow, never a Pearl-style interventionist causal claim. An unobserved common driver can produce a clean, asymmetric, nonzero result with zero direct causal link.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Real-sample estimation is harder than this lesson's exact example.</strong> Binning/kernel choices for a finite sample introduce estimation bias — treat any reported transfer entropy number from real data with the same skepticism as an estimated mutual information.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Nothing here has been fitted in this repo.</strong> The yield-spread/FX widening scenario above illustrates what the tool answers, not a result already produced — explaining the technique is not a claim it produces edge.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz"><summary>Q1. Write the definition of \(TE_{X\to Y}\) and explain in one sentence what each part of the conditioning does.</summary>
+    <div class="tl-answer">\(TE_{X\to Y} = I(Y_t; X_{t-1} \mid Y_{t-1})\) — the mutual information between \(Y\)'s future value and \(X\)'s past value, computed with \(Y\)'s own past held fixed. Holding \(Y_{t-1}\) fixed (conditioning on it) removes the part of \(Y_t\)'s predictability that comes from \(Y\) predicting itself, so what's left over and attributed to \(X_{t-1}\) is only the genuinely new information \(X\)'s past contributes.</div>
+  </details>
+  <details class="tl-quiz"><summary>Q2. Why is transfer entropy, unlike ordinary mutual information, generally asymmetric — \(TE_{X\to Y}\ne TE_{Y\to X}\)?</summary>
+    <div class="tl-answer">Ordinary mutual information \(I(X;Y)\) is symmetric because both directions condition on nothing — they compare the same joint distribution to the same independence benchmark, just with axes relabeled. Transfer entropy conditions each direction on a <em>different</em> series' own past: \(TE_{X\to Y}\) holds \(Y_{t-1}\) fixed, while \(TE_{Y\to X}\) holds \(X_{t-1}\) fixed. These are two structurally different conditional mutual informations, not the same calculation viewed from two sides, so nothing forces them to agree — and in a genuinely one-directional system (like the worked example's noisy channel), they generally won't.</div>
+  </details>
+  <details class="tl-quiz"><summary>Q3. In the worked example, why does \(TE_{Y\to X}\) come out to exactly 0, not just "small"?</summary>
+    <div class="tl-answer">\(X_t\) was constructed as i.i.d. fair-coin flips — completely independent across time and independent of everything else in the system, including \(Y\)'s past. \(TE_{Y\to X}=I(X_t;Y_{t-1}\mid X_{t-1})\) asks whether \(Y_{t-1}\) carries any predictive information about \(X_t\) beyond \(X_{t-1}\)'s own contribution. Since \(X_t\) is independent of literally everything that came before it by construction, there is no information anywhere in the system's past — from \(X\) or from \(Y\) — that predicts it even slightly better than a coin flip. The conditional mutual information is therefore exactly zero, not approximately zero, because the independence is exact by construction, not merely a limiting case.</div>
+  </details>
+  <details class="tl-quiz"><summary>Q4. A colleague reports "transfer entropy from the VIX to our FX pair is 0.3 bits and highly asymmetric versus the reverse direction — this proves the VIX causes moves in our pair." What's wrong with that claim?</summary>
+    <div class="tl-answer">A nonzero, asymmetric transfer entropy is real evidence of a directional, predictive information flow — it is not evidence of causation in the formal, interventionist sense. A shared, unobserved driver (a broad risk-off event that hits the VIX slightly faster than it hits this particular FX pair, purely due to differences in market microstructure or trading hours) could produce exactly this signature — VIX's past predicting the pair's future beyond the pair's own history, with no reverse relationship — without the VIX doing anything to the pair directly. The honest claim is "the VIX's history carries predictive information about this pair that isn't already captured by the pair's own history" — a real and useful finding, but a narrower one than "causes."</div>
+  </details>
+  <details class="tl-quiz"><summary>Q5. Why does the Barnett, Barrett &amp; Seth (2009) equivalence result matter for how you should think about transfer entropy versus Granger causality?</summary>
+    <div class="tl-answer">It proves transfer entropy is a genuine generalization of Granger causality, not a separate, unrelated concept that happens to share a directional flavor. For jointly Gaussian variables under a linear model, the two measures are mathematically equivalent up to a constant — meaning if the true relationship really is linear, transfer entropy recovers the same answer Granger causality would give. The value transfer entropy adds is specifically in cases where that linearity assumption fails; it costs nothing when the linear model was already adequate; and it can reveal a genuine nonlinear relationship a linear VAR would report as null.</div>
+  </details>
+  <details class="tl-quiz"><summary>Q6. Why would you expect real-world transfer entropy estimates to be noisier and more prone to false positives than the worked example above?</summary>
+    <div class="tl-answer">The worked example computes transfer entropy exactly, because the joint and conditional probability distributions of the constructed process are known exactly by design. Real data never comes with known distributions — every real transfer entropy estimate has to first estimate the joint and conditional probability distributions from a finite sample, typically via binning or kernel density estimation, both of which introduce bias, especially with limited data or fine binning. A naive estimator run on a small, noisy sample can report a spuriously large or falsely asymmetric transfer entropy purely from overfitting the estimated joint density to that sample's idiosyncrasies — the identical estimation-bias risk already flagged for mutual information, now compounded by the extra conditioning dimension transfer entropy adds.</div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Thomas Schreiber (2000), "Measuring Information Transfer," <em>Physical Review Letters</em> — the original transfer entropy paper.</li>
+    <li>Clive W. J. Granger (1969), "Investigating Causal Relations by Econometric Models and Cross-Spectral Methods," <em>Econometrica</em> — the original Granger causality paper, already cited in the ARIMA &amp; VAR lesson.</li>
+    <li>Lionel Barnett, Adam B. Barrett &amp; Anil K. Seth (2009), "Granger Causality and Transfer Entropy Are Equivalent for Gaussian Variables," <em>Physical Review Letters</em> — the equivalence result discussed in this lesson's "How practitioners actually use this" section.</li>
+    <li>Thomas M. Cover &amp; Joy A. Thomas, <em>Elements of Information Theory</em> (2nd ed., Wiley, 2006) — Chapter 2's treatment of conditional mutual information underlies the transfer entropy definition used here.</li>
+    <li>Judea Pearl, <em>Causality: Models, Reasoning, and Inference</em> (2nd ed., Cambridge University Press, 2009) — the formal, interventionist (do-calculus) definition of causation that transfer entropy is explicitly not a substitute for.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="entropy-kl-mutual-information.html">← Entropy, KL Divergence &amp; Mutual Information</a>
+    <a href="mdl-information-criteria.html">Minimum Description Length &amp; Information Criteria →</a>
+  </div>
+</div>
+</body>
+</html>

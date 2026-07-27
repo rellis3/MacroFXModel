@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Graph Theory Fundamentals &amp; Centrality Measures — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Graph Theory &amp; Networks / Graph Theory Fundamentals &amp; Centrality Measures</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Graph Theory &amp; Networks 1 of 3</div>
+  <h1 class="tl-title">Graph Theory Fundamentals &amp; Centrality Measures</h1>
+  <p class="tl-dek">"Which node in this network matters most?" sounds like it should have one answer. It has at least three — degree, betweenness, and eigenvector centrality — and on the same small network they can each crown a different winner. That disagreement isn't a bug in the math; it's the whole lesson.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — background theory, not built or tested anywhere in this repo</span>
+    <span>~17 min read</span>
+    <span>Prereqs: Linear Algebra &amp; Matrices</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A graph \(G=(V,E)\) is just nodes (\(V\)) and the connections between them (\(E\)); an adjacency matrix \(A\) is the same information as a grid of numbers, and it can be unweighted/weighted and undirected/directed.</li>
+      <li>Degree centrality counts a node's direct connections — simple, but blind to what those connections lead to.</li>
+      <li>Betweenness centrality counts how many shortest paths between other node-pairs run through a node — it finds "bridge" or "gatekeeper" nodes that degree alone can miss entirely.</li>
+      <li>Eigenvector centrality defines importance recursively — a node is important if it's connected to important nodes — solved as the leading eigenvector of \(Ax=\lambda x\); PageRank is its directed, damped cousin.</li>
+      <li>On a toy 7-node network built from two triangle-shaped clusters joined by one bridge node, these three measures don't just differ in magnitude, they crown different "most important" nodes — the worked example below computes all three by hand and shows exactly where and why they split.</li>
+      <li>None of this is built or used anywhere in this repo yet — it's presented here as background theory that the next two lessons (correlation networks/MST, and systemic-risk networks) build directly on top of.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Every other lesson in this curriculum's cross-asset material treats a
+    correlation matrix as something to summarize with a single number or a
+    handful of factors — the <a href="pca-factors.html">PCA lesson</a> finds
+    the directions a basket varies along the most, the
+    <a href="cointegration.html">cointegration lesson</a> asks whether two
+    specific series share a stable equilibrium. Graph theory asks a
+    different, complementary question: forget summarizing the whole matrix —
+    treat every instrument as a node, every relationship (correlation,
+    exposure, a shared driver) as an edge, and ask which specific nodes sit
+    in structurally special positions. "Special" turns out not to have one
+    definition. A node can have the most connections, or sit on the most
+    paths between other nodes, or be connected to the few nodes that matter
+    most — and a real network can easily have three different answers to
+    "which node matters most," each one correct for a different practical
+    question ("who has the most exposure," "who's the critical
+    intermediary," "who would spreading trouble reach fastest").
+  </p>
+  <p>
+    This lesson builds the vocabulary — graphs, adjacency matrices, and the
+    three classical centrality measures — from nothing. The next lesson,
+    <a href="correlation-networks-mst.html">Correlation Networks &amp;
+    Minimum Spanning Trees</a>, turns a correlation matrix into exactly this
+    kind of graph and extracts its "backbone." The lesson after that,
+    <a href="systemic-risk-networks.html">Systemic Risk &amp; Financial
+    Contagion Networks</a>, uses the same node-and-edge language to model how
+    trouble spreads through a network of exposures rather than just who's
+    connected to whom. All three are genuinely new machinery for this
+    curriculum — nothing here is wired into any strategy or backtest in this
+    repo; it's presented as background theory a builder should have before
+    reaching for it.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Popularity, gatekeeping, and prestige are three different games</h3>
+    <p>
+      Picture a school. One way to measure a student's "importance" is to
+      count their friends — simple, direct, and it's exactly what degree
+      centrality does. But a quieter student with only two friends can still
+      be indispensable if those two friends belong to two cliques that
+      otherwise never talk to each other — every rumor, invitation, or piece
+      of gossip that crosses between the cliques has to go through that one
+      student. That's betweenness centrality: not how many connections you
+      have, but how much of the traffic between everyone else has to pass
+      through you.
+    </p>
+    <p>
+      Now imagine a third kind of importance: being friends with the most
+      popular kids in school, even if you personally only have three friends.
+      Three friends is a modest degree score, but if all three are
+      themselves extremely well-connected, some of their importance rubs off
+      on you — this is eigenvector centrality's whole idea, stated
+      recursively: you're important if the people you're connected to are
+      important. Google's original PageRank algorithm is this same idea
+      applied to web pages instead of people, with two practical tweaks for
+      the web's one-directional links (a page linking to you counts, you
+      linking to it doesn't) and its dead ends (a damping factor, covered
+      below). Three measures, three different — all legitimate — answers to
+      "who matters here."
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>Step 1 — a graph, and the adjacency matrix that encodes it</h3>
+  <p>
+    A <strong>graph</strong> \(G=(V,E)\) is a set of <strong>vertices</strong>
+    (or nodes) \(V\) and a set of <strong>edges</strong> \(E\) connecting
+    pairs of them. In an <strong>undirected</strong> graph an edge between
+    \(i\) and \(j\) means the relationship runs both ways (two instruments
+    are correlated — correlation doesn't have a direction); in a
+    <strong>directed</strong> graph an edge has a direction, \(i \to j\)
+    (a payment obligation, a hyperlink, "A is exposed to B" without B
+    necessarily being exposed back to A in the same amount). A graph is
+    <strong>unweighted</strong> if an edge is simply present or absent, and
+    <strong>weighted</strong> if every edge carries a number — a correlation
+    strength, a distance, a dollar exposure.
+  </p>
+  <p>
+    All of that information can be written as one grid of numbers: the
+    <strong>adjacency matrix</strong> \(A\), an \(N \times N\) matrix (one
+    row and one column per node) where entry \(A_{ij}\) is the edge weight
+    between node \(i\) and node \(j\) (or 1/0 for an unweighted graph, or 0
+    if no edge exists). For an undirected graph \(A\) is symmetric
+    (\(A_{ij}=A_{ji}\)); for a directed graph it generally isn't.
+  </p>
+  <p>
+    Everything below uses one small worked network, built for teaching, not
+    fitted to real data: seven currency-bloc nodes arranged as two fully-
+    connected clusters — a European group (EUR, GBP, CHF) and a commodity-bloc
+    group (AUD, NZD, CAD) — joined by a single bridge node, JPY, which links
+    to exactly one node in each cluster (EUR and AUD). Read the edges as "a
+    strong connection exists" (say, from correlation, shared central-bank
+    exposure, or trade-flow linkage) — plausible in shape, not measured from
+    live data:
+  </p>
+  <div class="tl-math">
+    \[
+    A =
+    \begin{pmatrix}
+    0&1&1&1&0&0&0\\
+    1&0&1&0&0&0&0\\
+    1&1&0&0&0&0&0\\
+    1&0&0&0&1&0&0\\
+    0&0&0&1&0&1&1\\
+    0&0&0&0&1&0&1\\
+    0&0&0&0&1&1&0
+    \end{pmatrix}
+    \quad
+    \begin{array}{l}
+    \text{row/col order:}\\
+    \text{EUR, GBP, CHF, JPY, AUD, NZD, CAD}
+    \end{array}
+    \]
+  </div>
+  <p>
+    Row 1 (EUR) has 1s in the GBP, CHF, and JPY columns — EUR connects to
+    all three. Row 4 (JPY) has 1s only in the EUR and AUD columns — JPY's
+    only two connections are the two bridge edges. The matrix is symmetric,
+    since every edge here is undirected.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The toy network: two triangles, one bridge — click a centrality measure below</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A network diagram with seven nodes: EUR, GBP, CHF form a fully connected triangle on the left; AUD, NZD, CAD form a fully connected triangle on the right; JPY sits between the two triangles and connects only to EUR and AUD, bridging the two clusters">
+      <line x1="150" y1="90" x2="70" y2="200" style="stroke:var(--border2);stroke-width:2"/>
+      <line x1="150" y1="90" x2="230" y2="200" style="stroke:var(--border2);stroke-width:2"/>
+      <line x1="70" y1="200" x2="230" y2="200" style="stroke:var(--border2);stroke-width:2"/>
+      <line x1="490" y1="90" x2="410" y2="200" style="stroke:var(--border2);stroke-width:2"/>
+      <line x1="490" y1="90" x2="570" y2="200" style="stroke:var(--border2);stroke-width:2"/>
+      <line x1="410" y1="200" x2="570" y2="200" style="stroke:var(--border2);stroke-width:2"/>
+      <line x1="150" y1="90" x2="320" y2="140" style="stroke:var(--border2);stroke-width:2"/>
+      <line x1="320" y1="140" x2="490" y2="90" style="stroke:var(--border2);stroke-width:2"/>
+
+      <circle id="cn-EUR" cx="150" cy="90" r="23" style="fill:var(--blue);stroke:var(--border2);stroke-width:2"/>
+      <text x="150" y="95" text-anchor="middle" style="fill:#fff;font-family:'DM Mono',monospace;font-size:13px;font-weight:600">EUR</text>
+      <text id="score-EUR" x="150" y="130" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:12px">3</text>
+
+      <circle id="cn-GBP" cx="70" cy="200" r="23" style="fill:var(--blue);stroke:var(--border2);stroke-width:2"/>
+      <text x="70" y="205" text-anchor="middle" style="fill:#fff;font-family:'DM Mono',monospace;font-size:13px;font-weight:600">GBP</text>
+      <text id="score-GBP" x="70" y="240" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:12px">2</text>
+
+      <circle id="cn-CHF" cx="230" cy="200" r="23" style="fill:var(--blue);stroke:var(--border2);stroke-width:2"/>
+      <text x="230" y="205" text-anchor="middle" style="fill:#fff;font-family:'DM Mono',monospace;font-size:13px;font-weight:600">CHF</text>
+      <text id="score-CHF" x="230" y="240" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:12px">2</text>
+
+      <circle id="cn-JPY" cx="320" cy="140" r="23" style="fill:var(--blue);stroke:var(--border2);stroke-width:2"/>
+      <text x="320" y="145" text-anchor="middle" style="fill:#fff;font-family:'DM Mono',monospace;font-size:13px;font-weight:600">JPY</text>
+      <text id="score-JPY" x="320" y="180" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:12px">2</text>
+
+      <circle id="cn-AUD" cx="490" cy="90" r="23" style="fill:var(--blue);stroke:var(--border2);stroke-width:2"/>
+      <text x="490" y="95" text-anchor="middle" style="fill:#fff;font-family:'DM Mono',monospace;font-size:13px;font-weight:600">AUD</text>
+      <text id="score-AUD" x="490" y="130" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:12px">3</text>
+
+      <circle id="cn-NZD" cx="410" cy="200" r="23" style="fill:var(--blue);stroke:var(--border2);stroke-width:2"/>
+      <text x="410" y="205" text-anchor="middle" style="fill:#fff;font-family:'DM Mono',monospace;font-size:13px;font-weight:600">NZD</text>
+      <text id="score-NZD" x="410" y="240" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:12px">2</text>
+
+      <circle id="cn-CAD" cx="570" cy="200" r="23" style="fill:var(--blue);stroke:var(--border2);stroke-width:2"/>
+      <text x="570" y="205" text-anchor="middle" style="fill:#fff;font-family:'DM Mono',monospace;font-size:13px;font-weight:600">CAD</text>
+      <text id="score-CAD" x="570" y="240" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:12px">2</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-btnrow">
+        <button class="tl-btn active" id="cent-btn-degree">Degree centrality</button>
+        <button class="tl-btn" id="cent-btn-between">Betweenness centrality</button>
+        <button class="tl-btn" id="cent-btn-eigen">Eigenvector centrality</button>
+      </div>
+    </div>
+    <div class="tl-legend">
+      <span><i style="background:var(--red)"></i>Highest score</span>
+      <span><i style="background:var(--amber)"></i>Second tier</span>
+      <span><i style="background:var(--blue)"></i>Lowest tier</span>
+    </div>
+    <div class="tl-readout" id="cent-readout">
+      Degree centrality just counts direct connections. EUR and AUD tie for the most (3 each) because each sits inside a fully-connected triangle plus the JPY bridge link. JPY looks unremarkable here — degree 2, tied with four other nodes — because this measure only sees a node's own edge count, not what those edges connect to.
+    </div>
+    <div class="tl-chart-caption">
+      Same seven nodes, same eight edges, three different rankings. Click
+      between the three buttons and watch which node lights up red.
+    </div>
+    <script>
+    (function(){
+      var ids = ['EUR','GBP','CHF','JPY','AUD','NZD','CAD'];
+      var colors = {
+        degree:      {EUR:'red',GBP:'blue',CHF:'blue',JPY:'blue',AUD:'red',NZD:'blue',CAD:'blue'},
+        betweenness: {EUR:'amber',GBP:'blue',CHF:'blue',JPY:'red',AUD:'amber',NZD:'blue',CAD:'blue'},
+        eigenvector: {EUR:'red',GBP:'blue',CHF:'blue',JPY:'amber',AUD:'red',NZD:'blue',CAD:'blue'}
+      };
+      var scores = {
+        degree:      {EUR:'3',GBP:'2',CHF:'2',JPY:'2',AUD:'3',NZD:'2',CAD:'2'},
+        betweenness: {EUR:'8',GBP:'0',CHF:'0',JPY:'9',AUD:'8',NZD:'0',CAD:'0'},
+        eigenvector: {EUR:'1.00',GBP:'0.74',CHF:'0.74',JPY:'0.85',AUD:'1.00',NZD:'0.74',CAD:'0.74'}
+      };
+      var captions = {
+        degree: "Degree centrality just counts direct connections. EUR and AUD tie for the most (3 each) because each sits inside a fully-connected triangle plus the JPY bridge link. JPY looks unremarkable here — degree 2, tied with four other nodes — because this measure only sees a node's own edge count, not what those edges connect to.",
+        betweenness: "Betweenness centrality counts how many of the network's shortest paths pass through each node. JPY is the only route between the two triangles, so all 9 cross-cluster shortest paths run through it — the single highest score in the network, despite JPY's low degree. EUR and AUD come next (8 each, since paths from JPY toward the far triangle also cross them); the four purely-triangle nodes carry zero betweenness — no shortest path ever needs to detour through them.",
+        eigenvector: "Eigenvector centrality asks not just “how many connections” but “how important are they.” EUR and AUD are highest again (1.00), but now JPY (0.85) outranks the four purely-triangle nodes (0.74 each) — because JPY's two connections are to the network's two most important nodes, while GBP/CHF/NZD/CAD's connections are to less pivotal neighbors. Degree centrality couldn't see this at all: it scored JPY identically to GBP/CHF/NZD/CAD."
+      };
+      var colorVar = { red: 'var(--red)', amber: 'var(--amber)', blue: 'var(--blue)' };
+      var readout = document.getElementById('cent-readout');
+      var btns = {
+        degree: document.getElementById('cent-btn-degree'),
+        betweenness: document.getElementById('cent-btn-between'),
+        eigenvector: document.getElementById('cent-btn-eigen')
+      };
+      function setMode(mode){
+        ids.forEach(function(id){
+          var circle = document.getElementById('cn-' + id);
+          circle.style.fill = colorVar[colors[mode][id]];
+          document.getElementById('score-' + id).textContent = scores[mode][id];
+        });
+        readout.textContent = captions[mode];
+        Object.keys(btns).forEach(function(m){ btns[m].classList.toggle('active', m === mode); });
+      }
+      btns.degree.addEventListener('click', function(){ setMode('degree'); });
+      btns.betweenness.addEventListener('click', function(){ setMode('betweenness'); });
+      btns.eigenvector.addEventListener('click', function(){ setMode('eigenvector'); });
+      setMode('degree');
+    })();
+    </script>
+  </div>
+
+  <h3>Step 2 — degree centrality</h3>
+  <p>
+    The simplest measure: count a node's direct connections.
+  </p>
+  <div class="tl-math">\[ C_D(v) = \deg(v) = \sum_{j} A_{vj} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>deg(v)</code><span>the number of edges touching node v</span></div>
+    <div class="tl-eq-chip c2"><code>Σⱼ A_vj</code><span>literally: sum node v's row of the adjacency matrix</span></div>
+  </div>
+  <p>
+    For a weighted graph the natural extension is <strong>strength</strong>:
+    sum the edge <em>weights</em> rather than just counting edges
+    (\(\sum_j A_{vj}\) with \(A_{vj}\) now a real-valued weight, not just 0/1).
+    Degree is normalized to \([0,1]\) by dividing by \(n-1\) (the maximum
+    possible degree in a graph of \(n\) nodes), giving \(C_D'(v) =
+    \deg(v)/(n-1)\) — "what fraction of every other node is this one
+    directly connected to."
+  </p>
+  <p>
+    Degree is cheap to compute and often a genuinely useful first cut, but
+    it is entirely local: it cannot distinguish a node connected to three
+    unimportant nodes from one connected to three of the network's most
+    important nodes, and it cannot see a node's role as an intermediary
+    between parts of the network it isn't directly touching at all.
+  </p>
+
+  <h3>Step 3 — betweenness centrality</h3>
+  <p>
+    Betweenness (Freeman, 1977) measures how often a node lies on the
+    <em>shortest path</em> between two other nodes. For every pair of nodes
+    \(s\) and \(t\) (neither equal to \(v\)), let \(\sigma_{st}\) be the
+    total number of shortest paths between them, and \(\sigma_{st}(v)\) the
+    number of those shortest paths that pass through \(v\):
+  </p>
+  <div class="tl-math">\[ C_B(v) = \sum_{s \neq v \neq t} \frac{\sigma_{st}(v)}{\sigma_{st}} \]</div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">σ_st</div>
+      <div class="tl-fp-name">Total shortest paths</div>
+      <div class="tl-fp-desc">How many equally-short routes connect s and t</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">σ_st(v)</div>
+      <div class="tl-fp-name">Paths through v</div>
+      <div class="tl-fp-desc">How many of those routes happen to pass through node v</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">C_B(v)</div>
+      <div class="tl-fp-name">Betweenness</div>
+      <div class="tl-fp-desc">Summed across every other pair — a node is high here if it's a common shortcut</div>
+    </div>
+  </div>
+  <p>
+    In words: for every pair of <em>other</em> nodes in the network, ask what
+    fraction of their shortest connecting routes runs through \(v\), and add
+    that fraction up across all pairs. A node with high betweenness isn't
+    necessarily well-connected itself — it just happens to sit on the
+    unavoidable route between two otherwise-separate parts of the network.
+    Normalized betweenness divides by \((n-1)(n-2)/2\) (the number of node
+    pairs not involving \(v\), for an undirected graph), giving a score in
+    \([0,1]\).
+  </p>
+
+  <h3>Step 4 — eigenvector centrality</h3>
+  <p>
+    Eigenvector centrality (Bonacich, 1972) is the recursive idea from the
+    intuition box, made precise: node \(v\)'s importance score \(x_v\) should
+    be proportional to the sum of its neighbors' importance scores. Written
+    for the whole network at once, using the adjacency matrix \(A\) and a
+    vector \(x\) holding every node's score:
+  </p>
+  <div class="tl-math">\[ Ax = \lambda x \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>A</code><span>the adjacency matrix — who's connected to whom</span></div>
+    <div class="tl-eq-chip c3"><code>x</code><span>the vector of centrality scores being solved for, one per node</span></div>
+    <div class="tl-eq-chip c2"><code>λ</code><span>(lambda) the corresponding eigenvalue</span></div>
+  </div>
+  <p>
+    This is exactly the eigenvector equation from the
+    <a href="pca-factors.html">PCA lesson</a>, applied to a different matrix
+    (adjacency instead of covariance) in service of a different question
+    (who's important, instead of what direction the data varies along). A
+    graph's adjacency matrix generally has several eigenvector/eigenvalue
+    pairs; eigenvector centrality specifically uses the
+    <strong>leading</strong> eigenvector — the one paired with the largest
+    eigenvalue \(\lambda_{\max}\). For a connected, non-negatively-weighted
+    graph, the <strong>Perron-Frobenius theorem</strong> guarantees this
+    leading eigenvector is unique (up to overall scale) and every one of its
+    entries is strictly positive — exactly the property you want from a
+    "centrality score," since a negative or zero importance for some node
+    with real connections wouldn't make sense.
+  </p>
+  <p>
+    In practice this is found the same way any leading eigenvector is found
+    without solving the full characteristic polynomial: <strong>power
+    iteration</strong> — start with any positive guess vector \(x^{(0)}\),
+    repeatedly multiply by \(A\) and rescale (\(x^{(k+1)} = A x^{(k)} /
+    \|A x^{(k)}\|\)), and the vector converges to the leading eigenvector as
+    \(k\) grows, because repeated multiplication by \(A\) amplifies the
+    component along the largest eigenvalue's direction faster than any
+    other. That's mechanically identical to the "camera angle" search from
+    the PCA lesson, just applied to a 0/1 adjacency matrix instead of a
+    covariance matrix.
+  </p>
+
+  <h3>Step 5 — PageRank, briefly: eigenvector centrality's directed, damped cousin</h3>
+  <p>
+    Plain eigenvector centrality runs into trouble on a <em>directed</em>
+    graph with dead ends (a node with no outgoing edges "traps" any
+    importance flowing into it) — exactly the situation Larry Page and
+    Sergey Brin faced modeling the web, where links point one way and some
+    pages have no outbound links at all. PageRank (Brin &amp; Page, 1998)
+    fixes this with a <strong>damping factor</strong> \(d\) (traditionally
+    0.85): with probability \(d\) a "random surfer" follows an outgoing link,
+    and with probability \(1-d\) they jump to a uniformly random page
+    instead — guaranteeing the process never gets permanently stuck.
+  </p>
+  <div class="tl-math">\[ PR(A) = \frac{1-d}{N} + d \sum_{T \in B(A)} \frac{PR(T)}{C(T)} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>d</code><span>the damping factor (≈0.85) — probability of following a link rather than jumping randomly</span></div>
+    <div class="tl-eq-chip c4"><code>N</code><span>total number of nodes in the network</span></div>
+    <div class="tl-eq-chip c2"><code>B(A)</code><span>the set of nodes with an edge pointing into A</span></div>
+    <div class="tl-eq-chip c3"><code>C(T)</code><span>the out-degree of node T — how many outgoing edges it splits its own score across</span></div>
+  </div>
+  <p>
+    Read this as the same recursive idea as eigenvector centrality — a
+    node's score depends on the score of the nodes pointing into it — with
+    two practical fixes layered on: the damping term guarantees the
+    iteration always converges even with dead ends, and dividing by
+    \(C(T)\) means a node's influence is <em>split</em> across however many
+    outgoing edges it has, so linking to 100 things dilutes each link's
+    weight versus linking to one thing. In finance and market-structure
+    contexts this same directed, damped propagation idea shows up under
+    other names — most notably in the DebtRank contagion measure covered in
+    the third lesson of this category.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(G=(V,E)\)</td><td>A graph: a set of vertices/nodes \(V\) and a set of edges \(E\) connecting pairs of them.</td></tr>
+    <tr><td>\(A\)</td><td>The \(N \times N\) adjacency matrix; entry \(A_{ij}\) is the edge weight (or 1/0) between node \(i\) and node \(j\).</td></tr>
+    <tr><td>\(\deg(v)\)</td><td>Degree of node \(v\) — the number (or, weighted, the summed weight) of edges touching it.</td></tr>
+    <tr><td>\(C_D(v)\)</td><td>Degree centrality — equal to \(\deg(v)\), optionally normalized by \(n-1\).</td></tr>
+    <tr><td>\(\sigma_{st}\)</td><td>The total number of shortest paths between nodes \(s\) and \(t\).</td></tr>
+    <tr><td>\(\sigma_{st}(v)\)</td><td>The number of those shortest paths that pass through node \(v\).</td></tr>
+    <tr><td>\(C_B(v)\)</td><td>Betweenness centrality — summed fraction of all other pairs' shortest paths passing through \(v\).</td></tr>
+    <tr><td>\(x\), \(\lambda\)</td><td>The eigenvector of centrality scores and its eigenvalue, solving \(Ax=\lambda x\); eigenvector centrality uses the eigenvector paired with the largest \(\lambda\).</td></tr>
+    <tr><td>\(PR(v)\)</td><td>PageRank score of node \(v\) — eigenvector centrality's directed, damped generalization.</td></tr>
+    <tr><td>\(d\)</td><td>PageRank's damping factor (typically 0.85) — the probability of following a link rather than restarting at a random node.</td></tr>
+    <tr><td>\(B(A)\), \(C(T)\)</td><td>The set of nodes linking into \(A\), and the out-degree of a node \(T\) — how many ways \(T\)'s own score gets split across its outgoing edges.</td></tr>
+  </table></div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Computing all three measures on the toy network, by hand</h3>
+    <p>
+      <strong>Degree.</strong> Straight from the adjacency matrix rows: EUR
+      and AUD each have degree 3 (two triangle neighbors plus the bridge);
+      GBP, CHF, JPY, NZD, CAD each have degree 2. Highest: EUR and AUD, tied.
+    </p>
+    <p>
+      <strong>Betweenness.</strong> With 7 nodes there are \(\binom{7}{2}=21\)
+      node pairs. Eight of them are directly connected (the eight edges
+      themselves — no intermediate node needed). The remaining 13 pairs
+      each require passing through one or more of EUR, JPY, or AUD to reach
+      the other side. Counting how many of those 13 shortest paths each node
+      sits on: JPY sits on all 9 of the cross-cluster pairs (every route from
+      the European trio to the commodity trio must cross the single JPY
+      bridge) — a raw betweenness of <strong>9</strong>, the highest in the
+      network. EUR sits on 8 (the 9 cross-cluster paths, minus the one
+      cross-cluster pair — JPY-to-AUD's own reach into the commodity side —
+      that doesn't route through EUR, plus the 2 JPY-to-GBP/JPY-to-CHF paths
+      that do route through EUR), and by the same logic AUD also sits on 8.
+      GBP, CHF, NZD, CAD sit on <strong>zero</strong> shortest paths between
+      other node pairs — every pair involving them is either a direct edge or
+      routes through their own cluster's hub. Normalized by
+      \((7-1)(7-2)/2=15\): JPY \(=9/15=0.60\); EUR \(=\)AUD \(=8/15\approx0.53\);
+      the rest \(=0\).
+    </p>
+    <p>
+      <strong>Eigenvector.</strong> By the network's mirror symmetry (EUR↔AUD,
+      GBP↔NZD, CHF↔CAD, JPY↔JPY), only three distinct scores exist: call
+      EUR's and AUD's score \(e\), GBP/CHF/NZD/CAD's score \(g\), and JPY's
+      score \(j\). Writing \(Ax=\lambda x\) for each role gives three
+      equations: \(\lambda e = 2g + j\) (EUR's two triangle neighbors plus
+      JPY), \(\lambda g = e + g\) (GBP's neighbors are EUR and CHF), and
+      \(\lambda j = 2e\) (JPY's neighbors are EUR and AUD, both scoring
+      \(e\)). Substituting \(g = e/(\lambda-1)\) and \(j=2e/\lambda\) into the
+      first equation and simplifying gives the cubic
+      \(\lambda^3-\lambda^2-4\lambda+2=0\), whose largest root is
+      \(\lambda \approx 2.343\). That gives \(g \approx 0.7446\,e\) and
+      \(j \approx 0.8536\,e\) — so, normalizing \(e=1.00\):
+      EUR \(=\) AUD \(= 1.00\), JPY \(\approx 0.85\), and GBP \(=\) CHF \(=\)
+      NZD \(=\) CAD \(\approx 0.74\).
+    </p>
+    <p>
+      Line the three up and the disagreement is exact, not approximate:
+      degree ties EUR/AUD for first and puts JPY in a five-way tie for last;
+      betweenness puts <em>JPY alone</em> in first place, ahead of EUR/AUD;
+      eigenvector centrality agrees with degree that EUR/AUD are jointly most
+      important, but — unlike degree — correctly recognizes JPY as more
+      important than the four triangle-only nodes, because of <em>who</em>
+      JPY is connected to, not how many.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">A named scenario</div>
+    <h3>A desk can only hedge one node — which one?</h3>
+    <p>
+      Suppose a risk desk models its correlated book as exactly this
+      network and is told to remove hedging capacity from every instrument
+      except one — which single node should keep its hedge? The answer
+      depends entirely on which risk the desk actually cares about. If the
+      worry is "which single position carries the most direct, obvious
+      exposure," degree centrality says hedge EUR or AUD. If the worry is
+      "which single position, if it broke, would most disrupt the
+      transmission of information/flow between the two halves of the book,"
+      betweenness says hedge JPY — losing visibility there doesn't just cost
+      one position's worth of risk, it blinds the desk to the entire
+      linkage between the two clusters. If the worry is "which position sits
+      closest to the network's true center of gravity," eigenvector
+      centrality again says EUR or AUD, but now ranks JPY meaningfully above
+      the four peripheral nodes — a ranking degree alone couldn't produce.
+      There is no single correct answer here; there's a correct answer
+      <em>per question</em>, which is precisely why real network analysis
+      reports more than one centrality measure rather than picking a
+      favorite.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🕸️</div>
+      <h4>Social &amp; web networks</h4>
+      <p>PageRank's original application — ranking web pages by the structure of who links to whom, not by keyword counting alone.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🏦</div>
+      <h4>Interbank &amp; payment networks</h4>
+      <p>Central banks and the BIS use betweenness and eigenvector-style measures to find "too interconnected to fail" institutions — covered further in the next lesson but one.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🧬</div>
+      <h4>Biology &amp; epidemiology</h4>
+      <p>Betweenness identifies "super-spreader" bridge individuals in a contact network; eigenvector-style measures identify hub proteins in an interaction network.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📈</div>
+      <h4>Cross-asset structure</h4>
+      <p>Treating a correlation matrix as a graph rather than only decomposing it (PCA) opens up the node-level questions this lesson introduces — the subject of the next lesson.</p>
+    </div>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>The caveat worth carrying forward:</strong> every measure here is
+    computed on <em>one fixed snapshot</em> of the network. Real correlation
+    or exposure networks are estimated over a finite window and shift across
+    regimes exactly like the correlation matrices in the PCA and cointegration
+    lessons do — a node's centrality ranking today is not a permanent
+    property of that instrument.
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where centrality measures get misused</h3>
+    <p>
+      <strong>Reporting only one measure.</strong> As the worked example
+      shows, degree, betweenness, and eigenvector centrality can each name a
+      different "most important" node, and each answers a genuinely
+      different question. Reporting a single centrality score as "the"
+      importance ranking silently picks one question and hides the others.
+    </p>
+    <p>
+      <strong>Treating an unweighted count as if it captured magnitude.</strong>
+      Plain degree centrality counts edges, not their strength — a node with
+      two very strong exposures can score identically to one with two
+      negligible ones unless the weighted (strength) version is used
+      instead.
+    </p>
+    <p>
+      <strong>Assuming a well-defined leading eigenvector on a disconnected
+      or directed graph.</strong> Perron-Frobenius' guarantee (unique,
+      all-positive leading eigenvector) requires the graph be connected (and,
+      for directed graphs, additional conditions such as strong connectivity
+      or PageRank's damping fix); on a graph with isolated components,
+      eigenvector centrality can assign zero score to an entire disconnected
+      cluster regardless of how tightly connected that cluster is
+      internally.
+    </p>
+    <p>
+      <strong>Small-network instability.</strong> Just as with PCA's
+      eigenvectors, centrality scores computed on a small graph (as small as
+      this lesson's 7-node example) can shift noticeably if even one edge is
+      added, removed, or reweighted — treat exact rankings on a small network
+      as illustrative of the mechanism, not as precise, stable measurements.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A graph is nodes plus edges; an adjacency matrix is the same thing as a grid of numbers.</strong> Weighted/unweighted and directed/undirected are independent choices about what those numbers mean.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Degree centrality is direct connection count</strong> — cheap, simple, and blind to what a node's neighbors themselves connect to.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Betweenness centrality finds bridge/gatekeeper nodes</strong> — a low-degree node can have the network's highest betweenness if it's the only route between two clusters.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Eigenvector centrality is recursive importance</strong> — solved as the leading eigenvector of \(Ax=\lambda x\); PageRank extends it to directed, damped graphs.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The three measures can disagree, and that's the point.</strong> The worked example computed all three exactly and got three different rankings for "most important node" — reporting only one is a choice, and it should be a stated one.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>None of this is built anywhere in this repo.</strong> This is background theory the next two lessons build on directly — it is not itself a claim of trading edge.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. In the toy network, why does JPY score highest on betweenness centrality despite having one of the lowest degrees?</summary>
+    <div class="tl-answer">
+      Because JPY is the only node connecting the European triangle (EUR,
+      GBP, CHF) to the commodity triangle (AUD, NZD, CAD) — every shortest
+      path between a node in one cluster and a node in the other must pass
+      through JPY, since no other route exists. Betweenness counts exactly
+      this: how many other node-pairs' shortest paths run through a given
+      node, regardless of how many direct connections that node itself has.
+      Degree only counts JPY's own two edges and completely misses this
+      bridging role.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why are eigenvector centrality and degree centrality not the same thing, even though EUR and AUD score highest on both in this example?</summary>
+    <div class="tl-answer">
+      They agree on the top of the ranking here because EUR and AUD happen
+      to have both the highest degree <em>and</em> the most well-connected
+      neighbors — but they disagree further down: degree ties JPY with
+      GBP/CHF/NZD/CAD (all degree 2), while eigenvector centrality ranks JPY
+      above all four of them (0.85 vs. 0.74), because JPY's two connections
+      are to the two most important nodes in the network (EUR and AUD),
+      while GBP/CHF/NZD/CAD's connections are to less-central neighbors.
+      Degree only counts how many edges a node has; eigenvector centrality
+      weighs each edge by the importance of what's on the other end.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What guarantees that eigenvector centrality's leading eigenvector has all-positive entries, and why does that matter?</summary>
+    <div class="tl-answer">
+      The Perron-Frobenius theorem, applied to a connected graph's
+      non-negative adjacency matrix, guarantees the eigenvector paired with
+      the largest eigenvalue is unique (up to scale) and has every entry
+      strictly positive. This matters because a "centrality score" that came
+      out negative or zero for a node with genuine connections wouldn't have
+      a sensible interpretation as an importance measure — the theorem is
+      what makes "the leading eigenvector" a well-defined, always-usable
+      choice rather than one of several equally valid candidates.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What two problems does PageRank's damping factor solve that plain eigenvector centrality doesn't handle on a directed graph?</summary>
+    <div class="tl-answer">
+      First, a directed graph can have dead ends — nodes with no outgoing
+      edges — that trap any importance flowing into them and prevent the
+      iteration from converging sensibly; the damping factor's "jump to a
+      random node with probability \(1-d\)" rule guarantees the process
+      never gets permanently stuck. Second, dividing a node's score by its
+      out-degree \(C(T)\) means a node's influence gets split across however
+      many outgoing links it has, so a node linking to many things dilutes
+      the weight passed through each individual link rather than passing its
+      full score to every one of them.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. A network analyst reports "Node X has the highest centrality in this network" without specifying which measure. What's wrong with that statement, based on this lesson's worked example?</summary>
+    <div class="tl-answer">
+      The statement is underspecified in a way that can materially change
+      the answer: the worked example showed degree, betweenness, and
+      eigenvector centrality naming different nodes (or different sets of
+      tied nodes) as "highest" on the same fixed network. "Centrality" is
+      not one measurement — it's a family of measurements answering
+      different structural questions (raw connection count, bridging role,
+      recursive importance). A claim of "highest centrality" needs to name
+      which measure, or it risks being true for one definition and false for
+      another.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Linton C. Freeman, <em>"A Set of Measures of Centrality Based on Betweenness,"</em> Sociometry, 1977 — the original formalization of betweenness centrality.</li>
+    <li>Phillip Bonacich, <em>"Factoring and Weighting Approaches to Status Scores and Clique Identification,"</em> Journal of Mathematical Sociology, 1972 — the original eigenvector centrality paper.</li>
+    <li>Sergey Brin and Lawrence Page, <em>"The Anatomy of a Large-Scale Hypertextual Web Search Engine,"</em> Computer Networks and ISDN Systems, 1998 — the original PageRank paper.</li>
+    <li>Oskar Perron, <em>"Zur Theorie der Matrices,"</em> Mathematische Annalen, 1907, and Georg Frobenius' subsequent extensions (1912) — the Perron-Frobenius theorem underlying eigenvector centrality's well-definedness.</li>
+    <li>Mark E.J. Newman, <em>Networks: An Introduction,</em> Oxford University Press, 2010 — a standard, broad textbook treatment of graph theory and centrality measures with applications across many domains.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="correlation-networks-mst.html">Correlation Networks &amp; Minimum Spanning Trees →</a>
+  </div>
+</div>
+</body>
+</html>

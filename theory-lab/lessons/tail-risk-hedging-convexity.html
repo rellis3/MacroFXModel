@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tail Risk Hedging &amp; Portfolio Convexity — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Risk Management Deep Dive / Tail Risk Hedging &amp; Portfolio Convexity</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Risk Deep Dive 2 of 3</div>
+  <h1 class="tl-title">Tail Risk Hedging &amp; Portfolio Convexity</h1>
+  <p class="tl-dek">The shape of a portfolio's payoff curve — not just its expected return — decides whether it bleeds slowly and blows up occasionally, or pays a small constant premium for a large payoff exactly when it's needed.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explains a hedging framework; no tail-hedge overlay is built or backtested in this repo</span>
+    <span>~15 min read</span>
+    <span>Prereqs: none required; option-Greeks familiarity helps but every term is defined here</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Convexity is the curvature of a portfolio's payoff as a function of the underlying move — a straight line has none, a curve bowing away from the line has positive or negative convexity depending on which way it bows.</li>
+      <li>A short-convexity book (selling optionality, running a carry/short-vol strategy) collects small, steady gains most of the time and takes a large, sometimes catastrophic loss occasionally — "picking up pennies in front of a steamroller."</li>
+      <li>A long-convexity, tail-hedged book pays a small, roughly constant premium in ordinary times in exchange for a large, non-linear payoff precisely when everything else is falling.</li>
+      <li>Common structures: far out-of-the-money puts (pure convexity, but expensive due to the volatility skew), put spreads/collars (cheaper, but capped), and volatility-linked hedges (pay off from a rise in volatility itself, not just price direction).</li>
+      <li>The honest tradeoff is cost-of-carry: a tail hedge is designed to lose money in calm years, by construction — that "bleed" is the premium for the protection, not a flaw to be optimized away.</li>
+      <li>Whether a specific tail-hedge program's payoff justifies its cost, over a specific real history, is an empirical question this lesson does not answer — it explains the mechanism, not a validated edge.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+  Two portfolios can have the same expected return and even the same volatility over most periods, and
+  still behave completely differently in a crisis, because expected return and volatility are both
+  measures of the "middle" of the return distribution — they say very little about its shape at the
+  extremes. Convexity is the concept that describes exactly that extreme-behavior shape: whether a
+  portfolio's losses accelerate, decelerate, or stay proportional as the underlying market move gets
+  larger. Getting this backwards — running a book that looks calm and profitable for years because it is
+  quietly short convexity, then discovering the true shape of its payoff only in the one quarter that
+  matters — is one of the most recurring and best-documented failure patterns in systematic trading and
+  in institutional risk management alike. Understanding convexity, and what it costs to deliberately buy
+  some of it back, is the foundation this entire lesson is built on.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Picking up pennies in front of a steamroller</h3>
+    <p>
+    Imagine two ways to earn a living standing near a slow-moving steamroller. The first: you walk in
+    front of it and pick up pennies scattered on the road — steady, easy, profitable income, day after
+    day, for as long as the steamroller stays slow and predictable. The catch is that on the rare day it
+    suddenly speeds up, you don't have time to get out of the way, and the loss on that one day can erase
+    years of pennies at once — and then some. That's a short-convexity strategy: small, frequent,
+    dependable gains, funded by a small but real risk of an occasional outsized loss. The second way to
+    earn a living near the same steamroller: you pay a security guard a small daily fee to watch it for
+    you and physically pull you clear the instant it speeds up. Most days, that fee is pure cost — the
+    steamroller behaves, and you'd have been fine without the guard. But on the one day it does speed
+    up, the guard's job is worth far more than every daily fee you ever paid combined. That's a
+    long-convexity, tail-hedged strategy: a small, steady, unglamorous cost in ordinary times, in
+    exchange for an outsized payoff precisely in the one scenario where everything else is going wrong.
+    Neither approach is "correct" in the abstract — they're different trades of ordinary-time cost against
+    crisis-time protection, and the entire discipline of tail-risk hedging is about choosing that trade-off
+    deliberately instead of discovering it by accident.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+  Convexity is formally a statement about the second derivative of a payoff function with respect to the
+  underlying risk factor. We'll build it from the definition up, then connect it directly to the
+  short-vol / long-vol framing above.
+  </p>
+
+  <h3>Convexity as curvature of a payoff function</h3>
+  <p>
+  Let \(V(S)\) be a portfolio's value as a function of some underlying risk factor \(S\) (a price, an
+  index level, an exchange rate). A linear (unhedged, delta-only) exposure has a payoff that is a
+  straight line in \(S\) — its second derivative is exactly zero:
+  </p>
+  <div class="tl-math">\[ V_{\text{linear}}(S) = V_0 + \Delta \cdot (S - S_0), \qquad \frac{\partial^2 V_{\text{linear}}}{\partial S^2} = 0 \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>V₀</code><span>the portfolio's current value, at the current level S₀</span></div>
+    <div class="tl-eq-chip c2"><code>Δ</code><span>the linear sensitivity — how much value changes per unit move in S</span></div>
+    <div class="tl-eq-chip c3"><code>S − S₀</code><span>the size of the move in the underlying</span></div>
+  </div>
+  <p>
+  A portfolio's <strong>convexity</strong> (or "gamma," in options language) is the second derivative of
+  its value with respect to \(S\):
+  </p>
+  <div class="tl-math">\[ \Gamma(S) = \frac{\partial^2 V}{\partial S^2} \]</div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">Γ &gt; 0</div>
+      <div class="tl-fp-name">Long convexity</div>
+      <div class="tl-fp-desc">Payoff curves upward, away from the linear line, in both directions — losses decelerate, gains accelerate</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">Γ = 0</div>
+      <div class="tl-fp-name">No convexity</div>
+      <div class="tl-fp-desc">A pure linear/delta exposure — the straight-line payoff, no curvature at all</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">Γ &lt; 0</div>
+      <div class="tl-fp-name">Short convexity</div>
+      <div class="tl-fp-desc">Payoff curves downward, away from the linear line — small gains near the center, accelerating losses at the extremes</div>
+    </div>
+  </div>
+  <p>
+  A short option position (having sold puts or calls) has \(\Gamma < 0\): as the underlying moves further
+  from where the option was sold, the position's losses grow faster than linearly — the defining
+  "accelerating loss" shape of short convexity. A long option position has \(\Gamma > 0\): as the
+  underlying moves further in either direction, the position gains faster than linearly, while losses
+  near the center are capped near the small premium paid — the defining shape of a tail hedge. This is
+  the same curvature concept covered from the option-Greeks side in
+  <a href="gamma-exposure-dealer-hedging.html">Gamma Exposure &amp; Dealer Hedging Flows</a> and paired
+  with its cost — <a href="theta-decay.html">Theta Decay</a> — the constant time-value bleed a long-gamma
+  position pays in exchange for that curvature, which is exactly the "premium" this lesson keeps
+  returning to.
+  </p>
+
+  <h3>Why short convexity looks good on every ordinary day</h3>
+  <p>
+  A short-convexity strategy (selling options, running a short-volatility carry trade, or any structure
+  that collects a steady premium in exchange for a capped, accelerating downside) has a return profile
+  that is, by construction, positively skewed toward "small win" outcomes and only rarely realizes its
+  large-loss outcome. Over any sample period that happens not to contain that rare event, the strategy's
+  realized track record looks like a high-Sharpe, low-volatility, reliably profitable program — because
+  the sample simply hasn't yet drawn the tail event that defines its true risk. This is not a data problem
+  that more history automatically fixes gently; it's a structural property of the payoff shape itself,
+  and it's the exact mechanism behind the "steamroller" framing above.
+  </p>
+  <p>
+  A long-convexity, tail-hedged strategy has the reverse skew: small, steady losses (the hedge premium)
+  most of the time, and a large gain exactly when the rest of the portfolio is losing. Its ordinary-time
+  track record looks like a steady drag on returns — because, most of the time, that's exactly what it
+  is, by design. The two shapes are, in a real sense, mirror images of each other, and neither one's
+  ordinary-time track record tells you what you actually need to know, which is what happens in the tail.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Payoff curvature: linear exposure vs. short-convexity vs. long-convexity (tail-hedged), as a function of the market move</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart with market move on the x axis from a forty percent crash on the left to a twenty percent rally on the right, and portfolio profit and loss on the y axis. A straight grey line shows the linear unhedged exposure. A red curve tracks slightly above the line near the center then drops sharply below it toward the crash side, illustrating a short convexity steamroller profile. A green curve tracks slightly below the line near the center then rises sharply above it toward the crash side, illustrating a long convexity tail hedged profile.">
+      <line x1="40" y1="150" x2="620" y2="150" style="stroke:var(--border);stroke-width:1"></line>
+      <line x1="413" y1="20" x2="413" y2="280" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"></line>
+      <text x="45" y="292" style="font:10px 'DM Mono',monospace;fill:var(--text3)">← market crash (−40%)</text>
+      <text x="615" y="292" text-anchor="end" style="font:10px 'DM Mono',monospace;fill:var(--text3)">rally (+20%) →</text>
+      <text x="20" y="25" style="font:10px 'DM Mono',monospace;fill:var(--text3)">+P&amp;L</text>
+      <text x="20" y="280" style="font:10px 'DM Mono',monospace;fill:var(--text3)">−P&amp;L</text>
+      <path d="M 40,270 L 600,90" style="fill:none;stroke:var(--text3);stroke-width:2;stroke-dasharray:4,3"></path>
+      <path d="M 40,290 L 133,300 L 227,230 L 320,175 L 413,142 L 600,85" style="fill:none;stroke:var(--red);stroke-width:2.5"></path>
+      <path d="M 40,130 L 133,170 L 227,190 L 320,183 L 413,155 L 600,95" style="fill:none;stroke:var(--green);stroke-width:2.5"></path>
+      <circle cx="413" cy="142" r="3" style="fill:var(--red)"></circle>
+      <circle cx="413" cy="155" r="3" style="fill:var(--green)"></circle>
+      <circle cx="413" cy="150" r="3" style="fill:var(--text3)"></circle>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--text3)"></i>Linear / unhedged exposure</span>
+      <span><i style="background:var(--red)"></i>Short convexity ("steamroller")</span>
+      <span><i style="background:var(--green)"></i>Long convexity (tail-hedged)</span>
+    </div>
+    <div class="tl-chart-caption">
+    Schematic, not fitted to real data. Near the center (small moves), the red short-convexity curve
+    sits slightly above the grey linear line — the small steady premium being collected — while the
+    green tail-hedged curve sits slightly below it — the small steady cost being paid. Toward the crash
+    side (far left), the two curves invert dramatically: the short-convexity line falls sharply below the
+    linear exposure (the steamroller), while the tail-hedged line rises sharply above it (the hedge paying
+    off).
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>A calm year vs. a crash year, three ways</h3>
+    <p>
+    A $10,000,000 portfolio tracks a broad market index. Consider three overlays on top of the same
+    underlying index return, illustrated across one "calm year" (index +12%) and one "crash year" (index
+    −35%). All figures are illustrative, chosen to make the mechanism clear — not a claim about any real
+    market's actual historical returns.
+    </p>
+    <div class="tl-compare">
+      <div class="tl-compare-card blue">
+        <h4>Unhedged</h4>
+        <p>No overlay — the portfolio simply returns whatever the index does.</p>
+        <p><strong>Calm year: +12%</strong><br><strong>Crash year: −35%</strong></p>
+      </div>
+      <div class="tl-compare-card amber">
+        <h4>Short-convexity overlay</h4>
+        <p>Sells out-of-the-money puts for premium income every year, adding +3% in a calm year (the
+        collected premium) but an extra −25% in a crash year (the short puts are deep in the money and
+        losses accelerate).</p>
+        <p><strong>Calm year: +12%+3% = +15%</strong><br><strong>Crash year: −35%−25% = −60%</strong></p>
+      </div>
+      <div class="tl-compare-card green">
+        <h4>Long-convexity (tail-hedged) overlay</h4>
+        <p>Buys far out-of-the-money puts every year, costing −1.5% in a calm year (the premium expires
+        worthless) but paying +40% in a crash year (the long puts are deep in the money and gains
+        accelerate).</p>
+        <p><strong>Calm year: +12%−1.5% = +10.5%</strong><br><strong>Crash year: −35%+40% = +5%</strong></p>
+      </div>
+    </div>
+    <p>
+    In the calm year, the short-convexity overlay looks like the best strategy (+15% vs. +12% unhedged
+    vs. +10.5% tail-hedged) — exactly the "picking up pennies" appeal. In the crash year, the ranking
+    flips entirely: the tail-hedged overlay is the only one of the three that's <em>profitable</em> (+5%),
+    while the short-convexity overlay posts the worst loss of the three (−60%), worse even than doing
+    nothing.
+    </p>
+    <p>
+    <strong>Compounding over multiple years.</strong> Suppose the pattern is four calm years followed by
+    one crash year (5 years total) — again, a stylized illustration to show the compounding mechanism,
+    not a claim about how often real crashes occur:
+    </p>
+    <div class="tl-math">\[
+    \text{Unhedged, 5yr:}\ \ (1.12)^4 \times (0.65) \approx 1.0228 \quad (+2.3\%\ \text{cumulative})
+    \]</div>
+    <div class="tl-math">\[
+    \text{Tail-hedged, 5yr:}\ \ (1.105)^4 \times (1.05) \approx 1.5654 \quad (+56.5\%\ \text{cumulative})
+    \]</div>
+    <p>
+    The tail hedge "lost" to the unhedged portfolio in every single calm year individually, yet ends the
+    5-year period far ahead once the crash year's compounding effect is included — <em>in this specific,
+    stylized illustration</em>, where the assumed crash size (−35% underlying, +40% hedge payoff) is large
+    relative to the calm-year drag (−1.5%/year). Change those assumptions — a smaller crash, a higher
+    hedge cost, or simply no crash occurring at all during the period examined — and the ranking can
+    easily reverse. This example demonstrates the compounding <em>mechanism</em>, not a validated
+    real-world result; see the honest cost-of-carry discussion below.
+    </p>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>The honest cost-of-carry tradeoff:</strong> a tail hedge is designed to cost money in calm
+    times. If the calm period runs long enough, or the eventual crash is smaller than assumed, the
+    cumulative drag from the hedge premium can exceed whatever it eventually pays out — this is not a
+    flaw in the concept, it's the actual insurance-premium mechanism working exactly as intended, and it
+    is the reason tail-hedge programs are sized as a deliberate, budgeted cost (a small percentage of
+    the book), not adopted on the promise that they'll "pay for themselves" on some fixed schedule.
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A macro fund's small, budgeted tail-hedge book through a volatility spike</h3>
+    <p>
+    A systematic macro fund runs a diversified book of trend-following and carry strategies, most of
+    which have some embedded short-volatility character — carry trades in particular tend to profit in
+    calm periods and lose in sharp risk-off episodes. The fund's risk committee sets aside a small,
+    fixed "convexity budget" — roughly 1–2% of assets per year — to run a standing book of far
+    out-of-the-money index puts and a modest allocation to volatility-linked instruments, explicitly
+    treating this budget as a sunk insurance cost, the same way the fund treats its other fixed operating
+    expenses, rather than as a position expected to have positive expected value on its own. In most
+    years, this hedge book is the single worst-performing line item in the fund's attribution report —
+    exactly as designed. In a year containing a sudden, broad volatility spike (equity markets falling
+    sharply while realized and implied volatility both jump), the hedge book's payoff turns sharply
+    positive at precisely the moment the fund's other short-volatility-flavored strategies are under the
+    most stress, cushioning the overall drawdown. The committee's discipline is in refusing to cut the
+    hedge budget after a multi-year calm stretch simply because it has been a drag every one of those
+    years — cutting it for exactly that reason is the single most common way a tail-hedge program fails to
+    be there when it's actually needed.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <ul>
+    <li>
+    <strong>Far out-of-the-money puts — the purest convexity, and the most expensive per unit.</strong>
+    Buying puts struck well below the current market level gives close to pure long convexity with
+    limited ongoing management, but the volatility skew (out-of-the-money puts typically trade at
+    elevated implied volatility relative to at-the-money options, reflecting the market's own demand for
+    crash protection) makes them structurally expensive on a per-unit-of-protection basis — you are
+    buying insurance in a market where everyone else also wants to buy it.
+    </li>
+    <li>
+    <strong>Put spreads and collars — cheaper, but capped.</strong> A put spread (buying a put and
+    selling a further out-of-the-money put against it) reduces the net premium paid at the cost of
+    capping the payoff once the market falls past the second strike. A collar (selling an out-of-the-money
+    call to help finance the purchased put) can reduce the net cost to near zero — a "zero-cost collar" —
+    but gives up some or all upside participation in exchange. Both are ways of trading some convexity
+    away in exchange for a lower ongoing premium, a spectrum practitioners size deliberately rather than
+    defaulting to one extreme.
+    </li>
+    <li>
+    <strong>Volatility-linked hedges.</strong> Instruments whose value rises with volatility itself
+    (rather than only with a specific directional price move) can hedge a broader range of crisis
+    scenarios, because equity-market crashes have historically coincided with sharp volatility spikes —
+    a hedge that pays off from the volatility spike itself, not just the price move, adds a second,
+    partially distinct channel of protection on top of a directional put position.
+    </li>
+    <li>
+    <strong>Sizing as a fixed budget, not a return-seeking allocation.</strong> The practitioners who run
+    these programs most consistently treat the hedge cost as a known, budgeted expense (analogous to an
+    insurance premium line item) rather than as a position whose cost needs to be "earned back" on some
+    schedule — which is the discipline the scenario above illustrates, and the discipline most likely to
+    break down under years of calm-market pressure to cut the budget.
+    </li>
+  </ul>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Ways tail hedging gets misapplied</h3>
+    <ul>
+      <li>
+      <strong>Judging a tail hedge by its calm-period Sharpe ratio.</strong> A hedge designed to lose
+      money most of the time will, almost by definition, show a poor standalone Sharpe ratio over any
+      sample that doesn't include a crash. Evaluating it in isolation on that basis mistakes the intended
+      cost for a failure, and misses the point that the relevant metric is the <em>combined</em>
+      portfolio's behavior across the full range of outcomes, not the hedge leg's standalone track record.
+      </li>
+      <li>
+      <strong>Cutting the hedge budget after a long calm stretch.</strong> As the scenario box above
+      illustrates, the single most common failure mode is abandoning or shrinking the hedge precisely
+      because several consecutive calm years made it look like a wasted expense — which is exactly the
+      point in the cycle where the hedge is statistically closer to being needed, not further from it,
+      though of course the exact timing of any crash is never knowable in advance.
+      </li>
+      <li>
+      <strong>Confusing "short volatility" with "bad" and "long volatility" with "good."</strong>
+      Short-convexity strategies are not inherently wrong — many legitimate, well-understood strategies
+      (option-selling income strategies, certain carry trades) are short convexity by design and can be
+      run responsibly with appropriate sizing, stop-outs, and capital buffers. The point of this lesson
+      is not that short convexity should never be run, but that its true risk profile must be understood
+      and sized for honestly, not discovered for the first time during the one quarter it matters.
+      </li>
+      <li>
+      <strong>Overpaying for protection you're not actually buying.</strong> The volatility skew makes
+      far out-of-the-money puts disproportionately expensive relative to their statistical probability of
+      paying off under a "normal" distribution assumption — which is itself informative (the market is
+      pricing in fatter tails than a normal distribution implies) but also means a naive comparison of
+      "option premium vs. Black-Scholes-normal fair value" will make every tail hedge look overpriced by
+      construction; the correct comparison is against the actual fat-tailed return distribution, not a
+      normal one.
+      </li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Convexity is curvature of payoff vs. the underlying.</strong> Positive convexity (Γ&gt;0) accelerates gains and caps losses; negative convexity (Γ&lt;0) caps gains and accelerates losses.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Short convexity: steady small gains, occasional large loss.</strong> "Picking up pennies in front of a steamroller" — the strategy's ordinary-time track record structurally hides its true tail risk.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Long convexity / tail hedges: small constant cost, large payoff exactly when needed.</strong> The worked example's calm-year drag (−1.5%/yr) versus crash-year payoff (+40%) shows the mechanism concretely.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The cost is real and by design — not a bug to eliminate.</strong> A tail hedge that never costs anything in calm markets isn't providing real protection; the premium bleed is the whole mechanism.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The multi-year compounding illustration is stylized, not empirical.</strong> Whether a specific hedge program's payoff justifies its cost over a specific real history depends entirely on the actual frequency and severity of crashes in that history — an empirical question this lesson does not claim to have answered.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Nothing here is built or backtested in this repo.</strong> This lesson explains the mechanism and the honest tradeoff; it is not a validated tail-hedge overlay or a claim that any such overlay has edge.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. In your own words, what does it mean for a portfolio to be "short convexity," and how does that differ from simply having a negative expected return?</summary>
+    <div class="tl-answer">
+    Short convexity describes the <em>shape</em> of the payoff, not its average level — it means losses
+    accelerate (grow faster than linearly) as the underlying moves further against the position, while
+    gains near the center are small and steady. A short-convexity strategy can easily have a strongly
+    <em>positive</em> average/expected return over most historical samples (the steady small gains are
+    real and frequent) — the defining feature isn't the sign of the average return, it's that the tail
+    outcome is disproportionately larger than the ordinary-time outcomes would suggest.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why is a far out-of-the-money put considered close to "pure" convexity, and why does the volatility skew make it structurally expensive?</summary>
+    <div class="tl-answer">
+    A far out-of-the-money put has almost no linear (delta) exposure near the current price — its value
+    only moves meaningfully once the underlying falls a long way, which is exactly the curvature
+    (accelerating payoff far from the center) that defines positive convexity. The volatility skew refers
+    to out-of-the-money puts trading at higher implied volatility than at-the-money options, reflecting
+    that many market participants want the same crash protection — high demand for the same insurance
+    pushes its price up disproportionately relative to what a flat-volatility model would suggest.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. In the worked example, why does the short-convexity overlay look best in the calm year but worst in the crash year?</summary>
+    <div class="tl-answer">
+    The short-convexity overlay collects an extra +3% premium in the calm year because the sold puts
+    expire worthless (pure income, no offsetting cost), making it outperform in that year. But the same
+    structural feature that generates that income — being short convexity — means that in the crash year
+    the sold puts are deep in the money and losses accelerate, adding an extra −25% loss on top of the
+    underlying's own −35% decline, producing the worst outcome of the three strategies (−60%) in exactly
+    the scenario that matters most.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What is a "zero-cost collar," and what does it give up in exchange for eliminating the net premium?</summary>
+    <div class="tl-answer">
+    A zero-cost collar buys a downside put and simultaneously sells an upside call, sized so the premium
+    received from selling the call roughly offsets the premium paid for the put, making the net cost near
+    zero. In exchange, it caps the position's upside participation at the sold call's strike — you give up
+    some or all of the gains beyond that level in order to fund the downside protection without an
+    out-of-pocket premium.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why is judging a standing tail-hedge program by its own standalone Sharpe ratio over a calm multi-year period a mistake?</summary>
+    <div class="tl-answer">
+    A hedge designed to lose a small, steady amount most of the time will, almost by definition, post a
+    poor standalone Sharpe ratio over any period that hasn't included the crash it's meant to protect
+    against — that poor Sharpe is the intended cost showing up as designed, not evidence the hedge has
+    failed. The relevant question is how the <em>combined</em> portfolio (hedge plus the rest of the
+    book) behaves across the full range of outcomes, including the tail, not how the hedge leg looks in
+    isolation during ordinary markets.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. What is the single most common real-world failure mode for a tail-hedge program, according to this lesson?</summary>
+    <div class="tl-answer">
+    Cutting or shrinking the hedge budget after a long stretch of calm markets, precisely because the
+    hedge has looked like a wasted, underperforming expense during that stretch — which is exactly the
+    behavior that removes the protection right as the cycle statistically moves closer to (though never
+    predictably timed to) the kind of event the hedge exists for.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Mark Spitznagel, <em>Safe Haven: Investing for Financial Storms</em>, Wiley, 2021 — a practitioner's framework for tail-hedge budgeting and the cost-of-carry discipline described in this lesson's scenario box.</li>
+    <li>Nassim Nicholas Taleb, <em>Antifragile: Things That Gain from Disorder</em>, Random House, 2012 — the broader convexity/fragility framing this lesson borrows language from; background context on the concept, not a claim that any specific application has edge.</li>
+    <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson — the standard reference for the mechanics of put spreads, collars, and the volatility skew referenced in this lesson.</li>
+    <li>See also <a href="gamma-exposure-dealer-hedging.html">Gamma Exposure &amp; Dealer Hedging Flows</a> and <a href="theta-decay.html">Theta Decay</a> for the option-Greeks mechanics underlying the convexity and premium-bleed concepts used here.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="coherent-risk-measures.html">← Coherent Risk Measures</a>
+    <a href="stress-testing-scenario-analysis.html">Stress Testing &amp; Scenario Analysis →</a>
+  </div>
+</div>
+</body>
+</html>

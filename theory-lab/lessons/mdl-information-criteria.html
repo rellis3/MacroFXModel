@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minimum Description Length &amp; Information Criteria — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Information Theory / Minimum Description Length &amp; Information Criteria</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Information Theory 3 of 3</div>
+  <h1 class="tl-title">Minimum Description Length &amp; Information Criteria</h1>
+  <p class="tl-dek">Occam's razor, made countable: the best model is the one that lets you write down the shortest total message — model plus data — in bits. This lesson builds that idea from Shannon's coding theory, then shows it lands on exactly the same number as BIC, derived from a completely different, Bayesian starting point.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — background math, not built or tested anywhere in this repo</span>
+    <span>~14 min read</span>
+    <span>Prereqs: Entropy, KL Divergence &amp; Mutual Information; Model Selection: AIC &amp; BIC</span>
+  </div>
+
+  <div class="tl-tldr">
+  <div class="tl-tldr-label">TL;DR</div>
+  <ul>
+    <li>The Minimum Description Length (MDL) principle: the best model is the one giving the shortest total description of <strong>model + data given model</strong>, measured in bits — a coding-theory formalization of Occam's razor, with "shortest" doing the work "simplest" does informally.</li>
+    <li>The <strong>two-part code</strong> makes this concrete: \(DL(M) = L(M) + L(D\mid M)\) — bits to state the model, plus bits to state the data's residual "surprise" once the model is known. A more complex model costs more in the first term but less in the second; MDL picks the genuine trade-off, not either extreme.</li>
+    <li>Rissanen's classical result: encoding each of \(k\) real-valued parameters to the precision the data can support costs about \(\tfrac12\log_2(n)\) bits — which, after matching units, is <em>exactly</em> BIC's \(k\ln(n)\) penalty (from the <a href="model-selection-aic-bic.html">AIC &amp; BIC</a> lesson) up to a constant scale factor.</li>
+    <li>The worked example reuses that lesson's exact numbers (\(n=100\), Model A: \(k=2\), Model B: \(k=5\)) and shows the two-part code length for each model is <em>literally proportional</em> to its BIC value — \(BIC = 2\ln(2)\cdot DL\) — so minimizing one always picks the same model as minimizing the other.</li>
+    <li>Schwarz derived BIC from Bayesian asymptotics in 1978; Rissanen derived (essentially) the same penalty from pure coding theory the same year, independently. Two different starting points, the same practical rule — the "aha" this lesson is built around.</li>
+  </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+  The <a href="model-selection-aic-bic.html">Model Selection: AIC &amp; BIC</a> lesson established
+  that raw in-sample fit always favors the most complex candidate model, and built two ways to
+  penalize complexity honestly: AIC's flat \(2\) bits — well, points — per parameter, and BIC's
+  \(\ln(n)\)-per-parameter penalty derived from a Bayesian marginal-likelihood argument. Both are
+  presented there as formulas to compute and compare. This lesson asks a different question about
+  BIC specifically: <em>where else does that exact penalty come from</em>, and does starting from a
+  completely unrelated field — coding theory, not Bayesian statistics — land on the same answer?
+  </p>
+  <p>
+  The reason this is worth building out, rather than treating as a curiosity, is that MDL gives
+  "penalize complexity" a physical, literal meaning that "Bayesian marginal likelihood" doesn't
+  immediately convey: a complex model that doesn't actually describe the data any better than a
+  simple one is, quite concretely, a <em>longer message</em> — you'd need more bits to write it down
+  and transmit it to someone else, model and all. That framing is Occam's razor with a ruler attached
+  to it, and it's exactly the argument this repo's own overfitting concerns are built around: a model
+  with parameters that don't earn their keep isn't just "risky" in some vague sense, it is
+  demonstrably a less efficient description of the same data.
+  </p>
+
+  <div class="tl-box intuition"><div class="tl-icon-badge blue">💡</div><div class="tl-box-label">Plain-English intuition</div>
+    <h3>Sending someone your model over a slow wire</h3>
+    <p>
+    Imagine you have to transmit both your model <em>and</em> the data it describes to someone over
+    a slow connection, and you're paying by the bit. You could send the raw data as-is — expensive,
+    but requires no model at all. Or you could first send a compact description of a pattern you
+    found in the data (the model), and then only send the leftover part the pattern doesn't explain
+    (the residual). If the pattern is real, this is a great trade: a short model description plus a
+    small residual beats sending the raw data outright. But if you get greedy and build an
+    overly elaborate model — one with a parameter carved out for every quirk in this particular
+    batch of data — the model description itself gets expensive to send, even though the residual
+    it leaves behind shrinks to almost nothing. MDL says: add up <em>both</em> costs, model and
+    residual, and pick whichever description is shortest overall. A model that "fits perfectly" by
+    memorizing every data point is not a triumph under this accounting — it's often the most
+    expensive message you could possibly send, because you had to describe every last idiosyncrasy
+    of this one sample instead of the underlying pattern.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>The two-part code</h3>
+  <p>
+  Formalize "send the model, then send what's left over" as a literal two-part code length. For a
+  candidate model \(M\) and observed data \(D\), define the total description length as:
+  </p>
+  <div class="tl-math">\[ DL(M) = L(M) + L(D \mid M) \]</div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">L(M)</div>
+      <div class="tl-fp-name">Bits to describe the model</div>
+      <div class="tl-fp-desc">Its form, and its parameters, to whatever precision the data can support</div>
+    </div>
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">L(D|M)</div>
+      <div class="tl-fp-name">Bits to describe the data, given the model</div>
+      <div class="tl-fp-desc">The residual "surprise" — everything the model didn't already explain</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">DL(M)</div>
+      <div class="tl-fp-name">Total message length</div>
+      <div class="tl-fp-desc">Lower is better — the model that compresses the data most efficiently overall</div>
+    </div>
+  </div>
+  <p>
+  \(L(D\mid M)\) has a direct answer from Shannon's source coding theorem — introduced in the
+  <a href="entropy-kl-mutual-information.html">first lesson</a> of this category: the optimal
+  (shortest achievable, on average) code length for describing an outcome under a known probability
+  distribution is \(-\log_2\) of that outcome's probability. If \(M\)'s fitted parameters assign the
+  observed data a likelihood \(\hat L(M)\), the shortest achievable code for the data given that
+  model is:
+  </p>
+  <div class="tl-math">\[ L(D\mid M) = -\log_2 \hat L(M) \]</div>
+  <p>
+  This is precisely the "deviance" quantity from the AIC &amp; BIC lesson, \(-2\ln\hat L(M)\), just
+  expressed in bits (\(\log_2\)) instead of nats (\(\ln\)) and without the AIC/BIC convention's
+  factor of 2. A model that fits the data well (high likelihood) needs very few bits to describe the
+  residual surprise; a model that fits poorly needs many.
+  </p>
+
+  <h3>Costing L(M): Rissanen's parameter-precision argument</h3>
+  <p>
+  \(L(M)\) is subtler: describing a model with continuous, real-valued parameters exactly would take
+  infinitely many bits (real numbers have infinite decimal expansions). But you don't need infinite
+  precision — you only need enough precision that the parameter's value is distinguishable from
+  "noise" given how much data you actually have. Rissanen's classical argument (1978, refined in
+  later work) shows that specifying a single real-valued parameter to the precision a sample of size
+  \(n\) can actually support costs approximately:
+  </p>
+  <div class="tl-math">\[ \tfrac{1}{2}\log_2(n) \text{ bits per parameter} \]</div>
+  <p>
+  The intuition: a parameter estimated from \(n\) observations carries a standard error that shrinks
+  roughly as \(1/\sqrt{n}\) — so specifying the parameter to a finer precision than its own standard
+  error is wasted, meaningless precision, describing noise rather than signal. The number of bits
+  needed to distinguish among the "genuinely resolvable" values within that precision works out to
+  about \(\tfrac12\log_2(n)\), growing (slowly) with the sample size because more data resolves the
+  parameter more finely and so costs slightly more to state precisely. For a model with \(k\) free
+  parameters:
+  </p>
+  <div class="tl-math">\[ L(M) \approx \frac{k}{2}\log_2(n) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>(k/2)log₂(n)</code><span>bits to state k parameters, each to data-supported precision</span></div>
+    <div class="tl-eq-chip c1"><code>n</code><span>sample size — more data resolves each parameter more finely, costing slightly more to state</span></div>
+  </div>
+
+  <h3>The bridge to BIC — the same rule, two directions</h3>
+  <p>
+  Put the two pieces together into the full two-part code length, in bits:
+  </p>
+  <div class="tl-math">\[ DL(M) = \frac{k}{2}\log_2(n) \;+\; \big(-\log_2\hat L(M)\big) \]</div>
+  <p>
+  Now recall BIC from the AIC &amp; BIC lesson, defined there in nats: \(\text{BIC} = k\ln(n) -
+  2\ln\hat L\). Multiply the two-part code length above by \(2\ln 2\) (a fixed positive constant —
+  the conversion factor between bits and nats, doubled to match the AIC/BIC convention) and use
+  \(\ln(x) = \ln(2)\cdot\log_2(x)\):
+  </p>
+  <div class="tl-math">\[ 2\ln(2)\cdot DL(M) = 2\ln(2)\cdot\frac{k}{2}\log_2(n) + 2\ln(2)\cdot\big(-\log_2\hat L(M)\big) = k\ln(n) - 2\ln\hat L(M) = \text{BIC}(M) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>2ln(2)·DL(M)</code><span>the two-part code length, rescaled from bits to the AIC/BIC nats convention</span></div>
+    <div class="tl-eq-chip c4"><code>= BIC(M)</code><span>exactly — the same quantity, not merely similar</span></div>
+  </div>
+  <p>
+  <strong>This is the whole bridge, stated precisely:</strong> \(\text{BIC}(M) = 2\ln(2)\cdot DL(M)\).
+  Since \(2\ln(2)\approx 1.386\) is a fixed positive constant that doesn't depend on which model
+  \(M\) you're evaluating, multiplying every candidate's \(DL(M)\) by it can never change which model
+  has the smallest value. <strong>Minimizing BIC and minimizing the two-part MDL code length are the
+  same optimization problem</strong> — not "similar in spirit," but the identical argmin, arrived at
+  from two unrelated starting points: Schwarz (1978) derived BIC from a Laplace approximation to a
+  Bayesian marginal likelihood; Rissanen (1978), the same year, entirely independently, derived
+  (essentially) the same per-parameter penalty from asking "what is the shortest code that describes
+  this model and this data." A Bayesian asymptotic argument and a coding-theory argument, arriving at
+  the same practical rule — that convergence is exactly the "aha" this lesson exists to make
+  explicit, not a coincidence to wave past.
+  </p>
+
+  <div class="tl-solid blue">
+  <strong>What this does and doesn't say about AIC:</strong> the exact bridge proved above is
+  specifically between BIC and the classical two-part MDL code. AIC does not have the same clean,
+  exact coding-theory derivation — its justification (from the AIC &amp; BIC lesson) is an
+  out-of-sample, Kullback-Leibler-divergence argument, a different target from "shortest code for
+  this specific sample." More refined MDL formulations exist (normalized maximum likelihood, NML)
+  that relate more closely to AIC-style penalties in some settings, but that connection is looser and
+  outside the scope of this lesson — don't over-extend the exact BIC bridge above into an equally
+  exact AIC one.
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(M\)</td><td>a candidate model — its functional form plus its fitted parameters</td></tr>
+    <tr><td>\(D\)</td><td>the observed data</td></tr>
+    <tr><td>\(L(M)\)</td><td>bits needed to describe the model itself, including its parameters to data-supported precision</td></tr>
+    <tr><td>\(L(D\mid M)\)</td><td>bits needed to describe the data given the model — the residual "surprise," equal to \(-\log_2\hat L(M)\)</td></tr>
+    <tr><td>\(DL(M)\)</td><td>total two-part description length, \(L(M)+L(D\mid M)\) — lower is better</td></tr>
+    <tr><td>\(k\)</td><td>number of free parameters in the model</td></tr>
+    <tr><td>\(n\)</td><td>sample size</td></tr>
+    <tr><td>\(\hat L(M)\)</td><td>the model's maximized likelihood — same quantity used to define AIC/BIC</td></tr>
+    <tr><td>BIC</td><td>Bayesian Information Criterion, \(k\ln(n)-2\ln\hat L\) — proved above to equal \(2\ln(2)\cdot DL(M)\)</td></tr>
+  </table></div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The two-part code, conceptually — simpler models cost less to state, more to leave over</div>
+    <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two horizontal stacked bars of similar total length. The top bar, labeled simple model, has a short segment for L of M and a long segment for L of D given M. The bottom bar, labeled complex model, has a long segment for L of M and a short segment for L of D given M, illustrating the trade-off, not specific numeric values.">
+      <text x="60" y="40" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600">Simple model</text>
+      <rect x="60" y="52" width="70" height="34" style="fill:var(--amber)"/>
+      <rect x="130" y="52" width="430" height="34" style="fill:var(--blue)"/>
+      <text x="95" y="73" text-anchor="middle" style="fill:#fff;font-family:'DM Mono',monospace;font-size:10.5px">L(M)</text>
+      <text x="345" y="73" text-anchor="middle" style="fill:#fff;font-family:'DM Mono',monospace;font-size:10.5px">L(D|M) — a lot left unexplained</text>
+
+      <text x="60" y="130" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600">Complex model</text>
+      <rect x="60" y="142" width="290" height="34" style="fill:var(--amber)"/>
+      <rect x="350" y="142" width="210" height="34" style="fill:var(--blue)"/>
+      <text x="205" y="163" text-anchor="middle" style="fill:#fff;font-family:'DM Mono',monospace;font-size:10.5px">L(M) — costly to state</text>
+      <text x="455" y="163" text-anchor="middle" style="fill:#fff;font-family:'DM Mono',monospace;font-size:10.5px">L(D|M)</text>
+
+      <text x="60" y="205" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">Both bars are similar total length here — a genuine trade-off, not a free lunch either way.</text>
+    </svg>
+    <div class="tl-chart-caption">
+    A conceptual illustration of the trade-off, not tied to specific numbers — the exact, computed
+    version is the worked example and chart directly below. A simple model is cheap to state
+    (\(L(M)\) small) but may leave more residual surprise (\(L(D\mid M)\) large); a complex model
+    costs more to state but can leave less residual. MDL adds both and picks the shorter total —
+    neither extreme wins automatically.
+    </div>
+  </div>
+
+  <div class="tl-box example"><div class="tl-icon-badge purple">🧮</div><div class="tl-box-label">Worked example</div>
+    <h3>Reusing the AIC/BIC lesson's exact numbers</h3>
+    <p>
+    The <a href="model-selection-aic-bic.html">AIC &amp; BIC</a> lesson's worked example used
+    \(n=100\) observations, Model A (\(k=2\), \(-2\ln\hat L_A=100\)) and Model B (\(k=5\),
+    \(-2\ln\hat L_B=94\)), and found BIC\(_A=109.21\), BIC\(_B=117.03\) — BIC preferring the simpler
+    Model A by about 7.8 points. Compute the two-part MDL code length for the same two models and
+    check the bridge above holds exactly.
+    </p>
+    <p><strong>Model A</strong> (\(k=2\), \(-2\ln\hat L_A=100 \Rightarrow \ln\hat L_A=-50\)):</p>
+    <div class="tl-math">\[ L(M)_A = \tfrac{2}{2}\log_2(100) \approx 6.644 \text{ bits} \qquad L(D\mid M)_A = \frac{50}{\ln 2} \approx 72.135 \text{ bits} \]</div>
+    <div class="tl-math">\[ DL(M_A) = 6.644 + 72.135 \approx 78.779 \text{ bits} \]</div>
+    <p><strong>Model B</strong> (\(k=5\), \(-2\ln\hat L_B=94 \Rightarrow \ln\hat L_B=-47\)):</p>
+    <div class="tl-math">\[ L(M)_B = \tfrac{5}{2}\log_2(100) \approx 16.610 \text{ bits} \qquad L(D\mid M)_B = \frac{47}{\ln 2} \approx 67.807 \text{ bits} \]</div>
+    <div class="tl-math">\[ DL(M_B) = 16.610 + 67.807 \approx 84.416 \text{ bits} \]</div>
+    <p>
+    <strong>Check the bridge:</strong> \(2\ln(2)\times 78.779 \approx 109.21\) — matching BIC\(_A\)
+    exactly. \(2\ln(2)\times 84.416 \approx 117.03\) — matching BIC\(_B\) exactly. Model A's shorter
+    two-part code (78.78 bits vs. 84.42 bits, a gap of 5.64 bits) picks out precisely the same winner
+    BIC did, because it is, up to that fixed \(2\ln(2)\) rescaling, the exact same number. Model B's
+    three extra parameters cost \(3\times\tfrac12\log_2(100)\approx 9.97\) extra bits to state, and
+    only saved \(\tfrac{6}{\ln 2}\approx 8.66\) bits of residual — a losing trade in coding-length
+    terms, told in the same currency (bits) that made the original in-sample-fit-always-improves
+    problem from the AIC &amp; BIC lesson concrete in the first place.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The exact two-part code lengths computed above, drawn to scale</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Stacked bar chart comparing two-part MDL code lengths in bits for Model A and Model B. Model A's bar totals about 78.8 bits, split into 6.6 bits for the model and 72.1 bits for the data given the model. Model B's bar totals about 84.4 bits, split into 16.6 bits for the model and 67.8 bits for the data given the model. Model A's total is shorter.">
+      <line x1="60" y1="20" x2="60" y2="200" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="60" y1="200" x2="620" y2="200" style="stroke:var(--border);stroke-width:1"/>
+      <rect x="170" y="186.71" width="140" height="13.29" style="fill:var(--amber)"/>
+      <rect x="170" y="42.44" width="140" height="144.27" style="fill:var(--blue)"/>
+      <text x="240" y="34" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:11px">total 78.78 bits</text>
+      <text x="240" y="222" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:11.5px">Model A (k=2)</text>
+      <rect x="390" y="166.78" width="140" height="33.22" style="fill:var(--amber)"/>
+      <rect x="390" y="31.17" width="140" height="135.61" style="fill:var(--blue)"/>
+      <text x="460" y="23" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:11px">total 84.42 bits</text>
+      <text x="460" y="222" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:11.5px">Model B (k=5)</text>
+      <text x="52" y="203" text-anchor="end" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">0</text>
+      <text x="22" y="110" text-anchor="middle" transform="rotate(-90 22 110)" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">bits</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--amber)"></i>L(M) — bits to state the model</span>
+      <span><i style="background:var(--blue)"></i>L(D|M) — bits to state the residual</span>
+    </div>
+    <div class="tl-chart-caption">
+    Real, exactly computed values from the worked example, not schematic. Model B's amber segment
+    (16.61 bits to state 5 parameters) is much taller than Model A's (6.64 bits for 2 parameters),
+    and that extra cost outweighs the blue segment's reduction — total bar height (bits) is what
+    minimizing BIC and minimizing this two-part code both minimize, and they agree exactly on the
+    winner here: Model A.
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+  MDL is used two ways in practice. First, as a philosophical anchor: when a new information
+  criterion or regularization penalty is proposed, "does it correspond to a sensible code length"
+  is a standard sanity check applied by the model-selection literature, and the BIC-MDL equivalence
+  above is the textbook example of that check succeeding. Second, and more directly, MDL is used as
+  a literal model-selection procedure in its own right — most rigorously via <strong>normalized
+  maximum likelihood (NML)</strong>, a refinement of the simple two-part code that removes the
+  arbitrariness of exactly how you encode the model (the classical two-part code's \(L(M)\) term
+  depends somewhat on the encoding scheme chosen; NML is designed to be encoding-independent). NML
+  is more principled but computationally harder, which is exactly why the simpler two-part
+  code — and its convenient exact equivalence to BIC — remains the practically dominant way
+  practitioners actually use "MDL thinking" day to day: compute BIC, and know that you are, in
+  effect, already choosing the shortest two-part description.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📏</div>
+      <h4>A sanity check on new penalties</h4>
+      <p>"Does this correspond to a sensible code length" is a standard test any proposed complexity penalty is held to in the model-selection literature.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🧮</div>
+      <h4>Normalized Maximum Likelihood (NML)</h4>
+      <p>The more rigorous, encoding-independent refinement of the simple two-part code — harder to compute, used when the arbitrariness of a naive code matters.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🗜️</div>
+      <h4>Lossless compression as model selection</h4>
+      <p>Universal compressors (used e.g. in data-compression benchmarks) are, at their core, implicitly solving an MDL-style model-selection problem over candidate coding schemes.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🔁</div>
+      <h4>"Just compute BIC" is usually enough</h4>
+      <p>Because of the exact bridge proved above, computing BIC already gets you the MDL answer for the common two-part-code case — a second formula is rarely needed in practice.</p>
+    </div>
+  </div>
+
+  <div class="tl-box scenario"><div class="tl-icon-badge amber">🎯</div><div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Explaining a lag-selection decision in coding-theory language</h3>
+    <p>
+    Recall the AIC &amp; BIC lesson's own trading scenario: choosing between a 1-lag and a 5-lag
+    autoregressive model of a mean-reversion spread, where BIC preferred the simpler 1-lag model by
+    about 7.8 points. Reframe that exact decision through the two-part code lens built here: the
+    5-lag model's four extra coefficients would need roughly \(4\times\tfrac12\log_2(100)\approx
+    13.3\) extra bits just to <em>state</em> — to write down their fitted values to the precision
+    100 days of data can actually support — and those four extra lags bought back only about
+    \(\tfrac{6}{\ln 2}\approx 8.66\) fewer bits of residual "surprise" in the data. In plain terms:
+    describing those four extra lag coefficients costs more, in bits, than the story they tell about
+    the spread's actual behavior is worth. That is a genuinely different way of stating the same
+    verdict BIC already gave — not a new number, but a physical, checkable interpretation of what
+    the BIC penalty is actually charging for: the literal cost of writing the model down.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall"><div class="tl-icon-badge red">⚠️</div><div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this goes wrong in practice</h3>
+    <p>
+    <strong>Treating the two-part code's \(L(M)\) as encoding-scheme-free.</strong> The classical
+    two-part code's model-description cost depends, in principle, on exactly how you choose to encode
+    parameters — a different (equally valid) encoding scheme can shift \(L(M)\) somewhat. Rissanen's
+    later NML refinement exists specifically to remove this arbitrariness; treating the simple
+    two-part number as if it were the unique, canonical "true" code length overstates its precision.
+    </p>
+    <p>
+    <strong>Confusing "shortest description" with "true model."</strong> Like BIC (per the AIC &amp;
+    BIC lesson's own caveats), a winning MDL code length is a relative statement among the candidates
+    you actually compared — it does not certify that the winning model is correct in any absolute
+    sense, only that it compressed this particular dataset most efficiently among the options tried.
+    </p>
+    <p>
+    <strong>The \(\tfrac12\log_2(n)\)-per-parameter formula is asymptotic.</strong> It's derived under
+    large-\(n\) approximations, the same regime BIC's own Bayesian derivation assumes. For small
+    samples relative to \(k\), both the code-length approximation and BIC itself become less
+    reliable — the same small-sample caveat (and the AICc correction) already flagged in the AIC
+    &amp; BIC lesson applies here too.
+    </p>
+    <p>
+    <strong>Reading the BIC-MDL bridge as also covering AIC.</strong> The exact equivalence proved in
+    this lesson is specifically between BIC and the classical two-part code — it is not a general
+    "all information criteria are secretly MDL" claim. AIC's justification targets a different
+    quantity (expected out-of-sample KL divergence), and conflating the two derivations is a common,
+    avoidable overreach.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>MDL formalizes Occam's razor as "shortest total message."</strong> \(DL(M) = L(M) + L(D\mid M)\) — bits to state the model, plus bits to state what's left over — with lower always better.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(L(D\mid M) = -\log_2\hat L(M)\), directly from Shannon's source coding theorem.</strong> The same "deviance" quantity from the AIC &amp; BIC lesson, just expressed in bits.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(L(M)\approx\tfrac{k}{2}\log_2(n)\), per Rissanen — each parameter costs bits proportional to the precision the data can support.</strong></span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>BIC equals \(2\ln(2)\) times the two-part MDL code length — exactly, not approximately.</strong> Verified numerically on the AIC/BIC lesson's own Model A/B example: 78.78 and 84.42 bits scale to 109.21 and 117.03 nats precisely.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Two unrelated derivations, one answer.</strong> Schwarz's 1978 Bayesian asymptotic argument and Rissanen's 1978 coding-theory argument — independently, the same year — land on the same practical penalty.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The bridge is specific to BIC, not AIC.</strong> AIC targets a different (out-of-sample, KL-divergence) quantity — don't extend the exact BIC-MDL equivalence into a claim about AIC too.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A shorter code is a relative, not absolute, verdict.</strong> Same caveat as BIC itself: the winning model compressed this dataset best among the candidates tried — that's not the same claim as "this model is true," or that it produces trading edge.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz"><summary>Q1. In your own words, what does the Minimum Description Length principle say the "best" model is?</summary>
+    <div class="tl-answer">The model that minimizes the total number of bits needed to describe both the model itself and the data given that model — \(DL(M) = L(M) + L(D\mid M)\). It's a coding-theory version of Occam's razor: not "simplest" in some vague, informal sense, but literally "shortest total message," where a more complex model has to justify its extra cost of description by leaving a correspondingly smaller residual to describe.</div>
+  </details>
+  <details class="tl-quiz"><summary>Q2. Why is \(L(D\mid M) = -\log_2\hat L(M)\), and what earlier result in this category does that formula come from?</summary>
+    <div class="tl-answer">It comes directly from Shannon's source coding theorem, introduced in the first lesson of this category: the shortest achievable average code length for describing an outcome under a known probability distribution is \(-\log_2\) of that outcome's probability. Once a model's parameters are fixed, it assigns the observed data a likelihood \(\hat L(M)\) — treating that as the "probability of this data under this model," the optimal code for describing the data given the model costs \(-\log_2\hat L(M)\) bits, exactly the entropy-coding bound from Lesson 1 applied to the model's own predicted distribution.</div>
+  </details>
+  <details class="tl-quiz"><summary>Q3. Derive the exact relationship between BIC and the two-part MDL code length \(DL(M)\), starting from \(DL(M) = \tfrac{k}{2}\log_2(n) - \log_2\hat L(M)\).</summary>
+    <div class="tl-answer">Multiply both sides by \(2\ln(2)\): \(2\ln(2)\cdot DL(M) = 2\ln(2)\cdot\tfrac{k}{2}\log_2(n) - 2\ln(2)\cdot\log_2\hat L(M)\). Using the change-of-base identity \(\ln(x) = \ln(2)\cdot\log_2(x)\), the first term becomes \(k\ln(n)\) and the second becomes \(-2\ln\hat L(M)\). So \(2\ln(2)\cdot DL(M) = k\ln(n) - 2\ln\hat L(M)\), which is exactly the definition of BIC from the AIC &amp; BIC lesson. Since \(2\ln(2)\) is a fixed positive constant independent of which model is being scored, \(\text{BIC}(M) = 2\ln(2)\cdot DL(M)\) for every candidate model, so minimizing one always selects the same model as minimizing the other.</div>
+  </details>
+  <details class="tl-quiz"><summary>Q4. Using the worked example's numbers (Model A: \(DL=78.78\) bits; Model B: \(DL=84.42\) bits), verify the bridge numerically and state which model the two-part code prefers.</summary>
+    <div class="tl-answer">\(2\ln(2)\approx1.386\). \(1.386\times78.78\approx109.21\), matching BIC\(_A=109.21\) from the AIC &amp; BIC lesson exactly. \(1.386\times84.42\approx117.03\), matching BIC\(_B=117.03\) exactly. Since \(78.78 < 84.42\), Model A has the shorter two-part code — the same model BIC preferred, for the identical reason (up to the fixed rescaling): fewer total bits to describe model plus data.</div>
+  </details>
+  <details class="tl-quiz"><summary>Q5. Why does it matter, historically and conceptually, that Schwarz (1978) and Rissanen (1978) arrived at essentially the same per-parameter penalty from completely different starting points?</summary>
+    <div class="tl-answer">Schwarz's derivation is Bayesian: approximate a marginal likelihood (an integral over a prior on the model's parameters) using a Laplace approximation, valid asymptotically as \(n\to\infty\). Rissanen's derivation is coding-theoretic and has nothing to do with priors or Bayesian updating at all: it asks purely "what is the shortest code that describes this model and this data." That two derivations built from entirely unrelated mathematical frameworks converge on the same practical penalty is strong independent corroboration that the penalty is capturing something real and not an artifact of either framework's specific assumptions — the kind of cross-validation-by-independent-derivation that gives a result more weight than either derivation alone would.</div>
+  </details>
+  <details class="tl-quiz"><summary>Q6. A colleague argues "MDL and AIC must also be secretly the same thing, since MDL and BIC are." What's the error in that reasoning?</summary>
+    <div class="tl-answer">The exact equivalence proved in this lesson (\(\text{BIC}=2\ln(2)\cdot DL\)) is specific to BIC and the classical two-part code — it does not extend to AIC. AIC is derived from a different target altogether: an estimate of expected out-of-sample Kullback-Leibler divergence between the fitted model and the true data-generating process (from the AIC &amp; BIC lesson), not "the shortest code for this specific sample." The two-part MDL code and BIC happen to optimize the same underlying description-length quantity; AIC optimizes a genuinely different one. Their formulas resembling each other's general shape (a fit term plus a complexity penalty) does not imply all three collapse into one identity — only the BIC/MDL pair has the exact bridge shown here.</div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Jorma Rissanen (1978), "Modeling by Shortest Data Description," <em>Automatica</em> — the original MDL paper, published the same year as Schwarz's BIC paper.</li>
+    <li>Gideon Schwarz (1978), "Estimating the Dimension of a Model," <em>Annals of Statistics</em> — the original BIC derivation, already cited in the AIC &amp; BIC lesson.</li>
+    <li>Peter D. Grünwald, <em>The Minimum Description Length Principle</em> (MIT Press, 2007) — the standard modern reference, including the normalized maximum likelihood (NML) refinement discussed in this lesson's practitioner section.</li>
+    <li>Claude E. Shannon (1948), "A Mathematical Theory of Communication," <em>Bell System Technical Journal</em> — the source coding theorem underlying \(L(D\mid M)=-\log_2\hat L(M)\), already cited in this category's first lesson.</li>
+    <li>Thomas M. Cover &amp; Joy A. Thomas, <em>Elements of Information Theory</em> (2nd ed., Wiley, 2006) — Chapter 5 (data compression) and its coverage of the relationship between coding theory and statistical model selection.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="transfer-entropy-causality.html">← Transfer Entropy &amp; Information-Theoretic Causality</a>
+    <a href="../hub.html">Theory Lab hub</a>
+  </div>
+</div>
+</body>
+</html>

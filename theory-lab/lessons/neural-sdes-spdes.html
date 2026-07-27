@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neural SDEs &amp; Neural SPDEs — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Stochastic Differential Equations / Neural SDEs &amp; Neural SPDEs</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Stochastic Differential Equations · SDEs 5 of 5</div>
+  <h1 class="tl-title">Neural SDEs &amp; Neural SPDEs</h1>
+  <p class="tl-dek">Every model in this sequence hand-specifies μ and σ — a drift and a diffusion someone wrote down because it seemed to describe the world. The last step this curriculum's SDE thread can take: what if a neural network learns μ and σ instead?</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — current machine-learning research, not built, tested, or validated anywhere in this repo</span>
+    <span>~14 min read</span>
+    <span>Prereqs: Existence &amp; Uniqueness of SDE Solutions, Numerical Schemes: Euler-Maruyama &amp; Milstein</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A neural SDE replaces the hand-specified drift and diffusion, \(\mu(x,t)\) and \(\sigma(x,t)\), with neural networks \(\mu_\theta(x,t)\) and \(\sigma_\theta(x,t)\), trained so the SDE's simulated paths (or distributions) match observed data.</li>
+      <li>The idea traces to Tzen &amp; Raginsky (2019) and was formalized as a full generative-modelling framework — "neural SDEs as infinite-dimensional GANs" — by Kidger, Foster, Li &amp; Lyons (2021).</li>
+      <li>Naively backpropagating through every simulated Euler-Maruyama step is memory-expensive (it has to store every intermediate state); the fix, the <strong>stochastic adjoint sensitivity method</strong> (Li, Wong, Chen &amp; Duvenaud, 2020), computes gradients by solving a second, backward SDE instead — the direct stochastic analogue of the Neural-ODE adjoint method (Chen et al., 2018).</li>
+      <li><strong>Neural SPDEs</strong> generalize this further, to infinite-dimensional, spatio-temporal fields (Salvi, Lemercier &amp; Gerasimovics, 2021) — an implied-volatility <em>surface</em> evolving stochastically over time is exactly the kind of object (a field indexed by strike and tenor, evolving in time) an SPDE models.</li>
+      <li>This is current, active machine-learning research machinery — considerably further from a testable trading signal than anything else in this curriculum. Nothing in this lesson claims it has been built, tested, or shown to produce edge anywhere in this repo.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Look back across this entire five-lesson sequence and notice the pattern:
+    every model — GBM, OU, Vasicek, CIR, Heston — starts with a human writing
+    down a specific functional form for \(\mu(x,t)\) and \(\sigma(x,t)\),
+    chosen for tractability, for intuition, or for a specific stylized fact it
+    was designed to reproduce (mean reversion, positivity, a volatility
+    smile). That choice is a real modelling commitment, and it can be wrong in
+    ways that are hard to detect until the model is used somewhere its
+    assumed functional form doesn't hold. The final, most speculative step
+    this sequence can take is to ask: what if the functional form itself
+    isn't chosen by a human at all, but learned directly from data, the same
+    way a neural network learns an image classifier's weights? That question
+    is what "neural SDEs" answers — and it's worth being upfront that this
+    lesson sits at a very different maturity level than the previous four.
+    Vasicek, CIR, and Hull-White are decades-old, industry-standard tools.
+    What follows is active research, much of it published within the last
+    five years, with no established track record as a production trading or
+    pricing tool anywhere, including in this repo.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Same equation shape, but the coefficients are learned, not written down</h3>
+    <p>
+      Every SDE in this curriculum has the same skeleton: \(dX_t =
+      \mu(X_t,t)\,dt + \sigma(X_t,t)\,dW_t\). What changes from model to model
+      is only what goes inside \(\mu(\cdot)\) and \(\sigma(\cdot)\) — a
+      constant, a linear function of \(X_t\), a square root of \(X_t\). A
+      neural SDE keeps the exact same skeleton and replaces those functions
+      with small neural networks, \(\mu_\theta(X_t,t)\) and
+      \(\sigma_\theta(X_t,t)\), where \(\theta\) stands for the network's
+      weights — the same kind of adjustable numbers a network learns in image
+      recognition or language modelling, just here controlling the shape of a
+      drift and a diffusion instead of the shape of a decision boundary.
+      Training the model means simulating paths from the current
+      \(\mu_\theta,\sigma_\theta\), comparing the simulated paths (or their
+      statistics) against real observed data, and adjusting \(\theta\) — via
+      gradient descent, exactly as any other neural network is trained — to
+      make the simulated behaviour look more like the real thing. The appeal
+      is flexibility: instead of committing to "this process is exactly
+      Ornstein-Uhlenbeck" or "exactly CIR," the model can, in principle, learn
+      whatever functional shape the data actually calls for. The honest cost
+      is exactly the cost of any flexible learned model: more parameters, more
+      data required to fit them reliably, and much less interpretability than
+      a named, textbook coefficient function.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>1. The neural SDE specification</h3>
+  <div class="tl-math">
+    \[ dX_t = \mu_\theta(X_t,t)\,dt + \sigma_\theta(X_t,t)\,dW_t \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>μ_θ(X_t,t)</code><span>a neural network taking the current state and time, outputting a drift vector</span></div>
+    <div class="tl-eq-chip c3"><code>σ_θ(X_t,t)</code><span>a second neural network (or a shared network with two output heads) outputting a diffusion matrix</span></div>
+    <div class="tl-eq-chip c4"><code>θ</code><span>the combined set of learnable weights across both networks — what "training" actually adjusts</span></div>
+  </div>
+  <p>
+    This idea traces to Tzen &amp; Raginsky, "Neural Stochastic Differential
+    Equations: Deep Latent Gaussian Models in the Diffusion Limit" (2019),
+    which framed a neural SDE as the continuous-time limit of a deep latent
+    variable model — connecting this machinery back to standard generative
+    modelling ideas. Kidger, Foster, Li &amp; Lyons, "Neural SDEs as
+    Infinite-Dimensional GANs" (ICML, 2021), formalized this into a complete
+    generative-adversarial framework: the neural SDE plays the role of a
+    generator, producing simulated paths, while a separate discriminator
+    network is trained to distinguish those simulated paths from real
+    observed paths — exactly the generator/discriminator structure of an
+    ordinary GAN, except the generator here is an entire stochastic process
+    rather than a single generated image.
+  </p>
+
+  <h3>2. Training: why naive backpropagation is expensive, and the adjoint fix</h3>
+  <p>
+    Training any neural network means computing the gradient of a loss
+    function with respect to every weight in \(\theta\), then updating
+    \(\theta\) to reduce the loss. For a neural SDE, the loss depends on
+    simulated paths built from potentially hundreds or thousands of
+    Euler-Maruyama steps (<code>sde-numerical-schemes.html</code> built this
+    recursion in full). The most direct way to get gradients — ordinary
+    backpropagation through every single simulated step, storing every
+    intermediate state along the way to reuse during the backward pass — is
+    exactly what standard deep-learning frameworks do automatically, and it
+    works, but its memory cost scales directly with the number of simulated
+    steps: a long simulation with a fine time grid can require storing an
+    enormous number of intermediate states simultaneously.
+  </p>
+  <p>
+    The fix, due to Li, Wong, Chen &amp; Duvenaud, "Scalable Gradients for
+    Stochastic Differential Equations" (AISTATS, 2020), is the
+    <strong>stochastic adjoint sensitivity method</strong>. Rather than
+    storing every forward step, it derives a second SDE — the "adjoint"
+    process — that runs <em>backward</em> in time from the end of the
+    simulation, and whose solution directly gives the gradients needed for
+    training, without needing the entire forward trajectory kept in memory.
+    This is the direct stochastic generalization of the adjoint method for
+    Neural ODEs (Chen, Rubanova, Bettencourt &amp; Duvenaud, "Neural Ordinary
+    Differential Equations," NeurIPS, 2018), which established the same
+    trick — compute gradients via a second, backward differential equation
+    instead of storing the whole forward solve — for deterministic
+    (non-stochastic) neural differential equations first. The stochastic
+    version needs real additional care that the deterministic version
+    doesn't: naively reversing a Brownian path's time direction is not itself
+    a valid Brownian motion in the reversed direction, so the backward
+    adjoint SDE has to be derived properly to account for this, rather than
+    simply running the forward equation's noise term backward.
+  </p>
+  <div class="tl-symbols"><table>
+    <tr><td>\(\theta\)</td><td>The learnable parameters (weights) of the drift and diffusion neural networks — what gradient descent actually updates during training.</td></tr>
+    <tr><td>Adjoint process</td><td>A second, backward-running SDE whose solution gives the gradient of the training loss with respect to \(\theta\), without requiring every forward simulation step to be stored in memory.</td></tr>
+    <tr><td>Generator / discriminator</td><td>The two-network structure Kidger et al. (2021) use to train a neural SDE: the SDE itself generates simulated paths, and a separate discriminator network is trained to distinguish them from real data.</td></tr>
+  </table></div>
+
+  <h3>3. Neural SPDEs: the field-valued generalization</h3>
+  <p>
+    A neural SDE learns the dynamics of a finite-dimensional state \(X_t \in
+    \mathbb{R}^n\) — a handful of numbers evolving through time. A
+    <strong>neural stochastic partial differential equation (SPDE)</strong>
+    generalizes this to an infinite-dimensional object: a whole
+    <em>field</em>, indexed by both time and one or more spatial (or
+    spatial-like) coordinates, evolving stochastically. Salvi, Lemercier
+    &amp; Gerasimovics, "Neural Stochastic PDEs: Resolution-Invariant Learning
+    of Continuous Spatiotemporal Dynamics" (NeurIPS, 2021), build a neural
+    network architecture for learning exactly this kind of dynamics directly
+    from data, with the specific advantage (the paper's central contribution)
+    of being <em>resolution-invariant</em> — trained at one spatial/temporal
+    resolution, the learned model can be evaluated at a different, finer or
+    coarser resolution without retraining, unlike a naive grid-based neural
+    network architecture.
+  </p>
+  <p>
+    A concrete, honestly-scoped financial framing of what an SPDE could model:
+    an implied-volatility <em>surface</em> — a value for every combination of
+    strike and tenor, changing from day to day — is precisely a field indexed
+    by two spatial-like coordinates (strike, tenor) evolving stochastically in
+    a third dimension (time). Instead of the standard practitioner approach
+    of modelling the surface's parameters (a local-vol grid, or a small set of
+    factor loadings) evolving independently, a neural SPDE would attempt to
+    learn the entire surface's joint stochastic evolution directly, as one
+    continuous object. This is a natural extension of the SDE machinery this
+    curriculum has built — but it is also a genuinely advanced, unvalidated-in-this-repo
+    research question, not a description of an existing tool. Framing it as
+    a natural question worth knowing about is different from framing it as
+    something ready to build.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Neural SDE training loop, sketched as an architecture diagram</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="An architecture sketch showing an initial state and neural network boxes for drift and diffusion feeding into a simulated path via an Euler-Maruyama-style forward solve, which is compared against real observed data by a discriminator, producing a loss whose gradient flows backward via a stochastic adjoint SDE to update the drift and diffusion networks' weights, closing the training loop.">
+      <rect x="30" y="30" width="120" height="46" rx="6" fill="var(--blue-bg)" stroke="var(--blue-bd)"/>
+      <text x="90" y="49" font-size="12" fill="var(--text)" text-anchor="middle" font-family="'DM Mono',monospace">μ_θ(x,t)</text>
+      <text x="90" y="64" font-size="10" fill="var(--text2)" text-anchor="middle">drift network</text>
+
+      <rect x="30" y="90" width="120" height="46" rx="6" fill="var(--blue-bg)" stroke="var(--blue-bd)"/>
+      <text x="90" y="109" font-size="12" fill="var(--text)" text-anchor="middle" font-family="'DM Mono',monospace">σ_θ(x,t)</text>
+      <text x="90" y="124" font-size="10" fill="var(--text2)" text-anchor="middle">diffusion network</text>
+
+      <line x1="150" y1="53" x2="215" y2="80" style="stroke:var(--text3);stroke-width:1.5" marker-end="url(#arrow1)"/>
+      <line x1="150" y1="113" x2="215" y2="90" style="stroke:var(--text3);stroke-width:1.5" marker-end="url(#arrow1)"/>
+
+      <rect x="220" y="55" width="150" height="60" rx="6" fill="var(--purple-bg)" stroke="var(--purple-bd)"/>
+      <text x="295" y="80" font-size="12" fill="var(--text)" text-anchor="middle" font-family="'DM Mono',monospace">simulated path</text>
+      <text x="295" y="96" font-size="10" fill="var(--text2)" text-anchor="middle">Euler-Maruyama forward solve</text>
+
+      <line x1="370" y1="85" x2="440" y2="85" style="stroke:var(--text3);stroke-width:1.5" marker-end="url(#arrow1)"/>
+
+      <rect x="445" y="30" width="150" height="46" rx="6" fill="var(--green-bg)" stroke="var(--green-bd)"/>
+      <text x="520" y="49" font-size="11" fill="var(--text)" text-anchor="middle">real observed data</text>
+      <text x="520" y="64" font-size="10" fill="var(--text2)" text-anchor="middle">market path/statistics</text>
+
+      <line x1="445" y1="90" x2="595" y2="90" style="stroke:var(--text3)"/>
+      <rect x="445" y="95" width="150" height="46" rx="6" fill="var(--amber-bg)" stroke="var(--amber-bd)"/>
+      <text x="520" y="114" font-size="12" fill="var(--text)" text-anchor="middle">discriminator</text>
+      <text x="520" y="129" font-size="10" fill="var(--text2)" text-anchor="middle">simulated vs. real?</text>
+
+      <line x1="520" y1="76" x2="520" y2="95" style="stroke:var(--text3)" marker-end="url(#arrow1)"/>
+
+      <rect x="445" y="160" width="150" height="46" rx="6" fill="var(--red-bg)" stroke="var(--red-bd)"/>
+      <text x="520" y="179" font-size="12" fill="var(--text)" text-anchor="middle">training loss</text>
+      <text x="520" y="194" font-size="10" fill="var(--text2)" text-anchor="middle">how distinguishable?</text>
+      <line x1="520" y1="141" x2="520" y2="160" style="stroke:var(--text3)" marker-end="url(#arrow1)"/>
+
+      <path d="M 445 183 C 250 230, 150 230, 90 141" style="stroke:var(--red);stroke-width:1.75;fill:none;stroke-dasharray:5,3" marker-end="url(#arrowred)"/>
+      <text x="250" y="245" font-size="10.5" fill="var(--red)" text-anchor="middle">gradient flows backward via the stochastic adjoint SDE — no forward states stored</text>
+
+      <defs>
+        <marker id="arrow1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--text3)"/></marker>
+        <marker id="arrowred" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--red)"/></marker>
+      </defs>
+    </svg>
+    <div class="tl-chart-caption">
+      The forward pass (top: drift and diffusion networks generate a
+      simulated path, compared against real data by a discriminator, producing
+      a training loss) is the standard generator/discriminator structure from
+      Kidger et al. (2021). The dashed red arrow is the part that would be
+      prohibitively memory-expensive with naive backpropagation through every
+      simulated step — the stochastic adjoint method (Li et al., 2020) instead
+      solves a second backward SDE to carry the gradient back to the drift
+      and diffusion networks' weights directly, without storing the entire
+      forward trajectory.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Why "just backpropagate through Euler-Maruyama" gets expensive, in concrete numbers</h3>
+    <p>
+      Consider training a neural SDE by simulating a path with \(N=1{,}000\)
+      Euler-Maruyama steps (a fine daily-to-intraday-scale grid over a year),
+      where the state \(X_t\) at each step has dimension \(d=50\) (say, 50
+      points on a yield curve or volatility surface, from
+      <code>multivariate-correlated-sdes.html</code>'s vector-SDE machinery),
+      and the drift/diffusion networks together have on the order of
+      \(P=100{,}000\) parameters. Ordinary reverse-mode backpropagation needs
+      to retain, at minimum, every intermediate state \(X_n\) (dimension
+      \(d\)) computed during the forward pass, since the backward pass walks
+      through them in reverse order to accumulate gradients — that's
+      \(N\times d = 1{,}000\times 50 = 50{,}000\) floating-point numbers of
+      state alone, before accounting for the networks' own internal
+      activations at every one of those 1,000 forward evaluations. Doubling
+      the path length to \(N=2{,}000\) steps (a finer grid, or a longer
+      horizon) roughly doubles this memory requirement, directly, with no way
+      around it under naive backpropagation. The stochastic adjoint method's
+      entire value proposition is replacing this direct, path-length-scaling
+      memory cost with a second, backward SDE solve whose memory footprint
+      does not grow with the number of forward steps — a genuine engineering
+      necessity once \(N\) or \(d\) get large, not a marginal optimization.
+    </p>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>Say this plainly, as the closing word on this entire five-lesson
+    sequence:</strong> everything in this lesson — neural SDEs, the stochastic
+    adjoint method, neural SPDEs applied to an implied-volatility surface — is
+    current, active machine-learning research machinery, published within the
+    last five to seven years, with genuine open research questions still
+    being worked out in the literature. It is considerably further from a
+    testable trading signal than anything else in this curriculum, including
+    the CIR and Hull-White models three lessons prior, which are decades-old
+    and industry-standard. This lesson is a knowledge lesson about what the
+    technique <em>is</em> and how it works conceptually — it is explicitly
+    <strong>not</strong> a claim that any of this has been built, tested, or
+    shown to produce trading edge anywhere in this repo. Treat the distinction
+    between "this is a real, interesting piece of machinery" and "this
+    machinery has been shown to work here" as load-bearing, not a formality.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🔬</div>
+      <h4>Almost entirely a research-lab activity today</h4>
+      <p>Neural SDEs remain overwhelmingly an academic and research-lab topic — published at NeurIPS, ICML, AISTATS — with limited, still-emerging adoption in production quantitative finance compared to the decades of track record behind Vasicek, CIR, or Heston.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🎲</div>
+      <h4>Generative modelling for synthetic market data</h4>
+      <p>One genuinely active practitioner use case: training a neural SDE to generate realistic synthetic price paths for stress-testing or data augmentation, where the goal is statistically realistic paths rather than an interpretable, named model.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📚</div>
+      <h4>A frontier worth knowing about, not a tool to reach for</h4>
+      <p>Useful to understand conceptually so a "neural SDE" claim in a paper or vendor pitch can be evaluated honestly — what it can plausibly do, what training it actually requires, and how far it is from a validated signal.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this gets oversold</h3>
+    <p>
+      <strong>Treating "the model is more flexible" as "the model is more
+      accurate."</strong> A neural SDE's drift and diffusion networks can fit
+      the training data's observed statistics very closely — that is a
+      statement about in-sample fit, not about whether the learned dynamics
+      generalize to new market regimes the training data didn't include. A
+      hand-specified model like CIR is inflexible by design, which is itself
+      a form of regularization; a neural SDE's extra flexibility is exactly
+      the extra overfitting risk that flexibility always buys, unless
+      demonstrated otherwise out-of-sample.
+    </p>
+    <p>
+      <strong>Assuming "neural" implies validated.</strong> The presence of a
+      neural network in a model's description carries no evidence, by itself,
+      about whether the model has been tested honestly, with a genuine
+      out-of-sample split and realistic costs — the same discipline this
+      entire curriculum applies to a plain moving-average crossover applies
+      identically here, and arguably more urgently given how many more
+      parameters there are to overfit.
+    </p>
+    <p>
+      <strong>Confusing "resolution-invariant" (a genuine, specific claim
+      about neural SPDEs) with "accurate at any resolution."</strong>
+      Resolution invariance, as Salvi et al. (2021) define it, means a trained
+      model can be evaluated at a different spatial/temporal grid without
+      retraining — a real architectural property. It says nothing about
+      whether the underlying learned dynamics are actually correct at any
+      given resolution; those are two separate claims, easy to conflate.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A neural SDE replaces hand-specified μ and σ with learned neural networks μ_θ, σ_θ.</strong> Same SDE skeleton as every model in this sequence — only the coefficient functions change from named formulas to trained weights.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Tzen &amp; Raginsky (2019) and Kidger, Foster, Li &amp; Lyons (2021) are the foundational references</strong> — the latter framing training as a generator/discriminator (GAN-style) problem over entire simulated paths.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The stochastic adjoint method (Li, Wong, Chen &amp; Duvenaud, 2020) fixes naive backprop's memory cost</strong> by solving a second, backward SDE — the direct stochastic analogue of the Neural-ODE adjoint (Chen et al., 2018).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Neural SPDEs (Salvi, Lemercier &amp; Gerasimovics, 2021) generalize this to fields</strong> — a resolution-invariant architecture for learning spatio-temporal dynamics like an evolving implied-volatility surface.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>This is current ML research machinery, not a tested trading tool anywhere in this repo.</strong> Considerably further from a validated signal than Vasicek, CIR, or Hull-White — a knowledge lesson, explicitly not a built-and-proven claim.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>More flexibility buys more overfitting risk, not automatically more accuracy.</strong> A neural SDE's close in-sample fit says nothing about out-of-sample generalization without an honest validation split.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What, precisely, does a neural SDE replace compared to every other model in this five-lesson sequence?</summary>
+    <div class="tl-answer">
+      It keeps the identical SDE skeleton, dX_t=μ(X_t,t)dt+σ(X_t,t)dW_t, and replaces the hand-specified functional forms for μ and σ — a constant, a linear function, a square root — with neural networks μ_θ(X_t,t) and σ_θ(X_t,t), whose weights θ are learned from data via gradient descent, rather than chosen by a modeller ahead of time.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why is naive backpropagation through a simulated Euler-Maruyama path memory-expensive, and what does the stochastic adjoint method do instead?</summary>
+    <div class="tl-answer">
+      Naive backpropagation needs to retain every intermediate simulated state (and the networks' internal activations at each step) from the forward pass, since the backward pass walks through them in reverse to accumulate gradients — this memory cost scales directly with the number of simulated steps. The stochastic adjoint method instead derives a second, backward-running SDE whose solution directly yields the training gradients, without needing the entire forward trajectory stored in memory — the stochastic analogue of the Neural-ODE adjoint method.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. How does a neural SPDE generalize a neural SDE, and what financial object is given as a concrete example of what it could model?</summary>
+    <div class="tl-answer">
+      A neural SDE learns the dynamics of a finite-dimensional state (a handful of numbers evolving in time). A neural SPDE generalizes this to an infinite-dimensional field — an object indexed by both time and one or more spatial (or spatial-like) coordinates, evolving stochastically. The concrete financial example given is an implied-volatility surface: a value for every combination of strike and tenor, changing from day to day — precisely a field indexed by two spatial-like coordinates evolving in time.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. This lesson describes Kidger, Foster, Li &amp; Lyons' framing of neural SDE training as generator/discriminator. What plays the role of the "generator" and what plays the role of the "discriminator"?</summary>
+    <div class="tl-answer">
+      The neural SDE itself (its drift and diffusion networks, simulating paths forward via Euler-Maruyama) plays the role of the generator, producing simulated paths. A separate discriminator network is trained to distinguish those simulated paths from real observed paths/statistics — exactly the generator/discriminator structure of an ordinary GAN, except the generator here produces entire stochastic paths rather than a single static output like an image.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Is anything described in this lesson built, tested, or validated as a trading tool anywhere in this repo?</summary>
+    <div class="tl-answer">
+      No. This lesson is explicitly a knowledge lesson about current, active machine-learning research machinery — neural SDEs, the stochastic adjoint method, and neural SPDEs — not a claim that any of it has been implemented, tested, or shown to produce trading edge anywhere in this repo. It is considerably further from a testable trading signal than any other model in this five-lesson sequence, including the decades-old, industry-standard Vasicek, CIR, and Hull-White models.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Belinda Tzen &amp; Maxim Raginsky, "Neural Stochastic Differential Equations: Deep Latent Gaussian Models in the Diffusion Limit," arXiv:1905.09883, 2019 — the foundational connection between neural SDEs and deep latent variable models.</li>
+    <li>Patrick Kidger, James Foster, Xuechen Chen Li &amp; Terry Lyons, "Neural SDEs as Infinite-Dimensional GANs," <em>Proceedings of the 38th International Conference on Machine Learning (ICML)</em>, 2021 — the generator/discriminator training framework this lesson builds on.</li>
+    <li>Xuechen Li, Ting-Kam Leonard Wong, Ricky T. Q. Chen &amp; David Duvenaud, "Scalable Gradients for Stochastic Differential Equations," <em>Proceedings of the 23rd International Conference on Artificial Intelligence and Statistics (AISTATS)</em>, 2020 — the stochastic adjoint sensitivity method.</li>
+    <li>Ricky T. Q. Chen, Yulia Rubanova, Jesse Bettencourt &amp; David K. Duvenaud, "Neural Ordinary Differential Equations," <em>Advances in Neural Information Processing Systems (NeurIPS)</em>, 2018 — the deterministic (Neural-ODE) adjoint method this lesson's stochastic version generalizes.</li>
+    <li>Cristopher Salvi, Maud Lemercier &amp; Andris Gerasimovics, "Neural Stochastic PDEs: Resolution-Invariant Learning of Continuous Spatiotemporal Dynamics," <em>Advances in Neural Information Processing Systems (NeurIPS)</em>, 2021 — the neural SPDE architecture this lesson's field-valued generalization is based on.</li>
+    <li><code>sde-numerical-schemes.html</code> in this Theory Lab — the Euler-Maruyama recursion neural SDE training simulates through, and whose memory cost under naive backpropagation motivates the stochastic adjoint method.</li>
+    <li><code>multivariate-correlated-sdes.html</code> in this Theory Lab — the vector-SDE machinery a neural SDE's state X_t (a curve, a surface's grid points) is naturally built on.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="short-rate-models-vasicek-cir-hull-white.html">← Short-Rate Models: Vasicek, CIR &amp; Hull-White</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+</body>
+</html>

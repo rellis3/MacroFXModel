@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Existence &amp; Uniqueness of SDE Solutions — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Stochastic Differential Equations / Existence &amp; Uniqueness of SDE Solutions</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Stochastic Differential Equations · SDEs 1 of 5</div>
+  <h1 class="tl-title">Existence &amp; Uniqueness of SDE Solutions</h1>
+  <p class="tl-dek">Every SDE lesson so far in this curriculum — Ornstein-Uhlenbeck, Black-Scholes's GBM, Heston — quietly assumes a solution exists and is the only one. That assumption isn't automatic. This lesson states the precise conditions under which it holds, and shows a coefficient choice where it doesn't.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — the well-posedness question every SDE in this curriculum has been assuming</span>
+    <span>~16 min read</span>
+    <span>Prereqs: Itô's Lemma</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Writing down an SDE \(dX_t=\mu(X_t,t)dt+\sigma(X_t,t)dW_t\) doesn't automatically mean a process satisfying it exists, or that it's the only one — that has to be proven, coefficient by coefficient.</li>
+      <li>The standard existence-and-uniqueness theorem is the SDE analogue of Picard-Lindelöf for ordinary differential equations: a <strong>global Lipschitz condition</strong> plus a <strong>linear growth condition</strong> on \(\mu\) and \(\sigma\) together guarantee a unique strong solution.</li>
+      <li>Geometric Brownian motion's coefficients, \(\mu(x)=\mu x\) and \(\sigma(x)=\sigma x\), satisfy both conditions cleanly on any bounded region — but the honest full argument on all of \(\mathbb{R}\) needs slightly more care than a naive "it's globally Lipschitz" claim, because the Lipschitz constant these coefficients produce grows with the size of the region.</li>
+      <li>A coefficient that <strong>violates</strong> the Lipschitz condition — \(\sigma(x)=\sigma\sqrt{|x|}\), the square-root diffusion behind the CIR short-rate model — needs a separate, weaker set of conditions (Yamada-Watanabe, 1971) to guarantee existence and uniqueness at all.</li>
+      <li>Violating the <em>growth</em> condition instead is worse than a technical inconvenience: a deterministic illustration, \(dX/dt=X^2\), shows a solution that exists only up to a finite time and then diverges — there is no solution at all beyond that point, for any method.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    <code>ito-lemma.html</code> derives the calculus needed to manipulate an SDE
+    once you have one — but it starts from the premise that \(X_t\) already
+    exists as a well-defined random process satisfying
+    \(dX_t=\mu(X_t,t)dt+\sigma(X_t,t)dW_t\). Every SDE-based lesson in this
+    curriculum inherits that premise silently: Ornstein-Uhlenbeck writes down
+    \(dX_t=\theta(\mu-X_t)dt+\sigma\,dW_t\) and moves straight to solving it;
+    Black-Scholes's geometric Brownian motion does the same; Heston writes down
+    <em>two</em> coupled SDEs and never asks whether the pair is well-posed.
+    In every one of those cases the assumption happens to be safe, because the
+    coefficients involved are well-behaved. But it is not automatically safe
+    for an arbitrary choice of \(\mu(x,t)\) and \(\sigma(x,t)\), and the
+    difference between a well-posed SDE and an ill-posed one is not a
+    footnote — it is the difference between a model that has one answer and a
+    model that has no answer, or infinitely many, at the exact moment you try
+    to compute with it.
+  </p>
+  <p>
+    This lesson is the formal version of a question worth asking before
+    trusting any new SDE specification, including one you might invent
+    yourself for a new pricing or forecasting idea: given this particular
+    \(\mu(x,t)\) and \(\sigma(x,t)\), is there actually a unique process that
+    satisfies the equation? The answer, for the two most common coefficient
+    families in quantitative finance, turns out to be reassuring but not
+    trivial — and the one family where it genuinely breaks (the square-root
+    diffusion behind short-rate models) is exactly why <code>short-rate-models-vasicek-cir-hull-white.html</code>,
+    later in this sequence, needs a different existence argument than the one
+    built here.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>The same question ordinary differential equations already had to answer</h3>
+    <p>
+      Long before stochastic calculus existed, ordinary differential equations
+      (ODEs) ran into exactly this problem. Write down \(dx/dt = f(x)\) with
+      some starting point \(x(0)=x_0\), and it is tempting to assume a curve
+      \(x(t)\) tracing out the solution simply exists, for all time, and that
+      it's the only curve doing so. Neither is automatic. The classical fix is
+      the <strong>Picard-Lindelöf theorem</strong>: if \(f\) is Lipschitz
+      continuous (its slope is bounded — it can't wiggle arbitrarily fast) and
+      doesn't grow too explosively as \(x\) gets large, a unique solution
+      exists, at least locally in time. Without those conditions, two very
+      different things can go wrong, and it's worth keeping them separate in
+      your head because they're genuinely different failures:
+    </p>
+    <p>
+      <strong>Non-uniqueness</strong> — a rough enough \(f\) can let more than
+      one curve pass validly through the same starting point, so "the"
+      solution isn't well defined; the textbook example is \(dx/dt =
+      \sqrt{|x|}\) with \(x(0)=0\), which is solved both by \(x(t)\equiv 0\)
+      forever <em>and</em> by \(x(t) = t^2/4\) peeling away from zero — both
+      satisfy the equation, and nothing in the equation itself picks one.
+      <strong>Finite-time blow-up</strong> — a fast-growing enough \(f\) can
+      make the solution race off to infinity before any fixed time horizon is
+      reached, so there is no solution defined on the interval you wanted at
+      all; the chart below shows this happening explicitly. An SDE has both of
+      these same two failure modes, plus a third source of trouble that has no
+      ODE counterpart: the diffusion term \(\sigma(X_t,t)\,dW_t\) can itself be
+      badly behaved even when the drift \(\mu\) is perfectly tame. The
+      existence-and-uniqueness theorem below is the direct stochastic-calculus
+      analogue of Picard-Lindelöf, adapted to control both terms at once.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    Start from the general form every SDE in this curriculum is a special
+    case of:
+  </p>
+  <div class="tl-math">
+    \[ dX_t = \mu(X_t,t)\,dt + \sigma(X_t,t)\,dW_t, \qquad X_0 = x_0 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>μ(X_t,t)</code><span>the drift — how the process moves on average, possibly depending on its own current level and on time</span></div>
+    <div class="tl-eq-chip c3"><code>σ(X_t,t)</code><span>the diffusion coefficient — how much randomness is injected, again possibly level- and time-dependent</span></div>
+    <div class="tl-eq-chip c4"><code>x₀</code><span>a fixed, known starting value</span></div>
+  </div>
+  <p>
+    <code>ito-lemma.html</code> works entirely with the special case
+    \(\mu(X_t,t)=\mu\) and \(\sigma(X_t,t)=\sigma\), constants — the simplest
+    possible coefficients, for which existence and uniqueness is never in
+    doubt. The general form above allows \(\mu\) and \(\sigma\) to be
+    <em>functions</em> of the current level \(X_t\) (and, in principle, of
+    time \(t\)) — which is exactly what OU's mean-reverting drift, GBM's
+    level-proportional coefficients, and CIR's square-root diffusion all are.
+    The question this lesson answers: for which functions \(\mu\) and
+    \(\sigma\) does this equation actually pin down a unique process \(X_t\)?
+  </p>
+
+  <h3>1. The existence-and-uniqueness theorem</h3>
+  <p>
+    The standard result (see Øksendal, <em>Stochastic Differential Equations</em>,
+    Theorem 5.2.1, or Karatzas &amp; Shreve, <em>Brownian Motion and Stochastic
+    Calculus</em>, for the fully rigorous statement and proof) requires two
+    conditions on the coefficients, holding for all \(x,y\) and all \(t\) in
+    the time horizon of interest:
+  </p>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">|μ(x,t)−μ(y,t)| + |σ(x,t)−σ(y,t)| ≤ K|x−y|</div>
+      <div class="tl-fp-name">Global Lipschitz condition</div>
+      <div class="tl-fp-desc">The coefficients can't change output faster than a fixed multiple K of the change in input — rules out the "two solutions from one starting point" failure</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">|μ(x,t)| + |σ(x,t)| ≤ K(1+|x|)</div>
+      <div class="tl-fp-name">Linear growth condition</div>
+      <div class="tl-fp-desc">Neither coefficient is allowed to grow faster than linearly in x — rules out the "solution races to infinity before time T" failure</div>
+    </div>
+  </div>
+  <p>
+    Given both conditions, with the same constant \(K\) working for both,
+    <strong>a unique strong solution \(X_t\) exists on \([0,T]\) for any fixed
+    time horizon \(T\)</strong>. "Strong" here means the solution is
+    constructed explicitly as a function of the given Brownian path \(W_t\)
+    (as opposed to a "weak" solution, which only needs <em>some</em> Brownian
+    motion on <em>some</em> probability space to work — a distinction that
+    matters for the numerical-schemes lesson next in this sequence, but not
+    for the existence question itself). The proof strategy mirrors
+    Picard-Lindelöf almost exactly: construct a sequence of successive
+    approximations (Picard iteration) and use the Lipschitz condition to show
+    they form a Cauchy sequence that converges to a genuine solution; the
+    linear growth condition is what stops that limit from escaping to infinity
+    before reaching \(T\).
+  </p>
+  <div class="tl-symbols"><table>
+    <tr><td>\(\mu(x,t)\), \(\sigma(x,t)\)</td><td>The drift and diffusion coefficients, written as functions of the current level \(x\) and time \(t\) — the general form every specific SDE (OU, GBM, CIR, ...) plugs a particular function into.</td></tr>
+    <tr><td>\(K\)</td><td>A single fixed constant that bounds both the Lipschitz condition and the linear-growth condition simultaneously — the theorem needs one \(K\) working for both, not two different ones.</td></tr>
+    <tr><td>\(|\mu(x,t)-\mu(y,t)|\)</td><td>How much the drift's output changes between two different current levels \(x\) and \(y\) — the Lipschitz condition caps this at \(K\) times the gap between \(x\) and \(y\) themselves.</td></tr>
+    <tr><td>Strong solution</td><td>A solution \(X_t\) built as an explicit (measurable) function of the specific Brownian path \(W_t\) you were handed — the practical notion of "solution" used everywhere in this curriculum's simulations.</td></tr>
+  </table></div>
+
+  <h3>2. GBM's coefficients: Lipschitz and linear growth, with an honest caveat</h3>
+  <p>
+    Geometric Brownian motion — the process behind <code>black-scholes.html</code>
+    and every other lognormal-price model in this curriculum — has
+    coefficients \(\mu(x) = \mu x\) and \(\sigma(x) = \sigma x\), where the
+    Greek \(\mu\) and \(\sigma\) on the right are fixed constants (the drift
+    and volatility parameters) and \(x\) is the current level. Both are linear
+    functions of \(x\), so both conditions are easy to check directly:
+  </p>
+  <div class="tl-math">
+    \[ |\mu x - \mu y| + |\sigma x - \sigma y| = (|\mu|+|\sigma|)\,|x-y| \]
+  </div>
+  <p>
+    That is exactly the Lipschitz form, with constant \(K=|\mu|+|\sigma|\) — a
+    single fixed number, the same for every pair \(x,y\), anywhere on the real
+    line. Linear growth is equally direct: \(|\mu x|+|\sigma x| =
+    (|\mu|+|\sigma|)|x| \le (|\mu|+|\sigma|)(1+|x|)\), the same \(K\) again.
+    Both conditions hold with room to spare — which is the honest reason GBM
+    is the field's default starting point: its well-posedness is essentially
+    free.
+  </p>
+  <div class="tl-solid amber">
+    <strong>The caveat worth stating precisely, not glossing over:</strong> the
+    Lipschitz constant \(K=|\mu|+|\sigma|\) above is exact and
+    region-independent for GBM specifically <em>because</em> its coefficients
+    are exactly linear — the same \(K\) works whether \(x\) ranges over
+    \([1,100]\) or the whole real line. That is a special property of linear
+    coefficients, not a general feature of "growth-condition-satisfying"
+    processes. For coefficients that are only <em>locally</em> Lipschitz
+    (well-behaved on every bounded region, with a Lipschitz constant that can
+    still grow as the region widens) the textbook-clean global argument above
+    doesn't directly apply, and the honest proof of existence on all of
+    \(\mathbb{R}\) needs a second ingredient: a non-explosion argument (showing
+    the process doesn't escape to infinity in finite time even though the
+    local Lipschitz constant is unbounded globally), on top of the local
+    Lipschitz property. GBM's coefficients are simple enough that this
+    technicality resolves cleanly — the process provably never explodes in
+    finite time — but stating "GBM's coefficients are globally Lipschitz, done"
+    without this caveat skips a real step that a fully rigorous treatment (see
+    Øksendal, Chapter 5) does not.
+  </div>
+
+  <h3>3. A coefficient that fails: the square-root diffusion</h3>
+  <p>
+    Contrast GBM's linear \(\sigma(x)=\sigma x\) with the square-root
+    diffusion coefficient that defines the CIR short-rate model (built in full
+    in <code>short-rate-models-vasicek-cir-hull-white.html</code>, later in
+    this sequence):
+  </p>
+  <div class="tl-math">
+    \[ \sigma(x) = \sigma\sqrt{|x|} \]
+  </div>
+  <p>
+    Check the Lipschitz condition at \(x=0\), \(y=\epsilon\) for a small
+    \(\epsilon>0\):
+  </p>
+  <div class="tl-math">
+    \[ \frac{|\sigma(\epsilon)-\sigma(0)|}{|\epsilon-0|} = \frac{\sigma\sqrt{\epsilon}}{\epsilon} = \frac{\sigma}{\sqrt{\epsilon}} \longrightarrow \infty \text{ as } \epsilon\to 0 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>σ/√ε</code><span>the local "slope" of √x blows up as ε→0 — no finite K can bound it near x=0</span></div>
+  </div>
+  <p>
+    The square-root function has infinite slope at the origin — its graph is
+    vertical there — so no finite Lipschitz constant \(K\) can bound the ratio
+    for every pair of points near \(x=0\). <strong>The square-root diffusion
+    genuinely fails the Lipschitz condition</strong>, right at the boundary
+    value that matters most for a short rate (zero). This is not a technicality
+    to wave away: the standard existence-and-uniqueness theorem from step 1
+    simply does not apply to this coefficient, and a separate, weaker set of
+    conditions is needed instead — the Yamada-Watanabe conditions (Yamada
+    &amp; Watanabe, 1971), which replace the Lipschitz requirement with a
+    weaker Hölder-type condition tailored to exactly this square-root
+    behaviour, and which is what actually justifies that the CIR process is
+    well-defined. <code>short-rate-models-vasicek-cir-hull-white.html</code>
+    picks this thread back up when it introduces CIR properly, alongside the
+    separate Feller condition that governs whether the resulting process stays
+    strictly positive.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">What the linear-growth condition is actually protecting against</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A chart comparing a bounded geometric-Brownian-motion-style path, which wanders within a narrow band near its starting value across the whole time axis, against a deterministic path following dX/dt=X squared, which stays small for most of the time axis then rockets upward and diverges to infinity as time approaches 1, illustrating a finite-time blow-up caused by violating the linear growth condition.">
+      <line x1="50" y1="243.4" x2="610" y2="243.4" style="stroke:var(--text3);stroke-dasharray:4,3"/>
+      <text x="20" y="247" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">1</text>
+      <line x1="50" y1="184.3" x2="610" y2="184.3" style="stroke:var(--border);stroke-dasharray:2,3"/>
+      <text x="16" y="188" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">10</text>
+      <line x1="50" y1="118.6" x2="610" y2="118.6" style="stroke:var(--border);stroke-dasharray:2,3"/>
+      <text x="16" y="122" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">20</text>
+      <line x1="50" y1="52.9" x2="610" y2="52.9" style="stroke:var(--border);stroke-dasharray:2,3"/>
+      <text x="16" y="56" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">30</text>
+      <line x1="610" y1="15" x2="610" y2="250" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:3,2"/>
+      <text x="565" y="14" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--red)">t = 1: blow-up time</text>
+      <line x1="50" y1="250" x2="610" y2="250" style="stroke:var(--text3)"/>
+      <text x="50" y="266" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">t=0</text>
+      <text x="320" y="266" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">t=0.5</text>
+      <text x="600" y="266" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="end">t≈1</text>
+      <polyline points="50.00,243.43 52.80,243.42 55.60,243.29 58.40,243.17 61.20,243.22 64.00,243.25 66.80,243.30 69.60,243.24 72.40,243.24 75.20,243.17 78.00,243.34 80.80,243.19 83.60,243.20 86.40,243.13 89.20,243.14 92.00,243.18 94.80,243.13 97.60,243.05 100.40,243.07 103.20,243.08 106.00,243.01 108.80,243.09 111.60,243.24 114.40,243.20 117.20,243.26 120.00,243.44 122.80,243.51 125.60,243.55 128.40,243.66 131.20,243.79 134.00,243.78 136.80,243.70 139.60,243.72 142.40,243.78 145.20,243.75 148.00,243.68 150.80,243.71 153.60,243.66 156.40,243.56 159.20,243.58 162.00,243.65 164.80,243.62 167.60,243.59 170.40,243.49 173.20,243.61 176.00,243.66 178.80,243.74 181.60,243.89 184.40,243.87 187.20,243.83 190.00,243.89 192.80,243.76 195.60,243.69 198.40,243.63 201.20,243.59 204.00,243.50 206.80,243.62 209.60,243.57 212.40,243.51 215.20,243.67 218.00,243.63 220.80,243.66 223.60,243.58 226.40,243.62 229.20,243.62 232.00,243.59 234.80,243.66 237.60,243.61 240.40,243.62 243.20,243.57 246.00,243.62 248.80,243.51 251.60,243.46 254.40,243.47 257.20,243.41 260.00,243.29 262.80,243.12 265.60,243.27 268.40,243.18 271.20,243.13 274.00,243.14 276.80,243.23 279.60,243.11 282.40,243.23 285.20,243.17 288.00,243.04 290.80,243.20 293.60,243.22 296.40,243.35 299.20,243.32 302.00,243.18 304.80,242.98 307.60,243.15 310.40,243.20 313.20,243.13 316.00,242.97 318.80,242.93 321.60,243.00 324.40,242.97 327.20,242.97 330.00,242.99 332.80,243.06 335.60,243.02 338.40,242.99 341.20,242.99 344.00,243.01 346.80,243.14 349.60,243.18 352.40,243.06 355.20,243.08 358.00,243.22 360.80,243.08 363.60,243.03 366.40,242.82 369.20,242.81 372.00,242.85 374.80,243.00 377.60,242.86 380.40,242.60 383.20,242.68 386.00,242.74 388.80,242.68 391.60,242.76 394.40,242.79 397.20,242.82 400.00,242.80 402.80,242.69 405.60,242.68 408.40,242.58 411.20,242.62 414.00,242.59 416.80,242.81 419.60,242.95 422.40,242.87 425.20,242.93 428.00,242.87 430.80,242.81 433.60,242.67 436.40,242.58 439.20,242.47 442.00,242.48 444.80,242.56 447.60,242.63 450.40,242.68 453.20,242.79 456.00,242.85 458.80,242.85 461.60,242.83 464.40,242.86 467.20,243.05 470.00,243.05 472.80,243.03 475.60,242.92 478.40,242.86 481.20,242.92 484.00,242.99 486.80,242.79 489.60,242.71 492.40,242.51 495.20,242.28 498.00,242.37 500.80,242.32 503.60,242.27 506.40,242.21 509.20,242.15 512.00,242.12 514.80,242.10 517.60,242.26 520.40,242.28 523.20,242.36 526.00,242.34 528.80,242.39 531.60,242.32 534.40,242.23 537.20,242.19 540.00,242.15 542.80,242.14 545.60,242.19 548.40,242.21 551.20,242.26 554.00,242.21 556.80,242.21 559.60,242.14 562.40,242.29 565.20,242.19 568.00,242.27 570.80,242.35 573.60,242.36 576.40,242.42 579.20,242.39 582.00,242.45 584.80,242.56 587.60,242.65 590.40,242.51 593.20,242.50 596.00,242.62 598.80,242.62 601.60,242.77 604.40,242.59 607.20,242.74 610.00,242.69" style="stroke:var(--blue);stroke-width:2" fill="none"/>
+      <polyline points="50.00,243.43 52.72,243.40 55.43,243.36 58.15,243.33 60.86,243.30 63.58,243.27 66.29,243.23 69.01,243.20 71.72,243.16 74.44,243.13 77.16,243.09 79.87,243.06 82.59,243.02 85.30,242.99 88.02,242.95 90.73,242.91 93.45,242.88 96.16,242.84 98.88,242.80 101.60,242.76 104.31,242.72 107.03,242.68 109.74,242.64 112.46,242.60 115.17,242.56 117.89,242.52 120.61,242.48 123.32,242.44 126.04,242.40 128.75,242.35 131.47,242.31 134.18,242.27 136.90,242.22 139.61,242.18 142.33,242.13 145.05,242.09 147.76,242.04 150.48,241.99 153.19,241.94 155.91,241.90 158.62,241.85 161.34,241.80 164.05,241.75 166.77,241.70 169.49,241.65 172.20,241.59 174.92,241.54 177.63,241.49 180.35,241.43 183.06,241.38 185.78,241.33 188.49,241.27 191.21,241.21 193.93,241.16 196.64,241.10 199.36,241.04 202.07,240.98 204.79,240.92 207.50,240.86 210.22,240.79 212.93,240.73 215.65,240.67 218.37,240.60 221.08,240.54 223.80,240.47 226.51,240.40 229.23,240.34 231.94,240.27 234.66,240.20 237.37,240.12 240.09,240.05 242.81,239.98 245.52,239.90 248.24,239.83 250.95,239.75 253.67,239.67 256.38,239.59 259.10,239.51 261.82,239.43 264.53,239.35 267.25,239.26 269.96,239.18 272.68,239.09 275.39,239.00 278.11,238.91 280.82,238.82 283.54,238.73 286.26,238.63 288.97,238.54 291.69,238.44 294.40,238.34 297.12,238.24 299.83,238.14 302.55,238.03 305.26,237.92 307.98,237.82 310.70,237.70 313.41,237.59 316.13,237.48 318.84,237.36 321.56,237.24 324.27,237.12 326.99,237.00 329.70,236.87 332.42,236.74 335.14,236.61 337.85,236.48 340.57,236.34 343.28,236.20 346.00,236.06 348.71,235.92 351.43,235.77 354.14,235.62 356.86,235.46 359.58,235.30 362.29,235.14 365.01,234.98 367.72,234.81 370.44,234.64 373.15,234.46 375.87,234.28 378.58,234.10 381.30,233.91 384.02,233.72 386.73,233.52 389.45,233.31 392.16,233.11 394.88,232.89 397.59,232.67 400.31,232.45 403.03,232.22 405.74,231.98 408.46,231.74 411.17,231.49 413.89,231.24 416.60,230.97 419.32,230.70 422.03,230.42 424.75,230.13 427.47,229.84 430.18,229.53 432.90,229.22 435.61,228.90 438.33,228.56 441.04,228.22 443.76,227.86 446.47,227.50 449.19,227.12 451.91,226.72 454.62,226.32 457.34,225.89 460.05,225.46 462.77,225.01 465.48,224.54 468.20,224.05 470.91,223.54 473.63,223.01 476.35,222.47 479.06,221.90 481.78,221.30 484.49,220.68 487.21,220.03 489.92,219.35 492.64,218.64 495.35,217.90 498.07,217.12 500.79,216.30 503.50,215.45 506.22,214.54 508.93,213.59 511.65,212.58 514.36,211.52 517.08,210.40 519.79,209.20 522.51,207.94 525.23,206.59 527.94,205.15 530.66,203.62 533.37,201.98 536.09,200.21 538.80,198.31 541.52,196.26 544.24,194.04 546.95,191.63 549.67,189.01 552.38,186.13 555.10,182.97 557.81,179.48 560.53,175.61 563.24,171.29 565.96,166.44 568.68,160.95 571.39,154.69 574.11,147.47 576.82,139.08 579.54,129.19 582.25,117.37 584.97,102.98 587.68,85.09 590.40,62.24" style="stroke:var(--red);stroke-width:2" fill="none"/>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>Linear-growth diffusion (GBM, μ=0.08, σ=0.20) — stays bounded</span>
+      <span><i style="background:var(--red)"></i>Superlinear drift, \(dX/dt=X^2\), X(0)=1 — races to infinity as t→1</span>
+    </div>
+    <div class="tl-chart-caption">
+      The blue path is a single simulated GBM realization, whose coefficients
+      satisfy linear growth exactly as derived in step 2 — note it stays
+      within a narrow band near its starting value across the entire time
+      axis, exactly as the theorem's growth bound predicts. The red curve is
+      the exact closed-form solution of the deterministic ODE \(dX/dt=X^2\),
+      \(X(0)=1\), which is \(X(t)=1/(1-t)\) — its right-hand side grows
+      quadratically, violating linear growth, and the solution genuinely does
+      not exist past \(t=1\): it isn't merely hard to simulate there, no
+      solution of the equation is defined beyond that point at all. This is
+      the deterministic (drift-only) version of exactly the failure the
+      growth condition in step 1 rules out for the full stochastic case.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Checking both conditions numerically for a specific GBM specification</h3>
+    <p>
+      Take \(\mu=0.08\), \(\sigma=0.20\) (an 8% annual drift, 20% annual
+      volatility — plausible parameters for an equity index). The Lipschitz
+      constant is exact and region-independent for these linear coefficients:
+    </p>
+    <div class="tl-math">
+      \[ K = |\mu| + |\sigma| = 0.08 + 0.20 = 0.28 \]
+    </div>
+    <p>
+      Check linear growth at a specific point, \(x=100\):
+    </p>
+    <div class="tl-math">
+      \[ |\mu x| + |\sigma x| = |0.08 \times 100| + |0.20 \times 100| = 8 + 20 = 28 \]
+    </div>
+    <p>
+      Compare against the bound \(K(1+|x|) = 0.28 \times (1+100) = 28.28\).
+      \(28 \le 28.28\) — the condition holds, with a small margin coming
+      entirely from the "\(+1\)" in \(K(1+|x|)\) (at large \(x\) the two sides
+      converge, since \(K\cdot x\) and \(K(1+x)\) differ by a fixed constant
+      \(K\) that matters less and less relative to \(Kx\)). Both conditions
+      hold with the identical constant \(K=0.28\), for every \(x\) — exactly
+      what the theorem in step 1 requires, and precisely why no special care
+      is needed before simulating a GBM specification like this one.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A quant proposes a new local-volatility specification</h3>
+    <p>
+      Picture a desk considering a bespoke local-volatility model for an FX
+      pair, where the diffusion coefficient is specified as
+      \(\sigma(x) = \sigma_0\,x^{1.5}\) instead of GBM's plain \(\sigma_0 x\) —
+      a modeling choice made to fit an observed volatility smile more
+      aggressively at high spot levels. Before wiring this into a pricing
+      engine and trusting its Monte Carlo output, the honest first question is
+      exactly the one this lesson poses: is this coefficient well-posed at
+      all? \(x^{1.5}\) still satisfies a local Lipschitz condition away from
+      zero (its derivative, \(1.5x^{0.5}\), is finite and bounded on any
+      region excluding the origin), but it grows <em>faster</em> than linearly
+      as \(x\to\infty\) — violating the linear growth condition outright. That
+      doesn't necessarily mean the model is unusable, but it does mean the
+      textbook existence-and-uniqueness guarantee from step 1 does not cover
+      it, and a real non-explosion check (does the process actually reach
+      infinity in finite time with positive probability, given the specific
+      parameters in play) is a genuine, separate piece of due diligence before
+      the model is trusted — not a formality to skip because "it looks like
+      GBM with an extra exponent."
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Almost nobody proves existence and uniqueness from scratch before pricing
+    a trade — in practice, the field has settled on a short list of coefficient
+    families (GBM, OU/Vasicek, CIR, and their well-studied extensions like
+    Heston and SABR) whose well-posedness was established once, in the
+    academic literature, decades ago, and every desk simply cites that result.
+    Where this actually surfaces as live due diligence:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🧪</div>
+      <h4>Vetting a genuinely new coefficient specification</h4>
+      <p>Any time a model departs from the standard families — a custom local-volatility surface, a bespoke jump-diffusion drift — checking Lipschitz and growth conditions (or citing a paper that already has) is the first honest gate before trusting simulated output.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📉</div>
+      <h4>Diagnosing a numerical scheme that "blows up"</h4>
+      <p>If a Monte Carlo simulation of an SDE regularly produces NaNs or diverging paths, the first question is whether the underlying coefficients even satisfy a growth condition — sometimes the numerical scheme isn't the bug, the specification is.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📐</div>
+      <h4>Choosing between competing model families</h4>
+      <p>Part of why CIR (not a naive square-root-of-anything model) became the standard positivity-preserving short-rate process is that its specific coefficients were the ones a rigorous existence argument (Yamada-Watanabe) was actually worked out for.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this gets misapplied</h3>
+    <p>
+      <strong>Treating "the simulation ran without crashing" as proof the SDE
+      is well-posed.</strong> A numerical scheme with a fixed, coarse time step
+      can silently step over a genuine finite-time blow-up or a
+      non-uniqueness issue and still produce a plausible-looking path — the
+      well-posedness question is about the true continuous-time equation, not
+      about whether a particular discretization happened to behave on a
+      particular run.
+    </p>
+    <p>
+      <strong>Assuming "locally Lipschitz" is as good as "globally Lipschitz."</strong>
+      A coefficient can be perfectly smooth (locally Lipschitz) everywhere and
+      still fail to have a global solution, if it grows fast enough that the
+      solution can escape to infinity in finite time — local smoothness alone
+      never rules out blow-up; the growth condition is what does that,
+      separately.
+    </p>
+    <p>
+      <strong>Confusing the Lipschitz condition's failure with "the model must
+      be wrong."</strong> CIR's square-root diffusion fails the Lipschitz
+      condition and is nonetheless one of the most widely used, well-validated
+      short-rate specifications in the industry — the Yamada-Watanabe
+      conditions were developed precisely because plenty of genuinely useful
+      models have exactly this kind of non-Lipschitz behaviour at a boundary.
+      A failed Lipschitz check means "use the more careful theorem," not
+      "abandon the model."
+    </p>
+    <p>
+      <strong>Forgetting that the theorem needs one constant K for both
+      conditions.</strong> It's possible to construct coefficients that are
+      Lipschitz with one constant and satisfy linear growth with a completely
+      different, unrelated constant — the theorem as classically stated wants
+      both bounded by the <em>same</em> \(K\), which is easy to arrange in
+      practice (take the larger of the two) but easy to miss when checking
+      the conditions separately.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>An SDE isn't automatically well-posed just because you wrote it down.</strong> Existence and uniqueness of a solution require the coefficients to satisfy specific conditions — they aren't free.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Global Lipschitz + linear growth ⟹ unique strong solution.</strong> The SDE analogue of Picard-Lindelöf; Lipschitz rules out non-uniqueness, linear growth rules out finite-time blow-up.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>GBM's linear coefficients satisfy both conditions cleanly</strong> — with an exact, region-independent Lipschitz constant K=|μ|+|σ| — which is the honest reason it's the field's default starting point.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The "GBM is globally Lipschitz" claim needs a caveat on all of ℝ.</strong> The fully rigorous argument pairs local Lipschitz behaviour with a separate non-explosion check, not a single global-K claim asserted without qualification.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The CIR-style square-root diffusion σ(x)=σ√|x| fails Lipschitz at x=0.</strong> It needs the weaker Yamada-Watanabe conditions instead — a failed Lipschitz check doesn't mean the model is broken, it means a different theorem applies.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Violating linear growth can mean no solution exists at all past some finite time</strong> — not a simulation inconvenience. dX/dt=X² with X(0)=1 has no solution whatsoever past t=1, for any method.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. State the two conditions the existence-and-uniqueness theorem requires, and which specific failure mode each one rules out.</summary>
+    <div class="tl-answer">
+      The global Lipschitz condition, \(|\mu(x,t)-\mu(y,t)|+|\sigma(x,t)-\sigma(y,t)|\le K|x-y|\), rules out non-uniqueness — it prevents the coefficients from being rough enough that two different valid solutions could pass through the same starting point. The linear growth condition, \(|\mu(x,t)|+|\sigma(x,t)|\le K(1+|x|)\), rules out finite-time blow-up — it prevents the solution from being able to race off to infinity before a fixed time horizon \(T\) is reached. Both need to hold with the same constant \(K\) for the theorem to guarantee a unique strong solution.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why does GBM's Lipschitz constant come out to a single fixed number, K=|μ|+|σ|, rather than a number that depends on the region of x being considered?</summary>
+    <div class="tl-answer">
+      Because GBM's coefficients, μ(x)=μx and σ(x)=σx, are exactly linear in x. For a linear function, the ratio |f(x)-f(y)|/|x-y| is a constant (the slope) for every pair x,y — it doesn't matter how far apart x and y are, or how large they are. That's a special consequence of linearity; a coefficient with any curvature (like x^1.5 or √x) would generally have a Lipschitz "constant" that changes depending on which region of x you're checking, or that fails to be bounded at all somewhere in the domain.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. A coefficient σ(x)=σ√|x| is proposed for a new short-rate model. Does it satisfy the global Lipschitz condition? Show why or why not.</summary>
+    <div class="tl-answer">
+      No. Checking the ratio near x=0, between x=0 and y=ε for small ε>0: |σ(ε)-σ(0)|/|ε-0| = σ√ε/ε = σ/√ε, which diverges to infinity as ε→0. No finite constant K can bound this ratio for every pair of points near the origin, so the global Lipschitz condition fails there. This is exactly the CIR square-root diffusion, and it's why CIR needs the separate Yamada-Watanabe existence conditions rather than the standard theorem.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Explain, using dX/dt=X², X(0)=1 as the example, what "violating the linear growth condition can mean no solution exists at all" actually means in practice.</summary>
+    <div class="tl-answer">
+      The exact solution of dX/dt=X² with X(0)=1 is X(t)=1/(1-t), which is well-defined and finite for every t in [0,1), but has no defined value at t=1 or beyond — it isn't that X(t) becomes "very large," it genuinely diverges to infinity at that specific finite time, and the differential equation has no solution curve extending past it. This isn't a numerical artifact of a particular simulation method; it's a property of the true continuous-time equation, caused by the right-hand side, X², growing faster than linearly in X — exactly the growth condition the existence theorem requires to rule this out.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. A Lipschitz check on a proposed local-volatility coefficient fails. Does that mean the model should be abandoned?</summary>
+    <div class="tl-answer">
+      Not necessarily. CIR's square-root diffusion fails the standard global Lipschitz condition and is still one of the most widely used and validated short-rate models in the industry. A failed Lipschitz check means the standard existence-and-uniqueness theorem from step 1 doesn't directly apply — it signals that a different, more careful argument (like the Yamada-Watanabe conditions for square-root-type diffusions) is needed to establish whether a unique solution exists, not that the model is automatically broken or unusable.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Bernt Øksendal, <em>Stochastic Differential Equations: An Introduction with Applications</em>, Springer, 6th ed. — Theorem 5.2.1 states and proves the global Lipschitz + linear growth existence-and-uniqueness theorem in full.</li>
+    <li>Ioannis Karatzas &amp; Steven E. Shreve, <em>Brownian Motion and Stochastic Calculus</em>, Springer, 2nd ed., 1991 — the standard graduate-level rigorous treatment, including strong-vs-weak solution distinctions.</li>
+    <li>Toshio Yamada &amp; Shinzo Watanabe, "On the uniqueness of solutions of stochastic differential equations," <em>Journal of Mathematics of Kyoto University</em>, Vol. 11, No. 1, 1971 — the paper establishing weaker conditions (covering square-root-type diffusions) under which pathwise uniqueness still holds.</li>
+    <li><code>ito-lemma.html</code> in this Theory Lab — the calculus this lesson's SDEs are manipulated with, once a solution is known to exist.</li>
+    <li><code>short-rate-models-vasicek-cir-hull-white.html</code>, next-but-one in this sequence — where the CIR square-root diffusion introduced here is built into a full short-rate model.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="sde-numerical-schemes.html">Numerical Schemes: Euler-Maruyama &amp; Milstein →</a>
+  </div>
+</div>
+</body>
+</html>

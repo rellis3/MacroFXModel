@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stress Testing, Scenario Analysis &amp; Reverse Stress Tests — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Risk Management Deep Dive / Stress Testing, Scenario Analysis &amp; Reverse Stress Tests</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Risk Deep Dive 3 of 3</div>
+  <h1 class="tl-title">Stress Testing, Scenario Analysis &amp; Reverse Stress Tests</h1>
+  <p class="tl-dek">Asking "what happens if X" only gets you scenarios you thought to ask about — asking "what would have to happen for me to lose $Y" can surface the concentration risk you didn't know to look for.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explains a risk-management framework; no stress-testing pipeline is built in this repo</span>
+    <span>~14 min read</span>
+    <span>Prereqs: <a href="coherent-risk-measures.html">Coherent Risk Measures</a> and <a href="extreme-value-theory.html">Extreme Value Theory</a> help but aren't required</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Historical scenario replay</strong> applies a real past shock (e.g. a 2008-style quarter) to today's current portfolio weights — internally consistent, because the co-movements actually happened together.</li>
+      <li><strong>Hypothetical / Monte Carlo scenario stress</strong> simulates a shock from an assumed distribution or correlation regime (e.g. "what if every correlation goes to 1") — it can explore scenarios that have never actually occurred.</li>
+      <li><strong>Reverse stress testing</strong> flips the question: instead of "what's my loss under scenario X," it asks "what scenario would cause an unacceptable loss of $Y," solving backward from the loss threshold to the shock.</li>
+      <li>Reverse stress tests are especially good at surfacing hidden concentration — positions that look diversified on the surface (different asset classes, different desks) but load on the same underlying factor once you solve for what would actually break the portfolio.</li>
+      <li>Both forward-looking methods carry an honest limitation: historical scenarios are anchored to what already happened, and the next crisis rarely repeats the last one's exact shape; Monte Carlo scenarios are only as good as the correlation/distribution assumptions feeding them.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+  A portfolio's day-to-day risk statistics — volatility, VaR, CVaR — are built from the ordinary,
+  everyday range of outcomes a return series has actually produced. Stress testing exists precisely
+  because the outcomes that matter most for survival are, almost by definition, the ones a routine
+  statistical summary is least equipped to describe: the specific, coordinated, often correlation-breaking
+  shock that doesn't look like an ordinary bad day, it looks like a different regime entirely. Three
+  complementary techniques have developed to address this, each answering a differently-shaped question,
+  and the third — reverse stress testing — asks the question in the direction that's easiest to overlook:
+  not "how would I do under this scenario," but "what scenario would actually break me," which is
+  frequently a more useful question precisely because nobody had to think of it first.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A homeowner checks the roof, then asks what it would actually take to bring the house down</h3>
+    <p>
+    Most home risk assessment works forward: "what happens to this house in a Category 3 hurricane,"
+    "what happens in a magnitude-6 earthquake" — you pick a scenario, and evaluate the damage. That's
+    useful, but it only ever tells you about the scenarios you thought to ask about. A structural
+    engineer doing a genuinely thorough safety review asks the question the other way around: "what is
+    the <em>smallest</em> combination of failures that would actually bring this house down?" That
+    question sometimes reveals something a forward checklist never would — maybe it isn't the roof or the
+    foundation individually, but one specific load-bearing beam that, if compromised, cascades into
+    everything else failing at once, even under conditions milder than either the hurricane or the
+    earthquake scenario alone. Reverse stress testing is exactly that engineer's question applied to a
+    portfolio: instead of grading survivability against scenarios you already imagined, you solve
+    backward from "what's the smallest, most plausible thing that would cause the loss I truly cannot
+    tolerate," which routinely uncovers a single hidden point of failure that a list of pre-picked
+    scenarios would never have surfaced, because nobody thought to test for it directly.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+  We'll define each of the three approaches precisely, in the order a risk team typically layers them:
+  replay what actually happened, then explore what could hypothetically happen, then solve backward from
+  the loss level that would actually matter.
+  </p>
+
+  <h3>1. Historical scenario replay</h3>
+  <p>
+  Let \(w\) be the vector of current portfolio weights (or dollar exposures) across \(n\) assets or risk
+  factors, and let \(r^{\text{hist}}\) be the vector of realized returns for those same factors observed
+  during some specific past stress episode (a particular week, month, or quarter). Historical scenario
+  replay computes:
+  </p>
+  <div class="tl-math">\[ \text{PnL}^{\text{hist}} = w^{\top} r^{\text{hist}} = \sum_{i=1}^{n} w_i \, r_i^{\text{hist}} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>w</code><span>today's actual portfolio weights/exposures — not the weights held during the historical episode</span></div>
+    <div class="tl-eq-chip c2"><code>r^hist</code><span>the realized returns of each factor during the chosen past shock</span></div>
+    <div class="tl-eq-chip c3"><code>w⊤r^hist</code><span>today's portfolio, marked against yesterday's shock</span></div>
+  </div>
+  <p>
+  The key design choice is applying <em>today's</em> weights to a <em>past</em> shock — the point isn't
+  to ask "how did this portfolio actually do in 2008" (it may not have existed then, or held completely
+  different positions), it's to ask "if that exact historical shock happened again tomorrow, starting from
+  the book I actually hold right now, what would happen." Because \(r^{\text{hist}}\) is a real, jointly
+  observed set of returns, every correlation and co-movement between factors is automatically correct —
+  you don't need to separately model how equities, credit spreads, and currencies moved together, because
+  they already did, and the history captures the true joint behavior.
+  </p>
+
+  <h3>2. Hypothetical / Monte Carlo scenario stress</h3>
+  <p>
+  Rather than replaying an observed episode, this approach specifies a stress <em>distribution</em> —
+  typically a shocked covariance matrix \(\Sigma^{\text{stress}}\) reflecting an assumed crisis regime
+  (a common stylized assumption: correlations across risk factors move toward 1, since diversifying
+  assets have repeatedly been observed to move together far more than usual during real crises) — and
+  draws many simulated return vectors from it:
+  </p>
+  <div class="tl-math">\[ r^{(k)} \sim \mathcal{N}(\mu^{\text{stress}}, \Sigma^{\text{stress}}), \qquad k = 1, \ldots, N \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Σ^stress</code><span>an assumed stress-regime covariance matrix — not necessarily the ordinary one</span></div>
+    <div class="tl-eq-chip c2"><code>μ^stress</code><span>the assumed mean shock vector under the stress regime</span></div>
+    <div class="tl-eq-chip c4"><code>N</code><span>the number of Monte Carlo draws — the more, the smoother the resulting loss distribution's estimate</span></div>
+  </div>
+  <p>
+  Each draw \(r^{(k)}\) is combined with today's weights, \(\text{PnL}^{(k)} = w^{\top} r^{(k)}\), producing
+  a full simulated distribution of stressed outcomes rather than a single number — from which a stressed
+  VaR, CVaR, or full distribution shape can be read off. The entire exercise is only as good as
+  \(\Sigma^{\text{stress}}\) and \(\mu^{\text{stress}}\): if the assumed correlation regime or shock size
+  doesn't resemble whatever a real future crisis actually looks like, the simulated loss distribution
+  won't either, no matter how many draws \(N\) you run.
+  </p>
+
+  <h3>3. Reverse stress testing — solving backward</h3>
+  <p>
+  Both methods above start from a scenario and compute a loss. Reverse stress testing inverts the
+  direction: start from an unacceptable loss threshold \(Y^{*}\) (e.g. the loss that would trigger
+  insolvency, breach a regulatory capital floor, or simply be judged intolerable by the risk committee),
+  and solve for the scenario, or set of scenarios, that would produce it. In the simplest single-factor
+  case, if portfolio loss is modeled as a function of a shock size \(s\) along some risk factor,
+  \(\text{Loss}(s)\), reverse stress testing solves:
+  </p>
+  <div class="tl-math">\[ s^{*} : \text{Loss}(s^{*}) = Y^{*} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Y*</code><span>the unacceptable loss threshold you start from — chosen by the risk committee, not derived</span></div>
+    <div class="tl-eq-chip c2"><code>s*</code><span>the shock size that would produce exactly that loss — solved for, not assumed</span></div>
+  </div>
+  <p>
+  With multiple risk factors, this becomes a search over the space of possible shocks for the smallest,
+  most plausible combination that reaches \(Y^{*}\) — and the practically important output isn't just
+  the number \(s^{*}\), it's <em>which combination of factor moves</em> gets there. A portfolio whose only
+  route to the unacceptable loss threshold requires several independent, large, and implausible shocks to
+  occur together is structurally safer than one where a single, modest, entirely plausible shock along
+  one specific factor gets there on its own — and the latter is exactly the hidden-concentration finding
+  the worked example below illustrates.
+  </p>
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(w\)</td><td>Today's actual portfolio weights or dollar exposures across risk factors — held fixed while the scenario changes.</td></tr>
+      <tr><td>\(r^{\text{hist}}\)</td><td>The realized returns of each risk factor during a chosen historical stress episode.</td></tr>
+      <tr><td>\(\Sigma^{\text{stress}}\), \(\mu^{\text{stress}}\)</td><td>An assumed stress-regime covariance matrix and mean shock, used to simulate hypothetical (not historically observed) scenarios.</td></tr>
+      <tr><td>\(r^{(k)}\)</td><td>One simulated draw of returns under the stress distribution; \(k=1,\ldots,N\) indexes the Monte Carlo sample.</td></tr>
+      <tr><td>\(\text{Loss}(s)\)</td><td>The portfolio's loss as a function of a shock size \(s\) along one or more risk factors.</td></tr>
+      <tr><td>\(Y^{*}\)</td><td>The unacceptable loss threshold chosen up front — the starting point of a reverse stress test.</td></tr>
+      <tr><td>\(s^{*}\)</td><td>The shock size solved for such that \(\text{Loss}(s^{*}) = Y^{*}\) — the output of a reverse stress test.</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Solving backward reveals two "different" strategies share one real risk factor</h3>
+    <p>
+    A $10,000,000 book holds two positions that look diversified on paper: $6,000,000 in a short-volatility
+    equity carry strategy (Strategy A) and $4,000,000 in a high-yield credit carry strategy (Strategy B) —
+    different asset classes, different desks, different instruments. Suppose both are actually driven by
+    the same underlying latent "risk-off" factor \(s\) (a broad collapse in risk appetite), with loss
+    sensitivities \(\beta_A = 30\%\) of notional per unit of \(s\) (Strategy A's short-vol convexity makes
+    it lose disproportionately) and \(\beta_B = 15\%\) of notional per unit of \(s\) (Strategy B's credit
+    spreads widen less sharply per unit of the same shock):
+    </p>
+    <div class="tl-math">\[
+    \text{Loss}(s) = \$6\text{M} \times 0.30 \times s + \$4\text{M} \times 0.15 \times s = \$2.4\text{M} \times s
+    \]</div>
+    <p>
+    <strong>Forward historical scenario (\(s=1\), "a 2008-style quarter"):</strong> Loss(1) = $2.4M, or 24%
+    of the book. Viewed desk by desk, Strategy A alone loses 30% of its $6M (a survivable, well-understood
+    equity-vol drawdown) and Strategy B alone loses 15% of its $4M (a survivable credit widening) — each
+    individually looks like a manageable, ordinary bad quarter for that specific desk.
+    </p>
+    <p>
+    <strong>Reverse stress test:</strong> the risk committee sets an unacceptable-loss threshold of $5M
+    (50% of the book). Solving \(\$2.4\text{M} \times s^{*} = \$5\text{M}\) gives \(s^{*} \approx 2.08\) —
+    a shock only about twice the size of an ordinary "2008-style quarter" along the <em>same single
+    factor</em> already identified above.
+    </p>
+    <div class="tl-solid red">
+    <strong>The concentration reveal:</strong> a forward-looking review that stress-tested "equity
+    volatility spike" and "credit spread widening" as two separate scenarios, each hitting only its own
+    desk, would have reported the book as diversified — each desk survives its own shock comfortably. The
+    reverse stress test shows the book actually has only <strong>one</strong> real risk factor, not two: a
+    single, moderate risk-off shock (roughly twice an ordinary bad quarter, not an exotic or extreme one)
+    hits both desks simultaneously and takes out half the book. What looked like diversification across
+    asset classes was, underneath, concentration in a single latent factor.
+    </div>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Forward stress testing vs. reverse stress testing on the same loss function</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart with shock size on the x axis in units of an ordinary bad quarter, from zero to three, and portfolio loss in millions of dollars on the y axis, from zero to seven point five. A straight rising line shows loss equals two point four million dollars times the shock size. A blue dot marks the historical scenario at a shock of one, corresponding to a loss of two point four million dollars. A shaded band around a shock of one shows the range explored by a hypothetical Monte Carlo stress. Dashed lines mark a five million dollar unacceptable loss threshold intersecting the line at a shock of about two point zero eight, the result of solving backward in a reverse stress test.">
+      <line x1="60" y1="260" x2="620" y2="260" style="stroke:var(--border);stroke-width:1"></line>
+      <line x1="60" y1="260" x2="60" y2="30" style="stroke:var(--border);stroke-width:1"></line>
+      <text x="60" y="278" style="font:10px 'DM Mono',monospace;fill:var(--text3)">s=0</text>
+      <text x="240" y="278" text-anchor="middle" style="font:10px 'DM Mono',monospace;fill:var(--text3)">s=1 (typical bad qtr)</text>
+      <text x="600" y="278" text-anchor="end" style="font:10px 'DM Mono',monospace;fill:var(--text3)">s=3</text>
+      <text x="20" y="35" style="font:10px 'DM Mono',monospace;fill:var(--text3)">$7.5M</text>
+      <text x="20" y="264" style="font:10px 'DM Mono',monospace;fill:var(--text3)">$0</text>
+      <polygon points="168,260 168,196 312,74 312,138" style="fill:var(--blue);opacity:0.15"></polygon>
+      <path d="M 60,260 L 600,44" style="fill:none;stroke:var(--text2);stroke-width:2.5"></path>
+      <circle cx="240" cy="188" r="5" style="fill:var(--blue)"></circle>
+      <text x="250" y="180" style="font:600 11px 'DM Sans',sans-serif;fill:var(--blue)">Historical replay: $2.4M</text>
+      <line x1="60" y1="110" x2="435" y2="110" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:4,3"></line>
+      <line x1="435" y1="110" x2="435" y2="260" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:4,3"></line>
+      <circle cx="435" cy="110" r="5" style="fill:var(--red)"></circle>
+      <text x="445" y="103" style="font:600 11px 'DM Sans',sans-serif;fill:var(--red)">Unacceptable loss: $5M</text>
+      <text x="440" y="278" style="font:600 11px 'DM Sans',sans-serif;fill:var(--red)">s* ≈ 2.08 (reverse-solved)</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--text2)"></i>Loss(s) = $2.4M × s</span>
+      <span><i style="background:var(--blue)"></i>Historical scenario replay (forward)</span>
+      <span><i style="background:var(--blue);opacity:0.4"></i>Monte Carlo simulated stress range</span>
+      <span><i style="background:var(--red)"></i>Reverse stress test (solved backward)</span>
+    </div>
+    <div class="tl-chart-caption">
+    The forward approaches pick a shock size (a specific historical quarter, or a simulated range) and
+    read the loss off the line. The reverse stress test starts at the loss threshold that actually
+    matters ($5M) and reads the required shock size back off the same line (\(s^{*}\approx 2.08\)) — the
+    identical relationship, used in the opposite direction.
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Stress-testing an EM local-rates carry book ahead of an FOMC decision</h3>
+    <p>
+    A macro fund holds a book of emerging-market local-rates carry positions across several currencies,
+    funded in dollars, ahead of a Federal Reserve policy decision that markets consider a genuine
+    two-way risk event. The risk team layers all three techniques rather than picking just one. First, a
+    historical scenario replay applies the actual realized cross-asset return pattern from a well-known
+    past episode of sudden EM stress (a taper-tantrum-style repricing) to today's current book, producing
+    a concrete, internally consistent P&amp;L estimate built from real historical co-movements. Second, a
+    Monte Carlo overlay stresses the same book under a hypothetical "correlations go to 1" regime — since
+    the historical episode, however severe, is still only one specific realized path, and the team wants
+    to see the range of outcomes if the various EM currencies sell off in a more uniformly correlated way
+    than they did historically, capturing scenarios the single historical path might understate. Finally,
+    a reverse stress test asks the sharper question directly: what size of dollar-funding-cost shock,
+    combined with what size of EM currency move, would be required to breach the fund's actual capital
+    floor? Solving backward reveals whether the book's real vulnerability is the currency exposure everyone
+    is already watching, or the funding-cost sensitivity that's easy to overlook because it doesn't
+    show up as a headline "EM risk" line item on the standard risk report.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <ul>
+    <li>
+    <strong>Regulatory stress testing programs combine all three.</strong> Post-crisis supervisory
+    frameworks (the Basel Committee's stress-testing principles, and national programs like the Federal
+    Reserve's Comprehensive Capital Analysis and Review, CCAR) typically require both historical/
+    hypothetical scenario stress testing <em>and</em>, in some jurisdictions, an explicit reverse
+    stress-testing exercise — the UK's Financial Services Authority made reverse stress testing a formal
+    requirement for regulated firms starting in 2009, specifically because forward-only scenario testing
+    had repeatedly missed the actual channel that broke firms during the 2008 crisis.
+    </li>
+    <li>
+    <strong>Reverse stress tests are run at the "business model survival" level, not just a trading
+    book.</strong> A full reverse stress test for a firm often asks a broader question than "what shock
+    breaks this specific portfolio" — it asks what combination of events would render the firm's entire
+    business model unviable, which can surface risks (funding withdrawal, reputational contagion) that a
+    single trading book's stress test would never capture.
+    </li>
+    <li>
+    <strong>Historical replay and Monte Carlo stress are triangulated against each other, not chosen
+    exclusively.</strong> A risk team that only runs historical replays is implicitly betting the next
+    crisis resembles a past one; a team that only runs Monte Carlo stress is implicitly betting its
+    assumed stress distribution is realistic. Serious practitioners report both, and treat a large gap
+    between them as itself informative about model uncertainty.
+    </li>
+    <li>
+    <strong>Reverse stress test results feed directly into risk-limit design.</strong> Once a reverse
+    stress test identifies the specific factor combination that produces an unacceptable loss, the most
+    direct action is often a position or concentration limit targeted at exactly that factor — a much
+    more surgical response than an across-the-board size reduction.
+    </li>
+  </ul>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Ways stress testing gets over-trusted or misapplied</h3>
+    <ul>
+      <li>
+      <strong>Treating historical replay as covering "the crash" in general.</strong> The honest caveat
+      stated plainly: historical scenarios are anchored to what already happened, and the next crisis
+      rarely repeats the last one's exact shape — a different set of assets, a different trigger, a
+      different correlation pattern. A portfolio that would have survived 2008 comfortably is not
+      thereby shown to survive whatever specific shape the next crisis actually takes.
+      </li>
+      <li>
+      <strong>Trusting a Monte Carlo stress result without interrogating its assumptions.</strong> A
+      simulated stress distribution is only as good as \(\Sigma^{\text{stress}}\) and
+      \(\mu^{\text{stress}}\) — if the assumed correlation regime understates how far correlations
+      actually move in a real crisis, or the assumed shock size is too small, the simulated loss
+      distribution will look reassuring for entirely the wrong reason: not because the portfolio is
+      genuinely safe, but because the stress wasn't stressed enough.
+      </li>
+      <li>
+      <strong>Running a reverse stress test and stopping at the number, not the "how."</strong> The
+      valuable output of a reverse stress test isn't the shock size \(s^{*}\) alone — it's the specific
+      combination of factor moves that gets there, which is where hidden concentration risk actually
+      shows up. A report that states "a 2.1x shock breaches our capital floor" without identifying which
+      factor combination that shock corresponds to has skipped the useful half of the exercise.
+      </li>
+      <li>
+      <strong>Assuming a plausible-sounding scenario is automatically a probable one, or vice versa.</strong>
+      Reverse stress testing deliberately asks for the smallest, most plausible route to a bad outcome —
+      but "smallest and most plausible" is a judgment call, not something the math alone determines.
+      A risk team that dismisses the identified scenario as "too unlikely to worry about" has, in effect,
+      talked itself out of the exact finding the exercise was designed to surface.
+      </li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Historical scenario replay is internally consistent.</strong> Because it uses a real jointly-observed shock, every correlation between factors is automatically correct — no separate modeling assumption needed.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Monte Carlo scenario stress explores what hasn't happened yet.</strong> A shocked covariance regime (e.g. "correlations go to 1") can cover scenarios no historical episode has actually produced.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Reverse stress testing solves backward from an unacceptable loss.</strong> It routinely surfaces hidden concentration — the worked example's two "different" strategies sharing one real risk factor is the textbook illustration.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Historical scenarios are anchored to the past, honestly.</strong> The next crisis rarely repeats the last one's exact shape — surviving a replayed 2008 is not evidence of surviving whatever comes next.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Monte Carlo stress is only as good as its assumptions.</strong> An understated stress correlation or shock size produces a reassuring number for the wrong reason.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Nothing here is built or run in this repo.</strong> This lesson explains the three techniques conceptually; it is not a claim that any stress-testing pipeline exists or has been validated on this project's actual portfolios.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. In a historical scenario replay, why do you apply today's portfolio weights to a past shock, rather than looking at how the portfolio actually performed back when the shock originally occurred?</summary>
+    <div class="tl-answer">
+    The goal is to answer "if that exact historical shock happened again tomorrow, what would happen to
+    the book I actually hold right now" — not "how did some past version of the book do." The portfolio
+    you hold today may not have existed during the original episode, or may have held entirely different
+    positions; applying the historical returns to today's weights isolates the question of interest
+    (today's exposure to a real, jointly-observed shock pattern) from how the book happened to be
+    positioned at the time.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why does "correlations go to 1" show up so often as an assumption in hypothetical/Monte Carlo stress scenarios?</summary>
+    <div class="tl-answer">
+    It reflects a widely observed pattern in real crises: assets that normally diversify each other
+    (different asset classes, different geographies) have repeatedly been seen to move together far more
+    strongly than their ordinary-times correlation would suggest, once a broad enough risk-off shock hits.
+    Assuming correlations move toward 1 under stress is a way of building that empirically-motivated
+    pattern into a hypothetical scenario, rather than relying on ordinary-times correlations that likely
+    understate how a real crisis would actually behave.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What question does a reverse stress test ask that a forward scenario test does not?</summary>
+    <div class="tl-answer">
+    A forward scenario test picks a scenario and asks "what's my loss under this." A reverse stress test
+    starts from an unacceptable loss threshold and asks "what scenario, or combination of factor moves,
+    would actually produce this loss" — solving backward from the outcome to the cause, rather than
+    forward from an assumed cause to its outcome.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. In the worked example, why did the two desks look diversified under forward scenario testing but not under the reverse stress test?</summary>
+    <div class="tl-answer">
+    Forward testing evaluated each desk's own historical-style shock in isolation — equity volatility
+    hitting Strategy A, credit spreads widening for Strategy B — and each desk survived its own shock
+    comfortably, which looked like diversification. The reverse stress test instead solved for the
+    smallest shock along the single underlying risk-off factor that both strategies actually share, and
+    found that a moderate move in that one factor (not two separate large shocks) was enough to reach the
+    unacceptable loss threshold on both desks simultaneously — revealing that the apparent diversification
+    was actually concentration in one latent factor.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why is it a mistake to stop a reverse stress test at the shock-size number \(s^{*}\) without reporting which factor combination produces it?</summary>
+    <div class="tl-answer">
+    The number \(s^{*}\) alone only tells you "how big" a shock is required — the actionable insight is
+    "what kind" of shock it is, i.e. which specific factor or combination of factors gets there. That's
+    where hidden concentration risk is actually identified, and it's what a risk limit or hedge would
+    need to be targeted at. Reporting only the magnitude and skipping the composition discards the part
+    of the exercise that makes it useful.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. State the honest caveat that applies to both historical replay and Monte Carlo scenario stress, in your own words.</summary>
+    <div class="tl-answer">
+    Historical replay is anchored to what has already happened — it can't capture a future crisis that
+    unfolds along a genuinely different path than any observed one, and the next crisis rarely repeats
+    the last one's exact shape. Monte Carlo scenario stress can explore hypothetical regimes never
+    directly observed, but its output is entirely dependent on the assumed correlation/distribution
+    inputs — if those assumptions understate how extreme or how correlated a real future shock could be,
+    the simulated result will look reassuring for the wrong reason.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Basel Committee on Banking Supervision, "Principles for Sound Stress Testing Practices and Supervision," Bank for International Settlements, May 2009 — the post-crisis supervisory framework establishing stress testing as a core risk-management discipline, including guidance on scenario design.</li>
+    <li>UK Financial Services Authority, "Stress and Scenario Testing," Policy Statement PS09/20, December 2009 — introduced a formal reverse stress-testing requirement for UK-regulated firms, explicitly motivated by forward-only scenario testing having missed key failure channels in the 2008 crisis.</li>
+    <li>Board of Governors of the Federal Reserve System, Comprehensive Capital Analysis and Review (CCAR) program documentation — a real-world supervisory stress-testing regime combining historical and hypothetical scenario design for large US banks.</li>
+    <li>See also <a href="extreme-value-theory.html">Extreme Value Theory &amp; Tail Risk</a> for the tail-modeling machinery underlying how severe a hypothetical scenario's shock size should plausibly be assumed to be, and <a href="coherent-risk-measures.html">Coherent Risk Measures</a> for how the resulting stressed loss distribution should be summarized honestly.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="tail-risk-hedging-convexity.html">← Tail Risk Hedging &amp; Portfolio Convexity</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+</body>
+</html>

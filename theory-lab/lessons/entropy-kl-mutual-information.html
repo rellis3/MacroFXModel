@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entropy, KL Divergence &amp; Mutual Information — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Information Theory / Entropy, KL Divergence &amp; Mutual Information</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Information Theory 1 of 3</div>
+  <h1 class="tl-title">Entropy, KL Divergence &amp; Mutual Information</h1>
+  <p class="tl-dek">Correlation only sees straight-line relationships. This lesson builds the machinery — entropy, KL divergence, mutual information — that measures how much two variables actually tell each other, in bits, whether or not the relationship is a straight line at all.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — background math, not built or tested anywhere in this repo</span>
+    <span>~16 min read</span>
+    <span>Prereqs: Probability Primer, Correlation &amp; Regression primer</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Shannon entropy \(H(X) = -\sum_x p(x)\log p(x)\) is the expected "surprise" of a distribution — a fair coin (\(p=0.5\)) is 1 bit of pure uncertainty; a coin that lands heads 99% of the time is far less surprising, and its entropy is correspondingly close to 0.</li>
+      <li>KL divergence \(D_{\text{KL}}(P\|Q) = \sum_x p(x)\log\frac{p(x)}{q(x)}\) measures the extra bits wasted when you use a model \(Q\) to describe data that really comes from \(P\). It is always \(\ge 0\) (Gibbs' inequality), zero only when \(P=Q\), and — critically — <strong>not symmetric</strong>: \(D_{\text{KL}}(P\|Q) \ne D_{\text{KL}}(Q\|P)\) in general.</li>
+      <li>The worked example below computes both directions on a concrete biased-coin-vs-model pair: 0.919 bits one way, 2.329 bits the other — a 2.5× gap from swapping which distribution is "truth" and which is "model."</li>
+      <li>Mutual information \(I(X;Y) = D_{\text{KL}}\big(P(X,Y)\,\|\,P(X)P(Y)\big) = H(X) - H(X|Y)\) measures how much knowing \(Y\) shrinks your uncertainty about \(X\) — a <em>nonlinear</em> generalization of correlation that catches relationships correlation is structurally blind to.</li>
+      <li>The \(Y=X^2\) worked example makes this concrete and exact: linear correlation between \(X\) and \(Y\) is precisely zero, while mutual information comes out to 1.522 bits — clear, computable evidence that "uncorrelated" and "independent" are not the same claim.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+  Correlation and its regression cousins are the workhorse tools for "does knowing one variable tell
+  you anything about another" — and they are structurally limited to one specific kind of
+  relationship: a straight line. Two variables can be locked together by an unmistakable,
+  completely predictable rule and still show a Pearson correlation of exactly zero, simply because
+  the rule that connects them isn't linear. A regression-only view of the world will report "no
+  relationship" in exactly the cases where the relationship is real but curved, cyclical, or
+  threshold-based — precisely the kind of structure that shows up in volatility responding to the
+  <em>size</em> of a move rather than its sign, or in a level acting as a magnet from either side.
+  </p>
+  <p>
+  Information theory asks a more general question: not "is there a linear relationship" but "how
+  much does knowing one variable reduce your uncertainty about the other, in any form at all."
+  Entropy is the tool for measuring uncertainty itself; KL divergence is the tool for measuring how
+  costly it is to describe reality with the wrong model; and mutual information — built directly
+  from both — is the general-purpose answer to "how much do X and Y actually share," with
+  correlation as a special case it strictly generalizes. This lesson builds all three from nothing,
+  because the next two lessons (transfer entropy, and the description-length view of model
+  selection) are both built directly on top of them.
+  </p>
+
+  <div class="tl-box intuition"><div class="tl-icon-badge blue">💡</div><div class="tl-box-label">Plain-English intuition</div>
+    <h3>Surprise, wasted bits, and shared information</h3>
+    <p>
+    <strong>Entropy</strong> is how surprised you'd be, on average, learning the outcome of a random
+    event. A fair coin flip is maximally surprising — you genuinely have no idea which way it'll
+    land, so every flip carries a full "unit" of surprise. A coin that lands heads 99 times out of
+    100 is barely surprising at all — you already knew, almost for certain, what was coming. Entropy
+    puts an exact number on that: how many yes/no questions, on average, you'd need to ask to pin
+    down the outcome.
+    </p>
+    <p>
+    <strong>KL divergence</strong> is the cost of being wrong about which situation you're in. If you
+    built a mental model assuming a fair coin, but the coin is actually 99%-biased, every observation
+    surprises your (wrong) model more than it should — you're carrying around a belief that keeps
+    needing correcting. That extra, avoidable surprise, averaged over time, is what KL divergence
+    measures. Critically, the cost of assuming "fair" when it's really "biased" is not the same cost
+    as assuming "biased" when it's really "fair" — being blindsided by a rare event you'd written off
+    as basically impossible is far more expensive than being pleasantly unsurprised more often than
+    you expected.
+    </p>
+    <p>
+    <strong>Mutual information</strong> asks: if I tell you \(Y\), how much less surprised are you
+    now about \(X\)? If knowing \(Y\) tells you nothing about \(X\), mutual information is zero. If
+    knowing \(Y\) pins \(X\) down completely, mutual information equals all of \(X\)'s own entropy.
+    Anywhere in between, it's a graded, always-nonnegative number — and unlike correlation, it
+    doesn't care whether the relationship is a straight line, a curve, a threshold, or something with
+    no simple shape at all.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>Shannon entropy — the expected surprise</h3>
+  <p>
+  Start with a single outcome \(x\) of a random variable \(X\), occurring with probability
+  \(p(x)\). Define its <strong>information content</strong> (or "surprise") as \(-\log p(x)\) — a
+  rare outcome (\(p(x)\) small) has a large, positive surprise; a near-certain outcome
+  (\(p(x)\) close to 1) has surprise close to zero; an outcome that's literally certain
+  (\(p(x)=1\)) carries zero surprise, correctly. Using \(\log_2\) makes the resulting unit a
+  <strong>bit</strong> — one bit is the surprise of a fair coin flip. (Using the natural log gives
+  units of <strong>nats</strong> instead; this lesson uses bits throughout for concreteness, but the
+  underlying math is identical up to a constant scale factor of \(\ln 2\).)
+  </p>
+  <p>
+  <strong>Entropy</strong> is simply the expected surprise, averaged over every possible outcome,
+  weighted by how likely each one is:
+  </p>
+  <div class="tl-math">\[ H(X) = -\sum_{x} p(x) \log_2 p(x) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>−log₂ p(x)</code><span>the surprise of one specific outcome x</span></div>
+    <div class="tl-eq-chip c2"><code>p(x)</code><span>how likely that outcome is — the averaging weight</span></div>
+    <div class="tl-eq-chip c4"><code>H(X)</code><span>expected surprise across all outcomes — measured in bits</span></div>
+  </div>
+  <p>
+  Entropy is maximized when every outcome is equally likely (maximum genuine uncertainty) and
+  minimized (at exactly zero) when one outcome is certain (\(p=1\)) and all others impossible. For a
+  single coin flip with heads-probability \(p\), the entropy — the <strong>binary entropy
+  function</strong> \(H(p) = -p\log_2 p - (1-p)\log_2(1-p)\) — peaks at exactly 1 bit when
+  \(p=0.5\) and falls toward 0 bits as \(p\) approaches either 0 or 1, in both directions
+  symmetrically. The chart below plots this function exactly.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The binary entropy function H(p) — uncertainty peaks at p = 0.5</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Curve of the binary entropy function H(p) for a coin with heads probability p from 0 to 1. The curve starts at 0 bits at p=0, rises to a peak of 1 bit at p=0.5, then falls symmetrically back to 0 bits at p=1.">
+      <line x1="60" y1="20" x2="60" y2="200" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="60" y1="200" x2="620" y2="200" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="340" y1="200" x2="340" y2="20" style="stroke:var(--amber);stroke-dasharray:3,3"/>
+      <polyline points="60.00,200.00 80.00,159.99 100.00,133.18 120.00,111.58 140.00,93.50 160.00,78.15 180.00,65.07 200.00,53.97 220.00,44.64 240.00,36.93 260.00,30.75 280.00,26.01 300.00,22.66 320.00,20.66 340.00,20.00 360.00,20.66 380.00,22.66 400.00,26.01 420.00,30.75 440.00,36.93 460.00,44.64 480.00,53.97 500.00,65.07 520.00,78.15 540.00,93.50 560.00,111.58 580.00,133.18 600.00,159.99 620.00,200.00" fill="none" style="stroke:var(--blue);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round"/>
+      <circle cx="340" cy="20.00" r="4.5" style="fill:var(--amber)"/>
+      <text x="346" y="16" style="fill:var(--amber);font-family:'DM Mono',monospace;font-size:10px">p=0.5 &#8594; H=1 bit (max uncertainty)</text>
+      <circle cx="200" cy="53.97" r="3.5" style="fill:var(--purple)"/>
+      <circle cx="480" cy="53.97" r="3.5" style="fill:var(--purple)"/>
+      <text x="200" y="42" text-anchor="middle" style="fill:var(--purple);font-family:'DM Mono',monospace;font-size:9.5px">p=0.1 &#8594; H&#8776;0.469</text>
+      <text x="480" y="42" text-anchor="middle" style="fill:var(--purple);font-family:'DM Mono',monospace;font-size:9.5px">p=0.9 &#8594; H&#8776;0.469</text>
+      <text x="52" y="203" text-anchor="end" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">0</text>
+      <text x="52" y="24" text-anchor="end" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">1 bit</text>
+      <text x="22" y="110" text-anchor="middle" transform="rotate(-90 22 110)" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">H(p), bits</text>
+      <text x="60" y="218" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">p=0</text>
+      <text x="340" y="218" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">p=0.5</text>
+      <text x="620" y="218" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">p=1</text>
+      <text x="340" y="234" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">p = P(heads)</text>
+    </svg>
+    <div class="tl-chart-caption">
+    \(H(p) = -p\log_2 p - (1-p)\log_2(1-p)\), plotted exactly across \(p \in [0,1]\). A fair coin
+    (\(p=0.5\)) carries the maximum possible 1 bit of genuine uncertainty per flip — you truly cannot
+    do better than a coin-flip guess. A heavily biased coin (\(p=0.1\) or \(p=0.9\)) carries only
+    about 0.469 bits — you can predict the outcome most of the time, so there's less left to be
+    surprised by.
+    </div>
+  </div>
+
+  <p>
+  Entropy as defined above is for a <strong>discrete</strong> variable — a finite or countable set
+  of outcomes. For a <strong>continuous</strong> variable with density \(f(x)\), the natural analogue
+  replaces the sum with an integral, giving <strong>differential entropy</strong>:
+  </p>
+  <div class="tl-math">\[ h(X) = -\int f(x) \log_2 f(x)\, dx \]</div>
+  <div class="tl-solid amber">
+  <strong>The caveat:</strong> differential entropy is <em>not</em> a direct generalization of the
+  discrete case in every respect that matters. Unlike \(H(X)\), which is always \(\ge 0\),
+  \(h(X)\) <strong>can be negative</strong> (a very tightly concentrated density can have negative
+  differential entropy), and — unlike discrete entropy — it is <strong>not invariant to a simple
+  change of units</strong> (rescale \(X\) and \(h(X)\) shifts by a constant, since probability
+  density itself has units of "per unit of X"). Treat \(h(X)\) as useful for <em>comparing</em>
+  distributions of the same variable under the same units, not as an absolute, unit-free measure of
+  uncertainty the way \(H(X)\) is for a discrete variable.
+  </div>
+
+  <h3>KL divergence — the cost of the wrong model</h3>
+  <p>
+  Now suppose you have two distributions over the same outcomes: \(P\), the one data actually comes
+  from, and \(Q\), a model or approximation you're using instead. The
+  <strong>Kullback-Leibler (KL) divergence</strong> from \(Q\) to \(P\) — read "the divergence of
+  \(P\) from \(Q\)," and written \(D_{\text{KL}}(P\|Q)\) — measures the average number of extra bits
+  wasted per observation when you encode data drawn from \(P\) using a scheme built for \(Q\)
+  instead of \(P\)'s own, optimal scheme:
+  </p>
+  <div class="tl-math">\[ D_{\text{KL}}(P\|Q) = \sum_x p(x) \log_2\frac{p(x)}{q(x)} \]</div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">p(x)/q(x)</div>
+      <div class="tl-fp-name">The likelihood ratio</div>
+      <div class="tl-fp-desc">How much more (or less) likely x is under truth P than under model Q</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">log₂(·)</div>
+      <div class="tl-fp-name">Turns the ratio into bits</div>
+      <div class="tl-fp-desc">A ratio of 2 becomes "1 extra bit wasted here"</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">Σ p(x) · (·)</div>
+      <div class="tl-fp-name">Averaged under the true distribution</div>
+      <div class="tl-fp-desc">Weight each outcome's waste by how often it actually happens, under P</div>
+    </div>
+  </div>
+  <p>
+  Two properties matter enough to prove, not just state. First, <strong>\(D_{\text{KL}}(P\|Q) \ge 0\)
+  always</strong>, with equality only when \(P=Q\) — this is <strong>Gibbs' inequality</strong>. The
+  proof is a short application of Jensen's inequality (concavity of \(\log\)):
+  </p>
+  <div class="tl-math">\[ -D_{\text{KL}}(P\|Q) = \sum_x p(x)\log_2\frac{q(x)}{p(x)} \;\le\; \log_2\left(\sum_x p(x)\cdot\frac{q(x)}{p(x)}\right) = \log_2\left(\sum_x q(x)\right) = \log_2(1) = 0 \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>Σ p(x)log(q/p)</code><span>negative of D_KL, written as an expectation under P</span></div>
+    <div class="tl-eq-chip c1"><code>Jensen</code><span>log is concave, so E[log(·)] ≤ log(E[·]) — the inequality step</span></div>
+    <div class="tl-eq-chip c3"><code>Σq(x)=1</code><span>Q is a valid probability distribution, so this sums to exactly 1</span></div>
+  </div>
+  <p>
+  Since \(-D_{\text{KL}}(P\|Q) \le 0\), it follows immediately that \(D_{\text{KL}}(P\|Q) \ge 0\).
+  Jensen's inequality is an equality only when the quantity being averaged (\(q(x)/p(x)\)) is
+  constant across every \(x\) with \(p(x)>0\) — which, combined with both distributions summing to
+  1, forces \(q(x)=p(x)\) everywhere. That is the "\(=0\) iff \(P=Q\)" half of the claim.
+  </p>
+  <p>
+  Second, and just as important: <strong>KL divergence is not symmetric.</strong>
+  \(D_{\text{KL}}(P\|Q) \ne D_{\text{KL}}(Q\|P)\) in general — swapping which distribution plays
+  "truth" and which plays "model" changes the answer, often substantially. It is therefore not a
+  true mathematical distance (a real distance metric would need to be symmetric and satisfy a
+  triangle inequality; KL divergence satisfies neither), even though it behaves like one in the
+  loose sense of "how far apart are these two distributions." The worked example below makes the
+  size of that asymmetry concrete with real numbers.
+  </p>
+
+  <div class="tl-box example"><div class="tl-icon-badge purple">🧮</div><div class="tl-box-label">Worked example</div>
+    <h3>The same two coins, both directions</h3>
+    <p>
+    Let \(P = (0.99, 0.01)\) — a coin that lands heads 99% of the time, the true process — and
+    \(Q = (0.5, 0.5)\) — a naive model that (wrongly) assumes the coin is fair. Compute
+    \(D_{\text{KL}}(P\|Q)\), the cost of describing the real, biased coin using the fair-coin model:
+    </p>
+    <div class="tl-math">\[ D_{\text{KL}}(P\|Q) = 0.99\log_2\frac{0.99}{0.5} + 0.01\log_2\frac{0.01}{0.5} \approx 0.99(0.9855) + 0.01(-5.6439) \approx 0.919 \text{ bits} \]</div>
+    <p>Now compute the other direction, \(D_{\text{KL}}(Q\|P)\) — the cost of describing a truly fair coin using a model that (wrongly) assumes the 99%-biased coin:</p>
+    <div class="tl-math">\[ D_{\text{KL}}(Q\|P) = 0.5\log_2\frac{0.5}{0.99} + 0.5\log_2\frac{0.5}{0.01} \approx 0.5(-0.9855) + 0.5(5.6439) \approx 2.329 \text{ bits} \]</div>
+    <p>
+    \(0.919 \ne 2.329\) — a factor of roughly 2.5×, from swapping which distribution is treated as
+    "truth" and which as "model," with the exact same pair of coins. The reason the second number is
+    so much larger is exactly the intuition-box scenario: a code built assuming a 99%-biased coin
+    spends almost no bits preparing for the "wrong" outcome, because it has written that outcome off
+    as nearly impossible. When reality actually is a fair coin and that "nearly impossible" outcome
+    shows up half the time, the mismatch is expensive. Overconfidently assigning near-zero
+    probability to something that turns out to be common is punished far more harshly, in bits, than
+    the reverse — assigning only moderate probability to something that turns out to be rare.
+    </p>
+  </div>
+
+  <div class="tl-solid red">
+  <strong>The trap this generalizes to:</strong> a risk model that assigns near-zero probability to a
+  large adverse move — because historical data made it look nearly impossible — pays an outsized KL
+  cost exactly the moment that move actually happens. The asymmetry above is not just a coin-flip
+  curiosity; it is the same reason underestimating tail risk is structurally more costly than
+  overestimating it.
+  </div>
+
+  <h3>Mutual information — how much X and Y actually share</h3>
+  <p>
+  Mutual information asks the two-variable version of the KL question: how different is the actual
+  joint distribution of \(X\) and \(Y\) from what it would look like if they were completely
+  independent? If \(X\) and \(Y\) were independent, their joint distribution would factor exactly as
+  \(p(x)p(y)\) — knowing one would tell you nothing about the other. Mutual information is defined
+  as the KL divergence between the real joint distribution and that hypothetical independent one:
+  </p>
+  <div class="tl-math">\[ I(X;Y) = D_{\text{KL}}\big(P(X,Y) \,\|\, P(X)P(Y)\big) = \sum_{x,y} p(x,y)\log_2\frac{p(x,y)}{p(x)p(y)} \]</div>
+  <p>
+  Because it's a KL divergence, \(I(X;Y) \ge 0\) always, with equality exactly when \(X\) and \(Y\)
+  are independent (\(p(x,y)=p(x)p(y)\) everywhere) — a direct consequence of Gibbs' inequality proved
+  above. Unlike KL divergence itself, mutual information <em>is</em> symmetric:
+  \(I(X;Y) = I(Y;X)\), because swapping \(X\) and \(Y\) leaves \(D_{\text{KL}}(P(X,Y)\|P(X)P(Y))\)
+  unchanged — the joint distribution and the independence benchmark are both symmetric in \(X\) and
+  \(Y\) to begin with.
+  </p>
+  <p>
+  Mutual information also has an equivalent, often more intuitive form in terms of
+  <strong>conditional entropy</strong> \(H(X|Y)\) — the expected remaining uncertainty about \(X\)
+  once you already know \(Y\):
+  </p>
+  <div class="tl-math">\[ I(X;Y) = H(X) - H(X|Y) = H(Y) - H(Y|X) = H(X) + H(Y) - H(X,Y) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>H(X)</code><span>total uncertainty about X, before seeing Y</span></div>
+    <div class="tl-eq-chip c2"><code>H(X|Y)</code><span>remaining uncertainty about X, after seeing Y</span></div>
+    <div class="tl-eq-chip c4"><code>I(X;Y)</code><span>the reduction — exactly how much Y told you about X</span></div>
+  </div>
+  <p>
+  Read it plainly: \(I(X;Y)\) is "how much your uncertainty about \(X\) shrank once you learned
+  \(Y\)." If \(Y\) is completely uninformative about \(X\), \(H(X|Y) = H(X)\) and \(I(X;Y)=0\). If
+  \(Y\) determines \(X\) completely, \(H(X|Y) = 0\) and \(I(X;Y) = H(X)\) — knowing \(Y\) resolves
+  <em>all</em> of \(X\)'s uncertainty. That three-way equality above (via \(X\), via \(Y\), via the
+  joint) is not three different quantities that happen to agree — it's the same number, because
+  mutual information is fundamentally symmetric in what it measures: the overlap between what \(X\)
+  and \(Y\) each carry.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(p(x)\)</td><td>the probability of outcome \(x\) under distribution \(P\)</td></tr>
+    <tr><td>\(H(X)\)</td><td>Shannon entropy of \(X\) — expected surprise, in bits (using \(\log_2\))</td></tr>
+    <tr><td>\(h(X)\)</td><td>differential entropy — the continuous-variable analogue; can be negative, not unit-invariant</td></tr>
+    <tr><td>\(f(x)\)</td><td>a probability density function, for a continuous variable</td></tr>
+    <tr><td>\(D_{\text{KL}}(P\|Q)\)</td><td>KL divergence from \(Q\) to \(P\) — extra bits wasted describing data from \(P\) using model \(Q\); always \(\ge 0\), asymmetric</td></tr>
+    <tr><td>\(P, Q\)</td><td>two probability distributions over the same set of outcomes — "truth" and "model," respectively, by convention</td></tr>
+    <tr><td>\(I(X;Y)\)</td><td>mutual information — how much knowing \(Y\) reduces uncertainty about \(X\) (symmetric: \(I(X;Y)=I(Y;X)\))</td></tr>
+    <tr><td>\(H(X|Y)\)</td><td>conditional entropy of \(X\) given \(Y\) — the remaining uncertainty about \(X\) once \(Y\) is known</td></tr>
+    <tr><td>\(H(X,Y)\)</td><td>joint entropy of \(X\) and \(Y\) together</td></tr>
+  </table></div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A Venn-style picture of the Y = X² worked example below</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two concentric circles. The larger circle represents H(X) at 2.322 bits. The smaller circle, entirely nested inside it, represents H(Y) at 1.522 bits, which equals the mutual information I(X;Y) because Y is a deterministic function of X. The ring between the two circles represents H(X given Y) at 0.8 bits, the leftover uncertainty about X's sign that Y does not resolve.">
+      <circle cx="250" cy="140" r="90" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:2"/>
+      <circle cx="250" cy="140" r="73" style="fill:var(--purple-bg);stroke:var(--purple);stroke-width:2"/>
+      <text x="160" y="70" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:15px;font-weight:700">X</text>
+      <text x="250" y="145" text-anchor="middle" style="fill:var(--purple);font-family:'DM Mono',monospace;font-size:15px;font-weight:700">Y</text>
+      <text x="420" y="80" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:11px">H(X) = 2.322 bits</text>
+      <text x="420" y="98" style="fill:var(--purple);font-family:'DM Mono',monospace;font-size:11px">H(Y) = 1.522 bits</text>
+      <text x="420" y="116" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px">I(X;Y) = 1.522 bits</text>
+      <text x="420" y="140" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:11px">(the ring) H(X|Y) = 0.8 bits</text>
+      <text x="420" y="158" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:11px">H(Y|X) = 0 bits — no Y-only sliver</text>
+      <line x1="180" y1="140" x2="60" y2="230" style="stroke:var(--text3);stroke-dasharray:2,2"/>
+      <text x="20" y="245" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9.5px">ring: H(X|Y)</text>
+    </svg>
+    <div class="tl-chart-caption">
+    Real numbers from the worked example directly below, not a schematic. \(Y\)'s circle sits
+    <strong>entirely inside</strong> \(X\)'s circle because \(H(Y|X)=0\) exactly — \(Y=X^2\) is a
+    deterministic function of \(X\), so there is no "\(Y\)-only" region in a correct picture. The
+    overlap, which here is all of \(Y\)'s circle, equals \(I(X;Y)=1.522\) bits. The leftover ring —
+    inside \(X\) but outside \(Y\) — is \(H(X|Y)=0.8\) bits: the sign of \(X\) that squaring
+    destroys, which \(Y\) alone can never recover.
+    </div>
+  </div>
+
+  <div class="tl-box example"><div class="tl-icon-badge purple">🧮</div><div class="tl-box-label">Worked example</div>
+    <h3>Y = X², zero correlation, clearly positive mutual information</h3>
+    <p>
+    Let \(X\) take the five values \(\{-2,-1,0,1,2\}\), each with probability \(\tfrac{1}{5}\), and
+    let \(Y = X^2\) (deterministic here, to keep every number exact and checkable by hand; adding a
+    small amount of noise to \(Y\) softens the exact figures below but does not change the
+    qualitative point). \(Y\) then takes the values \(\{0,1,4\}\) with probabilities
+    \(P(Y=0)=\tfrac15\) (only \(X=0\) maps here), \(P(Y=1)=\tfrac25\) (\(X=\pm1\) both map here), and
+    \(P(Y=4)=\tfrac25\) (\(X=\pm2\)).
+    </p>
+    <p><strong>Step 1 — linear correlation is exactly zero.</strong> By symmetry, \(E[X]=0\), and:</p>
+    <div class="tl-math">\[ \text{Cov}(X,Y) = E[XY] - E[X]E[Y] = E[X^3] - 0 = \tfrac15\big((-2)^3+(-1)^3+0^3+1^3+2^3\big) = \tfrac15(0) = 0 \]</div>
+    <p>
+    Every odd power of \(X\) cancels by the symmetry of the distribution around zero, so
+    \(\text{Cov}(X,Y)=0\) and the Pearson correlation is exactly zero — not "small," exactly zero,
+    even though \(Y\) is a deterministic, perfectly predictable function of \(X\).
+    </p>
+    <p><strong>Step 2 — entropies.</strong> \(X\) is uniform over 5 equally likely values:</p>
+    <div class="tl-math">\[ H(X) = \log_2 5 \approx 2.322 \text{ bits} \]</div>
+    <p>\(Y\)'s distribution \((\tfrac15,\tfrac25,\tfrac25)\) gives:</p>
+    <div class="tl-math">\[ H(Y) = -\left[\tfrac15\log_2\tfrac15 + \tfrac25\log_2\tfrac25 + \tfrac25\log_2\tfrac25\right] \approx 1.522 \text{ bits} \]</div>
+    <p>
+    <strong>Step 3 — conditional entropy \(H(X|Y)\).</strong> Given \(Y=0\), \(X=0\) with certainty
+    (0 bits left). Given \(Y=1\), \(X=+1\) or \(X=-1\), equally likely (1 bit left — the sign is a
+    coin flip). Given \(Y=4\), same story (1 bit left). Averaging:
+    </p>
+    <div class="tl-math">\[ H(X|Y) = \tfrac15(0) + \tfrac25(1) + \tfrac25(1) = 0.8 \text{ bits} \]</div>
+    <p><strong>Step 4 — mutual information, computed two ways as a cross-check:</strong></p>
+    <div class="tl-math">\[ I(X;Y) = H(X) - H(X|Y) = 2.322 - 0.8 = 1.522 \text{ bits} \]</div>
+    <div class="tl-math">\[ I(X;Y) = H(Y) - H(Y|X) = 1.522 - 0 = 1.522 \text{ bits} \]</div>
+    <p>
+    Both routes agree exactly (\(H(Y|X)=0\) because \(Y\) is a deterministic function of \(X\) — no
+    uncertainty left once \(X\) is known). <strong>Correlation: exactly 0. Mutual information: 1.522
+    bits, clearly and provably positive.</strong> This is not a subtle statistical artifact — it is
+    the defining example of why "uncorrelated" must never be read as "unrelated," and mutual
+    information is the tool that tells the two apart.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+  Entropy, KL divergence and mutual information show up under several names depending on the field,
+  which can obscure how directly they connect. In machine learning, training a classifier by
+  <strong>minimizing cross-entropy loss</strong> is, up to a constant that doesn't depend on the
+  model's parameters, exactly minimizing \(D_{\text{KL}}(P_{\text{data}}\|Q_{\text{model}})\) — the
+  KL divergence from the model's predicted distribution to the true label distribution. In feature
+  selection, mutual information is used directly as a <strong>model-free relevance score</strong>:
+  rank candidate predictors by \(I(X_i; Y)\) rather than by correlation, precisely to avoid discarding
+  a genuinely predictive but nonlinear feature the way a correlation-only filter would. In signal
+  processing and information theory proper, entropy sets the absolute floor on lossless compression
+  (Shannon's source coding theorem: you cannot compress a source below its entropy, on average,
+  without losing information) — the direct ancestor of the description-length ideas built out fully
+  in this category's third lesson.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🎯</div>
+      <h4>Cross-entropy loss</h4>
+      <p>Training a probabilistic model by maximum likelihood is equivalent to minimizing the KL divergence between the true and modeled distributions.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🔍</div>
+      <h4>Mutual-information feature ranking</h4>
+      <p>A model-agnostic way to screen candidate predictors for <em>any</em> kind of relationship with a target, not just linear ones.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📦</div>
+      <h4>Shannon's source coding theorem</h4>
+      <p>Entropy is the hard floor on lossless compression — you cannot, on average, encode a source in fewer bits than its entropy without losing information.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🔗</div>
+      <h4>The next two lessons</h4>
+      <p>Transfer entropy conditions mutual information on the past to build a directional signal; MDL turns entropy's "expected bits" into a literal model-selection criterion.</p>
+    </div>
+  </div>
+
+  <div class="tl-box scenario"><div class="tl-icon-badge amber">🎯</div><div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A volatility feature correlation would miss entirely</h3>
+    <p>
+    Suppose a researcher is screening candidate features for predicting next-session realized
+    volatility. One candidate is yesterday's <em>signed</em> return; another is yesterday's
+    <em>absolute</em> return. If volatility clusters symmetrically around large moves regardless of
+    direction — a large up-day and a large down-day both tend to precede an elevated-volatility
+    tomorrow, in roughly equal measure — then the signed-return feature can show a Pearson
+    correlation with next-day volatility close to zero, for exactly the same structural reason the
+    \(Y=X^2\) example above does: the relationship is real but symmetric around zero, which a linear
+    correlation coefficient is mathematically incapable of detecting. Computing mutual information
+    instead — \(I(\text{signed return}_{t}\,;\,\text{volatility}_{t+1})\) — would register a clearly
+    positive number, exposing exactly the kind of magnitude-driven, sign-agnostic relationship this
+    lesson's worked example makes concrete. A researcher relying only on a correlation matrix to
+    screen candidate features would silently discard this one as "no relationship" and never look
+    further — the entire point of building mutual information into a research toolkit.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall"><div class="tl-icon-badge red">⚠️</div><div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this goes wrong in practice</h3>
+    <p>
+    <strong>Zero probability, undefined KL divergence.</strong> If \(q(x)=0\) for some \(x\) where
+    \(p(x)>0\), \(D_{\text{KL}}(P\|Q)\) is technically infinite (you cannot encode an outcome your
+    model believes is flatly impossible). In practice this means any model with a hard zero
+    somewhere in its support needs smoothing (a small floor probability) before KL divergence against
+    real data is computable at all — a silent \(\infty\) or `NaN` is usually this, not a bug
+    elsewhere.
+    </p>
+    <p>
+    <strong>Reporting KL divergence without saying which direction.</strong> Because
+    \(D_{\text{KL}}(P\|Q)\) and \(D_{\text{KL}}(Q\|P)\) can differ by a large factor (2.5× in the
+    worked example above, and unboundedly more in general), quoting "the KL divergence between P and
+    Q" without specifying the direction is ambiguous and can misrepresent the comparison.
+    </p>
+    <p>
+    <strong>Mutual information needs a lot of data to estimate well, especially for continuous
+    variables.</strong> The clean examples in this lesson use small, exactly-known discrete
+    distributions. Estimating \(I(X;Y)\) from a finite, noisy, continuous sample requires binning or
+    kernel-density estimation, both of which introduce their own bias — a naive estimator can report
+    a spuriously large mutual information purely from overfitting the joint density to a small
+    sample, the same overfitting risk this repo's validation discipline warns about everywhere else.
+    </p>
+    <p>
+    <strong>Mutual information detects <em>any</em> dependence, not a <em>useful</em> one.</strong> A
+    provably nonzero \(I(X;Y)\) says the two variables are not independent — it does not say the
+    relationship is strong enough, stable enough, or simple enough to trade on. Detecting a
+    dependency and having an edge are different claims; explaining the concept is not itself a claim
+    that it produces edge in this repo.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Entropy is expected surprise.</strong> \(H(X)=-\sum p(x)\log_2 p(x)\) peaks at 1 bit for a fair coin and falls toward 0 as an outcome becomes more predictable — computed exactly in the binary entropy chart above.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>KL divergence is always \(\ge 0\), and it is not symmetric.</strong> Gibbs' inequality (via Jensen) proves \(D_{\text{KL}}(P\|Q)\ge0\) with equality iff \(P=Q\); the worked coin example shows the two directions differ by a factor of roughly 2.5×.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Underestimating a rare event is far costlier, in bits, than overestimating one.</strong> The direction of the KL asymmetry that hurts most is exactly the direction of an overconfident risk model getting blindsided by a "nearly impossible" tail event.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Mutual information is a symmetric, nonlinear generalization of correlation.</strong> \(I(X;Y)=H(X)-H(X|Y)=I(Y;X)\ge0\), zero exactly when independent — a strictly more general question than "is there a straight-line relationship."</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The \(Y=X^2\) example proves the gap concretely.</strong> Correlation exactly 0; mutual information exactly 1.522 bits, cross-checked two independent ways. Uncorrelated does not mean unrelated.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Detecting dependence is not the same as finding a tradeable edge.</strong> A nonzero mutual information says two variables aren't independent — nothing more. This lesson explains a measurement tool, not a signal.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz"><summary>Q1. Why is entropy maximized when all outcomes are equally likely, and minimized (at zero) when one outcome is certain?</summary>
+    <div class="tl-answer">Entropy is the expected surprise \(-\log_2 p(x)\), averaged under \(p(x)\). When every outcome is equally likely, you genuinely have no basis for predicting which one will occur — every outcome carries real surprise, and the average is as large as it can get. When one outcome has probability 1 (and every other has probability 0), that outcome carries zero surprise (you already knew what would happen) and the impossible outcomes contribute nothing to the sum (their probability weight is zero, and by convention \(0\log_2 0=0\)) — so the expected surprise collapses to exactly zero. There is genuinely nothing left to be surprised by.</div>
+  </details>
+  <details class="tl-quiz"><summary>Q2. Derive why \(D_{\text{KL}}(P\|Q)\ge 0\) always, without just citing "Gibbs' inequality" as a name.</summary>
+    <div class="tl-answer">Write \(-D_{\text{KL}}(P\|Q) = \sum_x p(x)\log_2\frac{q(x)}{p(x)}\), an expectation under \(P\) of \(\log_2(q(x)/p(x))\). Because \(\log_2\) is concave, Jensen's inequality says the expectation of a concave function is at most the concave function of the expectation: \(\sum_x p(x)\log_2\frac{q(x)}{p(x)} \le \log_2\left(\sum_x p(x)\cdot\frac{q(x)}{p(x)}\right) = \log_2\left(\sum_x q(x)\right)\). Since \(Q\) is a valid probability distribution, \(\sum_x q(x)=1\), so the right-hand side is \(\log_2(1)=0\). That gives \(-D_{\text{KL}}(P\|Q)\le 0\), i.e. \(D_{\text{KL}}(P\|Q)\ge0\).</div>
+  </details>
+  <details class="tl-quiz"><summary>Q3. In the worked coin example, why is \(D_{\text{KL}}(Q\|P)\) (2.329 bits) so much larger than \(D_{\text{KL}}(P\|Q)\) (0.919 bits), when it's the same two coins?</summary>
+    <div class="tl-answer">\(D_{\text{KL}}(Q\|P)\) is the cost of describing a truly fair coin using a code built assuming a 99%-biased coin. That code, built around \(P=(0.99,0.01)\), spends very few bits preparing for the "tails" outcome, since \(P\) treats it as nearly impossible. When the real process is actually fair (\(Q=(0.5,0.5)\)) and that "nearly impossible" outcome shows up half the time, the mismatch is expensive every single time it occurs. The reverse direction, \(D_{\text{KL}}(P\|Q)\), only has to pay the (much smaller) cost of a fair-coin code slightly under-preparing for an outcome that, under the true biased process, is actually common — a cheaper kind of mistake. Same two distributions; the direction of "which one is truth" changes which mistake you're paying for.</div>
+  </details>
+  <details class="tl-quiz"><summary>Q4. Why is mutual information symmetric (\(I(X;Y)=I(Y;X)\)) while KL divergence is not?</summary>
+    <div class="tl-answer">Mutual information is defined as \(D_{\text{KL}}\big(P(X,Y)\|P(X)P(Y)\big)\) — a KL divergence between one specific pair of distributions: the actual joint, and the hypothetical independent joint. Both of those distributions are symmetric in \(X\) and \(Y\) — swapping \(X\) and \(Y\) doesn't change the joint distribution \(P(X,Y)\), nor the product \(P(X)P(Y)\), it just relabels the axes. So the KL divergence between them is unchanged by the swap, meaning \(I(X;Y)=I(Y;X)\). This is not a general property of KL divergence — it's specific to the fact that mutual information always compares the joint to the *same* joint's independence benchmark, a symmetric pair, even though KL divergence between two genuinely different distributions \(P\) and \(Q\) is not symmetric in general.</div>
+  </details>
+  <details class="tl-quiz"><summary>Q5. In the \(Y=X^2\) worked example, why is \(H(Y|X)\) exactly zero, and why does that make \(I(X;Y)\) equal to all of \(H(Y)\)?</summary>
+    <div class="tl-answer">\(H(Y|X)=0\) because \(Y\) is a deterministic function of \(X\): once you know \(X\), \(Y=X^2\) is fully determined with no remaining randomness at all — there's nothing left to be uncertain about. Using the identity \(I(X;Y)=H(Y)-H(Y|X)\), if \(H(Y|X)=0\) then \(I(X;Y)=H(Y)-0=H(Y)\) exactly — knowing \(X\) resolves *all* of \(Y\)'s uncertainty, so the "shared information" between them equals the entirety of \(Y\)'s own entropy. This is also why the Venn-style chart draws \(Y\)'s circle entirely nested inside \(X\)'s: there is no "\(Y\)-only" region left over, because nothing about \(Y\) is unexplained by \(X\).</div>
+  </details>
+  <details class="tl-quiz"><summary>Q6. A colleague says "the correlation between our feature and the target is 0.02, so there's no relationship — let's drop it." What's the gap in that reasoning, and what would you check instead?</summary>
+    <div class="tl-answer">A near-zero Pearson correlation only rules out a *linear* relationship — it says nothing about a nonlinear one. The \(Y=X^2\) worked example proves this concretely: a perfectly deterministic, completely predictable relationship can still show exactly zero correlation, simply because the relationship is symmetric around a point rather than a straight line. Before concluding "no relationship," compute the mutual information \(I(\text{feature};\text{target})\) — it will register any dependence, linear or not — and, if it comes back clearly positive despite the near-zero correlation, investigate the shape of the relationship (a scatter plot, a binned conditional mean) rather than discarding the feature on the correlation number alone.</div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Claude E. Shannon (1948), "A Mathematical Theory of Communication," <em>Bell System Technical Journal</em> — the founding paper of information theory; defines entropy and the source coding theorem referenced above.</li>
+    <li>Solomon Kullback &amp; Richard A. Leibler (1951), "On Information and Sufficiency," <em>Annals of Mathematical Statistics</em> — the original KL divergence paper.</li>
+    <li>Thomas M. Cover &amp; Joy A. Thomas, <em>Elements of Information Theory</em> (2nd ed., Wiley, 2006) — the standard graduate textbook for entropy, KL divergence and mutual information; Chapters 2 and 8 cover exactly the material in this lesson in full rigor.</li>
+    <li>E. T. Jaynes, <em>Probability Theory: The Logic of Science</em> (Cambridge University Press, 2003) — a deeper, inference-focused treatment of entropy and its role in probabilistic reasoning.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="transfer-entropy-causality.html">Transfer Entropy &amp; Information-Theoretic Causality →</a>
+  </div>
+</div>
+</body>
+</html>

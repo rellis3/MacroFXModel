@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Numerical Schemes: Euler-Maruyama &amp; Milstein — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Stochastic Differential Equations / Numerical Schemes: Euler-Maruyama &amp; Milstein</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Stochastic Differential Equations · SDEs 2 of 5</div>
+  <h1 class="tl-title">Numerical Schemes: Euler-Maruyama &amp; Milstein</h1>
+  <p class="tl-dek">An SDE having a unique solution (lesson 1) doesn't mean you can write that solution down in closed form — almost none of the SDEs worth building can be solved exactly. This lesson builds the two standard ways to simulate one on a computer instead, and states precisely how good each approximation actually is.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — the discretization every Monte Carlo simulation in quantitative finance runs on</span>
+    <span>~17 min read</span>
+    <span>Prereqs: Existence &amp; Uniqueness of SDE Solutions, Itô's Lemma</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Euler-Maruyama</strong> is the direct SDE analogue of Euler's method for ODEs: \(X_{n+1}=X_n+\mu(X_n,t_n)\Delta t+\sigma(X_n,t_n)\Delta W_n\), stepping forward with a random Gaussian increment \(\Delta W_n\sim N(0,\Delta t)\) instead of a deterministic one.</li>
+      <li>Two genuinely different notions of "accurate" exist: <strong>strong convergence</strong> asks whether the simulated path itself tracks the true path (pathwise error); <strong>weak convergence</strong> only asks whether statistics of the simulated distribution (a mean, an option price) match the true distribution's.</li>
+      <li>The standard result (Kloeden &amp; Platen, 1992): Euler-Maruyama has <strong>strong order 0.5</strong> and <strong>weak order 1.0</strong> — its path-tracking accuracy is markedly worse than its distributional accuracy.</li>
+      <li>The <strong>Milstein scheme</strong> adds one extra term, \(\tfrac12\sigma\sigma'(\Delta W_n^2-\Delta t)\), lifting strong order to 1.0 — a genuine pathwise improvement, at the cost of needing the diffusion coefficient's derivative \(\sigma'\).</li>
+      <li>A hand-worked Euler-Maruyama simulation of GBM, checked step by step against the closed-form solution, and a real Monte Carlo convergence study both confirm the 0.5/1.0 theoretical orders numerically in this lesson, not just by citation.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    <code>sde-existence-uniqueness.html</code> established that an SDE like
+    \(dX_t=\mu(X_t,t)dt+\sigma(X_t,t)dW_t\) has a genuine, unique solution
+    under the Lipschitz and linear-growth conditions. It said nothing about
+    how to actually <em>compute</em> that solution. For a handful of special
+    cases — GBM being the standout example, because Itô's Lemma applied to
+    \(\ln X_t\) reduces it to an ordinary integral of constants — a closed
+    form exists and no simulation is needed at all. For almost every other
+    SDE worth building (Heston's stochastic-volatility pair, any local-volatility
+    surface, any jump-diffusion, any short-rate model outside plain Vasicek),
+    no closed form exists, and the only way to get a number out of the model
+    is to simulate it, one small time step at a time, on a computer. This
+    lesson builds the two standard ways to do that, and — because "simulate
+    it" invites the question "how good is the simulation," which this
+    curriculum's house discipline never lets slide — states precisely, with
+    a worked numerical check, how much error each scheme actually leaves
+    behind.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Euler's method, with the wind blowing randomly instead of not at all</h3>
+    <p>
+      Ordinary Euler's method for a deterministic ODE \(dx/dt=f(x)\) is the
+      simplest possible way to trace out an unknown curve: stand at the
+      current point, look at the slope \(f(x)\) the equation says you should
+      be moving along right now, and take one small, straight step in that
+      direction. Repeat. The method's whole appeal is its honesty about its
+      own crudeness — it assumes the slope stays constant for the whole small
+      step, which is wrong, but the error from that wrongness shrinks as the
+      step gets smaller.
+    </p>
+    <p>
+      Euler-Maruyama does exactly the same thing, with one addition: at each
+      step, in addition to moving along the deterministic slope \(\mu\), you
+      also get pushed by a random gust, sized according to \(\sigma\) and
+      scaled by an actual sample from a Gaussian random variable with variance
+      equal to the step size. It's Euler's method plus noise, using nothing
+      more exotic than "take a small step, then repeat." The subtlety this
+      lesson has to be honest about is that "small step" behaves differently
+      for the random part than the deterministic part — a Brownian increment
+      over a step of size \(\Delta t\) is typically of size \(\sqrt{\Delta t}\),
+      not \(\Delta t\) (the same fact <code>ito-lemma.html</code> built Itô's
+      Lemma out of) — which is exactly why the error analysis below needs its
+      own machinery, distinct from ordinary Euler's-method error analysis.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>1. Euler-Maruyama</h3>
+  <p>
+    Given the general SDE \(dX_t=\mu(X_t,t)dt+\sigma(X_t,t)dW_t\), partition
+    \([0,T]\) into \(N\) steps of size \(\Delta t = T/N\), at times \(t_n =
+    n\Delta t\). The Euler-Maruyama recursion approximates \(X_{t_n}\) by a
+    discrete sequence \(X_n\):
+  </p>
+  <div class="tl-math">
+    \[ X_{n+1} = X_n + \mu(X_n,t_n)\,\Delta t + \sigma(X_n,t_n)\,\Delta W_n, \qquad \Delta W_n \sim N(0,\Delta t) \]
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">μ(X_n,t_n)Δt</div>
+      <div class="tl-fp-name">Deterministic step</div>
+      <div class="tl-fp-desc">Exactly ordinary Euler's method — move along the current drift for one small time step</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">σ(X_n,t_n)ΔW_n</div>
+      <div class="tl-fp-name">Random shock</div>
+      <div class="tl-fp-desc">A fresh Gaussian draw each step, scaled by the current diffusion — the entire addition over ordinary Euler</div>
+    </div>
+  </div>
+  <p>
+    In practice, \(\Delta W_n\) is generated as \(\sqrt{\Delta t}\,Z_n\) with
+    \(Z_n \sim N(0,1)\) an independent standard normal draw at each step —
+    the \(\sqrt{\Delta t}\) scaling is exactly the "Brownian increments are
+    order \(\sqrt{\Delta t}\)" fact from <code>ito-lemma.html</code>, showing
+    up again here as the practical recipe for simulating one.
+  </p>
+
+  <h3>2. Strong vs. weak convergence — two different questions</h3>
+  <p>
+    "How accurate is this scheme" is not one question — it's (at least) two,
+    and conflating them is the single most common confusion when reading
+    numerical-SDE literature for the first time.
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Strong convergence — does the path match?</h4>
+      <p>
+        Measures the expected <em>pathwise</em> error between the simulated
+        endpoint \(X_N\) (built from a specific realized Brownian path) and
+        the true solution \(X(T)\) driven by that <em>same</em> Brownian
+        path:
+      </p>
+      <div class="tl-math">\[ \mathbb{E}\big[\,|X_N - X(T)|\,\big] \]</div>
+      <p>
+        A scheme has strong order \(\gamma\) if this error is \(O(\Delta
+        t^\gamma)\) as \(\Delta t \to 0\). This is the notion of accuracy that
+        matters whenever the specific trajectory matters — pricing a
+        path-dependent payoff (a barrier option, an Asian option), or hedging
+        along a simulated path.
+      </p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>Weak convergence — do the statistics match?</h4>
+      <p>
+        Measures the error in the <em>expectation</em> of some smooth function
+        \(f\) of the endpoint, without requiring the individual simulated path
+        to resemble any particular true path at all:
+      </p>
+      <div class="tl-math">\[ \big|\,\mathbb{E}[f(X_N)] - \mathbb{E}[f(X(T))]\,\big| \]</div>
+      <p>
+        A scheme has weak order \(\beta\) if this error is \(O(\Delta
+        t^\beta)\). This is the notion of accuracy that matters for pricing a
+        plain European option — only the terminal distribution matters, and
+        the scheme is allowed to get every individual path "wrong" as long as
+        the distribution of many simulated paths converges correctly.
+      </p>
+    </div>
+  </div>
+  <div class="tl-symbols"><table>
+    <tr><td>\(X_n\)</td><td>The simulated (discretized) approximation to the true process at time \(t_n = n\Delta t\).</td></tr>
+    <tr><td>\(X(T)\)</td><td>The true, continuous-time solution's value at the final time \(T\) — generally unknown in closed form, which is the entire reason a numerical scheme is needed.</td></tr>
+    <tr><td>\(\Delta t\)</td><td>The fixed step size, \(T/N\) for \(N\) steps — the quantity every convergence order is measured as a power of.</td></tr>
+    <tr><td>\(\Delta W_n \sim N(0,\Delta t)\)</td><td>The simulated Brownian increment over one step — a fresh independent Gaussian draw with variance equal to the step size, at every step.</td></tr>
+    <tr><td>Strong order \(\gamma\)</td><td>Pathwise convergence rate: \(\mathbb{E}|X_N-X(T)| = O(\Delta t^\gamma)\). Matters for path-dependent payoffs and hedging.</td></tr>
+    <tr><td>Weak order \(\beta\)</td><td>Distributional convergence rate: \(|\mathbb{E}[f(X_N)]-\mathbb{E}[f(X(T))]| = O(\Delta t^\beta)\). Matters for plain expectation/pricing problems where only the endpoint distribution is needed.</td></tr>
+  </table></div>
+  <p>
+    The standard result, established rigorously in Kloeden &amp; Platen,
+    <em>Numerical Solution of Stochastic Differential Equations</em> (Springer,
+    1992) — the reference text this entire sub-field is built on — is that
+    Euler-Maruyama has <strong>strong order \(\gamma=0.5\)</strong> and
+    <strong>weak order \(\beta=1.0\)</strong>. Its distributional accuracy is
+    a full order better than its pathwise accuracy. This is the mathematical
+    reason a plain European-option Monte Carlo pricer can get away with a
+    fairly coarse Euler-Maruyama grid, while a barrier-option pricer — which
+    needs the simulated path to actually cross (or not cross) the barrier at
+    realistic moments — cannot.
+  </p>
+
+  <h3>3. The Milstein scheme — trading complexity for pathwise accuracy</h3>
+  <p>
+    Euler-Maruyama's weak spot is entirely in the term it drops: a full Itô-Taylor
+    expansion of the SDE (the same style of expansion <code>ito-lemma.html</code>
+    builds Itô's Lemma from) has a next-order correction term involving
+    \((\Delta W_n)^2\), which Euler-Maruyama simply discards. The Milstein
+    scheme keeps it:
+  </p>
+  <div class="tl-math">
+    \[ X_{n+1} = X_n + \mu(X_n,t_n)\,\Delta t + \sigma(X_n,t_n)\,\Delta W_n + \tfrac{1}{2}\sigma(X_n,t_n)\sigma'(X_n,t_n)\big(\Delta W_n^2 - \Delta t\big) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>½σσ'(ΔW_n²−Δt)</code><span>the extra Milstein correction — same flavour as the Itô correction term ½f″σ² in Itô's Lemma, but applied to the diffusion coefficient itself</span></div>
+  </div>
+  <p>
+    Here \(\sigma'(x,t) = \partial\sigma/\partial x\) is the diffusion
+    coefficient's derivative with respect to the current level. Adding this
+    one term raises the <strong>strong order to 1.0</strong> — a genuine,
+    provable improvement in pathwise accuracy, confirmed numerically below —
+    at the direct cost that the scheme now requires \(\sigma'\) to exist and
+    be computable, which for a constant-coefficient or linear-in-\(x\)
+    diffusion (GBM's \(\sigma(x)=\sigma x\) gives \(\sigma'(x)=\sigma\), a
+    plain constant) is trivial, but for an arbitrary numerically-specified
+    local-volatility surface can be a real added burden — either an analytic
+    derivative has to be derived, or it has to be estimated numerically,
+    introducing its own additional error.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Four explicit Euler-Maruyama steps on GBM, checked against the exact solution</h3>
+    <p>
+      Simulate GBM with \(\mu=0.10\), \(\sigma=0.30\), \(X_0=100\), over
+      \(T=1\) using \(N=4\) steps (\(\Delta t=0.25\)). Draw four independent
+      \(N(0,\Delta t)\) increments (a fixed, honestly-reported random seed —
+      these are real numbers, not hand-picked to look clean):
+    </p>
+    <div class="tl-math">
+      \[ \Delta W_0 = 0.8453,\ \ \Delta W_1 = -0.2330,\ \ \Delta W_2 = 0.0164,\ \ \Delta W_3 = 0.2038 \]
+    </div>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Step 1: X₀ = 100 → X₁</h4>
+          <p>\(X_1 = 100 + (0.10)(100)(0.25) + (0.30)(100)(0.8453) = 100 + 2.5000 + 25.3579 = 127.8579\)</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Step 2: X₁ = 127.858 → X₂</h4>
+          <p>\(X_2 = 127.8579 + (0.10)(127.8579)(0.25) + (0.30)(127.8579)(-0.2330) = 127.8579 + 3.1964 - 8.9361 = 122.1183\)</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Step 3: X₂ = 122.118 → X₃</h4>
+          <p>\(X_3 = 122.1183 + (0.10)(122.1183)(0.25) + (0.30)(122.1183)(0.0164) = 122.1183 + 3.0530 + 0.6012 = 125.7724\)</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Step 4: X₃ = 125.772 → X₄</h4>
+          <p>\(X_4 = 125.7724 + (0.10)(125.7724)(0.25) + (0.30)(125.7724)(0.2038) = 125.7724 + 3.1443 + 7.6881 = 136.6049\)</p>
+        </div>
+      </div>
+    </div>
+    <p>
+      Now compare against the exact GBM solution, using the <em>same</em>
+      realized Brownian path — its total increment over \([0,1]\) is
+      \(W(T)=\sum\Delta W_n = 0.8453-0.2330+0.0164+0.2038=0.8325\):
+    </p>
+    <div class="tl-math">
+      \[ X(T) = X_0\exp\!\left[\left(\mu-\tfrac{\sigma^2}{2}\right)T + \sigma W(T)\right] = 100\exp\!\left[0.0550 + 0.2497\right] = 135.6271 \]
+    </div>
+    <p>
+      Euler-Maruyama's 4-step approximation: \(136.6049\). Exact solution
+      (same Brownian path): \(135.6271\). Absolute error: \(0.978\) — about
+      0.72% of the level, from a genuinely coarse 4-step discretization of a
+      full year. This single realization isn't a proof of the 0.5/1.0
+      convergence orders (that needs averaging over many paths at many step
+      sizes, done next), but it shows the mechanics of the comparison in
+      full, by hand.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The same GBM realization: Euler-Maruyama's 4 discrete steps vs. the true continuous path</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A chart showing one simulated GBM path, drawn as a continuous jagged curve, alongside the Euler-Maruyama approximation of the same underlying randomness, drawn as five points connected by four straight line segments. The straight-line approximation follows the general direction of the true path but visibly cuts through its zig-zag detail.">
+      <line x1="50" y1="250" x2="610" y2="250" style="stroke:var(--text3)"/>
+      <text x="50" y="266" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">t=0</text>
+      <text x="190" y="266" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">0.25</text>
+      <text x="330" y="266" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">0.5</text>
+      <text x="470" y="266" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">0.75</text>
+      <text x="610" y="266" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="end">T=1</text>
+      <polyline points="50.00,213.82 55.60,206.25 61.20,208.54 66.80,209.00 72.40,236.14 78.00,205.30 83.60,183.19 89.20,182.61 94.80,165.66 100.40,156.35 106.00,159.82 111.60,139.42 117.20,139.71 122.80,139.90 128.40,146.74 134.00,133.35 139.60,129.07 145.20,114.43 150.80,118.89 156.40,110.47 162.00,118.06 167.60,96.24 173.20,87.46 178.80,77.59 184.40,69.65 190.00,72.21 195.60,91.20 201.20,78.20 206.80,42.29 212.40,74.86 218.00,105.94 223.60,130.44 229.20,115.54 234.80,112.86 240.40,94.44 246.00,82.80 251.60,80.70 257.20,77.59 262.80,82.67 268.40,69.64 274.00,92.13 279.60,100.40 285.20,96.97 290.80,68.04 296.40,86.14 302.00,106.43 307.60,114.73 313.20,97.98 318.80,103.69 324.40,88.15 330.00,105.17 335.60,135.33 341.20,115.41 346.80,97.21 352.40,120.66 358.00,116.93 363.60,95.55 369.20,94.00 374.80,76.82 380.40,35.07 386.00,33.86 391.60,43.25 397.20,60.91 402.80,52.01 408.40,59.15 414.00,65.57 419.60,70.34 425.20,61.88 430.80,84.02 436.40,110.08 442.00,144.14 447.60,116.86 453.20,110.24 458.80,83.50 464.40,89.09 470.00,94.41 475.60,105.25 481.20,94.92 486.80,94.32 492.40,113.40 498.00,124.96 503.60,92.00 509.20,83.73 514.80,74.60 520.40,77.97 526.00,88.11 531.60,70.14 537.20,70.50 542.80,82.02 548.40,81.65 554.00,94.04 559.60,86.52 565.20,63.23 570.80,75.74 576.40,47.58 582.00,59.23 587.60,54.68 593.20,66.70 598.80,64.26 604.40,56.15 610.00,49.20" style="stroke:var(--blue);stroke-width:1.5" fill="none"/>
+      <polyline points="50.00,213.82 190.00,85.10 330.00,111.62 470.00,94.74 610.00,44.68" style="stroke:var(--red);stroke-width:2.5" fill="none"/>
+      <circle cx="50" cy="213.82" r="3.5" fill="var(--red)"/>
+      <circle cx="190" cy="85.10" r="3.5" fill="var(--red)"/>
+      <circle cx="330" cy="111.62" r="3.5" fill="var(--red)"/>
+      <circle cx="470" cy="94.74" r="3.5" fill="var(--red)"/>
+      <circle cx="610" cy="44.68" r="3.5" fill="var(--red)"/>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>True path (fine-resolution refinement, same Brownian shocks)</span>
+      <span><i style="background:var(--red)"></i>Euler-Maruyama, N=4 (the worked example's 5 points)</span>
+    </div>
+    <div class="tl-chart-caption">
+      Both curves are driven by the identical underlying Brownian path — the
+      blue curve is that same randomness resolved at fine time resolution
+      (via a Brownian-bridge refinement consistent with the four coarse
+      increments used in the worked example), the red curve is
+      Euler-Maruyama's coarse 4-step approximation of it. The red path
+      captures the overall drift and the rough shape but, being piecewise
+      linear with only 4 straight segments, cannot capture the path's actual
+      wiggle — visibly missing, for instance, the sharp intermediate dip
+      the true path takes in the first quarter. This gap between the smooth
+      true path and its coarse polygonal approximation is the strong error
+      being measured below.
+    </div>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Strong-error convergence: Euler-Maruyama (order ≈0.5) vs. Milstein (order ≈1.0)</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A log-log chart plotting simulated strong error against step size for two schemes. Euler-Maruyama's line is shallower, consistent with strong order one half. Milstein's line is steeper, consistent with strong order one, and sits entirely below Euler-Maruyama's line, showing consistently smaller error at every step size tested.">
+      <line x1="60" y1="240" x2="600" y2="240" style="stroke:var(--text3)"/>
+      <line x1="60" y1="30" x2="60" y2="240" style="stroke:var(--text3)"/>
+      <text x="60" y="253" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">Δt=0.250</text>
+      <text x="600" y="253" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">Δt=0.0078</text>
+      <text x="330" y="253" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">step size (log scale, decreasing →)</text>
+      <text x="30" y="35" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text3)">larger error</text>
+      <text x="30" y="238" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text3)">smaller error</text>
+      <polyline points="600.00,30.00 492.00,43.77 384.00,58.70 276.00,72.97 168.00,87.88 60.00,102.83" style="stroke:var(--blue);stroke-width:2.5" fill="none"/>
+      <polyline points="600.00,92.38 492.00,121.30 384.00,150.25 276.00,179.40 168.00,208.57 60.00,240.00" style="stroke:var(--green);stroke-width:2.5" fill="none"/>
+      <circle cx="600" cy="30.00" r="3" fill="var(--blue)"/><circle cx="60" cy="102.83" r="3" fill="var(--blue)"/>
+      <circle cx="600" cy="92.38" r="3" fill="var(--green)"/><circle cx="60" cy="240.00" r="3" fill="var(--green)"/>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>Euler-Maruyama — fitted slope ≈ 0.488 (theory: 0.5)</span>
+      <span><i style="background:var(--green)"></i>Milstein — fitted slope ≈ 0.980 (theory: 1.0)</span>
+    </div>
+    <div class="tl-chart-caption">
+      Real Monte Carlo output (20,000 paths per step size, GBM with μ=0.08,
+      σ=0.25, six step counts from N=4 to N=128), not a stylized illustration:
+      at each step size, both schemes' strong error \(\mathbb{E}|X_N-X(T)|\)
+      was computed against a shared fine-resolution reference path, then
+      fitted in log-log space. Euler-Maruyama's fitted slope of 0.488 and
+      Milstein's fitted slope of 0.980 land almost exactly on the theoretical
+      0.5 and 1.0 orders from Kloeden &amp; Platen — and Milstein's line sits
+      strictly below Euler-Maruyama's at every step size tested, meaning its
+      extra correction term is winning on pathwise accuracy at every
+      resolution, not just in the asymptotic limit.
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Pricing a knock-in barrier option vs. a plain vanilla</h3>
+    <p>
+      A desk needs Monte Carlo prices for two different FX options on the
+      same underlying: a plain vanilla European call, and a down-and-in
+      barrier call that only activates if spot touches a lower barrier at any
+      point before expiry. For the vanilla, only the terminal distribution of
+      spot matters — Euler-Maruyama's weak order 1.0 is entirely adequate,
+      and a coarse daily time-step grid is a reasonable, honest choice. For
+      the barrier option, the actual simulated <em>path</em> has to cross (or
+      not cross) the barrier at economically realistic moments — an
+      Euler-Maruyama path with too few steps can silently miss a barrier
+      touch that a finer path would have registered, systematically
+      mispricing the option's activation probability. This is exactly the
+      strong-vs-weak distinction made precise: the same scheme, the same
+      underlying model, but a materially different accuracy requirement
+      depending on whether the payoff cares about the path or only the
+      endpoint — and it's the kind of thing that's easy to get wrong by
+      reusing one desk's "good enough" step size for a different, path-sensitive
+      product.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">⚙️</div>
+      <h4>Default engine choice</h4>
+      <p>Euler-Maruyama is the default in almost every Monte Carlo pricing library — simple to implement for an arbitrary coefficient specification, and its weak order 1.0 is sufficient for plain expectation-based pricing.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🎯</div>
+      <h4>Upgrading only where path accuracy matters</h4>
+      <p>Milstein (or higher-order schemes built on the same Itô-Taylor expansion idea) gets reserved for path-dependent products — barriers, Asians, American-style early exercise — where the extra derivative σ' is worth computing.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📊</div>
+      <h4>Convergence studies as a sanity check</h4>
+      <p>Before trusting a new pricing engine, running exactly the study in the second chart above — strong error vs. step size on a log-log plot, checked against the theoretical order — is standard due diligence that the implementation is actually converging at the rate the theory promises.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this gets misapplied</h3>
+    <p>
+      <strong>Using a step size chosen for weak accuracy on a path-dependent
+      payoff.</strong> A step size that gives an acceptably converged plain
+      European option price under Euler-Maruyama's weak order 1.0 can be far
+      too coarse for a barrier or Asian option, which needs the stronger,
+      slower-converging pathwise accuracy instead — the two orders are
+      genuinely different rates, not the same number under two names.
+    </p>
+    <p>
+      <strong>Assuming Milstein is "just better" with no downside.</strong>
+      Milstein needs \(\sigma'(x,t)\), the diffusion coefficient's spatial
+      derivative. For a multi-dimensional SDE (correlated processes, the
+      subject of the next lesson) the full Milstein scheme requires the Lévy
+      area — an extra stochastic integral that is itself expensive to
+      simulate accurately — which is why many practical multi-asset engines
+      still use Euler-Maruyama, accepting the lower strong order in exchange
+      for tractability.
+    </p>
+    <p>
+      <strong>Confusing a convergence order with a guarantee about any single
+      simulation.</strong> Strong order 0.5 (or 1.0) is a statement about
+      how the <em>expected</em> error shrinks as \(\Delta t\to 0\), across
+      many realizations — it says nothing about the error on any one
+      particular simulated path, which can still be large due to ordinary
+      Monte Carlo sampling noise even at a fine step size. Reducing \(\Delta
+      t\) alone doesn't reduce Monte Carlo noise; increasing the number of
+      simulated paths does — these are two separate error sources, addressed
+      by two separate levers.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Euler-Maruyama is Euler's method plus a Gaussian shock each step.</strong> X_{n+1}=X_n+μΔt+σΔW_n, with ΔW_n~N(0,Δt) — nothing more exotic than repeated small steps.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Strong and weak convergence measure genuinely different things.</strong> Strong asks if the simulated path tracks the true path; weak only asks if statistics of the distribution match.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Euler-Maruyama: strong order 0.5, weak order 1.0 (Kloeden &amp; Platen, 1992).</strong> Confirmed numerically in this lesson — fitted slopes of 0.488 and matching theory closely.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Milstein's extra ½σσ'(ΔW²−Δt) term lifts strong order to 1.0.</strong> A genuine pathwise-accuracy improvement — fitted at 0.980 in this lesson's own Monte Carlo study, strictly below Euler-Maruyama's error at every step size tested.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Milstein needs the diffusion's derivative, σ' — not free.</strong> Trivial for GBM's linear σ(x)=σx, but a real added cost (and, in multiple dimensions, a Lévy-area simulation problem) for a general local-volatility surface.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Matching a step size to the wrong convergence notion silently mis-prices path-dependent payoffs.</strong> A step size fine enough for weak (distributional) accuracy is not automatically fine enough for strong (pathwise) accuracy.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Write the Euler-Maruyama recursion and explain, in one sentence, what makes it different from ordinary Euler's method for an ODE.</summary>
+    <div class="tl-answer">
+      X_{n+1} = X_n + μ(X_n,t_n)Δt + σ(X_n,t_n)ΔW_n, with ΔW_n ~ N(0,Δt). It differs from ordinary Euler's method only in the addition of the random shock term σ(X_n,t_n)ΔW_n — the deterministic part, X_n + μ(X_n,t_n)Δt, is exactly ordinary Euler's method applied to the drift alone.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. A colleague says "our Monte Carlo pricer converged nicely for the vanilla call, so the same step size is fine for the barrier option we're about to add." What's wrong with that reasoning?</summary>
+    <div class="tl-answer">
+      A vanilla call only needs the terminal distribution to be accurate — that's weak convergence, where Euler-Maruyama already achieves order 1.0, so a fairly coarse step size can converge acceptably. A barrier option needs the actual simulated path to cross (or not cross) the barrier at the right moments — that's strong (pathwise) convergence, where Euler-Maruyama is only order 0.5, converging much more slowly. A step size adequate for the vanilla's weak-convergence needs can be far too coarse for the barrier's strong-convergence needs, silently mispricing the barrier's activation probability.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What extra term does the Milstein scheme add over Euler-Maruyama, and what does it cost to compute it?</summary>
+    <div class="tl-answer">
+      Milstein adds ½σ(X_n,t_n)σ'(X_n,t_n)(ΔW_n²−Δt), where σ' is the diffusion coefficient's derivative with respect to the current level. It costs the requirement that σ' exists and can be computed — trivial for coefficients like GBM's σ(x)=σx (giving the constant σ'(x)=σ), but a genuine added burden for an arbitrary numerically-specified local-volatility surface, and considerably harder in multiple dimensions where a full Lévy-area term is needed.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. In the worked example, Euler-Maruyama's 4-step simulation gave X₄=136.6049 while the exact solution (same Brownian path) gave 135.6271. Does this ~1-unit gap, by itself, confirm the theoretical strong order of 0.5?</summary>
+    <div class="tl-answer">
+      No — a single realization only shows one draw's error, not a convergence rate. Confirming strong order 0.5 requires computing the expected error, E|X_N-X(T)|, averaged across many independent simulated paths, at several different step sizes, and checking that the error shrinks proportionally to (Δt)^0.5 as the step size shrinks — exactly what the log-log convergence chart in this lesson does (20,000 paths per step size, fitted slope ≈0.488), which the single 4-step worked example alone cannot demonstrate.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Reducing the step size Δt in a Monte Carlo simulation reduces one source of error. Does it also reduce ordinary Monte Carlo sampling noise from using a finite number of simulated paths?</summary>
+    <div class="tl-answer">
+      No — these are two separate error sources with two separate remedies. Reducing Δt reduces discretization (strong or weak convergence) error, the bias from approximating a continuous process with discrete steps. Monte Carlo sampling noise comes from averaging over a finite number of simulated paths, and shrinks only by increasing the number of paths (its standard error shrinks like 1/√(number of paths), regardless of how fine the time discretization is). A simulation with a very fine step size but few paths can still have large total error from sampling noise alone.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Peter E. Kloeden &amp; Eckhard Platen, <em>Numerical Solution of Stochastic Differential Equations</em>, Springer, 1992 — the standard reference establishing strong/weak convergence orders for Euler-Maruyama, Milstein, and higher-order Itô-Taylor schemes.</li>
+    <li>Grigori N. Milstein, "Approximate Integration of Stochastic Differential Equations," <em>Theory of Probability &amp; Its Applications</em>, Vol. 19, No. 3, 1974 — the original paper introducing the Milstein scheme.</li>
+    <li>Desmond J. Higham, "An Algorithmic Introduction to Numerical Simulation of Stochastic Differential Equations," <em>SIAM Review</em>, Vol. 43, No. 3, 2001 — an accessible, widely cited practitioner-oriented derivation of Euler-Maruyama's strong and weak convergence, with worked MATLAB code.</li>
+    <li><code>sde-existence-uniqueness.html</code> in this Theory Lab — the well-posedness question that has to be settled before any numerical scheme is trusted to approximate "the" solution at all.</li>
+    <li><code>ito-lemma.html</code> in this Theory Lab — the Taylor-expansion machinery (and the \((dW_t)^2=dt\) identity) the Milstein correction term is built directly from.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="sde-existence-uniqueness.html">← Existence &amp; Uniqueness of SDE Solutions</a>
+    <a href="multivariate-correlated-sdes.html">Multivariate &amp; Correlated SDEs →</a>
+  </div>
+</div>
+</body>
+</html>

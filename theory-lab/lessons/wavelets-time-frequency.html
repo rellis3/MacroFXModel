@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wavelets &amp; Time-Frequency Analysis — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Signal Processing / Wavelets &amp; Time-Frequency Analysis</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Signal Processing · Lesson 2 of 3</div>
+  <h1 class="tl-title">Wavelets &amp; Time-Frequency Analysis</h1>
+  <p class="tl-dek">The Fourier transform can tell you which cycles a series contains — but not when they happened. Wavelets trade a single global spectrum for a picture of frequency content changing over time, which is exactly what a non-stationary series needs.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — a classical signal-processing tool, explained here as background knowledge, not built or tested anywhere in this repo</span>
+    <span>~15 min read</span>
+    <span>Prereqs: <a href="fourier-analysis-frequency-domain.html">Fourier Analysis &amp; the Frequency Domain</a>, <a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a></span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A plain Fourier transform answers "which frequencies are present across the whole series" but throws away all information about <em>when</em> — two series with an identical set of frequencies but in a different order over time can produce the same periodogram.</li>
+      <li>The continuous wavelet transform \(W(a,b) = \frac{1}{\sqrt{a}}\int x(t)\,\psi^*\!\left(\frac{t-b}{a}\right)dt\) fixes this by using a localized, scalable "mother wavelet" \(\psi(t)\) instead of an infinite sine wave — \(a\) (scale, roughly inverse frequency) and \(b\) (time-shift) together produce a time-frequency map called a <strong>scalogram</strong>.</li>
+      <li>This matters most exactly where stationarity (see the prerequisite lesson) breaks down: a regime where the dominant cycle length itself changes over time is precisely what a scalogram shows and a single periodogram cannot, because a periodogram implicitly averages frequency content over the entire sample.</li>
+      <li>A worked example below hand-computes a one-level Haar wavelet transform on an 8-point series with a single embedded shock, showing the transform pinpoint <em>exactly when</em> the shock occurred — something no Fourier-domain view of the same 8 points would localize in time.</li>
+      <li>Common named wavelet families — Morlet (smooth, good frequency resolution) and Haar (simple, good at localizing sharp jumps) — trade off time resolution against frequency resolution differently; neither is "the" correct choice, and picking one is itself a modeling decision.</li>
+      <li>Explaining wavelets is not a claim that a scalogram produces trading edge — it is background for reading a time-frequency plot correctly, and for knowing when it is the right tool over a plain periodogram.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The previous lesson built the Fourier transform and its practical estimator, the periodogram — and closed with an
+    honest limitation that goes beyond the statistical caveat covered there: a periodogram is computed once, over the
+    <em>entire</em> sample, and reports one number per frequency describing the whole series. It cannot say "this
+    cycle was present in the first half of the sample and gone by the second half," because by construction it mixes
+    every time point together before ever looking at frequency content. That is a serious blind spot for financial
+    time series, which are rarely stationary in the way <a href="stationarity-acf-pacf.html">Stationarity, ACF &amp;
+    PACF</a> defines it — volatility regimes shift, a dominant cycle length can lengthen or shorten, a market
+    structure change (a new venue, a new tick size, a central bank regime shift) can alter a series' periodic
+    behavior partway through the sample. Wavelets exist specifically to answer "which frequencies, and roughly
+    <em>when</em>" instead of just "which frequencies, averaged over everything." That is the single sentence this
+    entire lesson exists to unpack.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A sheet-music score vs. a list of every note in the song</h3>
+    <p>
+      Imagine being handed two descriptions of the same three-minute song. The first is a Fourier-style description:
+      a list of every note that appears anywhere in the song, and how loud each one is on average — "this song
+      contains a C, an E, a G, mostly loud, and an F#, mostly quiet." That's genuinely useful information, but it
+      tells you nothing about the song's actual structure — you can't tell the verse from the chorus, or which note
+      opens the bridge. The second description is sheet music: the same notes, but now placed in time, showing
+      exactly when each one plays and for how long. A wavelet-based, time-frequency analysis of a signal is much
+      closer to that second description — instead of one global list of "which frequencies exist," it produces a
+      picture with time along one axis and frequency (or its inverse, scale) along the other, showing where in the
+      series each frequency component actually shows up. The tool trades away some of the Fourier transform's very
+      precise frequency resolution to get that timing information back — there is no free lunch here, only a
+      different, often more useful, trade-off.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    Three pieces: (1) the core idea of a localized, scalable wavelet in place of an infinite sine wave; (2) the
+    continuous wavelet transform itself and what its two parameters mean; (3) the resolution trade-off this all rests
+    on, and the two named wavelet families worth knowing conceptually.
+  </p>
+
+  <h3>1. From an infinite sine wave to a localized "mother wavelet"</h3>
+  <p>
+    The complex sinusoid \(e^{-i2\pi ft}\) at the heart of the Fourier transform (previous lesson) is defined for
+    <em>all</em> time — it never turns on or off, never localizes to a particular stretch of the series. A
+    <strong>wavelet</strong> \(\psi(t)\) is deliberately built the opposite way: a small, oscillating waveform that is
+    concentrated in a short span of time and decays to (near) zero outside it — hence "wave" (it oscillates) plus
+    "-let" (it's a small, localized piece, not an infinite sine wave). Call \(\psi(t)\) the <strong>mother
+    wavelet</strong>. The trick that makes it a genuine time-<em>frequency</em> tool, not just a time-localized filter,
+    is that the mother wavelet gets both <strong>shifted</strong> in time and <strong>stretched or compressed</strong>
+    in scale to produce an entire family of related wavelets, each one a scaled, shifted copy of the same basic
+    shape.
+  </p>
+
+  <h3>2. The continuous wavelet transform</h3>
+  <div class="tl-math">
+    \[ W(a,b) \;=\; \frac{1}{\sqrt{a}} \int_{-\infty}^{\infty} x(t)\, \psi^*\!\left(\frac{t-b}{a}\right) dt \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>x(t)</code><span>the series being analyzed</span></div>
+    <div class="tl-eq-chip c2"><code>ψ*((t−b)/a)</code><span>the mother wavelet, shifted by b and stretched by scale a (complex conjugated)</span></div>
+    <div class="tl-eq-chip c3"><code>1/√a</code><span>normalizes energy so wavelets at every scale are compared fairly</span></div>
+    <div class="tl-eq-chip c4"><code>W(a,b)</code><span>how strongly that particular scale/location pattern matches the series</span></div>
+  </div>
+  <p>
+    Reading the two parameters is the whole point: \(b\) is a <strong>time shift</strong> — it slides the wavelet
+    along the series, the same way \(f\) indexed frequency for the Fourier transform, except here it indexes
+    <em>where in time</em> the wavelet is centered. \(a\) is a <strong>scale</strong> — stretching the mother wavelet
+    (large \(a\)) makes it oscillate slowly and match long, low-frequency patterns; compressing it (small \(a\)) makes
+    it oscillate quickly and match short, high-frequency patterns. Scale is the wavelet world's stand-in for
+    frequency, and the two are inversely related: large scale roughly corresponds to low frequency, small scale to
+    high frequency. \(W(a,b)\) itself is computed exactly the way \(X(f)\) was in the previous lesson — slide the
+    (now scaled) wavelet across the series, multiply pointwise, and integrate — except now the answer depends on
+    <em>two</em> things, scale and location, rather than frequency alone. Squaring the result, \(|W(a,b)|^2\), and
+    plotting it as a 2-D image with time (\(b\)) on one axis and scale (\(a\), often flipped so frequency reads
+    top-to-bottom) on the other produces the <strong>scalogram</strong> — the direct visual analogue of the
+    periodogram, except now it shows how the frequency content itself evolves over the sample instead of collapsing
+    it into one static plot.
+  </p>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">a</div><div class="tl-fp-name">Scale</div><div class="tl-fp-desc">Inverse frequency — how stretched the wavelet is; large a = slow oscillation</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">b</div><div class="tl-fp-name">Time-shift</div><div class="tl-fp-desc">Where the wavelet is centered along the series</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">W(a,b)</div><div class="tl-fp-name">The scalogram entry</div><div class="tl-fp-desc">How strongly this scale/location combination matches the series — a 2-D map, not a 1-D spectrum</div></div>
+  </div>
+
+  <h3>3. The resolution trade-off, and two named wavelet families</h3>
+  <p>
+    Nothing here escapes a basic trade-off closely related to the Heisenberg uncertainty principle in physics: a
+    wavelet that is very narrow in time (good at pinpointing exactly <em>when</em> something happened) is necessarily
+    spread out across many frequencies (poor at saying exactly <em>which</em> frequency), and vice versa — a wavelet
+    stretched out to resolve a very precise, narrow frequency band is necessarily spread out over a long stretch of
+    time. A pure sine wave (the Fourier basis) sits at one extreme of this trade-off: perfect frequency resolution,
+    zero time resolution. Wavelets sit somewhere in between, and different <strong>mother wavelet</strong> choices sit
+    at different points along that trade-off:
+  </p>
+  <ul>
+    <li><strong>The Haar wavelet</strong> — the simplest and historically the first (Alfréd Haar, 1909) — is built
+      from flat, rectangular steps: +1 over the first half of its span, −1 over the second half, zero everywhere
+      else. It is extremely good at localizing sharp discontinuities and jumps precisely in time (its abrupt,
+      step-like shape is a natural match for an abrupt, step-like feature in the data), at the cost of poor frequency
+      resolution — it doesn't distinguish nearby frequencies well.</li>
+    <li><strong>The Morlet wavelet</strong> — a complex sinusoid multiplied by a smooth Gaussian envelope — looks much
+      more like a short burst of a genuine oscillation, tapering smoothly to zero at both ends rather than cutting
+      off sharply. It gives much better frequency resolution than Haar (it can distinguish nearby frequencies more
+      cleanly) at some cost to how sharply it can pin down an abrupt, instantaneous event in time. This is the far
+      more common choice in economic and financial applications of wavelet analysis, precisely because financial
+      cycles (a business cycle, a volatility regime) are smoother, more oscillatory phenomena than sharp,
+      instantaneous jumps.</li>
+  </ul>
+  <p>
+    Neither family is "the correct one" in the abstract — choosing a mother wavelet is itself a modeling decision that
+    trades time resolution against frequency resolution in a way suited (or not) to the specific feature being
+    hunted for, exactly the kind of honest, stated trade-off this lesson's pitfalls section returns to below.
+  </p>
+
+  <div class="tl-solid blue">
+    <strong>The one-sentence version:</strong> Fourier asks "which frequencies, averaged over the whole series" and
+    answers with perfect frequency precision and zero timing information; wavelets ask "which frequencies, and
+    roughly when" and trade away some of that frequency precision to get timing back — there is no version of this
+    tool that gives you both for free.
+  </div>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(x(t)\)</td><td>the series being analyzed</td></tr>
+      <tr><td>\(\psi(t)\)</td><td>the mother wavelet — a small, localized, oscillating waveform that decays to (near) zero away from its center</td></tr>
+      <tr><td>\(\psi^*\)</td><td>the complex conjugate of the mother wavelet (relevant when \(\psi\) is complex-valued, as with Morlet)</td></tr>
+      <tr><td>\(a\)</td><td>scale — how stretched (large \(a\)) or compressed (small \(a\)) the wavelet is; the inverse-frequency analogue</td></tr>
+      <tr><td>\(b\)</td><td>time-shift — where along the series the wavelet is centered</td></tr>
+      <tr><td>\(W(a,b)\)</td><td>the continuous wavelet transform — how strongly the series matches the wavelet at scale \(a\), location \(b\)</td></tr>
+      <tr><td>scalogram</td><td>a 2-D plot of \(|W(a,b)|^2\) over time (\(b\)) and scale/frequency (\(a\)) — the time-frequency analogue of a periodogram</td></tr>
+      <tr><td>cone of influence</td><td>the region near the start/end of a finite sample where a scalogram's estimates are contaminated by the sample's edges (see pitfalls)</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A periodogram vs. a scalogram on the same regime-shifting series</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left panel: a single flat periodogram spectrum with two modest bumps, giving no indication of when each cycle was active. Right panel: a scalogram heatmap with time on the horizontal axis and scale on the vertical axis, showing a band of high energy at a low scale during the first half of the sample and a band of high energy at a higher scale during the second half, visually showing the dominant cycle length changing partway through.">
+      <text x="20" y="18" font-size="11" fill="var(--text3)">Periodogram — one static spectrum for the whole series</text>
+      <line x1="20" y1="180" x2="300" y2="180" style="stroke:var(--text3)" />
+      <line x1="20" y1="30" x2="20" y2="180" style="stroke:var(--text3)" />
+      <path d="M20,175 Q70,175 90,110 Q110,175 160,175 Q190,175 210,140 Q230,175 300,175" fill="none" style="stroke:var(--blue);stroke-width:2" />
+      <text x="90" y="100" font-size="9" text-anchor="middle" fill="var(--blue)">short-cycle energy</text>
+      <text x="210" y="130" font-size="9" text-anchor="middle" fill="var(--blue)">long-cycle energy</text>
+      <text x="160" y="205" font-size="10" text-anchor="middle" fill="var(--text3)">frequency →</text>
+      <text x="20" y="230" font-size="9" fill="var(--red)">✗ no timing information at all — both bumps look equally "always present"</text>
+
+      <text x="380" y="18" font-size="11" fill="var(--text3)">Scalogram — same series, time-frequency map</text>
+      <line x1="380" y1="180" x2="620" y2="180" style="stroke:var(--text3)" />
+      <line x1="380" y1="30" x2="380" y2="180" style="stroke:var(--text3)" />
+      <rect x="380" y="30"  width="120" height="45" style="fill:var(--red);opacity:0.85" />
+      <rect x="500" y="105" width="120" height="45" style="fill:var(--red);opacity:0.85" />
+      <rect x="380" y="75"  width="120" height="105" style="fill:var(--blue);opacity:0.15" />
+      <rect x="500" y="30"  width="120" height="75"  style="fill:var(--blue);opacity:0.15" />
+      <line x1="500" y1="30" x2="500" y2="180" style="stroke:var(--border);stroke-dasharray:4,3" />
+      <text x="440" y="50" font-size="9" text-anchor="middle" fill="var(--text)">short cycle active</text>
+      <text x="560" y="125" font-size="9" text-anchor="middle" fill="var(--text)">long cycle active</text>
+      <text x="500" y="200" font-size="10" text-anchor="middle" fill="var(--text3)">time →</text>
+      <text x="365" y="105" font-size="10" fill="var(--text3)" transform="rotate(-90 365 105)">scale</text>
+      <text x="380" y="230" font-size="9" fill="var(--green)">✓ shows the dominant cycle length changing partway through the sample</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Schematic, not a fit to real data. Both panels describe the same underlying series: a short cycle dominates
+      the first half, a longer cycle dominates the second half. The periodogram (left) reports both cycles as
+      present, with no way to tell they occurred at different times — a series where both cycles ran the whole time
+      would produce an almost identical periodogram. The scalogram (right) makes the actual regime change directly
+      visible as a shift in <em>where</em> the energy sits along the time axis, exactly the information a
+      non-stationary series needs and a single periodogram cannot supply.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Localizing a single shock with a one-level Haar transform, by hand</h3>
+    <p>
+      Take 8 toy daily returns (in percent), mostly small, with one large shock in the middle representing a surprise
+      news event:
+    </p>
+    <p style="font-family:'DM Mono',monospace;font-size:13px;color:var(--text2)">
+      x = [0.10, −0.10, 0.05, −0.05, 3.00, −0.05, 0.05, −0.10]
+    </p>
+    <p>
+      A one-level discrete Haar transform pairs up consecutive points and, for each pair, computes an
+      <strong>average</strong> (the smooth, "approximation" part) and a <strong>half-difference</strong> (the
+      "detail" part — how much the pair disagrees with its own average). Using the simple average/difference form for
+      clarity (a fully orthonormal Haar transform scales by \(1/\sqrt2\) instead of \(1/2\); the localization pattern
+      below is identical either way):
+    </p>
+    <div class="tl-math">
+      \[ a_i = \frac{x_{2i} + x_{2i+1}}{2}, \qquad d_i = \frac{x_{2i} - x_{2i+1}}{2} \]
+    </div>
+    <p>Applying this to the four pairs:</p>
+    <p style="font-family:'DM Mono',monospace;font-size:13px;color:var(--text2)">
+      pair 1 (0.10, −0.10): a₁ = 0.000, d₁ = 0.100<br>
+      pair 2 (0.05, −0.05): a₂ = 0.000, d₂ = 0.050<br>
+      pair 3 (3.00, −0.05): a₃ = 1.475, d₃ = <strong>1.525</strong><br>
+      pair 4 (0.05, −0.10): a₄ = −0.025, d₄ = 0.075
+    </p>
+    <p>
+      The detail coefficients are \([0.100,\ 0.050,\ 1.525,\ 0.075]\) — one of them, \(d_3\), is more than ten times
+      larger than any of the others, and it corresponds exactly to pair 3, i.e. time steps 4 and 5, exactly where the
+      shock sits in the original series. That's the payoff this lesson is built around: the transform doesn't just
+      say "there is unusually large energy somewhere in this series" the way a periodogram computed on the same 8
+      points would (which would spread that energy across many frequency bins, since a sudden jump is broadband —
+      it contains a little of every frequency at once, per the previous lesson's pitfalls) — it says <em>where</em>,
+      down to which pair of time steps. That time-localization is exactly what a plain Fourier transform of the
+      same 8 numbers cannot deliver.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Watching EURUSD 5-minute volatility around an ECB press conference</h3>
+    <p>
+      A researcher wants to characterize how EURUSD's intraday volatility cycle behaves around a scheduled ECB press
+      conference — does the market's dominant oscillation length shorten (faster, choppier back-and-forth) in the
+      minutes immediately following the announcement, and if so, for how long before it reverts to its pre-event
+      character? A single periodogram computed over the whole session would report whichever cycle lengths were
+      present <em>somewhere</em> that day, with no way to say whether the shorter cycle was active for the whole
+      session or concentrated in a 20-minute window right after the release. A scalogram of the same 5-minute return
+      series makes that distinction directly visible, showing scale (cycle length) against time-of-day, and would
+      show the shortening (if it exists) as a visible narrow band right at the announcement time, fading back to the
+      pre-event pattern afterward. That is a genuinely useful <em>descriptive</em> picture of market behavior around
+      a known event — turning "the scalogram shows a pattern around news events" into an actual tradeable rule would
+      still require the same honest out-of-sample validation bar as any other signal in this curriculum; the
+      scalogram itself only describes what happened, it doesn't license a trade.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Wavelet analysis has real, long-standing use outside finance — geophysics (its original driving application,
+    analyzing seismic signals, is where the Morlet wavelet itself was first developed by Jean Morlet in the early
+    1980s working on oil-exploration seismograms), medical signal processing (EEG, ECG), and image compression (the
+    Haar and related wavelets underpin parts of the JPEG2000 standard). In economics and finance, wavelet methods have
+    been applied to business-cycle analysis (decomposing a macro series into short-run and long-run cyclical
+    components without assuming, the way the next lesson's filters do, that the cycle length is fixed), to studying
+    how the relationship between two markets' return co-movement changes across different time horizons
+    simultaneously, and to volatility research looking for time-varying periodicity of the kind the ECB scenario
+    above describes. As with the previous lesson, none of this amounts to a trading signal by itself — it is a
+    descriptive, exploratory lens for understanding how a series' cyclical behavior evolves, which is a genuinely
+    different (and often prior) question to whether that behavior can be turned into an edge.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where a scalogram misleads</h3>
+    <ul>
+      <li><strong>Edge effects — the "cone of influence."</strong> Near the very start and end of a finite sample, a
+        wavelet centered there is partly hanging off the edge of the available data, so the transform's estimate at
+        those points is contaminated by whatever padding or edge-handling assumption was used, not a genuine feature
+        of the series. Any scalogram reading inside this "cone of influence" near the two edges should be trusted far
+        less than a reading safely in the middle of the sample.</li>
+      <li><strong>Mother wavelet choice is a real, consequential decision, not a neutral default.</strong> Per the
+        Haar-vs-Morlet trade-off above, a wavelet good at localizing sharp jumps is not the same one that's good at
+        resolving nearby frequencies cleanly — the choice should match the feature actually being hunted for, and a
+        different choice can produce a visibly different-looking scalogram from identical data.</li>
+      <li><strong>Over-interpreting scalogram "hot spots" as confirmed cycles.</strong> A scalogram has many
+        time-scale cells, and scanning across all of them for a bright patch is structurally the same
+        multiple-comparisons problem this Theory Lab's <a href="multiple-testing.html">Multiple Testing &amp; the
+        Look-Elsewhere Effect</a> lesson covers for scanning many lags or many strategies — some cells will look
+        "significant" by chance alone, and a real significance framework (not eyeballing brightness) is needed before
+        trusting an isolated hot spot.</li>
+      <li><strong>The time-frequency resolution trade-off is fundamental, not a limitation of a particular
+        implementation.</strong> No choice of wavelet, scale range, or software package escapes the basic trade-off
+        described above — sharper timing always costs some frequency precision, and vice versa. Reading a scalogram
+        as if it had unlimited precision in both dimensions simultaneously is a category error, not a fixable
+        implementation detail.</li>
+      <li><strong>A descriptive time-frequency picture is not a validated trading signal.</strong> Same discipline as
+        every other tool in this curriculum: a scalogram showing an interesting pattern around some historical event
+        is an observation, not evidence of a repeatable, tradeable edge until it clears an honest out-of-sample
+        test.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Fourier shows which frequencies, wavelets show which frequencies and roughly when.</strong> A plain periodogram averages frequency content over the whole sample; a scalogram maps it against time as well.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The continuous wavelet transform has two parameters, not one.</strong> Scale \(a\) (inverse frequency) and time-shift \(b\) together produce \(W(a,b)\), a 2-D time-frequency map instead of a 1-D spectrum.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked example localizes a shock exactly.</strong> A one-level Haar transform on an 8-point series pinpoints the exact pair of time steps a large shock sits in — something a Fourier view of the same points cannot do.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Time resolution and frequency resolution trade off against each other, always.</strong> No wavelet choice escapes this — Haar favors sharp timing, Morlet favors clean frequency separation.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Edge effects (the cone of influence) and multiple-comparisons risk are real.</strong> Scalogram readings near the sample's edges, or an isolated "hot spot" scanned out of many cells, both need extra scrutiny before being trusted.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>This lesson explains a technique, not a claim of edge.</strong> A scalogram is a descriptive lens for how cyclical behavior evolves over time — turning that into a trading rule still needs the same honest OOS bar as anything else.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why can two series with identical periodogram spectra look completely different when viewed through a scalogram?</summary>
+    <div class="tl-answer">
+      A periodogram is computed once over the entire sample and reports total energy at each frequency, collapsing
+      away any information about timing. Two series can contain exactly the same set of frequencies at exactly the
+      same overall strengths — one with a short cycle active the whole time and a long cycle active the whole time
+      (running simultaneously), the other with the short cycle active only in the first half and the long cycle only
+      in the second half — and produce nearly identical periodograms, because the periodogram cannot distinguish
+      "always present" from "present somewhere." A scalogram, by mapping energy against both scale and time, makes
+      that distinction directly visible as a difference in where the bright regions sit along the time axis.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. In the continuous wavelet transform formula, what do the parameters a and b each control, and how do they map onto the Fourier transform's single parameter f?</summary>
+    <div class="tl-answer">
+      \(a\) is scale — how stretched or compressed the mother wavelet is, playing the same conceptual role as
+      frequency \(f\) did in the Fourier transform (inversely: large \(a\) means slow oscillation, roughly low
+      frequency; small \(a\) means fast oscillation, roughly high frequency). \(b\) is a genuinely new parameter with
+      no Fourier-transform analogue: it's the time-location the wavelet is centered at. The Fourier transform only
+      ever asked "how much of frequency \(f\)," a one-dimensional question; the wavelet transform asks "how much of
+      scale \(a\), centered at time \(b\)," a two-dimensional question, which is exactly why its output is a 2-D map
+      (the scalogram) rather than a 1-D spectrum.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why does the worked example's Haar transform produce one detail coefficient far larger than the rest, and what would happen to that same shock in a plain Fourier transform of the same 8 points?</summary>
+    <div class="tl-answer">
+      The Haar detail coefficient for a pair is a half-difference between the two values in that pair; every pair
+      except the one containing the shock has two similarly-sized small values, so their difference (and hence
+      detail coefficient) is small. The shock pair (3.00, −0.05) has an enormous difference between its two values,
+      producing a detail coefficient roughly 15-30 times larger than any other pair's — and that large coefficient's
+      position in the list directly identifies which pair of time steps the shock occurred in. A plain Fourier
+      transform of the same 8 points would still register the shock (a sudden jump is broadband — it contributes
+      energy across essentially every frequency, not one clean spike), but that energy would be spread across many
+      frequency bins with no indication of which of the 8 time steps it came from — exactly the kind of timing
+      information a wavelet transform preserves and a Fourier transform discards.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What is the "cone of influence," and why does it specifically threaten a scalogram's readings near the start and end of a sample rather than in the middle?</summary>
+    <div class="tl-answer">
+      A wavelet centered near the very start or end of a finite sample partly extends past the edge of the data that
+      actually exists — there is no real data there to multiply against, so the transform has to rely on some
+      edge-handling assumption (padding with zeros, reflecting the series, wrapping around) to compute an answer at
+      all. That assumption contaminates the result near the edges specifically, because a wavelet centered safely in
+      the middle of a long sample never runs into this problem — its full extent is covered by real data on both
+      sides. The "cone of influence" is the region (typically widening toward the very edges, and wider for larger
+      scales, since a large-scale wavelet is physically wider) where scalogram readings should be discounted for
+      exactly this reason.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why is choosing between a Haar and a Morlet mother wavelet described as "a real, consequential decision" rather than a neutral default setting?</summary>
+    <div class="tl-answer">
+      The two wavelets sit at different points on the fundamental time-resolution/frequency-resolution trade-off:
+      Haar's sharp, step-like shape is well matched to pinpointing abrupt jumps precisely in time but poorly
+      distinguishes nearby frequencies, while Morlet's smooth, Gaussian-tapered oscillation distinguishes nearby
+      frequencies much more cleanly but blurs exactly when an abrupt event happened. Applying Haar to a series whose
+      interesting structure is a smoothly evolving cycle length (rather than sharp jumps) would under-resolve the
+      frequency detail that actually matters; applying Morlet to a series where the interesting structure is a single
+      sharp discontinuity would smear its timing. The right choice depends on what feature is being hunted for, which
+      is exactly why it's a modeling decision and not a one-size-fits-all default.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Ingrid Daubechies, <em>Ten Lectures on Wavelets,</em> SIAM, 1992 — the standard rigorous mathematical
+      treatment of wavelet theory, including orthonormal wavelet families beyond Haar and Morlet.</li>
+    <li>P. Goupillaud, A. Grossmann &amp; J. Morlet, <em>"Cycle-Octave and Related Transforms in Seismic Signal
+      Analysis,"</em> Geoexploration, 1984 — the original development of the continuous wavelet transform out of
+      Jean Morlet's seismic (oil-exploration) signal work, the origin of the Morlet wavelet's name.</li>
+    <li>James B. Ramsey, <em>"The Contribution of Wavelets to the Analysis of Economic and Financial Data,"</em>
+      Philosophical Transactions of the Royal Society A, 1999 — an accessible early survey of wavelet applications
+      specifically in economics and finance.</li>
+    <li>Patrick M. Crowley, <em>"A Guide to Wavelets for Economists,"</em> Journal of Economic Surveys, 2007 — a
+      practitioner-oriented survey covering wavelet use in business-cycle and macroeconomic time-series analysis.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="fourier-analysis-frequency-domain.html">← Fourier Analysis &amp; the Frequency Domain</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="trend-cycle-filters.html">Trend/Cycle Filters →</a>
+  </div>
+</div>
+</body>
+</html>

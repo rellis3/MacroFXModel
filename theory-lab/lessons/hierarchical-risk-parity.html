@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hierarchical Risk Parity — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Advanced Portfolio Construction / Hierarchical Risk Parity</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Advanced Portfolio Construction · Portfolio Construction 2 of 3</div>
+  <h1 class="tl-title">Hierarchical Risk Parity</h1>
+  <p class="tl-dek">Mean-variance optimization needs to invert the covariance matrix — a matrix that gets more numerically fragile the more correlated its assets are. Hierarchical Risk Parity's answer is to never invert it at all: cluster the assets by similarity first, then allocate down the resulting tree.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — theory only, no clustering-based allocator built or tested in this repo</span>
+    <span>~17 min read</span>
+    <span>Prereqs: Markowitz &amp; Black-Litterman, Risk Parity &amp; Equal Risk Contribution</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Mean-variance optimization requires inverting the full covariance matrix \(\Sigma^{-1}\) — numerically unstable and ill-conditioned once assets are highly correlated, on top of the expected-return fragility the Markowitz lesson already covers.</li>
+      <li>Hierarchical Risk Parity (HRP), from Marcos López de Prado's 2016 paper, sidesteps the inversion entirely, in three stages: <strong>tree clustering</strong> (group assets by a correlation-distance metric into a dendrogram), <strong>quasi-diagonalization</strong> (reorder the covariance matrix by dendrogram leaf order so similar assets sit adjacent), and <strong>recursive bisection</strong> (allocate weight top-down by splitting the tree and assigning inverse-variance-proportional weight to each half).</li>
+      <li>The correlation-distance metric \(d_{ij} = \sqrt{0.5(1-\rho_{ij})}\) turns "how correlated" into "how far apart," which is what a standard hierarchical clustering algorithm needs to build the dendrogram.</li>
+      <li>The claimed benefit, stated as the source's own claim: HRP never inverts the full covariance matrix, and López de Prado reports it as more robust out-of-sample than mean-variance optimization on ill-conditioned matrices.</li>
+      <li>This repo has not independently validated that OOS claim on its own instrument universe — it's reported here as the published result, not as something re-tested and confirmed in this codebase.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The Markowitz &amp; Black-Litterman lesson built the well-documented case
+    that mean-variance optimization is fragile because of its expected-return
+    inputs. There's a second, more purely mechanical fragility sitting
+    underneath that one, which shows up even if expected returns were somehow
+    known perfectly: the optimizer needs \(\Sigma^{-1}\), the <em>inverse</em>
+    of the covariance matrix, and matrix inversion is a numerically dangerous
+    operation once the matrix is close to singular — which is exactly what
+    happens as a basket's assets become more correlated with each other. A
+    highly correlated basket (many FX pairs sharing a dominant dollar or
+    risk-on/risk-off factor, in the language of the PCA lesson) pushes the
+    covariance matrix toward exactly the ill-conditioned regime where
+    inversion amplifies small estimation errors into large, unstable weight
+    swings — a second, independent source of the same brittleness the
+    Markowitz lesson already flags, this time coming from the matrix
+    algebra itself rather than the forecast inputs.
+  </p>
+  <p>
+    The Risk Parity &amp; Equal Risk Contribution lesson offered one way out —
+    stop needing expected returns — but its general, correlation-aware
+    solution still works with the full covariance matrix and, in most
+    numerical implementations, still touches an inversion or an equivalent
+    ill-conditioned operation somewhere in the solve. Hierarchical Risk
+    Parity goes a step further: it restructures the problem itself so that a
+    full-matrix inversion is never required at any stage, by using the
+    covariance matrix's <em>correlation structure</em> to build a tree first,
+    and then allocating down that tree with only small, well-conditioned
+    sub-problems at each step.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Divide a company's budget by department, not by employee</h3>
+    <p>
+      Imagine allocating a company's travel budget across every individual
+      employee simultaneously, all at once, accounting for how every single
+      person's travel patterns co-vary with every other person's — hopeless,
+      and it gets more numerically fragile the more employees share the same
+      role (near-duplicate travel patterns look almost linearly dependent to
+      the math, exactly like near-duplicate assets do to a covariance
+      matrix). The obvious fix nobody needs to be told is hierarchical:
+      split the budget across departments first (engineering vs. sales vs.
+      operations), then within each department split it across teams, then
+      within each team split it across individuals. At every step, the
+      decision is a small, well-behaved one — "more to this half or that
+      half of what's already a coherent, similar group" — never one giant,
+      fragile, all-at-once inversion. HRP applies exactly that idea to a
+      correlation matrix: cluster similar assets into a tree first, then
+      allocate top-down, one well-conditioned split at a time.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step — three stages</h2>
+  <p>
+    López de Prado's algorithm runs in three distinct stages, each one
+    feeding the next. None of the three, individually, requires inverting
+    the full \(N\times N\) covariance matrix.
+  </p>
+
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Tree clustering — turn correlation into distance, then cluster</h4>
+        <p>
+          Standard hierarchical clustering needs a distance, not a
+          correlation — "how far apart" rather than "how alike." Convert
+          every pairwise correlation \(\rho_{ij}\) into a distance with:
+        </p>
+        <div class="tl-math">\[ d_{ij} = \sqrt{\tfrac{1}{2}(1-\rho_{ij})} \]</div>
+        <div class="tl-eq-break">
+          <div class="tl-eq-chip c1"><code>ρᵢⱼ</code><span>correlation between assets i and j, range [-1, 1]</span></div>
+          <div class="tl-eq-chip c2"><code>1 − ρᵢⱼ</code><span>zero when perfectly correlated, largest (2) when perfectly anti-correlated</span></div>
+          <div class="tl-eq-chip c3"><code>d_ij</code><span>a proper distance metric, range [0, 1] — 0 for identical, 1 for perfectly anti-correlated</span></div>
+        </div>
+        <p>
+          This is the same idea a correlation-network / minimum-spanning-tree
+          read on a cross-pair basket uses to turn a correlation matrix into a
+          graph of distances (see <a href="correlation-networks-mst.html">Correlation
+          Networks &amp; MST</a> for that framing directly) —
+          here, instead of a network, the distances feed a standard
+          hierarchical (agglomerative) clustering algorithm: start with every
+          asset as its own cluster, repeatedly merge the two closest clusters,
+          and record the distance at which each merge happened. The result is
+          a <strong>dendrogram</strong> — a tree whose leaves are the
+          individual assets and whose internal nodes are merges, each labeled
+          with the distance at which that merge occurred.
+        </p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>Quasi-diagonalization — reorder the matrix by leaf order</h4>
+        <p>
+          The dendrogram from Stage 1 implies a specific left-to-right order
+          of the leaves (assets) — the order they'd naturally be listed in if
+          you read the tree along its bottom. Reordering the rows and
+          columns of the original covariance matrix into that exact leaf
+          order is "quasi-diagonalization": it doesn't literally diagonalize
+          the matrix (off-diagonal entries are still there), but it pushes
+          the largest correlations toward the diagonal in contiguous blocks —
+          similar assets end up sitting next to each other, and dissimilar
+          ones end up far apart. This single reordering step is what makes
+          Stage 3 tractable: it turns "allocate across N assets with an
+          arbitrary correlation structure" into "allocate across a tree of
+          nested, mostly-internally-correlated blocks."
+        </p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>Recursive bisection — split the tree, weight each half by inverse variance</h4>
+        <p>
+          Starting at the root of the dendrogram, recursively split each
+          cluster into its two immediate sub-clusters (exactly the two
+          branches that merged last, read backwards) and divide that
+          cluster's current weight allocation between them in inverse
+          proportion to each sub-cluster's own variance — the same
+          risk-parity intuition from the previous lesson, just applied one
+          binary split at a time instead of to all \(N\) assets
+          simultaneously:
+        </p>
+        <div class="tl-math">\[ \alpha_1 = 1 - \frac{V_1}{V_1+V_2}, \qquad \alpha_2 = 1-\alpha_1 = \frac{V_1}{V_1+V_2} \]</div>
+        <div class="tl-eq-break">
+          <div class="tl-eq-chip c1"><code>V₁, V₂</code><span>the two sub-clusters' own variances (each computed via inverse-variance weighting of its members — a small, well-conditioned calculation)</span></div>
+          <div class="tl-eq-chip c2"><code>α₁, α₂</code><span>the fraction of the parent's weight allocated to each sub-cluster — summing to 1</span></div>
+          <div class="tl-eq-chip c3"><code>sign</code><span>the lower-variance sub-cluster always gets the larger share, by construction</span></div>
+        </div>
+        <p>
+          Recurse down both branches, all the way to individual assets, and
+          each asset ends up with a final weight equal to the product of
+          every split fraction along its own path from the root — the
+          cascading structure the worked example below computes explicitly.
+          At no point in this stage does the algorithm invert the full
+          covariance matrix; every calculation is either a small
+          sub-cluster's inverse-variance weighting or a one-number split
+          between two already-computed cluster variances.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">d_ij = √(½(1-ρᵢⱼ))</div>
+      <div class="tl-fp-name">Stage 1 — distance</div>
+      <div class="tl-fp-desc">Turns correlation into a proper distance metric so a dendrogram can be built</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">reorder by leaf order</div>
+      <div class="tl-fp-name">Stage 2 — quasi-diagonalize</div>
+      <div class="tl-fp-desc">Similar assets end up adjacent in the matrix, no values change</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">α = 1 - V₁/(V₁+V₂)</div>
+      <div class="tl-fp-name">Stage 3 — bisect</div>
+      <div class="tl-fp-desc">Split each cluster's weight between its two halves, lower-variance half gets more</div>
+    </div>
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(\rho_{ij}\)</td><td>Pairwise correlation between assets i and j.</td></tr>
+    <tr><td>\(d_{ij}\)</td><td>Correlation-distance between assets i and j, \(\sqrt{0.5(1-\rho_{ij})}\) — 0 for identical assets, up to 1 for perfectly anti-correlated ones.</td></tr>
+    <tr><td>Dendrogram</td><td>The tree produced by hierarchical clustering — leaves are individual assets, internal nodes are merges, each labeled with the distance at which it happened.</td></tr>
+    <tr><td>Quasi-diagonalization</td><td>Reordering the covariance matrix's rows/columns into dendrogram leaf order, pushing large correlations into contiguous diagonal blocks.</td></tr>
+    <tr><td>\(V_1, V_2\)</td><td>The two child clusters' own variances at a given split, each computed by inverse-variance weighting within that cluster.</td></tr>
+    <tr><td>\(\alpha_1, \alpha_2\)</td><td>The fraction of a parent cluster's weight passed down to each of its two children — the lower-variance child always receives the larger fraction.</td></tr>
+  </table></div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A five-pair FX basket, clustered by correlation-distance</div>
+    <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Dendrogram of five FX pairs — EURUSD and GBPUSD merge first at a low distance, USDJPY and USDCHF merge next, AUDUSD then joins the EURUSD-GBPUSD group forming a risk-on bloc, and finally that bloc merges with the USDJPY-USDCHF safe-haven bloc at the root, the highest distance">
+      <line x1="60" y1="270" x2="60" y2="55" style="stroke:var(--border)" stroke-width="1"/>
+      <line x1="55" y1="270" x2="60" y2="270" style="stroke:var(--border)"/>
+      <line x1="55" y1="181.5" x2="60" y2="181.5" style="stroke:var(--border)"/>
+      <line x1="55" y1="67.1" x2="60" y2="67.1" style="stroke:var(--border)"/>
+      <text x="48" y="273" fill="var(--text3)" font-size="10" text-anchor="end">d=0</text>
+      <text x="48" y="184.5" fill="var(--text3)" font-size="10" text-anchor="end">d=0.32</text>
+      <text x="48" y="70" fill="var(--text3)" font-size="10" text-anchor="end">d=0.72</text>
+      <text x="20" y="160" fill="var(--text3)" font-size="11" text-anchor="middle" transform="rotate(-90 20 160)">Correlation distance</text>
+
+      <!-- Merge 1: EURUSD-GBPUSD at d=0.3162 (y=181.5) -->
+      <line x1="100" y1="270" x2="100" y2="181.5" style="stroke:var(--blue);stroke-width:2"/>
+      <line x1="180" y1="270" x2="180" y2="181.5" style="stroke:var(--blue);stroke-width:2"/>
+      <line x1="100" y1="181.5" x2="180" y2="181.5" style="stroke:var(--blue);stroke-width:2"/>
+
+      <!-- Merge 3: AUDUSD + (EURUSD-GBPUSD) at d=0.4743 (y=137.2) -->
+      <line x1="260" y1="270" x2="260" y2="137.2" style="stroke:var(--blue);stroke-width:2"/>
+      <line x1="140" y1="181.5" x2="140" y2="137.2" style="stroke:var(--blue);stroke-width:2"/>
+      <line x1="140" y1="137.2" x2="260" y2="137.2" style="stroke:var(--blue);stroke-width:2"/>
+
+      <!-- Merge 2: USDJPY-USDCHF at d=0.4183 (y=152.9) -->
+      <line x1="380" y1="270" x2="380" y2="152.9" style="stroke:var(--amber);stroke-width:2"/>
+      <line x1="460" y1="270" x2="460" y2="152.9" style="stroke:var(--amber);stroke-width:2"/>
+      <line x1="380" y1="152.9" x2="460" y2="152.9" style="stroke:var(--amber);stroke-width:2"/>
+
+      <!-- Merge 4 (root): {EUR,GBP,AUD} + {JPY,CHF} at d=0.7246 (y=67.1) -->
+      <line x1="200" y1="137.2" x2="200" y2="67.1" style="stroke:var(--purple);stroke-width:2.5"/>
+      <line x1="420" y1="152.9" x2="420" y2="67.1" style="stroke:var(--purple);stroke-width:2.5"/>
+      <line x1="200" y1="67.1" x2="420" y2="67.1" style="stroke:var(--purple);stroke-width:2.5"/>
+
+      <circle cx="100" cy="270" r="4" style="fill:var(--blue)"/>
+      <circle cx="180" cy="270" r="4" style="fill:var(--blue)"/>
+      <circle cx="260" cy="270" r="4" style="fill:var(--blue)"/>
+      <circle cx="380" cy="270" r="4" style="fill:var(--amber)"/>
+      <circle cx="460" cy="270" r="4" style="fill:var(--amber)"/>
+
+      <text x="100" y="290" fill="var(--text2)" font-size="11" text-anchor="middle">EURUSD</text>
+      <text x="180" y="290" fill="var(--text2)" font-size="11" text-anchor="middle">GBPUSD</text>
+      <text x="260" y="290" fill="var(--text2)" font-size="11" text-anchor="middle">AUDUSD</text>
+      <text x="380" y="290" fill="var(--text2)" font-size="11" text-anchor="middle">USDJPY</text>
+      <text x="460" y="290" fill="var(--text2)" font-size="11" text-anchor="middle">USDCHF</text>
+
+      <text x="140" y="176" fill="var(--blue)" font-size="9.5" text-anchor="middle">0.32</text>
+      <text x="420" y="147.5" fill="var(--amber)" font-size="9.5" text-anchor="middle">0.42</text>
+      <text x="200" y="132" fill="var(--blue)" font-size="9.5" text-anchor="middle">0.47</text>
+      <text x="310" y="62" fill="var(--purple)" font-size="9.5" text-anchor="middle">root: 0.72</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>"Risk-on" bloc — EURUSD, GBPUSD, AUDUSD cluster together first (low distance, high correlation)</span>
+      <span><i style="background:var(--amber)"></i>"Safe-haven" bloc — USDJPY, USDCHF cluster together separately</span>
+      <span><i style="background:var(--purple)"></i>Root merge — the two blocs only join at the highest distance, i.e. lowest cross-bloc correlation</span>
+    </div>
+    <div class="tl-chart-caption">
+      Built from a single, self-consistent 5×5 correlation matrix via
+      single-linkage clustering: EURUSD/GBPUSD merge first (\(\rho=0.80\)),
+      then USDJPY/USDCHF (\(\rho=0.65\)); AUDUSD then joins the first pair
+      (\(\rho\approx0.5\) to each); the two blocs merge last, at the root, at
+      the basket's lowest cross-bloc correlations (roughly \(\rho\approx
+      -0.1\) to \(-0.2\)). Quasi-diagonalizing the covariance matrix means
+      reading its rows/columns in exactly this leaf order — EURUSD, GBPUSD,
+      AUDUSD, USDJPY, USDCHF — so the two blocs form visible, contiguous
+      blocks instead of being scattered through an arbitrarily-ordered matrix.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Recursive bisection down the same tree</h3>
+    <p>
+      Give the same five pairs illustrative annualized volatilities —
+      EURUSD 8%, GBPUSD 9%, AUDUSD 11%, USDJPY 7%, USDCHF 6% — and cascade
+      weight down the dendrogram above, splitting at each merge in inverse
+      proportion to each side's variance (Stage 3's \(\alpha\) formula,
+      using each cluster's inverse-variance-weighted variance as \(V\)).
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Root split — the two blocs</h4>
+          <p>
+            Bloc-left {EURUSD, GBPUSD, AUDUSD} has inverse-variance-weighted
+            variance \(V_L = 0.00276\); bloc-right {USDJPY, USDCHF} has
+            \(V_R = 0.00208\). The lower-variance bloc gets more weight:
+            \(\alpha_L = 1 - V_L/(V_L+V_R) = 0.429\), \(\alpha_R = 0.571\).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Left bloc splits into {EURUSD, GBPUSD} and {AUDUSD}</h4>
+          <p>
+            \(V_{EG}=0.00358\), \(V_A=0.0121\) (AUDUSD alone, so its cluster
+            variance is just its own). \(\alpha_{EG} = 1 -
+            0.00358/(0.00358+0.0121) = 0.772\), \(\alpha_A = 0.228\). Of the
+            bloc's 0.429 total: {EURUSD,GBPUSD} get \(0.772\times0.429=0.331\),
+            AUDUSD gets \(0.228\times0.429=0.098\).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>{EURUSD,GBPUSD} splits into individual pairs; right bloc splits into {USDJPY},{USDCHF}</h4>
+          <p>
+            EURUSD/GBPUSD: \(\alpha_E=1-0.0064/0.0145=0.559\), so EURUSD gets
+            \(0.559\times0.331=0.185\), GBPUSD gets \(0.441\times0.331=0.146\).
+            USDJPY/USDCHF: \(\alpha_J = 1-0.0049/0.0085=0.424\), so USDJPY
+            gets \(0.424\times0.571=0.242\), USDCHF gets \(0.576\times0.571=0.329\).
+          </p>
+        </div>
+      </div>
+    </div>
+    <p>
+      Final HRP weights: <strong>EURUSD 18.5%, GBPUSD 14.6%, AUDUSD 9.8%,
+      USDJPY 24.2%, USDCHF 32.9%</strong> (sums to 100%, rounding). Notice
+      the two lowest-volatility pairs (USDCHF, EURUSD) end up with the two
+      largest weights within their respective blocs, and the safe-haven bloc
+      as a whole outweighs the risk-on bloc (57.1% vs. 42.9%) because it has
+      the lower combined variance — every split is a small, two-way,
+      well-conditioned calculation; the full 5×5 covariance matrix was never
+      inverted at any point.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A 12-pair G10 basket with two obvious currency blocs</h3>
+    <p>
+      Consider a basket of 12 G10 crosses built to express a broad
+      dollar-strength or dollar-weakness view — commodity-bloc pairs (AUD,
+      NZD, CAD crosses) that tend to move together on risk sentiment, and a
+      separate safe-haven/funding bloc (JPY, CHF crosses) that tends to move
+      the other way in the same risk episodes, plus a scattering of
+      European crosses somewhere in between. A naive mean-variance
+      optimizer fed this basket's full covariance matrix is working with a
+      matrix that has several near-duplicate rows (multiple pairs carrying
+      almost the same commodity-bloc signal) — exactly the ill-conditioned
+      structure that makes \(\Sigma^{-1}\) numerically unreliable and prone
+      to wild, unstable weight swings from tiny estimation noise.
+    </p>
+    <p>
+      HRP handles the same basket by first discovering the commodity-bloc
+      and safe-haven clusters automatically from the correlation-distance
+      dendrogram (no one needs to hand-label which pairs "belong" together),
+      then allocating top-down: how much to the commodity bloc as a whole
+      versus the safe-haven bloc as a whole, then how much to each pair
+      within its own bloc — every one of those decisions a small, two-way
+      split, never a single fragile inversion of the full 12×12 matrix.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    HRP is used in practice specifically as an alternative to mean-variance
+    optimization on baskets where the covariance matrix is expected to be
+    poorly conditioned — large, highly correlated universes (broad equity
+    universes, credit baskets, or an FX universe with several currencies
+    sharing common blocs) where a literal matrix inversion is either
+    numerically unreliable or produces weights that swing dramatically
+    between re-estimation periods. López de Prado's own reported result,
+    stated here as the source's claim rather than an independently confirmed
+    one, is that HRP's out-of-sample performance is more robust than
+    mean-variance optimization or naive risk parity specifically <em>because
+    of</em> that ill-conditioning avoidance — HRP is designed to degrade
+    gracefully as correlation increases, where matrix inversion degrades
+    catastrophically.
+  </p>
+  <p>
+    <strong>This repo has not independently validated that OOS advantage on
+    its own instrument universe.</strong> The claim above is reported
+    honestly as López de Prado's published result — a real, peer-reviewed
+    finding worth knowing — not as something this project has re-tested and
+    confirmed. Whether HRP actually outperforms simpler alternatives on this
+    project's own FX basket, with its own realized correlation structure and
+    costs, is an open empirical question, not a settled one just because the
+    original paper reported a positive result on its own dataset.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🌳</div>
+      <h4>Tree clustering</h4>
+      <p>Correlation-distance hierarchical clustering builds the dendrogram — the same distance idea a correlation-network/MST read uses to turn correlation into a graph.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🔲</div>
+      <h4>Quasi-diagonalization</h4>
+      <p>Reordering by leaf order, no values change — just makes the block structure visible and the next stage tractable.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">✂️</div>
+      <h4>Recursive bisection</h4>
+      <p>Top-down, inverse-variance splitting at every branch — small, well-conditioned sub-problems all the way down, never one full-matrix inversion.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where HRP goes wrong in practice</h3>
+    <p>
+      <strong>The choice of linkage method changes the tree.</strong> This
+      lesson uses single linkage (cluster distance = the closest pair between
+      two clusters) because it's the simplest to compute by hand, but
+      complete linkage, average linkage, or Ward's method can all produce a
+      meaningfully different dendrogram from the exact same correlation
+      matrix — "the" clustering is not unique, and the resulting weights
+      depend on that choice.
+    </p>
+    <p>
+      <strong>Still ignores expected returns entirely.</strong> Like plain
+      risk parity, HRP has no mechanism for expressing a genuine view that
+      one asset's expected return is better than another's — it allocates
+      purely on the correlation/variance structure, all the way down the
+      tree, and gives up the same information the previous lesson's risk
+      parity gives up, for the same reason.
+    </p>
+    <p>
+      <strong>The correlation matrix itself is still an estimate.</strong>
+      Avoiding matrix <em>inversion</em> instability doesn't avoid
+      correlation <em>estimation</em> instability — the dendrogram, the
+      quasi-diagonal ordering, and every split's inverse-variance weighting
+      all depend on a correlation matrix that was itself estimated from a
+      finite, noisy sample, and can look different on the next re-estimation
+      window.
+    </p>
+    <p>
+      <strong>The claimed OOS advantage is the source's own result, not an
+      independently re-proven one.</strong> Treat "HRP beats mean-variance
+      OOS on ill-conditioned matrices" the way this whole site treats every
+      other backtested claim: real, published, worth knowing — and not yet
+      confirmed on this project's own data until it's actually been tested
+      here, with real costs and a genuine out-of-sample split.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Mean-variance optimization needs \(\Sigma^{-1}\), and inversion gets numerically fragile as assets become more correlated.</strong> This is a mechanical fragility, separate from and additional to the expected-return fragility the Markowitz lesson covers.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>HRP runs in three stages — cluster, reorder, bisect — and never inverts the full covariance matrix at any of them.</strong> Every calculation is a small, well-conditioned sub-problem.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The correlation-distance metric \(d_{ij}=\sqrt{0.5(1-\rho_{ij})}\) is what turns a correlation matrix into something a standard clustering algorithm can use.</strong> Same idea a correlation-network/MST view uses.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Recursive bisection allocates by inverse cluster variance at every split.</strong> The lower-variance side of each split always receives the larger share, cascading down to a final weight per asset.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The claimed OOS robustness advantage is López de Prado's own reported result, not independently re-confirmed here.</strong> This repo has not tested HRP against alternatives on its own instrument universe.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The dendrogram is not unique.</strong> Different linkage methods (single, complete, average, Ward) can produce meaningfully different trees, and therefore different final weights, from the identical correlation matrix.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Not built or validated in this repo.</strong> Every strategy here is single-instrument; a clustering-based allocator would be genuinely new infrastructure, untested on this project's data.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why does mean-variance optimization become more numerically fragile as a basket's assets become more correlated, even setting the expected-return problem aside entirely?</summary>
+    <div class="tl-answer">
+      The optimizer needs \(\Sigma^{-1}\), and matrix inversion is unreliable when a matrix is close to singular — which happens as its rows/columns become close to linear combinations of each other. Highly correlated assets produce almost-duplicate rows in the covariance matrix, pushing it toward exactly that near-singular, ill-conditioned regime, where small estimation errors in the covariance matrix get amplified into large, unstable changes in the inverted result and therefore in the optimal weights.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why is \(d_{ij}=\sqrt{0.5(1-\rho_{ij})}\) needed before clustering, instead of clustering directly on the correlation values?</summary>
+    <div class="tl-answer">
+      Standard hierarchical clustering algorithms are built around a distance metric — a number that gets larger the more dissimilar two things are, and that satisfies basic distance properties (non-negative, zero only for identical items). Correlation runs the opposite direction (larger means more similar, not less) and isn't itself a proper distance metric. The transform flips this: perfectly correlated assets (\(\rho=1\)) map to distance 0, perfectly anti-correlated assets (\(\rho=-1\)) map to distance 1, and the result behaves like a genuine distance a clustering algorithm can consume directly.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What does quasi-diagonalization actually change about the covariance matrix, and what does it leave unchanged?</summary>
+    <div class="tl-answer">
+      It changes only the order in which rows and columns are listed — reordering them to match the dendrogram's leaf order. It changes none of the underlying covariance values themselves. The effect of the reordering is that assets belonging to the same cluster end up adjacent to each other in the matrix, so the large correlations end up visually and computationally grouped into contiguous blocks near the diagonal, instead of scattered arbitrarily through the matrix — which is what makes the next stage's block-by-block, top-down allocation tractable.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. In the recursive bisection formula \(\alpha_1 = 1 - V_1/(V_1+V_2)\), why does the lower-variance cluster always end up with the larger share?</summary>
+    <div class="tl-answer">
+      If \(V_1\) is small relative to \(V_2\), the ratio \(V_1/(V_1+V_2)\) is small, so \(\alpha_1 = 1 - (\text{small number})\) is close to 1 — cluster 1 gets nearly all the parent's weight. If \(V_1\) is large relative to \(V_2\), the ratio approaches 1, so \(\alpha_1\) approaches 0 — cluster 1 gets almost none of the weight. The formula is constructed so that whichever side has less variance (is "calmer") receives more weight, the same risk-parity-style logic as equal risk contribution, just applied one binary split at a time instead of across all assets simultaneously.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In the worked example, why does the {USDJPY, USDCHF} bloc receive a larger total weight (57.1%) than the {EURUSD, GBPUSD, AUDUSD} bloc (42.9%), even though it contains only two assets versus three?</summary>
+    <div class="tl-answer">
+      The root-level split is decided purely by each bloc's own combined variance, not by how many assets it contains. The {USDJPY, USDCHF} bloc's inverse-variance-weighted variance (0.00208) is lower than the {EURUSD, GBPUSD, AUDUSD} bloc's (0.00276), so per the bisection formula the lower-variance bloc receives the larger share of the root's weight — the number of members in each bloc plays no direct role in that particular split.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why is "HRP is more robust out-of-sample than mean-variance optimization" described in this lesson as a claim rather than a settled fact?</summary>
+    <div class="tl-answer">
+      Because it is López de Prado's own reported empirical result from his 2016 paper's own dataset and setup — a real, peer-reviewed finding, but one that has not been independently re-tested on this repo's own instrument universe, with this repo's own costs and a genuine in-sample/out-of-sample split. A published result being real and worth knowing is not the same as it having been confirmed to hold here; this site's own discipline treats every backtested claim, including a well-cited academic one, as needing its own OOS test before being trusted for this specific use case.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Marcos López de Prado, "Building Diversified Portfolios that Outperform Out-of-Sample," <em>Journal of Portfolio Management</em>, 42(4), 59-69, 2016 — the original HRP paper: the source of the three-stage algorithm and its OOS claims described (and flagged as unvalidated here) throughout this lesson.</li>
+    <li>Marcos López de Prado, <em>Advances in Financial Machine Learning</em>, Wiley, 2018 — a fuller treatment of HRP alongside related clustering-based portfolio techniques, from the same author.</li>
+    <li>Thomas Raffinot, "Hierarchical Clustering-Based Asset Allocation," <em>Journal of Portfolio Management</em>, 44(2), 2017 — an independent follow-up exploring alternative linkage methods and clustering choices referenced in the Common Pitfalls section above.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="risk-parity-erc.html">← Risk Parity &amp; Equal Risk Contribution</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="factor-based-portfolio-construction.html">Factor-Based Portfolio Construction →</a>
+  </div>
+</div>
+</body>
+</html>

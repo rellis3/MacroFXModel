@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trend/Cycle Filters: HP, Butterworth &amp; Baxter-King — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Signal Processing / Trend/Cycle Filters</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Signal Processing · Lesson 3 of 3</div>
+  <h1 class="tl-title">Trend/Cycle Filters: Hodrick-Prescott, Butterworth &amp; Baxter-King</h1>
+  <p class="tl-dek">Splitting a series into "the slow-moving trend" and "the cycle riding on top of it" is one of the most-used, and most-criticized, moves in applied macroeconomics — the Hodrick-Prescott filter is everywhere, has a documented, load-bearing flaw, and the band-pass alternatives exist specifically because of it.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — classical macro/signal-processing filters, explained here as background knowledge, not built or tested anywhere in this repo</span>
+    <span>~16 min read</span>
+    <span>Prereqs: <a href="fourier-analysis-frequency-domain.html">Fourier Analysis &amp; the Frequency Domain</a></span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Any series can be thought of as trend + cycle (+ noise), \(y_t = \tau_t + c_t + \varepsilon_t\); a trend/cycle filter is a specific rule for splitting a single observed series back into those unobserved pieces.</li>
+      <li>The Hodrick-Prescott (HP) filter finds the trend \(\tau_t\) that minimizes \(\sum(y_t-\tau_t)^2 + \lambda\sum\big[(\tau_{t+1}-\tau_t)-(\tau_t-\tau_{t-1})\big]^2\) — a direct tradeoff between fitting the data closely and keeping the trend smooth, dialed by \(\lambda\). The standard convention is \(\lambda=1600\) for quarterly data; a common, real mistake is reusing that number unscaled at a different observation frequency.</li>
+      <li>James Hamilton's 2018 paper is a genuine, load-bearing caveat, not a footnote: the HP filter suffers a well-documented end-of-sample bias, and can manufacture spurious cyclical dynamics that aren't in the true data-generating process at all — serious enough that Hamilton titled the paper "Why You Should Never Use the Hodrick-Prescott Filter."</li>
+      <li>Butterworth and Baxter-King filters are band-pass alternatives, designed to isolate one specific cycle-length band (classically the 6-to-32-quarter "business cycle" band) while damping frequencies outside it — motivated in part by dissatisfaction with HP's known flaws.</li>
+      <li>Explaining these filters is not a claim that trend/cycle decomposition produces trading edge — it's a description of a widely used (and widely debated) modeling choice, with an honestly stated, citation-backed flaw front and center.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    A huge amount of applied macroeconomic and business-cycle work rests on a single, deceptively simple move: take one
+    observed series (GDP, industrial production, unemployment) and split it into a slow-moving "potential" or
+    "trend" component and a faster "cyclical" or "gap" component — the output gap, in central-bank language. That
+    split is never directly observed; it has to be estimated by some rule, and the rule chosen has real consequences,
+    because policy decisions (is the economy overheating? is there slack to fill?) get made off the cyclical
+    component's sign and size. This lesson covers the two families of rule used to do that splitting — a
+    time-domain penalized-smoothness approach (Hodrick-Prescott) and frequency-domain band-pass approaches
+    (Butterworth, Baxter-King) — building on the frequency-domain vocabulary from
+    <a href="fourier-analysis-frequency-domain.html">Fourier Analysis &amp; the Frequency Domain</a>, since a
+    band-pass filter is defined entirely in terms of which frequencies it lets through and which it damps.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Separating the tide from the waves</h3>
+    <p>
+      Watch the sea level at a pier over a full day and you'll see two things layered on top of each other: the tide
+      — a slow, smooth rise and fall over roughly twelve hours — and the waves, choppy up-and-down motion happening
+      every few seconds on top of the tide. If you squint and mentally draw a smooth line through the choppy
+      waves, tracking only their average height as it slowly rises and falls, you've just done, by eye, exactly what
+      a trend/cycle filter does mathematically: separated a slow, smooth "trend" (the tide) from a faster "cycle"
+      (the waves) riding on top of it. The hard part, and the part these filters formalize differently from each
+      other, is deciding <em>how smooth</em> "smooth" has to be before something counts as trend rather than cycle —
+      draw the line too wiggly and you've called some of the waves "tide"; draw it too flat and you've called some
+      of the tide's own rise and fall "waves." Every filter in this lesson is a different, precise rule for making
+      that call.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    Four pieces: (1) the general trend+cycle decomposition problem; (2) the Hodrick-Prescott filter and its
+    \(\lambda\) parameter, including the frequency-rescaling rule; (3) Hamilton's documented critique; (4) Butterworth
+    and Baxter-King as band-pass alternatives.
+  </p>
+
+  <h3>1. The general decomposition problem</h3>
+  <div class="tl-math">
+    \[ y_t \;=\; \tau_t \;+\; c_t \;+\; \varepsilon_t \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>y_t</code><span>the observed series</span></div>
+    <div class="tl-eq-chip c2"><code>τ_t</code><span>the (unobserved) trend — the slow-moving component</span></div>
+    <div class="tl-eq-chip c3"><code>c_t</code><span>the (unobserved) cycle — the faster component riding on the trend</span></div>
+    <div class="tl-eq-chip c4"><code>ε_t</code><span>irreducible noise, belonging to neither</span></div>
+  </div>
+  <p>
+    None of \(\tau_t\), \(c_t\), \(\varepsilon_t\) is directly observed — only their sum, \(y_t\), is. Every filter
+    below is a specific, explicit rule for recovering an estimate of \(\tau_t\) (and, by subtraction,
+    \(c_t = y_t - \tau_t\)) from the one series that's actually available. Different rules embody different
+    assumptions about what "trend" means, and — this is the crucial, easy-to-forget point — <strong>none of them
+    recovers the "true" trend</strong>, because there is no ground truth to check against; each is a modeling choice,
+    not a measurement.
+  </p>
+
+  <h3>2. The Hodrick-Prescott filter</h3>
+  <p>
+    The HP filter (Hodrick &amp; Prescott, developed in a 1980 working paper, published 1997) defines the trend
+    \(\tau_t\) as whatever series minimizes this penalized objective:
+  </p>
+  <div class="tl-math">
+    \[ \sum_{t=1}^{T} (y_t - \tau_t)^2 \;+\; \lambda \sum_{t=2}^{T-1} \big[(\tau_{t+1}-\tau_t) - (\tau_t-\tau_{t-1})\big]^2 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Σ(y_t−τ_t)²</code><span>fidelity term — penalizes the trend for straying from the data</span></div>
+    <div class="tl-eq-chip c2"><code>(τ_{t+1}−τ_t)−(τ_t−τ_{t-1})</code><span>the trend's second difference — its curvature, or how much its own slope is changing</span></div>
+    <div class="tl-eq-chip c3"><code>λ</code><span>the dial — how heavily curvature gets penalized relative to data-fit</span></div>
+  </div>
+  <p>
+    The first term is a familiar least-squares fidelity term — it wants \(\tau_t\) to track \(y_t\) closely. The
+    second term penalizes the trend's <strong>curvature</strong>: the bracketed expression is the second difference
+    of \(\tau_t\), which is zero exactly when the trend is following a perfectly straight line (constant slope) and
+    grows whenever the trend's slope itself is changing — i.e. whenever the trend is bending. \(\lambda\) is the
+    single dial controlling the tradeoff between these two competing goals:
+  </p>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">λ → 0</div><div class="tl-fp-name">No smoothing</div><div class="tl-fp-desc">The curvature penalty vanishes; the "trend" becomes the raw data itself, τ_t = y_t</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">λ = 1600</div><div class="tl-fp-name">Standard quarterly convention</div><div class="tl-fp-desc">Hodrick &amp; Prescott's original choice, calibrated for quarterly U.S. business-cycle data</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">λ → ∞</div><div class="tl-fp-name">Maximum smoothing</div><div class="tl-fp-desc">Curvature must be exactly zero everywhere; the trend collapses to a single straight line (linear trend)</div></div>
+  </div>
+  <p>
+    \(\lambda = 1600\) is the number virtually every textbook and paper quotes, and it is specific to
+    <strong>quarterly</strong> observations — it is not a universal constant. A common, real mistake is reusing
+    \(\lambda=1600\) unscaled on monthly or annual data, where it is simply the wrong smoothing strength for that
+    frequency. Ravn &amp; Uhlig (2002) proposed the standard rescaling rule: since higher-frequency data has more
+    observations per cycle, \(\lambda\) should scale with the <em>fourth power</em> of the ratio of observation
+    frequencies:
+  </p>
+  <div class="tl-math">
+    \[ \lambda_{\text{new}} \;=\; \lambda_{\text{quarterly}} \times s^{4} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>λ_quarterly</code><span>the 1600 baseline, calibrated for quarterly data</span></div>
+    <div class="tl-eq-chip c2"><code>s</code><span>how many "new-frequency" periods fit in one quarter (e.g. 3 for monthly)</span></div>
+    <div class="tl-eq-chip c4"><code>λ_new</code><span>the rescaled penalty at the new observation frequency</span></div>
+  </div>
+  <p>
+    Concretely: monthly data has 3 months per quarter, so \(s=3\), giving
+    \(\lambda_{\text{monthly}} = 1600 \times 3^4 = 1600 \times 81 = 129{,}600\). Annual data has 4 quarters per year, so
+    \(\lambda_{\text{annual}} = 1600 \times (1/4)^4 = 1600/256 \approx 6.25\). Skipping this rescaling — using
+    \(\lambda=1600\) directly on monthly data, say — under-smooths the trend by roughly a factor of 81, letting far
+    more monthly noise leak into what's supposed to be the smooth trend component.
+  </p>
+
+  <h3>3. Hamilton's critique — why this is a real, load-bearing caveat</h3>
+  <p>
+    James Hamilton's 2018 paper in the <em>Review of Economics and Statistics</em>, bluntly titled "Why You Should
+    Never Use the Hodrick-Prescott Filter," documents two specific, serious problems, not a vague stylistic
+    objection:
+  </p>
+  <ul>
+    <li><strong>End-of-sample (end-point) bias.</strong> The HP filter as defined above is two-sided — the trend
+      estimate at time \(t\) depends on data both before <em>and after</em> \(t\). Near the very end of a real,
+      finite sample there is no "after" data available, so the filter's effective behavior near the most recent
+      observations becomes far more one-sided than in the middle of the sample, producing a trend estimate that can
+      swing noticeably once new data arrives and gets appended — exactly the region (the most recent data) that
+      matters most for a real-time policy decision.</li>
+    <li><strong>Spurious cyclical dynamics.</strong> Hamilton shows that applying the HP filter can manufacture
+      cyclical-looking dynamics in the extracted \(c_t\) component even when applied to data that is, by
+      construction, a pure random walk with no genuine cyclical structure at all — meaning some of what gets read as
+      "the business cycle" in an HP-filtered series can be a mechanical artifact of the filter itself, not a feature
+      of the underlying economy.</li>
+  </ul>
+  <div class="tl-solid red">
+    <strong>The load-bearing caveat:</strong> this is not a minor implementation detail — Hamilton (2018) argues the
+    end-point bias hits hardest exactly where policymakers most need a reliable trend/cycle read (the most recent
+    data), and that the filter can invent cyclicality that isn't in the true process at all. Cogley &amp; Nason
+    (1995) documented a related spurious-cyclicality result more than two decades earlier. Treat HP output — and
+    especially its most recent few observations — as a debatable modeling choice with known, documented flaws, never
+    as ground truth about "the" output gap.
+  </div>
+
+  <h3>4. Butterworth and Baxter-King — band-pass alternatives</h3>
+  <p>
+    Both HP's flaws are part of the motivation for a different family of filter, defined directly in the frequency
+    domain (see <a href="fourier-analysis-frequency-domain.html">Fourier Analysis &amp; the Frequency Domain</a>): a
+    <strong>band-pass filter</strong> that explicitly targets one specific range of cycle lengths and damps
+    everything else, rather than implicitly defining "cycle" as "whatever the penalized-smoothness objective leaves
+    over."
+  </p>
+  <ul>
+    <li><strong>The Butterworth filter</strong> is borrowed directly from electrical engineering (originally designed
+      for analog circuits), specified by an <strong>order</strong> (controlling how sharply it transitions from
+      passing to blocking frequencies — a higher order gives a steeper roll-off at the cost of more complexity) and a
+      <strong>cutoff frequency</strong> (or a pair of cutoffs, for a band-pass version) marking where that transition
+      happens. Its defining engineering property is being maximally flat within the passband — it doesn't ripple or
+      distort frequencies it's supposed to let through — while still rolling off outside it.</li>
+    <li><strong>The Baxter-King filter</strong> (Baxter &amp; King, 1999) is a finite moving-average filter
+      specifically designed to approximate an ideal band-pass filter — one that would pass a target cycle-length
+      band, classically <strong>6 to 32 quarters</strong> ("the business cycle" band in their and much subsequent
+      literature), essentially perfectly, and block everything outside it essentially completely. Because it's a
+      finite (truncated) moving average using \(K\) leads and \(K\) lags, it necessarily loses \(K\) observations at
+      each end of the sample — a straightforward data-loss tradeoff, not a bias — in exchange for a good approximation
+      to that ideal band-pass shape.</li>
+  </ul>
+  <p>
+    Both trade the HP filter's implicit, smoothness-based notion of trend for an explicit statement of exactly which
+    cycle lengths count as "the cycle" — a real conceptual clarity gain, purchased at the cost of having to state that
+    band's boundaries as an assumption up front, and (for Baxter-King specifically) losing usable observations at the
+    edges of the sample instead of Hamilton's end-point bias.
+  </p>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(y_t\)</td><td>the observed series being decomposed</td></tr>
+      <tr><td>\(\tau_t\)</td><td>the (unobserved) trend component being estimated</td></tr>
+      <tr><td>\(c_t\)</td><td>the (unobserved) cyclical component, \(c_t = y_t - \tau_t\)</td></tr>
+      <tr><td>\(\varepsilon_t\)</td><td>irreducible noise belonging to neither trend nor cycle</td></tr>
+      <tr><td>\(\lambda\)</td><td>the HP filter's smoothness penalty weight — 1600 is the standard quarterly convention</td></tr>
+      <tr><td>\(T\)</td><td>the sample length — the number of observations the HP objective sums over</td></tr>
+      <tr><td>\(s\)</td><td>the Ravn-Uhlig rescaling ratio — how many new-frequency periods fit in one quarter</td></tr>
+      <tr><td>order (Butterworth)</td><td>controls how sharply the filter transitions between passing and blocking frequencies</td></tr>
+      <tr><td>cutoff frequency</td><td>the frequency (or pair of frequencies, for a band) marking a filter's pass/block boundary</td></tr>
+      <tr><td>\(K\)</td><td>the number of leads/lags a Baxter-King moving average truncates to — observations lost at each end of the sample</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">HP-filtered trend at different λ — real penalized-least-squares math, recomputed live</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A synthetic 24-quarter series with a rising trend and a cyclical wiggle, shown as blue dots and a thin line. An amber trend line, recomputed live from the actual Hodrick-Prescott penalized least squares objective as the lambda slider moves, tracks close to the noisy data at low lambda and smooths toward a straight line at high lambda.">
+      <line x1="40" y1="220" x2="620" y2="220" style="stroke:var(--text3)" />
+      <line x1="40" y1="20" x2="40" y2="220" style="stroke:var(--text3)" />
+      <text x="620" y="236" font-size="10" text-anchor="end" fill="var(--text3)">quarter →</text>
+      <text x="20" y="20" font-size="10" fill="var(--text3)" transform="rotate(-90 20 20)">level</text>
+      <polyline id="hp-raw-line" points="" fill="none" style="stroke:var(--blue);stroke-width:1.5;opacity:0.55" />
+      <g id="hp-raw-dots" fill="var(--blue)"></g>
+      <polyline id="hp-trend-line" points="" fill="none" style="stroke:var(--amber);stroke-width:2.5" />
+      <text x="46" y="34" font-size="10" fill="var(--blue)">● raw series (trend + cycle + noise)</text>
+      <text x="46" y="48" font-size="10" fill="var(--amber)">— HP-filtered trend τ (recomputed live)</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Smoothness penalty λ</span><span class="tl-live" id="hp-lambda-val">λ = 1600</span></div>
+        <input type="range" id="hp-lambda-slider" min="0" max="500" step="1" value="320">
+        <div class="tl-hint">Drag toward the left for λ → 0 (trend hugs the noisy data exactly) or toward the right for λ → ∞ (trend collapses toward a straight line). The slider is centered near λ ≈ 1600, the standard quarterly convention.</div>
+      </div>
+    </div>
+    <div class="tl-chart-caption">
+      This trend line is computed live from the actual HP objective — minimizing \(\sum(y_t-\tau_t)^2 +
+      \lambda\sum[\text{second difference of }\tau]^2\) by solving the resulting linear system directly, not a
+      cosmetic animation. On a short, 24-quarter toy sample like this one, even the "standard" \(\lambda=1600\)
+      already smooths most of the cyclical wiggle away — a reminder that how much smoothing \(\lambda=1600\)
+      actually buys depends on the sample, not just the number itself.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Rescaling λ for monthly and annual data</h3>
+    <p>
+      Using the Ravn-Uhlig fourth-power rule above, with \(\lambda_{\text{quarterly}}=1600\) as the baseline:
+    </p>
+    <p style="font-family:'DM Mono',monospace;font-size:13px;color:var(--text2)">
+      Monthly (3 months per quarter, ratio = 3): λ_monthly = 1600 × 3⁴ = 1600 × 81 = <strong>129,600</strong><br>
+      Annual (4 quarters per year, ratio = 1/4): λ_annual = 1600 × (1/4)⁴ = 1600 / 256 ≈ <strong>6.25</strong>
+    </p>
+    <p>
+      The size of that jump — nearly 130,000 for monthly data versus roughly 6 for annual data, an 80-fold-plus range
+      around the quarterly baseline of 1600 — is exactly why "just use 1600" is a real, easy-to-make mistake at any
+      frequency other than quarterly: reusing 1600 on monthly data would apply dramatically too little smoothing
+      (letting much more month-to-month noise leak into the "trend"), and reusing it on annual data would apply
+      dramatically too much (over-smoothing a series that already has fewer, lower-frequency observations to begin
+      with).
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A central bank's 2019 output-gap estimate, revised by data it didn't have yet</h3>
+    <p>
+      A central bank's research desk estimates the HP-filtered output gap using quarterly GDP data through 2019 Q4,
+      concluding the economy is running close to potential — a real-time judgment that feeds directly into that
+      quarter's policy discussion. Two years later, with 2020's COVID-driven collapse and 2021's rebound now part of
+      the same dataset, the desk re-runs the identical HP filter over the extended sample and finds the trend
+      estimate <em>at 2019 Q4 itself</em> has shifted meaningfully from what was reported in real time — not because
+      the 2019 data changed, but because the two-sided filter's 2019 Q4 estimate was, at the time, being computed
+      without any of the "future" data (2020-2021) it would eventually have access to. This is Hamilton's end-of-sample
+      bias playing out exactly where it matters most: the reading a decision-maker actually had in hand at the moment
+      the decision was made was the least reliable part of the whole filtered series, and it revised substantially
+      once more data arrived — a genuine, documented reason real-time HP-based output-gap estimates get revised, not
+      a hypothetical concern.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A band-pass filter's gain: what it keeps vs. what it damps</div>
+    <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A schematic gain curve against frequency, near zero at very low and very high frequencies, rising to a flat plateau near one across a middle passband corresponding to the 6 to 32 quarter business cycle band, with smooth roll-off shoulders on either side.">
+      <line x1="40" y1="190" x2="600" y2="190" style="stroke:var(--text3)" />
+      <line x1="40" y1="20" x2="40" y2="190" style="stroke:var(--text3)" />
+      <path d="M40,185 C120,185 150,185 190,100 C220,40 260,30 340,30 C420,30 460,40 490,100 C530,185 560,185 600,185" fill="none" style="stroke:var(--green);stroke-width:2.5" />
+      <line x1="190" y1="20" x2="190" y2="190" style="stroke:var(--border);stroke-dasharray:4,3" />
+      <line x1="490" y1="20" x2="490" y2="190" style="stroke:var(--border);stroke-dasharray:4,3" />
+      <text x="190" y="205" font-size="9" text-anchor="middle" fill="var(--text3)">32-quarter cutoff</text>
+      <text x="490" y="205" font-size="9" text-anchor="middle" fill="var(--text3)">6-quarter cutoff</text>
+      <text x="340" y="24" font-size="10" text-anchor="middle" fill="var(--green)">passband ≈ 1 (kept)</text>
+      <text x="90" y="175" font-size="9" text-anchor="middle" fill="var(--red)">damped (too slow / trend)</text>
+      <text x="560" y="175" font-size="9" text-anchor="middle" fill="var(--red)">damped (too fast / noise)</text>
+      <text x="600" y="205" font-size="9" text-anchor="end" fill="var(--text3)">← longer cycle&#160;&#160;&#160;&#160;&#160;&#160;&#160;shorter cycle →</text>
+      <text x="20" y="20" font-size="9" fill="var(--text3)" transform="rotate(-90 20 20)">gain</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Schematic, conceptual gain curve for a band-pass filter (Butterworth or Baxter-King), not a fitted filter design.
+      Frequencies corresponding to cycles longer than 32 quarters (the trend) and shorter than 6 quarters (noise) are
+      damped toward zero gain; frequencies in between — the classic "business cycle" band — pass through close to
+      unchanged. A higher Butterworth order sharpens the shoulders (a steeper transition); a longer Baxter-King
+      truncation length \(K\) more closely approximates this idealized shape, at the cost of losing more observations
+      at each end of the sample.
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    The HP filter has been, for decades, the default tool for output-gap and potential-GDP estimation across central
+    banks and international institutions, precisely because it is simple, requires no assumption about which specific
+    cycle length matters, and produces a smooth, intuitive-looking trend line. That dominance is exactly why
+    Hamilton's 2018 critique landed as forcefully as it did in the academic literature — it wasn't attacking an
+    obscure tool, it was attacking the field's default. In practice today, many researchers report HP-filtered
+    results alongside a robustness check using Hamilton's suggested regression-based alternative, or a band-pass
+    filter, rather than relying on HP alone; Baxter-King and Christiano-Fitzgerald (a related, asymmetric band-pass
+    filter) remain the standard citation for an explicit "business cycle band" definition when a specific cycle-length
+    range, rather than an implicit smoothness tradeoff, is what the analysis actually needs. Butterworth filters see
+    more use in the signal-processing and engineering literature generally, and appear in economics mainly as one
+    specific way to implement a band-pass idea computationally.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where trend/cycle filters go wrong</h3>
+    <ul>
+      <li><strong>Reusing λ=1600 at the wrong observation frequency.</strong> The single most common HP-filter
+        mistake — see the worked example above for exactly how far off an unscaled reuse can be (an 80-fold-plus
+        range between the correctly rescaled monthly and annual values).</li>
+      <li><strong>Trusting the HP filter's most recent observations.</strong> Per Hamilton (2018), the end-of-sample
+        bias hits hardest exactly at the newest data points — the ones most likely to matter for a live decision —
+        and those estimates should be expected to revise as more data arrives, not treated as settled.</li>
+      <li><strong>Mistaking HP-filtered cyclicality for genuine business-cycle dynamics.</strong> Hamilton (and
+        Cogley &amp; Nason before him) showed the filter can manufacture cycle-looking patterns even from a pure
+        random walk with no true cyclical structure at all — a smooth-looking extracted "cycle" is not, by itself,
+        proof that a real cycle exists in the underlying process.</li>
+      <li><strong>Treating the 6-32 quarter "business cycle" band as a law of nature.</strong> It's Baxter &amp;
+        King's chosen convention, motivated by prior macroeconomic research on typical U.S. cycle lengths — a
+        reasonable default, but a modeling assumption stated up front, not a universal physical constant that applies
+        unchanged to every economy or every series.</li>
+      <li><strong>Losing observations at the edges with Baxter-King and not accounting for it.</strong> A truncation
+        length \(K\) means the \(K\) most recent and \(K\) oldest observations in the sample have no filtered value
+        at all — a real, visible cost that needs to be planned around, not an oversight to be surprised by later.</li>
+      <li><strong>Treating any of these as a trading signal on their own.</strong> A trend/cycle decomposition is a
+        descriptive modeling choice about how to split one series into two unobserved pieces — it is not, by itself,
+        evidence of a tradeable edge until whatever rule is built on top of it clears an honest out-of-sample test.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Trend/cycle decomposition is y_t = τ_t + c_t + ε_t, estimated by a chosen rule.</strong> None of the three components is directly observed, and no filter recovers a "true" trend — each is a modeling choice.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>HP minimizes fit-vs-smoothness, dialed by λ.</strong> λ=1600 is the standard quarterly convention; rescale by the fourth power of the frequency ratio (Ravn-Uhlig) at any other frequency — monthly ≈129,600, annual ≈6.25.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Hamilton (2018): the HP filter has real, documented flaws.</strong> End-of-sample bias hits the most recent (most decision-relevant) observations hardest, and the filter can manufacture spurious cyclicality even from a pure random walk.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Butterworth and Baxter-King isolate an explicit cycle-length band instead.</strong> Baxter-King's classic 6-32 quarter "business cycle" band trades HP's end-point bias for a stated, cleaner data-loss tradeoff (losing K observations at each end).</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The "business cycle band" is a convention, not a law.</strong> 6-32 quarters is Baxter &amp; King's chosen default, not a universal constant true of every series or every economy.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>This lesson explains modeling tools, not a claim of edge.</strong> A trend/cycle split is descriptive; turning it into a trading rule still needs the same honest out-of-sample bar as anything else in this curriculum.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What does the second-difference penalty term in the HP objective actually penalize, and what does λ→∞ do to the trend as a result?</summary>
+    <div class="tl-answer">
+      The bracketed term \((\tau_{t+1}-\tau_t)-(\tau_t-\tau_{t-1})\) is the trend's second difference — how much its
+      own slope changes from one period to the next. It is exactly zero when the trend has constant slope (a
+      perfectly straight line) and grows whenever the trend bends. As \(\lambda \to \infty\), any nonzero curvature
+      becomes infinitely costly, forcing the optimal trend toward the one shape with zero curvature everywhere: a
+      single straight line, regardless of how the actual data wiggles around it.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why is λ=1600 specific to quarterly data, and what goes wrong if it's applied unscaled to monthly data?</summary>
+    <div class="tl-answer">
+      λ=1600 was calibrated by Hodrick and Prescott for the smoothness/fit tradeoff appropriate to quarterly
+      observation spacing. Monthly data has three times as many observations per quarter, so a cycle of any given
+      real-world length spans three times as many data points — the same λ would be far too weak a smoothing penalty
+      relative to how "choppy" monthly data looks point-to-point. The Ravn-Uhlig rule fixes this by scaling λ with the
+      fourth power of the frequency ratio, giving λ≈129,600 for monthly data; using 1600 directly on monthly data
+      under-smooths by roughly a factor of 81, letting far more short-run monthly noise get labeled "trend" than the
+      quarterly convention ever intended.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What specifically does Hamilton (2018) mean by "end-of-sample bias," and why does it matter more for policy than a bias in the middle of the sample would?</summary>
+    <div class="tl-answer">
+      The HP filter's trend estimate at any point in the sample depends on data both before and after that point.
+      Near the very end of a real, finite sample, there is no "after" data yet, so the filter's effective behavior
+      there is much more asymmetric (closer to one-sided) than in the middle of a long sample where data exists on
+      both sides. That means the trend estimate for the most recent observations is systematically less reliable and
+      more likely to revise once new data arrives — and those most-recent observations are exactly the ones a
+      real-time policy decision (is the economy overheating right now?) actually depends on, unlike a historical
+      trend estimate from the middle of the sample which no live decision hinges on.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. How can the HP filter produce a "spurious cycle" from data that has no genuine cyclical structure at all?</summary>
+    <div class="tl-answer">
+      Hamilton (2018), building on Cogley &amp; Nason (1995), shows that applying the HP filter's smoothing/fitting
+      procedure to a series generated by a pure random walk — which by construction has no true cyclical component,
+      just an accumulating random drift — can still produce an extracted cyclical residual \(c_t = y_t - \tau_t\)
+      that displays cycle-like autocorrelation patterns. This happens because the filter's smoothing mechanism itself
+      imposes structure on the residual, independent of whether the underlying process actually has any genuine
+      periodic behavior; the resulting "cycle" is a mechanical artifact of the filtering procedure, not evidence of a
+      real economic cycle.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. What tradeoff does the Baxter-King filter accept in exchange for isolating a specific cycle-length band, and how is that tradeoff different in kind from Hamilton's HP critique?</summary>
+    <div class="tl-answer">
+      Baxter-King is a finite (truncated) moving average using K leads and K lags, so it cannot produce a filtered
+      value for the K most recent and K oldest observations in the sample — a straightforward loss of usable
+      observations at each end. This is fundamentally different from Hamilton's HP critique: Baxter-King's cost is an
+      explicit, known, and fully anticipated <em>data loss</em> (you simply don't get an answer for those points),
+      whereas HP's end-of-sample problem is a <em>bias</em> — it still produces an answer for the most recent points,
+      but that answer is systematically less reliable and prone to revision, without necessarily being obvious that
+      it's unreliable at the time.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why is the classic 6-to-32-quarter "business cycle" band described in this lesson as a convention rather than a fact?</summary>
+    <div class="tl-answer">
+      Baxter &amp; King chose that specific band based on prior macroeconomic research characterizing typical U.S.
+      business-cycle lengths at the time — it's a reasonable, widely adopted default, but it's a modeling assumption
+      about which cycle lengths are "the" business cycle, stated up front as a choice, not a universal physical
+      constant. A different economy, a different historical period, or a different series entirely could plausibly
+      have its economically meaningful cyclical activity concentrated in a different frequency band, which is exactly
+      why the band should be treated as a stated assumption to be justified for the specific application, not applied
+      automatically everywhere.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Robert J. Hodrick &amp; Edward C. Prescott, <em>"Postwar U.S. Business Cycles: An Empirical
+      Investigation,"</em> Journal of Money, Credit and Banking, 1997 (originally circulated as a working paper in
+      1980) — the original HP filter paper.</li>
+    <li>James D. Hamilton, <em>"Why You Should Never Use the Hodrick-Prescott Filter,"</em> Review of Economics and
+      Statistics, 100(5), 2018, pp. 831-843 — the mandatory, load-bearing critique this lesson centers on: documented
+      end-of-sample bias and spurious cyclical dynamics.</li>
+    <li>Timothy Cogley &amp; James M. Nason, <em>"Effects of the Hodrick-Prescott Filter on Trend and Difference
+      Stationary Time Series,"</em> Journal of Economic Dynamics and Control, 19(1-2), 1995, pp. 253-278 — an earlier
+      demonstration of the HP filter's spurious-cyclicality problem.</li>
+    <li>Marianne Baxter &amp; Robert G. King, <em>"Measuring Business Cycles: Approximate Band-Pass Filters for
+      Economic Time Series,"</em> Review of Economics and Statistics, 81(4), 1999, pp. 575-593 — the Baxter-King
+      band-pass filter, including the classic 6-32 quarter business-cycle band.</li>
+    <li>Morten O. Ravn &amp; Harald Uhlig, <em>"On Adjusting the Hodrick-Prescott Filter for the Frequency of
+      Observations,"</em> Review of Economics and Statistics, 84(2), 2002, pp. 371-376 — the fourth-power λ-rescaling
+      rule used in the worked example above.</li>
+    <li>Lawrence J. Christiano &amp; Terry J. Fitzgerald, <em>"The Band Pass Filter,"</em> International Economic
+      Review, 44(2), 2003, pp. 435-465 — a related, widely cited asymmetric band-pass filter, mentioned as further
+      context on band-pass alternatives to HP.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="wavelets-time-frequency.html">← Wavelets &amp; Time-Frequency Analysis</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+<script>
+(function () {
+  var slider = document.getElementById('hp-lambda-slider');
+  var readout = document.getElementById('hp-lambda-val');
+  var rawLine = document.getElementById('hp-raw-line');
+  var rawDots = document.getElementById('hp-raw-dots');
+  var trendLine = document.getElementById('hp-trend-line');
+  if (!slider || !readout || !rawLine || !rawDots || !trendLine) return;
+
+  var y = [100,105.44,108.4,107.84,104.8,101.76,101.2,104.16,109.6,115.04,118,117.44,114.4,111.36,110.8,113.76,119.2,124.64,127.6,127.04,124,120.96,120.4,123.36];
+  var N = y.length;
+
+  var chartLeft = 40, chartRight = 620, chartTop = 20, chartBottom = 220;
+  var minV = 95, maxV = 132;
+
+  function xAt(t) { return chartLeft + (t / (N - 1)) * (chartRight - chartLeft); }
+  function yAt(v) { return chartBottom - ((v - minV) / (maxV - minV)) * (chartBottom - chartTop); }
+
+  // Penalized least squares HP filter: minimize sum(y-tau)^2 + lambda*sum(second_diff(tau))^2
+  // Solved by building A = I + lambda * D'D (D = second-difference operator) and solving A*tau = y
+  // via dense Gaussian elimination with partial pivoting (N is small, this is exact and fast).
+  function hpFilter(yArr, lambda) {
+    var n = yArr.length;
+    var M = [];
+    for (var i = 0; i < n; i++) { M.push(new Array(n).fill(0)); }
+    for (var k = 0; k < n - 2; k++) {
+      var idx = [k, k + 1, k + 2];
+      var coef = [1, -2, 1];
+      for (var a = 0; a < 3; a++) {
+        for (var b = 0; b < 3; b++) { M[idx[a]][idx[b]] += coef[a] * coef[b]; }
+      }
+    }
+    var A = [];
+    for (var i2 = 0; i2 < n; i2++) {
+      A.push(new Array(n));
+      for (var j = 0; j < n; j++) { A[i2][j] = (i2 === j ? 1 : 0) + lambda * M[i2][j]; }
+    }
+    var b = yArr.slice();
+    for (var col = 0; col < n; col++) {
+      var piv = col;
+      for (var r = col + 1; r < n; r++) { if (Math.abs(A[r][col]) > Math.abs(A[piv][col])) piv = r; }
+      if (piv !== col) {
+        var tmpRow = A[col]; A[col] = A[piv]; A[piv] = tmpRow;
+        var tmpB = b[col]; b[col] = b[piv]; b[piv] = tmpB;
+      }
+      var pivotVal = A[col][col];
+      for (var r2 = 0; r2 < n; r2++) {
+        if (r2 === col) continue;
+        var factor = A[r2][col] / pivotVal;
+        if (factor === 0) continue;
+        for (var c = col; c < n; c++) { A[r2][c] -= factor * A[col][c]; }
+        b[r2] -= factor * b[col];
+      }
+    }
+    var tau = new Array(n);
+    for (var i3 = 0; i3 < n; i3++) { tau[i3] = b[i3] / A[i3][i3]; }
+    return tau;
+  }
+
+  // draw the static raw series once
+  var rawPts = [];
+  var dotsHtml = '';
+  for (var t = 0; t < N; t++) {
+    var px = xAt(t), py = yAt(y[t]);
+    rawPts.push(px + ',' + py);
+    dotsHtml += '<circle cx="' + px + '" cy="' + py + '" r="2.5"></circle>';
+  }
+  rawLine.setAttribute('points', rawPts.join(' '));
+  rawDots.innerHTML = dotsHtml;
+
+  function regimeWord(lambda) {
+    if (lambda < 20) return 'tracks the noisy data closely';
+    if (lambda < 5000) return 'near the λ≈1600 quarterly convention';
+    return '≈ straight line (heavily smoothed)';
+  }
+
+  function update() {
+    var sliderVal = parseInt(slider.value, 10);
+    var lambda = Math.pow(10, sliderVal / 100);
+    var tau = hpFilter(y, lambda);
+    var pts = [];
+    for (var t = 0; t < N; t++) { pts.push(xAt(t) + ',' + yAt(tau[t])); }
+    trendLine.setAttribute('points', pts.join(' '));
+    var lambdaDisp = lambda >= 1000 ? Math.round(lambda).toLocaleString() : lambda.toFixed(lambda < 10 ? 1 : 0);
+    readout.textContent = 'λ = ' + lambdaDisp + ' (' + regimeWord(lambda) + ')';
+  }
+
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
+</body>
+</html>

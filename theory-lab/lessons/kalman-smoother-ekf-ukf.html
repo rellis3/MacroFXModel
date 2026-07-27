@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Kalman Smoother &amp; Extended/Unscented Kalman Filters — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / State Space Models Extensions / The Kalman Smoother &amp; Extended/Unscented Kalman Filters</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">State Space Extensions 2 of 3</div>
+  <h1 class="tl-title">The Kalman Smoother &amp; Extended/Unscented Kalman Filters</h1>
+  <p class="tl-dek">Two separate upgrades to the plain Kalman filter: a backward pass that uses the whole dataset to sharpen every past estimate, and two ways of handling a genuinely nonlinear state-space model instead of a linear one.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested anywhere in this repo</span>
+    <span>~19 min read</span>
+    <span>Prereqs: Kalman Filter &amp; Adaptive Relationships, The Particle Filter</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>The plain Kalman filter is <strong>forward-only</strong> — its estimate at time \(t\) uses only data through \(t\). The <strong>Rauch-Tung-Striebel (RTS) smoother</strong> adds a backward pass that revisits every past estimate using the entire dataset, including observations from <em>after</em> that point in time.</li>
+      <li>The <strong>Extended Kalman Filter (EKF)</strong> handles a nonlinear state-space model by re-linearizing it at every step via a first-order Taylor expansion — the Jacobian — evaluated at the current estimate, then running the ordinary linear Kalman equations on that local linear approximation.</li>
+      <li>The <strong>Unscented Kalman Filter (UKF)</strong> instead picks a small, deterministic set of representative points (<strong>sigma points</strong>), pushes each one through the <em>true</em> nonlinear function with no approximation, and reconstructs the mean and covariance from where those points land — generally more accurate than the EKF for strongly nonlinear systems, and it never requires computing a Jacobian.</li>
+      <li>The worked example smooths a two-day hedge-ratio track from the Kalman filter lesson, and separately runs EKF and UKF against the same nonlinear observation function — the two land within about 0.003 of each other here, because the nonlinearity is mild relative to the uncertainty band in play; the gap widens as nonlinearity or uncertainty grows.</li>
+      <li>Honest scope note: EKF and UKF matter for genuinely nonlinear systems. The plain linear Kalman filter already suffices for this curriculum's existing linear-Gaussian applications (e.g. tracking a hedge ratio) — reaching for either extension without a real nonlinearity in hand adds complexity for no benefit.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The Kalman filter lesson built one recursion — predict, then update — and left two limitations
+    explicitly flagged rather than solved. First, that filter only ever looks backward in time: the
+    estimate \(\hat{x}_{t\mid t}\) at time \(t\) is the best guess using data through \(t\) <em>only</em>,
+    even if the full dataset runs on for years afterward. That's exactly right for a live system (you
+    genuinely don't have tomorrow's data yet), but it's needlessly conservative for historical analysis,
+    where the whole series already sits on disk — day 40's true state is knowable with more precision
+    once day 41 through day 200 are also available to check against. Second, that filter's whole closed
+    form depends on the state and observation equations being <em>linear</em>. Real systems are routinely
+    not: a nonlinear sensor reading, a state that saturates or mean-reverts nonlinearly, a relationship
+    that's roughly linear only very close to the current estimate but curves away from it further out.
+  </p>
+  <p>
+    This lesson covers three named extensions built directly on the plain Kalman filter's own
+    predict/update machinery — none of it is re-derived from scratch here, only extended in one of two
+    directions. The <strong>RTS smoother</strong> answers the first limitation: given the entire dataset,
+    go back and sharpen every historical estimate using the future observations the live filter didn't
+    have yet. The <strong>Extended</strong> and <strong>Unscented</strong> Kalman filters answer the
+    second: keep the same predict/update skeleton, but replace its linear-algebra core with something
+    that tolerates a genuinely nonlinear \(f\) or \(h\) — the same nonlinear state-space setup introduced
+    in the particle filter lesson, \(x_t = f(x_{t-1}, w_t)\), \(y_t = h(x_t, v_t)\), but handled here by
+    a cheaper, deterministic approximation instead of a full particle swarm.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Hindsight is fair game once you're not live anymore</h3>
+    <p>
+      Recall the Kalman filter's boat-at-night analogy: a running position estimate, updated once per
+      radar ping, using only pings received so far. Now imagine the voyage is already over, and every
+      single radar ping from the whole night is sitting in a logbook in front of you. Where was the boat
+      at 2am? The <em>live</em> answer — the one the crew actually had to navigate by, in real time, at
+      2am — could only use pings up through 2am. But your logbook answer, written the next morning, can
+      also use the 3am, 4am, and 5am pings: if the boat's position implied by the 2am estimate looks
+      inconsistent with where it clearly had to be by 4am, given how boats move, you can and should
+      revise the 2am estimate in hindsight. That revised, better-informed answer is exactly what an RTS
+      smoother computes — one backward pass through the log, using everything, sharpening every past
+      estimate the live filter had to commit to early and provisionally.
+    </p>
+    <p>
+      The nonlinear extensions solve a completely different problem, best pictured geometrically. The
+      Kalman filter's update step needs to know how a change in the hidden state translates into a
+      change in what's observed — for a linear relationship, that translation is the same everywhere (a
+      constant slope). For a nonlinear relationship, the translation itself changes depending on where
+      you currently are on the curve. The Extended Kalman Filter's answer is to draw a straight tangent
+      line touching the curve at the current best guess, and use that tangent's slope as a stand-in for
+      the true curve nearby — accurate right at the touch point, worse the further you stray from it. The
+      Unscented Kalman Filter's answer is different: instead of drawing one tangent line at one point,
+      send out a small handful of scouts to a few carefully chosen nearby points, let each one walk the
+      <em>actual</em> curve (no straight-line approximation at all), and then average where the scouts
+      ended up to reconstruct the answer — trading one convenient approximation for a few honest, exact
+      evaluations of the real function.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>Part A — the RTS smoother: a backward pass over the whole dataset</h3>
+  <p>
+    Start from the forward Kalman filter exactly as derived in the Kalman filter lesson: run predict and
+    update for every \(t = 1, \ldots, T\), storing at each step the filtered estimate and variance,
+    \(\hat{x}_{t\mid t}\) and \(P_{t\mid t}\), <em>and</em> the predicted estimate and variance one step
+    ahead of it, \(\hat{x}_{t+1\mid t}\) and \(P_{t+1\mid t}\) (the predict step's output, before that
+    step's own update folds in \(y_{t+1}\)). The smoother then runs backward, from \(t=T-1\) down to
+    \(t=1\), refining each filtered estimate using the already-smoothed value one step ahead of it:
+  </p>
+  <div class="tl-math">\[
+    C_t = \frac{P_{t\mid t}}{P_{t+1\mid t}} \qquad
+    \hat{x}_{t\mid T} = \hat{x}_{t\mid t} + C_t\left(\hat{x}_{t+1\mid T} - \hat{x}_{t+1\mid t}\right) \qquad
+    P_{t\mid T} = P_{t\mid t} + C_t^2\left(P_{t+1\mid T} - P_{t+1\mid t}\right)
+  \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>C_t</code><span>the smoother (backward) gain — how much this step's estimate should defer to what the future revealed</span></div>
+    <div class="tl-eq-chip c2"><code>x̂_t|T</code><span>the smoothed estimate at time t — using ALL T observations, not just the first t</span></div>
+    <div class="tl-eq-chip c3"><code>P_t|T</code><span>the smoothed variance at time t — always ≤ the filtered variance P_t|t, since more data can only sharpen the estimate</span></div>
+  </div>
+  <p>
+    Read \(C_t\) as a direct cousin of the ordinary Kalman gain — it's a ratio of "how uncertain this
+    step's filtered estimate was" to "how uncertain the very next step's <em>predicted</em> estimate
+    was," and it controls how strongly this step's smoothed value gets pulled toward wherever the
+    future's smoothed trajectory ended up. The recursion starts from the simple boundary condition
+    \(\hat{x}_{T\mid T} = \hat{x}_{T\mid T}\) — the very last time step's smoothed estimate is identical
+    to its filtered one, because there is no future data left to fold in — and works backward from there,
+    one step at a time, each step using the already-computed smoothed value one step ahead of it.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Smoothing the Kalman filter lesson's two-day hedge-ratio track</h3>
+    <p>
+      Reusing the Kalman filter lesson's own worked example exactly (not re-derived here): tracking a
+      hedge ratio with \(\hat{x}_{0\mid 0}=1.20\), \(P_{0\mid 0}=0.0400\), \(Q=0.0009\), \(R=0.0100\),
+      \(H_t=1\). That lesson's forward pass produced:
+    </p>
+    <p>
+      Day 1: \(\hat{x}_{1\mid 0}=1.20\), \(P_{1\mid 0}=0.0409\) (predicted); \(\hat{x}_{1\mid 1}\approx
+      1.321\), \(P_{1\mid 1}\approx 0.0080\) (filtered).<br>
+      Day 2: \(\hat{x}_{2\mid 1}=1.321\), \(P_{2\mid 1}=0.0089\) (predicted); \(\hat{x}_{2\mid 2}\approx
+      1.311\), \(P_{2\mid 2}\approx 0.0047\) (filtered).
+    </p>
+    <p>
+      Day 2 is the last time step, so its smoothed estimate equals its filtered one:
+      \(\hat{x}_{2\mid 2}=1.311\), \(P_{2\mid 2}=0.0047\). Now smooth Day 1 using that:
+    </p>
+    <div class="tl-math">\[
+      C_1 = \frac{P_{1\mid 1}}{P_{2\mid 1}} = \frac{0.0080}{0.0089} \approx 0.899
+    \]</div>
+    <div class="tl-math">\[
+      \hat{x}_{1\mid 2} = 1.321 + 0.899 \times (1.311 - 1.321) = 1.321 - 0.00899 \approx 1.312
+    \]</div>
+    <div class="tl-math">\[
+      P_{1\mid 2} = 0.0080 + 0.899^2 \times (0.0047 - 0.0089) = 0.0080 - 0.00339 \approx 0.00461
+    \]</div>
+    <p>
+      The <em>filtered</em> Day 1 estimate was 1.321 — the best guess a live trader would have had at the
+      end of Day 1, using only Day 1's data. The <em>smoothed</em> Day 1 estimate is 1.312 — slightly
+      lower, because Day 2's observation (1.30, below Day 1's estimate) retroactively pulls the Day 1
+      read down a little once it's known. Just as importantly, the smoothed uncertainty
+      (\(P_{1\mid 2}\approx 0.0046\)) is noticeably lower than the filtered uncertainty
+      (\(P_{1\mid 1}\approx 0.0080\)) — Day 1's estimate really is better known in hindsight, precisely
+      because there's more data bearing on it. Neither of these numbers was available to a live trader at
+      the end of Day 1; both require Day 2's observation, which is exactly why a smoothed estimate must
+      never be treated as something a live system could have produced at the time.
+    </p>
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Filtered (forward-only) vs. smoothed (whole-dataset) estimates over an 8-step track</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A line chart with grey dots for eight noisy observations, a blue dashed line for the forward-only filtered estimate, and a green solid line with a shaded band for the smoothed estimate that uses the entire sequence. The smoothed line sits inside the filtered line's swings and its shaded uncertainty band is narrower.">
+      <line x1="50" y1="235" x2="620" y2="235" style="stroke:var(--border2);stroke-width:1"/>
+      <g id="ks-obs"></g>
+      <polygon id="ks-band" points="" style="fill:var(--green);opacity:.15"/>
+      <polyline id="ks-filtered" points="" style="fill:none;stroke:var(--blue);stroke-width:2;stroke-dasharray:5 3"/>
+      <polyline id="ks-smoothed" points="" style="fill:none;stroke:var(--green);stroke-width:2.5"/>
+      <text x="335" y="253" text-anchor="middle" font-size="11" fill="var(--text3)">time step</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Process variance Q</span><span class="tl-live" id="ks-q-val">Q = 0.0090</span></div>
+        <input type="range" id="ks-q-slider" min="1" max="100" step="1" value="40">
+        <div class="tl-hint">A larger Q means the filtered estimate trusts each new observation more (bigger swings) — and gives the backward smoother more room to pull each past point toward the fuller picture.</div>
+      </div>
+    </div>
+    <div class="tl-readout">
+      Average gap between filtered and smoothed estimates: <b id="ks-gap-val">0.006</b>
+    </div>
+    <div class="tl-legend">
+      <span><i style="background:var(--text3);opacity:.6"></i>Observations</span>
+      <span><i style="background:var(--blue)"></i>Filtered (forward-only)</span>
+      <span><i style="background:var(--green)"></i>Smoothed (whole dataset)</span>
+    </div>
+    <div class="tl-chart-caption">
+      Both lines are computed live from the same fixed 8-step observation sequence, running the actual
+      forward predict/update recursion from the Kalman filter lesson and then the RTS backward pass
+      derived above — with \(R=0.02\) fixed and the process variance \(Q\) set by the slider. The
+      smoothed line consistently sits inside the filtered line's swings, and its shaded band
+      (\(P_{t\mid T}\)) is visibly narrower than the filtered variance would be — exactly the two effects
+      the worked example showed by hand for a single step.
+    </div>
+  </div>
+
+  <h3>Part B — the Extended Kalman Filter: linearize, then run the linear equations</h3>
+  <p>
+    Now take the nonlinear state-space model from the particle filter lesson, \(x_t = f(x_{t-1}) + w_t\),
+    \(y_t = h(x_t) + v_t\) (writing the noise as additive here, the standard EKF setup). The EKF's whole
+    idea is: at every step, replace \(f\) and \(h\) with their first-order Taylor expansion — a straight
+    line tangent to the true curve at the current best estimate — and then run the <em>exact same</em>
+    predict/update equations from the Kalman filter lesson on that local linear stand-in:
+  </p>
+  <div class="tl-math">\[
+    F_t = \left.\frac{\partial f}{\partial x}\right|_{\hat{x}_{t-1\mid t-1}}
+    \qquad
+    H_t = \left.\frac{\partial h}{\partial x}\right|_{\hat{x}_{t\mid t-1}}
+  \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>F_t</code><span>the Jacobian of the transition function — the slope of the true curve f, evaluated at last step's estimate</span></div>
+    <div class="tl-eq-chip c2"><code>H_t</code><span>the Jacobian of the observation function — the slope of the true curve h, evaluated at this step's predicted estimate</span></div>
+  </div>
+  <p>
+    In one dimension, a Jacobian is just an ordinary derivative — the ordinary slope of \(f\) or \(h\) at
+    a single point. (In the general multi-dimensional case it's a matrix of partial derivatives, one per
+    input/output pair; that generalization is out of scope here, but the scalar case shown captures the
+    entire idea.) With \(F_t\) and \(H_t\) in hand, the EKF's predict and update steps are <em>literally</em>
+    the Kalman filter lesson's own equations, with the true nonlinear functions used to propagate the
+    mean and the Jacobians used only to propagate the uncertainty:
+  </p>
+  <div class="tl-math">\[
+    \hat{x}_{t\mid t-1} = f(\hat{x}_{t-1\mid t-1}) \qquad P_{t\mid t-1} = F_t^2\, P_{t-1\mid t-1} + Q
+  \]</div>
+  <div class="tl-math">\[
+    e_t = y_t - h(\hat{x}_{t\mid t-1}) \qquad
+    K_t = \frac{P_{t\mid t-1}\,H_t}{H_t^2 P_{t\mid t-1} + R} \qquad
+    \hat{x}_{t\mid t} = \hat{x}_{t\mid t-1} + K_t e_t \qquad
+    P_{t\mid t} = (1 - K_t H_t)\,P_{t\mid t-1}
+  \]</div>
+  <p>
+    Notice precisely what changed and what didn't, compared to the plain Kalman filter: the
+    <em>mean</em> is still propagated through the true nonlinear \(f\) and \(h\) — no approximation there
+    at all — but the <em>uncertainty</em> (\(P\)) is propagated as if the system were linear with slope
+    \(F_t\) or \(H_t\), which is only as accurate as the tangent-line approximation is at that point. That
+    mismatch — exact mean propagation, approximate covariance propagation — is the entire source of the
+    EKF's known weakness: it can become overconfident (an understated \(P\)) whenever the true curve
+    bends away from its tangent line faster than the current uncertainty band is narrow.
+  </p>
+
+  <h3>Part C — the Unscented Kalman Filter: sample the true curve instead of linearizing it</h3>
+  <p>
+    The UKF keeps the same predict/update skeleton but replaces the Taylor-expansion step entirely. Instead
+    of linearizing \(f\) or \(h\), it picks a small, deterministic set of points — <strong>sigma
+    points</strong> — that exactly capture the current estimate's mean and variance, pushes each one
+    through the <em>true</em>, unaltered nonlinear function, and reconstructs the propagated mean and
+    variance from where those points land. For a state of dimension \(L\) (here \(L=1\), the scalar case
+    used throughout this curriculum), the standard construction uses \(2L+1\) sigma points:
+  </p>
+  <div class="tl-math">\[
+    \chi_0 = \hat{x} \qquad \chi_1 = \hat{x} + \sqrt{(L+\lambda)P} \qquad \chi_2 = \hat{x} - \sqrt{(L+\lambda)P}
+  \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>χ_i</code><span>the i-th sigma point — a specific, deterministically chosen candidate value near the current estimate</span></div>
+    <div class="tl-eq-chip c4"><code>λ</code><span>a scaling parameter controlling how far the sigma points spread from the mean — a chosen constant, not derived</span></div>
+  </div>
+  <p>
+    (The general multivariate case needs a matrix square root of \(P\), typically via Cholesky
+    decomposition, spreading \(2L\) points symmetrically along every dimension — that machinery is out of
+    scope here, but the scalar case above shows the whole idea with three sigma points: the mean itself,
+    and one point pushed out to either side by an amount set by \(P\) and \(\lambda\).) Each sigma point is
+    pushed through the true function, \(Y_i = h(\chi_i)\), and the mean/variance of the transformed
+    observation are reconstructed as weighted sums:
+  </p>
+  <div class="tl-math">\[
+    \hat{y} = \sum_i W_i^{(m)} Y_i \qquad
+    P_{yy} = \sum_i W_i^{(c)} \left(Y_i - \hat{y}\right)^2 + R \qquad
+    P_{xy} = \sum_i W_i^{(c)} \left(\chi_i - \hat{x}\right)\left(Y_i - \hat{y}\right)
+  \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>W_i^(m), W_i^(c)</code><span>mean and covariance weights for sigma point i — chosen constants, one per sigma point, that sum to 1</span></div>
+    <div class="tl-eq-chip c2"><code>P_yy</code><span>the reconstructed variance of the predicted observation — combines curvature captured by the sigma points plus observation noise R</span></div>
+    <div class="tl-eq-chip c3"><code>P_xy</code><span>the reconstructed cross-covariance between the state and the observation — the UKF's stand-in for the EKF's P·H term</span></div>
+  </div>
+  <p>
+    From there, the update step mirrors the ordinary Kalman gain exactly, just built from these
+    reconstructed quantities instead of a Jacobian: \(K = P_{xy}/P_{yy}\), \(\hat{x}_{t\mid t} =
+    \hat{x} + K(y_t - \hat{y})\), \(P_{t\mid t} = P - K\,P_{xy}\). The crucial structural difference from
+    the EKF: <em>nothing here was linearized</em>. Every sigma point walked the real, unaltered nonlinear
+    function; the only approximation left is reconstructing a mean and variance from a handful of exact
+    points, rather than linearizing the function that produced them — which is why the UKF is generally
+    more accurate than the EKF whenever the nonlinearity is strong enough that a single tangent line
+    stops being a good local stand-in.
+  </p>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(\hat{x}_{t\mid T}\)</td><td>The smoothed state estimate at time \(t\) using the entire dataset through time \(T\) (past <em>and</em> future relative to \(t\)) — never available live, only after the fact.</td></tr>
+      <tr><td>\(P_{t\mid T}\)</td><td>The smoothed error variance — always at least as small as the filtered variance \(P_{t\mid t}\), since more data can only sharpen an estimate.</td></tr>
+      <tr><td>\(C_t\)</td><td>The smoother (backward) gain, \(P_{t\mid t}/P_{t+1\mid t}\) — how strongly this step's smoothed estimate is pulled toward the already-smoothed value one step ahead.</td></tr>
+      <tr><td>\(F_t\)</td><td>The Jacobian of the state transition function \(f\) — in one dimension, simply its derivative, evaluated at the previous estimate.</td></tr>
+      <tr><td>\(H_t\)</td><td>The Jacobian of the observation function \(h\) — in one dimension, its derivative, evaluated at the current predicted estimate. (Reuses the same symbol as the plain Kalman filter's linear observation coefficient, since it plays the identical role.)</td></tr>
+      <tr><td>\(L\)</td><td>The dimension of the hidden state — \(L=1\) throughout this lesson's scalar examples; the UKF uses \(2L+1\) sigma points in general.</td></tr>
+      <tr><td>\(\chi_i\)</td><td>Sigma point \(i\) — one of a small, deterministically chosen set of candidate state values used by the UKF, capturing the current mean and spread without approximating the function itself.</td></tr>
+      <tr><td>\(\lambda\)</td><td>The UKF's sigma-point scaling parameter, controlling how far the sigma points spread from the mean — a chosen constant, analogous to the Kalman filter's \(Q\)/\(R\) in that it must be picked, not derived.</td></tr>
+      <tr><td>\(W_i^{(m)}, W_i^{(c)}\)</td><td>The mean and covariance weights assigned to sigma point \(i\) when reconstructing the propagated mean/variance from the sigma points' images.</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Linearizing a curve (EKF) vs. sampling three points on it (UKF)</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A curved parabola representing a nonlinear observation function, with a straight red tangent line touching it at the current estimate, and three purple dots marking where the unscented transform's sigma points land on the true curve — one at the estimate itself, one pushed above it, one pushed below it.">
+      <line x1="50" y1="255" x2="620" y2="255" style="stroke:var(--border2);stroke-width:1"/>
+      <line x1="50" y1="20" x2="50" y2="255" style="stroke:var(--border2);stroke-width:1"/>
+      <polyline points="60,255 105,244.75 150,234 195,222.75 240,211 285,198.75 330,186 375,172.75 420,159 465,144.75 510,130 555,114.75 600,99"
+                style="fill:none;stroke:var(--text);stroke-width:2.5"/>
+      <line x1="60" y1="264" x2="600" y2="99" style="stroke:var(--red);stroke-width:2;stroke-dasharray:6 3"/>
+      <circle cx="174" cy="228" r="5" style="fill:var(--purple)"/>
+      <circle cx="330" cy="186" r="5.5" style="fill:var(--purple);stroke:var(--text);stroke-width:1"/>
+      <circle cx="486" cy="138" r="5" style="fill:var(--purple)"/>
+      <text x="330" y="176" text-anchor="middle" font-size="11" fill="var(--text2)">x̂ = 1.30</text>
+      <text x="174" y="245" text-anchor="middle" font-size="10" fill="var(--purple)">χ₂=1.127</text>
+      <text x="486" y="128" text-anchor="middle" font-size="10" fill="var(--purple)">χ₁=1.473</text>
+      <text x="335" y="273" text-anchor="middle" font-size="11" fill="var(--text3)">state value x</text>
+      <text x="18" y="140" text-anchor="middle" font-size="11" fill="var(--text3)" transform="rotate(-90 18 140)">h(x) = x²</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--text)"></i>True curve h(x)=x²</span>
+      <span><i style="background:var(--red)"></i>EKF's tangent line at x̂</span>
+      <span><i style="background:var(--purple)"></i>UKF's sigma points (on the true curve)</span>
+    </div>
+    <div class="tl-chart-caption">
+      The EKF's red tangent line matches the true black curve exactly at \(\hat{x}=1.30\), then peels
+      away increasingly as \(x\) moves further from it — visible here as the growing gap between the red
+      line and the black curve toward either edge. The UKF's three purple dots sit exactly <em>on</em>
+      the true curve — no linearization anywhere — and its reconstructed mean/variance come from
+      averaging those three exact points instead of trusting the tangent line's slope.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>EKF vs. UKF against the same nonlinear observation, x̂=1.30</h3>
+    <p>
+      Take a deliberately simple, textbook nonlinearity for clean hand computation: the observation
+      function is \(h(x) = x^2\) (a toy nonlinearity, chosen for arithmetic clarity, not a specific
+      trading relationship). Predicted state \(\hat{x}_{t\mid t-1} = 1.30\), predicted variance
+      \(P_{t\mid t-1} = 0.01\) (std. dev. 0.10), observation noise \(R = 0.02\), and an actual observation
+      \(y_t = 1.75\).
+    </p>
+    <p><strong>EKF:</strong> the Jacobian of \(h(x)=x^2\) is \(H = 2x\), evaluated at \(\hat{x}=1.30\):
+      \(H = 2.60\). Predicted observation \(h(\hat{x}) = 1.30^2 = 1.69\).</p>
+    <div class="tl-math">\[
+      e = 1.75 - 1.69 = 0.06 \qquad S = 2.60^2\times 0.01 + 0.02 = 0.0876 \qquad K = \frac{0.01\times 2.60}{0.0876} \approx 0.297
+    \]</div>
+    <div class="tl-math">\[
+      \hat{x}_{t\mid t} = 1.30 + 0.297\times 0.06 \approx 1.3178 \qquad P_{t\mid t} = (1-0.297\times2.60)\times 0.01 \approx 0.00228
+    \]</div>
+    <p><strong>UKF</strong> (scalar, \(L=1\), choosing \(\lambda=2\) as an illustrative scaling constant —
+      itself a chosen input, exactly like the EKF needed no such choice but the plain KF needed \(Q,R\)):
+      \(\sqrt{(L+\lambda)P} = \sqrt{3\times 0.01} = 0.1732\). Three sigma points:
+      \(\chi_0=1.30\), \(\chi_1=1.4732\), \(\chi_2=1.1268\), with weights
+      \(W_0=2/3\approx0.667\), \(W_1=W_2=1/6\approx0.167\).
+    </p>
+    <p>Push each through the true \(h(x)=x^2\): \(Y_0=1.6900\), \(Y_1=2.1703\), \(Y_2=1.2697\).</p>
+    <div class="tl-math">\[
+      \hat{y} = 0.667(1.6900) + 0.167(2.1703) + 0.167(1.2697) \approx 1.700
+    \]</div>
+    <p>
+      Already a small but telling difference from the EKF: the UKF's reconstructed predicted observation
+      is 1.700, not the EKF's 1.690 — because \(E[x^2] \geq (E[x])^2\) whenever \(x\) has any variance at
+      all (Jensen's inequality: the curve bends upward, so averaging the curve's <em>outputs</em> gives a
+      slightly higher value than evaluating the curve at the averaged <em>input</em>). The EKF's tangent
+      line cannot see this — it only knows the slope at one point, not the curvature around it.
+    </p>
+    <div class="tl-math">\[
+      P_{yy} = \underbrace{0.0678}_{\text{curvature term}} + \underbrace{0.02}_{R} = 0.0878
+      \qquad P_{xy} \approx 0.02601 \qquad
+      K = \frac{P_{xy}}{P_{yy}} = \frac{0.02601}{0.0878} \approx 0.296
+    \]</div>
+    <div class="tl-math">\[
+      \hat{x}_{t\mid t} = 1.30 + 0.296\times(1.75-1.700) \approx 1.3148 \qquad P_{t\mid t} \approx 0.00230
+    \]</div>
+    <p>
+      EKF lands at \(\hat{x}_{t\mid t}\approx 1.3178\); UKF lands at \(\approx 1.3148\) — about 0.003
+      apart, with almost identical updated uncertainty (\(0.00228\) vs. \(0.00230\)). For this particular
+      curvature (\(x^2\)) and this particular uncertainty band (\(\sigma\approx 0.10\)), the two methods
+      nearly agree, because the tangent line is still a fairly good local stand-in over that narrow a
+      band. That gap is exactly what widens as the true function's curvature grows relative to the
+      uncertainty band — a stronger nonlinearity, or a wider \(P\), pushes the sigma points further from
+      \(\hat{x}\) into territory the tangent line increasingly misrepresents, while the UKF keeps sampling
+      the true curve regardless.
+    </p>
+  </div>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card red">
+      <h4>EKF — linearize, then apply the linear formula</h4>
+      <p>Cheap: one derivative evaluation per step. Exact mean propagation through the true \(f\)/\(h\),
+      but covariance propagation only as good as the tangent line locally. Can become overconfident
+      (understated \(P\)) when curvature is strong relative to the uncertainty band.</p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>UKF — sample the true curve, skip the derivative</h4>
+      <p>Needs no Jacobian at all — useful when \(f\)/\(h\) isn't differentiable in closed form, or the
+      derivative is awkward to derive. Generally more accurate for strongly nonlinear systems, at the
+      cost of evaluating the true function \(2L{+}1\) times per step instead of once, and choosing the
+      scaling constant \(\lambda\) (and its relatives \(\alpha,\beta,\kappa\) in the fuller formulation).</p>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">A named scenario</div>
+    <h3>Writing a research note on a whole year's drifting relationship, versus running it live tomorrow</h3>
+    <p>
+      Suppose an analyst wants to write up how a hedge ratio actually behaved over the past calendar year,
+      for a research note explaining what happened and why. That's exactly the RTS smoother's use case: run
+      the ordinary forward filter across the whole year first, then run the backward pass using the entire
+      year of data, and report the smoothed trajectory — the best-informed reconstruction of what the ratio
+      was doing at every point, now that the whole year's outcomes are already known. But if that same
+      analyst then wants to <em>trade</em> tomorrow off "what the model currently thinks the ratio is,"
+      the smoothed trajectory is the wrong number to use — tomorrow's true state is not yet known, so only
+      the plain filtered estimate (or, if the relationship is genuinely nonlinear, an EKF/UKF filtered
+      estimate) is valid to act on live. Mixing the two up — reporting a smoothed backtest as if it
+      represented what a live system could have known in real time — is the single most common way this
+      family of tools gets misused, and it is presented here purely to illustrate the distinction, not as a
+      claim that either the smoother or either nonlinear filter has been built or validated for any live
+      use in this repo.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    The RTS smoother takes its name from Herbert Rauch, Frank Tung, and Charlotte Striebel's 1965 paper
+    (cited below), and is the standard tool whenever a state-space model is being fit to historical data
+    for reporting or research rather than run live — smoothing a macro time series' unobserved trend
+    component, reconstructing a full historical volatility path, or producing the cleanest possible
+    historical reconstruction of any hidden state a Kalman-style model tracks, precisely because the
+    smoother is strictly better-informed than the filter for anything already in the past.
+  </p>
+  <p>
+    The EKF has been the default nonlinear extension of the Kalman filter since the 1960s — it was, in
+    fact, part of the Apollo program's guidance computer alongside the plain linear filter, since a
+    spacecraft's actual dynamics are nonlinear. It remains the standard choice across robotics (nonlinear
+    sensor models like bearing-only tracking), aerospace, and any estimation problem where the nonlinearity
+    is mild enough, or the required update rate fast enough, that its lower computational cost outweighs
+    its approximation error. The UKF, introduced by Julier and Uhlmann in 1997 (cited below), is reached
+    for when the nonlinearity is strong enough that the EKF's linearization visibly degrades performance,
+    or when the transition/observation function isn't conveniently differentiable in closed form (making
+    the Jacobian itself awkward or expensive to derive) — at the cost of evaluating the true function
+    several times per step instead of once, and choosing its own scaling constants.
+  </p>
+  <p>
+    In quantitative finance specifically, EKF/UKF-style extensions show up wherever a Kalman-style
+    state-space model's relationship between the hidden state and the observation is not linear — for
+    example, if a hidden factor enters an observed price through a nonlinear pricing formula rather than
+    directly, or if a volatility-like quantity is modeled as a hidden state feeding into a squared or
+    exponential observation relationship. This curriculum's own existing linear-Gaussian applications —
+    tracking a hedge ratio, a beta, a factor loading — are, by design, exactly the case where the plain
+    Kalman filter from that lesson already suffices; nothing about those specific use cases currently
+    requires EKF or UKF machinery.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where these extensions get misused</h3>
+    <p>
+      <strong>Treating a smoothed estimate as something a live system could have known.</strong> This is
+      the single most important pitfall in this lesson, and it's the exact same trap the Hidden Markov
+      Model lesson flags for Viterbi-decoded regime labels: a smoothed state estimate uses observations
+      from <em>after</em> the point being estimated. A backtest that quietly substitutes smoothed
+      estimates for what a live filter would have produced is using information from the future without
+      saying so.
+    </p>
+    <p>
+      <strong>EKF divergence when the nonlinearity is strong relative to the current uncertainty band.</strong>
+      Because the EKF only linearizes locally, a sharp enough curve or a wide enough \(P\) can make the
+      tangent-line approximation badly wrong — sometimes badly enough that the filter's estimate drifts
+      away from the truth and its own reported uncertainty shrinks anyway (false confidence). There is no
+      automatic warning built into the EKF's equations for this; it has to be checked externally, e.g. by
+      monitoring whether the innovations behave as the model expects.
+    </p>
+    <p>
+      <strong>Assuming "unscented" means "exact."</strong> The UKF avoids linearizing the function, but
+      reconstructing a mean and variance from a handful of sigma points is still only exact when the true
+      relationship is itself linear (in which case both EKF and UKF reduce to the plain Kalman filter,
+      exactly). For a genuinely nonlinear function it remains an approximation — a better one than a
+      first-order Taylor expansion in most cases, not a perfect one.
+    </p>
+    <p>
+      <strong>The UKF's scaling constants are themselves a chosen input, not a derived quantity.</strong>
+      \(\lambda\) (and its relatives in the fuller \(\alpha,\beta,\kappa\) formulation) controls how far
+      the sigma points spread — exactly the same category of chosen, tunable input as the Kalman filter
+      lesson's \(Q\) and \(R\), and subject to the identical warning against grid-searching it against
+      backtest performance.
+    </p>
+    <p>
+      <strong>Reaching for EKF/UKF when the problem is actually linear.</strong> Both extensions reduce
+      to the plain Kalman filter exactly when \(f\) and \(h\) truly are linear — in that case they add
+      computational cost (a Jacobian, or several extra function evaluations per step) for zero accuracy
+      benefit. Confirm the nonlinearity is real and material before reaching past the plain filter.
+    </p>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>Worth remembering:</strong> the EKF's exact-mean/approximate-covariance mismatch is the
+    single root cause of nearly every EKF failure mode — it never shows up as an error message, only as an
+    estimate that's quietly wrong and a reported uncertainty that's quietly too small to notice.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The RTS smoother is one backward pass over the whole dataset</strong>, using the already-smoothed value one step ahead and the smoother gain \(C_t = P_{t\mid t}/P_{t+1\mid t}\) — strictly sharper than the forward-only filter, but only available after the fact.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The EKF linearizes via the Jacobian at every step</strong>, then runs the exact same predict/update equations from the plain Kalman filter — exact mean propagation, approximate covariance propagation.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The UKF samples the true curve at a few sigma points instead of linearizing it</strong>, needing no Jacobian and generally beating the EKF for strongly nonlinear systems.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked example's EKF and UKF landed within about 0.003 of each other</strong> — close, because a mild curvature over a narrow uncertainty band is still well approximated by a tangent line; the two diverge more as either grows.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A smoothed estimate has lookahead baked in — never valid as a live signal.</strong> The same trap the Hidden Markov Model lesson flags for Viterbi labels applies here identically.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Concept lesson only, and only needed for genuine nonlinearity.</strong> This repo's existing linear-Gaussian applications (hedge-ratio tracking) are already fully served by the plain Kalman filter — nothing here is built, tested, or validated, and explaining the extensions is not a claim either produces edge.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why can a smoothed estimate \(\hat{x}_{t\mid T}\) never be produced by a live trading system operating at time \(t\)?</summary>
+    <div class="tl-answer">
+      Because computing it requires observations from after time \(t\) — up through \(T\) — which a live
+      system operating at time \(t\) does not yet have. The smoothed estimate is only computable after
+      the fact, once the full dataset through \(T\) is available; it answers "what do we now know, in
+      hindsight, about time \(t\)?" not "what could we have known, live, at time \(t\)?"
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. In the worked example, why is the smoothed Day 1 variance (≈0.0046) lower than the filtered Day 1 variance (≈0.0080)?</summary>
+    <div class="tl-answer">
+      The filtered variance reflects everything known through Day 1 only. The smoothed variance
+      additionally incorporates Day 2's observation, which is more information bearing on the true state
+      at Day 1 — and more information can only ever sharpen (never worsen) an estimate, which is exactly
+      why smoothed variance is always less than or equal to filtered variance at the same time step.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What exactly does the EKF linearize, and what does it leave un-approximated?</summary>
+    <div class="tl-answer">
+      The EKF linearizes the <em>covariance</em> propagation — it uses the Jacobian (the local slope) of
+      \(f\) and \(h\) to propagate \(P\) as if the system were linear at that point. It does <em>not</em>
+      linearize the mean propagation: the predicted state \(\hat{x}_{t\mid t-1}=f(\hat{x}_{t-1\mid t-1})\)
+      and predicted observation \(h(\hat{x}_{t\mid t-1})\) both use the true, unaltered nonlinear
+      functions directly.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why did the UKF's predicted observation (1.700) come out slightly higher than the EKF's (1.690) for h(x)=x², given the same starting estimate and uncertainty?</summary>
+    <div class="tl-answer">
+      This is Jensen's inequality at work: for a convex function like \(x^2\), the average of the
+      function's outputs across a spread of inputs is always at least as large as the function evaluated
+      at the average input, whenever there's genuine spread (variance) in those inputs — \(E[x^2] \geq
+      (E[x])^2\). The UKF's sigma points genuinely sample that spread and average the true curve's
+      outputs, capturing this curvature effect. The EKF's tangent line only evaluates the function at the
+      single mean point, \(h(\hat{x})=1.30^2=1.69\), and has no way to see the curvature around it.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. If a nonlinear observation function turned out to actually be linear, what would the EKF's Jacobian and the UKF's sigma-point reconstruction reduce to?</summary>
+    <div class="tl-answer">
+      Both would reduce exactly to the plain Kalman filter. If \(h(x) = Hx\) is truly linear, its
+      Jacobian is simply the constant \(H\) everywhere (no approximation, since a straight line's tangent
+      line is itself), and the UKF's sigma points, each pushed through that same linear function, would
+      reconstruct precisely the same mean and variance the ordinary linear Kalman update produces — there
+      would be no divergence between EKF, UKF, and the plain filter at all.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Name one situation where the UKF would be clearly preferred over the EKF, and one where the plain linear Kalman filter is clearly preferred over either.</summary>
+    <div class="tl-answer">
+      Prefer the UKF over the EKF when the nonlinearity is strong relative to the current uncertainty band
+      (the tangent line badly misrepresents the true curve nearby), or when the observation/transition
+      function isn't conveniently differentiable in closed form, making a Jacobian awkward to obtain.
+      Prefer the plain linear Kalman filter over either nonlinear extension whenever the true relationship
+      genuinely is linear and Gaussian — in that case the plain filter is exact, cheaper, and simpler, and
+      reaching for EKF/UKF machinery only adds computational cost with no accuracy benefit.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>H. E. Rauch, F. Tung &amp; C. T. Striebel, <em>"Maximum Likelihood Estimates of Linear Dynamic Systems,"</em> AIAA Journal, 1965 — the original paper behind the RTS smoother.</li>
+    <li>Simon J. Julier &amp; Jeffrey K. Uhlmann, <em>"A New Extension of the Kalman Filter to Nonlinear Systems,"</em> Proceedings of AeroSense: Signal Processing, Sensor Fusion, and Target Recognition VI, 1997 — the original Unscented Kalman Filter paper.</li>
+    <li>Eric A. Wan &amp; Rudolph van der Merwe, <em>"The Unscented Kalman Filter for Nonlinear Estimation,"</em> IEEE Adaptive Systems for Signal Processing, Communications, and Control Symposium, 2000 — a widely cited, more accessible tutorial derivation of the UKF.</li>
+    <li>Dan Simon, <em>Optimal State Estimation: Kalman, H∞, and Nonlinear Approaches</em>, Wiley, 2006 — a comprehensive, rigorous text covering the plain Kalman filter, the RTS smoother, and both the EKF and UKF in one consistent notation.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="particle-filter.html">← The Particle Filter (Sequential Monte Carlo)</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="regime-switching-state-space.html">Regime-Switching State Space Models →</a>
+  </div>
+</div>
+<script>
+(function(){
+  // Fixed 8-step noisy observation sequence for the RTS smoother demo.
+  var OBS = [1.35, 1.28, 1.32, 1.22, 1.18, 1.25, 1.15, 1.20];
+  var R = 0.02;
+  var x0 = 1.20, P0 = 0.04;
+  var T = OBS.length;
+
+  var slider = document.getElementById('ks-q-slider');
+  var qVal = document.getElementById('ks-q-val');
+  var gapVal = document.getElementById('ks-gap-val');
+  var obsGroup = document.getElementById('ks-obs');
+  var bandEl = document.getElementById('ks-band');
+  var filteredEl = document.getElementById('ks-filtered');
+  var smoothedEl = document.getElementById('ks-smoothed');
+  var NS = 'http://www.w3.org/2000/svg';
+
+  function xAt(i){ return 60 + i * ((600 - 60) / (T - 1)); } // i = 0..T-1
+  function yAt(v){ return 235 - (v - 1.00) * 400; }
+
+  // Draw the fixed observation dots once.
+  OBS.forEach(function(y, i){
+    var c = document.createElementNS(NS, 'circle');
+    c.setAttribute('cx', xAt(i));
+    c.setAttribute('cy', yAt(y));
+    c.setAttribute('r', 3.5);
+    c.setAttribute('style', 'fill:var(--text3);opacity:.6');
+    obsGroup.appendChild(c);
+  });
+
+  function runKalmanAndSmoother(Q){
+    var xf = new Array(T), Pf = new Array(T);
+    var xpred = new Array(T), Ppred = new Array(T);
+    var xPrev = x0, PPrev = P0;
+    for (var t = 0; t < T; t++){
+      var xp = xPrev;               // predict (random walk, A=1)
+      var Pp = PPrev + Q;
+      xpred[t] = xp; Ppred[t] = Pp;
+      var e = OBS[t] - xp;
+      var S = Pp + R;
+      var K = Pp / S;
+      xf[t] = xp + K * e;
+      Pf[t] = (1 - K) * Pp;
+      xPrev = xf[t]; PPrev = Pf[t];
+    }
+    var xs = new Array(T), Ps = new Array(T);
+    xs[T-1] = xf[T-1]; Ps[T-1] = Pf[T-1];
+    for (var t2 = T - 2; t2 >= 0; t2--){
+      var C = Pf[t2] / Ppred[t2+1];
+      xs[t2] = xf[t2] + C * (xs[t2+1] - xpred[t2+1]);
+      Ps[t2] = Pf[t2] + C * C * (Ps[t2+1] - Ppred[t2+1]);
+    }
+    return {xf: xf, xs: xs, Ps: Ps};
+  }
+
+  function update(){
+    var slide = parseFloat(slider.value); // 1..100
+    var Q = 0.0005 + (slide / 100) * 0.02; // 0.0005..0.0205
+    qVal.textContent = 'Q = ' + Q.toFixed(4);
+
+    var res = runKalmanAndSmoother(Q);
+
+    var filteredPts = [];
+    var smoothedPts = [];
+    var topPts = [];
+    var bottomPts = [];
+    var gapSum = 0;
+    for (var i = 0; i < T; i++){
+      var xPx = xAt(i);
+      filteredPts.push(xPx + ',' + yAt(res.xf[i]).toFixed(1));
+      smoothedPts.push(xPx + ',' + yAt(res.xs[i]).toFixed(1));
+      var half = Math.sqrt(Math.max(res.Ps[i], 0)) * 400;
+      topPts.push(xPx + ',' + (yAt(res.xs[i]) - half).toFixed(1));
+      bottomPts.push(xPx + ',' + (yAt(res.xs[i]) + half).toFixed(1));
+      gapSum += Math.abs(res.xf[i] - res.xs[i]);
+    }
+    filteredEl.setAttribute('points', filteredPts.join(' '));
+    smoothedEl.setAttribute('points', smoothedPts.join(' '));
+    bottomPts.reverse();
+    bandEl.setAttribute('points', topPts.concat(bottomPts).join(' '));
+    gapVal.textContent = (gapSum / T).toFixed(4);
+  }
+
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
+</body>
+</html>
