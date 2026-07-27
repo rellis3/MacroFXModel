@@ -709,7 +709,7 @@
     <button class="v2-tool-btn" id="vfSessionComputeBtn"  onclick="triggerSessionStats()">Session Stats</button>
     <button class="v2-tool-btn" id="vfLevelAlertsBtn"     onclick="toggleLevelAlerts()">🔔 Level Alerts</button>
     <button class="v2-tool-btn" id="vfHelpBtn"            onclick="toggleHelp()">? Help</button>
-    <button class="v2-tool-btn" id="vfChartLevelBtn"     onclick="toggleChartLevelMode()" title="Cycle the chart's forecast lines: Original → COG → Original/COG Weekly → Original/COG Monthly. Weekly and monthly are point-in-time forecasts — the Monday (×√5) / month-start (×√20) forecast, anchored on that period's opening price and held for the whole period. Monthly uses daily candles. Remembered across page loads (stored in your browser).">📐 Chart: Original</button>
+    <button class="v2-tool-btn" id="vfChartLevelBtn"     onclick="toggleChartLevelMode()" title="Cycle the chart's forecast lines: Original → COG → Bot → Original/COG Weekly → Original/COG Monthly. Bot draws the Volatility Bot's ACTUAL frozen plan lines (open + 8 levels from /api/volatility-bot/plan), anchored at the bot's own frozen open — so you see exactly what it trades and can confirm the levels don't move intraday. Weekly and monthly are point-in-time forecasts — the Monday (×√5) / month-start (×√20) forecast, anchored on that period's opening price and held for the whole period. Monthly uses daily candles. Remembered across page loads (stored in your browser).">📐 Chart: Original</button>
     <a class="v2-tool-btn" href="forecast-replay.html" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center" title="Open the Forecast Replay chart — pick a pair + date range and see every session's forecast lines (H/C±/L median &amp; 75th) anchored on that day's open, vs the realized high/low, on one scrollable/zoomable chart.">📊 Replay</a>
     <a class="v2-tool-btn" href="forecast-reversion.html" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center" title="Open the Forecast Reversion chart — arm each forecast line independently and see, session by session, the fade-back-to-the-inner-band trade every time price touches it: entry ▸ exit markers (win/loss/expired) plus a live per-line win/loss tally, for both the Original and COG calcs. Visual, in-sample — not evidence of edge.">📈 Reversion</a>
     <div class="v2-tool-sep"></div>
@@ -1381,6 +1381,7 @@ function loadForecast(date) {
       currentForecast = data;
       if (!date) liveForecast = data;
       loadCogHv().then(() => { if (_modeCtx().cog) _redrawCogCharts(); });   // prime COG cc-HV σ early so the export button is instant (cache-hit on the warmed key)
+      if (_modeCtx().bot) loadBotPlan().then(_redrawCogCharts);   // prime the bot plan if Bot level-mode is active
       { const _k = _modeCtx().kind; if (_k) loadFrozen(_k).then(() => { _syncChartLevelBtn(); _redrawCogCharts(); }); }   // prime the frozen period-start forecast for weekly/monthly modes
 
       if (sdot) sdot.className = 'v2-status-dot ok';
@@ -1541,6 +1542,7 @@ function triggerRefresh() {
     currentForecast = forecast;
     if (!date) liveForecast = forecast;
     loadCogHv().then(() => { if (_modeCtx().cog) _redrawCogCharts(); });   // prime COG cc-HV σ early so the export button is instant (cache-hit on the warmed key)
+      if (_modeCtx().bot) loadBotPlan().then(_redrawCogCharts);   // prime the bot plan if Bot level-mode is active
     { const _k = _modeCtx().kind; if (_k) loadFrozen(_k).then(() => { _syncChartLevelBtn(); _redrawCogCharts(); }); }   // prime the frozen period-start forecast for weekly/monthly modes
     currentSession  = session;
     renderV2Grid(forecast);
@@ -3446,9 +3448,9 @@ const _d1Cache = {};
 // Unlike the live daily bands, they are point-in-time forecasts: σ is taken from the
 // forecast in effect as the period opened and held constant, so the envelope is issued
 // once (Monday / month start) and you watch price travel through it.
-const _LEVEL_MODES = ['original', 'cog', 'original_weekly', 'cog_weekly', 'original_monthly', 'cog_monthly'];
+const _LEVEL_MODES = ['original', 'cog', 'bot', 'original_weekly', 'cog_weekly', 'original_monthly', 'cog_monthly'];
 const _MODE_LABEL  = {
-  original: 'Original', cog: 'COG',
+  original: 'Original', cog: 'COG', bot: 'Bot',
   original_weekly: 'Original Weekly', cog_weekly: 'COG Weekly',
   original_monthly: 'Original Monthly', cog_monthly: 'COG Monthly',
 };
@@ -3463,13 +3465,32 @@ function _modeCtx() {
   const weekly  = _levelMode === 'original_weekly'  || _levelMode === 'cog_weekly';
   const monthly = _levelMode === 'original_monthly' || _levelMode === 'cog_monthly';
   const cog     = _levelMode.startsWith('cog');
+  const bot     = _levelMode === 'bot';
   return {
-    weekly, monthly, cog,
+    weekly, monthly, cog, bot,
     mult:  monthly ? _SQRT20 : weekly ? _SQRT5 : 1,
     gran:  monthly ? 'D' : 'M5',
     kind:  monthly ? 'monthly' : weekly ? 'weekly' : null,
     label: _MODE_LABEL[_levelMode],
   };
+}
+// The frozen Volatility-Bot plan (open + band FRACTIONS per pair), so the chart can
+// draw the bot's ACTUAL traded lines — anchored at the BOT's frozen open, not the
+// chart's — proving what it trades and that the levels don't move intraday.
+let _botPlan = null, _botPlanPromise = null;
+async function loadBotPlan() {
+  if (_botPlan) return _botPlan;
+  if (!_botPlanPromise) _botPlanPromise = fetch('/api/volatility-bot/plan')
+    .then(r => r.json())
+    .then(j => (_botPlan = (j.ok && j.plan?.pairs) ? j.plan : { pairs: {} }))
+    .catch(() => (_botPlan = { pairs: {} }));
+  return _botPlanPromise;
+}
+// Chart display name → plan key (plan uses spx/dow, not spx500/us30).
+const _BOT_KEY = { SPX500: 'spx', US30: 'dow', DE30: 'de30', UK100: 'uk100', US2000: 'us2000', NQ: 'nq', GOLD: 'gold' };
+function _botPair(name) {
+  const p = _botPlan?.pairs; if (!p) return null;
+  return p[_BOT_KEY[name] || String(name).toLowerCase()] || null;
 }
 // London 'YYYY-MM-DD' -> Monday of that ISO week (weekday of a calendar date is
 // timezone-independent, so treat the date as UTC midnight for the day-of-week).
@@ -3550,7 +3571,15 @@ function _bandInst(name, liveF) {
 // uses the forecast's own hl/oc fields. Weekly modes source the bands from the frozen
 // (Monday) forecast and scale ×√5.
 function _chartLevels(name, f) {
-  const { cog, mult } = _modeCtx();
+  const { cog, bot, mult } = _modeCtx();
+  // BOT mode: draw the bot's ACTUAL frozen plan lines. The plan stores band FRACTIONS
+  // (hl50 = 0.0159 …) and its own frozen `open`; return them as % and carry the bot
+  // open in `_botOpen` so the draw anchors the lines exactly where the bot placed them.
+  if (bot) {
+    const p = _botPair(name);
+    if (p) return { hl_median: p.hl50 * 100, hl_75: p.hl75 * 100, oc_median: p.ocMed * 100, oc_75: p.oc75 * 100, _botOpen: p.open };
+    return { hl_median: null, hl_75: null, oc_median: null, oc_75: null, _botOpen: null };
+  }
   const src = _bandInst(name, f);              // frozen Monday forecast for weekly, live for daily
   let base;
   if (cog && src?.vol_annual > 0) {
@@ -3589,6 +3618,8 @@ function toggleChartLevelMode() {
   // COG variants' index lines use COG close-to-close HV σ — fetch it (once), then
   // redraw so index levels snap to the validated σ when it arrives.
   if (_modeCtx().cog && !_cogHvByInst) loadCogHv().then(_redrawCogCharts);
+  // BOT mode draws the frozen plan lines — fetch the plan (once), then redraw.
+  if (_modeCtx().bot && !_botPlan) loadBotPlan().then(_redrawCogCharts);
   // Weekly/monthly variants hold the period-start forecast — fetch it (once/period),
   // then redraw so the frozen bands replace the live-forecast placeholder.
   const _k = _modeCtx().kind;
@@ -3833,7 +3864,8 @@ async function loadM5Chart(name, f) {
     try {
       // Pre-compute forecast level prices so autoscaleInfoProvider can include them
       const LS = LightweightCharts.LineStyle;
-      const L = _chartLevels(name, f);   // original or COG levels per the top-bar toggle
+      const L = _chartLevels(name, f);   // original / COG / BOT levels per the top-bar toggle
+      if (L._botOpen > 0) anchorOpen = L._botOpen;   // BOT mode: hang lines off the bot's FROZEN open, not the chart's
       const lineDefs = [
         { pct: L.hl_median, side:  1, color: '#06b6d4', style: LS.Dotted,      title: 'O-H med',   axis: true },
         { pct: L.hl_median, side: -1, color: '#06b6d4', style: LS.Dotted,      title: 'O-L med',   axis: true },
@@ -3931,6 +3963,21 @@ async function loadM5Chart(name, f) {
           price: pLow, color: '#fbbf24', lineWidth: 1, lineStyle: LS.Dashed,
           title: `${periodLabel} L`, axisLabelVisible: true,
         });
+        // Dynamic H-L COMPLETION lines — project the missing extreme by the forecast
+        // H-L RANGE (a full range, 1×, not the ±band): expected High = running Low +
+        // H-L; expected Low = running High − H-L. These MOVE as the day's extremes
+        // update — they answer "if the low is in, where should the high reach, and
+        // vice-versa." Median (solid) + 75th (dotted). Range in price = anchor × hl%.
+        const hlR   = (anchorOpen && L.hl_median > 0) ? anchorOpen * L.hl_median / 100 : null;
+        const hlR75 = (anchorOpen && L.hl_75    > 0) ? anchorOpen * L.hl_75    / 100 : null;
+        if (hlR && isFinite(pHigh) && isFinite(pLow)) {
+          series.createPriceLine({ price: pLow + hlR,  color: '#34d399', lineWidth: 1, lineStyle: LS.Solid,  title: 'Proj H (Lo+HL)', axisLabelVisible: false });
+          series.createPriceLine({ price: pHigh - hlR, color: '#f87171', lineWidth: 1, lineStyle: LS.Solid,  title: 'Proj L (Hi−HL)', axisLabelVisible: false });
+        }
+        if (hlR75 && isFinite(pHigh) && isFinite(pLow)) {
+          series.createPriceLine({ price: pLow + hlR75,  color: '#34d399', lineWidth: 1, lineStyle: LS.Dotted, title: 'Proj H 75%', axisLabelVisible: false });
+          series.createPriceLine({ price: pHigh - hlR75, color: '#f87171', lineWidth: 1, lineStyle: LS.Dotted, title: 'Proj L 75%', axisLabelVisible: false });
+        }
       }
 
       // Current price line — solid, coloured by direction vs open
@@ -4151,7 +4198,8 @@ function _buildModalChart(name) {
   }
 
   const LS = LightweightCharts.LineStyle;
-  const L = _chartLevels(name, f);   // original or COG levels per the top-bar toggle
+  const L = _chartLevels(name, f);   // original / COG / BOT levels per the top-bar toggle
+  if (L._botOpen > 0) anchorOpen = L._botOpen;   // BOT mode: anchor lines at the bot's FROZEN open
   const lineDefs = [
     { pct: L.hl_median, side:  1, color: '#06b6d4', style: LS.Dotted,      title: 'O-H med',   axis: true },
     { pct: L.hl_median, side: -1, color: '#06b6d4', style: LS.Dotted,      title: 'O-L med',   axis: true },
@@ -4218,6 +4266,14 @@ function _buildModalChart(name) {
   // Period high / low lines — today's session (daily) or Mon→now (weekly)
   if (periodHigh != null && isFinite(periodHigh)) series.createPriceLine({ price: periodHigh, color: '#fbbf24', lineWidth: 1, lineStyle: LS.Dashed, title: `${periodLabel} H`, axisLabelVisible: true });
   if (periodLow  != null && isFinite(periodLow))  series.createPriceLine({ price: periodLow,  color: '#fbbf24', lineWidth: 1, lineStyle: LS.Dashed, title: `${periodLabel} L`, axisLabelVisible: true });
+  // Dynamic H-L completion — expected High = running Low + forecast H-L; expected Low
+  // = running High − forecast H-L (full range, moves with the day's extremes).
+  if (anchorOpen && periodHigh != null && periodLow != null && isFinite(periodHigh) && isFinite(periodLow)) {
+    const hlR = L.hl_median > 0 ? anchorOpen * L.hl_median / 100 : null;
+    const hlR75 = L.hl_75 > 0 ? anchorOpen * L.hl_75 / 100 : null;
+    if (hlR)   { series.createPriceLine({ price: periodLow + hlR,  color: '#34d399', lineWidth: 1, lineStyle: LS.Solid,  title: 'Proj H (Lo+HL)', axisLabelVisible: true }); series.createPriceLine({ price: periodHigh - hlR,  color: '#f87171', lineWidth: 1, lineStyle: LS.Solid,  title: 'Proj L (Hi−HL)', axisLabelVisible: true }); }
+    if (hlR75) { series.createPriceLine({ price: periodLow + hlR75, color: '#34d399', lineWidth: 1, lineStyle: LS.Dotted, title: 'Proj H 75%', axisLabelVisible: false }); series.createPriceLine({ price: periodHigh - hlR75, color: '#f87171', lineWidth: 1, lineStyle: LS.Dotted, title: 'Proj L 75%', axisLabelVisible: false }); }
+  }
 
   chart.timeScale().fitContent();
   _modalChart = chart;
