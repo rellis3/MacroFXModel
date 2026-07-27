@@ -2610,6 +2610,9 @@ function storyOptions(r) {
   if (rr) bits.push(`<span class="muted">RR ${rr.rr >= 0 ? '+' : ''}${rr.rr} (${rr.tilt})</span>`);
   const its = o.inst?.ivTermStructure;
   if (its) bits.push(`<span class="muted" title="ATM IV front vs back expiry — inverted = near-term event/stress priced">IV term ${its.front.iv}→${its.back.iv}% (${its.shape})</span>`);
+  // Smile layer not yet added for this pair → nudge which expiry to grab (analyser only).
+  const hint = o.inst?.ivPasteHint;
+  if (hint && !hint.haveSmile) bits.push(`<span style="color:var(--gold)" title="Add the per-strike smile (charm/vanna/skew) in the OI analyser's smile box using this expiry">💡 smile: paste ${hint.code ? hint.code + (hint.date ? ` (${hint.date})` : '') : `~${hint.dte}D`}</span>`);
   // Concentration + institutional cluster zones.
   const con = o.inst?.concentration;
   if (con && con.read !== 'moderate') bits.push(`<span class="muted">${con.read} (top5 ${con.top5Pct}%)</span>`);
