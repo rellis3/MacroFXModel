@@ -85,7 +85,7 @@ import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
 import { refreshRangeLineConfluence, packLiveM1 } from './js/rangeLineConfluenceProducer.js';
 import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas, classifyOIChange, oiWallStability, oiPriceConfirmation } from './js/oiConfluence.js';
 import { buildOILevelText } from './js/oiLevelExport.js';
-import { buildOIZones } from './js/oiZones.js';
+import { buildOIZones, explainNoZones } from './js/oiZones.js';
 import { gammaFlip as computeGammaFlip, distanceToFlip, flipDrift, rolloffSummary } from './js/gammaFlow.js';
 import { buildRangeZones } from './js/rangeLineZones.js';
 import { learnAndFreeze as learnAndFreezeV2, deriveBands as deriveBandsV2, flattenPolicy as flattenPolicyV2 } from './js/levelsV2Learn.js';
@@ -7446,9 +7446,18 @@ async function _refreshOIBotZones() {
     const hist = histRaw ? (JSON.parse(histRaw).data ?? JSON.parse(histRaw)) : {};
     const universe = new Set([...OI_BOT_UNIVERSE, ...(cfg.fx_enabled ? (cfg.fx_pairs || []) : [])]);
     const instruments = {};
+    const skipped = {};                                          // pasted into the analyser but NOT traded — with the reason why
     for (const [pair, inst] of Object.entries(store)) {
       const key = (() => { try { return resolveKey(pair); } catch { return null; } })() || String(pair).toLowerCase().replace(/[/_]/g, '');
-      if (!universe.has(key)) continue;                          // gold+indices (+ opted-in FX) only
+      if (!universe.has(key)) {
+        // It's in oi_store (someone pasted OI for it) but out of the bot's universe.
+        // Record WHY so "no zones" reads as a setting, not a fault (the #1 confusion:
+        // FX pairs are opt-in because CME OI on FX is partial — the weak asset).
+        skipped[key] = !cfg.fx_enabled
+          ? 'FX not traded by default — enable FX on the OI Gamma tab (bot-config) to trade it'
+          : (!(cfg.fx_pairs || []).includes(key) ? `FX enabled but "${key}" is not in fx_pairs` : 'not in the OI bot universe (gold + indices)');
+        continue;                                                // gold+indices (+ opted-in FX) only
+      }
       const pip = (() => { try { return _pipSize(key) || 0; } catch { return 0; } })() || 0.0001;
       const { stability, change } = _oiBotStabilityChange(hist, key);
       // Stale-data guard: if the live spot sits OUTSIDE the option chain's own
@@ -7489,14 +7498,20 @@ async function _refreshOIBotZones() {
         expMove: inst.expectedMove ? { upper: inst.expectedMove.upper, lower: inst.expectedMove.lower } : null,
         vannaNote: _vn && _vn.firing ? `vanna ${_vn.state} firing (IV ${_vn.ivFalling ? 'falling' : 'rising'}) — indices strong, gold/FX weak` : null });
       const gex = inst.exposures?.gex ?? 0;
+      // When an in-universe instrument yields no zones, say why (flat regime / no
+      // strong walls / walls out of range) — so a blank plan is legibly intentional.
+      let diag = null;
+      if (!stale && zones.length === 0) {
+        try { diag = explainNoZones(inst, inst.spot, { ...cfg, pip }); } catch { diag = null; }
+      }
       instruments[key] = { spot: inst.spot ?? null, maxPain: inst.maxPain ?? null,
-        regime: gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : 'NEUTRAL', zones, zoneCount: zones.length, stale,
+        regime: gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : 'NEUTRAL', zones, zoneCount: zones.length, stale, diag,
         gammaFlow, termStructure: Array.isArray(inst.termStructure) ? inst.termStructure : null,
         greeksFlow: inst.greeksFlow ?? null, expectedMove: inst.expectedMove ?? null,
         ivDynamics: inst.ivDynamics ?? null, riskReversal: inst.riskReversal ?? null };
       if (stale) console.warn(`[oi-bot] ${key}: ${stale} — skipping (no zones)`);
     }
-    await kv.put('oi_bot_zones', JSON.stringify({ data: { strategy: 'oi-bot', generatedAt: new Date().toISOString(), instruments }, timestamp: Date.now() }));
+    await kv.put('oi_bot_zones', JSON.stringify({ data: { strategy: 'oi-bot', generatedAt: new Date().toISOString(), instruments, skipped }, timestamp: Date.now() }));
     const total = Object.values(instruments).reduce((a, v) => a + v.zoneCount, 0);
     console.log(`[oi-bot] zones refreshed · ${Object.keys(instruments).length} instruments · ${total} zones`);
     return Object.keys(instruments).length;

@@ -35,6 +35,44 @@ function _nearDTE(inst) {
   return dtes.length ? Math.min(...dtes) : null;
 }
 
+// Diagnostic companion to buildOIZones: when the planner returns NO zones for an
+// in-universe instrument, say WHY in one short line — so an empty plan reads as
+// "empty on purpose" (flat regime / no strong walls / walls out of range), not
+// "broken". Mirrors the planner's gates. Returns null when zones SHOULD exist
+// (the emptiness is unexplained and worth a real look). Universe membership is a
+// producer concern, handled there — this only explains an in-universe blank.
+export function explainNoZones(inst, price, cfg = {}) {
+  if (!inst || typeof inst !== 'object') return 'no OI data in store';
+  if (!(price > 0)) return 'no live price';
+  const { minTier = 'strong', requireEstablished = false,
+          fadeInPin = true, followBreaks = true } = cfg;
+  const gex = inst.exposures?.gex ?? inst.gex ?? 0;
+  const regime = gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : 'NEUTRAL';
+  const tierOK = w => _rank(w?.tier) >= _rank(minTier);
+  const calls = Array.isArray(inst.callWalls) ? inst.callWalls : [];
+  const puts = Array.isArray(inst.putWalls) ? inst.putWalls : [];
+  const strongCalls = calls.filter(tierOK), strongPuts = puts.filter(tierOK);
+  if (regime === 'NEUTRAL') return 'flat GEX (gex≈0) — no PIN/BREAKOUT regime, no fade/break zones';
+  if (!strongCalls.length && !strongPuts.length) {
+    const best = [...calls, ...puts].reduce((m, w) => Math.max(m, _rank(w?.tier)), 0);
+    const bestName = best >= 3 ? 'strong' : best >= 2 ? 'moderate' : best >= 1 ? 'weak' : 'none';
+    return (calls.length + puts.length)
+      ? `no walls ≥ ${minTier} (strongest present: ${bestName}) — lower minTier or none qualify`
+      : 'no walls detected in the OI';
+  }
+  if (regime === 'PIN') {
+    if (!fadeInPin) return 'PIN regime but fadeInPin is off';
+    const resAbove = strongCalls.some(w => w.strike > price);
+    const supBelow = strongPuts.some(w => w.strike < price);
+    if (!resAbove && !supBelow)
+      return `PIN: no ${minTier}+ wall bracketing price (need a call wall above or a put wall below ${price})`;
+    if (requireEstablished) return 'PIN: bracketing walls present but none pass the established-wall filter';
+    return null;   // fade zones should exist (unless every candidate was vetoed as liquidating)
+  }
+  if (regime === 'BREAKOUT' && !followBreaks) return 'BREAKOUT regime but followBreaks is off';
+  return null;     // BREAKOUT with strong walls → break zones expected
+}
+
 export function buildOIZones(inst, price, cfg = {}) {
   if (!inst || typeof inst !== 'object' || !(price > 0)) return [];
   const {
