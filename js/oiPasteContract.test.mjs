@@ -20,6 +20,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { parseOIMatrix, oiParseTable, oiCalcMaxPain, pickPrimaryExpiry, resolveSmileExpiry,
   parseIVSettlement, oiMatrixTermStructure } from './oi.js';
+import { oiStoreToLevels } from './oiConfluence.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const fx = n => readFileSync(join(HERE, 'fixtures', n), 'utf8');
@@ -259,6 +260,56 @@ console.log('[live smile hint — resolves from pastes, no save required]');
     }
     return true;
   })());
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 8. WALL SELECTION — compute once in the modal, let the export and the bot filter.
+//    Replaces a hard `topWalls = 2` cap that silently dropped everything past the
+//    two biggest per side (it hid EUR/USD's largest put strike from the indicator).
+//    A wall must be BOTH relatively outsized (the 3× tier) and absolutely meaningful
+//    (a share of the biggest wall on its side) — tier alone lets deep-OTM tail hedges
+//    in, because out there the neighbouring strikes are empty.
+// ─────────────────────────────────────────────────────────────────────────────
+console.log('[wall selection — tier AND size, not a fixed count]');
+{
+  const inst = {
+    maxPain: 1.1550,
+    callWall: 1.1425, putWall: 1.1400,
+    callWalls: [
+      { strike: 1.1600, oi: 6867, tier: 'strong' },     // real
+      { strike: 1.1500, oi: 3525, tier: 'moderate' },   // real
+      { strike: 1.2450, oi: 1808, tier: 'strong' },     // tail hedge: 3x vs empty neighbours
+      { strike: 1.3000, oi: 745,  tier: 'strong' },     // tail hedge
+      { strike: 1.1425, oi: 376,  tier: null },         // the headline wall — trivially small
+    ],
+    putWalls: [
+      { strike: 1.1400, oi: 12020, tier: 'strong' },
+      { strike: 1.1450, oi: 8173,  tier: 'moderate' },
+      { strike: 1.1300, oi: 7608,  tier: 'moderate' },  // biggest all-expiry put — was dropped by the cap
+      { strike: 1.1050, oi: 2442,  tier: 'strong' },    // tail hedge
+    ],
+  };
+  const at = (lv, t) => lv.filter(l => l.type === t).map(l => l.price).sort((a, b) => a - b);
+
+  const lv = oiStoreToLevels(inst);
+  ok('more than the old 2 walls per side survive', at(lv, 'put_wall').length >= 3,
+    at(lv, 'put_wall').join(' '));
+  ok('the biggest put strike is exported (the reported miss)', at(lv, 'put_wall').includes(1.1300));
+  ok('deep-OTM tail hedges are NOT walls', !at(lv, 'call_wall').includes(1.2450) && !at(lv, 'call_wall').includes(1.3000),
+    at(lv, 'call_wall').join(' '));
+  ok('a trivially small HEADLINE wall is not dressed as a wall', !at(lv, 'call_wall').includes(1.1425));
+  ok('real walls both sides', at(lv, 'call_wall').join() === '1.15,1.16' && at(lv, 'put_wall').join() === '1.13,1.14,1.145',
+    `calls ${at(lv, 'call_wall')} | puts ${at(lv, 'put_wall')}`);
+
+  // Never blank an instrument out: a thin chain with nothing tiered still yields the
+  // top 2, so raising the bar can't silently remove all of a pair's levels.
+  const thin = { putWalls: [{ strike: 1.10, oi: 40, tier: null }, { strike: 1.09, oi: 30, tier: null }] };
+  ok('thin chain falls back to the top 2 rather than emitting nothing',
+    at(oiStoreToLevels(thin), 'put_wall').length === 2);
+
+  // Back-compat: an explicit count still means exactly that (bots/tests that ask).
+  ok('explicit topWalls still caps at that count',
+    at(oiStoreToLevels(inst, { topWalls: 2 }), 'put_wall').length <= 3);
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

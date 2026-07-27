@@ -82,7 +82,10 @@ function fmtSaved(inst) {
 }
 
 // store = { [pair]: inst } (the `oi_store` KV `.data` object). Pure.
-export function buildOILevelText(store, { topWalls = 2, generated = null } = {}) {
+// topWalls defaults to null so the shared converter's TIER rule decides what's worth
+// drawing (course Lesson 4's 3× rule) instead of an arbitrary count. Pass a number to
+// force the old fixed-count behaviour.
+export function buildOILevelText(store, { topWalls = null, minTier = 'moderate', maxWalls = 8, generated = null } = {}) {
   const LW = 44;
   const hdr = '──── OI WALLS & MAX PAIN ' + '─'.repeat(Math.max(0, LW - 25));
   const lines = [hdr];
@@ -94,7 +97,7 @@ export function buildOILevelText(store, { topWalls = 2, generated = null } = {})
   let emitted = 0;
   for (const [pair, inst] of entries) {
     if (!inst || typeof inst !== 'object') continue;
-    const levels = oiStoreToLevels(inst, { topWalls }).filter(l => WANT.has(l.type));
+    const levels = oiStoreToLevels(inst, { topWalls, minTier, maxWalls }).filter(l => WANT.has(l.type));
     if (!levels.length) continue;
 
     const canon = canonName(pair);

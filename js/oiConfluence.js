@@ -298,7 +298,41 @@ export function oiWallStability(historyDays, tolPrice) {
   });
 }
 
-export function oiStoreToLevels(inst, { topWalls = 2 } = {}) {
+// The 3× rule's tiers, ranked (course Lesson 4: 1.5× weak · 2× moderate · 3×+ strong).
+const _TIER_RANK = { weak: 1, moderate: 2, strong: 3 };
+
+// Which walls leave the modal. COMPUTE ONCE, LET CONSUMERS FILTER — the modal decides
+// what qualifies as a wall; the export draws them and the bot picks which to trade.
+//
+// This replaced a hard `topWalls = 2` cap that silently dropped everything past the
+// two biggest per side. On real EUR/USD data that hid 1.1300 — the single largest put
+// strike in the whole book (17,443 contracts, plainly visible on the OI chart) — from
+// both the indicator and `/api/oi-levels`, because it ranked 3rd within the selected
+// expiry. A count cap can't express "strong enough to matter"; the tier can.
+//
+// Fallback matters: if NOTHING reaches minTier (a thin/illiquid chain) we still emit
+// the top 2, so raising the bar can never blank out an instrument's levels entirely.
+// TWO tests, both required — tier alone is not enough.
+//
+// The 3× rule is RELATIVE (OI vs neighbouring strikes), and in the far tails the
+// neighbours are ~empty, so a few hundred lots scores "strong". Filtering on tier
+// alone pulled 1.2450/1.2600/1.3000 into EUR/USD's export as call walls off ~1,800
+// contracts, next to a real 6,867-lot wall at 1.1600 — the deep-OTM tail-hedge
+// distortion of Lesson 6 pitfall 4, which `pickPrimaryExpiry` already guards against
+// when choosing an expiry. So also require meaningful ABSOLUTE size: at least
+// `minShare` of the biggest wall on that side. Share, not a contract count, so it
+// travels across instruments without per-symbol tuning.
+function _selectWalls(list, { topWalls, minTier, maxWalls, minShare }) {
+  const arr = Array.isArray(list) ? list : [];
+  if (Number.isFinite(topWalls)) return arr.slice(0, topWalls);   // explicit count wins (back-compat)
+  const minRank = _TIER_RANK[minTier] ?? 2;
+  const maxOI = arr.reduce((m, w) => Math.max(m, w?.oi || 0), 0);
+  const floor = maxOI * (Number.isFinite(minShare) ? minShare : 0.3);
+  const keep = arr.filter(w => (_TIER_RANK[w?.tier] ?? 0) >= minRank && (w?.oi || 0) >= floor);
+  return (keep.length ? keep : arr.slice(0, 2)).slice(0, maxWalls);
+}
+
+export function oiStoreToLevels(inst, { topWalls = null, minTier = "moderate", maxWalls = 8, minShare = 0.3 } = {}) {
   if (!inst || typeof inst !== 'object') return [];
   const out = [];
   // Walls carry their 3× strength `tier` so the bots can weight/gate by it — the
@@ -308,10 +342,22 @@ export function oiStoreToLevels(inst, { topWalls = 2 } = {}) {
   const cw = Array.isArray(inst.callWalls) ? inst.callWalls : [];
   const pw = Array.isArray(inst.putWalls) ? inst.putWalls : [];
   push(inst.maxPain, 'max_pain');
-  push(inst.callWall, 'call_wall', cw.find(w => w.strike === inst.callWall)?.tier ?? null);
-  push(inst.putWall, 'put_wall', pw.find(w => w.strike === inst.putWall)?.tier ?? null);
-  for (const w of cw.slice(0, topWalls)) push(w?.strike, 'call_wall', w?.tier ?? null);
-  for (const w of pw.slice(0, topWalls)) push(w?.strike, 'put_wall', w?.tier ?? null);
+  // The headline walls are "nearest above/below spot", chosen by DISTANCE — so they
+  // can be trivially small. On EUR/USD the nearest call wall above spot carried 376
+  // contracts next to a genuine 6,867-lot wall at 1.1600, and was exported and drawn
+  // identically. Hold them to the same size floor: if the nearest thing above spot
+  // isn't actually a wall, the honest answer is that there is no near call wall, not
+  // a line pretending there is one.
+  const headOK = (list, strike) => {
+    if (Number.isFinite(topWalls)) return true;                 // explicit-count callers keep old behaviour
+    const maxOI = list.reduce((m, w) => Math.max(m, w?.oi || 0), 0);
+    const hit = list.find(w => w.strike === strike);
+    return !maxOI || (hit?.oi || 0) >= maxOI * (Number.isFinite(minShare) ? minShare : 0.3);
+  };
+  if (headOK(cw, inst.callWall)) push(inst.callWall, 'call_wall', cw.find(w => w.strike === inst.callWall)?.tier ?? null);
+  if (headOK(pw, inst.putWall)) push(inst.putWall, 'put_wall', pw.find(w => w.strike === inst.putWall)?.tier ?? null);
+  for (const w of _selectWalls(cw, { topWalls, minTier, maxWalls, minShare })) push(w?.strike, 'call_wall', w?.tier ?? null);
+  for (const w of _selectWalls(pw, { topWalls, minTier, maxWalls, minShare })) push(w?.strike, 'put_wall', w?.tier ?? null);
   const gp = Array.isArray(inst.gexProfile) ? inst.gexProfile : [];
   for (let i = 1; i < gp.length; i++) {
     if (Math.sign(gp[i]?.netGex ?? 0) !== Math.sign(gp[i - 1]?.netGex ?? 0)) {
@@ -322,7 +368,9 @@ export function oiStoreToLevels(inst, { topWalls = 2 } = {}) {
   let hvl = null, hg = -Infinity;
   for (const g of gp) { const ag = Math.abs(g?.gamma ?? 0); if (ag > hg) { hg = ag; hvl = g?.strike; } }
   push(hvl, 'hvl');
-  for (const v of (Array.isArray(inst.volumeMagnets) ? inst.volumeMagnets : []).slice(0, topWalls)) push(v?.strike, 'oi_volume');
+  // Volume magnets are today's flow, not resting structure, and carry no tier — keep
+  // them to a small count so they stay a hint rather than crowding the chart.
+  for (const v of (Array.isArray(inst.volumeMagnets) ? inst.volumeMagnets : []).slice(0, Number.isFinite(topWalls) ? topWalls : 2)) push(v?.strike, 'oi_volume');
   // Institutional CLUSTER zones (≥2 merged strikes) — a higher-conviction level the
   // bots/OI-bot can trade off. Emit the zone centre as `oi_cluster`.
   for (const c of (Array.isArray(inst.clusters) ? inst.clusters : [])) if ((c?.count ?? 0) >= 2) push(c.center, 'oi_cluster');
