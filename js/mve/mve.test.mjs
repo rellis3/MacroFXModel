@@ -19,7 +19,7 @@ import { fitLoadings, factorImpliedReturn, coherenceCheck } from './factorModel.
 import { confidenceEngine, agreementScore, scaleAgreementByIndependence, baseRateReality } from './confidence.js';
 import { runMVE, valuationText } from './index.js';
 import { augmentSignalScore, mveFactorScore } from './signalAdapter.js';
-import { buildContext, ffAlign, runLiveMVE, normalizeSym, FACTOR_SPEC } from './liveAdapter.js';
+import { buildContext, ffAlign, runLiveMVE, normalizeSym, FACTOR_SPEC, OANDA_SYMBOL } from './liveAdapter.js';
 import { validateInstrument, oosMispricingSeries, poolConsistency } from './validateInstrument.js';
 
 let failures = 0, tests = 0;
@@ -296,6 +296,43 @@ console.log('\n── live adapter (pure builder, no network) ──');
   ok('runLiveMVE guards missing FRED_KEY', bad.ok === false && /FRED_KEY/.test(bad.error));
   const unsup = await runLiveMVE({ sym: 'ZZZ/USD', deps: fakeDeps });
   ok('runLiveMVE rejects unsupported symbol', unsup.ok === false && /unsupported/.test(unsup.error));
+}
+
+console.log('\n── NQ factor spec (index convention: real yield + HY OAS + VIX, no DXY) ──');
+{
+  ok('NQ maps to the OANDA NAS100_USD instrument', OANDA_SYMBOL.NQ === 'NAS100_USD');
+  ok('NQ spec pulls tips,hy,vix (no dxy — deliberately excluded, see liveAdapter.js header)', FACTOR_SPEC.NQ.fred.join(',') === 'tips,hy,vix');
+
+  // Synthetic NQ-shaped series: price driven by real yield (down) + HY OAS (down) +
+  // VIX (down) — i.e. cheaper discount rate / tighter credit / lower vol ⇒ richer NQ,
+  // the textbook equity risk-premium signs — so the regression should recover it.
+  const r = rng(53);
+  const bars = [], tipsMap = new Map(), hyMap = new Map(), vixMap = new Map();
+  let d = new Date(Date.UTC(2023, 0, 2));
+  let tips = 1.8, hy = 3.9, vix = 15.5, px = 15000;
+  for (let i = 0; i < 300; i++) {
+    do { d = new Date(d.getTime() + 86400000); } while (d.getUTCDay() === 0 || d.getUTCDay() === 6);
+    const iso = d.toISOString().slice(0, 10);
+    tips += 0.01 * gauss(r); hy += 0.03 * gauss(r); vix += 0.15 * gauss(r);
+    px += -400 * (tips - 1.8) - 250 * (hy - 3.9) - 60 * (vix - 15.5) + 20 * gauss(r);
+    bars.push({ date: iso, close: px });
+    tipsMap.set(iso, tips); hyMap.set(iso, hy); vixMap.set(iso, vix);
+  }
+  const fred = { tips: tipsMap, hy: hyMap, vix: vixMap };
+  const ctx = buildContext('NQ', bars, fred);
+  ok('buildContext produces price + 3 NQ factors', ctx.price.length > 200 && ctx.factors.length === 3, `rows=${ctx.price.length}`);
+  ok('NQ factor names as specified', ctx.factors.map(f => f.name).join(',') === 'real_yield,hy_oas,vix');
+  const v = runMVE(ctx);
+  ok('end-to-end NQ ctx values ok', v.ok === true && Number.isFinite(v.fairValue) && v.sigma > 0);
+  ok('recovers the 3-factor relationship (r²>0.5)', v.estimates.find(e => e.name === 'macro_fv')?.meta.r2 > 0.5, `r²=${v.estimates.find(e => e.name === 'macro_fv')?.meta.r2}`);
+
+  const fakeNqDeps = {
+    fredKey: 'TEST',
+    fetchD1: async () => bars,
+    fetchFred: async (id) => ({ DFII10: tipsMap, BAMLH0A0HYM2: hyMap, VIXCLS: vixMap }[id]),
+  };
+  const liveNq = await runLiveMVE({ sym: 'NQ', deps: fakeNqDeps });
+  ok('runLiveMVE(NQ) with injected fetchers returns a valuation', liveNq.ok === true && liveNq.dataSource?.oanda === 'NAS100_USD', liveNq.error || '');
 }
 
 console.log('\n── OOS validation (does mispricing predict returns?) ──');
