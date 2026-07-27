@@ -332,7 +332,7 @@ function _selectWalls(list, { topWalls, minTier, maxWalls, minShare }) {
   return (keep.length ? keep : arr.slice(0, 2)).slice(0, maxWalls);
 }
 
-export function oiStoreToLevels(inst, { topWalls = null, minTier = "moderate", maxWalls = 8, minShare = 0.3 } = {}) {
+export function oiStoreToLevels(inst, { topWalls = null, minTier = "moderate", maxWalls = 3, minShare = 0.3 } = {}) {
   if (!inst || typeof inst !== 'object') return [];
   const out = [];
   // Walls carry their 3× strength `tier` so the bots can weight/gate by it — the

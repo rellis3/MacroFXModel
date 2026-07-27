@@ -85,7 +85,7 @@ function fmtSaved(inst) {
 // topWalls defaults to null so the shared converter's TIER rule decides what's worth
 // drawing (course Lesson 4's 3× rule) instead of an arbitrary count. Pass a number to
 // force the old fixed-count behaviour.
-export function buildOILevelText(store, { topWalls = null, minTier = 'moderate', maxWalls = 8, generated = null } = {}) {
+export function buildOILevelText(store, { topWalls = null, minTier = "moderate", maxWalls = 3, generated = null } = {}) {
   const LW = 44;
   const hdr = '──── OI WALLS & MAX PAIN ' + '─'.repeat(Math.max(0, LW - 25));
   const lines = [hdr];
