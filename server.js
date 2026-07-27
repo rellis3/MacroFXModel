@@ -39,6 +39,7 @@ import { benchInstrument as hurstBenchInstrument, poolBench as hurstPoolBench } 
 import { stressReplay, allocationCompare, STRESS_WINDOWS }           from './js/bookStress.js';
 import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
 import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
+import { runTrendFlipSummarized, DEFAULTS as TREND_FLIP_DEFAULTS }   from './js/trendFlipEngine.js';
 import { runRankICSuite, RANKIC_INSTRUMENTS }                       from './js/rankICEngine.js';
 import { runRankICLiveSuite, RANKIC_LIVE_INSTRUMENTS }             from './js/rankICLiveEngine.js';
 import { computeCoupling, computeReturnsCoupling, computeCouplingPersistence, couplingState, computePriorDayProjection, computeDailyLeadLag, computeDivergenceEvents, backtestDivergenceFade, walkForwardDivergence, computeProjectionGate, computeConvexity, alignByTime, buildSpread } from './js/yieldCouplingCore.js';
@@ -9918,6 +9919,78 @@ app.post('/api/honest-forecast/run', express.json({ limit: '256kb' }), (req, res
 
 app.get('/api/honest-forecast/status/:jobId', (req, res) => {
   const job = hfJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Trend-Flip Engine ────────────────────────────────────────────────────────
+// HTF-bias-gated discrete flip entry (dayTypeCore, not the nulled EMA-stack
+// idea) + ATR stop/fixed-RR target, walked on real M1 path. Single instrument
+// per run (stage 1-3 of the honest-backtest discipline — no multi-pair sweep
+// yet). Same async-job pattern as /api/honest-forecast.
+const tfJobs = new Map();
+function _purgeStaleTfJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of tfJobs) if (job.startedAt < cutoff) tfJobs.delete(id);
+}
+
+app.post('/api/trend-flip/run', express.json({ limit: '256kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) {
+    return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch D1 data' });
+  }
+  const b = req.body ?? {};
+  const key = resolveKey(b.pair);
+  if (!key) return res.status(400).json({ ok: false, error: `Unknown instrument "${b.pair}"` });
+
+  const num = (v, d) => (v === undefined || v === '' || isNaN(+v) ? d : +v);
+  const opts = {
+    dateFrom:    b.dateFrom || '',
+    dateTo:      b.dateTo   || '',
+    htfWin:      num(b.htfWin, TREND_FLIP_DEFAULTS.htfWin),
+    htfThresh:   num(b.htfThresh, TREND_FLIP_DEFAULTS.htfThresh),
+    ltfMinutes:  num(b.ltfMinutes, TREND_FLIP_DEFAULTS.ltfMinutes),
+    ltfWin:      num(b.ltfWin, TREND_FLIP_DEFAULTS.ltfWin),
+    weakThresh:  num(b.weakThresh, TREND_FLIP_DEFAULTS.weakThresh),
+    ltfThresh:   num(b.ltfThresh, TREND_FLIP_DEFAULTS.ltfThresh),
+    atrPeriod:   num(b.atrPeriod, TREND_FLIP_DEFAULTS.atrPeriod),
+    atrMult:     num(b.atrMult, TREND_FLIP_DEFAULTS.atrMult),
+    rr:          num(b.rr, TREND_FLIP_DEFAULTS.rr),
+    oosFrac:     Math.min(Math.max(num(b.oosFrac, TREND_FLIP_DEFAULTS.oosFrac), 0.1), 0.6),
+  };
+  if (b.costPct !== undefined && b.costPct !== '') opts.costPct = num(b.costPct, undefined);
+  if (b.slipPct !== undefined && b.slipPct !== '') opts.slipPct = num(b.slipPct, undefined);
+
+  const jobId     = `tf_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleTfJobs();
+  tfJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    try {
+      const assetClass = instrument(key).assetClass;
+      const dailyBars = await _btFetchD1(oandaSymbol(key), 5000);
+      if (!dailyBars?.length) throw new Error(`No D1 bars for ${key}`);
+      const m1Packed = await loadM1ForPair(key, BT_M1_DIR);
+      if (!m1Packed?.n) throw new Error(`No M1 data for ${key}`);
+
+      const result = runTrendFlipSummarized(key, dailyBars, m1Packed, assetClass, opts);
+      tfJobs.set(jobId, { status: 'done', result: { ...result, opts }, startedAt });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[trend-flip/run]', msg, e?.stack ?? '');
+      tfJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/trend-flip/status/:jobId', (req, res) => {
+  const job = tfJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') {
     return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
