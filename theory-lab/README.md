@@ -65,8 +65,10 @@ markup, the house content order, and a verification checklist.
 - **4 · Options & Derivatives** (2) — Black-Scholes-Merton, Merton
   jump-diffusion.
 - **5 · Risk & Sizing** (2) — Kelly criterion, Extreme Value Theory.
-- **6 · Macro & FX Theory** (3) — Interest Rate Parity & the carry trade,
-  Purchasing Power Parity, the Taylor Rule.
+- **6 · Macro & FX Theory** (4) — Interest Rate Parity & the carry trade,
+  Purchasing Power Parity, the Taylor Rule, Central Bank Policy (hawkish/
+  dovish, the dot plot, QE/QT, and the surprise-vs-priced rule for what
+  actually moves FX).
 - **7 · Applied Statistics & Validation** (7) — regression diagnostics,
   AIC/BIC, ARIMA & VAR, copulas, Sharpe/Sortino/Calmar & the Deflated
   Sharpe Ratio, walk-forward & purged cross-validation, bootstrapping &

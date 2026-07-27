@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Central Bank Policy — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Macro &amp; FX Theory / Central Bank Policy</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Macro &amp; FX Theory · Lesson 4 of 4</div>
+  <h1 class="tl-title">Central Bank Policy</h1>
+  <p class="tl-dek">The working vocabulary and reasoning a dual-mandate central bank uses to argue its way to a rate decision — and why the SURPRISE relative to what markets already priced, not the decision's absolute stance, is what actually moves a currency.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — background knowledge, not a signal</span>
+    <span>~16 min read</span>
+    <span>Prereqs: None required — the Taylor Rule lesson helpful for the formal reaction-function view</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A dual-mandate central bank (like the Fed) is legally answerable to two goals at once — maximum employment and price stability — and nearly every projection, vote, and rate decision is an argument about how those two goals weigh against each other right now.</li>
+      <li><strong>Hawkish</strong> means leaning toward tighter policy to protect price stability; <strong>dovish</strong> means leaning toward looser policy to protect growth/employment. These two words map directly onto the two halves of the mandate.</li>
+      <li>The <strong>dot plot</strong> (inside the Fed's quarterly Summary of Economic Projections) shows where each policymaker individually thinks rates should go — it is a distribution of current opinion, not a promise, and the median dot is only as solid as the committee's underlying agreement.</li>
+      <li>The single most important practical fact in this lesson: it is the <strong>hawkish or dovish surprise relative to what was already priced</strong> — not the absolute hawkish/dovish stance itself — that moves a currency. A "hawkish hold" can rally a currency the market expected to be cut.</li>
+      <li>When both mandate halves point the same way (inflation and unemployment both say "tighten," or both say "ease"), the committee acts decisively. When they conflict — the <strong>stagflation trap</strong>, both inflation and unemployment rising together — the committee fractures, the dot plot goes mixed, and guidance turns vague and data-dependent.</li>
+      <li>The Taylor Rule lesson elsewhere in this curriculum formalizes the same reasoning as an equation; this lesson is the qualitative vocabulary layer underneath it — how the committee actually talks and votes before any of that gets reduced to a number.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Every FX and macro trading conversation about central banks is conducted in a specific vocabulary —
+    hawkish, dovish, hike, hold, dot plot, forward guidance, terminal rate — and that vocabulary is not
+    decorative. It is the shorthand for a real, structured argument a committee is having about how to weigh
+    two goals against each other, and fluency in it is what lets you read a press conference, a projections
+    release, or a single sentence of forward guidance and immediately locate where the committee's internal
+    disagreement actually sits. Get the vocabulary wrong — mistake a data-dependent hold for "nothing
+    happened," or read the median dot as a commitment rather than a snapshot — and you will misread the
+    signal even when you have all the right numbers in front of you.
+  </p>
+  <p>
+    The Taylor Rule lesson elsewhere in this curriculum takes the opposite approach to the same subject: it
+    reduces a central bank's reaction to a single equation, \(i = r^{*}+\pi+a(\pi-\pi^{*})+b(y-y^{*})\), and
+    asks whether the actual policy rate sits above or below what the data mechanically justify. That lesson
+    is the formalization; this one is the reasoning underneath it — the qualitative layer of how a committee
+    actually gets from "here is the data" to "here is the vote and here is what we said about it." The two
+    are companions: the Taylor Rule tells you what the data justify in principle, while the vocabulary and
+    scenarios here tell you how a real committee argues its way to (or away from) that number, including in
+    the stagflation case where the Taylor Rule's two gap terms point in opposite directions and something
+    has to give.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>The dual mandate is the lens every decision gets argued through</h3>
+    <p>
+      A dual-mandate central bank has exactly two jobs written into its founding law: keep unemployment low
+      (maximum employment) and keep prices stable (price stability, operationalized as a numeric inflation
+      target — 2% for both the Fed and the ECB, though the ECB's mandate is structured as price stability
+      first, with other goals subordinate to it rather than co-equal). Every meeting, every projection, and
+      every vote is, underneath the jargon, an argument about how those two goals currently weigh against
+      each other.
+    </p>
+    <p>
+      Most of the time this is easy, because the two halves agree: an overheating economy with low
+      unemployment and high inflation argues for tightening on both counts at once; a weak economy with
+      rising unemployment and low inflation argues for easing on both counts at once. The committee can act
+      decisively in either of those cases because there is no real internal argument to have — everyone is
+      pulling the same direction, just possibly by different amounts.
+    </p>
+    <p>
+      The single organizing idea of this whole lesson is what happens when the two halves <em>disagree</em>
+      — when fighting inflation and fighting unemployment call for opposite policy. That is the stagflation
+      case below, and it is the one situation a single interest rate genuinely cannot solve, which is exactly
+      why it produces split committees, mixed dot plots, and vague, data-dependent guidance instead of a
+      confident, decisive statement.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The vocabulary, term by term</h2>
+  <p>
+    This lesson is unusually vocabulary-heavy rather than derivation-heavy, and deliberately so — fluency in
+    these terms is the actual skill being taught. Every term below is grouped the same way a practitioner
+    would naturally group them: the two directional stances, what the bank actually does to rates, the
+    communication tools it uses to explain itself, balance-sheet vocabulary, the goals and targets it is
+    answerable to, and a handful of terms that show up constantly regardless of category.
+  </p>
+
+  <h3>The two directional stances</h3>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge red">🦅</div>
+      <h4>Hawkish</h4>
+      <p>Favoring tighter policy (higher rates), usually out of concern about inflation. A hawk prioritizes price stability, and will accept some cost to growth or jobs to bring inflation back to target.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🕊️</div>
+      <h4>Dovish</h4>
+      <p>Favoring looser policy (lower rates), usually out of concern for growth or employment. A dove is more willing to tolerate some inflation above target to protect jobs and demand.</p>
+    </div>
+  </div>
+  <p>
+    These two words map directly onto the two halves of the dual mandate: hawkish is the price-stability half
+    speaking, dovish is the maximum-employment half speaking. Almost every other term below is really just a
+    specific instrument, forecast, or communication choice that expresses one of these two underlying
+    leanings.
+  </p>
+
+  <h3>What the bank does to rates</h3>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge red">📈</div>
+      <h4>Tighten / Tightening</h4>
+      <p>Raising rates (or reducing money supply) to slow the economy and cool inflation. A <strong>tightening cycle</strong> is a sustained sequence of hikes over multiple meetings, not a single move.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📉</div>
+      <h4>Ease / Easing</h4>
+      <p>The reverse of tightening: cutting rates to stimulate demand. An <strong>easing cycle</strong> is sustained cuts over multiple meetings.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🔨</div>
+      <h4>Hike / Cut</h4>
+      <p>A single rate increase or decrease at one meeting, usually sized in basis points — a 25bp hike is a 0.25 percentage-point increase.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">⏸️</div>
+      <h4>Hold / Pause</h4>
+      <p>Leaving rates unchanged at a meeting. A pause implies a temporary stop <em>within</em> an ongoing cycle, not necessarily the cycle's end — it says "the committee is not yet ready to move again," not "the committee is done moving."</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">⚖️</div>
+      <h4>Neutral rate / r-star (r*)</h4>
+      <p>The theoretical policy rate that neither stimulates nor restrains the economy — neither pushing growth above potential nor holding it below. It is not directly observable; it is estimated and drifts slowly.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🌡️</div>
+      <h4>Restrictive / Accommodative</h4>
+      <p>The stance of policy relative to the neutral rate. Restrictive means actively above neutral, deliberately slowing the economy. Accommodative means actively below neutral, deliberately stimulating it.</p>
+    </div>
+  </div>
+
+  <h3>The communication tools</h3>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📊</div>
+      <h4>Dot plot</h4>
+      <p>The FOMC's own chart of where each of the 19 participants individually thinks the appropriate policy rate should sit at future year-ends. It shows the <em>distribution</em> of opinion across the committee; the median dot is the headline number everyone quotes, but it can hide a badly split committee behind it. Fed-specific — other central banks don't publish an equivalent.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📋</div>
+      <h4>Summary of Economic Projections (SEP)</h4>
+      <p>The broader quarterly Fed release the dot plot is embedded in — it also contains the committee's own forecasts for GDP growth, unemployment, and inflation, so the dots can be read alongside the forecasts that (in principle) justify them.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🗣️</div>
+      <h4>Forward guidance</h4>
+      <p>Communication about the likely future path of policy, used deliberately to shape market expectations today rather than waiting for the next meeting to reveal intent. Can be qualitative ("for an extended period") or conditional ("until inflation returns to target").</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">❓</div>
+      <h4>Data-dependent</h4>
+      <p>Declining to pre-commit to a path; the next moves hinge explicitly on incoming data rather than a stated plan. Often a tell for internal disagreement or genuine uncertainty — a united committee usually can commit to a path.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📗</div>
+      <h4>Staff projections (Greenbook / Tealbook)</h4>
+      <p>The Fed staff economists' own internal forecasts — an analytical input to the meeting, distinct from what the voting policymakers personally intend to do. Kept confidential for five years before public release.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧭</div>
+      <h4>Reaction function</h4>
+      <p>The bank's implicit rule for how it responds to conditions — effectively the qualitative version of the Taylor Rule's equation. A <em>shift</em> in the reaction function (the same data now producing a different response) is a materially bigger deal than the committee simply reacting predictably within an unchanged one — see the closing synthesis below.</p>
+    </div>
+  </div>
+
+  <h3>Balance-sheet vocabulary</h3>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">💰</div>
+      <h4>Quantitative easing (QE)</h4>
+      <p>The central bank creating money to buy assets, typically government bonds, which pushes down longer-term yields directly — used especially when short rates are already near zero and conventional rate cuts have run out of room. A stimulus tool.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge red">🧯</div>
+      <h4>Quantitative tightening (QT)</h4>
+      <p>The reverse of QE: shrinking the balance sheet by letting bonds mature without replacing them, or actively selling them. A tightening tool that works alongside (or instead of) rate hikes.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🐌</div>
+      <h4>Tapering</h4>
+      <p>Gradually reducing the <em>pace</em> of asset purchases — slowing QE down without yet reversing it. A taper is still stimulus, just shrinking stimulus, which is why "tapering" announcements alone can still move markets as a hawkish signal.</p>
+    </div>
+  </div>
+
+  <h3>Goals and targets</h3>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">⚖️</div>
+      <h4>Dual mandate</h4>
+      <p>The Fed's two legal goals: maximum employment and price stability, co-equal by statute. The ECB, by contrast, has a <em>primary</em> mandate of price stability, with other goals (like supporting general EU economic policy) explicitly subordinate to it.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🎯</div>
+      <h4>Inflation target</h4>
+      <p>The explicit numeric goal — 2%, for both the Fed and the ECB, defined over the longer run rather than meeting-to-meeting. Having an explicit, public number is itself a communication tool: it gives markets a fixed yardstick to judge every print against.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧊</div>
+      <h4>Core inflation</h4>
+      <p>Inflation excluding food and energy, whose prices are volatile for reasons often unrelated to underlying demand. Used to read the underlying trend without the noise of, say, a single oil-price spike.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📐</div>
+      <h4>Average inflation targeting (AIT)</h4>
+      <p>A Fed framework (adopted 2020) aiming for 2% inflation <em>on average</em> over time, deliberately allowing inflation to run moderately above target for a while to make up for a period of undershooting it. A more dovish framework than a strict, meeting-by-meeting 2% ceiling.</p>
+    </div>
+  </div>
+
+  <h3>Terms you'll hit constantly</h3>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🔢</div>
+      <h4>Basis point (bp)</h4>
+      <p>One hundredth of a percent. 50bp = 0.50%. The standard unit for describing a rate move precisely, since "a small hike" is ambiguous but "25bp" isn't.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🏔️</div>
+      <h4>Terminal rate</h4>
+      <p>The expected peak (in a hiking cycle) or trough (in a cutting cycle) of the rate path — where the market and the committee ultimately think the cycle is headed, as distinct from where rates sit today.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🚀</div>
+      <h4>Lift-off</h4>
+      <p>The first hike after rates have been held near zero for an extended period — a specific, closely watched moment because it marks the actual start of a tightening cycle after guidance about it may have circulated for months.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">⏳</div>
+      <h4>Policy lag</h4>
+      <p>The delay — often measured in quarters — between a policy change and its full effect showing up in the real economy. This is the reason central banks act pre-emptively on forecasts rather than waiting for the data to fully arrive.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge red">⚡</div>
+      <h4>Hawkish / dovish surprise</h4>
+      <p>When policy or communication comes out more hawkish or more dovish than the market had already priced. This — not the absolute stance itself — is what moves price. A hawkish <em>hold</em> can rally a currency if the market had expected a dovish cut.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">💬</div>
+      <h4>Jawboning</h4>
+      <p>Moving markets through words alone, without actually changing policy — a speech or comment deliberately calibrated to shift expectations ahead of, or instead of, an actual rate decision.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🔇</div>
+      <h4>Blackout period</h4>
+      <p>The stretch of days before a scheduled meeting when officials don't speak publicly about policy, so the market gets no fresh signal to trade on right before the decision itself.</p>
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Visualizing the mandate: a 2x2 reasoning space</h2>
+  <p>
+    The dual mandate can be drawn as a simple 2x2: one axis for inflation (low vs. high relative to target),
+    one axis for unemployment (low vs. high relative to its sustainable rate). Three of the four quadrants
+    are the "clean" cases where both halves of the mandate agree on direction. The fourth is stagflation —
+    and it looks, at first glance, like it should be the mirror-image easy case (both problems present at
+    once, so surely both dials point the same way?) but it is exactly the opposite: high inflation calls for
+    tightening while high unemployment calls for easing, so this is the one quadrant where the two halves of
+    the mandate are in direct conflict rather than agreement.
+  </p>
+  <div class="tl-chart">
+    <div class="tl-chart-label">The dual-mandate 2x2 — where the two halves agree, and where they trap the committee</div>
+    <svg viewBox="0 0 640 460" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A two by two grid with inflation on the vertical axis (low at bottom, high at top) and unemployment on the horizontal axis (low at left, high at right). Top-left quadrant, low unemployment and high inflation, is labeled clean hawkish, fighting inflation. Bottom-right quadrant, high unemployment and low inflation, is labeled clean dovish, fighting unemployment. Bottom-left, low unemployment and low inflation, is labeled the comfortable case, near target, hold. Top-right quadrant, high unemployment and high inflation together, is shaded red and labeled the stagflation trap, mandate in conflict.">
+      <line x1="90" y1="40" x2="90" y2="400" style="stroke:var(--border);stroke-width:1.5"/>
+      <line x1="90" y1="400" x2="590" y2="400" style="stroke:var(--border);stroke-width:1.5"/>
+      <line x1="340" y1="40" x2="340" y2="400" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
+      <line x1="90" y1="220" x2="590" y2="220" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
+
+      <text x="30" y="45" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 30 45)">Inflation →</text>
+      <text x="590" y="418" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" text-anchor="end">Unemployment →</text>
+      <text x="70" y="405" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace" text-anchor="end">low</text>
+      <text x="70" y="50" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace" text-anchor="end">high</text>
+      <text x="100" y="418" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">low</text>
+      <text x="580" y="418" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace" text-anchor="end">high</text>
+
+      <rect x="90" y="40" width="250" height="180" style="fill:var(--red);opacity:.14"/>
+      <rect x="340" y="40" width="250" height="180" style="fill:var(--red);opacity:.30"/>
+      <rect x="90" y="220" width="250" height="180" style="fill:var(--green);opacity:.14"/>
+      <rect x="340" y="220" width="250" height="180" style="fill:var(--blue);opacity:.14"/>
+
+      <text x="215" y="80" text-anchor="middle" style="fill:var(--red);font-size:13px;font-weight:700">🦅 CLEAN HAWKISH</text>
+      <text x="215" y="98" text-anchor="middle" style="fill:var(--text2);font-size:11px">low unemployment, high inflation</text>
+      <text x="215" y="114" text-anchor="middle" style="fill:var(--text3);font-size:10px">both dials say: tighten</text>
+
+      <text x="465" y="80" text-anchor="middle" style="fill:var(--red);font-size:13px;font-weight:700">⚠️ STAGFLATION TRAP</text>
+      <text x="465" y="98" text-anchor="middle" style="fill:var(--text2);font-size:11px">high unemployment AND high inflation</text>
+      <text x="465" y="114" text-anchor="middle" style="fill:var(--text3);font-size:10px">the dials point opposite ways</text>
+
+      <text x="215" y="330" text-anchor="middle" style="fill:var(--green);font-size:13px;font-weight:700">😌 THE COMFORTABLE CASE</text>
+      <text x="215" y="348" text-anchor="middle" style="fill:var(--text2);font-size:11px">low unemployment, low inflation</text>
+      <text x="215" y="364" text-anchor="middle" style="fill:var(--text3);font-size:10px">near target — hold, watch for drift</text>
+
+      <text x="465" y="330" text-anchor="middle" style="fill:var(--blue);font-size:13px;font-weight:700">🕊️ CLEAN DOVISH</text>
+      <text x="465" y="348" text-anchor="middle" style="fill:var(--text2);font-size:11px">high unemployment, low inflation</text>
+      <text x="465" y="364" text-anchor="middle" style="fill:var(--text3);font-size:10px">both dials say: ease</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Illustrative, not fitted to any real economy's data. Three quadrants are the "clean" cases where both
+      halves of the mandate agree on direction, so the committee can act decisively. The top-right quadrant —
+      unemployment AND inflation both elevated at once — looks like it should be the mirror of the
+      comfortable bottom-left case, but it is the opposite: it's the one configuration where the two mandate
+      halves are fighting each other, because normal intuition (the Phillips-curve tradeoff) expects
+      unemployment and inflation to move in opposite directions, not both up together. That's what makes it
+      a trap rather than just "twice as much work."
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Three worked scenarios</h2>
+  <p>
+    The same fictional central bank — call it the FCB, with a Fed-style dual mandate — run through three
+    situations below. The point isn't the specific fictional numbers; it's watching how the <em>same
+    committee</em>, working from the <em>same tools</em> (dot plot, forward guidance, the tighten/ease
+    lever), reasons its way to three very different postures depending on which way the economy breaks.
+  </p>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Scenario 1 — Fighting Inflation (the clean case)</div>
+    <h3>Growth strong, unemployment 3.6%, inflation 5% — both halves point the same way</h3>
+    <p>
+      The economy is running hot. Growth is strong, unemployment is low at 3.6%, but inflation has climbed to
+      5% — well above the 2% target. Both halves of the dual mandate point the same way, and that agreement
+      is exactly what makes this the clean case: employment is healthy, so there is no cost to leaning on the
+      brakes, and price stability clearly demands action.
+    </p>
+    <p>
+      The committee turns hawkish. Staff projections show inflation staying elevated unless policy acts,
+      giving the hawks their evidence. At the meeting the committee votes to tighten, delivering a 50bp hike,
+      and the dot plot shifts clearly upward — most dots cluster at higher rates, signaling more hikes still
+      to come in an ongoing tightening cycle. Policy moves deliberately from neutral into restrictive
+      territory, to slow demand on purpose. Forward guidance is firm, because the committee is united behind
+      it. And since the market had priced only a 25bp move, the actual 50bp delivery is a hawkish
+      <em>surprise</em> — and the currency rallies on the surprise, not merely on "a hike happened."
+    </p>
+    <p><strong>The model:</strong> when both mandate halves agree, the committee acts decisively and guidance is strong.</p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Scenario 2 — Fighting Unemployment (the mirror image)</div>
+    <h3>Unemployment jumps 4% → 6%, inflation falls to 1.2% — again both halves agree, now toward stimulus</h3>
+    <p>
+      Now flip it. A demand shock hits. Growth stalls, unemployment jumps from 4% to 6% and is still rising,
+      and inflation has fallen to 1.2%, below target. Again both mandate halves agree — but now they point
+      toward stimulus: employment is deteriorating and inflation is already too low, so nothing argues for
+      restraint.
+    </p>
+    <p>
+      The committee turns dovish. It votes to ease, cutting rates — and if rates are already near zero, it
+      reaches past conventional cuts for the balance sheet, launching quantitative easing (QE) to push down
+      longer-term yields directly. The dot plot drops, the stance moves from neutral to accommodative, and
+      forward guidance promises rates will stay low for an extended period. Lift-off (the eventual first
+      hike back out of this stance) gets pushed far into the future. A dovish surprise here — say, a bigger
+      cut than priced, or QE launched sooner than expected — would weaken the currency.
+    </p>
+    <p><strong>The model:</strong> the mirror of Scenario 1. Mandate halves agree, committee acts decisively — just in the opposite direction.</p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Scenario 3 — Stagflation (the trap)</div>
+    <h3>Unemployment rising to 5.5% AND inflation rising to 6% — the mandate halves point in opposite directions</h3>
+    <p>
+      This is the scenario that matters most. A supply shock hits — say energy prices spike. Growth is
+      stalling (unemployment rising to 5.5%) but inflation is <em>also</em> rising, to 6%. The two halves of
+      the dual mandate now point in opposite directions: fighting inflation demands tightening; fighting
+      unemployment demands easing. The bank cannot do both with one interest rate. This is the trap
+      stagflation sets.
+    </p>
+    <p>
+      So the committee fractures, and the dot plot goes mixed. The hawks look at 6% inflation and say price
+      stability is the binding risk right now; their dots go up. The doves look at 5.5% unemployment and say
+      the labor market is visibly cracking; their dots stay flat or fall. Same staff forecast, opposite
+      conclusions — because each side is weighting the two mandate halves differently. The median dot
+      becomes load-bearing but fragile: it's the midpoint of a split committee, not a confident consensus.
+    </p>
+    <p>
+      The vote still resolves to one number — a reluctant hold, or a small hike, built around the Chair and
+      the median — but forward guidance turns deliberately vague and data-dependent, because the committee
+      genuinely cannot commit to a path it doesn't agree on internally. The configuration is a coiled spring:
+      if the next inflation print runs hot, the doves lose footing and the dots converge hawkish fast; if
+      unemployment spikes instead, the reverse happens. Volatility around those specific data releases is
+      high precisely because the policy outcome genuinely hinges on them, not because of noise.
+    </p>
+    <p>
+      The subtle layer: if the dots eventually converge upward, ask <em>why</em>. If the data itself resolved
+      the question (say, inflation kept accelerating and unemployment stabilized), that is the committee
+      reacting <em>within</em> its existing reaction function — predictable, once you see the data. If instead
+      the committee re-weighted the mandate (deciding to prioritize killing inflation even at the cost of
+      jobs, independent of what the next print says), that is the reaction function <em>itself</em>
+      shifting — the far more violent repricing, because it means the rulebook changed, not just the inputs
+      to it.
+    </p>
+    <p><strong>The model:</strong> when the mandate is in conflict, the committee splits, guidance goes vague, and the eventual outcome is genuinely contingent on data that hasn't arrived yet.</p>
+  </div>
+
+  <div class="tl-solid blue">
+    <strong>The thread across all three:</strong> the first two scenarios are cases where the mandate is
+    aligned and the bank acts cleanly — decisively hawkish, or decisively dovish. Stagflation is the case
+    where the mandate is in conflict: the committee splits, the dots go mixed, guidance goes data-dependent,
+    and the outcome becomes contingent on the next data print rather than settled today. That conflict — not
+    the absolute direction of policy — is what makes central bank policy genuinely interesting to trade
+    rather than just to read about. And within that conflict sits the single subtlest distinction in this
+    whole lesson: dots converging because the data resolved the question is the committee reacting inside an
+    unchanged reaction function; dots converging because the committee re-weighted which half of the mandate
+    matters more is the reaction function itself shifting. The first is predictable once you see the data
+    that caused it. The second is a genuinely different, harder-to-anticipate regime change — the kind of
+    repricing that catches a market still trading the old rulebook off guard.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    The single most important practical fact in this whole lesson is that price action is driven by the
+    <strong>surprise</strong> relative to what was already priced into markets ahead of the decision — not by
+    the absolute hawkish or dovish stance of the outcome itself. A central bank can hike rates and still see
+    its currency <em>fall</em>, if the market had priced an even bigger hike; it can hold rates unchanged and
+    see its currency <em>rally</em>, if the market had been pricing a cut and the hold reads as hawkish by
+    comparison. "Hawkish" and "dovish" describe a direction; "surprise" describes the delta against
+    expectations, and it's the delta that moves price. This is exactly why desks spend as much energy
+    tracking what's priced into rate futures and OIS curves ahead of a meeting as they spend on the meeting
+    itself — the decision only matters relative to that baseline.
+  </p>
+  <p>
+    A second practical habit: read the dot plot as a <em>distribution</em> of current individual opinion, not
+    a promise about the future path. Each dot is one participant's own best guess, updated fresh every
+    quarter — dots get revised almost every meeting as new data arrives, and the median dot from any single
+    quarter is a snapshot of where the committee's center of gravity sits <em>today</em>, not a commitment the
+    committee is bound to honor later. Reading dispersion across the dots (are they tightly clustered, or
+    spread wide?) is often more informative than the median alone — a tight cluster signals real consensus; a
+    wide spread signals the kind of internal disagreement the stagflation scenario above produces.
+  </p>
+  <p>
+    Two related tools round out the practical picture. <strong>Jawboning</strong> — moving expectations
+    through speeches and interviews alone, without any actual policy action — is how officials manage
+    market pricing continuously between meetings, not just at them; a single well-placed sentence from a
+    voting member can shift the priced path meaningfully. And the <strong>blackout period</strong> before
+    each meeting — the stretch when officials deliberately stop speaking publicly — matters because it means
+    the market gets no fresh verbal signal right before the decision, so pricing going into the blackout tends
+    to hold steady (or drift on other news) until the decision itself breaks the silence.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where people misread this in practice</h3>
+    <p>
+      <strong>Treating the median dot as a commitment rather than a snapshot.</strong> The dot plot is
+      revised almost every quarter, and it has a well-documented history of missing the eventual path rates
+      actually took — treating a given quarter's median dot as a reliable forecast of where rates will be
+      years out has repeatedly been wrong in practice. Use it as a read of the committee's <em>current</em>
+      thinking, not a binding forecast.
+    </p>
+    <p>
+      <strong>Confusing a hold with "nothing happened."</strong> A hold can be a significant hawkish or
+      dovish surprise relative to what was priced, depending on what the market expected going in — treating
+      every unchanged decision as a non-event misses exactly the cases (Scenario 3's "reluctant hold," for
+      instance) where the hold itself is the news.
+    </p>
+    <p>
+      <strong>Not distinguishing a reaction-function shift from reacting within an existing one.</strong>
+      The same-looking outcome — dots moving hawkish, say — means something very different depending on
+      whether it's the committee responding predictably to new data (within the existing rulebook) or the
+      committee re-weighting which half of the mandate it cares about more (changing the rulebook itself).
+      Conflating the two means missing which repricing is the fast, violent kind and which is the slow,
+      anticipatable kind.
+    </p>
+    <p>
+      <strong>Reading the absolute stance instead of the surprise.</strong> "The bank hiked" and "the bank
+      surprised hawkish" are different claims — the first says almost nothing about what the currency does
+      next; the second is the actual tradable signal, and requires knowing what was priced beforehand, not
+      just what the bank did.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The dual mandate is the lens.</strong> Maximum employment and price stability are the two goals every projection, vote, and rate decision is argued through.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Hawkish and dovish map onto the two mandate halves.</strong> Hawkish prioritizes price stability; dovish prioritizes growth/employment.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>When the mandate halves agree, the committee acts decisively.</strong> Both fighting-inflation and fighting-unemployment are "clean" cases — same model, opposite direction.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Stagflation is the trap.</strong> High inflation and high unemployment together put the two mandate halves in direct conflict, splitting the committee and pushing guidance toward vague and data-dependent.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>It's the surprise, not the stance, that moves price.</strong> A hawkish hold can rally a currency the market expected to be cut; a hike can weaken one if the market expected more.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The dot plot has a documented weak predictive track record.</strong> Dots are revised almost every meeting and have repeatedly missed the eventual path — read it as current opinion, not a promise.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A reaction-function shift is a different, bigger event than reacting within an unchanged one.</strong> The same-looking hawkish move can mean the committee is simply following the data, or that it re-weighted the mandate itself — the second is the more violent repricing.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why is stagflation harder for a central bank to handle than fighting inflation or fighting unemployment alone?</summary>
+    <div class="tl-answer">
+      In the clean cases, both halves of the dual mandate point the same direction — either both argue for
+      tightening (high inflation, low unemployment) or both argue for easing (low inflation, high
+      unemployment) — so the committee has one lever and one clear direction to push it. In stagflation, high
+      inflation argues for tightening while high unemployment argues for easing, and there is only one
+      interest rate to set. The bank cannot serve both halves of its mandate simultaneously with that single
+      tool, so the decision becomes a genuine tradeoff between the two goals rather than a straightforward
+      application of one lever in one direction.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What makes a rate hold a "hawkish surprise" rather than just "nothing happened"?</summary>
+    <div class="tl-answer">
+      A hold is only a non-event if it matches what the market had already priced. If the market had been
+      pricing in a cut (or a dovish shift in guidance) and the bank instead holds rates unchanged — especially
+      alongside firmer-than-expected guidance — that outcome is tighter than what the market expected, which
+      makes it a hawkish surprise even though the policy rate itself didn't move. It's the gap between the
+      priced expectation and the actual outcome that defines the surprise, not whether the rate number
+      changed.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What's the difference between the dot plot converging because of new data versus a reaction-function shift, and why does it matter which one is happening?</summary>
+    <div class="tl-answer">
+      If the dots converge because incoming data resolved the underlying question — say inflation kept
+      accelerating while unemployment stabilized, giving the doves less to stand on — that's the committee
+      reacting predictably within its existing, unchanged reaction function: the same rule, applied to new
+      inputs. If instead the dots converge because the committee itself decided to weight one half of the
+      mandate more heavily than before (e.g. choosing to prioritize killing inflation even at real cost to
+      jobs, independent of what the next data print says), that's the reaction function itself changing. The
+      first is anticipatable once you see the data that caused it; the second is a genuine regime change that
+      can catch a market still pricing the old rulebook off guard, producing a much sharper repricing.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. In the Fighting Unemployment scenario, why does the committee reach for quantitative easing (QE) rather than just cutting rates further?</summary>
+    <div class="tl-answer">
+      QE is specifically reached for when conventional rate cuts have run out of room — typically because
+      the policy rate is already near zero (the effective lower bound) and cannot be cut much further through
+      the ordinary lever. QE achieves a similar stimulative goal (pushing down borrowing costs, in this case
+      longer-term yields) through a different mechanism: the central bank creates money to buy bonds directly,
+      rather than adjusting the short-term policy rate that a further rate cut would target.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why is the median dot on the Fed's dot plot described in this lesson as "load-bearing but fragile" during a stagflation-type split?</summary>
+    <div class="tl-answer">
+      It's load-bearing because it's the single number markets and media latch onto as "the Fed's view" — it
+      drives headlines and repricing. It's fragile because, in a genuinely split committee, the median is
+      just the midpoint between hawks whose dots sit high and doves whose dots sit low — it doesn't represent
+      actual agreement, just the point where the two groups happen to average out. A small shift in either
+      group's conviction (say, one more hawk or one more dove) can move that midpoint meaningfully even
+      without any real change in the overall picture, which is a much less stable situation than a median
+      backed by genuine committee-wide consensus.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why does this lesson emphasize the "surprise relative to priced expectations" over the absolute hawkish/dovish stance as the thing that moves currencies?</summary>
+    <div class="tl-answer">
+      Markets are forward-looking and price in an expected outcome ahead of any decision — by the time the
+      decision arrives, an already-fully-priced outcome, however hawkish or dovish in absolute terms, carries
+      little new information and should move price comparatively little. It's the deviation from that priced
+      expectation — hiking more or less than expected, holding when a cut was priced, guidance turning firmer
+      or softer than anticipated — that constitutes genuinely new information the market has to react to,
+      which is why the surprise, not the stance, is the variable that actually correlates with the size of
+      the market move.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Board of Governors of the Federal Reserve System, <em>Summary of Economic Projections</em> — the Fed's own quarterly public release, published after every other FOMC meeting, containing the dot plot alongside the committee's growth, unemployment, and inflation forecasts.</li>
+    <li>European Central Bank, <em>The ECB's Monetary Policy Strategy Statement</em> — the ECB's own public statement of its price-stability-primary mandate and how it differs structurally from the Fed's co-equal dual mandate.</li>
+    <li>Ben S. Bernanke, <em>The Courage to Act: A Memoir of a Crisis and Its Aftermath</em>, W. W. Norton, 2015 — a first-person account, from the former Fed Chair, of how a real committee reasons through crisis-era tradeoffs between growth and price stability.</li>
+    <li>Neil Irwin, <em>The Alchemists: Three Central Bankers and a World on Fire</em>, Penguin Press, 2013 — a well-known, accessible account of how the Fed, the ECB, and the Bank of England actually deliberated through the 2008 financial crisis and its aftermath.</li>
+    <li>The Taylor Rule lesson elsewhere in this curriculum — the mathematical formalization of the same reaction-function reasoning this lesson describes qualitatively.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="taylor-rule.html">← The Taylor Rule</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+</body>
+</html>
