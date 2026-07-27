@@ -68,6 +68,10 @@ NQZ6\t147\t18/12/2026\t28500\t28573.25\t28913\t-339.75\t3616.5\t3715.5\t-99\t25.
   // The discriminator: a per-STRIKE chain (no date in col 2) must NOT parse as term structure.
   const perStrike = 'x\ty\t9\t28280\t1\t2\t3\t18.8\t18\t0\t10\t0\t8\t0';
   ok('per-strike chain → null (falls through to parseIVSettlement)', parseSettlementTermStructure(perStrike) === null);
+  // Smile-box hint: a wall expiry at ~21 DTE maps to the nearest Settlements row's CODE.
+  const primaryDte = 21;
+  const match = ts.slice().sort((a, b) => Math.abs(a.dte - primaryDte) - Math.abs(b.dte - primaryDte))[0];
+  ok('primary-expiry DTE → exact QuikStrike code + date', match.symbol === 'QN2Q6' && match.expiry === '14/08/2026', `${match.symbol} ${match.expiry}`);
 }
 
 console.log('[guards]');
