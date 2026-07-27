@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trend-Flip Backtester</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+#tfApp { padding: 0 20px 60px; max-width: 1400px; margin: 0 auto; }
+
+/* ── Run bar ─────────────────────────────────────────────────────────────── */
+.rb-run-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+.rb-run-btn {
+  background: var(--green); border: none; border-radius: 6px; color: #fff;
+  font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 600;
+  padding: 7px 20px; cursor: pointer; transition: opacity .2s;
+}
+.rb-run-btn:hover { opacity: .85; }
+.rb-run-btn:disabled { opacity: .5; cursor: wait; }
+.rb-cfg-toggle {
+  background: none; border: 1.5px solid var(--border); border-radius: 20px;
+  color: var(--text2); font-family: 'DM Mono', monospace; font-size: 11px;
+  padding: 5px 14px; cursor: pointer; transition: all .2s;
+}
+.rb-cfg-toggle:hover { border-color: var(--blue); color: var(--blue); }
+.rb-sel, .rb-num-input, .rb-date-inp {
+  background: var(--s2); border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text); font-family: 'DM Mono', monospace; font-size: 11px;
+  padding: 5px 10px; cursor: pointer; color-scheme: dark;
+}
+.rb-sel:focus, .rb-num-input:focus, .rb-date-inp:focus { outline: none; border-color: var(--blue); }
+.rb-num-input { cursor: text; width: 64px; }
+.rb-lbl2 { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+/* ── Config panel ────────────────────────────────────────────────────────── */
+.rb-cfg-panel { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl); padding: 14px 18px; margin-top: 10px; }
+.rb-cfg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px 18px; margin-top: 10px; }
+.rb-param { display: flex; flex-direction: column; gap: 2px; padding: 5px 0; border-bottom: 1px solid rgba(28,33,51,.5); }
+.rb-param-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.rb-param-lbl { font-size: 11px; color: var(--text2); }
+.rb-param-hint { font-size: 10px; color: var(--text3); }
+
+/* ── Chart ───────────────────────────────────────────────────────────────── */
+.rb-chart-topbar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--s1); border: 1.5px solid var(--border); border-bottom: none; border-radius: var(--rl) var(--rl) 0 0; }
+.rb-chart-price-wrap { position: relative; height: 460px; background: #131722; border: 1.5px solid var(--border); border-top: none; }
+#tfPriceChart { width: 100%; height: 100%; }
+#tfOverlay { position: absolute; top: 0; left: 0; pointer-events: none; }
+.rb-metrics-btn {
+  background: var(--s2); border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text2); font-family: 'DM Mono', monospace; font-size: 11px;
+  padding: 4px 12px; cursor: pointer;
+}
+.rb-metrics-btn:hover { border-color: var(--blue); color: var(--blue); }
+.trade-nav-bar { display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: #0e1117; border: 1.5px solid var(--border); border-top: none; border-radius: 0 0 var(--rl) var(--rl); font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text3); }
+
+/* ── KPI grid ────────────────────────────────────────────────────────────── */
+.bt-kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px; }
+@media (max-width: 900px) { .bt-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+.bt-kpi { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl); padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 4px; }
+.bt-kpi-label { font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--text3); font-family: 'DM Mono', monospace; }
+.bt-kpi-value { font-size: 26px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--text); line-height: 1.1; }
+.bt-kpi-value.green { color: var(--green); } .bt-kpi-value.red { color: var(--red); }
+.bt-kpi-value.blue { color: var(--blue); } .bt-kpi-value.amber { color: var(--amber); }
+.bt-kpi-sub { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+/* ── Card / table ────────────────────────────────────────────────────────── */
+.bt-card { background: var(--s1); border: 1.5px solid var(--border); border-radius: var(--rl); overflow: hidden; margin-top: 14px; }
+.bt-card-hdr { padding: 12px 18px; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text2); font-family: 'DM Mono', monospace; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.bt-card-body { padding: 18px; }
+.bt-chart-wrap { position: relative; height: 220px; }
+.bt-tbl { width: 100%; border-collapse: collapse; font-family: 'DM Mono', monospace; font-size: 12px; }
+.bt-tbl th { padding: 7px 10px; text-align: left; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text3); border-bottom: 1px solid var(--border); white-space: nowrap; }
+.bt-tbl td { padding: 7px 10px; border-bottom: 1px solid var(--border); color: var(--text); white-space: nowrap; }
+.bt-tbl tr:last-child td { border-bottom: none; }
+.bt-tbl tbody tr { cursor: pointer; }
+.bt-tbl tbody tr:hover td { background: var(--s2); }
+.bt-tbl tr.selected-row td { background: rgba(79,125,240,0.12) !important; }
+.bt-tbl td.num { text-align: right; }
+.bt-tbl td.pos { color: var(--green); } .bt-tbl td.neg { color: var(--red); }
+.bt-tbl-scroll { overflow-x: auto; max-height: 420px; overflow-y: auto; }
+.bt-pg { padding: 10px 14px; display: flex; align-items: center; gap: 8px; font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text3); border-top: 1px solid var(--border); }
+.bt-pg button { background: var(--s2); border: 1px solid var(--border); border-radius: 5px; color: var(--text2); font-family: 'DM Mono', monospace; font-size: 11px; padding: 3px 10px; cursor: pointer; }
+.bt-pg button:hover { border-color: var(--blue); color: var(--blue); }
+.bt-pg button:disabled { opacity: .35; cursor: default; }
+
+/* ── IS/OOS compare table ───────────────────────────────────────────────── */
+.cmp-tbl { width: 100%; border-collapse: collapse; font-family: 'DM Mono', monospace; font-size: 12px; }
+.cmp-tbl th, .cmp-tbl td { padding: 8px 12px; text-align: right; border-bottom: 1px solid var(--border); }
+.cmp-tbl th:first-child, .cmp-tbl td:first-child { text-align: left; color: var(--text3); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+.cmp-tbl thead th { color: var(--text2); font-size: 11px; }
+.cmp-tbl td.hero { font-weight: 700; }
+
+.rb-cov-banner { background: var(--amber-bg); border: 1px solid var(--amber-bd); border-radius: var(--r); padding: 8px 14px; font-size: 11px; font-family: 'DM Mono', monospace; color: var(--amber); margin-top: 10px; display: none; }
+</style>
+</head>
+<body>
+<div class="sticky-header">
+<div id="tfApp">
+<div class="topbar">
+  <div class="logo-box">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <rect x="2" y="6" width="2" height="6" rx="1" fill="white"/><rect x="6" y="3" width="2" height="9" rx="1" fill="white"/>
+      <rect x="10" y="1" width="2" height="11" rx="1" fill="white"/><rect x="14" y="5" width="2" height="7" rx="1" fill="white"/>
+    </svg>
+  </div>
+  <div class="title-block">
+    <div class="title" style="font-size:15px;font-weight:700;">Trend-Flip Backtester</div>
+    <div class="sub">HTF-bias-gated discrete flip entry (dayTypeCore) + ATR stop / fixed-RR target · honest fill walk, costs on, IS/OOS split</div>
+  </div>
+  <div style="flex:1"></div>
+  <a href="index.html" style="text-decoration:none"><button class="dark-btn">← Dashboard</button></a>
+</div>
+</div>
+</div>
+
+<div id="tfApp" style="padding-top:0">
+
+<div class="rb-cov-banner" id="nullBanner">
+  Read this before the KPI tiles: a positive number here is not evidence of edge until it clears the OOS bar below
+  (≥30 OOS trades, OOS Sharpe beating the naive "stay aligned, no flip" comparison — not built into this page yet,
+  do that comparison by eye against a buy-and-hold/holding-period read). This build has not been validated OOS.
+</div>
+
+<!-- ── Run bar ──────────────────────────────────────────────────────────── -->
+<div class="rb-run-bar">
+  <span class="rb-lbl2">Pair</span>
+  <select class="rb-sel" id="pairSel"></select>
+  <span class="rb-lbl2">From</span>
+  <input type="date" class="rb-date-inp" id="fromDate">
+  <span class="rb-lbl2">To</span>
+  <input type="date" class="rb-date-inp" id="toDate">
+  <span class="rb-lbl2">LTF</span>
+  <select class="rb-sel" id="ltfSel">
+    <option value="60">1H</option>
+    <option value="240" selected>4H</option>
+    <option value="1440">1D</option>
+  </select>
+  <button class="rb-run-btn" id="runBtn" onclick="loadAndRun()">▶ Run</button>
+  <button class="rb-cfg-toggle" id="cfgToggle" onclick="toggleConfig()">⚙ Strategy Params</button>
+  <span class="rb-lbl2" id="runStatus"></span>
+</div>
+
+<div class="rb-cfg-panel" id="cfgPanel" style="display:none">
+  <div style="font-size:11px;font-weight:600;color:var(--text2);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.1em">Strategy Parameters</div>
+  <div class="rb-cfg-grid">
+    <div class="rb-param"><div class="rb-param-row"><span class="rb-param-lbl">HTF window (days)</span><input class="rb-num-input" id="pHtfWin" type="number" value="20" min="5" max="120"></div><span class="rb-param-hint">daily bars the HTF dayTypeScore reads</span></div>
+    <div class="rb-param"><div class="rb-param-row"><span class="rb-param-lbl">HTF threshold</span><input class="rb-num-input" id="pHtfThresh" type="number" value="0.15" min="0" max="1" step="0.05"></div><span class="rb-param-hint">|lean| to count as a real HTF bias</span></div>
+    <div class="rb-param"><div class="rb-param-row"><span class="rb-param-lbl">LTF window (bars)</span><input class="rb-num-input" id="pLtfWin" type="number" value="12" min="4" max="60"></div><span class="rb-param-hint">LTF bars the flip's dayTypeScore reads</span></div>
+    <div class="rb-param"><div class="rb-param-row"><span class="rb-param-lbl">Weak threshold</span><input class="rb-num-input" id="pWeakThresh" type="number" value="0.3" min="0" max="1" step="0.05"></div><span class="rb-param-hint">prior |lean| below this = "not yet aligned"</span></div>
+    <div class="rb-param"><div class="rb-param-row"><span class="rb-param-lbl">LTF threshold</span><input class="rb-num-input" id="pLtfThresh" type="number" value="0.3" min="0" max="1" step="0.05"></div><span class="rb-param-hint">current |lean| to count as "now aligned"</span></div>
+    <div class="rb-param"><div class="rb-param-row"><span class="rb-param-lbl">ATR period</span><input class="rb-num-input" id="pAtrPeriod" type="number" value="14" min="5" max="50"></div><span class="rb-param-hint">Wilder ATR on the LTF bars</span></div>
+    <div class="rb-param"><div class="rb-param-row"><span class="rb-param-lbl">ATR stop mult</span><input class="rb-num-input" id="pAtrMult" type="number" value="1.5" min="0.5" max="5" step="0.1"></div><span class="rb-param-hint">SL distance = ATR × this</span></div>
+    <div class="rb-param"><div class="rb-param-row"><span class="rb-param-lbl">Target R:R</span><input class="rb-num-input" id="pRr" type="number" value="1.0" min="0.5" max="5" step="0.25"></div><span class="rb-param-hint">TP distance = SL distance × this</span></div>
+    <div class="rb-param"><div class="rb-param-row"><span class="rb-param-lbl">OOS fraction</span><input class="rb-num-input" id="pOosFrac" type="number" value="0.4" min="0.1" max="0.6" step="0.05"></div><span class="rb-param-hint">trailing date-fraction held out as OOS</span></div>
+    <div class="rb-param"><div class="rb-param-row"><span class="rb-param-lbl">Cost % (blank = default)</span><input class="rb-num-input" id="pCostPct" type="number" step="0.001" placeholder="auto"></div><span class="rb-param-hint">round-trip spread+commission override</span></div>
+    <div class="rb-param"><div class="rb-param-row"><span class="rb-param-lbl">Slip % (blank = default)</span><input class="rb-num-input" id="pSlipPct" type="number" step="0.001" placeholder="auto"></div><span class="rb-param-hint">stop-entry slippage override</span></div>
+  </div>
+</div>
+
+<!-- ── Status ───────────────────────────────────────────────────────────── -->
+<div class="status-bar" id="statusBar" style="margin-top:12px">
+  <div class="sdot" id="statusDot"></div>
+  <span class="stxt" id="statusMsg">Pick a pair and date range, then click Run.</span>
+</div>
+
+<!-- ── Chart ────────────────────────────────────────────────────────────── -->
+<div class="rb-chart-topbar" id="chartTopbar" style="display:none">
+  <span class="rb-lbl2" id="chartPairLbl" style="font-weight:600;color:var(--text)">—</span>
+  <div style="width:1px;height:16px;background:var(--border);flex-shrink:0"></div>
+  <span style="width:8px;height:8px;background:#00c97d;border-radius:50%;display:inline-block"></span><span class="rb-lbl2">LONG</span>
+  <span style="width:8px;height:8px;background:#ef5350;border-radius:50%;display:inline-block"></span><span class="rb-lbl2">SHORT</span>
+  <span class="rb-lbl2" style="margin-left:8px">click a trade row to focus it (draws SL/TP)</span>
+</div>
+<div class="rb-chart-price-wrap" id="chartWrap" style="display:none">
+  <div id="tfPriceChart"></div>
+  <canvas id="tfOverlay"></canvas>
+</div>
+<div class="trade-nav-bar" id="tradeNavBar" style="display:none">
+  <span id="navInfo"></span>
+  <button class="rb-metrics-btn" onclick="clearTradeSelection()" style="margin-left:auto">✕ Clear selection</button>
+</div>
+
+<div id="analyticsSection" style="display:none">
+
+<!-- KPI grid (full period) -->
+<div class="bt-kpi-grid" id="kpiGrid">
+  <div class="bt-kpi"><div class="bt-kpi-label">Trades (full)</div><div class="bt-kpi-value" id="kTrades">—</div><div class="bt-kpi-sub" id="kTradesSub">—</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">Win Rate</div><div class="bt-kpi-value green" id="kWin">—</div><div class="bt-kpi-sub">of filled trades</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">Profit Factor</div><div class="bt-kpi-value blue" id="kPf">—</div><div class="bt-kpi-sub">gross win / gross loss</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">Sharpe ± SE</div><div class="bt-kpi-value blue" id="kSharpe">—</div><div class="bt-kpi-sub" id="kSharpeSub">annualised, trade-frequency basis</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">Max Drawdown</div><div class="bt-kpi-value red" id="kMaxDd">—</div><div class="bt-kpi-sub">cumulative peak→trough (%)</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">Total P&amp;L %</div><div class="bt-kpi-value" id="kTotalPnl">—</div><div class="bt-kpi-sub">sum of net trade pnl%</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">Min Track Yrs</div><div class="bt-kpi-value amber" id="kMtr">—</div><div class="bt-kpi-sub">to trust Sharpe&gt;0 @95%, fat-tail adj.</div></div>
+  <div class="bt-kpi"><div class="bt-kpi-label">CVaR 95%</div><div class="bt-kpi-value red" id="kCvar">—</div><div class="bt-kpi-sub">avg loss in the worst 5% of trades</div></div>
+</div>
+
+<!-- IS / OOS honest comparison -->
+<div class="bt-card">
+  <div class="bt-card-hdr">In-Sample vs Out-of-Sample <span style="font-weight:400;color:var(--text3);font-size:11px">— split on the date timeline, not trade index. OOS needs ≥30 trades before the Sharpe means anything.</span></div>
+  <div class="bt-card-body" style="padding:0">
+    <table class="cmp-tbl">
+      <thead><tr><th></th><th>Full</th><th>In-Sample</th><th>Out-of-Sample</th></tr></thead>
+      <tbody id="cmpTblBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Equity curve -->
+<div class="bt-card">
+  <div class="bt-card-hdr">Cumulative P&amp;L % (trade-by-trade, net of cost+slippage)</div>
+  <div class="bt-card-body"><div class="bt-chart-wrap"><canvas id="eqChart"></canvas></div></div>
+</div>
+
+<!-- Monthly heatmap -->
+<div class="bt-card">
+  <div class="bt-card-hdr">Monthly P&amp;L % <span style="font-weight:400;color:var(--text3);font-size:11px">— concentration check: is one stretch carrying the whole result?</span></div>
+  <div class="bt-card-body" style="padding:8px 16px"><div class="bt-chart-wrap" style="height:160px"><canvas id="monthChart"></canvas></div></div>
+</div>
+
+<!-- CSV export -->
+<div class="bt-card">
+  <div class="bt-card-hdr">Export Trade Log</div>
+  <div class="bt-card-body">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+      <button class="rb-metrics-btn" id="csvPct" onclick="exportCsvPct()">CSV · % Returns</button>
+      <button class="rb-metrics-btn" id="csvR" onclick="exportCsvR()">CSV · R-Multiples</button>
+      <button class="rb-metrics-btn" id="csvDollar" onclick="exportCsvDollar()">CSV · Currency P&amp;L</button>
+      <span class="rb-lbl2">Account $</span><input class="rb-num-input" id="acctSize" type="number" value="10000" min="100" style="width:80px">
+      <span class="rb-lbl2">Risk % / trade</span><input class="rb-num-input" id="riskPct" type="number" value="1" min="0.1" step="0.1" style="width:56px">
+    </div>
+    <div class="rb-lbl2" style="line-height:1.5">
+      R-unit = each trade's own ATR stop distance (varies trade to trade — not fixed %, so R and % Return are NOT redundant here).
+      $ P&amp;L = R-multiple × (account × risk%). MAE is the real M1 intra-trade path (low-vs-entry long / high-vs-entry short), never approximated from the close-to-close return.
+    </div>
+  </div>
+</div>
+
+<!-- Trade table -->
+<div class="bt-card" id="tradeTableCard">
+  <div class="bt-card-hdr">
+    Trade Log <span style="font-size:10px;color:var(--text3);font-weight:400" id="tradeCnt"></span>
+    <div style="margin-left:auto;display:flex;gap:6px">
+      <select class="rb-sel" id="filterDir" onchange="renderTradeTable()" style="font-size:10px;padding:2px 8px">
+        <option value="">All directions</option><option value="BUY">BUY only</option><option value="SELL">SELL only</option>
+      </select>
+      <select class="rb-sel" id="filterOut" onchange="renderTradeTable()" style="font-size:10px;padding:2px 8px">
+        <option value="">All outcomes</option><option value="win">Wins</option><option value="loss">Losses</option><option value="open">Open (window end)</option>
+      </select>
+    </div>
+  </div>
+  <div class="bt-tbl-scroll">
+    <table class="bt-tbl">
+      <thead><tr>
+        <th>Entry</th><th>Side</th><th class="num">Entry Px</th><th class="num">Exit Px</th>
+        <th class="num">P&amp;L %</th><th class="num">R</th><th class="num">MAE %</th><th>Outcome</th>
+        <th class="num">HTF Lean</th><th class="num">LTF Lean</th>
+      </tr></thead>
+      <tbody id="tradeTblBody"></tbody>
+    </table>
+  </div>
+  <div class="bt-pg" id="tradePg">
+    <button onclick="tradePage(-1)" id="pgPrev">← Prev</button><span id="pgInfo"></span><button onclick="tradePage(1)" id="pgNext">Next →</button>
+  </div>
+</div>
+
+</div><!-- /analyticsSection -->
+
+</div><!-- /tfApp -->
+
+<script>
+// ─── Instrument list (mirrors instrumentRegistry.js keys) ──────────────────
+const PAIRS = [
+  ['eurusd','EUR/USD'],['gbpusd','GBP/USD'],['usdjpy','USD/JPY'],['audusd','AUD/USD'],
+  ['nzdusd','NZD/USD'],['usdcad','USD/CAD'],['usdchf','USD/CHF'],['gbpjpy','GBP/JPY'],
+  ['gold','XAU/USD'],['eurgbp','EUR/GBP'],['eurjpy','EUR/JPY'],['eurcad','EUR/CAD'],
+  ['euraud','EUR/AUD'],['eurchf','EUR/CHF'],['eurnzd','EUR/NZD'],['audjpy','AUD/JPY'],
+  ['audcad','AUD/CAD'],['audchf','AUD/CHF'],['audnzd','AUD/NZD'],['gbpaud','GBP/AUD'],
+  ['gbpcad','GBP/CAD'],['gbpchf','GBP/CHF'],['gbpnzd','GBP/NZD'],['cadjpy','CAD/JPY'],
+  ['chfjpy','CHF/JPY'],['nzdjpy','NZD/JPY'],['nq','NAS100'],['spx','SPX500'],
+  ['dax','DE30'],['ftse','UK100'],['dow','US30'],['rut','US2000'],
+];
+(function initPairSel() {
+  const sel = document.getElementById('pairSel');
+  sel.innerHTML = PAIRS.map(([k, lbl]) => `<option value="${k}">${lbl}</option>`).join('');
+  sel.value = 'eurusd';
+})();
+(function initDates() {
+  const to = new Date();
+  const from = new Date(to.getTime() - 730 * 86400000); // 2 years default
+  document.getElementById('toDate').value = to.toISOString().slice(0, 10);
+  document.getElementById('fromDate').value = from.toISOString().slice(0, 10);
+})();
+
+function toggleConfig() {
+  const p = document.getElementById('cfgPanel');
+  p.style.display = p.style.display === 'none' ? '' : 'none';
+}
+
+function el(id) { return document.getElementById(id); }
+function setStatus(msg, cls) {
+  el('statusMsg').textContent = msg;
+  el('statusDot').className = 'sdot' + (cls ? ' ' + cls : '');
+}
+
+// ─── State ───────────────────────────────────────────────────────────────
+let LAST = null;          // last job result {trades, is, oos, full, splitDate, params, opts}
+let chart = null, candleSeries = null;
+let ltfCandles = [];
+let selectedTradeIdx = -1;
+let tradePageIdx = 0;
+const TRADE_PAGE_SIZE = 30;
+let eqChart = null, monthChart = null;
+let priceLines = [];
+
+// ─── Run flow ────────────────────────────────────────────────────────────
+async function loadAndRun() {
+  const btn = el('runBtn');
+  btn.disabled = true;
+  setStatus('Starting job…', '');
+  el('runStatus').textContent = '';
+
+  const body = {
+    pair: el('pairSel').value,
+    dateFrom: el('fromDate').value,
+    dateTo: el('toDate').value,
+    ltfMinutes: +el('ltfSel').value,
+    htfWin: +el('pHtfWin').value,
+    htfThresh: +el('pHtfThresh').value,
+    ltfWin: +el('pLtfWin').value,
+    weakThresh: +el('pWeakThresh').value,
+    ltfThresh: +el('pLtfThresh').value,
+    atrPeriod: +el('pAtrPeriod').value,
+    atrMult: +el('pAtrMult').value,
+    rr: +el('pRr').value,
+    oosFrac: +el('pOosFrac').value,
+  };
+  if (el('pCostPct').value !== '') body.costPct = +el('pCostPct').value;
+  if (el('pSlipPct').value !== '') body.slipPct = +el('pSlipPct').value;
+
+  try {
+    const runRes = await fetch('/api/trend-flip/run', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    const runData = await runRes.json();
+    if (!runData.ok) throw new Error(runData.error || 'run failed to start');
+    await pollJob(runData.jobId, body);
+  } catch (e) {
+    setStatus('Error: ' + e.message, 'red');
+    btn.disabled = false;
+  }
+}
+
+async function pollJob(jobId, body) {
+  const started = Date.now();
+  while (true) {
+    await new Promise(r => setTimeout(r, 1200));
+    const res = await fetch(`/api/trend-flip/status/${jobId}`);
+    const data = await res.json();
+    if (data.status === 'running') {
+      setStatus(`Running… (${data.elapsed ?? Math.round((Date.now() - started) / 1000)}s)`, '');
+      continue;
+    }
+    if (!data.ok) {
+      setStatus('Error: ' + (data.error || 'unknown'), 'red');
+      el('runBtn').disabled = false;
+      return;
+    }
+    LAST = data;
+    setStatus(`Done — ${data.trades.length} trade(s)`, 'green');
+    el('runBtn').disabled = false;
+    await onResult(body);
+    return;
+  }
+}
+
+async function onResult(body) {
+  renderKpis();
+  renderCompareTable();
+  renderEquity();
+  renderMonthly();
+  tradePageIdx = 0;
+  selectedTradeIdx = -1;
+  renderTradeTable();
+  el('analyticsSection').style.display = '';
+  el('chartTopbar').style.display = '';
+  el('chartWrap').style.display = '';
+  el('tradeNavBar').style.display = 'none';
+  el('chartPairLbl').textContent = PAIRS.find(p => p[0] === body.pair)?.[1] || body.pair;
+  await loadChart(body);
+}
+
+// ─── Chart ───────────────────────────────────────────────────────────────
+function buildChart() {
+  if (chart) return;
+  const priceEl = el('tfPriceChart');
+  chart = LightweightCharts.createChart(priceEl, {
+    autoSize: true,
+    layout: { background: { color: 'transparent' }, textColor: '#d1d4dc' },
+    grid: { vertLines: { color: '#1c2133' }, horzLines: { color: '#1c2133' } },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    rightPriceScale: { borderColor: '#1c2133' },
+    timeScale: { borderColor: '#1c2133', timeVisible: true, secondsVisible: false },
+  });
+  candleSeries = chart.addCandlestickSeries({
+    upColor: '#00c97d', downColor: '#ef5350', borderUpColor: '#00c97d', borderDownColor: '#ef5350',
+    wickUpColor: '#00c97d', wickDownColor: '#ef5350',
+  });
+  chart.timeScale().subscribeVisibleTimeRangeChange(() => requestDraw());
+  new ResizeObserver(() => requestDraw()).observe(el('chartWrap'));
+}
+
+async function fetchM1Chunked(pairKey, fromStr, toStr) {
+  const CHUNK_DAYS = 14;
+  const all = [];
+  let chunkStart = new Date(fromStr + 'T00:00:00Z');
+  const endMs = new Date(toStr + 'T23:59:59Z').getTime();
+  while (chunkStart.getTime() < endMs) {
+    const chunkEnd = new Date(Math.min(chunkStart.getTime() + CHUNK_DAYS * 86400000, endMs));
+    const cf = chunkStart.toISOString().slice(0, 10), ct = chunkEnd.toISOString().slice(0, 10);
+    const res = await fetch(`/api/vol-backtest/candles/${pairKey}?from=${cf}&to=${ct}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.ok && Array.isArray(data.candles)) {
+        for (const c of data.candles) {
+          all.push({ time: Math.floor(new Date(c.time + 'Z').getTime() / 1000), open: c.open, high: c.high, low: c.low, close: c.close });
+        }
+      }
+    }
+    chunkStart = new Date(chunkEnd.getTime() + 60000);
+  }
+  const seen = new Map();
+  for (const c of all) seen.set(c.time, c);
+  return [...seen.values()].sort((a, b) => a.time - b.time);
+}
+
+function resampleClient(m1, minutes) {
+  const secs = minutes * 60;
+  const buckets = new Map();
+  for (const c of m1) {
+    const b = c.time - (c.time % secs);
+    if (!buckets.has(b)) buckets.set(b, { time: b, open: c.open, high: c.high, low: c.low, close: c.close });
+    else { const x = buckets.get(b); x.high = Math.max(x.high, c.high); x.low = Math.min(x.low, c.low); x.close = c.close; }
+  }
+  return [...buckets.values()].sort((a, b) => a.time - b.time);
+}
+
+async function loadChart(body) {
+  buildChart();
+  setStatus('Loading chart candles…', '');
+  const m1 = await fetchM1Chunked(body.pair, body.dateFrom, body.dateTo);
+  ltfCandles = resampleClient(m1, body.ltfMinutes);
+  candleSeries.setData(ltfCandles);
+  chart.timeScale().fitContent();
+  setStatus(`Done — ${LAST.trades.length} trade(s)`, 'green');
+  requestDraw();
+}
+
+let drawPending = false;
+function requestDraw() {
+  if (drawPending) return;
+  drawPending = true;
+  requestAnimationFrame(() => { drawPending = false; drawTradeLines(); });
+}
+
+function drawTradeLines() {
+  const canvas = el('tfOverlay');
+  const wrap = el('chartWrap');
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+  if (!LAST || !LAST.trades.length || !candleSeries || !chart) return;
+  ctx.setLineDash([5, 4]);
+  LAST.trades.forEach((t, idx) => {
+    const x1 = chart.timeScale().timeToCoordinate(t.entry_ts);
+    const x2 = chart.timeScale().timeToCoordinate(t.exit_ts ?? t.entry_ts);
+    if (x1 == null || x2 == null) return;
+    const y1 = candleSeries.priceToCoordinate(t.entry_price);
+    const y2 = candleSeries.priceToCoordinate(t.exit_price);
+    if (y1 == null || y2 == null) return;
+    const isSel = idx === selectedTradeIdx;
+    ctx.lineWidth = isSel ? 2.5 : 1.2;
+    ctx.globalAlpha = isSel ? 1.0 : 0.4;
+    ctx.strokeStyle = t.side === 'BUY' ? 'rgba(0,201,125,1)' : 'rgba(239,83,80,1)';
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  });
+  ctx.globalAlpha = 1; ctx.setLineDash([]);
+}
+
+function focusTrade(idx) {
+  selectedTradeIdx = idx;
+  const t = LAST.trades[idx];
+  for (const pl of priceLines) try { candleSeries.removePriceLine(pl); } catch (e) {}
+  priceLines = [];
+  const LS = LightweightCharts.LineStyle;
+  const add = (price, color, title, style) => {
+    if (price == null || !isFinite(price)) return;
+    priceLines.push(candleSeries.createPriceLine({ price, color, lineWidth: 1, lineStyle: style, axisLabelVisible: true, title }));
+  };
+  add(t.entry_price, t.side === 'SELL' ? '#ef5350' : '#26a69a', 'Entry', LS.Solid);
+  add(t.tp, '#26a69a', 'TP', LS.Dotted);
+  add(t.sl, '#ef5350', 'SL', LS.Dotted);
+  chart.timeScale().scrollToPosition(0, false);
+  try {
+    const idx1 = ltfCandles.findIndex(c => c.time >= t.entry_ts);
+    if (idx1 >= 0) chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, idx1 - 20), to: Math.min(ltfCandles.length - 1, idx1 + 20) });
+  } catch (e) {}
+  el('tradeNavBar').style.display = '';
+  el('navInfo').textContent = `Trade ${idx + 1}/${LAST.trades.length} · ${t.date} · ${t.side} · ${t.outcome.toUpperCase()} · ${t.pnl_pct >= 0 ? '+' : ''}${t.pnl_pct.toFixed(2)}%`;
+  requestDraw();
+}
+
+function clearTradeSelection() {
+  selectedTradeIdx = -1;
+  for (const pl of priceLines) try { candleSeries.removePriceLine(pl); } catch (e) {}
+  priceLines = [];
+  el('tradeNavBar').style.display = 'none';
+  requestDraw();
+}
+
+// ─── KPIs ────────────────────────────────────────────────────────────────
+function fmt1(v) { return Number(v ?? 0).toFixed(1); }
+function fmt2(v) { return Number(v ?? 0).toFixed(2); }
+function fmtPct(v) { return (v >= 0 ? '+' : '') + fmt1(v) + '%'; }
+
+function renderKpis() {
+  const s = LAST.full;
+  el('kTrades').textContent = s.trades;
+  el('kTradesSub').textContent = `${s.tradesPerYr}/yr`;
+  el('kWin').textContent = fmt1(s.winRate) + '%';
+  el('kPf').textContent = s.profitFactor >= 99 ? '∞' : fmt2(s.profitFactor);
+  el('kSharpe').textContent = fmt2(s.sharpe) + (s.sharpeSE != null ? ' ± ' + fmt2(s.sharpeSE) : '');
+  el('kSharpe').className = 'bt-kpi-value ' + (s.sharpe > (s.sharpeSE || Infinity) ? 'green' : 'amber');
+  el('kMaxDd').textContent = '-' + fmt1(Math.abs(s.maxDD)) + '%';
+  el('kTotalPnl').textContent = fmtPct(s.totalPnl);
+  el('kTotalPnl').className = 'bt-kpi-value ' + (s.totalPnl >= 0 ? 'green' : 'red');
+  el('kMtr').textContent = s.minTrackYears != null ? fmt1(s.minTrackYears) + 'y' : '∞';
+  el('kCvar').textContent = fmt2(s.cvar95) + '%';
+}
+
+function renderCompareTable() {
+  const rows = [
+    ['Trades', s => s.trades],
+    ['Win Rate %', s => fmt1(s.winRate)],
+    ['Profit Factor', s => s.profitFactor >= 99 ? '∞' : fmt2(s.profitFactor)],
+    ['Sharpe', s => fmt2(s.sharpe)],
+    ['Sharpe SE', s => s.sharpeSE != null ? fmt2(s.sharpeSE) : '—'],
+    ['Max DD %', s => fmt1(Math.abs(s.maxDD))],
+    ['Total P&L %', s => fmtPct(s.totalPnl)],
+    ['Min Track Yrs', s => s.minTrackYears != null ? fmt1(s.minTrackYears) : '∞'],
+  ];
+  const body = rows.map(([lbl, fn]) => `<tr>
+    <td>${lbl}</td>
+    <td>${fn(LAST.full)}</td>
+    <td>${fn(LAST.is)}</td>
+    <td class="hero">${fn(LAST.oos)}</td>
+  </tr>`).join('');
+  el('cmpTblBody').innerHTML = body;
+}
+
+function renderEquity() {
+  const trades = [...LAST.trades].sort((a, b) => a.exit_ts - b.exit_ts);
+  let eq = 0;
+  const labels = [], vals = [];
+  for (const t of trades) { eq += t.pnl_pct; labels.push(t.date); vals.push(eq); }
+  if (eqChart) eqChart.destroy();
+  eqChart = new Chart(el('eqChart'), {
+    type: 'line',
+    data: { labels, datasets: [{ label: 'Net P&L %', data: vals, borderColor: '#4f7df0', backgroundColor: 'rgba(79,125,240,.08)', fill: true, tension: .25, pointRadius: 0, borderWidth: 1.5 }] },
+    options: { responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => (c.parsed.y >= 0 ? '+' : '') + c.parsed.y.toFixed(2) + '%' } } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#5a6380', maxTicksLimit: 8, font: { family: 'DM Mono', size: 10 } } },
+        y: { grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#5a6380', font: { family: 'DM Mono', size: 10 }, callback: v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%' } },
+      } },
+  });
+}
+
+function renderMonthly() {
+  const byMonth = new Map();
+  for (const t of LAST.trades) {
+    const m = t.date.slice(0, 7);
+    byMonth.set(m, (byMonth.get(m) || 0) + t.pnl_pct);
+  }
+  const months = [...byMonth.keys()].sort();
+  const vals = months.map(m => byMonth.get(m));
+  if (monthChart) monthChart.destroy();
+  monthChart = new Chart(el('monthChart'), {
+    type: 'bar',
+    data: { labels: months, datasets: [{ data: vals, backgroundColor: vals.map(v => v >= 0 ? 'rgba(0,201,125,.7)' : 'rgba(239,83,80,.7)') }] },
+    options: { responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#5a6380', maxTicksLimit: 14, font: { family: 'DM Mono', size: 9 } } },
+        y: { grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#5a6380', font: { family: 'DM Mono', size: 10 }, callback: v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%' } },
+      } },
+  });
+}
+
+// ─── Trade table ─────────────────────────────────────────────────────────
+function filteredTrades() {
+  const dir = el('filterDir').value, out = el('filterOut').value;
+  return LAST.trades
+    .map((t, idx) => ({ ...t, _idx: idx }))
+    .filter(t => (!dir || t.side === dir) && (!out || t.outcome === out))
+    .sort((a, b) => b.entry_ts - a.entry_ts);
+}
+
+function renderTradeTable() {
+  if (!LAST) return;
+  const trades = filteredTrades();
+  el('tradeCnt').textContent = `${trades.length} trade(s)`;
+  const totalPages = Math.max(1, Math.ceil(trades.length / TRADE_PAGE_SIZE));
+  tradePageIdx = Math.min(tradePageIdx, totalPages - 1);
+  const page = trades.slice(tradePageIdx * TRADE_PAGE_SIZE, (tradePageIdx + 1) * TRADE_PAGE_SIZE);
+  el('tradeTblBody').innerHTML = page.map(t => `
+    <tr class="${t._idx === selectedTradeIdx ? 'selected-row' : ''}" onclick="focusTrade(${t._idx})">
+      <td>${t.date}</td>
+      <td>${t.side}</td>
+      <td class="num">${t.entry_price.toFixed(5)}</td>
+      <td class="num">${t.exit_price.toFixed(5)}</td>
+      <td class="num ${t.pnl_pct >= 0 ? 'pos' : 'neg'}">${t.pnl_pct >= 0 ? '+' : ''}${t.pnl_pct.toFixed(3)}</td>
+      <td class="num ${t.R >= 0 ? 'pos' : 'neg'}">${t.R.toFixed(2)}R</td>
+      <td class="num">${t.mae_pct.toFixed(3)}</td>
+      <td>${t.outcome}</td>
+      <td class="num">${t.htf_lean.toFixed(2)}</td>
+      <td class="num">${t.ltf_lean.toFixed(2)}</td>
+    </tr>`).join('');
+  el('pgInfo').textContent = `Page ${tradePageIdx + 1} / ${totalPages}`;
+  el('pgPrev').disabled = tradePageIdx <= 0;
+  el('pgNext').disabled = tradePageIdx >= totalPages - 1;
+}
+function tradePage(d) { tradePageIdx += d; renderTradeTable(); }
+
+// ─── CSV export ────────────────────────────────────────────────────────────
+function dl(name, text) {
+  const b = new Blob([text], { type: 'text/csv' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name; a.click();
+}
+function exportCsvPct() {
+  if (!LAST) return;
+  const rows = ['Instrument,Date,Return %,MAE %'];
+  for (const t of LAST.trades) rows.push(`${t.instrument},${t.date},${t.pnl_pct},${t.mae_pct}`);
+  dl(`trendflip_${LAST.instrument}_pct.csv`, rows.join('\n') + '\n');
+}
+function exportCsvR() {
+  if (!LAST) return;
+  const rows = ['instrument,date,R,MAE (R)'];
+  for (const t of LAST.trades) rows.push(`${t.instrument},${t.date},${t.R},${t.mae_R}`);
+  dl(`trendflip_${LAST.instrument}_R.csv`, rows.join('\n') + '\n');
+}
+function exportCsvDollar() {
+  if (!LAST) return;
+  const acct = +el('acctSize').value || 10000, riskPct = +el('riskPct').value || 1;
+  const riskDollar = acct * riskPct / 100;
+  const rows = ['Instrument,Trade Date,PnL ($),Risk ($)'];
+  for (const t of LAST.trades) rows.push(`${t.instrument},${t.date},${(t.R * riskDollar).toFixed(2)},${riskDollar.toFixed(2)}`);
+  dl(`trendflip_${LAST.instrument}_usd.csv`, rows.join('\n') + '\n');
+}
+</script>
+</body>
+</html>

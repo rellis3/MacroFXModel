@@ -817,6 +817,21 @@ holds ~75% per year, the ruler is calibrated; if the per-year split drifts
 (the ifo/DAX failure mode — a full-sample average hiding decay), that's now
 visible in one click instead of assumed away.
 
+### 1ae. Trend-Flip engine (2026-07-27) — HTF-bias-gated discrete flip, stage 1
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Trend-Flip engine** | `js/trendFlipEngine.js` | A discrete trend-entry system: a daily HTF bias gates a lower-timeframe "flip" — the LTF's own reading going from weak/unaligned into aligned with the HTF direction (`computeLtfLeanSeries` + the flip check in `runTrendFlip`) — sized with a Wilder ATR stop and a fixed-RR target, filled and walked to exit on the real M1 path via `walkBars` (forecastCore's shared fill walker, reused as-is with a `'stop'`-type order at the LTF bar's open so it fills immediately). Both HTF and LTF "lean" are `sign(return over the window) × classifyDayType(...).T` (`computeHtfBiasByDate` / `computeLtfLeanSeries`) — direction from the realized price move, conviction from dayTypeCore's unsigned trend-day-ness. **Caught-in-review bug, fixed before any real-data run:** the first version used `classifyDayType`'s own `signedT` as if it were bullish/bearish direction; `signedT`'s two estimators (efficiencyRatio, varianceRatio) both take `Math.abs()` of the price move, so a clean down-trend and a clean up-trend score identically positive — `signedT`'s sign is fade-vs-follow conviction, not price direction. `trendFlipEngine.test.mjs` check [1]/[3] caught it immediately (a down-drift synthetic market read HTF-bullish and emitted BUY-only trades); fixed by deriving direction from `Math.sign` of the window's own return and using T only as the conviction multiplier — still one brick (`classifyDayType`), used for what it actually measures. Originated from reviewing a pasted Pine Script MTF Trend Dashboard indicator (EMA20/50/200 stack + Supertrend HTF filter); that EMA-stack mechanism was already A/B tested here (`js/trendFollowEmaEngine.js`, §1c/known-drift table) and came back **null**, so this engine deliberately does not reuse it. No lookahead: both the conviction read and the direction sign use only indices < idx; the HTF read for a given LTF bar uses the daily index of that bar's calendar date (itself only reading days strictly before that date), and entry executes at the NEXT LTF bar's open after the flip is confirmed on the signal bar's close. `runTrendFlipSummarized` wraps one instrument's run through `summarizeSplit` (honestForecastEngine) for the IS/OOS card. Tested `js/trendFlipEngine.test.mjs` on synthetic up/down-drift fixtures (5 checks: HTF lean sign matches drift direction, trades are sane, trade side matches drift direction, truncating future data doesn't change past trades, IS+OOS partitions the full trade set) — **no real-data run yet, so no edge claim exists for this brick**; per CLAUDE.md's own rule, "built" ≠ "works" ≠ "has edge" here specifically. | `server.js` `POST /api/trend-flip/run` + `GET /api/trend-flip/status/:jobId`; `trend-flip-backtest.html` (linked from `index.html`) | 🔬 built · single-instrument (no multi-pair sweep), **not yet run on real data or OOS-validated** |
+
+Stage 1–3 of the honest-backtest-build discipline (`CLAUDE.md` "Backtest build
+discipline" section): minimal-DOF version wired end-to-end, sanity-checked on
+synthetic data, ready for a zero-frills real-data run. Stage 4 (true IS/OOS on
+real D1+M1, ≥30 OOS trades) and the pre-registered benchmark comparison — does
+the FLIP timing beat just staying HTF-aligned with no flip condition, and does
+either beat the existing validated `trendFollowEngine.js` TSMOM equity curve —
+have not been run. Treat every number this page currently shows as a
+plumbing-correctness check, not a result.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
