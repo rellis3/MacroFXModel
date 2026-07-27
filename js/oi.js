@@ -436,6 +436,20 @@ export function updateOIBasis() {
 
 // ── Parser ───────────────────────────────────────────────────────────────────
 
+// Paste-size ceilings. These are RUNAWAY GUARDS, not business rules — they must sit
+// far above any real chain, because when one bites it silently deletes price levels.
+//
+// The old 500-row cap did exactly that on gold: the GC paste carries 924 strikes from
+// 500 to 24,000, so row 500 landed at strike 4010 — BELOW spot at 4078. Every strike
+// above that was discarded, taking 21,641 calls with it. The surviving data still
+// looked perfectly well-formed: max pain 4000, call wall 4000, P/C 8.29, and a skew of
+// exactly −1 because no call OI above spot remained. Nothing errored. (Index chains
+// are big too — SPX500 pastes 391 rows — so this was always going to bite eventually.)
+//
+// A truncation is now reported (`truncated`) instead of being invisible.
+const MAX_STRIKE_ROWS = 4000;   // gold: 924 · SPX500: 391 — 4× headroom over the worst seen
+const MAX_PASTE_LINES = 8000;   // line budget before the strike-row budget applies
+
 // ── CME multi-expiry heatmap matrix ──────────────────────────────────────────
 // Some feeds export a STRIKE × EXPIRY grid: `Strike | C P (exp1) | C P (exp2) | …`,
 // tab-separated with empty cells. Pasting it whole broke the simple parser (it
@@ -465,6 +479,7 @@ function _matrixRows(raw) {
   let futures = null;
   const dtes = [];
   const codes = [];
+  let inColumnHeader = false;
   for (let i = 0; i < hdr; i++) {
     if (futures == null)
       for (const tok of lines[i].split('\t')) {
@@ -483,20 +498,31 @@ function _matrixRows(raw) {
       }
     const m = lines[i].match(/(-?\d+)\s*DTE/g);   // "0 DTE", "1 DTE", … in column order
     if (m) for (const t of m) dtes.push(parseInt(t, 10));
-    // …and the QuikStrike EXPIRY CODES alongside them ("TU4N6", "EUUQ6"), in the same
-    // column order. Matching the smile-box hint by CODE rather than by DTE matters:
-    // DTE is relative to the paste's own date, so if the OI heatmap and the
-    // Settlements table are copied on different days, a DTE match silently resolves
-    // to the wrong expiry (11 DTE means a different contract each day). The code is
-    // absolute. Shape: 2 letters + alnum + letter + digit — excludes the 4-char
-    // underlying contract codes ("6EU6"), which start with a digit.
-    for (const tok of lines[i].split('\t')) {
-      const t = tok.trim();
-      if (/^[A-Z]{2}[A-Z0-9][A-Z]\d$/.test(t)) codes.push(t);
+    // …and the QuikStrike EXPIRY CODES alongside them ("TU4N6", "EUUQ6", "OGQ6"), in
+    // the same column order. Matching the smile-box hint by CODE rather than by DTE
+    // matters: DTE is relative to the paste's own date, so if the OI heatmap and the
+    // Settlements table are copied on different days, a DTE match silently resolves to
+    // the wrong expiry (11 DTE is a different contract each day). The code is absolute.
+    //
+    // POSITION, not shape, decides what's an expiry code. The header block also lists
+    // the UNDERLYING futures contracts ("GCQ6", "6EU6") next to their prices, and gold
+    // shows 20 of those against 10 C/P columns. A shape rule can't separate them —
+    // `OGQ6` (option) and `GCQ6` (future) are the same shape, and requiring 5 chars
+    // (to exclude `6EU6`) silently dropped every 4-char gold code, misaligning the
+    // whole array. The expiry codes are exactly those at/after the "Strike" label row,
+    // which is where the column header actually begins.
+    if (!inColumnHeader && /^strike$/i.test((lines[i].split('\t')[0] || '').trim())) inColumnHeader = true;
+    if (inColumnHeader) {
+      for (const tok of lines[i].split('\t')) {
+        const t = tok.trim();
+        if (/^[A-Z]{2,3}[A-Z0-9]{1,2}[A-Z]?\d$/.test(t) && !/^\d/.test(t)) codes.push(t);
+      }
     }
   }
   const rows = [];
-  for (let i = hdr + 1; i < lines.length && rows.length < 500; i++) {
+  let truncated = false;
+  for (let i = hdr + 1; i < lines.length; i++) {
+    if (rows.length >= MAX_STRIKE_ROWS) { truncated = true; break; }
     const cells = lines[i].split('\t');            // split on TAB — keep empty cells for alignment
     const strike = parseFloat((cells[0] || '').replace(/,/g, ''));
     if (!Number.isFinite(strike) || strike <= 0 || strike > 1e7) continue;
@@ -508,7 +534,7 @@ function _matrixRows(raw) {
     }
     rows.push({ strike, cp });
   }
-  return rows.length ? { futures, dtes, codes, rows } : null;
+  return rows.length ? { futures, dtes, codes, rows, truncated } : null;
 }
 
 // Pick the PRIMARY expiry column from the parsed matrix — the education's
@@ -587,6 +613,7 @@ export function parseOIMatrix(raw, { signed = false, mode = 'primary' } = {}) {
   }
   return strikes.length >= 2
     ? { strikes, calls, puts, futures: parsed.futures,
+        truncated: !!parsed.truncated,
         primaryExpiry: primary ? { dte: primary.dte, code: primary.code, index: primary.index, nearOI: primary.nearOI, totalOI: primary.totalOI,
           anchorValid: primary.anchorValid, scoredOn: primary.scoredOn } : null }
     : null;
@@ -633,11 +660,11 @@ export function oiParseTable(raw) {
   const m = parseOIMatrix(raw);
   if (m) return { strikes: m.strikes, calls: m.calls, puts: m.puts,
     callChg: m.strikes.map(() => 0), putChg: m.strikes.map(() => 0), futures: m.futures,
-    primaryExpiry: m.primaryExpiry };
+    truncated: m.truncated, primaryExpiry: m.primaryExpiry };
   const strikes=[], calls=[], puts=[], callChg=[], putChg=[];
   const rows = raw.split('\n');
-  for (let i = 0; i < Math.min(700, rows.length); i++) {
-    if (strikes.length >= 500) break;   // full CME chains run a few hundred strikes; was 100 (truncated big pastes)
+  for (let i = 0; i < Math.min(MAX_PASTE_LINES, rows.length); i++) {
+    if (strikes.length >= MAX_STRIKE_ROWS) break;   // runaway guard only — see MAX_STRIKE_ROWS
     let row = rows[i].trim();
     if (!row || row.length < 3) continue;
     if (/^\d/.test(row) === false && /[A-Za-z]/.test(row)) continue;
@@ -675,8 +702,8 @@ export function oiParseChangeTable(raw, expectedLen, strikes = null) {
   }
   const cc=[], pc=[];
   const rows = raw.split('\n');
-  for (let i = 0; i < Math.min(700, rows.length); i++) {
-    if (cc.length >= 500) break;   // match oiParseTable's raised cap (change table must equal strike count)
+  for (let i = 0; i < Math.min(MAX_PASTE_LINES, rows.length); i++) {
+    if (cc.length >= MAX_STRIKE_ROWS) break;   // must match oiParseTable's budget (row counts have to line up)
     let row = rows[i].trim();
     if (!row || /[A-Za-z]/.test(row) && !/^\d/.test(row)) continue;
     row = row.replace(/\t/g,' ').replace(/ {2,}/g,' ').trim();
@@ -1353,6 +1380,8 @@ export function processOIData() {
   const _cwHead = callWalls.filter(w => w.strike >= spot).sort((a,b) => a.strike - b.strike)[0] ?? callWalls[0] ?? null;
   const _pwHead = putWalls.filter(w => w.strike <= spot).sort((a,b) => b.strike - a.strike)[0] ?? putWalls[0] ?? null;
 
+  // Spot must sit INSIDE the parsed ladder. A truncated paste can leave spot above the
+  // top strike, which is the tell that levels were lost — checked below via _hiK.
   // Mis-scale / stale guard: if spot sits well OUTSIDE the option strike range, the
   // paste is at the wrong price level (futures price not detected → basis not
   // subtracted, wrong expiry, or stale). Same check the bot producer uses — surfaced
@@ -1365,6 +1394,10 @@ export function processOIData() {
   // looked green. These extra checks are SEMANTIC — they test whether the numbers
   // mean what they claim, not just whether they're the right size.
   const _warnings = [];
+  // Truncation FIRST — it silently deletes strikes, and every level below is computed
+  // on whatever survived. Gold lost every strike above 4010 (spot was 4078) this way.
+  if (parsed.truncated)
+    _warnings.push(`paste exceeded ${MAX_STRIKE_ROWS} strike rows and was TRUNCATED — levels above ${oiFmtStrike(_hiK, pair)} are missing; re-paste a narrower strike range`);
   if (spot > 0 && parsed.strikes.length >= 3 && (spot < _loK * 0.9 || spot > _hiK * 1.1))
     _warnings.push(`spot ${oiFmtStrike(spot, pair)} is outside the option strike range ${oiFmtStrike(_loK, pair)}–${oiFmtStrike(_hiK, pair)} — likely stale or mis-scaled (check the futures price / expiry and re-paste)`);
   if (primaryExpiry?.anchorValid === false)
