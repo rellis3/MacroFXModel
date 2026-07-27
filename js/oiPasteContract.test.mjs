@@ -187,13 +187,29 @@ console.log('[live smile hint — resolves from pastes, no save required]');
   ok('matched by CODE, not by DTE arithmetic', h.matchedOn === 'code', `matchedOn=${h.matchedOn}`);
   ok('hint carries the expiry date for the paste', !!h.date, `${h.date}`);
 
-  // These two fixtures were captured 3 days apart on purpose. A DTE match would have
-  // silently resolved 11 DTE to TU1Q6 (11 DTE on the OLDER table's date) — the wrong
-  // contract, with no indication anything was off. Code matching gets EUUQ6 right AND
-  // the DTE disagreement (11 in the heatmap vs 14 in the Settlements table) flags that
-  // the two pastes are from different sessions.
-  ok('cross-date pastes are FLAGGED, not silently mis-resolved',
-    h.staleMatch === true && h.matchedDte === 14, `staleMatch=${h.staleMatch}, matchedDte=${h.matchedDte}`);
+  // A DTE match would have silently resolved 11 DTE to TU1Q6 (11 DTE by the Settlements
+  // table's own reckoning) — the wrong contract, with nothing to indicate it. Code
+  // matching gets EUUQ6 right regardless of how each table counts days.
+  ok('code match survives the two tables counting DTE differently',
+    h.code === 'EUUQ6' && h.matchedDte === 14 && h.dte === 11,
+    `heatmap ${h.dte} DTE vs table ${h.matchedDte} DTE, still ${h.code}`);
+
+  // STALENESS IS A DATE QUESTION, NOT A DTE-DIFF QUESTION. The Settlements table is
+  // published per settlement and its DTE counts from that settle date; the heatmap
+  // counts from today. Midweek they differ by 1, over a weekend by 3. Comparing the
+  // two numbers flagged every Monday as stale (a real false positive on live data).
+  // The expiry DATE is absolute, so the table's own as-of date is recoverable from it.
+  ok('table as-of date recovered from the absolute expiry date',
+    h.tableAsOf === '2026-07-24', `${h.tableAsOf}`);
+  ok('no clock supplied → no staleness claim', h.tableStaleDays === null);
+  ok('a Monday reading Friday settles is NOT stale (<= 4 days)', (() => {
+    const x = resolveSmileExpiry(MATRIX, TERM, { now: Date.UTC(2026, 6, 27) });  // Mon 27 Jul
+    return x.tableStaleDays === 3;
+  })(), '3 days = normal weekend lag');
+  ok('a genuinely old table IS stale', (() => {
+    const x = resolveSmileExpiry(MATRIX, TERM, { now: Date.UTC(2026, 7, 3) });   // Mon 3 Aug
+    return x.tableStaleDays === 10 && x.tableStaleDays > 4;
+  })(), '10 days');
 
   // The heatmap header alone now yields the code (no Settlements table needed for
   // the hint itself — the table only adds the human-readable expiry date).

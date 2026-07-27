@@ -212,6 +212,7 @@ export function updateSmileHint() {
   const hint = resolveSmileExpiry(val('oiRawData'), val('oiIVTermData'), {
     dte: parseFloat(document.getElementById('oiDTE')?.value),
     rawIV: smile,
+    now: Date.now(),
   });
   if (!hint || (!hint.code && !Number.isFinite(hint.dte))) {
     el.style.display = 'none'; el.innerHTML = ''; return;
@@ -226,8 +227,11 @@ export function updateSmileHint() {
   const smileCode = parsedSmile?.expiryCode || null;
   const haveChain = (parsedSmile?.strikes?.length || 0) >= 2;
 
-  const stale = hint.staleMatch
-    ? `<br><span style="color:#f59e0b">⚠ ${hint.code} is ${hint.matchedDte} DTE in the Settlements table but ${hint.dte} DTE in the OI heatmap — that table is ~${Math.abs(hint.matchedDte - hint.dte)} days old. Re-copy it from today.</span>`
+  // The Settlements table always lags by design (it's the last published settlement),
+  // so a 1-3 day age is NORMAL — Friday's settle is what you get all Monday. Only flag
+  // it once it's older than a long weekend could explain.
+  const stale = (Number.isFinite(hint.tableStaleDays) && hint.tableStaleDays > 4)
+    ? `<br><span style="color:#f59e0b">⚠ Settlements table is from ${hint.tableAsOf} (${hint.tableStaleDays} days ago) — re-copy it.</span>`
     : '';
 
   let body;
@@ -798,7 +802,15 @@ export function parseSettlementTermStructure(raw) {
 //
 // Extracted 2026-07-27 so the hint can fire ON PASTE instead of requiring a full
 // Analyse-save-Analyse round trip just to learn an expiry code.
-export function resolveSmileExpiry(rawOI, rawIVTerm, { dte = null, haveSmile = false, rawIV = '' } = {}) {
+// dd/mm/yyyy → UTC Date (the Settlements table's expiry format). Null on anything else.
+function _parseDMY(s) {
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(s || '').trim());
+  if (!m) return null;
+  const d = new Date(Date.UTC(+m[3], +m[2] - 1, +m[1]));
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+export function resolveSmileExpiry(rawOI, rawIVTerm, { dte = null, haveSmile = false, rawIV = '', now = null } = {}) {
   let primaryDte = null, primaryCode = null;
   if (rawOI && rawOI.trim()) {
     try {
@@ -819,7 +831,8 @@ export function resolveSmileExpiry(rawOI, rawIVTerm, { dte = null, haveSmile = f
   if (!Number.isFinite(hintDte) && !(Array.isArray(rows) && rows.length)) return null;
 
   const out = { dte: Number.isFinite(hintDte) ? hintDte : null, code: primaryCode, date: null,
-                matchedDte: null, matchedOn: primaryCode ? 'code' : null, staleMatch: false,
+                matchedDte: null, matchedOn: primaryCode ? 'code' : null,
+                tableAsOf: null, tableStaleDays: null,
                 haveSmile: !!haveSmile };
   if (Array.isArray(rows) && rows.length) {
     const liquid = rows.filter(r => r.straddle > 0 && r.iv > 0);
@@ -838,10 +851,27 @@ export function resolveSmileExpiry(rawOI, rawIVTerm, { dte = null, haveSmile = f
     if (m) {
       out.code = m.symbol || out.code; out.date = m.expiry || null; out.matchedDte = m.dte ?? null;
       if (out.dte == null) out.dte = m.dte ?? null;
-      // Same contract, different DTE ⇒ the two tables were copied on different days.
-      // Surface it: the levels and the smile would describe different sessions.
-      if (Number.isFinite(hintDte) && Number.isFinite(out.matchedDte) && Math.abs(out.matchedDte - hintDte) > 1)
-        out.staleMatch = true;
+      // How old is this Settlements table REALLY?
+      //
+      // Do NOT compare its DTE against the heatmap's. The two count from different
+      // reference points by design: the Settlements table is published per SETTLEMENT
+      // and its DTE counts from that settle date, while the heatmap counts from today.
+      // Midweek they differ by 1, over a weekend by 3 — a raw DTE comparison reads that
+      // structural offset as staleness and fires every Monday (it did, on real data).
+      //
+      // The expiry DATE is absolute, so recover the table's own as-of date from it:
+      //   asOf = expiryDate − DTE.
+      // Only then is "is this old?" answerable, and only against a supplied clock.
+      const exp = _parseDMY(m.expiry);
+      if (exp && Number.isFinite(out.matchedDte)) {
+        const asOf = new Date(exp.getTime() - out.matchedDte * 86400000);
+        out.tableAsOf = asOf.toISOString().slice(0, 10);
+        if (now != null) {
+          const t = new Date(now);
+          const today = Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate());
+          out.tableStaleDays = Math.round((today - asOf.getTime()) / 86400000);
+        }
+      }
     }
   }
   return out;
