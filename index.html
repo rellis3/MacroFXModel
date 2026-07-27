@@ -746,14 +746,18 @@ Example:
     </div>
 
     <div style="margin-bottom:14px">
-      <label class="oi-lbl">Implied Vol <span style="color:var(--text3);font-weight:400">(optional — CME QuikStrike → expected move / charm / vanna)</span></label>
-      <textarea class="oi-textarea" id="oiIVData" placeholder="EITHER format works — paste the whole table, headers included (title/menu lines are ignored):
+      <label class="oi-lbl">Implied Vol — smile <span style="color:var(--text3);font-weight:400">(optional — QuikStrike per-STRIKE chain for ONE expiry)</span></label>
+      <textarea class="oi-textarea" id="oiIVData" placeholder="Paste the QuikStrike 'Option Settlement' per-STRIKE chain for the expiry holding your walls (a ladder of many strikes) → full smile → expected move + charm/vanna + skew. Whole table, headers + title line included (DTE auto-read from '… (0.52 DTE) …').
 
-1) Per-STRIKE 'Option Settlement' chain for ONE expiry (a ladder of many strikes) → full smile → expected move + charm/vanna + skew.
-   Columns: CallChg CallPrior CallSettle | Strike | PutSettle PutPrior PutChg | VolSettle VolPrior VolChg | OI-Call OI-CallChg OI-Put OI-PutChg
+Columns: CallChg CallPrior CallSettle | Strike | PutSettle PutPrior PutChg | VolSettle VolPrior VolChg | OI-Call OI-CallChg OI-Put OI-PutChg
 
-2) Per-EXPIRY 'Settlements' table (one ATM row per expiry: Symbol · DTE · Strike · Future · Straddle · Vol · OI) → expected move (from the straddle) + ATM IV term structure. No charm/vanna/skew (needs multiple strikes)." style="min-height:90px"></textarea>
-      <div class="oi-hint">The per-strike chain (1) gives the most — smile → charm (∂Δ/∂time) &amp; vanna (∂Δ/∂vol). The per-expiry table (2) is the easier grab and still gives the expected-move band + IV term structure. Format auto-detected; DTE read automatically. Volatility ≠ Volume.</div>
+(A 'Settlements' per-expiry table pasted here also works — auto-detected — but the term-structure box below is the natural home for it.)" style="min-height:80px"></textarea>
+      <div class="oi-hint">Per-strike IV (the smile) → charm (∂Δ/∂time) &amp; vanna (∂Δ/∂vol) + skew, for the ONE expiry your walls sit in. Volatility ≠ Volume.</div>
+    </div>
+    <div style="margin-bottom:14px">
+      <label class="oi-lbl">IV term structure <span style="color:var(--text3);font-weight:400">(optional — QuikStrike 'Settlements' table, ALL expiries)</span></label>
+      <textarea class="oi-textarea" id="oiIVTermData" placeholder="Paste the whole 'Settlements' tab — one ATM row per expiry (Symbol · DTE · Strike · Future · Straddle · Vol · OI), full product, no expiry to pick. → expected-move band (from the straddle) + ATM IV term structure across expiries. Title/menu/header lines are ignored." style="min-height:70px"></textarea>
+      <div class="oi-hint">The easy grab — the whole product in one copy, no expiry choice. Gives the expected move + IV term structure (front vs back vol). Charm/vanna/skew still need the per-strike box above.</div>
     </div>
 
     <div class="oi-form-row" style="margin-bottom:14px">

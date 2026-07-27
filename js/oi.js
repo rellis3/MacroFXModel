@@ -32,7 +32,7 @@ function _trimStoreForLocal(store, { rawText = false, profile = false } = {}) {
   const out = {};
   for (const [k, v] of Object.entries(store)) {
     const c = { ...v };
-    if (rawText) { delete c.rawOI; delete c.rawChg; delete c.rawVol; delete c.rawIV; }
+    if (rawText) { delete c.rawOI; delete c.rawChg; delete c.rawVol; delete c.rawIV; delete c.rawIVTerm; }
     if (profile) { delete c.gexProfile; delete c.ivSmile; }
     if (c.expiries) {
       const ex = {};
@@ -118,6 +118,7 @@ async function _backfillRawFromKV(sym) {
     fill('oiChangeData', e.rawChg);
     fill('oiVolumeData', e.rawVol);
     fill('oiIVData', e.rawIV);
+    fill('oiIVTermData', e.rawIVTerm);
     const fe = document.getElementById('oiFuturesPrice');
     if (fe && !fe.value && e.futures) fe.value = e.futures;
     updateOIBasis();
@@ -166,6 +167,8 @@ export function openOIModal() {
   if (volEl) volEl.value = existing ? (existing.rawVol || '') : '';
   const ivEl = document.getElementById('oiIVData');
   if (ivEl) ivEl.value = existing ? (existing.rawIV || '') : '';
+  const ivtEl = document.getElementById('oiIVTermData');
+  if (ivtEl) ivtEl.value = existing ? (existing.rawIVTerm || '') : '';
   updateOIBasis();
   // localStorage may have been trimmed to fit its ~5MB quota (raw pastes dropped
   // locally to survive a big multi-pair store) — in that case the boxes above are
@@ -840,6 +843,7 @@ export function processOIData() {
   const rawChg = document.getElementById('oiChangeData').value;
   const rawVol = document.getElementById('oiVolumeData')?.value || '';
   const rawIV = document.getElementById('oiIVData')?.value || '';   // optional QuikStrike settlement paste (implied vol → charm/vanna)
+  const rawIVTerm = document.getElementById('oiIVTermData')?.value || '';   // optional 2nd paste: "Settlements" per-expiry table → IV term structure
   const expiryLabel = (document.getElementById('oiExpiryLabel')?.value || '').trim();
   const dteRaw = parseFloat(document.getElementById('oiDTE')?.value);
   const spotRaw    = parseFloat(document.getElementById('oiSpotPrice').value);
@@ -996,6 +1000,26 @@ export function processOIData() {
     }
     }
   }
+  // Optional SECOND paste: the full-product "Settlements" term-structure table, in its
+  // own box, so it can sit ALONGSIDE a per-strike chain (box 1 = the smile/charm-vanna
+  // for one expiry; box 2 = the IV term structure across all expiries). Box 1's ATM
+  // straddle is the more precise expected move, so box 2 only FILLS what box 1 lacks.
+  if (rawIVTerm && rawIVTerm.trim()) {
+    const ts2 = parseSettlementTermStructure(rawIVTerm);
+    if (ts2) {
+      if (!ivTerm) ivTerm = ivTermStructure(ts2.map(r => ({ dte: r.dte, iv: r.iv, ivChg: r.ivChg })));
+      if (!expMove) {
+        const target = primaryExpiry?.dte ?? (Number.isFinite(dteEff) ? dteEff : (Number.isFinite(dteRaw) ? dteRaw : null));
+        const liquid = ts2.filter(r => r.straddle > 0 && r.iv > 0);
+        const pick = liquid.length
+          ? (Number.isFinite(target)
+              ? liquid.slice().sort((a, b) => Math.abs(a.dte - target) - Math.abs(b.dte - target))[0]
+              : liquid.slice().sort((a, b) => a.dte - b.dte)[0])
+          : null;
+        if (pick) expMove = expectedMoveFromStraddle(spot, pick.straddle, { dte: pick.dte, atmStrike: pick.strike });
+      }
+    }
+  }
 
   const withOI = parsed.strikes.map((s,i) => {
     const {gamma, callDelta, putDelta} = oiGreeks(s, spot, pair);
@@ -1133,7 +1157,8 @@ export function processOIData() {
     rawOI: _compactOI,
     rawChg: _compactChg,
     rawVol: _compactVol,
-    rawIV: rawIV && rawIV.trim() ? rawIV : null   // QuikStrike IV settlement paste (for charm/vanna re-parse on reopen)
+    rawIV: rawIV && rawIV.trim() ? rawIV : null,   // QuikStrike IV settlement paste (for charm/vanna re-parse on reopen)
+    rawIVTerm: rawIVTerm && rawIVTerm.trim() ? rawIVTerm : null   // "Settlements" term-structure paste (re-parse on reopen)
   };
 
   const store = oiLoadStore();
