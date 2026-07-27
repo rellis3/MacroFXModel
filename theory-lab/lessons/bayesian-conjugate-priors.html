@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conjugate Priors &amp; Bayesian Updating in Practice — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Bayesian Statistics Extensions / Conjugate Priors &amp; Bayesian Updating in Practice</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Bayesian Extensions 1 of 3</div>
+  <h1 class="tl-title">Conjugate Priors &amp; Bayesian Updating in Practice</h1>
+  <p class="tl-dek">Bayes' theorem tells you how to combine a prior belief with new evidence. Conjugate priors are the special case where that combination has a clean, closed-form answer — so you can actually watch a belief narrow, update after update, without numerical machinery.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here, not a claim this repo has built or validated it</span>
+    <span>~16 min read</span>
+    <span>Prereqs: Bayesian Inference &amp; Updating</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A prior is <strong>conjugate</strong> to a likelihood when the posterior comes out of the same distribution family as the prior — no numerical integration required, just new parameter values.</li>
+      <li><strong>Beta-Binomial:</strong> prior \(\theta \sim \text{Beta}(\alpha,\beta)\), observe \(s\) successes in \(n\) trials, posterior is exactly \(\text{Beta}(\alpha+s,\ \beta+n-s)\) — the update is just addition.</li>
+      <li><strong>Normal-Normal (known variance):</strong> prior \(\mu \sim N(\mu_0,\sigma_0^2)\), the posterior mean is a <em>precision-weighted average</em> of the prior mean and the sample mean, and posterior precision is just prior precision plus data precision.</li>
+      <li>Worked example: starting from a weak belief that "trend days" happen 40% of the time, 10 observed days (3 trend days) then 30 more (9 trend days) narrow the belief's standard deviation from 0.20 → 0.12 → 0.07 — visualized live in the chart below.</li>
+      <li>Conjugacy is a mathematical convenience, not a law of nature — most real-world likelihoods have no conjugate prior at all, which is exactly why the next lesson in this trio covers MCMC.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The <a href="bayesian-inference.html">Bayesian Inference &amp; Updating</a>
+    lesson derived Bayes' theorem and showed, with a single flagged-day
+    example, that a prior and a likelihood combine into a posterior. What it
+    didn't show is <em>how</em> you'd actually compute that posterior when
+    the "belief" isn't a single number like "20% chance of a trend day" but an
+    entire distribution over a range of possible values — for instance, "I'm
+    not sure if the true trend-day rate is 15%, 25%, or 35%, but I have some
+    idea it's somewhere in that neighborhood." Representing and updating a
+    whole distribution, one observation at a time, is what the rest of applied
+    Bayesian statistics is built on.
+  </p>
+  <p>
+    In general, combining an arbitrary prior distribution with an arbitrary
+    likelihood produces a posterior with no simple closed form — you'd need
+    numerical integration or simulation to even evaluate it (that's the
+    subject of the next lesson, <a href="mcmc-metropolis-gibbs.html">MCMC:
+    Metropolis-Hastings &amp; Gibbs Sampling</a>). <strong>Conjugate priors</strong>
+    are the handful of special cases where the prior and likelihood are
+    matched so that the posterior lands in exactly the same distribution
+    family as the prior — only the parameters change. That makes the update
+    an algebra problem instead of a numerical-methods problem, and it's why
+    every textbook introduction to Bayesian updating starts here: it's the
+    version you can compute by hand, watch narrow update after update, and
+    build intuition from before reaching for simulation-based methods.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A belief as a shape, not a single number</h3>
+    <p>
+      Instead of saying "I believe there's a 30% chance today is a trend day"
+      (one number), imagine you say "I believe the <em>true underlying rate</em>
+      of trend days is somewhere around 30%, but I'm genuinely unsure whether
+      it's 20% or 40%." That fuzzy belief is a whole distribution — a curve
+      that's higher near 30% and lower out at the edges. A conjugate prior is
+      a convenient family of curves (the Beta distribution, for a rate between
+      0 and 1) that has a special property: when you feed it real data through
+      the likelihood, the resulting updated curve is <em>still a member of the
+      same family</em> — just narrower and shifted toward wherever the data
+      actually pointed. You never have to redraw the whole shape from scratch;
+      you just update two numbers that describe it, and the curve tightens
+      around the truth as more days go by.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>Beta-Binomial conjugacy</h3>
+  <p>
+    Let \(\theta\) be an unknown rate between 0 and 1 — the true long-run
+    fraction of days that are trend days, for instance. The
+    <strong>Beta distribution</strong> is a natural prior for a rate, because
+    it's defined exactly on the interval \([0,1]\) and can take on almost any
+    shape (flat, peaked, skewed) depending on two parameters \(\alpha\) and
+    \(\beta\):
+  </p>
+  <div class="tl-math">\[ f(\theta;\alpha,\beta) = \frac{\theta^{\alpha-1}(1-\theta)^{\beta-1}}{B(\alpha,\beta)} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>θ^(α-1)(1-θ)^(β-1)</code><span>the "kernel" — the only part that depends on θ</span></div>
+    <div class="tl-eq-chip c4"><code>B(α,β)</code><span>the normalizing constant, so the curve integrates to 1 over [0,1]</span></div>
+  </div>
+  <p>
+    You can read \(\alpha\) and \(\beta\) as <strong>pseudo-counts</strong>:
+    \(\alpha\) behaves like "successes I've already imagined seeing" and
+    \(\beta\) like "failures I've already imagined seeing," before any real
+    data arrives. A Beta(2,2) prior is a mild, symmetric belief centered at
+    0.5; a Beta(2,3) prior is a mild belief centered slightly below 0.5.
+  </p>
+  <p>
+    Now suppose you actually observe \(n\) independent trials (days) and count
+    \(s\) successes (trend days) and \(n-s\) failures. The
+    <strong>Binomial likelihood</strong> for a fixed true rate \(\theta\) is:
+  </p>
+  <div class="tl-math">\[ L(\theta) = \binom{n}{s}\theta^{s}(1-\theta)^{n-s} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>C(n,s)</code><span>number of ways to arrange s successes among n trials — doesn't depend on θ</span></div>
+    <div class="tl-eq-chip c3"><code>θ^s(1-θ)^(n-s)</code><span>the part that actually depends on θ</span></div>
+  </div>
+  <p>
+    Bayes' theorem says the posterior is proportional to prior times
+    likelihood. The normalizing constants (\(B(\alpha,\beta)\) and
+    \(\binom{n}{s}\)) don't involve \(\theta\), so they can be dropped and
+    restored at the end — all that matters is what happens to the
+    \(\theta\)-dependent kernels when you multiply them:
+  </p>
+  <div class="tl-math">\[ f(\theta \mid \text{data}) \propto \underbrace{\theta^{\alpha-1}(1-\theta)^{\beta-1}}_{\text{prior kernel}} \times \underbrace{\theta^{s}(1-\theta)^{n-s}}_{\text{likelihood kernel}} = \theta^{\alpha+s-1}(1-\theta)^{\beta+(n-s)-1} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>θ^(α+s-1)</code><span>exponents on θ simply add: (α-1)+s</span></div>
+    <div class="tl-eq-chip c2"><code>(1-θ)^(β+n-s-1)</code><span>exponents on (1-θ) simply add: (β-1)+(n-s)</span></div>
+  </div>
+  <p>
+    That last expression is <em>exactly</em> the kernel of a
+    \(\text{Beta}(\alpha+s,\ \beta+n-s)\) distribution. Since a Beta
+    distribution is completely determined by its kernel (there's only one
+    normalizing constant that makes any given kernel integrate to 1), this
+    proves the posterior <em>is</em> \(\text{Beta}(\alpha+s,\ \beta+n-s)\) —
+    no numerical integration was ever needed. This is what "conjugate" means:
+    the prior family (Beta) and the posterior family (also Beta) are the same,
+    for this particular likelihood (Binomial).
+  </p>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp green">
+      <div class="tl-fp-term">α</div>
+      <div class="tl-fp-name">Prior successes</div>
+      <div class="tl-fp-desc">Pseudo-count of "successes" the prior already assumed</div>
+    </div>
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">β</div>
+      <div class="tl-fp-name">Prior failures</div>
+      <div class="tl-fp-desc">Pseudo-count of "failures" the prior already assumed</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">s, n−s</div>
+      <div class="tl-fp-name">Observed data</div>
+      <div class="tl-fp-desc">Real successes and failures counted from actual observations</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">Beta(α+s, β+n−s)</div>
+      <div class="tl-fp-name">Posterior</div>
+      <div class="tl-fp-desc">Just add the counts — same family, updated parameters</div>
+    </div>
+  </div>
+
+  <p>
+    The posterior mean falls out immediately from the standard Beta-mean
+    formula, \(a/(a+b)\), applied to the new parameters:
+  </p>
+  <div class="tl-math">\[ E[\theta \mid \text{data}] = \frac{\alpha+s}{\alpha+\beta+n} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>α+β</code><span>the prior's "weight," in units of pseudo-observations</span></div>
+    <div class="tl-eq-chip c4"><code>n</code><span>the real data's weight, in units of actual observations</span></div>
+  </div>
+  <p>
+    Read this as a weighted average: the posterior mean sits between the
+    prior mean \(\alpha/(\alpha+\beta)\) and the raw sample proportion
+    \(s/n\), with the weights being how many pseudo-observations the prior
+    is worth (\(\alpha+\beta\)) versus how many real observations you actually
+    collected (\(n\)). A prior built from only 2-3 pseudo-observations gets
+    swamped quickly by real data; a prior built to feel like 200
+    pseudo-observations takes a lot of real data to move. The posterior
+    variance shrinks as data accumulates:
+  </p>
+  <div class="tl-math">\[ \text{Var}[\theta \mid \text{data}] = \frac{(\alpha+s)(\beta+n-s)}{(\alpha+\beta+n)^2(\alpha+\beta+n+1)} \]</div>
+  <p>
+    Notice the denominator grows roughly with \(n^3\) while the numerator
+    grows roughly with \(n^2\) — so the variance shrinks toward zero as more
+    data arrives, which is exactly the "narrowing belief" the chart below
+    shows happening live.
+  </p>
+
+  <h3>Normal-Normal conjugacy (known variance)</h3>
+  <p>
+    The same idea applies to an unknown <em>mean</em> instead of an unknown
+    rate. Suppose your prior belief about some parameter \(\mu\) (say, a
+    strategy's true average daily return) is itself normal, with a known
+    variance \(\sigma^2\) for the data-generating process:
+  </p>
+  <div class="tl-math">\[ \mu \sim N(\mu_0, \sigma_0^2), \qquad x_1,\dots,x_n \mid \mu \sim N(\mu, \sigma^2) \text{ i.i.d.} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>μ₀, σ₀²</code><span>prior mean and prior variance — how sure you are before any data</span></div>
+    <div class="tl-eq-chip c2"><code>σ²</code><span>the (known, assumed) variance of each individual observation</span></div>
+  </div>
+  <p>
+    It's cleanest to work in <strong>precision</strong> — the reciprocal of
+    variance, \(\tau = 1/\sigma^2\) — because precision, unlike variance,
+    simply adds when you combine independent sources of information. The
+    prior contributes precision \(\tau_0 = 1/\sigma_0^2\); the data (via its
+    sample mean \(\bar{x}\), whose own sampling variance is \(\sigma^2/n\))
+    contributes precision \(\tau_{\text{data}} = n/\sigma^2\). The posterior
+    distribution of \(\mu\) is then, again, exactly normal:
+  </p>
+  <div class="tl-math">\[ \mu \mid x_1,\dots,x_n \;\sim\; N\!\left(\mu_n,\ \sigma_n^2\right), \qquad \mu_n = \frac{\tau_0\,\mu_0 + \tau_{\text{data}}\,\bar{x}}{\tau_0+\tau_{\text{data}}}, \qquad \sigma_n^2 = \frac{1}{\tau_0+\tau_{\text{data}}} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>μₙ</code><span>posterior mean — a precision-weighted average of prior mean and sample mean</span></div>
+    <div class="tl-eq-chip c4"><code>σₙ²</code><span>posterior variance — the reciprocal of total precision, always smaller than either source alone</span></div>
+  </div>
+  <p>
+    In words: <strong>posterior precision is just prior precision plus data
+    precision</strong> — information always accumulates, never disappears —
+    and the <strong>posterior mean is a precision-weighted average</strong> of
+    what you believed before and what the data says, where a more precise
+    (lower-variance) source automatically gets more weight without you having
+    to decide that by hand.
+  </p>
+  <p>
+    A quick numeric check: suppose a prior belief about a strategy's true
+    daily drift is \(\mu_0=0\%\) with \(\sigma_0=0.5\%\) (so
+    \(\tau_0 = 1/0.25 = 4\)), and \(n=20\) days are observed with sample mean
+    \(\bar{x}=0.15\%\), assuming a known per-day volatility \(\sigma=1.0\%\)
+    (so \(\tau_{\text{data}} = 20/1 = 20\)). Then
+    \(\mu_n = (4\times 0 + 20\times 0.15)/24 = 3/24 = 0.125\%\) — pulled most
+    of the way toward the sample mean because the data's precision (20)
+    dwarfs the prior's precision (4), but not all the way, because the prior
+    still contributes a little pull toward zero. The posterior variance is
+    \(\sigma_n^2 = 1/24 \approx 0.0417\), so \(\sigma_n \approx 0.204\%\) —
+    narrower than either \(\sigma_0=0.5\%\) or the data's own standard error
+    of the mean, \(\sigma/\sqrt{n}=0.224\%\), because it combines both sources.
+  </p>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(\theta\)</td><td>An unknown rate/probability between 0 and 1 (e.g. the true trend-day base rate).</td></tr>
+      <tr><td>\(\alpha,\beta\)</td><td>The Beta distribution's two shape parameters — read as prior pseudo-counts of "successes" and "failures."</td></tr>
+      <tr><td>\(B(\alpha,\beta)\)</td><td>The Beta function — the normalizing constant that makes the Beta density integrate to 1.</td></tr>
+      <tr><td>\(n, s\)</td><td>Number of trials observed, and number of successes among them; \(n-s\) is the failure count.</td></tr>
+      <tr><td>\(\mu, \sigma^2\)</td><td>An unknown mean, and a known variance of each individual observation, in the Normal-Normal case.</td></tr>
+      <tr><td>\(\mu_0, \sigma_0^2\)</td><td>The prior mean and prior variance for \(\mu\), before any data.</td></tr>
+      <tr><td>\(\tau = 1/\sigma^2\)</td><td>Precision — the reciprocal of variance. Precisions from independent sources simply add.</td></tr>
+      <tr><td>\(\bar{x}\)</td><td>The sample mean of the observed data — the single number the likelihood contributes.</td></tr>
+      <tr><td>\(\mu_n, \sigma_n^2\)</td><td>The posterior mean and posterior variance of \(\mu\), after combining prior and data.</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>The trap:</strong> a "weak" or "uninformative" prior is not the
+    same as no assumption at all. Beta(1,1) (flat over [0,1]) still asserts
+    that every rate from 0% to 100% is equally plausible beforehand — itself
+    a strong claim in most real settings, where you'd never seriously entertain
+    a 95% trend-day rate. Pick \(\alpha,\beta\) to reflect a real base rate,
+    and be honest that the choice of prior "weight" (\(\alpha+\beta\)) is a
+    modeling decision, not a neutral default.
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">The Beta posterior narrowing as trend-day observations accumulate</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Density curve of a Beta posterior distribution over the true trend-day rate, narrowing and shifting as more days of data are observed">
+      <line x1="60" y1="210" x2="580" y2="210" style="stroke:var(--border)" />
+      <line x1="60" y1="30" x2="60" y2="210" style="stroke:var(--border)" />
+      <line x1="60" y1="30" x2="580" y2="30" style="stroke:var(--border);stroke-dasharray:2,2" />
+      <text x="60" y="225" fill="var(--text3)" font-size="11" text-anchor="middle">0.0</text>
+      <text x="190" y="225" fill="var(--text3)" font-size="11" text-anchor="middle">0.25</text>
+      <text x="320" y="225" fill="var(--text3)" font-size="11" text-anchor="middle">0.50</text>
+      <text x="450" y="225" fill="var(--text3)" font-size="11" text-anchor="middle">0.75</text>
+      <text x="580" y="225" fill="var(--text3)" font-size="11" text-anchor="middle">1.0</text>
+      <text x="320" y="242" fill="var(--text3)" font-size="11.5" text-anchor="middle">θ — true trend-day rate</text>
+      <line id="beta-true-line" x1="216" y1="30" x2="216" y2="210" style="stroke:var(--amber);stroke-dasharray:4,3;stroke-width:1.5" />
+      <text x="216" y="22" fill="var(--amber)" font-size="10.5" text-anchor="middle">true rate 0.30</text>
+      <path id="beta-curve" d="M60,210 L580,210 Z" style="fill:var(--blue);fill-opacity:0.18;stroke:var(--blue);stroke-width:2" />
+      <text id="beta-mean-label" x="320" y="60" fill="var(--text)" font-size="12.5" font-weight="700" text-anchor="middle"></text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Days observed (n)</span><span class="tl-live" id="beta-n-val">0</span></div>
+        <input type="range" id="beta-n" min="0" max="150" step="5" value="0">
+      </div>
+    </div>
+    <div class="tl-chart-caption">
+      Prior <strong>Beta(2,3)</strong> (mean 0.40, drawn at n=0), updated with
+      observations arriving at a fixed true rate of 30% trend days
+      (\(s=\text{round}(0.30n)\) successes out of \(n\)). Drag the slider —
+      the curve visibly narrows and its peak drifts from 0.40 toward the true
+      0.30 as \(n\) grows, exactly as the variance formula above predicts.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Updating a belief about the trend-day base rate</h3>
+    <p>
+      Start with a mildly informative prior, \(\text{Beta}(2,3)\) — mean
+      \(2/5=0.40\), representing "I lean toward thinking trend days are a bit
+      less than half of all days, but I'm not confident." Its variance is
+      \(\frac{2\times 3}{5^2\times 6}=\frac{6}{150}=0.04\), so its standard
+      deviation is \(\sqrt{0.04}=0.20\) — a wide, uncertain belief.
+    </p>
+    <p>
+      <strong>Round 1 — 10 days observed, 3 are trend days.</strong> Posterior
+      is \(\text{Beta}(2+3,\ 3+7)=\text{Beta}(5,10)\). New mean:
+      \(5/15=0.333\). New variance:
+      \(\frac{5\times 10}{15^2\times 16}=\frac{50}{3600}=0.01389\), so standard
+      deviation \(\sqrt{0.01389}=0.118\) — already less than half as wide as
+      before.
+    </p>
+    <p>
+      <strong>Round 2 — 30 more days observed, 9 more are trend days
+      (cumulative: 40 days, 12 trend days).</strong> Treat the round-1
+      posterior as round-2's prior and update again — or equivalently, since
+      Beta-Binomial updating doesn't care whether the data arrives in one
+      batch or many, just add all the counts to the <em>original</em> prior at
+      once: \(\text{Beta}(2+12,\ 3+28)=\text{Beta}(14,31)\). New mean:
+      \(14/45=0.311\) — much closer to the data's own 30% sample rate. New
+      variance: \(\frac{14\times 31}{45^2\times 46}=\frac{434}{93150}=0.00466\),
+      standard deviation \(\sqrt{0.00466}=0.068\).
+    </p>
+    <p>
+      The belief's standard deviation went \(0.20 \to 0.118 \to 0.068\) — it
+      more than halved, then nearly halved again, while the mean drifted from
+      an assumed 0.40 down to an observed-consistent 0.311. That is the entire
+      lesson in three numbers: <strong>the posterior mean moves toward the
+      data, and the posterior spread shrinks, automatically, with no separate
+      "confidence" calculation bolted on</strong> — the width of the
+      distribution <em>is</em> the confidence statement.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world scenario</div>
+    <h3>A trader tracking how often a level actually holds</h3>
+    <p>
+      A discretionary trader keeps a private log: "when price touches a
+      prior-day high with volume confirmation, does it hold as resistance?"
+      They start with an honest, weakly-informed prior — say
+      \(\text{Beta}(3,3)\), a 50/50 guess with only mild conviction — because
+      they don't yet have a real track record for this exact setup. After 15
+      occurrences (9 held, 6 didn't), their belief becomes
+      \(\text{Beta}(12,9)\), mean \(12/21\approx 0.571\), noticeably tighter
+      than the starting guess. After 60 more occurrences accumulate over the
+      following months (38 held, 22 didn't), the belief becomes
+      \(\text{Beta}(50,31)\), mean \(50/81\approx 0.617\), and — because the
+      variance formula's denominator grows roughly with the cube of the total
+      count — the belief is now dramatically narrower than after the first 15
+      observations, even though the mean barely moved. This is the honest,
+      quantified version of "I'm getting more confident in this setup the
+      more times I see it work" — a feeling every discretionary trader has,
+      made precise instead of vibes-based. It says nothing about whether
+      \(0.617\) is a good enough hit rate to trade profitably after costs —
+      that's a separate question this framework doesn't answer on its own.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Conjugate Beta-Binomial and Normal-Normal updating show up anywhere a rate
+    or a mean needs to be tracked and refined as small batches of new evidence
+    arrive, especially when a fast, closed-form answer matters more than
+    modeling every last real-world wrinkle:
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🖱️</div>
+      <h4>Click-through / conversion-rate testing</h4>
+      <p>Beta-Binomial is the standard closed-form model behind "Bayesian A/B testing" tools — each variant's true conversion rate gets its own Beta posterior, updated live as visits and conversions accumulate.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">⚙️</div>
+      <h4>Reliability &amp; quality control</h4>
+      <p>Manufacturing defect rates and hardware failure rates are natural Beta-Binomial problems — a small early sample gives a wide posterior; as production volume grows, the estimate of the true defect rate tightens.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📈</div>
+      <h4>Rolling estimates that must stay fast</h4>
+      <p>Normal-Normal updating is the conceptual seed behind the <a href="kalman-filter.html">Kalman Filter</a> lesson's recursive mean/variance tracking — the same precision-weighted-average logic, extended to a value that drifts over time instead of staying fixed.</p>
+    </div>
+  </div>
+  <p>
+    The common thread is <strong>speed and interpretability over generality</strong>:
+    a conjugate update is one line of arithmetic, requires no simulation, and
+    every intermediate quantity (the pseudo-counts, the precision) has a
+    plain-English meaning. The cost is that conjugacy only exists for a
+    handful of matched prior/likelihood pairs — the moment a real problem
+    needs, say, a mixture of behaviors, a bounded-but-skewed variance, or a
+    likelihood with no algebraic closed form, conjugacy breaks and you need
+    the simulation-based machinery covered in the next lesson,
+    <a href="mcmc-metropolis-gibbs.html">MCMC: Metropolis-Hastings &amp; Gibbs Sampling</a>.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where conjugate updating quietly goes wrong</h3>
+    <p>
+      <strong>Treating i.i.d. as automatic.</strong> Both derivations above
+      assume each new observation is independent of the others given
+      \(\theta\) (or \(\mu\)). Consecutive trading days are frequently
+      <em>not</em> independent — volatility clusters, and one trend day
+      raises the chance the next day is also a trend day. Feeding
+      autocorrelated data into a plain Beta-Binomial update overstates how
+      quickly the posterior should narrow.
+    </p>
+    <p>
+      <strong>Forgetting the "known variance" assumption in Normal-Normal.</strong>
+      The clean closed form above required \(\sigma^2\) to be a known
+      constant. If \(\sigma^2\) is itself unknown and must be estimated from
+      the same data (the realistic case almost always), the conjugate pair
+      is Normal-Inverse-Gamma instead, and the posterior for \(\mu\) alone
+      becomes a (fatter-tailed) Student-\(t\), not a Normal — using the Normal
+      formula anyway understates uncertainty.
+    </p>
+    <p>
+      <strong>A tight posterior is not validation.</strong> A narrow Beta
+      posterior after 200 observations says "I'm confident about what
+      happened in this sample" — it says nothing about whether the sampled
+      period was representative of the future, or whether the underlying
+      process is even stationary. Conjugate updating narrows a belief about
+      the past; it doesn't certify the future will look the same.
+    </p>
+    <p>
+      <strong>Picking a prior after peeking at the data.</strong> Choosing
+      \(\alpha,\beta\) (or \(\mu_0,\sigma_0^2\)) to make the posterior land
+      somewhere you already wanted is p-hacking wearing a Bayesian costume.
+      State the prior and its justification (a real historical base rate,
+      ideally) before looking at the evidence being used to update it.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Conjugate = same family in, same family out.</strong> Beta prior + Binomial likelihood → Beta posterior; Normal prior + Normal likelihood (known variance) → Normal posterior. No numerical integration needed.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Beta-Binomial update is just addition:</strong> posterior is Beta(α+successes, β+failures) — the prior's pseudo-counts and the real counts simply combine.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Normal-Normal update is a precision-weighted average:</strong> posterior precision = prior precision + data precision; posterior mean weights each source by how precise it is.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A "flat" prior is still an assumption.</strong> Beta(1,1) asserts every rate is equally plausible beforehand — state and justify the chosen prior rather than treating any default as assumption-free.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Conjugacy is the exception, not the rule.</strong> Most real-world likelihoods have no matching conjugate prior at all — that's the entire motivation for MCMC, covered next.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A narrow posterior is not the same as a validated edge.</strong> It quantifies confidence about the observed sample, not about whether that sample generalizes — the honest OOS discipline this curriculum applies everywhere else still applies here.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What does it mean for a prior to be "conjugate" to a likelihood?</summary>
+    <div class="tl-answer">
+      It means the posterior distribution (prior × likelihood, renormalized)
+      belongs to the same distribution family as the prior itself — only the
+      family's parameters change. For a Beta prior combined with a Binomial
+      likelihood, the posterior is again a Beta distribution, just with
+      updated parameters (α+successes, β+failures). Conjugacy is a property
+      of a specific prior/likelihood pairing, not a general fact about all
+      Bayesian updates.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. If the prior is Beta(4,6) and you observe 8 successes in 20 trials, what is the exact posterior?</summary>
+    <div class="tl-answer">
+      Beta(4+8, 6+12) = Beta(12, 18). The posterior mean is 12/30 = 0.40,
+      compared to the prior mean of 4/10 = 0.40 (unchanged here purely by
+      coincidence, since the observed rate 8/20=0.40 matched the prior mean
+      exactly) and the raw sample rate of 8/20 = 0.40.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. In the Normal-Normal case, why is it easier to reason in terms of precision (1/variance) than variance directly?</summary>
+    <div class="tl-answer">
+      Because precisions from independent sources of information simply add
+      (posterior precision = prior precision + data precision), while
+      variances combine through a less intuitive reciprocal-sum formula.
+      Working in precision turns "how confident am I" into a quantity that
+      accumulates additively as more independent evidence arrives, which is
+      also why the posterior mean is naturally expressed as a
+      precision-weighted average of the prior mean and the sample mean.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why does a prior with a large α+β (e.g. Beta(40,60)) resist being moved by new data more than a prior with a small α+β (e.g. Beta(2,3))?</summary>
+    <div class="tl-answer">
+      Because α+β is literally the prior's weight in pseudo-observations in
+      the posterior-mean formula (α+s)/(α+β+n) — a Beta(40,60) prior behaves
+      as if 100 pseudo-observations had already been seen, so a real sample
+      of, say, n=20 only shifts the total count from 100 to 120, a small
+      relative change. A Beta(2,3) prior only "weighs" 5 pseudo-observations,
+      so the same n=20 real observations dominate the total (5 vs 20) and
+      move the posterior mean much further.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why doesn't conjugate updating exist for every possible prior/likelihood combination?</summary>
+    <div class="tl-answer">
+      Conjugacy requires the algebraic form of the prior's kernel and the
+      likelihood's kernel to multiply into something that is still a
+      recognizable, normalizable distribution kernel from the same family —
+      this only happens for a short, specific list of matched pairs (Beta-Binomial,
+      Normal-Normal, Gamma-Poisson, and a handful of others). Most real
+      likelihoods — especially anything nonlinear or built from a complex
+      model — simply don't produce a tidy algebraic match with any standard
+      prior family, which is exactly why simulation-based methods like MCMC
+      exist: to compute a posterior numerically when no closed form is
+      available.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Andrew Gelman, John B. Carlin, Hal S. Stern, David B. Dunson, Aki Vehtari, Donald B. Rubin, <em>Bayesian Data Analysis</em>, 3rd ed., CRC Press, 2013 — Chapter 2 covers Beta-Binomial and Normal-Normal conjugacy in full generality, including the unknown-variance extension flagged in the pitfalls above.</li>
+    <li>José M. Bernardo &amp; Adrian F. M. Smith, <em>Bayesian Theory</em>, Wiley, 1994 — a rigorous treatment of exponential-family conjugacy and why it's the natural setting for closed-form updating.</li>
+    <li>Kevin P. Murphy, <em>Machine Learning: A Probabilistic Perspective</em>, MIT Press, 2012 — Chapter 3 gives a clean, applied derivation of the Beta-Binomial and Gaussian conjugate-prior families with worked code alongside the math.</li>
+    <li>Cameron Davidson-Pilon, <em>Bayesian Methods for Hackers</em>, Addison-Wesley, 2015 — an accessible, code-first introduction that motivates conjugate priors before showing where they run out (leading naturally into simulation-based inference).</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="mcmc-metropolis-gibbs.html">MCMC: Metropolis-Hastings &amp; Gibbs Sampling →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var g = 7;
+  var p = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+
+  function lnGamma(x){
+    if (x < 0.5) {
+      return Math.log(Math.PI / Math.sin(Math.PI * x)) - lnGamma(1 - x);
+    }
+    x -= 1;
+    var a = p[0];
+    var t = x + g + 0.5;
+    for (var i = 1; i < g + 2; i++) {
+      a += p[i] / (x + i);
+    }
+    return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
+  }
+
+  function lnBeta(a, b) {
+    return lnGamma(a) + lnGamma(b) - lnGamma(a + b);
+  }
+
+  function betaPdf(x, a, b) {
+    if (x <= 0 || x >= 1) return 0;
+    return Math.exp((a - 1) * Math.log(x) + (b - 1) * Math.log(1 - x) - lnBeta(a, b));
+  }
+
+  var nSlider = document.getElementById('beta-n');
+  var nVal = document.getElementById('beta-n-val');
+  var curve = document.getElementById('beta-curve');
+  var meanLabel = document.getElementById('beta-mean-label');
+
+  var A0 = 2, B0 = 3;
+  var TRUE_RATE = 0.30;
+  var X0 = 60, X1 = 580, Y0 = 210, Y1 = 30;
+  var STEPS = 120;
+
+  function update() {
+    var n = parseInt(nSlider.value, 10);
+    var s = Math.round(TRUE_RATE * n);
+    var a = A0 + s;
+    var b = B0 + (n - s);
+
+    nVal.textContent = n;
+
+    var pts = [];
+    var maxVal = 0;
+    for (var i = 0; i <= STEPS; i++) {
+      var x = 0.002 + (i / STEPS) * 0.996;
+      var d = betaPdf(x, a, b);
+      pts.push([x, d]);
+      if (d > maxVal) maxVal = d;
+    }
+
+    var scale = (Y0 - Y1) / maxVal;
+    var d0 = 'M ' + X0 + ',' + Y0 + ' ';
+    for (var j = 0; j < pts.length; j++) {
+      var px = X0 + pts[j][0] * (X1 - X0);
+      var py = Y0 - pts[j][1] * scale;
+      d0 += 'L ' + px.toFixed(1) + ',' + py.toFixed(1) + ' ';
+    }
+    d0 += 'L ' + X1 + ',' + Y0 + ' Z';
+    curve.setAttribute('d', d0);
+
+    var mean = a / (a + b);
+    var variance = (a * b) / ((a + b) * (a + b) * (a + b + 1));
+    var sd = Math.sqrt(variance);
+    var meanPx = X0 + mean * (X1 - X0);
+    var peakDensity = betaPdf(mean, a, b);
+    var meanPy = Y0 - peakDensity * scale - 14;
+    meanLabel.setAttribute('x', meanPx);
+    meanLabel.setAttribute('y', Math.max(meanPy, 40));
+    meanLabel.textContent = 'mean ' + mean.toFixed(3) + ', sd ' + sd.toFixed(3);
+  }
+
+  nSlider.addEventListener('input', update);
+  update();
+})();
+</script>
+</body>
+</html>

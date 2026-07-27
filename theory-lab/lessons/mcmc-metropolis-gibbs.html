@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MCMC: Metropolis-Hastings &amp; Gibbs Sampling — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Bayesian Statistics Extensions / MCMC: Metropolis-Hastings &amp; Gibbs Sampling</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Bayesian Extensions 2 of 3</div>
+  <h1 class="tl-title">MCMC: Metropolis-Hastings &amp; Gibbs Sampling</h1>
+  <p class="tl-dek">When no conjugate prior exists, the posterior can't be written down in closed form — but you can still build a random walk that visits every point in proportion to how likely it is, and let the visit frequencies stand in for the distribution itself.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here, not a claim this repo has built or validated it</span>
+    <span>~17 min read</span>
+    <span>Prereqs: Conjugate Priors &amp; Bayesian Updating in Practice</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Conjugate updating (previous lesson) only works for a short list of matched prior/likelihood pairs. Almost every realistic posterior has no closed form at all — MCMC computes it anyway, by simulation.</li>
+      <li><strong>Metropolis-Hastings:</strong> propose \(\theta' \sim q(\theta'\mid\theta)\), accept with probability \(\alpha=\min\!\big(1,\ \tfrac{p(\theta')q(\theta\mid\theta')}{p(\theta)q(\theta'\mid\theta)}\big)\); repeat. The resulting chain's long-run visit frequencies converge to the target distribution \(p(\theta)\), because the accept/reject rule is built to satisfy detailed balance.</li>
+      <li><strong>Gibbs sampling</strong> is the special case where you always propose a parameter directly from its true full conditional distribution — the acceptance probability algebraically collapses to exactly 1, so every proposal is accepted.</li>
+      <li>Worked example: five explicit steps of a 1-D random-walk Metropolis chain sampling from a bimodal (double-well) target, computed by hand — two accepts, one reject, two automatic uphill accepts.</li>
+      <li>A chain isn't trustworthy until it's diagnosed: trace plots, burn-in, effective sample size, and the Gelman-Rubin \(\hat{R}\) statistic are the standard checks, and the interactive chart below lets you watch mixing quality change with proposal step size.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The <a href="bayesian-conjugate-priors.html">Conjugate Priors &amp; Bayesian
+    Updating in Practice</a> lesson showed that Beta-Binomial and Normal-Normal
+    updates have a clean closed form — the posterior is a known distribution
+    family, computed with a few lines of algebra. That's the exception, not
+    the rule. The moment a model has more than one parameter interacting
+    nonlinearly, or a likelihood that isn't matched to any standard prior
+    family, the posterior distribution can still be written down as "prior
+    times likelihood, renormalized" — but the renormalizing constant (the
+    denominator \(P(E)\) from <a href="bayesian-inference.html">Bayesian
+    Inference &amp; Updating</a>'s derivation) becomes a high-dimensional
+    integral with no closed-form answer. You can't evaluate the posterior's
+    density directly, and you often can't even compute it up to a
+    normalizing constant in a form you can integrate.
+  </p>
+  <p>
+    <strong>Markov Chain Monte Carlo (MCMC)</strong> sidesteps the integral
+    entirely. Instead of computing the posterior's shape analytically, it
+    builds a random walk — a sequence of proposed and accepted/rejected
+    parameter values — engineered so that, after enough steps, the *frequency*
+    with which the walk visits each region of parameter space matches the
+    posterior's actual probability there. You never compute the normalizing
+    constant; you only ever need the posterior's shape <em>up to</em> that
+    constant, because the constant cancels out of every ratio the algorithm
+    computes. This is the single idea that unlocked Bayesian statistics for
+    realistic, multi-parameter models — hierarchical models (next lesson),
+    <a href="hidden-markov-models.html">Hidden Markov Models</a>, and
+    essentially all modern Bayesian machine learning depend on it.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A random walk that prefers high ground, but doesn't refuse to go downhill</h3>
+    <p>
+      Imagine the posterior distribution as a landscape — hills where the
+      parameter is plausible, valleys where it isn't. You're a hiker dropped
+      somewhere on this landscape who wants to spend time at each spot in
+      proportion to its height (its plausibility), without ever being handed
+      a map. The strategy: from where you stand, propose a random nearby step.
+      If it's uphill (more plausible), always take it. If it's downhill (less
+      plausible), take it anyway <em>sometimes</em> — specifically, with
+      probability equal to how much less plausible the new spot is compared
+      to the current one. Never refusing all downhill moves is essential:
+      without it, you'd walk straight to the nearest hilltop and get stuck
+      there forever, never exploring the rest of the landscape or discovering
+      a second, separate hill somewhere else. Take enough steps this way, and
+      a histogram of everywhere you've stood becomes an accurate picture of
+      the entire landscape's shape — even though you never once computed its
+      exact height at any point, only ever compared two heights to each other.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>Metropolis-Hastings</h3>
+  <p>
+    Let \(p(\theta)\) denote the target distribution — the posterior you want
+    samples from, known only up to a constant (write \(p(\theta) \propto
+    f(\theta)\) where \(f\) is computable but the true normalizing integral
+    isn't). At each step, given the chain's current position \(\theta\), a
+    <strong>proposal distribution</strong> \(q(\theta' \mid \theta)\)
+    generates a candidate next point \(\theta'\) — commonly a Normal
+    distribution centered at \(\theta\) (a "random walk" proposal). Accept the
+    candidate with probability:
+  </p>
+  <div class="tl-math">\[ \alpha(\theta,\theta') = \min\!\left(1,\ \frac{p(\theta')\,q(\theta \mid \theta')}{p(\theta)\,q(\theta' \mid \theta)}\right) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>p(θ')/p(θ)</code><span>how much more (or less) plausible the proposed point is</span></div>
+    <div class="tl-eq-chip c2"><code>q(θ∣θ')/q(θ'∣θ)</code><span>correction for an asymmetric proposal — how easy it is to propose the reverse move</span></div>
+  </div>
+  <p>
+    If accepted, the chain moves to \(\theta'\); if rejected, the chain stays
+    at \(\theta\) (this counts as a repeat of the current value — it is not
+    discarded). Because \(p\) only appears as a <em>ratio</em>
+    \(p(\theta')/p(\theta)\), any normalizing constant in \(p\) cancels
+    exactly — the algorithm only ever needs the unnormalized
+    \(f(\theta') / f(\theta)\), never the true \(p(\theta)\) itself. When the
+    proposal is symmetric (\(q(\theta'\mid\theta) = q(\theta\mid\theta')\), as
+    for a Normal random walk centered at the current point), the \(q\) terms
+    cancel too, and the rule collapses to the original 1953
+    <strong>Metropolis</strong> algorithm's simpler acceptance probability,
+    \(\alpha = \min(1,\ p(\theta')/p(\theta))\) — exactly the ratio used in
+    the worked example below. Hastings' 1970 generalization keeps the \(q\)
+    correction term, allowing asymmetric proposals.
+  </p>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">θ' ~ q(θ'∣θ)</div>
+      <div class="tl-fp-name">Propose</div>
+      <div class="tl-fp-desc">Draw a candidate next point from the proposal distribution</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">α = min(1, ratio)</div>
+      <div class="tl-fp-name">Compute acceptance probability</div>
+      <div class="tl-fp-desc">Always accept uphill moves; accept downhill moves with probability α</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">u ~ Uniform(0,1)</div>
+      <div class="tl-fp-name">Draw a coin flip</div>
+      <div class="tl-fp-desc">Accept if u &lt; α, else reject and repeat the current value</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">θ₁, θ₂, …</div>
+      <div class="tl-fp-name">The chain</div>
+      <div class="tl-fp-desc">After enough steps, its visit frequencies approximate p(θ)</div>
+    </div>
+  </div>
+
+  <p>
+    <strong>Why this converges to the target — detailed balance, conceptually.</strong>
+    A Markov chain has \(p(\theta)\) as its long-run, stationary distribution
+    if the rate of probability flowing from any state \(\theta\) to any other
+    state \(\theta'\) exactly equals the rate flowing back — a symmetry
+    condition called <strong>detailed balance</strong>:
+    \(p(\theta)\,T(\theta \to \theta') = p(\theta')\,T(\theta' \to \theta)\),
+    where \(T\) is the chain's transition probability (proposal times
+    acceptance). The Metropolis-Hastings acceptance rule is deliberately
+    constructed so this equation holds automatically for the specific
+    \(\alpha\) formula above — plug the acceptance rule into both sides and
+    the proposal densities and the min() terms cancel out to leave an
+    identity. Detailed balance is a <em>sufficient</em> condition for
+    \(p(\theta)\) to be a stationary distribution of the chain (not the only
+    possible one, but the one MCMC is built around): once you're sampling from
+    \(p\), one more accept/reject step keeps you sampling from \(p\).
+    Combined with the chain being able to eventually reach any region of
+    positive probability (a separate technical condition called
+    irreducibility), this guarantees that regardless of where the chain
+    starts, its distribution converges toward \(p(\theta)\) as the number of
+    steps grows — which is precisely why a histogram of a long enough chain
+    approximates the target distribution, without ever computing its
+    normalizing constant.
+  </p>
+
+  <h3>Gibbs sampling — the special case with 100% acceptance</h3>
+  <p>
+    Gibbs sampling applies when the target has multiple parameters,
+    \(\theta = (\theta_1,\dots,\theta_k)\), and each parameter's
+    <strong>full conditional distribution</strong> — its distribution with
+    every other parameter held fixed at their current values,
+    \(p(\theta_j \mid \theta_{-j}, \text{data})\) — is itself something you
+    <em>can</em> sample from directly (often because it's conjugate, one
+    parameter at a time). Gibbs sampling cycles through the parameters,
+    updating one at a time by drawing directly from its full conditional:
+  </p>
+  <div class="tl-math">\[ \theta_j^{(t+1)} \sim p\big(\theta_j \mid \theta_1^{(t+1)},\dots,\theta_{j-1}^{(t+1)},\theta_{j+1}^{(t)},\dots,\theta_k^{(t)},\ \text{data}\big) \quad \text{for } j=1,\dots,k \]</div>
+  <p>
+    This is Metropolis-Hastings with the proposal distribution \(q\) chosen to
+    equal the true full conditional itself. Substitute
+    \(q(\theta_j' \mid \theta) = p(\theta_j' \mid \theta_{-j})\) into the
+    general acceptance ratio: \(p(\theta') = p(\theta_j'\mid\theta_{-j})\,p(\theta_{-j})\),
+    and \(q(\theta_j \mid \theta') = p(\theta_j \mid \theta_{-j})\) (the reverse
+    move's proposal density, at the same fixed \(\theta_{-j}\)); the
+    \(p(\theta_{-j})\) and full-conditional terms all cancel exactly, leaving
+    the ratio identically equal to 1 — <strong>the proposal is always
+    accepted</strong>. This is why Gibbs sampling is normally described
+    separately from "generic" Metropolis-Hastings even though it's
+    mathematically a special case: there's no accept/reject step to tune at
+    all, only the choice of which full conditional to derive and sample from
+    next.
+  </p>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(\theta\)</td><td>The current position of the chain — the parameter value(s) being sampled.</td></tr>
+      <tr><td>\(p(\theta)\)</td><td>The target distribution (e.g. the posterior), known only up to a normalizing constant.</td></tr>
+      <tr><td>\(q(\theta'\mid\theta)\)</td><td>The proposal distribution — how a candidate next point is generated from the current one.</td></tr>
+      <tr><td>\(\alpha\)</td><td>The acceptance probability for a proposed move.</td></tr>
+      <tr><td>\(\theta_{-j}\)</td><td>All parameters except the \(j\)-th one, held fixed at their current values.</td></tr>
+      <tr><td>Burn-in</td><td>Early chain iterations discarded because the chain hasn't yet reached the target distribution's typical region.</td></tr>
+      <tr><td>ESS</td><td>Effective sample size — how many independent draws a correlated chain's samples are "worth."</td></tr>
+      <tr><td>\(\hat{R}\)</td><td>Gelman-Rubin statistic — compares between-chain to within-chain variance across multiple independent chains, to check convergence.</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">A random-walk Metropolis chain sampling a bimodal target — trace plot</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Trace plot of a Metropolis-Hastings Markov chain over 200 iterations, sampling from a bimodal double-well target distribution with modes near theta equals minus one and plus one">
+      <line x1="60" y1="30" x2="60" y2="240" style="stroke:var(--border)" />
+      <line x1="60" y1="240" x2="580" y2="240" style="stroke:var(--border)" />
+      <line id="mcmc-mode-pos" x1="60" y1="63" x2="580" y2="63" style="stroke:var(--green);stroke-dasharray:2,2;opacity:0.6" />
+      <line id="mcmc-mode-neg" x1="60" y1="207" x2="580" y2="207" style="stroke:var(--green);stroke-dasharray:2,2;opacity:0.6" />
+      <text x="585" y="67" fill="var(--green)" font-size="10">θ=+1</text>
+      <text x="585" y="211" fill="var(--green)" font-size="10">θ=−1</text>
+      <text x="50" y="34" fill="var(--text3)" font-size="10" text-anchor="end">+3</text>
+      <text x="50" y="139" fill="var(--text3)" font-size="10" text-anchor="end">0</text>
+      <text x="50" y="244" fill="var(--text3)" font-size="10" text-anchor="end">−3</text>
+      <text x="320" y="258" fill="var(--text3)" font-size="11.5" text-anchor="middle">Iteration (0–200)</text>
+      <path id="mcmc-trace" d="" style="fill:none;stroke:var(--blue);stroke-width:1.4" />
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Proposal step size (σ of the random walk)</span><span class="tl-live" id="mcmc-step-val">0.8</span></div>
+        <input type="range" id="mcmc-step" min="10" max="300" step="5" value="80">
+      </div>
+    </div>
+    <div class="tl-chart-caption">
+      Target: \(f(\theta) = \exp(-\theta^4/4 + \theta^2/2)\), a "double-well"
+      density with two peaks (near \(\theta=\pm1\)) and a dip at \(\theta=0\)
+      — a genuinely non-standard, non-conjugate shape. Same seeded random
+      draws every time; only the proposal step size changes. Too small a step
+      and the chain crawls, rarely crossing between modes; too large a step
+      and most proposals land far downhill and get rejected, so the chain
+      barely moves at all — both are poor mixing. Watch the live acceptance
+      rate below the chart as you drag.
+      <span id="mcmc-accept-readout" style="display:block;margin-top:6px;font-weight:600;color:var(--text)"></span>
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Five explicit steps of random-walk Metropolis, by hand</h3>
+    <p>
+      Target (unnormalized): \(f(\theta) = \exp(-\theta^4/4 + \theta^2/2)\),
+      the same bimodal shape used in the chart above. Start at
+      \(\theta_0 = 0\), where \(f(0) = e^0 = 1\). At each step, a proposed
+      increment \(\Delta\) is given (standing in for a draw from the
+      proposal), and a uniform draw \(u\) decides accept/reject whenever the
+      move is downhill.
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Propose θ′ = 0 + 0.8 = 0.8 (uphill)</h4>
+          <p>
+            \(f(0.8) = \exp(-0.8^4/4 + 0.8^2/2) = \exp(-0.1024+0.32) =
+            \exp(0.2176) = 1.2431\). Ratio \(=1.2431/1=1.2431 > 1\), so
+            \(\alpha=\min(1,1.2431)=1\) — <strong>automatic accept</strong>,
+            no coin flip needed. New state: \(\theta_1 = 0.8\).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Propose θ′ = 0.8 − 1.5 = −0.7 (downhill)</h4>
+          <p>
+            \(f(-0.7) = \exp(-0.7^4/4+0.7^2/2) = \exp(-0.060025+0.245) =
+            \exp(0.184975) = 1.2032\). Ratio \(=1.2032/1.2431=0.9679\), so
+            \(\alpha=0.9679\). Draw \(u=0.55\): since \(u<\alpha\),
+            <strong>accept</strong>. New state: \(\theta_2=-0.7\).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Propose θ′ = −0.7 + 0.3 = −0.4 (downhill)</h4>
+          <p>
+            \(f(-0.4) = \exp(-0.4^4/4+0.4^2/2) = \exp(-0.0064+0.08) =
+            \exp(0.0736) = 1.0764\). Ratio \(=1.0764/1.2032=0.8946\), so
+            \(\alpha=0.8946\). Draw \(u=0.93\): since \(u>\alpha\),
+            <strong>reject</strong> — the chain repeats its current value.
+            New state: \(\theta_3=-0.7\) (unchanged).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Propose θ′ = −0.7 − 0.9 = −1.6 (downhill)</h4>
+          <p>
+            \(f(-1.6) = \exp(-1.6^4/4+1.6^2/2) = \exp(-1.6384+1.28) =
+            \exp(-0.3584) = 0.6988\). Ratio \(=0.6988/1.2032=0.5808\), so
+            \(\alpha=0.5808\). Draw \(u=0.21\): since \(u<\alpha\),
+            <strong>accept</strong>. New state: \(\theta_4=-1.6\).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">5</div>
+        <div class="tl-step-body">
+          <h4>Propose θ′ = −1.6 + 0.5 = −1.1 (uphill)</h4>
+          <p>
+            \(f(-1.1) = \exp(-1.1^4/4+1.1^2/2) = \exp(-0.366025+0.605) =
+            \exp(0.238975) = 1.2699\). Ratio \(=1.2699/0.6988=1.8175 > 1\), so
+            \(\alpha=1\) — <strong>automatic accept</strong>. New state:
+            \(\theta_5=-1.1\).
+          </p>
+        </div>
+      </div>
+    </div>
+    <p>
+      After five steps: two automatic uphill accepts, one downhill accept, one
+      rejection, and the chain has drifted from \(\theta_0=0\) (the dip
+      between the two modes) toward \(\theta_5=-1.1\), right next to the left
+      mode at \(\theta=-1\). Notice it never "knew" the modes were at
+      \(\pm1\) — it only ever compared \(f\) at two nearby points, over and
+      over, and that alone was enough to pull it toward high ground. A
+      genuine risk visible even in this tiny run: the chain has now spent its
+      time near the <em>left</em> mode only — it hasn't yet demonstrated it
+      can also visit the right mode near \(\theta=+1\), which is exactly the
+      kind of mixing problem the diagnostics below exist to catch.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world scenario</div>
+    <h3>A researcher fitting a nonlinear volatility model</h3>
+    <p>
+      Suppose a researcher wants a Bayesian posterior over the parameters of
+      a nonlinear stochastic-volatility model — say a mean-reversion speed,
+      a long-run variance level, and a vol-of-vol parameter, all interacting
+      multiplicatively inside a likelihood that has no algebraic closed form.
+      There is no conjugate prior for this likelihood — the Beta-Binomial and
+      Normal-Normal tricks from the previous lesson simply don't apply here.
+      The researcher instead writes code that can evaluate the unnormalized
+      posterior density (prior × likelihood) at any candidate parameter
+      vector, builds a Metropolis-Hastings sampler with a multivariate Normal
+      random-walk proposal, runs several independent chains from different
+      starting points for tens of thousands of iterations, discards an
+      initial burn-in period, and checks trace plots and \(\hat{R}\) before
+      trusting the output as a genuine sample from the posterior over the
+      three parameters jointly — including their correlations with each
+      other, which a simpler method fitting each parameter separately would
+      have missed entirely. This describes the mechanics of the method, not
+      a claim that such a model has been built, fit, or validated anywhere
+      in this repo.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Running an MCMC sampler is only step one — a chain that hasn't been
+    diagnosed is not yet a trustworthy sample from the posterior. Four checks
+    are standard practice:
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📉</div>
+      <h4>Trace plots</h4>
+      <p>A plot of the sampled value against iteration number, like the chart above. A healthy chain looks like noisy static around a stable band ("hairy caterpillar"); a chain that drifts, gets stuck flat for long stretches, or shows an obvious trend hasn't converged or is mixing poorly.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">✂️</div>
+      <h4>Burn-in</h4>
+      <p>The first chunk of iterations, taken before the chain has settled into the target distribution's typical region, is discarded — those early samples reflect the (arbitrary) starting point more than the posterior itself.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🔗</div>
+      <h4>Effective sample size (ESS)</h4>
+      <p>MCMC samples are autocorrelated — each draw resembles the one before it, unlike truly independent samples. ESS estimates how many independent draws the chain's correlated samples are actually "worth" for estimating a quantity like the posterior mean; a chain of 10,000 correlated draws might carry the information of only a few hundred independent ones.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📐</div>
+      <h4>Gelman-Rubin R̂</h4>
+      <p>Run several chains from different, deliberately over-dispersed starting points. If they've all converged to the same target, the variance <em>between</em> chains should be no larger than the variance <em>within</em> each one; R̂ formalizes that ratio and should sit close to 1.00 (commonly, below about 1.01) before the chains are trusted.</p>
+    </div>
+  </div>
+
+  <p>
+    The Gelman-Rubin statistic, precisely: with \(m\) chains each of length
+    \(n\) (after discarding burn-in), let \(\bar{\theta}_j\) be chain
+    \(j\)'s mean and \(\bar{\theta}\) the grand mean across all chains. The
+    <strong>between-chain variance</strong> is
+    \(B = \frac{n}{m-1}\sum_j(\bar{\theta}_j-\bar{\theta})^2\); the
+    <strong>within-chain variance</strong> is \(W = \frac{1}{m}\sum_j s_j^2\)
+    (the average of each chain's own sample variance \(s_j^2\)). A pooled
+    variance estimate, \(\widehat{\text{Var}}^+ = \frac{n-1}{n}W + \frac{1}{n}B\),
+    is compared to \(W\) alone:
+  </p>
+  <div class="tl-math">\[ \hat{R} = \sqrt{\frac{\widehat{\text{Var}}^+}{W}} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>W</code><span>average within-chain variance — how much each chain wiggles on its own</span></div>
+    <div class="tl-eq-chip c4"><code>B</code><span>between-chain variance — how much the chains' overall levels disagree with each other</span></div>
+  </div>
+  <p>
+    If every chain has converged to the same target distribution, \(B\) is
+    small relative to \(W\), and \(\hat{R}\to 1\). If chains are still stuck
+    exploring different regions (e.g. one chain trapped near
+    \(\theta=+1\) and another near \(\theta=-1\) in the bimodal example
+    above, neither having mixed across), \(B\) is large, inflating
+    \(\widehat{\text{Var}}^+\) well above \(W\), and \(\hat{R}\) sits
+    noticeably above 1 — a direct, quantitative flag that the chains
+    disagree about where the posterior actually is.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where MCMC quietly goes wrong</h3>
+    <p>
+      <strong>Mistaking "it ran without error" for "it converged."</strong>
+      A sampler with a badly tuned step size, a multimodal target, or too few
+      iterations will happily produce ten thousand numbers that look like a
+      posterior sample and are actually garbage — biased toward whichever
+      region the chain happened to wander into first. The worked example
+      above is a small, deliberately visible instance: five steps is nowhere
+      near enough to have explored both modes of the target.
+    </p>
+    <p>
+      <strong>Tuning the proposal step size wrong in either direction.</strong>
+      Too small, and the chain crawls, taking a very long time to traverse
+      the full distribution (high autocorrelation, low ESS). Too large, and
+      almost every downhill proposal gets rejected, so the chain barely moves
+      at all — also high autocorrelation, for the opposite reason. Both look
+      like "it's running" without producing a useful sample; a moderate
+      acceptance rate (often targeted around 20-50% depending on
+      dimensionality) is the standard rule of thumb, not a coincidence.
+    </p>
+    <p>
+      <strong>Running only one chain.</strong> A single chain can look
+      perfectly well-behaved in its own trace plot while having converged to
+      the wrong mode entirely, in a multimodal posterior — there's nothing
+      inside that one chain's history to reveal the mistake. This is
+      precisely why R̂ requires multiple, independently started chains: it's
+      a check that different starting points end up agreeing.
+    </p>
+    <p>
+      <strong>Treating R̂≈1 as proof, not evidence.</strong> R̂ close to 1
+      means the chains agree with each other — it does not prove they've
+      found the true posterior if all of them share the same blind spot (a
+      region of parameter space none of them was ever likely to propose a
+      move into). Diagnostics reduce risk; they don't eliminate it.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>MCMC replaces an intractable integral with a random walk.</strong> The chain's long-run visit frequencies approximate the target distribution — the normalizing constant is never computed, only ratios of the unnormalized density.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Detailed balance is why it works.</strong> The Metropolis-Hastings accept/reject rule is built so probability flow between any two states balances exactly, which makes the target distribution stationary for the chain.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Gibbs sampling always accepts</strong> because proposing directly from a parameter's true full conditional makes the Metropolis-Hastings ratio algebraically equal to 1 — no tuning, but it requires those conditionals to be sampleable in closed form.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A chain that runs is not automatically a chain that converged.</strong> Trace plots, burn-in, ESS, and R̂ across multiple chains are the standard, non-optional checks before trusting any MCMC output.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Proposal step size is a real tuning problem.</strong> Too small or too large both produce poor mixing, just for opposite reasons — the interactive chart above makes this failure mode directly visible.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>This lesson explains a computational method, not a trading signal.</strong> MCMC is a way to compute a posterior that has no closed form — whatever model it's applied to still has to earn its keep OOS, exactly like every other idea in this curriculum.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why doesn't Metropolis-Hastings need to know the posterior's normalizing constant?</summary>
+    <div class="tl-answer">
+      Because the acceptance probability only ever uses the ratio
+      p(θ')/p(θ) (times a proposal-density correction). Any normalizing
+      constant that divides both p(θ') and p(θ) cancels exactly in that
+      ratio, so the algorithm only needs the unnormalized density — prior
+      times likelihood, without ever computing the integral that would
+      normalize it into a true probability distribution.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. In the worked example, why was the move from θ=0 to θ′=0.8 accepted automatically, with no coin flip?</summary>
+    <div class="tl-answer">
+      Because f(0.8)=1.2431 is larger than f(0)=1 — the proposed point is
+      uphill (more plausible than the current point), so the ratio
+      f(θ')/f(θ) exceeds 1, and α=min(1, ratio)=1. An acceptance probability
+      of exactly 1 means the move is always taken; there's nothing for a
+      uniform draw u to compare against, since u≤1 always holds.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why is Gibbs sampling's acceptance probability always exactly 1?</summary>
+    <div class="tl-answer">
+      Because Gibbs sampling's proposal distribution is chosen to be the
+      parameter's own true full conditional distribution. Substituting that
+      choice into the general Metropolis-Hastings ratio makes the forward and
+      reverse move probabilities cancel algebraically against the target
+      density's own conditional structure, collapsing the ratio to exactly
+      1 — so every proposed move is accepted, with no separate accept/reject
+      step needed.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What does a Gelman-Rubin R̂ well above 1 (e.g. 1.3) tell you, and what should you do about it?</summary>
+    <div class="tl-answer">
+      It means the between-chain variance B is large relative to the
+      within-chain variance W — the independently started chains disagree
+      about where the posterior's mass actually is, which is a strong signal
+      they have not converged (e.g. each may be stuck near a different mode
+      of a multimodal target). The standard response is to run the chains
+      much longer, improve the proposal (e.g. tune its step size or use a
+      smarter proposal shape), or reconsider the model — not to report the
+      current samples as a trustworthy posterior.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why can a proposal step size that's too large produce a poorly mixing chain, given that large steps sound like they'd explore more?</summary>
+    <div class="tl-answer">
+      Because a large step is very likely to land somewhere with much lower
+      target density than the current point — the acceptance ratio
+      p(θ')/p(θ) becomes small, so most proposals get rejected and the chain
+      repeats its current value over and over. The chain is technically
+      "capable" of large jumps, but in practice accepts so few of them that it
+      barely moves at all — the opposite failure mode from a too-small step
+      size (which moves constantly but only by tiny amounts), yet with the
+      same symptom: high autocorrelation and low effective sample size.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Nicholas Metropolis, Arianna W. Rosenbluth, Marshall N. Rosenbluth, Augusta H. Teller, Edward Teller, <em>"Equation of State Calculations by Fast Computing Machines"</em>, Journal of Chemical Physics, 1953 — the original Metropolis algorithm (symmetric proposals), developed for statistical physics simulations.</li>
+    <li>W.K. Hastings, <em>"Monte Carlo Sampling Methods Using Markov Chains and Their Applications"</em>, Biometrika, 1970 — the generalization to asymmetric proposal distributions.</li>
+    <li>Stuart Geman &amp; Donald Geman, <em>"Stochastic Relaxation, Gibbs Distributions, and the Bayesian Restoration of Images"</em>, IEEE Transactions on Pattern Analysis and Machine Intelligence, 1984 — introduced Gibbs sampling and the "Gibbs distribution" name.</li>
+    <li>Andrew Gelman &amp; Donald B. Rubin, <em>"Inference from Iterative Simulation Using Multiple Sequences"</em>, Statistical Science, 1992 — the original Gelman-Rubin R̂ convergence diagnostic.</li>
+    <li>Andrew Gelman, John B. Carlin, Hal S. Stern, David B. Dunson, Aki Vehtari, Donald B. Rubin, <em>Bayesian Data Analysis</em>, 3rd ed., CRC Press, 2013 — Chapters 10-11 cover MCMC theory, Gibbs sampling, and convergence diagnostics in full, with the same R̂ formula used above.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="bayesian-conjugate-priors.html">← Conjugate Priors &amp; Bayesian Updating in Practice</a>
+    <a href="hierarchical-bayesian-models.html">Hierarchical Bayesian Models &amp; Partial Pooling →</a>
+  </div>
+</div>
+<script>
+(function(){
+  function mulberry32(a) {
+    return function() {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function targetF(theta) {
+    return Math.exp(-Math.pow(theta, 4) / 4 + Math.pow(theta, 2) / 2);
+  }
+
+  var stepSlider = document.getElementById('mcmc-step');
+  var stepVal = document.getElementById('mcmc-step-val');
+  var tracePath = document.getElementById('mcmc-trace');
+  var acceptReadout = document.getElementById('mcmc-accept-readout');
+
+  var N_ITER = 200;
+  var X0 = 60, X1 = 580, Y_TOP = 30, Y_BOT = 240;
+  var THETA_MAX = 3;
+
+  function thetaToY(theta) {
+    var clamped = Math.max(-THETA_MAX, Math.min(THETA_MAX, theta));
+    return Y_TOP + (1 - (clamped + THETA_MAX) / (2 * THETA_MAX)) * (Y_BOT - Y_TOP);
+  }
+
+  function run(sd) {
+    var rand = mulberry32(20260727);
+    var theta = 0;
+    var accepts = 0;
+    var pts = [[0, theta]];
+    for (var i = 1; i <= N_ITER; i++) {
+      var u1 = Math.max(rand(), 1e-12);
+      var u2 = rand();
+      var z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+      var proposal = theta + sd * z;
+      var fCur = targetF(theta);
+      var fProp = targetF(proposal);
+      var ratio = fProp / fCur;
+      var alpha = Math.min(1, ratio);
+      var u3 = rand();
+      if (u3 < alpha) {
+        theta = proposal;
+        accepts++;
+      }
+      pts.push([i, theta]);
+    }
+    return { pts: pts, acceptRate: accepts / N_ITER };
+  }
+
+  function update() {
+    var sdRaw = parseInt(stepSlider.value, 10);
+    var sd = sdRaw / 100;
+    stepVal.textContent = sd.toFixed(2);
+
+    var result = run(sd);
+    var pts = result.pts;
+    var d = '';
+    for (var i = 0; i < pts.length; i++) {
+      var px = X0 + (pts[i][0] / N_ITER) * (X1 - X0);
+      var py = thetaToY(pts[i][1]);
+      d += (i === 0 ? 'M ' : 'L ') + px.toFixed(1) + ',' + py.toFixed(1) + ' ';
+    }
+    tracePath.setAttribute('d', d);
+    acceptReadout.textContent = 'Acceptance rate at this step size: ' + (result.acceptRate * 100).toFixed(0) + '%';
+  }
+
+  stepSlider.addEventListener('input', update);
+  update();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Factor-Based Portfolio Construction — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Advanced Portfolio Construction / Factor-Based Portfolio Construction</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Advanced Portfolio Construction · Portfolio Construction 3 of 3</div>
+  <h1 class="tl-title">Factor-Based Portfolio Construction</h1>
+  <p class="tl-dek">Instead of estimating how every asset co-moves with every other asset directly, express each one's return as a handful of shared exposures — then build a portfolio by choosing how much of each exposure you actually want.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — theory only, factors named here are not validated on this repo's OOS data</span>
+    <span>~16 min read</span>
+    <span>Prereqs: PCA &amp; Factor Regimes, Alpha vs. Beta Separation</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A factor model expresses each asset's return as \(r_i = \sum_k \beta_{ik} f_k + \varepsilon_i\) — a handful of shared factor exposures \(\beta_{ik}\) plus idiosyncratic noise — instead of estimating every pairwise covariance directly, which needs \(N(N-1)/2\) numbers that only grows worse as the universe gets larger.</li>
+      <li>The single-factor version of this is already covered in depth: the market-model regression from the Alpha vs. Beta Separation lesson is exactly \(K=1\) factor (the market itself). This lesson generalizes to \(K>1\) named factors and to <em>building a portfolio</em> from the exposures, not just measuring them after the fact.</li>
+      <li>Named FX/macro factor families — carry, momentum/trend, value — each come with real academic literature behind them (cited below), but citing that literature is not the same as this repo having validated any of them on its own out-of-sample data.</li>
+      <li>Once exposures are estimated, portfolio-level factor exposure is just the weighted sum of asset-level exposures — so hitting a target profile ("long carry, neutral momentum") is a small linear system: solve for weights such that the weighted exposures match the target.</li>
+      <li>Worked example: a 2-asset, 2-factor system solved exactly for the weights that deliver a stated target exposure, with zero free parameters beyond the target itself.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The PCA &amp; Factor Regimes lesson showed that a basket of correlated
+    instruments is often really a small number of common factors wearing many
+    costumes — and that PCA finds those factors <em>statistically</em>, purely
+    from the correlation structure of the data, with no economic story
+    attached to what a given component actually represents. The Alpha vs.
+    Beta Separation lesson showed the single-factor special case from the
+    other direction: regress a return stream against one specific, named
+    factor (the market) to split it into a slope (beta, cheap and hedgeable)
+    and an intercept (alpha, the part actually worth paying for).
+  </p>
+  <p>
+    Factor-based portfolio construction sits between those two ideas and
+    extends both of them. Instead of PCA's statistically-discovered,
+    unnamed factors, it uses a small number of <em>named</em>, economically
+    motivated factors — carry, momentum, value are the standard FX/macro
+    trio. And instead of stopping at measuring one asset's exposure to one
+    factor (Alpha vs. Beta's market-model regression), it asks the next
+    question: given every asset's exposure to every named factor, what
+    weights across the basket deliver the overall factor profile you
+    actually want? That's a fundamentally different, cheaper parameter
+    problem than estimating a full covariance matrix directly, and it's the
+    idea developed step by step below.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Describe a fruit basket by ripeness and sweetness, not fruit by fruit</h3>
+    <p>
+      Imagine describing every possible pair of fruits in a basket by how
+      similar they are to each other — apple-to-orange, apple-to-banana,
+      orange-to-banana, and so on for every pair — an approach that gets
+      unmanageable fast as the basket grows, and tells you nothing about
+      <em>why</em> two fruits happen to be similar. The alternative:
+      describe each fruit along a small number of shared, meaningful
+      dimensions — how sweet, how ripe, how acidic — and any two fruits'
+      similarity falls straight out of comparing those few numbers, with a
+      story attached to why. A factor model does exactly this for asset
+      returns: instead of one number per pair of assets (an unstructured,
+      ever-growing pile of pairwise covariances), it uses a handful of
+      per-asset numbers — how much carry exposure, how much momentum
+      exposure, how much value exposure — from which every pairwise
+      relationship can be reconstructed, cheaply, and with an economic
+      story behind each dimension.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>The factor model — return as a sum of shared exposures</h4>
+        <p>
+          Generalize the Alpha vs. Beta Separation lesson's single-factor
+          market model to \(K\) named factors:
+        </p>
+        <div class="tl-math">\[ r_i = \sum_{k=1}^{K} \beta_{ik}\, f_k + \varepsilon_i \]</div>
+        <div class="tl-eq-break">
+          <div class="tl-eq-chip c1"><code>r_i</code><span>asset i's return</span></div>
+          <div class="tl-eq-chip c2"><code>β_ik</code><span>asset i's exposure (loading) to factor k</span></div>
+          <div class="tl-eq-chip c3"><code>f_k</code><span>factor k's own return/realization that period</span></div>
+          <div class="tl-eq-chip c4"><code>ε_i</code><span>idiosyncratic return — whatever the named factors don't explain</span></div>
+        </div>
+        <p>
+          Setting \(K=1\) and \(f_1 = r_m - r_f\) (the market's excess
+          return) recovers exactly the Alpha vs. Beta Separation lesson's
+          single-index model — that lesson is this one's \(K=1\) special
+          case, not a different idea.
+        </p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>Why this is a parameter-count win</h4>
+        <p>
+          Estimating a full covariance matrix directly for \(N\) assets needs
+          \(N(N-1)/2\) distinct pairwise covariances (plus \(N\) variances) —
+          for a 30-instrument FX universe, 435 numbers, every one of them a
+          noisy sample estimate. A \(K\)-factor model instead needs only
+          \(N \times K\) loadings, a \(K\times K\) factor covariance matrix,
+          and \(N\) idiosyncratic variances:
+        </p>
+        <div class="tl-math">\[ \Sigma = B\, F\, B^\top + D \]</div>
+        <div class="tl-eq-break">
+          <div class="tl-eq-chip c1"><code>B</code><span>the N×K loadings matrix — row i is asset i's exposure to every factor</span></div>
+          <div class="tl-eq-chip c2"><code>F</code><span>the K×K factor covariance matrix — how the factors themselves co-move</span></div>
+          <div class="tl-eq-chip c3"><code>D</code><span>N×N diagonal matrix of idiosyncratic variances — assumed uncorrelated across assets once factors are removed</span></div>
+        </div>
+        <p>
+          With \(N=30\) and \(K=3\) (carry, momentum, value), that's
+          \(30\times3=90\) loadings, \(3\times4/2=6\) factor
+          covariance terms, and 30 idiosyncratic variances — 126 numbers
+          total, versus 435 for the direct approach, and the ones that
+          remain (loadings, factor covariances) are typically far more
+          stable to estimate than 435 individually noisy pairwise
+          covariances, because every asset's loading estimate is pooling
+          information from the same underlying factor return series.
+        </p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>Portfolio-level exposure — a weighted sum</h4>
+        <p>
+          Once every asset's factor loadings are known, a portfolio's
+          exposure to any factor is simply the weighted sum of its
+          constituents' loadings to that factor:
+        </p>
+        <div class="tl-math">\[ B_p = w^\top B, \qquad \text{i.e. } B_{p,k} = \sum_i w_i\, \beta_{ik} \]</div>
+        <p>
+          This is the same weighted-sum logic as portfolio expected return
+          in the Markowitz lesson (\(E[R_p]=w^\top\mu\)) — nothing more
+          exotic than a dot product, just applied to factor loadings
+          instead of expected returns.
+        </p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">4</div>
+      <div class="tl-step-body">
+        <h4>Solving for a target exposure profile</h4>
+        <p>
+          Turn Step 3 around: instead of computing a portfolio's exposure
+          from its weights, specify the exposure you <em>want</em> — a
+          target vector \(q\) (e.g. "carry exposure +1.0, momentum exposure
+          0.0") — and solve for the weights that deliver it:
+        </p>
+        <div class="tl-math">\[ B^\top w = q \]</div>
+        <div class="tl-eq-break">
+          <div class="tl-eq-chip c1"><code>B^T</code><span>the K×N transposed loadings matrix — one row per factor</span></div>
+          <div class="tl-eq-chip c2"><code>w</code><span>the unknown weight vector being solved for</span></div>
+          <div class="tl-eq-chip c3"><code>q</code><span>the target exposure profile — one entry per factor</span></div>
+        </div>
+        <p>
+          With exactly as many assets as factors (\(N=K\)) and a
+          non-singular \(B^\top\), this is a square linear system with one
+          exact solution — the worked example below solves precisely this
+          case. With more assets than factors (\(N>K\), the realistic case),
+          the system is underdetermined — many weight vectors hit the same
+          target exposure — and the remaining freedom is typically used to
+          add a second objective on top (minimize idiosyncratic risk, cap
+          position sizes, or hold the smallest total notional that still
+          hits the target), turning Step 4 into a small constrained
+          optimization rather than a single linear solve.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">r_i = Σ β_ik f_k + ε_i</div>
+      <div class="tl-fp-name">The factor model</div>
+      <div class="tl-fp-desc">Return as a sum of shared exposures plus idiosyncratic noise</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">B_p = w^T B</div>
+      <div class="tl-fp-name">Portfolio exposure</div>
+      <div class="tl-fp-desc">Weighted sum of constituents' loadings — the same weighted-average logic as portfolio expected return</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">B^T w = q</div>
+      <div class="tl-fp-name">Target-hitting weights</div>
+      <div class="tl-fp-desc">Solve for the weights that deliver a chosen exposure profile</div>
+    </div>
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(r_i\)</td><td>Asset i's return.</td></tr>
+    <tr><td>\(f_k\)</td><td>Factor k's own return/realization in a given period (e.g. the carry factor's return that month).</td></tr>
+    <tr><td>\(\beta_{ik}\)</td><td>Asset i's loading (exposure) to factor k — how many units of factor k's move show up in asset i's return.</td></tr>
+    <tr><td>\(\varepsilon_i\)</td><td>Asset i's idiosyncratic return — whatever the named factors don't explain, assumed uncorrelated with other assets' idiosyncratic returns.</td></tr>
+    <tr><td>\(B\)</td><td>The \(N\times K\) matrix of every asset's loadings on every factor.</td></tr>
+    <tr><td>\(F\)</td><td>The \(K\times K\) covariance matrix of the factors themselves.</td></tr>
+    <tr><td>\(D\)</td><td>The diagonal matrix of idiosyncratic variances.</td></tr>
+    <tr><td>\(q\)</td><td>A target portfolio-level factor exposure profile, e.g. (carry: +1.0, momentum: 0.0).</td></tr>
+  </table></div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Solving two assets' factor loadings for a target carry/momentum profile</div>
+    <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart of two FX pairs' carry and momentum factor loadings, alongside the solved portfolio weights that deliver a slider-adjustable target carry exposure with momentum held neutral">
+      <line x1="60" y1="270" x2="610" y2="270" style="stroke:var(--border)" stroke-width="1"/>
+      <line x1="60" y1="270" x2="60" y2="40" style="stroke:var(--border)" stroke-width="1"/>
+      <line x1="60" y1="155" x2="610" y2="155" style="stroke:var(--text3);stroke-dasharray:3,3;opacity:.4"/>
+      <text x="45" y="159" fill="var(--text3)" font-size="10" text-anchor="end">0</text>
+      <text x="60" y="30" fill="var(--text3)" font-size="11" text-anchor="start">Factor loading / solved weight</text>
+
+      <!-- Fixed loadings panel (left half) -->
+      <text x="180" y="55" fill="var(--text2)" font-size="12" text-anchor="middle" font-weight="600">Factor loadings (fixed)</text>
+      <rect x="110" y="75" width="30" height="80" style="fill:var(--blue);opacity:.85"/>
+      <text x="125" y="70" fill="var(--blue)" font-size="10.5" text-anchor="middle">1.0</text>
+      <rect x="150" y="140" width="30" height="15" style="fill:var(--green);opacity:.85"/>
+      <text x="165" y="135" fill="var(--green)" font-size="10.5" text-anchor="middle">0.2</text>
+      <text x="145" y="175" fill="var(--text3)" font-size="10.5" text-anchor="middle">AUDUSD</text>
+
+      <rect x="230" y="155" width="30" height="62" style="fill:var(--blue);opacity:.5"/>
+      <text x="245" y="230" fill="var(--blue)" font-size="10.5" text-anchor="middle">-0.8</text>
+      <rect x="270" y="110" width="30" height="45" style="fill:var(--green);opacity:.85"/>
+      <text x="285" y="105" fill="var(--green)" font-size="10.5" text-anchor="middle">0.6</text>
+      <text x="265" y="248" fill="var(--text3)" font-size="10.5" text-anchor="middle">USDJPY</text>
+
+      <line x1="340" y1="270" x2="340" y2="40" style="stroke:var(--border);stroke-dasharray:2,4"/>
+
+      <!-- Solved weights panel (right half) -->
+      <text x="470" y="55" fill="var(--text2)" font-size="12" text-anchor="middle" font-weight="600">Solved portfolio weights</text>
+      <rect id="fp-w1-bar" x="410" width="30" y="115" height="40" style="fill:var(--amber);opacity:.9"/>
+      <text id="fp-w1-label" x="425" y="110" fill="var(--amber)" font-size="10.5" text-anchor="middle" font-weight="600">+0.79</text>
+      <text x="425" y="288" fill="var(--text3)" font-size="10.5" text-anchor="middle">AUDUSD</text>
+
+      <rect id="fp-w2-bar" x="500" width="30" y="155" height="15" style="fill:var(--purple);opacity:.9"/>
+      <text id="fp-w2-label" x="515" y="170" fill="var(--purple)" font-size="10.5" text-anchor="middle" font-weight="600">-0.26</text>
+      <text x="515" y="288" fill="var(--text3)" font-size="10.5" text-anchor="middle">USDJPY</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>Carry loading</span>
+      <span><i style="background:var(--green)"></i>Momentum loading</span>
+      <span><i style="background:var(--amber)"></i>Solved weight — AUDUSD</span>
+      <span><i style="background:var(--purple)"></i>Solved weight — USDJPY</span>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head">
+          <span>Target carry exposure (momentum held at 0, neutral)</span>
+          <span class="tl-live" id="fp-target-val">+1.00</span>
+        </div>
+        <input type="range" id="fp-target-slider" min="0" max="200" step="5" value="100">
+        <div class="tl-hint">AUDUSD's loadings (carry +1.0, momentum +0.2) and USDJPY's loadings (carry -0.8, momentum +0.6) are fixed — real illustrative numbers, not estimated from data here. The two weights shown are the exact solution to the 2×2 linear system B^T w = q, solved live as you move the slider — momentum stays pinned at zero (neutral) throughout, by construction.</div>
+      </div>
+    </div>
+    <div class="tl-readout">
+      Check: solved weights re-deliver target exposure exactly — carry ≈ <b id="fp-check-carry">1.00</b>, momentum ≈ <b id="fp-check-mom">0.00</b>
+    </div>
+    <div class="tl-chart-caption">
+      Left panel: two assets' fixed factor loadings on carry and momentum.
+      Right panel: the portfolio weights that exactly deliver the slider's
+      target carry exposure while holding momentum exposure neutral —
+      solved from \(B^\top w = q\) with real 2×2 linear algebra, not a
+      canned illustration. Drag the slider and watch both solved weights
+      scale together to keep hitting the target exactly.
+    </div>
+    <script>
+    (function(){
+      var slider = document.getElementById('fp-target-slider');
+      var targetVal = document.getElementById('fp-target-val');
+      var w1Bar = document.getElementById('fp-w1-bar');
+      var w1Label = document.getElementById('fp-w1-label');
+      var w2Bar = document.getElementById('fp-w2-bar');
+      var w2Label = document.getElementById('fp-w2-label');
+      var checkCarry = document.getElementById('fp-check-carry');
+      var checkMom = document.getElementById('fp-check-mom');
+
+      // Fixed loadings: asset 1 = AUDUSD, asset 2 = USDJPY.
+      var C1 = 1.0, C2 = -0.8;   // carry loadings
+      var M1 = 0.2, M2 = 0.6;    // momentum loadings
+      var DET = C1*M2 - C2*M1;   // = 0.76
+
+      var ZERO_Y = 155, PX_PER_UNIT = 40;
+
+      function drawBar(rect, label, value, x){
+        var h = Math.abs(value) * PX_PER_UNIT;
+        var y = value >= 0 ? (ZERO_Y - h) : ZERO_Y;
+        rect.setAttribute('y', y.toFixed(1));
+        rect.setAttribute('height', Math.max(1, h).toFixed(1));
+        label.setAttribute('y', (value >= 0 ? y - 6 : y + h + 14).toFixed(1));
+        label.textContent = (value >= 0 ? '+' : '') + value.toFixed(2);
+      }
+
+      function update(){
+        var targetC = parseInt(slider.value, 10) / 100;
+        var targetM = 0;
+        targetVal.textContent = (targetC >= 0 ? '+' : '') + targetC.toFixed(2);
+
+        // Solve B^T w = q via Cramer's rule for the 2x2 system.
+        var w1 = (targetC*M2 - targetM*C2) / DET;
+        var w2 = (C1*targetM - M1*targetC) / DET;
+
+        drawBar(w1Bar, w1Label, w1, 410);
+        drawBar(w2Bar, w2Label, w2, 500);
+
+        var checkC = w1*C1 + w2*C2;
+        var checkM = w1*M1 + w2*M2;
+        checkCarry.textContent = checkC.toFixed(2);
+        checkMom.textContent = checkM.toFixed(2);
+      }
+
+      slider.addEventListener('input', update);
+      update();
+    })();
+    </script>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Solving the 2×2 system by hand</h3>
+    <p>
+      Two factors — carry (\(C\)) and momentum (\(M\)) — and two assets:
+      AUDUSD with loadings \((C_1, M_1) = (1.0, 0.2)\), USDJPY with loadings
+      \((C_2, M_2) = (-0.8, 0.6)\). Target profile: long carry at exactly
+      \(+1.0\), momentum-neutral (\(0.0\)). Solving \(B^\top w = q\):
+    </p>
+    <div class="tl-math">\[ \begin{cases} 1.0\,w_1 - 0.8\,w_2 = 1.0 \\ 0.2\,w_1 + 0.6\,w_2 = 0.0 \end{cases} \]</div>
+    <p>
+      From the second equation, \(w_1 = -3w_2\). Substituting into the
+      first: \(-3w_2 - 0.8w_2 = 1.0 \Rightarrow -3.8w_2 = 1.0 \Rightarrow
+      w_2 = -0.263\), so \(w_1 = 0.789\). Checking both equations: carry
+      \(=0.789(1.0) + (-0.263)(-0.8) = 0.789+0.211=1.000\) ✓; momentum
+      \(=0.789(0.2)+(-0.263)(0.6)=0.158-0.158=0.000\) ✓.
+    </p>
+    <p>
+      The target ("long carry, neutral momentum") is delivered by going
+      <strong>long AUDUSD at 78.9% of notional and short USDJPY at 26.3% of
+      notional</strong> — the short USDJPY leg exists specifically to cancel
+      out the momentum exposure AUDUSD's own carry position would otherwise
+      bring along with it, since AUDUSD isn't a pure carry instrument on its
+      own (it carries a small positive momentum loading too).
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Building a "long carry, neutral momentum" sleeve across five pairs</h3>
+    <p>
+      A macro desk wants a specific factor profile for its FX sleeve this
+      quarter: meaningful long exposure to the carry factor (betting the
+      historical high-minus-low-interest-rate-differential premium persists),
+      but explicitly no directional bet on momentum/trend, because the desk
+      has a separate momentum book already carrying that risk and doesn't
+      want to double up. With loadings estimated for five candidate pairs on
+      both factors, the construction problem is exactly Step 4 generalized
+      to \(N=5>K=2\): infinitely many weight combinations hit the target
+      carry-long, momentum-neutral profile exactly, so the desk adds a
+      second, practical objective — say, minimize each pair's remaining
+      idiosyncratic risk, or cap any single pair's weight — to pick one
+      specific solution out of that whole family.
+    </p>
+    <p>
+      The mechanical exposure-matching part of this is exactly the linear
+      algebra above; the part that actually determines whether the sleeve
+      makes money is whether carry and momentum, as estimated for these five
+      specific pairs over this specific period, are real, persistent
+      factors and not noise — a separate, harder question the next section
+      is honest about.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    The three factor families named in the TL;DR are each backed by real,
+    peer-reviewed FX/macro literature — stated here as the literature's
+    finding, explicitly not as something this repo has re-tested and
+    confirmed on its own out-of-sample data:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">💰</div>
+      <h4>Carry</h4>
+      <p>Sort currencies by interest-rate differential; historically, high-rate currencies have offered a premium over low-rate ones, compensated (the literature argues) by exposure to global FX volatility risk — Menkhoff, Sarno, Schmeling &amp; Schrimpf (2012).</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📈</div>
+      <h4>Momentum / trend</h4>
+      <p>Currencies (and other assets) that have recently trended tend to keep trending over intermediate horizons — one of the "everywhere" asset classes in Asness, Moskowitz &amp; Pedersen (2013)'s cross-asset momentum study.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">⚖️</div>
+      <h4>Value</h4>
+      <p>Currencies that look cheap relative to a real-exchange-rate-deviation anchor tend to outperform over long horizons — the same framing the Purchasing Power Parity lesson develops in depth, and the value leg of Asness, Moskowitz &amp; Pedersen (2013)'s "everywhere" study.</p>
+    </div>
+  </div>
+  <p>
+    Real multi-factor FX portfolios at systematic macro funds are typically
+    built exactly along the Step 4 path: estimate loadings for a broad
+    instrument universe against each named factor, then solve (or optimize)
+    for the weights that deliver a chosen combined exposure profile, often
+    layering a risk-based sizing rule (like the previous two lessons' risk
+    parity or hierarchical risk parity) on top of the factor-tilted weights
+    rather than using raw factor exposure alone as the final sizing rule.
+    <strong>Citing this literature is not the same claim as this repo having
+    validated carry, momentum, or value on its own instrument universe and
+    time period</strong> — the academic record for these factors is real and
+    substantial, but whether they hold up, net of realistic costs, on this
+    project's own data is a separate, untested question.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where factor-based construction goes wrong in practice</h3>
+    <p>
+      <strong>Loadings are estimated, not known.</strong> Every \(\beta_{ik}\)
+      in this lesson's equations is itself a regression estimate with its
+      own standard error — exactly the same caveat the Alpha vs. Beta
+      Separation lesson raises about a single beta estimate, just now
+      multiplied across every asset and every factor. A target-hitting
+      weight solve built on noisy loadings delivers the target exposure
+      only as accurately as those loadings were actually estimated.
+    </p>
+    <p>
+      <strong>Factor definitions are not standardized across providers.</strong>
+      "Momentum" or "value," computed with a different lookback window,
+      universe, or normalization, can produce meaningfully different factor
+      return series and loadings — there is no single, universally agreed
+      construction, unlike, say, a market-cap-weighted equity index.
+    </p>
+    <p>
+      <strong>Crowding and factor decay.</strong> A factor's historical
+      premium reflects the compensation investors demanded for a risk (or
+      the inefficiency they exploited) at the time it was documented; as
+      more capital chases the same factor, the premium can compress —
+      exactly the kind of drift this whole site's in-sample-vs-OOS discipline
+      exists to catch, and exactly why this lesson refuses to claim these
+      factors are validated here.
+    </p>
+    <p>
+      <strong>The underdetermined case hides an implicit second objective.</strong>
+      When \(N>K\), "solve for the weights hitting the target" is really
+      "pick one solution from an entire family that all hit the target
+      equally well" — whatever tiebreaker gets used (minimum notional,
+      minimum idiosyncratic risk, position caps) is itself a real modeling
+      choice that changes the resulting portfolio, not a neutral default.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A factor model trades pairwise covariances for shared exposures.</strong> \(r_i = \sum_k \beta_{ik}f_k + \varepsilon_i\) needs \(N\times K\) loadings instead of \(N(N-1)/2\) pairwise covariances — a real parameter-count win that grows with the universe size.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The single-factor market model is this lesson's \(K=1\) special case.</strong> Alpha vs. Beta Separation already covers it in depth; this lesson generalizes to named, multi-factor exposures.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Portfolio-level exposure is a weighted sum, \(B_p = w^\top B\).</strong> Hitting a target exposure profile is solving \(B^\top w = q\) — a small linear system when \(N=K\), a constrained optimization when \(N>K\).</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Citing carry/momentum/value literature is not validating them here.</strong> Menkhoff et al. (2012) and Asness, Moskowitz &amp; Pedersen (2013) are real, peer-reviewed findings — not evidence that these factors work on this repo's own instruments and time period.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Loadings are estimates, not facts.</strong> A target-hitting weight solve is only as good as the \(\beta_{ik}\) estimates feeding it, each with its own standard error.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Not built or validated in this repo.</strong> No factor loadings are estimated, and no factor-tilted portfolio has been backtested, here.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why does a K-factor model need far fewer parameters than estimating a full covariance matrix directly, once the universe is large?</summary>
+    <div class="tl-answer">
+      Direct covariance estimation needs one number per pair of assets, \(N(N-1)/2\), which grows roughly with the square of the universe size. A K-factor model instead needs \(N\times K\) loadings, a \(K\times K\) factor covariance matrix, and N idiosyncratic variances — growing linearly in N for fixed K. For a 30-asset universe and 3 factors, that's 126 numbers instead of 435, and the gap widens further as N grows.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. How does this lesson's factor model relate to the Alpha vs. Beta Separation lesson's market-model regression?</summary>
+    <div class="tl-answer">
+      They are the same equation at different values of K. Setting K=1 and letting the single factor f_1 be the market's excess return recovers exactly \(r_i - r_f = \alpha_i + \beta_i(r_m-r_f) + \varepsilon_i\) — the market-model regression is this lesson's one-factor special case, not a separate framework.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Given two assets and two factors, why does solving for a target exposure profile have exactly one solution, while five assets and two factors has infinitely many?</summary>
+    <div class="tl-answer">
+      With N=K, the system B^T w = q is square — as many equations as unknowns — and, provided B^T is non-singular, has exactly one solution, the same way a 2x2 system of linear equations pins down exactly one (x,y). With N=5 and K=2, there are only 2 equations but 5 unknown weights, so the system is underdetermined: an entire 3-dimensional family of weight vectors all satisfy the same 2 target-exposure equations, and picking one specific member of that family requires an additional criterion beyond just hitting the target.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. In the worked example, why is USDJPY given a short (negative) weight rather than being left out of the portfolio entirely?</summary>
+    <div class="tl-answer">
+      AUDUSD alone, at whatever size needed to hit +1.0 carry exposure, would also bring along an unwanted positive momentum exposure (its 0.2 momentum loading, scaled by that same large weight). The short USDJPY position is sized specifically to cancel that unwanted momentum exposure — USDJPY's own momentum loading (0.6) times its solved weight (-0.263) offsets AUDUSD's momentum contribution exactly, which is why momentum exposure comes out to 0.000 in the check, while carry still nets to the full target of 1.000.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why is "carry, momentum, and value are real, cited factors" not the same claim as "this repo's strategies have carry, momentum, or value edge"?</summary>
+    <div class="tl-answer">
+      The cited papers document these factors' historical performance on the specific universes, time periods, and construction methodologies each paper used — real, peer-reviewed findings about those datasets. Whether the same factors, built from this repo's own instrument universe with its own realistic costs, would show the same premium over the same or a different period is an entirely separate empirical question that has not been tested here. Literature citation establishes that an idea is worth testing, not that the test has already been run and passed.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why does the underdetermined case (more assets than factors) still require a real modeling decision, even after the target exposure is fully specified?</summary>
+    <div class="tl-answer">
+      Because specifying the target exposure only pins down which combination of factor exposures the portfolio must deliver — it says nothing about how to choose among the many different weight vectors that all deliver that same combination equally well. Whatever secondary rule breaks that tie (minimizing idiosyncratic risk, capping individual position sizes, minimizing total notional) materially changes which specific portfolio gets built, so it's a real, consequential modeling choice, not a neutral technical detail that "solving the system" already settled.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Lukas Menkhoff, Lucio Sarno, Maik Schmeling &amp; Andreas Schrimpf, "Carry Trades and Global Foreign Exchange Volatility," <em>Journal of Finance</em>, 67(2), 681-718, 2012 — the carry-factor citation used throughout this lesson, linking the carry premium to global FX volatility risk.</li>
+    <li>Clifford Asness, Tobias Moskowitz &amp; Lasse Pedersen, "Value and Momentum Everywhere," <em>Journal of Finance</em>, 68(3), 929-985, 2013 — the momentum and value citation used throughout this lesson, documenting both factors across eight distinct asset classes including currencies.</li>
+    <li>Eugene Fama &amp; Kenneth French's multi-factor equity models — already referenced in the Alpha vs. Beta Separation lesson's Further Reading as the natural single-to-multi-factor extension this lesson generalizes in an FX/macro context.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="hierarchical-risk-parity.html">← Hierarchical Risk Parity</a>
+    <a href="../hub.html">Theory Lab hub</a>
+  </div>
+</div>
+</body>
+</html>

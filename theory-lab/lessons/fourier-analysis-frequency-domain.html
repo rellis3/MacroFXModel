@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fourier Analysis &amp; the Frequency Domain — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Signal Processing / Fourier Analysis &amp; the Frequency Domain</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Signal Processing · Lesson 1 of 3</div>
+  <h1 class="tl-title">Fourier Analysis &amp; the Frequency Domain</h1>
+  <p class="tl-dek">Every time series can be rewritten as a sum of sine waves at different speeds — the Fourier transform is the machinery that finds which speeds are actually present, and how strongly, without ever telling you when they happened.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — a classical signal-processing tool, explained here as background knowledge, not built or tested anywhere in this repo</span>
+    <span>~14 min read</span>
+    <span>Prereqs: <a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a></span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>The Fourier transform \(X(f) = \sum_t x_t e^{-i2\pi f t}\) rewrites a time series as a sum of sinusoids at every frequency \(f\); the power spectral density \(|X(f)|^2\) shows which frequencies carry the most energy — which cycles actually dominate the series.</li>
+      <li>The <strong>periodogram</strong> is the empirical estimate of the power spectral density computed from one finite sample, and it has a precise, unglamorous caveat: each periodogram ordinate is only roughly chi-squared distributed with 2 degrees of freedom, and it is <strong>not a consistent estimator</strong> — its variance does not shrink as the sample grows, only its frequency resolution does — unless the ordinates are smoothed or averaged across nearby frequencies or across repeated segments.</li>
+      <li>A worked example below builds a synthetic 10-point series with a known, deterministic period-5 (weekly) cycle and recovers that exact cycle from its periodogram using nothing but Euler's identity and a geometric-sum argument — no fitting, no guessing.</li>
+      <li>Honestly: raw FX (or equity) return series tend to produce a periodogram that is close to flat across most frequencies — consistent with near-random-walk behavior, the same story this Theory Lab's ACF/PACF and Hurst/variance-ratio lessons already tell from different angles. This tool earns its keep on volume, volatility, and seasonality series far more reliably than on raw price returns.</li>
+      <li>Explaining how the Fourier transform works is not a claim that spectral analysis produces trading edge here — it's background knowledge for reading a periodogram correctly, and for understanding exactly what the next lesson's wavelets fix about it.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Almost everything examined elsewhere in this curriculum treats a time series as a sequence of values ordered by
+    <em>time</em> — today's return, yesterday's return, the autocorrelation between a value and its lag-\(k\) self (see
+    <a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a>). Fourier analysis asks the same series a
+    completely different kind of question: forget the calendar order entirely, and ask instead <em>which
+    repeating cycles, at which speeds, would you need to add together to reconstruct this exact series?</em> That's a
+    genuinely different lens — a rolling window and an autocorrelation function are still fundamentally
+    time-domain tools; a periodogram lives in the <strong>frequency domain</strong>, and some structure (clean, regular
+    cyclicality — a day-of-week pattern in trading volume, a seasonal pattern in a macro series, an intraday
+    liquidity cycle) is far easier to see there than by staring at a price chart or a correlogram. This lesson builds
+    the tool from its definition up to its most important honest limitation, and sets up the next lesson
+    (<a href="wavelets-time-frequency.html">Wavelets &amp; Time-Frequency Analysis</a>), which exists specifically to fix
+    the one thing a plain Fourier transform cannot tell you: <em>when</em> a cycle was present, not just whether one
+    exists somewhere in the sample.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A chord is several notes played at once — Fourier analysis is the ear that separates them back out</h3>
+    <p>
+      Play a chord on a piano and a microphone records a single, messy-looking waveform — one number per instant,
+      no obvious structure to the eye. But your ear (and a spectrum analyzer) can tell you exactly which individual
+      notes are being played simultaneously, because each note is a pure tone at its own frequency, and the chord is
+      nothing more than those pure tones added together. Fourier's insight, extended from sound to any time series, is
+      that <em>any</em> reasonably well-behaved sequence of numbers can be decomposed the same way: as a sum of pure
+      sine waves, each at its own frequency, each with its own strength (amplitude) and its own timing offset (phase).
+      A time series that looks like unstructured noise in a line chart can still have one or two frequencies doing
+      most of the work underneath — a weekly pattern, a monthly rebalancing flow, an intraday liquidity cycle — and
+      the Fourier transform is the mathematical version of the ear that pulls those individual "notes" back out of the
+      mixed signal.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    Three pieces, built in order: (1) the discrete Fourier transform itself; (2) the power spectral density and its
+    finite-sample estimate, the periodogram; (3) the periodogram's honest statistical limitation.
+  </p>
+
+  <h3>1. The discrete Fourier transform</h3>
+  <p>
+    For a finite series of \(N\) observations \(x_0, x_1, \ldots, x_{N-1}\) (say, daily log returns, or hourly trading
+    volume), the discrete Fourier transform at frequency \(f\) is:
+  </p>
+  <div class="tl-math">
+    \[ X(f) \;=\; \sum_{t=0}^{N-1} x_t\, e^{-i 2\pi f t} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>x_t</code><span>the observed value at time step t — the raw series</span></div>
+    <div class="tl-eq-chip c2"><code>f</code><span>a candidate frequency, in cycles per sample</span></div>
+    <div class="tl-eq-chip c3"><code>e^{-i2πft}</code><span>a complex sinusoid at frequency f, via Euler's identity</span></div>
+    <div class="tl-eq-chip c4"><code>X(f)</code><span>a complex number: how strongly (and with what phase) frequency f is present</span></div>
+  </div>
+  <p>
+    The term \(e^{-i2\pi f t}\) is Euler's identity in disguise: \(e^{i\theta} = \cos\theta + i\sin\theta\), so
+    \(e^{-i2\pi ft} = \cos(2\pi f t) - i\sin(2\pi f t)\) — a single complex number that packages a cosine wave and a
+    sine wave of frequency \(f\) together. \(X(f)\) is computed by multiplying the series by that complex sinusoid at
+    every time step and summing the result; when the series genuinely contains a component wiggling at frequency
+    \(f\), the terms line up (constructively add) and \(X(f)\) comes out large. When it doesn't, the terms point in
+    essentially random directions in the complex plane and mostly cancel, leaving \(X(f)\) small. In practice \(f\) is
+    only evaluated at the \(N\) discrete frequencies \(f_k = k/N\) for \(k = 0, 1, \ldots, N-1\) (this is exactly what
+    the Fast Fourier Transform algorithm computes efficiently); because the input is real-valued, \(X(f_k)\) and
+    \(X(f_{N-k})\) are complex conjugates of each other, so only frequencies up to \(k = N/2\) — the
+    <strong>Nyquist frequency</strong> — carry independent information.
+  </p>
+
+  <h3>2. Power spectral density and the periodogram</h3>
+  <p>
+    \(X(f)\) itself is a complex number carrying both magnitude and phase; for the question "which frequencies
+    dominate," only the magnitude matters, and the natural quantity is the squared modulus:
+  </p>
+  <div class="tl-math">
+    \[ \text{PSD}(f) \;=\; |X(f)|^2 \]
+  </div>
+  <p>
+    This is the <strong>power spectral density</strong> — how much of the series' total variance sits at frequency
+    \(f\). The true PSD is a property of the underlying (infinite, idealized) process; from one finite sample of
+    length \(N\), the natural empirical estimate is the <strong>periodogram</strong>:
+  </p>
+  <div class="tl-math">
+    \[ I(f_k) \;=\; \frac{1}{N}\,|X(f_k)|^2 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>I(f_k)</code><span>the periodogram — the empirical PSD estimate at frequency f_k</span></div>
+    <div class="tl-eq-chip c2"><code>|X(f_k)|²</code><span>squared magnitude of the DFT at that frequency — total energy there</span></div>
+    <div class="tl-eq-chip c3"><code>1/N</code><span>normalizes for sample length so periodograms of different-length series are comparable</span></div>
+  </div>
+  <p>
+    Plotting \(I(f_k)\) against \(f_k\) (or equivalently against period \(1/f_k\)) is the practical, everyday version
+    of "finding which cycles dominate a series": a tall spike at some \(f_k\) says that frequency is carrying an
+    outsized share of the series' total variance relative to a flat (white-noise) baseline.
+  </p>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">x_t</div><div class="tl-fp-name">Time domain</div><div class="tl-fp-desc">The series as observed — value vs. calendar time</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">X(f)</div><div class="tl-fp-name">Frequency domain</div><div class="tl-fp-desc">The exact same information, rewritten as amplitude/phase vs. frequency</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">I(f_k)</div><div class="tl-fp-name">The periodogram</div><div class="tl-fp-desc">What you can actually estimate from one finite, noisy real sample</div></div>
+  </div>
+
+  <h3>3. The honest caveat: the periodogram is not a consistent estimator</h3>
+  <p>
+    This is the single most important thing to know before trusting a periodogram plot. For a stationary process
+    (see <a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a> for why that assumption matters here
+    too), each individual periodogram ordinate \(I(f_k)\) — away from \(f=0\) and the Nyquist frequency — is
+    approximately distributed as \(\frac{\text{true PSD}(f_k)}{2}\) times a chi-squared random variable with
+    <strong>2 degrees of freedom</strong> (equivalently, an exponential distribution). Crucially, that distribution's
+    <em>spread does not shrink as N grows</em>. Adding more data gives you more, finer-spaced frequencies to look at —
+    it does not make any single ordinate a more precise estimate of the true spectrum at that frequency. A periodogram
+    computed from 10,000 observations is exactly as noisy, ordinate for ordinate, as one computed from 100.
+  </p>
+  <div class="tl-solid amber">
+    <strong>The caveat to remember:</strong> the raw periodogram is <strong>not a consistent estimator</strong> of the
+    power spectral density. The standard fix is to trade frequency resolution for statistical precision — smoothing
+    adjacent ordinates together, or averaging periodograms computed from multiple overlapping or non-overlapping
+    segments (Bartlett's method, Welch's method, multitaper methods) — which is exactly analogous to how a rolling
+    average trades timing precision for less noise. A single sharp, unsmoothed periodogram spike from one short
+    sample is weaker evidence of a real cycle than the same spike surviving after averaging across several
+    independent segments.
+  </div>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(x_t\)</td><td>the observed series at time step \(t\) — e.g. a daily return or a trading-volume count</td></tr>
+      <tr><td>\(N\)</td><td>the number of observations in the sample</td></tr>
+      <tr><td>\(f\)</td><td>a frequency, in cycles per sample (a full cycle every \(1/f\) observations)</td></tr>
+      <tr><td>\(f_k\)</td><td>the \(k\)-th discrete frequency evaluated, \(f_k = k/N\), for \(k=0,\ldots,N-1\)</td></tr>
+      <tr><td>\(i\)</td><td>the imaginary unit, \(\sqrt{-1}\)</td></tr>
+      <tr><td>\(X(f)\)</td><td>the discrete Fourier transform — a complex number encoding amplitude and phase at frequency \(f\)</td></tr>
+      <tr><td>\(|X(f)|^2\)</td><td>the squared modulus of \(X(f)\) — the power spectral density at frequency \(f\)</td></tr>
+      <tr><td>\(I(f_k)\)</td><td>the periodogram — the empirical PSD estimate at \(f_k\), computed from one finite sample</td></tr>
+      <tr><td>Nyquist frequency</td><td>\(f = 1/2\) (i.e. \(k=N/2\)) — the highest frequency resolvable from discretely sampled data; frequencies above it alias onto lower ones</td></tr>
+      <tr><td>\(\chi^2_2\)</td><td>chi-squared distribution with 2 degrees of freedom — the (approximate) sampling distribution of a single periodogram ordinate under stationarity</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A synthetic period-5 series and the periodogram that recovers it</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left panel: a 10-point synthetic time series with a visible repeating wiggle every 5 steps, drawn as a connected line. Right panel: a periodogram bar chart over frequency index k from 0 to 5, showing a single tall spike at k equals 2 and near-zero bars everywhere else.">
+      <text x="20" y="18" font-size="11" fill="var(--text3)">Synthetic series, x_t = cos(2π·2·t/10)</text>
+      <line x1="20" y1="130" x2="300" y2="130" style="stroke:var(--border);stroke-dasharray:3,3" />
+      <polyline points="20,50 48,97 76,180 104,180 132,97 160,50 188,97 216,180 244,180 272,97 300,50" fill="none" style="stroke:var(--blue);stroke-width:2" />
+      <g fill="var(--blue)">
+        <circle cx="20" cy="50" r="3"/><circle cx="48" cy="97" r="3"/><circle cx="76" cy="180" r="3"/>
+        <circle cx="104" cy="180" r="3"/><circle cx="132" cy="97" r="3"/><circle cx="160" cy="50" r="3"/>
+        <circle cx="188" cy="97" r="3"/><circle cx="216" cy="180" r="3"/><circle cx="244" cy="180" r="3"/>
+        <circle cx="272" cy="97" r="3"/><circle cx="300" cy="50" r="3"/>
+      </g>
+      <text x="20" y="200" font-size="10" fill="var(--text3)">t=0</text>
+      <text x="285" y="200" font-size="10" fill="var(--text3)">t=9</text>
+      <text x="55" y="230" font-size="10" fill="var(--green)">◀ week 1 (5 steps) ▶</text>
+      <text x="195" y="230" font-size="10" fill="var(--green)">◀ week 2 (5 steps) ▶</text>
+
+      <text x="380" y="18" font-size="11" fill="var(--text3)">Periodogram I(k), k = 0..5 (Nyquist)</text>
+      <line x1="380" y1="220" x2="620" y2="220" style="stroke:var(--text3)" />
+      <line x1="380" y1="20" x2="380" y2="220" style="stroke:var(--text3)" />
+      <rect x="390" y="216" width="24" height="4" style="fill:var(--border)"/>
+      <rect x="430" y="216" width="24" height="4" style="fill:var(--border)"/>
+      <rect x="470" y="30"  width="24" height="190" style="fill:var(--red)"/>
+      <rect x="510" y="216" width="24" height="4" style="fill:var(--border)"/>
+      <rect x="550" y="216" width="24" height="4" style="fill:var(--border)"/>
+      <rect x="590" y="216" width="24" height="4" style="fill:var(--border)"/>
+      <text x="402" y="234" font-size="10" text-anchor="middle" fill="var(--text3)">0</text>
+      <text x="442" y="234" font-size="10" text-anchor="middle" fill="var(--text3)">1</text>
+      <text x="482" y="234" font-size="10" text-anchor="middle" fill="var(--red)">2</text>
+      <text x="522" y="234" font-size="10" text-anchor="middle" fill="var(--text3)">3</text>
+      <text x="562" y="234" font-size="10" text-anchor="middle" fill="var(--text3)">4</text>
+      <text x="602" y="234" font-size="10" text-anchor="middle" fill="var(--text3)">5</text>
+      <text x="482" y="24" font-size="10" text-anchor="middle" fill="var(--red)">I(2)=2.5</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Left: the 10-point toy series from the worked example below — visibly repeating every 5 steps, like a
+      Monday-to-Friday seasonal pattern spanning two trading weeks. Right: its periodogram, shown for the
+      non-redundant frequencies \(k=0\) through the Nyquist bin \(k=5\). All the series' energy concentrates in a
+      single spike at \(k=2\) — corresponding to a cycle repeating every \(10/2 = 5\) steps — exactly recovering the
+      period built into the synthetic data, with nothing at any other frequency.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Recovering a known period-5 cycle from 10 data points, by hand</h3>
+    <p>
+      Build a toy series representing two trading weeks (\(N=10\)) with a purely deterministic 5-day seasonal pattern
+      — an artificial "day-of-week" effect — and nothing else: \(x_t = \cos(2\pi \cdot 2 \cdot t / 10)\) for
+      \(t=0,\ldots,9\). Evaluating gives:
+    </p>
+    <p style="font-family:'DM Mono',monospace;font-size:13px;color:var(--text2)">
+      x = [1.000, 0.309, −0.809, −0.809, 0.309, 1.000, 0.309, −0.809, −0.809, 0.309]
+    </p>
+    <p>
+      Notice the pattern repeats exactly every 5 steps — this is the period built into the data, disguised as a list
+      of numbers. Rather than grinding through all 10 complex sums of the DFT by hand, use Euler's identity to see the
+      answer directly. Since \(\cos\theta = \tfrac{1}{2}(e^{i\theta} + e^{-i\theta})\), the series is
+      \(x_t = \tfrac12\left(e^{i2\pi k_0 t/N} + e^{-i2\pi k_0 t/N}\right)\) with \(k_0=2\), \(N=10\). Substituting into
+      the DFT definition:
+    </p>
+    <div class="tl-math">
+      \[ X(k) = \sum_{t=0}^{N-1} x_t e^{-i2\pi kt/N} = \tfrac12\sum_{t=0}^{N-1} e^{i2\pi(k_0-k)t/N} + \tfrac12\sum_{t=0}^{N-1} e^{-i2\pi(k_0+k)t/N} \]
+    </div>
+    <p>
+      Both sums are geometric sums of complex numbers on the unit circle, and a standard identity says
+      \(\sum_{t=0}^{N-1} e^{i2\pi mt/N}\) equals \(N\) whenever \(m\) is a multiple of \(N\) (all terms point the same
+      way and add constructively) and equals exactly \(0\) otherwise (the terms are evenly spaced around the unit
+      circle and cancel perfectly). The first sum hits its \(N\) case only when \(k=k_0=2\); the second hits it only
+      when \(k = N - k_0 = 8\). Every other \(k\) gives exactly zero. So:
+    </p>
+    <p style="font-family:'DM Mono',monospace;font-size:13px;color:var(--text2)">
+      X(2) = N/2 = 5,&nbsp;&nbsp; X(8) = N/2 = 5,&nbsp;&nbsp; X(k) = 0 for every other k
+    </p>
+    <p>
+      Converting to the periodogram, \(I(2) = I(8) = \tfrac{1}{10}(5)^2 = 2.5\), and \(I(k)=0\) elsewhere. The
+      periodogram is exactly two clean spikes, symmetric around the Nyquist bin — at \(k=2\), corresponding to a
+      cycle repeating every \(N/k_0 = 10/2 = 5\) steps. That is the period-5 seasonal pattern, recovered purely from
+      the shape of the spectrum, without ever being told the period in advance. A real series would add noise on top
+      and the spike would be less than perfectly clean (and, per the caveat above, a single spike from a 10-point
+      sample carries very little statistical weight on its own) — but the mechanism recovering the dominant cycle is
+      identical.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Looking for an intraday liquidity cycle in FX trading volume</h3>
+    <p>
+      An analyst suspects EURUSD trading volume has a recurring intraday pattern — a lull during the Asia session, a
+      pickup at the London open, another pickup at the New York open — and wants to check whether that pattern is
+      strong and regular enough to be worth conditioning execution timing on, rather than just eyeballing a few days
+      of charts. Computing a periodogram of hourly trading-volume counts across many trading days is a natural fit:
+      volume is a genuinely cyclical series driven by the calendar (session opens repeat on a strict 24-hour clock),
+      so a spike at the frequency corresponding to a 24-hour (or 8-hour, session-to-session) cycle is exactly the kind
+      of structure this tool is built to surface. The honest next step, given the caveat above, is to average
+      periodograms across many separate days (Bartlett/Welch-style) rather than trust a single day's noisy spike, and
+      to remember that finding a real, statistically-supported volume cycle is a market-structure observation — it is
+      not, by itself, a trading signal until it's turned into a tested rule and cleared an honest out-of-sample bar.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Spectral analysis has a long, legitimate history in economics and finance — but mostly on the <em>right kind</em>
+    of series, not on raw price returns. Macroeconomists use spectral methods to study business-cycle length and to
+    cross-check filters like the ones covered in the next lesson but one
+    (<a href="trend-cycle-filters.html">Trend/Cycle Filters</a>); market-microstructure researchers use it on
+    volume, order-flow imbalance, and volatility series to look for intraday or day-of-week seasonality; signal
+    processing engineers use it constantly for exactly the purpose it was invented for (audio, vibration, radio).
+  </p>
+  <p>
+    The one honest, load-bearing finding worth stating plainly: when a periodogram has been computed on <strong>raw FX
+    or equity returns</strong>, the classic result — going back to Clive Granger and Oskar Morgenstern's early 1960s
+    spectral studies of stock price series — is that the spectrum comes out close to <strong>flat</strong> across
+    most frequencies, the signature of white noise, with no dominant cycle standing out from the noise floor. That's
+    the same conclusion this Theory Lab's <a href="stationarity-acf-pacf.html">ACF/PACF</a> and
+    <a href="hurst-variance-ratio.html">Hurst exponent / variance ratio</a> lessons reach from entirely different
+    angles — three different lenses on the same underlying question about whether returns have exploitable memory,
+    landing in the same place for raw returns. That is exactly why this lesson's chart used a
+    <em>volume</em>-style seasonal example rather than a return series: a periodogram is a much more useful tool on
+    volume, realized volatility, or an explicitly seasonal macro series than on raw FX price changes, where there is
+    usually very little periodic structure to find in the first place.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where a periodogram misleads</h3>
+    <ul>
+      <li><strong>Treating a single spike as proven, not estimated.</strong> Per the caveat above, one periodogram
+        ordinate has a wide chi-squared-with-2-df sampling distribution regardless of sample size — a tall,
+        unsmoothed spike is a hint, not a statistically confirmed cycle, until it's been smoothed or replicated across
+        segments.</li>
+      <li><strong>Applying it to non-stationary raw price levels.</strong> A trending price series' spectrum is
+        dominated by low-frequency "energy" from the trend itself, which drowns out any genuine cyclical structure —
+        exactly the same reason the <a href="stationarity-acf-pacf.html">ACF/PACF</a> lesson insists on differencing
+        or working with returns rather than levels.</li>
+      <li><strong>Spectral leakage from a finite window.</strong> A finite sample is implicitly multiplying the true
+        (infinite) signal by a rectangular window, which smears a clean spike's energy into neighboring frequency
+        bins; this is why real spectral-analysis software applies a tapering window (Hann, Hamming, etc.) before
+        transforming, rather than using the raw truncated sample directly.</li>
+      <li><strong>Ignoring aliasing.</strong> Any true frequency above the Nyquist frequency folds back and appears as
+        a lower, spurious frequency in the sampled data — a real risk whenever the sampling rate wasn't chosen with
+        the signal's likely frequency content in mind.</li>
+      <li><strong>Mistaking "no dominant frequency" for "the series has no structure at all."</strong> A flat
+        periodogram rules out clean, strict periodicity — it says nothing about non-periodic dependence (like the
+        short-memory autocorrelation the ACF/PACF lesson covers), which a flat spectrum can still coexist with in
+        principle, or about volatility clustering, which lives in the squared/absolute return series, not the raw
+        return spectrum.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The Fourier transform rewrites a series in the frequency domain.</strong> \(X(f)=\sum_t x_t e^{-i2\pi ft}\) decomposes any series into a sum of sinusoids; \(|X(f)|^2\) is the power at each frequency.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The periodogram is the empirical estimate you can actually compute.</strong> \(I(f_k)=\tfrac1N|X(f_k)|^2\) from one finite sample — the worked example recovers a known period-5 cycle exactly.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The periodogram is not a consistent estimator.</strong> Each ordinate is roughly \(\chi^2_2\)-distributed and stays noisy no matter how much data you add — smoothing or averaging across segments is required to trust it.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Raw FX/equity return periodograms tend to be close to flat.</strong> Consistent with near-random-walk behavior — the same conclusion this Theory Lab's ACF/PACF and Hurst/variance-ratio lessons reach from other angles. This tool is better suited to volume, volatility, or seasonality series.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Only stationary series have a stable, interpretable spectrum.</strong> Run this on returns (or another properly stationary series), not raw trending price levels.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>This lesson explains a technique, not a claim of edge.</strong> Nothing here is a trading signal — it's the background needed to read a periodogram, and to understand what the next lesson's wavelets add on top.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why does the periodogram in the worked example show exactly two spikes (at k=2 and k=8) rather than one?</summary>
+    <div class="tl-answer">
+      Because the input is real-valued, the discrete Fourier transform of a real series always satisfies
+      \(X(N-k) = \overline{X(k)}\) (complex conjugate symmetry), so \(|X(k)|\) and \(|X(N-k)|\) are always equal. The
+      cosine in the worked example is itself built from two complex exponentials at frequencies \(+k_0\) and
+      \(-k_0\) (via Euler's identity), which map to bins \(k_0\) and \(N-k_0\) respectively — hence spikes at both
+      \(k=2\) and \(k=8=10-2\). Only the bins from \(k=0\) to the Nyquist bin \(k=N/2\) carry independent
+      information; the rest mirror them.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why is the periodogram described as "not a consistent estimator," and what actually fixes that?</summary>
+    <div class="tl-answer">
+      A consistent estimator's sampling variance shrinks toward zero as the sample size grows. A single periodogram
+      ordinate's sampling distribution is approximately \(\chi^2_2\)-scaled regardless of \(N\) — more data buys more,
+      finer-spaced frequency bins to examine, but does not itself sharpen any one bin's estimate of the true spectral
+      density there. The standard fix trades frequency resolution for lower variance: smoothing neighboring
+      ordinates together (a moving average across frequency) or averaging periodograms computed on several
+      independent segments of the data (Bartlett's or Welch's method) — analogous to how averaging several noisy
+      estimates produces one less-noisy estimate.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why does the lesson recommend running a periodogram on returns (or volume/volatility) rather than raw price levels?</summary>
+    <div class="tl-answer">
+      A raw price level is generally non-stationary — it trends, and its variance keeps growing with the sample
+      length (the same point the <a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a> lesson makes
+      about levels vs. returns). A non-stationary series' spectrum is dominated by an overwhelming concentration of
+      energy at frequency zero (the trend itself), which swamps any genuine cyclical structure elsewhere in the
+      spectrum and makes the periodogram effectively uninterpretable as a "which cycles dominate" tool. Differencing
+      to returns (or otherwise working with an already-stationary series) removes the trend and lets whatever
+      genuine periodic structure exists show up cleanly.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. A colleague reports finding "a strong 17-day cycle" from a single unsmoothed periodogram computed on 90 days of FX returns. How much should that claim be trusted?</summary>
+    <div class="tl-answer">
+      Very little, on its own. First, per the honest application framing above, raw FX returns typically produce a
+      close-to-flat spectrum, so any single spike is more likely to be noise than a genuine cycle. Second, and
+      independent of that prior, a single unsmoothed periodogram ordinate carries a wide \(\chi^2_2\)-style sampling
+      distribution regardless of sample size — an isolated tall bar in one 90-day sample, without corroboration from
+      averaging across several independent 90-day segments or from a formal significance test against the noise
+      floor, is exactly the kind of finding the pitfalls section above warns is easy to overstate.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. What does "spectral leakage" mean, and why does a finite sample cause it?</summary>
+    <div class="tl-answer">
+      Computing a periodogram from a finite sample is mathematically equivalent to multiplying the true, infinitely
+      long signal by a rectangular window that is 1 over the observed span and 0 elsewhere, then transforming that
+      product. Multiplication in the time domain corresponds to convolution in the frequency domain, so the
+      rectangular window's own spectrum (which has broad, slowly decaying side-lobes) gets smeared onto every true
+      spectral spike — spreading ("leaking") some of that spike's energy into neighboring frequency bins rather than
+      keeping it perfectly concentrated at one bin. Applying a smoother taper (a Hann or Hamming window) before
+      transforming reduces this leakage relative to a hard rectangular cutoff, at some cost to frequency resolution.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>C.W.J. Granger &amp; Oskar Morgenstern, <em>"Spectral Analysis of New York Stock Market Prices,"</em> Kyklos,
+      1963 (and their subsequent book <em>Predictability of Stock Market Prices</em>, 1970) — the classic study
+      finding stock-price spectra close to white noise, the origin of the "flat FX/equity return periodogram" finding
+      referenced above.</li>
+    <li>Maurice B. Priestley, <em>Spectral Analysis and Time Series,</em> Academic Press, 1981 — the standard
+      graduate-level reference for periodogram theory, including its \(\chi^2_2\) sampling distribution and
+      consistency issues.</li>
+    <li>Donald B. Percival &amp; Andrew T. Walden, <em>Spectral Analysis for Physical Applications,</em> Cambridge
+      University Press, 1993 — a thorough, applied treatment of periodogram smoothing methods (Bartlett, Welch,
+      multitaper).</li>
+    <li>Robert H. Shumway &amp; David S. Stoffer, <em>Time Series Analysis and Its Applications: With R Examples,</em>
+      Springer, 4th ed. 2017 — Chapter 4 covers the periodogram, its distribution, and spectral smoothing with
+      worked examples.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="wavelets-time-frequency.html">Wavelets &amp; Time-Frequency Analysis →</a>
+  </div>
+</div>
+</body>
+</html>

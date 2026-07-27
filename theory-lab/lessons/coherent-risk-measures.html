@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Risk Management Deep Dive / Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Risk Deep Dive 1 of 3</div>
+  <h1 class="tl-title">Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms</h1>
+  <p class="tl-dek">Value-at-Risk answers "where's the cutoff?" Expected Shortfall answers "and how bad does it get past there?" — a difference that sounds academic until you combine two portfolios and VaR tells you diversification made things worse.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explains the theory behind risk-measure choice; not a built or backtested module in this repo</span>
+    <span>~14 min read</span>
+    <span>Prereqs: none required, though familiarity with a normal/loss distribution helps</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>\(\text{VaR}_p\) is the \(p\)-confidence loss threshold — the loss level you expect to exceed only \((1-p)\) of the time. It marks a point, nothing more.</li>
+      <li>\(\text{CVaR}_p\) (Conditional VaR, a.k.a. Expected Shortfall) is the <em>average</em> loss given you're already past that threshold — it describes the whole tail, not just its edge.</li>
+      <li>Artzner, Delbaen, Eber &amp; Heath (1999) defined four axioms a risk measure must satisfy to be called <strong>coherent</strong>: monotonicity, sub-additivity, positive homogeneity, and translation invariance.</li>
+      <li>VaR fails exactly one of the four — sub-additivity — and a simple two-position example makes the failure concrete: combining two individually "safe" positions can produce a portfolio VaR that exceeds the sum of the parts.</li>
+      <li>CVaR satisfies all four axioms. That single fact is why post-2008 banking regulation shifted its standard tail-risk measure from VaR toward Expected Shortfall.</li>
+      <li>Both are quantile-based statistics that get shakier the further into the tail you push them — see <a href="extreme-value-theory.html">Extreme Value Theory &amp; Tail Risk</a> for the machinery built to extend them past what a raw sample can support.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+  Every risk limit, capital charge, and "how much could we lose" conversation eventually reduces to a
+  single number computed from a loss distribution. Which number you pick is not a cosmetic choice.
+  A risk measure that behaves sensibly when you look at one position in isolation can behave
+  <em>nonsensically</em> the moment you combine positions — and combining positions is the entire point
+  of running a portfolio instead of a single trade. The specific failure this lesson is built around —
+  Value-at-Risk's inability to guarantee that diversification never looks worse than concentration — is
+  not a hypothetical curiosity. It is the reason risk committees, regulators, and portfolio managers
+  learned to distrust VaR as a single, all-purpose summary statistic, and it is the reason Expected
+  Shortfall exists as the alternative with a mathematically provable good property VaR simply does not
+  have.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A risk measure that ignores everything past the cutoff can be fooled by what's just beyond it</h3>
+    <p>
+    Imagine you're told a bridge is rated to survive "a 1-in-100-year flood." That single fact tells you
+    nothing about what happens if a 1-in-200-year flood arrives instead — maybe the bridge survives with
+    minor damage, maybe it collapses entirely. Two bridges can share the exact same "1-in-100-year"
+    rating while one shrugs off anything worse and the other fails catastrophically the moment the water
+    rises one inch further. VaR is that rating: it tells you the height of the water at which you cross
+    into "bad outcome" territory, and says absolutely nothing about how bad things get once you're past
+    it. CVaR is the more useful engineering question: "given that the flood exceeds the rated level, how
+    high does the water typically actually get?" It's an average over the whole disaster region, not a
+    single line drawn on a wall. That difference — a point versus an average over everything worse than
+    the point — is also exactly why VaR can misbehave when you combine two positions: it only cares about
+    one quantile, so it can't "see" that two individually rare bad events can occasionally happen at the
+    same time, pushing the combined loss profile's own quantile to a worse place than either position's
+    quantile alone. CVaR, being an average over the whole tail, never has this blind spot.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+  We'll define both risk measures precisely, state the four axioms a "coherent" risk measure must
+  satisfy, then work through exactly why VaR fails one of them while CVaR passes all four.
+  </p>
+
+  <h3>VaR and CVaR, defined precisely</h3>
+  <p>
+  Let \(L\) be a random variable representing a <em>loss</em> (positive \(L\) means you lost money — this
+  lesson works in loss units throughout, so "bigger is worse" reads naturally). Fix a confidence level
+  \(p\), typically 0.95 or 0.99.
+  </p>
+  <div class="tl-math">\[ \text{VaR}_p(L) = \inf\{\, \ell : P(L > \ell) \le 1-p \,\} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>p</code><span>the confidence level, e.g. 0.95</span></div>
+    <div class="tl-eq-chip c2"><code>ℓ</code><span>the smallest loss threshold satisfying the condition</span></div>
+    <div class="tl-eq-chip c4"><code>1−p</code><span>the tail probability you're willing to tolerate exceeding</span></div>
+  </div>
+  <p>
+  Read this as: the smallest loss threshold \(\ell\) such that the probability of losing <em>more</em>
+  than \(\ell\) is at most \(1-p\). Equivalently, \(\text{VaR}_{0.95}\) is the 95th percentile of the loss
+  distribution — the loss level you expect to exceed only 5% of the time. VaR answers exactly one
+  question: <em>where</em> is the bad-outcome cutoff. It says nothing about how bad things get once
+  you're past that cutoff.
+  </p>
+  <div class="tl-math">\[ \text{CVaR}_p(L) = E[\, L \mid L > \text{VaR}_p(L) \,] \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>E[·]</code><span>the average, not just a single cutoff</span></div>
+    <div class="tl-eq-chip c3"><code>L &gt; VaR_p(L)</code><span>conditioning on already being in the bad tail</span></div>
+  </div>
+  <p>
+  Read this as: the <em>average</em> loss, given that you're already in the tail beyond VaR. This is
+  also called <strong>Expected Shortfall (ES)</strong> — the two names refer to the same quantity in the
+  continuous-distribution case this lesson uses throughout.
+  </p>
+
+  <h3>The four Artzner-Delbaen-Eber-Heath coherence axioms</h3>
+  <p>
+  In their 1999 paper "Coherent Measures of Risk" (<em>Mathematical Finance</em>), Philippe Artzner,
+  Freddy Delbaen, Jean-Marc Eber, and David Heath asked a foundational question: what properties should
+  <em>any</em> sensible risk measure \(\rho\) have, regardless of which specific formula computes it?
+  They proposed four, and called a measure satisfying all four <strong>coherent</strong>. Stated here for
+  a risk measure \(\rho\) applied to loss random variables \(L\), \(L_1\), \(L_2\):
+  </p>
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Monotonicity</h4>
+        <p>
+        If \(L_1 \le L_2\) in every possible outcome (position 1 never loses more than position 2, ever),
+        then \(\rho(L_1) \le \rho(L_2)\). A position that can never be worse than another can't be rated
+        riskier than it.
+        </p>
+        <div class="tl-math">\[ L_1 \le L_2 \ \text{(pathwise)} \implies \rho(L_1) \le \rho(L_2) \]</div>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>Sub-additivity</h4>
+        <p>
+        Combining two positions can never make the measured risk worse than the sum of their individual
+        risks. Diversification should never look like it makes things worse.
+        </p>
+        <div class="tl-math">\[ \rho(L_1 + L_2) \le \rho(L_1) + \rho(L_2) \]</div>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>Positive homogeneity</h4>
+        <p>
+        Scaling a position by a positive factor \(\lambda\) scales its risk by exactly the same factor.
+        Doubling a position doubles its risk — no bonus or penalty just from pure scale.
+        </p>
+        <div class="tl-math">\[ \rho(\lambda L) = \lambda \, \rho(L), \qquad \lambda \ge 0 \]</div>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">4</div>
+      <div class="tl-step-body">
+        <h4>Translation invariance</h4>
+        <p>
+        Adding a certain (non-random) amount \(c\) to the loss — no uncertainty about it at all — should
+        change the measured risk by exactly \(c\), no more and no less.
+        </p>
+        <div class="tl-math">\[ \rho(L + c) = \rho(L) + c \]</div>
+      </div>
+    </div>
+  </div>
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(L, L_1, L_2\)</td><td>Random variables representing losses (positive = you lost money) for a position or portfolio.</td></tr>
+      <tr><td>\(\rho(\cdot)\)</td><td>A generic risk measure — a function that takes a loss distribution and returns a single number, e.g. VaR or CVaR.</td></tr>
+      <tr><td>\(p\)</td><td>The confidence level, e.g. 0.95 or 0.99 — how much of the distribution you want "covered" before the tail begins.</td></tr>
+      <tr><td>\(1-p\)</td><td>The tail probability — the chance of exceeding the risk measure's threshold.</td></tr>
+      <tr><td>\(\text{VaR}_p(L)\)</td><td>The \(p\)-confidence loss threshold — the \((1-p)\) quantile of the loss distribution.</td></tr>
+      <tr><td>\(\text{CVaR}_p(L)\)</td><td>Also called Expected Shortfall (ES) — the average loss conditional on being past \(\text{VaR}_p(L)\).</td></tr>
+      <tr><td>\(\lambda\)</td><td>A non-negative scaling factor applied to a position's size.</td></tr>
+      <tr><td>\(c\)</td><td>A deterministic (certain, non-random) amount added to a loss — e.g. a fixed cash charge.</td></tr>
+      <tr><td>\(\inf\{\cdot\}\)</td><td>"Infimum" — the smallest value in a set satisfying a condition; here, the smallest loss threshold that satisfies the VaR definition.</td></tr>
+    </table>
+  </div>
+
+  <h3>Why VaR fails sub-additivity — and why CVaR doesn't</h3>
+  <p>
+  VaR actually satisfies three of the four axioms without much trouble — monotonicity, positive
+  homogeneity, and translation invariance all hold for VaR under normal conditions. The one it fails,
+  sub-additivity, is exactly the axiom that matters most for portfolio risk management, because it's the
+  formal statement of "diversification should never look worse than concentration." The reason VaR can
+  fail it is structural, not a numerical fluke: VaR only reports where a single quantile of the loss
+  distribution sits, and throws away all information about the distribution's shape beyond that point.
+  When you combine two positions, the combined distribution's shape near its own quantile can look
+  qualitatively different from either position's shape alone — in particular, two individually-rare bad
+  outcomes can now occur <em>together</em>, shifting probability mass in a way VaR, looking at only one
+  point, has no way to anticipate from the individual VaRs alone. The worked example below makes this
+  completely concrete with two independent defaultable positions. CVaR doesn't have this failure mode
+  because it's built from an average over the <em>entire</em> tail region, not a single point on it — and
+  averages of loss variables are always sub-additive (the expectation of a sum is the sum of the
+  expectations, and conditioning on the combined tail event rather than each position's own separate tail
+  event only ever pulls the combined average down toward, never above, the two separate tail averages).
+  This is also the reason Expected Shortfall is provably <strong>convex</strong> as a function of
+  portfolio weights, which matters practically too: a convex risk measure can be minimized with standard
+  optimization tools, while VaR's lack of convexity makes it a genuinely harder, sometimes ill-behaved
+  object to optimize directly (a point developed further by Rockafellar &amp; Uryasev's linear-programming
+  formulation of CVaR minimization — see Further Reading).
+  </p>
+
+  <div class="tl-solid red">
+    <strong>The single most important fact in this lesson:</strong> VaR is not sub-additive.
+    Combining two positions that are each individually "safe" at a given confidence level can produce a
+    combined VaR that is <em>larger</em> than the sum of the two individual VaRs — the mathematical
+    opposite of what diversification is supposed to do. CVaR never has this problem; it satisfies all
+    four coherence axioms.
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Two independent defaultable bonds where VaR breaks and CVaR doesn't</h3>
+    <p>
+    Two independent corporate bonds, A and B, each with a 4% probability of default over the horizon.
+    On default, each bond loses its full $100 face value; otherwise it loses $0. Fix the confidence
+    level at \(p = 0.95\) (tail probability \(1-p = 5\%\)).
+    </p>
+    <p>
+    <strong>Individual VaR.</strong> For bond A alone: \(P(L_A > 0) = 4\% \le 5\%\), so
+    \(\text{VaR}_{0.95}(L_A) = \$0\) — the 95th-percentile outcome for a single bond is "no default," which
+    costs nothing. The identical logic gives \(\text{VaR}_{0.95}(L_B) = \$0\). Summed:
+    \(\text{VaR}_{0.95}(L_A) + \text{VaR}_{0.95}(L_B) = \$0\).
+    </p>
+    <p>
+    <strong>Combined VaR (independence assumed).</strong> The portfolio \(L_A + L_B\) has three possible
+    outcomes: $0 with probability \(0.96^2 = 92.16\%\); $100 with probability \(2 \times 0.04 \times 0.96 =
+    7.68\%\) (exactly one default); $200 with probability \(0.04^2 = 0.16\%\) (both default). Checking the
+    VaR definition at \(\ell = \$0\): \(P(L>0) = 7.68\% + 0.16\% = 7.84\% > 5\%\), so \(\ell=0\) fails the
+    condition. At \(\ell = \$100\): \(P(L>100) = 0.16\% \le 5\%\), which satisfies it. So
+    \(\text{VaR}_{0.95}(L_A+L_B) = \$100\).
+    </p>
+    <div class="tl-solid amber">
+    <strong>\(\text{VaR}_{0.95}(L_A+L_B) = \$100 > \text{VaR}_{0.95}(L_A) + \text{VaR}_{0.95}(L_B) = \$0\).</strong>
+    Sub-additivity is violated — combining the two "individually safe" positions produced measured risk
+    where none existed before.
+    </div>
+    <p>
+    <strong>Now CVaR, same setup.</strong> For bond A, \(\text{CVaR}_{0.95}(L_A) = E[L_A \mid L_A > 0] =
+    \$100\) (the only outcome with positive loss is the $100 default). Same for B:
+    \(\text{CVaR}_{0.95}(L_B) = \$100\). Summed: \(\$200\). For the combined portfolio,
+    \(\text{VaR}_{0.95}(L_A+L_B)=\$100\), so \(\text{CVaR}_{0.95}(L_A+L_B) = E[L_A+L_B \mid L_A+L_B > 100]\)
+    — the only outcome exceeding $100 is "both default," which costs exactly $200, so
+    \(\text{CVaR}_{0.95}(L_A+L_B) = \$200\).
+    </p>
+    <div class="tl-solid green">
+    <strong>\(\text{CVaR}_{0.95}(L_A+L_B) = \$200 \le \text{CVaR}_{0.95}(L_A) + \text{CVaR}_{0.95}(L_B) =
+    \$200\).</strong> Sub-additivity holds (with equality at this particular boundary case) — CVaR never
+    reports the combined risk as worse than the sum of the parts.
+    </div>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">VaR vs. CVaR: individual sum vs. combined portfolio, from the worked example above</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart showing VaR of the summed individual bonds at zero dollars, VaR of the combined portfolio at one hundred dollars (a violation of sub-additivity), and CVaR of both the summed individual bonds and the combined portfolio equal at two hundred dollars (coherent)">
+      <line x1="30" y1="260" x2="610" y2="260" style="stroke:var(--border);stroke-width:1"></line>
+      <line x1="250" y1="40" x2="250" y2="260" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"></line>
+      <text x="140" y="30" text-anchor="middle" style="font:600 12px 'DM Sans',sans-serif;fill:var(--red)">VaR — NOT coherent</text>
+      <text x="440" y="30" text-anchor="middle" style="font:600 12px 'DM Sans',sans-serif;fill:var(--green)">CVaR — coherent</text>
+      <rect x="60" y="257" width="70" height="3" style="fill:var(--text3)"></rect>
+      <text x="95" y="253" text-anchor="middle" style="font:600 11px 'DM Mono',monospace;fill:var(--text2)">$0</text>
+      <text x="95" y="278" text-anchor="middle" style="font:10px 'DM Sans',sans-serif;fill:var(--text3)">VaR(A)+VaR(B)</text>
+      <rect x="160" y="170" width="70" height="90" style="fill:var(--red);opacity:0.85"></rect>
+      <text x="195" y="163" text-anchor="middle" style="font:600 11px 'DM Mono',monospace;fill:var(--red)">$100</text>
+      <text x="195" y="278" text-anchor="middle" style="font:10px 'DM Sans',sans-serif;fill:var(--text3)">VaR(A+B)</text>
+      <line x1="130" y1="257" x2="160" y2="170" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:2,2"></line>
+      <text x="150" y="140" text-anchor="middle" style="font:600 10px 'DM Sans',sans-serif;fill:var(--red)">jumps up ⚠</text>
+      <rect x="340" y="80" width="70" height="180" style="fill:var(--green);opacity:0.85"></rect>
+      <text x="375" y="73" text-anchor="middle" style="font:600 11px 'DM Mono',monospace;fill:var(--green)">$200</text>
+      <text x="375" y="278" text-anchor="middle" style="font:10px 'DM Sans',sans-serif;fill:var(--text3)">CVaR(A)+CVaR(B)</text>
+      <rect x="440" y="80" width="70" height="180" style="fill:var(--green);opacity:0.85"></rect>
+      <text x="475" y="73" text-anchor="middle" style="font:600 11px 'DM Mono',monospace;fill:var(--green)">$200</text>
+      <text x="475" y="278" text-anchor="middle" style="font:10px 'DM Sans',sans-serif;fill:var(--text3)">CVaR(A+B)</text>
+      <line x1="410" y1="80" x2="440" y2="80" style="stroke:var(--green);stroke-width:1.5;stroke-dasharray:2,2"></line>
+      <text x="425" y="63" text-anchor="middle" style="font:600 10px 'DM Sans',sans-serif;fill:var(--green)">stays level ✓</text>
+    </svg>
+    <div class="tl-chart-caption">
+    Left pair: VaR of the combined portfolio ($100) exceeds the sum of the individual VaRs ($0) — a
+    concrete sub-additivity violation. Right pair: CVaR of the combined portfolio ($200) exactly equals
+    the sum of the individual CVaRs ($200) — the axiom holds, illustrating why CVaR is coherent and VaR
+    is not.
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Two market-making desks, each individually inside their VaR limit, breach the combined limit the day they're merged</h3>
+    <p>
+    A multi-strategy shop runs two small, independent market-making books — one in commodity futures, one
+    in single-name credit default swaps — each with its own 95% one-day VaR limit, and each comfortably
+    inside that limit on its own books because each desk's probability of a genuinely bad day (a large
+    inventory loss or a name defaulting) sits just under 5%. Ahead of a cost-cutting reorganization, risk
+    management is asked to combine the two books into a single unified P&amp;L for headcount and capital
+    purposes, and to certify that the combined book still sits inside a single, unified VaR limit set
+    at the sum of the two desks' prior individual limits. Using the exact mechanism in the worked example
+    above — each desk individually has a sub-5% chance of a bad day, but the chance that <em>at least one
+    of the two</em> has a bad day on the same day is higher than either alone — the combined book's VaR
+    comes back <em>above</em> the sum of the two prior limits, even though nothing about either desk's
+    actual risk-taking changed. A risk manager relying only on VaR reads this as "merging the desks made
+    the firm riskier," which is backwards: nothing changed except that VaR's blind spot to tail
+    co-occurrence got exposed by the act of combining. A parallel CVaR calculation on the same combined
+    book does not produce this artifact — it correctly reflects that the two desks' tail risks, while now
+    visible together, didn't actually become more severe than the sum of the parts.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <ul>
+    <li>
+    <strong>Regulatory capital moved from VaR to Expected Shortfall.</strong> The Basel Committee's
+    Fundamental Review of the Trading Book (FRTB) replaced the previous VaR-based market-risk capital
+    framework with one based on Expected Shortfall at a 97.5% confidence level, citing VaR's inability to
+    capture tail severity as a primary motivation.
+    </li>
+    <li>
+    <strong>Portfolio optimization prefers a convex risk measure.</strong> Because CVaR is convex (a
+    direct consequence of coherence), it can be plugged into standard convex-optimization machinery to
+    find, say, the minimum-CVaR portfolio subject to a return target — a well-posed problem. Minimizing
+    VaR directly is a harder, non-convex problem that can have multiple local optima and behave
+    unstably as the portfolio weights change.
+    </li>
+    <li>
+    <strong>Risk aggregation across desks or business lines.</strong> Firms that report a single
+    firm-wide risk number built by combining many desks' individual risk numbers need the aggregation
+    itself to behave sensibly — this is precisely the sub-additivity property, and precisely where a
+    naive VaR-only aggregation can silently mislead a risk committee about whether the firm, in
+    aggregate, is more or less diversified than its parts suggest.
+    </li>
+    <li>
+    <strong>VaR is still reported everywhere, just not alone.</strong> VaR remains simple, cheap to
+    compute, and intuitive to communicate ("a 1-in-20-day loss level"), so it hasn't disappeared from
+    risk reporting — it's typically reported <em>alongside</em> CVaR/Expected Shortfall rather than in
+    place of it, letting a reader see both the threshold and what lies beyond it.
+    </li>
+  </ul>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Ways coherence gets misunderstood or misapplied</h3>
+    <ul>
+      <li>
+      <strong>Assuming VaR is "wrong" rather than "incomplete."</strong> VaR isn't computed incorrectly
+      in the example above — the arithmetic is right. The problem is that VaR, by construction, only
+      ever reports one quantile and therefore cannot see co-occurring tail events across positions. It's
+      a genuinely different question from "is the number computed correctly," and conflating the two
+      leads to unproductive arguments about whose VaR calculation has a bug when the real issue is what
+      the statistic is even capable of representing.
+      </li>
+      <li>
+      <strong>Forgetting the sub-additivity violation needs tail dependence or asymmetry to bite.</strong>
+      If two positions' losses are perfectly correlated, or the loss distribution is smooth and
+      unimodal (like a normal distribution) rather than having a discrete jump like a default, VaR often
+      does behave sub-additively in practice. The violation in the worked example specifically requires
+      the discrete, "mostly fine, occasionally catastrophic" shape typical of default risk, options with
+      jump risk, or other binary/tail-heavy exposures — it is a real and important failure mode, but not
+      one that appears in every possible loss distribution.
+      </li>
+      <li>
+      <strong>Treating CVaR as automatically "the truth" because it's coherent.</strong> Coherence is a
+      property of how the risk measure behaves under combination and scaling — it says nothing about
+      whether the underlying loss distribution feeding into CVaR was itself estimated well. A CVaR
+      computed from too few tail observations is still an unstable estimate (see
+      <a href="extreme-value-theory.html">Extreme Value Theory &amp; Tail Risk</a> for exactly this
+      problem and the peaks-over-threshold machinery built to address it) — coherence is a mathematical
+      property of the formula, not a guarantee about the quality of the data feeding it.
+      </li>
+      <li>
+      <strong>Applying the axioms outside their stated assumptions.</strong> The Artzner et al. framework
+      is stated for a fixed, known probability space and (in the original formulation) a coherent
+      measure defined over a set of "acceptable" future net worths; extending the exact same intuitions
+      to, say, a strategy whose return distribution itself is uncertain (model risk on top of the risk
+      measure) requires additional care the basic four axioms don't by themselves provide.
+      </li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>VaR marks a threshold; CVaR averages the tail beyond it.</strong> That structural difference is the source of everything else in this lesson.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Coherence is four precise axioms.</strong> Monotonicity, sub-additivity, positive homogeneity, and translation invariance — Artzner, Delbaen, Eber &amp; Heath (1999).</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>VaR fails sub-additivity.</strong> Two individually "safe" defaultable positions can combine into a portfolio whose VaR exceeds the sum of the individual VaRs — the worked example shows $0+$0 → $100. This is not a hypothetical edge case; it's the textbook counterexample for exactly this reason.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>CVaR is coherent — it satisfies all four axioms.</strong> The same worked example shows CVaR holding sub-additivity exactly ($200 ≤ $200), which is why bank regulation moved toward Expected Shortfall after 2008.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Coherence is about aggregation behavior, not estimation quality.</strong> A coherent measure can still be a badly estimated one if the underlying tail data is thin — coherence and estimation accuracy are separate concerns.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This lesson is conceptual.</strong> It explains the theory behind why risk-measure choice matters; it is not a claim that any specific VaR/CVaR implementation is built or validated anywhere in this project.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What, precisely, does \(\text{VaR}_{0.99}(L)\) tell you, and what does it explicitly NOT tell you?</summary>
+    <div class="tl-answer">
+    It tells you the smallest loss threshold \(\ell\) such that the probability of losing more than
+    \(\ell\) is at most 1%, i.e. the 99th percentile of the loss distribution. It explicitly does not
+    tell you anything about how bad losses get once you're past that threshold — two distributions with
+    identical \(\text{VaR}_{0.99}\) can have completely different behavior in the tail beyond it, one
+    barely exceeding it and another running many multiples past it.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. State the sub-additivity axiom in your own words, and explain why it corresponds to "diversification should never look like it makes things worse."</summary>
+    <div class="tl-answer">
+    Sub-additivity requires \(\rho(L_1+L_2) \le \rho(L_1) + \rho(L_2)\) — the risk of the combined
+    position can never exceed the sum of the risks of the two positions taken separately. Combining
+    positions is the mathematical operation underlying portfolio diversification, so a risk measure that
+    violates this can report a diversified portfolio as riskier than holding the pieces apart, which
+    contradicts the entire economic rationale for diversifying in the first place.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. In the two-bond worked example, why is \(\text{VaR}_{0.95}\) of each individual bond exactly $0, and why does that change once the two bonds are combined?</summary>
+    <div class="tl-answer">
+    Each bond individually defaults with only 4% probability, which is below the 5% tail probability
+    implied by \(p=0.95\) — so the 95th-percentile outcome for a single bond is "no default," costing $0.
+    Once the two independent bonds are combined, the probability that <em>at least one</em> defaults rises
+    to \(1-0.96^2 = 7.84\%\), which is now above 5% — so the 95th-percentile outcome of the combined
+    portfolio is no longer "no default," it's "at least one default," which costs $100, not $0.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why does CVaR not suffer the same sub-additivity failure in that example?</summary>
+    <div class="tl-answer">
+    CVaR is an average over the entire tail region, not a single quantile point, so it doesn't depend on
+    exactly where the quantile boundary happens to fall. In the example, \(\text{CVaR}_{0.95}\) of the
+    combined portfolio conditions on the single worst outcome (both bonds default, $200) and simply
+    reports that $200 — which is exactly equal to, never more than, the sum of the two individual
+    CVaRs ($100 + $100). Averaging over the tail, rather than reading off one boundary point, is what
+    prevents the artifact that hit VaR.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Which three of the four coherence axioms does plain VaR usually satisfy, and which one does it fail?</summary>
+    <div class="tl-answer">
+    VaR generally satisfies monotonicity, positive homogeneity, and translation invariance without
+    issue. The axiom it fails is sub-additivity — and that's the one with the most direct economic
+    consequence for portfolio risk management, since it's the formal statement that diversification
+    should never look worse than concentration.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. A colleague says "CVaR is coherent, so it's always the more accurate risk number." What's wrong with that statement?</summary>
+    <div class="tl-answer">
+    Coherence is a property of how a risk measure behaves under combination, scaling, and translation —
+    it says nothing about whether the loss distribution feeding into the calculation was itself estimated
+    well. A CVaR computed from a thin tail sample (few extreme observations) can still be an unstable,
+    poorly estimated number even though the CVaR formula itself is coherent. Coherence and estimation
+    quality are separate questions — conflating them overstates what the coherence property actually
+    guarantees.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Philippe Artzner, Freddy Delbaen, Jean-Marc Eber, and David Heath, "Coherent Measures of Risk," <em>Mathematical Finance</em>, Vol. 9, No. 3, July 1999, pp. 203–228 — the original paper defining the four coherence axioms and proving VaR fails sub-additivity while a class of measures including CVaR satisfies all four.</li>
+    <li>R. Tyrrell Rockafellar and Stanislav Uryasev, "Optimization of Conditional Value-at-Risk," <em>Journal of Risk</em>, Vol. 2, No. 3, 2000, pp. 21–41 — shows CVaR's convexity and gives a linear-programming formulation for minimizing it directly in portfolio optimization.</li>
+    <li>Carlo Acerbi and Dirk Tasche, "On the Coherence of Expected Shortfall," <em>Journal of Banking &amp; Finance</em>, Vol. 26, No. 7, 2002, pp. 1487–1503 — a rigorous proof of Expected Shortfall's coherence properties across general (not just continuous) loss distributions.</li>
+    <li>Basel Committee on Banking Supervision, "Minimum Capital Requirements for Market Risk" (the Fundamental Review of the Trading Book, FRTB), Bank for International Settlements, 2019 — the regulatory framework that replaced VaR with Expected Shortfall as the standard market-risk capital measure.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="tail-risk-hedging-convexity.html">Tail Risk Hedging &amp; Portfolio Convexity →</a>
+  </div>
+</div>
+</body>
+</html>
