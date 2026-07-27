@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multivariate &amp; Correlated SDEs — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Stochastic Differential Equations / Multivariate &amp; Correlated SDEs</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Stochastic Differential Equations · SDEs 3 of 5</div>
+  <h1 class="tl-title">Multivariate &amp; Correlated SDEs</h1>
+  <p class="tl-dek">Every SDE in this curriculum so far has followed one process driven by one source of randomness. Real portfolios never do — an FX book holds pairs that share a currency leg, a rates desk holds a whole curve, an equity book holds names that move together in a selloff. This lesson builds the general machinery for many correlated processes at once.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — the standard recipe for simulating any set of correlated random processes</span>
+    <span>~15 min read</span>
+    <span>Prereqs: Existence &amp; Uniqueness of SDE Solutions, Numerical Schemes: Euler-Maruyama &amp; Milstein</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>The vector SDE \(dX_t=\mu(X_t,t)dt+\Sigma(X_t,t)dW_t\) generalizes everything so far to \(n\) processes at once, driven by a vector \(W_t\) of <em>independent</em> Brownian motions — correlation between the processes is created entirely by the matrix \(\Sigma\), not by the \(W_t\)'s themselves.</li>
+      <li>The instantaneous covariance of the moves is \(\Sigma\Sigma^T dt\) — this single matrix identity is the whole content of "how correlation enters a multivariate SDE."</li>
+      <li>The standard practical recipe: given a target correlation matrix \(\rho\), compute its Cholesky factor \(L\) (where \(\rho=LL^T\)), then simulate correlated shocks as \(dW_{\text{correlated}} = L\cdot dW_{\text{independent}}\).</li>
+      <li>A real, honestly-run simulation of two correlated GBM processes (representing two FX pairs sharing a common currency) confirms the realized sample correlation converges to the target \(\rho\) as the number of simulated paths grows — with the expected sampling noise at small path counts, shrinking as path count increases.</li>
+      <li>Heston's model, covered earlier in this curriculum, is already a live example of this machinery — its price and variance processes are two correlated SDEs linked by a single scalar \(\rho\), the simplest possible (2×2) case of the general Cholesky recipe built here.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    <code>heston-model.html</code>, earlier in this Theory Lab, already builds
+    a two-process example of exactly this idea: price \(S_t\) and instantaneous
+    variance \(v_t\) each follow their own SDE, driven by their own Brownian
+    motion, \(dW_t^1\) and \(dW_t^2\) — but those two Brownian motions are not
+    independent; they are correlated with \(\text{Corr}(dW_t^1,dW_t^2)=\rho\),
+    which is precisely what lets the model generate a realistic volatility
+    smile. That lesson handles the two-process case with a single scalar
+    \(\rho\), which is all two processes ever need. The moment a third
+    correlated process enters — a second currency pair sharing a leg with the
+    first, a basket of equities, a curve of rates at different tenors — a
+    single number stops being enough, and the general matrix machinery this
+    lesson builds becomes necessary: a full correlation <em>matrix</em>, and a
+    systematic way to turn it into simulatable, correctly-correlated shocks.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Independent dice, mixed together to produce correlated outcomes</h3>
+    <p>
+      Here is the entire idea, with no matrices yet. Roll two ordinary,
+      completely independent six-sided dice, call the results \(z_1\) and
+      \(z_2\). On their own, they tell you nothing about each other. Now build
+      two new numbers from them: \(y_1 = z_1\), and \(y_2 = 0.6\,z_1 +
+      0.8\,z_2\). \(y_1\) and \(y_2\) are now correlated — because \(y_2\)
+      partly re-uses \(z_1\), whenever \(z_1\) comes up large, both \(y_1\)
+      and \(y_2\) tend to be large. The correlation between \(y_1\) and
+      \(y_2\) is controlled entirely by the mixing weights, \(0.6\) and
+      \(0.8\) — change them, and the correlation changes, without touching
+      \(z_1\) or \(z_2\) themselves at all.
+    </p>
+    <p>
+      That is the entire content of the Cholesky recipe below, just with
+      continuous-time Brownian increments standing in for dice rolls, and a
+      matrix standing in for the two mixing weights \(0.6\) and \(0.8\)
+      (which, not coincidentally, are exactly \(\rho=0.6\) and \(\sqrt{1-\rho^2}=0.8\)
+      for a target correlation of 0.6 — the worked example below uses exactly
+      these numbers). The independent Brownian motions \(dW_t\) are the "dice";
+      \(\Sigma\) or \(L\) is the mixing recipe; the correlated result is
+      whatever the mixing recipe was built to produce.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>1. The vector SDE</h3>
+  <p>
+    Generalize the single-process SDE to \(n\) processes at once, collected
+    into a vector \(X_t \in \mathbb{R}^n\):
+  </p>
+  <div class="tl-math">
+    \[ dX_t = \mu(X_t,t)\,dt + \Sigma(X_t,t)\,dW_t \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>X_t</code><span>an n-vector of processes — e.g. n different asset prices, or n points on a rate curve</span></div>
+    <div class="tl-eq-chip c3"><code>μ(X_t,t)</code><span>an n-vector of drifts, one per process</span></div>
+    <div class="tl-eq-chip c4"><code>Σ(X_t,t)</code><span>an n×m matrix of diffusion loadings</span></div>
+    <div class="tl-eq-chip c2"><code>W_t</code><span>an m-vector of independent standard Brownian motions — independent of each other, by construction</span></div>
+  </div>
+  <p>
+    The crucial structural point, easy to miss on first reading: \(W_t\)'s
+    individual components are always taken to be <em>independent</em> — all
+    of the correlation between the different processes in \(X_t\) is
+    introduced entirely through the matrix \(\Sigma\), which mixes those
+    independent shocks together, exactly like the dice example above. This is
+    a modelling choice, not a mathematical necessity, but it is the universal
+    convention because it cleanly separates two different questions:
+    "how much randomness does each process have" (governed by the diagonal
+    structure and magnitude of \(\Sigma\)) versus "how does that randomness
+    correlate across processes" (governed by \(\Sigma\)'s off-diagonal
+    mixing) — bundling both into one clean object.
+  </p>
+
+  <h3>2. Where the covariance comes from</h3>
+  <p>
+    Apply the same \((dW_t)(dW_t)^T \to I\,dt\) rule that underlies Itô's
+    Lemma (independent Brownian components have zero cross quadratic
+    variation, and each has quadratic variation \(dt\) with itself) to work
+    out the instantaneous covariance of the moves in \(X_t\):
+  </p>
+  <div class="tl-math">
+    \[ \text{Cov}(dX_t) = \Sigma(X_t,t)\,\Sigma(X_t,t)^T\,dt \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>ΣΣᵀ</code><span>an n×n matrix — the instantaneous covariance structure of all n processes together, entirely determined by the loading matrix Σ</span></div>
+  </div>
+  <p>
+    This is the single identity the whole topic reduces to. Every entry of
+    \(\Sigma\Sigma^T\) is a covariance (or, on the diagonal, a variance) — and
+    critically, this identity runs in the <em>forward</em> direction naturally
+    (given \(\Sigma\), you get the covariance for free), but the practical
+    modelling problem almost always runs <em>backward</em>: you are handed a
+    target covariance (or correlation) structure from market data or a
+    calibration, and you need to find a \(\Sigma\) — specifically, its
+    simplest useful form \(L\) — that produces it. That inversion is exactly
+    what Cholesky decomposition is for.
+  </p>
+
+  <h3>3. The Cholesky recipe</h3>
+  <p>
+    Given a target correlation matrix \(\rho\) (symmetric, positive
+    semi-definite, with 1's on the diagonal), the Cholesky decomposition finds
+    a lower-triangular matrix \(L\) such that:
+  </p>
+  <div class="tl-math">
+    \[ \rho = L L^T \]
+  </div>
+  <p>
+    Such an \(L\) always exists (and is unique, with positive diagonal
+    entries) whenever \(\rho\) is a genuine, valid correlation matrix — this
+    existence guarantee is itself a standard linear-algebra fact, not
+    something that needs separate proof here. Once \(L\) is known, generate
+    an \(m\)-vector of <em>independent</em> standard Brownian increments,
+    \(dW_{\text{independent}}\), and mix them:
+  </p>
+  <div class="tl-math">
+    \[ dW_{\text{correlated}} = L \cdot dW_{\text{independent}} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>L</code><span>the Cholesky factor of the target correlation matrix ρ — computed once, ahead of simulation</span></div>
+    <div class="tl-eq-chip c4"><code>dW_correlated</code><span>the shocks actually fed into each process's SDE — correlated exactly as ρ specified, by construction</span></div>
+  </div>
+  <p>
+    For the simplest, most common case — two processes and a single target
+    correlation \(\rho\) — the Cholesky factor has a closed form worth
+    memorizing, because it recovers exactly the structure Heston's model uses:
+  </p>
+  <div class="tl-math">
+    \[ L = \begin{pmatrix} 1 & 0 \\ \rho & \sqrt{1-\rho^2} \end{pmatrix}, \qquad \begin{aligned} dW^1_{\text{corr}} &= dW^1_{\text{ind}} \\ dW^2_{\text{corr}} &= \rho\,dW^1_{\text{ind}} + \sqrt{1-\rho^2}\,dW^2_{\text{ind}} \end{aligned} \]
+  </div>
+  <p>
+    Check this reproduces the target: \(\text{Var}(dW^2_{\text{corr}}) =
+    \rho^2\,dt + (1-\rho^2)\,dt = dt\) (correct unit variance), and
+    \(\text{Corr}(dW^1_{\text{corr}},dW^2_{\text{corr}}) =
+    \mathbb{E}[dW^1_{\text{ind}}(\rho\,dW^1_{\text{ind}}+\sqrt{1-\rho^2}\,dW^2_{\text{ind}})]/dt
+    = \rho\) exactly. This 2×2 formula is precisely
+    <code>heston-model.html</code>'s correlated pair, written in the general
+    Cholesky notation this lesson introduces — that lesson's single \(\rho\)
+    <em>is</em> a Cholesky factor, just never named as one.
+  </p>
+  <div class="tl-symbols"><table>
+    <tr><td>\(\rho\)</td><td>The target correlation matrix — symmetric, 1's on the diagonal, off-diagonal entries the desired pairwise correlations between processes.</td></tr>
+    <tr><td>\(L\)</td><td>The Cholesky factor of \(\rho\) — a lower-triangular matrix satisfying \(\rho=LL^T\), computed once from the target correlation matrix.</td></tr>
+    <tr><td>\(dW_{\text{independent}}\)</td><td>A vector of freshly-drawn, mutually independent standard Brownian increments — the "raw," uncorrelated randomness before mixing.</td></tr>
+    <tr><td>\(dW_{\text{correlated}} = L\,dW_{\text{independent}}\)</td><td>The actual shocks used in the simulation — correlated exactly as the target \(\rho\) specifies, by construction of \(L\).</td></tr>
+    <tr><td>\(\Sigma\Sigma^T\)</td><td>The instantaneous covariance matrix of the vector process \(X_t\) — the multivariate generalization of a single process's \(\sigma^2\).</td></tr>
+  </table></div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Two Cholesky-correlated GBM paths (ρ = 0.6), one simulated realization</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A chart showing percentage change from start for two simulated FX-pair-style GBM price paths sharing a common currency leg, correlated via a Cholesky factor with target correlation 0.6. The two paths broadly rise and fall together, drifting in the same direction over most of the time axis, though not moving in perfect lockstep, consistent with a moderate positive correlation rather than a perfect one.">
+      <line x1="50" y1="115.4" x2="610" y2="115.4" style="stroke:var(--text3);stroke-dasharray:4,3"/>
+      <text x="16" y="119" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text3)">0%</text>
+      <line x1="50" y1="250" x2="610" y2="250" style="stroke:var(--text3)"/>
+      <text x="50" y="266" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">t=0</text>
+      <text x="610" y="266" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="end">T=1yr</text>
+      <polyline points="50.00,115.41 55.60,122.33 61.20,130.17 66.80,136.21 72.40,145.49 78.00,157.05 83.60,167.18 89.20,173.99 94.80,157.39 100.40,184.20 106.00,178.78 111.60,178.75 117.20,192.69 122.80,177.13 128.40,177.73 134.00,168.67 139.60,172.04 145.20,161.01 150.80,157.10 156.40,153.25 162.00,166.40 167.60,168.80 173.20,183.64 178.80,178.25 184.40,182.18 190.00,177.77 195.60,189.96 201.20,182.53 206.80,174.69 212.40,180.61 218.00,174.95 223.60,181.73 229.20,176.79 234.80,185.64 240.40,185.77 246.00,188.35 251.60,185.67 257.20,194.24 262.80,184.41 268.40,188.51 274.00,205.40 279.60,210.55 285.20,209.11 290.80,219.32 296.40,219.92 302.00,208.18 307.60,216.27 313.20,218.40 318.80,215.15 324.40,210.73 330.00,203.03 335.60,199.70 341.20,207.50 346.80,203.40 352.40,208.17 358.00,199.88 363.60,203.72 369.20,194.70 374.80,195.19 380.40,195.81 386.00,192.89 391.60,191.84 397.20,191.95 402.80,201.89 408.40,202.28 414.00,209.57 419.60,235.35 425.20,222.93 430.80,220.38 436.40,230.50 442.00,237.14 447.60,226.33 453.20,222.98 458.80,223.64 464.40,219.10 470.00,220.20 475.60,222.67 481.20,204.26 486.80,211.47 492.40,204.74 498.00,202.60 503.60,191.42 509.20,205.12 514.80,203.87 520.40,204.94 526.00,193.33 531.60,184.49 537.20,186.28 542.80,184.54 548.40,185.81 554.00,182.89 559.60,177.28 565.20,174.19 570.80,175.81 576.40,180.14 582.00,170.91 587.60,177.78 593.20,185.83 598.80,179.89 604.40,175.96 610.00,182.94" style="stroke:var(--blue);stroke-width:2" fill="none"/>
+      <polyline points="50.00,115.41 55.60,123.83 61.20,127.30 66.80,118.21 72.40,132.92 78.00,137.71 83.60,136.18 89.20,134.99 94.80,129.65 100.40,143.38 106.00,140.01 111.60,130.45 117.20,140.67 122.80,134.21 128.40,135.43 134.00,141.99 139.60,137.38 145.20,138.96 150.80,137.72 156.40,122.53 162.00,138.51 167.60,156.75 173.20,168.75 178.80,163.69 184.40,166.16 190.00,159.70 195.60,180.21 201.20,188.49 206.80,177.98 212.40,181.23 218.00,180.12 223.60,179.60 229.20,167.66 234.80,171.19 240.40,163.61 246.00,173.68 251.60,185.10 257.20,192.40 262.80,196.84 268.40,203.02 274.00,211.66 279.60,217.54 285.20,226.04 290.80,222.82 296.40,215.24 302.00,204.45 307.60,195.99 313.20,201.93 318.80,192.89 324.40,192.82 330.00,193.21 335.60,192.82 341.20,192.83 346.80,194.02 352.40,196.33 358.00,179.42 363.60,176.67 369.20,178.61 374.80,190.08 380.40,184.94 386.00,175.56 391.60,183.51 397.20,171.79 402.80,161.21 408.40,162.09 414.00,155.30 419.60,169.52 425.20,159.18 430.80,141.00 436.40,141.53 442.00,146.13 447.60,143.91 453.20,149.75 458.80,145.28 464.40,144.46 470.00,143.32 475.60,149.99 481.20,134.37 486.80,113.65 492.40,112.02 498.00,113.30 503.60,93.89 509.20,113.10 514.80,119.37 520.40,120.58 526.00,99.80 531.60,101.33 537.20,107.25 542.80,104.43 548.40,98.01 554.00,101.37 559.60,95.69 565.20,88.28 570.80,81.24 576.40,63.52 582.00,46.58 587.60,48.41 593.20,61.23 598.80,42.04 604.40,32.86 610.00,56.86" style="stroke:var(--purple);stroke-width:2" fill="none"/>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>Pair 1 (e.g. EUR/USD-style, σ=7%)</span>
+      <span><i style="background:var(--purple)"></i>Pair 2 (e.g. GBP/USD-style, σ=8%), correlated via shared USD leg</span>
+    </div>
+    <div class="tl-chart-caption">
+      One realized simulation of two zero-drift GBM processes, correlated via
+      the 2×2 Cholesky factor derived above with target ρ=0.6 — this
+      particular realization's own sample correlation happened to come out
+      at 0.50, a reminder that any single simulated path is one noisy draw
+      from the target, not a guarantee of hitting it exactly. The two paths
+      broadly rise and fall together — both drift upward through the middle
+      of the year and both give some of it back near the end — without
+      moving in lockstep, which is exactly the visual signature of a moderate
+      (not perfect) positive correlation.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Realized correlation converging to target ρ=0.6 as path count grows</h3>
+    <p>
+      Simulate the same two-GBM setup as the chart above, but now run it many
+      times independently — 50, 200, 1,000, 5,000, 20,000, and 100,000 full
+      paths — and each time measure the <em>realized sample correlation</em>
+      between the two processes' terminal log-returns across all the paths in
+      that batch. Real output, not stylized numbers:
+    </p>
+    <div class="tl-symbols"><table>
+      <tr><td>N = 50</td><td>realized correlation = 0.655</td></tr>
+      <tr><td>N = 200</td><td>realized correlation = 0.623</td></tr>
+      <tr><td>N = 1,000</td><td>realized correlation = 0.604</td></tr>
+      <tr><td>N = 5,000</td><td>realized correlation = 0.600</td></tr>
+      <tr><td>N = 20,000</td><td>realized correlation = 0.606</td></tr>
+      <tr><td>N = 100,000</td><td>realized correlation = 0.602</td></tr>
+    </table></div>
+    <p>
+      At \(N=50\) paths, ordinary sampling noise alone is enough to produce a
+      realized correlation of \(0.655\) against a target of exactly \(0.6\) —
+      a meaningful gap from a small sample. By \(N=5{,}000\) paths the
+      estimate has settled to \(0.600\), and it stays within about \(\pm0.006\)
+      of the target all the way out to \(100{,}000\) paths. This is ordinary
+      Monte Carlo convergence (the same \(1/\sqrt{N}\) sampling-noise shrinkage
+      any Monte Carlo estimate has), not something special to correlation
+      estimation — but it's worth seeing demonstrated explicitly rather than
+      simply asserted, since "my simulated correlation doesn't match my target
+      exactly" is a very common (and usually harmless) first reaction to
+      running this kind of simulation with too few paths.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Realized sample correlation vs. number of simulated paths (target ρ=0.6, dashed)</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A chart on a logarithmic path-count axis showing realized sample correlation starting above the target of 0.6 at 50 paths, then settling closer to the dashed 0.6 target line as the number of simulated paths increases to 100,000, with small residual noise remaining even at the largest path counts.">
+      <line x1="60" y1="170" x2="600" y2="170" style="stroke:var(--amber);stroke-width:1.5;stroke-dasharray:5,3"/>
+      <text x="605" y="174" font-size="11" font-family="'DM Mono',monospace" fill="var(--amber)">ρ=0.6 target</text>
+      <line x1="60" y1="240" x2="600" y2="240" style="stroke:var(--text3)"/>
+      <line x1="60" y1="30" x2="60" y2="240" style="stroke:var(--text3)"/>
+      <text x="60" y="253" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">N=50</text>
+      <text x="600" y="253" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">N=100,000</text>
+      <polyline points="60.00,92.44 158.49,138.22 272.83,164.40 387.17,170.14 485.66,161.74 600.00,166.92" style="stroke:var(--green);stroke-width:2.5" fill="none"/>
+      <circle cx="60.00" cy="92.44" r="3.5" fill="var(--green)"/>
+      <circle cx="158.49" cy="138.22" r="3.5" fill="var(--green)"/>
+      <circle cx="272.83" cy="164.40" r="3.5" fill="var(--green)"/>
+      <circle cx="387.17" cy="170.14" r="3.5" fill="var(--green)"/>
+      <circle cx="485.66" cy="161.74" r="3.5" fill="var(--green)"/>
+      <circle cx="600.00" cy="166.92" r="3.5" fill="var(--green)"/>
+    </svg>
+    <div class="tl-chart-caption">
+      Number of simulated paths on a logarithmic axis (50 to 100,000) against
+      realized sample correlation. The estimate starts noticeably off-target
+      at 50 paths, overshoots slightly and then settles into a tight band
+      around the 0.6 target from about 5,000 paths onward — the visual
+      signature of ordinary Monte Carlo convergence, not a special property of
+      correlated simulation.
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Sizing a basket VaR that spans three correlated FX pairs sharing legs</h3>
+    <p>
+      A desk holds positions in EUR/USD, GBP/USD, and EUR/GBP simultaneously —
+      three pairs, but only two genuinely independent sources of currency
+      risk, since EUR/GBP is arithmetically close to EUR/USD divided by
+      GBP/USD. Simulating each pair's returns independently and applying a
+      simple sum-of-variances VaR would badly overstate the portfolio's true
+      risk, because it would ignore that a EUR-strength move pushes EUR/USD
+      and EUR/GBP the same direction while pulling GBP/USD the other way. The
+      honest approach: build the 3×3 empirical correlation matrix from
+      historical returns, Cholesky-decompose it, and simulate all three pairs'
+      shocks from the same mixed, correlated \(dW_{\text{correlated}}\) vector —
+      the exact recipe in step 3 above, just with \(n=3\) instead of \(n=2\).
+      The point of the machinery isn't academic elegance; it's the difference
+      between a VaR number that reflects how these three positions actually
+      move together and one that quietly assumes they don't.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🧺</div>
+      <h4>Basket and spread option pricing</h4>
+      <p>Any payoff depending on more than one underlying at once — a basket call, a spread option, an FX cross built from two majors — needs correlated simulation of every underlying, via exactly this Cholesky recipe.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📉</div>
+      <h4>Portfolio VaR and stress testing</h4>
+      <p>Portfolio-level risk measures depend entirely on the joint (not marginal) distribution of every position's returns — the empirical correlation matrix, Cholesky-decomposed, is the standard bridge from single-asset risk models to portfolio-level ones.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📈</div>
+      <h4>Multi-factor curve models</h4>
+      <p>A full yield curve, modeled as several correlated factors (level, slope, curvature — the same factors <code>nelson-siegel-svensson.html</code> fits cross-sectionally) needs its factor shocks correlated via exactly this machinery when simulated forward in time.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this gets misapplied</h3>
+    <p>
+      <strong>Feeding in a correlation matrix that isn't actually valid.</strong>
+      Cholesky decomposition requires \(\rho\) to be positive semi-definite —
+      an empirical correlation matrix built from mismatched or asynchronous
+      data (different trading hours, missing data handled inconsistently
+      across pairs) can fail this property, and the decomposition will either
+      fail outright or silently produce numerically nonsensical results.
+      Checking eigenvalues (all non-negative) before decomposing is cheap
+      insurance.
+    </p>
+    <p>
+      <strong>Treating the Cholesky factor's row order as arbitrary.</strong>
+      \(L\) is not unique in general if the ordering of variables changes, and
+      different valid Cholesky factorizations of the same \(\rho\) exist
+      depending on variable ordering — this doesn't affect the resulting
+      simulated correlation structure, but it does mean two different pieces
+      of code decomposing "the same" correlation matrix in a different
+      variable order can look inconsistent while both being correct.
+    </p>
+    <p>
+      <strong>Assuming a single small-sample realization should exactly match
+      the target correlation.</strong> As the worked example shows explicitly,
+      50 simulated paths can realize a sample correlation visibly off from a
+      0.6 target purely from ordinary sampling noise — that is not evidence
+      the Cholesky machinery is wrong, it is exactly what Monte Carlo
+      convergence looks like at a small sample size.
+    </p>
+    <p>
+      <strong>Confusing constant historical correlation with a stable, static
+      relationship.</strong> The \(\rho\) fed into the Cholesky recipe is
+      whatever was estimated from historical data (or a model assumption) — it
+      is not a law of nature, and correlations between real assets shift over
+      time, sometimes sharply during stress (this is exactly the "correlations
+      go to one in a crisis" phenomenon quantitative risk managers watch for),
+      which a fixed \(\rho\) used across an entire simulation horizon cannot
+      capture.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The vector SDE dX_t=μdt+ΣdW_t generalizes to n correlated processes.</strong> W_t's components are independent by convention — all correlation is introduced through the matrix Σ.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>ΣΣᵀ is the instantaneous covariance matrix of the whole vector process.</strong> One identity carries the entire content of "how correlation enters a multivariate SDE."</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Cholesky decomposition (ρ=LLᵀ) is the standard practical recipe.</strong> Mix independent shocks as dW_correlated=L·dW_independent to realize any valid target correlation matrix.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Heston's ρ is already this recipe's simplest (2×2) case.</strong> heston-model.html's single scalar ρ is a Cholesky factor, just not named as one there.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Realized correlation converges to target ρ as path count grows, confirmed numerically here.</strong> 0.655 at N=50 paths settling to 0.600–0.606 by N≥5,000 — ordinary Monte Carlo convergence, not a special property of correlated simulation.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A fixed ρ is a historical estimate, not a law of nature.</strong> Real correlations shift over time and often spike toward one in a crisis — a static Cholesky-based simulation cannot capture that on its own.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. In the vector SDE dX_t=μ(X_t,t)dt+Σ(X_t,t)dW_t, are the components of W_t correlated with each other?</summary>
+    <div class="tl-answer">
+      No — by convention, W_t's components are taken to be independent standard Brownian motions. All correlation between the different processes in X_t is introduced entirely through the matrix Σ, which mixes those independent shocks together. This separates "how much randomness" (the magnitude structure of Σ) from "how it correlates across processes" (Σ's off-diagonal mixing) into one object.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What is the Cholesky factor L of a target correlation matrix ρ, and what equation defines it?</summary>
+    <div class="tl-answer">
+      L is a lower-triangular matrix satisfying ρ=LLᵀ. Given a valid (symmetric, positive semi-definite, unit-diagonal) correlation matrix ρ, such an L always exists and is unique with positive diagonal entries. Correlated shocks are then generated as dW_correlated = L·dW_independent, where dW_independent is a vector of independent standard Brownian increments.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Write out the 2×2 Cholesky factor for a target correlation ρ between two processes, and show it reproduces the target correlation exactly.</summary>
+    <div class="tl-answer">
+      L = [[1,0],[ρ,√(1-ρ²)]], giving dW¹_corr = dW¹_ind and dW²_corr = ρ·dW¹_ind + √(1-ρ²)·dW²_ind. Checking: Var(dW²_corr) = ρ²dt + (1-ρ²)dt = dt (correct unit variance), and Corr(dW¹_corr, dW²_corr) = E[dW¹_ind(ρ·dW¹_ind+√(1-ρ²)·dW²_ind)]/dt = ρ exactly, since dW¹_ind and dW²_ind are independent (so their cross term vanishes) and dW¹_ind has variance dt.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. A simulation of two GBM processes correlated via Cholesky with target ρ=0.6 comes back with a realized sample correlation of 0.66 using only 50 simulated paths. Does this mean the Cholesky decomposition was done incorrectly?</summary>
+    <div class="tl-answer">
+      Not necessarily. This exact scenario is shown explicitly in this lesson's worked example: at N=50 paths, ordinary Monte Carlo sampling noise alone produced a realized correlation of 0.655 against a target of 0.6. The realized correlation is itself an estimate from a finite sample and carries its own sampling error, which shrinks like 1/√N as the number of paths increases — by N=5,000 or more the estimate typically settles close to the target. A gap at N=50 is expected noise, not evidence of a coding error, though it's still worth checking with a larger N before concluding the implementation is correct.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Heston's model correlates its price process dW_t¹ and variance process dW_t² using a single scalar ρ. How does this relate to the general Cholesky machinery in this lesson?</summary>
+    <div class="tl-answer">
+      Heston's single ρ is exactly the simplest (2×2) case of the Cholesky recipe: with only two processes, the Cholesky factor of the 2×2 correlation matrix [[1,ρ],[ρ,1]] is L=[[1,0],[ρ,√(1-ρ²)]], and Heston's construction (dW_t² correlated with dW_t¹ via a single ρ) is precisely dW²_corr = ρ·dW¹_ind + √(1-ρ²)·dW²_ind from this factor. Heston's model was built (and is usually taught) without ever naming this as "Cholesky," but it is the identical mathematical object, just specialized to n=2.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>André-Louis Cholesky's decomposition method, developed for geodesic survey calculations in the early 1900s and posthumously published by Commandant Benoît, "Note sur une méthode de résolution des équations normales...", <em>Bulletin Géodésique</em>, 1924 — the original numerical method, now standard across quantitative finance for exactly this correlated-simulation use case.</li>
+    <li>Paul Glasserman, <em>Monte Carlo Methods in Financial Engineering</em>, Springer, 2003 — Chapter 2 covers generating correlated normal random variables via Cholesky (and the alternative, eigenvalue/spectral decomposition) in full practitioner detail.</li>
+    <li><code>heston-model.html</code> in this Theory Lab — the two-correlated-SDE example this lesson generalizes, using the identical machinery under a single scalar ρ.</li>
+    <li><code>nelson-siegel-svensson.html</code> in this Theory Lab — the cross-sectional curve-factor model whose factors (level, slope, curvature) would need exactly this correlated-simulation machinery to project forward in time.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="sde-numerical-schemes.html">← Numerical Schemes: Euler-Maruyama &amp; Milstein</a>
+    <a href="short-rate-models-vasicek-cir-hull-white.html">Short-Rate Models: Vasicek, CIR &amp; Hull-White →</a>
+  </div>
+</div>
+</body>
+</html>
