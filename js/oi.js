@@ -213,18 +213,37 @@ export function updateSmileHint() {
     dte: parseFloat(document.getElementById('oiDTE')?.value),
     rawIV: smile,
   });
-  // Already pasted a per-strike chain into the smile box? Nothing left to prompt for.
-  const haveSmile = !!(smile.trim() && parseIVSettlement(smile)?.strikes?.length >= 2);
-  if (!hint || haveSmile || (!hint.code && !Number.isFinite(hint.dte))) {
+  if (!hint || (!hint.code && !Number.isFinite(hint.dte))) {
     el.style.display = 'none'; el.innerHTML = ''; return;
   }
-  el.style.display = '';
+
+  // What's ALREADY in the smile box? Reopening the modal repopulates it from storage,
+  // so "box is non-empty" says nothing about whether it holds the RIGHT expiry. The
+  // first version suppressed the hint whenever the box had a chain in it, which meant
+  // pasting a fresh OI/Settlements table showed nothing at all — the reported bug.
+  // Compare expiry CODES instead and say which of the three states you're in.
+  const parsedSmile = smile.trim() ? parseIVSettlement(smile) : null;
+  const smileCode = parsedSmile?.expiryCode || null;
+  const haveChain = (parsedSmile?.strikes?.length || 0) >= 2;
+
   const stale = hint.staleMatch
-    ? `<br><span style="color:var(--amber,#f59e0b)">⚠ that expiry is ${hint.matchedDte} DTE in the Settlements table but ${hint.dte} DTE in the OI heatmap — the two tables look like they were copied on different days. Re-copy both from today.</span>`
+    ? `<br><span style="color:#f59e0b">⚠ ${hint.code} is ${hint.matchedDte} DTE in the Settlements table but ${hint.dte} DTE in the OI heatmap — that table is ~${Math.abs(hint.matchedDte - hint.dte)} days old. Re-copy it from today.</span>`
     : '';
-  el.innerHTML = (hint.code
-    ? `👉 Smile box (optional): paste expiry <b>${hint.code}</b>${hint.date ? ` (${hint.date}, ${hint.matchedDte ?? hint.dte} DTE)` : ''} — its per-strike chain. Include the title line so the LIVE futures price and DTE are read automatically.`
-    : `👉 Smile box (optional): paste the ~<b>${hint.dte} DTE</b> expiry's per-strike chain (add the Settlements table above to get its exact code).`) + stale;
+
+  let body;
+  if (haveChain && smileCode && hint.code && smileCode === hint.code) {
+    body = `✅ Smile box holds <b>${smileCode}</b> — matches the expiry your walls came from. Nothing else needed.`;
+  } else if (haveChain && smileCode && hint.code && smileCode !== hint.code) {
+    body = `⚠ Smile box holds <b>${smileCode}</b>, but the walls are on <b>${hint.code}</b>${hint.date ? ` (${hint.date})` : ''}. Charm/vanna/skew would describe a different expiry — re-paste ${hint.code}'s per-strike chain.`;
+  } else if (haveChain && !smileCode) {
+    body = `👉 Smile box holds a chain but no title line, so its expiry can't be confirmed — the walls are on <b>${hint.code || `~${hint.dte} DTE`}</b>. Re-paste including the title line if unsure.`;
+  } else if (hint.code) {
+    body = `👉 Smile box (optional): paste expiry <b>${hint.code}</b>${hint.date ? ` (${hint.date}, ${hint.matchedDte ?? hint.dte} DTE)` : ''} — its per-strike chain. Include the title line so the LIVE futures price and DTE are read automatically.`;
+  } else {
+    body = `👉 Smile box (optional): paste the ~<b>${hint.dte} DTE</b> expiry's per-strike chain (add the Settlements table above to get its exact code).`;
+  }
+  el.style.display = '';
+  el.innerHTML = body + stale;
 }
 
 if (typeof document !== 'undefined') {

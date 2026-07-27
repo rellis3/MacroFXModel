@@ -210,6 +210,32 @@ console.log('[live smile hint — resolves from pastes, no save required]');
     return x && x.code === 'EUUQ6';
   })());
 
+  // ── The smile box's OWN expiry, so the hint can compare instead of assuming ──
+  // Reopening the modal repopulates the smile box from storage, so "box is non-empty"
+  // proves nothing about WHICH expiry it holds. The first version of the hint hid
+  // itself whenever the box had a chain, which meant pasting a fresh OI/Settlements
+  // table showed nothing at all (reported 2026-07-27). The code comparison is what
+  // makes the three states — matches / wrong expiry / unknown — distinguishable.
+  const TITLE = 'EUR/USD (EUU|6E) EUUQ6 (10.88 DTE) vs 1.14065 (+0.00125) - Settles';
+  ok('smile expiry code read from a real title line', (() => {
+    const x = parseIVSettlement(TITLE + '\n' + SETTLE.split('\n').slice(1).join('\n'));
+    return x?.expiryCode === 'EUUQ6';
+  })(), 'EUUQ6');
+  ok('live futures + fractional DTE read from the same line', (() => {
+    const x = parseIVSettlement(TITLE + '\n' + SETTLE.split('\n').slice(1).join('\n'));
+    return x?.futures === 1.14065 && x?.dte === 10.88;
+  })());
+  ok('a titleless smile chain yields no code (hint must not assume it matches)', (() => {
+    const noTitle = SETTLE.split('\n').slice(1).join('\n');
+    const x = parseIVSettlement(noTitle);
+    return x && x.strikes.length >= 2 && x.expiryCode === null;
+  })());
+  ok('smile code and required code are comparable (mismatch is detectable)', (() => {
+    const x = parseIVSettlement(SETTLE);                       // MO4N6 fixture
+    const req = resolveSmileExpiry(MATRIX, TERM);              // walls on EUUQ6
+    return x.expiryCode === 'MO4N6' && req.code === 'EUUQ6' && x.expiryCode !== req.code;
+  })());
+
   // A partial/garbage paste must not throw — this runs on every keystroke.
   ok('partial paste does not throw', (() => {
     for (const junk of ['1.14', 'Strike\tC\tP', '\t\t\t', MATRIX.slice(0, 200)]) {
