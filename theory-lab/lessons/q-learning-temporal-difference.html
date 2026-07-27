@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Q-Learning &amp; Temporal-Difference Methods — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Reinforcement Learning / Q-Learning &amp; Temporal-Difference Methods</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Reinforcement Learning 2 of 3</div>
+  <h1 class="tl-title">Q-Learning &amp; Temporal-Difference Methods</h1>
+  <p class="tl-dek">How to learn the Bellman equation's values from raw experience, one step at a time, without ever needing to know the environment's transition probabilities or wait for an episode to end.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here, not built or tested anywhere in this repo</span>
+    <span>~16 min read</span>
+    <span>Prereqs: MDPs, Value Functions &amp; the Bellman Equation</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Temporal-difference (TD) learning updates a value estimate toward a target built from the <em>next step's own estimate</em>, rather than waiting for a full episode's actual return — the TD(0) update is \(V(s) \leftarrow V(s) + \alpha[r + \gamma V(s') - V(s)]\).</li>
+      <li>The bracketed quantity is the <strong>TD error</strong> — the gap between what you expected and what the very next step revealed — and it's the update signal every method in this lesson is built from.</li>
+      <li>Q-learning is the action-value version, and it's <strong>off-policy</strong>: \(Q(s,a) \leftarrow Q(s,a) + \alpha[r+\gamma\max_{a'}Q(s',a') - Q(s,a)]\) — the bootstrap term always uses the <em>greedy</em> action, regardless of which action the agent's actual (exploring) behavior took next.</li>
+      <li>SARSA is the on-policy sibling: it bootstraps off \(Q(s',a')\) for the action \(a'\) actually taken, not the best one — the two differ only in that one substitution, with real behavioral consequences.</li>
+      <li>Worked example in this lesson: explicit Q-table updates on the same 3-state flat/long/short MDP from the previous lesson, converging (with a constant step size) toward — but not exactly onto — the \(Q^*\) values solved for by hand there.</li>
+      <li>Model-free learning removes the previous lesson's biggest limitation (needing \(P\) and \(R\) up front) but trades it for a new one: you need enough sampled experience, and enough exploration, for the estimates to actually converge.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The previous lesson solved a 3-state MDP by hand — but it could only do
+    that because every transition probability and every reward was already
+    written down in the diagram. No real trading environment hands you that
+    table. What's actually available is a stream of experience: you were in
+    some state, you took some action, you observed a reward and a next
+    state. Temporal-difference learning is the family of methods that turns
+    a stream of exactly that shape — \((s,a,r,s')\) tuples — into value
+    estimates, without ever needing an explicit model of the environment.
+  </p>
+  <p>
+    This is the same generalization Kelly-style sizing eventually needs too:
+    the clean formula \(f^*=\mu/\sigma^2\) assumes \(\mu\) and \(\sigma^2\)
+    are known, and the honest caveat in that lesson was that a real trader
+    only ever has <em>estimates</em> of them, built from data. TD learning is
+    what estimating a value function directly from streamed data actually
+    looks like, worked out as an explicit update rule rather than left as a
+    caveat.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Why look one step ahead instead of waiting for the whole story?</h3>
+    <p>
+      Suppose you're estimating how good it is to hold a position, and you
+      want to learn from experience rather than from a model. One option —
+      Monte Carlo estimation — is to wait until the whole trade (or the whole
+      episode) is over, see the total return it actually produced, and use
+      that as a training signal. This works, but it's slow: you learn
+      nothing until the entire episode finishes, and if episodes are long
+      (or don't naturally end at all, like an ongoing trading account), you
+      wait a long time between updates, and every update is noisy because it
+      depends on the entire, highly variable path that happened to occur.
+    </p>
+    <p>
+      Temporal-difference learning takes a shortcut: instead of waiting for
+      the actual final outcome, it uses <em>your own current best guess</em>
+      about how good the very next state is, right after taking just one
+      step. "I thought holding this position was worth roughly \(X\); I just
+      took one step and I'm now in a state I estimate is worth \(Y\) — that
+      one step's real reward plus my updated guess about \(Y\) should have
+      matched my original guess about \(X\); to the extent it didn't, nudge
+      \(X\) toward that new number." This is called <strong>bootstrapping</strong>
+      — building an estimate partly out of another, more current estimate —
+      and it's what lets a TD method update after every single step, using
+      far less data per update, at the cost of leaning on an estimate that
+      is itself still being learned.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    <strong>TD(0) — learning the value of a state from one step of
+    experience.</strong> Recall the Bellman equation from the previous
+    lesson: \(V^\pi(s) = E[r + \gamma V^\pi(s')]\). If you only ever have
+    <em>samples</em> of \((s,r,s')\) rather than the full expectation, the
+    natural move is to treat one sampled transition as a noisy estimate of
+    that expectation and nudge your current value estimate toward it —
+    <strong>a little at a time</strong>, not all the way, since any single
+    sample is noisy:
+  </p>
+  <div class="tl-math">\[ V(s) \leftarrow V(s) + \alpha\big[\,r + \gamma V(s') - V(s)\,\big] \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>V(s)</code><span>current value estimate for state s, before this update</span></div>
+    <div class="tl-eq-chip c2"><code>α</code><span>(alpha) the learning rate — how large a step to take toward the new information, 0 &lt; α ≤ 1</span></div>
+    <div class="tl-eq-chip c3"><code>r+γV(s')</code><span>the TD target — one real reward plus the discounted current estimate of the next state</span></div>
+    <div class="tl-eq-chip c4"><code>r+γV(s')−V(s)</code><span>the TD error — how wrong the old estimate turned out to be, given this one sample</span></div>
+  </div>
+  <p>
+    The bracketed term \(r+\gamma V(s') - V(s)\) is named the
+    <strong>TD error</strong>, usually written \(\delta\). It's exactly the
+    Bellman equation's identity, but with an equals sign turned into a
+    "how far off is the left side from the right side, right now" residual —
+    zero TD error, on average, is precisely the condition the true value
+    function satisfies at the fixed point. Every update above nudges
+    \(V(s)\) by a fraction \(\alpha\) of that gap, which is why a small
+    \(\alpha\) makes learning stable but slow, and a large \(\alpha\) makes
+    it fast but noisy — the exact same speed-versus-stability trade a
+    learning rate makes in any gradient-based estimation procedure.
+  </p>
+  <p>
+    Compare this explicitly against the alternative: a <strong>Monte Carlo</strong>
+    update would instead wait for the entire episode to finish, compute the
+    actual realized return \(G_t = r_t + \gamma r_{t+1} + \gamma^2 r_{t+2}+\cdots\)
+    from that point forward, and update \(V(s) \leftarrow V(s) + \alpha[G_t -
+    V(s)]\) — using the <em>true, fully realized</em> future return instead
+    of a bootstrapped one-step estimate. Monte Carlo's target is unbiased
+    (it's the real thing, not an estimate of it) but has to wait for an
+    episode to end and carries the full variance of an entire trajectory; TD's
+    target is available after a single step and has much lower variance, but
+    is biased whenever the current \(V(s')\) estimate is still wrong (which,
+    early in learning, it always is).
+  </p>
+
+  <p>
+    <strong>Q-learning — the same idea applied to action values.</strong>
+    State values alone don't tell you which action to take without also
+    knowing the transition model; action values \(Q(s,a)\) do. Q-learning
+    applies the identical TD logic to the Bellman <em>optimality</em>
+    equation for \(Q^*\) derived in the previous lesson:
+  </p>
+  <div class="tl-math">\[ Q(s,a) \leftarrow Q(s,a) + \alpha\Big[\,r + \gamma \max_{a'} Q(s',a') - Q(s,a)\,\Big] \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Q(s,a)</code><span>current estimated value of taking action a in state s</span></div>
+    <div class="tl-eq-chip c3"><code>max_a' Q(s',a')</code><span>the value of the best action available in the next state, under the current estimates</span></div>
+    <div class="tl-eq-chip c4"><code>r+γmax Q(s',a')−Q(s,a)</code><span>the TD error for Q-learning specifically</span></div>
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">r</div>
+      <div class="tl-fp-name">Real, observed reward</div>
+      <div class="tl-fp-desc">The only piece of this update that isn't an estimate</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">max_a' Q(s',a')</div>
+      <div class="tl-fp-name">The bootstrap</div>
+      <div class="tl-fp-desc">Best-case estimate of the next state, using current (possibly still wrong) Q-values</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">Q(s,a)</div>
+      <div class="tl-fp-name">The result</div>
+      <div class="tl-fp-desc">Nudged a small step (α) toward the TD target above</div>
+    </div>
+  </div>
+  <p>
+    <strong>Why this is "off-policy."</strong> Notice precisely what
+    appears in the update: \(\max_{a'} Q(s',a')\) — the value of the
+    <em>best available</em> action in the next state, full stop. It doesn't
+    matter what action the agent actually takes next in real life. In
+    practice, an agent has to explore to discover good actions at all, so it
+    typically behaves according to an <strong>ε-greedy</strong> policy — take
+    the current best-known action most of the time, but with small
+    probability ε take a random action instead, purely to keep gathering
+    information about alternatives. Q-learning's update completely ignores
+    which of those two cases just happened; it always bootstraps off the
+    greedy choice. This means Q-learning is learning about (converging
+    toward the values of) the <em>greedy policy</em>, while behaving according
+    to a <em>different, exploring policy</em> — learning about one policy
+    while following another is the textbook definition of
+    <strong>off-policy</strong> learning.
+  </p>
+  <p>
+    <strong>SARSA — the on-policy sibling, briefly.</strong> Change exactly
+    one thing in the update — replace the \(\max\) over next actions with
+    the value of whichever action the agent's actual behavior policy
+    genuinely took next, \(a'\):
+  </p>
+  <div class="tl-math">\[ Q(s,a) \leftarrow Q(s,a) + \alpha\Big[\,r + \gamma\, Q(s',a') - Q(s,a)\,\Big] \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>Q(s',a')</code><span>the value of the action ACTUALLY taken next, by the same exploring behavior policy — not the best available one</span></div>
+  </div>
+  <p>
+    Because SARSA's bootstrap term reflects the actual (exploring, sometimes
+    random) behavior, it's on-policy: it learns the value of the policy it's
+    genuinely following, exploration and all — including the occasional cost
+    of a random exploratory action gone wrong. Q-learning, by always
+    bootstrapping off the best action regardless of what was actually taken,
+    learns the value of the purely greedy policy even while the agent is
+    still exploring around it. This single substitution is the entire
+    difference between the two algorithms, and it has a real behavioral
+    consequence: Q-learning can end up preferring riskier paths that are
+    optimal <em>if you never explore off them again</em>, while SARSA
+    naturally accounts for the ongoing cost of the exploration it's actually
+    doing.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Explicit Q-table updates on the flat/long/short MDP</h3>
+    <p>
+      Reuse the exact <a href="mdp-bellman-equation.html">3-state MDP</a>
+      from the previous lesson (Flat / Long / Short, \(\gamma=0.9\)), where
+      value iteration solved for \(Q^*(\text{Long},\text{Hold})=10\) by hand.
+      Now forget that we know the model at all — initialize every
+      \(Q(s,a)=0\) and learn purely from sampled experience, with a
+      deliberately large learning rate \(\alpha=0.5\) so the arithmetic stays
+      readable.
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Sample: Flat, take Open, land in Long, reward −0.1</h4>
+          <p>
+            TD target \(= -0.1 + 0.9\max(Q(\text{Long,Hold}),Q(\text{Long,Close})) = -0.1+0.9(0)=-0.1\).
+            TD error \(=-0.1-0=-0.1\). Update: \(Q(\text{Flat,Open}) \leftarrow
+            0 + 0.5(-0.1) = -0.05\).
+          </p>
+          <p>
+            Notice this dips <em>negative</em> — a single unlucky-looking
+            sample of the transition cost, before any of Long's real upside
+            has been discovered yet, temporarily makes Open look worse than
+            Stay (\(Q(\text{Flat,Stay})=0\)). This is expected and completely
+            normal early in learning: individual samples are noisy, and only
+            enough of them, combined with exploration that keeps trying
+            Open anyway, will straighten the ranking out.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Sample: Long, take Hold, stay in Long, reward +1</h4>
+          <p>
+            TD target \(= 1+0.9\max(Q(\text{Long,Hold}),Q(\text{Long,Close})) = 1+0.9(0)=1\).
+            TD error \(=1-0=1\). Update: \(Q(\text{Long,Hold}) \leftarrow 0+0.5(1)=0.5\).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Sample: Long, take Hold again, stay in Long, reward +1</h4>
+          <p>
+            TD target \(=1+0.9\max(0.5,0)=1+0.45=1.45\). TD error
+            \(=1.45-0.5=0.95\). Update: \(Q(\text{Long,Hold}) \leftarrow
+            0.5+0.5(0.95)=0.975\).
+          </p>
+          <p>
+            Repeating this exact sampled transition (Long, Hold, +1, back to
+            Long) follows a clean recursion, \(Q_{k+1} = 0.95\,Q_k+0.5\),
+            whose fixed point is exactly \(Q^*(\text{Long},\text{Hold})=10\)
+            — the same number solved for algebraically in the previous
+            lesson, now being approached purely from repeated sampled
+            experience instead of a known model.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Q(Long, Hold) climbing toward Q* = 10 under repeated sampling</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart showing Q of Long, Hold rising from zero and approaching, but not exactly reaching, the dashed asymptote at 10 over 40 simulated updates, following the recursion Q sub k plus one equals point nine five times Q sub k plus point five. Two labeled points mark the first two hand-computed updates from the worked example, at 0.5 and 0.975.">
+      <line x1="70" y1="30" x2="70" y2="270" style="stroke:var(--border)"/>
+      <line x1="70" y1="270" x2="610" y2="270" style="stroke:var(--border)"/>
+      <line x1="70" y1="51" x2="610" y2="51" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+      <text x="614" y="55" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">Q* = 10</text>
+
+      <path d="M70,270 L124,229.4 L178,196.3 L232,169.4 L286,147.4 L340,129.5 L394,115.0 L448,103.1 L502,93.4 L556,85.5 L610,79.1" style="stroke:var(--blue);stroke-width:2.5;fill:none;stroke-linecap:round"/>
+
+      <circle cx="83.5" cy="259.1" r="3.5" fill="var(--amber)"/>
+      <text x="83.5" y="245" text-anchor="middle" fill="var(--amber)" font-size="10.5" font-family="'DM Mono',monospace">step 1: 0.5</text>
+      <circle cx="97" cy="248.7" r="3.5" fill="var(--amber)"/>
+      <text x="150" y="238" text-anchor="middle" fill="var(--amber)" font-size="10.5" font-family="'DM Mono',monospace">step 2: 0.975</text>
+
+      <text x="340" y="292" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">update number (sampled transitions)</text>
+      <text x="26" y="150" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 26 150)">Q(Long, Hold)</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Each repeated sample of the same (Long, Hold, +1, Long) transition
+      closes roughly 5% of the remaining gap to \(Q^*=10\) (since
+      \(\alpha(1-\gamma)=0.05\) here) — fast early progress, then a long,
+      slow approach that never exactly touches the asymptote in finite time
+      with a constant learning rate.
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Why off-policy matters for a system that must keep exploring</h3>
+    <p>
+      A systematic strategy that's still refining its own rules can't only
+      ever take the action it currently believes is best — it needs to keep
+      testing alternatives to avoid getting stuck on a locally-good-looking
+      but globally suboptimal habit (the same exploration/exploitation
+      tension that shows up in any adaptive sizing or regime-detection
+      system). Q-learning's off-policy property means the system can keep
+      exploring — trying the occasional non-greedy action to gather
+      information — while its learned \(Q\)-values still converge toward
+      what the fully greedy, no-longer-exploring policy would be worth. SARSA
+      would instead learn the value of "acting greedily, except for the
+      exploration noise I'm actually generating" — arguably more honest about
+      what's really happening, but conflating the policy's true worth with
+      the cost of the exploration used to learn it.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Q-learning in its tabular form (an explicit \(Q(s,a)\) entry for every
+    state-action pair, as in the worked example) only works when the state
+    space is small enough to enumerate. Deep Q-Networks (DQN, Mnih et al.
+    2015) replaced the table with a neural network approximating
+    \(Q(s,a;\theta)\), which is what made Q-learning practical for
+    high-dimensional inputs like raw pixels in Atari games — the same TD
+    update rule, just with the table entry replaced by a network's output
+    and the update turned into a gradient step on \(\theta\) instead of a
+    direct table overwrite. TD methods more broadly (TD(0) here is the
+    simplest case of a whole family, including multi-step and eligibility-trace
+    variants like TD(λ)) remain the standard tool anywhere an agent needs to
+    learn values from an ongoing stream of experience rather than from a
+    known model or from waiting out full episodes.
+  </p>
+  <p>
+    Outside of games and robotics, the same off-policy-versus-on-policy
+    distinction shows up any time a system logs data under one behavior (an
+    existing rule, or exploration noise) but wants to evaluate a
+    <em>different</em> candidate policy from those same logs — off-policy
+    methods are exactly the tool built for reusing already-collected
+    experience to answer "what would a different rule have been worth,"
+    without having to actually run that different rule live first.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where TD learning and Q-learning quietly go wrong</h3>
+    <p>
+      <strong>A constant learning rate never exactly converges.</strong> As
+      the chart above shows, the sequence keeps closing roughly 5% of the
+      remaining gap every step but never reaches it in finite time. Formal
+      convergence guarantees for TD and Q-learning require the step size to
+      decay over time under the Robbins-Monro conditions (\(\sum_k \alpha_k =
+      \infty\) and \(\sum_k \alpha_k^2 < \infty\) — enough total movement to
+      reach the target, but shrinking fast enough for the noise to average
+      out). A constant \(\alpha\), used here purely so the worked arithmetic
+      stays readable, converges only to a neighborhood of \(Q^*\) and keeps a
+      permanent residual variance from every subsequent sample.
+    </p>
+    <p>
+      <strong>Insufficient exploration means some \((s,a)\) pairs never get
+      learned correctly.</strong> Both TD and Q-learning's convergence
+      guarantees require every state-action pair to be visited infinitely
+      often (in the limit). A purely greedy behavior policy can get stuck
+      always taking the same action from a state and never discover that a
+      different action there was actually better — this is exactly why
+      ε-greedy (or another explicit exploration mechanism) isn't optional
+      machinery, it's load-bearing for the math to hold.
+    </p>
+    <p>
+      <strong>Q-learning's known overestimation bias.</strong> Because the
+      update always bootstraps off a \(\max\) over noisy estimates, and the
+      max of several noisy numbers is itself upward-biased relative to the
+      true best value, tabular and especially function-approximated Q-learning
+      systematically overestimates action values, particularly early in
+      learning or under heavy noise. Double Q-learning (van Hasselt, 2010) is
+      the standard fix, using two separately updated estimators to decouple
+      the action-selection max from the action-value estimate being used.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>TD learning bootstraps off the next step's own estimate</strong> instead of waiting for the full episode's realized return — lower variance per update, but biased whenever the current estimate is still wrong.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The TD error \(r+\gamma V(s')-V(s)\) is the update signal underneath every method in this lesson</strong> — including, as the next lesson shows, actor-critic's advantage estimate.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Q-learning is off-policy: it bootstraps off \(\max_{a'}Q(s',a')\) regardless of the action actually taken next.</strong> It learns the value of the greedy policy while the agent's real behavior is still exploring.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>SARSA changes exactly one term — the max becomes the actually-taken next action — making it on-policy instead.</strong> It learns the value of the policy actually being followed, exploration and all.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A constant learning rate converges to a neighborhood of \(Q^*\), not exactly onto it.</strong> Formal convergence needs a decaying step size satisfying the Robbins-Monro conditions.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Exploration isn't optional — it's part of the convergence guarantee.</strong> Every state-action pair needs to be visited enough for its Q-value to be learned correctly; a purely greedy behavior policy can permanently miss better alternatives.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What does "bootstrapping" mean in the context of TD learning, and what does it trade away relative to a Monte Carlo update?</summary>
+    <div class="tl-answer">
+      Bootstrapping means building a target for updating one value estimate
+      out of another value estimate that is itself still being learned — TD's
+      target \(r+\gamma V(s')\) uses the current (possibly still wrong)
+      estimate of \(V(s')\) rather than the actual realized return from that
+      point forward. This trades a small amount of bias (the target is only
+      as good as the current, imperfect estimate of \(V(s')\)) for a large
+      reduction in variance and the ability to update after every single
+      step rather than waiting for an entire episode to finish, which is
+      what a Monte Carlo update requires.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why is Q-learning called "off-policy," specifically — what two things is it learning about versus following?</summary>
+    <div class="tl-answer">
+      Q-learning's update always uses \(\max_{a'}Q(s',a')\) — the value of
+      whichever action looks best in the next state under current estimates
+      — regardless of what action the agent's actual behavior policy (often
+      ε-greedy, which sometimes acts randomly to explore) took next. So the
+      values being learned converge toward the value of the purely greedy
+      policy, while the data used to learn them is generated by a different,
+      exploring behavior policy. Learning about one policy's values while
+      generating experience under a different one is exactly what "off-policy"
+      means.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. In the worked example, why did Q(Flat, Open) become negative after just one sampled transition, even though Open is actually the better action at Flat?</summary>
+    <div class="tl-answer">
+      Because that one sample only captured the small negative transition
+      cost (r=−0.1) of opening a position, before any subsequent sample had
+      yet revealed the large positive value of holding a resulting Long
+      position. Q-learning updates from whatever single sample it just saw;
+      early on, with all downstream Q-values still at their initial zero, the
+      bootstrap term contributes nothing, so the estimate temporarily
+      reflects only the immediate cost. Repeated sampling of the full chain
+      of transitions — including the profitable Hold-in-Long samples — is
+      what eventually corrects the ranking, which is exactly why sufficient
+      exploration and enough samples are part of the convergence guarantee,
+      not an optional nicety.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What single substitution turns Q-learning's update rule into SARSA's, and what real behavioral difference does it create?</summary>
+    <div class="tl-answer">
+      Replace \(\max_{a'}Q(s',a')\) with \(Q(s',a')\) for whichever action
+      \(a'\) the behavior policy actually took next. The behavioral
+      consequence: Q-learning evaluates the purely greedy policy regardless
+      of exploration, so it can favor paths that are optimal only if
+      exploration stops entirely; SARSA evaluates the policy actually being
+      followed, exploration noise included, so it naturally accounts for the
+      real, ongoing risk of the exploratory actions the agent keeps taking.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why does a constant learning rate α in the worked example's recursion never let Q(Long, Hold) exactly reach 10, no matter how many updates run?</summary>
+    <div class="tl-answer">
+      The recursion \(Q_{k+1}=0.95\,Q_k+0.5\) always closes exactly the same
+      fraction (5%, i.e. \(\alpha(1-\gamma)\)) of whatever gap remains to the
+      fixed point 10 — a geometric approach that gets arbitrarily close but
+      only reaches the limit as the number of updates goes to infinity, never
+      at any finite step. Formal convergence proofs for TD and Q-learning
+      instead require a learning rate that decays over time (the
+      Robbins-Monro conditions), which both allows enough total movement to
+      reach the target and shrinks the residual noise from each sample to
+      zero in the limit — something a fixed α cannot do.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Richard S. Sutton, <em>"Learning to Predict by the Methods of Temporal Differences"</em>, Machine Learning, 1988 — the original TD learning paper.</li>
+    <li>Christopher J. C. H. Watkins and Peter Dayan, <em>"Q-Learning"</em>, Machine Learning, 1992 — the original Q-learning paper, including its convergence proof and the off-policy framing.</li>
+    <li>Richard S. Sutton and Andrew G. Barto, <em>Reinforcement Learning: An Introduction</em> (2nd ed.), MIT Press, 2018 — Chapters 6–7 cover TD learning, SARSA, and Q-learning side by side with the clearest available exposition of the on-policy/off-policy distinction.</li>
+    <li>Volodymyr Mnih et al., <em>"Human-level control through deep reinforcement learning"</em>, Nature, 2015 — the Deep Q-Network paper that scaled tabular Q-learning to high-dimensional inputs via function approximation.</li>
+    <li>Hado van Hasselt, <em>"Double Q-learning"</em>, NeurIPS, 2010 — the standard fix for Q-learning's overestimation bias, referenced in the pitfalls section above.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="mdp-bellman-equation.html">← MDPs, Value Functions &amp; the Bellman Equation</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="policy-gradients-actor-critic.html">Policy Gradients &amp; Actor-Critic Methods →</a>
+  </div>
+</div>
+</body>
+</html>

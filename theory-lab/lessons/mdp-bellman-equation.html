@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MDPs, Value Functions &amp; the Bellman Equation — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Reinforcement Learning / MDPs, Value Functions &amp; the Bellman Equation</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Reinforcement Learning 1 of 3</div>
+  <h1 class="tl-title">MDPs, Value Functions &amp; the Bellman Equation</h1>
+  <p class="tl-dek">The formal object underneath every reinforcement-learning method: a Markov Decision Process, and the recursive identity — value equals immediate reward plus discounted value of what comes next — that makes it solvable at all.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here, not built or tested anywhere in this repo</span>
+    <span>~17 min read</span>
+    <span>Prereqs: Kelly Criterion &amp; Position Sizing</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A Markov Decision Process (MDP) is the tuple \((S,A,P,R,\gamma)\) — states, actions, transition probabilities, rewards, and a discount factor — the standard formalism for a sequential decision problem where today's action changes tomorrow's situation.</li>
+      <li>The value function \(V^\pi(s)\) is the expected discounted sum of all future rewards, starting in state \(s\) and following policy \(\pi\) forever after.</li>
+      <li>The Bellman equation is a recursive identity, not a new assumption: \(V^\pi(s) = \sum_a \pi(a|s)\sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma V^\pi(s')]\) — value now equals immediate reward plus the discounted value of wherever you land next.</li>
+      <li>The Bellman <em>optimality</em> equation replaces "average over the policy's actions" with "take the best one": \(V^*(s) = \max_a \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma V^*(s')]\), and its action-value twin \(Q^*(s,a)\) scores a specific action directly.</li>
+      <li>Worked example in this lesson: a 3-state flat/long/short position MDP solved by value iteration — the numbers climb steadily every sweep and settle at a fixed point that also happens to encode the sensible policy (stay long, don't stay short).</li>
+      <li>This is the shared foundation both follow-up lessons build on: Q-learning (next lesson) turns this into a learning rule when \(P\) and \(R\) aren't known in advance; policy gradients (lesson 3) skip the \(\max_a\) altogether for continuous actions.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Every strategy this curriculum has covered so far picks a static rule — a
+    z-score threshold, a Kelly fraction, a regime classifier — and applies it
+    the same way regardless of what happens next. Reinforcement learning (RL)
+    is the branch of decision theory built for the opposite case: problems
+    where an action today changes the situation you're reacting to tomorrow,
+    and the "right" action can only be judged by its effect on the entire
+    future path, not just its immediate payoff. Deciding whether to close a
+    losing position now or hold it, or how much size to add to a winner, are
+    both sequential decisions in exactly this sense — the position you're in
+    tomorrow depends on what you do today.
+  </p>
+  <p>
+    <a href="kelly-criterion.html">The Kelly criterion</a> already showed one
+    version of this idea: it picked a bet size not to maximize the next bet's
+    expected profit, but to maximize long-run compounded growth across many
+    repeated bets — a sequential-decision problem solved by looking past the
+    immediate payoff. The Markov Decision Process is the general machinery
+    behind that same instinct, formalized enough to solve exactly (in a small
+    problem) or approximately (in a large one, which is what the next two
+    lessons are about). Understanding the MDP and its Bellman equation first
+    is what makes Q-learning's update rule and the policy gradient theorem
+    look like natural consequences of one idea, rather than two unrelated
+    algorithms to memorize.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>What makes a decision problem "Markov," and why does that matter?</h3>
+    <p>
+      Imagine grading a position not by "how good does this feel right now"
+      but by "starting from here, and playing well from here on, how much do
+      I expect to make in total, discounted for the fact that a dollar next
+      year is worth less than a dollar today?" That single number — the
+      expected total future payoff from a state, under some way of acting —
+      is a <strong>value</strong>. An MDP is just a precise way of writing
+      down: here are the situations you can be in (<strong>states</strong>),
+      here are the choices available in each one (<strong>actions</strong>),
+      here is how likely each choice is to land you in each next situation
+      (<strong>transition probabilities</strong>), and here is the immediate
+      payoff or cost of each transition (<strong>rewards</strong>).
+    </p>
+    <p>
+      "Markov" is the assumption that makes this tractable: the current state
+      captures everything relevant about the past. What happens next depends
+      only on where you are and what you do now — not on the full history of
+      how you got there. This is obviously a simplification for real markets
+      (path dependence, regime memory, and momentum all violate it to some
+      degree), but it's a deliberate one: it's the same kind of "clean but
+      useful" idealization the Kelly derivation makes when it assumes you know
+      your edge exactly, or a normal-distribution primer makes when it ignores
+      fat tails. You build the exact math on the idealization first, then
+      reason carefully about where the real world will diverge from it.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    <strong>The five pieces of an MDP.</strong> Formally, a Markov Decision
+    Process is the tuple \((S, A, P, R, \gamma)\):
+  </p>
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(S\)</td><td>The set of states — every distinct situation the process can be in.</td></tr>
+      <tr><td>\(A\)</td><td>The set of actions — the choices available (possibly different sets per state).</td></tr>
+      <tr><td>\(P(s'|s,a)\)</td><td>Transition probability — chance of landing in state \(s'\) given you took action \(a\) in state \(s\).</td></tr>
+      <tr><td>\(R(s,a,s')\)</td><td>The reward received for that specific state-action-next-state transition.</td></tr>
+      <tr><td>\(\gamma\)</td><td>(gamma) The discount factor, \(0 \le \gamma < 1\) — how much a unit of reward one step in the future is worth today.</td></tr>
+      <tr><td>\(\pi(a|s)\)</td><td>A policy — the probability of taking action \(a\) when in state \(s\) (a deterministic policy is the special case where one action gets probability 1).</td></tr>
+      <tr><td>\(t\)</td><td>The time step index, \(t=0,1,2,\dots\)</td></tr>
+      <tr><td>\(V^\pi(s)\)</td><td>The value function — expected discounted return from state \(s\), following policy \(\pi\).</td></tr>
+      <tr><td>\(V^*(s)\)</td><td>The optimal value function — the best possible \(V^\pi(s)\), over every policy \(\pi\).</td></tr>
+      <tr><td>\(Q^*(s,a)\)</td><td>The optimal action-value function — the best possible expected return from taking action \(a\) in state \(s\), then acting optimally after.</td></tr>
+    </table>
+  </div>
+  <p>
+    The discount factor \(\gamma\) does two jobs at once: economically, it
+    encodes that a reward tomorrow is worth less than the same reward today
+    (the same reasoning behind discounting a bond's future cash flows back to
+    present value); mathematically, it's what keeps an infinite sum of
+    rewards from being infinite. A value of \(\gamma\) close to \(1\) means
+    the agent cares almost as much about the distant future as the present;
+    \(\gamma\) close to \(0\) means it's almost entirely short-sighted,
+    caring only about the very next reward.
+  </p>
+  <p>
+    <strong>The value function — defining "how good is this state."</strong>
+    Fix a policy \(\pi\) (a rule for choosing actions, possibly randomized).
+    The value of state \(s\) under that policy is the expected sum of all
+    future rewards, each discounted by how far away it is in time:
+  </p>
+  <div class="tl-math">\[ V^\pi(s) = E\!\left[\sum_{t=0}^{\infty} \gamma^t r_t \;\middle|\; s_0=s,\ \pi\right] \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>V^π(s)</code><span>expected total discounted future reward, starting in state s</span></div>
+    <div class="tl-eq-chip c2"><code>γ^t r_t</code><span>the reward received t steps from now, shrunk by γ raised to the t-th power</span></div>
+    <div class="tl-eq-chip c3"><code>s₀=s, π</code><span>conditioned on: starting state is s, and every action is chosen by policy π</span></div>
+  </div>
+  <p>
+    This single number compresses an entire infinite future — every reward
+    the agent will ever collect from this point on, under this way of
+    behaving — into one comparable quantity. It's exactly the same
+    compression a bond's price performs on a stream of future coupons, or
+    that <a href="kelly-criterion.html">Kelly's log-growth objective</a>
+    performs on an entire sequence of compounding bets: reduce a whole future
+    to one number you can actually maximize.
+  </p>
+
+  <p>
+    <strong>Deriving the Bellman equation — the recursive shortcut.</strong>
+    Computing \(V^\pi(s)\) by directly summing an infinite series looks
+    hopeless. The trick is to notice that the infinite sum has the same shape
+    one step later as it does right now — split off just the first reward
+    and re-index the rest of the sum:
+  </p>
+  <div class="tl-math">\[ V^\pi(s) = E\big[r_0 + \gamma r_1 + \gamma^2 r_2 + \cdots \mid s_0=s,\pi\big] = E\big[r_0 + \gamma(r_1 + \gamma r_2 + \cdots) \mid s_0=s,\pi\big] \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>r₁+γr₂+⋯</code><span>the exact same infinite-sum shape as V^π itself, just starting one step later — from whatever state s' comes next</span></div>
+  </div>
+  <p>
+    The term in parentheses is <em>literally the value function again</em>,
+    just evaluated at whatever state \(s'\) the process happens to land in
+    after one step: \(r_1 + \gamma r_2 + \cdots = V^\pi(s')\). Substituting
+    that back in, and expanding the expectation over which action \(\pi\)
+    picks and which next state \(P\) produces, gives the Bellman equation:
+  </p>
+  <div class="tl-math">\[ V^\pi(s) = \sum_{a} \pi(a|s) \sum_{s'} P(s'|s,a)\Big[R(s,a,s') + \gamma V^\pi(s')\Big] \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Σ_a π(a|s)</code><span>average over which action the policy takes in state s</span></div>
+    <div class="tl-eq-chip c2"><code>Σ_s' P(s'|s,a)</code><span>average over which next state that action actually lands in</span></div>
+    <div class="tl-eq-chip c3"><code>R(s,a,s')+γV^π(s')</code><span>the one-step reward plus the discounted value of wherever you end up</span></div>
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">R(s,a,s')</div>
+      <div class="tl-fp-name">Immediate reward</div>
+      <div class="tl-fp-desc">What you get right now for this specific transition</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">γV^π(s')</div>
+      <div class="tl-fp-name">Discounted future value</div>
+      <div class="tl-fp-desc">Everything after this step, compressed into the next state's own value</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">V^π(s)</div>
+      <div class="tl-fp-name">The result</div>
+      <div class="tl-fp-desc">Today's value — one step of reward plus tomorrow's value, averaged over the randomness</div>
+    </div>
+  </div>
+  <p>
+    This is the whole idea in one sentence: <strong>value now equals
+    immediate reward plus the discounted value of what comes next.</strong>
+    It's a recursive definition, not a new physical assumption — it follows
+    purely from splitting an infinite sum. But it's exactly the identity that
+    makes an MDP solvable: instead of needing to sum an infinite, unbounded
+    future directly, you only ever need to relate a state's value to its
+    <em>immediate neighbors'</em> values. That's what turns an
+    infinite-horizon problem into a finite system of equations (one per
+    state) that can be solved by substitution, by iteration, or by a learning
+    rule that only ever looks one step ahead — which is exactly the door this
+    equation opens for the next lesson.
+  </p>
+
+  <p>
+    <strong>The Bellman optimality equation.</strong> Everything above assumed
+    a fixed policy \(\pi\) and asked "how good is it?" The more useful
+    question is usually "what's the <em>best possible</em> value achievable
+    from this state, over every policy?" Define \(V^*(s) = \max_\pi V^\pi(s)\).
+    Because the best policy, by definition, always takes whichever action
+    leads to the highest expected value, the averaging-over-actions term in
+    the Bellman equation is replaced by a maximization over actions:
+  </p>
+  <div class="tl-math">\[ V^*(s) = \max_{a} \sum_{s'} P(s'|s,a)\Big[R(s,a,s') + \gamma V^*(s')\Big] \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>max_a</code><span>replaces "average over the policy's actions" with "take whichever action is best"</span></div>
+    <div class="tl-eq-chip c4"><code>V*(s)</code><span>the best possible value achievable from state s, over every policy</span></div>
+  </div>
+  <p>
+    This single change — average becomes maximum — is what separates
+    "evaluating a given policy" from "finding the best one." It's also
+    self-referential in exactly the same recursive way as before: \(V^*\)
+    appears on both sides, one step apart.
+  </p>
+  <p>
+    <strong>The action-value function \(Q^*(s,a)\).</strong> It's often more
+    useful to score a specific action directly, rather than only scoring
+    states. Define \(Q^*(s,a)\) as the expected return of taking action
+    \(a\) in state \(s\) right now, then acting optimally forever after:
+  </p>
+  <div class="tl-math">\[ Q^*(s,a) = \sum_{s'} P(s'|s,a)\Big[R(s,a,s') + \gamma V^*(s')\Big] = \sum_{s'} P(s'|s,a)\Big[R(s,a,s') + \gamma \max_{a'} Q^*(s',a')\Big] \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>Q*(s,a)</code><span>value of taking action a now, then playing optimally forever after</span></div>
+    <div class="tl-eq-chip c3"><code>max_a' Q*(s',a')</code><span>rewriting V*(s') in terms of Q* itself — the same quantity, one step later</span></div>
+  </div>
+  <p>
+    Notice the relationship between the two: \(V^*(s) = \max_a Q^*(s,a)\) —
+    the best value of a state is just the value of its best action. This
+    particular rewriting, expressing \(Q^*\) recursively in terms of itself
+    one step later rather than in terms of \(V^*\), is the exact identity
+    Q-learning's update rule is built from directly — the subject of the next
+    lesson.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A tiny 3-state trading MDP: Flat / Long / Short, with actions and rewards</div>
+    <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="State diagram with three nodes: Flat, Long and Short. From Flat, action Stay loops back to Flat with reward zero, and action Open transitions with probability one half each to Long or Short, each costing a small transition reward of minus 0.1. From Long, action Hold loops back to Long with reward plus 1, and action Close transitions to Flat with reward minus 0.1. From Short, action Hold loops back to Short with reward minus 0.5, and action Close transitions to Flat with reward minus 0.1.">
+      <defs>
+        <marker id="rlArrow" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="var(--text2)"/>
+        </marker>
+      </defs>
+
+      <path d="M178,128 Q320,55 430,72" fill="none" stroke="var(--blue)" stroke-width="2" marker-end="url(#rlArrow)"/>
+      <text x="300" y="62" text-anchor="middle" fill="var(--blue)" font-size="11.5" font-family="'DM Mono',monospace">Open (p=0.5): r=−0.1</text>
+
+      <path d="M178,172 Q320,245 430,228" fill="none" stroke="var(--blue)" stroke-width="2" marker-end="url(#rlArrow)"/>
+      <text x="300" y="262" text-anchor="middle" fill="var(--blue)" font-size="11.5" font-family="'DM Mono',monospace">Open (p=0.5): r=−0.1</text>
+
+      <path d="M432,95 Q300,120 184,138" fill="none" stroke="var(--amber)" stroke-width="2" marker-end="url(#rlArrow)"/>
+      <text x="300" y="118" text-anchor="middle" fill="var(--amber)" font-size="11.5" font-family="'DM Mono',monospace">Close: r=−0.1</text>
+
+      <path d="M432,205 Q300,182 184,162" fill="none" stroke="var(--amber)" stroke-width="2" marker-end="url(#rlArrow)"/>
+      <text x="300" y="206" text-anchor="middle" fill="var(--amber)" font-size="11.5" font-family="'DM Mono',monospace">Close: r=−0.1</text>
+
+      <path d="M112,124 A28,24 0 1 1 168,124" fill="none" stroke="var(--green)" stroke-width="2" marker-end="url(#rlArrow)"/>
+      <text x="140" y="85" text-anchor="middle" fill="var(--green)" font-size="11.5" font-family="'DM Mono',monospace">Stay: r=0</text>
+
+      <path d="M442,38 A26,22 0 1 1 494,38" fill="none" stroke="var(--green)" stroke-width="2" marker-end="url(#rlArrow)"/>
+      <text x="468" y="15" text-anchor="middle" fill="var(--green)" font-size="11.5" font-family="'DM Mono',monospace">Hold: r=+1</text>
+
+      <path d="M442,262 A26,22 0 1 1 494,262" fill="none" stroke="var(--red)" stroke-width="2" marker-end="url(#rlArrow)"/>
+      <text x="468" y="303" text-anchor="middle" fill="var(--red)" font-size="11.5" font-family="'DM Mono',monospace">Hold: r=−0.5</text>
+
+      <circle cx="140" cy="150" r="40" fill="var(--blue-bg)" stroke="var(--blue)" stroke-width="2"/>
+      <text x="140" y="155" text-anchor="middle" fill="var(--text)" font-size="14" font-weight="700" font-family="'DM Sans',sans-serif">Flat</text>
+
+      <circle cx="468" cy="70" r="40" fill="var(--green-bg)" stroke="var(--green)" stroke-width="2"/>
+      <text x="468" y="75" text-anchor="middle" fill="var(--text)" font-size="14" font-weight="700" font-family="'DM Sans',sans-serif">Long</text>
+
+      <circle cx="468" cy="230" r="40" fill="var(--red-bg)" stroke="var(--red)" stroke-width="2"/>
+      <text x="468" y="235" text-anchor="middle" fill="var(--text)" font-size="14" font-weight="700" font-family="'DM Sans',sans-serif">Short</text>
+    </svg>
+    <div class="tl-chart-caption">
+      A deliberately tiny MDP: three states, two actions per state, one
+      genuinely stochastic transition (opening a position lands you Long or
+      Short with equal probability, representing not knowing which way the
+      market moves next). Everything below is solved from this exact diagram.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Solving the 3-state MDP by hand with value iteration</h3>
+    <p>
+      Take \(\gamma=0.9\). Value iteration starts every state's value at zero
+      and repeatedly applies the Bellman optimality equation as an update
+      rule — plug in last sweep's values, get this sweep's values, using
+      \(V_{k+1}(s) = \max_a \sum_{s'} P(s'|s,a)[R(s,a,s')+\gamma V_k(s')]\):
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">0</div>
+        <div class="tl-step-body">
+          <h4>Initialize</h4>
+          <p>\(V_0(\text{Flat})=0,\ V_0(\text{Long})=0,\ V_0(\text{Short})=0\).</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Sweep 1</h4>
+          <p>
+            Flat: \(\max(0+0.9(0),\ 0.5(-0.1+0.9(0))+0.5(-0.1+0.9(0))) = \max(0,-0.1)=0\) — Stay still ties the untested Open branch.
+            Long: \(\max(1+0.9(0),\ -0.1+0.9(0)) = \max(1,-0.1)=1\) — Hold. Short: \(\max(-0.5+0.9(0),\ -0.1+0.9(0))=\max(-0.5,-0.1)=-0.1\) — Close.
+          </p>
+          <p><strong>\(V_1\) = (Flat: 0, Long: 1, Short: −0.1)</strong></p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Sweep 2</h4>
+          <p>
+            Flat's Open branch now sees Long and Short's improved values:
+            \(0.5(-0.1+0.9(1))+0.5(-0.1+0.9(-0.1)) = 0.5(0.80)+0.5(-0.19)=0.305\),
+            beating Stay's \(0+0.9(0)=0\) for the first time. Long: \(\max(1+0.9(1),-0.1+0.9(0))=1.9\).
+            Short: \(\max(-0.5+0.9(-0.1),-0.1+0.9(0))=\max(-0.59,-0.1)=-0.1\).
+          </p>
+          <p><strong>\(V_2\) = (Flat: 0.305, Long: 1.9, Short: −0.1)</strong></p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Sweeps 3–4, and the policy locks in</h4>
+          <p>
+            \(V_3\) = (Flat: 0.71, Long: 2.71, Short: 0.1745). \(V_4\) = (Flat:
+            1.198, Long: 3.439, Short: 0.539). From sweep 2 onward the
+            <em>arg max</em> at every state stops changing — Open at Flat,
+            Hold at Long, Close at Short. The values keep climbing every
+            sweep, but the greedy policy is already settled.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Solve the settled policy exactly</h4>
+          <p>
+            Once the policy has stopped changing, its three Bellman equations
+            become an ordinary linear system — solving it exactly is
+            equivalent to running the sweep infinitely many times. Writing
+            \(x=V^*(\text{Flat})\), \(y=V^*(\text{Short})\), and using
+            \(V^*(\text{Long})=1+0.9\,V^*(\text{Long}) \Rightarrow
+            V^*(\text{Long})=10\):
+          </p>
+          <div class="tl-math">\[ y = -0.1+0.9x, \qquad x = -0.1+0.45(10+y) \]</div>
+          <p>Substituting and solving gives the converged fixed point:</p>
+          <div class="tl-math">\[ V^*(\text{Flat})\approx 7.319,\quad V^*(\text{Long})=10,\quad V^*(\text{Short})\approx 6.487 \]</div>
+        </div>
+      </div>
+    </div>
+    <p>
+      Sanity-check every state against its own equation: at Long, Hold
+      (\(10\)) beats Close (\(-0.1+0.9(7.319)\approx6.487\)) — correctly stay
+      long. At Short, Close (\(6.487\)) beats Hold
+      (\(-0.5+0.9(6.487)\approx5.339\)) — correctly cut a losing position
+      rather than sit in it. At Flat, Open (\(7.319\)) beats Stay
+      (\(0.9\times7.319\approx6.587\)) — correctly seek exposure, since the
+      expected payoff of finding out which side wins is positive. The
+      numbers alone reconstruct a policy that looks like ordinary trading
+      sense: don't sit flat forever, hold winners, cut losers — derived here
+      purely from the reward structure, not asserted.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Why the discount factor is doing real work here</h3>
+    <p>
+      Suppose \(\gamma\) were \(0\) instead of \(0.9\) — a fully myopic
+      trader who only cares about the very next reward. At Long, Hold's value
+      collapses to just \(1\) (no credit for repeating that reward forever),
+      and Close's value is \(-0.1\); Hold still wins, but the two options are
+      no longer separated by nearly the entire compounding horizon the way
+      they are at \(\gamma=0.9\), where Hold's value of \(10\) versus Close's
+      \(6.487\) reflects the fact that <em>staying</em> long captures many
+      future \(+1\) rewards, discounted but still substantial. This is the
+      formal version of an intuition every systematic trader already has:
+      how patient your evaluation horizon is changes which action looks
+      best, and a value function makes that patience an explicit, tunable
+      number instead of a vague feeling.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Value iteration and its close cousin policy iteration (alternating
+    "evaluate the current policy exactly" with "improve it by acting greedily
+    on those values") are the textbook methods for solving an MDP exactly —
+    but both require knowing \(P(s'|s,a)\) and \(R(s,a,s')\) up front, i.e.
+    a full model of the environment. That's the entire reason the field moved
+    beyond this chapter: real environments (a market, a robot, a game against
+    an opponent) rarely hand you an explicit transition-probability table.
+    Richard Bellman himself developed this framework in the 1950s at RAND
+    Corporation for engineering and operations-research problems — inventory
+    control, scheduling — where the model genuinely was known; extending it
+    to problems where the model has to be learned from experience is exactly
+    the subject of the next lesson.
+  </p>
+  <p>
+    Even where the transition model isn't known, the value-function framing
+    itself is what practitioners keep: dynamic programming, model-predictive
+    control, and even a simple decision tree evaluated by backward induction
+    are all doing some version of "recursively relate a state's value to its
+    successors' values." The Bellman equation is less a specific algorithm
+    and more the master identity that every method in this family — from
+    hand-solved toy MDPs to deep Q-networks — is a different way of
+    approximating.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where the MDP framing quietly goes wrong</h3>
+    <p>
+      <strong>Assuming a market is actually Markov.</strong> The whole
+      derivation rests on the current state capturing everything relevant.
+      Real price processes carry momentum, volatility clustering, and regime
+      memory that a naively small state (just "current position," say)
+      doesn't capture — which understates how much history actually matters
+      and can make a fitted MDP badly misspecified. Enlarging the state to
+      include recent history or a regime label is the usual fix, at the cost
+      of a much larger state space.
+    </p>
+    <p>
+      <strong>Treating \(V^\pi\) as if it were achievable, not just
+      expected.</strong> The value function is an <em>expectation</em> over
+      an entire distribution of future paths. A single realized trajectory
+      can and will look nothing like the average — exactly the same
+      "expected value hides the whole distribution" trap the Kelly lesson
+      raises about a bet's expected value versus its long-run compounded
+      growth.
+    </p>
+    <p>
+      <strong>Picking \(\gamma\) without thinking about it.</strong>
+      \(\gamma\) is not a free technical knob — it encodes how much future
+      reward genuinely matters to the decision-maker, and the optimal policy
+      can change qualitatively depending on it (a myopic \(\gamma\) near
+      \(0\) versus a patient \(\gamma\) near \(1\) can favor entirely
+      different actions, as the scenario above shows even in a 3-state toy).
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>An MDP is \((S,A,P,R,\gamma)\).</strong> States, actions, transition probabilities, rewards, and a discount factor — the standard formalism for any sequential decision problem.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The Bellman equation is a recursive identity, not an extra assumption.</strong> It falls straight out of splitting an infinite discounted sum into "this step's reward" plus "the same sum, one step later."</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Optimality replaces averaging with maximizing.</strong> \(V^*(s)=\max_a\sum_{s'}P(s'|s,a)[R+\gamma V^*(s')]\) — the best policy always takes the action with the highest expected continuation value.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(Q^*(s,a)\) scores actions directly, and \(V^*(s)=\max_a Q^*(s,a)\).</strong> This exact rewriting — \(Q^*\) in terms of itself one step later — is what Q-learning's update rule is built from.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Value iteration converges to a fixed point that also encodes the optimal policy.</strong> In the worked example the greedy action at each state stabilizes long before the values themselves fully converge.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This whole chapter assumes the model (\(P\) and \(R\)) is known.</strong> Real problems almost never hand you an explicit transition table — that gap is exactly what the next lesson's learning rule is for.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Where does the Bellman equation actually come from — is it an additional modeling assumption on top of the value function's definition?</summary>
+    <div class="tl-answer">
+      No — it's a direct algebraic consequence of the value function's
+      definition as an infinite discounted sum. Splitting off the first
+      reward term and re-indexing the rest of the sum shows the remaining
+      part is exactly the value function again, evaluated one step later at
+      whatever state the process transitions to. No new assumption is
+      introduced; the recursion is just what an infinite geometric-style sum
+      looks like when you peel off its first term.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What's the one change that turns the (policy-evaluating) Bellman equation into the Bellman optimality equation?</summary>
+    <div class="tl-answer">
+      Replacing the average over the policy's action probabilities,
+      \(\sum_a \pi(a|s)(\cdots)\), with a maximization over actions,
+      \(\max_a(\cdots)\). Averaging describes how good a specific, already-fixed
+      policy is; maximizing describes the best value achievable over every
+      possible policy, since the optimal policy by definition always picks
+      whichever action yields the highest expected continuation value.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. In the worked 3-state MDP, why does the optimal policy Hold at Long but Close at Short, even though both states offer a "Hold" action?</summary>
+    <div class="tl-answer">
+      Because the two Hold rewards have opposite signs and both compound
+      under the discount factor: holding Long earns +1 every period it's
+      repeated, which under γ=0.9 sums to a converged value of 10 — far above
+      what closing to Flat and re-opening would earn. Holding Short earns
+      −0.5 every period, which compounds into a much worse value (≈5.34) than
+      cutting the loss and returning to Flat (≈6.49). The sign and size of
+      the per-period reward, run through the same discounting math, is what
+      separates "let it ride" from "cut it," not any special-casing of the
+      action names.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why does value iteration's greedy policy often stabilize before the values themselves have fully converged?</summary>
+    <div class="tl-answer">
+      The values keep growing (or shrinking) toward their true fixed point on
+      every sweep because each update only partially propagates the eventual
+      total; but once one action's estimated value pulls decisively ahead of
+      its alternatives at a given state, further sweeps just make all the
+      estimates more accurate together — the ranking between actions was
+      already decided. In the worked example the arg max settles (Open /
+      Hold / Close) by sweep 2, while the actual numeric values keep visibly
+      rising for several more sweeps after that.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. What has to be known in advance to run value iteration exactly as shown in this lesson, and why is that a real limitation?</summary>
+    <div class="tl-answer">
+      The full transition probabilities \(P(s'|s,a)\) and reward function
+      \(R(s,a,s')\) for every state-action pair — a complete model of the
+      environment. Real decision problems (trading included) essentially
+      never hand you this model explicitly; it would have to be estimated
+      from data, and any estimation error propagates directly into the
+      computed value function. This is exactly the gap the next lesson's
+      method (learning values from sampled experience, without ever needing
+      an explicit \(P\) or \(R\)) is designed to close.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Richard E. Bellman, <em>Dynamic Programming</em>, Princeton University Press, 1957 — the original source of the optimality principle and the recursive equation that bears his name, developed for operations-research and control problems.</li>
+    <li>Richard S. Sutton and Andrew G. Barto, <em>Reinforcement Learning: An Introduction</em> (2nd ed.), MIT Press, 2018 — the standard modern textbook; Chapters 3–4 cover MDPs, value functions, and dynamic programming exactly as framed in this lesson, freely available from the authors.</li>
+    <li>Martin L. Puterman, <em>Markov Decision Processes: Discrete Stochastic Dynamic Programming</em>, Wiley, 1994 — the rigorous mathematical treatment, including convergence proofs for value and policy iteration.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="q-learning-temporal-difference.html">Q-Learning &amp; Temporal-Difference Methods →</a>
+  </div>
+</div>
+</body>
+</html>
