@@ -449,6 +449,231 @@
     </div>
   </div>
 
+  <div class="tl-cat">
+    <h2>14 · Bayesian Statistics Extensions</h2>
+    <div class="tl-cat-sub">Direct sequels to the Foundations category's Bayesian Inference lesson — the actual machinery of updating a belief, sampling a posterior that has no closed form, and sharing information honestly across noisy small-sample groups.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="lessons/bayesian-conjugate-priors.html">
+        <div class="tl-card-num">Bayesian Extensions 1</div>
+        <h3>Conjugate Priors &amp; Bayesian Updating in Practice</h3>
+        <p>Beta-Binomial and Normal-Normal conjugacy — watching a belief narrow update by update in closed form.</p>
+      </a>
+      <a class="tl-card" href="lessons/mcmc-metropolis-gibbs.html">
+        <div class="tl-card-num">Bayesian Extensions 2</div>
+        <h3>MCMC: Metropolis-Hastings &amp; Gibbs Sampling</h3>
+        <p>Sampling a posterior that has no closed form — the acceptance ratio, detailed balance, and the diagnostics that tell you the chain actually mixed.</p>
+      </a>
+      <a class="tl-card" href="lessons/hierarchical-bayesian-models.html">
+        <div class="tl-card-num">Bayesian Extensions 3 (final)</div>
+        <h3>Hierarchical Bayesian Models &amp; Partial Pooling</h3>
+        <p>The principled middle ground between trusting every noisy small-sample estimate fully and ignoring group differences entirely.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>15 · State Space Models Extensions</h2>
+    <div class="tl-cat-sub">Direct sequels to the Kalman filter and Hidden Markov Model lessons — nonlinear/non-Gaussian tracking, using the whole dataset instead of just the past, and fusing a discrete regime with a continuous hidden state.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="lessons/particle-filter.html">
+        <div class="tl-card-num">State Space Extensions 1</div>
+        <h3>The Particle Filter (Sequential Monte Carlo)</h3>
+        <p>A weighted swarm of simulated guesses tracks a hidden state when the dynamics are nonlinear and the noise isn't Gaussian.</p>
+      </a>
+      <a class="tl-card" href="lessons/kalman-smoother-ekf-ukf.html">
+        <div class="tl-card-num">State Space Extensions 2</div>
+        <h3>The Kalman Smoother &amp; Extended/Unscented Kalman Filters</h3>
+        <p>A backward pass that sharpens every past estimate using the whole dataset, plus two ways to handle genuine nonlinearity.</p>
+      </a>
+      <a class="tl-card" href="lessons/regime-switching-state-space.html">
+        <div class="tl-card-num">State Space Extensions 3 (final)</div>
+        <h3>Regime-Switching State Space Models</h3>
+        <p>Fusing the HMM's discrete hidden regime with the Kalman filter's continuous hidden state, via Kim's collapsing filter.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>16 · Information Theory</h2>
+    <div class="tl-cat-sub">A different lens on dependence and model complexity than the statistics curriculum uses — entropy, KL divergence and mutual information as a nonlinear generalization of correlation, and a coding-theory rederivation of BIC.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="lessons/entropy-kl-mutual-information.html">
+        <div class="tl-card-num">Information Theory 1</div>
+        <h3>Entropy, KL Divergence &amp; Mutual Information</h3>
+        <p>Measuring how much two variables tell each other, in bits, whether or not the relationship is a straight line.</p>
+      </a>
+      <a class="tl-card" href="lessons/transfer-entropy-causality.html">
+        <div class="tl-card-num">Information Theory 2</div>
+        <h3>Transfer Entropy &amp; Information-Theoretic Causality</h3>
+        <p>A nonlinear generalization of Granger causality — and the hard warning that it measures information flow, never causation.</p>
+      </a>
+      <a class="tl-card" href="lessons/mdl-information-criteria.html">
+        <div class="tl-card-num">Information Theory 3 (final)</div>
+        <h3>Minimum Description Length &amp; Information Criteria</h3>
+        <p>Occam's razor made countable — and why it lands on exactly BIC's number from a totally different starting point.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>17 · Signal Processing</h2>
+    <div class="tl-cat-sub">Decomposing a time series by frequency and by trend/cycle — where the tools come from, what they actually recover, and the well-documented flaw in the most popular trend filter in applied macro.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="lessons/fourier-analysis-frequency-domain.html">
+        <div class="tl-card-num">Signal Processing 1</div>
+        <h3>Fourier Analysis &amp; the Frequency Domain</h3>
+        <p>Which cycles a series contains, and how strongly — the periodogram, and its honest inconsistency caveat.</p>
+      </a>
+      <a class="tl-card" href="lessons/wavelets-time-frequency.html">
+        <div class="tl-card-num">Signal Processing 2</div>
+        <h3>Wavelets &amp; Time-Frequency Analysis</h3>
+        <p>Trading a single global spectrum for a picture of frequency content changing over time.</p>
+      </a>
+      <a class="tl-card" href="lessons/trend-cycle-filters.html">
+        <div class="tl-card-num">Signal Processing 3 (final)</div>
+        <h3>Trend/Cycle Filters: Hodrick-Prescott, Butterworth &amp; Baxter-King</h3>
+        <p>The most-used trend filter in applied macro, its documented end-point bias, and the band-pass alternatives that exist because of it.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>18 · Graph Theory &amp; Networks</h2>
+    <div class="tl-cat-sub">A structural lens on a correlation matrix or an exposure web — which node matters most depends on how you ask, and a shock's reach through a network is itself computable.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="lessons/graph-theory-centrality.html">
+        <div class="tl-card-num">Graph Theory &amp; Networks 1</div>
+        <h3>Graph Theory Fundamentals &amp; Centrality Measures</h3>
+        <p>Degree, betweenness and eigenvector centrality can each crown a different "most important" node — and that disagreement is the lesson.</p>
+      </a>
+      <a class="tl-card" href="lessons/correlation-networks-mst.html">
+        <div class="tl-card-num">Graph Theory &amp; Networks 2</div>
+        <h3>Correlation Networks &amp; Minimum Spanning Trees</h3>
+        <p>Turning an unreadable correlation matrix into a distance graph, then pruning it to a picture of the basket's clustering structure.</p>
+      </a>
+      <a class="tl-card" href="lessons/systemic-risk-networks.html">
+        <div class="tl-card-num">Graph Theory &amp; Networks 3 (final)</div>
+        <h3>Systemic Risk &amp; Financial Contagion Networks</h3>
+        <p>DebtRank — the algorithm central banks use to measure how far one institution's failure propagates through an exposure web.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>19 · Reinforcement Learning</h2>
+    <div class="tl-cat-sub">The formal machinery of sequential decision-making under uncertainty — MDPs and the Bellman equation, learning values from raw experience, and optimizing a policy directly.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="lessons/mdp-bellman-equation.html">
+        <div class="tl-card-num">Reinforcement Learning 1</div>
+        <h3>MDPs, Value Functions &amp; the Bellman Equation</h3>
+        <p>Value equals immediate reward plus discounted value of what comes next — the recursive identity underneath every RL method.</p>
+      </a>
+      <a class="tl-card" href="lessons/q-learning-temporal-difference.html">
+        <div class="tl-card-num">Reinforcement Learning 2</div>
+        <h3>Q-Learning &amp; Temporal-Difference Methods</h3>
+        <p>Learning the Bellman equation's values from raw experience, one step at a time, without knowing the environment's transition probabilities.</p>
+      </a>
+      <a class="tl-card" href="lessons/policy-gradients-actor-critic.html">
+        <div class="tl-card-num">Reinforcement Learning 3 (final)</div>
+        <h3>Policy Gradients &amp; Actor-Critic Methods</h3>
+        <p>Optimizing a policy directly, including a continuous one like a position size — and why a powerful optimizer says nothing about what it's optimizing.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>20 · Risk Management Deep Dive</h2>
+    <div class="tl-cat-sub">Beyond a single VaR number — which risk measures actually behave the way diversification should, how convexity shapes crash behavior, and the scenario-analysis techniques that surface hidden concentration.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="lessons/coherent-risk-measures.html">
+        <div class="tl-card-num">Risk Deep Dive 1</div>
+        <h3>Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms</h3>
+        <p>Why VaR can say diversification made things worse, and CVaR/Expected Shortfall can't.</p>
+      </a>
+      <a class="tl-card" href="lessons/tail-risk-hedging-convexity.html">
+        <div class="tl-card-num">Risk Deep Dive 2</div>
+        <h3>Tail Risk Hedging &amp; Portfolio Convexity</h3>
+        <p>Why a portfolio's payoff shape, not just its expected return, decides whether it bleeds slowly or blows up.</p>
+      </a>
+      <a class="tl-card" href="lessons/stress-testing-scenario-analysis.html">
+        <div class="tl-card-num">Risk Deep Dive 3 (final)</div>
+        <h3>Stress Testing, Scenario Analysis &amp; Reverse Stress Tests</h3>
+        <p>Historical replay, Monte Carlo stress, and solving backward from an unacceptable loss to find hidden concentration.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>21 · Advanced Portfolio Construction</h2>
+    <div class="tl-cat-sub">Sequels to Markowitz &amp; Black-Litterman — allocating without forecasting returns at all, avoiding an ill-conditioned covariance-matrix inversion, and building a portfolio around explicit factor exposures.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="lessons/risk-parity-erc.html">
+        <div class="tl-card-num">Portfolio Construction 1</div>
+        <h3>Risk Parity &amp; Equal Risk Contribution</h3>
+        <p>Stop forecasting returns entirely — allocate so every asset contributes the same slice of total portfolio risk.</p>
+      </a>
+      <a class="tl-card" href="lessons/hierarchical-risk-parity.html">
+        <div class="tl-card-num">Portfolio Construction 2</div>
+        <h3>Hierarchical Risk Parity</h3>
+        <p>Never invert the covariance matrix at all — cluster assets by similarity first, then allocate down the resulting tree.</p>
+      </a>
+      <a class="tl-card" href="lessons/factor-based-portfolio-construction.html">
+        <div class="tl-card-num">Portfolio Construction 3 (final)</div>
+        <h3>Factor-Based Portfolio Construction</h3>
+        <p>Express every asset's return as a handful of shared exposures, then build a portfolio around how much of each you actually want.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>22 · Quantitative Research Process</h2>
+    <div class="tl-cat-sub">The methodology layer underneath every other lesson in this curriculum — how a disciplined research pipeline avoids quietly turning into curve-fitting, and how a feature avoids leaking information it shouldn't have.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="lessons/research-pipeline-hypothesis-to-backtest.html">
+        <div class="tl-card-num">Research Process 1</div>
+        <h3>The Research Pipeline: Hypothesis to Honest Backtest</h3>
+        <p>Five stages from "I have an idea" to "here's what the evidence says" — and where skipping the order becomes curve-fitting.</p>
+      </a>
+      <a class="tl-card" href="lessons/feature-engineering-leakage-reproducibility.html">
+        <div class="tl-card-num">Research Process 2 (final)</div>
+        <h3>Feature Engineering, Leakage &amp; Reproducibility</h3>
+        <p>Three specific ways a feature quietly leaks future information, and the discipline that makes a result reproducible months later.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="tl-cat">
+    <h2>23 · Stochastic Differential Equations</h2>
+    <div class="tl-cat-sub">The general theory underneath every SDE used elsewhere in this curriculum (Ornstein-Uhlenbeck, GBM, Heston) — when a solution is guaranteed to exist, how to simulate one, correlated multi-asset systems, named short-rate models, and the current research frontier where a neural network learns the drift and diffusion themselves.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="lessons/sde-existence-uniqueness.html">
+        <div class="tl-card-num">SDEs 1</div>
+        <h3>Existence &amp; Uniqueness of SDE Solutions</h3>
+        <p>The Lipschitz and linear-growth conditions every SDE lesson in this curriculum quietly assumes — and a coefficient choice where they fail.</p>
+      </a>
+      <a class="tl-card" href="lessons/sde-numerical-schemes.html">
+        <div class="tl-card-num">SDEs 2</div>
+        <h3>Numerical Schemes: Euler-Maruyama &amp; Milstein</h3>
+        <p>Almost no SDE worth building has a closed-form solution — the two standard ways to simulate one, and how good each approximation really is.</p>
+      </a>
+      <a class="tl-card" href="lessons/multivariate-correlated-sdes.html">
+        <div class="tl-card-num">SDEs 3</div>
+        <h3>Multivariate &amp; Correlated SDEs</h3>
+        <p>The general machinery for many correlated processes driven by more than one source of randomness at once.</p>
+      </a>
+      <a class="tl-card" href="lessons/short-rate-models-vasicek-cir-hull-white.html">
+        <div class="tl-card-num">SDEs 4</div>
+        <h3>Short-Rate Models: Vasicek, CIR &amp; Hull-White</h3>
+        <p>Three interest-rate models, each fixing a specific flaw in the one before it — a direct, named application of the SDE machinery just built.</p>
+      </a>
+      <a class="tl-card" href="lessons/neural-sdes-spdes.html">
+        <div class="tl-card-num">SDEs 5 (final)</div>
+        <h3>Neural SDEs &amp; Neural SPDEs</h3>
+        <p>What if a neural network learns the drift and diffusion instead of a human hand-specifying them — current research, explicitly not built or validated here.</p>
+      </a>
+    </div>
+  </div>
+
 </div>
 </body>
 </html>

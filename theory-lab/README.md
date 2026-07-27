@@ -3,11 +3,14 @@
 A from-scratch, math-explained curriculum in the quantitative concepts behind
 this repo's FX/macro research — 34 numbered theory lessons, a 5-lesson
 Foundation Mathematics tier for readers starting from GCSE-level maths, 8
-background primers, and four further categories (Fixed Income Mathematics,
-Numerical Methods, Market Microstructure, The Greeks). Covers everything from
-algebra and Euler's formula to the Heston model, Random Matrix Theory,
-Merton's continuous-time portfolio problem, Nelson-Siegel yield curves,
-dealer gamma exposure, and the Almgren-Chriss execution model.
+background primers, and fourteen further categories spanning fixed income,
+numerical methods, market microstructure, options Greeks, Bayesian/state-space
+extensions, information theory, signal processing, graph theory, reinforcement
+learning, risk management, portfolio construction, research methodology, and
+stochastic differential equations. Covers everything from algebra and Euler's
+formula to the Heston model, Random Matrix Theory, Merton's continuous-time
+portfolio problem, Nelson-Siegel yield curves, dealer gamma exposure, MCMC,
+DebtRank, the Bellman equation, and Neural SDEs.
 
 **Start at [`hub.html`](./hub.html)** (also linked from the dashboard's
 **Learn ▾** nav menu on `index.html`).
@@ -97,6 +100,40 @@ markup, the house content order, and a verification checklist.
   exist in `lessons/` and are cross-linked from within these two, but are
   deliberately not surfaced as their own hub cards, to keep this category's
   footprint on the curriculum map to the two core lessons.
+- **14 · Bayesian Statistics Extensions** (3) — conjugate priors & Bayesian
+  updating, MCMC (Metropolis-Hastings & Gibbs sampling), hierarchical models
+  & partial pooling. Direct sequels to Foundations & Epistemics' Bayesian
+  inference lesson.
+- **15 · State Space Models Extensions** (3) — the particle filter
+  (sequential Monte Carlo), the Kalman smoother & extended/unscented Kalman
+  filters, regime-switching state space models (Kim's filter). Direct
+  sequels to the Kalman filter and Hidden Markov Model lessons.
+- **16 · Information Theory** (3) — entropy/KL divergence/mutual information,
+  transfer entropy & information-theoretic causality, minimum description
+  length & information criteria (rederives BIC from coding theory).
+- **17 · Signal Processing** (3) — Fourier analysis & the frequency domain,
+  wavelets & time-frequency analysis, trend/cycle filters (Hodrick-Prescott,
+  Butterworth, Baxter-King — including HP's documented end-point-bias flaw).
+- **18 · Graph Theory & Networks** (3) — graph fundamentals & centrality
+  measures, correlation networks & minimum spanning trees, systemic risk &
+  financial contagion networks (DebtRank).
+- **19 · Reinforcement Learning** (3) — MDPs/value functions/the Bellman
+  equation, Q-learning & temporal-difference methods, policy gradients &
+  actor-critic methods.
+- **20 · Risk Management Deep Dive** (3) — coherent risk measures (VaR/CVaR
+  & the Artzner axioms), tail risk hedging & portfolio convexity, stress
+  testing/scenario analysis/reverse stress tests.
+- **21 · Advanced Portfolio Construction** (3) — risk parity & equal risk
+  contribution, Hierarchical Risk Parity, factor-based portfolio
+  construction. Direct sequels to Markowitz & Black-Litterman.
+- **22 · Quantitative Research Process** (2) — the research pipeline
+  (hypothesis to honest backtest), feature engineering/leakage/
+  reproducibility. The methodology layer underneath every other category.
+- **23 · Stochastic Differential Equations** (5) — existence & uniqueness of
+  SDE solutions, numerical schemes (Euler-Maruyama & Milstein), multivariate
+  & correlated SDEs, short-rate models (Vasicek/CIR/Hull-White), Neural
+  SDEs & Neural SPDEs (explicitly flagged as unvalidated research
+  machinery, not built or tested in this repo).
 
 Nothing in this folder is a trading signal. A lesson explaining a technique
 well is not evidence the technique works here — per `CLAUDE.md`'s Lego
@@ -111,10 +148,18 @@ theory-lab/
   glossary.html       — searchable notation glossary
   assets/theory.css   — shared stylesheet (dark theme, MathJax, interactive-
                          chart, real-world-scenario, and skim-path classes)
-  lessons/*.html      — 66 lesson files (5 Foundation Mathematics + 8
+  lessons/*.html      — 97 lesson files (5 Foundation Mathematics + 8
                         primers/foundations + 34 numbered theory lessons +
                         5 Fixed Income Mathematics + 4 Numerical Methods +
                         4 further Market Microstructure lessons alongside
                         the pre-existing one + 2 The Greeks lessons + 3
-                        Greeks deep-dive lessons not listed on hub.html)
+                        Greeks deep-dive lessons not listed on hub.html +
+                        31 "wave 2" lessons across 10 further categories:
+                        Bayesian Statistics Extensions (3), State Space
+                        Models Extensions (3), Information Theory (3),
+                        Signal Processing (3), Graph Theory & Networks (3),
+                        Reinforcement Learning (3), Risk Management Deep
+                        Dive (3), Advanced Portfolio Construction (3),
+                        Quantitative Research Process (2), and Stochastic
+                        Differential Equations (5))
 ```
