@@ -59,8 +59,8 @@ import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } fro
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
 import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS, BM_P75 as _BM_P75 } from './js/volBacktestEngine.js';
-import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED } from './js/mve/liveAdapter.js';
-import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency } from './js/mve/validateInstrument.js';
+import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED, fetchPriceOnly as _mveFetchPriceOnly } from './js/mve/liveAdapter.js';
+import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency, validateMechanicalAnchor as _mveValidateMechanical } from './js/mve/validateInstrument.js';
 import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS, buildPortfolioReturns as _trendBuildPortfolio, portfolioReturnsByDate as _trendReturnsByDate } from './js/trendFollowEngine.js';
 import { blendStreams as _blendStreams } from './js/streamBlend.js';
 import { runGauntlet as _runStrategyGauntlet, GAUNTLET_SPECS as _GAUNTLET_SPECS, SIGNALS as _LAB_SIGNALS } from './js/strategyLabEngine.js';
@@ -6246,6 +6246,31 @@ app.get('/api/mve-validate/:sym', async (req, res) => {
     const report = _mveValidate(built.ctx);
     report.dataSource = built.dataSource;
     if (report.ok) _mveValCache.set(sym, { at: Date.now(), data: report });
+    res.status(report.ok ? 200 : 502).json(report);
+  } catch (e) {
+    res.status(500).json({ ok: false, instrument: sym, error: e.message });
+  }
+});
+
+// MVE mechanical-anchor validation — the KALMAN branch (Garin's dog/owner "moving
+// fair value"): price's own recent path only, no macro factors, so no FRED_KEY
+// needed at all — OANDA D1 is the only dependency. Same gate discipline as
+// /api/mve-validate/:sym (walk-forward, no-lookahead, benchmark-relative icEdge,
+// deflated Sharpe) via the shared scoreMispricing tail, just a different fair-value
+// source. See MVE_RUN_GUIDE.md §10b.
+const _mveValMechCache = new Map();
+app.get('/api/mve-validate-mechanical/:sym', async (req, res) => {
+  const sym = req.params.sym;
+  try {
+    const hit = _mveValMechCache.get(sym);
+    if (hit && Date.now() - hit.at < 6 * 60 * 60 * 1000 && req.query.fresh !== '1') {
+      return res.json({ ...hit.data, cached: true });
+    }
+    const built = await _mveFetchPriceOnly({ sym, deps: { fetchD1: _btFetchD1 }, count: 5000 });
+    if (!built.ok) return res.status(502).json(built);
+    const report = _mveValidateMechanical(built.price, { instrument: sym });
+    report.dataSource = built.dataSource;
+    if (report.ok) _mveValMechCache.set(sym, { at: Date.now(), data: report });
     res.status(report.ok ? 200 : 502).json(report);
   } catch (e) {
     res.status(500).json({ ok: false, instrument: sym, error: e.message });
