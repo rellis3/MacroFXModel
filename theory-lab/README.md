@@ -1,13 +1,13 @@
 # Theory Lab
 
 A from-scratch, math-explained curriculum in the quantitative concepts behind
-this repo's FX/macro research — 33 numbered theory lessons, a 5-lesson
+this repo's FX/macro research — 34 numbered theory lessons, a 5-lesson
 Foundation Mathematics tier for readers starting from GCSE-level maths, 8
-background primers, and three further categories (Fixed Income Mathematics,
-Numerical Methods, Market Microstructure). Covers everything from algebra
-and Euler's formula to the Heston model, Random Matrix Theory, Merton's
-continuous-time portfolio problem, Nelson-Siegel yield curves, and the
-Almgren-Chriss execution model.
+background primers, and four further categories (Fixed Income Mathematics,
+Numerical Methods, Market Microstructure, The Greeks). Covers everything from
+algebra and Euler's formula to the Heston model, Random Matrix Theory,
+Merton's continuous-time portfolio problem, Nelson-Siegel yield curves,
+dealer gamma exposure, and the Almgren-Chriss execution model.
 
 **Start at [`hub.html`](./hub.html)** (also linked from the dashboard's
 **Learn ▾** nav menu on `index.html`).
@@ -88,6 +88,10 @@ markup, the house content order, and a verification checklist.
   (promoted out of category 9 into its own category), limit order books &
   queue dynamics, market impact models & Almgren-Chriss, order flow
   toxicity & VPIN, execution algorithms (TWAP/VWAP/POV/IS).
+- **13 · The Greeks** (2) — gamma exposure & dealer hedging flows (the
+  dealer-GEX formula, hedge-flow-rate, the gamma-flip level), open interest
+  walls & max pain (the economic derivation, plus squeeze mechanics). Builds
+  on Black-Scholes-Merton's own Greeks derivation rather than repeating it.
 
 Nothing in this folder is a trading signal. A lesson explaining a technique
 well is not evidence the technique works here — per `CLAUDE.md`'s Lego
@@ -102,9 +106,9 @@ theory-lab/
   glossary.html       — searchable notation glossary
   assets/theory.css   — shared stylesheet (dark theme, MathJax, interactive-
                          chart, real-world-scenario, and skim-path classes)
-  lessons/*.html      — 60 lesson files (5 Foundation Mathematics + 8
-                        primers/foundations + 33 numbered theory lessons +
+  lessons/*.html      — 63 lesson files (5 Foundation Mathematics + 8
+                        primers/foundations + 34 numbered theory lessons +
                         5 Fixed Income Mathematics + 4 Numerical Methods +
                         4 further Market Microstructure lessons alongside
-                        the pre-existing one)
+                        the pre-existing one + 2 The Greeks lessons)
 ```
