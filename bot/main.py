@@ -71,13 +71,55 @@ except ImportError:
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 
+# The log lines carry non-ASCII (↑ ↓ ★ ≥ …). On a Windows console still running
+# a legacy code page that raises UnicodeEncodeError, so force UTF-8 with
+# replacement rather than losing the line.
+for _stream in (_sys.stdout, _sys.stderr):
+    try:
+        _stream.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass  # not a TextIOWrapper (redirected/detached) — nothing to reconfigure
+
+
+class _ResilientHandlerMixin:
+    """Swallow OSError coming from the underlying stream.
+
+    On Windows the console handle can raise OSError(EINVAL) on flush even though
+    the write itself succeeded — happens when stderr is a redirected/piped or
+    dead console host. Stock logging then dumps a full traceback *per record*
+    via handleError, so a working bot buries its own output in noise. The record
+    has already been written (and the file handler still has it), so drop the
+    stream error instead of reporting it.
+    """
+
+    def flush(self):
+        try:
+            super().flush()
+        except OSError:
+            pass
+
+    def handleError(self, record):
+        exc = _sys.exc_info()[1]
+        if isinstance(exc, OSError):
+            return
+        super().handleError(record)
+
+
+class ResilientStreamHandler(_ResilientHandlerMixin, logging.StreamHandler):
+    pass
+
+
+class ResilientFileHandler(_ResilientHandlerMixin, logging.FileHandler):
+    pass
+
+
 logging.basicConfig(
     level=logging.INFO,
     format='[%(asctime)s] [%(levelname)s] %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
     handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('bot.log', encoding='utf-8'),
+        ResilientStreamHandler(),
+        ResilientFileHandler('bot.log', encoding='utf-8'),
     ],
 )
 log = logging.getLogger(__name__)

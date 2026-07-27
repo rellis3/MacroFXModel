@@ -51,7 +51,7 @@ def blackout(ccys, now_ms: float, windows) -> tuple[bool, str | None]:
 def stale_reason(payload, now_ms: float, max_age_ms: int = MAX_WINDOWS_AGE_MS) -> str | None:
     """None when the payload is usable; otherwise why it isn't (log it, fail open)."""
     if not payload or not isinstance(payload, dict):
-        return "event windows missing from KV (server FINNHUB_KEY unset or producer down)"
+        return "event windows missing from KV (calendar producer down or KV unreachable)"
     gen = payload.get("generatedAt")
     if not gen:
         return "event windows payload has no generatedAt"

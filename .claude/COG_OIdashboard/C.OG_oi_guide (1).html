@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C.OG OI Dashboard - Complete Guide</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #06080c;
+            --bg-secondary: #0c1017;
+            --bg-card: #111820;
+            --bg-hover: #1a2332;
+            --text-primary: #e8edf5;
+            --text-secondary: #9ca8bc;
+            --text-muted: #5c6a7e;
+            --accent-green: #00e396;
+            --accent-green-dim: #003d29;
+            --accent-red: #ff4560;
+            --accent-red-dim: #3d0a14;
+            --accent-blue: #008ffb;
+            --accent-yellow: #feb019;
+            --accent-purple: #775dd0;
+            --accent-cyan: #00d9e9;
+            --border-color: #1e2a3a;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .grid-bg {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 143, 251, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 143, 251, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+            padding-bottom: 40px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .logo-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--accent-green) 0%, var(--accent-blue) 50%, var(--accent-cyan) 100%);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: 800;
+            color: white;
+            margin: 0 auto 20px;
+        }
+
+        h1 {
+            font-size: 42px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            background: linear-gradient(90deg, var(--text-primary), var(--accent-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 12px;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 18px;
+        }
+
+        /* Navigation */
+        .nav {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-bottom: 40px;
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+            border: 1px solid var(--border-color);
+        }
+
+        .nav-item {
+            padding: 12px 20px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .nav-item:hover { color: var(--text-primary); background: var(--bg-hover); }
+        .nav-item.active { background: var(--accent-blue); color: white; }
+
+        /* Sections */
+        .section {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .section.active { display: block; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h2 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            color: var(--accent-cyan);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        h2 .icon {
+            width: 40px;
+            height: 40px;
+            background: var(--bg-card);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        h3 {
+            font-size: 22px;
+            font-weight: 600;
+            margin: 32px 0 16px;
+            color: var(--text-primary);
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h4 {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 24px 0 12px;
+            color: var(--accent-yellow);
+        }
+
+        p {
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            font-size: 15px;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 28px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border-color);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title .badge {
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+
+        .badge.green { background: var(--accent-green-dim); color: var(--accent-green); }
+        .badge.red { background: var(--accent-red-dim); color: var(--accent-red); }
+        .badge.blue { background: rgba(0, 143, 251, 0.2); color: var(--accent-blue); }
+        .badge.yellow { background: rgba(254, 176, 25, 0.2); color: var(--accent-yellow); }
+        .badge.purple { background: rgba(119, 93, 208, 0.2); color: var(--accent-purple); }
+
+        /* Definition Box */
+        .definition {
+            background: var(--bg-secondary);
+            border-left: 4px solid var(--accent-blue);
+            padding: 20px;
+            border-radius: 0 12px 12px 0;
+            margin: 20px 0;
+        }
+
+        .definition-term {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            margin-bottom: 8px;
+        }
+
+        .definition-text {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        /* Example Box */
+        .example {
+            background: linear-gradient(135deg, rgba(0, 227, 150, 0.1), rgba(0, 143, 251, 0.1));
+            border: 1px solid var(--accent-green);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .example-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent-green);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+
+        /* Warning Box */
+        .warning {
+            background: linear-gradient(135deg, rgba(255, 69, 96, 0.1), rgba(254, 176, 25, 0.1));
+            border: 1px solid var(--accent-yellow);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .warning-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent-yellow);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+
+        /* Tip Box */
+        .tip {
+            background: linear-gradient(135deg, rgba(119, 93, 208, 0.1), rgba(0, 217, 233, 0.1));
+            border: 1px solid var(--accent-purple);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .tip-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent-purple);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+
+        th {
+            text-align: left;
+            padding: 14px 12px;
+            background: var(--bg-secondary);
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 14px 12px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        tr:hover td { background: var(--bg-hover); }
+
+        td:first-child {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-cyan);
+            font-weight: 600;
+        }
+
+        /* Code */
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-secondary);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: var(--accent-yellow);
+        }
+
+        /* Lists */
+        ul, ol {
+            margin: 16px 0 16px 24px;
+            color: var(--text-secondary);
+        }
+
+        li {
+            margin-bottom: 10px;
+            font-size: 15px;
+        }
+
+        li strong {
+            color: var(--text-primary);
+        }
+
+        /* Visual Diagram */
+        .diagram {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 30px;
+            margin: 24px 0;
+            text-align: center;
+        }
+
+        .diagram-row {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 16px 0;
+            flex-wrap: wrap;
+        }
+
+        .diagram-box {
+            background: var(--bg-card);
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            padding: 16px 24px;
+            min-width: 140px;
+        }
+
+        .diagram-box.green { border-color: var(--accent-green); }
+        .diagram-box.red { border-color: var(--accent-red); }
+        .diagram-box.blue { border-color: var(--accent-blue); }
+        .diagram-box.yellow { border-color: var(--accent-yellow); }
+
+        .diagram-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .diagram-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .diagram-arrow {
+            font-size: 24px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+        }
+
+        /* Interpretation Grid */
+        .interp-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin: 20px 0;
+        }
+
+        .interp-card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 4px solid;
+        }
+
+        .interp-card.bullish { border-color: var(--accent-green); }
+        .interp-card.bearish { border-color: var(--accent-red); }
+        .interp-card.neutral { border-color: var(--accent-yellow); }
+        .interp-card.info { border-color: var(--accent-blue); }
+
+        .interp-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .interp-card.bullish .interp-title { color: var(--accent-green); }
+        .interp-card.bearish .interp-title { color: var(--accent-red); }
+        .interp-card.neutral .interp-title { color: var(--accent-yellow); }
+        .interp-card.info .interp-title { color: var(--accent-blue); }
+
+        .interp-text {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* Scenario Cards */
+        .scenario {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 24px;
+            margin: 16px 0;
+            border: 1px solid var(--border-color);
+        }
+
+        .scenario-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .scenario-title {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .scenario-signal {
+            font-size: 12px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .scenario-signal.bullish { background: var(--accent-green-dim); color: var(--accent-green); }
+        .scenario-signal.bearish { background: var(--accent-red-dim); color: var(--accent-red); }
+        .scenario-signal.neutral { background: rgba(254, 176, 25, 0.2); color: var(--accent-yellow); }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 40px 0;
+            margin-top: 60px;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav { flex-direction: column; }
+            .interp-grid { grid-template-columns: 1fr; }
+            h1 { font-size: 28px; }
+            h2 { font-size: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="grid-bg"></div>
+    
+    <div class="container">
+        <header>
+            <div class="logo-icon">OI</div>
+            <h1>C.OG Open Interest Dashboard</h1>
+            <p class="subtitle">Complete Guide to Understanding Options Open Interest Analysis</p>
+        </header>
+
+        <nav class="nav">
+            <button class="nav-item active" onclick="showSection('overview')">Overview</button>
+            <button class="nav-item" onclick="showSection('basics')">OI Basics</button>
+            <button class="nav-item" onclick="showSection('walls')">OI Walls</button>
+            <button class="nav-item" onclick="showSection('maxpain')">Max Pain</button>
+            <button class="nav-item" onclick="showSection('skew')">OI Skew</button>
+            <button class="nav-item" onclick="showSection('magnetism')">Strike Magnetism</button>
+            <button class="nav-item" onclick="showSection('momentum')">OI Momentum</button>
+            <button class="nav-item" onclick="showSection('heatmaps')">Heatmaps</button>
+            <button class="nav-item" onclick="showSection('strategies')">Trading Strategies</button>
+        </nav>
+
+        <!-- OVERVIEW SECTION -->
+        <div id="overview" class="section active">
+            <h2><span class="icon">📊</span> Dashboard Overview</h2>
+            
+            <div class="card">
+                <div class="card-title">What is this dashboard?</div>
+                <p>The C.OG OI Dashboard analyzes <strong>options open interest data</strong> to help you understand where large positions exist in the market, identify potential support/resistance levels, and gauge market sentiment.</p>
+                <p>It takes raw open interest data from CME (or other exchanges) and transforms it into actionable trading intelligence.</p>
+            </div>
+
+            <h3>What Data Does It Need?</h3>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>File</th>
+                        <th>Contains</th>
+                        <th>Used For</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>OI_Standard.xlsx</td>
+                        <td>Absolute open interest (Call OI, Put OI by strike & expiration)</td>
+                        <td>Walls, Max Pain, Skew, Magnetism</td>
+                    </tr>
+                    <tr>
+                        <td>OI_Change.xlsx</td>
+                        <td>Daily changes in OI (new positions opened/closed)</td>
+                        <td>Momentum analysis, position building detection</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Key Metrics at a Glance</h3>
+            
+            <div class="diagram">
+                <div class="diagram-row">
+                    <div class="diagram-box yellow">
+                        <div class="diagram-label">Max Pain</div>
+                        <div class="diagram-value">1.1650</div>
+                    </div>
+                    <div class="diagram-box blue">
+                        <div class="diagram-label">Current Price</div>
+                        <div class="diagram-value">1.1670</div>
+                    </div>
+                    <div class="diagram-box green">
+                        <div class="diagram-label">OI Skew</div>
+                        <div class="diagram-value">1.24</div>
+                    </div>
+                </div>
+                <div class="diagram-row">
+                    <div class="diagram-box green">
+                        <div class="diagram-label">Top Call Wall</div>
+                        <div class="diagram-value">1.1800</div>
+                    </div>
+                    <div class="diagram-box red">
+                        <div class="diagram-label">Top Put Wall</div>
+                        <div class="diagram-value">1.1500</div>
+                    </div>
+                    <div class="diagram-box">
+                        <div class="diagram-label">Put/Call Ratio</div>
+                        <div class="diagram-value">0.85</div>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Who Is This For?</h3>
+            <ul>
+                <li><strong>Futures Traders</strong> — Find key levels where price may stall or reverse</li>
+                <li><strong>Options Traders</strong> — Identify crowded strikes, gauge sentiment</li>
+                <li><strong>Swing Traders</strong> — Use max pain and walls for entry/exit timing</li>
+                <li><strong>Day Traders</strong> — Spot intraday magnetism levels</li>
+            </ul>
+        </div>
+
+        <!-- OI BASICS SECTION -->
+        <div id="basics" class="section">
+            <h2><span class="icon">📚</span> Open Interest Basics</h2>
+
+            <div class="definition">
+                <div class="definition-term">Open Interest (OI)</div>
+                <div class="definition-text">The total number of outstanding options contracts that have not been settled, closed, or expired. Each contract has a buyer and seller, so OI represents the total "open" positions in the market.</div>
+            </div>
+
+            <h3>OI vs Volume</h3>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>What It Measures</th>
+                        <th>Resets?</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Volume</td>
+                        <td>Number of contracts traded today</td>
+                        <td>Yes, daily</td>
+                    </tr>
+                    <tr>
+                        <td>Open Interest</td>
+                        <td>Number of contracts still open</td>
+                        <td>No, cumulative</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="example">
+                <div class="example-title">Example</div>
+                <p><strong>Day 1:</strong> Trader A buys 10 calls, Trader B sells 10 calls</p>
+                <p>Volume = 10, OI = 10</p>
+                <p><strong>Day 2:</strong> Trader A sells 5 calls to Trader C (who is opening new)</p>
+                <p>Volume = 5, OI = 10 (no change — position transferred)</p>
+                <p><strong>Day 3:</strong> Trader A sells remaining 5 calls to Trader B (who closes)</p>
+                <p>Volume = 5, OI = 5 (decreased — position closed)</p>
+            </div>
+
+            <h3>How OI Changes</h3>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Action</th>
+                        <th>Buyer</th>
+                        <th>Seller</th>
+                        <th>OI Effect</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>New Position</td>
+                        <td>Opens new</td>
+                        <td>Opens new</td>
+                        <td style="color: var(--accent-green);">+1</td>
+                    </tr>
+                    <tr>
+                        <td>Close Position</td>
+                        <td>Closes existing</td>
+                        <td>Closes existing</td>
+                        <td style="color: var(--accent-red);">-1</td>
+                    </tr>
+                    <tr>
+                        <td>Transfer</td>
+                        <td>Opens new</td>
+                        <td>Closes existing</td>
+                        <td style="color: var(--text-muted);">0</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Why OI Matters</h3>
+
+            <div class="interp-grid">
+                <div class="interp-card bullish">
+                    <div class="interp-title">High OI at a Strike</div>
+                    <div class="interp-text">Large positions exist there. Price may be "attracted" to this level (magnetism) or find support/resistance.</div>
+                </div>
+                <div class="interp-card bearish">
+                    <div class="interp-title">Rapidly Increasing OI</div>
+                    <div class="interp-text">New money entering. Traders are building positions — strong conviction about direction.</div>
+                </div>
+                <div class="interp-card neutral">
+                    <div class="interp-title">Declining OI</div>
+                    <div class="interp-text">Positions being closed. Traders taking profits or cutting losses — reduced conviction.</div>
+                </div>
+                <div class="interp-card info">
+                    <div class="interp-title">OI Concentration</div>
+                    <div class="interp-text">Clustered OI at certain strikes creates "walls" that can act as barriers to price movement.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- OI WALLS SECTION -->
+        <div id="walls" class="section">
+            <h2><span class="icon">🧱</span> OI Walls</h2>
+
+            <div class="definition">
+                <div class="definition-term">OI Wall</div>
+                <div class="definition-text">A strike price with unusually high open interest. These represent large concentrations of options positions and often act as support (put walls) or resistance (call walls).</div>
+            </div>
+
+            <h3>Call Walls vs Put Walls</h3>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Wall Type</th>
+                        <th>What It Is</th>
+                        <th>Acts As</th>
+                        <th>Why?</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="color: var(--accent-green);">Call Wall</td>
+                        <td>Strike with high call OI</td>
+                        <td>Resistance</td>
+                        <td>Call sellers (often dealers) hedge by selling underlying as price rises toward this level</td>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--accent-red);">Put Wall</td>
+                        <td>Strike with high put OI</td>
+                        <td>Support</td>
+                        <td>Put sellers hedge by buying underlying as price falls toward this level</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="diagram">
+                <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 20px;">Price Movement Between Walls</div>
+                <div class="diagram-row">
+                    <div class="diagram-box green">
+                        <div class="diagram-label">Call Wall (Resistance)</div>
+                        <div class="diagram-value">1.1800</div>
+                    </div>
+                </div>
+                <div class="diagram-row">
+                    <div class="diagram-arrow">↕️</div>
+                    <div style="color: var(--text-secondary); font-size: 14px;">Price tends to oscillate between walls</div>
+                </div>
+                <div class="diagram-row">
+                    <div class="diagram-box blue">
+                        <div class="diagram-label">Current Price</div>
+                        <div class="diagram-value">1.1670</div>
+                    </div>
+                </div>
+                <div class="diagram-row">
+                    <div class="diagram-arrow">↕️</div>
+                </div>
+                <div class="diagram-row">
+                    <div class="diagram-box red">
+                        <div class="diagram-label">Put Wall (Support)</div>
+                        <div class="diagram-value">1.1500</div>
+                    </div>
+                </div>
+            </div>
+
+            <h3>How to Interpret Walls</h3>
+
+            <div class="scenario">
+                <div class="scenario-header">
+                    <div class="scenario-title">Price Approaching Call Wall</div>
+                    <div class="scenario-signal bearish">Potential Resistance</div>
+                </div>
+                <p>As price rises toward a major call wall, expect selling pressure. Call sellers (often market makers) need to hedge by selling the underlying. This creates a "ceiling" effect.</p>
+                <p><strong>What to watch:</strong> If price breaks through with volume, the wall may flip to support as dealers cover shorts.</p>
+            </div>
+
+            <div class="scenario">
+                <div class="scenario-header">
+                    <div class="scenario-title">Price Approaching Put Wall</div>
+                    <div class="scenario-signal bullish">Potential Support</div>
+                </div>
+                <p>As price falls toward a major put wall, expect buying pressure. Put sellers need to hedge by buying the underlying. This creates a "floor" effect.</p>
+                <p><strong>What to watch:</strong> If price breaks through, panic selling may accelerate as put holders profit.</p>
+            </div>
+
+            <div class="warning">
+                <div class="warning-title">⚠️ Walls Can Break</div>
+                <p>OI walls are not guaranteed support/resistance. In high-momentum moves (news, earnings, macro events), price can slice through walls. Use walls as <em>probabilities</em>, not certainties.</p>
+            </div>
+
+            <h3>Dashboard Metrics</h3>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>What It Shows</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Top 10 Call Walls</td>
+                        <td>Strikes with highest call OI — potential resistance levels</td>
+                    </tr>
+                    <tr>
+                        <td>Top 10 Put Walls</td>
+                        <td>Strikes with highest put OI — potential support levels</td>
+                    </tr>
+                    <tr>
+                        <td>Wall Strength</td>
+                        <td>Relative size of OI compared to average — bigger = stronger wall</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- MAX PAIN SECTION -->
+        <div id="maxpain" class="section">
+            <h2><span class="icon">💀</span> Max Pain</h2>
+
+            <div class="definition">
+                <div class="definition-term">Max Pain</div>
+                <div class="definition-text">The strike price at which the total value of all outstanding options (calls + puts) would be worth the least at expiration. In other words, the price where option holders collectively lose the most money.</div>
+            </div>
+
+            <h3>The Theory</h3>
+            <p>The "Max Pain Theory" suggests that price tends to gravitate toward the max pain strike as expiration approaches. The reasoning:</p>
+            <ul>
+                <li>Options sellers (often large institutions/market makers) have an interest in price settling where most options expire worthless</li>
+                <li>These entities have the capital to influence price through hedging activities</li>
+                <li>As expiration nears, the "gravitational pull" toward max pain increases</li>
+            </ul>
+
+            <h3>How It's Calculated</h3>
+
+            <div class="example">
+                <div class="example-title">Calculation Method</div>
+                <p>For each strike price, calculate the total "pain" (intrinsic value) of all options if price expired there:</p>
+                <code>Pain at Strike X = Σ(Call OI × max(0, X - Call Strike)) + Σ(Put OI × max(0, Put Strike - X))</code>
+                <p style="margin-top: 12px;">The strike with the <strong>minimum total pain</strong> is the max pain strike.</p>
+            </div>
+
+            <div class="diagram">
+                <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 20px;">Max Pain Visualization</div>
+                <div class="diagram-row">
+                    <div class="diagram-box">
+                        <div class="diagram-label">Strike 1.1600</div>
+                        <div class="diagram-value" style="color: var(--accent-red);">$2.4M pain</div>
+                    </div>
+                    <div class="diagram-box yellow">
+                        <div class="diagram-label">Strike 1.1650 (Max Pain)</div>
+                        <div class="diagram-value" style="color: var(--accent-green);">$1.1M pain</div>
+                    </div>
+                    <div class="diagram-box">
+                        <div class="diagram-label">Strike 1.1700</div>
+                        <div class="diagram-value" style="color: var(--accent-red);">$1.8M pain</div>
+                    </div>
+                </div>
+                <p style="margin-top: 16px; color: var(--text-secondary);">Price tends to drift toward the strike with minimum pain value</p>
+            </div>
+
+            <h3>When Max Pain Works Best</h3>
+
+            <div class="interp-grid">
+                <div class="interp-card bullish">
+                    <div class="interp-title">✅ High Reliability</div>
+                    <div class="interp-text">
+                        <ul style="margin: 0; padding-left: 16px;">
+                            <li>Weekly/monthly expirations</li>
+                            <li>Low volatility environments</li>
+                            <li>Last 2-3 days before expiry</li>
+                            <li>High OI relative to volume</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="interp-card bearish">
+                    <div class="interp-title">❌ Low Reliability</div>
+                    <div class="interp-text">
+                        <ul style="margin: 0; padding-left: 16px;">
+                            <li>During major news events</li>
+                            <li>High volatility / trending markets</li>
+                            <li>Far from expiration (>1 week)</li>
+                            <li>Low liquidity contracts</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tip">
+                <div class="tip-title">💡 Pro Tip</div>
+                <p>Don't trade max pain blindly. Use it as a <strong>magnet zone</strong> — if price is above max pain, bias is slightly bearish; if below, bias is slightly bullish. Combine with other analysis.</p>
+            </div>
+
+            <h3>Dashboard Shows</h3>
+            <ul>
+                <li><strong>Max Pain by Expiration</strong> — See the max pain strike for each expiry date</li>
+                <li><strong>Distance to Max Pain</strong> — How far current price is from max pain</li>
+                <li><strong>Nearest Expiry Max Pain</strong> — Most relevant for near-term trading</li>
+            </ul>
+        </div>
+
+        <!-- OI SKEW SECTION -->
+        <div id="skew" class="section">
+            <h2><span class="icon">⚖️</span> OI Skew</h2>
+
+            <div class="definition">
+                <div class="definition-term">OI Skew Ratio</div>
+                <div class="definition-text">The ratio of open interest above the current price vs below it. Measures whether options positioning is heavier on the upside (bullish) or downside (bearish).</div>
+            </div>
+
+            <h3>How It's Calculated</h3>
+
+            <div class="example">
+                <div class="example-title">Formula</div>
+                <code>OI Skew = (Total OI Above Current Price) / (Total OI Below Current Price)</code>
+                <p style="margin-top: 12px;">
+                    <strong>Skew > 1.0:</strong> More OI above price = More call activity = Bullish positioning<br>
+                    <strong>Skew < 1.0:</strong> More OI below price = More put activity = Bearish positioning<br>
+                    <strong>Skew = 1.0:</strong> Balanced positioning
+                </p>
+            </div>
+
+            <h3>Interpreting Skew</h3>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Skew Value</th>
+                        <th>Interpretation</th>
+                        <th>Market Sentiment</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>> 1.5</td>
+                        <td>Heavy call positioning above price</td>
+                        <td style="color: var(--accent-green);">Strongly Bullish</td>
+                    </tr>
+                    <tr>
+                        <td>1.1 - 1.5</td>
+                        <td>Moderate call bias</td>
+                        <td style="color: var(--accent-green);">Mildly Bullish</td>
+                    </tr>
+                    <tr>
+                        <td>0.9 - 1.1</td>
+                        <td>Balanced positioning</td>
+                        <td style="color: var(--accent-yellow);">Neutral</td>
+                    </tr>
+                    <tr>
+                        <td>0.7 - 0.9</td>
+                        <td>Moderate put bias</td>
+                        <td style="color: var(--accent-red);">Mildly Bearish</td>
+                    </tr>
+                    <tr>
+                        <td>< 0.7</td>
+                        <td>Heavy put positioning below price</td>
+                        <td style="color: var(--accent-red);">Strongly Bearish</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="warning">
+                <div class="warning-title">⚠️ Contrarian Signal?</div>
+                <p>Extreme skew readings can sometimes be <strong>contrarian</strong> signals. When everyone is positioned one way, the market often reverses. A skew of 2.0+ (everyone bullish) might indicate a top; skew of 0.5 (everyone bearish) might indicate a bottom.</p>
+            </div>
+
+            <h3>Dashboard Visualization</h3>
+            <p>The dashboard shows OI Skew as a visual meter:</p>
+
+            <div class="diagram">
+                <div class="diagram-row">
+                    <div style="width: 100%; max-width: 400px;">
+                        <div style="height: 24px; background: linear-gradient(90deg, var(--accent-red), var(--accent-yellow), var(--accent-green)); border-radius: 12px; position: relative;">
+                            <div style="position: absolute; top: -8px; left: 62%; width: 4px; height: 40px; background: white; border-radius: 2px;"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: var(--text-muted);">
+                            <span>Bearish (0.5)</span>
+                            <span>Neutral (1.0)</span>
+                            <span>Bullish (1.5+)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STRIKE MAGNETISM SECTION -->
+        <div id="magnetism" class="section">
+            <h2><span class="icon">🧲</span> Strike Magnetism</h2>
+
+            <div class="definition">
+                <div class="definition-term">Strike Magnetism Score</div>
+                <div class="definition-text">A composite score ranking how likely price is to be "pulled" toward a specific strike. Based on OI concentration and proximity to current price.</div>
+            </div>
+
+            <h3>Why Strikes Act as Magnets</h3>
+            <p>Options market makers must hedge their positions. When they sell options, they delta-hedge by buying/selling the underlying:</p>
+            <ul>
+                <li><strong>Sold Calls:</strong> As price rises, dealers sell underlying to hedge → creates selling pressure</li>
+                <li><strong>Sold Puts:</strong> As price falls, dealers buy underlying to hedge → creates buying pressure</li>
+                <li><strong>High OI = More Hedging = Stronger Magnet</strong></li>
+            </ul>
+
+            <h3>Magnetism Score Calculation</h3>
+
+            <div class="example">
+                <div class="example-title">Formula</div>
+                <code>Magnetism Score = (Total OI at Strike) × (1 / Distance from Current Price)</code>
+                <p style="margin-top: 12px;">Strikes with high OI that are close to current price have the highest magnetism. Far OTM strikes with low OI have minimal pull.</p>
+            </div>
+
+            <h3>How to Use Magnetism</h3>
+
+            <div class="scenario">
+                <div class="scenario-header">
+                    <div class="scenario-title">High Magnetism Strike Above Price</div>
+                    <div class="scenario-signal bullish">Bullish Magnet</div>
+                </div>
+                <p>If a strike above current price has a high magnetism score, price may be pulled upward toward it. This is especially true heading into expiration.</p>
+            </div>
+
+            <div class="scenario">
+                <div class="scenario-header">
+                    <div class="scenario-title">High Magnetism Strike Below Price</div>
+                    <div class="scenario-signal bearish">Bearish Magnet</div>
+                </div>
+                <p>If the strongest magnet is below current price, expect downward drift. Price often "pins" to the highest magnetism strike at expiration.</p>
+            </div>
+
+            <div class="scenario">
+                <div class="scenario-header">
+                    <div class="scenario-title">Price Between Two Strong Magnets</div>
+                    <div class="scenario-signal neutral">Range Bound</div>
+                </div>
+                <p>When strong magnets exist both above and below, price often chops in a range. Trade the range until one side breaks.</p>
+            </div>
+
+            <h3>Dashboard Shows</h3>
+            <ul>
+                <li><strong>Top Magnet Strike</strong> — The strike with highest magnetism score</li>
+                <li><strong>Magnetism Rankings</strong> — All strikes ranked by pull strength</li>
+                <li><strong>Direction Bias</strong> — Whether magnets favor upside or downside</li>
+            </ul>
+        </div>
+
+        <!-- OI MOMENTUM SECTION -->
+        <div id="momentum" class="section">
+            <h2><span class="icon">🚀</span> OI Momentum (Change Analysis)</h2>
+
+            <div class="definition">
+                <div class="definition-term">OI Change / Momentum</div>
+                <div class="definition-text">The daily change in open interest at each strike. Positive change = new positions being opened. Negative change = positions being closed.</div>
+            </div>
+
+            <h3>Why Changes Matter More Than Absolute OI</h3>
+            <p>Static OI tells you where positions exist. <strong>OI change</strong> tells you where money is flowing <em>right now</em>. This is leading indicator information.</p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>OI Change</th>
+                        <th>Price Action</th>
+                        <th>Interpretation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="color: var(--accent-green);">+OI</td>
+                        <td>Price Rising</td>
+                        <td style="color: var(--accent-green);">New longs entering — bullish confirmation</td>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--accent-green);">+OI</td>
+                        <td>Price Falling</td>
+                        <td style="color: var(--accent-red);">New shorts entering — bearish confirmation</td>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--accent-red);">-OI</td>
+                        <td>Price Rising</td>
+                        <td style="color: var(--accent-yellow);">Short covering rally — weak/unsustainable</td>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--accent-red);">-OI</td>
+                        <td>Price Falling</td>
+                        <td style="color: var(--accent-yellow);">Long liquidation — capitulation, possible bottom</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Momentum Signals</h3>
+
+            <div class="interp-grid">
+                <div class="interp-card bullish">
+                    <div class="interp-title">Call OI Building</div>
+                    <div class="interp-text">Large increase in call OI at specific strikes = traders betting on upside. Especially significant at strikes above current price.</div>
+                </div>
+                <div class="interp-card bearish">
+                    <div class="interp-title">Put OI Building</div>
+                    <div class="interp-text">Large increase in put OI = traders betting on downside or hedging. Significant at strikes below current price.</div>
+                </div>
+                <div class="interp-card neutral">
+                    <div class="interp-title">OI Unwinding</div>
+                    <div class="interp-text">Decreasing OI across multiple strikes = traders closing positions. Often happens after big moves or before expiration.</div>
+                </div>
+                <div class="interp-card info">
+                    <div class="interp-title">OI Shifting</div>
+                    <div class="interp-text">OI decreasing at one strike while increasing at another = traders rolling positions. Watch where the new positions are going.</div>
+                </div>
+            </div>
+
+            <h3>Dashboard Shows</h3>
+            <ul>
+                <li><strong>Biggest Call OI Increases</strong> — Where bullish bets are being placed</li>
+                <li><strong>Biggest Put OI Increases</strong> — Where bearish bets are being placed</li>
+                <li><strong>Net Change</strong> — Overall building vs unwinding</li>
+                <li><strong>Change Heatmap</strong> — Visual of where new positions are concentrating</li>
+            </ul>
+
+            <div class="tip">
+                <div class="tip-title">💡 Pro Tip</div>
+                <p>Large OI increases at a specific strike often mark significant levels. If 10,000 new contracts open at 1.1700, that strike becomes important. Watch for price to react when it reaches that level.</p>
+            </div>
+        </div>
+
+        <!-- HEATMAPS SECTION -->
+        <div id="heatmaps" class="section">
+            <h2><span class="icon">🗺️</span> OI Heatmaps</h2>
+
+            <div class="definition">
+                <div class="definition-term">OI Heatmap</div>
+                <div class="definition-text">A visual grid showing open interest intensity across strikes (Y-axis) and expirations (X-axis). Color intensity indicates OI concentration — darker = more contracts.</div>
+            </div>
+
+            <h3>How to Read Heatmaps</h3>
+
+            <div class="diagram">
+                <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 20px;">Heatmap Structure</div>
+                <table style="max-width: 500px; margin: 0 auto;">
+                    <thead>
+                        <tr>
+                            <th>Strike ↓ / Expiry →</th>
+                            <th>Jan 19</th>
+                            <th>Jan 26</th>
+                            <th>Feb 2</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1.1800</td>
+                            <td style="background: rgba(0, 227, 150, 0.3);">1.2K</td>
+                            <td style="background: rgba(0, 227, 150, 0.5);">2.8K</td>
+                            <td style="background: rgba(0, 227, 150, 0.2);">800</td>
+                        </tr>
+                        <tr>
+                            <td>1.1700</td>
+                            <td style="background: rgba(0, 227, 150, 0.7);">4.5K</td>
+                            <td style="background: rgba(0, 227, 150, 0.9);">8.2K</td>
+                            <td style="background: rgba(0, 227, 150, 0.4);">1.9K</td>
+                        </tr>
+                        <tr>
+                            <td>1.1600</td>
+                            <td style="background: rgba(0, 227, 150, 0.4);">2.1K</td>
+                            <td style="background: rgba(0, 227, 150, 0.6);">3.5K</td>
+                            <td style="background: rgba(0, 227, 150, 0.3);">1.1K</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p style="margin-top: 16px; font-size: 13px; color: var(--text-secondary);">Darker cells = Higher OI = More significant level</p>
+            </div>
+
+            <h3>What to Look For</h3>
+
+            <div class="interp-grid">
+                <div class="interp-card info">
+                    <div class="interp-title">Horizontal Clusters</div>
+                    <div class="interp-text">High OI across multiple expirations at the same strike = Very strong support/resistance level that persists over time.</div>
+                </div>
+                <div class="interp-card info">
+                    <div class="interp-title">Vertical Clusters</div>
+                    <div class="interp-text">High OI across multiple strikes for one expiration = Significant event expected around that date (earnings, FOMC, etc.).</div>
+                </div>
+                <div class="interp-card info">
+                    <div class="interp-title">Isolated Hot Spots</div>
+                    <div class="interp-text">Single cells with very high OI = Specific bets on price reaching that strike by that expiration.</div>
+                </div>
+                <div class="interp-card info">
+                    <div class="interp-title">OI Desert</div>
+                    <div class="interp-text">Areas with minimal OI = Price can move quickly through these zones with little resistance.</div>
+                </div>
+            </div>
+
+            <h3>Standard vs Change Heatmap</h3>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Heatmap Type</th>
+                        <th>Shows</th>
+                        <th>Best For</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Standard OI Heatmap</td>
+                        <td>Absolute open interest levels</td>
+                        <td>Identifying established support/resistance</td>
+                    </tr>
+                    <tr>
+                        <td>OI Change Heatmap</td>
+                        <td>Daily changes in OI</td>
+                        <td>Spotting where new money is flowing</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- STRATEGIES SECTION -->
+        <div id="strategies" class="section">
+            <h2><span class="icon">🎯</span> Trading Strategies Using OI Data</h2>
+
+            <div class="card">
+                <div class="card-title">Strategy 1: Wall-to-Wall Range Trading <span class="badge yellow">Low Risk</span></div>
+                <h4>Setup</h4>
+                <ul>
+                    <li>Identify the nearest major call wall (resistance) and put wall (support)</li>
+                    <li>Confirm price is between the two walls</li>
+                </ul>
+                <h4>Execution</h4>
+                <ul>
+                    <li>Buy near the put wall with stop below it</li>
+                    <li>Sell near the call wall with stop above it</li>
+                    <li>Target the opposite wall</li>
+                </ul>
+                <h4>Best When</h4>
+                <ul>
+                    <li>Low volatility environment</li>
+                    <li>No major news expected</li>
+                    <li>OI walls are clearly defined with high contrast</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Strategy 2: Max Pain Reversion <span class="badge blue">Medium Risk</span></div>
+                <h4>Setup</h4>
+                <ul>
+                    <li>Calculate max pain for nearest expiration</li>
+                    <li>Wait for price to deviate significantly from max pain (>1%)</li>
+                </ul>
+                <h4>Execution</h4>
+                <ul>
+                    <li>If price is above max pain: Look for short entries</li>
+                    <li>If price is below max pain: Look for long entries</li>
+                    <li>Target: Max pain strike</li>
+                    <li>Timeframe: Enter 2-3 days before expiration</li>
+                </ul>
+                <h4>Best When</h4>
+                <ul>
+                    <li>Within 3 days of expiration</li>
+                    <li>High OI in the contract</li>
+                    <li>No major catalysts expected</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Strategy 3: Magnetism Pinning <span class="badge green">Expiration Play</span></div>
+                <h4>Setup</h4>
+                <ul>
+                    <li>On expiration day (or day before), identify the highest magnetism strike</li>
+                    <li>Confirm it has significantly more OI than surrounding strikes</li>
+                </ul>
+                <h4>Execution</h4>
+                <ul>
+                    <li>Trade toward the magnet strike if price is within 0.5%</li>
+                    <li>Sell premium at the magnet strike (expect pinning)</li>
+                    <li>Exit by end of day</li>
+                </ul>
+                <h4>Best When</h4>
+                <ul>
+                    <li>Expiration Friday (weekly/monthly)</li>
+                    <li>Low VIX environment</li>
+                    <li>Clear dominant magnet strike</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Strategy 4: Momentum Confirmation <span class="badge purple">Trend Following</span></div>
+                <h4>Setup</h4>
+                <ul>
+                    <li>Identify a directional move (price trending up or down)</li>
+                    <li>Check OI change data to confirm new positions</li>
+                </ul>
+                <h4>Execution</h4>
+                <ul>
+                    <li><strong>Bullish:</strong> Price rising + Call OI increasing = Add to longs</li>
+                    <li><strong>Bearish:</strong> Price falling + Put OI increasing = Add to shorts</li>
+                    <li><strong>Caution:</strong> Price moving on declining OI = Move may be weak</li>
+                </ul>
+                <h4>Best When</h4>
+                <ul>
+                    <li>Clear trend is established</li>
+                    <li>Looking for confirmation to add size</li>
+                    <li>Avoiding false breakouts</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Strategy 5: Wall Break Momentum <span class="badge red">High Risk / High Reward</span></div>
+                <h4>Setup</h4>
+                <ul>
+                    <li>Identify a major OI wall that price is testing</li>
+                    <li>Wait for a decisive break through the wall</li>
+                </ul>
+                <h4>Execution</h4>
+                <ul>
+                    <li>Enter on confirmed break (close beyond wall)</li>
+                    <li>Stop loss: Just inside the broken wall</li>
+                    <li>Target: Next major wall or 2x risk</li>
+                </ul>
+                <h4>Why It Works</h4>
+                <p>When a wall breaks, dealers who were hedging suddenly need to reverse their hedges. This creates a cascade effect that accelerates the move.</p>
+            </div>
+
+            <div class="warning">
+                <div class="warning-title">⚠️ Risk Management</div>
+                <p>OI data is <strong>one input</strong> among many. Never trade OI signals alone. Combine with:</p>
+                <ul>
+                    <li>Technical analysis (price action, support/resistance)</li>
+                    <li>Fundamental awareness (news, earnings, macro)</li>
+                    <li>Volume confirmation</li>
+                    <li>Proper position sizing and stop losses</li>
+                </ul>
+            </div>
+
+            <h3>Quick Reference Cheat Sheet</h3>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Signal</th>
+                        <th>Interpretation</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Price at call wall</td>
+                        <td>Resistance likely</td>
+                        <td>Look for short / take profits on longs</td>
+                    </tr>
+                    <tr>
+                        <td>Price at put wall</td>
+                        <td>Support likely</td>
+                        <td>Look for long / take profits on shorts</td>
+                    </tr>
+                    <tr>
+                        <td>Price below max pain (near expiry)</td>
+                        <td>Upward pressure expected</td>
+                        <td>Bullish bias</td>
+                    </tr>
+                    <tr>
+                        <td>Price above max pain (near expiry)</td>
+                        <td>Downward pressure expected</td>
+                        <td>Bearish bias</td>
+                    </tr>
+                    <tr>
+                        <td>OI Skew > 1.3</td>
+                        <td>Bullish positioning</td>
+                        <td>Favor longs (or contrarian short at extremes)</td>
+                    </tr>
+                    <tr>
+                        <td>OI Skew < 0.7</td>
+                        <td>Bearish positioning</td>
+                        <td>Favor shorts (or contrarian long at extremes)</td>
+                    </tr>
+                    <tr>
+                        <td>High magnetism strike nearby</td>
+                        <td>Price may pin</td>
+                        <td>Expect range-bound action near expiry</td>
+                    </tr>
+                    <tr>
+                        <td>Rising OI + Rising Price</td>
+                        <td>New longs entering</td>
+                        <td>Trend is healthy, stay long</td>
+                    </tr>
+                    <tr>
+                        <td>Falling OI + Rising Price</td>
+                        <td>Short covering</td>
+                        <td>Rally may be weak, be cautious</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <footer>
+            <p>C.OG Open Interest Dashboard Guide • Built for Traders, by Traders</p>
+            <p style="margin-top: 8px;">Remember: OI data is probabilistic, not predictive. Always manage risk.</p>
+        </footer>
+    </div>
+
+    <script>
+        function showSection(sectionId) {
+            // Hide all sections
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            // Show selected section
+            document.getElementById(sectionId).classList.add('active');
+            
+            // Update nav
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Scroll to top of section
+            window.scrollTo({ top: 200, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>

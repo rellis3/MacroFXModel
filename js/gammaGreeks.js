@@ -43,17 +43,84 @@ export function bsCharm(spot, strike, T, sigma, { r = 0 } = {}) {
   return -normPdf(d1) * (2 * r * T - d2 * vt) / (2 * T * vt);
 }
 
-// Zero-crossing of a per-strike net-exposure profile (the charm/vanna analogue of the
-// gamma flip): the strike where the running sign flips, nearer-zero side.
-function _crossing(profile, key) {
+// Zero-crossing of a per-strike exposure profile.
+//
+// The old version returned the FIRST sign change walking up from the lowest strike,
+// snapped to whichever side was nearer zero. Both parts were wrong. Deep in the tails
+// the exposure is noise flickering either side of zero, so it latched on hundreds of
+// points below spot and never got near the money — on gold it returned 3,200 for BOTH
+// charm and vanna, which is the giveaway: two genuinely different exposure curves
+// cannot share a zero at the same strike. Snapping also quantised the answer to the
+// strike grid ($25 on gold, 50 pips on EUR/USD).
+//
+// Now: collect EVERY crossing, interpolate each to its true zero, and return the one
+// closest to spot — the regime boundary price is actually near, not an artefact from
+// the far tail. Without a spot it falls back to the largest-magnitude swing, which is
+// the dominant boundary rather than the first one encountered.
+function _crossing(profile, key, spot = null) {
+  const hits = [];
   for (let i = 1; i < profile.length; i++) {
     const a = profile[i - 1][key], b = profile[i][key];
-    if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
-    if (Math.sign(a) !== 0 && Math.sign(b) !== Math.sign(a)) {
-      return Math.abs(b) < Math.abs(a) ? profile[i].strike : profile[i - 1].strike;
+    if (!Number.isFinite(a) || !Number.isFinite(b) || a === 0) continue;
+    if (Math.sign(b) !== Math.sign(a)) {
+      const ka = profile[i - 1].strike, kb = profile[i].strike;
+      const t = Math.abs(a) / (Math.abs(a) + Math.abs(b));      // linear interp to zero
+      hits.push({ price: ka + t * (kb - ka), mag: Math.abs(a) + Math.abs(b) });
     }
   }
-  return null;
+  if (!hits.length) return null;
+  const pick = Number.isFinite(spot)
+    ? hits.reduce((m, h) => (Math.abs(h.price - spot) < Math.abs(m.price - spot) ? h : m))
+    : hits.reduce((m, h) => (h.mag > m.mag ? h : m));
+  return pick.price;
+}
+
+// BS gamma — the missing sibling of bsVanna/bsCharm, sharing the same _d1d2.
+export function bsGamma(spot, strike, T, sigma, { r = 0 } = {}) {
+  if (!(spot > 0) || !(strike > 0) || !(T > 0) || !(sigma > 0)) return null;
+  const { d1, vt } = _d1d2(spot, strike, T, sigma, r);
+  return Math.exp(-d1 * d1 / 2) / SQRT2PI / (spot * vt);
+}
+
+// GEX FLIP — the price at which TOTAL net dealer gamma exposure crosses zero.
+//
+// This is the real definition, and it is NOT what a per-strike sign scan measures.
+// Gamma depends on where spot IS: every strike's contribution changes as price moves
+// (gamma peaks when spot = strike). So the flip has to be found by re-evaluating the
+// WHOLE book at candidate prices and root-finding, not by walking the strike ladder
+// once at today's spot. On gold the per-strike scan said 3,655 and this says ~4,100
+// against another desk's 4,118 — a 460-point error versus ~20.
+//
+// Above the flip dealers are long gamma (hedging damps moves); below it they are short
+// gamma (hedging amplifies). Returns the interpolated crossing nearest spot, or null.
+export function gexFlipPrice(strikes, calls, puts, { sigmaFn, sigma = 0.2, T, r = 0, mult = 1,
+                                                     spot = null, span = 0.25, steps = 400 } = {}) {
+  if (!Array.isArray(strikes) || strikes.length < 2 || !(T > 0)) return null;
+  const anchor = Number.isFinite(spot) && spot > 0
+    ? spot : strikes.slice().sort((a, b) => a - b)[Math.floor(strikes.length / 2)];
+  if (!(anchor > 0)) return null;
+  const sig = k => { const s = sigmaFn ? sigmaFn(k) : sigma; return (s > 0 ? s : sigma); };
+  const total = S => {
+    let t = 0;
+    for (let i = 0; i < strikes.length; i++) {
+      const g = bsGamma(S, strikes[i], T, sig(strikes[i]), { r });
+      if (g != null) t += g * ((calls[i] || 0) - (puts[i] || 0)) * mult * S;
+    }
+    return t;
+  };
+  const lo = anchor * (1 - span), hi = anchor * (1 + span), step = (hi - lo) / steps;
+  const hits = [];
+  let prev = { S: lo, v: total(lo) };
+  for (let S = lo + step; S <= hi; S += step) {
+    const v = total(S);
+    if (Number.isFinite(prev.v) && Number.isFinite(v) && prev.v !== 0 && Math.sign(v) !== Math.sign(prev.v)) {
+      const t = Math.abs(prev.v) / (Math.abs(prev.v) + Math.abs(v));
+      hits.push(prev.S + t * (S - prev.S));
+    }
+    prev = { S, v };
+  }
+  if (!hits.length) return null;
+  return hits.reduce((m, h) => (Math.abs(h - anchor) < Math.abs(m - anchor) ? h : m));
 }
 
 // Aggregate charm & vanna exposure across the chain, mirroring GEX:
@@ -80,7 +147,7 @@ export function charmVannaExposure(strikes, calls, puts, spot, { sigmaFn, T, r =
   rows.sort((a, b) => a.strike - b.strike);
   return {
     cex: +cex.toFixed(2), vex: +vex.toFixed(2),
-    charmFlip: _crossing(rows, 'netCharm'), vannaFlip: _crossing(rows, 'netVanna'),
+    charmFlip: _crossing(rows, 'netCharm', spot), vannaFlip: _crossing(rows, 'netVanna', spot),
     profile: rows,
   };
 }

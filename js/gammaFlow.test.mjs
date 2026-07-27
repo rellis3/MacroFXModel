@@ -7,12 +7,29 @@ const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e 
 
 console.log('[gammaFlip — zero-GEX crossing]');
 {
-  // netGex goes +,+,−,− → flips between strike 4200 (+) and 4250 (−). 4250 has the
-  // smaller |netGex| (1) so it's the flip level.
+  // netGex +,+,−,− flips between 4200 (+3) and 4250 (−1). The true zero is 3/(3+1) =
+  // 75% of the way across, i.e. 4237.5. It used to SNAP to 4250 (nearer-zero side),
+  // quantising every flip to the strike grid — $25 on gold, 50 pips on EUR/USD.
   const gp = [{strike:4100,netGex:5},{strike:4200,netGex:3},{strike:4250,netGex:-1},{strike:4300,netGex:-4}];
-  ok('picks the crossing strike nearer zero', gammaFlip(gp) === 4250, `${gammaFlip(gp)}`);
+  ok('interpolates to the true zero, not the nearest strike', gammaFlip(gp) === 4237.5, `${gammaFlip(gp)}`);
   ok('all-positive profile → null (no flip)', gammaFlip([{strike:1,netGex:2},{strike:2,netGex:1}]) === null);
   ok('empty/garbage → null', gammaFlip([]) === null && gammaFlip(null) === null);
+
+  // THE BUG THIS FIXES. Deep in the tails net GEX is noise flickering either side of
+  // zero. The old scan returned the FIRST sign change walking up from the lowest
+  // strike, so it latched onto that noise and never reached the money — on real gold
+  // it returned 3,655 against another desk's 4,118, and gave charm and vanna the
+  // identical 3,200 (two different exposure curves cannot share a zero).
+  const noisy = [
+    {strike:3000,netGex: 1},{strike:3050,netGex:-1},   // tail noise, ±1
+    {strike:3100,netGex: 2},                            // …flips again
+    {strike:4200,netGex: 900},{strike:4250,netGex:-900} // the real boundary, near spot
+  ];
+  ok('tail noise no longer wins over the real boundary',
+    Math.abs(gammaFlip(noisy, 4225) - 4225) < 1, `${gammaFlip(noisy, 4225)}`);
+  ok('without a spot, the largest-magnitude swing wins',
+    Math.abs(gammaFlip(noisy) - 4225) < 1, `${gammaFlip(noisy)}`);
+  ok('old first-from-bottom answer (~3025) is NOT returned', gammaFlip(noisy, 4225) > 4000);
 }
 
 console.log('[distanceToFlip — vol read]');
