@@ -1,6 +1,6 @@
 // Synthetic tests for the IV-surface metrics. No network.
 //   node js/ivMetrics.test.mjs
-import { expectedMove, ivDynamics, riskReversal, vannaState } from './ivMetrics.js';
+import { expectedMove, expectedMoveFromStraddle, ivTermStructure, ivDynamics, riskReversal, vannaState } from './ivMetrics.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) fails++; };
@@ -38,6 +38,34 @@ console.log('[riskReversal — put vs call skew]');
   ok('RR positive (put-skewed / downside fear)', rr.rr > 0, `${rr.rr}`);
   ok('tilt = downside', rr.tilt === 'downside', rr.tilt);
   ok('reports both wings', rr.putStrike === 3900 && rr.callStrike === 4200, `${rr.putStrike}/${rr.callStrike}`);
+}
+
+console.log('[expectedMoveFromStraddle — straddle price given directly]');
+{
+  // NQ front expiry: straddle 375.75 at spot 28282, 3 DTE.
+  const em = expectedMoveFromStraddle(28282, 375.75, { dte: 3, atmStrike: 28280 });
+  ok('move = straddle', near(em.move, 375.75), `${em.move}`);
+  ok('upper/lower band around spot', near(em.upper, 28657.75) && near(em.lower, 27906.25), `${em.upper}/${em.lower}`);
+  ok('pct = straddle/spot', near(em.pct, 1.329, 1e-2), `${em.pct}`);
+  ok('daily = move/√dte', near(em.daily, 375.75 / Math.sqrt(3), 1e-2), `${em.daily}`);
+  ok('tags source', em.source === 'settlement-straddle');
+  ok('atmStrike carried', em.atmStrike === 28280);
+  ok('bad input → null', expectedMoveFromStraddle(0, 100) === null && expectedMoveFromStraddle(100, 0) === null);
+}
+
+console.log('[ivTermStructure — ATM vol across expiries]');
+{
+  // Upward-sloping (front calm, later richer).
+  const up = ivTermStructure([{ dte: 3, iv: 18.8, ivChg: -6.26 }, { dte: 21, iv: 25.85 }, { dte: 147, iv: 25.46 }]);
+  ok('front = nearest expiry', up.front.dte === 3 && near(up.front.iv, 18.8), JSON.stringify(up.front));
+  ok('back = furthest expiry', up.back.dte === 147);
+  ok('slope = back − front', near(up.slope, 6.66, 1e-2), `${up.slope}`);
+  ok('shape upward (normal)', up.shape === 'upward', up.shape);
+  ok('carries per-expiry points', up.points.length === 3 && up.points[0].ivChg === -6.26);
+  // Inverted (near-term stress).
+  const inv = ivTermStructure([{ dte: 2, iv: 32 }, { dte: 30, iv: 24 }]);
+  ok('front IV > back IV → inverted', inv.shape === 'inverted' && inv.slope < 0, `${inv.shape} ${inv.slope}`);
+  ok('< 2 valid rows → null', ivTermStructure([{ dte: 3, iv: 18 }]) === null && ivTermStructure([]) === null);
 }
 
 console.log('[vannaState — VEX × IV direction]');

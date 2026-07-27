@@ -3,7 +3,7 @@ import { kvGet, kvSet } from './utils.js';
 import { wallStrengthTier, oiSkew, oiConcentration, clusterStrikes, wallFreshness, volumePCRatio } from './oiConfluence.js';
 import { gammaFlip } from './gammaFlow.js';
 import { charmVannaExposure } from './gammaGreeks.js';
-import { expectedMove, ivDynamics, riskReversal, vannaState } from './ivMetrics.js';
+import { expectedMove, expectedMoveFromStraddle, ivTermStructure, ivDynamics, riskReversal, vannaState } from './ivMetrics.js';
 
 // ── Storage ──────────────────────────────────────────────────────────────────
 
@@ -645,6 +645,41 @@ export function parseIVSettlement(raw) {
   return out.strikes.length >= 2 ? out : null;
 }
 
+// Parse the CME "Settlements" table — the per-EXPIRY ATM summary (one row per expiry,
+// NOT a per-strike chain). 17 tab columns:
+//   Symbol | DTE | ExpirationDate | Strike | Future(Settle Prior Chg) |
+//   Straddle(Settle Prior Chg) | Volatility(Settle Prior Chg) | OI(Call CallChg Put PutChg)
+// → [{symbol, dte, expiry, strike, future, straddle, straddleChg, iv%, ivPrior%, ivChg%,
+//    oiCall, oiPut}]. A data row is identified by a dd/mm/yyyy date in col 2 — that same
+// test is the discriminator vs `parseIVSettlement` (a per-strike chain has a number
+// there, so this returns null on it and the caller falls back to the per-strike parser).
+export function parseSettlementTermStructure(raw) {
+  if (!raw || !raw.trim()) return null;
+  const rows = [];
+  for (const line of raw.split('\n')) {
+    const c = line.replace(/\r$/, '').split('\t');
+    if (c.length < 14) continue;                                 // needs OI columns
+    const dateTok = String(c[2] ?? '').trim();
+    if (!/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(dateTok)) continue;   // data row ⇔ date in col 2
+    const num = j => parseFloat(String(c[j] ?? '').replace(/,/g, ''));
+    const dte = num(1), strike = num(3);
+    if (!Number.isFinite(dte) || !Number.isFinite(strike)) continue;
+    const iv = num(10), straddle = num(7);
+    rows.push({
+      symbol: String(c[0] ?? '').trim(), dte, expiry: dateTok, strike,
+      future: Number.isFinite(num(4)) ? num(4) : null,
+      straddle: Number.isFinite(straddle) && straddle > 0 ? straddle : null,
+      straddleChg: Number.isFinite(num(9)) ? num(9) : null,
+      iv: Number.isFinite(iv) && iv > 0 ? iv : null,             // percent (18.80)
+      ivPrior: Number.isFinite(num(11)) && num(11) > 0 ? num(11) : null,
+      ivChg: Number.isFinite(num(12)) ? num(12) : null,
+      oiCall: Number.isFinite(num(13)) ? num(13) : 0,
+      oiPut: Number.isFinite(num(15)) ? num(15) : 0,
+    });
+  }
+  return rows.length ? rows : null;
+}
+
 // ── Calculations ─────────────────────────────────────────────────────────────
 
 export function oiCalcMaxPain(strikes, calls, puts) {
@@ -920,8 +955,24 @@ export function processOIData() {
   // table). Optional — only when the IV box is filled. Self-consistent: uses the IV
   // paste's OWN strike/OI (one expiry) + the DTE field for T + the real per-strike
   // smile. Absent IV → no greeksFlow (charm/vanna simply not shown).
-  let greeksFlow = null, expMove = null, ivDyn = null, ivRR = null, ivSmile = null;
+  let greeksFlow = null, expMove = null, ivDyn = null, ivRR = null, ivSmile = null, ivTerm = null;
   if (rawIV && rawIV.trim()) {
+    // Two accepted shapes. FIRST try the per-EXPIRY "Settlements" table (one ATM row per
+    // expiry): it gives the straddle → expected move + an ATM IV term structure directly,
+    // but NOT a per-strike smile (so no charm/vanna/skew from it). If it's not that shape,
+    // fall back to the per-STRIKE option-settlement chain (the full smile → charm/vanna).
+    const ts = parseSettlementTermStructure(rawIV);
+    if (ts) {
+      const target = primaryExpiry?.dte ?? (Number.isFinite(dteEff) ? dteEff : (Number.isFinite(dteRaw) ? dteRaw : null));
+      const liquid = ts.filter(r => r.straddle > 0 && r.iv > 0);
+      const pick = liquid.length
+        ? (Number.isFinite(target)
+            ? liquid.slice().sort((a, b) => Math.abs(a.dte - target) - Math.abs(b.dte - target))[0]
+            : liquid.slice().sort((a, b) => a.dte - b.dte)[0])   // nearest expiry when no target DTE
+        : null;
+      if (pick) expMove = expectedMoveFromStraddle(spot, pick.straddle, { dte: pick.dte, atmStrike: pick.strike });
+      ivTerm = ivTermStructure(ts.map(r => ({ dte: r.dte, iv: r.iv, ivChg: r.ivChg })));
+    } else {
     const ivp = parseIVSettlement(rawIV);
     // DTE is auto-read: the IV paste's own header (its exact expiry) wins, then the OI
     // heatmap's known primary-expiry DTE, then the manual field as a last-resort override.
@@ -942,6 +993,7 @@ export function processOIData() {
           source: 'iv', ivStrikes: ivp.strikes.length, dteDays,
           vanna: vannaState(ex.vex, ivDyn?.atmChg != null ? ivDyn.atmChg / 100 : null) };
       }
+    }
     }
   }
 
@@ -1064,6 +1116,7 @@ export function processOIData() {
     ivDynamics: ivDyn,       // ATM IV change + skew steepening (tail-hedge demand)
     riskReversal: ivRR,      // OTM put−call IV skew (directional sentiment tilt)
     ivSmile,                 // per-strike IV (+ prior) for the smile-curve viz — render-only
+    ivTermStructure: ivTerm, // ATM IV across expiries (from the "Settlements" per-expiry paste)
     callWall: _cwHead?.strike ?? 0, putWall: _pwHead?.strike ?? 0,
     callWallOI: _cwHead?.oi ?? 0,   putWallOI: _pwHead?.oi ?? 0,
     callWalls, putWalls, skew, volumeMagnets, concentration, clusters,
