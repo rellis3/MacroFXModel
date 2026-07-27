@@ -1,0 +1,223 @@
+// OI PASTE CONTRACT — the regression oracle for the CME QuikStrike paste path.
+//   node js/oiPasteContract.test.mjs
+//
+// WHY THIS EXISTS. The OI analyser was reviewed four times and passed every time,
+// because every review checked the code against itself. The parser was internally
+// consistent and the math (`oiCalcMaxPain`) was correct — it just ran on the wrong
+// expiry, anchored to a garbage futures price, and produced plausible-looking
+// levels. Broken and working were indistinguishable from the inside.
+//
+// So this file asserts against an EXTERNAL reference: real EUR/USD pastes captured
+// 2026-07-24/27 (`js/fixtures/`) and the levels the C.OG vendor card displayed for
+// the same data. If a change here stops reproducing the vendor's numbers, that is a
+// regression regardless of how reasonable the code looks.
+//
+// The prior test file (`oiMatrix.test.mjs`) missed all of this because every fixture
+// in it is an index or gold price ABOVE 50 — the exact guard that fails on FX.
+
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import { parseOIMatrix, oiParseTable, oiCalcMaxPain, pickPrimaryExpiry, resolveSmileExpiry,
+  parseIVSettlement, oiMatrixTermStructure } from './oi.js';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const fx = n => readFileSync(join(HERE, 'fixtures', n), 'utf8');
+
+let fails = 0;
+const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  → ' + e : ''}`); if (!c) fails++; };
+const near = (a, b, tol) => Number.isFinite(a) && Math.abs(a - b) <= tol;
+
+const MATRIX = fx('oi-eurusd-heatmap-matrix.txt');          // full 18-expiry heatmap, as pasted
+const SETTLE = fx('oi-eurusd-mo4n6-settlements.txt');       // MO4N6 per-strike chain, as pasted
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 1. THE VENDOR ORACLE — the C.OG card for MO4N6, 2026-07-24 settles.
+//    Card showed, in FUTURES terms: call wall 1.1450 · put wall 1.1450 · max pain 1.1450.
+//    These three numbers are ground truth. Reproducing them is the whole point.
+// ─────────────────────────────────────────────────────────────────────────────
+console.log('[vendor oracle — MO4N6 settlements chain reproduces the C.OG card]');
+{
+  const iv = parseIVSettlement(SETTLE);
+  ok('settlements chain parses', !!iv && iv.strikes.length === 41, `${iv?.strikes.length} strikes`);
+
+  const K = iv.strikes, C = iv.calls, P = iv.puts;
+  const wall = arr => K[arr.indexOf(Math.max(...arr))];
+
+  ok('CARD: max pain  = 1.1450', near(oiCalcMaxPain(K, C, P), 1.1450, 1e-9), oiCalcMaxPain(K, C, P).toFixed(4));
+  ok('CARD: call wall = 1.1450', near(wall(C), 1.1450, 1e-9), wall(C).toFixed(4));
+  ok('CARD: put wall  = 1.1450', near(wall(P), 1.1450, 1e-9), wall(P).toFixed(4));
+
+  // The per-strike OI is present and correct in this paste — it must not be discarded.
+  ok('per-strike OI carried through (1.1450 → 419C / 480P)',
+    C[K.indexOf(1.1450)] === 419 && P[K.indexOf(1.1450)] === 480);
+
+  // The title line carries the LIVE futures price and the real DTE. The course
+  // (education/open-interest-course-notes.md L212) requires the CURRENT futures
+  // price for the basis, not the settle — so this must be read, not ignored.
+  ok('DTE read from the title line', iv.dte === 0.20, `${iv.dte}`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2. FX ANCHOR — the bug that poisoned everything downstream.
+//    Header carries `1.13965` (6EU6). The old guard required a header number > 50,
+//    so it skipped 1.13965 and parsed `74` out of the text "74 DTE".
+// ─────────────────────────────────────────────────────────────────────────────
+console.log('[FX futures anchor — must not be scavenged from a "N DTE" label]');
+{
+  const m = parseOIMatrix(MATRIX);
+  // Row count varies with WHICH expiry is selected (strikes empty in that column are
+  // dropped), so assert the ladder is real rather than pinning a number that would
+  // just re-encode today's choice.
+  ok('matrix parses into a real strike ladder', !!m && m.strikes.length >= 40,
+    `${m?.strikes.length} strikes, ${Math.min(...m.strikes)}–${Math.max(...m.strikes)}`);
+  ok('futures price is the FX rate, not a DTE label', near(m.futures, 1.13965, 1e-9), `${m.futures}`);
+  ok('futures price is NOT 74 (the "74 DTE" token)', m.futures !== 74);
+  ok('futures price is NOT 6 (parseFloat of the contract code "6EU6")', m.futures !== 6);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 3. EXPIRY SELECTION — the course's rule (L487): "nearest expiration with
+//    significant liquidity", scored on NEAR-THE-MONEY OI so far-dated tail hedges
+//    can't win. With a broken anchor, near-money OI computed as 0 for all 18
+//    columns and the code silently fell back to biggest-total-OI — picking the
+//    39-DTE September monthly, which is exactly the distortion the rule exists
+//    to prevent.
+// ─────────────────────────────────────────────────────────────────────────────
+console.log('[expiry selection — near-money scoring must actually run]');
+{
+  const m = parseOIMatrix(MATRIX);
+  ok('an expiry was selected', !!m.primaryExpiry);
+  ok('near-money OI is non-zero (scoring ran, no silent fallback)',
+    m.primaryExpiry.nearOI > 0, `nearOI=${m.primaryExpiry.nearOI}`);
+  ok('did NOT pick the 39-DTE tail-hedge column by total OI',
+    m.primaryExpiry.dte !== 39, `dte=${m.primaryExpiry.dte}`);
+  ok('picked the near-money-liquid expiry (11 DTE for this fixture)',
+    m.primaryExpiry.dte === 11, `dte=${m.primaryExpiry.dte}`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 4. THE SILENT FALLBACK — a broken anchor must fail loudly, not switch scoring
+//    method and return a confident answer. This is the failure MODE that made the
+//    bug invisible for months, so it gets its own assertion.
+// ─────────────────────────────────────────────────────────────────────────────
+console.log('[no silent degradation on a bad anchor]');
+{
+  const lines = MATRIX.split('\n');
+  const hdr = lines.findIndex(l => {
+    const c = l.split('\t').map(s => s.trim()).filter(Boolean);
+    return c.length >= 4 && c.every(x => x === 'C' || x === 'P');
+  });
+  const dtes = [];
+  for (let i = 0; i < hdr; i++) {
+    const mm = lines[i].match(/(-?\d+)\s*DTE/g);
+    if (mm) for (const t of mm) dtes.push(parseInt(t, 10));
+  }
+  const rows = [];
+  for (let i = hdr + 1; i < lines.length; i++) {
+    const c = lines[i].split('\t');
+    const s = parseFloat((c[0] || '').replace(/,/g, ''));
+    if (!Number.isFinite(s) || s <= 0) continue;
+    const cp = [];
+    for (let j = 1; j < c.length; j += 2) {
+      const a = parseFloat((c[j] || '').replace(/,/g, '')), b = parseFloat((c[j + 1] || '').replace(/,/g, ''));
+      cp.push([Number.isFinite(a) ? a : 0, Number.isFinite(b) ? b : 0]);
+    }
+    rows.push({ strike: s, cp });
+  }
+  const bad = pickPrimaryExpiry(rows, dtes, 74);        // the poisoned anchor
+  ok('a nonsensical anchor is reported, not silently absorbed',
+    bad.anchorValid === false, `anchorValid=${bad.anchorValid}`);
+  const good = pickPrimaryExpiry(rows, dtes, 1.13965);  // the real one
+  ok('a valid anchor scores near-money OI', good.nearOI > 0 && good.anchorValid === true,
+    `nearOI=${good.nearOI}`);
+  // A bad anchor must DEGRADE GRACEFULLY, not switch scoring rule. It falls back to
+  // the median strike (a real ATM proxy) and still scores on near-money OI, so it
+  // recovers the same expiry — while `anchorValid:false` tells the caller to warn.
+  // The old code instead switched to biggest-total-OI and picked the 39-DTE column.
+  ok('a poisoned anchor still scores on near-money OI (no rule switch)',
+    bad.scoredOn === 'nearMoneyOI', `scoredOn=${bad.scoredOn}`);
+  ok('graceful recovery: poisoned anchor lands on the same expiry as the valid one',
+    bad.dte === good.dte, `${bad.dte} vs ${good.dte}`);
+  ok('and it is NOT the old wrong answer (39 DTE)', bad.dte !== 39, `dte=${bad.dte}`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 5. FULL-MATRIX PRESERVATION — the paste holds 18 expiries; the term structure
+//    must expose all of them. (Storage previously kept only the selected column,
+//    silently discarding 17/18 of every daily capture.)
+// ─────────────────────────────────────────────────────────────────────────────
+console.log('[full matrix retained — all expiries reachable]');
+{
+  const ts = oiMatrixTermStructure(MATRIX, 1);
+  ok('term structure covers the populated expiries', ts.length >= 15, `${ts.length} expiries`);
+  ok('near expiries present (1 DTE)', ts.some(r => r.dte === 1));
+  ok('far expiries present (74 DTE)', ts.some(r => r.dte === 74));
+  ok('per-expiry max pain differs across the curve (not one collapsed number)',
+    new Set(ts.map(r => r.maxPain)).size > 3);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 6. FORMAT SAFETY — a settlements chain pasted into the OI box must be REJECTED
+//    or routed, never column-guessed. Previously it survived only because <2 rows
+//    happened to pass; on a day with more positive Call-Chg values it would have
+//    silently produced strikes around 0.07.
+// ─────────────────────────────────────────────────────────────────────────────
+console.log('[format safety — no column guessing on a settlements paste]');
+{
+  const out = oiParseTable(SETTLE);
+  const guessed = out && out.strikes.some(s => s < 0.5);
+  ok('settlements paste never yields sub-0.5 "strikes"', !guessed,
+    out ? `min strike ${Math.min(...out.strikes)}` : 'rejected');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 7. LIVE SMILE-EXPIRY HINT — resolvable from the pastes ALONE, so it can fire on
+//    paste instead of costing a full Analyse-save-Analyse round trip. Analyse and
+//    the live hint call the SAME function, so they can never disagree.
+// ─────────────────────────────────────────────────────────────────────────────
+console.log('[live smile hint — resolves from pastes, no save required]');
+{
+  const TERM = fx('oi-eurusd-settlements-term.txt');
+
+  const h = resolveSmileExpiry(MATRIX, TERM);
+  ok('hint resolves from OI + Settlements alone', !!h && !!h.code, `${h?.code}`);
+  ok('hint names the expiry the WALLS came from (11 DTE → EUUQ6)',
+    h.code === 'EUUQ6', `${h.code}`);
+  ok('matched by CODE, not by DTE arithmetic', h.matchedOn === 'code', `matchedOn=${h.matchedOn}`);
+  ok('hint carries the expiry date for the paste', !!h.date, `${h.date}`);
+
+  // These two fixtures were captured 3 days apart on purpose. A DTE match would have
+  // silently resolved 11 DTE to TU1Q6 (11 DTE on the OLDER table's date) — the wrong
+  // contract, with no indication anything was off. Code matching gets EUUQ6 right AND
+  // the DTE disagreement (11 in the heatmap vs 14 in the Settlements table) flags that
+  // the two pastes are from different sessions.
+  ok('cross-date pastes are FLAGGED, not silently mis-resolved',
+    h.staleMatch === true && h.matchedDte === 14, `staleMatch=${h.staleMatch}, matchedDte=${h.matchedDte}`);
+
+  // The heatmap header alone now yields the code (no Settlements table needed for
+  // the hint itself — the table only adds the human-readable expiry date).
+  ok('OI alone → DTE + code, but no date', (() => {
+    const x = resolveSmileExpiry(MATRIX, '');
+    return x && x.dte === 11 && x.code === 'EUUQ6' && x.date === null;
+  })());
+  ok('neither input → null (no misleading hint)', resolveSmileExpiry('', '') === null);
+
+  // The Settlements table is auto-detected in box 1 too — the hint must still work
+  // for anyone who pastes it there rather than into its own box.
+  ok('term structure found in the smile box as well', (() => {
+    const x = resolveSmileExpiry(MATRIX, '', { rawIV: TERM });
+    return x && x.code === 'EUUQ6';
+  })());
+
+  // A partial/garbage paste must not throw — this runs on every keystroke.
+  ok('partial paste does not throw', (() => {
+    for (const junk of ['1.14', 'Strike\tC\tP', '\t\t\t', MATRIX.slice(0, 200)]) {
+      try { resolveSmileExpiry(junk, junk); } catch { return false; }
+    }
+    return true;
+  })());
+}
+
+console.log(fails ? `\n${fails} FAILED` : '\nall passed');
+process.exit(fails ? 1 : 0);

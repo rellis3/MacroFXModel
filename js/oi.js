@@ -169,8 +169,7 @@ export function openOIModal() {
   if (ivEl) ivEl.value = existing ? (existing.rawIV || '') : '';
   const ivtEl = document.getElementById('oiIVTermData');
   if (ivtEl) ivtEl.value = existing ? (existing.rawIVTerm || '') : '';
-  const smHintEl = document.getElementById('oiSmileHint');
-  if (smHintEl) { smHintEl.style.display = 'none'; smHintEl.innerHTML = ''; }
+  updateSmileHint();   // reopening with pastes already in place → show the hint straight away
   updateOIBasis();
   // localStorage may have been trimmed to fit its ~5MB quota (raw pastes dropped
   // locally to survive a big multi-pair store) — in that case the boxes above are
@@ -201,12 +200,47 @@ async function autoFetchFuturesPrice(pair, futEl) {
   } catch { /* silently ignore — field stays blank or at saved value */ }
 }
 
+// Live smile-expiry hint. Fires as soon as the OI box and a Settlements table are
+// both present, so the expiry code appears WHILE you paste rather than after a
+// full Analyse-save-Analyse round trip whose only purpose was to look it up.
+// Read-only: parses, never saves, never closes the modal.
+export function updateSmileHint() {
+  const el = document.getElementById('oiSmileHint');
+  if (!el) return;
+  const val = id => document.getElementById(id)?.value || '';
+  const smile = val('oiIVData');
+  const hint = resolveSmileExpiry(val('oiRawData'), val('oiIVTermData'), {
+    dte: parseFloat(document.getElementById('oiDTE')?.value),
+    rawIV: smile,
+  });
+  // Already pasted a per-strike chain into the smile box? Nothing left to prompt for.
+  const haveSmile = !!(smile.trim() && parseIVSettlement(smile)?.strikes?.length >= 2);
+  if (!hint || haveSmile || (!hint.code && !Number.isFinite(hint.dte))) {
+    el.style.display = 'none'; el.innerHTML = ''; return;
+  }
+  el.style.display = '';
+  const stale = hint.staleMatch
+    ? `<br><span style="color:var(--amber,#f59e0b)">⚠ that expiry is ${hint.matchedDte} DTE in the Settlements table but ${hint.dte} DTE in the OI heatmap — the two tables look like they were copied on different days. Re-copy both from today.</span>`
+    : '';
+  el.innerHTML = (hint.code
+    ? `👉 Smile box (optional): paste expiry <b>${hint.code}</b>${hint.date ? ` (${hint.date}, ${hint.matchedDte ?? hint.dte} DTE)` : ''} — its per-strike chain. Include the title line so the LIVE futures price and DTE are read automatically.`
+    : `👉 Smile box (optional): paste the ~<b>${hint.dte} DTE</b> expiry's per-strike chain (add the Settlements table above to get its exact code).`) + stale;
+}
+
 if (typeof document !== 'undefined') {
   document.addEventListener('DOMContentLoaded', () => {
     const overlay = document.getElementById('oiModalOverlay');
     if (overlay) overlay.addEventListener('click', function(e) {
       if (e.target === this) closeOIModal();
     });
+    // Recompute on any input that can change the answer. `paste` is deferred a tick
+    // because the value isn't in the field yet when the event fires.
+    for (const id of ['oiRawData', 'oiIVTermData', 'oiIVData', 'oiDTE']) {
+      const box = document.getElementById(id);
+      if (!box) continue;
+      box.addEventListener('input', updateSmileHint);
+      box.addEventListener('paste', () => setTimeout(updateSmileHint, 0));
+    }
   });
 }
 
@@ -407,14 +441,36 @@ function _matrixRows(raw) {
   if (hdr < 0) return null;
   let futures = null;
   const dtes = [];
+  const codes = [];
   for (let i = 0; i < hdr; i++) {
     if (futures == null)
       for (const tok of lines[i].split('\t')) {
-        const n = parseFloat(tok.replace(/,/g, ''));
-        if (Number.isFinite(n) && n > 50 && n < 1e7) { futures = n; break; }
+        // The header block mixes the futures price with contract codes ("6EU6"),
+        // column labels ("Strike") and DTE labels ("74 DTE"). Only a CLEAN number
+        // qualifies. This must be strict, not a magnitude guard:
+        //   • the old `n > 50` floor excluded every FX rate (6E ≈ 1.14, 6J ≈ 0.006),
+        //     so on FX it skipped the real price and scavenged 74 out of "74 DTE"
+        //     — which then poisoned the near-money anchor in pickPrimaryExpiry.
+        //   • parseFloat('6EU6') === 6 (truncated exponent), so contract codes must
+        //     be rejected by SHAPE, not by size.
+        const t = tok.replace(/,/g, '').trim();
+        if (!/^-?\d+(\.\d+)?$/.test(t)) continue;          // rejects '6EU6', '74 DTE', 'Strike'
+        const n = parseFloat(t);
+        if (Number.isFinite(n) && n > 0 && n < 1e7) { futures = n; break; }
       }
     const m = lines[i].match(/(-?\d+)\s*DTE/g);   // "0 DTE", "1 DTE", … in column order
     if (m) for (const t of m) dtes.push(parseInt(t, 10));
+    // …and the QuikStrike EXPIRY CODES alongside them ("TU4N6", "EUUQ6"), in the same
+    // column order. Matching the smile-box hint by CODE rather than by DTE matters:
+    // DTE is relative to the paste's own date, so if the OI heatmap and the
+    // Settlements table are copied on different days, a DTE match silently resolves
+    // to the wrong expiry (11 DTE means a different contract each day). The code is
+    // absolute. Shape: 2 letters + alnum + letter + digit — excludes the 4-char
+    // underlying contract codes ("6EU6"), which start with a digit.
+    for (const tok of lines[i].split('\t')) {
+      const t = tok.trim();
+      if (/^[A-Z]{2}[A-Z0-9][A-Z]\d$/.test(t)) codes.push(t);
+    }
   }
   const rows = [];
   for (let i = hdr + 1; i < lines.length && rows.length < 500; i++) {
@@ -429,7 +485,7 @@ function _matrixRows(raw) {
     }
     rows.push({ strike, cp });
   }
-  return rows.length ? { futures, dtes, rows } : null;
+  return rows.length ? { futures, dtes, codes, rows } : null;
 }
 
 // Pick the PRIMARY expiry column from the parsed matrix — the education's
@@ -443,15 +499,24 @@ function _matrixRows(raw) {
 // nearest DTE. If every column is all-far (no anchor / no near strikes) we fall
 // back to total OI. rows: [{strike, cp:[[c,p]…per expiry]}], dtes aligned to the
 // expiry columns, anchor = futures price (pre-basis, same space as the strikes).
-export function pickPrimaryExpiry(rows, dtes = [], anchor = null, { bandFrac = 0.03 } = {}) {
+export function pickPrimaryExpiry(rows, dtes = [], anchor = null, { bandFrac = 0.03, codes = [] } = {}) {
   if (!Array.isArray(rows) || !rows.length) return { index: 0, dte: dtes?.[0] ?? null, nearOI: 0, totalOI: 0 };
   const nExp = Math.max(0, ...rows.map(r => (Array.isArray(r.cp) ? r.cp.length : 0)));
-  if (nExp <= 1) return { index: 0, dte: dtes?.[0] ?? null, nearOI: 0, totalOI: 0 };
+  if (nExp <= 1) return { index: 0, dte: dtes?.[0] ?? null, code: codes?.[0] ?? null, nearOI: 0, totalOI: 0 };
+  // Sanity-check the anchor against the strike ladder BEFORE scoring. A futures
+  // price that sits nowhere near the strikes is not an anchor — it's a parse
+  // failure upstream. Previously such an anchor put the near-money band in empty
+  // space, every column scored 0, and the `nearOI → totOI` fallback below quietly
+  // switched to biggest-total-OI: the deep-OTM tail-hedge distortion this function
+  // exists to prevent. It degraded silently and returned a confident wrong answer.
+  // Now: fall back to the median strike (a real ATM proxy) and REPORT the problem
+  // via `anchorValid` so the caller can warn instead of trusting it blindly.
+  const ss = rows.map(r => r.strike).filter(Number.isFinite).sort((a, b) => a - b);
+  const lo = ss[0], hi = ss[ss.length - 1];
   let anc = Number.isFinite(anchor) ? anchor : null;
-  if (anc == null) {
-    const ss = rows.map(r => r.strike).filter(Number.isFinite).sort((a, b) => a - b);
+  const anchorValid = anc == null ? null : (anc >= lo * 0.5 && anc <= hi * 1.5);
+  if (anc == null || anchorValid === false)
     anc = ss.length ? ss[Math.floor(ss.length / 2)] : null;   // median strike as ATM proxy
-  }
   const band = anc != null ? Math.abs(anc) * bandFrac : Infinity;
   const nearOI = new Array(nExp).fill(0), totOI = new Array(nExp).fill(0);
   for (const r of rows) {
@@ -462,13 +527,16 @@ export function pickPrimaryExpiry(rows, dtes = [], anchor = null, { bandFrac = 0
       if (near) nearOI[e] += oi;
     }
   }
-  const score = nearOI.some(v => v > 0) ? nearOI : totOI;   // fall back to total if nothing near money
+  const scoredOnTotal = !nearOI.some(v => v > 0);            // genuinely nothing near money
+  const score = scoredOnTotal ? totOI : nearOI;
   let best = 0;
   for (let e = 1; e < nExp; e++) {
     if (score[e] > score[best]) best = e;
     else if (score[e] === score[best] && Number.isFinite(dtes?.[e]) && Number.isFinite(dtes?.[best]) && dtes[e] < dtes[best]) best = e;
   }
-  return { index: best, dte: dtes?.[best] ?? null, nearOI: Math.round(nearOI[best]), totalOI: Math.round(totOI[best]) };
+  return { index: best, dte: dtes?.[best] ?? null, code: codes?.[best] ?? null, nearOI: Math.round(nearOI[best]), totalOI: Math.round(totOI[best]),
+    anchorValid,                                             // false ⇒ the supplied anchor was unusable (caller should warn)
+    scoredOn: scoredOnTotal ? 'totalOI' : 'nearMoneyOI' };   // which rule actually decided — never silent again
 }
 
 // Derive a strike/call/put list from the matrix.
@@ -482,7 +550,7 @@ export function parseOIMatrix(raw, { signed = false, mode = 'primary' } = {}) {
   const parsed = _matrixRows(raw);
   if (!parsed) return null;
   let primary = null, exprIdx = 0;
-  if (mode === 'primary') { primary = pickPrimaryExpiry(parsed.rows, parsed.dtes, parsed.futures); exprIdx = primary.index; }
+  if (mode === 'primary') { primary = pickPrimaryExpiry(parsed.rows, parsed.dtes, parsed.futures, { codes: parsed.codes }); exprIdx = primary.index; }
   const strikes = [], calls = [], puts = [];
   for (const r of parsed.rows) {
     let c, p;
@@ -496,7 +564,8 @@ export function parseOIMatrix(raw, { signed = false, mode = 'primary' } = {}) {
   }
   return strikes.length >= 2
     ? { strikes, calls, puts, futures: parsed.futures,
-        primaryExpiry: primary ? { dte: primary.dte, index: primary.index, nearOI: primary.nearOI, totalOI: primary.totalOI } : null }
+        primaryExpiry: primary ? { dte: primary.dte, code: primary.code, index: primary.index, nearOI: primary.nearOI, totalOI: primary.totalOI,
+          anchorValid: primary.anchorValid, scoredOn: primary.scoredOn } : null }
     : null;
 }
 
@@ -626,11 +695,23 @@ export function parseIVSettlement(raw) {
   if (!raw || !raw.trim()) return null;
   // callPx/putPx = settle option PRICES (for the ATM straddle → expected move);
   // ivPrior = yesterday's IV (for the per-strike IV change / skew dynamics).
-  const out = { strikes: [], iv: [], ivPrior: [], calls: [], puts: [], callPx: [], putPx: [], dte: null };
+  const out = { strikes: [], iv: [], ivPrior: [], calls: [], puts: [], callPx: [], putPx: [], dte: null,
+                futures: null, expiryCode: null };
   // Auto-read DTE from the QuikStrike title line "… OG4N6 (0.11 DTE) vs 4057.3 …"
   // (fractional allowed) so the expiry's time-to-expiry needs no manual entry.
   const dm = raw.match(/(-?\d*\.?\d+)\s*DTE/i);
   if (dm) { const d = parseFloat(dm[1]); if (Number.isFinite(d)) out.dte = d; }
+  // …and the LIVE futures price from the same line's "vs <price> (<chg>)" clause.
+  // This matters: the course's basis formula needs the CURRENT futures price
+  // (education/open-interest-course-notes.md L212, L229 "capture both at the same
+  // moment"), but the OI heatmap header only carries the SETTLEMENT price. On
+  // 2026-07-24 that gap was 32 pips — pairing a Friday settle with a Monday live
+  // spot puts every converted level ~15-30 pips out. QuikStrike prints the live
+  // price only on this view's title, so it is the one trustworthy source we get.
+  const fm = raw.match(/\bvs\s+([\d,]+\.?\d*)/i);
+  if (fm) { const f = parseFloat(fm[1].replace(/,/g, '')); if (Number.isFinite(f) && f > 0) out.futures = f; }
+  const em = raw.match(/\(([A-Z0-9|]+)\)\s*([A-Z]{2}\w{3})\s*\(/);
+  if (em) out.expiryCode = em[2];
   for (const line of raw.split('\n')) {
     const c = line.replace(/\r$/, '').split('\t');
     if (c.length < 8) continue;                                  // needs at least through VolSettle
@@ -686,6 +767,66 @@ export function parseSettlementTermStructure(raw) {
 }
 
 // ── Calculations ─────────────────────────────────────────────────────────────
+
+// Which expiry to grab for the per-strike SMILE box, resolved from the pastes alone.
+//
+// Pure, DOM-free, and deliberately CHEAP — it re-parses only what it needs so it can
+// run on every keystroke/paste. Two inputs are required and neither alone is enough:
+//   • rawOI      → which expiry the WALLS came from (`pickPrimaryExpiry` → a DTE)
+//   • rawIVTerm  → maps that DTE to the QuikStrike CODE (11 → "EUUQ6") + date
+// Falls back to the typed DTE (single-expiry FX pastes), and with a table but no DTE
+// at all suggests the front liquid expiry. Returns null only when there is neither.
+//
+// Extracted 2026-07-27 so the hint can fire ON PASTE instead of requiring a full
+// Analyse-save-Analyse round trip just to learn an expiry code.
+export function resolveSmileExpiry(rawOI, rawIVTerm, { dte = null, haveSmile = false, rawIV = '' } = {}) {
+  let primaryDte = null, primaryCode = null;
+  if (rawOI && rawOI.trim()) {
+    try {
+      const pe = parseOIMatrix(rawOI)?.primaryExpiry;
+      primaryDte = pe?.dte ?? null; primaryCode = pe?.code ?? null;
+    } catch { /* partial paste */ }
+  }
+  const hintDte = Number.isFinite(primaryDte) ? primaryDte : (Number.isFinite(dte) ? dte : null);
+
+  // The term-structure table may sit in EITHER box: its own (`rawIVTerm`) or box 1,
+  // which auto-detects the shape. Try both or the hint silently vanishes for anyone
+  // who pastes the Settlements table into the smile box.
+  let rows = null;
+  for (const src of [rawIVTerm, rawIV]) {
+    if (rows || !src || !src.trim()) continue;
+    try { rows = parseSettlementTermStructure(src); } catch { /* partial paste */ }
+  }
+  if (!Number.isFinite(hintDte) && !(Array.isArray(rows) && rows.length)) return null;
+
+  const out = { dte: Number.isFinite(hintDte) ? hintDte : null, code: primaryCode, date: null,
+                matchedDte: null, matchedOn: primaryCode ? 'code' : null, staleMatch: false,
+                haveSmile: !!haveSmile };
+  if (Array.isArray(rows) && rows.length) {
+    const liquid = rows.filter(r => r.straddle > 0 && r.iv > 0);
+    const pool = liquid.length ? liquid : rows;
+    // Prefer an exact CODE match — absolute, and immune to the two pastes being
+    // copied on different days. Fall back to nearest DTE only when the heatmap
+    // carried no codes (older/simpler paste shapes).
+    let m = primaryCode ? pool.find(r => r.symbol === primaryCode) : null;
+    if (m) out.matchedOn = 'code';
+    else {
+      m = Number.isFinite(hintDte)
+        ? pool.slice().sort((a, b) => Math.abs(a.dte - hintDte) - Math.abs(b.dte - hintDte))[0]
+        : pool.slice().sort((a, b) => a.dte - b.dte)[0];   // no DTE known → front liquid expiry
+      if (m) out.matchedOn = Number.isFinite(hintDte) ? 'dte' : 'front';
+    }
+    if (m) {
+      out.code = m.symbol || out.code; out.date = m.expiry || null; out.matchedDte = m.dte ?? null;
+      if (out.dte == null) out.dte = m.dte ?? null;
+      // Same contract, different DTE ⇒ the two tables were copied on different days.
+      // Surface it: the levels and the smile would describe different sessions.
+      if (Number.isFinite(hintDte) && Number.isFinite(out.matchedDte) && Math.abs(out.matchedDte - hintDte) > 1)
+        out.staleMatch = true;
+    }
+  }
+  return out;
+}
 
 export function oiCalcMaxPain(strikes, calls, puts) {
   let mp = strikes[0], minPain = Infinity;
@@ -868,12 +1009,29 @@ export function processOIData() {
 
   // The CME matrix header carries the futures price — auto-fill the basis anchor
   // if the field is blank (so the basis is measured, not estimated).
-  let futuresEff = futuresRaw;
-  if (!Number.isFinite(futuresEff) && Number.isFinite(parsed.futures)) {
-    futuresEff = parsed.futures;   // measured price from the paste header (not an estimate)
-    const fe = document.getElementById('oiFuturesPrice');
-    if (fe && !fe.value) fe.value = String(parsed.futures);
+  // ── Futures anchor, in priority order (course L212: the basis needs the CURRENT
+  // futures price, and L229: captured at the same moment as spot) ──────────────
+  //   1. what you typed          — always wins, you saw both prices together
+  //   2. the IV paste title      — QuikStrike's "vs 1.1426 (+0.0032)" = the LIVE price
+  //   3. the OI heatmap header   — SETTLEMENT price only; 32 pips stale on 2026-07-24
+  // The heatmap header is the weakest source but it's the only one on most pastes,
+  // so it stays as the fallback — flagged via `futuresSource` so the card can say
+  // which one it used instead of presenting a stale basis as a fresh one.
+  const _ivTitle = rawIV.trim() ? parseIVSettlement(rawIV) : null;
+  let futuresEff = futuresRaw, futuresSource = Number.isFinite(futuresRaw) ? 'manual' : null;
+  if (!Number.isFinite(futuresEff) && Number.isFinite(_ivTitle?.futures)) {
+    futuresEff = _ivTitle.futures; futuresSource = 'iv-title-live';
   }
+  if (!Number.isFinite(futuresEff) && Number.isFinite(parsed.futures)) {
+    futuresEff = parsed.futures; futuresSource = 'heatmap-header-settle';
+  }
+  if (Number.isFinite(futuresEff)) {
+    const fe = document.getElementById('oiFuturesPrice');
+    if (fe && !fe.value) fe.value = String(futuresEff);
+  }
+  // How stale the fallback is, when we can measure it (live title vs settle header).
+  const futuresStale = (Number.isFinite(_ivTitle?.futures) && Number.isFinite(parsed.futures))
+    ? _ivTitle.futures - parsed.futures : null;
 
   if (rawChg.trim()) {
     const chg = oiParseChangeTable(rawChg, parsed.strikes.length, parsed.strikes);
@@ -921,16 +1079,25 @@ export function processOIData() {
     basisClamped = true;
   }
 
-  // Compact, re-parseable copy of the paste for the "reopen → re-analyse" flow,
-  // built from the ORIGINAL (pre-shift) strikes + OI. The full pasted text (all its
-  // extra columns, hundreds of rows) is ~100× larger and blew the localStorage
-  // ~5MB quota; only strike/call/put/change are ever used. oiParseTable /
-  // oiParseChangeTable re-read this identically.
-  const _compactOI = parsed.strikes
+  // Re-parseable copy of the paste for the "reopen → re-analyse" flow.
+  //
+  // A MULTI-EXPIRY MATRIX IS STORED WHOLE. It used to be collapsed to the single
+  // selected expiry's `strike/call/put`, which threw away 17 of 18 columns on every
+  // EUR/USD capture — silently defeating the whole point of pasting the full table
+  // (a daily OI history is the prerequisite for the wall-decay research in the
+  // course notes, and CME publishes no history, so a discarded column is gone for
+  // good). It also made the stored artefact look like a flat aggregate paste, which
+  // is precisely what misdirected the 2026-07 diagnosis.
+  //
+  // Only the SIMPLE format still gets compacted — there's nothing extra to keep.
+  // `_saveLocalCache` already sheds raw text if localStorage overflows, and KV (the
+  // source of truth) has no such cap, so size is handled where it belongs.
+  const _isMatrix = !!parsed.primaryExpiry;   // set only by the matrix parser
+  const _compactOI = _isMatrix ? rawOI : parsed.strikes
     .map((s, i) => `${s}\t${parsed.calls[i]}\t${parsed.puts[i]}`).join('\n');
   const _hasChg = (parsed.callChg || []).some(v => v) || (parsed.putChg || []).some(v => v);
-  const _compactChg = _hasChg
-    ? parsed.strikes.map((s, i) => `${s}\t${parsed.callChg[i] || 0}\t${parsed.putChg[i] || 0}`).join('\n')
+  const _compactChg = _isMatrix && rawChg.trim() ? rawChg
+    : _hasChg ? parsed.strikes.map((s, i) => `${s}\t${parsed.callChg[i] || 0}\t${parsed.putChg[i] || 0}`).join('\n')
     : '';
 
   // Wall persistence (across-expiry durability) + per-expiry term structure — from
@@ -1030,23 +1197,13 @@ export function processOIData() {
   // "Settlements" table is present, match that DTE to its nearest row → the exact
   // QuikStrike CODE + date; with a table but no DTE at all, suggest the front liquid
   // expiry. Only skip the hint entirely when we have neither a DTE nor a table.
-  const _hintDte = Number.isFinite(primaryExpiry?.dte) ? primaryExpiry.dte
-    : Number.isFinite(dteEff) ? dteEff
-    : Number.isFinite(dteRaw) ? dteRaw : null;
-  let ivPasteHint = null;
-  if (Number.isFinite(_hintDte) || (Array.isArray(tsRows) && tsRows.length)) {
-    ivPasteHint = { dte: Number.isFinite(_hintDte) ? _hintDte : null, code: null, date: null, matchedDte: null,
-                    haveSmile: !!(greeksFlow) };
-    if (Array.isArray(tsRows) && tsRows.length) {
-      const liquid = tsRows.filter(r => r.straddle > 0 && r.iv > 0);
-      const pool = liquid.length ? liquid : tsRows;
-      const m = Number.isFinite(_hintDte)
-        ? pool.slice().sort((a, b) => Math.abs(a.dte - _hintDte) - Math.abs(b.dte - _hintDte))[0]
-        : pool.slice().sort((a, b) => a.dte - b.dte)[0];   // no DTE known → nearest (front) liquid expiry
-      if (m) { ivPasteHint.code = m.symbol || null; ivPasteHint.date = m.expiry || null; ivPasteHint.matchedDte = m.dte ?? null;
-               if (ivPasteHint.dte == null) ivPasteHint.dte = m.dte ?? null; }
-    }
-  }
+  // Same resolution the live on-paste hint uses — ONE function, so the hint you see
+  // while pasting can never disagree with the expiry Analyse actually reports.
+  const ivPasteHint = resolveSmileExpiry(rawOI, rawIVTerm, {
+    dte: Number.isFinite(dteEff) ? dteEff : dteRaw,
+    haveSmile: !!greeksFlow,
+    rawIV,
+  });
 
   const withOI = parsed.strikes.map((s,i) => {
     const {gamma, callDelta, putDelta} = oiGreeks(s, spot, pair);
@@ -1153,12 +1310,29 @@ export function processOIData() {
   // here so the card/brief flag it instead of silently analysing broken data.
   const _loK = parsed.strikes.length ? Math.min(...parsed.strikes) : 0;
   const _hiK = parsed.strikes.length ? Math.max(...parsed.strikes) : 0;
-  const dataWarning = (spot > 0 && parsed.strikes.length >= 3 && (spot < _loK * 0.9 || spot > _hiK * 1.1))
-    ? `spot ${oiFmtStrike(spot, pair)} is outside the option strike range ${oiFmtStrike(_loK, pair)}–${oiFmtStrike(_hiK, pair)} — likely stale or mis-scaled (check the futures price / expiry and re-paste)`
-    : null;
+  // The old guard was a single ORDER-OF-MAGNITUDE range check, and that is exactly
+  // why the 2026-07 failure was invisible: a wrong-expiry paste with a 15-pip basis
+  // error sits comfortably inside the strike range, so nothing fired and the card
+  // looked green. These extra checks are SEMANTIC — they test whether the numbers
+  // mean what they claim, not just whether they're the right size.
+  const _warnings = [];
+  if (spot > 0 && parsed.strikes.length >= 3 && (spot < _loK * 0.9 || spot > _hiK * 1.1))
+    _warnings.push(`spot ${oiFmtStrike(spot, pair)} is outside the option strike range ${oiFmtStrike(_loK, pair)}–${oiFmtStrike(_hiK, pair)} — likely stale or mis-scaled (check the futures price / expiry and re-paste)`);
+  if (primaryExpiry?.anchorValid === false)
+    _warnings.push(`the futures anchor did not match the strike ladder — expiry was chosen from a median-strike fallback, so double-check the level`);
+  if (primaryExpiry?.scoredOn === 'totalOI')
+    _warnings.push(`no near-the-money OI in any expiry — expiry picked on TOTAL OI, which favours far-dated tail hedges (course pitfall 2)`);
+  if (futuresSource === 'heatmap-header-settle' && Number.isFinite(futuresStale) && Math.abs(futuresStale) > 0)
+    _warnings.push(`basis used the SETTLEMENT futures price; the live price was ${Math.abs(futuresStale / (pair.includes('JPY') ? 0.01 : 0.0001)).toFixed(0)} pips away — enter the current futures price for an accurate basis (course L229)`);
+  if (!Number.isFinite(dteEff))
+    _warnings.push(`no DTE resolved — wall strength and gamma are expiry-dependent (course pitfall 2); paste the QuikStrike title line or fill the DTE field`);
+  const dataWarning = _warnings.length ? _warnings.join(' · ') : null;
 
   const inst = {
     pair, spot, futures: futuresUsed, basis: basis || null,
+    futuresSource,   // 'manual' | 'iv-title-live' | 'heatmap-header-settle' — never present a settle-derived basis as a live one
+    futuresStale,    // live-title minus heatmap-settle, when both are available (how wrong the fallback would be)
+    basisAt: Date.now(),   // the basis is only valid for the moment both legs were read (course L229)
     maxPain, exposures, topLevels, gexProfile,
     gammaFlip: gammaFlip(gexProfile),   // zero-GEX crossing (regime boundary) — one source for brief/export/bot/dashboard
     dataWarning,   // ⚠ set when spot is far outside the strike range (stale/mis-scaled paste) — flag, don't silently analyse
@@ -1203,23 +1377,23 @@ export function processOIData() {
   store[pair] = inst;
   const _saved = oiSaveStore(store);   // async KV union-merge + local cache
 
-  // Two-stage IV flow: if we know the exact expiry to grab for the SMILE box (a
-  // Settlements table was pasted → we have the code) but it isn't pasted yet, KEEP the
-  // modal open so the user can add that one paste and re-Analyse — no close/reopen dance.
-  // The pastes + spot/futures stay put so the second Analyse has everything it needs.
-  const _keepOpen = !!(ivPasteHint && !ivPasteHint.haveSmile && ivPasteHint.code);
-
-  if (!_keepOpen) {
-    document.getElementById('oiRawData').value='';
-    document.getElementById('oiChangeData').value='';
-    document.getElementById('oiSpotPrice').value='';
-    ['oiVolumeData', 'oiExpiryLabel', 'oiDTE'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-    const futEl = document.getElementById('oiFuturesPrice');
-    if (futEl) futEl.value='';
-    const basisEl = document.getElementById('oiBasisDisplay');
-    if (basisEl) { basisEl.textContent = 'Enter CME futures price above — basis will be auto-calculated and applied to all strikes on save'; basisEl.style.color=''; }
-    closeOIModal();
-  }
+  // Analyse is now the LAST step, always. The smile expiry is surfaced live by
+  // `updateSmileHint` the moment the OI + Settlements tables are pasted, so by the
+  // time you press Analyse you have already decided whether to add the smile (it is
+  // optional — walls, max pain, term structure and expected move don't need it).
+  // The old two-stage keep-open flow existed only because the expiry code couldn't be
+  // known before a full Analyse; with the hint firing on paste it just nags.
+  document.getElementById('oiRawData').value='';
+  document.getElementById('oiChangeData').value='';
+  document.getElementById('oiSpotPrice').value='';
+  ['oiVolumeData', 'oiExpiryLabel', 'oiDTE'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const futEl = document.getElementById('oiFuturesPrice');
+  if (futEl) futEl.value='';
+  const basisEl = document.getElementById('oiBasisDisplay');
+  if (basisEl) { basisEl.textContent = 'Enter CME futures price above — basis will be auto-calculated and applied to all strikes on save'; basisEl.style.color=''; }
+  const hintEl = document.getElementById('oiSmileHint');
+  if (hintEl) { hintEl.style.display = 'none'; hintEl.innerHTML = ''; }
+  closeOIModal();
   window.renderAll();
   const basisNote = basisClamped ? ' · basis ignored (implausible — no shift applied)'
     : basis ? ` · basis ${basis >= 0 ? '+' : ''}${basis.toFixed(pair.includes('JPY') ? 2 : isIndexFutures(pair) ? 2 : 5)}` : '';
@@ -1237,16 +1411,6 @@ export function processOIData() {
     : '';
   oiToast(`${pairLabel} OI saved · ${parsed.strikes.length} strikes · max pain ${oiFmtStrike(maxPain,pair)}${expiryNote}${basisNote}${smileHint}`, basisClamped);
 
-  // Modal kept open for the smile paste → show the exact expiry right by the smile box
-  // and focus it. Once the smile is pasted, the next Analyse closes normally.
-  if (_keepOpen) {
-    const hEl = document.getElementById('oiSmileHint');
-    if (hEl) {
-      hEl.innerHTML = `👉 Optional charm/vanna/skew layer: paste expiry <b>${ivPasteHint.code}</b>${ivPasteHint.date ? ` (${ivPasteHint.date})` : ''}'s per-strike chain into the <b>smile box</b> above, then Analyse again. (Or Close — the expected move + term structure are already saved.)`;
-      hEl.style.display = 'block';
-    }
-    document.getElementById('oiIVData')?.focus();
-  }
 
   // Push updated entry data to Railway bot AFTER the KV merge lands so the sync
   // reads the freshly-merged store (not a half-written one).
