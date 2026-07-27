@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Regime-Switching State Space Models — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / State Space Models Extensions / Regime-Switching State Space Models</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">State Space Extensions 3 of 3</div>
+  <h1 class="tl-title">Regime-Switching State Space Models</h1>
+  <p class="tl-dek">Fusing the Hidden Markov Model's discrete hidden regime with the Kalman filter's continuous hidden state — and the approximation, Kim's filter, that makes tracking both at once computationally possible at all.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested anywhere in this repo</span>
+    <span>~18 min read</span>
+    <span>Prereqs: Hidden Markov Models &amp; Regime Detection, Kalman Filter &amp; Adaptive Relationships</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A Markov-switching state-space model lets the Kalman filter's own parameters — how fast the
+        continuous state drifts (\(Q\)), how noisy the observation is (\(R\)), even the relationship
+        itself (\(A, H\)) — depend on a hidden discrete regime \(S_t\) that follows its own Markov chain,
+        exactly as in the Hidden Markov Model lesson.</li>
+      <li>Filtering this exactly is computationally intractable: because the regime is hidden, every step
+        must in principle branch over every possible regime the system could have been in, and those
+        branches multiply — after \(T\) steps there are \(N^T\) regime paths to track, an exponential
+        blowup.</li>
+      <li><strong>Kim's filter</strong> (Kim, 1994) makes this tractable by collapsing the \(N^2\)
+        regime-pair-conditional estimates produced at each step back down to just \(N\), via a
+        moment-matching approximation — combining several Gaussians that disagree into one Gaussian whose
+        mean and variance match the mixture's, at a real, quantifiable cost whenever the underlying
+        branches truly disagreed.</li>
+      <li>The worked example collapses two regime-conditional estimates that disagree on the mean by
+        0.20, and shows the collapsed variance (0.0130) exceeding either input branch's own variance
+        (0.004 and 0.010) — the concrete cost of forcing disagreeing branches into a single Gaussian.</li>
+      <li>This lesson builds nothing new: every idea here is the Hidden Markov Model lesson's discrete
+        regime and the Kalman filter lesson's continuous state, fused — read those two lessons first, not
+        as a suggestion but as the actual prerequisite content this one assumes.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Two lessons in this curriculum each modeled a hidden quantity, but in very different ways. The Hidden
+    Markov Model lesson tracked a fully <strong>discrete</strong> hidden regime — trending or choppy — with
+    observations drawn directly from a per-regime Gaussian, no continuous drift involved. The Kalman filter
+    lesson tracked a fully <strong>continuous</strong> hidden state — a drifting hedge ratio — but assumed
+    one single, fixed set of dynamics (one \(Q\), one \(R\), one linear relationship) held for the entire
+    series.
+  </p>
+  <p>
+    Real relationships often want both properties at once. A hedge ratio might genuinely drift slowly and
+    predictably during a calm, range-bound period — small \(Q\), tight observation noise \(R\) — and then
+    become erratic and fast-moving during a risk-off or crisis period, where \(Q\) should be much larger and
+    the relationship itself may even weaken or shift sign. Neither tool alone captures this: a pure HMM has
+    no notion of a continuously drifting quantity within a regime, and a pure Kalman filter has no notion
+    of a discrete, switching set of dynamics governing how it drifts. A <strong>regime-switching
+    (Markov-switching) state-space model</strong> is exactly the fusion: the continuous state still evolves
+    by a Kalman-style recursion, but which set of Kalman parameters is "active" at any moment is itself
+    governed by a hidden discrete regime, evolving by the same kind of Markov chain the HMM lesson built. This
+    is precisely Hamilton's Markov-switching idea (cited at the end of the HMM lesson) extended from a
+    simple regression's mean to a full continuous state-space model.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Two guessing games, nested inside each other</h3>
+    <p>
+      Picture running the Hidden Markov Model's "which weather regime is it" guessing game and the Kalman
+      filter's "where exactly is the boat" tracking game <em>simultaneously</em>, with the two guesses
+      feeding each other. Your current best guess of the boat's exact position depends on which weather
+      regime you currently believe you're in — in calm weather you trust the boat to drift slowly and
+      predictably, in a storm you expect it to move erratically and fast. But your belief about which
+      weather regime you're in also depends on how well each regime's implied drift pattern actually
+      matches the radar pings you've been receiving — if the boat has been moving in a way that looks
+      calm and predictable, that's itself evidence you're probably in the calm regime, not the storm. Each
+      guess sharpens the other, round after round: better regime beliefs sharpen the position tracking,
+      and better position tracking sharpens the regime beliefs. That circularity is exactly what makes this
+      model powerful and exactly what makes it hard to compute exactly.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    Reuse both prior lessons' notation directly. The hidden discrete regime \(S_t \in \{1, \ldots, N\}\)
+    follows a Markov chain with the same transition matrix \(A\) from the Hidden Markov Model lesson
+    (\(A_{ij} = P(S_t = j \mid S_{t-1} = i)\), every row summing to 1). Conditional on which regime is
+    active, the continuous hidden state \(x_t\) follows a Kalman-style state-space model — but with
+    regime-specific parameters:
+  </p>
+  <div class="tl-math">\[
+    x_t = A_{S_t}\, x_{t-1} + w_t, \qquad w_t \sim \mathcal{N}(0, Q_{S_t})
+    \qquad\qquad
+    y_t = H_{S_t}\, x_t + v_t, \qquad v_t \sim \mathcal{N}(0, R_{S_t})
+  \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>A_{S_t}, H_{S_t}</code><span>the state/observation coefficients — now indexed by which regime is currently active</span></div>
+    <div class="tl-eq-chip c2"><code>Q_{S_t}, R_{S_t}</code><span>the process/observation variances — also regime-specific: a calm regime might pair small Q with small R, a crisis regime large Q</span></div>
+  </div>
+  <p>
+    Compare this line-by-line with the Kalman filter lesson's \(x_t = x_{t-1} + w_t\), \(y_t = H_t x_t +
+    v_t\): the recursion's shape is unchanged, only every coefficient now carries a regime subscript, and
+    which regime is "active" is itself the HMM lesson's hidden \(S_t\), evolving by \(A\). There are \(N\)
+    complete sets of Kalman parameters — one full \((A_k, Q_k, H_k, R_k)\) per regime \(k\) — and the model
+    switches between which set governs the continuous state, according to the discrete Markov chain.
+  </p>
+
+  <h3>Why exact filtering blows up exponentially</h3>
+  <p>
+    If \(S_t\) were actually observed at every step, this would be trivial: at each time step, just look
+    up which regime is active and run the ordinary Kalman filter using that regime's parameters, exactly
+    as in the Kalman filter lesson. The entire difficulty is that \(S_t\) is <strong>hidden</strong> — the
+    filter never gets to see which regime was actually active, only the resulting continuous observation
+    \(y_t\), which was itself shaped by whichever regime happened to be true.
+  </p>
+  <p>
+    Because of this, a filter that wants to be exactly correct must, in principle, keep a separate Kalman
+    estimate <em>for every possible regime path</em> that could have led to the current step — because the
+    correct estimate of \(x_t\) genuinely differs depending on which sequence of regimes actually occurred.
+    At \(t=1\), there are \(N\) possible values for \(S_1\), so \(N\) regime-conditional Kalman estimates
+    must be tracked. At \(t=2\), each of those \(N\) branches must further split over the \(N\) possible
+    values of \(S_2\), giving \(N \times N = N^2\) branches. By time \(T\):
+  </p>
+  <div class="tl-math">\[ \text{Number of regime paths to track} = N^T \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>N^T</code><span>exponential in the number of time steps — computationally infeasible beyond a handful of steps for any N ≥ 2</span></div>
+  </div>
+  <p>
+    Even for a small, 2-regime model (\(N=2\)), a mere 30 time steps already implies over a billion regime
+    paths — hopelessly infeasible to track exactly, and the problem only gets worse from there. This is the
+    exact same "exponentially many hidden paths" issue the Hidden Markov Model lesson's forward algorithm
+    and Viterbi decoding were built to sidestep for a <em>purely discrete</em> hidden state — but here the
+    continuous state \(x_t\) riding along inside each regime path makes the equivalent trick harder, because
+    there's no way to simply reuse a single running sum the way the forward algorithm does; each regime
+    path carries its own distinct Kalman mean and variance that would need to be tracked separately, forever,
+    without an exact way to merge them.
+  </p>
+
+  <h3>Kim's filter: collapse the branches, don't track them all</h3>
+  <p>
+    Kim's filter (Kim, 1994, cited below) keeps the computation linear in \(T\) instead of exponential, by
+    approximating rather than tracking every path exactly. At each time step, after the \(N\) branches from
+    the previous step are each propagated forward through all \(N\) possible current regimes (producing
+    \(N \times N = N^2\) regime-pair-conditional Kalman estimates, one per "came from regime \(i\), now in
+    regime \(j\)" combination), Kim's filter <strong>collapses</strong> the \(N\) branches that share the
+    same current regime \(j\) back down into a single approximate Gaussian, before moving to the next step.
+    This keeps the running total at exactly \(N\) branches at every step, no matter how large \(T\) grows —
+    the same "collapse the exponential tree back down to something manageable" idea that motivated the
+    forward algorithm's running sums and Viterbi's dynamic programming in the Hidden Markov Model lesson,
+    here applied to a continuous state instead of a discrete label.
+  </p>
+  <p>
+    The collapse itself is a <strong>moment-matching approximation</strong>: given \(N\) different Gaussian
+    estimates that all currently claim to describe "the state, given we're now in regime \(j\)" — one
+    estimate per possible previous regime \(i\) — replace all \(N\) of them with a single Gaussian whose
+    mean and variance match the overall mixture's mean and variance, weighted by each branch's own posterior
+    probability:
+  </p>
+  <div class="tl-math">\[
+    \hat{x}_t^{(j)} = \sum_i \pi_{i\mid j}\, \hat{x}_t^{(i,j)}
+    \qquad\qquad
+    P_t^{(j)} = \sum_i \pi_{i\mid j} \left[ P_t^{(i,j)} + \left(\hat{x}_t^{(j)} - \hat{x}_t^{(i,j)}\right)^2 \right]
+  \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>x̂_t^(i,j), P_t^(i,j)</code><span>the mean/variance of the branch that came from regime i and is now in regime j — one ordinary Kalman estimate per (i,j) pair</span></div>
+    <div class="tl-eq-chip c2"><code>π_{i|j}</code><span>the posterior probability of having come from regime i, given the system is now in regime j — the collapse weights, summing to 1 over i</span></div>
+    <div class="tl-eq-chip c4"><code>x̂_t^(j), P_t^(j)</code><span>the single collapsed Gaussian that replaces all N branches feeding into regime j</span></div>
+  </div>
+  <p>
+    Read the collapsed variance formula as two separate pieces added together — and recognize the pattern:
+    it is exactly the <strong>law of total variance</strong> (total variance = the weighted average of each
+    branch's own variance, <em>plus</em> the variance of the branches' means around the collapsed mean).
+    The first term, \(\sum_i \pi_{i\mid j} P_t^{(i,j)}\), is simply the weighted average of how uncertain
+    each individual branch already was. The second term, \(\sum_i \pi_{i\mid j}(\hat{x}_t^{(j)} -
+    \hat{x}_t^{(i,j)})^2\), is new uncertainty <em>manufactured by the collapse itself</em> — it only
+    appears because the branches disagreed with each other on the mean, and forcing several different
+    opinions into one number necessarily loses information about how much they actually disagreed. If all
+    \(N\) branches happen to agree closely, this second term is close to zero and the collapse costs almost
+    nothing; if they disagree substantially, the collapse inflates the reported uncertainty to (partially)
+    reflect that lost distinction.
+  </p>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(S_t\)</td><td>The hidden discrete regime at time \(t\), \(S_t \in \{1,\ldots,N\}\) — reused directly from the Hidden Markov Model lesson.</td></tr>
+      <tr><td>\(A\)</td><td>The regime transition matrix — identical role to the Hidden Markov Model lesson's \(A\): \(A_{ij}=P(S_t=j\mid S_{t-1}=i)\), every row summing to 1.</td></tr>
+      <tr><td>\(A_{S_t}, H_{S_t}\)</td><td>The state/observation coefficients from the Kalman filter lesson, now indexed by the currently active regime — a different linear relationship per regime.</td></tr>
+      <tr><td>\(Q_{S_t}, R_{S_t}\)</td><td>The process/observation variances from the Kalman filter lesson, also regime-specific — e.g. small in a calm regime, large in a crisis regime.</td></tr>
+      <tr><td>\(N^T\)</td><td>The number of distinct regime paths an exact filter would need to track after \(T\) steps — exponential, and computationally infeasible beyond a handful of steps.</td></tr>
+      <tr><td>\(\hat{x}_t^{(i,j)}, P_t^{(i,j)}\)</td><td>The mean/variance of the ordinary Kalman estimate for the branch that came from regime \(i\) at \(t-1\) and is now in regime \(j\) at \(t\) — one such estimate exists for every one of the \(N^2\) (i,j) combinations at each step.</td></tr>
+      <tr><td>\(\pi_{i\mid j}\)</td><td>The posterior probability, given the data, that the system was in regime \(i\) at \(t-1\) conditional on now being in regime \(j\) — the weights used to collapse the \(N\) branches sharing current regime \(j\) into one.</td></tr>
+      <tr><td>\(\hat{x}_t^{(j)}, P_t^{(j)}\)</td><td>The single collapsed (moment-matched) Gaussian estimate for regime \(j\) after Kim's filter's approximation step — what gets carried forward into the next time step, instead of all \(N\) individual branches.</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Exact filtering branches exponentially; Kim's filter collapses back to N every step</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A branching tree diagram on the left showing regime paths multiplying from 1 to 2 to 4 branches over two branching steps if tracked exactly, contrasted on the right with Kim's filter, which redraws only 2 collapsed branches after each of the same two steps.">
+      <text x="150" y="20" text-anchor="middle" font-size="12" fill="var(--red)">Exact filtering (N=2 regimes)</text>
+      <text x="490" y="20" text-anchor="middle" font-size="12" fill="var(--green)">Kim's filter (collapse each step)</text>
+      <line x1="150" y1="40" x2="90" y2="80" style="stroke:var(--red);stroke-width:1.5"/>
+      <line x1="150" y1="40" x2="210" y2="80" style="stroke:var(--red);stroke-width:1.5"/>
+      <circle cx="150" cy="40" r="4" style="fill:var(--red)"/>
+      <circle cx="90" cy="80" r="4" style="fill:var(--red)"/>
+      <circle cx="210" cy="80" r="4" style="fill:var(--red)"/>
+      <line x1="90" y1="80" x2="60" y2="120" style="stroke:var(--red);stroke-width:1.5"/>
+      <line x1="90" y1="80" x2="120" y2="120" style="stroke:var(--red);stroke-width:1.5"/>
+      <line x1="210" y1="80" x2="180" y2="120" style="stroke:var(--red);stroke-width:1.5"/>
+      <line x1="210" y1="80" x2="240" y2="120" style="stroke:var(--red);stroke-width:1.5"/>
+      <circle cx="60" cy="120" r="4" style="fill:var(--red)"/>
+      <circle cx="120" cy="120" r="4" style="fill:var(--red)"/>
+      <circle cx="180" cy="120" r="4" style="fill:var(--red)"/>
+      <circle cx="240" cy="120" r="4" style="fill:var(--red)"/>
+      <text x="150" y="270" text-anchor="middle" font-size="11" fill="var(--text3)">1 → 2 → 4 branches over 3 steps: N^T growth</text>
+      <line x1="490" y1="40" x2="460" y2="80" style="stroke:var(--green);stroke-width:1.5"/>
+      <line x1="490" y1="40" x2="520" y2="80" style="stroke:var(--green);stroke-width:1.5"/>
+      <circle cx="490" cy="40" r="4" style="fill:var(--green)"/>
+      <circle cx="460" cy="80" r="5" style="fill:var(--green)"/>
+      <circle cx="520" cy="80" r="5" style="fill:var(--green)"/>
+      <text x="490" y="100" text-anchor="middle" font-size="10" fill="var(--text3)">collapse N²→N</text>
+      <line x1="460" y1="110" x2="460" y2="130" style="stroke:var(--green);stroke-width:1.5;stroke-dasharray:3 2"/>
+      <line x1="520" y1="110" x2="520" y2="130" style="stroke:var(--green);stroke-width:1.5;stroke-dasharray:3 2"/>
+      <circle cx="460" cy="140" r="5" style="fill:var(--green)"/>
+      <circle cx="520" cy="140" r="5" style="fill:var(--green)"/>
+      <text x="490" y="270" text-anchor="middle" font-size="11" fill="var(--text3)">always exactly N=2 branches, every step</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--red)"></i>Exact — branches multiply by N every step</span>
+      <span><i style="background:var(--green)"></i>Kim's filter — collapsed back to N every step</span>
+    </div>
+    <div class="tl-chart-caption">
+      \(N=2\) regimes: exact filtering (left) already reaches \(2^2=4\) distinct regime paths after just
+      two branching steps, and the doubling continues from there — a third step would reach 8, and a
+      modest 20-step series would already need over a million paths. Kim's filter (right) collapses the
+      branches back down at the end of every single step, so the count never exceeds \(N=2\) no matter how
+      many steps run — trading exactness for a computation that stays linear in \(T\) instead of exploding
+      exponentially.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Collapsing two disagreeing branches into one Gaussian</h3>
+    <p>
+      Suppose \(N=2\) regimes, "calm" and "turbulent." At some time step \(t\), before collapsing, two
+      regime-conditional Kalman estimates both ended up in the same current regime \(j=\text{calm}\),
+      having arrived there from two different previous regimes:
+    </p>
+    <p>
+      Branch from \(i=\text{calm}\) (stayed calm): \(\hat{x}_t^{(1,j)} = 1.30\), \(P_t^{(1,j)} = 0.004\),
+      posterior weight \(\pi_{1\mid j} = 0.75\).<br>
+      Branch from \(i=\text{turbulent}\) (switched to calm): \(\hat{x}_t^{(2,j)} = 1.10\),
+      \(P_t^{(2,j)} = 0.010\), posterior weight \(\pi_{2\mid j} = 0.25\).
+    </p>
+    <p>Collapse them into a single Gaussian for regime "calm":</p>
+    <div class="tl-math">\[
+      \hat{x}_t^{(j)} = 0.75(1.30) + 0.25(1.10) = 0.975 + 0.275 = 1.250
+    \]</div>
+    <p>Now the collapsed variance — the weighted average of the branches' own variances, plus the weighted variance of their means around the new collapsed mean:</p>
+    <div class="tl-math">\[
+      \underbrace{0.75(0.004) + 0.25(0.010)}_{\text{weighted average of } P^{(i,j)}} = 0.0055
+      \qquad\qquad
+      \underbrace{0.75(1.250-1.30)^2 + 0.25(1.250-1.10)^2}_{\text{weighted variance of the means}} = 0.0075
+    \]</div>
+    <div class="tl-math">\[ P_t^{(j)} = 0.0055 + 0.0075 = 0.0130 \]</div>
+    <p>
+      Notice the collapsed variance, 0.0130, is <strong>larger</strong> than either individual branch's own
+      variance (0.004 and 0.010) — even though it's a weighted <em>average</em> of two numbers that are
+      both smaller than it. That's not an arithmetic mistake; it's the entire point of moment matching.
+      The two branches disagreed meaningfully about the mean (1.30 vs. 1.10, a 0.20 gap), and once they're
+      forced into a single Gaussian, that disagreement itself becomes extra uncertainty in the collapsed
+      estimate — a genuine, quantifiable cost of the approximation. Had the two branches agreed closely
+      (say both near 1.28), the second term would have been tiny and the collapse would have cost almost
+      nothing.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">A named scenario</div>
+    <h3>A carry-trade hedge ratio that behaves differently in calm carry regimes vs. risk-off unwinds</h3>
+    <p>
+      Consider a hedge ratio between a carry-trade currency pair and a related rate-sensitive instrument,
+      where the relationship is plausibly stable and slow-drifting during ordinary, low-volatility carry
+      regimes — small \(Q\), tight \(R\), much like the Kalman filter lesson's original worked example — but
+      becomes fast-moving and noisier during a risk-off unwind, when carry trades get closed in a rush and
+      the relationship itself can temporarily weaken. A regime-switching state-space model would let the
+      hidden discrete regime (inferred, not hand-set by a volatility threshold) select which \((Q, R)\)
+      pair governs the continuous tracking at any moment, rather than forcing one fixed \(Q\) to serve both
+      calm and crisis conditions equally badly. This is presented purely as an illustration of what the
+      fused model is <em>for</em> — it is explicitly not a claim that this specific setup has been built,
+      backtested, or shown to outperform either a plain Kalman filter or a hand-set regime rule in this
+      repo. It is also worth flagging plainly that this model multiplies the Kalman filter lesson's own
+      \(Q\)/\(R\)-tuning caution across every one of its \(N\) regimes at once, rather than resolving it.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Regime-switching state-space models are a standard tool in macro-econometrics, most thoroughly
+    developed in Kim &amp; Nelson's textbook (1999, cited below) — used there for problems like modeling
+    GDP growth with a hidden expansion/recession regime (directly extending Hamilton's original
+    Markov-switching idea, cited in the Hidden Markov Model lesson) where the growth rate's own dynamics,
+    not just its mean, differ by regime. In finance, the same fused idea shows up wherever a factor
+    loading, a hedge ratio, or a volatility-like state plausibly has genuinely different dynamics across a
+    small number of distinct market conditions, rather than one dynamics profile stretched to cover all of
+    them.
+  </p>
+  <p>
+    Kim's filter is specifically the standard workhorse for making the likelihood of such a model
+    computable at all — since fitting the model's parameters (the transition matrix \(A\) and every
+    regime's Kalman parameters) by maximum likelihood requires being able to evaluate that likelihood
+    efficiently, and Kim's collapsing approximation is what makes that tractable instead of exponential.
+    A genuine alternative worth naming, closing the loop back to the first lesson in this category: a
+    <strong>particle filter</strong> can also approximate this same fused model, representing the joint
+    regime-and-continuous-state uncertainty with a swarm of particles instead of collapsing branches via
+    moment matching — trading Kim's filter's collapse-approximation bias for the particle filter's Monte
+    Carlo sampling variance instead. Neither is free of approximation; which one is preferable depends on
+    the specific problem.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where the fusion gets over-trusted</h3>
+    <p>
+      <strong>Treating Kim's filter's output as exact.</strong> It is a genuine approximation — the
+      moment-matching collapse loses real information whenever the regime-conditional branches actually
+      disagree, exactly as the worked example showed a collapsed variance (0.0130) exceeding both
+      individual branch variances. A model built on this filter can meaningfully understate the true
+      uncertainty in periods where the regime is genuinely ambiguous.
+    </p>
+    <p>
+      <strong>An explosion of free parameters.</strong> Each of the \(N\) regimes needs its own \(Q\),
+      \(R\), and possibly its own \(A\) and \(H\), on top of the \(N \times N\) transition matrix itself —
+      a large parameter count relative to most sample sizes. This compounds the Hidden Markov Model
+      lesson's own warning that adding states always raises the fitted likelihood without that alone being
+      evidence a richer structure is real; here the overfitting risk is worse, because every added regime
+      brings an entire extra set of continuous-state dynamics with it, not just a mean and variance.
+    </p>
+    <p>
+      <strong>The same lookahead trap as the smoother and the HMM.</strong> A regime-switching model
+      produces both smoothed regime probabilities and smoothed continuous-state estimates when run over a
+      full historical dataset — and, exactly as in the Kalman smoother and Hidden Markov Model lessons,
+      those smoothed quantities use future data and must never be substituted for what a live, forward-only
+      filtered estimate would have produced at the time.
+    </p>
+    <p>
+      <strong>Reaching for this model because it's more general, not because the data demands it.</strong>
+      A model that can represent more possibilities is not automatically a better one — it is automatically
+      a <em>more overfittable</em> one. Per this project's working discipline, added complexity has to earn
+      its place with real out-of-sample evidence beating a simpler incumbent (a plain Kalman filter, or a
+      hand-set regime rule), not merely with theoretical elegance.
+    </p>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>Worth remembering:</strong> this model is the most parameter-hungry of the three covered in this
+    category. Before reaching for it, be honest about whether the data actually supports \(N\) separate
+    regimes' worth of continuous-state dynamics, or whether a single-regime Kalman filter — or a
+    hand-set regime classifier feeding a single Kalman filter — already captures what matters with far
+    fewer moving parts.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A Markov-switching state-space model fuses the HMM's discrete regime with the Kalman filter's continuous state</strong> — the continuous dynamics' own parameters (\(Q\), \(R\), even \(A\)/\(H\)) depend on which hidden regime is currently active.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Exact filtering is intractable</strong> — the number of regime-conditional Kalman branches needed multiplies by \(N\) every step, reaching \(N^T\) after \(T\) steps.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Kim's filter (1994) collapses \(N^2\) branches back to \(N\) every step</strong> via moment matching — a weighted mean plus a law-of-total-variance-style weighted variance-of-means term — keeping the computation linear in \(T\) instead of exponential.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked example's collapsed variance (0.0130) exceeded both input branches' own variances</strong> (0.004, 0.010) — the concrete, quantifiable cost of forcing two disagreeing Gaussians into one.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Kim's filter is an approximation, not an exact answer.</strong> It loses real information whenever regime-conditional branches genuinely disagree — the worse the disagreement, the more it costs.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Concept lesson only, and the most parameter-heavy of the three in this category.</strong> Nothing here is built, tested, or validated in this repo. Explaining the fusion is not a claim it produces edge — and its parameter count compounds the overfitting risk already flagged separately in the Hidden Markov Model and Kalman filter lessons.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What, specifically, is allowed to depend on the hidden regime \(S_t\) in a Markov-switching state-space model?</summary>
+    <div class="tl-answer">
+      The continuous state's own dynamics — the process variance \(Q\), the observation variance \(R\),
+      and potentially the state/observation coefficients \(A\) and \(H\) themselves — are each indexed by
+      the currently active regime, \(Q_{S_t}\), \(R_{S_t}\), etc. The underlying recursion (predict, then
+      update) is unchanged from the plain Kalman filter; only which specific set of parameters governs it
+      at each moment is now regime-dependent.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why can't the filter simply look up which regime is active and run the ordinary Kalman filter with that regime's parameters?</summary>
+    <div class="tl-answer">
+      Because the regime \(S_t\) is hidden, not observed — the filter never actually knows which regime
+      was truly active at any step, only the resulting continuous observation \(y_t\). If \(S_t\) were
+      observed, this would reduce to exactly that simple lookup; the entire difficulty of this model comes
+      from having to infer the regime and the continuous state simultaneously, each from data shaped by
+      the other.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Explain concretely why exact filtering requires N^T regime paths after T steps.</summary>
+    <div class="tl-answer">
+      At each time step, every branch currently being tracked must itself split into \(N\) new branches —
+      one for each possible value the next regime could take — because the correct continuous-state
+      estimate genuinely differs depending on which regime path actually occurred. Starting from 1 branch
+      at \(t=0\), this gives \(N\) branches after step 1, \(N^2\) after step 2, and by induction \(N^T\)
+      after \(T\) steps — the branching multiplies the count by \(N\) at every single step rather than
+      adding to it.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. In the worked example, why is the collapsed variance (0.0130) larger than both of the two branches' individual variances (0.004 and 0.010)?</summary>
+    <div class="tl-answer">
+      The collapsed variance is the sum of two terms: the weighted average of the branches' own variances
+      (0.0055) plus a second term (0.0075) reflecting how much the branches' means actually disagreed
+      (1.30 vs. 1.10). That second term only appears because moment matching must account for the spread
+      between the branches' means, not just their individual spreads — collapsing two Gaussians that
+      genuinely disagree on location manufactures new uncertainty to (partially) represent the information
+      that's being discarded by forcing them into one Gaussian.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. What would happen to the collapsed-variance formula's second term if the two branches being merged agreed almost exactly on the mean?</summary>
+    <div class="tl-answer">
+      It would shrink toward zero, since that term is the weighted variance of the branches' means around
+      the collapsed mean — if the means are nearly identical, there's almost no disagreement to account
+      for, and the collapsed variance would reduce to close to just the weighted average of the branches'
+      own individual variances. This confirms the collapse only "costs" something when the branches
+      genuinely disagreed in the first place.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Name two separate honest reasons to hesitate before reaching for a regime-switching state-space model over a plain Kalman filter or a hand-set regime classifier.</summary>
+    <div class="tl-answer">
+      First, it is the most parameter-heavy of the three tools in this category — every added regime
+      brings an entire extra set of continuous-state dynamics (its own \(Q\), \(R\), possibly \(A\)/\(H\)),
+      on top of the transition matrix, a real overfitting risk relative to typical sample sizes. Second,
+      even the standard estimation method (Kim's filter) is only an approximation, not an exact
+      likelihood — so both the model's added complexity and its estimation method carry costs that a
+      simpler incumbent doesn't, and per this project's working discipline, that complexity needs genuine
+      out-of-sample evidence before it earns a place over something simpler.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Chang-Jin Kim, <em>"Dynamic Linear Models with Markov-Switching,"</em> Journal of Econometrics, Vol. 60, 1994 — the original paper deriving the approximate collapsing filter covered in this lesson.</li>
+    <li>Chang-Jin Kim &amp; Charles R. Nelson, <em>State-Space Models with Regime Switching: Classical and Gibbs-Sampling Approaches with Applications</em>, MIT Press, 1999 — the standard textbook treatment, including both the classical (Kim's filter) and Bayesian (Gibbs sampling) estimation approaches.</li>
+    <li>James D. Hamilton, <em>"A New Approach to the Economic Analysis of Nonstationary Time Series and the Business Cycle,"</em> Econometrica, 1989 — the foundational Markov-switching paper this lesson's fusion directly extends, already cited in the Hidden Markov Model lesson.</li>
+    <li>Arnaud Doucet, Nando de Freitas &amp; Neil Gordon (eds.), <em>Sequential Monte Carlo Methods in Practice</em>, Springer, 2001 — covers particle-filter approaches to regime-switching and jump-Markov state-space models, the alternative to Kim's filter referenced in this lesson.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="kalman-smoother-ekf-ukf.html">← The Kalman Smoother &amp; Extended/Unscented Kalman Filters</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+</body>
+</html>

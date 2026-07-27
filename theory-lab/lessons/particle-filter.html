@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Particle Filter (Sequential Monte Carlo) — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / State Space Models Extensions / The Particle Filter</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">State Space Extensions 1 of 3</div>
+  <h1 class="tl-title">The Particle Filter (Sequential Monte Carlo)</h1>
+  <p class="tl-dek">When a hidden state's dynamics stop being linear and its noise stops being Gaussian, the Kalman filter's neat closed form breaks — a weighted swarm of simulated guesses can track the state anyway.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested anywhere in this repo</span>
+    <span>~18 min read</span>
+    <span>Prereqs: Kalman Filter &amp; Adaptive Relationships, Bayesian Inference</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>The Kalman filter's closed-form predict/update recursion only works when the state transition and observation equations are <strong>linear</strong> and the noise is <strong>Gaussian</strong>. Break either assumption and there is generally no closed form for the posterior at all.</li>
+      <li>A particle filter approximates the posterior with a <strong>weighted swarm of samples</strong> ("particles") instead of a mean and a variance — each particle is a candidate value for the hidden state, and its weight is how much the observed data actually supports it.</li>
+      <li>One cycle is four steps: <strong>initialize</strong> particles from the prior, <strong>propagate</strong> each through the (possibly nonlinear) state transition, <strong>weight</strong> each by the likelihood of the observation given that particle's state, and <strong>resample</strong> proportional to weight when the swarm has gotten too lopsided.</li>
+      <li>The effective-sample-size diagnostic \(N_{\text{eff}} = 1/\sum_i w_i^2\) measures how lopsided the weights are — it drops toward 1 as one particle absorbs nearly all the credibility (particle degeneracy) and stays near \(N\) when weight is spread evenly; resampling is triggered when it falls below a threshold, commonly \(N/2\).</li>
+      <li>The worked example tracks a state whose process noise is a fat-tailed mixture (mostly calm, occasionally a large jump) — exactly the kind of non-Gaussian shock a linear Kalman filter's single Gaussian \(Q\) cannot represent honestly.</li>
+      <li>This is a concept lesson only: explaining Sequential Monte Carlo is not a claim it produces edge in this repo. Nothing here is built, prototyped, or validated.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The Kalman filter lesson built a clean recursion — predict, then update — for tracking a hidden
+    state like a drifting hedge ratio. That recursion has a closed form only because of a specific,
+    convenient mathematical coincidence: when the prior belief is Gaussian and the observation is
+    related to the state <em>linearly</em>, with Gaussian noise, the posterior comes out exactly
+    Gaussian too (conjugacy). That is precisely why two numbers — a mean \(\hat{x}\) and a variance
+    \(P\) — are enough to summarize the entire belief at every step.
+  </p>
+  <p>
+    That coincidence stops being available the moment either assumption breaks. Two common ways it
+    breaks, both routine in real systems: the state transition or observation relationship is
+    <strong>nonlinear</strong> (a squared term, a saturating function, a regime-dependent coefficient),
+    or the noise is <strong>not Gaussian</strong> — it has fat tails, or it is a mixture of "mostly small
+    nudges, occasionally a large jump" rather than one single bell curve. Once that happens, the true
+    posterior can be skewed, multimodal (genuinely two or more separate "clusters" of plausible states,
+    not one bump), or otherwise shaped nothing like a Gaussian — and there is generally no formula for
+    it. A linear Kalman filter forced onto such a problem doesn't fail loudly; it quietly returns a
+    Gaussian approximation that can misestimate both the state and, just as importantly, how confident
+    to be about it.
+  </p>
+  <p>
+    The particle filter — the workhorse algorithm of a broader family called
+    <strong>Sequential Monte Carlo (SMC)</strong> — sidesteps the need for a closed form entirely. Instead
+    of representing the belief about the hidden state with two numbers, it represents it with many
+    concrete guesses, each one scored by how well it explains what was actually observed. No linearity is
+    required, and no particular noise shape is required, because the algorithm never needs to solve an
+    integral in closed form — it approximates that integral with samples instead. The price is that the
+    answer is now a Monte Carlo approximation with its own sampling variance, not an exact number — a
+    trade-off worth naming plainly before going further.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A crowd of guessers instead of one confident estimate</h3>
+    <p>
+      Recall the Kalman filter's boat-at-night analogy: one radar ping a minute, one running estimate of
+      position, blended with each new ping by a derived gain. Now imagine a different setup — the boat's
+      drift is <em>not</em> simple straight-line motion (maybe it's caught in a current that curves
+      unpredictably), and occasionally, rarely, the boat doesn't drift at all but instead gets shoved hard
+      by a wave (a large, sudden jump — not a small Gaussian nudge). A single confident estimate is a
+      poor tool for this: it can't represent "probably here, but there's a real chance it just got shoved
+      somewhere else entirely."
+    </p>
+    <p>
+      So instead of one guesser, put a thousand guessers on the problem, each holding their own candidate
+      position. Each minute, every guesser moves their own candidate forward using their own understanding
+      of how the boat drifts (including, for some fraction of guessers, "maybe a wave just hit"). Then the
+      radar ping arrives. Score every guesser by how consistent their current candidate is with the ping —
+      a guesser sitting right where the ping implies the boat should be gets a high score; a guesser far
+      off gets a low one. If the scores get badly lopsided — one guesser wildly more credible than
+      everyone else, meaning the crowd has collapsed onto a single opinion — replace the crowd: keep the
+      credible guessers (cloning some of them), and quietly retire the ones who turned out to be way off,
+      so the finite population of guessers is spent representing possibilities that are actually still in
+      play, not ones that have already been ruled out. That's a particle filter: a crowd of guesses,
+      re-scored every step, periodically refreshed so the crowd doesn't waste itself on a few dead ends.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    The setup generalizes the Kalman filter's state-space model by allowing the transition and
+    observation functions to be nonlinear, and the noise to be drawn from any distribution at all — not
+    only Gaussian:
+  </p>
+  <div class="tl-math">\[ x_t = f(x_{t-1}, w_t), \qquad y_t = h(x_t, v_t) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>f(·)</code><span>the (possibly nonlinear) state transition function</span></div>
+    <div class="tl-eq-chip c2"><code>h(·)</code><span>the (possibly nonlinear) observation function</span></div>
+    <div class="tl-eq-chip c3"><code>w_t, v_t</code><span>process/observation noise — drawn from any distribution, not necessarily Gaussian</span></div>
+  </div>
+  <p>
+    Compare this directly to the Kalman filter lesson's \(x_t = x_{t-1} + w_t\) and
+    \(y_t = H_t x_t + v_t\): those are the special linear-Gaussian case of exactly this same
+    state-space idea. Nothing about "a hidden state that evolves and produces noisy observations" has
+    changed — only the shape of \(f\), \(h\), and the noise has been generalized.
+  </p>
+  <p>
+    Instead of tracking a mean and variance, a particle filter represents the belief about \(x_t\) —
+    formally, the posterior distribution \(p(x_t \mid y_{1:t})\) given everything observed through time
+    \(t\) — as a weighted collection of \(N\) concrete sample values, the particles:
+  </p>
+  <div class="tl-math">\[ p(x_t \mid y_{1:t}) \approx \sum_{i=1}^{N} w_t^{(i)}\, \delta\!\left(x_t - x_t^{(i)}\right) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>x_t^{(i)}</code><span>particle i's candidate value for the hidden state at time t</span></div>
+    <div class="tl-eq-chip c1"><code>w_t^{(i)}</code><span>particle i's weight — how much credibility the data gives that candidate, normalized so all weights sum to 1</span></div>
+    <div class="tl-eq-chip c2"><code>δ(·)</code><span>the Dirac delta — a spike of probability located exactly at the particle's value, with zero width</span></div>
+  </div>
+  <p>
+    Read this as: "my belief about the hidden state is a pile of spikes, one at each particle's
+    location, each spike as tall as that particle's weight." More particles concentrated in one region
+    of the state space, with higher weight, means that region is believed more strongly — this is a
+    discrete, sample-based stand-in for a full continuous probability density, and it can approximate
+    <em>any</em> shape — skewed, multimodal, fat-tailed — given enough particles, unlike a Gaussian,
+    which can only ever be one symmetric bump.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🎲</div>
+      <h4>1. Initialize</h4>
+      <p>Draw \(N\) particles \(x_0^{(i)}\) from the prior distribution over the starting state, and give each an equal weight, \(w_0^{(i)} = 1/N\).</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">➡️</div>
+      <h4>2. Propagate</h4>
+      <p>Push each particle through the state transition, \(x_t^{(i)} = f(x_{t-1}^{(i)}, w_t^{(i)})\), drawing a fresh noise sample for every particle independently. This is the "predict" step's generalization — no data used yet.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">⚖️</div>
+      <h4>3. Weight</h4>
+      <p>Once \(y_t\) arrives, score each particle by the likelihood of that observation given its own candidate state, \(w_t^{(i)} \propto w_{t-1}^{(i)}\, p(y_t \mid x_t^{(i)})\), then normalize so the weights sum to 1.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🔁</div>
+      <h4>4. Resample</h4>
+      <p>Check \(N_{\text{eff}}\). If it has fallen too low, draw a fresh set of \(N\) particles proportional to weight, and reset every weight to \(1/N\) — replacing the discredited guesses with clones of the credible ones.</p>
+    </div>
+  </div>
+
+  <p>
+    Step 3's weight update deserves unpacking. In the common special case where every step resamples
+    (weights are reset to \(1/N\) every time), the recursive formula collapses to the simpler
+    \(w_t^{(i)} \propto p(y_t \mid x_t^{(i)})\) — "this step's weight is just this step's likelihood,"
+    because the previous weight was already uniform going in. The general recursive form
+    \(w_t^{(i)} \propto w_{t-1}^{(i)} p(y_t \mid x_t^{(i)})\) is needed only when resampling is skipped
+    for one or more steps (common when \(N_{\text{eff}}\) is still healthy, to avoid the small amount of
+    diversity loss resampling always costs — see the pitfalls below).
+  </p>
+
+  <h3>The degeneracy problem and the effective-sample-size diagnostic</h3>
+  <p>
+    Left unchecked, the weighting step has a well-known failure mode called <strong>particle
+    degeneracy</strong>: after enough steps, one particle's weight tends to dominate almost completely
+    while the rest decay toward zero — the swarm has effectively collapsed to a single guess, wasting
+    almost the entire population of \(N\) particles on candidates that no longer matter. The standard
+    diagnostic for how close the swarm is to this collapse is the <strong>effective sample size</strong>:
+  </p>
+  <div class="tl-math">\[ N_{\text{eff}} = \frac{1}{\sum_{i=1}^{N} \left(w_t^{(i)}\right)^2} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>N_eff</code><span>effective sample size — how many particles are meaningfully contributing right now</span></div>
+    <div class="tl-eq-chip c1"><code>Σ (w_i)²</code><span>the sum of squared weights — larger when weight is concentrated in fewer particles</span></div>
+  </div>
+  <p>
+    Two extremes make this formula easy to sanity-check. If every particle has the same weight,
+    \(w_i = 1/N\), then \(\sum w_i^2 = N \cdot (1/N)^2 = 1/N\), so \(N_{\text{eff}} = N\) — the healthiest
+    possible state, every particle equally informative. If a single particle holds essentially all the
+    weight (\(w_1 \approx 1\), the rest \(\approx 0\)), then \(\sum w_i^2 \approx 1\), so
+    \(N_{\text{eff}} \approx 1\) — total degeneracy, only one particle is actually doing anything. A
+    common rule of thumb triggers resampling whenever \(N_{\text{eff}}\) drops below \(N/2\): resample
+    too rarely and the swarm degenerates; resample every single step regardless of \(N_{\text{eff}}\) and
+    you pay an avoidable diversity cost (see pitfalls) even when the swarm was still healthy.
+  </p>
+  <p>
+    A common, low-variance way to actually draw the resampled particles (rather than picking each one
+    independently, which itself adds unnecessary Monte Carlo noise) is <strong>systematic
+    resampling</strong>: lay the particles' cumulative weights end to end on \([0,1]\), draw a single
+    random offset \(u \sim \text{Uniform}(0, 1/N)\), then pick the particles landed on by the \(N\)
+    evenly spaced points \(u,\ u+\tfrac1N,\ u+\tfrac2N,\ \ldots\) This guarantees a particle with, say,
+    twice the average weight gets picked roughly twice as often — but deterministically spread across
+    the \([0,1]\) line rather than by \(N\) separate coin-flips, which is what makes it lower-variance
+    than naive multinomial resampling.
+  </p>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(x_t\)</td><td>The hidden state at time \(t\) — the thing being tracked, never observed directly.</td></tr>
+      <tr><td>\(f(\cdot)\)</td><td>The state transition function — possibly nonlinear, unlike the plain Kalman filter's linear \(x_{t-1}+w_t\).</td></tr>
+      <tr><td>\(h(\cdot)\)</td><td>The observation function — possibly nonlinear, unlike the plain Kalman filter's linear \(H_t x_t\).</td></tr>
+      <tr><td>\(w_t, v_t\)</td><td>Process and observation noise — allowed to come from any distribution (fat-tailed, mixture, skewed), not only Gaussian.</td></tr>
+      <tr><td>\(N\)</td><td>The number of particles used to approximate the posterior — a computational budget you choose; more particles means a better approximation but more compute.</td></tr>
+      <tr><td>\(x_t^{(i)}\)</td><td>Particle \(i\)'s candidate value for the hidden state at time \(t\), for \(i = 1,\ldots,N\).</td></tr>
+      <tr><td>\(w_t^{(i)}\)</td><td>Particle \(i\)'s normalized weight at time \(t\) — how much credibility the observed data lends to that particular candidate, with \(\sum_i w_t^{(i)} = 1\).</td></tr>
+      <tr><td>\(\delta(\cdot)\)</td><td>The Dirac delta function — a zero-width spike of probability at a single point, used to represent "all the belief mass sits exactly at this particle's value."</td></tr>
+      <tr><td>\(p(y_t \mid x_t^{(i)})\)</td><td>The likelihood of the observed \(y_t\) given particle \(i\)'s candidate state — how well that specific guess explains what was actually seen.</td></tr>
+      <tr><td>\(N_{\text{eff}}\)</td><td>The effective sample size, \(1/\sum_i (w_t^{(i)})^2\) — ranges from 1 (total degeneracy, one particle matters) to \(N\) (perfectly healthy, every particle matters equally).</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Particle weights collapse onto whichever candidates the observation actually supports</div>
+    <svg viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Nine particles plotted along a horizontal state axis, drawn as circles whose radius encodes their current weight, with a dashed vertical line marking a fixed observation. A slider controls how noisy the observation is assumed to be, which reweights the particles live and recomputes the effective sample size.">
+      <line x1="60" y1="190" x2="610" y2="190" style="stroke:var(--border2);stroke-width:1"/>
+      <line id="pf-obs-line" x1="322" y1="40" x2="322" y2="190" style="stroke:var(--amber);stroke-width:1.5;stroke-dasharray:4 3"/>
+      <text x="322" y="30" text-anchor="middle" font-size="11" fill="var(--amber)">observation y</text>
+      <g id="pf-particles"></g>
+      <text x="70" y="210" text-anchor="middle" font-size="10" fill="var(--text3)">0.9</text>
+      <text x="190" y="210" text-anchor="middle" font-size="10" fill="var(--text3)">1.1</text>
+      <text x="310" y="210" text-anchor="middle" font-size="10" fill="var(--text3)">1.3</text>
+      <text x="430" y="210" text-anchor="middle" font-size="10" fill="var(--text3)">1.5</text>
+      <text x="550" y="210" text-anchor="middle" font-size="10" fill="var(--text3)">1.7</text>
+      <text x="335" y="228" text-anchor="middle" font-size="11" fill="var(--text3)">candidate state value</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Observation noise R (how noisy the sensor is)</span><span class="tl-live" id="pf-r-val">R = 0.05</span></div>
+        <input type="range" id="pf-r-slider" min="1" max="60" step="1" value="10">
+        <div class="tl-hint">Low R = a sharp, trustworthy observation → weight concentrates fast (small N_eff). High R = a noisy observation → weight stays spread out (large N_eff).</div>
+      </div>
+    </div>
+    <div class="tl-readout">
+      Effective sample size: <b id="pf-neff-val">N_eff ≈ 3.1</b> out of 9 particles
+    </div>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>Particle (radius ∝ weight)</span>
+      <span><i style="background:var(--amber)"></i>Observation</span>
+    </div>
+    <div class="tl-chart-caption">
+      Nine fixed particles, evenly spaced candidate values from 0.9 to 1.7. The likelihood
+      \(p(y\mid x^{(i)}) = \exp\!\left(-(y-x^{(i)})^2/2R\right)\) is computed for each one against the
+      fixed observation \(y=1.32\), normalized into weights, and drawn as circle radius — this is the
+      real weighting formula from the algorithm above, not a stand-in. Drag the slider toward a small
+      \(R\) and watch weight pile onto the one or two particles nearest the observation while
+      \(N_{\text{eff}}\) collapses toward 1 — exactly the degeneracy this diagnostic exists to catch.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Weighting a 5-particle swarm against one observation, then checking N_eff</h3>
+    <p>
+      Suppose the true dynamics have a fat-tailed process noise the linear Kalman filter cannot
+      represent: 90% of the time the state nudges by a small \(\mathcal{N}(0, 0.01)\) amount, but 10% of
+      the time it takes a much larger jump, \(\mathcal{N}(0, 1.0)\) — a two-component mixture, not one
+      Gaussian. A particle filter handles this cleanly: each particle simply draws its own noise from
+      that mixture during the propagate step, so the swarm as a whole naturally represents "mostly small
+      moves, occasionally a big one," without needing a single tidy formula for the mixture's overall
+      shape.
+    </p>
+    <p>
+      After the propagate step, suppose 5 particles hold these candidate values, each starting with
+      equal weight \(w^{(i)}_{\text{prior}} = 0.20\):
+    </p>
+    <p>
+      \(x^{(1)}=1.05,\ x^{(2)}=1.15,\ x^{(3)}=1.20,\ x^{(4)}=1.25,\ x^{(5)}=1.40\)
+    </p>
+    <p>
+      The observation arrives: \(y = 1.30\), with observation variance \(R = 0.05\). Score each particle
+      by the Gaussian likelihood \(p(y \mid x^{(i)}) = \frac{1}{\sqrt{2\pi R}}\exp\!\left(-\frac{(y-x^{(i)})^2}{2R}\right)\),
+      where \(1/\sqrt{2\pi R} = 1/\sqrt{0.3142} \approx 1.784\):
+    </p>
+    <div class="tl-math">\[
+      \begin{aligned}
+      p(y\mid x^{(1)}) &= 1.784 \times e^{-0.0625/0.1} \approx 0.955 \\
+      p(y\mid x^{(2)}) &= 1.784 \times e^{-0.0225/0.1} \approx 1.425 \\
+      p(y\mid x^{(3)}) &= 1.784 \times e^{-0.0100/0.1} \approx 1.614 \\
+      p(y\mid x^{(4)}) &= 1.784 \times e^{-0.0025/0.1} \approx 1.740 \\
+      p(y\mid x^{(5)}) &= 1.784 \times e^{-0.0100/0.1} \approx 1.614
+      \end{aligned}
+    \]</div>
+    <p>
+      Multiply each by its prior weight (0.20) and normalize so the five raw weights sum to 1
+      (raw sum \(\approx 1.4695\)):
+    </p>
+    <div class="tl-math">\[
+      w^{(1)}\approx 0.130,\quad w^{(2)}\approx 0.194,\quad w^{(3)}\approx 0.220,\quad w^{(4)}\approx 0.237,\quad w^{(5)}\approx 0.220
+    \]</div>
+    <p>
+      Particle 4 (\(x=1.25\), closest to the observation) picked up the most weight, as expected, but no
+      single particle dominates — the weights range only from 0.130 to 0.237. Compute the effective
+      sample size:
+    </p>
+    <div class="tl-math">\[
+      \sum_i \left(w^{(i)}\right)^2 \approx 0.0169+0.0376+0.0483+0.0561+0.0483 = 0.2072
+      \qquad N_{\text{eff}} = \frac{1}{0.2072} \approx 4.83
+    \]</div>
+    <p>
+      With \(N=5\) particles, \(N_{\text{eff}}\approx 4.83\) is close to the maximum possible — the swarm
+      is healthy, and (using the common \(N/2 = 2.5\) threshold) no resampling is needed yet. Now imagine
+      instead that the fat tail actually fired that step — a genuine jump occurred, and only one particle
+      happened to be sitting near where the state actually jumped to. That particle's likelihood would
+      dwarf the other four's, its weight would approach 1, the others would collapse toward 0,
+      \(\sum_i w_i^2\) would jump toward 1, and \(N_{\text{eff}}\) would plunge toward 1 — exactly the
+      degeneracy signal that triggers a resample, replacing the four now-irrelevant particles with fresh
+      clones drawn near the one candidate the jump actually vindicated.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">A named scenario</div>
+    <h3>A hedge ratio that mostly drifts calmly but occasionally re-prices discontinuously around a rate decision</h3>
+    <p>
+      Picture the same drifting-hedge-ratio problem as the Kalman filter lesson, but for a pair whose
+      relationship is known to behave in two distinct ways: on an ordinary day it drifts slowly and
+      smoothly, but around a scheduled central-bank rate decision it can re-price in a single discontinuous
+      jump rather than a gradual walk — and, crucially, it isn't always obvious in advance whether a given
+      post-announcement move is the start of a genuine repricing or a transient overreaction that fades
+      back within the same session. A linear Kalman filter, built on one fixed Gaussian process-noise
+      variance \(Q\), has no way to represent "probably a small drift, but there's a real chance this is
+      one of the rare large jumps" — it can only ever produce one symmetric bell curve, which either
+      overreacts to ordinary noise (if \(Q\) is set large to accommodate the jumps) or underreacts to a
+      genuine jump (if \(Q\) is set small for the ordinary days). A particle filter can represent both
+      branches at once — a cluster of particles tracking "ordinary drift continues" alongside a separate
+      cluster tracking "the jump was real" — and let the next observation's weighting decide which cluster
+      the data actually supports, without having to commit to one branch in advance. This is presented as
+      an illustration of what the method is <em>for</em>, not as a claim that this exact setup has been
+      built, backtested, or shown to add anything over the existing linear approach.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Particle filters originate in the same tracking-and-estimation lineage as the Kalman filter, and the
+    bootstrap particle filter specifically (Gordon, Salmond &amp; Smith, 1993, cited below) was one of the
+    first practical algorithms to make Sequential Monte Carlo usable outside of pure theory. The
+    canonical non-finance use cases mirror the boat/GPS analogy directly: robot localization (a robot
+    with a rough map and noisy sensors, uncertain exactly where on the map it sits — "Monte Carlo
+    Localization" is a direct particle-filter application), radar and sonar tracking of a maneuvering
+    target whose motion isn't well described by a straight line, and object tracking in video where a
+    target can be temporarily occluded (hidden behind something) and reappear, a genuinely multimodal
+    situation a single Gaussian estimate handles poorly.
+  </p>
+  <p>
+    In quantitative finance, particle filters show up wherever a state-space model is genuinely nonlinear
+    or non-Gaussian and a closed-form filter isn't available: estimating the latent volatility path in a
+    stochastic volatility model (where volatility itself is a hidden, continuously evolving state — a
+    close cousin of the GARCH lesson's volatility-clustering idea, but treating volatility as unobserved
+    rather than a deterministic function of past squared returns), fitting jump-diffusion models where
+    price paths can jump discontinuously, and — looking ahead to the next lesson in this category —
+    approximating regime-switching state-space models as an alternative to the moment-matching
+    approximation those models otherwise require. A further, more advanced technique worth knowing by
+    name: <strong>particle Markov Chain Monte Carlo (particle MCMC)</strong>, which uses a particle
+    filter as a component inside a larger procedure for estimating a model's fixed parameters (not just
+    its time-varying hidden state) from data — useful when even the parameters themselves are uncertain
+    and need to be learned, not just assumed.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where Sequential Monte Carlo quietly goes wrong</h3>
+    <p>
+      <strong>Particle impoverishment after resampling.</strong> Resampling fixes weight degeneracy by
+      cloning high-weight particles — but cloning is not the same as generating genuinely new
+      information. After several resample cycles, especially with process noise \(Q\) that's small, the
+      swarm can end up as many near-identical copies of just a handful of original particles, collapsing
+      the very diversity the method depends on. This is a real cost of resampling, not a free fix, which
+      is exactly why resampling only when \(N_{\text{eff}}\) actually drops below a threshold — rather
+      than at every single step regardless — is standard practice.
+    </p>
+    <p>
+      <strong>The curse of dimensionality.</strong> The number of particles needed to adequately cover the
+      space of plausible states grows very fast as the hidden state's dimension grows — a handful of
+      particles can represent a 1-dimensional state reasonably, but the same handful is hopelessly
+      inadequate for a state with many correlated dimensions. This is a genuine, well-documented
+      limitation, not a tuning problem to engineer around casually.
+    </p>
+    <p>
+      <strong>Choosing the resample threshold, or \(N\) itself, by grid-searching backtest performance.</strong>
+      This is the same trap the Kalman filter lesson flags for \(Q\) and \(R\): the resample threshold and
+      the particle count are chosen inputs, and tuning them post hoc against how good a backtest looks is
+      overfitting wearing a Monte Carlo disguise, not a principled choice.
+    </p>
+    <p>
+      <strong>Treating the output as exact.</strong> A particle filter's estimate is a Monte Carlo
+      approximation with genuine sampling variance — rerun it with a different random seed and, especially
+      with a modest \(N\), the answer will move around. More particles reduce this variance but never
+      eliminate it; reporting a particle-filter estimate as if it were a single deterministic answer, the
+      way a closed-form Kalman estimate is, overstates its precision.
+    </p>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>Worth remembering:</strong> a particle filter is a strictly more general tool than the Kalman
+    filter — it can be applied to a linear-Gaussian problem too, and will (with enough particles) converge
+    to the same answer the closed-form Kalman filter gives instantly and exactly. That generality is not
+    free: for a problem that genuinely is linear-Gaussian, the plain Kalman filter is both cheaper and
+    exact, and reaching for particles there adds Monte Carlo noise for no benefit.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A particle filter replaces "mean and variance" with a weighted swarm of concrete guesses</strong> — it works for nonlinear transitions and non-Gaussian noise precisely because it never needs a closed-form posterior formula.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The cycle is four steps:</strong> initialize from the prior, propagate through the (possibly nonlinear) dynamics, weight by the observation's likelihood, resample when the swarm gets lopsided.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(N_{\text{eff}} = 1/\sum_i w_i^2\) measures swarm health</strong> — it runs from \(N\) (every particle equally informative) down to 1 (total degeneracy, one particle carries everything).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked example's swarm stayed healthy</strong> (\(N_{\text{eff}}\approx 4.83\) of 5) against an ordinary observation, but a genuine fat-tail jump would collapse it toward 1 — exactly the case a resample step exists to catch.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Resampling fixes degeneracy but costs diversity (particle impoverishment)</strong> — it is a real trade-off, not a free correction, which is why it should trigger on \(N_{\text{eff}}\), not run unconditionally every step.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Not built, not prototyped, not validated in this repo.</strong> Explaining Sequential Monte Carlo is not a claim it produces edge here — any real use would need to beat the incumbent on true out-of-sample performance first, per this project's Lego Principle.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why doesn't the Kalman filter's closed-form recursion work once the state transition or observation function is nonlinear, or the noise isn't Gaussian?</summary>
+    <div class="tl-answer">
+      The Kalman filter's closed form relies on conjugacy: a Gaussian prior combined with a Gaussian
+      likelihood that's <em>linearly</em> related to the state produces an exactly Gaussian posterior,
+      summarized completely by a mean and a variance. Break linearity or the Gaussian-noise assumption
+      and the true posterior can become skewed, multimodal, or otherwise non-Gaussian — there is
+      generally no formula for its mean and variance in closed form, so two numbers are no longer enough
+      to describe the belief.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What does a particle's weight represent, and what does resampling do to those weights?</summary>
+    <div class="tl-answer">
+      A particle's weight is how much the observed data supports that particle's specific candidate value
+      for the hidden state — proportional to the likelihood of the observation given that candidate,
+      normalized so all weights sum to 1. Resampling draws a fresh set of \(N\) particles proportional to
+      the current weights (so high-weight particles get cloned, low-weight ones are dropped) and then
+      resets every weight back to \(1/N\) — it doesn't change what the swarm currently believes on
+      average, it reallocates the finite particle budget toward the candidates the data actually supports.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Compute \(N_{\text{eff}}\) for four particles with weights 0.25, 0.25, 0.25, 0.25, and separately for weights 0.70, 0.10, 0.10, 0.10. What does the difference tell you?</summary>
+    <div class="tl-answer">
+      Equal weights: \(\sum w_i^2 = 4\times 0.25^2 = 0.25\), so \(N_{\text{eff}} = 1/0.25 = 4\) — every
+      particle is fully informative, the maximum possible for \(N=4\). Lopsided weights: \(\sum w_i^2 =
+      0.70^2 + 3\times 0.10^2 = 0.49 + 0.03 = 0.52\), so \(N_{\text{eff}} = 1/0.52 \approx 1.92\) — even
+      though there are still 4 particles, the swarm is behaving as if it only had about 2 meaningfully
+      distinct guesses, because one particle dominates the weight. This is exactly the degeneracy the
+      diagnostic is built to catch.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why is systematic resampling generally preferred over picking each of the N new particles independently at random (proportional to weight)?</summary>
+    <div class="tl-answer">
+      Picking each new particle independently is itself a random process with its own sampling variance —
+      by chance, a particle with the true average weight could still get picked more or fewer times than
+      its weight implies. Systematic resampling instead lays the cumulative weights end to end and picks
+      particles at \(N\) deterministically evenly-spaced points (offset by one shared random draw), which
+      guarantees a particle gets picked close to exactly as many times as its weight implies — a
+      lower-variance way to do the same reallocation.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. What is "particle impoverishment," and why is resampling every single step, regardless of \(N_{\text{eff}}\), not automatically the safest choice?</summary>
+    <div class="tl-answer">
+      Particle impoverishment is the loss of diversity that resampling causes: because resampling clones
+      high-weight particles rather than generating new information, after repeated resample cycles the
+      swarm can end up as many near-duplicate copies descended from just a few original particles.
+      Resampling unconditionally every step maximizes how often this cloning happens, even during periods
+      when the swarm was already healthy (\(N_{\text{eff}}\) close to \(N\)) and didn't need it — which is
+      why resampling is normally triggered only when \(N_{\text{eff}}\) actually drops below a threshold.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. A particle filter is strictly more general than a Kalman filter — so why not just always use a particle filter, even for a problem that is genuinely linear-Gaussian?</summary>
+    <div class="tl-answer">
+      For a genuinely linear-Gaussian problem, the Kalman filter's closed form gives the exact answer
+      instantly and cheaply, with no sampling variance at all. A particle filter applied to the same
+      problem would, with enough particles, converge toward that same answer — but it pays for that
+      generality with Monte Carlo noise (the answer depends on the random seed and the particle count)
+      and greater computational cost, for a problem that didn't need any of that generality in the first
+      place. Reach for particles only once linearity or Gaussian noise genuinely fails to hold.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>N. J. Gordon, D. J. Salmond &amp; A. F. M. Smith, <em>"Novel Approach to Nonlinear/Non-Gaussian Bayesian State Estimation,"</em> IEE Proceedings F (Radar and Signal Processing), 1993 — the original bootstrap particle filter paper.</li>
+    <li>M. Sanjeev Arulampalam, Simon Maskell, Neil Gordon &amp; Tim Clapp, <em>"A Tutorial on Particle Filters for Online Nonlinear/Non-Gaussian Bayesian Tracking,"</em> IEEE Transactions on Signal Processing, 2002 — the standard accessible tutorial covering the algorithm, degeneracy, and resampling schemes in depth.</li>
+    <li>Arnaud Doucet, Nando de Freitas &amp; Neil Gordon (eds.), <em>Sequential Monte Carlo Methods in Practice</em>, Springer, 2001 — the field's reference edited volume, spanning tracking, robotics, and financial applications.</li>
+    <li>Christophe Andrieu, Arnaud Doucet &amp; Roman Holenstein, <em>"Particle Markov Chain Monte Carlo Methods,"</em> Journal of the Royal Statistical Society: Series B, 2010 — the paper introducing particle MCMC, for readers who need to estimate fixed model parameters alongside the hidden state.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="kalman-smoother-ekf-ukf.html">The Kalman Smoother &amp; Extended/Unscented Kalman Filters →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var PARTICLES = [
+    {x:70,  v:0.9}, {x:130, v:1.0}, {x:190, v:1.1},
+    {x:250, v:1.2}, {x:310, v:1.3}, {x:370, v:1.4},
+    {x:430, v:1.5}, {x:490, v:1.6}, {x:550, v:1.7}
+  ];
+  var OBS_VAL = 1.32;
+  var slider = document.getElementById('pf-r-slider');
+  var rVal = document.getElementById('pf-r-val');
+  var neffVal = document.getElementById('pf-neff-val');
+  var group = document.getElementById('pf-particles');
+  var NS = 'http://www.w3.org/2000/svg';
+
+  // Build the 9 particle circles once; update radius/fill on each recompute.
+  var circles = PARTICLES.map(function(p){
+    var c = document.createElementNS(NS, 'circle');
+    c.setAttribute('cx', p.x);
+    c.setAttribute('cy', 140);
+    c.setAttribute('r', 8);
+    c.setAttribute('style', 'fill:var(--blue);opacity:.85');
+    group.appendChild(c);
+    return c;
+  });
+
+  function update(){
+    var slide = parseFloat(slider.value); // 1..60
+    var R = 0.01 + (slide / 60) * 0.29; // maps to R in [0.01, 0.30]
+    rVal.textContent = 'R = ' + R.toFixed(2);
+
+    // Real particle-filter weighting: Gaussian likelihood p(y|x_i), normalized.
+    var raw = PARTICLES.map(function(p){
+      var d = OBS_VAL - p.v;
+      return Math.exp(-(d * d) / (2 * R));
+    });
+    var sum = raw.reduce(function(a,b){ return a + b; }, 0);
+    var weights = raw.map(function(r){ return r / sum; });
+
+    weights.forEach(function(w, i){
+      var radius = 5 + Math.sqrt(w) * 28;
+      circles[i].setAttribute('r', radius.toFixed(1));
+    });
+
+    var sumSq = weights.reduce(function(a,w){ return a + w*w; }, 0);
+    var neff = 1 / sumSq;
+    neffVal.textContent = 'N_eff ≈ ' + neff.toFixed(1);
+  }
+
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
+</body>
+</html>

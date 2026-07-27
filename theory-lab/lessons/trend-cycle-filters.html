@@ -127,10 +127,15 @@
     frequencies:
   </p>
   <div class="tl-math">
-    \[ \lambda_{\text{new}} \;=\; \lambda_{\text{quarterly}} \times \left(\frac{\text{quarters per new period}}\right)^{-4} \]
+    \[ \lambda_{\text{new}} \;=\; \lambda_{\text{quarterly}} \times s^{4} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>λ_quarterly</code><span>the 1600 baseline, calibrated for quarterly data</span></div>
+    <div class="tl-eq-chip c2"><code>s</code><span>how many "new-frequency" periods fit in one quarter (e.g. 3 for monthly)</span></div>
+    <div class="tl-eq-chip c4"><code>λ_new</code><span>the rescaled penalty at the new observation frequency</span></div>
   </div>
   <p>
-    Concretely: monthly data has 3 months per quarter, so the ratio (quarters per month) is \(1/3\), giving
+    Concretely: monthly data has 3 months per quarter, so \(s=3\), giving
     \(\lambda_{\text{monthly}} = 1600 \times 3^4 = 1600 \times 81 = 129{,}600\). Annual data has 4 quarters per year, so
     \(\lambda_{\text{annual}} = 1600 \times (1/4)^4 = 1600/256 \approx 6.25\). Skipping this rescaling — using
     \(\lambda=1600\) directly on monthly data, say — under-smooths the trend by roughly a factor of 81, letting far
@@ -202,6 +207,8 @@
       <tr><td>\(c_t\)</td><td>the (unobserved) cyclical component, \(c_t = y_t - \tau_t\)</td></tr>
       <tr><td>\(\varepsilon_t\)</td><td>irreducible noise belonging to neither trend nor cycle</td></tr>
       <tr><td>\(\lambda\)</td><td>the HP filter's smoothness penalty weight — 1600 is the standard quarterly convention</td></tr>
+      <tr><td>\(T\)</td><td>the sample length — the number of observations the HP objective sums over</td></tr>
+      <tr><td>\(s\)</td><td>the Ravn-Uhlig rescaling ratio — how many new-frequency periods fit in one quarter</td></tr>
       <tr><td>order (Butterworth)</td><td>controls how sharply the filter transitions between passing and blocking frequencies</td></tr>
       <tr><td>cutoff frequency</td><td>the frequency (or pair of frequencies, for a band) marking a filter's pass/block boundary</td></tr>
       <tr><td>\(K\)</td><td>the number of leads/lags a Baxter-King moving average truncates to — observations lost at each end of the sample</td></tr>

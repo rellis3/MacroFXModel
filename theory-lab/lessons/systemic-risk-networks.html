@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Systemic Risk &amp; Financial Contagion Networks — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Graph Theory &amp; Networks / Systemic Risk &amp; Financial Contagion Networks</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Graph Theory &amp; Networks 3 of 3</div>
+  <h1 class="tl-title">Systemic Risk &amp; Financial Contagion Networks</h1>
+  <p class="tl-dek">One institution's failure isn't a single event — it's a shock that propagates through a web of exposures, and DebtRank is the algorithm central banks use to measure exactly how far that propagation reaches before it stops.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — regulatory/systemic-risk research tool, not a component of this repo's trading strategies</span>
+    <span>~16 min read</span>
+    <span>Prereqs: Graph Theory Fundamentals &amp; Centrality Measures</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Systemic risk is naturally a network problem: nodes are institutions or instruments, edges are exposures (counterparty, correlation, or funding linkages), and the question is how far a single node's distress spreads once it starts.</li>
+      <li>DebtRank (Battiston et al., 2012) measures exactly this: it propagates a "distress level" iteratively through the exposure network, capital-weighted, and sums the total distress induced across the whole system relative to its size.</li>
+      <li>DebtRank is conceptually related to eigenvector centrality — both are recursive, iterative computations over a network — but propagates a one-time shock forward through time rather than describing a fixed, static importance.</li>
+      <li>A worked 4-institution example shows one default (Bank C) propagating through capital-weighted exposures to leave the other three banks at roughly 24%, 48%, and 32% distress after the cascade settles — and the total induced distress (≈1.05) slightly exceeds the size of the initiating shock (1.00), the amplification effect DebtRank is built to capture.</li>
+      <li>This is stated plainly: DebtRank and tools like it are used by central banks, the Federal Reserve, and regulators for financial-stability stress testing — it is a market-structure research tool, not a component of any trading strategy in this repo.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The first lesson in this category asked which node in a network is
+    structurally most important, using three different <em>static</em>
+    measures of importance. The second turned a correlation matrix into a
+    graph and pruned it to its backbone. This lesson asks a different kind
+    of question, one that only makes sense once you already have a network
+    in hand: if something goes wrong at <em>one</em> node, how far does the
+    damage actually travel, and how much worse does it get by the time it
+    stops spreading? That's not a question about static structure anymore —
+    it's a question about <strong>dynamics on</strong> a network, and it's
+    the exact question regulators ask after every financial crisis: which
+    institution's failure would do the most damage to the system as a
+    whole, not just to its own direct counterparties?
+  </p>
+  <p>
+    The 2008 financial crisis made this question urgent in a very specific
+    way: some institutions that looked individually unremarkable by size
+    turned out to be deeply, systemically important once their web of
+    interconnections was traced through — "too interconnected to fail"
+    rather than simply "too big to fail." DebtRank, developed in the years
+    after that crisis specifically to formalize this idea, is the
+    best-known academic and regulatory answer, and it builds directly on the
+    eigenvector-centrality machinery from this category's first lesson —
+    just applied to a shock propagating forward in time instead of a fixed
+    importance score.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A financial network is a row of dominoes wired together, not in a line</h3>
+    <p>
+      A single row of dominoes is easy to reason about: knock one over, and
+      exactly the ones after it fall, one at a time, in a predictable
+      chain. A real financial network isn't a line — it's a tangle, where
+      each institution is propped up partly by its own capital and partly
+      by the expectation that its counterparties will make good on what they
+      owe it. Knock one institution over (it defaults, or takes a large
+      loss) and every institution exposed to it absorbs some fraction of
+      that loss — not the whole thing, usually, but a real fraction,
+      proportional to how large that specific exposure was relative to
+      their own capital cushion. Those institutions are now somewhat
+      weaker, which means <em>their</em> counterparties absorb a smaller,
+      second-round hit, and so on, rippling outward until the shock is
+      either fully absorbed by capital cushions along the way, or it isn't,
+      and the cascade keeps going.
+    </p>
+    <p>
+      DebtRank is the formal version of tracing exactly that ripple: not
+      just "who is directly exposed to the failing institution" (that's
+      just reading one row of a matrix), but "how much total distress does
+      this one failure eventually cause once every round of knock-on
+      weakening has played out and settled." The word "rank" in the name is
+      deliberate — it produces a comparable score for every institution,
+      answering "if <em>this</em> one had failed instead, would the total
+      damage have been bigger or smaller?"
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>Step 1 — the exposure network</h3>
+  <p>
+    Model the system as a directed, weighted graph: nodes are institutions,
+    and each edge carries an <strong>impact factor</strong> \(W_{ij}\) —
+    the fraction of institution \(i\)'s own capital that would be wiped out
+    if institution \(j\) defaulted completely on what it owes \(i\). This is
+    a directed edge (\(i\)'s exposure to \(j\) is generally not the same
+    size as \(j\)'s exposure to \(i\)), and it's naturally capital-weighted
+    rather than raw-dollar-weighted, since a $10 million exposure means
+    something very different to a bank with $50 million of capital than to
+    one with $5 billion.
+  </p>
+  <p>
+    Every node also carries a <strong>distress level</strong> \(h_i \in
+    [0,1]\): 0 means fully healthy, 1 means fully defaulted, and values in
+    between represent partial distress (a large mark-to-market loss, a
+    credit downgrade, a funding squeeze — anything short of outright
+    default). The whole exercise starts by setting one or more nodes'
+    \(h_i(0)\) to reflect an initiating shock (most simply, one institution
+    set fully to \(h=1\)) and asking how \(h\) evolves across the rest of
+    the network from there.
+  </p>
+
+  <h3>Step 2 — the iterative distress-propagation rule</h3>
+  <p>
+    At each round \(t\), every node updates its own distress level based on
+    how much its neighbors' distress <em>changed</em> since the last round,
+    weighted by the impact factors:
+  </p>
+  <div class="tl-math">\[ h_i(t+1) = \min\!\Big(1,\; h_i(t) + \sum_j W_{ij}\,\big[h_j(t) - h_j(t-1)\big]\Big) \]</div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">h_i(t)</div>
+      <div class="tl-fp-name">Node i's distress so far</div>
+      <div class="tl-fp-desc">0 = healthy, 1 = fully defaulted, carried forward from the previous round</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">W_ij</div>
+      <div class="tl-fp-name">The impact factor</div>
+      <div class="tl-fp-desc">Fraction of i's capital exposed to j — how hard j's distress hits i</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">h_j(t) − h_j(t−1)</div>
+      <div class="tl-fp-name">j's newest distress</div>
+      <div class="tl-fp-desc">Only the change since last round propagates onward — not the whole history again</div>
+    </div>
+  </div>
+  <p>
+    Read this as: each institution's distress next round equals its current
+    distress, plus a capital-weighted sum of how much <em>worse</em> each of
+    its counterparties just got — capped at 1 (fully defaulted can't get
+    "more" defaulted). The reason the rule uses the <em>change</em> in each
+    neighbor's distress, \(h_j(t)-h_j(t-1)\), rather than their raw current
+    level \(h_j(t)\) every round, is to avoid the same distress being
+    counted over and over as it echoes back and forth between two connected
+    nodes — the published DebtRank algorithm formalizes this with explicit
+    node states (undistressed / distressed-and-transmitting /
+    distressed-and-already-processed) so that each unit of distress is only
+    ever transmitted once along a given edge. The version above is a
+    simplified, linearized illustration of that same core mechanic for
+    teaching purposes — it captures the essential idea (iterative,
+    capital-weighted, change-based propagation) without the full
+    bookkeeping the original paper uses to guarantee no distress
+    double-counts around a cycle.
+  </p>
+  <p>
+    Iterate this update until nothing changes any further (the network
+    reaches a steady state) or every node has hit either 0 or 1. The
+    <strong>DebtRank</strong> of the originally-shocked node is then defined
+    as the total distress this process induced across the rest of the
+    system, typically weighted by each node's share of total system
+    economic value:
+  </p>
+  <div class="tl-math">\[ \text{DebtRank} = \sum_{i} \big[h_i(T) - h_i(0)\big]\cdot v_i \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>h_i(T) − h_i(0)</code><span>how much node i's distress rose from start to the settled end-state</span></div>
+    <div class="tl-eq-chip c4"><code>v_i</code><span>node i's relative economic value (e.g. share of total system capital) — equal weights, 1/N each, in the simplest illustrative version</span></div>
+  </div>
+  <p>
+    A single number, comparable across every institution in the system: "if
+    <em>this</em> node had been the one to fail, this is how much total
+    distress the system would have absorbed by the time the cascade
+    settled." Note the family resemblance to eigenvector centrality from the
+    first lesson in this category — both are iterative, recursive
+    computations over a network's adjacency structure — but DebtRank
+    propagates an actual event forward through simulated time, rather than
+    describing a fixed, timeless importance score.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(h_i(t)\)</td><td>Node \(i\)'s distress level at round \(t\), from 0 (healthy) to 1 (fully defaulted).</td></tr>
+    <tr><td>\(W_{ij}\)</td><td>The impact factor: the fraction of node \(i\)'s own capital that would be lost if node \(j\) fully defaulted — a directed, capital-weighted exposure.</td></tr>
+    <tr><td>\(T\)</td><td>The round at which the cascade settles — distress stops changing further, or every node has reached 0 or 1.</td></tr>
+    <tr><td>\(v_i\)</td><td>Node \(i\)'s relative economic value/weight in the system — used to weight the final DebtRank sum.</td></tr>
+    <tr><td>DebtRank</td><td>The total, value-weighted distress induced across the system by one node's initiating shock, once the cascade has fully settled.</td></tr>
+  </table></div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Four banks, one default, a cascade that settles above the size of the initial shock</h3>
+    <p>
+      Four banks — A, B, C, D — with a capital-weighted impact-factor
+      matrix (plausible, illustrative numbers, not drawn from any real
+      institutions), row \(i\) = affected bank, column \(j\) = source of
+      distress:
+    </p>
+    <div class="tl-math">
+      \[
+      \begin{array}{c|cccc}
+       W_{ij} & j{=}A & j{=}B & j{=}C & j{=}D \\\hline
+      i{=}A & - & 0.3 & 0.1 & 0.0 \\
+      i{=}B & 0.2 & - & 0.4 & 0.1 \\
+      i{=}C & 0.0 & 0.2 & - & 0.5 \\
+      i{=}D & 0.1 & 0.0 & 0.3 & -
+      \end{array}
+      \]
+    </div>
+    <p>
+      Read \(W_{BC}=0.4\), for example, as: "if C fully defaulted, B would
+      lose 40% of its own capital on that exposure alone" — B is heavily
+      exposed to C. Now suppose Bank C fails outright: \(h_C(0)=1\), every
+      other bank starts healthy, \(h_A(0)=h_B(0)=h_D(0)=0\).
+    </p>
+    <p>
+      <strong>Round 1.</strong> Each bank absorbs \(W_{i,C}\) times C's full
+      distress: \(h_A(1) = 0.1\times1 = 0.10\); \(h_B(1) = 0.4\times1 =
+      0.40\); \(h_D(1) = 0.3\times1 = 0.30\) (C stays at 1, the absorbing
+      default state).
+    </p>
+    <p>
+      <strong>Round 2.</strong> Now each bank also absorbs its exposure to
+      whichever <em>other</em> banks just got newly distressed in round 1:
+      \(h_A(2) = 0.10 + W_{AB}\times(h_B(1){-}0) = 0.10 + 0.3\times0.40 =
+      0.22\); \(h_B(2) = 0.40 + W_{BA}\times0.10 = 0.40+0.2\times0.10=0.42\);
+      \(h_D(2) = 0.30 + W_{DA}\times0.10 = 0.30+0.1\times0.10=0.31\).
+    </p>
+    <p>
+      <strong>Rounds 3 onward.</strong> The same rule keeps running —
+      each bank picking up progressively smaller increments from its
+      neighbors' most recent changes — until the increments become
+      negligible. Iterating this out numerically, the system settles
+      (after roughly 7-8 rounds) at approximately:
+      \(h_A^{*}\approx0.24\), \(h_B^{*}\approx0.48\), \(h_D^{*}\approx0.32\)
+      (and \(h_C=1.00\), unchanged, since C's default was the initiating
+      event).
+    </p>
+    <p>
+      Using equal weights (\(v_i=1/4\) for illustration), the DebtRank of
+      Bank C's default is the total distress induced in the rest of the
+      system: \(0.24+0.48+0.32 = 1.04\). That number is worth sitting with:
+      the <em>total</em> distress the system ends up absorbing (1.04) is
+      slightly <em>larger</em> than the size of the single shock that
+      started it (1.00, since only C itself defaulted). This is exactly the
+      amplification DebtRank is built to reveal — network propagation adding
+      to the damage beyond the initiating event itself, not just
+      redistributing an equivalent amount of pain across more institutions.
+      A larger, more densely connected network with higher impact factors
+      can amplify a single default far more dramatically than this small
+      four-node illustration shows.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The four-bank exposure network after Bank C's default has fully propagated</div>
+    <svg viewBox="0 0 640 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four bank nodes A, B, C, D arranged as a diamond with all six pairwise exposure edges drawn. Bank C is filled solid red, having fully defaulted. Banks A, B, and D are filled with red at partial opacity proportional to their final settled distress levels of 24 percent, 48 percent, and 32 percent respectively, illustrating how the shock from C propagated unevenly through the network">
+      <line x1="320" y1="60" x2="80" y2="190" style="stroke:var(--border2);stroke-width:2"/>
+      <line x1="320" y1="60" x2="320" y2="320" style="stroke:var(--border2);stroke-width:2"/>
+      <line x1="320" y1="60" x2="560" y2="190" style="stroke:var(--border2);stroke-width:2"/>
+      <line x1="80" y1="190" x2="320" y2="320" style="stroke:var(--border2);stroke-width:2"/>
+      <line x1="80" y1="190" x2="560" y2="190" style="stroke:var(--border2);stroke-width:2"/>
+      <line x1="320" y1="320" x2="560" y2="190" style="stroke:var(--border2);stroke-width:2"/>
+
+      <circle cx="320" cy="60" r="26" style="fill:var(--red);fill-opacity:.24;stroke:var(--red);stroke-width:2"/>
+      <text x="320" y="66" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:15px;font-weight:700">A</text>
+
+      <circle cx="320" cy="320" r="26" style="fill:var(--red);fill-opacity:.48;stroke:var(--red);stroke-width:2"/>
+      <text x="320" y="326" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:15px;font-weight:700">B</text>
+
+      <circle cx="80" cy="190" r="26" style="fill:var(--red);fill-opacity:1;stroke:var(--red);stroke-width:2"/>
+      <text x="80" y="196" text-anchor="middle" style="fill:#fff;font-family:'DM Mono',monospace;font-size:15px;font-weight:700">C</text>
+
+      <circle cx="560" cy="190" r="26" style="fill:var(--red);fill-opacity:.32;stroke:var(--red);stroke-width:2"/>
+      <text x="560" y="196" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:15px;font-weight:700">D</text>
+
+      <text x="320" y="30" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:11px">h*=0.24</text>
+      <text x="320" y="352" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:11px">h*=0.48</text>
+      <text x="80" y="150" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:11px">h=1.00 (defaulted)</text>
+      <text x="560" y="150" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:11px">h*=0.32</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--red);opacity:1"></i>Bank C — the initiating default (h=1.00)</span>
+      <span><i style="background:var(--red);opacity:.48"></i>Bank B — most exposed to C, settles highest (h*≈0.48)</span>
+      <span><i style="background:var(--red);opacity:.32"></i>Bank D — settles second (h*≈0.32)</span>
+      <span><i style="background:var(--red);opacity:.24"></i>Bank A — least exposed, settles lowest (h*≈0.24)</span>
+    </div>
+    <div class="tl-chart-caption">
+      All six pairwise exposure edges exist (this toy network is a complete
+      graph, like the correlation network in the previous lesson), but the
+      edges are shown undirected here for clarity — the directional impact
+      factors driving the calculation are in the matrix above. Color
+      intensity encodes each bank's final, settled distress level: Bank B,
+      which had the largest direct exposure to C (\(W_{BC}=0.4\)), ends up
+      the most distressed of the three survivors.
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">A named scenario</div>
+    <h3>A regulator deciding which bank's stress test to run first</h3>
+    <p>
+      Imagine a financial-stability unit at a central bank with limited time
+      before a reporting deadline and four candidate institutions it could
+      run a full contagion stress test on. Simple exposure totals (how much
+      the rest of the system is owed by each bank) might rank the
+      institutions one way; DebtRank, run on the network in the worked
+      example above, would specifically flag whichever node's failure
+      produces the largest downstream distress once the whole cascade
+      settles — in that example, C's default (weighted at 1.04 total
+      induced distress) versus what a similar run starting from A, B, or D
+      failing instead would produce. This is precisely the kind of exercise
+      the Federal Reserve, the Bank of England, and other systemic-risk
+      regulators run using DebtRank-style algorithms on real interbank
+      exposure data reported to them — a genuine, real-world use of this
+      exact machinery, in a domain (financial-stability regulation) that is
+      deliberately separate from position-taking or trading. Nothing about
+      this scenario, or DebtRank generally, is a component of any strategy
+      in this repo — it's presented here purely as background theory on how
+      regulators reason about network contagion.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How this is actually used — and how it isn't</h2>
+  <p>
+    DebtRank was developed specifically in response to the 2008 crisis'
+    clearest lesson: that measuring an institution's systemic importance by
+    its size alone ("too big to fail") missed institutions that were
+    critically important because of <em>who they were connected to</em>,
+    not how large they were on their own ("too interconnected to fail").
+    Battiston et al.'s original 2012 paper applied the method to Federal
+    Reserve data on emergency lending during the crisis and found that a
+    handful of institutions were far more systemically central by DebtRank
+    than their balance-sheet size alone would have suggested. Since then,
+    variants of DebtRank and related network-contagion algorithms have
+    become a standard part of the financial-stability toolkit at central
+    banks and regulators worldwide, feeding into stress tests, systemic-risk
+    surcharge calculations for globally important banks, and interbank
+    network monitoring.
+  </p>
+  <div class="tl-solid blue">
+    <strong>Said plainly:</strong> DebtRank and the network-contagion
+    framing in this lesson are a market-structure and financial-stability
+    research tool — the kind of analysis central banks and regulators run
+    on interbank exposure networks to stress-test the financial system.
+    It is not, and is not presented here as, a component of any trading
+    strategy in this repo. Explaining how the technique works is background
+    knowledge, not a claim that it produces trading edge.
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where contagion-network analysis goes wrong in practice</h3>
+    <p>
+      <strong>Confusing correlation-based and exposure-based networks.</strong>
+      The previous lesson built a network from correlation (a statistical
+      relationship); this lesson builds one from actual counterparty
+      exposures (a contractual/economic relationship). Both are legitimate
+      network constructions, but they answer different questions and are
+      built from fundamentally different data — a correlation network says
+      "these two tend to move together"; an exposure network says "if one
+      fails, the other specifically loses money." Conflating the two — e.g.
+      running a DebtRank-style cascade over a correlation-derived network as
+      if correlation implied an actual capital-loss transmission mechanism —
+      is a category error.
+    </p>
+    <p>
+      <strong>Real exposure data is exactly the hard part.</strong> This
+      lesson's worked example uses an invented impact-factor matrix for
+      teaching purposes. In practice, the single biggest obstacle to running
+      this kind of analysis for real is that detailed bilateral counterparty
+      exposure data is generally confidential, held only by regulators (via
+      mandatory reporting) or not comprehensively available to any single
+      party at all — a private researcher or a trading desk essentially
+      cannot replicate a regulator's DebtRank exercise without that
+      non-public exposure data.
+    </p>
+    <p>
+      <strong>The simplified propagation rule shown here isn't the full,
+      published algorithm.</strong> As noted in the math walkthrough, the
+      published DebtRank paper tracks explicit node states to guarantee
+      distress is never re-transmitted around a cycle more than once; the
+      simplified iterative rule in this lesson captures the core mechanic
+      for teaching purposes but should not be treated as a literal,
+      publication-accurate implementation.
+    </p>
+    <p>
+      <strong>A cascade model's results are only as good as its impact
+      factors.</strong> The whole propagation depends entirely on the
+      \(W_{ij}\) matrix — how exposures translate into fractional capital
+      losses — which itself depends on assumptions (loss-given-default
+      rates, which exposures are even counted, whether second-order effects
+      like fire-sale price impact are modeled). Different reasonable
+      assumptions can produce materially different DebtRank rankings for
+      the same underlying network.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Systemic risk is a network-propagation problem, not just a network-structure one.</strong> The first two lessons in this category asked "which node is most important" and "what's the backbone structure" — this lesson asks "how far does one node's failure actually spread."</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>DebtRank iteratively propagates distress through capital-weighted exposures</strong> until the cascade settles, then sums the total induced distress as a single comparable score per institution.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked example showed real amplification:</strong> one bank's full default (h=1.00) settled into a total induced distress of ≈1.04 across the other three banks — network propagation adding to the damage, not just redistributing an equal amount.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>DebtRank is conceptually a cousin of eigenvector centrality</strong> — both are recursive, iterative computations over a network's structure — but DebtRank propagates a real shock forward in simulated time rather than describing a fixed importance score.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Real bilateral exposure data is the hard, usually-confidential part.</strong> This machinery is genuinely used by central banks and regulators — but only because they have access to reporting data that isn't publicly available.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>This is not, and is not presented as, part of any trading strategy in this repo.</strong> DebtRank and contagion-network analysis are financial-stability/regulatory research tools — stated plainly, not softened, so it's never mistaken for a built or validated component of this project.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. In the worked example, why did the total induced distress across banks A, B, and D (≈1.04) come out larger than the size of the initiating shock (1.00, Bank C's default alone)?</summary>
+    <div class="tl-answer">
+      Because the shock didn't just transfer once from C to its direct
+      counterparties and stop — it propagated in further rounds as each
+      newly-distressed bank's own worsening then hit its own counterparties
+      (e.g. Bank B's round-1 distress from C then fed into Bank A's round-2
+      update via \(W_{AB}\)). Each round of propagation adds further,
+      smaller increments on top of what came before, so the system's total
+      settled distress reflects the shock plus every knock-on round of
+      secondary transmission, not merely a one-to-one handoff of the
+      original 1.00 unit of distress. This compounding effect — total
+      damage exceeding the initiating event — is exactly the amplification
+      DebtRank is designed to reveal.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why does Bank B end up the most distressed of the three surviving banks in the worked example, rather than Bank A or Bank D?</summary>
+    <div class="tl-answer">
+      Bank B has the largest direct impact factor from the failing bank,
+      \(W_{BC}=0.4\) — meaning 40% of B's own capital was exposed to C,
+      versus only 10% for A (\(W_{AC}=0.1\)) and C has no direct exposure
+      listed to D in the reverse direction relevant here. B's first-round
+      distress (0.40) starts far higher than A's (0.10) or D's (0.30) purely
+      because of that direct exposure size, and subsequent rounds only add
+      smaller increments on top — the initial, direct exposure to the
+      failing node dominates where the system ultimately settles.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. How is DebtRank conceptually related to eigenvector centrality from the first lesson in this category, and how is it fundamentally different?</summary>
+    <div class="tl-answer">
+      Both are iterative, recursive computations defined over a network's
+      adjacency/exposure structure — eigenvector centrality's \(Ax=\lambda
+      x\) and DebtRank's round-by-round update rule both work by repeatedly
+      combining a node's neighbors' values, similar to how power iteration
+      converges to a leading eigenvector. The fundamental difference is what
+      each computation represents: eigenvector centrality describes a
+      static, timeless property of the network's structure (which nodes are
+      connected to important nodes, right now, with no shock involved).
+      DebtRank instead simulates an actual event unfolding forward through
+      simulated time — a real shock at one node, propagating in rounds until
+      it settles — producing a score about a hypothetical cascade, not a
+      permanent structural property of the network.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What's the practical, real-world obstacle to anyone outside a regulator running a genuine DebtRank analysis on an actual banking system?</summary>
+    <div class="tl-answer">
+      The impact-factor matrix \(W_{ij}\) requires detailed bilateral
+      counterparty exposure data — exactly how much each institution owes
+      to, and is owed by, every other specific institution, and how that
+      compares to each institution's own capital. This kind of granular,
+      institution-by-institution exposure data is generally confidential and
+      is typically available only to regulators through mandatory reporting
+      requirements, not publicly. A private researcher or trading desk
+      lacks the underlying data needed to build a real (rather than
+      illustrative/toy) version of the exposure network in the first place,
+      regardless of how well they understand the propagation algorithm
+      itself.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why does this lesson state so explicitly that DebtRank is not a component of any trading strategy in this repo — what's the risk of not saying that plainly?</summary>
+    <div class="tl-answer">
+      Explaining a technique thoroughly and with genuine appreciation for
+      its elegance (which this lesson does) can easily be read, if not
+      stated otherwise, as an implicit claim that the technique is used
+      here or produces some trading edge. DebtRank's actual domain —
+      financial-stability regulation and contagion stress testing on
+      confidential interbank exposure data — has essentially nothing to do
+      with generating a trading signal on tradeable instruments, and this
+      repo has no exposure-network infrastructure or interbank data of any
+      kind. Being explicit prevents the lesson's evident enthusiasm for the
+      method from being mistaken for a claim about its use, or usefulness,
+      here — exactly the "built ≠ works ≠ has edge" and "don't get excited
+      about a method" discipline this curriculum tries to hold consistently
+      across every lesson.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Stefano Battiston, Michelangelo Puliga, Rahul Kaushik, Paolo Tasca, and Guido Caldarelli, <em>"DebtRank: Too Central to Fail? Financial Networks, the FED and Systemic Risk,"</em> Scientific Reports 2, article 541, 2012 — the original DebtRank paper, applying the algorithm to Federal Reserve emergency-lending data from the 2008 crisis.</li>
+    <li>Prasanna Gai and Sujit Kapadia, <em>"Contagion in Financial Networks,"</em> Proceedings of the Royal Society A, 2010 — an influential earlier network-contagion model on interbank lending networks, predating and complementing DebtRank.</li>
+    <li>Financial Stability Board and Basel Committee on Banking Supervision, methodology documents for identifying Global Systemically Important Banks (G-SIBs) — the regulatory framework that network-centrality and interconnectedness measures like this lesson's feed into in practice.</li>
+    <li>Mark E.J. Newman, <em>Networks: An Introduction,</em> Oxford University Press, 2010 — general background on network dynamics and cascading-failure models beyond the finance-specific DebtRank formulation.</li>
+    <li>Andrew G. Haldane, <em>"Rethinking the Financial Network,"</em> speech at the Financial Student Association, Amsterdam, Bank of England, 2009 — an accessible, widely cited regulatory perspective on "too interconnected to fail" that motivated much of this research direction.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="correlation-networks-mst.html">← Correlation Networks &amp; Minimum Spanning Trees</a>
+    <a href="../hub.html">Theory Lab hub</a>
+  </div>
+</div>
+</body>
+</html>
