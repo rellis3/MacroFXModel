@@ -1,6 +1,6 @@
 // Synthetic test for the OI bot strategy (regime-switch planner). No network.
 //   node js/oiZones.test.mjs
-import { buildOIZones } from './oiZones.js';
+import { buildOIZones, explainNoZones } from './oiZones.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -226,6 +226,41 @@ console.log('[Gamma-flow wiring — near-flip size haircut + regime-change warni
   const warn = buildOIZones(inst, 4200, { ...cfg, regimeWarning: 'flip migrating toward spot — regime change loading' }).find(z => z.side === 'sell');
   ok('regimeWarning appended to rationale', /⚠ flip migrating toward spot/.test(warn.rationale), warn.rationale);
   ok('no warning by default', !/⚠/.test(baseZone.rationale));
+}
+
+console.log('[explainNoZones — why an in-universe instrument produced 0 zones]');
+{
+  // Flat GEX → neither PIN nor BREAKOUT → the planner emits nothing; explain it.
+  ok('flat GEX → "flat GEX" reason', /flat GEX/.test(explainNoZones({ ...base, exposures: { gex: 0 } }, 4200, cfg) || ''),
+    explainNoZones({ ...base, exposures: { gex: 0 } }, 4200, cfg));
+  // PIN but only WEAK walls (below minTier strong) → "no walls ≥ strong".
+  const weak = { ...base, exposures: { gex: 5000 },
+    callWalls: [{ strike: 4300, oi: 4000, tier: 'weak' }], putWalls: [{ strike: 4100, oi: 4000, tier: 'weak' }] };
+  ok('only weak walls → "no walls ≥ strong"', /no walls ≥ strong/.test(explainNoZones(weak, 4200, cfg) || ''), explainNoZones(weak, 4200, cfg));
+  // PIN with strong walls all on the WRONG side (call below price, put above) → no
+  // resistance above and no support below → nothing to fade.
+  const wrongSide = { ...base, exposures: { gex: 5000 },
+    callWalls: [{ strike: 4100, oi: 9000, tier: 'strong' }], putWalls: [{ strike: 4300, oi: 9000, tier: 'strong' }] };
+  ok('walls all on the wrong side → "no strong+ wall bracketing price"',
+    /bracketing price/.test(explainNoZones(wrongSide, 4200, cfg) || ''), explainNoZones(wrongSide, 4200, cfg));
+  // A healthy PIN that DOES produce zones → null (nothing to explain).
+  ok('healthy PIN → null (zones exist, no reason needed)',
+    explainNoZones({ ...base, exposures: { gex: 5000 } }, 4200, cfg) === null, `${explainNoZones({ ...base, exposures: { gex: 5000 } }, 4200, cfg)}`);
+  // Guards: no data / no price.
+  ok('no inst → "no OI data"', /no OI data/.test(explainNoZones(null, 4200, cfg) || ''));
+  ok('no price → "no live price"', /no live price/.test(explainNoZones(base, 0, cfg) || ''));
+  // Consistency: whenever the reason is null, buildOIZones actually returns zones (and vice-versa).
+  const mkFade = (gex, cw, pw) => ({ ...base, exposures: { gex }, callWalls: cw, putWalls: pw });
+  const cases = [
+    mkFade(5000, [{ strike: 4300, oi: 9000, tier: 'strong' }], [{ strike: 4100, oi: 9000, tier: 'strong' }]),  // zones
+    mkFade(0, base.callWalls, base.putWalls),                                                                    // flat → none
+    weak, wrongSide,
+  ];
+  const consistent = cases.every(inst => {
+    const n = buildOIZones(inst, 4200, cfg).length, reason = explainNoZones(inst, 4200, cfg);
+    return n > 0 ? reason === null : typeof reason === 'string';
+  });
+  ok('reason===null ⇔ buildOIZones produced zones', consistent);
 }
 
 console.log('[Guards]');

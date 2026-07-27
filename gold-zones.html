@@ -296,6 +296,8 @@ body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-s
   <div class="gz-zones-grid" id="gzZonesGrid">
     <div class="gz-msg">Loading zones…</div>
   </div>
+  <!-- Pasted into the analyser but not traded by the bot (out of universe) — with the reason -->
+  <div id="gzSkipped" style="display:none;margin-top:8px;font-size:11px;color:var(--text3);line-height:1.5"></div>
 
   <!-- Trade history -->
   <div class="gz-trades-header" id="gzTradesHeader">Paper trade history</div>
@@ -1315,13 +1317,53 @@ function _renderZoneCards() {
   const zones = _filteredZones();
   const armedIds = _armedIds();
 
+  // "Pasted but not traded" — instruments in oi_store the bot skipped (out of universe),
+  // each with the server's reason. Only for the OI bot; hidden when there are none.
+  const skipEl = document.getElementById('gzSkipped');
+  if (skipEl) {
+    const sk = (_bot === 'oi') ? (_oiRaw?.zones?.skipped || {}) : {};
+    const keys = Object.keys(sk);
+    skipEl.replaceChildren();
+    if (keys.length) {
+      const lead = document.createElement('span');
+      lead.style.color = 'var(--text2)';
+      lead.textContent = 'Pasted but not traded — ';
+      skipEl.appendChild(lead);
+      keys.forEach((k, i) => {
+        const disp = (_oiInstMeta(k)?.display) || k.toUpperCase();
+        const s = document.createElement('span');
+        s.textContent = `${i ? ' · ' : ''}${disp}: ${sk[k]}`;
+        skipEl.appendChild(s);
+      });
+      skipEl.style.display = '';
+    } else {
+      skipEl.style.display = 'none';
+    }
+  }
+
   const countEl = document.getElementById('gzZoneCount');
   if (countEl) countEl.textContent = zones.length;
 
   if (!zones.length) {
-    grid.innerHTML = _bot === 'oi'
-      ? '<div class="gz-msg">No OI zones — needs a pasted OI heatmap for this instrument (gamma regime + walls). Try another pair.</div>'
-      : '<div class="gz-msg">No zones match the current filter</div>';
+    if (_bot === 'oi') {
+      const rawN = (_zonesData?.zones || []).length;
+      let msg;
+      if (rawN > 0) {
+        msg = 'No zones match the current filter';           // zones exist, filtered out
+      } else if (_zonesData?.stale) {
+        msg = `⚠ ${_zonesData.stale}`;                        // spot outside strike range — re-paste
+      } else if (_zonesData?.diag) {
+        msg = `No zones — ${_zonesData.diag}`;                // the server's why (flat regime / no strong walls / out of range)
+      } else {
+        msg = 'No OI zones — needs a pasted OI heatmap for this instrument (gamma regime + walls). Try another pair.';
+      }
+      const div = document.createElement('div');
+      div.className = 'gz-msg';
+      div.textContent = msg;                                  // textContent — reason carries live numbers, never inject as HTML
+      grid.replaceChildren(div);
+    } else {
+      grid.innerHTML = '<div class="gz-msg">No zones match the current filter</div>';
+    }
     return;
   }
 
