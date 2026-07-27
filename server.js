@@ -18449,27 +18449,27 @@ setInterval(refreshFredDashboard, MACRO_REFRESH_MS);
 // limits straight through NFP/CPI/FOMC. Scheduled events are known days ahead,
 // so hourly is plenty; the bots fail OPEN (loudly) if this goes stale.
 async function _refreshEventWindows() {
-  const key = process.env.FINNHUB_KEY;
-  if (!key) return;   // no calendar feed — bots log the missing key and fail open
-  const from = new Date(Date.now() - 1 * 864e5).toISOString().slice(0, 10);
-  const to   = new Date(Date.now() + 3 * 864e5).toISOString().slice(0, 10);
-  const r = await fetch(`https://finnhub.io/api/v1/calendar/economic?from=${from}&to=${to}&token=${key}`,
-                        { signal: AbortSignal.timeout(15_000) });
-  if (!r.ok) throw new Error(`Finnhub calendar ${r.status}`);
-  const cal = await r.json();
+  // Calendar source: the FREE ForexFactory feed (econCalendar brick) — the same
+  // feed the rest of the app already migrated to. Finnhub's /calendar/economic is
+  // a PREMIUM endpoint that 403s on a free/standard key, so calling it directly
+  // silently left this producer throwing and never writing event_windows_v1 —
+  // every bot then failed OPEN with no gate. `_fetchWeekEvents` uses ForexFactory
+  // primary (no key needed) and only falls back to Finnhub when a key is present.
+  const res = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY });
+  if (!res.ok) throw new Error(`calendar feed unavailable: ${res.error || 'unknown'}`);
   const preMin  = Number(process.env.EVENT_GATE_PRE_MIN  ?? 45);
   const postMin = Number(process.env.EVENT_GATE_POST_MIN ?? 15);
-  const windows = _buildEventWindows(cal.economicCalendar ?? [], { preMin, postMin });
+  const windows = _buildEventWindows(res.events ?? [], { preMin, postMin });
   await kv.put('event_windows_v1', JSON.stringify({
     data: { generatedAt: Date.now(), preMin, postMin, windows },
     timestamp: Date.now(),
   }));
-  console.log(`[event-gate] ${windows.length} high-impact windows published (${from} → ${to})`);
+  console.log(`[event-gate] ${windows.length} high-impact windows published (source: ${res.source})`);
 }
-if (process.env.FINNHUB_KEY) {
-  _refreshEventWindows().catch(e => console.error('[event-gate] refresh failed:', e.message));
-  setInterval(() => _refreshEventWindows().catch(e => console.error('[event-gate] refresh failed:', e.message)), 60 * 60_000);
-}
+// ForexFactory needs no key, so the gate now runs for every deploy (Finnhub, when
+// present, is only a best-effort fallback inside _fetchWeekEvents).
+_refreshEventWindows().catch(e => console.error('[event-gate] refresh failed:', e.message));
+setInterval(() => _refreshEventWindows().catch(e => console.error('[event-gate] refresh failed:', e.message)), 60 * 60_000);
 
 // fredhistory series cache — 21 series × 90 obs, starts 30s after dashboard refresh to avoid
 // concurrent FRED requests, then every 6h.  Allows /api/fredhistory to serve entirely from KV.
