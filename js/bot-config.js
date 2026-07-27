@@ -3989,6 +3989,7 @@ const OI_DEFAULTS = {
   minTier: 'strong', slBufferPips: 15, breakPips: 20, nearExpiryDTE: 2, extendedPips: 30,
   fadeInPin: true, followBreaks: true, maxPainReversion: true,
   requireEstablished: false, avoidLiquidating: true, maxZonesPerSide: 4,
+  secondaryTrim: 0.6, reachMult: 1.0, reachTrim: 0.7, maxReachPips: 0,   // PIN nearest-primary + reachability gate
   fx_enabled: false, fx_pairs: [],
   // execution (the bot)
   paper_mode: true, kill_switch: false, risk_pct: 0.5, max_lot: 2.0, max_open: 12,
