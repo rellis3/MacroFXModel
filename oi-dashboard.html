@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OI Analytics — Open Interest Dashboard</title>
+<style>
+/* ── Deliberately NOT the neon-card look: a dense analyst sheet. One accent
+     (amber) for structure, red/green only where direction has meaning, and
+     everything on a strict 12-col grid so numbers line up down the page. ── */
+:root{
+  --bg:#0b0d10; --bg2:#111419; --bg3:#161a20; --line:#232830; --line2:#2e343d;
+  --tx:#e6e9ee; --tx2:#9aa3af; --tx3:#646d7a;
+  --acc:#e0a339; --call:#e05656; --put:#3fae6d; --pain:#d9c04a;
+  --gam:#9b7de0; --vol:#4b9fd6; --warn:#e08a3c; --ok:#3fae6d;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);
+  font:13px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--acc)}
+.wrap{max-width:1560px;margin:0 auto;padding:0 18px 60px}
+
+/* header */
+.top{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+  padding:16px 0 12px;border-bottom:1px solid var(--line);margin-bottom:14px}
+.top h1{margin:0;font-size:17px;font-weight:650;letter-spacing:.14em;text-transform:uppercase}
+.top h1 span{color:var(--acc)}
+.top .sub{color:var(--tx3);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.top .right{margin-left:auto;display:flex;gap:8px;align-items:center}
+.btn{background:var(--bg3);border:1px solid var(--line2);color:var(--tx2);
+  padding:5px 11px;border-radius:3px;cursor:pointer;font-size:11px;font-family:var(--mono)}
+.btn:hover{border-color:var(--acc);color:var(--tx)}
+
+/* instrument rail */
+.rail{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:16px}
+.rail button{background:transparent;border:1px solid var(--line);color:var(--tx3);
+  padding:6px 12px;border-radius:3px;cursor:pointer;font-family:var(--mono);font-size:11px;
+  display:flex;gap:7px;align-items:center}
+.rail button:hover{border-color:var(--line2);color:var(--tx2)}
+.rail button.on{border-color:var(--acc);color:var(--acc);background:rgba(224,163,57,.07)}
+.rail button.stale{opacity:.45}
+.rail .dot{width:5px;height:5px;border-radius:50%;background:var(--ok)}
+.rail .dot.old{background:var(--warn)}
+.rail .dot.none{background:var(--tx3)}
+
+/* price bar — the CFD vs futures reconciliation the whole thing hangs off */
+.pricebar{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;
+  background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden;margin-bottom:6px}
+.pricebar div{background:var(--bg2);padding:9px 13px}
+.pricebar .k{font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--tx3)}
+.pricebar .v{font-family:var(--mono);font-size:17px;margin-top:2px}
+.pricebar .n{font-size:10px;color:var(--tx3);margin-top:1px;font-family:var(--mono)}
+
+/* diagnostics — the point of the page: never lose the provenance again */
+.diag{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 16px}
+.chip{font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:3px;
+  border:1px solid var(--line2);color:var(--tx2);background:var(--bg2)}
+.chip b{color:var(--tx);font-weight:600}
+.chip.warn{border-color:var(--warn);color:var(--warn)}
+.chip.bad{border-color:var(--call);color:var(--call)}
+.chip.good{border-color:var(--ok);color:var(--ok)}
+
+/* level strip */
+.levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:1px;
+  background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden;margin-bottom:18px}
+.lv{background:var(--bg2);padding:9px 12px;border-top:2px solid transparent}
+.lv .k{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3)}
+.lv .v{font-family:var(--mono);font-size:16px;margin-top:3px}
+.lv .f{font-family:var(--mono);font-size:10px;color:var(--tx3);margin-top:1px}
+.lv .d{font-family:var(--mono);font-size:10px;color:var(--tx2);margin-top:1px}
+
+/* panels */
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+.p{background:var(--bg2);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.p>h3{margin:0;padding:9px 13px;font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--tx2);border-bottom:1px solid var(--line);background:var(--bg3);
+  display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.p>h3 em{font-style:normal;color:var(--tx3);font-size:9.5px;letter-spacing:.04em;text-transform:none}
+.p .body{padding:12px 13px}
+.c12{grid-column:span 12}.c8{grid-column:span 8}.c6{grid-column:span 6}
+.c4{grid-column:span 4}.c5{grid-column:span 5}.c7{grid-column:span 7}
+@media(max-width:1100px){.c8,.c6,.c4,.c5,.c7{grid-column:span 12}}
+
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11.5px}
+th{text-align:right;padding:5px 9px;color:var(--tx3);font-weight:500;font-size:9.5px;
+  letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+td{padding:4px 9px;border-bottom:1px solid rgba(35,40,48,.5);text-align:right}
+tr:last-child td{border-bottom:0}
+.bar{height:9px;border-radius:1px;display:inline-block;vertical-align:middle}
+.muted{color:var(--tx3)}
+.tag{font-size:9px;padding:1px 5px;border-radius:2px;border:1px solid currentColor;margin-left:5px}
+
+svg{display:block;width:100%;height:auto;overflow:visible}
+.axis{stroke:var(--line2);stroke-width:1}
+.gl{stroke:var(--line);stroke-width:1;stroke-dasharray:2 3}
+.lbl{fill:var(--tx3);font-family:var(--mono);font-size:9px}
+.spotline{stroke:var(--acc);stroke-width:1;stroke-dasharray:3 3}
+.empty{color:var(--tx3);padding:26px 13px;text-align:center;font-size:12px}
+.note{color:var(--tx3);font-size:10.5px;line-height:1.55;margin-top:9px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <h1><span>◆</span> OI Analytics</h1>
+    <div class="sub" id="sub">loading…</div>
+    <div class="right">
+      <button class="btn" id="unitBtn">Showing: SPOT-ADJ</button>
+      <button class="btn" id="reload">Reload</button>
+      <a class="btn" href="index.html" style="text-decoration:none">Dashboard</a>
+    </div>
+  </div>
+
+  <div class="rail" id="rail"></div>
+  <div id="main"></div>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// Data: the KV `oi_store` record written by the OI modal. Read-only — this page
+// computes nothing the analyser doesn't already store, so a number here and a
+// number in the bot can never disagree. Everything it needs is on the record.
+// ─────────────────────────────────────────────────────────────────────────────
+const FRIENDLY = {
+  'XAU/USD':'GOLD','NAS100_USD':'NQ','SPX500_USD':'SPX500','DE30_USD':'DAX',
+  'UK100_GBP':'FTSE','US30_USD':'US30','US2000_USD':'RUS2K',
+};
+let STORE = {}, SYM = null, SPOTADJ = true;
+
+const nm  = k => FRIENDLY[k] || k;
+const dp  = k => /JPY/i.test(k) ? 3 : (/XAU/.test(k) || /_/.test(k)) ? 2 : 5;
+const pip = k => /JPY/i.test(k) ? 0.01 : /XAU/.test(k) ? 0.1 : /_/.test(k) ? 1 : 0.0001;
+const fx  = (v,k) => Number.isFinite(v) ? v.toFixed(dp(k)) : '—';
+const fOI = n => !Number.isFinite(n) ? '—' : Math.abs(n)>=1e6 ? (n/1e6).toFixed(1)+'M'
+                : Math.abs(n)>=1000 ? (n/1000).toFixed(1)+'K' : String(Math.round(n));
+const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// Stored levels are SPOT-adjusted (strike − basis). Toggle back to raw futures
+// strikes so a level can be checked against the CME ladder directly.
+const show = (v,e) => (!Number.isFinite(v)) ? NaN : (SPOTADJ ? v : v + (e.basis||0));
+
+async function load(){
+  const r = await fetch('/api/kv/get?key=oi_store',{cache:'no-store'});
+  if(!r.ok) throw new Error('KV '+r.status);
+  const j = await r.json();
+  STORE = j.data || j.value || {};
+}
+
+function ageOf(e){
+  if(!e?.savedAtMs) return {h:null,cls:'none',txt:'no data'};
+  const h=(Date.now()-e.savedAtMs)/36e5;
+  return {h, cls: h<12?'':(h<36?'old':'old'), txt: h<1?Math.round(h*60)+'m':Math.round(h)+'h'};
+}
+
+function renderRail(){
+  const keys=Object.keys(STORE);
+  document.getElementById('rail').innerHTML = keys.map(k=>{
+    const a=ageOf(STORE[k]);
+    return `<button class="${k===SYM?'on':''} ${a.h>36?'stale':''}" data-k="${esc(k)}">
+      <span class="dot ${a.cls}"></span>${esc(nm(k))}<span class="muted">${a.txt}</span></button>`;
+  }).join('');
+  document.querySelectorAll('#rail button').forEach(b=>b.onclick=()=>{SYM=b.dataset.k;render();});
+}
+
+// ── charts (hand-rolled SVG — no libs, so the page can never break on a CDN) ──
+
+// OI by strike. The core view: calls right, puts left, spot marked. Everything
+// else on the page is a summary OF this, so it goes first and gets the space.
+function chartOI(e){
+  const gp=(e.gexProfile||[]).filter(r=>Number.isFinite(r.strike));
+  if(gp.length<2) return '<div class="empty">no per-strike profile stored</div>';
+  const spot=e.spot, rm=e.refMove?.move;
+  // Focus on the tradable region: ±4 reference moves, else the middle 60% of strikes.
+  const lo = rm>0 ? spot-4*rm : gp[0].strike, hi = rm>0 ? spot+4*rm : gp[gp.length-1].strike;
+  const rows=gp.filter(r=>r.strike>=lo&&r.strike<=hi).sort((a,b)=>b.strike-a.strike);
+  if(!rows.length) return '<div class="empty">no strikes in the focus window</div>';
+  const maxOI=Math.max(...rows.map(r=>Math.max(r.callOI||0,r.putOI||0)),1);
+  const H=Math.max(180,rows.length*13), W=1000, MID=W*0.5, HALF=W*0.40;
+  const y=i=>i*(H/rows.length)+6;
+  let s=`<svg viewBox="0 0 ${W} ${H+16}">`;
+  rows.forEach((r,i)=>{
+    const c=(r.callOI||0)/maxOI*HALF, p=(r.putOI||0)/maxOI*HALF, yy=y(i), h=Math.max(3,H/rows.length-3);
+    if(p>0.5) s+=`<rect x="${MID-p}" y="${yy}" width="${p}" height="${h}" fill="var(--put)" opacity=".8"/>`;
+    if(c>0.5) s+=`<rect x="${MID}" y="${yy}" width="${c}" height="${h}" fill="var(--call)" opacity=".8"/>`;
+    if(rows.length<=44) s+=`<text class="lbl" x="${MID}" y="${yy+h-1}" text-anchor="middle" dx="0" style="fill:var(--tx3)">${fx(show(r.strike,e),SYM)}</text>`;
+  });
+  // spot marker
+  const idx=rows.findIndex(r=>r.strike<=spot);
+  if(idx>=0){ const yy=y(idx); s+=`<line class="spotline" x1="0" y1="${yy}" x2="${W}" y2="${yy}"/>
+    <text class="lbl" x="4" y="${yy-3}" style="fill:var(--acc)">spot ${fx(show(spot,e),SYM)}</text>`; }
+  s+=`<line class="axis" x1="${MID}" y1="0" x2="${MID}" y2="${H}"/>`;
+  s+=`<text class="lbl" x="${MID-HALF}" y="${H+12}">◀ puts</text>`;
+  s+=`<text class="lbl" x="${MID+HALF}" y="${H+12}" text-anchor="end">calls ▶</text></svg>`;
+  return s;
+}
+
+// Net GEX by strike — where dealer hedging changes character.
+function chartGEX(e){
+  const gp=(e.gexProfile||[]).filter(r=>Number.isFinite(r.netGex)&&Number.isFinite(r.strike));
+  if(gp.length<2) return '<div class="empty">no GEX profile</div>';
+  const rm=e.refMove?.move, spot=e.spot;
+  const lo=rm>0?spot-4*rm:-Infinity, hi=rm>0?spot+4*rm:Infinity;
+  const rows=gp.filter(r=>r.strike>=lo&&r.strike<=hi).sort((a,b)=>a.strike-b.strike);
+  if(rows.length<2) return '<div class="empty">no strikes in window</div>';
+  const W=1000,H=180,P=22;
+  const xs=rows.map(r=>r.strike), mn=Math.min(...xs), mx=Math.max(...xs);
+  const mg=Math.max(...rows.map(r=>Math.abs(r.netGex)),1);
+  const X=v=>P+(v-mn)/(mx-mn||1)*(W-2*P), Y=v=>H/2-(v/mg)*(H/2-8);
+  let s=`<svg viewBox="0 0 ${W} ${H+14}">`;
+  s+=`<line class="axis" x1="${P}" y1="${H/2}" x2="${W-P}" y2="${H/2}"/>`;
+  const bw=Math.max(1.5,(W-2*P)/rows.length-1);
+  rows.forEach(r=>{ const yv=Y(r.netGex), y0=H/2;
+    s+=`<rect x="${X(r.strike)-bw/2}" y="${Math.min(yv,y0)}" width="${bw}" height="${Math.abs(y0-yv)}"
+        fill="${r.netGex>=0?'var(--call)':'var(--put)'}" opacity=".75"/>`; });
+  for(const [v,c,t] of [[e.gexFlip,'var(--gam)','GEX flip'],[e.gammaFlip,'var(--vol)','γ flip'],[spot,'var(--acc)','spot']]){
+    if(!Number.isFinite(v)||v<mn||v>mx) continue;
+    s+=`<line x1="${X(v)}" y1="4" x2="${X(v)}" y2="${H-4}" stroke="${c}" stroke-width="1" stroke-dasharray="3 3"/>
+        <text class="lbl" x="${X(v)+3}" y="13" style="fill:${c}">${t}</text>`;
+  }
+  s+=`<text class="lbl" x="${P}" y="${H+12}">${fx(show(mn,e),SYM)}</text>
+      <text class="lbl" x="${W-P}" y="${H+12}" text-anchor="end">${fx(show(mx,e),SYM)}</text></svg>`;
+  return s;
+}
+
+// IV smile — today vs prior. Only present when a per-strike chain was pasted.
+function chartSmile(e){
+  const sm=e.ivSmile;
+  if(!sm||!Array.isArray(sm.strikes)||sm.strikes.length<3)
+    return '<div class="empty">no per-strike IV pasted — paste the smile chain to populate</div>';
+  const pts=sm.strikes.map((k,i)=>({k,iv:sm.iv?.[i],pv:sm.ivPrior?.[i]})).filter(p=>p.iv>0)
+            .sort((a,b)=>a.k-b.k);
+  if(pts.length<3) return '<div class="empty">smile has too few valid points</div>';
+  const W=1000,H=200,P=30;
+  const mn=pts[0].k, mx=pts[pts.length-1].k;
+  const all=pts.flatMap(p=>[p.iv,p.pv]).filter(v=>v>0);
+  const lo=Math.min(...all), hi=Math.max(...all);
+  const X=v=>P+(v-mn)/(mx-mn||1)*(W-2*P), Y=v=>H-P-(v-lo)/((hi-lo)||1)*(H-2*P);
+  const path=(key)=>pts.filter(p=>p[key]>0).map((p,i)=>(i?'L':'M')+X(p.k)+' '+Y(p[key])).join(' ');
+  let s=`<svg viewBox="0 0 ${W} ${H}">`;
+  for(let i=0;i<=3;i++){ const yv=P+i*(H-2*P)/3;
+    s+=`<line class="gl" x1="${P}" y1="${yv}" x2="${W-P}" y2="${yv}"/>`; }
+  const pp=path('pv'); if(pp) s+=`<path d="${pp}" fill="none" stroke="var(--tx3)" stroke-width="1.2" stroke-dasharray="3 3"/>`;
+  s+=`<path d="${path('iv')}" fill="none" stroke="var(--vol)" stroke-width="1.8"/>`;
+  if(Number.isFinite(e.spot)&&e.spot>=mn&&e.spot<=mx)
+    s+=`<line class="spotline" x1="${X(e.spot)}" y1="${P-8}" x2="${X(e.spot)}" y2="${H-P}"/>`;
+  s+=`<text class="lbl" x="${P}" y="${H-8}">${fx(show(mn,e),SYM)}</text>
+      <text class="lbl" x="${W-P}" y="${H-8}" text-anchor="end">${fx(show(mx,e),SYM)}</text>
+      <text class="lbl" x="${P}" y="${P-8}">${(hi*100).toFixed(1)}%</text>
+      <text class="lbl" x="${P}" y="${H-P-2}">${(lo*100).toFixed(1)}%</text>
+      <text class="lbl" x="${W-P}" y="${P-8}" text-anchor="end" style="fill:var(--vol)">— today</text>
+      <text class="lbl" x="${W-P}" y="${P+4}" text-anchor="end">-- prior</text></svg>`;
+  return s;
+}
+
+// ATM IV term structure + where each expiry pins.
+function chartTerm(e){
+  const ts=e.ivTermStructure?.points, mp=e.termStructure;
+  if((!ts||ts.length<2)&&(!mp||mp.length<2)) return '<div class="empty">no term structure</div>';
+  const W=1000,H=170,P=30;
+  let s=`<svg viewBox="0 0 ${W} ${H}">`;
+  if(ts&&ts.length>1){
+    const d=ts.filter(p=>p.iv>0).sort((a,b)=>a.dte-b.dte);
+    const mn=d[0].dte,mx=d[d.length-1].dte, lo=Math.min(...d.map(p=>p.iv)), hi=Math.max(...d.map(p=>p.iv));
+    const X=v=>P+(Math.log(1+v-mn)/Math.log(1+mx-mn||1))*(W-2*P), Y=v=>H-P-(v-lo)/((hi-lo)||1)*(H-2*P);
+    s+=`<path d="${d.map((p,i)=>(i?'L':'M')+X(p.dte)+' '+Y(p.iv)).join(' ')}" fill="none" stroke="var(--vol)" stroke-width="1.8"/>`;
+    d.forEach(p=>{ s+=`<circle cx="${X(p.dte)}" cy="${Y(p.iv)}" r="2.5" fill="var(--vol)"/>`; });
+    s+=`<text class="lbl" x="${P}" y="${P-10}">${hi.toFixed(1)}% ATM IV</text>
+        <text class="lbl" x="${P}" y="${H-P+12}">${mn} DTE</text>
+        <text class="lbl" x="${W-P}" y="${H-P+12}" text-anchor="end">${mx} DTE</text>`;
+  }
+  s+='</svg>';
+  return s;
+}
+
+// ── panels ──
+
+function priceBar(e){
+  const b=e.basis, pv=pip(SYM);
+  const src={manual:'you typed it','iv-title-live':'live, from the IV title','heatmap-header-settle':'SETTLE — not live'}[e.futuresSource]||'unknown';
+  const staleCls = e.futuresSource==='heatmap-header-settle' ? 'v" style="color:var(--warn)' : 'v';
+  return `<div class="pricebar">
+    <div><div class="k">CFD spot</div><div class="v">${fx(e.spot,SYM)}</div><div class="n">broker feed at save</div></div>
+    <div><div class="k">CME futures</div><div class="${staleCls}">${fx(e.futures,SYM)}</div><div class="n">${esc(src)}</div></div>
+    <div><div class="k">Basis</div><div class="v">${Number.isFinite(b)?(b>=0?'+':'')+ (b/pv).toFixed(1)+'p':'—'}</div>
+      <div class="n">${Number.isFinite(b)?'strike − '+b.toFixed(dp(SYM)):'not applied'}</div></div>
+    <div><div class="k">Reference move</div><div class="v">${e.refMove?fx(e.refMove.move,SYM):'—'}</div>
+      <div class="n">${esc(e.refMove?.source||'—')}${e.refMove&&e.spot?' · ±'+(e.refMove.move/e.spot*100).toFixed(2)+'%':''}</div></div>
+    <div><div class="k">Expiry</div><div class="v">${esc(e.primaryExpiry?.code||'—')}</div>
+      <div class="n">${Number.isFinite(e.dte)?e.dte+' DTE':'no DTE'} · ${fOI(e.primaryExpiry?.nearOI)} near-money</div></div>
+    <div><div class="k">Saved</div><div class="v" style="font-size:13px">${esc((e.savedAt||'—').split(', ')[1]||e.savedAt||'—')}</div>
+      <div class="n">${esc((e.savedAt||'').split(',')[0]||'')}</div></div>
+  </div>`;
+}
+
+// The provenance strip. This exists because levels used to look identical whether
+// the pipeline was healthy or silently mangling data — every field here is one that
+// was wrong at some point without anything on screen saying so.
+function diagBar(e){
+  const c=[];
+  const pe=e.primaryExpiry||{};
+  c.push(`<span class="chip ${pe.anchorValid===false?'bad':'good'}">anchor <b>${pe.anchorValid===false?'INVALID':'ok'}</b></span>`);
+  c.push(`<span class="chip ${pe.scoredOn==='totalOI'?'warn':''}">expiry by <b>${esc(pe.scoredOn||'—')}</b></span>`);
+  c.push(`<span class="chip">strikes <b>${e.numRows??'—'}</b></span>`);
+  c.push(`<span class="chip ${e.futuresSource==='heatmap-header-settle'?'warn':''}">futures <b>${esc(e.futuresSource||'—')}</b>${
+    Number.isFinite(e.futuresStale)&&Math.abs(e.futuresStale)>0?' ('+(e.futuresStale/pip(SYM)).toFixed(0)+'p stale)':''}</span>`);
+  c.push(`<span class="chip ${e.refMove?.source==='flat-vol'?'warn':'good'}">move <b>${esc(e.refMove?.source||'—')}</b></span>`);
+  c.push(`<span class="chip ${e.greeksFlow?'good':''}">greeks <b>${e.greeksFlow?e.greeksFlow.source+' · '+e.greeksFlow.dteDays+'d':'none'}</b></span>`);
+  if(e.dataWarning) c.push(`<span class="chip bad">⚠ ${esc(e.dataWarning)}</span>`);
+  return `<div class="diag">${c.join('')}</div>`;
+}
+
+function levelStrip(e){
+  const rows=[
+    ['call wall', e.callWall, 'var(--call)', fOI(e.callWallOI)+' OI'],
+    ['put wall',  e.putWall,  'var(--put)',  fOI(e.putWallOI)+' OI'],
+    ['max pain',  e.maxPain,  'var(--pain)', 'expiry magnet'],
+    ['gamma flip',e.gammaFlip,'var(--vol)',  'profile crossing'],
+    ['GEX flip',  e.gexFlip,  'var(--gam)',  'total GEX = 0'],
+    ['charm flip',e.greeksFlow?.charmFlip,'var(--warn)','∂Δ/∂time'],
+    ['vanna flip',e.greeksFlow?.vannaFlip,'var(--gam)','∂Δ/∂vol'],
+    ['exp move ↑',e.expectedMove?.upper,'var(--tx2)', e.expectedMove?'±'+e.expectedMove.pct+'%':''],
+    ['exp move ↓',e.expectedMove?.lower,'var(--tx2)', e.expectedMove?.dte?('to '+e.expectedMove.dte+'d'):''],
+  ];
+  return `<div class="levels">${rows.map(([k,v,c,n])=>{
+    const sv=show(v,e), d=Number.isFinite(v)&&Number.isFinite(e.spot)?((v-e.spot)/pip(SYM)):NaN;
+    return `<div class="lv" style="border-top-color:${Number.isFinite(sv)?c:'transparent'}">
+      <div class="k">${k}</div>
+      <div class="v" style="color:${Number.isFinite(sv)?c:'var(--tx3)'}">${Number.isFinite(sv)?fx(sv,SYM):'—'}</div>
+      <div class="f">${Number.isFinite(v)?(SPOTADJ?'fut '+fx(v+(e.basis||0),SYM):'spot '+fx(v,SYM)):''}</div>
+      <div class="d">${Number.isFinite(d)?(d>=0?'+':'')+d.toFixed(0)+'p · ':''}${n||''}</div></div>`;
+  }).join('')}</div>`;
+}
+
+function wallTable(e,side){
+  const list=(side==='call'?e.callWalls:e.putWalls)||[];
+  if(!list.length) return '<div class="empty">none</div>';
+  const mx=Math.max(...list.map(w=>w.oi||0),1);
+  const col=side==='call'?'var(--call)':'var(--put)';
+  return `<table><thead><tr><th>Strike</th><th>OI</th><th></th><th>Tier</th><th>×nbr</th><th>Δ</th><th>Dist</th></tr></thead><tbody>
+  ${list.slice(0,12).map(w=>{
+    const d=Number.isFinite(e.spot)?(w.strike-e.spot)/pip(SYM):NaN;
+    return `<tr><td>${fx(show(w.strike,e),SYM)}</td><td>${fOI(w.oi)}</td>
+      <td style="width:90px"><span class="bar" style="width:${(w.oi/mx*80).toFixed(0)}px;background:${col};opacity:.65"></span></td>
+      <td class="${w.tier?'':'muted'}">${esc(w.tier||'—')}</td>
+      <td class="muted">${w.mult??'—'}</td>
+      <td style="color:${w.chg>0?'var(--put)':w.chg<0?'var(--call)':'var(--tx3)'}">${w.chg?(w.chg>0?'+':'')+fOI(w.chg):'—'}</td>
+      <td class="muted">${Number.isFinite(d)?(d>=0?'+':'')+d.toFixed(0)+'p':'—'}</td></tr>`;
+  }).join('')}</tbody></table>`;
+}
+
+function termTable(e){
+  const ts=(e.termStructure||[]).slice().sort((a,b)=>a.dte-b.dte);
+  if(!ts.length) return '<div class="empty">no per-expiry structure — paste the full matrix to populate</div>';
+  return `<table><thead><tr><th>DTE</th><th>Max pain</th><th>Call wall</th><th>Put wall</th><th>Total OI</th></tr></thead><tbody>
+  ${ts.map(r=>`<tr${r.dte===e.dte?' style="color:var(--acc)"':''}><td>${r.dte}</td>
+    <td>${fx(show(r.maxPain,e),SYM)}</td><td>${r.callWall?fx(show(r.callWall,e),SYM):'—'}</td>
+    <td>${r.putWall?fx(show(r.putWall,e),SYM):'—'}</td><td>${fOI(r.totalOI)}</td></tr>`).join('')}
+  </tbody></table>`;
+}
+
+function flowPanel(e){
+  const g=e.greeksFlow, rr=e.riskReversal, iv=e.ivDynamics, vf=e.volFlow;
+  const row=(k,v,n)=>`<tr><td class="muted">${k}</td><td>${v}</td><td class="muted" style="text-align:left">${n||''}</td></tr>`;
+  return `<table><tbody>
+    ${row('Net GEX', e.exposures?fOI(e.exposures.gex):'—', e.exposures?.gex>0?'long γ · dampening':'short γ · amplifying')}
+    ${row('Net DEX', e.exposures?fOI(e.exposures.dex):'—','')}
+    ${row('P/C ratio', (e.pcRatio??NaN).toFixed?.(2)??'—', e.pcRatio>1.3?'hedging/fear':e.pcRatio<0.7?'call-heavy':'balanced')}
+    ${row('OI skew', e.skew?e.skew.score:'—', esc(e.skew?.read||''))}
+    ${row('Concentration', e.concentration?(e.concentration.pct??e.concentration)+'':'—','top strikes share')}
+    ${row('CEX (charm)', g?fOI(g.cex):'—','∂Δ/∂time flow')}
+    ${row('VEX (vanna)', g?fOI(g.vex):'—', esc(g?.vanna?.state||''))}
+    ${row('Risk reversal', rr?rr.rr:'—', esc(rr?.tilt?rr.tilt+' tilt':''))}
+    ${row('ATM IV Δ', iv?.atmChg!=null?iv.atmChg+'%':'—','vs prior')}
+    ${row('Vol P/C', vf?vf.volPcRatio:'—', vf?.divergence?'diverges from OI P/C':'')}
+    ${row('Call OI Δ', fOI(e.totalCallChg), e.totalCallChg>0?'building':'closing')}
+    ${row('Put OI Δ', fOI(e.totalPutChg), e.totalPutChg>0?'building':'closing')}
+  </tbody></table>`;
+}
+
+function volumePanel(e){
+  const v=e.volumeMagnets||[];
+  if(!v.length) return '<div class="empty">no volume pasted</div>';
+  const mx=Math.max(...v.map(x=>x.volume||0),1);
+  return `<table><thead><tr><th>Strike</th><th>Volume</th><th></th><th>Dist</th></tr></thead><tbody>
+  ${v.slice(0,10).map(x=>{const d=Number.isFinite(e.spot)?(x.strike-e.spot)/pip(SYM):NaN;
+    return `<tr><td>${fx(show(x.strike,e),SYM)}</td><td>${fOI(x.volume)}</td>
+    <td style="width:90px"><span class="bar" style="width:${(x.volume/mx*80).toFixed(0)}px;background:var(--vol);opacity:.65"></span></td>
+    <td class="muted">${Number.isFinite(d)?(d>=0?'+':'')+d.toFixed(0)+'p':'—'}</td></tr>`;}).join('')}
+  </tbody></table>`;
+}
+
+function render(){
+  const e=STORE[SYM];
+  renderRail();
+  document.getElementById('unitBtn').textContent='Showing: '+(SPOTADJ?'SPOT-ADJ':'FUTURES');
+  if(!e){ document.getElementById('main').innerHTML='<div class="empty">no OI stored for this instrument</div>'; return; }
+  const a=ageOf(e);
+  document.getElementById('sub').textContent =
+    `${nm(SYM)} · ${e.primaryExpiry?.code||'—'} · saved ${a.txt} ago · ${e.numRows||0} strikes`;
+
+  document.getElementById('main').innerHTML = `
+    ${priceBar(e)}
+    ${diagBar(e)}
+    ${levelStrip(e)}
+    <div class="grid">
+      <div class="p c8"><h3>Open interest by strike <em>calls right · puts left · focus ±4 reference moves</em></h3>
+        <div class="body">${chartOI(e)}</div></div>
+      <div class="p c4"><h3>Positioning &amp; flow</h3><div class="body" style="padding:4px 0">${flowPanel(e)}</div></div>
+
+      <div class="p c7"><h3>Net GEX by strike <em>dealer hedging character</em></h3>
+        <div class="body">${chartGEX(e)}
+        <div class="note">Positive bars = call-dominated gamma at that strike. The GEX flip is where TOTAL
+        net gamma crosses zero once you re-evaluate the whole book at each candidate price — above it dealer
+        hedging damps moves, below it amplifies.</div></div></div>
+      <div class="p c5"><h3>IV smile <em>today vs prior settle</em></h3><div class="body">${chartSmile(e)}</div></div>
+
+      <div class="p c6"><h3>Call walls — resistance</h3><div class="body" style="padding:4px 0">${wallTable(e,'call')}</div></div>
+      <div class="p c6"><h3>Put walls — support</h3><div class="body" style="padding:4px 0">${wallTable(e,'put')}</div></div>
+
+      <div class="p c5"><h3>Per-expiry structure <em>where each horizon pins</em></h3>
+        <div class="body" style="padding:4px 0">${termTable(e)}</div></div>
+      <div class="p c4"><h3>ATM IV term structure</h3><div class="body">${chartTerm(e)}
+        <div class="note">${e.ivTermStructure?esc(e.ivTermStructure.shape+' · front '+e.ivTermStructure.front?.iv+'% → back '+e.ivTermStructure.back?.iv+'%'):'paste the Settlements table to populate'}</div></div></div>
+      <div class="p c3" style="grid-column:span 3"><h3>Volume magnets <em>today's flow</em></h3>
+        <div class="body" style="padding:4px 0">${volumePanel(e)}</div></div>
+    </div>`;
+}
+
+document.getElementById('unitBtn').onclick=()=>{SPOTADJ=!SPOTADJ;render();};
+document.getElementById('reload').onclick=()=>boot();
+
+async function boot(){
+  document.getElementById('sub').textContent='loading…';
+  try{
+    await load();
+    const keys=Object.keys(STORE);
+    if(!keys.length){ document.getElementById('sub').textContent='no OI data in KV'; return; }
+    if(!SYM||!STORE[SYM]) SYM=keys.includes('XAU/USD')?'XAU/USD':keys[0];
+    render();
+  }catch(err){
+    document.getElementById('sub').textContent='load failed: '+err.message;
+  }
+}
+boot();
+</script>
+</body>
+</html>
