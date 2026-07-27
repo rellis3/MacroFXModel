@@ -12,6 +12,16 @@ formula to the Heston model, Random Matrix Theory, Merton's continuous-time
 portfolio problem, Nelson-Siegel yield curves, dealer gamma exposure, MCMC,
 DebtRank, the Bellman equation, and Neural SDEs.
 
+Every card on the hub carries a **Beginner/Intermediate/Advanced** difficulty
+pill (`.tl-pill.tl-diff-pill`), and a filter bar at the top of the page
+(`.tl-diff-filter`) toggles by level — client-side, vanilla JS, no
+dependencies, driven by a `data-level` attribute on each `.tl-cat` block.
+The level is assigned **per category, not per lesson** (Foundation Math/Math
+Primer/Deeper Foundations → Beginner; categories named "Advanced ..." plus
+State Space Models Extensions → Advanced; everything else → Intermediate) —
+keep new categories consistent with that rule rather than hand-tuning
+individual lessons.
+
 **Start at [`hub.html`](./hub.html)** (also linked from the dashboard's
 **Learn ▾** nav menu on `index.html`).
 
