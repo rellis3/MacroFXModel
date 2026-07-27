@@ -1024,17 +1024,27 @@ export function processOIData() {
       }
     }
   }
-  // Which expiry to grab for the per-strike SMILE box: the one holding the walls
-  // (primary-expiry DTE). If a "Settlements" table is present (either box), match that
-  // DTE to its nearest row → the exact QuikStrike CODE + date, so there's nothing to
-  // decode by eye. Without a Settlements table we can still name the DTE.
+  // Which expiry to grab for the per-strike SMILE box: the one holding the walls. Prefer
+  // the auto-selected primary-expiry DTE (multi-expiry matrix), then the effective/typed
+  // DTE field (single-expiry FX or a matrix with no DTE header still has this). If a
+  // "Settlements" table is present, match that DTE to its nearest row → the exact
+  // QuikStrike CODE + date; with a table but no DTE at all, suggest the front liquid
+  // expiry. Only skip the hint entirely when we have neither a DTE nor a table.
+  const _hintDte = Number.isFinite(primaryExpiry?.dte) ? primaryExpiry.dte
+    : Number.isFinite(dteEff) ? dteEff
+    : Number.isFinite(dteRaw) ? dteRaw : null;
   let ivPasteHint = null;
-  if (Number.isFinite(primaryExpiry?.dte)) {
-    ivPasteHint = { dte: primaryExpiry.dte, code: null, date: null, matchedDte: null,
+  if (Number.isFinite(_hintDte) || (Array.isArray(tsRows) && tsRows.length)) {
+    ivPasteHint = { dte: Number.isFinite(_hintDte) ? _hintDte : null, code: null, date: null, matchedDte: null,
                     haveSmile: !!(greeksFlow) };
     if (Array.isArray(tsRows) && tsRows.length) {
-      const m = tsRows.slice().sort((a, b) => Math.abs(a.dte - primaryExpiry.dte) - Math.abs(b.dte - primaryExpiry.dte))[0];
-      if (m) { ivPasteHint.code = m.symbol || null; ivPasteHint.date = m.expiry || null; ivPasteHint.matchedDte = m.dte ?? null; }
+      const liquid = tsRows.filter(r => r.straddle > 0 && r.iv > 0);
+      const pool = liquid.length ? liquid : tsRows;
+      const m = Number.isFinite(_hintDte)
+        ? pool.slice().sort((a, b) => Math.abs(a.dte - _hintDte) - Math.abs(b.dte - _hintDte))[0]
+        : pool.slice().sort((a, b) => a.dte - b.dte)[0];   // no DTE known → nearest (front) liquid expiry
+      if (m) { ivPasteHint.code = m.symbol || null; ivPasteHint.date = m.expiry || null; ivPasteHint.matchedDte = m.dte ?? null;
+               if (ivPasteHint.dte == null) ivPasteHint.dte = m.dte ?? null; }
     }
   }
 

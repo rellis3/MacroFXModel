@@ -72,6 +72,13 @@ NQZ6\t147\t18/12/2026\t28500\t28573.25\t28913\t-339.75\t3616.5\t3715.5\t-99\t25.
   const primaryDte = 21;
   const match = ts.slice().sort((a, b) => Math.abs(a.dte - primaryDte) - Math.abs(b.dte - primaryDte))[0];
   ok('primary-expiry DTE → exact QuikStrike code + date', match.symbol === 'QN2Q6' && match.expiry === '14/08/2026', `${match.symbol} ${match.expiry}`);
+  // Fallback: DTE from the typed field (e.g. FX single-expiry, no primaryExpiry) still matches.
+  const typedDte = 4;
+  const m2 = ts.slice().sort((a, b) => Math.abs(a.dte - typedDte) - Math.abs(b.dte - typedDte))[0];
+  ok('typed-DTE fallback → nearest code (4 → Q4BN6)', m2.symbol === 'Q4BN6', m2.symbol);
+  // Fallback: no DTE at all → front LIQUID expiry (smallest DTE with a real straddle).
+  const liquid = ts.filter(r => r.straddle > 0 && r.iv > 0).sort((a, b) => a.dte - b.dte);
+  ok('no-DTE fallback → front liquid expiry', liquid[0].symbol === 'Q4AN6', liquid[0].symbol);
 }
 
 console.log('[guards]');
