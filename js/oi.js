@@ -169,6 +169,8 @@ export function openOIModal() {
   if (ivEl) ivEl.value = existing ? (existing.rawIV || '') : '';
   const ivtEl = document.getElementById('oiIVTermData');
   if (ivtEl) ivtEl.value = existing ? (existing.rawIVTerm || '') : '';
+  const smHintEl = document.getElementById('oiSmileHint');
+  if (smHintEl) { smHintEl.style.display = 'none'; smHintEl.innerHTML = ''; }
   updateOIBasis();
   // localStorage may have been trimmed to fit its ~5MB quota (raw pastes dropped
   // locally to survive a big multi-pair store) — in that case the boxes above are
@@ -1191,16 +1193,23 @@ export function processOIData() {
   store[pair] = inst;
   const _saved = oiSaveStore(store);   // async KV union-merge + local cache
 
-  document.getElementById('oiRawData').value='';
-  document.getElementById('oiChangeData').value='';
-  document.getElementById('oiSpotPrice').value='';
-  ['oiVolumeData', 'oiExpiryLabel', 'oiDTE'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-  const futEl = document.getElementById('oiFuturesPrice');
-  if (futEl) futEl.value='';
-  const basisEl = document.getElementById('oiBasisDisplay');
-  if (basisEl) { basisEl.textContent = 'Enter CME futures price above — basis will be auto-calculated and applied to all strikes on save'; basisEl.style.color=''; }
+  // Two-stage IV flow: if we know the exact expiry to grab for the SMILE box (a
+  // Settlements table was pasted → we have the code) but it isn't pasted yet, KEEP the
+  // modal open so the user can add that one paste and re-Analyse — no close/reopen dance.
+  // The pastes + spot/futures stay put so the second Analyse has everything it needs.
+  const _keepOpen = !!(ivPasteHint && !ivPasteHint.haveSmile && ivPasteHint.code);
 
-  closeOIModal();
+  if (!_keepOpen) {
+    document.getElementById('oiRawData').value='';
+    document.getElementById('oiChangeData').value='';
+    document.getElementById('oiSpotPrice').value='';
+    ['oiVolumeData', 'oiExpiryLabel', 'oiDTE'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    const futEl = document.getElementById('oiFuturesPrice');
+    if (futEl) futEl.value='';
+    const basisEl = document.getElementById('oiBasisDisplay');
+    if (basisEl) { basisEl.textContent = 'Enter CME futures price above — basis will be auto-calculated and applied to all strikes on save'; basisEl.style.color=''; }
+    closeOIModal();
+  }
   window.renderAll();
   const basisNote = basisClamped ? ' · basis ignored (implausible — no shift applied)'
     : basis ? ` · basis ${basis >= 0 ? '+' : ''}${basis.toFixed(pair.includes('JPY') ? 2 : isIndexFutures(pair) ? 2 : 5)}` : '';
@@ -1217,6 +1226,17 @@ export function processOIData() {
         : ` · 💡 smile box → paste the ~${ivPasteHint.dte} DTE expiry's per-strike chain`)
     : '';
   oiToast(`${pairLabel} OI saved · ${parsed.strikes.length} strikes · max pain ${oiFmtStrike(maxPain,pair)}${expiryNote}${basisNote}${smileHint}`, basisClamped);
+
+  // Modal kept open for the smile paste → show the exact expiry right by the smile box
+  // and focus it. Once the smile is pasted, the next Analyse closes normally.
+  if (_keepOpen) {
+    const hEl = document.getElementById('oiSmileHint');
+    if (hEl) {
+      hEl.innerHTML = `👉 Optional charm/vanna/skew layer: paste expiry <b>${ivPasteHint.code}</b>${ivPasteHint.date ? ` (${ivPasteHint.date})` : ''}'s per-strike chain into the <b>smile box</b> above, then Analyse again. (Or Close — the expected move + term structure are already saved.)`;
+      hEl.style.display = 'block';
+    }
+    document.getElementById('oiIVData')?.focus();
+  }
 
   // Push updated entry data to Railway bot AFTER the KV merge lands so the sync
   // reads the freshly-merged store (not a half-written one).

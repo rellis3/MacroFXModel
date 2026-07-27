@@ -754,6 +754,7 @@ Columns: CallChg CallPrior CallSettle | Strike | PutSettle PutPrior PutChg | Vol
 
 (A 'Settlements' per-expiry table pasted here also works — auto-detected — but the term-structure box below is the natural home for it.)" style="min-height:80px"></textarea>
       <div class="oi-hint">Per-strike IV (the smile) → charm (∂Δ/∂time) &amp; vanna (∂Δ/∂vol) + skew, for the ONE expiry your walls sit in. Volatility ≠ Volume.</div>
+      <div id="oiSmileHint" style="display:none;margin-top:6px;padding:7px 10px;border-radius:6px;background:rgba(212,175,55,0.12);border:1px solid var(--gold);color:var(--gold);font-size:12px;line-height:1.5"></div>
     </div>
     <div style="margin-bottom:14px">
       <label class="oi-lbl">IV term structure <span style="color:var(--text3);font-weight:400">(optional — QuikStrike 'Settlements' table, ALL expiries)</span></label>
@@ -786,7 +787,7 @@ Columns: CallChg CallPrior CallSettle | Strike | PutSettle PutPrior PutChg | Vol
     </div>
 
     <div class="oi-actions">
-      <button class="oi-btn" onclick="closeOIModal()">Cancel</button>
+      <button class="oi-btn" onclick="closeOIModal()">✕ Close</button>
       <button class="oi-btn oi-btn-primary" onclick="processOIData()">Analyse →</button>
     </div>
   </div>
