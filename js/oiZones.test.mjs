@@ -106,42 +106,94 @@ console.log('[Filters — liquidating veto + established requirement]');
   ok('established call wall qualifies', z3.some(x => x.side === 'sell' && x.level === 4300));
 }
 
-console.log('[Trade the K strongest walls per side — decoupled from display count]');
+console.log('[Trade the K nearest strong walls per side (PIN) — decoupled from display count]');
 {
-  // 10 strong call walls above + 10 strong put walls below, sorted by OI (strongest first).
+  // 10 strong call walls above + 10 strong put walls below. OI DECREASES with distance,
+  // so here the nearest walls are also the strongest — PIN caps to the K NEAREST strong
+  // walls (the active range), which in this synthetic coincides with highest-OI.
   const mk = (base, step, up) => Array.from({ length: 10 }, (_, i) =>
     ({ strike: base + (up ? 1 : -1) * step * (i + 1), oi: 9000 - i * 500, tier: 'strong', mult: 3 + i * 0.1 }));
   const many = { ...base, exposures: { gex: 5000 },
     callWalls: mk(4200, 25, true), putWalls: mk(4200, 25, false) };
   const capped = buildOIZones(many, 4200, { ...cfg, maxZonesPerSide: 3 }).filter(z => z.mode === 'fade');
   ok('caps to 3 fades per side (6 total), not all 20', capped.length === 6, `${capped.length}`);
-  ok('keeps the STRONGEST (highest-OI) walls', capped.some(z => z.level === 4225) && !capped.some(z => z.level === 4450),
+  ok('keeps the NEAREST strong walls (4225 in, 4450 out)', capped.some(z => z.level === 4225) && !capped.some(z => z.level === 4450),
     capped.map(z => z.level).join(','));
   const uncapped = buildOIZones(many, 4200, { ...cfg, maxZonesPerSide: 0 }).filter(z => z.mode === 'fade');
   ok('maxZonesPerSide 0 → no cap (all 20 fade)', uncapped.length === 20, `${uncapped.length}`);
 }
 
-console.log('[Persistence — across-expiry durability boosts rank + size]');
+console.log('[Persistence — across-expiry durability boosts rank + size (breakout ranking)]');
 {
   // Two strong call walls above price. The FARTHER one has slightly less OI but lives
   // across many expiries; persistenceWeight should lift it above the nearer transient.
-  const inst = { ...base, exposures: { gex: 5000 },
+  // Exercised in BREAKOUT because that path is strength-ranked (OI×durability); PIN is
+  // distance-anchored (nearest wall = primary — see the nearest-primary test below).
+  const inst = { ...base, exposures: { gex: -5000 },
     callWalls: [
       { strike: 4250, oi: 9000, tier: 'strong', mult: 3.1, persistence: 1 },   // transient near wall
       { strike: 4300, oi: 8500, tier: 'strong', mult: 3.0, persistence: 8 },   // durable far wall
     ],
     putWalls: [{ strike: 4100, oi: 8000, tier: 'strong', mult: 3.0, persistence: 6 }] };
   const z = buildOIZones(inst, 4200, { ...cfg, maxZonesPerSide: 1, persistenceWeight: 0.1, persistentDTE: 5 });
-  const sell = z.find(x => x.side === 'sell');
-  ok('durable far wall outranks the transient near wall', sell && sell.level === 4300, `${sell?.level}`);
-  ok('durable wall gets the size bump (×1.15 on the strong 1.5×conc 1.2)', sell.sizeFactor > 1.5, `${sell.sizeFactor}`);
-  ok('rationale flags durability', /durable 8exp/.test(sell.rationale), sell.rationale);
-  const buy = z.find(x => x.side === 'buy');
-  ok('durable put wall also flagged', buy && /durable 6exp/.test(buy.rationale), buy?.rationale);
+  const up = z.find(x => x.mode === 'break' && x.side === 'buy');
+  ok('durable far wall outranks the transient near wall', up && up.level === 4300, `${up?.level}`);
+  ok('durable wall gets the size bump (×1.15 on the strong 1.5×conc 1.2)', up.sizeFactor > 1.5, `${up.sizeFactor}`);
+  ok('rationale flags durability', /durable 8exp/.test(up.rationale), up.rationale);
+  const dn = z.find(x => x.mode === 'break' && x.side === 'sell');
+  ok('durable put wall also flagged', dn && /durable 6exp/.test(dn.rationale), dn?.rationale);
   // With persistenceWeight 0, the higher-OI near wall wins instead.
   const z0 = buildOIZones(inst, 4200, { ...cfg, maxZonesPerSide: 1, persistenceWeight: 0 });
   ok('persistenceWeight 0 → pure-OI ranking (near wall wins)',
-    z0.find(x => x.side === 'sell')?.level === 4250, `${z0.find(x => x.side === 'sell')?.level}`);
+    z0.find(x => x.mode === 'break' && x.side === 'buy')?.level === 4250, `${z0.find(x => x.mode === 'break' && x.side === 'buy')?.level}`);
+}
+
+console.log('[PIN nearest-primary — the active pin boundary is the NEAREST strong wall]');
+{
+  // Two strong walls each side; the FAR ones are stronger/durable, the NEAR ones transient.
+  // In PIN the bot fades the NEAREST first (primary, full size) and treats the further wall
+  // as secondary (trimmed) — even though the far wall is stronger by OI×durability.
+  const inst = { ...base, exposures: { gex: 5000 },
+    callWalls: [
+      { strike: 4250, oi: 7000, tier: 'strong', mult: 3.0, persistence: 1 },
+      { strike: 4300, oi: 9000, tier: 'strong', mult: 3.2, persistence: 8 },
+    ],
+    putWalls: [
+      { strike: 4150, oi: 7000, tier: 'strong', mult: 3.0 },
+      { strike: 4050, oi: 9000, tier: 'strong', mult: 3.2 },
+    ] };
+  const z = buildOIZones(inst, 4200, { ...cfg, maxZonesPerSide: 4 });
+  const sells = z.filter(x => x.side === 'sell').sort((a, b) => a.level - b.level);
+  ok('nearest strong resistance (4250) is the PRIMARY fade', sells[0].level === 4250 && /primary/.test(sells[0].rationale), sells[0]?.rationale);
+  ok('further resistance (4300) is SECONDARY + trimmed', sells[1].level === 4300 && /secondary/.test(sells[1].rationale) && sells[1].sizeFactor < sells[0].sizeFactor, `${sells[1]?.sizeFactor} < ${sells[0]?.sizeFactor}`);
+  const buys = z.filter(x => x.side === 'buy').sort((a, b) => b.level - a.level);
+  ok('nearest strong support (4150) is the PRIMARY fade', buys[0].level === 4150 && /primary/.test(buys[0].rationale), buys[0]?.rationale);
+  ok('further support (4050) is SECONDARY + trimmed', buys[1].level === 4050 && /secondary/.test(buys[1].rationale) && buys[1].sizeFactor < buys[0].sizeFactor, `${buys[1]?.sizeFactor} < ${buys[0]?.sizeFactor}`);
+  // cap=1 → only the nearest (primary) per side; the strong far wall is NOT armed.
+  const z1 = buildOIZones(inst, 4200, { ...cfg, maxZonesPerSide: 1 });
+  ok('cap=1 → nearest strong wall only (far strong wall dropped)', z1.some(x => x.level === 4250) && !z1.some(x => x.level === 4300),
+    z1.filter(x => x.side === 'sell').map(x => x.level).join(','));
+}
+
+console.log('[Reachability — an entry beyond the implied move is flagged + trimmed]');
+{
+  // PIN with a strong wall inside the implied move (4230) and one well beyond it (4300).
+  // expMove up-half = 50 (4200→4250): the 4300 fade sits ~2× that → flag + trim, kept armed.
+  const inst = { ...base, exposures: { gex: 5000 },
+    callWalls: [{ strike: 4230, oi: 8000, tier: 'strong', mult: 3 }, { strike: 4300, oi: 9000, tier: 'strong', mult: 3.2 }],
+    putWalls: [{ strike: 4100, oi: 8000, tier: 'strong', mult: 3 }] };
+  const em = { upper: 4250, lower: 4150 };
+  const z = buildOIZones(inst, 4200, { ...cfg, maxZonesPerSide: 4, expMove: em, reachMult: 1.0, reachTrim: 0.7 });
+  const near = z.find(x => x.level === 4230), far = z.find(x => x.level === 4300);
+  ok('near fade (within implied move) is NOT flagged', near && !/unlikely to fill/.test(near.rationale), near?.rationale);
+  ok('far fade (beyond implied move) flagged unlikely-to-fill', far && /unlikely to fill by expiry/.test(far.rationale), far?.rationale);
+  ok('far fade sized down by reachTrim', far && far.sizeFactor < near.sizeFactor, `${far?.sizeFactor} < ${near?.sizeFactor}`);
+  // No expMove + maxReachPips 0 → gate OFF (unchanged when IV wasn't pasted).
+  const zoff = buildOIZones(inst, 4200, { ...cfg, maxZonesPerSide: 4 });
+  ok('no expMove + maxReachPips 0 → no reach flag', !zoff.some(x => /unlikely to fill/.test(x.rationale)), 'off');
+  // Pip fallback flags the far wall when no IV is present.
+  const zpip = buildOIZones(inst, 4200, { ...cfg, maxZonesPerSide: 4, maxReachPips: 50 });
+  ok('maxReachPips fallback flags the 100pt-away wall', /beyond 50pip reach/.test(zpip.find(x => x.level === 4300)?.rationale || ''), zpip.find(x => x.level === 4300)?.rationale);
 }
 
 console.log('[Fallback TP — a wall-less breakout gets a measured-move target]');

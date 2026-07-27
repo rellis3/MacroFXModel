@@ -7409,7 +7409,11 @@ const OI_BOT_CFG_DEFAULTS = {
   minTier: 'strong', slBufferPips: 15, breakPips: 20, nearExpiryDTE: 2, extendedPips: 30,
   fadeInPin: true, followBreaks: true, maxPainReversion: true,
   requireEstablished: false, avoidLiquidating: true,
-  maxZonesPerSide: 4,                // bot trades the K strongest walls per side (display count is separate)
+  maxZonesPerSide: 4,                // PIN: K NEAREST strong walls per side; breakout: K strongest by OI
+  secondaryTrim: 0.6,                // PIN fade: nearest wall = primary (full size), further walls ×this
+  reachMult: 1.0,                    // entry beyond reachMult × the implied move → flag "unlikely to fill"
+  reachTrim: 0.7,                    // size haircut for an entry beyond the implied-move reach horizon
+  maxReachPips: 0,                   // fallback reach cap in pips when no IV/expMove (0 = off)
   pathBlockCheck: true,              // flag/trim when a nearer wall sits between spot and a zone's entry
   blockMinTier: 'moderate',          // that path wall must be ≥ this tier to count (skip trivia)
   blockTrim: 0.9,                    // entry-size haircut when a blocking wall is in the path
