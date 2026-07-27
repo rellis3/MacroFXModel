@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Short-Rate Models: Vasicek, CIR &amp; Hull-White — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Stochastic Differential Equations / Short-Rate Models: Vasicek, CIR &amp; Hull-White</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Stochastic Differential Equations · SDEs 4 of 5</div>
+  <h1 class="tl-title">Short-Rate Models: Vasicek, CIR &amp; Hull-White</h1>
+  <p class="tl-dek">Three models of the instantaneous interest rate, each fixing a specific flaw in the one before it — and each one a direct, named application of the general SDE machinery this sequence has just built.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — the standard textbook progression of one-factor interest-rate models</span>
+    <span>~18 min read</span>
+    <span>Prereqs: Ornstein-Uhlenbeck &amp; Mean Reversion, Existence &amp; Uniqueness of SDE Solutions, Bootstrapping the Yield Curve, Curve Fitting: Nelson-Siegel &amp; Svensson</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Vasicek</strong>: \(dr_t=a(b-r_t)dt+\sigma\,dW_t\) — an Ornstein-Uhlenbeck process applied directly to the short rate, mean-reverting to a long-run level \(b\) at speed \(a\). Its well-known flaw: \(r_t\) is Gaussian, so it can go negative with positive probability.</li>
+      <li>That "flaw" turned into a "feature" in the real world once policy rates in Europe and Japan actually went negative through much of the 2010s and into the 2020s.</li>
+      <li><strong>CIR</strong> fixes it with a square-root diffusion, \(dr_t=a(b-r_t)dt+\sigma\sqrt{r_t}\,dW_t\), whose volatility shrinks to zero as \(r_t\to0\) — under the <strong>Feller condition</strong> \(2ab\ge\sigma^2\), this keeps the process strictly positive.</li>
+      <li>That same \(\sigma\sqrt{r_t}\) term violates the Lipschitz condition from <code>sde-existence-uniqueness.html</code>, needing the more careful Yamada-Watanabe existence argument flagged there.</li>
+      <li><strong>Hull-White</strong> extends Vasicek with a time-dependent drift level, \(dr_t=[\theta(t)-a\,r_t]dt+\sigma\,dW_t\), calibrated so the model exactly reproduces today's observed yield curve — the standard fix for the fact that constant-parameter Vasicek/CIR generally cannot.</li>
+      <li>A real simulation in this lesson, using parameters where Vasicek visibly dips negative, confirms CIR stays strictly positive over the identical horizon under a Feller condition that is comfortably satisfied.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    This lesson is where the whole sequence's machinery lands on a genuinely
+    practical family of models. Vasicek is nothing more than
+    <code>ou-mean-reversion.html</code>'s Ornstein-Uhlenbeck process, applied
+    to the short-term interest rate instead of a generic mean-reverting price
+    series — the identical SDE, same math, different name because of what
+    it's used for. CIR is the first place in this curriculum a coefficient
+    genuinely fails the Lipschitz condition from
+    <code>sde-existence-uniqueness.html</code>, making that lesson's caveat
+    about the Yamada-Watanabe conditions concrete rather than abstract. And
+    Hull-White is the standard practitioner answer to a problem every
+    constant-parameter model in this lesson runs into: a rates desk needs a
+    model that is consistent with the yield curve observed <em>today</em>
+    (built in <code>yield-curve-construction.html</code> and
+    <code>nelson-siegel-svensson.html</code>), not just one with plausible
+    long-run dynamics.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Three fixes, in sequence, each one solving the last one's problem</h3>
+    <p>
+      Vasicek says: the short rate wanders around a long-run average, pulled
+      back whenever it strays too far — exactly the mean-reversion story
+      <code>ou-mean-reversion.html</code> already tells for any price series.
+      The trouble is that nothing in the model stops the random wandering from
+      occasionally pushing the rate below zero — mathematically fine (a
+      Gaussian variable is just as happy being negative as positive), but for
+      decades treated as an obviously wrong prediction for an interest rate,
+      since nobody imagined being paid to borrow money.
+    </p>
+    <p>
+      CIR's fix is almost mechanical: make the size of the random wandering
+      itself shrink to nothing as the rate approaches zero, so there's never
+      enough of a random push left to send it negative — like a car whose
+      brakes get progressively stronger the closer it gets to a wall, never
+      quite able to hit it. Hull-White solves a completely different problem:
+      Vasicek and CIR, with fixed parameters, produce <em>some</em> particular
+      average shape for the yield curve, but real yield curves observed on any
+      given day rarely match that shape exactly — Hull-White allows the target
+      level \(b\) to change over time, giving the model enough extra knobs to
+      fit today's curve exactly, on top of whichever positivity or negativity
+      behaviour its diffusion term chooses to keep.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>1. Vasicek — Ornstein-Uhlenbeck, renamed and reapplied</h3>
+  <div class="tl-math">
+    \[ dr_t = a(b-r_t)\,dt + \sigma\,dW_t \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>a</code><span>speed of mean reversion — identical role to θ in ou-mean-reversion.html</span></div>
+    <div class="tl-eq-chip c3"><code>b</code><span>the long-run mean level the rate reverts to — identical role to μ in the OU lesson</span></div>
+    <div class="tl-eq-chip c4"><code>σ</code><span>constant volatility — the size of the random wandering, unaffected by the current rate level</span></div>
+  </div>
+  <p>
+    This equation is, term for term, <code>ou-mean-reversion.html</code>'s
+    \(dX_t=\theta(\mu-X_t)dt+\sigma\,dW_t\) with \(a\leftrightarrow\theta\),
+    \(b\leftrightarrow\mu\), and \(X_t\to r_t\) — Vasicek (1977) is that
+    lesson's OU process, applied specifically to the instantaneous interest
+    rate. Nothing about the derivation, the solution's Gaussian distribution,
+    or the half-life formula \(\ln(2)/a\) changes; only the interpretation of
+    the variable does. This lesson does not re-derive any of that math —
+    <code>ou-mean-reversion.html</code> already has it in full, including the
+    closed-form solution and its stationary variance.
+  </p>
+  <div class="tl-solid amber">
+    <strong>The well-known flaw, stated precisely:</strong> because the OU
+    process this lesson borrows is Gaussian at every fixed time \(t\), \(r_t\)
+    has positive probability of being negative, for <em>any</em> choice of
+    \(a\), \(b\), and \(\sigma>0\) — however small that probability is made by
+    picking a large \(b\) relative to \(\sigma\), it is never exactly zero.
+    For decades this was treated as an obvious modelling defect — a policy
+    rate at, say, \(-0.5\%\) looked like nonsense. Then, through the 2010s and
+    into the 2020s, the European Central Bank and the Bank of Japan actually
+    ran policy rates below zero for extended periods. Vasicek's "flaw" turned
+    out to already be a "feature" — it was the CIR- and lognormal-style models
+    (built to rule out negative rates entirely) that had to be patched or
+    abandoned in those regimes, while Vasicek needed no modification to
+    remain internally consistent. Say this plainly rather than picking a side:
+    which behaviour is "correct" depends entirely on which regime the model is
+    being used in, not on which one looks more mathematically elegant.
+  </div>
+
+  <h3>2. CIR — a diffusion that shrinks to zero at the boundary</h3>
+  <div class="tl-math">
+    \[ dr_t = a(b-r_t)\,dt + \sigma\sqrt{r_t}\,dW_t \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>σ√r_t</code><span>the diffusion coefficient — identical drift to Vasicek, but volatility now scales with √(current rate)</span></div>
+  </div>
+  <p>
+    The Cox-Ingersoll-Ross (1985) model keeps Vasicek's mean-reverting drift
+    exactly as is, changing only the diffusion term: volatility is no longer
+    a fixed constant \(\sigma\), but \(\sigma\sqrt{r_t}\) — proportional to the
+    square root of the <em>current</em> rate. As \(r_t\to 0^+\), this
+    diffusion term shrinks to zero, so the random wandering that could push
+    the rate negative gets progressively weaker exactly as the rate
+    approaches the boundary it isn't supposed to cross. Combined with a
+    positive drift pulling the rate back up (since \(a(b-r_t)>0\) whenever
+    \(r_t<b\)), this can — under one additional condition — keep the process
+    strictly positive for all time.
+  </p>
+  <p>
+    That condition is the <strong>Feller condition</strong>, and it needs to
+    be stated precisely rather than approximately:
+  </p>
+  <div class="tl-math">
+    \[ 2ab \ge \sigma^2 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c3"><code>2ab ≥ σ²</code><span>if satisfied, r_t never reaches exactly zero; if violated, the process can (and, over a long enough horizon, will) touch zero, though it's typically reflected back up rather than going negative</span></div>
+  </div>
+  <p>
+    Read this condition for what it says: the mean-reverting "pull" toward a
+    positive long-run level \(b\), scaled by twice the speed \(a\), has to
+    dominate the variance \(\sigma^2\) of the random shocks. Intuitively, if
+    volatility is large relative to how hard and how quickly the process is
+    pulled back toward a comfortably positive mean, the random shocks can
+    still overwhelm the shrinking-diffusion mechanism and touch the zero
+    boundary — the mechanism helps, but it isn't a free, parameter-independent
+    guarantee.
+  </p>
+  <div class="tl-solid red">
+    <strong>Cross-link to lesson 1's honesty check:</strong> \(\sigma\sqrt{r_t}\)
+    is exactly the square-root diffusion flagged in
+    <code>sde-existence-uniqueness.html</code> as a Lipschitz-condition
+    failure at \(r_t=0\) (its local slope, \(\sigma/(2\sqrt{r_t})\), diverges
+    as \(r_t\to0\)) — the standard global Lipschitz + linear growth theorem
+    from that lesson simply does not apply to CIR. Existence and pathwise
+    uniqueness for CIR is instead established via the weaker Yamada-Watanabe
+    (1971) conditions, which are built to handle exactly this kind of
+    Hölder-continuous-but-not-Lipschitz square-root behaviour. This is not a
+    minor technicality being glossed over — it's the direct, concrete payoff
+    of that earlier lesson's caveat, landing on a model this lesson actually
+    uses.
+  </div>
+  <div class="tl-symbols"><table>
+    <tr><td>\(r_t\)</td><td>The instantaneous short rate — the interest rate for an infinitesimally short borrowing/lending horizon, the fundamental building block every bond price in <code>yield-curve-construction.html</code> is derived from.</td></tr>
+    <tr><td>\(a\)</td><td>Mean-reversion speed — how quickly the rate is pulled back toward its long-run level \(b\).</td></tr>
+    <tr><td>\(b\)</td><td>The long-run (unconditional) mean level the short rate reverts to.</td></tr>
+    <tr><td>\(\sigma\)</td><td>The volatility scale — constant in Vasicek and Hull-White, scaled by \(\sqrt{r_t}\) in CIR.</td></tr>
+    <tr><td>Feller condition, \(2ab\ge\sigma^2\)</td><td>The precise condition under which CIR's square-root diffusion keeps \(r_t\) strictly positive for all time.</td></tr>
+    <tr><td>\(\theta(t)\)</td><td>Hull-White's time-dependent drift level — replaces Vasicek's constant \(ab\) with a function of time, calibrated to fit today's observed yield curve exactly.</td></tr>
+  </table></div>
+
+  <h3>3. Hull-White — fitting today's curve exactly</h3>
+  <div class="tl-math">
+    \[ dr_t = \big[\theta(t) - a\,r_t\big]\,dt + \sigma\,dW_t \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>θ(t)</code><span>a deterministic, time-varying function replacing Vasicek's constant term ab — the entire extension, in one substitution</span></div>
+  </div>
+  <p>
+    Hull-White (1990) is Vasicek with exactly one structural change: the
+    constant product \(a\,b\) (mean-reversion speed times long-run level) is
+    replaced by an arbitrary, time-dependent function \(\theta(t)\). Everything
+    else — constant \(a\), constant \(\sigma\), Gaussian dynamics, the same
+    potential-negativity behaviour Vasicek has — carries over unchanged. The
+    entire motivation for this one substitution is a practical limitation:
+    a Vasicek model with fixed \(a\), \(b\), \(\sigma\) produces one specific
+    theoretical shape for the yield curve implied by its dynamics, and that
+    shape generally will not match the actual curve bootstrapped from today's
+    market prices in <code>yield-curve-construction.html</code>, or the
+    smooth parametric fit <code>nelson-siegel-svensson.html</code> builds from
+    it. A rates desk pricing a new instrument off this model needs the model
+    to at least agree with the market on instruments that already trade — that
+    is a hard, non-negotiable calibration constraint, and \(\theta(t)\) is the
+    standard degree of freedom introduced specifically to satisfy it: choose
+    \(\theta(t)\) (in closed form, given the initial forward-rate curve
+    \(f(0,t)\) from the observed curve) so that the model's own theoretical
+    bond prices reproduce today's observed curve exactly, then let the
+    dynamics evolve forward from there. This is the standard practitioner fix
+    for the general fact that a constant-parameter one-factor model
+    essentially never fits an arbitrary observed initial term structure
+    exactly.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Vasicek vs. CIR: one simulated short-rate path each, identical shocks and parameters</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A chart of two simulated short-rate paths over a 10-year horizon, both starting at 0.5 percent. The Vasicek path (constant volatility) swings widely, dipping visibly below zero on two occasions and rising above 2 percent at other points. The CIR path (square-root volatility) stays in a much tighter band close to its starting level and never goes negative.">
+      <line x1="50" y1="136.5" x2="610" y2="136.5" style="stroke:var(--text3);stroke-dasharray:4,3"/>
+      <text x="14" y="140" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text3)">0%</text>
+      <line x1="50" y1="110.3" x2="610" y2="110.3" style="stroke:var(--border);stroke-dasharray:2,3"/>
+      <text x="10" y="114" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text3)">0.5%</text>
+      <line x1="50" y1="188.9" x2="610" y2="188.9" style="stroke:var(--border);stroke-dasharray:2,3"/>
+      <text x="6" y="192" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--red)">−1%</text>
+      <line x1="50" y1="250" x2="610" y2="250" style="stroke:var(--text3)"/>
+      <text x="50" y="266" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">t=0</text>
+      <text x="610" y="266" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="end">t=10yr</text>
+      <polyline points="50.00,110.31 53.73,96.39 57.47,74.36 61.20,59.33 64.93,73.18 68.67,92.51 72.40,91.84 76.13,80.43 79.87,73.94 83.60,49.94 87.33,40.59 91.07,32.86 94.80,43.79 98.53,59.66 102.27,40.25 106.00,40.53 109.73,30.48 113.47,50.16 117.20,56.87 120.93,75.05 124.67,86.01 128.40,74.12 132.13,94.63 135.87,102.06 139.60,99.96 143.33,109.14 147.07,112.57 150.80,115.54 154.53,109.81 158.27,115.65 162.00,111.90 165.73,111.11 169.47,105.36 173.20,102.38 176.93,80.06 180.67,89.44 184.40,73.50 188.13,79.43 191.87,92.80 195.60,76.65 199.33,83.05 203.07,88.65 206.80,107.73 210.53,136.15 214.27,127.22 218.00,142.76 221.73,131.80 225.47,106.51 229.20,108.11 232.93,123.39 236.67,117.88 240.40,107.47 244.13,111.05 247.87,110.81 251.60,92.74 255.33,75.85 259.07,66.71 262.80,79.01 266.53,80.15 270.27,72.40 274.00,75.77 277.73,84.48 281.47,95.18 285.20,103.93 288.93,113.10 292.67,119.17 296.40,103.55 300.13,114.47 303.87,102.42 307.60,96.87 311.33,95.16 315.07,106.56 318.80,112.79 322.53,86.05 326.27,85.04 330.00,78.09 333.73,69.55 337.47,55.82 341.20,59.76 344.93,68.68 348.67,70.05 352.40,74.11 356.13,63.90 359.87,61.95 363.60,59.36 367.33,58.08 371.07,42.16 374.80,50.41 378.53,57.68 382.27,46.40 386.00,48.69 389.73,44.63 393.47,55.37 397.20,55.79 400.93,50.67 404.67,69.43 408.40,79.37 412.13,74.06 415.87,44.12 419.60,38.75 423.33,40.50 427.07,52.87 430.80,48.34 434.53,83.00 438.27,84.04 442.00,88.85 445.73,96.16 449.47,64.96 453.20,99.03 456.93,99.48 460.67,98.69 464.40,92.53 468.13,114.43 471.87,120.69 475.60,140.78 479.33,142.10 483.07,139.03 486.80,136.42 490.53,138.75 494.27,135.85 498.00,133.11 501.73,127.33 505.47,126.76 509.20,150.66 512.93,161.15 516.67,155.79 520.40,167.50 524.13,177.54 527.87,175.11 531.60,174.86 535.33,161.91 539.07,154.30 542.80,159.60 546.53,157.39 550.27,195.44 554.00,205.09 557.73,205.82 561.47,236.85 565.20,239.52 568.93,234.39 572.67,218.74 576.40,211.84 580.13,185.00 583.87,163.33 587.60,184.73 591.33,186.80 595.07,187.89 598.80,185.62 602.53,192.36 606.27,183.01 610.00,171.96" style="stroke:var(--red);stroke-width:1.75" fill="none"/>
+      <polyline points="50.00,110.31 53.73,109.33 57.47,107.74 61.20,106.62 64.93,107.67 68.67,109.10 72.40,109.05 76.13,108.22 79.87,107.75 83.60,105.96 87.33,105.25 91.07,104.65 94.80,105.49 98.53,106.71 102.27,105.24 106.00,105.26 109.73,104.48 113.47,106.01 117.20,106.52 120.93,107.89 124.67,108.70 128.40,107.83 132.13,109.35 135.87,109.88 139.60,109.73 143.33,110.38 147.07,110.62 150.80,110.83 154.53,110.43 158.27,110.84 162.00,110.57 165.73,110.51 169.47,110.11 173.20,109.89 176.93,108.30 180.67,108.99 184.40,107.83 188.13,108.26 191.87,109.24 195.60,108.07 199.33,108.54 203.07,108.95 206.80,110.33 210.53,112.34 214.27,111.73 218.00,112.79 221.73,112.05 225.47,110.32 229.20,110.43 232.93,111.50 236.67,111.12 240.40,110.39 244.13,110.64 247.87,110.62 251.60,109.34 255.33,108.12 259.07,107.45 262.80,108.36 266.53,108.44 270.27,107.86 274.00,108.11 277.73,108.75 281.47,109.52 285.20,110.14 288.93,110.79 292.67,111.21 296.40,110.12 300.13,110.89 303.87,110.05 307.60,109.65 311.33,109.52 315.07,110.34 318.80,110.77 322.53,108.90 326.27,108.82 330.00,108.31 333.73,107.68 337.47,106.65 341.20,106.94 344.93,107.61 348.67,107.70 352.40,108.00 356.13,107.24 359.87,107.09 363.60,106.89 367.33,106.79 371.07,105.59 374.80,106.21 378.53,106.76 382.27,105.90 386.00,106.07 389.73,105.76 393.47,106.57 397.20,106.60 400.93,106.21 404.67,107.63 408.40,108.36 412.13,107.97 415.87,105.75 419.60,105.34 423.33,105.46 427.07,106.41 430.80,106.06 434.53,108.70 438.27,108.77 442.00,109.11 445.73,109.64 449.47,107.40 453.20,109.93 456.93,109.96 460.67,109.89 464.40,109.45 468.13,111.02 471.87,111.45 475.60,112.83 479.33,112.91 483.07,112.70 486.80,112.52 490.53,112.67 494.27,112.47 498.00,112.28 501.73,111.88 505.47,111.84 509.20,113.47 512.93,114.16 516.67,113.80 520.40,114.57 524.13,115.21 527.87,115.05 531.60,115.02 535.33,114.19 539.07,113.68 542.80,114.03 546.53,113.87 550.27,116.37 554.00,116.96 557.73,116.99 561.47,118.87 565.20,119.01 568.93,118.70 572.67,117.77 576.40,117.34 580.13,115.71 583.87,114.33 587.60,115.72 591.33,115.84 595.07,115.90 598.80,115.75 602.53,116.16 606.27,115.57 610.00,114.86" style="stroke:var(--green);stroke-width:2.25" fill="none"/>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--red)"></i>Vasicek — dips below 0%, rises above 2%</span>
+      <span><i style="background:var(--green)"></i>CIR — stays in a tight band, never negative</span>
+    </div>
+    <div class="tl-chart-caption">
+      Both paths use identical parameters (a=0.20, b=0.5%, σ=1%, starting at
+      \(r_0=0.5\%\)) and the identical sequence of underlying random shocks —
+      the only difference is Vasicek's constant-σ diffusion vs. CIR's
+      \(\sigma\sqrt{r_t}\) diffusion. This particular Vasicek realization dips
+      to \(-2.0\%\) and rises as high as \(2.0\%\); the CIR path, built from
+      the same shocks, never leaves a band roughly between \(0.33\%\) and
+      \(0.61\%\) and never goes negative — exactly the shrinking-volatility
+      mechanism from step 2, shown as a direct empirical contrast rather than
+      only asserted.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Checking the Feller condition for the parameters used in the chart above</h3>
+    <p>
+      The simulation above uses \(a=0.20\), \(b=0.005\) (0.5%), \(\sigma=0.010\)
+      (1%). Check the Feller condition directly:
+    </p>
+    <div class="tl-math">
+      \[ 2ab = 2(0.20)(0.005) = 0.00200 \qquad \sigma^2 = (0.010)^2 = 0.00010 \]
+    </div>
+    <p>
+      \(0.00200 \ge 0.00010\) — the Feller condition is satisfied, comfortably
+      (by a factor of 20), which is exactly why the CIR path in the chart
+      above never touches zero despite the underlying random shocks being
+      strong enough to push the Vasicek path (using the identical \(\sigma\))
+      to \(-2\%\) at one point. It's worth being honest about what "comfortably
+      satisfied" is doing here: these particular parameters were chosen
+      specifically to produce a case where Vasicek visibly misbehaves while
+      CIR visibly does not — a real desk's actual short-rate parameters,
+      estimated from data rather than chosen for illustration, might sit much
+      closer to the Feller boundary, where the distinction between "CIR stays
+      positive" and "CIR occasionally touches zero" becomes a genuinely live,
+      parameter-sensitive question rather than a clean-cut demonstration.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>2015: negative Swiss and Eurozone policy rates break the "rates can't go negative" assumption</h3>
+    <p>
+      In January 2015, the Swiss National Bank's policy rate fell to -0.75%,
+      and the European Central Bank's deposit rate had already gone negative
+      the previous year — both parts of a broader move into negative-rate
+      territory across several major central banks that persisted for the
+      rest of that decade. Any desk still marking short-rate risk off a model
+      that structurally assumed nonnegativity (a lognormal short-rate model,
+      or a naive CIR implementation without a careful boundary treatment) had
+      to either patch the model or abandon it for those currencies — while a
+      Vasicek-family model, built on the assumption that had looked like its
+      obvious weakness for decades, needed no structural change at all to
+      remain consistent with the observed data. This is the honest version of
+      the "flaw becomes feature" point from step 1: it isn't that Vasicek was
+      secretly right all along and CIR was wrong, it's that neither model's
+      boundary behaviour is universally "correct" — which one is appropriate
+      depends entirely on the rate regime actually being modeled, and 2015
+      is a real, dated instance where that choice mattered financially, not
+      just theoretically.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📐</div>
+      <h4>Vasicek/CIR for intuition and risk-factor modelling</h4>
+      <p>Rarely used directly for pricing exotic rate derivatives on a modern desk, but still the standard teaching and stress-testing baseline for understanding mean-reverting rate dynamics and choosing between Gaussian and positivity-preserving assumptions.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🎯</div>
+      <h4>Hull-White for actual derivatives pricing</h4>
+      <p>Hull-White's exact fit to today's observed curve is what makes it (and its extensions) genuinely usable for pricing interest-rate derivatives — a model that already disagrees with today's market on plain vanilla instruments cannot be trusted on anything more exotic built on top of it.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🧮</div>
+      <h4>The Feller condition as a parameter-admissibility check</h4>
+      <p>Whenever CIR (or CIR-type variance processes, like Heston's) are calibrated to data, checking 2ab≥σ² against the fitted parameters is standard due diligence — a fit that violates it is still usable, but the process's zero-touching behaviour then needs explicit handling rather than being assumed away.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this gets misapplied</h3>
+    <p>
+      <strong>Simulating CIR with a naive Euler-Maruyama scheme and no
+      boundary handling.</strong> A plain discretization of
+      \(\sigma\sqrt{r_t}\) can produce a negative \(r_n\) at some step purely
+      from discretization error, even when the Feller condition holds for the
+      true continuous-time process — the square root of a negative number is
+      undefined, crashing the simulation. Standard practical fixes (full
+      truncation, reflection at zero) are needed regardless of whether Feller
+      holds theoretically; this lesson's own CIR chart uses exactly a
+      full-truncation scheme for this reason.
+    </p>
+    <p>
+      <strong>Assuming Hull-White's exact curve fit means the model is
+      "more correct" than Vasicek or CIR.</strong> Hull-White fits today's
+      curve exactly by construction, not because its underlying dynamics are
+      a better description of how rates actually evolve — the extra
+      \(\theta(t)\) flexibility is a calibration convenience, not evidence
+      about the true stochastic process generating rates.
+    </p>
+    <p>
+      <strong>Treating the Feller condition as a strict pass/fail gate on
+      model validity.</strong> A CIR fit that mildly violates \(2ab\ge\sigma^2\)
+      is not automatically an invalid model — the process is still
+      well-defined (via Yamada-Watanabe existence), it simply touches zero
+      occasionally rather than never, which may or may not matter depending
+      on the application.
+    </p>
+    <p>
+      <strong>Picking parameters (as this lesson's own chart does, honestly
+      flagged) to make one model look obviously better than another.</strong>
+      The chart above uses σ large enough, relative to b, to make Vasicek's
+      negativity visually dramatic — real fitted short-rate parameters are
+      often far closer to the boundary where the distinction is subtle, not
+      dramatic, and a demonstration chart should never be mistaken for a
+      general claim about how different these models look under realistic
+      calibration.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Vasicek is Ornstein-Uhlenbeck applied to the short rate.</strong> Identical math to ou-mean-reversion.html — dr_t=a(b−r_t)dt+σdW_t, not re-derived here.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Vasicek's Gaussian rate can go negative — historically a flaw, but a real feature once rates actually went negative in the 2010s-2020s.</strong> Which behaviour is "correct" depends on the regime, not on mathematical elegance.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>CIR's σ√r_t diffusion shrinks to zero as r_t→0, keeping the process positive under the Feller condition 2ab≥σ².</strong> Confirmed by direct simulation in this lesson — identical shocks, Vasicek dips to −2%, CIR never leaves a tight positive band.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>CIR's σ√r_t violates the Lipschitz condition at r_t=0.</strong> The standard existence theorem from sde-existence-uniqueness.html does not cover it — CIR needs the separate Yamada-Watanabe conditions instead.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Hull-White's time-dependent θ(t) is the standard fix for fitting today's observed yield curve exactly.</strong> One substitution over Vasicek's constant ab — the rest of the model is unchanged.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A naive CIR discretization can go negative even when Feller holds theoretically.</strong> Full-truncation or reflection schemes are standard practical fixes, needed regardless of the theoretical condition.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. How does the Vasicek short-rate model relate to the Ornstein-Uhlenbeck process covered elsewhere in this curriculum?</summary>
+    <div class="tl-answer">
+      They are the identical SDE. Vasicek's dr_t=a(b−r_t)dt+σdW_t is ou-mean-reversion.html's dX_t=θ(μ−X_t)dt+σdW_t with a↔θ, b↔μ, and X_t renamed r_t. All of the OU lesson's derivations — the closed-form Gaussian solution, the half-life ln(2)/a, the stationary variance — carry over unchanged; Vasicek is simply that math applied specifically to the instantaneous interest rate.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. State the Feller condition precisely, and explain in plain terms what it guarantees.</summary>
+    <div class="tl-answer">
+      The Feller condition is 2ab≥σ², where a is CIR's mean-reversion speed, b its long-run mean level, and σ its volatility scale. When satisfied, it guarantees the CIR process r_t never reaches exactly zero — the mean-reverting pull toward a positive long-run level, scaled by twice the reversion speed, dominates the variance of the random shocks, so the shrinking-diffusion mechanism (volatility scaling with √r_t) is strong enough to keep the process strictly positive for all time.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why does CIR's diffusion coefficient, σ√r_t, fail the global Lipschitz condition from the existence-and-uniqueness lesson, and what's the practical consequence?</summary>
+    <div class="tl-answer">
+      Checking the ratio |σ√r_t)-σ√0|/|r_t-0| = σ/√r_t as r_t→0 diverges to infinity — no finite Lipschitz constant K can bound it near the origin. The practical consequence is that the standard global-Lipschitz-plus-linear-growth existence theorem simply doesn't apply to CIR; existence and pathwise uniqueness are instead established via the separate, weaker Yamada-Watanabe (1971) conditions, built specifically to handle this kind of Hölder-continuous (but not Lipschitz) square-root behaviour.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What single substitution turns Vasicek into Hull-White, and what problem is that substitution solving?</summary>
+    <div class="tl-answer">
+      Hull-White replaces Vasicek's constant drift term ab with a time-dependent function θ(t): dr_t=[θ(t)−a·r_t]dt+σdW_t. Everything else (constant a, constant σ, Gaussian dynamics) is unchanged. The substitution solves the calibration problem that a constant-parameter Vasicek generally cannot exactly reproduce an arbitrary observed initial yield curve — θ(t) gives the model exactly enough extra degrees of freedom, chosen from the observed forward-rate curve, to fit today's market prices exactly before letting the dynamics evolve forward.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. A CIR model is fit to short-rate data and the Feller condition comes out only mildly violated (2ab slightly less than σ²). Is the model unusable?</summary>
+    <div class="tl-answer">
+      No. The process is still well-defined via the Yamada-Watanabe existence conditions even when Feller is violated — the practical consequence is only that the process can occasionally touch zero (typically reflected back up) rather than staying strictly positive for all time. Whether that matters depends on the application: it's a real behavioural difference worth being aware of and explicitly handling in simulation, not evidence the calibration or the model itself is broken.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Oldrich Vasicek, "An Equilibrium Characterization of the Term Structure," <em>Journal of Financial Economics</em>, Vol. 5, No. 2, 1977 — the original one-factor Gaussian short-rate model.</li>
+    <li>John C. Cox, Jonathan E. Ingersoll Jr. &amp; Stephen A. Ross, "A Theory of the Term Structure of Interest Rates," <em>Econometrica</em>, Vol. 53, No. 2, 1985 — the original CIR paper, including the Feller-condition boundary analysis.</li>
+    <li>William Feller, "Two Singular Diffusion Problems," <em>Annals of Mathematics</em>, Vol. 54, No. 1, 1951 — the classical boundary-classification analysis (the Feller condition, and Feller's broader boundary theory for one-dimensional diffusions) the CIR positivity result is built on.</li>
+    <li>John Hull &amp; Alan White, "Pricing Interest-Rate-Derivative Securities," <em>Review of Financial Studies</em>, Vol. 3, No. 4, 1990 — the original Hull-White extended-Vasicek model with time-dependent θ(t).</li>
+    <li><code>ou-mean-reversion.html</code> in this Theory Lab — the identical OU math Vasicek is built on, derived in full there rather than repeated here.</li>
+    <li><code>sde-existence-uniqueness.html</code> and Toshio Yamada &amp; Shinzo Watanabe (1971), cited there — the existence-and-uniqueness argument CIR's square-root diffusion actually requires.</li>
+    <li><code>yield-curve-construction.html</code> and <code>nelson-siegel-svensson.html</code> in this Theory Lab — the observed-curve machinery Hull-White's θ(t) is calibrated to match exactly.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="multivariate-correlated-sdes.html">← Multivariate &amp; Correlated SDEs</a>
+    <a href="neural-sdes-spdes.html">Neural SDEs &amp; Neural SPDEs →</a>
+  </div>
+</div>
+</body>
+</html>
