@@ -999,9 +999,16 @@ export function oiRefMove(inst, pair) {
   const spot = inst?.spot;
   if (!(spot > 0)) return null;
   const em = inst?.expectedMove?.move;
+  // On 6J/6C/6S the straddle is quoted in the INVERTED contract's units while spot is in
+  // pair terms, so the two are not comparable: USD/JPY produced 0.0018% of spot and
+  // USD/CHF 19%. Converting a straddle across the inversion correctly is its own piece of
+  // work, so for these pairs use flat vol — which is `spot × sigma × √T` and therefore
+  // always in pair units by construction.
+  const inverted = futuresIsInverted(pair || inst?.pair || '');
   // ivMetrics already rejects impossible straddles; re-check here so a record saved by
   // an older build (or hand-edited) can't reintroduce one.
-  if (Number.isFinite(em) && em > 0 && em < spot * 0.25) return { move: em, source: 'implied' };
+  if (!inverted && Number.isFinite(em) && em > 0
+      && em > spot * 0.0005 && em < spot * 0.25) return { move: em, source: 'implied' };
   const dte = Number.isFinite(inst?.dte) && inst.dte > 0 ? inst.dte : 14;
   const sig = oiFlatVol(pair || inst?.pair || '');
   return { move: spot * sig * Math.sqrt(dte / 365), source: 'flat-vol' };

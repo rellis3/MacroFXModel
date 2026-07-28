@@ -33,8 +33,15 @@ const _atmIndex = (strikes, spot) => {
 //
 // Reject rather than return garbage: callers already handle null by falling back.
 export const MAX_IMPLIED_MOVE_FRAC = 0.25;   // 25% of spot — far above any real ATM straddle
+// …and a FLOOR. The original guard only caught "too big", so USD/JPY stored an implied
+// move of 0.003 against a spot of 163.87 — 0.0018%, which is not a move, it is a unit
+// mismatch (the 6J straddle is priced in USD-per-JPY while spot is JPY-per-USD). An ATM
+// straddle is worth a meaningful fraction of spot at any real DTE; a few hundredths of a
+// percent means the two numbers are in different units.
+export const MIN_IMPLIED_MOVE_FRAC = 0.0005;   // 0.05% of spot
 function _sane(move, spot) {
   return Number.isFinite(move) && move > 0 && spot > 0
+    && move > spot * MIN_IMPLIED_MOVE_FRAC
     && move < spot * MAX_IMPLIED_MOVE_FRAC && (spot - move) > 0;
 }
 

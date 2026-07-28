@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <title>OI Analytics — Open Interest Dashboard</title>
 <style>
 /* ── Deliberately NOT the neon-card look: a dense analyst sheet. One accent
@@ -128,6 +129,31 @@ tr.dim td{opacity:.42}
 #zoomBox h3 .grow{flex:1}
 #zoomBody{padding:24px 22px}
 #zoomBody svg{min-height:400px}
+
+/* price chart + toolbar */
+#pxWrap{background:var(--bg2);border:1px solid var(--line);border-radius:7px;margin-bottom:18px;overflow:hidden}
+#pxWrap>h3{margin:0;padding:13px 17px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--tx);border-bottom:1px solid var(--line);background:var(--bg3);
+  display:flex;align-items:center;gap:8px;font-weight:600}
+#pxChart{height:430px;width:100%}
+.ctl{display:flex;gap:20px;flex-wrap:wrap;align-items:center;padding:11px 17px;
+  border-bottom:1px solid var(--line);background:#0f1319}
+.tfs{display:flex;gap:5px}
+.tfb{padding:5px 12px;font-size:12px}
+.ltogs{display:flex;gap:7px;flex-wrap:wrap}
+.ltog{display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12.5px;color:var(--tx3);
+  border:1px solid var(--line);border-radius:5px;padding:5px 11px;user-select:none}
+.ltog.on{color:var(--tx);border-color:var(--line2)}
+.ltog .sw{width:12px;height:12px;border-radius:3px;border:1.5px solid;display:inline-block;flex:none}
+
+/* Tooltips live in a BODY-LEVEL layer positioned by JS. As children of a panel they were
+   clipped by its overflow and painted underneath the panel above — unreadable exactly
+   where the page is densest. Nothing can clip a fixed element at the top of the stack. */
+#tip{display:none;position:fixed;z-index:900;width:350px;max-width:80vw;background:#05070a;
+  border:1px solid var(--acc);border-radius:7px;padding:13px 15px;font-size:13.5px;line-height:1.62;
+  color:var(--tx);box-shadow:0 16px 40px rgba(0,0,0,.8);pointer-events:none}
+#tip b{color:var(--acc)}
+#tip em{color:var(--tx2);font-style:normal;display:block;margin-top:8px;font-size:12.5px}
 </style>
 </head>
 <body>
@@ -146,8 +172,11 @@ tr.dim td{opacity:.42}
   </div>
 
   <div class="rail" id="rail"></div>
+  <div id="pxWrap"><h3><span class="grow">Price with OI levels</span></h3><div id="ctlHost"></div><div id="pxChart"></div></div>
   <div id="main"></div>
 </div>
+
+<div id="tip"></div>
 
 <div id="zoom"><div id="zoomBox">
   <h3><span class="grow" id="zoomTitle"></span><button class="btn" onclick="closeZoom()">Close ✕</button></h3>
@@ -217,7 +246,7 @@ const HELP = {
   perexp:['Per-expiry structure','Where each expiry pins, so you can see whether near and far horizons agree.','If a nearby expiry and a distant one pin at very different prices, expect the level to shift once the near one expires.'],
   volmag:['Volume magnets','Strikes with the heaviest <b>volume traded today</b>, as opposed to resting open interest.','Volume is activity, open interest is commitment. A strike busy today with little open interest is a fresh fight, not an established wall.'],
 };
-const h = k => HELP[k] ? `<i class="h">?<span class="tip"><b>${HELP[k][0]}</b><br>${HELP[k][1]}${HELP[k][2]?`<em>${HELP[k][2]}</em>`:''}</span></i>` : '';
+const h = k => HELP[k] ? `<i class="h" data-k="${k}">?</i>` : '';
 const pips = (v,sp,k) => (Number.isFinite(v)&&Number.isFinite(sp)) ? ((v-sp)/pip(k)) : NaN;
 
 // ── zoom: any panel can be opened full-screen ──
@@ -235,6 +264,155 @@ function panel(cls,key,title,helpKey,render,flush){
     + `<button class="zoom" onclick="openZoom('${key}')">&#10530; Enlarge</button></h3>`
     + `<div class="body${flush?' flush':''}">${render(e,false)}</div></div>`;
 }
+
+// ── PRICE CHART with every OI level drawn on it ──────────────────────────────
+// Same library and candle feed the OI-bot page uses (`/api/oanda_ohlc5m`), so a level
+// here sits exactly where it sits there. Each level TYPE can be switched off, because
+// with walls, flips, max pain, the expected-move band and volume magnets all on at once
+// the chart is unreadable — which is the whole complaint this answers.
+const OANDA_SYM = {'EUR/USD':'EUR_USD','GBP/USD':'GBP_USD','USD/JPY':'USD_JPY','AUD/USD':'AUD_USD',
+  'XAU/USD':'XAU_USD','USD/CAD':'USD_CAD','USD/CHF':'USD_CHF','NAS100_USD':'NAS100_USD',
+  'SPX500_USD':'SPX500_USD','US30_USD':'US30_USD','US2000_USD':'US2000_USD','DE30_USD':'DE30_EUR','UK100_GBP':'UK100_GBP'};
+
+// Which level types the chart can draw, their colour, and whether they start visible.
+// Walls default ON (they're the tradeable levels); the greek flips default OFF because
+// they are context and four extra dotted lines drown the walls out.
+const LINE_TYPES = [
+  {k:'call_wall', label:'Call walls',   col:'#e8615f', on:true,  style:0},
+  {k:'put_wall',  label:'Put walls',    col:'#46b87a', on:true,  style:0},
+  {k:'max_pain',  label:'Max pain',     col:'#ddc551', on:true,  style:2},
+  {k:'gex_flip',  label:'GEX flip',     col:'#a68ae8', on:true,  style:1},
+  {k:'gamma_flip',label:'Gamma flip',   col:'#54a8de', on:false, style:1},
+  {k:'charm_flip',label:'Charm flip',   col:'#e8963c', on:false, style:1},
+  {k:'vanna_flip',label:'Vanna flip',   col:'#a68ae8', on:false, style:1},
+  {k:'exp_move',  label:'Expected move',col:'#8aa0b4', on:true,  style:1},
+  {k:'oi_volume', label:'Volume magnets',col:'#54a8de',on:false, style:1},
+];
+let LINES_ON = Object.fromEntries(LINE_TYPES.map(t=>[t.k,t.on]));
+let _chart=null, _series=null, _priceLines=[], _candleCache={}, _tf='H1';
+
+// Every level the chart can draw, from the stored record. Walls come from the same
+// near-money selection the export uses, so the chart never shows a level the indicator
+// would have filtered out.
+function chartLevels(e){
+  const out=[], rm=e.refMove?.move;
+  const nearOK = s => !(rm>0) || Math.abs(s-e.spot) <= 2.5*rm;
+  const add=(price,type,label)=>{ if(Number.isFinite(price)&&price>0) out.push({price,type,label}); };
+  ((e.callWalls)||[]).filter(w=>w.tier&&nearOK(w.strike)).slice(0,4)
+    .forEach(w=>add(w.strike,'call_wall',`call ${fOI(w.oi)}`));
+  ((e.putWalls)||[]).filter(w=>w.tier&&nearOK(w.strike)).slice(0,4)
+    .forEach(w=>add(w.strike,'put_wall',`put ${fOI(w.oi)}`));
+  add(e.maxPain,'max_pain','max pain');
+  add(e.gexFlip,'gex_flip','GEX flip');
+  add(e.gammaFlip,'gamma_flip','γ flip');
+  add(e.greeksFlow?.charmFlip,'charm_flip','charm');
+  add(e.greeksFlow?.vannaFlip,'vanna_flip','vanna');
+  add(e.expectedMove?.upper,'exp_move','exp move ↑');
+  add(e.expectedMove?.lower,'exp_move','exp move ↓');
+  (e.volumeMagnets||[]).slice(0,3).forEach(v=>add(v.strike,'oi_volume',`vol ${fOI(v.volume)}`));
+  return out;
+}
+
+function drawLines(){
+  const e=STORE[SYM]; if(!_series||!e) return;
+  _priceLines.forEach(l=>{ try{_series.removePriceLine(l);}catch(_){} });
+  _priceLines=[];
+  const LSty = window.LightweightCharts ? LightweightCharts.LineStyle : {Solid:0,Dotted:1,Dashed:2};
+  const styleOf = n => n===0?LSty.Solid : n===2?LSty.Dashed : LSty.Dotted;
+  chartLevels(e).forEach(lv=>{
+    const t=LINE_TYPES.find(x=>x.k===lv.type); if(!t||!LINES_ON[lv.type]) return;
+    // Chart shows SPOT prices (the candles are spot), so always plot the spot-adjusted
+    // value regardless of the page's futures/spot toggle — a futures level drawn on a
+    // spot chart would sit in the wrong place by exactly the basis.
+    try{
+      _priceLines.push(_series.createPriceLine({
+        price: lv.price, color: t.col, lineWidth: lv.type.endsWith('_wall')?2:1,
+        lineStyle: styleOf(t.style), axisLabelVisible: true, title: lv.label,
+      }));
+    }catch(_){}
+  });
+}
+
+async function loadCandles(){
+  const os=OANDA_SYM[SYM]; if(!os) return null;
+  const key=os+'|'+_tf;
+  if(_candleCache[key]) return _candleCache[key];
+  const r=await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(os)}&granularity=${_tf}`,{cache:'no-store'});
+  if(!r.ok) throw new Error('candles '+r.status);
+  const j=await r.json();
+  const rows=(j.values||[]).map(v=>({
+    time: Number(v.t), open:+v.open, high:+v.high, low:+v.low, close:+v.close,
+  })).filter(c=>Number.isFinite(c.time)&&Number.isFinite(c.close)).sort((a,b)=>a.time-b.time);
+  _candleCache[key]=rows;
+  return rows;
+}
+
+async function mountChart(){
+  const el=document.getElementById('pxChart');
+  if(!el) return;
+  if(!window.LightweightCharts){ el.innerHTML='<div class="empty">Chart library did not load.</div>'; return; }
+  if(!_chart){
+    _chart=LightweightCharts.createChart(el,{
+      layout:{background:{color:'#12161c'},textColor:'#a8b1bd',fontSize:12},
+      grid:{vertLines:{color:'#1d232b'},horzLines:{color:'#1d232b'}},
+      rightPriceScale:{borderColor:'#333b46',scaleMargins:{top:.12,bottom:.12}},
+      timeScale:{borderColor:'#333b46',timeVisible:true,secondsVisible:false},
+      crosshair:{mode:LightweightCharts.CrosshairMode.Normal},
+      autoSize:true,
+    });
+    _series=_chart.addCandlestickSeries({upColor:'#46b87a',downColor:'#e8615f',
+      borderUpColor:'#46b87a',borderDownColor:'#e8615f',wickUpColor:'#46b87a',wickDownColor:'#e8615f'});
+  }
+  try{
+    const rows=await loadCandles();
+    if(!rows||!rows.length){ el.innerHTML='<div class="empty">No candles for this instrument.</div>'; return; }
+    _series.setData(rows);
+    _chart.timeScale().fitContent();
+    drawLines();
+  }catch(err){
+    el.insertAdjacentHTML('beforeend',`<div class="empty">Candles failed: ${esc(err.message)}</div>`);
+  }
+}
+
+function chartToolbar(){
+  const tf=['M15','H1','H4','D'].map(t=>`<button class="btn tfb ${t===_tf?'on':''}" data-tf="${t}">${t}</button>`).join('');
+  const toggles=LINE_TYPES.map(t=>`<label class="ltog ${LINES_ON[t.k]?'on':''}" data-lk="${t.k}">
+    <span class="sw" style="background:${LINES_ON[t.k]?t.col:'transparent'};border-color:${t.col}"></span>${t.label}</label>`).join('');
+  return `<div class="ctl"><div class="tfs">${tf}</div><div class="ltogs">${toggles}</div></div>`;
+}
+
+function wireChartToolbar(){
+  document.querySelectorAll('.tfb').forEach(b=>b.onclick=()=>{ _tf=b.dataset.tf; render(); });
+  document.querySelectorAll('.ltog').forEach(l=>l.onclick=()=>{
+    LINES_ON[l.dataset.lk]=!LINES_ON[l.dataset.lk];
+    const t=LINE_TYPES.find(x=>x.k===l.dataset.lk);
+    l.classList.toggle('on',LINES_ON[l.dataset.lk]);
+    l.querySelector('.sw').style.background=LINES_ON[l.dataset.lk]?t.col:'transparent';
+    drawLines();
+  });
+}
+
+
+// Delegated hover, so re-rendering the page never loses the tooltips.
+(function(){
+  const tipEl = () => document.getElementById('tip');
+  document.addEventListener('mouseover', ev => {
+    const ic = ev.target.closest && ev.target.closest('.h'); if(!ic) return;
+    const d = HELP[ic.dataset.k]; if(!d) return;
+    const t = tipEl();
+    t.innerHTML = `<b>${d[0]}</b><br>${d[1]}` + (d[2] ? `<em>${d[2]}</em>` : '');
+    t.style.display = 'block';
+    const r = ic.getBoundingClientRect(), tr = t.getBoundingClientRect();
+    let left = r.left + r.width/2 - tr.width/2;
+    left = Math.max(10, Math.min(left, window.innerWidth - tr.width - 10));
+    // Prefer above; flip below when there isn't room, so it is never cut off.
+    const top = (r.top - tr.height - 10 < 8) ? r.bottom + 10 : r.top - tr.height - 10;
+    t.style.left = left + 'px'; t.style.top = top + 'px';
+  });
+  document.addEventListener('mouseout', ev => {
+    if (ev.target.closest && ev.target.closest('.h')) tipEl().style.display = 'none';
+  });
+})();
 
 async function load(){
   const r = await fetch('/api/kv/get?key=oi_store',{cache:'no-store'});
@@ -538,6 +716,9 @@ function render(){
     + panel('c4','perexp','Per-expiry structure','perexp',termTable,true)
     + panel('c4','vol','Volume magnets','volmag',volumePanel,true)
     + '</div>';
+  document.getElementById('ctlHost').innerHTML = chartToolbar();
+  wireChartToolbar();
+  mountChart();
 }
 
 document.getElementById('unitBtn').onclick=()=>{SPOTADJ=!SPOTADJ;render();};
