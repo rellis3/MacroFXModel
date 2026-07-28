@@ -1659,12 +1659,35 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
       if (path === '/api/cot-extremes') {
         const debugMode = url.searchParams.get('debug') === '1';
 
-        if (!debugMode && env.FX_SCORES) {
+        const wantHist0 = (url.searchParams.get('history') || '').toUpperCase();
+        const forceFresh = url.searchParams.get('refresh') === '1';
+
+        if (!debugMode && !forceFresh && env.FX_SCORES) {
           const cached = await env.FX_SCORES.get('cot_extremes_v2').catch(() => null);
           if (cached) {
             try {
               const { ts, data } = JSON.parse(cached);
-              if (Date.now() - ts < 7 * 24 * 60 * 60 * 1000) return json(data);
+              if (Date.now() - ts < 7 * 24 * 60 * 60 * 1000) {
+                // The cached payload is deliberately LEAN — the 200-week series is stripped
+                // before caching, so a `?history=` request served straight from cache would
+                // return null forever and no refresh would ever fix it (that is exactly what
+                // happened). Serve the series from its OWN key instead, so clicking a market
+                // costs a KV read rather than a fresh CFTC fetch.
+                if (wantHist0) {
+                  const sraw = await env.FX_SCORES.get('cot_series_v1').catch(() => null);
+                  if (sraw) {
+                    try {
+                      const sj = JSON.parse(sraw);
+                      const hit = sj?.series?.[wantHist0];
+                      if (hit) return json({ ...data, history: hit });
+                    } catch(_) {}
+                  }
+                  // No series stored yet (cached before this existed) → fall through and
+                  // recompute, which populates the key for every later request.
+                } else {
+                  return json(data);
+                }
+              }
             } catch(_) {}
           }
         }
@@ -1976,7 +1999,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         // is returned lean. Charting the trend behind a percentile needs the series, but
         // shipping all 35 on every poll would be a ~2MB response for a page that only
         // ever draws one at a time.
-        const wantHist = (url.searchParams.get('history') || '').toUpperCase();
+        const wantHist = wantHist0;
         const histRow = wantHist ? allInstruments.find(x => x.sym === wantHist) : null;
         const history = histRow ? { sym: histRow.sym, label: histRow.label, ...histRow._series } : null;
         const lean = allInstruments.map(({ _series, ...rest }) => rest);
@@ -1988,6 +2011,12 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         if (env.FX_SCORES) {
           await env.FX_SCORES.put('cot_extremes_v2', JSON.stringify({ ts: Date.now(), data: payload2 }),
             { expirationTtl: 7 * 86400 }).catch(() => {});
+          // Series in a SEPARATE key: keeps the hot path lean while making every
+          // instrument's 200-week history a KV read away instead of a CFTC round trip.
+          const series = {};
+          for (const r of allInstruments) if (r._series) series[r.sym] = { sym: r.sym, label: r.label, ...r._series };
+          await env.FX_SCORES.put('cot_series_v1', JSON.stringify({ ts: Date.now(), series }),
+            { expirationTtl: 8 * 86400 }).catch(() => {});
         }
 
         return json(payload2);

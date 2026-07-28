@@ -99,6 +99,7 @@ svg{display:block;width:100%;height:auto;overflow:visible}
     <div class="right">
       <button class="btn" id="basisBtn">Ranking: % OF OI</button>
       <button class="btn" id="reload">Reload</button>
+      <button class="btn" id="freshBtn" title="Re-fetch from the CFTC, bypassing the 7-day cache. Needed once to populate the 200-week series.">Refresh CFTC</button>
       <a class="btn" href="oi-dashboard.html">&#9670; OI Analytics</a>
       <a class="btn" href="index.html">Dashboard</a>
     </div>
@@ -356,6 +357,18 @@ function render(){
 
 document.getElementById('basisBtn').onclick=()=>{BASIS=(BASIS==='share')?'raw':'share';render();};
 document.getElementById('reload').onclick=()=>boot();
+// The lean payload is cached for 7 days and the series lives in its own key. If that key
+// predates the series existing, history stays empty until something forces a recompute —
+// this is that button. Slow (a real CFTC fetch), so it is explicit rather than automatic.
+document.getElementById('freshBtn').onclick=async()=>{
+  const b=document.getElementById('freshBtn'), was=b.textContent;
+  b.textContent='fetching CFTC…';
+  try{
+    const r=await fetch('/api/cot-extremes?refresh=1',{cache:'no-store'});
+    DATA=await r.json(); HIST={};
+  }catch(err){ DATA={ok:false,error:err.message}; }
+  b.textContent=was; render();
+};
 
 async function boot(){
   document.getElementById('sub').textContent='loading…';

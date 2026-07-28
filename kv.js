@@ -52,6 +52,9 @@ const _CF_EXACT = new Set([
   'journal_store', 'journal_replay_store',
   'oi_store',               // user-pasted CME OI data — cannot be auto-rebuilt
   'cot_data',               // parsed CFTC COT — requires user-set URL to rebuild
+  'cot_series_v1',          // 200-week COT series per market — a CACHE, but written at most weekly and
+                            // rebuilding costs a full CFTC refetch, so it is worth surviving a redeploy
+                            // (weekly writes are negligible against the CF KV quota)
   'cot_urls',               // user-configured CFTC report URLs (multi-asset)
   'cot_url',                // legacy single CFTC URL key
   'caps',                   // user-configured proximity caps
