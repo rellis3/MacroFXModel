@@ -64,6 +64,42 @@ export const COG_LIQUIDITY_1A_INPUTS = [
 // [-1, +1] ("normalized") and averaged; the equal-weight blend of those
 // normalized values is this input's final contribution before `sign`/weight
 // — see computeInputContribution in cogLiquidityGate.js.
+// ── Gate calibration mode (added 2026-07-28 after the first REAL-data run) ──
+// The first run of the daily 4-gate engine on real FRED/Yahoo data (2014-2026,
+// 3,161 bars) produced ONE trade in 12.5 years. Gate 1 was NEUTRAL on 91.2% of
+// bars (BULLISH 0.76%, BEARISH 0.06%) and Gate 3 directional on only 12.4%, so
+// the conjunction fired ~1 day in 2,700. The diagnosis is NOT "the thresholds
+// are a bit tight" — it is a distributional error:
+//
+//   score = avgVote x 5, where avgVote is the WEIGHTED AVERAGE of six per-input
+//   signals each already squashed into [-1,+1]. Averaging N noisy signals
+//   shrinks the composite's spread by ~sqrt(N), so the composite lives in a
+//   band far narrower than any single input's. `bullishThreshold: 2` requires
+//   avgVote > 0.4 — i.e. six macro series simultaneously agreeing at 40% of
+//   full scale. That is rare BY CONSTRUCTION, at any threshold value.
+//
+// It is the same class of mistake as the documented "four hard AND-gates =
+// zero trades" lesson: a structural/distributional error wearing the costume of
+// a tuning problem. And an absolute cutoff cannot work across a 12-year window
+// spanning QE, QT and COVID anyway — the liquidity composite's own scale drifts
+// with the regime.
+//
+// The fix is regime-relative: classify by the score's ROLLING PERCENTILE within
+// its own causal history, so the dead zone is defined as a fraction of the
+// score's recent distribution rather than an invented absolute number. One
+// interpretable parameter (how wide the neutral band is, in percent of the
+// distribution) replaces a magic cutoff, and it self-calibrates across regimes.
+//
+// `neutralPct` is deliberately anchored to an OBSERVATION rather than invented:
+// COG trades ~24% of weekdays (COG_OBSERVED_SYSTEM.md §4b), so the gates should
+// be permissive enough that the conjunction can reach roughly that rate.
+// mode:'absolute' reproduces the pre-2026-07-28 behaviour exactly.
+export const COG_GATE_CALIBRATION = {
+  mode: 'absolute',   // 'absolute' | 'percentile'
+  windowDays: 504,    // ~2y causal lookback for the percentile rank
+  neutralPct: 30,     // middle X% of the score's own distribution = NEUTRAL
+};
+
 export const COG_LIQUIDITY_1A_SCORE = {
   range: [-5, 5],
   bullishThreshold: 2,     // RegimeScore > +2 → BULLISH

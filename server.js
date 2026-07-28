@@ -16212,6 +16212,9 @@ app.post('/api/cog-threshold/run', express.json({ limit: '1mb' }), (req, res) =>
   const instrumentKey = body.instrumentKey || undefined;
   const stopModelId = body.stopModelId || undefined;
   const requestedTier = body.requestedTier || undefined;
+  // Gate calibration: {mode:'percentile', windowDays, neutralPct} opts Gate 1
+  // and Gate 3 out of their invented absolute cutoffs (COG_GATE_CALIBRATION).
+  const calibration = body.calibration && typeof body.calibration === 'object' ? body.calibration : undefined;
   // Event-driven intraday engine has no real-data loader yet (see
   // cogEventBacktestEngine.js header) — it's synthetic-only until one is
   // built, so dataMode is forced regardless of what the client sent.
@@ -16263,7 +16266,7 @@ app.post('/api/cog-threshold/run', express.json({ limit: '1mb' }), (req, res) =>
           : generateSyntheticCogDataset({ start, end, seed });
         cogJobs.get(jobId).phase = 'Running 4-gate backtest + Exit Engine…';
 
-        const result = runCogBacktest(dataset, { accountEquity, instrumentKey, stopModelId, requestedTier });
+        const result = runCogBacktest(dataset, { accountEquity, instrumentKey, stopModelId, requestedTier, calibration });
 
         cogJobs.get(jobId).phase = 'Computing performance & robustness reports…';
         const performance = computeCogPerformanceReport({ dates: result.dates, equityCurve: result.equityCurve, trades: result.trades });
@@ -16277,7 +16280,7 @@ app.post('/api/cog-threshold/run', express.json({ limit: '1mb' }), (req, res) =>
           synthetic: dataset.synthetic,
           engine: 'daily',
           dateRange: { start: result.dates[0] ?? null, end: result.dates[result.dates.length - 1] ?? null },
-          options: { dataMode, seed, accountEquity, instrumentKey: instrumentKey || 'primary', stopModelId: stopModelId || COG_EXECUTION.defaultStopModel, requestedTier: requestedTier || COG_EXECUTION.defaultTier },
+          options: { dataMode, seed, accountEquity, instrumentKey: instrumentKey || 'primary', stopModelId: stopModelId || COG_EXECUTION.defaultStopModel, requestedTier: requestedTier || COG_EXECUTION.defaultTier, calibration: calibration || { mode: 'absolute' } },
           trades: result.trades,
           equityCurve: result.dates.map((d, i) => ({ date: d, equity: result.equityCurve[i], equityDollars: result.equityCurveDollars[i] })),
           performance, monteCarlo, walkForward, outOfSample, gateHitRates,

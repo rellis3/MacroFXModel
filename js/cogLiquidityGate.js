@@ -19,7 +19,7 @@
 // scaled onto [-1,+1], then average the two before applying `sign`/`weight`.
 
 import { roc, rollingZScore, rollingPercentile, clip } from './nasdaqTransforms.js';
-import { COG_LIQUIDITY_1A_INPUTS, COG_LIQUIDITY_1A_SCORE } from './cogConfig.js';
+import { COG_LIQUIDITY_1A_INPUTS, COG_LIQUIDITY_1A_SCORE, COG_GATE_CALIBRATION } from './cogConfig.js';
 
 const TRADING_DAYS_PER_CALENDAR_DAY = 5 / 7; // weekday-only series approximation
 
@@ -89,8 +89,9 @@ function buildContribution(input, rawValue, normalized) {
 // caller onto the dataset's common `dates` axis — see cogBacktestEngine.js).
 // Returns one entry per bar: { dataValid, state, score, coverage, marginal,
 // contributions[], reasons[] }.
-export function computeLiquidityGate1A(seriesById, n) {
+export function computeLiquidityGate1A(seriesById, n, calibration) {
   const { range, bullishThreshold, bearishThreshold, minCoverage, marginalMargin } = COG_LIQUIDITY_1A_SCORE;
+  const cal = { ...COG_GATE_CALIBRATION, ...(calibration || {}) };
   const totalWeight = COG_LIQUIDITY_1A_INPUTS.reduce((a, inp) => a + inp.weight, 0);
   const out = new Array(n);
 
@@ -101,6 +102,10 @@ export function computeLiquidityGate1A(seriesById, n) {
     normalizedByInput[input.id] = series ? precomputeInputSignal(series) : null;
   }
 
+  // Pass 1 — contributions and the composite score per bar. Classification is
+  // deferred to pass 2 because percentile mode needs the score's own history.
+  const rows = new Array(n);
+  const scoreArr = new Array(n).fill(NaN);
   for (let i = 0; i < n; i++) {
     const contributions = [];
     let weightedSum = 0, weightPresent = 0;
@@ -117,15 +122,37 @@ export function computeLiquidityGate1A(seriesById, n) {
     // [-5,+5] RegimeScore range.
     const avgVote = weightPresent > 0 ? weightedSum / weightPresent : null;
     const score = dataValid && avgVote != null ? clip(avgVote * range[1], range[0], range[1]) : null;
+    rows[i] = { contributions, coverage, dataValid, score };
+    if (score != null) scoreArr[i] = score;
+  }
+
+  // Percentile mode: rank each bar's score inside its own trailing window
+  // (causal — rollingPercentile looks back only). NaN until the window fills,
+  // and those early bars fall back to the absolute thresholds.
+  const pct = cal.mode === 'percentile' ? rollingPercentile(scoreArr, cal.windowDays) : null;
+  const loCut = 50 - cal.neutralPct / 2;   // below → BEARISH
+  const hiCut = 50 + cal.neutralPct / 2;   // above → BULLISH
+
+  for (let i = 0; i < n; i++) {
+    const { contributions, coverage, dataValid, score } = rows[i];
 
     let state = 'INVALID';
+    const p = pct ? pct[i] : NaN;
     if (dataValid && score != null) {
-      if (score > bullishThreshold) state = 'BULLISH';
-      else if (score < bearishThreshold) state = 'BEARISH';
-      else state = 'NEUTRAL';
+      if (pct && Number.isFinite(p)) {
+        if (p > hiCut) state = 'BULLISH';
+        else if (p < loCut) state = 'BEARISH';
+        else state = 'NEUTRAL';
+      } else {
+        if (score > bullishThreshold) state = 'BULLISH';
+        else if (score < bearishThreshold) state = 'BEARISH';
+        else state = 'NEUTRAL';
+      }
     }
     const marginal = dataValid && score != null && (
-      Math.abs(score - bullishThreshold) <= marginalMargin || Math.abs(score - bearishThreshold) <= marginalMargin
+      pct && Number.isFinite(p)
+        ? Math.min(Math.abs(p - hiCut), Math.abs(p - loCut)) <= 5
+        : Math.abs(score - bullishThreshold) <= marginalMargin || Math.abs(score - bearishThreshold) <= marginalMargin
     );
 
     // Reasons text: top-3 contributions by |contribution|, phrased via PHRASES.
