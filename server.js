@@ -1965,6 +1965,11 @@ async function _injectServerContext(pair, s) {
       const perPair = pk ? hist[pk] : null;
       if (perPair) {
         const dates = Object.keys(perPair).sort();
+        // Say how deep the archive is. Without this, "no prior day" and "nothing moved"
+        // produce an IDENTICAL brief (the whole OI-CHANGE block just vanishes), so a
+        // broken archive reads as a quiet market. Surfacing the depth makes the
+        // difference visible instead of silent.
+        s.oiHistoryDays = dates.length;
         const cur = perPair[dates[dates.length - 1]], prev = perPair[dates[dates.length - 2]];
         const dl = (cur && prev) ? oiDeltas(cur, prev) : null;
         if (dl) {
@@ -2086,7 +2091,8 @@ Call walls firming: ${s.oiChange.callWalls.strengthening.map(w => `${w.strike}(+
 Put walls firming: ${s.oiChange.putWalls.strengthening.map(w => `${w.strike}(+${w.delta})`).join(', ') || 'none'}  |  fading: ${[...s.oiChange.putWalls.weakening.map(w => `${w.strike}(${w.delta})`), ...s.oiChange.putWalls.faded.map(w => `${w.strike}(gone)`)].join(', ') || 'none'}
 New walls appeared: ${[...s.oiChange.callWalls.appeared.map(w => `C${w.strike}`), ...s.oiChange.putWalls.appeared.map(w => `P${w.strike}`)].join(', ') || 'none'}${s.oiChange.classify ? `
 Change read: ${s.oiChange.classify}${(s.oiChange.events || []).filter(e => e.type === 'fresh_wall' || e.type === 'fresh_positioning').length ? ` · fresh: ${s.oiChange.events.filter(e => e.type === 'fresh_wall' || e.type === 'fresh_positioning').map(e => `${e.kind[0].toUpperCase()}${e.strike}${e.pct != null ? `(+${e.pct}%)` : ''}`).join(', ')}` : ''}` : ''}${(s.oiStability || []).length ? `
-Wall stability: ${s.oiStability.map(w => `${w.kind[0].toUpperCase()}${w.strike} ${w.established ? `${w.daysPresent}d established` : w.fresh ? 'fresh' : `${w.daysPresent}d`}`).join(', ')} (established walls more reliable than overnight ones)` : ''}
+Wall stability: ${s.oiStability.map(w => `${w.kind[0].toUpperCase()}${w.strike} ${w.established ? `${w.daysPresent}d established` : w.fresh ? 'fresh' : `${w.daysPresent}d`}`).join(', ')} (established walls more reliable than overnight ones)` : ''}${!s.oiChange ? `
+OI CHANGE: UNAVAILABLE — only ${s.oiHistoryDays ?? 0} day(s) of OI archive for this pair, so day-over-day dynamics (walls firming/fading, positioning building/unwinding, wall stability) CANNOT be read today. Treat the levels above as a static snapshot. Do NOT infer that positioning was unchanged — it is unmeasured, which is not the same thing.` : ''}
 (A wall that firmed = support/resistance more reliable; a wall defended then fading = next test may break — weight accordingly.)` : ''}`
   : '  No OI data loaded for this pair  -  paste via OI button'}
 
@@ -8063,30 +8069,42 @@ function _oiHistorySummary(inst) {
     savedAtMs: inst.savedAtMs ?? null,
   };
 }
-async function _snapshotOIHistory() {
+// Returns { n, wrote, day }. `force` makes the manual endpoint write even when nothing
+// changed, so a user-triggered archive is never a no-op that reports zero.
+async function _snapshotOIHistory(force = false) {
   try {
     const raw = await kv.get('oi_store').catch(() => null);
-    if (!raw) return 0;
+    if (!raw) return { n: 0, wrote: false, day: null };
     const store = JSON.parse(raw).data ?? JSON.parse(raw);
-    if (!store || typeof store !== 'object') return 0;
+    if (!store || typeof store !== 'object') return { n: 0, wrote: false, day: null };
     const day = _rlSessionDate(null);
     const histRaw = await kv.get('oi_history').catch(() => null);
     const hist = histRaw ? (JSON.parse(histRaw).data ?? JSON.parse(histRaw)) : {};
-    let n = 0;
+    let n = 0, changed = 0;
     for (const [pair, inst] of Object.entries(store)) {
       const summary = _oiHistorySummary(inst);
       if (!summary) continue;
       hist[pair] = hist[pair] || {};
+      // This runs on a 30-min timer but the underlying paste changes ~once a day, so
+      // compare before overwriting. `oi_history` is now a CF KV key (durable), and CF
+      // KV's free plan allows 1,000 writes/day — blindly re-putting an identical blob 48
+      // times a day would spend 5% of that quota to store nothing new.
+      const before = JSON.stringify(hist[pair][day] ?? null);
       hist[pair][day] = summary;                                 // overwrite today (tracks the latest morning paste)
+      if (JSON.stringify(summary) !== before) changed++;
       const dates = Object.keys(hist[pair]).sort();
-      for (const d of dates.slice(0, Math.max(0, dates.length - 60))) delete hist[pair][d];   // keep ~60 days
+      const trim = dates.slice(0, Math.max(0, dates.length - 60));            // keep ~60 days
+      for (const d of trim) delete hist[pair][d];
+      if (trim.length) changed++;                                // a trim is a real change too
       n++;
     }
-    if (!n) return 0;
+    if (!n) return { n: 0, wrote: false, day };
+    // Nothing new — don't spend a KV write (unless the user explicitly forced one).
+    if (!changed && !force) return { n, wrote: false, day };
     await kv.put('oi_history', JSON.stringify({ data: hist, timestamp: Date.now() }));
-    console.log(`[oi-history] archived ${n} pair(s) → ${day}`);
-    return n;
-  } catch (e) { console.error('[oi-history] snapshot failed:', e.message); return 0; }
+    console.log(`[oi-history] archived ${n} pair(s), ${changed} changed → ${day}`);
+    return { n, wrote: true, day };
+  } catch (e) { console.error('[oi-history] snapshot failed:', e.message); return { n: 0, wrote: false, day: null, error: e.message }; }
 }
 setInterval(_snapshotOIHistory, 30 * 60_000);                    // archive the day's paste periodically
 setTimeout(_snapshotOIHistory, 50_000);
@@ -8133,7 +8151,8 @@ app.get('/api/oi-history', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 app.post('/api/oi-history/snapshot', async (_req, res) => {
-  try { const n = await _snapshotOIHistory(); res.json({ ok: true, pairsArchived: n, date: _rlSessionDate(null) }); }
+  // force:true — a manual archive must actually write, so it can never look like a no-op.
+  try { const r = await _snapshotOIHistory(true); res.json({ ok: !r.error, pairsArchived: r.n, wrote: r.wrote, date: r.day ?? _rlSessionDate(null), ...(r.error ? { error: r.error } : {}) }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 

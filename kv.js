@@ -34,6 +34,7 @@ const KV_FILE   = path.join(DATA_DIR, 'kv.json');
 //    tg_config                            — Telegram bot credentials
 //    ai_alert_cfg                         — alert thresholds/pairs
 //    oi_store                             — user-pasted CME OI data (cannot auto-rebuild)
+//    oi_history                           — 60-day OI summary archive (only re-accumulable by waiting)
 //    cot_data, cot_urls, cot_url          — CFTC COT data + user-set report URLs
 //    caps                                 — user-configured proximity caps
 //
@@ -51,6 +52,14 @@ const _CF_EXACT = new Set([
   'surprise_alert_config',   // cone surprise-alert: enable + Telegram creds + thresholds/pairs — user-entered, must survive redeploys
   'journal_store', 'journal_replay_store',
   'oi_store',               // user-pasted CME OI data — cannot be auto-rebuilt
+  'oi_history',             // ~60-day day-over-day archive of the OI summary per pair. DERIVED from
+                            // oi_store, but oi_store only ever holds the LATEST paste, so history is
+                            // gone forever if lost — it can only be re-accumulated by waiting 60 more
+                            // days. Was in the file store until 2026-07-28, which reset it to a single
+                            // day on every redeploy; that silently nulled every day-over-day read
+                            // built on it (brief oiChange / oiStability / flip-drift, /api/oi-history).
+                            // `_snapshotOIHistory` now writes only when the summary actually CHANGED
+                            // (~1-2/day on paste, not 48/day on its 30-min timer) to stay quota-cheap.
   'cot_data',               // parsed CFTC COT — requires user-set URL to rebuild
   'cot_series_v1',          // 200-week COT series per market — a CACHE, but written at most weekly and
                             // rebuilding costs a full CFTC refetch, so it is worth surviving a redeploy
