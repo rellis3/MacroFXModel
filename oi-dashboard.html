@@ -10,32 +10,32 @@
      everything on a strict 12-col grid so numbers line up down the page. ── */
 :root{
   --bg:#0b0d10; --bg2:#111419; --bg3:#161a20; --line:#232830; --line2:#2e343d;
-  --tx:#e6e9ee; --tx2:#9aa3af; --tx3:#646d7a;
-  --acc:#e0a339; --call:#e05656; --put:#3fae6d; --pain:#d9c04a;
+  --tx:#eef1f5; --tx2:#a8b1bd; --tx3:#71798a;
+  --acc:#e0a339; --call:#e8615f; --put:#46b87a; --pain:#d9c04a;
   --gam:#9b7de0; --vol:#4b9fd6; --warn:#e08a3c; --ok:#3fae6d;
   --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);
-  font:13px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif}
+  font:15px/1.6 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif}
 a{color:var(--acc)}
-.wrap{max-width:1560px;margin:0 auto;padding:0 18px 60px}
+.wrap{max-width:1680px;margin:0 auto;padding:0 22px 80px}
 
 /* header */
 .top{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
   padding:16px 0 12px;border-bottom:1px solid var(--line);margin-bottom:14px}
-.top h1{margin:0;font-size:17px;font-weight:650;letter-spacing:.14em;text-transform:uppercase}
+.top h1{margin:0;font-size:22px;font-weight:650;letter-spacing:.14em;text-transform:uppercase}
 .top h1 span{color:var(--acc)}
-.top .sub{color:var(--tx3);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.top .sub{color:var(--tx2);font-size:13px;letter-spacing:.08em;text-transform:uppercase}
 .top .right{margin-left:auto;display:flex;gap:8px;align-items:center}
 .btn{background:var(--bg3);border:1px solid var(--line2);color:var(--tx2);
-  padding:5px 11px;border-radius:3px;cursor:pointer;font-size:11px;font-family:var(--mono)}
+  padding:9px 15px;border-radius:5px;cursor:pointer;font-size:13px;font-family:var(--mono)}
 .btn:hover{border-color:var(--acc);color:var(--tx)}
 
 /* instrument rail */
 .rail{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:16px}
 .rail button{background:transparent;border:1px solid var(--line);color:var(--tx3);
-  padding:6px 12px;border-radius:3px;cursor:pointer;font-family:var(--mono);font-size:11px;
+  padding:10px 16px;border-radius:5px;cursor:pointer;font-family:var(--mono);font-size:14px;
   display:flex;gap:7px;align-items:center}
 .rail button:hover{border-color:var(--line2);color:var(--tx2)}
 .rail button.on{border-color:var(--acc);color:var(--acc);background:rgba(224,163,57,.07)}
@@ -47,14 +47,14 @@ a{color:var(--acc)}
 /* price bar — the CFD vs futures reconciliation the whole thing hangs off */
 .pricebar{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;
   background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden;margin-bottom:6px}
-.pricebar div{background:var(--bg2);padding:9px 13px}
-.pricebar .k{font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--tx3)}
-.pricebar .v{font-family:var(--mono);font-size:17px;margin-top:2px}
-.pricebar .n{font-size:10px;color:var(--tx3);margin-top:1px;font-family:var(--mono)}
+.pricebar>div{background:var(--bg2);padding:14px 17px}
+.pricebar .k{font-size:11.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--tx3)}
+.pricebar .v{font-family:var(--mono);font-size:25px;margin-top:2px}
+.pricebar .n{font-size:12px;color:var(--tx3);margin-top:1px;font-family:var(--mono)}
 
 /* diagnostics — the point of the page: never lose the provenance again */
 .diag{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 16px}
-.chip{font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:3px;
+.chip{font-family:var(--mono);font-size:12px;padding:6px 11px;border-radius:3px;
   border:1px solid var(--line2);color:var(--tx2);background:var(--bg2)}
 .chip b{color:var(--tx);font-weight:600}
 .chip.warn{border-color:var(--warn);color:var(--warn)}
@@ -64,41 +64,70 @@ a{color:var(--acc)}
 /* level strip */
 .levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:1px;
   background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden;margin-bottom:18px}
-.lv{background:var(--bg2);padding:9px 12px;border-top:2px solid transparent}
-.lv .k{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3)}
-.lv .v{font-family:var(--mono);font-size:16px;margin-top:3px}
-.lv .f{font-family:var(--mono);font-size:10px;color:var(--tx3);margin-top:1px}
-.lv .d{font-family:var(--mono);font-size:10px;color:var(--tx2);margin-top:1px}
+.lv{background:var(--bg2);padding:13px 16px;border-top:3px solid transparent}
+.lv .k{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3)}
+.lv .v{font-family:var(--mono);font-size:24px;margin-top:3px}
+.lv .f{font-family:var(--mono);font-size:12px;color:var(--tx3);margin-top:1px}
+.lv .d{font-family:var(--mono);font-size:12px;color:var(--tx2);margin-top:1px}
 
 /* panels */
-.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:18px}
 .p{background:var(--bg2);border:1px solid var(--line);border-radius:4px;overflow:hidden}
-.p>h3{margin:0;padding:9px 13px;font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;
+.p>h3{margin:0;padding:13px 17px;font-size:13px;letter-spacing:.11em;text-transform:uppercase;
   color:var(--tx2);border-bottom:1px solid var(--line);background:var(--bg3);
   display:flex;justify-content:space-between;align-items:baseline;gap:10px}
 .p>h3 em{font-style:normal;color:var(--tx3);font-size:9.5px;letter-spacing:.04em;text-transform:none}
-.p .body{padding:12px 13px}
+.p .body{padding:16px 17px}
 .c12{grid-column:span 12}.c8{grid-column:span 8}.c6{grid-column:span 6}
 .c4{grid-column:span 4}.c5{grid-column:span 5}.c7{grid-column:span 7}
-@media(max-width:1100px){.c8,.c6,.c4,.c5,.c7{grid-column:span 12}}
+@media(max-width:1250px){.c8,.c6,.c4,.c5,.c7{grid-column:span 12}}
 
-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11.5px}
-th{text-align:right;padding:5px 9px;color:var(--tx3);font-weight:500;font-size:9.5px;
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:14px}
+th{text-align:right;padding:9px 13px;color:var(--tx2);font-weight:600;font-size:11.5px;
   letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--line)}
 th:first-child,td:first-child{text-align:left}
-td{padding:4px 9px;border-bottom:1px solid rgba(35,40,48,.5);text-align:right}
+td{padding:8px 13px;border-bottom:1px solid rgba(35,40,48,.5);text-align:right}
 tr:last-child td{border-bottom:0}
-.bar{height:9px;border-radius:1px;display:inline-block;vertical-align:middle}
+.bar{height:13px;border-radius:1px;display:inline-block;vertical-align:middle}
 .muted{color:var(--tx3)}
 .tag{font-size:9px;padding:1px 5px;border-radius:2px;border:1px solid currentColor;margin-left:5px}
 
 svg{display:block;width:100%;height:auto;overflow:visible}
 .axis{stroke:var(--line2);stroke-width:1}
 .gl{stroke:var(--line);stroke-width:1;stroke-dasharray:2 3}
-.lbl{fill:var(--tx3);font-family:var(--mono);font-size:9px}
+.lbl{fill:var(--tx2);font-family:var(--mono);font-size:12px}
 .spotline{stroke:var(--acc);stroke-width:1;stroke-dasharray:3 3}
-.empty{color:var(--tx3);padding:26px 13px;text-align:center;font-size:12px}
-.note{color:var(--tx3);font-size:10.5px;line-height:1.55;margin-top:9px}
+.empty{color:var(--tx3);padding:36px 18px;text-align:center;font-size:14px;line-height:1.7}
+.note{color:var(--tx2);font-size:13px;line-height:1.66;margin-top:13px;border-left:2px solid var(--line2);padding-left:13px}
+
+/* help — every metric explains itself inline, no hunting for a legend */
+.h{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;
+  border-radius:50%;border:1px solid var(--line2);color:var(--tx3);font-size:10px;
+  margin-left:7px;cursor:help;position:relative;flex:none;font-style:normal;font-weight:700}
+.h:hover{border-color:var(--acc);color:var(--acc)}
+.h .tip{display:none;position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);
+  width:340px;max-width:78vw;background:#05070a;border:1px solid var(--acc);border-radius:7px;
+  padding:13px 15px;font-size:13.5px;line-height:1.62;color:var(--tx);z-index:70;
+  box-shadow:0 14px 36px rgba(0,0,0,.75);text-align:left;font-weight:400;letter-spacing:0;
+  text-transform:none;white-space:normal}
+.h:hover .tip{display:block}
+.h .tip b{color:var(--acc)}
+.h .tip em{color:var(--tx2);font-style:normal;display:block;margin-top:8px;font-size:12.5px}
+.p>h3 .grow{flex:1;display:flex;align-items:center}
+.p>h3 .zoom{background:none;border:1px solid var(--line2);color:var(--tx3);cursor:pointer;
+  border-radius:4px;padding:4px 10px;font-size:11.5px;font-family:var(--mono);letter-spacing:0;text-transform:none}
+.p>h3 .zoom:hover{border-color:var(--acc);color:var(--acc)}
+.p .body.flush{padding:6px 0 2px}
+tr.dim td{opacity:.42}
+.pill{font-size:11px;padding:2px 7px;border-radius:4px;border:1px solid currentColor;margin-left:7px}
+#zoom{display:none;position:fixed;inset:0;background:rgba(4,6,9,.94);z-index:200;padding:34px;overflow:auto}
+#zoom.open{display:block}
+#zoomBox{max-width:1500px;margin:0 auto;background:var(--bg2);border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+#zoomBox h3{margin:0;padding:16px 20px;font-size:16px;background:var(--bg3);border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:12px}
+#zoomBox h3 .grow{flex:1}
+#zoomBody{padding:24px 22px}
+#zoomBody svg{min-height:400px}
 </style>
 </head>
 <body>
@@ -109,6 +138,8 @@ svg{display:block;width:100%;height:auto;overflow:visible}
     <div class="sub" id="sub">loading…</div>
     <div class="right">
       <button class="btn" id="unitBtn">Showing: SPOT-ADJ</button>
+      <button class="btn" id="sortBtn">Walls: STRENGTH</button>
+      <button class="btn" id="expBtn">⬇ Export lines</button>
       <button class="btn" id="reload">Reload</button>
       <a class="btn" href="index.html" style="text-decoration:none">Dashboard</a>
     </div>
@@ -116,6 +147,12 @@ svg{display:block;width:100%;height:auto;overflow:visible}
 
   <div class="rail" id="rail"></div>
   <div id="main"></div>
+</div>
+
+<div id="zoom"><div id="zoomBox">
+  <h3><span class="grow" id="zoomTitle"></span><button class="btn" onclick="closeZoom()">Close ✕</button></h3>
+  <div id="zoomBody"></div>
+</div>
 
 </div>
 
@@ -129,7 +166,7 @@ const FRIENDLY = {
   'XAU/USD':'GOLD','NAS100_USD':'NQ','SPX500_USD':'SPX500','DE30_USD':'DAX',
   'UK100_GBP':'FTSE','US30_USD':'US30','US2000_USD':'RUS2K',
 };
-let STORE = {}, SYM = null, SPOTADJ = true;
+let STORE = {}, SYM = null, SPOTADJ = true, SORT = 'strength', PANELS = {};
 
 const nm  = k => FRIENDLY[k] || k;
 const dp  = k => /JPY/i.test(k) ? 3 : (/XAU/.test(k) || /_/.test(k)) ? 2 : 5;
@@ -142,6 +179,62 @@ const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>'
 // Stored levels are SPOT-adjusted (strike − basis). Toggle back to raw futures
 // strikes so a level can be checked against the CME ladder directly.
 const show = (v,e) => (!Number.isFinite(v)) ? NaN : (SPOTADJ ? v : v + (e.basis||0));
+
+// Every explanation on the page lives here so the vocabulary stays consistent. Written
+// for someone learning the structure, not as a reminder for someone who already knows.
+const HELP = {
+  cfd:['CFD spot','The price <b>your broker</b> quotes — what you actually trade. Option strikes are NOT quoted here; they are quoted in futures terms, which is why the basis exists.'],
+  fut:['CME futures','The <b>futures contract</b> the options are written on. Fetched live at the moment you press Analyse.','Amber means it fell back to a settlement price, which can be a day stale.'],
+  basis:['Basis','<b>Futures minus spot.</b> Options are struck on the future, you trade the spot, so every level must be shifted by this to be drawable on your chart.','It comes from carry (the interest-rate differential). It only means anything if both prices were read at the same instant — that is what "both legs same instant" confirms.'],
+  refmove:['Reference move','How far price could <b>plausibly travel</b> by expiry — from the option-implied straddle when trustworthy, otherwise from volatility.','Used to judge whether a strike is close enough to matter. A wall ten reference-moves away is abandoned paper, not a level.'],
+  expiry:['Expiry','Which option expiry these levels come from. Different expiries pin at different prices, so the label matters.','Chosen automatically as the nearest expiry with real near-the-money open interest.'],
+  saved:['Saved','When you last pressed Analyse. Open interest updates once a day, so a stale save means stale levels.'],
+  callwall:['Call wall','The strike with the heaviest <b>call</b> open interest — acts as <b>resistance</b>.','Dealers who sold those calls buy the underlying as price rises toward the strike, which supports the move. At the strike they are fully hedged, the buying stops, and the rally runs out of fuel. Resistance is the fuel ending, not selling.'],
+  putwall:['Put wall','The strike with the heaviest <b>put</b> open interest — acts as <b>support</b>.','Mirror image: dealer selling accelerates the fall into the strike, then stops there, so the decline stalls.'],
+  maxpain:['Max pain','The strike where the <b>most options expire worthless</b>, so option sellers profit most.','Price tends to drift toward it as expiry approaches — strongest in the final 48 hours, weak more than about five days out.'],
+  gflip:['Gamma flip','The price where dealer gamma changes sign, read off the per-strike profile.','<b>Above it</b> dealer hedging dampens moves and ranges hold. <b>Below it</b> hedging amplifies and trends run. Rougher than the GEX flip.'],
+  gexflip:['GEX flip','The same boundary done properly: where <b>total</b> net dealer gamma crosses zero, re-evaluating the whole book at each candidate price.','When this and the gamma flip disagree, trust this one.'],
+  charm:['Charm flip','Where <b>time-decay</b> driven hedging reverses. Charm is how delta changes as time passes.','This is the mechanism that pins price to big strikes into expiry. Negligible until the last day or two, then it dominates.'],
+  vanna:['Vanna flip','Where <b>volatility-driven</b> hedging reverses. Vanna is how delta changes when implied vol moves.','Dormant until IV moves. Classic use: after an event IV collapses, and if dealers are positioned right that forces buying with no news at all.'],
+  expmove:['Expected move','The option market own estimate of the <b>plus/minus range</b> by expiry, read from the at-the-money straddle price.','A target beyond this band is one the market itself considers unlikely to be reached by expiry.'],
+  oichart:['Open interest by strike','How many contracts are open at each strike. <b>Red bars right = calls</b> (resistance above), <b>green bars left = puts</b> (support below).','Tall bars are the walls. Amber dashes are spot. Only strikes within 4 reference moves are shown — far-out strikes are usually abandoned paper and would flatten the scale.'],
+  gexchart:['Net GEX by strike','Call gamma minus put gamma at each strike — where <b>dealer hedging</b> concentrates and which way it pushes.','Red above the line = call-dominated, green below = put-dominated. The marked crossings are the regime boundaries.'],
+  smile:['IV smile','<b>Implied volatility</b> against strike. Solid = today, dotted = the previous settlement.','Called a smile because vol is lowest at the money and rises at both wings — the market pays up for tail protection. A <b>steeper left wing</b> means demand for downside puts, i.e. fear. Watching it move day to day shows where hedging demand is going.'],
+  term:['ATM IV term structure','At-the-money implied vol across <b>expiries</b> — the market vol forecast by horizon.','<b>Upward sloping</b> is normal: more time, more uncertainty. <b>Inverted</b> (near-dated higher) means an event is expected soon and short-dated levels break more easily.'],
+  flow:['Positioning and flow','Aggregate reads on how the option book is positioned and how that changed since yesterday.','These describe the <b>character</b> of the market — whether moves get damped or amplified, whether positioning is being built or unwound. They are context, not entry signals.'],
+  netgex:['Net GEX','Total dealer gamma exposure. <b>Positive</b>: dealers damp moves, ranges hold, fading extremes works. <b>Negative</b>: they amplify, breaks run, do not fade.'],
+  netdex:['Net DEX','Total dealer delta exposure — how much underlying they must hold to stay hedged.'],
+  pc:['Put/call ratio','Put open interest divided by call open interest. Below 0.7 is call-heavy; above 1.3 is heavy hedging or fear.','Extremes can be contrarian, but in a strong trend an extreme reading can persist for weeks.'],
+  skew:['OI skew','<b>Where</b> positioning sits rather than how much. Negative = puts stacked below (downside hedged). Positive = calls stacked above.'],
+  conc:['Concentration','Share of all open interest in the top few strikes. Concentrated means a handful of levels dominate; dispersed means no single strike matters much.'],
+  cex:['CEX (charm)','Aggregate time-decay hedging flow. Grows into expiry and is what produces pinning.'],
+  vex:['VEX (vanna)','Aggregate vol-driven hedging flow — which way dealers must trade <b>if IV moves</b>.'],
+  rr:['Risk reversal','Out-of-the-money put IV minus call IV. Positive means puts are bid relative to calls — a downside tilt in sentiment.'],
+  atmiv:['ATM IV change','How at-the-money implied vol moved versus the previous settlement. Rising means hedging demand increasing.'],
+  volpc:['Volume P/C','Today <b>traded</b> put/call ratio, versus the resting open-interest ratio. When they diverge, today flow disagrees with existing positioning.'],
+  oichg:['OI change','Contracts added or removed since yesterday. <b>Building</b> = new money committing. <b>Closing</b> = positions unwinding, so the level is losing its backing.'],
+  walls:['Wall tables','Every strike with meaningful open interest on that side.','<b>Tier</b> is the 3x rule — open interest as a multiple of neighbouring strikes, so a strong wall in a quiet area beats a big number in a busy one. <b>xnbr</b> is that multiple. <b>Delta</b> is the change since yesterday. Use <b>Walls: STRENGTH / NEAREST</b> in the header to re-sort by distance from price instead.'],
+  perexp:['Per-expiry structure','Where each expiry pins, so you can see whether near and far horizons agree.','If a nearby expiry and a distant one pin at very different prices, expect the level to shift once the near one expires.'],
+  volmag:['Volume magnets','Strikes with the heaviest <b>volume traded today</b>, as opposed to resting open interest.','Volume is activity, open interest is commitment. A strike busy today with little open interest is a fresh fight, not an established wall.'],
+};
+const h = k => HELP[k] ? `<i class="h">?<span class="tip"><b>${HELP[k][0]}</b><br>${HELP[k][1]}${HELP[k][2]?`<em>${HELP[k][2]}</em>`:''}</span></i>` : '';
+const pips = (v,sp,k) => (Number.isFinite(v)&&Number.isFinite(sp)) ? ((v-sp)/pip(k)) : NaN;
+
+// ── zoom: any panel can be opened full-screen ──
+function openZoom(key){
+  const e=STORE[SYM], p=PANELS[key]; if(!p) return;
+  document.getElementById('zoomTitle').innerHTML=p.title;
+  document.getElementById('zoomBody').innerHTML=p.render(e,true);
+  document.getElementById('zoom').classList.add('open');
+}
+function closeZoom(){ document.getElementById('zoom').classList.remove('open'); }
+function panel(cls,key,title,helpKey,render,flush){
+  PANELS[key]={title,render};
+  const e=STORE[SYM];
+  return `<div class="p ${cls}"><h3><span class="grow">${title}${h(helpKey)}</span>`
+    + `<button class="zoom" onclick="openZoom('${key}')">&#10530; Enlarge</button></h3>`
+    + `<div class="body${flush?' flush':''}">${render(e,false)}</div></div>`;
+}
 
 async function load(){
   const r = await fetch('/api/kv/get?key=oi_store',{cache:'no-store'});
@@ -166,117 +259,126 @@ function renderRail(){
   document.querySelectorAll('#rail button').forEach(b=>b.onclick=()=>{SYM=b.dataset.k;render();});
 }
 
-// ── charts (hand-rolled SVG — no libs, so the page can never break on a CDN) ──
-
-// OI by strike. The core view: calls right, puts left, spot marked. Everything
-// else on the page is a summary OF this, so it goes first and gets the space.
-function chartOI(e){
-  const gp=(e.gexProfile||[]).filter(r=>Number.isFinite(r.strike));
-  if(gp.length<2) return '<div class="empty">no per-strike profile stored</div>';
+// OI by strike. Reads callOI/putOI off gexProfile — the only CONTIGUOUS per-strike
+// record stored. This chart came out BLANK because those fields did not exist there
+// (gexProfile held only the gamma-weighted values), so every bar had zero width.
+// topLevels is a top-N ranking rather than a ladder, so it is only the fallback for
+// records saved before callOI/putOI were added.
+function chartOI(e,big){
+  let rows=(e.gexProfile||[]).filter(r=>Number.isFinite(r.strike)&&(Number.isFinite(r.callOI)||Number.isFinite(r.putOI)));
+  let src='full ladder';
+  if(!rows.length){
+    rows=(e.topLevels||[]).filter(r=>Number.isFinite(r.strike));
+    src='top strikes only — press Analyse to store the full ladder';
+  }
+  if(rows.length<2) return '<div class="empty">No per-strike open interest stored.<br>Press <b>Analyse</b> on this pair to populate it.</div>';
   const spot=e.spot, rm=e.refMove?.move;
-  // Focus on the tradable region: ±4 reference moves, else the middle 60% of strikes.
-  const lo = rm>0 ? spot-4*rm : gp[0].strike, hi = rm>0 ? spot+4*rm : gp[gp.length-1].strike;
-  const rows=gp.filter(r=>r.strike>=lo&&r.strike<=hi).sort((a,b)=>b.strike-a.strike);
-  if(!rows.length) return '<div class="empty">no strikes in the focus window</div>';
-  const maxOI=Math.max(...rows.map(r=>Math.max(r.callOI||0,r.putOI||0)),1);
-  const H=Math.max(180,rows.length*13), W=1000, MID=W*0.5, HALF=W*0.40;
-  const y=i=>i*(H/rows.length)+6;
-  let s=`<svg viewBox="0 0 ${W} ${H+16}">`;
-  rows.forEach((r,i)=>{
-    const c=(r.callOI||0)/maxOI*HALF, p=(r.putOI||0)/maxOI*HALF, yy=y(i), h=Math.max(3,H/rows.length-3);
-    if(p>0.5) s+=`<rect x="${MID-p}" y="${yy}" width="${p}" height="${h}" fill="var(--put)" opacity=".8"/>`;
-    if(c>0.5) s+=`<rect x="${MID}" y="${yy}" width="${c}" height="${h}" fill="var(--call)" opacity=".8"/>`;
-    if(rows.length<=44) s+=`<text class="lbl" x="${MID}" y="${yy+h-1}" text-anchor="middle" dx="0" style="fill:var(--tx3)">${fx(show(r.strike,e),SYM)}</text>`;
+  const lo=rm>0?spot-4*rm:-Infinity, hi=rm>0?spot+4*rm:Infinity;
+  let win=rows.filter(r=>r.strike>=lo&&r.strike<=hi);
+  if(win.length<3) win=rows.slice();                       // window too tight → show everything
+  win=win.filter(r=>(r.callOI||0)+(r.putOI||0)>0);
+  if(!win.length) return '<div class="empty">Every strike in the focus window has zero open interest.</div>';
+  win.sort((a,b)=>b.strike-a.strike);
+  if(win.length>(big?90:44)) win=win.slice(0,big?90:44);
+  const maxOI=Math.max(...win.map(r=>Math.max(r.callOI||0,r.putOI||0)),1);
+  const rowH=big?24:18, W=1000, H=Math.max(120,win.length*rowH), MID=W*0.5, HALF=W*0.35;
+  let s=`<svg viewBox="0 0 ${W} ${H+28}">`;
+  win.forEach((r,i)=>{
+    const y=i*rowH+3, bh=rowH-5;
+    const c=(r.callOI||0)/maxOI*HALF, p=(r.putOI||0)/maxOI*HALF;
+    if(p>0.6) s+=`<rect x="${MID-p}" y="${y}" width="${p}" height="${bh}" fill="var(--put)" opacity=".85" rx="1"/>`;
+    if(c>0.6) s+=`<rect x="${MID}" y="${y}" width="${c}" height="${bh}" fill="var(--call)" opacity=".85" rx="1"/>`;
+    s+=`<text class="lbl" x="${MID}" y="${y+bh-2}" text-anchor="middle" style="fill:var(--tx);font-size:${big?12:10.5}px">${fx(show(r.strike,e),SYM)}</text>`;
+    if((r.putOI||0)>maxOI*0.22) s+=`<text class="lbl" x="${MID-p-7}" y="${y+bh-2}" text-anchor="end" style="fill:var(--put)">${fOI(r.putOI)}</text>`;
+    if((r.callOI||0)>maxOI*0.22) s+=`<text class="lbl" x="${MID+c+7}" y="${y+bh-2}" style="fill:var(--call)">${fOI(r.callOI)}</text>`;
   });
-  // spot marker
-  const idx=rows.findIndex(r=>r.strike<=spot);
-  if(idx>=0){ const yy=y(idx); s+=`<line class="spotline" x1="0" y1="${yy}" x2="${W}" y2="${yy}"/>
-    <text class="lbl" x="4" y="${yy-3}" style="fill:var(--acc)">spot ${fx(show(spot,e),SYM)}</text>`; }
-  s+=`<line class="axis" x1="${MID}" y1="0" x2="${MID}" y2="${H}"/>`;
-  s+=`<text class="lbl" x="${MID-HALF}" y="${H+12}">◀ puts</text>`;
-  s+=`<text class="lbl" x="${MID+HALF}" y="${H+12}" text-anchor="end">calls ▶</text></svg>`;
-  return s;
+  const si=win.findIndex(r=>r.strike<=spot);
+  if(si>=0){ const y=si*rowH; s+=`<line class="spotline" x1="0" y1="${y}" x2="${W}" y2="${y}"/>`
+    + `<text class="lbl" x="4" y="${y-5}" style="fill:var(--acc)">spot ${fx(show(spot,e),SYM)}</text>`; }
+  s+=`<line class="axis" x1="${MID}" y1="0" x2="${MID}" y2="${H}"/>`
+   + `<text class="lbl" x="${MID-HALF}" y="${H+19}" style="fill:var(--put)">&#9664; PUTS &middot; support</text>`
+   + `<text class="lbl" x="${MID+HALF}" y="${H+19}" text-anchor="end" style="fill:var(--call)">CALLS &middot; resistance &#9654;</text></svg>`;
+  return s+`<div class="note">${win.length} strikes &middot; ${src}. A tall bar is a wall. Amber dashes mark spot.</div>`;
 }
 
-// Net GEX by strike — where dealer hedging changes character.
-function chartGEX(e){
+function chartGEX(e,big){
   const gp=(e.gexProfile||[]).filter(r=>Number.isFinite(r.netGex)&&Number.isFinite(r.strike));
-  if(gp.length<2) return '<div class="empty">no GEX profile</div>';
+  if(gp.length<2) return '<div class="empty">No GEX profile stored.</div>';
   const rm=e.refMove?.move, spot=e.spot;
   const lo=rm>0?spot-4*rm:-Infinity, hi=rm>0?spot+4*rm:Infinity;
-  const rows=gp.filter(r=>r.strike>=lo&&r.strike<=hi).sort((a,b)=>a.strike-b.strike);
-  if(rows.length<2) return '<div class="empty">no strikes in window</div>';
-  const W=1000,H=180,P=22;
-  const xs=rows.map(r=>r.strike), mn=Math.min(...xs), mx=Math.max(...xs);
+  let rows=gp.filter(r=>r.strike>=lo&&r.strike<=hi); if(rows.length<3) rows=gp.slice();
+  rows.sort((a,b)=>a.strike-b.strike);
+  const W=1000,H=big?400:230,P=36;
+  const mn=rows[0].strike, mx=rows[rows.length-1].strike;
   const mg=Math.max(...rows.map(r=>Math.abs(r.netGex)),1);
-  const X=v=>P+(v-mn)/(mx-mn||1)*(W-2*P), Y=v=>H/2-(v/mg)*(H/2-8);
-  let s=`<svg viewBox="0 0 ${W} ${H+14}">`;
+  const X=v=>P+(v-mn)/(mx-mn||1)*(W-2*P), Y=v=>H/2-(v/mg)*(H/2-16);
+  let s=`<svg viewBox="0 0 ${W} ${H+24}">`;
   s+=`<line class="axis" x1="${P}" y1="${H/2}" x2="${W-P}" y2="${H/2}"/>`;
-  const bw=Math.max(1.5,(W-2*P)/rows.length-1);
-  rows.forEach(r=>{ const yv=Y(r.netGex), y0=H/2;
-    s+=`<rect x="${X(r.strike)-bw/2}" y="${Math.min(yv,y0)}" width="${bw}" height="${Math.abs(y0-yv)}"
-        fill="${r.netGex>=0?'var(--call)':'var(--put)'}" opacity=".75"/>`; });
-  for(const [v,c,t] of [[e.gexFlip,'var(--gam)','GEX flip'],[e.gammaFlip,'var(--vol)','γ flip'],[spot,'var(--acc)','spot']]){
-    if(!Number.isFinite(v)||v<mn||v>mx) continue;
-    s+=`<line x1="${X(v)}" y1="4" x2="${X(v)}" y2="${H-4}" stroke="${c}" stroke-width="1" stroke-dasharray="3 3"/>
-        <text class="lbl" x="${X(v)+3}" y="13" style="fill:${c}">${t}</text>`;
-  }
-  s+=`<text class="lbl" x="${P}" y="${H+12}">${fx(show(mn,e),SYM)}</text>
-      <text class="lbl" x="${W-P}" y="${H+12}" text-anchor="end">${fx(show(mx,e),SYM)}</text></svg>`;
-  return s;
+  const bw=Math.max(2,(W-2*P)/rows.length-1.5);
+  rows.forEach(r=>{const yv=Y(r.netGex);
+    s+=`<rect x="${X(r.strike)-bw/2}" y="${Math.min(yv,H/2)}" width="${bw}" height="${Math.abs(H/2-yv)}" fill="${r.netGex>=0?'var(--call)':'var(--put)'}" opacity=".82" rx="1"/>`;});
+  [[e.gexFlip,'var(--gam)','GEX flip'],[e.gammaFlip,'var(--vol)','gamma flip'],[spot,'var(--acc)','spot']]
+  .forEach(([v,c,t])=>{ if(!Number.isFinite(v)||v<mn||v>mx) return;
+    s+=`<line x1="${X(v)}" y1="6" x2="${X(v)}" y2="${H-6}" stroke="${c}" stroke-width="1.4" stroke-dasharray="4 4"/>`
+     + `<text class="lbl" x="${X(v)+5}" y="18" style="fill:${c}">${t}</text>`;});
+  s+=`<text class="lbl" x="${P}" y="${H+18}">${fx(show(mn,e),SYM)}</text>`
+   + `<text class="lbl" x="${W/2}" y="${H+18}" text-anchor="middle" style="fill:var(--tx3)">strike &rarr;</text>`
+   + `<text class="lbl" x="${W-P}" y="${H+18}" text-anchor="end">${fx(show(mx,e),SYM)}</text></svg>`;
+  return s+`<div class="note">Bars above the line are call-dominated gamma, below are put-dominated. Where the total crosses zero is the regime boundary.</div>`;
 }
 
-// IV smile — today vs prior. Only present when a per-strike chain was pasted.
-function chartSmile(e){
+function chartSmile(e,big){
   const sm=e.ivSmile;
-  if(!sm||!Array.isArray(sm.strikes)||sm.strikes.length<3)
-    return '<div class="empty">no per-strike IV pasted — paste the smile chain to populate</div>';
-  const pts=sm.strikes.map((k,i)=>({k,iv:sm.iv?.[i],pv:sm.ivPrior?.[i]})).filter(p=>p.iv>0)
-            .sort((a,b)=>a.k-b.k);
-  if(pts.length<3) return '<div class="empty">smile has too few valid points</div>';
-  const W=1000,H=200,P=30;
-  const mn=pts[0].k, mx=pts[pts.length-1].k;
+  if(!sm||!Array.isArray(sm.strikes)||!sm.strikes.length)
+    return '<div class="empty">No per-strike implied vol stored.<br>Paste the <b>per-strike chain</b> into the smile box to draw this.</div>';
+  const pts=sm.strikes.map((k,i)=>({k,iv:sm.iv?.[i],pv:sm.ivPrior?.[i]})).filter(p=>p.iv>0).sort((a,b)=>a.k-b.k);
+  if(pts.length<3) return '<div class="empty">Smile has too few valid points.</div>';
+  const W=1000,H=big?420:250,P=48;
+  const mn=pts[0].k,mx=pts[pts.length-1].k;
   const all=pts.flatMap(p=>[p.iv,p.pv]).filter(v=>v>0);
-  const lo=Math.min(...all), hi=Math.max(...all);
-  const X=v=>P+(v-mn)/(mx-mn||1)*(W-2*P), Y=v=>H-P-(v-lo)/((hi-lo)||1)*(H-2*P);
-  const path=(key)=>pts.filter(p=>p[key]>0).map((p,i)=>(i?'L':'M')+X(p.k)+' '+Y(p[key])).join(' ');
+  const lo=Math.min(...all),hi=Math.max(...all);
+  const X=v=>P+(v-mn)/(mx-mn||1)*(W-2*P), Y=v=>H-P-(v-lo)/((hi-lo)||1)*(H-1.8*P);
+  const path=key=>pts.filter(p=>p[key]>0).map((p,i)=>(i?'L':'M')+X(p.k)+' '+Y(p[key])).join(' ');
   let s=`<svg viewBox="0 0 ${W} ${H}">`;
-  for(let i=0;i<=3;i++){ const yv=P+i*(H-2*P)/3;
-    s+=`<line class="gl" x1="${P}" y1="${yv}" x2="${W-P}" y2="${yv}"/>`; }
-  const pp=path('pv'); if(pp) s+=`<path d="${pp}" fill="none" stroke="var(--tx3)" stroke-width="1.2" stroke-dasharray="3 3"/>`;
-  s+=`<path d="${path('iv')}" fill="none" stroke="var(--vol)" stroke-width="1.8"/>`;
+  for(let i=0;i<=4;i++){const y=P*0.75+i*(H-1.8*P)/4; s+=`<line class="gl" x1="${P}" y1="${y}" x2="${W-P}" y2="${y}"/>`;}
+  const pp=path('pv'); if(pp) s+=`<path d="${pp}" fill="none" stroke="var(--tx3)" stroke-width="1.6" stroke-dasharray="4 4"/>`;
+  s+=`<path d="${path('iv')}" fill="none" stroke="var(--vol)" stroke-width="2.4"/>`;
   if(Number.isFinite(e.spot)&&e.spot>=mn&&e.spot<=mx)
-    s+=`<line class="spotline" x1="${X(e.spot)}" y1="${P-8}" x2="${X(e.spot)}" y2="${H-P}"/>`;
-  s+=`<text class="lbl" x="${P}" y="${H-8}">${fx(show(mn,e),SYM)}</text>
-      <text class="lbl" x="${W-P}" y="${H-8}" text-anchor="end">${fx(show(mx,e),SYM)}</text>
-      <text class="lbl" x="${P}" y="${P-8}">${(hi*100).toFixed(1)}%</text>
-      <text class="lbl" x="${P}" y="${H-P-2}">${(lo*100).toFixed(1)}%</text>
-      <text class="lbl" x="${W-P}" y="${P-8}" text-anchor="end" style="fill:var(--vol)">— today</text>
-      <text class="lbl" x="${W-P}" y="${P+4}" text-anchor="end">-- prior</text></svg>`;
-  return s;
+    s+=`<line class="spotline" x1="${X(e.spot)}" y1="${P*0.6}" x2="${X(e.spot)}" y2="${H-P}"/>`
+     + `<text class="lbl" x="${X(e.spot)+5}" y="${P*0.6+13}" style="fill:var(--acc)">spot</text>`;
+  s+=`<text class="lbl" x="${P}" y="${H-P+21}">${fx(show(mn,e),SYM)}</text>`
+   + `<text class="lbl" x="${W-P}" y="${H-P+21}" text-anchor="end">${fx(show(mx,e),SYM)}</text>`
+   + `<text class="lbl" x="${P-9}" y="${P*0.75+4}" text-anchor="end">${(hi*100).toFixed(1)}%</text>`
+   + `<text class="lbl" x="${P-9}" y="${H-P+4}" text-anchor="end">${(lo*100).toFixed(1)}%</text>`
+   + `<text class="lbl" x="${W-P}" y="${P*0.5}" text-anchor="end" style="fill:var(--vol)">&mdash; today</text>`
+   + `<text class="lbl" x="${W-P}" y="${P*0.5+17}" text-anchor="end" style="fill:var(--tx3)">&middot;&middot; prior settle</text></svg>`;
+  return s+`<div class="note">Vol is lowest at the money and rises at both wings — the market pays up for tail protection. A steeper LEFT wing means demand for downside puts.</div>`;
 }
 
-// ATM IV term structure + where each expiry pins.
-function chartTerm(e){
-  const ts=e.ivTermStructure?.points, mp=e.termStructure;
-  if((!ts||ts.length<2)&&(!mp||mp.length<2)) return '<div class="empty">no term structure</div>';
-  const W=1000,H=170,P=30;
+function chartTerm(e,big){
+  const ts=e.ivTermStructure&&e.ivTermStructure.points;
+  if(!ts||ts.length<2) return '<div class="empty">No IV term structure stored.<br>Paste the <b>Settlements</b> table to draw this.</div>';
+  const d=ts.filter(p=>p.iv>0).sort((a,b)=>a.dte-b.dte);
+  if(d.length<2) return '<div class="empty">Too few expiries with vol.</div>';
+  const W=1000,H=big?380:240,P=48;
+  const mn=d[0].dte,mx=d[d.length-1].dte, lo=Math.min(...d.map(p=>p.iv)), hi=Math.max(...d.map(p=>p.iv));
+  const X=v=>P+(Math.log(1+v-mn)/(Math.log(1+mx-mn)||1))*(W-2*P), Y=v=>H-P-(v-lo)/((hi-lo)||1)*(H-1.8*P);
   let s=`<svg viewBox="0 0 ${W} ${H}">`;
-  if(ts&&ts.length>1){
-    const d=ts.filter(p=>p.iv>0).sort((a,b)=>a.dte-b.dte);
-    const mn=d[0].dte,mx=d[d.length-1].dte, lo=Math.min(...d.map(p=>p.iv)), hi=Math.max(...d.map(p=>p.iv));
-    const X=v=>P+(Math.log(1+v-mn)/Math.log(1+mx-mn||1))*(W-2*P), Y=v=>H-P-(v-lo)/((hi-lo)||1)*(H-2*P);
-    s+=`<path d="${d.map((p,i)=>(i?'L':'M')+X(p.dte)+' '+Y(p.iv)).join(' ')}" fill="none" stroke="var(--vol)" stroke-width="1.8"/>`;
-    d.forEach(p=>{ s+=`<circle cx="${X(p.dte)}" cy="${Y(p.iv)}" r="2.5" fill="var(--vol)"/>`; });
-    s+=`<text class="lbl" x="${P}" y="${P-10}">${hi.toFixed(1)}% ATM IV</text>
-        <text class="lbl" x="${P}" y="${H-P+12}">${mn} DTE</text>
-        <text class="lbl" x="${W-P}" y="${H-P+12}" text-anchor="end">${mx} DTE</text>`;
-  }
-  s+='</svg>';
-  return s;
+  for(let i=0;i<=3;i++){const y=P*0.75+i*(H-1.8*P)/3; s+=`<line class="gl" x1="${P}" y1="${y}" x2="${W-P}" y2="${y}"/>`;}
+  s+=`<path d="${d.map((p,i)=>(i?'L':'M')+X(p.dte)+' '+Y(p.iv)).join(' ')}" fill="none" stroke="var(--vol)" stroke-width="2.4"/>`;
+  d.forEach(p=>{ s+=`<circle cx="${X(p.dte)}" cy="${Y(p.iv)}" r="${big?4:3}" fill="var(--vol)"/>`;
+    if(big) s+=`<text class="lbl" x="${X(p.dte)}" y="${Y(p.iv)-12}" text-anchor="middle">${p.dte}d</text>`;});
+  s+=`<text class="lbl" x="${P-9}" y="${P*0.75+4}" text-anchor="end">${hi.toFixed(1)}%</text>`
+   + `<text class="lbl" x="${P-9}" y="${H-P+4}" text-anchor="end">${lo.toFixed(1)}%</text>`
+   + `<text class="lbl" x="${P}" y="${H-P+21}">${mn} DTE</text>`
+   + `<text class="lbl" x="${W-P}" y="${H-P+21}" text-anchor="end">${mx} DTE</text>`
+   + `<text class="lbl" x="${W/2}" y="${H-P+21}" text-anchor="middle" style="fill:var(--tx3)">days to expiry &rarr;</text></svg>`;
+  const sh=e.ivTermStructure.shape||'—';
+  return s+`<div class="note"><b>${esc(sh)}</b> — front ${e.ivTermStructure.front?.iv}% to back ${e.ivTermStructure.back?.iv}%. `
+    +(sh==='inverted'
+      ?'Near-dated vol above far-dated: an event is expected soon, and short-dated levels break more easily.'
+      :'Rising with horizon is normal — more time means more uncertainty.')+'</div>';
 }
-
-// ── panels ──
 
 function priceBar(e){
   const b=e.basis, pv=pip(SYM);
@@ -348,103 +450,121 @@ function levelStrip(e){
   }).join('')}</div>`;
 }
 
+// Walls, sortable by STRENGTH or by NEAREST. Those are different questions: the biggest
+// wall is not necessarily the one price reaches first, and the near one is the one that
+// can actually interact with a trade today. Rows beyond 2.5 reference moves are dimmed
+// and tagged "far" rather than hidden — the export filters them out, but seeing them
+// here is how you tell an illiquid chain from a filtered one.
 function wallTable(e,side){
-  const list=(side==='call'?e.callWalls:e.putWalls)||[];
-  if(!list.length) return '<div class="empty">none</div>';
-  const mx=Math.max(...list.map(w=>w.oi||0),1);
-  const col=side==='call'?'var(--call)':'var(--put)';
-  return `<table><thead><tr><th>Strike</th><th>OI</th><th></th><th>Tier</th><th>×nbr</th><th>Δ</th><th>Dist</th></tr></thead><tbody>
-  ${list.slice(0,12).map(w=>{
-    const d=Number.isFinite(e.spot)?(w.strike-e.spot)/pip(SYM):NaN;
-    return `<tr><td>${fx(show(w.strike,e),SYM)}</td><td>${fOI(w.oi)}</td>
-      <td style="width:90px"><span class="bar" style="width:${(w.oi/mx*80).toFixed(0)}px;background:${col};opacity:.65"></span></td>
-      <td class="${w.tier?'':'muted'}">${esc(w.tier||'—')}</td>
-      <td class="muted">${w.mult??'—'}</td>
-      <td style="color:${w.chg>0?'var(--put)':w.chg<0?'var(--call)':'var(--tx3)'}">${w.chg?(w.chg>0?'+':'')+fOI(w.chg):'—'}</td>
-      <td class="muted">${Number.isFinite(d)?(d>=0?'+':'')+d.toFixed(0)+'p':'—'}</td></tr>`;
-  }).join('')}</tbody></table>`;
+  let list=((side==='call'?e.callWalls:e.putWalls)||[]).slice();
+  if(!list.length) return '<div class="empty">No walls on this side.<br>Either the expiry is illiquid or nothing clears the strength bar.</div>';
+  const rm=e.refMove?.move;
+  const isFar=r=>rm>0?Math.abs(r.strike-e.spot)>2.5*rm:false;
+  list = (SORT==='proximity')
+    ? list.sort((a,b)=>Math.abs(a.strike-e.spot)-Math.abs(b.strike-e.spot))
+    : list.sort((a,b)=>(b.oi||0)-(a.oi||0));
+  list=list.slice(0,12);
+  const mx=Math.max(...list.map(w=>w.oi||0),1), col=(side==='call')?'var(--call)':'var(--put)';
+  const body=list.map(w=>{
+    const d=pips(w.strike,e.spot,SYM), far=isFar(w);
+    return `<tr class="${far?'dim':''}"><td>${fx(show(w.strike,e),SYM)}${far?'<span class="pill muted">far</span>':''}</td>`
+      + `<td>${fOI(w.oi)}</td>`
+      + `<td style="width:110px"><span class="bar" style="width:${(w.oi/mx*95).toFixed(0)}px;background:${col};opacity:.7"></span></td>`
+      + `<td class="${w.tier?'':'muted'}">${esc(w.tier||'—')}</td><td class="muted">${w.mult??'—'}</td>`
+      + `<td style="color:${w.chg>0?'var(--put)':w.chg<0?'var(--call)':'var(--tx3)'}">${w.chg?(w.chg>0?'+':'')+fOI(w.chg):'—'}</td>`
+      + `<td class="muted">${Number.isFinite(d)?(d>=0?'+':'')+d.toFixed(0)+'p':'—'}</td></tr>`;
+  }).join('');
+  return `<table><thead><tr><th>Strike</th><th>OI</th><th></th><th>Tier</th><th>xnbr</th><th>Chg</th><th>Dist</th></tr></thead>`
+    + `<tbody>${body}</tbody></table>`
+    + `<div class="note">Sorted by <b>${SORT==='proximity'?'distance from price':'strength'}</b> — switch with the Walls button in the header. Dimmed <b>far</b> rows sit beyond 2.5 reference moves and are excluded from the chart export.</div>`;
+}
+
+function flowPanel(e){
+  const g=e.greeksFlow, rr=e.riskReversal, iv=e.ivDynamics, vf=e.volFlow, cn=e.concentration;
+  const row=(k,hk,v,n)=>`<tr><td class="muted">${k}${h(hk)}</td><td>${v}</td><td class="muted" style="text-align:left">${n||''}</td></tr>`;
+  return `<table><tbody>`
+    + row('Net GEX','netgex', e.exposures?fOI(e.exposures.gex):'—', e.exposures?.gex>0?'long gamma &middot; ranges hold':'short gamma &middot; breaks run')
+    + row('Net DEX','netdex', e.exposures?fOI(e.exposures.dex):'—','')
+    + row('P/C ratio','pc', Number.isFinite(e.pcRatio)?e.pcRatio.toFixed(2):'—', e.pcRatio>1.3?'heavy hedging':e.pcRatio<0.7?'call-heavy':'balanced')
+    + row('OI skew','skew', e.skew?e.skew.score:'—', esc(e.skew?.read||''))
+    + row('Concentration','conc', cn?`${cn.top5Pct}% / ${cn.top10Pct}%`:'—', cn?esc(cn.read)+' (top 5 / top 10)':'')
+    + row('CEX (charm)','cex', g?fOI(g.cex):'—','time-decay flow')
+    + row('VEX (vanna)','vex', g?fOI(g.vex):'—', esc(g?.vanna?.state||''))
+    + row('Risk reversal','rr', rr?rr.rr:'—', esc(rr?.tilt?rr.tilt+' tilt':''))
+    + row('ATM IV change','atmiv', iv?.atmChg!=null?iv.atmChg+'%':'—','vs prior settle')
+    + row('Volume P/C','volpc', vf?vf.volPcRatio:'—', vf?.divergence?'diverges from resting OI':'')
+    + row('Call OI change','oichg', fOI(e.totalCallChg), e.totalCallChg>0?'building':'closing')
+    + row('Put OI change','oichg', fOI(e.totalPutChg), e.totalPutChg>0?'building':'closing')
+    + `</tbody></table>`;
 }
 
 function termTable(e){
   const ts=(e.termStructure||[]).slice().sort((a,b)=>a.dte-b.dte);
-  if(!ts.length) return '<div class="empty">no per-expiry structure — paste the full matrix to populate</div>';
-  return `<table><thead><tr><th>DTE</th><th>Max pain</th><th>Call wall</th><th>Put wall</th><th>Total OI</th></tr></thead><tbody>
-  ${ts.map(r=>`<tr${r.dte===e.dte?' style="color:var(--acc)"':''}><td>${r.dte}</td>
-    <td>${fx(show(r.maxPain,e),SYM)}</td><td>${r.callWall?fx(show(r.callWall,e),SYM):'—'}</td>
-    <td>${r.putWall?fx(show(r.putWall,e),SYM):'—'}</td><td>${fOI(r.totalOI)}</td></tr>`).join('')}
-  </tbody></table>`;
-}
-
-function flowPanel(e){
-  const g=e.greeksFlow, rr=e.riskReversal, iv=e.ivDynamics, vf=e.volFlow;
-  const row=(k,v,n)=>`<tr><td class="muted">${k}</td><td>${v}</td><td class="muted" style="text-align:left">${n||''}</td></tr>`;
-  return `<table><tbody>
-    ${row('Net GEX', e.exposures?fOI(e.exposures.gex):'—', e.exposures?.gex>0?'long γ · dampening':'short γ · amplifying')}
-    ${row('Net DEX', e.exposures?fOI(e.exposures.dex):'—','')}
-    ${row('P/C ratio', (e.pcRatio??NaN).toFixed?.(2)??'—', e.pcRatio>1.3?'hedging/fear':e.pcRatio<0.7?'call-heavy':'balanced')}
-    ${row('OI skew', e.skew?e.skew.score:'—', esc(e.skew?.read||''))}
-    ${row('Concentration', e.concentration?(e.concentration.pct??e.concentration)+'':'—','top strikes share')}
-    ${row('CEX (charm)', g?fOI(g.cex):'—','∂Δ/∂time flow')}
-    ${row('VEX (vanna)', g?fOI(g.vex):'—', esc(g?.vanna?.state||''))}
-    ${row('Risk reversal', rr?rr.rr:'—', esc(rr?.tilt?rr.tilt+' tilt':''))}
-    ${row('ATM IV Δ', iv?.atmChg!=null?iv.atmChg+'%':'—','vs prior')}
-    ${row('Vol P/C', vf?vf.volPcRatio:'—', vf?.divergence?'diverges from OI P/C':'')}
-    ${row('Call OI Δ', fOI(e.totalCallChg), e.totalCallChg>0?'building':'closing')}
-    ${row('Put OI Δ', fOI(e.totalPutChg), e.totalPutChg>0?'building':'closing')}
-  </tbody></table>`;
+  if(!ts.length) return '<div class="empty">No per-expiry structure.<br>Paste the full strike-by-expiry matrix to populate this.</div>';
+  return `<table><thead><tr><th>DTE</th><th>Max pain</th><th>Call wall</th><th>Put wall</th><th>Total OI</th></tr></thead><tbody>`
+    + ts.map(r=>`<tr${r.dte===e.dte?' style="color:var(--acc)"':''}><td>${r.dte}</td><td>${fx(show(r.maxPain,e),SYM)}</td>`
+      + `<td>${r.callWall?fx(show(r.callWall,e),SYM):'—'}</td><td>${r.putWall?fx(show(r.putWall,e),SYM):'—'}</td>`
+      + `<td>${fOI(r.totalOI)}</td></tr>`).join('')
+    + `</tbody></table><div class="note">The amber row is the expiry your headline levels come from. These walls are unfiltered, so far-out strikes can appear here.</div>`;
 }
 
 function volumePanel(e){
   const v=e.volumeMagnets||[];
-  if(!v.length) return '<div class="empty">no volume pasted</div>';
+  if(!v.length) return '<div class="empty">No volume magnets.<br>Either no volume was pasted, or its strikes fell outside the option ladder and were rejected.</div>';
   const mx=Math.max(...v.map(x=>x.volume||0),1);
-  return `<table><thead><tr><th>Strike</th><th>Volume</th><th></th><th>Dist</th></tr></thead><tbody>
-  ${v.slice(0,10).map(x=>{const d=Number.isFinite(e.spot)?(x.strike-e.spot)/pip(SYM):NaN;
-    return `<tr><td>${fx(show(x.strike,e),SYM)}</td><td>${fOI(x.volume)}</td>
-    <td style="width:90px"><span class="bar" style="width:${(x.volume/mx*80).toFixed(0)}px;background:var(--vol);opacity:.65"></span></td>
-    <td class="muted">${Number.isFinite(d)?(d>=0?'+':'')+d.toFixed(0)+'p':'—'}</td></tr>`;}).join('')}
-  </tbody></table>`;
+  return `<table><thead><tr><th>Strike</th><th>Volume</th><th></th><th>Dist</th></tr></thead><tbody>`
+    + v.slice(0,10).map(x=>{const d=pips(x.strike,e.spot,SYM);
+      return `<tr><td>${fx(show(x.strike,e),SYM)}</td><td>${fOI(x.volume)}</td>`
+        + `<td style="width:100px"><span class="bar" style="width:${(x.volume/mx*88).toFixed(0)}px;background:var(--vol);opacity:.7"></span></td>`
+        + `<td class="muted">${Number.isFinite(d)?(d>=0?'+':'')+d.toFixed(0)+'p':'—'}</td></tr>`;}).join('')
+    + `</tbody></table>`;
 }
 
 function render(){
-  const e=STORE[SYM];
-  renderRail();
+  const e=STORE[SYM]; renderRail();
   document.getElementById('unitBtn').textContent='Showing: '+(SPOTADJ?'SPOT-ADJ':'FUTURES');
-  if(!e){ document.getElementById('main').innerHTML='<div class="empty">no OI stored for this instrument</div>'; return; }
-  const a=ageOf(e);
+  document.getElementById('sortBtn').textContent='Walls: '+(SORT==='strength'?'STRENGTH':'NEAREST');
+  if(!e){ document.getElementById('main').innerHTML='<div class="empty">No OI stored for this instrument.</div>'; return; }
   document.getElementById('sub').textContent =
-    `${nm(SYM)} · ${e.primaryExpiry?.code||'—'} · saved ${a.txt} ago · ${e.numRows||0} strikes`;
-
-  document.getElementById('main').innerHTML = `
-    ${priceBar(e)}
-    ${diagBar(e)}
-    ${levelStrip(e)}
-    <div class="grid">
-      <div class="p c8"><h3>Open interest by strike <em>calls right · puts left · focus ±4 reference moves</em></h3>
-        <div class="body">${chartOI(e)}</div></div>
-      <div class="p c4"><h3>Positioning &amp; flow</h3><div class="body" style="padding:4px 0">${flowPanel(e)}</div></div>
-
-      <div class="p c7"><h3>Net GEX by strike <em>dealer hedging character</em></h3>
-        <div class="body">${chartGEX(e)}
-        <div class="note">Positive bars = call-dominated gamma at that strike. The GEX flip is where TOTAL
-        net gamma crosses zero once you re-evaluate the whole book at each candidate price — above it dealer
-        hedging damps moves, below it amplifies.</div></div></div>
-      <div class="p c5"><h3>IV smile <em>today vs prior settle</em></h3><div class="body">${chartSmile(e)}</div></div>
-
-      <div class="p c6"><h3>Call walls — resistance</h3><div class="body" style="padding:4px 0">${wallTable(e,'call')}</div></div>
-      <div class="p c6"><h3>Put walls — support</h3><div class="body" style="padding:4px 0">${wallTable(e,'put')}</div></div>
-
-      <div class="p c5"><h3>Per-expiry structure <em>where each horizon pins</em></h3>
-        <div class="body" style="padding:4px 0">${termTable(e)}</div></div>
-      <div class="p c4"><h3>ATM IV term structure</h3><div class="body">${chartTerm(e)}
-        <div class="note">${e.ivTermStructure?esc(e.ivTermStructure.shape+' · front '+e.ivTermStructure.front?.iv+'% → back '+e.ivTermStructure.back?.iv+'%'):'paste the Settlements table to populate'}</div></div></div>
-      <div class="p c3" style="grid-column:span 3"><h3>Volume magnets <em>today's flow</em></h3>
-        <div class="body" style="padding:4px 0">${volumePanel(e)}</div></div>
-    </div>`;
+    nm(SYM)+' · '+(e.primaryExpiry?.code||'no expiry code')+' · '+(e.numRows||0)+' strikes · saved '+ageOf(e).txt+' ago';
+  document.getElementById('main').innerHTML = priceBar(e)+diagBar(e)+levelStrip(e)+'<div class="grid">'
+    + panel('c7','oi','Open interest by strike','oichart',chartOI)
+    + panel('c5','flow','Positioning and flow','flow',flowPanel,true)
+    + panel('c7','gex','Net GEX by strike','gexchart',chartGEX)
+    + panel('c5','smile','IV smile','smile',chartSmile)
+    + panel('c6','cw','Call walls — resistance','walls',x=>wallTable(x,'call'),true)
+    + panel('c6','pw','Put walls — support','walls',x=>wallTable(x,'put'),true)
+    + panel('c4','term','ATM IV term structure','term',chartTerm)
+    + panel('c4','perexp','Per-expiry structure','perexp',termTable,true)
+    + panel('c4','vol','Volume magnets','volmag',volumePanel,true)
+    + '</div>';
 }
 
 document.getElementById('unitBtn').onclick=()=>{SPOTADJ=!SPOTADJ;render();};
+document.getElementById('sortBtn').onclick=()=>{SORT=(SORT==='strength')?'proximity':'strength';render();};
 document.getElementById('reload').onclick=()=>boot();
+document.getElementById('zoom').addEventListener('click',ev=>{ if(ev.target.id==='zoom') closeZoom(); });
+document.addEventListener('keydown',ev=>{ if(ev.key==='Escape') closeZoom(); });
+
+// The same C+Z / OI paste block the vol-forecast page produces, reachable from here so
+// the TradingView lines can be grabbed without leaving the analysis.
+document.getElementById('expBtn').onclick=async()=>{
+  const b=document.getElementById('expBtn'); const was=b.textContent; b.textContent='fetching…';
+  try{
+    const r=await fetch('/api/vol-forecast/zones',{cache:'no-store'});
+    const txt=await r.text();
+    document.getElementById('zoomTitle').textContent='C+Z / OI export — paste into the TradingView indicator';
+    document.getElementById('zoomBody').innerHTML='<button class="btn" id="cpBtn" style="margin-bottom:12px">Copy to clipboard</button>'
+      + '<textarea readonly style="width:100%;height:60vh;background:#05070a;color:var(--tx);border:1px solid var(--line2);'
+      + 'border-radius:6px;padding:14px;font:13px/1.55 var(--mono)">'+esc(txt)+'</textarea>';
+    document.getElementById('zoom').classList.add('open');
+    document.getElementById('cpBtn').onclick=()=>{
+      try{ navigator.clipboard.writeText(txt); document.getElementById('cpBtn').textContent='Copied ✓'; }
+      catch(_){ document.getElementById('cpBtn').textContent='Select the text and copy manually'; }
+    };
+  }catch(err){ alert('Export failed: '+err.message); }
+  b.textContent=was;
+};
 
 async function boot(){
   document.getElementById('sub').textContent='loading…';
@@ -454,11 +574,10 @@ async function boot(){
     if(!keys.length){ document.getElementById('sub').textContent='no OI data in KV'; return; }
     if(!SYM||!STORE[SYM]) SYM=keys.includes('XAU/USD')?'XAU/USD':keys[0];
     render();
-  }catch(err){
-    document.getElementById('sub').textContent='load failed: '+err.message;
-  }
+  }catch(err){ document.getElementById('sub').textContent='load failed: '+err.message; }
 }
 boot();
+
 </script>
 </body>
 </html>

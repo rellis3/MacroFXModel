@@ -1424,7 +1424,12 @@ export async function processOIData() {
     const {gamma} = oiGreeks(s, spot, pair);
     const callGex = parsed.calls[i] * gamma * cs * spot;
     const putGex  = parsed.puts[i]  * gamma * cs * spot;
-    return { strike:s, callGex, putGex, netGex: callGex - putGex };
+    // Raw OI rides along with the gamma-weighted numbers. This is the only CONTIGUOUS
+    // per-strike record stored (topLevels is a top-N ranking, not a ladder), so an
+    // OI-by-strike chart has nowhere else to read from — the dashboard's version came
+    // out blank because it looked for callOI/putOI here and they didn't exist.
+    return { strike:s, callOI: parsed.calls[i], putOI: parsed.puts[i],
+             callGex, putGex, netGex: callGex - putGex };
   }).sort((a,b) => a.strike - b.strike);
 
   // Ranked call walls (highest call OI first) and put walls (highest put OI first)
@@ -1469,7 +1474,24 @@ export async function processOIData() {
   // reopen (same reason as rawOI/rawChg — the raw text was never stored, so volume
   // vanished and had to be re-pasted).
   const _compactVol = _volParsed.map(v => `${v.strike}\t${v.volume}`).join('\n');
-  const volumeMagnets = _volParsed.slice(0, 8).map(v => ({ strike: +volShift(v.strike).toFixed(6), volume: v.volume }));
+  // Volume magnets must land ON the option ladder. Gold's paste has `6.3 | 3570.8` in
+  // its first two columns — the volume report's layout differs from the OI report's, so
+  // `oiParseVolume` read 6.3 as a strike, the basis shift turned it into −2.49, and the
+  // dashboard duly drew a magnet at minus two dollars, 48,464 pips from spot. Same class
+  // of miss as everywhere else: a number that cannot possibly be a strike, stored anyway.
+  // Keep only magnets inside the parsed strike range (±10%); if none survive, the paste
+  // was the wrong table and an empty list is the honest answer.
+  // Bounds computed locally: `_loK`/`_hiK` are declared further down, so reaching for
+  // them here would be a temporal-dead-zone ReferenceError — the same trap that made
+  // Analyse silently do nothing when `futEl` was referenced out of scope.
+  const _volLo = (parsed.strikes.length ? Math.min(...parsed.strikes) : 0) * 0.9;
+  const _volHi = (parsed.strikes.length ? Math.max(...parsed.strikes) : 0) * 1.1;
+  const _volOK = _volParsed.filter(v => {
+    const s = volShift(v.strike);
+    return Number.isFinite(s) && s >= _volLo && s <= _volHi;
+  });
+  const volumeMagnets = _volOK.slice(0, 8).map(v => ({ strike: +volShift(v.strike).toFixed(6), volume: v.volume }));
+  const volumeRejected = _volParsed.length > 0 && _volOK.length === 0;
   // Volume-flow reads: per-strike volume (basis-shifted) for the wall "fresh vs stale"
   // tag, + volume put/call ratio (today's directional flow) from the call/put split.
   const _volPost = _volParsed.map(v => ({ strike: volShift(v.strike), volume: v.volume }));
@@ -1518,6 +1540,8 @@ export async function processOIData() {
   // looked green. These extra checks are SEMANTIC — they test whether the numbers
   // mean what they claim, not just whether they're the right size.
   const _warnings = [];
+  if (volumeRejected)
+    _warnings.push(`the VOLUME paste's strikes fall outside the option ladder — that table's columns differ from the OI report's, so no volume magnets were kept (re-copy the Volume view)`);
   // Truncation FIRST — it silently deletes strikes, and every level below is computed
   // on whatever survived. Gold lost every strike above 4010 (spot was 4078) this way.
   if (parsed.truncated)
