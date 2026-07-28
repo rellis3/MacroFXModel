@@ -185,6 +185,23 @@ export function closeOIModal() {
   if (sel) sel.disabled = false;
 }
 
+// Fetch BOTH legs of the basis in one call, at the moment Analyse is pressed.
+//
+// The course is explicit that futures and spot must be captured together (L229) —
+// hours apart gives a wrong basis, and a stale basis puts levels 10-20 pips out (L267).
+// The old flow only auto-filled the FUTURES field, and only at modal-open, then paired
+// it with a spot field populated at some other time. Nothing recorded the gap, and the
+// dashboard reported the result as "you typed it" because the field simply had a value
+// in it. Returns null on failure so the caller falls back to whatever is on screen.
+async function fetchPairedQuote(pair) {
+  try {
+    const r = await fetch(`/api/futures-quote?pair=${encodeURIComponent(pair)}`, { cache: 'no-store' });
+    const d = await r.json();
+    if (!d?.ok || !(d.price > 0)) return null;
+    return d;
+  } catch { return null; }
+}
+
 async function autoFetchFuturesPrice(pair, futEl) {
   try {
     const r = await fetch(`/api/futures-quote?pair=${encodeURIComponent(pair)}`);
@@ -1087,7 +1104,7 @@ export function oiFmtChg(n) {
 
 // ── Process & save ───────────────────────────────────────────────────────────
 
-export function processOIData() {
+export async function processOIData() {
   const pair = S.currentPair ? S.currentPair.symbol : document.getElementById('oiPairSelect').value;
   const rawOI = document.getElementById('oiRawData').value;
   const rawChg = document.getElementById('oiChangeData').value;
@@ -1125,7 +1142,21 @@ export function processOIData() {
   // so it stays as the fallback — flagged via `futuresSource` so the card can say
   // which one it used instead of presenting a stale basis as a fresh one.
   const _ivTitle = rawIV.trim() ? parseIVSettlement(rawIV) : null;
-  let futuresEff = futuresRaw, futuresSource = Number.isFinite(futuresRaw) ? 'manual' : null;
+  // LIVE, PAIRED, AT ANALYSE TIME — the top priority source. Only a value the user
+  // actually typed (dataset.manual==='1') outranks it; an auto-filled field does not,
+  // which is what made every record read "manual" before.
+  const _typed = futEl?.dataset?.manual === '1';
+  const _live = await fetchPairedQuote(pair);
+  let futuresEff = null, futuresSource = null, futuresSymbol = null, quoteAt = null, livePairedSpot = null;
+  if (_typed && Number.isFinite(futuresRaw)) {
+    futuresEff = futuresRaw; futuresSource = 'manual';
+  } else if (_live) {
+    futuresEff = _live.price; futuresSymbol = _live.symbol; quoteAt = _live.at ?? Date.now();
+    futuresSource = _live.kind === 'cfd' ? 'live-cfd-proxy' : `live-${_live.source}`;
+    livePairedSpot = Number.isFinite(_live.spot) ? _live.spot : null;
+  } else if (Number.isFinite(futuresRaw)) {
+    futuresEff = futuresRaw; futuresSource = 'field';
+  }
   if (!Number.isFinite(futuresEff) && Number.isFinite(_ivTitle?.futures)) {
     futuresEff = _ivTitle.futures; futuresSource = 'iv-title-live';
   }
@@ -1146,9 +1177,16 @@ export function processOIData() {
   }
 
   // Resolve OANDA spot (reference for Greeks and basis calculation)
-  let spot = isNaN(spotRaw) ? null : spotRaw;
-  if (!spot && window._latestQuote && S.currentPair && S.currentPair.symbol === pair)
-    spot = window._latestQuote.price ?? window._latestQuote.mid;
+  // Spot: prefer the leg that came back WITH the futures price in the same request —
+  // that pairing is the whole point (course L229). The on-screen field was filled when
+  // the modal opened, which can be minutes earlier, and pairing those two is exactly
+  // how a basis silently absorbs whatever the market did in between.
+  let spot = null, spotSource = null;
+  if (Number.isFinite(livePairedSpot) && livePairedSpot > 0) { spot = livePairedSpot; spotSource = 'live-paired'; }
+  if (!spot && !isNaN(spotRaw)) { spot = spotRaw; spotSource = 'field'; }
+  if (!spot && window._latestQuote && S.currentPair && S.currentPair.symbol === pair) {
+    spot = window._latestQuote.price ?? window._latestQuote.mid; spotSource = 'dashboard-quote';
+  }
 
   // ── Basis conversion: Spot Level = CME Strike − Basis  (Basis = Futures − Spot) ──
   // CME strikes are in futures price terms. We shift them to spot-equivalent levels.
@@ -1443,7 +1481,10 @@ export function processOIData() {
 
   const inst = {
     pair, spot, futures: futuresUsed, basis: basis || null,
-    futuresSource,   // 'manual' | 'iv-title-live' | 'heatmap-header-settle' — never present a settle-derived basis as a live one
+    futuresSource,   // 'manual' | 'live-yahoo' | 'live-cfd-proxy' | 'iv-title-live' | 'heatmap-header-settle' | 'field'
+    futuresSymbol,   // e.g. GC=F / 6E=F — WHICH contract the price came from
+    spotSource,      // 'live-paired' when both legs came from one request (the honest basis)
+    quoteAt,         // when that paired quote was taken, so a stale basis is provable
     futuresStale,    // live-title minus heatmap-settle, when both are available (how wrong the fallback would be)
     basisAt: Date.now(),   // the basis is only valid for the moment both legs were read (course L229)
     maxPain, exposures, topLevels, gexProfile,

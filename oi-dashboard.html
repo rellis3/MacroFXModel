@@ -280,13 +280,24 @@ function chartTerm(e){
 
 function priceBar(e){
   const b=e.basis, pv=pip(SYM);
-  const src={manual:'you typed it','iv-title-live':'live, from the IV title','heatmap-header-settle':'SETTLE — not live'}[e.futuresSource]||'unknown';
-  const staleCls = e.futuresSource==='heatmap-header-settle' ? 'v" style="color:var(--warn)' : 'v';
+  const src={
+    manual:'you typed it',
+    'live-yahoo':'live feed at Analyse',
+    'live-cfd-proxy':'CFD proxy — no futures feed',
+    'iv-title-live':'live, from the IV title',
+    'heatmap-header-settle':'SETTLE — not live',
+    field:'left over in the field',
+  }[e.futuresSource] || 'unknown';
+  const weak = e.futuresSource==='heatmap-header-settle' || e.futuresSource==='field' || e.futuresSource==='live-cfd-proxy';
+  const staleCls = weak ? 'v" style="color:var(--warn)' : 'v';
+  const paired = e.spotSource==='live-paired';
   return `<div class="pricebar">
-    <div><div class="k">CFD spot</div><div class="v">${fx(e.spot,SYM)}</div><div class="n">broker feed at save</div></div>
-    <div><div class="k">CME futures</div><div class="${staleCls}">${fx(e.futures,SYM)}</div><div class="n">${esc(src)}</div></div>
+    <div><div class="k">CFD spot</div><div class="v"${paired?'':' style="color:var(--warn)"'}>${fx(e.spot,SYM)}</div>
+      <div class="n">${paired?'paired with futures':esc(e.spotSource||'field at save')}</div></div>
+    <div><div class="k">CME futures</div><div class="${staleCls}">${fx(e.futures,SYM)}</div>
+      <div class="n">${esc(e.futuresSymbol?e.futuresSymbol+' · ':'')}${esc(src)}</div></div>
     <div><div class="k">Basis</div><div class="v">${Number.isFinite(b)?(b>=0?'+':'')+ (b/pv).toFixed(1)+'p':'—'}</div>
-      <div class="n">${Number.isFinite(b)?'strike − '+b.toFixed(dp(SYM)):'not applied'}</div></div>
+      <div class="n">${paired?'both legs same instant ✓':'legs NOT paired ⚠'}</div></div>
     <div><div class="k">Reference move</div><div class="v">${e.refMove?fx(e.refMove.move,SYM):'—'}</div>
       <div class="n">${esc(e.refMove?.source||'—')}${e.refMove&&e.spot?' · ±'+(e.refMove.move/e.spot*100).toFixed(2)+'%':''}</div></div>
     <div><div class="k">Expiry</div><div class="v">${esc(e.primaryExpiry?.code||'—')}</div>
@@ -305,7 +316,8 @@ function diagBar(e){
   c.push(`<span class="chip ${pe.anchorValid===false?'bad':'good'}">anchor <b>${pe.anchorValid===false?'INVALID':'ok'}</b></span>`);
   c.push(`<span class="chip ${pe.scoredOn==='totalOI'?'warn':''}">expiry by <b>${esc(pe.scoredOn||'—')}</b></span>`);
   c.push(`<span class="chip">strikes <b>${e.numRows??'—'}</b></span>`);
-  c.push(`<span class="chip ${e.futuresSource==='heatmap-header-settle'?'warn':''}">futures <b>${esc(e.futuresSource||'—')}</b>${
+  c.push(`<span class="chip ${e.spotSource==='live-paired'?'good':'warn'}">basis legs <b>${e.spotSource==='live-paired'?'paired':'UNPAIRED'}</b></span>`);
+  c.push(`<span class="chip ${/^live-(yahoo|cfd)/.test(e.futuresSource||'')?'good':'warn'}">futures <b>${esc(e.futuresSymbol||e.futuresSource||'—')}</b>${
     Number.isFinite(e.futuresStale)&&Math.abs(e.futuresStale)>0?' ('+(e.futuresStale/pip(SYM)).toFixed(0)+'p stale)':''}</span>`);
   c.push(`<span class="chip ${e.refMove?.source==='flat-vol'?'warn':'good'}">move <b>${esc(e.refMove?.source||'—')}</b></span>`);
   c.push(`<span class="chip ${e.greeksFlow?'good':''}">greeks <b>${e.greeksFlow?e.greeksFlow.source+' · '+e.greeksFlow.dteDays+'d':'none'}</b></span>`);

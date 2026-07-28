@@ -2862,9 +2862,10 @@ app.get('/api/futures-quote', async (req, res) => {
   const symbol = FUTURES_MAP[pair];
   if (!symbol && !OANDA_MAP[pair]) return res.json({ ok: false, error: 'No futures/CFD mapping for this pair' });
   const kind = symbol && symbol.startsWith('^') ? 'index' : 'future';
+  const oSym = OANDA_MAP[pair];
 
-  // 1) Yahoo (real future), query1 then query2.
-  if (symbol) {
+  const yahooFutures = async () => {
+    if (!symbol) return null;
     for (const host of ['query1', 'query2']) {
       try {
         const r = await fetch(
@@ -2874,28 +2875,46 @@ app.get('/api/futures-quote', async (req, res) => {
         if (!r.ok) continue;
         const data = await r.json();
         const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
-        if (price) return res.json({ ok: true, price, symbol, kind, source: 'yahoo' });
-      } catch { /* try next host / fall through to OANDA */ }
+        if (price) return { price, symbol, kind, source: 'yahoo' };
+      } catch { /* try next host */ }
     }
-  }
-
-  // 2) OANDA fallback — the CFD/spot the user actually trades.
-  const oSym = OANDA_MAP[pair];
-  if (oSym && process.env.OANDA_KEY && process.env.OANDA_ACCOUNT_ID) {
+    return null;
+  };
+  const oandaSpot = async () => {
+    if (!oSym || !process.env.OANDA_KEY || !process.env.OANDA_ACCOUNT_ID) return null;
     try {
       const oB = (process.env.OANDA_ENV || 'live') === 'practice' ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
       const r = await fetch(`${oB}/v3/accounts/${process.env.OANDA_ACCOUNT_ID}/pricing?instruments=${encodeURIComponent(oSym)}`,
         { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(6_000) });
-      if (r.ok) {
-        const d = await r.json(); const p = d.prices?.[0];
-        if (p?.asks?.[0] && p?.bids?.[0]) {
-          const price = (+p.asks[0].price + +p.bids[0].price) / 2;
-          // Label it a CFD proxy so the client shows the source honestly.
-          return res.json({ ok: true, price, symbol: oSym, kind: 'cfd', source: 'oanda' });
-        }
-      }
-    } catch { /* fall through to error */ }
-  }
+      if (!r.ok) return null;
+      const d = await r.json(); const p = d.prices?.[0];
+      if (p?.asks?.[0] && p?.bids?.[0]) return { price: (+p.asks[0].price + +p.bids[0].price) / 2, symbol: oSym, source: 'oanda' };
+    } catch { /* ignore */ }
+    return null;
+  };
+
+  // BOTH LEGS, ONE CALL, ISSUED TOGETHER.
+  //
+  // The basis is only meaningful if futures and spot are sampled at the same moment
+  // (open-interest-course-notes.md L229: "capture both at the same moment — prices
+  // hours apart give a wrong basis"). Previously the client fetched only the futures
+  // leg, at modal-open, and paired it against a spot field filled at some other time;
+  // the two could be minutes apart and nothing recorded that they were. Firing them
+  // in parallel here bounds the gap to one round trip and stamps it server-side, so
+  // the client cannot accidentally mix timestamps.
+  const [fut, spot] = await Promise.all([yahooFutures(), oandaSpot()]);
+  const at = Date.now();
+
+  if (fut) return res.json({ ok: true, price: fut.price, symbol: fut.symbol, kind: fut.kind, source: fut.source,
+    spot: spot?.price ?? null, spotSymbol: spot?.symbol ?? null, spotSource: spot?.source ?? null,
+    basis: (spot?.price != null) ? +(fut.price - spot.price).toFixed(8) : null, at });
+
+  // No real future — fall back to the OANDA CFD, labelled honestly as such so the
+  // client never presents a CFD mid as a futures price (that would make basis ≈ 0).
+  if (spot) return res.json({ ok: true, price: spot.price, symbol: spot.symbol, kind: 'cfd', source: 'oanda',
+    spot: spot.price, spotSymbol: spot.symbol, spotSource: 'oanda', basis: 0, at,
+    note: 'no futures feed for this pair — CFD mid used for BOTH legs, so basis is 0 by construction' });
+
   res.json({ ok: false, error: 'No futures/CFD price available (Yahoo + OANDA both unavailable)' });
 });
 

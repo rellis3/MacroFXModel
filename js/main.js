@@ -42,7 +42,9 @@ window.renderARMAAndTransition = renderARMAAndTransition;
 window.fvGapToPips            = fvGapToPips;
 window.openOIModal            = openOIModal;
 window.closeOIModal           = closeOIModal;
-window.processOIData          = processOIData;
+// processOIData is async (it fetches the paired futures+spot quote at click time).
+// Wrap it so a throw surfaces as a console error instead of a silent unhandled rejection.
+window.processOIData          = () => processOIData().catch(e => { console.error('[OI] Analyse failed:', e); });
 window.removeOIInstrument     = removeOIInstrument;
 window.calcOISpot             = calcOISpot;
 window.updateOIBasis          = updateOIBasis;
