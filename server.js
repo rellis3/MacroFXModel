@@ -61,7 +61,7 @@ import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _r
 import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS, BM_P75 as _BM_P75 } from './js/volBacktestEngine.js';
 import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED, fetchPriceOnly as _mveFetchPriceOnly } from './js/mve/liveAdapter.js';
 import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency, validateMechanicalAnchor as _mveValidateMechanical } from './js/mve/validateInstrument.js';
-import { volOuDiagnostic as _volOuDiagnostic, scoreVolPredictsForwardVol as _scoreVolPredictsForwardVol } from './js/volReversionCore.js';
+import { volOuDiagnostic as _volOuDiagnostic, scoreVolPredictsForwardVol as _scoreVolPredictsForwardVol, scoreVolPredictsForwardReturn as _scoreVolPredictsForwardReturn } from './js/volReversionCore.js';
 import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS, buildPortfolioReturns as _trendBuildPortfolio, portfolioReturnsByDate as _trendReturnsByDate } from './js/trendFollowEngine.js';
 import { blendStreams as _blendStreams } from './js/streamBlend.js';
 import { runGauntlet as _runStrategyGauntlet, GAUNTLET_SPECS as _GAUNTLET_SPECS, SIGNALS as _LAB_SIGNALS } from './js/strategyLabEngine.js';
@@ -6977,6 +6977,10 @@ app.get('/api/mve-validate-mechanical/:sym', async (req, res) => {
 // fact); `forecast` = does the z-scored reading beat vol's own raw-level persistence
 // at predicting forward realized vol (the real, narrower claim — see the module's
 // header comment on why a negative result here doesn't mean "vol doesn't revert").
+// `priceReturn` = the third claim ("vol spike → bounce"), completed 2026-07-28 —
+// block-bootstrap significance vs the predictor's own serial dependence, Bonferroni-
+// corrected across horizons (see volReversionCore.js's header + test file for why the
+// original circular-shift attempt didn't calibrate and what fixed it).
 const _volReversionCache = new Map();
 app.get('/api/vol-reversion/:sym', async (req, res) => {
   const sym = req.params.sym;
@@ -6989,7 +6993,8 @@ app.get('/api/vol-reversion/:sym', async (req, res) => {
     if (!built.ok) return res.status(502).json(built);
     const diagnostic = _volOuDiagnostic(built.price);
     const forecast = _scoreVolPredictsForwardVol(built.price);
-    const out = { ok: true, instrument: sym, diagnostic, forecast, dataSource: built.dataSource };
+    const priceReturn = _scoreVolPredictsForwardReturn(built.price);
+    const out = { ok: true, instrument: sym, diagnostic, forecast, priceReturn, dataSource: built.dataSource };
     _volReversionCache.set(sym, { at: Date.now(), data: out });
     res.json(out);
   } catch (e) {

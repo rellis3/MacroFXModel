@@ -5,7 +5,7 @@
 //   node js/legoBricks.test.mjs
 
 import { bisect, extractBars, resampleTo, bodyRange, calcATR } from './barUtils.js';
-import { rollingZScore, rollingPercentile, rollingZAt, linregSlope, ewma, stdev, rankData, spearman, rankIC } from './statsCore.js';
+import { rollingZScore, rollingPercentile, rollingZAt, linregSlope, ewma, stdev, rankData, spearman, rankIC, mulberry32, blockResample, blockBootstrapIC } from './statsCore.js';
 import { atrWilder, adxWilder, ema, rsiWilder } from './indicatorCore.js';
 import { summarizeTrades, sharpeRatio, maxDrawdownFromPnls, profitFactor, winRate, sharpeStdError, minTrackRecordLength, skewness, excessKurtosis, histVaR, histCVaR } from './metricsCore.js';
 import { FIB_LEVELS, calcFibs } from './fibProjection.js';
@@ -84,6 +84,39 @@ ok('spearman constant score → 0', spearman([3, 3, 3, 3], [1, 2, 3, 4]) === 0);
 const ric = rankIC([1, 2, 3, 4, 5, 6, 7, 8], [2, 1, 4, 3, 6, 5, 8, 7]);
 ok('rankIC reports n + positive t on rising pair', ric.n === 8 && ric.ic > 0 && ric.tStat > 0);
 ok('rankIC null pair ≈ 0', Math.abs(rankIC(Array.from({length:200},(_,i)=>i%7), Array.from({length:200},(_,i)=>(i*13)%5)).ic) < 0.2);
+
+// ── mulberry32 / blockResample (2026-07-28: promoted here from backtestStats.js's
+// private helpers, which now import these instead of carrying their own copy) —
+// bit-compared against a verbatim reference copy of the original private version.
+function refMulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function refBlockResample(a, rng, meanBlock) { const n = a.length, out = new Array(n); if (!n) return out; const p = 1 / Math.max(1, meanBlock); let idx = (rng() * n) | 0; for (let i = 0; i < n; i++) { out[i] = a[idx]; idx = (rng() < p) ? (rng() * n) | 0 : (idx + 1) % n; } return out; }
+{
+  const seq = mulberry32(42), refSeq = refMulberry32(42);
+  const draws = Array.from({ length: 20 }, () => seq()), refDraws = Array.from({ length: 20 }, () => refSeq());
+  ok('mulberry32 matches original inline PRNG bit-for-bit', JSON.stringify(draws) === JSON.stringify(refDraws));
+
+  const bArr = Array.from({ length: 400 }, (_, i) => Math.sin(i / 11));
+  const br = blockResample(bArr, mulberry32(7), 15), brRef = refBlockResample(bArr, refMulberry32(7), 15);
+  ok('blockResample matches original inline algorithm bit-for-bit', JSON.stringify(br) === JSON.stringify(brRef));
+  ok('blockResample same length as input, all values drawn from input', br.length === bArr.length && br.every(v => bArr.includes(v)));
+}
+
+// ── blockBootstrapIC — significance test for two autocorrelated series ──────
+{
+  const n = 500;
+  const xIndep = Array.from({ length: n }, (_, i) => Math.sin(i / 9) + Math.cos(i / 3.3));   // autocorrelated, unrelated to y
+  const yIndep = Array.from({ length: n }, (_, i) => Math.sin(i / 5.7 + 2) - i * 0.0003);
+  const rIndep = blockBootstrapIC(xIndep, yIndep, { meanBlock: 20, nBoot: 300, seed: 1 });
+  ok('blockBootstrapIC runs on two unrelated autocorrelated series', rIndep.ok === true);
+  ok('blockBootstrapIC pValue in [0,1]', rIndep.pValue > 0 && rIndep.pValue <= 1);
+
+  const xDep = Array.from({ length: n }, (_, i) => Math.sin(i / 9));
+  const yDep = xDep.map(v => v * 2 + 0.001);   // near-perfect monotonic dependence
+  const rDep = blockBootstrapIC(xDep, yDep, { meanBlock: 20, nBoot: 300, seed: 1 });
+  ok('blockBootstrapIC finds strong dependence significant (p<0.05)', rDep.ic > 0.9 && rDep.pValue < 0.05, `ic=${rDep.ic} p=${rDep.pValue}`);
+  ok('blockBootstrapIC deterministic under fixed seed', JSON.stringify(blockBootstrapIC(xDep, yDep, { meanBlock: 20, nBoot: 300, seed: 1 })) === JSON.stringify(rDep));
+  ok('blockBootstrapIC too-short series → clean error', blockBootstrapIC([1, 2, 3], [1, 2, 3]).ok === false);
+}
 
 console.log('[indicatorCore]');
 const bars = resampleTo(extractBars(packed, t0, t0 + 3 * 3600), 5);

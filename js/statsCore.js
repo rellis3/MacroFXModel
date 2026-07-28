@@ -149,6 +149,11 @@ export function spearman(x, y) {
 // (t = ρ·√((n−2)/(1−ρ²)) ~ t_{n−2}; |t| ≳ 2 ≈ 5% two-sided). The benchmark to
 // beat is ρ=0 — no monotonic relationship. An IC only "means something" once it
 // clears that AND holds out-of-sample; a high in-sample IC is not edge.
+//
+// CAVEAT: this t-test assumes i.i.d. pairs. When either series is itself
+// autocorrelated (a rolling z-score, an overlapping-window forward return), the
+// effective sample size is far smaller than n and this t-stat is too liberal —
+// use blockBootstrapIC below instead for that case.
 export function rankIC(scores, forwards) {
   const xs = [], ys = [];
   const n0 = Math.min(scores.length, forwards.length);
@@ -157,6 +162,91 @@ export function rankIC(scores, forwards) {
   const ic = spearman(xs, ys);
   const tStat = (n > 2 && Math.abs(ic) < 1) ? ic * Math.sqrt((n - 2) / (1 - ic * ic)) : 0;
   return { ic: +ic.toFixed(4), n, tStat: +tStat.toFixed(2) };
+}
+
+// ── Deterministic PRNG (mulberry32) ─────────────────────────────────────────
+// Seeded, reproducible — same seed ⇒ same stream, every time. Promoted here
+// (2026-07-28, extracted verbatim from backtestStats.js, which now imports it)
+// so every resampling/bootstrap routine in this codebase shares ONE PRNG rather
+// than each carrying its own copy.
+export function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+// ── Stationary (Politis–Romano) block bootstrap ─────────────────────────────
+// Resamples CONTIGUOUS blocks of random geometric length (mean `meanBlock`),
+// wrapping at the array end. Unlike an i.i.d. shuffle (which destroys ordering
+// entirely and so UNDERSTATES how much a series' own serial correlation can
+// look like signal by chance), this preserves the series' serial-correlation
+// structure — a run of similar values stays clumped in the resample. Geometric
+// (not fixed) block length keeps the resample stationary, avoiding a fixed-
+// boundary artifact. Same output length as input.
+// Extracted verbatim (2026-07-28) from backtestStats.js's private helper —
+// backtestStats.js now imports this instead of carrying its own copy.
+export function blockResample(arr, rng, meanBlock) {
+  const n = arr.length, out = new Array(n);
+  if (!n) return out;
+  const p = 1 / Math.max(1, meanBlock);
+  let idx = (rng() * n) | 0;
+  for (let i = 0; i < n; i++) {
+    out[i] = arr[idx];
+    idx = (rng() < p) ? (rng() * n) | 0 : (idx + 1) % n;
+  }
+  return out;
+}
+
+// ── Block-bootstrap significance test for a Spearman IC between two series ──
+// Answers: "is spearman(x, y) bigger than what x's OWN serial dependence could
+// produce against this exact y by chance?" — the honest null when either
+// series is autocorrelated (a rolling z-score predictor, an overlapping-window
+// forward return), where rankIC's t-test assumes i.i.d. pairs and is too
+// liberal — it understates how large an IC two independently-autocorrelated-
+// but-unrelated series can show purely by chance.
+//
+// Method: align x/y to their common finite window, compute the observed IC,
+// then hold y FIXED and repeatedly block-resample x (preserving x's own serial-
+// correlation structure, destroying its temporal alignment with y) to build a
+// null distribution of IC. Two-sided p-value uses the Davison–Hinkley +1
+// correction so it is never exactly 0 regardless of nBoot.
+//
+// `meanBlock` should be on the order of the predictor's own memory (e.g. its
+// z-score window) but is clamped well below the sample size — too long and a
+// resample degenerates into ~1-2 giant chunks (a coarse, low-power null; see
+// blockResample); too short under-preserves autocorrelation (a too-narrow
+// null, an over-liberal test). Caller-supplied `meanBlock` is clamped here
+// rather than trusted, since the "right" window for a smoothing filter is
+// usually much larger than its ACTUAL autocorrelation decay length.
+export function blockBootstrapIC(x, y, { meanBlock = 20, nBoot = 1000, seed = 0x9e3779b9 } = {}) {
+  const xs = [], ys = [];
+  const n0 = Math.min(x.length, y.length);
+  for (let i = 0; i < n0; i++) if (Number.isFinite(x[i]) && Number.isFinite(y[i])) { xs.push(x[i]); ys.push(y[i]); }
+  const n = xs.length;
+  if (n < 30) return { ok: false, error: `need >= 30 aligned points, got ${n}` };
+
+  const block = Math.min(Math.max(5, meanBlock), Math.max(5, Math.floor(n / 8)));
+  const obsIc = spearman(xs, ys);
+  const rng = mulberry32(seed >>> 0);
+  const nullIc = new Array(nBoot);
+  let extreme = 0;
+  for (let b = 0; b < nBoot; b++) {
+    const ic = spearman(blockResample(xs, rng, block), ys);
+    nullIc[b] = ic;
+    if (Math.abs(ic) >= Math.abs(obsIc)) extreme++;
+  }
+  const nullMean = mean(nullIc);
+  const nullSd = stdev(nullIc, 1);
+  return {
+    ok: true, n, ic: +obsIc.toFixed(4),
+    pValue: +((extreme + 1) / (nBoot + 1)).toFixed(4),
+    nullMean: +nullMean.toFixed(4), nullSd: +nullSd.toFixed(4),
+    meanBlock: block, nBoot,
+  };
 }
 
 // ── Hurst exponent via DFA (detrended fluctuation analysis) ──────────────────
