@@ -495,7 +495,7 @@ function _matrixRows(raw) {
   if (hdr < 0) return null;
   let futures = null;
   const dtes = [];
-  const codes = [];
+  const codes = [], underlyings = [];
   let inColumnHeader = false;
   for (let i = 0; i < hdr; i++) {
     if (futures == null)
@@ -522,20 +522,37 @@ function _matrixRows(raw) {
     // the wrong expiry (11 DTE is a different contract each day). The code is absolute.
     //
     // POSITION, not shape, decides what's an expiry code. The header block also lists
-    // the UNDERLYING futures contracts ("GCQ6", "6EU6") next to their prices, and gold
-    // shows 20 of those against 10 C/P columns. A shape rule can't separate them —
-    // `OGQ6` (option) and `GCQ6` (future) are the same shape, and requiring 5 chars
-    // (to exclude `6EU6`) silently dropped every 4-char gold code, misaligning the
-    // whole array. The expiry codes are exactly those at/after the "Strike" label row,
-    // which is where the column header actually begins.
-    if (!inColumnHeader && /^strike$/i.test((lines[i].split('\t')[0] || '').trim())) inColumnHeader = true;
-    if (inColumnHeader) {
-      for (const tok of lines[i].split('\t')) {
-        const t = tok.trim();
-        if (/^[A-Z]{2,3}[A-Z0-9]{1,2}[A-Z]?\d$/.test(t) && !/^\d/.test(t)) codes.push(t);
-      }
+    // the UNDERLYING futures contracts next to their prices, and a shape rule cannot
+    // separate them: `OGQ6` (option) and `GCQ6` (future) look identical. On FX the
+    // underlyings start with a digit (6E, 6J, 6B) so they drop out here, but on gold
+    // and the indices they do not (GCQ6, NQU6, YMU6, RTYU6). Collect every candidate
+    // now and disambiguate by position after the loop.
+    // A code sharing its row with a PRICE in column 0 is an underlying — that is how
+    // the header lists them (`27960.75 | NQU6`, `4050 | GCV6`). Expiry codes sit on the
+    // column-header rows, whose first cell is a DTE label, "Strike", or empty.
+    const c0 = (lines[i].split('\t')[0] || '').trim();
+    // Empty col0 counts as part of the price block too: the header is transposed, so
+    // its first row carries a contract with no price beside it yet (`| GCQ6`). The
+    // column-header rows always have a LABEL there — "Strike" or "N DTE".
+    const rowIsPrice = c0 === '' || /^-?\d+(\.\d+)?$/.test(c0);
+    for (const tok of lines[i].split('\t')) {
+      const t = tok.trim();
+      if (!/^[A-Z]{2,3}[A-Z0-9]{1,2}[A-Z]?\d$/.test(t) || /^\d/.test(t)) continue;
+      (rowIsPrice ? underlyings : codes).push(t);
     }
   }
+  // ONLY trust the codes when there is exactly one per expiry column.
+  //
+  // Two earlier attempts guessed at this and both broke a different instrument. A
+  // literal "Strike" anchor fixed gold and left USD/JPY with nothing; taking the
+  // trailing nExp then handed NQ and SPX their UNDERLYING (NQU6, ESU6) as the expiry.
+  // The real situation is that some pastes carry an INCOMPLETE header — NQ shows 4
+  // option codes against 13 columns, USD/JPY 14 against 18 — and no positional rule
+  // can align a partial list. When the count does not match, report no code and let
+  // the DTE-based smile hint take over. A missing label beats a confidently wrong one.
+  const nExp = Math.floor((lines[hdr] || '').split('\t').filter(Boolean).length / 2);
+  const expiryCodes = (nExp > 0 && codes.length === nExp) ? codes : [];
+
   const rows = [];
   let truncated = false;
   for (let i = hdr + 1; i < lines.length; i++) {
@@ -551,7 +568,7 @@ function _matrixRows(raw) {
     }
     rows.push({ strike, cp });
   }
-  return rows.length ? { futures, dtes, codes, rows, truncated } : null;
+  return rows.length ? { futures, dtes, codes: expiryCodes, rows, truncated } : null;
 }
 
 // Pick the PRIMARY expiry column from the parsed matrix — the education's
