@@ -2635,6 +2635,48 @@ async function _getAutoBriefCfg() {
 const _AI_LK = { GOLD: 'XAU/USD', NQ: 'NAS100_USD', SPX500: 'SPX500_USD', DE30: 'DE30_USD', UK100: 'UK100_GBP', US30: 'US30_USD', US2000: 'US2000_USD' };
 // brief name → [COT symbol, flip] and → relevant news countries (ported from today.html)
 const _COT_MAP = { EURUSD:['EUR',false], GBPUSD:['GBP',false], USDJPY:['JPY',true], AUDUSD:['AUD',false], NZDUSD:['NZD',false], USDCAD:['CAD',true], USDCHF:['CHF',true], GOLD:['GOLD',false], NQ:['NQ',false], SPX500:['ES',false], US30:['YM',false], US2000:['RTY',false] };
+// ONE definition of "COT expressed in PAIR terms". Inverted pairs (USD/JPY, USD/CAD,
+// USD/CHF) trade the FOREIGN currency's future, so the net, the OI share, the z and the
+// percentile must ALL be flipped together — flip some and not others and a crowded-short
+// JPY reads as a crowded-short USD/JPY. Both the morning brief and the C+Z export read
+// through here so that flip can never drift into two disagreeing copies.
+// NOTE `specShare`/`commShare` arrive from _worker.js ALREADY in percent (×100, 2dp) —
+// do not scale them again downstream.
+function _cotPairView(c, inverted) {
+  if (!c) return null;
+  const f = v => (v == null ? null : (inverted ? -v : v));
+  const fp = v => (v == null ? null : (inverted ? 100 - v : v));
+  return { reportDate: c.reportDate, openInterest: c.openInterest ?? 0,
+    net: f(c.specNet ?? 0), weeklyChg: c.weeklyChg, pct: fp(c.specPct),
+    share: f(c.specShare), sharePct: fp(c.specSharePct), shareZ: f(c.specShareZ),
+    inverted: !!inverted };
+}
+
+// COT keyed by the C+Z export's canonical chart name — `_COT_MAP` already uses exactly
+// those keys (EURUSD / GOLD / NQ / SPX500 …), so no second name table is needed. Prefers
+// the OI-normalised percentile, since that's the read that survives open interest itself
+// growing over the lookback. Returns null (not a partial object) if COT is unavailable —
+// the export must never invent positioning.
+async function _cotForExport(now = Date.now()) {
+  try {
+    const raw = await kv.get('cot_extremes_v2'); if (!raw) return null;
+    const cd = JSON.parse(raw);
+    const arr = cd.data?.instruments ?? cd.data ?? cd.instruments ?? [];
+    const list = Array.isArray(arr) ? arr : []; if (!list.length) return null;
+    const out = {};
+    for (const [canon, m] of Object.entries(_COT_MAP)) {
+      const v = _cotPairView(list.find(x => x.sym === m[0]), m[1]);
+      if (!v) continue;
+      const pct = v.sharePct != null ? v.sharePct : v.pct;   // OI-normalised first
+      if (pct == null) continue;
+      const t = v.reportDate ? Date.parse(`${v.reportDate}T00:00:00Z`) : NaN;
+      out[canon] = { pct: Math.round(pct), share: v.share, reportDate: v.reportDate,
+        ageDays: Number.isFinite(t) ? Math.round((now - t) / 864e5) : null };
+    }
+    return Object.keys(out).length ? out : null;
+  } catch { return null; }
+}
+
 const _PAIR_NEWS_CC = { EURUSD:['US','EU','DE'], GBPUSD:['US','GB'], USDJPY:['US','JP'], AUDUSD:['US','AU'], NZDUSD:['US','NZ'], USDCAD:['US','CA'], USDCHF:['US','CH'], GBPJPY:['GB','JP'], EURJPY:['EU','DE','JP'], AUDJPY:['AU','JP'], CADJPY:['CA','JP'], GOLD:['US'], NQ:['US'], SPX500:['US'], US30:['US'], US2000:['US'], DE30:['DE','EU'], UK100:['GB'] };
 // Today's economic calendar — the econCalendar brick caches internally (30 min),
 // so one fetch feeds every pair + the morning brief + /api/events.
@@ -2685,20 +2727,16 @@ async function _serverSnapshotFor(name, sym) {
       const cd = JSON.parse(cotRaw); const arr = cd.data?.instruments ?? cd.data ?? cd.instruments ?? [];
       const c = (Array.isArray(arr) ? arr : []).find(x => x.sym === m[0]);
       if (c) {
-        const oi = c.openInterest ?? 0, net = m[1] ? -(c.specNet ?? 0) : (c.specNet ?? 0);
-        // `m[1]` flips USD-quoted pairs (JPY/CAD/CHF futures are the foreign leg), so the
-        // net and its percentile must BOTH be expressed in pair terms or the brief will
-        // describe specs as long the pair when they are long the foreign currency.
-        const pctPair = m[1] && c.specSharePct != null ? 100 - c.specSharePct : c.specSharePct;
-        const rawPctPair = m[1] && c.specPct != null ? 100 - c.specPct : c.specPct;
-        snap.cot = { reportDate: c.reportDate, openInterest: oi, levNet: net, levNetChg: c.weeklyChg,
-          levPct: rawPctPair,
+        // Pair-terms normalisation lives in `_cotPairView` (shared with the C+Z export).
+        const v = _cotPairView(c, m[1]);
+        snap.cot = { reportDate: v.reportDate, openInterest: v.openInterest, levNet: v.net,
+          levNetChg: v.weeklyChg, levPct: v.pct,
           // OI-normalised crowding — share of open interest AND its percentile, which is
           // the read that survives open interest itself changing over the window.
-          crowdShare: c.specShare != null ? (m[1] ? -c.specShare : c.specShare) : null,
-          crowdSharePct: pctPair, crowdShareZ: c.specShareZ != null ? (m[1] ? -c.specShareZ : c.specShareZ) : null,
-          inverted: !!m[1],
-          crowdingPct: oi > 0 ? +(Math.abs(c.specNet ?? 0) / oi * 100).toFixed(1) : c.specPct };
+          crowdShare: v.share, crowdSharePct: v.sharePct, crowdShareZ: v.shareZ,
+          inverted: v.inverted,
+          // Magnitude, not direction — so this one is deliberately sign-free/unflipped.
+          crowdingPct: v.openInterest > 0 ? +(Math.abs(c.specNet ?? 0) / v.openInterest * 100).toFixed(1) : c.specPct };
       }
     }
   } catch {}
@@ -8404,7 +8442,10 @@ app.get('/api/vol-forecast/zones', async (_req, res) => {
     try {
       const raw = await kv.get('oi_store').catch(() => null);
       const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
-      const oiText = buildOILevelText(store, { generated: forecastState.latest.session_date });
+      // COT rides along as a per-pair CONTEXT line only — it has no price coordinate, so
+      // it is never emitted as an `OI {price}` level the indicator would draw.
+      const cot = await _cotForExport();
+      const oiText = buildOILevelText(store, { generated: forecastState.latest.session_date, cot });
       if (oiText && !oiText.includes('no OI data')) text += '\n\n' + oiText;
     } catch { /* OI is a bonus section — never fail the zones export over it */ }
     res.type('text/plain').send(text);

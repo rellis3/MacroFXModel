@@ -129,6 +129,8 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     lines.push(canon);
     const ctx = fmtSaved(inst);
     if (ctx) lines.push(ctx);
+    const cotLine = fmtCot(cot?.[canon]);
+    if (cotLine) lines.push(cotLine);
     // Gamma-flow context (human-only — the indicator ignores non-"OI " lines):
     // distance-to-flip vol read + a per-expiry roll-off block. No new data.
     const flip = Number.isFinite(inst.gammaFlip) ? inst.gammaFlip : gammaFlip(inst.gexProfile);
