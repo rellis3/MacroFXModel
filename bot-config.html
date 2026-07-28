@@ -3965,10 +3965,11 @@ python range_line_bot/range_line_bot.py --live --url &lt;dashboard-url&gt;</pre>
               <th style="padding:6px 10px;text-align:right">Max pain</th>
               <th style="padding:6px 10px;text-align:right">Zones</th>
               <th style="padding:6px 10px;text-align:left">Taken</th>
+              <th style="padding:6px 10px;text-align:left" title="Zones the bot skipped because price had already passed their entry when the plan armed (priming — not chasing a stale break). Hover a count for when + how far past.">Skipped</th>
             </tr>
           </thead>
           <tbody id="oiLinesBody">
-            <tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">Run the bot (or refresh the plan) to see today's zones</td></tr>
+            <tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">Run the bot (or refresh the plan) to see today's zones</td></tr>
           </tbody>
         </table>
       </div>
@@ -4013,6 +4014,8 @@ python oi_bot/oi_bot.py --live --url &lt;dashboard-url&gt;</pre>
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_follow_breaks"> on</label></div>
         <div class="form-row"><span class="form-lbl">Max-pain reversion <small>near expiry + extended from pin → fade toward it</small></span>
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_maxpain_reversion"> on</label></div>
+        <div class="form-row"><span class="form-lbl">Level-ladder targets <small style="color:#4dd0e1">new</small> <small>TP to the NEXT structural level in the trade's direction — walls · gamma flip · vanna flip · max pain · volume magnets — not always max pain. Trade level-to-level (TP1 = first level ahead, TP2 = the next). Off = classic max-pain / next-wall targets.</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_level_ladder_tp"> on</label></div>
         <div class="form-row"><span class="form-lbl">Avoid liquidating walls <small>skip a wall that's defended-then-fading (likely to break)</small></span>
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_avoid_liquidating"> on</label></div>
         <div class="form-row"><span class="form-lbl">Require established walls <small>only fade walls that persisted across days (needs OI history)</small></span>
@@ -4138,28 +4141,29 @@ python oi_bot/oi_bot.py --live --url &lt;dashboard-url&gt;</pre>
 
     <!-- Today's z-signal per pair -->
     <div class="card" style="padding:0">
-      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px;flex-wrap:wrap">
         <span style="font-size:12px;font-weight:600;color:#f472b6">Today's z-signal per pair</span>
-        <span class="bot-banner-sub" style="margin:0">the daily yield-spread z and the trade it implies</span>
+        <span class="bot-banner-sub" style="margin:0">how close each pair is to the trade gate, and which way it's moving</span>
+        <span id="ysGateNote" style="margin-left:auto;font-size:11px;color:var(--text3)"></span>
       </div>
       <div style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
           <thead>
             <tr style="background:var(--s2);color:var(--text3)">
               <th style="padding:6px 10px;text-align:left">Pair</th>
-              <th style="padding:6px 10px;text-align:right">z</th>
-              <th style="padding:6px 10px;text-align:left">Signal</th>
+              <th style="padding:6px 10px;text-align:right">z (Δ 1d)</th>
+              <th style="padding:6px 10px;text-align:left">Toward gate</th>
+              <th style="padding:6px 10px;text-align:center">Trend (30d)</th>
               <th style="padding:6px 10px;text-align:left">Direction</th>
-              <th style="padding:6px 10px;text-align:left">In position</th>
-              <th style="padding:6px 10px;text-align:right">Held (d)</th>
-              <th style="padding:6px 10px;text-align:left">As of</th>
+              <th style="padding:6px 10px;text-align:left">Position</th>
             </tr>
           </thead>
           <tbody id="ysLinesBody">
-            <tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">Run the bot (or refresh the plan) to see today's z per pair</td></tr>
+            <tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">Run the bot (or refresh the plan) to see today's z per pair</td></tr>
           </tbody>
         </table>
       </div>
+      <div class="bot-banner-sub" style="margin:0;padding:8px 16px 12px;font-size:10.5px">The <b>bar</b> fills as |z| approaches the entry gate; the <b>sparkline</b> is the last 30 days of z with the ±gate lines dashed. A trade fires only when the bar is full (|z| ≥ gate). This is a <b>low-frequency</b> strategy — long flat stretches are normal, not a fault.</div>
     </div>
 
     <!-- How to run -->

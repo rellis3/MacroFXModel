@@ -169,6 +169,17 @@ export function openOIModal() {
   if (ivEl) ivEl.value = existing ? (existing.rawIV || '') : '';
   const ivtEl = document.getElementById('oiIVTermData');
   if (ivtEl) ivtEl.value = existing ? (existing.rawIVTerm || '') : '';
+  // The call/put swap only means anything on 6J/6C/6S, so hide it elsewhere rather
+  // than offer a toggle that would silently corrupt a normally-quoted pair. Restores
+  // whatever the last save used, so reopening shows the interpretation in force.
+  {
+    const inv = futuresIsInverted(sym);
+    const w = document.getElementById('oiSwapCPWrap'), h = document.getElementById('oiSwapCPHint');
+    const b = document.getElementById('oiSwapCP');
+    if (w) w.style.display = inv ? 'flex' : 'none';
+    if (h) h.style.display = inv ? '' : 'none';
+    if (b) b.checked = inv && !!existing?.cpSwapped;
+  }
   updateSmileHint();   // reopening with pastes already in place → show the hint straight away
   updateOIBasis();
   // localStorage may have been trimmed to fit its ~5MB quota (raw pastes dropped
@@ -183,6 +194,23 @@ export function closeOIModal() {
   document.getElementById('oiModalOverlay').classList.remove('open');
   const sel = document.getElementById('oiPairSelect');
   if (sel) sel.disabled = false;
+}
+
+// Fetch BOTH legs of the basis in one call, at the moment Analyse is pressed.
+//
+// The course is explicit that futures and spot must be captured together (L229) —
+// hours apart gives a wrong basis, and a stale basis puts levels 10-20 pips out (L267).
+// The old flow only auto-filled the FUTURES field, and only at modal-open, then paired
+// it with a spot field populated at some other time. Nothing recorded the gap, and the
+// dashboard reported the result as "you typed it" because the field simply had a value
+// in it. Returns null on failure so the caller falls back to whatever is on screen.
+async function fetchPairedQuote(pair) {
+  try {
+    const r = await fetch(`/api/futures-quote?pair=${encodeURIComponent(pair)}`, { cache: 'no-store' });
+    const d = await r.json();
+    if (!d?.ok || !(d.price > 0)) return null;
+    return d;
+  } catch { return null; }
 }
 
 async function autoFetchFuturesPrice(pair, futEl) {
@@ -478,7 +506,7 @@ function _matrixRows(raw) {
   if (hdr < 0) return null;
   let futures = null;
   const dtes = [];
-  const codes = [];
+  const codes = [], underlyings = [];
   let inColumnHeader = false;
   for (let i = 0; i < hdr; i++) {
     if (futures == null)
@@ -505,20 +533,37 @@ function _matrixRows(raw) {
     // the wrong expiry (11 DTE is a different contract each day). The code is absolute.
     //
     // POSITION, not shape, decides what's an expiry code. The header block also lists
-    // the UNDERLYING futures contracts ("GCQ6", "6EU6") next to their prices, and gold
-    // shows 20 of those against 10 C/P columns. A shape rule can't separate them —
-    // `OGQ6` (option) and `GCQ6` (future) are the same shape, and requiring 5 chars
-    // (to exclude `6EU6`) silently dropped every 4-char gold code, misaligning the
-    // whole array. The expiry codes are exactly those at/after the "Strike" label row,
-    // which is where the column header actually begins.
-    if (!inColumnHeader && /^strike$/i.test((lines[i].split('\t')[0] || '').trim())) inColumnHeader = true;
-    if (inColumnHeader) {
-      for (const tok of lines[i].split('\t')) {
-        const t = tok.trim();
-        if (/^[A-Z]{2,3}[A-Z0-9]{1,2}[A-Z]?\d$/.test(t) && !/^\d/.test(t)) codes.push(t);
-      }
+    // the UNDERLYING futures contracts next to their prices, and a shape rule cannot
+    // separate them: `OGQ6` (option) and `GCQ6` (future) look identical. On FX the
+    // underlyings start with a digit (6E, 6J, 6B) so they drop out here, but on gold
+    // and the indices they do not (GCQ6, NQU6, YMU6, RTYU6). Collect every candidate
+    // now and disambiguate by position after the loop.
+    // A code sharing its row with a PRICE in column 0 is an underlying — that is how
+    // the header lists them (`27960.75 | NQU6`, `4050 | GCV6`). Expiry codes sit on the
+    // column-header rows, whose first cell is a DTE label, "Strike", or empty.
+    const c0 = (lines[i].split('\t')[0] || '').trim();
+    // Empty col0 counts as part of the price block too: the header is transposed, so
+    // its first row carries a contract with no price beside it yet (`| GCQ6`). The
+    // column-header rows always have a LABEL there — "Strike" or "N DTE".
+    const rowIsPrice = c0 === '' || /^-?\d+(\.\d+)?$/.test(c0);
+    for (const tok of lines[i].split('\t')) {
+      const t = tok.trim();
+      if (!/^[A-Z]{2,3}[A-Z0-9]{1,2}[A-Z]?\d$/.test(t) || /^\d/.test(t)) continue;
+      (rowIsPrice ? underlyings : codes).push(t);
     }
   }
+  // ONLY trust the codes when there is exactly one per expiry column.
+  //
+  // Two earlier attempts guessed at this and both broke a different instrument. A
+  // literal "Strike" anchor fixed gold and left USD/JPY with nothing; taking the
+  // trailing nExp then handed NQ and SPX their UNDERLYING (NQU6, ESU6) as the expiry.
+  // The real situation is that some pastes carry an INCOMPLETE header — NQ shows 4
+  // option codes against 13 columns, USD/JPY 14 against 18 — and no positional rule
+  // can align a partial list. When the count does not match, report no code and let
+  // the DTE-based smile hint take over. A missing label beats a confidently wrong one.
+  const nExp = Math.floor((lines[hdr] || '').split('\t').filter(Boolean).length / 2);
+  const expiryCodes = (nExp > 0 && codes.length === nExp) ? codes : [];
+
   const rows = [];
   let truncated = false;
   for (let i = hdr + 1; i < lines.length; i++) {
@@ -534,7 +579,7 @@ function _matrixRows(raw) {
     }
     rows.push({ strike, cp });
   }
-  return rows.length ? { futures, dtes, codes, rows, truncated } : null;
+  return rows.length ? { futures, dtes, codes: expiryCodes, rows, truncated } : null;
 }
 
 // Pick the PRIMARY expiry column from the parsed matrix — the education's
@@ -954,9 +999,16 @@ export function oiRefMove(inst, pair) {
   const spot = inst?.spot;
   if (!(spot > 0)) return null;
   const em = inst?.expectedMove?.move;
+  // On 6J/6C/6S the straddle is quoted in the INVERTED contract's units while spot is in
+  // pair terms, so the two are not comparable: USD/JPY produced 0.0018% of spot and
+  // USD/CHF 19%. Converting a straddle across the inversion correctly is its own piece of
+  // work, so for these pairs use flat vol — which is `spot × sigma × √T` and therefore
+  // always in pair units by construction.
+  const inverted = futuresIsInverted(pair || inst?.pair || '');
   // ivMetrics already rejects impossible straddles; re-check here so a record saved by
   // an older build (or hand-edited) can't reintroduce one.
-  if (Number.isFinite(em) && em > 0 && em < spot * 0.25) return { move: em, source: 'implied' };
+  if (!inverted && Number.isFinite(em) && em > 0
+      && em > spot * 0.0005 && em < spot * 0.25) return { move: em, source: 'implied' };
   const dte = Number.isFinite(inst?.dte) && inst.dte > 0 ? inst.dte : 14;
   const sig = oiFlatVol(pair || inst?.pair || '');
   return { move: spot * sig * Math.sqrt(dte / 365), source: 'flat-vol' };
@@ -1087,7 +1139,7 @@ export function oiFmtChg(n) {
 
 // ── Process & save ───────────────────────────────────────────────────────────
 
-export function processOIData() {
+export async function processOIData() {
   const pair = S.currentPair ? S.currentPair.symbol : document.getElementById('oiPairSelect').value;
   const rawOI = document.getElementById('oiRawData').value;
   const rawChg = document.getElementById('oiChangeData').value;
@@ -1125,7 +1177,26 @@ export function processOIData() {
   // so it stays as the fallback — flagged via `futuresSource` so the card can say
   // which one it used instead of presenting a stale basis as a fresh one.
   const _ivTitle = rawIV.trim() ? parseIVSettlement(rawIV) : null;
-  let futuresEff = futuresRaw, futuresSource = Number.isFinite(futuresRaw) ? 'manual' : null;
+  // LIVE, PAIRED, AT ANALYSE TIME — the top priority source. Only a value the user
+  // actually typed (dataset.manual==='1') outranks it; an auto-filled field does not,
+  // which is what made every record read "manual" before.
+  // `futEl` is declared in openOIModal, NOT here — referencing it in this scope threw
+  // ReferenceError on every Analyse click (optional chaining does not guard an
+  // undeclared identifier, only a null one), and the .catch on the window binding
+  // turned that into a silent no-op. Look the element up locally.
+  const _futEl = document.getElementById('oiFuturesPrice');
+  const _typed = _futEl?.dataset?.manual === '1';
+  const _live = await fetchPairedQuote(pair);
+  let futuresEff = null, futuresSource = null, futuresSymbol = null, quoteAt = null, livePairedSpot = null;
+  if (_typed && Number.isFinite(futuresRaw)) {
+    futuresEff = futuresRaw; futuresSource = 'manual';
+  } else if (_live) {
+    futuresEff = _live.price; futuresSymbol = _live.symbol; quoteAt = _live.at ?? Date.now();
+    futuresSource = _live.kind === 'cfd' ? 'live-cfd-proxy' : `live-${_live.source}`;
+    livePairedSpot = Number.isFinite(_live.spot) ? _live.spot : null;
+  } else if (Number.isFinite(futuresRaw)) {
+    futuresEff = futuresRaw; futuresSource = 'field';
+  }
   if (!Number.isFinite(futuresEff) && Number.isFinite(_ivTitle?.futures)) {
     futuresEff = _ivTitle.futures; futuresSource = 'iv-title-live';
   }
@@ -1146,9 +1217,16 @@ export function processOIData() {
   }
 
   // Resolve OANDA spot (reference for Greeks and basis calculation)
-  let spot = isNaN(spotRaw) ? null : spotRaw;
-  if (!spot && window._latestQuote && S.currentPair && S.currentPair.symbol === pair)
-    spot = window._latestQuote.price ?? window._latestQuote.mid;
+  // Spot: prefer the leg that came back WITH the futures price in the same request —
+  // that pairing is the whole point (course L229). The on-screen field was filled when
+  // the modal opened, which can be minutes earlier, and pairing those two is exactly
+  // how a basis silently absorbs whatever the market did in between.
+  let spot = null, spotSource = null;
+  if (Number.isFinite(livePairedSpot) && livePairedSpot > 0) { spot = livePairedSpot; spotSource = 'live-paired'; }
+  if (!spot && !isNaN(spotRaw)) { spot = spotRaw; spotSource = 'field'; }
+  if (!spot && window._latestQuote && S.currentPair && S.currentPair.symbol === pair) {
+    spot = window._latestQuote.price ?? window._latestQuote.mid; spotSource = 'dashboard-quote';
+  }
 
   // ── Basis conversion: Spot Level = CME Strike − Basis  (Basis = Futures − Spot) ──
   // CME strikes are in futures price terms. We shift them to spot-equivalent levels.
@@ -1220,6 +1298,28 @@ export function processOIData() {
     parsed.strikes = futuresIsInverted(pair)
       ? parsed.strikes.map(s => (1 / s) - basis)
       : parsed.strikes.map(s => s - basis);
+  }
+
+  // ── INVERTED-PAIR CALL/PUT SWAP (opt-in, default OFF) ──────────────────────
+  //
+  // On 6J/6C/6S the CME quotes the FOREIGN currency in USD, so inverting the strike
+  // also inverts what the option means. 6J is USD-per-JPY: a 6J CALL pays off when 6J
+  // rises — JPY strengthening — which is USD/JPY FALLING. Heavy 6J call OI therefore
+  // creates resistance in 6J terms and, once flipped into USD/JPY terms, a FLOOR.
+  // On that reading a 6J call wall is a USD/JPY PUT wall, and the labels — plus the
+  // direction the bot trades them — are currently backwards for three pairs.
+  //
+  // That argument is from contract mechanics, not from a reference number, and the
+  // live data neither confirms nor refutes it (USD/JPY's put walls also sit below
+  // spot; USD/CAD's call wall sits above). So this is a SWITCH, not a correction:
+  // default OFF preserves today's behaviour exactly, and flipping it per pair lets
+  // paper trading settle the question instead of a guess. Swapping here — before max
+  // pain, the walls, the GEX profile and everything downstream — means one flag
+  // reaches the export, both bots and the dashboard with no second copy to drift.
+  const cpSwapped = futuresIsInverted(pair) && !!document.getElementById('oiSwapCP')?.checked;
+  if (cpSwapped) {
+    [parsed.calls, parsed.puts] = [parsed.puts, parsed.calls];
+    [parsed.callChg, parsed.putChg] = [parsed.putChg, parsed.callChg];
   }
 
   // Fallback spot for Greeks if OANDA price unavailable
@@ -1331,7 +1431,12 @@ export function processOIData() {
     const {gamma} = oiGreeks(s, spot, pair);
     const callGex = parsed.calls[i] * gamma * cs * spot;
     const putGex  = parsed.puts[i]  * gamma * cs * spot;
-    return { strike:s, callGex, putGex, netGex: callGex - putGex };
+    // Raw OI rides along with the gamma-weighted numbers. This is the only CONTIGUOUS
+    // per-strike record stored (topLevels is a top-N ranking, not a ladder), so an
+    // OI-by-strike chart has nowhere else to read from — the dashboard's version came
+    // out blank because it looked for callOI/putOI here and they didn't exist.
+    return { strike:s, callOI: parsed.calls[i], putOI: parsed.puts[i],
+             callGex, putGex, netGex: callGex - putGex };
   }).sort((a,b) => a.strike - b.strike);
 
   // Ranked call walls (highest call OI first) and put walls (highest put OI first)
@@ -1376,7 +1481,24 @@ export function processOIData() {
   // reopen (same reason as rawOI/rawChg — the raw text was never stored, so volume
   // vanished and had to be re-pasted).
   const _compactVol = _volParsed.map(v => `${v.strike}\t${v.volume}`).join('\n');
-  const volumeMagnets = _volParsed.slice(0, 8).map(v => ({ strike: +volShift(v.strike).toFixed(6), volume: v.volume }));
+  // Volume magnets must land ON the option ladder. Gold's paste has `6.3 | 3570.8` in
+  // its first two columns — the volume report's layout differs from the OI report's, so
+  // `oiParseVolume` read 6.3 as a strike, the basis shift turned it into −2.49, and the
+  // dashboard duly drew a magnet at minus two dollars, 48,464 pips from spot. Same class
+  // of miss as everywhere else: a number that cannot possibly be a strike, stored anyway.
+  // Keep only magnets inside the parsed strike range (±10%); if none survive, the paste
+  // was the wrong table and an empty list is the honest answer.
+  // Bounds computed locally: `_loK`/`_hiK` are declared further down, so reaching for
+  // them here would be a temporal-dead-zone ReferenceError — the same trap that made
+  // Analyse silently do nothing when `futEl` was referenced out of scope.
+  const _volLo = (parsed.strikes.length ? Math.min(...parsed.strikes) : 0) * 0.9;
+  const _volHi = (parsed.strikes.length ? Math.max(...parsed.strikes) : 0) * 1.1;
+  const _volOK = _volParsed.filter(v => {
+    const s = volShift(v.strike);
+    return Number.isFinite(s) && s >= _volLo && s <= _volHi;
+  });
+  const volumeMagnets = _volOK.slice(0, 8).map(v => ({ strike: +volShift(v.strike).toFixed(6), volume: v.volume }));
+  const volumeRejected = _volParsed.length > 0 && _volOK.length === 0;
   // Volume-flow reads: per-strike volume (basis-shifted) for the wall "fresh vs stale"
   // tag, + volume put/call ratio (today's directional flow) from the call/put split.
   const _volPost = _volParsed.map(v => ({ strike: volShift(v.strike), volume: v.volume }));
@@ -1425,6 +1547,16 @@ export function processOIData() {
   // looked green. These extra checks are SEMANTIC — they test whether the numbers
   // mean what they claim, not just whether they're the right size.
   const _warnings = [];
+  if (volumeRejected) {
+    // Name the actual numbers. The first version of this said the strikes "fall outside
+    // the option ladder", which is jargon for "column 1 isn't a strike" and told the
+    // reader nothing they could act on. Gold's paste has 6.3 in that column on every
+    // row against strikes of 2000-10000, so the fix is a different copy, not a setting.
+    const _vBad = _volParsed[0]?.strike;
+    _warnings.push(`volume ignored: its first column reads ${_vBad} on this paste, which is not a strike for ${pair} `
+      + `(strikes here run ${oiFmtStrike(_volLo / 0.9, pair)}–${oiFmtStrike(_volHi / 1.1, pair)}). `
+      + `Copy the Volume view whose FIRST column is the strike price — otherwise there is no strike to attach each volume to.`);
+  }
   // Truncation FIRST — it silently deletes strikes, and every level below is computed
   // on whatever survived. Gold lost every strike above 4010 (spot was 4078) this way.
   if (parsed.truncated)
@@ -1443,7 +1575,11 @@ export function processOIData() {
 
   const inst = {
     pair, spot, futures: futuresUsed, basis: basis || null,
-    futuresSource,   // 'manual' | 'iv-title-live' | 'heatmap-header-settle' — never present a settle-derived basis as a live one
+    cpSwapped,       // inverted pairs only: were call/put labels flipped into pair terms?
+    futuresSource,   // 'manual' | 'live-yahoo' | 'live-cfd-proxy' | 'iv-title-live' | 'heatmap-header-settle' | 'field'
+    futuresSymbol,   // e.g. GC=F / 6E=F — WHICH contract the price came from
+    spotSource,      // 'live-paired' when both legs came from one request (the honest basis)
+    quoteAt,         // when that paired quote was taken, so a stale basis is provable
     futuresStale,    // live-title minus heatmap-settle, when both are available (how wrong the fallback would be)
     basisAt: Date.now(),   // the basis is only valid for the moment both legs were read (course L229)
     maxPain, exposures, topLevels, gexProfile,

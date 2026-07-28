@@ -46,7 +46,7 @@ const CANON = {
 // Which level types to export, in the order they should print within a block, and
 // the price decimals per instrument class. The strongest call/put walls + max pain,
 // plus gamma_flip (regime boundary) and oi_volume (today's heaviest-volume strikes).
-const TYPE_ORDER = ['call_wall', 'gamma_flip', 'max_pain', 'put_wall', 'oi_volume'];
+const TYPE_ORDER = ['call_wall', 'gamma_flip', 'gex_flip', 'max_pain', 'put_wall', 'oi_volume'];
 const WANT = new Set(TYPE_ORDER);
 
 const JPY_KEY = /JPY/i;
@@ -76,21 +76,42 @@ function fmtSaved(inst) {
   if (inst?.savedAt) bits.push(`saved ${inst.savedAt}`);
   if (Number.isFinite(inst?.spot)) bits.push(`spot ${inst.spot}`);
   if (Number.isFinite(inst?.dte)) bits.push(`DTE ${inst.dte}`);
+  // Inverted pairs can be exported under either call/put reading — say which, or a
+  // red 'call wall' below spot looks like a bug rather than a deliberate setting.
+  if (inst?.cpSwapped) bits.push('C/P flipped to pair terms');
   const rg = regimeOf(inst);
-  if (rg) bits.push(`regime ${rg}`);
+  if (rg) bits.push(`regime ${rg}`);        // the indicator parses THIS for its tint
   return bits.length ? `· ${bits.join(' · ')}` : null;
+}
+
+// Positioning context for the paste: crowding percentile, which way, and how stale. On
+// its own line so the age is impossible to miss, and explicitly labelled "not a level"
+// because COT has no price coordinate — it conditions how you read the walls, it never
+// times them and it must never be drawn as a line.
+function fmtCot(c) {
+  if (!c || c.pct == null) return null;
+  const side = c.pct >= 90 ? 'CROWDED LONG' : c.pct <= 10 ? 'CROWDED SHORT'
+             : c.pct >= 70 ? 'leaning long' : c.pct <= 30 ? 'leaning short' : 'balanced';
+  const bits = [`cot ${c.pct}th pct — ${side}`];
+  if (c.share != null) bits.push(`net ${c.share}% of OI`);
+  if (c.reportDate) bits.push(`report ${c.reportDate}${c.ageDays != null ? ` (${c.ageDays}d old)` : ''}`);
+  return `· ${bits.join(' · ')} · positioning only, NOT a level`;
 }
 
 // store = { [pair]: inst } (the `oi_store` KV `.data` object). Pure.
 // topWalls defaults to null so the shared converter's TIER rule decides what's worth
 // drawing (course Lesson 4's 3× rule) instead of an arbitrary count. Pass a number to
 // force the old fixed-count behaviour.
-export function buildOILevelText(store, { topWalls = null, minTier = "moderate", maxWalls = 3, generated = null } = {}) {
+// `cot` (optional) = { [canonName]: {pct, share, net, reportDate, ageDays, side} }. COT has
+// NO price coordinate — it is positioning, not a level — so it is emitted on the per-pair
+// context line the indicator ignores, never as an `OI {price}` line. Drawing a horizontal
+// line for it would invent a price the data does not contain.
+export function buildOILevelText(store, { topWalls = null, minTier = "moderate", maxWalls = 3, generated = null, cot = null } = {}) {
   const LW = 44;
   const hdr = '──── OI WALLS & MAX PAIN ' + '─'.repeat(Math.max(0, LW - 25));
   const lines = [hdr];
   lines.push(`Generated: ${generated ?? 'latest'}`);
-  lines.push('Types: call_wall (red · resistance) · put_wall (green · support) · max_pain (yellow · magnet) · gamma_flip (purple) · oi_volume (blue · today)');
+  lines.push('Types: call_wall (red · resistance) · put_wall (green · support) · max_pain (yellow · magnet) · gamma_flip (purple) · gex_flip (violet · total-GEX zero) · oi_volume (blue · today)');
   lines.push('');
 
   const entries = Object.entries(store || {});
@@ -108,6 +129,8 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     lines.push(canon);
     const ctx = fmtSaved(inst);
     if (ctx) lines.push(ctx);
+    const cotLine = fmtCot(cot?.[canon]);
+    if (cotLine) lines.push(cotLine);
     // Gamma-flow context (human-only — the indicator ignores non-"OI " lines):
     // distance-to-flip vol read + a per-expiry roll-off block. No new data.
     const flip = Number.isFinite(inst.gammaFlip) ? inst.gammaFlip : gammaFlip(inst.gexProfile);

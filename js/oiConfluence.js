@@ -20,6 +20,8 @@
 
 // Canonical OI level types (free-form labels are allowed; these are the ones the
 // breakdown names). gamma_flip is a regime boundary, not a magnet — tagged apart.
+import { gammaFlip } from './gammaFlow.js';
+
 export const OI_TYPES = ['put_wall', 'call_wall', 'max_pain', 'gamma_flip', 'hvl'];
 
 // Normalise a free-typed label to a slug: "Call Wall"/"callwall"/"c-wall" → call_wall.
@@ -390,15 +392,22 @@ export function oiStoreToLevels(inst, { topWalls = null, minTier = "moderate", m
   for (const w of _selectWalls(cw, wallOpts)) push(w?.strike, 'call_wall', w?.tier ?? null);
   for (const w of _selectWalls(pw, wallOpts)) push(w?.strike, 'put_wall', w?.tier ?? null);
   const gp = Array.isArray(inst.gexProfile) ? inst.gexProfile : [];
-  for (let i = 1; i < gp.length; i++) {
-    if (Math.sign(gp[i]?.netGex ?? 0) !== Math.sign(gp[i - 1]?.netGex ?? 0)) {
-      push(Math.abs(gp[i].netGex) < Math.abs(gp[i - 1].netGex) ? gp[i].strike : gp[i - 1].strike, 'gamma_flip');
-      break;
-    }
-  }
+  // ONE source for the flip. This used to be an inline copy of the first-sign-change
+  // scan — the same logic `gammaFlip` had before it was fixed — so the export and
+  // /api/oi-levels kept emitting the old, tail-latching, strike-snapped value long
+  // after the brick was corrected. Exactly the drift Lego Principle 1 forbids: two
+  // copies, one fixed, silently disagreeing. Prefer the value computed at save time
+  // (already on the record), fall back to the shared brick.
+  push(Number.isFinite(inst.gammaFlip) ? inst.gammaFlip : gammaFlip(gp, inst.spot), 'gamma_flip');
   let hvl = null, hg = -Infinity;
   for (const g of gp) { const ag = Math.abs(g?.gamma ?? 0); if (ag > hg) { hg = ag; hvl = g?.strike; } }
   push(hvl, 'hvl');
+  // The RIGOROUS gamma boundary (total net GEX re-evaluated at candidate prices,
+  // root-found) alongside the cheap per-strike crossing. Both are emitted because they
+  // answer the same question with different accuracy and consumers weight them
+  // differently — see `gex_flip` handling in ConfluenceBot's level_matrix, where it is
+  // deliberately credited as a BOUNDARY (like gamma_flip) and never as a magnet.
+  push(inst.gexFlip, 'gex_flip');
   // Volume magnets are today's flow, not resting structure, and carry no tier — keep
   // them to a small count so they stay a hint rather than crowding the chart.
   for (const v of (Array.isArray(inst.volumeMagnets) ? inst.volumeMagnets : []).slice(0, Number.isFinite(topWalls) ? topWalls : 2)) push(v?.strike, 'oi_volume');

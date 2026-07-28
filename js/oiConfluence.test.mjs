@@ -97,7 +97,11 @@ console.log('[oiStoreToLevels — reuse index.html OI analyser output]');
   ok('max pain extracted', byType('max_pain').includes(1.08));
   ok('call walls: headline + top-2 ranked, deduped', JSON.stringify(byType('call_wall')) === JSON.stringify([1.085, 1.09]), JSON.stringify(byType('call_wall')));
   ok('put walls extracted', JSON.stringify(byType('put_wall')) === JSON.stringify([1.07, 1.075]), JSON.stringify(byType('put_wall')));
-  ok('gamma flip = smaller-|netGex| side of the sign change (1.0820)', byType('gamma_flip')[0] === 1.082, JSON.stringify(byType('gamma_flip')));
+  // Flip is now INTERPOLATED to the true zero rather than snapped to the nearer-zero
+  // strike, and this brick no longer keeps a private copy of the scan — it uses the
+  // stored value or the shared `gammaFlip` brick. 1.0812 is the actual crossing.
+  ok('gamma flip interpolated to the true zero, not snapped to a strike',
+    Math.abs(byType('gamma_flip')[0] - 1.0812) < 1e-6, JSON.stringify(byType('gamma_flip')));
   ok('HVL = highest-|gamma| strike (1.0800)', byType('hvl')[0] === 1.08, JSON.stringify(byType('hvl')));
   ok('empty / junk → []', oiStoreToLevels(null).length === 0 && oiStoreToLevels({}).length === 0);
   // Wall strength tier ships with the level so the bots can weight/gate by it.

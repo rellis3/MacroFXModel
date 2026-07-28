@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QMR Tearsheet — MacroFX</title>
+<style>
+  :root{--bg:#0a0e14;--panel:#111722;--panel2:#0d131d;--bd:#1e2a3a;--text:#e6edf3;--text2:#8b9cb3;
+        --text3:#5a6b80;--cyan:#22d3ee;--green:#22c55e;--red:#ef4444;--amber:#f59e0b;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);padding:24px;
+       font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+  .wrap{max-width:1280px;margin:0 auto}
+  h1{font-size:22px;margin:0 0 4px}
+  .dek{color:var(--text2);font-size:13px;margin:0 0 18px;max-width:900px;line-height:1.6}
+  .panel{background:var(--panel);border:1px solid var(--bd);border-radius:10px;padding:18px;margin-bottom:16px}
+  .panel h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--cyan);margin:0 0 14px;font-weight:600}
+  .ctl{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+  label{display:block;font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em}
+  select,input{background:var(--panel2);border:1px solid var(--bd);color:var(--text);padding:8px 10px;
+               border-radius:6px;font-size:13px;font-family:'DM Mono',ui-monospace,monospace}
+  button{background:var(--cyan);color:#04121a;border:none;padding:9px 16px;border-radius:6px;
+         font-size:13px;font-weight:600;cursor:pointer}
+  button.ghost{background:transparent;color:var(--text2);border:1px solid var(--bd)}
+  button:hover{filter:brightness(1.12)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:1px;background:var(--bd);
+        border:1px solid var(--bd);border-radius:8px;overflow:hidden}
+  .stat{background:var(--panel2);padding:12px 14px}
+  .stat .v{font-size:19px;font-weight:600;font-family:'DM Mono',ui-monospace,monospace}
+  .stat .k{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-top:3px}
+  .pos{color:var(--green)}.neg{color:var(--red)}.muted{color:var(--text3)}.amber{color:var(--amber)}
+  table{width:100%;border-collapse:collapse;font-size:12px;font-family:'DM Mono',ui-monospace,monospace}
+  th{text-align:right;color:var(--text3);font-weight:500;padding:6px 8px;border-bottom:1px solid var(--bd);
+     font-size:10px;text-transform:uppercase}
+  th:first-child,td:first-child{text-align:left}
+  td{padding:6px 8px;border-bottom:1px solid #161f2c;text-align:right}
+  .heat td{text-align:center;padding:5px 6px;border:1px solid var(--bg);font-size:11px}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:820px){.split{grid-template-columns:1fr}}
+  .note{font-size:11px;color:var(--text3);line-height:1.65;margin-top:12px}
+  .warn{background:#1a1200;border:1px solid #b45309;border-radius:8px;padding:12px 14px;
+        font-size:12px;color:#fbbf24;line-height:1.6;margin-bottom:16px}
+  svg{width:100%;height:auto;display:block}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>QMR Tearsheet</h1>
+  <p class="dek">
+    Standard results card for the NQ-QMR chassis, in the same field set used by the external
+    reference tearsheet so the two are directly comparable. Every metric comes from
+    <code>js/metricsCore.js</code> — one definition of Sharpe/Sortino/drawdown across the whole repo.
+    Costs are netted <strong>before</strong> leverage; MAE is read off the <strong>real intra-trade
+    path</strong>, never approximated from the close.
+  </p>
+
+  <div class="panel">
+    <div class="ctl">
+      <div><label>Instrument</label><select id="inst">
+        <option value="NAS100_USD">NAS100 (Nasdaq)</option><option value="SPX500_USD">SPX500</option>
+        <option value="US30_USD">US30 (Dow)</option><option value="XAU_USD">XAU/USD (Gold)</option>
+      </select></div>
+      <div><label>Construction</label><select id="mode">
+        <option value="bothsides">Both-sides (half size each leg)</option>
+        <option value="directional">Directional (incumbent)</option>
+      </select></div>
+      <div><label>Account size</label><input id="acct" value="100000" style="width:120px"></div>
+      <div><label>Round-trip cost %</label><input id="cost" value="0.008" style="width:100px"></div>
+      <button onclick="run()">Run</button>
+      <span id="msg" class="muted" style="font-size:12px"></span>
+    </div>
+  </div>
+
+  <div id="out" style="display:none">
+    <div class="warn" id="banner"></div>
+
+    <div class="panel"><h2>Headline — full sample</h2><div class="grid" id="head"></div></div>
+
+    <div class="panel"><h2>Equity curve</h2><div id="chart"></div>
+      <p class="note" id="curveNote"></p></div>
+
+    <div class="split">
+      <div class="panel"><h2>In-sample (first 70%)</h2><div class="grid" id="isCard"></div></div>
+      <div class="panel"><h2>Out-of-sample (last 30%)</h2><div class="grid" id="oosCard"></div></div>
+    </div>
+    <p class="note" id="splitNote" style="margin-top:-6px;margin-bottom:16px"></p>
+
+    <div class="panel"><h2>Distribution &amp; tails</h2><div class="grid" id="dist"></div>
+      <p class="note">VaR/CVaR here are <strong>per-trade</strong> tail statistics on the trade-return
+      series — not portfolio VaR over a horizon. Skew and excess kurtosis feed the fat-tail-adjusted
+      minimum track record above.</p></div>
+
+    <div class="panel"><h2>Monthly returns</h2><div style="overflow-x:auto"><table class="heat" id="heat"></table></div>
+      <p class="note">Read the recent rows in isolation before trusting the headline — a strong
+      full-sample average can hide a decayed last 12–24 months.</p></div>
+
+    <div class="panel"><h2>Monte Carlo — trade-order bootstrap</h2><div id="mc"></div>
+      <p class="note"><strong>This is expectation-setting, not robustness evidence.</strong> Resampling a
+      strategy's own realised returns shows the range of outcomes consistent with that mean and standard
+      deviation. It says nothing about whether the edge generalises to data it has not seen — only the
+      walk-forward does that.</p></div>
+
+    <div class="panel"><h2>Export</h2>
+      <div class="ctl">
+        <button class="ghost" onclick="csv('pct')">% Returns CSV</button>
+        <button class="ghost" onclick="csv('r')">R-Multiples CSV</button>
+        <button class="ghost" onclick="csv('cash')">Currency P&amp;L CSV</button>
+      </div>
+      <p class="note" id="exportNote"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+let D=null;
+const f=(v,d=2)=>v==null?'—':(+v).toFixed(d);
+const sgn=(v,d=2)=>v==null?'—':((v>0?'+':'')+(+v).toFixed(d));
+const cell=(v,k,cls)=>`<div class="stat"><div class="v ${cls||''}">${v}</div><div class="k">${k}</div></div>`;
+
+async function run(){
+  $('msg').textContent='running…';
+  const q=new URLSearchParams({instrument:$('inst').value,mode:$('mode').value,
+    accountEquity:$('acct').value,costPct:$('cost').value});
+  const j=await fetch('/api/nq-qmr/tearsheet?'+q).then(r=>r.json()).catch(e=>({ok:false,error:e.message}));
+  if(!j.ok){$('msg').textContent='failed: '+j.error;return;}
+  D=j;$('msg').textContent='';$('out').style.display='';
+  render(j);
+}
+
+function render(j){
+  const bothSides=j.mode==='bothsides';
+  $('banner').innerHTML = bothSides
+    ? `<strong>Both-sides construction.</strong> Long and short opened together at half size each, so total
+       notional — and therefore total cost — equals one full position. It exists because the direction call
+       measured at zero on this instrument (dirAlpha −0.006%/trade, t=−0.08) while the payoff geometry paid:
+       removing a coin flip removes its variance without touching the mean.
+       <strong>Requires a hedging-enabled account</strong> — a netting account flattens the two legs to zero
+       and the construction does not exist. Walk-forward OOS: mean Sharpe 2.31 over 8 non-overlapping
+       6-month windows, 8/8 positive.`
+    : `<strong>Directional construction</strong> — the incumbent live system. Walk-forward OOS: mean Sharpe
+       1.18 over 8 non-overlapping windows, 6/8 positive, worst window −11.2%.`;
+
+  $('head').innerHTML =
+      cell(sgn(j.totalReturn)+'%','Total return',j.totalReturn>=0?'pos':'neg')
+    + cell(sgn(j.cagr)+'%','CAGR',j.cagr>=0?'pos':'neg')
+    + cell(f(j.monthlyReturn)+'%','Monthly return')
+    + cell(f(j.annualVol)+'%','Annual volatility')
+    + cell(f(j.sharpe),'Sharpe',j.sharpe>1?'pos':'amber')
+    + cell(f(j.sortino),'Sortino')
+    + cell(f(j.calmar),'Calmar')
+    + cell(f(j.omega),'Omega')
+    + cell(f(j.maxDrawdown)+'%','Max drawdown','neg')
+    + cell(j.maxDDdurationTrades,'Max DD duration (trades)')
+    + cell(f(j.winRate)+'%','Win rate')
+    + cell(f(j.profitFactor),'Profit factor')
+    + cell(sgn(j.avgWin)+'%','Avg win','pos')
+    + cell(sgn(j.avgLoss)+'%','Avg loss','neg')
+    + cell(sgn(j.avgTrade)+'%','Avg trade')
+    + cell(j.totalTrades,'Total trades')
+    + cell(f(j.years)+'y','Period')
+    + cell('±'+f(j.sharpeSE),'Sharpe std error')
+    + cell(j.minTrackYears==null?'—':f(j.minTrackYears,1)+'y','Min track record')
+    + cell(f(j.tradingDays,0),'Trading days');
+
+  const card=o=>o?cell(sgn(o.totalReturn)+'%','Total',o.totalReturn>=0?'pos':'neg')
+      +cell(sgn(o.cagr)+'%','CAGR',o.cagr>=0?'pos':'neg')+cell(f(o.sharpe),'Sharpe',o.sharpe>1?'pos':'amber')
+      +cell(f(o.sortino),'Sortino')+cell(f(o.maxDrawdown)+'%','Max DD','neg')
+      +cell(f(o.winRate)+'%','Win rate')+cell(o.totalTrades,'Trades'):'';
+  $('isCard').innerHTML=card(j.inSample); $('oosCard').innerHTML=card(j.outOfSample);
+  $('splitNote').innerHTML=`Chronological 70/30 split at <strong>${j.splitDate}</strong> — by trade date, never by
+    shuffled index. This is a single holdout; the <em>walk-forward</em> (params re-fit per window, applied
+    untouched to the next six months) is the stronger test and is quoted in the banner above.`;
+
+  $('dist').innerHTML =
+      cell(f(j.var95)+'%','VaR 95%','neg')+cell(f(j.var99)+'%','VaR 99%','neg')
+    + cell(f(j.cvar95)+'%','CVaR 95%','neg')+cell(sgn(j.bestDay)+'%','Best day','pos')
+    + cell(sgn(j.worstDay)+'%','Worst day','neg')+cell(sgn(j.bestMonth)+'%','Best month','pos')
+    + cell(sgn(j.worstMonth)+'%','Worst month','neg')+cell(f(j.skewness),'Skewness')
+    + cell(f(j.excessKurtosis),'Excess kurtosis')
+    + cell(j.positiveMonths+' / '+j.negativeMonths,'Pos / neg months');
+
+  drawCurve(j.curve); drawHeat(j.monthly); drawMC(j.trades.map(t=>t.ret));
+
+  const lev=(j.config.riskPct/ (j.trades.reduce((s,t)=>s+t.stopPct,0)/j.trades.length)).toFixed(2);
+  $('exportNote').innerHTML=`Account size <strong>$${(+$('acct').value).toLocaleString()}</strong>.
+    <strong>R-unit = ${j.config.riskPct}% of account risked per trade</strong>, the amount lost when the stop
+    is hit — stop distance varies per day (overnight range × ${j.config.stopMultiplier}), so position
+    leverage varies with it (mean ≈ ${lev}×). Because the R-unit is a fixed % of equity while the P&L column
+    is that same % of equity, <strong>R-multiple and % Return are the same number here</strong> — the R column
+    adds no information beyond a relabel, and is exported only because the house schema requires it.
+    MAE is measured on the real intra-trade path.`;
+}
+
+function drawCurve(c){
+  const W=1100,H=260,P=36;
+  const eq=c.map(p=>p.equity), mn=Math.min(...eq,1), mx=Math.max(...eq);
+  const x=i=>P+i*(W-2*P)/Math.max(c.length-1,1);
+  const y=v=>H-P-((v-mn)/((mx-mn)||1))*(H-2*P);
+  let peak=1; const dd=[];
+  for(const p of c){peak=Math.max(peak,p.equity); dd.push((peak-p.equity)/peak);}
+  const path=c.map((p,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(p.equity).toFixed(1)).join(' ');
+  $('chart').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Equity curve">
+    <line x1="${P}" y1="${y(1)}" x2="${W-P}" y2="${y(1)}" stroke="#2a3a4d" stroke-dasharray="3,3"/>
+    <path d="${path}" fill="none" stroke="#22d3ee" stroke-width="1.6"/>
+    <text x="${P}" y="18" fill="#5a6b80" font-size="11">${c[0].date}</text>
+    <text x="${W-P}" y="18" fill="#5a6b80" font-size="11" text-anchor="end">${c[c.length-1].date}</text>
+    <text x="${P}" y="${y(mx)-6}" fill="#8b9cb3" font-size="11">${mx.toFixed(2)}×</text>
+  </svg>`;
+  $('curveNote').textContent=`Peak equity ${mx.toFixed(2)}× · deepest drawdown ${(Math.max(...dd)*100).toFixed(1)}% · ${c.length} trades.`;
+}
+
+function drawHeat(m){
+  const years=[...new Set(m.map(x=>x.month.substring(0,4)))].sort();
+  const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const byY={}; for(const x of m){const[y,mo]=x.month.split('-');(byY[y]??={})[+mo]=x.return;}
+  const col=v=>v==null?'background:#0d131d;color:#3a4756':
+    v>0?`background:rgba(34,197,94,${Math.min(Math.abs(v)/25,.85)});color:#e6edf3`
+       :`background:rgba(239,68,68,${Math.min(Math.abs(v)/25,.85)});color:#e6edf3`;
+  let h='<tr><th>Year</th>'+M.map(x=>'<th>'+x+'</th>').join('')+'<th>Annual</th></tr>';
+  for(const y of years){
+    let e=1,any=false;
+    for(let i=1;i<=12;i++){const v=byY[y][i]; if(v!=null){e*=(1+v/100);any=true;}}
+    h+='<tr><td style="text-align:left;color:#8b9cb3">'+y+'</td>'
+      +M.map((_,i)=>{const v=byY[y][i+1];return `<td style="${col(v)}">${v==null?'':sgn(v,1)}</td>`}).join('')
+      +`<td style="${col(any?(e-1)*100:null)};font-weight:600">${any?sgn((e-1)*100,1):''}</td></tr>`;
+  }
+  $('heat').innerHTML=h;
+}
+
+function drawMC(rets){
+  const PATHS=500,N=rets.length,W=1100,H=240,P=36;
+  let seed=42; const rnd=()=>(seed=(seed*1103515245+12345)%2147483648)/2147483648;
+  const sims=[];
+  for(let p=0;p<PATHS;p++){
+    let e=1;const path=[1];
+    for(let i=0;i<N;i++){e*=(1+rets[Math.floor(rnd()*N)]/100);path.push(e);}
+    sims.push(path);
+  }
+  const finals=sims.map(s=>s[s.length-1]).sort((a,b)=>a-b);
+  let act=1;const actual=[1];for(const r of rets){act*=(1+r/100);actual.push(act);}
+  const mx=Math.max(...finals.slice(0,Math.floor(PATHS*0.95)),act)*1.05;
+  const x=i=>P+i*(W-2*P)/N, y=v=>H-P-(Math.min(v,mx)/mx)*(H-2*P);
+  const line=s=>s.map((v,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(v).toFixed(1)).join(' ');
+  const band=sims.filter((_,i)=>i%5===0).map(s=>`<path d="${line(s)}" fill="none" stroke="#22d3ee" stroke-width="0.5" opacity="0.07"/>`).join('');
+  const pos=100*finals.filter(v=>v>1).length/PATHS;
+  const pct=q=>finals[Math.floor(PATHS*q)];
+  $('mc').innerHTML=`<svg viewBox="0 0 ${W} ${H}">${band}
+    <path d="${line(actual)}" fill="none" stroke="#e6edf3" stroke-width="1.8"/>
+    <line x1="${P}" y1="${y(1)}" x2="${W-P}" y2="${y(1)}" stroke="#2a3a4d" stroke-dasharray="3,3"/>
+  </svg>
+  <div class="grid" style="margin-top:12px">
+    ${cell(pos.toFixed(0)+'%','P(profitable)',pos>50?'pos':'neg')}
+    ${cell(sgn((pct(0.05)-1)*100,0)+'%','5th percentile',pct(0.05)>1?'pos':'neg')}
+    ${cell(sgn((pct(0.50)-1)*100,0)+'%','Median')}
+    ${cell(sgn((pct(0.95)-1)*100,0)+'%','95th percentile')}
+    ${cell(sgn((act-1)*100,0)+'%','Actual')}
+    ${cell(PATHS,'Paths')}
+  </div>`;
+}
+
+function csv(kind){
+  if(!D)return;
+  const acct=+$('acct').value, risk=D.config.riskPct;
+  let head,rows;
+  if(kind==='pct'){head='Date,Return %,MAE %';
+    rows=D.trades.map(t=>`${t.date},${t.ret.toFixed(4)},${t.mae.toFixed(4)}`);}
+  else if(kind==='r'){head='date,R,MAE (R)';
+    rows=D.trades.map(t=>`${t.date},${(t.ret/risk).toFixed(4)},${(t.mae/risk).toFixed(4)}`);}
+  else{head='Trade Date,PnL ($),Risk ($)';
+    rows=D.trades.map(t=>`${t.date},${(acct*t.ret/100).toFixed(2)},${(acct*risk/100).toFixed(2)}`);}
+  const blob=new Blob([head+'\n'+rows.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`qmr_${D.instrument}_${D.mode}_${kind}.csv`;a.click();
+}
+run();
+</script>
+</body>
+</html>

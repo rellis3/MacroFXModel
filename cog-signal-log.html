@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COG Signal Log — MacroFX</title>
+<style>
+  :root { --bg:#0a0e14; --panel:#111722; --panel2:#0d131d; --bd:#1e2a3a; --text:#e6edf3;
+          --text2:#8b9cb3; --text3:#5a6b80; --cyan:#22d3ee; --green:#22c55e; --red:#ef4444;
+          --amber:#f59e0b; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+         font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; padding:24px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  .dek { color:var(--text2); font-size:13px; margin:0 0 20px; max-width:820px; line-height:1.6; }
+  .dek strong { color:var(--text); }
+  .wrap { max-width:1240px; margin:0 auto; }
+  .panel { background:var(--panel); border:1px solid var(--bd); border-radius:10px; padding:18px; margin-bottom:18px; }
+  .panel h2 { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--cyan);
+              margin:0 0 14px; font-weight:600; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; }
+  label { display:block; font-size:11px; color:var(--text3); margin-bottom:4px; text-transform:uppercase; letter-spacing:.05em; }
+  input, select { width:100%; background:var(--panel2); border:1px solid var(--bd); color:var(--text);
+                  padding:8px 10px; border-radius:6px; font-size:13px; font-family:'DM Mono',ui-monospace,monospace; }
+  input:focus, select:focus { outline:none; border-color:var(--cyan); }
+  .stage { border-left:2px solid var(--bd); padding-left:14px; margin-bottom:16px; }
+  .stage-label { font-size:12px; font-weight:600; color:var(--text); margin-bottom:8px; }
+  .stage-label span { color:var(--text3); font-weight:400; font-size:11px; margin-left:6px; }
+  button { background:var(--cyan); color:#04121a; border:none; padding:9px 16px; border-radius:6px;
+           font-size:13px; font-weight:600; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--text2); border:1px solid var(--bd); }
+  button:hover { filter:brightness(1.12); }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:14px; }
+  table { width:100%; border-collapse:collapse; font-size:12px; font-family:'DM Mono',ui-monospace,monospace; }
+  th { text-align:left; color:var(--text3); font-weight:500; padding:7px 9px; border-bottom:1px solid var(--bd);
+       font-size:10px; text-transform:uppercase; letter-spacing:.05em; white-space:nowrap; }
+  td { padding:7px 9px; border-bottom:1px solid #161f2c; white-space:nowrap; }
+  tr:hover td { background:#0e1622; }
+  .pos { color:var(--green); } .neg { color:var(--red); } .muted { color:var(--text3); }
+  .pill { padding:2px 7px; border-radius:4px; font-size:10px; font-weight:600; }
+  .pill.long  { background:#052e16; color:#4ade80; }
+  .pill.short { background:#2b0a0a; color:#f87171; }
+  .pill.valid { background:#052e2e; color:#22d3ee; }
+  .pill.inval { background:#1c1c22; color:var(--text3); }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:1px; background:var(--bd);
+           border:1px solid var(--bd); border-radius:8px; overflow:hidden; }
+  .stat { background:var(--panel2); padding:12px 14px; }
+  .stat .v { font-size:19px; font-weight:600; font-family:'DM Mono',ui-monospace,monospace; }
+  .stat .k { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.05em; margin-top:3px; }
+  .msg { font-size:12px; color:var(--text2); margin-left:8px; }
+  .note { font-size:11px; color:var(--text3); line-height:1.6; margin-top:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>COG Signal Log</h1>
+  <p class="dek">
+    His four messages, logged as they arrive. We will never have his source data — but his
+    <strong>outputs are labels</strong>: a stop distance % is a volatility forecast in numeric form, a
+    Long/Short is a direction label, a close time is a holding period. Each completed day is resolved
+    against real OANDA M5 bars with real costs, so this builds a <strong>costed forward record of his
+    calls that requires no understanding of his model at all</strong>. Background and the inference
+    plan: <code>COG_OBSERVED_SYSTEM.md</code>. Times are <strong>UK local</strong>, exactly as his UI shows them.
+  </p>
+
+  <div class="panel">
+    <h2>Log a day</h2>
+    <div class="grid" style="max-width:420px;margin-bottom:18px">
+      <div><label>Date</label><input type="date" id="f-date"></div>
+      <div><label>Instrument</label><input id="f-inst" value="NQ"></div>
+    </div>
+
+    <div class="stage">
+      <div class="stage-label">1 · Data threshold 1 <span>state only — timing varies widely (02:00–14:00)</span></div>
+      <div class="grid" style="max-width:420px">
+        <div><label>Time (UK)</label><input id="f-g1t" placeholder="12:37"></div>
+        <div><label>State</label><select id="f-g1s"><option value="">—</option><option>VALID</option><option>INVALIDATED</option></select></div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="stage-label">2 · Data threshold 2 <span>state + risk/sizing — clusters at 13:30–14:00 UK (= 08:30 ET US data slot)</span></div>
+      <div class="grid">
+        <div><label>Time (UK)</label><input id="f-g2t" placeholder="13:53"></div>
+        <div><label>State</label><select id="f-g2s"><option value="">—</option><option>VALID</option><option>INVALIDATED</option></select></div>
+        <div><label>Stop — standard %</label><input id="f-ss" placeholder="0.44"></div>
+        <div><label>Risk — standard %</label><input id="f-rs" placeholder="2.2"></div>
+        <div><label>Stop — conservative %</label><input id="f-sc" placeholder="0.21"></div>
+        <div><label>Risk — conservative %</label><input id="f-rc" placeholder="1.00"></div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="stage-label">3 · Order filled <span>just before the NY cash open (14:30 UK in BST)</span></div>
+      <div class="grid">
+        <div><label>Time (UK)</label><input id="f-et" placeholder="14:26"></div>
+        <div><label>Action</label><select id="f-ea"><option value="">—</option><option>TRADE</option><option>NO_TRADE</option></select></div>
+        <div><label>Direction</label><select id="f-ed"><option value="">—</option><option>LONG</option><option>SHORT</option></select></div>
+        <div><label>Tier taken</label><select id="f-tier"><option value="standard">standard</option><option value="conservative">conservative</option></select></div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="stage-label">4 · Closed <span>his exit message — leave blank if it hasn't arrived</span></div>
+      <div class="grid" style="max-width:420px">
+        <div><label>Time (UK)</label><input id="f-ct" placeholder="18:05"></div>
+      </div>
+    </div>
+
+    <div><label>Notes (anything unusual — wording, extra fields, a second message)</label><input id="f-notes"></div>
+
+    <div class="row">
+      <button onclick="save()">Save day</button>
+      <button class="ghost" onclick="resolve()">Resolve outcomes</button>
+      <button class="ghost" onclick="load()">Reload</button>
+      <span class="msg" id="msg"></span>
+    </div>
+    <p class="note">
+      Saving <em>merges</em> into the day — the four messages arrive hours apart, so log each one as it
+      lands and the earlier stages are preserved. Resolve only touches days that have closed.
+    </p>
+  </div>
+
+  <div class="panel">
+    <h2>Forward record of his calls — after costs</h2>
+    <div class="stats" id="stats"><div class="stat"><div class="v muted">—</div><div class="k">no resolved days yet</div></div></div>
+    <p class="note" id="runs-note"></p>
+  </div>
+
+  <div class="panel">
+    <h2>Ledger</h2>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr>
+          <th>Date</th><th>G1</th><th>G2</th><th>Stop/Risk (std)</th><th>Entry</th><th>Dir</th>
+          <th>Close</th><th>Entry px</th><th>Exit</th><th>Why</th><th>Net %</th><th>Account %</th><th>MAE</th><th></th>
+        </tr></thead>
+        <tbody id="rows"><tr><td colspan="14" class="muted">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const num = v => { const n = parseFloat(v); return Number.isFinite(n) ? n : undefined; };
+const msg = (t, bad) => { $('msg').textContent = t; $('msg').style.color = bad ? 'var(--red)' : 'var(--text2)'; };
+
+$('f-date').value = new Date().toISOString().substring(0, 10);
+
+async function save() {
+  const body = {
+    date: $('f-date').value,
+    instrument: $('f-inst').value || 'NQ',
+    notes: $('f-notes').value || undefined,
+  };
+  if ($('f-g1t').value || $('f-g1s').value) body.g1 = { t: $('f-g1t').value || undefined, state: $('f-g1s').value || undefined };
+  if ($('f-g2t').value || $('f-g2s').value || $('f-ss').value) body.g2 = {
+    t: $('f-g2t').value || undefined, state: $('f-g2s').value || undefined,
+    stopStd: num($('f-ss').value), riskStd: num($('f-rs').value),
+    stopCons: num($('f-sc').value), riskCons: num($('f-rc').value),
+  };
+  if ($('f-et').value || $('f-ea').value) body.entry = {
+    t: $('f-et').value || undefined, action: $('f-ea').value || undefined,
+    direction: $('f-ed').value || undefined, tier: $('f-tier').value,
+  };
+  if ($('f-ct').value) body.close = { t: $('f-ct').value };
+
+  if (!body.date) return msg('date required', true);
+  const r = await fetch('/api/cog-signals', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  }).then(r => r.json()).catch(e => ({ ok: false, error: e.message }));
+  msg(r.ok ? `saved — ${r.n} days logged` : `save failed: ${r.error}`, !r.ok);
+  if (r.ok) load();
+}
+
+async function resolve() {
+  msg('resolving against OANDA M5…');
+  const r = await fetch('/api/cog-signals/resolve', { method: 'POST' })
+    .then(r => r.json()).catch(e => ({ ok: false, error: e.message }));
+  msg(r.ok ? `resolved ${r.resolved}, skipped ${r.skipped}` : `resolve failed: ${r.error}`, !r.ok);
+  load();
+}
+
+async function del(date) {
+  if (!confirm(`Delete the logged day ${date}? This is primary source data — it cannot be recovered.`)) return;
+  await fetch('/api/cog-signals/' + date, { method: 'DELETE' });
+  load();
+}
+
+function pill(v, cls) { return v ? `<span class="pill ${cls}">${v}</span>` : '<span class="muted">—</span>'; }
+const sign = v => (v > 0 ? '+' : '') + v.toFixed(2);
+
+async function load() {
+  const d = await fetch('/api/cog-signals').then(r => r.json()).catch(() => ({ entries: [] }));
+  const es = d.entries || [];
+  $('rows').innerHTML = es.length ? es.map(e => {
+    const o = e.outcome;
+    const g2 = e.g2 || {}, en = e.entry || {};
+    return `<tr>
+      <td>${e.date}</td>
+      <td>${e.g1?.t ? e.g1.t + ' ' : ''}${pill(e.g1?.state, e.g1?.state === 'VALID' ? 'valid' : 'inval')}</td>
+      <td>${g2.t ? g2.t + ' ' : ''}${pill(g2.state, g2.state === 'VALID' ? 'valid' : 'inval')}</td>
+      <td class="muted">${g2.stopStd != null ? g2.stopStd + '% / ' + (g2.riskStd ?? '?') + '%' : '—'}</td>
+      <td>${en.t || '—'} ${en.action === 'NO_TRADE' ? '<span class="muted">no trade</span>' : ''}</td>
+      <td>${pill(en.direction, en.direction === 'LONG' ? 'long' : 'short')}</td>
+      <td>${e.close?.t || '<span class="muted">—</span>'}</td>
+      <td>${o?.entry_px ?? '—'}</td>
+      <td>${o?.exit_px ?? '—'}</td>
+      <td class="muted">${o ? o.exit_reason + (o.close_time_assumed ? '*' : '') : '—'}</td>
+      <td class="${o ? (o.net_move_pct >= 0 ? 'pos' : 'neg') : ''}">${o ? sign(o.net_move_pct) : '—'}</td>
+      <td class="${o ? (o.account_return_pct >= 0 ? 'pos' : 'neg') : ''}">${o ? sign(o.account_return_pct) : '—'}</td>
+      <td class="muted">${o ? o.mae_pct.toFixed(2) : '—'}</td>
+      <td><button class="ghost" style="padding:2px 8px;font-size:11px" onclick="del('${e.date}')">×</button></td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="14" class="muted">Nothing logged yet — his next message is the first row.</td></tr>';
+
+  const done = es.filter(e => e.outcome?.account_return_pct != null);
+  if (!done.length) {
+    $('stats').innerHTML = '<div class="stat"><div class="v muted">—</div><div class="k">no resolved days yet</div></div>';
+    $('runs-note').textContent = '';
+    return;
+  }
+  const r = done.map(e => e.outcome.account_return_pct);
+  let eq = 1; for (const x of r) eq *= (1 + x / 100);
+  const wins = r.filter(x => x > 0).length;
+  const dirs = done.map(e => e.entry.direction);
+  let runs = 1; for (let i = 1; i < dirs.length; i++) if (dirs[i] !== dirs[i - 1]) runs++;
+  const nL = dirs.filter(x => x === 'LONG').length, nS = dirs.length - nL;
+  const exp = dirs.length > 1 ? (2 * nL * nS) / dirs.length + 1 : null;
+  const cum = (eq - 1) * 100;
+  const cell = (v, k, cls) => `<div class="stat"><div class="v ${cls || ''}">${v}</div><div class="k">${k}</div></div>`;
+  $('stats').innerHTML =
+      cell(done.length, 'resolved days')
+    + cell(sign(cum) + '%', 'cumulative (after cost)', cum >= 0 ? 'pos' : 'neg')
+    + cell((100 * wins / done.length).toFixed(0) + '%', `win rate (${wins}/${done.length})`)
+    + cell(sign(r.reduce((s, x) => s + x, 0) / done.length) + '%', 'avg per trade')
+    + cell(done.filter(e => e.outcome.exit_reason === 'STOP').length, 'stopped out')
+    + cell(`${nL}L / ${nS}S`, 'direction split')
+    + cell(runs + (exp ? ' / ' + exp.toFixed(1) : ''), 'runs vs random');
+  $('runs-note').innerHTML = exp
+    ? `<strong>Runs test</strong> (COG_OBSERVED_SYSTEM.md §4g): ${runs} direction runs observed vs
+       ${exp.toFixed(1)} expected if the side were random. Materially <em>fewer</em> runs than expected ⇒ his
+       direction is driven by a slow, persistent signal (consistent with a liquidity read). Runs ≈ expected ⇒
+       a fast pre-open read. Needs ~30 resolved days before it says anything. <span class="muted">
+       * = no close message logged, so the day was resolved to the last bar rather than his actual exit.</span>`
+    : '';
+}
+load();
+</script>
+</body>
+</html>

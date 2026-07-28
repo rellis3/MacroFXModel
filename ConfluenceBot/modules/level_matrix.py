@@ -667,7 +667,11 @@ def score_zones(zones: list[ZoneV2], vol, session, htf,
                 tier = lv[2] if len(lv) > 2 else None
                 if not near(c, p):
                     continue
-                base = (NONFIB_WEIGHTS['oi_gamma_flip'] if ty == 'gamma_flip'
+                # gex_flip is the same REGIME BOUNDARY as gamma_flip, computed more
+                # rigorously — it must take the boundary weight too. The old
+                # `else magnet` default would have silently credited it 1.5 and
+                # inflated every zone that happens to sit near the flip.
+                base = (NONFIB_WEIGHTS['oi_gamma_flip'] if ty in ('gamma_flip', 'gex_flip')
                         else NONFIB_WEIGHTS['oi_magnet'])
                 mult = {'strong': 1.5, 'moderate': 1.0, 'weak': 0.6}.get(tier, 1.0)
                 w = base * mult

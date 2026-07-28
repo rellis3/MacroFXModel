@@ -85,13 +85,18 @@ class OISession:
     """Per-instrument execution state: the plan's zones + one-shot bookkeeping.
 
     ``primed``  — fade/break zones already triggered when the plan loaded (skip).
+                  A DICT keyed by zone_id → a record of WHEN and at WHAT PRICE it
+                  was primed ({at, price, entry, plan_spot, side, mode, past}), so a
+                  "hit but no trade" is legible: you can see whether the zone was
+                  marked while price sat on the level or long after it had left, and
+                  how far past the entry price already was (``past``).
     ``entered`` — zones a position has been opened for (fire once, ever)."""
 
     def __init__(self, instrument: str, spot: float, zones: list | None = None):
         self.instrument = instrument
         self.spot = float(spot or 0)
         self.zones = list(zones or [])
-        self.primed: set[str] = set()
+        self.primed: dict[str, dict] = {}
         self.entered: set[str] = set()
 
     def set_zones(self, spot, zones) -> None:
@@ -101,10 +106,13 @@ class OISession:
             self.spot = float(spot)
         self.zones = list(zones or [])
 
-    def decide(self, px: float, dry_run: bool = False, tol: float = 0.0) -> list:
+    def decide(self, px: float, dry_run: bool = False, tol: float = 0.0, now: float | None = None) -> list:
         """Zones that fire at ``px`` this tick. ``dry_run`` primes (marks fade/break
         zones already past their entry) instead of returning specs — used once on
-        load so overnight crossings don't retro-enter."""
+        load so overnight crossings don't retro-enter. ``now`` (epoch seconds, injected
+        so the engine stays clock-free) is stamped onto each new primed record; with
+        the price + entry it makes clear whether a zone was primed on the level or
+        long after price had left it."""
         if px is None:
             return []
         out = []
@@ -116,7 +124,12 @@ class OISession:
                 continue
             if dry_run:
                 if z.get("mode") != "maxpain":     # maxpain enters near current price → never primed away
-                    self.primed.add(zid)
+                    entry = float(z.get("entry", 0))
+                    self.primed[zid] = {
+                        "at": now, "price": float(px), "entry": entry,
+                        "plan_spot": self.spot, "side": z.get("side"), "mode": z.get("mode"),
+                        "past": round(abs(float(px) - entry), 6),   # how far price was ALREADY past the entry
+                    }
             else:
                 out.append(make_spec(self.instrument, z))
         return out

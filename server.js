@@ -59,8 +59,9 @@ import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } fro
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
 import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS, BM_P75 as _BM_P75 } from './js/volBacktestEngine.js';
-import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED } from './js/mve/liveAdapter.js';
-import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency } from './js/mve/validateInstrument.js';
+import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED, fetchPriceOnly as _mveFetchPriceOnly } from './js/mve/liveAdapter.js';
+import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency, validateMechanicalAnchor as _mveValidateMechanical } from './js/mve/validateInstrument.js';
+import { volOuDiagnostic as _volOuDiagnostic, scoreVolPredictsForwardVol as _scoreVolPredictsForwardVol } from './js/volReversionCore.js';
 import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS, buildPortfolioReturns as _trendBuildPortfolio, portfolioReturnsByDate as _trendReturnsByDate } from './js/trendFollowEngine.js';
 import { blendStreams as _blendStreams } from './js/streamBlend.js';
 import { runGauntlet as _runStrategyGauntlet, GAUNTLET_SPECS as _GAUNTLET_SPECS, SIGNALS as _LAB_SIGNALS } from './js/strategyLabEngine.js';
@@ -118,6 +119,7 @@ import { excursionFromM1, summarizeGiveback } from './js/giveback.js';   // per-
 import { volHorseRace as _volHorseRace, HR_MODELS as _HR_MODELS } from './js/volHorseRaceEngine.js';   // 8-model σ-forecast horse race per instrument (QLIKE/MZ), does HAR's gold win generalise
 import { scanConfirmedSignals as _scanConfirmedSignals, mergeLog as _mergeLog, forwardStats as _forwardStats } from './js/forwardTrackEngine.js';   // live post-research track record of the confirmed fade
 import { parseCalendarCsv as _parseCalendarCsv, pairCurrencies as _calPairCurrencies } from './js/newsCalendar.js';   // economic-calendar parser
+import { wallReachability as _oiWallReach, firstTouchRace as _oiFirstTouch, visitDensity as _oiVisitDensity, calibForHorizon as _oiCalibFor } from './js/oiReachability.js';   // calibrated P(touch) per OI wall
 import { buildIntradayContext as _fpBuildCtx, intradayCone as _fpCone, intradayTally as _fpTally, intradayRealizedZ as _fpRealZ, intradayReachability as _fpReach, reachabilityCalibration as _fpReachCalib, intradaySamplePaths as _fpPaths, dayRangeStatus as _fpDayRange, buildForecastContext as _fpBuildDaily, coneFromContext as _fpConeDaily, calibrationTally as _fpTallyDaily } from './js/forecastPathCore.js';   // forecast-path summary + reachability (cone claims API) + daily trend-direction (driftSource:'trend')
 import { makeClaim as _cfMakeClaim, shouldRecord as _cfShouldRecord, resolveClaims as _cfResolve, pruneStale as _cfPrune, summarizeForward as _cfSummarize } from './js/coneForwardTrack.js';   // cone forward-track (live claims vs outcomes)
 import { detectSurprise as _saDetect, shouldFire as _saShouldFire, recordFired as _saRecordFired, SURPRISE_DEFAULTS as _SA_DEFAULTS } from './js/surpriseAlertCore.js';   // cone surprise-alert (context ping, not a signal)
@@ -125,7 +127,9 @@ import { fillRealismLadder as _fillRealismLadder } from './js/fillRealismEngine.
 import { honestPolicy as _honestPolicy, netPortfolio as _netPortfolio } from './js/honestPolicyEngine.js';   // COG's cell-selection on honest 1-min fills → portfolio curve
 import { reverseEngineer as _cogReverseEngineer, COG_CONST as _COG_CONST } from './js/cogReverseEngineer.js';   // infer COG's vol algorithm
 import { hvVarSeries as _hvVarSeries, yzVolSeries as _yzVolSeries, ewmaVarSeries as _ewmaVarSeries, garchSigmas as _garchSigmas } from './js/volBacktestEngine.js';
-import { sharpeStdError as _sharpeStdError, minTrackRecordLength as _minTrackRecordLength } from './js/metricsCore.js';   // Sharpe honesty pair (error bar + min track record)
+import { sharpeStdError as _sharpeStdError, minTrackRecordLength as _minTrackRecordLength,
+         sharpeStdError, minTrackRecordLength, histVaR, histCVaR, skewness, excessKurtosis,
+         profitFactor, winRate } from './js/metricsCore.js';   // Sharpe honesty pair + tearsheet distribution stats
 import { evaluateForecast } from './js/volForecastResearchEngine.js';
 import { evaluateEstimatorAB, buildLondonDaily } from './js/volEstimatorAB.js';
 import { analyzeCogLevels as _analyzeCogLevels } from './js/cogLevelPoc.js';   // COG-level POC
@@ -160,6 +164,8 @@ import { COG_LIQUIDITY_1A_SCORE, COG_RISK_SCORE, COG_DIRECTION_SCORE, COG_THRESH
 import { computeExitScore } from './js/cogExitEngine.js';
 import { runV2Backtest } from './js/cogStateEngine.js';
 import { loadHistoricalCogDataset } from './js/cogHistoricalDataLoader.js';
+import { runCogV3 } from './js/cogV3Engine.js';
+import { bothSidesWalk, groupBarsByDate, entryBarFor } from './js/qmrCore.js';
 import { runPivotSpike } from './js/pivotSpikeEngine.js';
 import { COG_V2_TRIGGER_WINDOW, COG_V2_NY_OPEN_MINUTE, COG_V2_ENTRY_DEADLINE_MINUTE, COG_V2_SETUP_NOTE, COG_V2_RISK_NOTE, COG_V2_IMPULSE_PARAMS, COG_V2_TRIGGER_SCORE, COG_V2_SETUP_HYSTERESIS, COG_V2_SLOW_SMOOTH, COG_V2_CONFIDENCE, COG_V2_MIN_SETUP_PERSIST_BARS } from './js/cogV2Config.js';
 import { liveSignal as hedgeV2Live, runComparison as hedgeV2Comparison, V2_DEFAULTS as HEDGE_V2_DEFAULTS } from './js/hedgeSignalV2Engine.js';
@@ -1959,6 +1965,11 @@ async function _injectServerContext(pair, s) {
       const perPair = pk ? hist[pk] : null;
       if (perPair) {
         const dates = Object.keys(perPair).sort();
+        // Say how deep the archive is. Without this, "no prior day" and "nothing moved"
+        // produce an IDENTICAL brief (the whole OI-CHANGE block just vanishes), so a
+        // broken archive reads as a quiet market. Surfacing the depth makes the
+        // difference visible instead of silent.
+        s.oiHistoryDays = dates.length;
         const cur = perPair[dates[dates.length - 1]], prev = perPair[dates[dates.length - 2]];
         const dl = (cur && prev) ? oiDeltas(cur, prev) : null;
         if (dl) {
@@ -2080,7 +2091,8 @@ Call walls firming: ${s.oiChange.callWalls.strengthening.map(w => `${w.strike}(+
 Put walls firming: ${s.oiChange.putWalls.strengthening.map(w => `${w.strike}(+${w.delta})`).join(', ') || 'none'}  |  fading: ${[...s.oiChange.putWalls.weakening.map(w => `${w.strike}(${w.delta})`), ...s.oiChange.putWalls.faded.map(w => `${w.strike}(gone)`)].join(', ') || 'none'}
 New walls appeared: ${[...s.oiChange.callWalls.appeared.map(w => `C${w.strike}`), ...s.oiChange.putWalls.appeared.map(w => `P${w.strike}`)].join(', ') || 'none'}${s.oiChange.classify ? `
 Change read: ${s.oiChange.classify}${(s.oiChange.events || []).filter(e => e.type === 'fresh_wall' || e.type === 'fresh_positioning').length ? ` · fresh: ${s.oiChange.events.filter(e => e.type === 'fresh_wall' || e.type === 'fresh_positioning').map(e => `${e.kind[0].toUpperCase()}${e.strike}${e.pct != null ? `(+${e.pct}%)` : ''}`).join(', ')}` : ''}` : ''}${(s.oiStability || []).length ? `
-Wall stability: ${s.oiStability.map(w => `${w.kind[0].toUpperCase()}${w.strike} ${w.established ? `${w.daysPresent}d established` : w.fresh ? 'fresh' : `${w.daysPresent}d`}`).join(', ')} (established walls more reliable than overnight ones)` : ''}
+Wall stability: ${s.oiStability.map(w => `${w.kind[0].toUpperCase()}${w.strike} ${w.established ? `${w.daysPresent}d established` : w.fresh ? 'fresh' : `${w.daysPresent}d`}`).join(', ')} (established walls more reliable than overnight ones)` : ''}${!s.oiChange ? `
+OI CHANGE: UNAVAILABLE — only ${s.oiHistoryDays ?? 0} day(s) of OI archive for this pair, so day-over-day dynamics (walls firming/fading, positioning building/unwinding, wall stability) CANNOT be read today. Treat the levels above as a static snapshot. Do NOT infer that positioning was unchanged — it is unmeasured, which is not the same thing.` : ''}
 (A wall that firmed = support/resistance more reliable; a wall defended then fading = next test may break — weight accordingly.)` : ''}`
   : '  No OI data loaded for this pair  -  paste via OI button'}
 
@@ -2141,7 +2153,12 @@ ${s.cot ? `Report date: ${s.cot.reportDate ?? 'N/A'}  |  Open Interest: ${s.cot.
 Leveraged funds net: ${s.cot.levNet ?? 'N/A'} (${s.cot.levNetChg != null ? (s.cot.levNetChg >= 0 ? '+' : '') + s.cot.levNetChg : 'N/A'} wk)  |  Net % of OI: ${s.cot.levPct != null ? s.cot.levPct.toFixed(1) + '%' : 'N/A'}
 Spec traders: ${s.cot.numLevLong ?? 'N/A'} long · ${s.cot.numLevShort ?? 'N/A'} short  |  Avg size: ${s.cot.avgContracts ?? 'N/A'} contracts
 Asset Mgr net: ${s.cot.amNet ?? 'N/A'} (${s.cot.amNetChg != null ? (s.cot.amNetChg >= 0 ? '+' : '') + s.cot.amNetChg : 'N/A'} wk)  |  Dealer net: ${s.cot.dealerNet ?? 'N/A'}
-Gross L/S ratio: ${s.cot.grossRatio ?? 'N/A'}  |  Crowding: ${s.cot.crowdingPct != null ? s.cot.crowdingPct.toFixed(1) + '% of OI' : 'N/A'}${s.cot.crowdingPct >= 20 ? ' — EXTREME (unwind risk elevated)' : s.cot.crowdingPct >= 10 ? ' — ELEVATED' : ''}` : '  COT data not available (set CFTC URL via COT toolbar button)'}
+Gross L/S ratio: ${s.cot.grossRatio ?? 'N/A'}  |  Crowding: ${s.cot.crowdingPct != null ? s.cot.crowdingPct.toFixed(1) + '% of OI' : 'N/A'}${s.cot.crowdingPct >= 20 ? ' — EXTREME (unwind risk elevated)' : s.cot.crowdingPct >= 10 ? ' — ELEVATED' : ''}
+Crowding percentile (net as SHARE of OI, ranked — the read that survives OI itself changing): ${s.cot.crowdSharePct != null ? s.cot.crowdSharePct + 'th pct' : 'N/A'}${s.cot.crowdShare != null ? `  |  net = ${s.cot.crowdShare}% of OI` : ''}${s.cot.crowdSharePct >= 90 ? ' — CROWDED LONG this pair' : s.cot.crowdSharePct <= 10 ? ' — CROWDED SHORT this pair' : ''}${s.cot.inverted ? '  (futures are the foreign leg; already flipped into pair terms)' : ''}
+NOTE ON COT TIMING: this is a Tuesday snapshot released Friday, so it is ALWAYS several days old — treat it as a positioning/regime conditioner, never as a timing signal, and say so if you lean on it.` : '  COT data not available (set CFTC URL via COT toolbar button)'}
+${s.cotMarket ? `CROSS-MARKET POSITIONING (${s.cotMarket.n} instruments, report ${s.cotMarket.reportDate}) — is this pair's crowding idiosyncratic or part of a board-wide stretch?
+Extremes: ${s.cotMarket.extremes.length ? s.cotMarket.extremes.map(e => `${e.sym} ${e.pct}th (${e.side})`).join('  ·  ') : 'none at the 10th/90th percentile'}
+By group (median crowding percentile): ${s.cotMarket.byGroup.map(g => `${g.group} ${g.medPct ?? 'N/A'}`).join('  ·  ')}` : ''}
 
 HIGH CONFLUENCE ENTRIES (from multi-layer scanner)
 ${s.topEntries && s.topEntries.length > 0
@@ -2627,6 +2644,48 @@ async function _getAutoBriefCfg() {
 const _AI_LK = { GOLD: 'XAU/USD', NQ: 'NAS100_USD', SPX500: 'SPX500_USD', DE30: 'DE30_USD', UK100: 'UK100_GBP', US30: 'US30_USD', US2000: 'US2000_USD' };
 // brief name → [COT symbol, flip] and → relevant news countries (ported from today.html)
 const _COT_MAP = { EURUSD:['EUR',false], GBPUSD:['GBP',false], USDJPY:['JPY',true], AUDUSD:['AUD',false], NZDUSD:['NZD',false], USDCAD:['CAD',true], USDCHF:['CHF',true], GOLD:['GOLD',false], NQ:['NQ',false], SPX500:['ES',false], US30:['YM',false], US2000:['RTY',false] };
+// ONE definition of "COT expressed in PAIR terms". Inverted pairs (USD/JPY, USD/CAD,
+// USD/CHF) trade the FOREIGN currency's future, so the net, the OI share, the z and the
+// percentile must ALL be flipped together — flip some and not others and a crowded-short
+// JPY reads as a crowded-short USD/JPY. Both the morning brief and the C+Z export read
+// through here so that flip can never drift into two disagreeing copies.
+// NOTE `specShare`/`commShare` arrive from _worker.js ALREADY in percent (×100, 2dp) —
+// do not scale them again downstream.
+function _cotPairView(c, inverted) {
+  if (!c) return null;
+  const f = v => (v == null ? null : (inverted ? -v : v));
+  const fp = v => (v == null ? null : (inverted ? 100 - v : v));
+  return { reportDate: c.reportDate, openInterest: c.openInterest ?? 0,
+    net: f(c.specNet ?? 0), weeklyChg: c.weeklyChg, pct: fp(c.specPct),
+    share: f(c.specShare), sharePct: fp(c.specSharePct), shareZ: f(c.specShareZ),
+    inverted: !!inverted };
+}
+
+// COT keyed by the C+Z export's canonical chart name — `_COT_MAP` already uses exactly
+// those keys (EURUSD / GOLD / NQ / SPX500 …), so no second name table is needed. Prefers
+// the OI-normalised percentile, since that's the read that survives open interest itself
+// growing over the lookback. Returns null (not a partial object) if COT is unavailable —
+// the export must never invent positioning.
+async function _cotForExport(now = Date.now()) {
+  try {
+    const raw = await kv.get('cot_extremes_v2'); if (!raw) return null;
+    const cd = JSON.parse(raw);
+    const arr = cd.data?.instruments ?? cd.data ?? cd.instruments ?? [];
+    const list = Array.isArray(arr) ? arr : []; if (!list.length) return null;
+    const out = {};
+    for (const [canon, m] of Object.entries(_COT_MAP)) {
+      const v = _cotPairView(list.find(x => x.sym === m[0]), m[1]);
+      if (!v) continue;
+      const pct = v.sharePct != null ? v.sharePct : v.pct;   // OI-normalised first
+      if (pct == null) continue;
+      const t = v.reportDate ? Date.parse(`${v.reportDate}T00:00:00Z`) : NaN;
+      out[canon] = { pct: Math.round(pct), share: v.share, reportDate: v.reportDate,
+        ageDays: Number.isFinite(t) ? Math.round((now - t) / 864e5) : null };
+    }
+    return Object.keys(out).length ? out : null;
+  } catch { return null; }
+}
+
 const _PAIR_NEWS_CC = { EURUSD:['US','EU','DE'], GBPUSD:['US','GB'], USDJPY:['US','JP'], AUDUSD:['US','AU'], NZDUSD:['US','NZ'], USDCAD:['US','CA'], USDCHF:['US','CH'], GBPJPY:['GB','JP'], EURJPY:['EU','DE','JP'], AUDJPY:['AU','JP'], CADJPY:['CA','JP'], GOLD:['US'], NQ:['US'], SPX500:['US'], US30:['US'], US2000:['US'], DE30:['DE','EU'], UK100:['GB'] };
 // Today's economic calendar — the econCalendar brick caches internally (30 min),
 // so one fetch feeds every pair + the morning brief + /api/events.
@@ -2677,9 +2736,44 @@ async function _serverSnapshotFor(name, sym) {
       const cd = JSON.parse(cotRaw); const arr = cd.data?.instruments ?? cd.data ?? cd.instruments ?? [];
       const c = (Array.isArray(arr) ? arr : []).find(x => x.sym === m[0]);
       if (c) {
-        const oi = c.openInterest ?? 0, net = m[1] ? -(c.specNet ?? 0) : (c.specNet ?? 0);
-        snap.cot = { reportDate: c.reportDate, openInterest: oi, levNet: net, levNetChg: c.weeklyChg,
-          levPct: c.specPct, crowdingPct: oi > 0 ? +(Math.abs(c.specNet ?? 0) / oi * 100).toFixed(1) : c.specPct };
+        // Pair-terms normalisation lives in `_cotPairView` (shared with the C+Z export).
+        const v = _cotPairView(c, m[1]);
+        snap.cot = { reportDate: v.reportDate, openInterest: v.openInterest, levNet: v.net,
+          levNetChg: v.weeklyChg, levPct: v.pct,
+          // OI-normalised crowding — share of open interest AND its percentile, which is
+          // the read that survives open interest itself changing over the window.
+          crowdShare: v.share, crowdSharePct: v.sharePct, crowdShareZ: v.shareZ,
+          inverted: v.inverted,
+          // Magnitude, not direction — so this one is deliberately sign-free/unflipped.
+          crowdingPct: v.openInterest > 0 ? +(Math.abs(c.specNet ?? 0) / v.openInterest * 100).toFixed(1) : c.specPct };
+      }
+    }
+  } catch {}
+  // MARKET-WIDE COT — the higher-level read. The per-pair block above answers "how is
+  // this pair positioned"; this answers "where is the whole board stretched", which is
+  // what tells you whether one crowded pair is idiosyncratic or part of a broad
+  // risk-on/risk-off crowding. Extremes are taken on the OI-NORMALISED percentile.
+  try {
+    const cotRaw2 = await kv.get('cot_extremes_v2');
+    if (cotRaw2) {
+      const cd = JSON.parse(cotRaw2); const arr = cd.data?.instruments ?? cd.data ?? cd.instruments ?? [];
+      const list = (Array.isArray(arr) ? arr : []).filter(x => x && x.sym);
+      const pctOf = x => (x.specSharePct != null ? x.specSharePct : x.specPct);
+      const ext = list.filter(x => pctOf(x) != null && (pctOf(x) >= 90 || pctOf(x) <= 10))
+        .sort((a, b) => Math.abs(50 - pctOf(b)) - Math.abs(50 - pctOf(a)))
+        .slice(0, 8)
+        .map(x => ({ sym: x.sym, group: x.group, pct: pctOf(x),
+          side: pctOf(x) >= 90 ? 'crowded long' : 'crowded short',
+          z: x.specShareZ ?? x.specZ, wkChg: x.weeklyChg }));
+      if (list.length) {
+        snap.cotMarket = { reportDate: list[0].reportDate, n: list.length, extremes: ext,
+          // Direction of the crowd BY GROUP, so "risk-on positioning" is visible rather
+          // than inferred from a wall of individual rows.
+          byGroup: [...new Set(list.map(x => x.group))].map(g => {
+            const rows = list.filter(x => x.group === g && pctOf(x) != null);
+            return { group: g, n: rows.length,
+              medPct: rows.length ? Math.round(rows.map(pctOf).sort((a, b) => a - b)[rows.length >> 1]) : null };
+          }) };
       }
     }
   } catch {}
@@ -2843,6 +2937,92 @@ Reply in this exact format (use ** for bold headers):
 //      retail CFD tracks the future closely (course §Lesson 03: "index CFDs track
 //      the futures, basis small"), so it's a sound anchor; for FX it's spot, giving
 //      basis≈0 (a few pips off) — still far better than a garbage estimate.
+// ── OI-wall reachability: P(touch) per wall, first-touch race, visit density ──────
+// Server-side because it needs the M5 history the intraday cone warms up on.
+//
+// The horizon is CAPPED to the fitted calibration horizons (1h / 4h) rather than run out
+// to the option expiry. 11 DTE is ~3,200 M5 bars and the reliability map was measured at
+// 12 and 48; extrapolating a probability correction ~60x past where it was verified would
+// hand back a confident number with nothing behind it. "Will price reach this wall in the
+// next hour / four hours" is both answerable and the more useful question for a trade.
+app.get('/api/oi-reachability', async (req, res) => {
+  try {
+    const pair = req.query.pair;
+    if (!pair) return res.json({ ok: false, error: 'pair param required' });
+    const H = Math.max(4, Math.min(96, parseInt(req.query.h, 10) || 12));
+
+    const raw = await kv.get('oi_store').catch(() => null);
+    const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
+    const norm = x => String(x).toLowerCase().replace(/[/_]/g, '');
+    const key = Object.keys(store).find(k => norm(k) === norm(pair));
+    const inst = key ? store[key] : null;
+    if (!inst) return res.json({ ok: false, error: `no OI stored for ${pair}` });
+
+    const OA = { 'EUR/USD': 'EUR_USD', 'GBP/USD': 'GBP_USD', 'USD/JPY': 'USD_JPY', 'AUD/USD': 'AUD_USD',
+      'XAU/USD': 'XAU_USD', 'USD/CAD': 'USD_CAD', 'USD/CHF': 'USD_CHF', 'NAS100_USD': 'NAS100_USD',
+      'SPX500_USD': 'SPX500_USD', 'US30_USD': 'US30_USD', 'US2000_USD': 'US2000_USD',
+      'DE30_USD': 'DE30_EUR', 'UK100_GBP': 'UK100_GBP' };
+    const osym = OA[key];
+    if (!osym) return res.json({ ok: false, error: `no OANDA mapping for ${key}` });
+    if (!process.env.OANDA_KEY) return res.json({ ok: false, error: 'OANDA_KEY not configured' });
+
+    const base = (process.env.OANDA_ENV || 'live') === 'practice'
+      ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+    const cr = await fetch(
+      `${base}/v3/instruments/${encodeURIComponent(osym)}/candles?granularity=M5&count=2000&price=M`,
+      { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(20_000) });
+    if (!cr.ok) return res.json({ ok: false, error: `OANDA ${cr.status}` });
+    const cj = await cr.json();
+    const bars = (cj.candles || []).filter(c => c.complete && c.mid).map(c => ({
+      time: Math.floor(new Date(c.time).getTime() / 1000),
+      open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c,
+    }));
+    if (bars.length < 400) return res.json({ ok: false, error: `only ${bars.length} bars` });
+
+    const ctx = _fpBuildCtx(bars, {});
+    const i = bars.length, anchor = bars[i - 1].close;
+
+    // The same walls the chart draws: tiered and near-money, both sides, plus max pain.
+    // Stored levels are already SPOT-adjusted, which is the space the candles are in.
+    const rm = inst.refMove?.move;
+    const nearOK = s => !(rm > 0) || Math.abs(s - inst.spot) <= 2.5 * rm;
+    const walls = [];
+    (inst.callWalls || []).filter(w => w.tier && nearOK(w.strike)).slice(0, 4)
+      .forEach(w => walls.push({ price: w.strike, type: 'call_wall', label: `call ${fmtN(w.strike)}` }));
+    (inst.putWalls || []).filter(w => w.tier && nearOK(w.strike)).slice(0, 4)
+      .forEach(w => walls.push({ price: w.strike, type: 'put_wall', label: `put ${fmtN(w.strike)}` }));
+    if (Number.isFinite(inst.maxPain)) walls.push({ price: inst.maxPain, type: 'max_pain', label: 'max pain' });
+    if (!walls.length) return res.json({ ok: false, error: 'no tiered near-money walls for this pair' });
+
+    const rows = _oiWallReach(ctx, i, walls, H, { nPaths: 400 });
+    const up = rows.filter(r => r.price > anchor).sort((a, b) => a.price - b.price)[0]?.price || 0;
+    const dn = rows.filter(r => r.price < anchor).sort((a, b) => b.price - a.price)[0]?.price || 0;
+    const race = (up || dn) ? _oiFirstTouch(ctx, i, up, dn, H, { nPaths: 400 }) : null;
+    const density = _oiVisitDensity(ctx, i, H, { bins: 44, nPaths: 300 });
+    // The cone itself, so the chart can draw the envelope the probabilities came from.
+    // Same object intradayReachability walks — one cone, one set of numbers, no chance of
+    // the picture and the percentages disagreeing.
+    const cone = _fpCone(ctx, i, H);
+    const envelope = cone ? cone.steps.map(st => ({
+      time: st.time, center: +st.center.toFixed(8),
+      p50Up: +st.p50Up.toFixed(8), p50Dn: +st.p50Dn.toFixed(8),
+      p75Up: +st.p75Up.toFixed(8), p75Dn: +st.p75Dn.toFixed(8),
+    })) : null;
+    const cal = _oiCalibFor(H);
+
+    res.json({ ok: true, pair: key, horizonBars: H, horizonMin: H * 5, anchor,
+      bars: bars.length, asOf: Date.now(),
+      calibration: { source: `eurusd-m5-${cal.label}`, exact: cal.exact, oosErrPp: cal.oosErrPp,
+        curve: cal.curve,
+        note: 'Raw MC touch probability is over-confident — a raw 94% touches about 68% of the time. These are CALIBRATED against a reliability curve fitted on EUR/USD M5 and verified out of sample (9.4pp -> 1.7pp at 1h). The curve is returned so the correction is auditable.' },
+      walls: rows, race, density,
+      cone: envelope ? { anchorTime: cone.anchorTime, anchor: cone.anchor, steps: envelope } : null });
+  } catch (e) {
+    res.json({ ok: false, error: String(e?.message || e) });
+  }
+});
+function fmtN(v) { return Number.isFinite(v) ? (Math.abs(v) >= 100 ? v.toFixed(2) : v.toFixed(5)) : '—'; }
+
 app.get('/api/futures-quote', async (req, res) => {
   const FUTURES_MAP = {
     'EUR/USD': '6E=F', 'GBP/USD': '6B=F', 'USD/JPY': '6J=F', 'AUD/USD': '6A=F',
@@ -2862,9 +3042,10 @@ app.get('/api/futures-quote', async (req, res) => {
   const symbol = FUTURES_MAP[pair];
   if (!symbol && !OANDA_MAP[pair]) return res.json({ ok: false, error: 'No futures/CFD mapping for this pair' });
   const kind = symbol && symbol.startsWith('^') ? 'index' : 'future';
+  const oSym = OANDA_MAP[pair];
 
-  // 1) Yahoo (real future), query1 then query2.
-  if (symbol) {
+  const yahooFutures = async () => {
+    if (!symbol) return null;
     for (const host of ['query1', 'query2']) {
       try {
         const r = await fetch(
@@ -2874,28 +3055,46 @@ app.get('/api/futures-quote', async (req, res) => {
         if (!r.ok) continue;
         const data = await r.json();
         const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
-        if (price) return res.json({ ok: true, price, symbol, kind, source: 'yahoo' });
-      } catch { /* try next host / fall through to OANDA */ }
+        if (price) return { price, symbol, kind, source: 'yahoo' };
+      } catch { /* try next host */ }
     }
-  }
-
-  // 2) OANDA fallback — the CFD/spot the user actually trades.
-  const oSym = OANDA_MAP[pair];
-  if (oSym && process.env.OANDA_KEY && process.env.OANDA_ACCOUNT_ID) {
+    return null;
+  };
+  const oandaSpot = async () => {
+    if (!oSym || !process.env.OANDA_KEY || !process.env.OANDA_ACCOUNT_ID) return null;
     try {
       const oB = (process.env.OANDA_ENV || 'live') === 'practice' ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
       const r = await fetch(`${oB}/v3/accounts/${process.env.OANDA_ACCOUNT_ID}/pricing?instruments=${encodeURIComponent(oSym)}`,
         { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(6_000) });
-      if (r.ok) {
-        const d = await r.json(); const p = d.prices?.[0];
-        if (p?.asks?.[0] && p?.bids?.[0]) {
-          const price = (+p.asks[0].price + +p.bids[0].price) / 2;
-          // Label it a CFD proxy so the client shows the source honestly.
-          return res.json({ ok: true, price, symbol: oSym, kind: 'cfd', source: 'oanda' });
-        }
-      }
-    } catch { /* fall through to error */ }
-  }
+      if (!r.ok) return null;
+      const d = await r.json(); const p = d.prices?.[0];
+      if (p?.asks?.[0] && p?.bids?.[0]) return { price: (+p.asks[0].price + +p.bids[0].price) / 2, symbol: oSym, source: 'oanda' };
+    } catch { /* ignore */ }
+    return null;
+  };
+
+  // BOTH LEGS, ONE CALL, ISSUED TOGETHER.
+  //
+  // The basis is only meaningful if futures and spot are sampled at the same moment
+  // (open-interest-course-notes.md L229: "capture both at the same moment — prices
+  // hours apart give a wrong basis"). Previously the client fetched only the futures
+  // leg, at modal-open, and paired it against a spot field filled at some other time;
+  // the two could be minutes apart and nothing recorded that they were. Firing them
+  // in parallel here bounds the gap to one round trip and stamps it server-side, so
+  // the client cannot accidentally mix timestamps.
+  const [fut, spot] = await Promise.all([yahooFutures(), oandaSpot()]);
+  const at = Date.now();
+
+  if (fut) return res.json({ ok: true, price: fut.price, symbol: fut.symbol, kind: fut.kind, source: fut.source,
+    spot: spot?.price ?? null, spotSymbol: spot?.symbol ?? null, spotSource: spot?.source ?? null,
+    basis: (spot?.price != null) ? +(fut.price - spot.price).toFixed(8) : null, at });
+
+  // No real future — fall back to the OANDA CFD, labelled honestly as such so the
+  // client never presents a CFD mid as a futures price (that would make basis ≈ 0).
+  if (spot) return res.json({ ok: true, price: spot.price, symbol: spot.symbol, kind: 'cfd', source: 'oanda',
+    spot: spot.price, spotSymbol: spot.symbol, spotSource: 'oanda', basis: 0, at,
+    note: 'no futures feed for this pair — CFD mid used for BOTH legs, so basis is 0 by construction' });
+
   res.json({ ok: false, error: 'No futures/CFD price available (Yahoo + OANDA both unavailable)' });
 });
 
@@ -3270,6 +3469,7 @@ function _computeNqQmr(bars, cfg = {}) {
     extPctThreshold = 75,    // percentile (vs trailing history) of move-used-by-entry/ADR above which a confirmed day counts as "extended"
     showSystem4     = false, // also compute chop-fade trades (G1+G2 confirm, but the session's path was inefficient/choppy, not a clean trend)
     effPctThreshold = 25,    // percentile (vs trailing history) of trend efficiency BELOW which a confirmed day counts as "choppy"
+    showControl     = false, // also compute the INVERSE-direction control arm on every S1 day (see below)
     costPct         = QMR_COSTS.costPct,     // round-trip transaction cost (spread + commission), % of notional
     stopSlipPct     = QMR_COSTS.stopSlipPct, // extra slippage % of notional, charged only on stop exits (market order through a moving market)
   } = cfg;
@@ -3304,9 +3504,9 @@ function _computeNqQmr(bars, cfg = {}) {
   const extRatioHistory = []; // causal — confirm-day extension ratios seen strictly before "today"
   const effRatioHistory = []; // causal — confirm-day trend-efficiency ratios seen strictly before "today"
 
-  const trades = [], trades2 = [], trades3 = [], trades2cf = [], trades4 = [];
-  let equity1 = 1.0, equity2 = 1.0, equity3 = 1.0, equity4 = 1.0, equityCombo = 1.0;
-  const curve1 = [], curve2 = [], curve3 = [], curve4 = [], curveCombo = [];
+  const trades = [], trades2 = [], trades3 = [], trades2cf = [], trades4 = [], tradesCtl = [];
+  let equity1 = 1.0, equity2 = 1.0, equity3 = 1.0, equity4 = 1.0, equityCombo = 1.0, equityCtl = 1.0;
+  const curve1 = [], curve2 = [], curve3 = [], curve4 = [], curveCombo = [], curveCtl = [];
 
   for (let di = 1; di < dates.length; di++) {
     const today = dates[di];
@@ -3477,6 +3677,35 @@ function _computeNqQmr(bars, cfg = {}) {
       trades.push({ ...tradeBase, equity: +equity1.toFixed(6), system: 'S1', extended: isExtended, choppy: isChoppy });
       curve1.push({ date: today, equity: +equity1.toFixed(6) });
 
+      // ── CONTROL ARM: the same day, the INVERSE direction ─────────────────
+      // The null this system has never been tested against. S1's payoff is
+      // deliberately asymmetric (stop ≈ 0.45%, TP 1.5% ≈ 3.3R), so on any day
+      // that trends far enough to touch a TP, the AVERAGE of the two directions
+      // is positive regardless of which one the gates picked — the geometry
+      // pays, not the forecast. That means "S1 makes money" is NOT evidence the
+      // gates predict direction. The honest baseline is a coin flip on the very
+      // same gate-selected days, with identical stop/TP/leverage/costs:
+      //   coinFlip = (S1 + inverse) / 2   ← day selection + payoff geometry
+      //   dirAlpha =  S1 − coinFlip       ← what the DIRECTION call adds
+      // Everything else (day selection, stop, leverage, cost) is held identical,
+      // so the paired difference isolates the direction call and nothing else.
+      // Same fade-direction walk as S3/S4, applied to EVERY S1 day rather than
+      // only the extended/choppy subsets, so the whole sample is covered.
+      if (showControl) {
+        const ctlDir  = gate2 === 'LONG' ? 'SHORT' : 'LONG';
+        const ctlWalk = _qmrWalkTrade(afterEntry, ctlDir, entry, effStopPct, tpPct);
+        if (ctlWalk) {
+          const ctlReturn = _netReturn(ctlWalk.movePct, ctlWalk.exitReason, leverage);
+          equityCtl *= (1 + ctlReturn / 100);
+          tradesCtl.push({ date: today, gate1, gate2, direction: ctlDir, entry,
+                           stop: ctlWalk.stop, exit: ctlWalk.exit, exitReason: ctlWalk.exitReason,
+                           stopPct: +effStopPct.toFixed(3), movePct: +ctlWalk.movePct.toFixed(3),
+                           tradeReturn: +ctlReturn.toFixed(3), equity: +equityCtl.toFixed(6),
+                           system: 'CTL', extended: isExtended, choppy: isChoppy });
+          curveCtl.push({ date: today, equity: +equityCtl.toFixed(6) });
+        }
+      }
+
       // System 3: same day, opposite (fade) direction — only when the move into entry
       // is already at an extreme vs the trailing ADR baseline.
       if (isExtended) {
@@ -3550,6 +3779,40 @@ function _computeNqQmr(bars, cfg = {}) {
     result.curve4  = curve4;
     result.stats4  = _qmrStats(trades4, curve4, equity4);
   }
+  if (showControl) {
+    result.tradesControl = tradesCtl;
+    result.curveControl  = curveCtl;
+    result.statsControl  = _qmrStats(tradesCtl, curveCtl, equityCtl);
+    // Paired decomposition on the days BOTH arms traded (every S1 day with a
+    // walkable inverse). d = (S1 − inverse)/2 is the direction call's own
+    // per-trade contribution; its t-stat is a paired t on the same days, so
+    // day-selection and market drift cancel out of it by construction.
+    const ctlByDate = new Map(tradesCtl.map(t => [t.date, t]));
+    const paired    = trades.filter(t => ctlByDate.has(t.date));
+    const n         = paired.length;
+    if (n >= 2) {
+      const s1r  = paired.map(t => t.tradeReturn);
+      const ctlr = paired.map(t => ctlByDate.get(t.date).tradeReturn);
+      const d    = s1r.map((r, i) => (r - ctlr[i]) / 2);
+      const mean = a => a.reduce((s, v) => s + v, 0) / a.length;
+      const mS1 = mean(s1r), mCtl = mean(ctlr), mD = mean(d);
+      const sdD = Math.sqrt(d.reduce((s, v) => s + (v - mD) ** 2, 0) / (n - 1));
+      // Per-trade cost drag at this sample's average leverage — the level a
+      // genuinely uninformative direction call should sit at (negative).
+      const costFloor = -(costPct * mean(paired.map(t => riskPct / t.stopPct)));
+      result.control = {
+        n,
+        meanS1:        +mS1.toFixed(4),   // gates' direction, % per trade
+        meanInverse:   +mCtl.toFixed(4),  // opposite direction, same days
+        meanCoinFlip:  +((mS1 + mCtl) / 2).toFixed(4), // day selection + payoff geometry
+        dirAlpha:      +mD.toFixed(4),    // what the DIRECTION call adds per trade
+        dirAlphaT:     sdD > 0 ? +(mD / (sdD / Math.sqrt(n))).toFixed(2) : null,
+        costFloorPct:  +costFloor.toFixed(4),
+        gatesBeatCoinFlipDays: paired.filter((t, i) => s1r[i] > ctlr[i]).length,
+      };
+    }
+  }
+
   if (showSystem2 || showSystem3 || showSystem4) {
     // Carve extended/choppy days out of S1 when System 3/4 are replacing them with
     // a fade trade, so the combined curve never double-counts a single trading day.
@@ -4248,10 +4511,17 @@ app.get('/api/nq-qmr/backtest', async (req, res) => {
   cfg.showSystem2 = req.query.showSystem2 === 'true';
   cfg.showSystem3 = req.query.showSystem3 === 'true';
   cfg.showSystem4 = req.query.showSystem4 === 'true';
+  cfg.showControl = req.query.showControl === 'true';
 
-  const isNasDefault = instrument === 'NAS100_USD' && !cfg.showSystem2 && !cfg.showSystem3 && !cfg.showSystem4 && Object.entries(cfg).every(([k, v]) =>
-    typeof v === 'string' ? v === NQ_QMR_DEFAULTS[k] : Math.abs(v - NQ_QMR_DEFAULTS[k]) < 0.001
-  );
+  // Compare only the tunables against their defaults — iterating cfg itself
+  // walked the showSystem*/showControl booleans too, and `Math.abs(false -
+  // undefined) < 0.001` is NaN < 0.001 = false, so isNasDefault was ALWAYS
+  // false and the 23h result cache never once served a hit.
+  const isNasDefault = instrument === 'NAS100_USD'
+    && !cfg.showSystem2 && !cfg.showSystem3 && !cfg.showSystem4 && !cfg.showControl
+    && Object.entries(NQ_QMR_DEFAULTS).every(([k, def]) =>
+      typeof def === 'string' ? cfg[k] === def : Math.abs(cfg[k] - def) < 0.001
+    );
   if (isNasDefault && nqQmrResultCache.result && nqQmrResultCache.fetchedAt && Date.now() - nqQmrResultCache.fetchedAt < NQ_QMR_TTL_MS) {
     return res.json({ ok: true, cached: true, ...nqQmrResultCache.result });
   }
@@ -5218,6 +5488,30 @@ app.get('/api/fx-carry', async (req, res) => {
 });
 
 // ── NQ-QMR M5 candles for trade viewer ───────────────────────────────────────
+// One UTC day of NAS100 M5 bars. Shared by the QMR trade viewer and the COG
+// signal-log resolver — H1 is too coarse to resolve a 14:26 entry honestly.
+async function _fetchNqM5Day(date) {
+  const from = `${date}T00:00:00.000000000Z`;
+  const nextDay = new Date(date + 'T00:00:00Z');
+  nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+  const to = nextDay.toISOString().substring(0, 10) + 'T00:00:00.000000000Z';
+
+  const key  = process.env.OANDA_KEY;
+  const base = _oandaBaseMe();
+  const url  = `${base}/v3/instruments/NAS100_USD/candles`
+             + `?granularity=M5&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&price=M`;
+  const r = await fetch(url, { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(20_000) });
+  if (!r.ok) throw new Error(`OANDA M5 HTTP ${r.status}`);
+  const data = await r.json();
+  return (data.candles ?? []).filter(c => c.mid).map(c => ({
+    t: c.time.substring(0, 16),
+    o: parseFloat(c.mid.o),
+    h: parseFloat(c.mid.h),
+    l: parseFloat(c.mid.l),
+    c: parseFloat(c.mid.c),
+  }));
+}
+
 app.get('/api/nq-qmr/m5-candles', async (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
   const { date } = req.query;
@@ -5225,31 +5519,390 @@ app.get('/api/nq-qmr/m5-candles', async (req, res) => {
     return res.status(400).json({ ok: false, error: 'date param required (YYYY-MM-DD)' });
   }
   try {
-    const from = `${date}T00:00:00.000000000Z`;
-    const nextDay = new Date(date + 'T00:00:00Z');
-    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-    const to = nextDay.toISOString().substring(0, 10) + 'T00:00:00.000000000Z';
-
-    const key  = process.env.OANDA_KEY;
-    const base = _oandaBaseMe();
-    const url  = `${base}/v3/instruments/NAS100_USD/candles`
-               + `?granularity=M5&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&price=M`;
-    const r = await fetch(url, { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(20_000) });
-    if (!r.ok) throw new Error(`OANDA M5 HTTP ${r.status}`);
-    const data = await r.json();
-    const bars = (data.candles ?? []).filter(c => c.mid).map(c => ({
-      t: c.time.substring(0, 16),
-      o: parseFloat(c.mid.o),
-      h: parseFloat(c.mid.h),
-      l: parseFloat(c.mid.l),
-      c: parseFloat(c.mid.c),
-    }));
+    const bars = await _fetchNqM5Day(date);
     res.json({ ok: true, bars });
   } catch (err) {
     console.error('[nq-qmr m5]', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
+
+// ── QMR tearsheet — the shareable report ────────────────────────────────────
+// Full standard results card for either construction (directional | bothsides),
+// in the same field set COG's own tearsheet uses so the two are directly
+// comparable. Every metric comes from js/metricsCore.js — one definition of
+// Sharpe/Sortino/DD across the whole repo, never re-implemented here.
+// MAE per trade is read off the REAL intra-trade path (bothSidesWalk tracks the
+// combined mark bar by bar; the directional arm uses the engine's own MFE/MAE
+// scan), never approximated from the close-to-close return.
+app.get('/api/nq-qmr/tearsheet', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
+  try {
+    const instrument = NQ_QMR_INSTRUMENTS.has(req.query.instrument) ? req.query.instrument : 'NAS100_USD';
+    const mode = req.query.mode === 'directional' ? 'directional' : 'bothsides';
+    const accountEquity = Number.isFinite(+req.query.accountEquity) ? +req.query.accountEquity : 100_000;
+    const cfg = {};
+    for (const [k, def] of Object.entries(NQ_QMR_DEFAULTS)) {
+      cfg[k] = typeof def === 'string' ? (req.query[k] ?? def)
+             : (req.query[k] != null ? parseFloat(req.query[k]) : def);
+    }
+    cfg.showControl = true;
+    const bars = await _getNqQmrBars(instrument);
+    const raw  = _computeNqQmr(bars, cfg);
+
+    // Build the trade series for the requested construction.
+    let rows;
+    if (mode === 'directional') {
+      rows = raw.trades.map(t => ({
+        date: t.date, ret: t.tradeReturn, mae: t.maePct, mfe: t.mfePct,
+        direction: t.direction, exitReason: t.exitReason, stopPct: t.stopPct,
+        riskPct: cfg.riskPct,
+      }));
+    } else {
+      // Re-walk each traded day jointly for the honest combined path.
+      const byDate = groupBarsByDate(bars);
+      const dates  = Object.keys(byDate).sort();
+      const idx    = new Map(dates.map((d, i) => [d, i]));
+      rows = [];
+      for (const t of raw.trades) {
+        const i = idx.get(t.date); if (i == null || i < 1) continue;
+        const dayBars = byDate[t.date] || [];
+        const entryBar = dayBars.find(b => Math.abs(b.o - t.entry) < 1e-9) ?? entryBarFor(dayBars);
+        if (!entryBar) continue;
+        const after = dayBars.filter(b => b.t.substring(11, 13) > entryBar.t.substring(11, 13))
+                             .sort((a, b) => a.t.localeCompare(b.t));
+        const w = bothSidesWalk(after, t.entry, t.stopPct, cfg.tpPct);
+        if (!w) continue;
+        const lev = cfg.riskPct / t.stopPct;
+        // Cost once on the combined notional; stop slippage pro-rata to the
+        // number of legs that actually stopped (each leg is half the notional).
+        const slip = cfg.stopSlipPct * (w.stoppedLegs / 2);
+        rows.push({
+          date: t.date, ret: (w.movePct - cfg.costPct - slip) * lev,
+          mae: w.maePct * lev, mfe: w.mfePct * lev,
+          direction: 'BOTH', exitReason: w.exitReason, stopPct: t.stopPct,
+          riskPct: cfg.riskPct, stoppedLegs: w.stoppedLegs,
+        });
+      }
+    }
+    if (rows.length < 10) return res.json({ ok: false, error: `only ${rows.length} trades` });
+
+    const report = _qmrTearsheet(rows, accountEquity);
+    // Chronological IS/OOS split (70/30 by trade date — never by index shuffle).
+    const cut = Math.floor(rows.length * 0.7);
+    res.json({
+      ok: true, instrument, mode, accountEquity, config: cfg,
+      generatedAt: new Date().toISOString(),
+      ...report,
+      inSample:  _qmrTearsheet(rows.slice(0, cut), accountEquity),
+      outOfSample: _qmrTearsheet(rows.slice(cut), accountEquity),
+      splitDate: rows[cut]?.date ?? null,
+      trades: rows,
+    });
+  } catch (e) {
+    console.error('[qmr-tearsheet]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// One tearsheet from a {date, ret, mae}[] series. Calendar-daily basis with
+// flat weekdays as zeros — the same methodology _qmrStats uses, so the numbers
+// on this card and the backtest card can never disagree.
+function _qmrTearsheet(rows, accountEquity) {
+  const r = rows.map(x => x.ret / 100);
+  const d0 = new Date(rows[0].date + 'T00:00:00Z'), d1 = new Date(rows[rows.length - 1].date + 'T00:00:00Z');
+  let N = 0;
+  for (let t = d0.getTime(); t <= d1.getTime(); t += 864e5) { const w = new Date(t).getUTCDay(); if (w !== 0 && w !== 6) N++; }
+  N = Math.max(N, r.length);
+  const years = Math.max((d1 - d0) / (365.25 * 864e5), 0.01);
+  const muD = r.reduce((s, x) => s + x, 0) / N;
+  const varD = Math.max(r.reduce((s, x) => s + x * x, 0) / N - muD * muD, 0);
+  const sigD = Math.sqrt(varD);
+  const sharpe = sigD > 0 ? (muD / sigD) * Math.sqrt(252) : 0;
+  const downDev = Math.sqrt(r.reduce((s, x) => s + Math.min(x, 0) ** 2, 0) / N);
+  const sortino = downDev > 0 ? (muD / downDev) * Math.sqrt(252) : 0;
+
+  let eq = 1, peak = 1, maxDD = 0, ddStart = null, maxDDdur = 0, curDur = 0;
+  const curve = [];
+  for (const x of rows) {
+    eq *= (1 + x.ret / 100);
+    if (eq > peak) { peak = eq; curDur = 0; } else { curDur++; maxDDdur = Math.max(maxDDdur, curDur); }
+    maxDD = Math.max(maxDD, (peak - eq) / peak);
+    curve.push({ date: x.date, equity: +eq.toFixed(6), equityDollars: +(accountEquity * eq).toFixed(2) });
+  }
+  const cagr = (Math.pow(eq, 1 / years) - 1) * 100;
+  const pnls = rows.map(x => x.ret);
+  const wins = pnls.filter(x => x > 0), losses = pnls.filter(x => x <= 0);
+
+  // Monthly returns matrix (compounded within each month).
+  const byMonth = {};
+  for (const x of rows) (byMonth[x.date.substring(0, 7)] ??= []).push(x.ret);
+  const monthly = Object.entries(byMonth).map(([month, v]) => {
+    let e = 1; for (const y of v) e *= (1 + y / 100);
+    return { month, return: +((e - 1) * 100).toFixed(2) };
+  }).sort((a, b) => a.month.localeCompare(b.month));
+
+  return {
+    startDate: rows[0].date, endDate: rows[rows.length - 1].date, years: +years.toFixed(2),
+    totalReturn: +((eq - 1) * 100).toFixed(2), cagr: +cagr.toFixed(2),
+    monthlyReturn: +(((Math.pow(eq, 1 / Math.max(years * 12, 1)) - 1) * 100)).toFixed(2),
+    annualVol: +(sigD * Math.sqrt(252) * 100).toFixed(2),
+    sharpe: +sharpe.toFixed(3), sortino: +sortino.toFixed(3),
+    calmar: maxDD > 0 ? +(cagr / (maxDD * 100)).toFixed(3) : null,
+    omega: +profitFactor(pnls).toFixed(3),
+    maxDrawdown: +(-maxDD * 100).toFixed(2), maxDDdurationTrades: maxDDdur,
+    var95: +histVaR(pnls, 0.95).toFixed(3), var99: +histVaR(pnls, 0.99).toFixed(3),
+    cvar95: +histCVaR(pnls, 0.95).toFixed(3),
+    winRate: +(winRate(pnls) * 100).toFixed(2), profitFactor: +profitFactor(pnls).toFixed(3),
+    avgWin: wins.length ? +(wins.reduce((s, x) => s + x, 0) / wins.length).toFixed(3) : 0,
+    avgLoss: losses.length ? +(losses.reduce((s, x) => s + x, 0) / losses.length).toFixed(3) : 0,
+    avgTrade: +(pnls.reduce((s, x) => s + x, 0) / pnls.length).toFixed(3),
+    bestDay: +Math.max(...pnls).toFixed(2), worstDay: +Math.min(...pnls).toFixed(2),
+    bestMonth: monthly.length ? +Math.max(...monthly.map(m => m.return)).toFixed(2) : 0,
+    worstMonth: monthly.length ? +Math.min(...monthly.map(m => m.return)).toFixed(2) : 0,
+    skewness: +skewness(pnls).toFixed(3), excessKurtosis: +excessKurtosis(pnls).toFixed(3),
+    positiveMonths: monthly.filter(m => m.return > 0).length,
+    negativeMonths: monthly.filter(m => m.return <= 0).length,
+    monthCount: monthly.length, tradingDays: rows.length, totalTrades: rows.length,
+    sharpeSE: +(sharpeStdError(sharpe, N) || 0).toFixed(3),
+    minTrackYears: Number.isFinite(minTrackRecordLength(sharpe)) ? +minTrackRecordLength(sharpe).toFixed(1) : null,
+    monthly, curve,
+  };
+}
+
+// ── COG v3 — COG's macro signal on QMR's validated intraday chassis ─────────
+// See js/cogV3Engine.js for the full rationale. Short version: QMR kept COG's
+// intraday SHAPE with NQ-price inputs (signal measured at zero on 2026-07-28);
+// the cog*.js family kept COG's macro THESIS on a daily chassis that the first
+// real-data run exposed as broken. This route runs the right inputs on the
+// right chassis, and ships the coin-flip control alongside — so a positive
+// equity curve can never be mistaken for a working direction call.
+const cogV3Jobs = new Map();
+
+app.post('/api/cog-v3/run', express.json({ limit: '64kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
+  const cfg = (req.body && typeof req.body === 'object' ? req.body : {});
+  const jobId = `cogv3_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  cogV3Jobs.set(jobId, { status: 'running', startedAt: Date.now(), phase: 'Fetching macro + H1 data…' });
+  for (const [k, v] of cogV3Jobs) if (Date.now() - v.startedAt > 30 * 60_000) cogV3Jobs.delete(k);
+
+  (async () => {
+    try {
+      // H1 bars bound the usable window: OANDA H1 only reaches back ~5y, while
+      // the macro panel starts 2014. The overlap is the honest sample, and it
+      // is the SAME window QMR's own result was measured on — deliberately, so
+      // the two are directly comparable.
+      const [daily, h1] = await Promise.all([
+        fetchRealCogDataset({ start: cfg.start || '2020-01-01', end: cfg.end }),
+        _getNqQmrBars('NAS100_USD'),
+      ]);
+      cogV3Jobs.get(jobId).phase = 'Running gates + chassis + control arm…';
+      const result = runCogV3(daily, h1, cfg);
+      cogV3Jobs.set(jobId, {
+        status: 'done', startedAt: cogV3Jobs.get(jobId).startedAt,
+        result: { ok: true, dailyBars: daily.dates.length, h1Bars: h1.length, ...result },
+      });
+      console.log(`[cog-v3] ${jobId} done — ${result.trades.length} trades, dirAlpha ${result.control?.dirAlpha}`);
+    } catch (e) {
+      console.error('[cog-v3]', e.message, e.stack ?? '');
+      cogV3Jobs.set(jobId, { status: 'error', error: e.message, startedAt: Date.now() });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/cog-v3/status/:jobId', (req, res) => {
+  const job = cogV3Jobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'unknown jobId' });
+  res.json(job);
+});
+
+// ── COG signal log — the primary-source ledger ───────────────────────────────
+// We will never have COG's source data. We DO have his outputs, and outputs
+// are labels: a stop distance % per day IS a volatility forecast in numeric
+// form; a Long/Short IS a direction label; a close time IS a holding period.
+// This is the same play `cogReverseEngineer.js` already ran successfully on
+// his published vol levels — treat the outputs as labels and fit.
+//
+// Until 2026-07-28 the entire evidence base for this repo's COG gate
+// architecture was two sentences of remembered paraphrase in code comments
+// (see COG_OBSERVED_SYSTEM.md). This ledger exists so that never repeats:
+// every message is recorded the day it arrives, and each trading day is
+// resolved against real OANDA M5 bars with real costs — so after N days we
+// hold a costed forward record of HIS calls that is completely independent of
+// ever understanding his model. Measuring his edge does not require
+// reverse-engineering him; reverse-engineering him without that measurement
+// would be building on an unverified premise.
+const COG_LOG_KV = 'cog_signal_log';
+
+// COG's UI timestamps are UK local; OANDA bars are UTC. Returns how many hours
+// London is ahead of UTC on that date (0 GMT / 1 BST). Probing at 12:00 keeps
+// the 01:00-UTC DST switch out of the answer for the 02:00-15:00 times we log.
+function _ukOffsetHours(dateStr) {
+  const probe = new Date(dateStr + 'T12:00:00Z');
+  const lon = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false }).format(probe);
+  return parseInt(lon, 10) - 12;
+}
+// 'HH:MM' UK on `date` → 'HH:MM' UTC (same calendar day for our time range).
+function _ukToUtcHHMM(dateStr, hhmm) {
+  const [h, m] = String(hhmm).split(':').map(Number);
+  const utcH = h - _ukOffsetHours(dateStr);
+  return `${String(utcH).padStart(2, '0')}:${String(m ?? 0).padStart(2, '0')}`;
+}
+
+// Deliberately NOT _qmrWalkTrade: that walk's contract includes a TP leg and a
+// hard EOD-hour exit, and COG has neither — he exits on his own "close trade"
+// message. Borrowing it would silently impose two rules he doesn't run. The
+// cost netting IS shared (_qmrNetReturn), because that part is identical.
+function _cogWalk(bars, dir, entry, stopPct) {
+  const stop = dir === 'LONG' ? entry * (1 - stopPct / 100) : entry * (1 + stopPct / 100);
+  let mfe = 0, mae = 0;
+  for (const b of bars) {
+    const fav = dir === 'LONG' ? (b.h - entry) / entry * 100 : (entry - b.l) / entry * 100;
+    const adv = dir === 'LONG' ? (b.l - entry) / entry * 100 : (entry - b.h) / entry * 100;
+    if (fav > mfe) mfe = fav;
+    if (adv < mae) mae = adv;
+    if (dir === 'LONG'  && b.l <= stop) return { stop, exit: stop, exitReason: 'STOP', movePct: -stopPct, mfe, mae };
+    if (dir === 'SHORT' && b.h >= stop) return { stop, exit: stop, exitReason: 'STOP', movePct: -stopPct, mfe, mae };
+  }
+  const last = bars[bars.length - 1];
+  if (!last) return null;
+  const movePct = dir === 'LONG' ? (last.c - entry) / entry * 100 : (entry - last.c) / entry * 100;
+  return { stop, exit: last.c, exitReason: 'CLOSE_MSG', movePct, mfe, mae };
+}
+
+// Resolve one logged day against real bars. Returns null when the day can't be
+// resolved yet (no trade, missing fields, bars not published) — never guesses.
+async function _cogResolveDay(e) {
+  if (e?.entry?.action !== 'TRADE' || !e.entry.direction || !e.entry.t) return null;
+  const tier    = e.entry.tier === 'conservative' ? 'Cons' : 'Std';
+  const stopPct = e.g2?.[`stop${tier}`];
+  const riskPct = e.g2?.[`risk${tier}`];
+  if (!(stopPct > 0)) return null;
+
+  const bars = await _fetchNqM5Day(e.date);
+  if (!bars.length) return null;
+
+  const entryUtc = _ukToUtcHHMM(e.date, e.entry.t);
+  const iEntry   = bars.findIndex(b => b.t.substring(11, 16) >= entryUtc);
+  if (iEntry === -1) return null;
+  const entryPx = bars[iEntry].o;
+
+  // Exit window: through the logged close message if we have one, else the
+  // rest of the day's bars (flagged, so a missing close is never silently
+  // treated as an intentional end-of-day exit).
+  let after = bars.slice(iEntry + 1), closeAssumed = true;
+  if (e.close?.t) {
+    const closeUtc = _ukToUtcHHMM(e.date, e.close.t);
+    const sliced = after.filter(b => b.t.substring(11, 16) <= closeUtc);
+    if (sliced.length) { after = sliced; closeAssumed = false; }
+  }
+  const walk = _cogWalk(after, e.entry.direction, entryPx, stopPct);
+  if (!walk) return null;
+
+  const leverage = riskPct > 0 ? riskPct / stopPct : 1;
+  return {
+    entry_px: +entryPx.toFixed(1), entry_bar_t: bars[iEntry].t,
+    stop_px: +walk.stop.toFixed(1), exit_px: +walk.exit.toFixed(1),
+    exit_reason: walk.exitReason, close_time_assumed: closeAssumed,
+    raw_move_pct: +walk.movePct.toFixed(4),
+    net_move_pct: +_qmrNetReturn(walk.movePct, walk.exitReason === 'STOP' ? 'STOP' : 'EOD', 1).toFixed(4),
+    account_return_pct: +_qmrNetReturn(walk.movePct, walk.exitReason === 'STOP' ? 'STOP' : 'EOD', leverage).toFixed(4),
+    leverage: +leverage.toFixed(2), mfe_pct: +walk.mfe.toFixed(3), mae_pct: +walk.mae.toFixed(3),
+    resolved_at: new Date().toISOString(),
+  };
+}
+
+async function _cogLoadLog() {
+  try {
+    const raw = await kv.get(COG_LOG_KV);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    const arr = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.data) ? parsed.data : []);
+    return arr;
+  } catch { return []; }
+}
+const _cogSaveLog = log => kv.put(COG_LOG_KV, JSON.stringify({ data: log, timestamp: Date.now() }));
+
+app.get('/api/cog-signals', async (_req, res) => {
+  const log = await _cogLoadLog();
+  res.json({ ok: true, n: log.length, entries: log });
+});
+
+// Upsert one day. Body is the entry shape in COG_OBSERVED_SYSTEM.md §5.
+app.post('/api/cog-signals', async (req, res) => {
+  const e = req.body ?? {};
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(e.date ?? '')) {
+    return res.status(400).json({ ok: false, error: 'date (YYYY-MM-DD) required' });
+  }
+  const log = await _cogLoadLog();
+  const i = log.findIndex(x => x.date === e.date);
+  // Merge rather than replace: the four messages arrive hours apart, so a
+  // later POST must not wipe the stages already logged that morning.
+  if (i === -1) log.unshift({ ...e, logged_at: new Date().toISOString() });
+  else log[i] = { ...log[i], ...e, outcome: e.outcome ?? log[i].outcome };
+  log.sort((a, b) => b.date.localeCompare(a.date));
+  await _cogSaveLog(log);
+  res.json({ ok: true, n: log.length });
+});
+
+app.delete('/api/cog-signals/:date', async (req, res) => {
+  const log = (await _cogLoadLog()).filter(x => x.date !== req.params.date);
+  await _cogSaveLog(log);
+  res.json({ ok: true, n: log.length });
+});
+
+// Resolve every unresolved TRADE day against real bars. Idempotent; `force`
+// re-resolves days that already have an outcome (after a correction).
+app.post('/api/cog-signals/resolve', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
+  const force = req.query.force === 'true';
+  const log = await _cogLoadLog();
+  const today = new Date().toISOString().substring(0, 10);
+  let resolved = 0, skipped = 0;
+  for (const e of log) {
+    if (e.date >= today) { skipped++; continue; }          // day not closed yet
+    if (e.outcome && !force) continue;
+    try {
+      const o = await _cogResolveDay(e);
+      if (o) { e.outcome = o; resolved++; } else skipped++;
+    } catch (err) { e.resolve_error = err.message; skipped++; }
+  }
+  await _cogSaveLog(log);
+  res.json({ ok: true, resolved, skipped, ...(_cogSummary(log)) });
+});
+
+// Forward record of HIS calls — after costs, on the account basis his own
+// risk/stop implies. No model of his system is involved anywhere in this.
+function _cogSummary(log) {
+  const done = log.filter(e => e.outcome?.account_return_pct != null);
+  if (!done.length) return { summary: null };
+  const r = done.map(e => e.outcome.account_return_pct);
+  let eq = 1; for (const x of r) eq *= (1 + x / 100);
+  const dirs = done.map(e => e.entry.direction);
+  // Run-length test (COG_OBSERVED_SYSTEM.md §4g): a slow liquidity-driven
+  // direction arrives in RUNS; a fast pre-open read alternates near randomly.
+  // This discriminates the two hypotheses with no model at all.
+  let runs = dirs.length ? 1 : 0;
+  for (let i = 1; i < dirs.length; i++) if (dirs[i] !== dirs[i - 1]) runs++;
+  const nL = dirs.filter(d => d === 'LONG').length, nS = dirs.length - nL;
+  const expRuns = dirs.length > 1 ? (2 * nL * nS) / dirs.length + 1 : null;
+  return {
+    summary: {
+      n: done.length,
+      wins: r.filter(x => x > 0).length,
+      winRate: +(100 * r.filter(x => x > 0).length / done.length).toFixed(1),
+      cumulativeReturnPct: +((eq - 1) * 100).toFixed(2),
+      avgPerTradePct: +(r.reduce((s, x) => s + x, 0) / done.length).toFixed(3),
+      stopOuts: done.filter(e => e.outcome.exit_reason === 'STOP').length,
+      longs: nL, shorts: nS,
+      directionRuns: runs,
+      runsExpectedIfRandom: expRuns != null ? +expRuns.toFixed(1) : null,
+      note: 'runs << expected ⇒ slow/persistent direction signal; runs ≈ expected ⇒ fast pre-open read',
+    },
+  };
+}
 
 // ── NQ-QMR parameter optimizer ────────────────────────────────────────────────
 app.get('/api/nq-qmr/optimize', async (req, res) => {
@@ -5308,8 +5961,22 @@ app.get('/api/nq-qmr/optimize', async (req, res) => {
 app.get('/api/nq-qmr/walkforward-retrain', async (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
   try {
-    const bars = await _getNqQmrBars();
-    const wfGrid = {
+    // Instrument-aware (2026-07-28). Gold moves in much smaller % ranges than
+    // the equity indices, so a grid centred on NQ's scale would search a region
+    // gold never occupies — its live defaults are gate2 0.05 / stop 0.30 /
+    // minRange 0.10 / tp 0.80 against NQ's 0.10 / 0.50 / 0.15 / 1.50. Same
+    // protocol, scale-appropriate search.
+    const instrument = NQ_QMR_INSTRUMENTS.has(req.query.instrument) ? req.query.instrument : 'NAS100_USD';
+    const bars = await _getNqQmrBars(instrument);
+    const GOLD_LIKE = instrument === 'XAU_USD';
+    const wfGrid = GOLD_LIKE ? {
+      gate1Threshold:  [0.55, 0.60, 0.65, 0.70],
+      gate2MinMovePct: [0.03, 0.05, 0.08],
+      stopMultiplier:  [0.35, 0.40, 0.45, 0.50, 0.55],
+      minRangePct:     [0.08, 0.10, 0.15],
+      riskPct:         [1.00],
+      tpPct:           [0.60, 0.80, 1.00],
+    } : {
       gate1Threshold:  [0.55, 0.60, 0.65, 0.70],
       gate2MinMovePct: [0.08, 0.10, 0.15],
       stopMultiplier:  [0.35, 0.40, 0.45, 0.50, 0.55],
@@ -5338,6 +6005,32 @@ app.get('/api/nq-qmr/walkforward-retrain', async (req, res) => {
     function barsInRange(from, to) {
       return bars.filter(b => b.t.substring(0, 10) >= from && b.t.substring(0, 10) < to);
     }
+    // mode=bothsides walks the BOTH-SIDES construction instead of the
+    // directional one: on each selected day take BOTH directions at half size,
+    // so total risk and total notional (hence total cost) are unchanged. Its
+    // in-sample numbers are strong (NQ Sharpe 0.91 -> 1.63, win rate 31.5% ->
+    // 50.4%) precisely because the direction call measured at zero — removing a
+    // coin flip removes its variance without touching the mean. This runs it
+    // through the same IS/OOS protocol so that claim gets an honest number
+    // instead of an in-sample one.
+    const mode = req.query.mode === 'bothsides' ? 'bothsides' : 'directional';
+
+    // Half-size both-sides book from a showControl run. Cost is charged exactly
+    // once: r_a = (m_a - c)*L and r_b = (m_b - c)*L, so (r_a + r_b)/2 =
+    // ((m_a + m_b)/2 - c)*L — half the notional per leg, one position's cost.
+    function bothSidesStats(r) {
+      const ctl = new Map((r.tradesControl || []).map(t => [t.date, t.tradeReturn]));
+      const rows = r.trades.filter(t => ctl.has(t.date))
+        .map(t => ({ date: t.date, tradeReturn: (t.tradeReturn + ctl.get(t.date)) / 2 }));
+      let eq = 1; const curve = [];
+      for (const t of rows) { eq *= (1 + t.tradeReturn / 100); curve.push({ date: t.date, equity: eq }); }
+      return { stats: _qmrStats(rows, curve, eq), trades: rows, curve };
+    }
+    const evaluate = (bars, cfg) => {
+      const r = _computeNqQmr(bars, mode === 'bothsides' ? { ...cfg, showControl: true } : cfg);
+      return mode === 'bothsides' ? { ...r, ...bothSidesStats(r) } : r;
+    };
+
     function findBest(subBars) {
       let best = null;
       for (const g1 of wfGrid.gate1Threshold)
@@ -5347,7 +6040,7 @@ app.get('/api/nq-qmr/walkforward-retrain', async (req, res) => {
       for (const rp of wfGrid.riskPct)
       for (const tp of wfGrid.tpPct) {
         const cfg = { gate1Threshold: g1, gate2MinMovePct: g2, stopMultiplier: sm, minRangePct: mr, riskPct: rp, tpPct: tp };
-        const r   = _computeNqQmr(subBars, cfg);
+        const r   = evaluate(subBars, cfg);
         const s   = r.stats;
         if (s.n < 8 || s.cagr <= 0 || s.maxDD <= 0 || s.sharpe <= 0) continue;
         const score = s.sharpe * Math.sqrt(s.cagr) / s.maxDD;
@@ -5363,7 +6056,7 @@ app.get('/api/nq-qmr/walkforward-retrain', async (req, res) => {
       const oosBars = barsInRange(w.isEnd, w.oosEnd);
       const best = findBest(isBars);
       if (!best) { results.push({ isStart: w.isStart, isEnd: w.isEnd, oosEnd: w.oosEnd, bestCfg: null, isStats: null, oosStats: null }); continue; }
-      const oosR = _computeNqQmr(oosBars, best.cfg);
+      const oosR = evaluate(oosBars, best.cfg);
       for (const p of oosR.curve) {
         oosCurve.push({ date: p.date, equity: +(baseEq * p.equity).toFixed(6) });
       }
@@ -5371,7 +6064,7 @@ app.get('/api/nq-qmr/walkforward-retrain', async (req, res) => {
       results.push({ isStart: w.isStart, isEnd: w.isEnd, oosEnd: w.oosEnd, bestCfg: best.cfg, isStats: best.stats, oosStats: oosR.stats });
     }
     console.log(`[nq-qmr wf-retrain] ${results.length} windows, OOS curve pts: ${oosCurve.length}`);
-    res.json({ ok: true, windows: results, oosCurve });
+    res.json({ ok: true, instrument, mode, windows: results, oosCurve });
   } catch (err) {
     console.error('[nq-qmr wf-retrain]', err.message);
     res.status(500).json({ ok: false, error: err.message });
@@ -6247,6 +6940,58 @@ app.get('/api/mve-validate/:sym', async (req, res) => {
     report.dataSource = built.dataSource;
     if (report.ok) _mveValCache.set(sym, { at: Date.now(), data: report });
     res.status(report.ok ? 200 : 502).json(report);
+  } catch (e) {
+    res.status(500).json({ ok: false, instrument: sym, error: e.message });
+  }
+});
+
+// MVE mechanical-anchor validation — the KALMAN branch (Garin's dog/owner "moving
+// fair value"): price's own recent path only, no macro factors, so no FRED_KEY
+// needed at all — OANDA D1 is the only dependency. Same gate discipline as
+// /api/mve-validate/:sym (walk-forward, no-lookahead, benchmark-relative icEdge,
+// deflated Sharpe) via the shared scoreMispricing tail, just a different fair-value
+// source. See MVE_RUN_GUIDE.md §10b.
+const _mveValMechCache = new Map();
+app.get('/api/mve-validate-mechanical/:sym', async (req, res) => {
+  const sym = req.params.sym;
+  try {
+    const hit = _mveValMechCache.get(sym);
+    if (hit && Date.now() - hit.at < 6 * 60 * 60 * 1000 && req.query.fresh !== '1') {
+      return res.json({ ...hit.data, cached: true });
+    }
+    const built = await _mveFetchPriceOnly({ sym, deps: { fetchD1: _btFetchD1 }, count: 5000 });
+    if (!built.ok) return res.status(502).json(built);
+    const report = _mveValidateMechanical(built.price, { instrument: sym });
+    report.dataSource = built.dataSource;
+    if (report.ok) _mveValMechCache.set(sym, { at: Date.now(), data: report });
+    res.status(report.ok ? 200 : 502).json(report);
+  } catch (e) {
+    res.status(500).json({ ok: false, instrument: sym, error: e.message });
+  }
+});
+
+// Vol mean-reversion (js/volReversionCore.js) — the institutional VRP/OU claim
+// tested directly on the instrument's OWN realized vol, not "does price revert to a
+// fair value" (both price branches above are NULL). OANDA D1 only, no FRED_KEY.
+// `diagnostic` = does vol-richness mean-revert at all (κ/half-life, a standalone
+// fact); `forecast` = does the z-scored reading beat vol's own raw-level persistence
+// at predicting forward realized vol (the real, narrower claim — see the module's
+// header comment on why a negative result here doesn't mean "vol doesn't revert").
+const _volReversionCache = new Map();
+app.get('/api/vol-reversion/:sym', async (req, res) => {
+  const sym = req.params.sym;
+  try {
+    const hit = _volReversionCache.get(sym);
+    if (hit && Date.now() - hit.at < 6 * 60 * 60 * 1000 && req.query.fresh !== '1') {
+      return res.json({ ...hit.data, cached: true });
+    }
+    const built = await _mveFetchPriceOnly({ sym, deps: { fetchD1: _btFetchD1 }, count: 5000 });
+    if (!built.ok) return res.status(502).json(built);
+    const diagnostic = _volOuDiagnostic(built.price);
+    const forecast = _scoreVolPredictsForwardVol(built.price);
+    const out = { ok: true, instrument: sym, diagnostic, forecast, dataSource: built.dataSource };
+    _volReversionCache.set(sym, { at: Date.now(), data: out });
+    res.json(out);
   } catch (e) {
     res.status(500).json({ ok: false, instrument: sym, error: e.message });
   }
@@ -7324,30 +8069,42 @@ function _oiHistorySummary(inst) {
     savedAtMs: inst.savedAtMs ?? null,
   };
 }
-async function _snapshotOIHistory() {
+// Returns { n, wrote, day }. `force` makes the manual endpoint write even when nothing
+// changed, so a user-triggered archive is never a no-op that reports zero.
+async function _snapshotOIHistory(force = false) {
   try {
     const raw = await kv.get('oi_store').catch(() => null);
-    if (!raw) return 0;
+    if (!raw) return { n: 0, wrote: false, day: null };
     const store = JSON.parse(raw).data ?? JSON.parse(raw);
-    if (!store || typeof store !== 'object') return 0;
+    if (!store || typeof store !== 'object') return { n: 0, wrote: false, day: null };
     const day = _rlSessionDate(null);
     const histRaw = await kv.get('oi_history').catch(() => null);
     const hist = histRaw ? (JSON.parse(histRaw).data ?? JSON.parse(histRaw)) : {};
-    let n = 0;
+    let n = 0, changed = 0;
     for (const [pair, inst] of Object.entries(store)) {
       const summary = _oiHistorySummary(inst);
       if (!summary) continue;
       hist[pair] = hist[pair] || {};
+      // This runs on a 30-min timer but the underlying paste changes ~once a day, so
+      // compare before overwriting. `oi_history` is now a CF KV key (durable), and CF
+      // KV's free plan allows 1,000 writes/day — blindly re-putting an identical blob 48
+      // times a day would spend 5% of that quota to store nothing new.
+      const before = JSON.stringify(hist[pair][day] ?? null);
       hist[pair][day] = summary;                                 // overwrite today (tracks the latest morning paste)
+      if (JSON.stringify(summary) !== before) changed++;
       const dates = Object.keys(hist[pair]).sort();
-      for (const d of dates.slice(0, Math.max(0, dates.length - 60))) delete hist[pair][d];   // keep ~60 days
+      const trim = dates.slice(0, Math.max(0, dates.length - 60));            // keep ~60 days
+      for (const d of trim) delete hist[pair][d];
+      if (trim.length) changed++;                                // a trim is a real change too
       n++;
     }
-    if (!n) return 0;
+    if (!n) return { n: 0, wrote: false, day };
+    // Nothing new — don't spend a KV write (unless the user explicitly forced one).
+    if (!changed && !force) return { n, wrote: false, day };
     await kv.put('oi_history', JSON.stringify({ data: hist, timestamp: Date.now() }));
-    console.log(`[oi-history] archived ${n} pair(s) → ${day}`);
-    return n;
-  } catch (e) { console.error('[oi-history] snapshot failed:', e.message); return 0; }
+    console.log(`[oi-history] archived ${n} pair(s), ${changed} changed → ${day}`);
+    return { n, wrote: true, day };
+  } catch (e) { console.error('[oi-history] snapshot failed:', e.message); return { n: 0, wrote: false, day: null, error: e.message }; }
 }
 setInterval(_snapshotOIHistory, 30 * 60_000);                    // archive the day's paste periodically
 setTimeout(_snapshotOIHistory, 50_000);
@@ -7394,7 +8151,8 @@ app.get('/api/oi-history', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 app.post('/api/oi-history/snapshot', async (_req, res) => {
-  try { const n = await _snapshotOIHistory(); res.json({ ok: true, pairsArchived: n, date: _rlSessionDate(null) }); }
+  // force:true — a manual archive must actually write, so it can never look like a no-op.
+  try { const r = await _snapshotOIHistory(true); res.json({ ok: !r.error, pairsArchived: r.n, wrote: r.wrote, date: r.day ?? _rlSessionDate(null), ...(r.error ? { error: r.error } : {}) }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
@@ -7409,6 +8167,7 @@ const OI_BOT_UNIVERSE = ['gold', ...OI_BOT_INDEX];
 const OI_BOT_CFG_DEFAULTS = {
   minTier: 'strong', slBufferPips: 15, breakPips: 20, nearExpiryDTE: 2, extendedPips: 30,
   fadeInPin: true, followBreaks: true, maxPainReversion: true,
+  levelLadderTP: false,              // TP to the next structural level (walls/flips/max-pain/magnets), not always max pain
   requireEstablished: false, avoidLiquidating: true,
   maxZonesPerSide: 4,                // PIN: K NEAREST strong walls per side; breakout: K strongest by OI
   secondaryTrim: 0.6,                // PIN fade: nearest wall = primary (full size), further walls ×this
@@ -7497,6 +8256,11 @@ async function _refreshOIBotZones() {
       const zones = stale ? [] : buildOIZones(inst, inst.spot, { ...cfg, pip, stability, change, fallbackTpR,
         nearFlip: !!dist?.near, regimeWarning: drift?.toward ? `flip migrating toward spot (${drift.fromDate}→${drift.toDate}) — regime change loading` : null,
         expMove: inst.expectedMove ? { upper: inst.expectedMove.upper, lower: inst.expectedMove.lower } : null,
+        refMove: inst.refMove?.move ?? null,
+        // Level-ladder nodes (used only when cfg.levelLadderTP is on): the gamma-flip regime
+        // boundary and the vanna-exposure flip, alongside walls/max-pain/vol-magnets on `inst`.
+        gammaFlipLevel: Number.isFinite(flip) ? flip : null,
+        vannaFlipLevel: Number.isFinite(inst.greeksFlow?.vannaFlip) ? inst.greeksFlow.vannaFlip : null,
         vannaNote: _vn && _vn.firing ? `vanna ${_vn.state} firing (IV ${_vn.ivFalling ? 'falling' : 'rising'}) — indices strong, gold/FX weak` : null });
       const gex = inst.exposures?.gex ?? 0;
       // When an in-universe instrument yields no zones, say why (flat regime / no
@@ -7688,6 +8452,11 @@ app.get('/api/kv-health', async (_req, res) => {
       'yield_spread_config', 'yield_spread_credentials', 'yield_spread_plan',
       'volatility_bot_config', 'oi_bot_config', 'range_line_bot_config',
       'macro_equity_config', 'regime_bot_config', 'confluence_bot_config',
+      // Not config, but the two OI keys that CANNOT be rebuilt: the latest paste and
+      // the ~60-day archive. `oi_history` silently lived in the ephemeral store until
+      // 2026-07-28, so it is checked here to make a regression visible immediately
+      // rather than showing up as permanently-null day-over-day reads.
+      'oi_store', 'oi_history',
     ];
     const probe = await kv.probe(CHECK);
     res.json({ ok: true, ...kv.health(), ...probe });
@@ -7843,7 +8612,10 @@ app.get('/api/vol-forecast/zones', async (_req, res) => {
     try {
       const raw = await kv.get('oi_store').catch(() => null);
       const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
-      const oiText = buildOILevelText(store, { generated: forecastState.latest.session_date });
+      // COT rides along as a per-pair CONTEXT line only — it has no price coordinate, so
+      // it is never emitted as an `OI {price}` level the indicator would draw.
+      const cot = await _cotForExport();
+      const oiText = buildOILevelText(store, { generated: forecastState.latest.session_date, cot });
       if (oiText && !oiText.includes('no OI data')) text += '\n\n' + oiText;
     } catch { /* OI is a bonus section — never fail the zones export over it */ }
     res.type('text/plain').send(text);
@@ -15784,6 +16556,9 @@ app.post('/api/cog-threshold/run', express.json({ limit: '1mb' }), (req, res) =>
   const instrumentKey = body.instrumentKey || undefined;
   const stopModelId = body.stopModelId || undefined;
   const requestedTier = body.requestedTier || undefined;
+  // Gate calibration: {mode:'percentile', windowDays, neutralPct} opts Gate 1
+  // and Gate 3 out of their invented absolute cutoffs (COG_GATE_CALIBRATION).
+  const calibration = body.calibration && typeof body.calibration === 'object' ? body.calibration : undefined;
   // Event-driven intraday engine has no real-data loader yet (see
   // cogEventBacktestEngine.js header) — it's synthetic-only until one is
   // built, so dataMode is forced regardless of what the client sent.
@@ -15835,7 +16610,7 @@ app.post('/api/cog-threshold/run', express.json({ limit: '1mb' }), (req, res) =>
           : generateSyntheticCogDataset({ start, end, seed });
         cogJobs.get(jobId).phase = 'Running 4-gate backtest + Exit Engine…';
 
-        const result = runCogBacktest(dataset, { accountEquity, instrumentKey, stopModelId, requestedTier });
+        const result = runCogBacktest(dataset, { accountEquity, instrumentKey, stopModelId, requestedTier, calibration });
 
         cogJobs.get(jobId).phase = 'Computing performance & robustness reports…';
         const performance = computeCogPerformanceReport({ dates: result.dates, equityCurve: result.equityCurve, trades: result.trades });
@@ -15849,7 +16624,7 @@ app.post('/api/cog-threshold/run', express.json({ limit: '1mb' }), (req, res) =>
           synthetic: dataset.synthetic,
           engine: 'daily',
           dateRange: { start: result.dates[0] ?? null, end: result.dates[result.dates.length - 1] ?? null },
-          options: { dataMode, seed, accountEquity, instrumentKey: instrumentKey || 'primary', stopModelId: stopModelId || COG_EXECUTION.defaultStopModel, requestedTier: requestedTier || COG_EXECUTION.defaultTier },
+          options: { dataMode, seed, accountEquity, instrumentKey: instrumentKey || 'primary', stopModelId: stopModelId || COG_EXECUTION.defaultStopModel, requestedTier: requestedTier || COG_EXECUTION.defaultTier, calibration: calibration || { mode: 'absolute' } },
           trades: result.trades,
           equityCurve: result.dates.map((d, i) => ({ date: d, equity: result.equityCurve[i], equityDollars: result.equityCurveDollars[i] })),
           performance, monteCarlo, walkForward, outOfSample, gateHitRates,
@@ -18873,7 +19648,13 @@ async function _qmrValidationLine(kvKey) {
       const parsed = JSON.parse(raw);
       const v = parsed?.data ?? parsed ?? {};
       if (v.oos_sharpe != null && v.trades != null) {
-        return `Walk-forward OOS: Sharpe ${v.oos_sharpe} over ${v.trades} trades (as of ${v.as_of ?? '?'}), after-cost`;
+        let line = `Walk-forward OOS: Sharpe ${v.oos_sharpe} over ${v.trades} trades (as of ${v.as_of ?? '?'}), after-cost`;
+        // A validated SYSTEM is not a validated DIRECTION. The 2026-07-28
+        // control arm measured the direction call at dirAlpha −0.006%/trade
+        // (t=−0.08) — stamping an OOS Sharpe on a LONG/SHORT alert without
+        // that caveat would credit the direction with an edge it hasn't got.
+        if (v.note) line += `\n⚠ ${v.note}`;
+        return line;
       }
     }
   } catch {}

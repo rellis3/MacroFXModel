@@ -13,12 +13,20 @@
 //   • FX    → US-vs-foreign RATE DIFFERENTIALS (10y + 2y/short) + US breakeven.
 //             DXY is deliberately NOT a factor for FX: EUR is ~57% of DXY, so
 //             regressing EUR/USD on DXY is near-tautological (circular fair value).
+//   • NQ    → US 10y REAL yield (DFII10, discount-rate channel) + HY OAS
+//             (BAMLH0A0HYM2, credit/risk-appetite channel) + VIX (VIXCLS, vol
+//             risk-premium channel). Minimal-DOF first pass — DXY deliberately
+//             left out (unlike gold): Nasdaq's earnings-translation channel from
+//             a strong dollar is weaker/more debated than gold's, so it isn't
+//             added just because gold's spec has it. Add it as a second config
+//             later only if this 3-factor spec earns its keep OOS.
 
 import { runMVE } from './index.js';
 
 // ── Symbol maps ──────────────────────────────────────────────────────────────
 export const OANDA_SYMBOL = {
   EURUSD: 'EUR_USD', GBPUSD: 'GBP_USD', USDJPY: 'USD_JPY', AUDUSD: 'AUD_USD', XAUUSD: 'XAU_USD',
+  NQ: 'NAS100_USD',
 };
 
 // FRED series ids — same ids the live compass / fredhistory use (server.js
@@ -30,6 +38,7 @@ export const FRED_ID = {
   gb10y: 'IRLTLT01GBM156N', gb_s: 'IR3TIB01GBM156N',
   jp10y: 'IRLTLT01JPM156N', jp_s: 'IRSTCI01JPM156N',
   au10y: 'IRLTLT01AUM156N', au_s: 'IR3TIB01AUM156N',
+  vix: 'VIXCLS', hy: 'BAMLH0A0HYM2',   // same series ids as server.js's risk-flags/credit-gate — no second copy
 };
 
 // Per-symbol: which FRED keys to fetch, and how to assemble factors from the
@@ -47,6 +56,8 @@ export const FACTOR_SPEC = {
     factors: f => [{ name: 'rate_diff_10y', series: sub(f.us10y, f.jp10y) }, { name: 'rate_diff_2y', series: sub(f.us2y, f.jp_s) }, { name: 'breakeven', series: f.bei }] },
   AUDUSD: { fred: ['us10y', 'au10y', 'us2y', 'au_s', 'bei'],
     factors: f => [{ name: 'rate_diff_10y', series: sub(f.us10y, f.au10y) }, { name: 'rate_diff_2y', series: sub(f.us2y, f.au_s) }, { name: 'breakeven', series: f.bei }] },
+  NQ: { fred: ['tips', 'hy', 'vix'],
+    factors: f => [{ name: 'real_yield', series: f.tips }, { name: 'hy_oas', series: f.hy }, { name: 'vix', series: f.vix }] },
 };
 
 export function normalizeSym(sym) {
@@ -151,3 +162,20 @@ export async function runLiveMVE({ sym, deps, count = 800, fromDate = '2018-01-0
 }
 
 export const SUPPORTED = Object.keys(FACTOR_SPEC);
+
+// ── Price-only fetch — for anchors that need no FRED factors at all, e.g. the
+// KALMAN mechanical branch in validateInstrument.js's validateMechanicalAnchor.
+// Any symbol with an OANDA_SYMBOL entry works here, independent of FACTOR_SPEC —
+// this branch genuinely doesn't need a factor spec (or FRED_KEY) to run.
+export async function fetchPriceOnly({ sym, deps, count = 5000 }) {
+  const key = normalizeSym(sym);
+  const oanda = OANDA_SYMBOL[key];
+  if (!oanda) return { ok: false, instrument: sym, error: `unsupported symbol ${sym}` };
+  if (!deps?.fetchD1) return { ok: false, error: 'missing fetchD1' };
+  let bars;
+  try { bars = await deps.fetchD1(oanda, count); }
+  catch (e) { return { ok: false, instrument: sym, error: `OANDA ${oanda}: ${e.message}` }; }
+  if (!bars || bars.length < 60) return { ok: false, instrument: sym, error: `need ≥60 bars, got ${bars?.length ?? 0}` };
+  const price = bars.map(b => b.close);
+  return { ok: true, price, dataSource: { oanda, bars: bars.length, asOf: bars[bars.length - 1].date } };
+}

@@ -43,7 +43,7 @@ function normalizeBotTag(raw) {
 }
 
 function isAllowedKVKey(key) {
-  const EXACT = new Set(['fred', 'fred2', 'oi_store', 'journal_store', 'journal_replay_store', 'journal_running_totals', 'cot_data', 'ifo_data', 'surprise_index', 'events_today', 'sentiment', 'bot_config', 'bot_status', 'bot_credentials', 'bot_override', 'backtestsystem_status', 'backtestsystem_credentials', 'backtestsystem_live_config', 'backtestsystem_journal', 'regime_bot_config', 'regime_bot_credentials', 'regime_bot_status', 'regime_bot_v2_config', 'regime_bot_v2_credentials', 'regime_bot_v2_status', 'rgv2_force_unlock', 'regime_bot_v4_config', 'regime_bot_v4_credentials', 'regime_bot_v4_status', 'rgv4_force_unlock', 'regime_bot_v7_config', 'regime_bot_v7_credentials', 'regime_bot_v7_status', 'rgv7_force_unlock', 'regime_bot_v7_audit_log', 'gold_bot_status', 'gold_bot_config', 'gold_bot_credentials', 'dyn_anchor_config', 'dyn_anchor_credentials', 'dyn_anchor_status', 'dyn_anchor_forecast', 'da_force_unlock', 'hedge_alerts_cache', 'hedge_audit_log', 'wt_winrate_v1', 'macro_equity_config', 'macro_equity_credentials', 'macro_equity_bot_status', 'hedge_bot_config', 'hedge_bot_credentials', 'hedge_bot_status', 'nq_qmr_status', 'nq_qmr_config', 'nq_qmr_audit', 'spx_qmr_status', 'spx_qmr_config', 'spx_qmr_audit', 'dow_qmr_status', 'dow_qmr_config', 'dow_qmr_audit', 'dax_qmr_status', 'dax_qmr_config', 'dax_qmr_audit', 'zone_audit_history', 'volatility_bot_config', 'volatility_bot_credentials', 'volatility_bot_status', 'volatility_bot_plan', 'volatility_bot_audit_log', 'vol_force_unlock', 'range_line_bot_config', 'range_line_bot_credentials', 'range_line_bot_status', 'range_line_bot_plan', 'range_line_confluence', 'range_line_oi_live', 'range_line_bot_audit_log', 'rl_force_unlock', 'yield_spread_config', 'yield_spread_credentials', 'yield_spread_status', 'yield_spread_plan', 'yield_spread_audit', 'ys_force_unlock',
+  const EXACT = new Set(['fred', 'fred2', 'oi_store', 'journal_store', 'journal_replay_store', 'journal_running_totals', 'cot_data', 'ifo_data', 'surprise_index', 'events_today', 'sentiment', 'bot_config', 'bot_status', 'bot_credentials', 'bot_override', 'backtestsystem_status', 'backtestsystem_credentials', 'backtestsystem_live_config', 'backtestsystem_journal', 'regime_bot_config', 'regime_bot_credentials', 'regime_bot_status', 'regime_bot_v2_config', 'regime_bot_v2_credentials', 'regime_bot_v2_status', 'rgv2_force_unlock', 'regime_bot_v4_config', 'regime_bot_v4_credentials', 'regime_bot_v4_status', 'rgv4_force_unlock', 'regime_bot_v7_config', 'regime_bot_v7_credentials', 'regime_bot_v7_status', 'rgv7_force_unlock', 'regime_bot_v7_audit_log', 'gold_bot_status', 'gold_bot_config', 'gold_bot_credentials', 'dyn_anchor_config', 'dyn_anchor_credentials', 'dyn_anchor_status', 'dyn_anchor_forecast', 'da_force_unlock', 'hedge_alerts_cache', 'hedge_audit_log', 'wt_winrate_v1', 'macro_equity_config', 'macro_equity_credentials', 'macro_equity_bot_status', 'hedge_bot_config', 'hedge_bot_credentials', 'hedge_bot_status', 'nq_qmr_status', 'nq_qmr_config', 'nq_qmr_audit', 'spx_qmr_status', 'spx_qmr_config', 'spx_qmr_audit', 'dow_qmr_status', 'dow_qmr_config', 'dow_qmr_audit', 'dax_qmr_status', 'dax_qmr_config', 'dax_qmr_audit', 'nq_qmr_validation', 'spx_qmr_validation', 'dow_qmr_validation', 'dax_qmr_validation', 'cog_signal_log', 'zone_audit_history', 'volatility_bot_config', 'volatility_bot_credentials', 'volatility_bot_status', 'volatility_bot_plan', 'volatility_bot_audit_log', 'vol_force_unlock', 'range_line_bot_config', 'range_line_bot_credentials', 'range_line_bot_status', 'range_line_bot_plan', 'range_line_confluence', 'range_line_oi_live', 'range_line_bot_audit_log', 'rl_force_unlock', 'yield_spread_config', 'yield_spread_credentials', 'yield_spread_status', 'yield_spread_plan', 'yield_spread_audit', 'ys_force_unlock',
     'oi_bot_config', 'oi_bot_credentials', 'oi_bot_status', 'oi_bot_zones', 'oi_bot_trades', 'oi_force_unlock']);
   const PREFIXES = ['ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_', 'event_windows_', 'arima_price_', 'gold_', 'beta_', 'rgv1_', 'rgv2_', 'rgv4_', 'rgv7_', 'trade_hist_', 'confluence_'];
   if (EXACT.has(key)) return true;
@@ -961,6 +961,13 @@ export default {
             'spx_qmr_config', 'spx_qmr_audit', 'spx_qmr_status',
             'dow_qmr_config', 'dow_qmr_audit', 'dow_qmr_status',
             'dax_qmr_config', 'dax_qmr_audit', 'dax_qmr_status',
+            // Committed walk-forward OOS stamps — hand-written from a recorded
+            // run, so a 48h TTL would silently revert every QMR alert to
+            // "⚠ UNVALIDATED" two days later with no deploy and no error.
+            'nq_qmr_validation', 'spx_qmr_validation', 'dow_qmr_validation', 'dax_qmr_validation',
+            // Irreplaceable primary source — a 48h TTL here would silently
+            // delete hand-logged observations that cannot be recomputed.
+            'cog_signal_log',
           ]);
           const isPermanent = PERMANENT_KEYS.has(key);
           const kvOpts = isPermanent ? {} : { expirationTtl: 172800 }; // 48h
@@ -1652,12 +1659,35 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
       if (path === '/api/cot-extremes') {
         const debugMode = url.searchParams.get('debug') === '1';
 
-        if (!debugMode && env.FX_SCORES) {
+        const wantHist0 = (url.searchParams.get('history') || '').toUpperCase();
+        const forceFresh = url.searchParams.get('refresh') === '1';
+
+        if (!debugMode && !forceFresh && env.FX_SCORES) {
           const cached = await env.FX_SCORES.get('cot_extremes_v2').catch(() => null);
           if (cached) {
             try {
               const { ts, data } = JSON.parse(cached);
-              if (Date.now() - ts < 7 * 24 * 60 * 60 * 1000) return json(data);
+              if (Date.now() - ts < 7 * 24 * 60 * 60 * 1000) {
+                // The cached payload is deliberately LEAN — the 200-week series is stripped
+                // before caching, so a `?history=` request served straight from cache would
+                // return null forever and no refresh would ever fix it (that is exactly what
+                // happened). Serve the series from its OWN key instead, so clicking a market
+                // costs a KV read rather than a fresh CFTC fetch.
+                if (wantHist0) {
+                  const sraw = await env.FX_SCORES.get('cot_series_v1').catch(() => null);
+                  if (sraw) {
+                    try {
+                      const sj = JSON.parse(sraw);
+                      const hit = sj?.series?.[wantHist0];
+                      if (hit) return json({ ...data, history: hit });
+                    } catch(_) {}
+                  }
+                  // No series stored yet (cached before this existed) → fall through and
+                  // recompute, which populates the key for every later request.
+                } else {
+                  return json(data);
+                }
+              }
             } catch(_) {}
           }
         }
@@ -1823,15 +1853,47 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
             const commNets = sorted.map(r => pmL(r) - pmS(r));
             const oiSer    = sorted.map(r => pi(r.open_interest_all ?? r.open_interest));
             const h = a => a.slice(1);
+            // CROWDING = net position as a SHARE of open interest, then ranked.
+            //
+            // `specPct` alone ranks the RAW contract count over the window, which conflates
+            // "more crowded" with "bigger market": open interest itself moves a lot, so
+            // 50,000 net long means different things at different times. ES is the live
+            // example — its open interest sits at the 9th percentile of its own range while
+            // raw spec net ranks 64th, so the two disagree about how stretched positioning
+            // is. Dividing first and ranking after answers the question actually being
+            // asked. The raw percentiles stay alongside so nothing downstream breaks and
+            // the two reads can be compared directly.
+            const specShare = specNets.map((v, k) => (oiSer[k] > 0 ? v / oiSer[k] : null));
+            const commShare = commNets.map((v, k) => (oiSer[k] > 0 ? v / oiSer[k] : null));
+            const clean = a => a.filter(v => v != null && Number.isFinite(v));
             results.push({
               sym: inst.sym, label: inst.label, group: inst.group,
               specPct: pctRank(h(specNets), specNets[0]), commPct: pctRank(h(commNets), commNets[0]),
               specNet: specNets[0], commNet: commNets[0],
               specZ: zScore(h(specNets), specNets[0]), commZ: zScore(h(commNets), commNets[0]),
+              // OI-normalised. `*Share` is the signed fraction of OI (as %), `*SharePct`
+              // its percentile over the same window, `specShareZ` the z of that share.
+              specShare: specShare[0] != null ? +(specShare[0] * 100).toFixed(2) : null,
+              commShare: commShare[0] != null ? +(commShare[0] * 100).toFixed(2) : null,
+              specSharePct: specShare[0] != null ? pctRank(clean(h(specShare)), specShare[0]) : null,
+              commSharePct: commShare[0] != null ? pctRank(clean(h(commShare)), commShare[0]) : null,
+              specShareZ: specShare[0] != null ? zScore(clean(h(specShare)), specShare[0]) : null,
               grossRatio: mmS(cur) > 0 ? +(mmL(cur) / mmS(cur)).toFixed(2) : null,
               openInterest: oiSer[0], oiPct: pctRank(h(oiSer), oiSer[0]),
               weeklyChg: pi(cur.change_in_m_money_long_all ?? cur.chg_mm_long) - pi(cur.change_in_m_money_short_all ?? cur.chg_mm_short),
               histLen: sorted.length, reportDate: _dateF ? (cur[_dateF] ?? '').toString().split('T')[0] : null,
+              // The 200-week series is computed here to rank the current value, then was
+              // thrown away — so nothing downstream could chart the trend that gives a
+              // percentile its meaning. Kept on the row (oldest→newest) and stripped from
+              // the default response below, since 35 instruments x 200 weeks x 3 series is
+              // far too much to ship on every poll.
+              _series: {
+                dates: sorted.map(r => (_dateF ? (r[_dateF] ?? '').toString().split('T')[0] : null)).reverse(),
+                specNet: specNets.slice().reverse(),
+                commNet: commNets.slice().reverse(),
+                oi: oiSer.slice().reverse(),
+                specShare: specShare.map(v => (v == null ? null : +(v * 100).toFixed(3))).reverse(),
+              },
             });
           }
           return results;
@@ -1854,15 +1916,47 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
             const commNets = sorted.map(r => { const net = (amL(r) - amS(r)) + (dlL(r) - dlS(r)); return inst.flip ? -net : net; });
             const oiSer    = sorted.map(r => pi(r.open_interest_all ?? r.open_interest));
             const h = a => a.slice(1);
+            // CROWDING = net position as a SHARE of open interest, then ranked.
+            //
+            // `specPct` alone ranks the RAW contract count over the window, which conflates
+            // "more crowded" with "bigger market": open interest itself moves a lot, so
+            // 50,000 net long means different things at different times. ES is the live
+            // example — its open interest sits at the 9th percentile of its own range while
+            // raw spec net ranks 64th, so the two disagree about how stretched positioning
+            // is. Dividing first and ranking after answers the question actually being
+            // asked. The raw percentiles stay alongside so nothing downstream breaks and
+            // the two reads can be compared directly.
+            const specShare = specNets.map((v, k) => (oiSer[k] > 0 ? v / oiSer[k] : null));
+            const commShare = commNets.map((v, k) => (oiSer[k] > 0 ? v / oiSer[k] : null));
+            const clean = a => a.filter(v => v != null && Number.isFinite(v));
             results.push({
               sym: inst.sym, label: inst.label, group: inst.group,
               specPct: pctRank(h(specNets), specNets[0]), commPct: pctRank(h(commNets), commNets[0]),
               specNet: specNets[0], commNet: commNets[0],
               specZ: zScore(h(specNets), specNets[0]), commZ: zScore(h(commNets), commNets[0]),
+              // OI-normalised. `*Share` is the signed fraction of OI (as %), `*SharePct`
+              // its percentile over the same window, `specShareZ` the z of that share.
+              specShare: specShare[0] != null ? +(specShare[0] * 100).toFixed(2) : null,
+              commShare: commShare[0] != null ? +(commShare[0] * 100).toFixed(2) : null,
+              specSharePct: specShare[0] != null ? pctRank(clean(h(specShare)), specShare[0]) : null,
+              commSharePct: commShare[0] != null ? pctRank(clean(h(commShare)), commShare[0]) : null,
+              specShareZ: specShare[0] != null ? zScore(clean(h(specShare)), specShare[0]) : null,
               grossRatio: levS(cur) > 0 ? +(levL(cur) / levS(cur)).toFixed(2) : null,
               openInterest: oiSer[0], oiPct: pctRank(h(oiSer), oiSer[0]),
               weeklyChg: pi(cur.change_in_lev_money_long_all ?? cur.change_in_lev_money_long ?? cur.chg_lev_long) - pi(cur.change_in_lev_money_short_all ?? cur.change_in_lev_money_short ?? cur.chg_lev_short),
               histLen: sorted.length, reportDate: _dateF ? (cur[_dateF] ?? '').toString().split('T')[0] : null,
+              // The 200-week series is computed here to rank the current value, then was
+              // thrown away — so nothing downstream could chart the trend that gives a
+              // percentile its meaning. Kept on the row (oldest→newest) and stripped from
+              // the default response below, since 35 instruments x 200 weeks x 3 series is
+              // far too much to ship on every poll.
+              _series: {
+                dates: sorted.map(r => (_dateF ? (r[_dateF] ?? '').toString().split('T')[0] : null)).reverse(),
+                specNet: specNets.slice().reverse(),
+                commNet: commNets.slice().reverse(),
+                oi: oiSer.slice().reverse(),
+                specShare: specShare.map(v => (v == null ? null : +(v * 100).toFixed(3))).reverse(),
+              },
             });
           }
           return results;
@@ -1901,12 +1995,28 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
               disaggCount: disaggRows.length, tffCount: tffRows.length, fetchErrors } });
         }
 
-        const payload2 = { ok: true, instruments: allInstruments, reportDate: reportDate2,
-          count: allInstruments.length, fetchErrors: fetchErrors.length ? fetchErrors : undefined };
+        // ?history=EUR returns that one instrument's full weekly series; everything else
+        // is returned lean. Charting the trend behind a percentile needs the series, but
+        // shipping all 35 on every poll would be a ~2MB response for a page that only
+        // ever draws one at a time.
+        const wantHist = wantHist0;
+        const histRow = wantHist ? allInstruments.find(x => x.sym === wantHist) : null;
+        const history = histRow ? { sym: histRow.sym, label: histRow.label, ...histRow._series } : null;
+        const lean = allInstruments.map(({ _series, ...rest }) => rest);
+
+        const payload2 = { ok: true, instruments: lean, reportDate: reportDate2,
+          count: lean.length, history,
+          fetchErrors: fetchErrors.length ? fetchErrors : undefined };
 
         if (env.FX_SCORES) {
           await env.FX_SCORES.put('cot_extremes_v2', JSON.stringify({ ts: Date.now(), data: payload2 }),
             { expirationTtl: 7 * 86400 }).catch(() => {});
+          // Series in a SEPARATE key: keeps the hot path lean while making every
+          // instrument's 200-week history a KV read away instead of a CFTC round trip.
+          const series = {};
+          for (const r of allInstruments) if (r._series) series[r.sym] = { sym: r.sym, label: r.label, ...r._series };
+          await env.FX_SCORES.put('cot_series_v1', JSON.stringify({ ts: Date.now(), series }),
+            { expirationTtl: 8 * 86400 }).catch(() => {});
         }
 
         return json(payload2);

@@ -11,8 +11,8 @@
 // 1's fixed 3-horizon blend, and rescales the weight-present average vote
 // from [-1,1] onto [0,100] (50 = neutral) instead of Gate 1's [-5,5].
 
-import { roc, rollingZScore, clip } from './nasdaqTransforms.js';
-import { COG_DIRECTION_INPUTS, COG_DIRECTION_SCORE } from './cogConfig.js';
+import { roc, rollingZScore, rollingPercentile, clip } from './nasdaqTransforms.js';
+import { COG_DIRECTION_INPUTS, COG_DIRECTION_SCORE, COG_GATE_CALIBRATION } from './cogConfig.js';
 
 // [LONG-supportive phrase, SHORT-supportive phrase] per input id, read off
 // the input's *signed* normalized value (after `sign` is applied) — always
@@ -58,8 +58,9 @@ function buildContribution(input, rawValue, normalized) {
 // value array (same-day cross-asset closes/yields, no publication lag).
 // Returns one entry per bar: { dataValid, state, score, coverage,
 // contributions[], reasons[] }.
-export function computeDirectionGate(seriesById, n) {
+export function computeDirectionGate(seriesById, n, calibration) {
   const { range, longThreshold, shortThreshold, minCoverage } = COG_DIRECTION_SCORE;
+  const cal = { ...COG_GATE_CALIBRATION, ...(calibration || {}) };
   const totalWeight = COG_DIRECTION_INPUTS.reduce((a, inp) => a + inp.weight, 0);
   const out = new Array(n);
 
@@ -69,6 +70,10 @@ export function computeDirectionGate(seriesById, n) {
     normalizedByInput[input.id] = series ? precomputeInputSignal(series, input.rocWindowDays) : null;
   }
 
+  // Pass 1 — score per bar (see cogLiquidityGate.js for why classification is
+  // deferred: percentile mode needs the score's own causal history).
+  const rows = new Array(n);
+  const scoreArr = new Array(n).fill(NaN);
   for (let i = 0; i < n; i++) {
     const contributions = [];
     let weightedSum = 0, weightPresent = 0;
@@ -86,10 +91,25 @@ export function computeDirectionGate(seriesById, n) {
     // (50 = neutral midpoint).
     const mid = (range[0] + range[1]) / 2;
     const score = dataValid && avgVote != null ? clip(mid + avgVote * mid, range[0], range[1]) : null;
+    rows[i] = { contributions, coverage, dataValid, score };
+    if (score != null) scoreArr[i] = score;
+  }
+
+  const pct = cal.mode === 'percentile' ? rollingPercentile(scoreArr, cal.windowDays) : null;
+  const loCut = 50 - cal.neutralPct / 2;
+  const hiCut = 50 + cal.neutralPct / 2;
+
+  for (let i = 0; i < n; i++) {
+    const { contributions, coverage, dataValid, score } = rows[i];
 
     let state = 'INVALID';
+    const p = pct ? pct[i] : NaN;
     if (dataValid && score != null) {
-      if (score > longThreshold) state = 'LONG';
+      if (pct && Number.isFinite(p)) {
+        if (p > hiCut) state = 'LONG';
+        else if (p < loCut) state = 'SHORT';
+        else state = 'NEUTRAL';
+      } else if (score > longThreshold) state = 'LONG';
       else if (score < shortThreshold) state = 'SHORT';
       else state = 'NEUTRAL';
     }

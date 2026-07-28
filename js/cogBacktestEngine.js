@@ -53,9 +53,14 @@ export function runBacktest(dataset, options = {}) {
     close: ohlcBars.map(b => b.close),
   };
 
-  const gate1 = computeLiquidityGate1A(toSeriesById(liquiditySeries), n);
+  // `calibration` opts Gate 1 / Gate 3 into regime-relative percentile
+  // classification instead of their invented absolute cutoffs — see
+  // COG_GATE_CALIBRATION in cogConfig.js for the real-data diagnosis that
+  // forced it. Omitted ⇒ absolute mode ⇒ pre-2026-07-28 behaviour, unchanged.
+  const { calibration } = options;
+  const gate1 = computeLiquidityGate1A(toSeriesById(liquiditySeries), n, calibration);
   const gate2 = computeRiskGate(toSeriesById(riskSeries), ohlc, ohlc.close, n);
-  const gate3 = computeDirectionGate(toSeriesById(directionSeries), n);
+  const gate3 = computeDirectionGate(toSeriesById(directionSeries), n, calibration);
   const { accountEquity = 100000, instrumentKey, stopModelId, requestedTier } = options;
   const gate4 = computeExecutionSignals(gate1, gate2, gate3, ohlc, n, { accountEquity, instrumentKey, stopModelId, requestedTier });
 
