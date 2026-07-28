@@ -55,7 +55,8 @@
   @media(max-width:760px){.mread-cols{grid-template-columns:1fr}}
   .mread-h{font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px}
   /* currency strength diverging bars */
-  .csrow{display:grid;grid-template-columns:38px 1fr 42px;align-items:center;gap:8px;margin-bottom:4px;font-variant-numeric:tabular-nums}
+  .csrow{display:grid;grid-template-columns:38px 1fr 42px;align-items:center;gap:8px;margin-bottom:4px;font-variant-numeric:tabular-nums;cursor:pointer}
+  .csrow:hover .ccy{text-decoration:underline}
   .csrow .ccy{font-size:12px;font-weight:700;color:var(--text2)}
   .csrow .track{position:relative;height:13px;background:var(--card2);border-radius:4px}
   .csrow .track .mid{position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--border)}
@@ -343,6 +344,16 @@
   .dr-sec{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:12px}
   .dr-sec h3{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:9px}
 
+  /* ── Currency drawer ─────────────────────────────────────── */
+  .ccy-explain{font-size:12.5px;line-height:1.55;color:var(--text2);margin-bottom:10px}
+  .ccy-legs{margin-top:8px;border-top:1px solid var(--border);padding-top:8px}
+  .ccy-legrow{display:grid;grid-template-columns:1fr 46px;gap:8px;align-items:center;font-size:11.5px;margin-bottom:3px;font-variant-numeric:tabular-nums}
+  .ccy-legrow .lp{color:var(--text2)}
+  .ccy-legrow .lv{text-align:right}
+  .ccy-legrow .lv.up{color:var(--bull)} .ccy-legrow .lv.dn{color:var(--bear)} .ccy-legrow .lv.flat{color:var(--text3)}
+  .ccy-stat{display:flex;gap:16px;flex-wrap:wrap;margin-top:6px;font-size:11.5px;color:var(--text3)}
+  .ccy-stat b{color:var(--text2);font-variant-numeric:tabular-nums}
+
   /* ── Volatility cone graphic (drawer) ───────────────────── */
   .cone-row{display:flex;align-items:center;gap:9px;margin:6px 0;font-size:11.5px}
   .cone-lbl{width:118px;color:var(--text3);text-align:right;flex-shrink:0}
@@ -547,6 +558,17 @@
     </div>
     <div class="muted" id="drLevelsNote"></div>
   </div>
+</div>
+
+<!-- Currency detail drawer -->
+<div class="ovl" id="ovlCcy" onclick="closeCcyDrawer()"></div>
+<div class="drawer" id="drawerCcy" style="width:min(620px,95vw)">
+  <div class="dr-top">
+    <h2 id="ccyName">—</h2>
+    <span class="chip neu" id="ccyBucket"></span>
+    <button class="dr-close" onclick="closeCcyDrawer()">✕ Close</button>
+  </div>
+  <div id="ccyBody"></div>
 </div>
 
 <script>
@@ -1063,6 +1085,12 @@ const PAIR_CCY = {
   USDCHF: ['USD', 'CHF'], GBPJPY: ['GBP', 'JPY'], EURGBP: ['EUR', 'GBP'],
   EURJPY: ['EUR', 'JPY'], EURCHF: ['EUR', 'CHF'], GBPCHF: ['GBP', 'CHF'],
   AUDJPY: ['AUD', 'JPY'], CADJPY: ['CAD', 'JPY'],
+  // Completed 2026-07-28 — these are tracked daily instruments (see brief.instruments)
+  // that were silently missing from the currency-strength board.
+  EURCAD: ['EUR', 'CAD'], EURAUD: ['EUR', 'AUD'], EURNZD: ['EUR', 'NZD'],
+  AUDNZD: ['AUD', 'NZD'], AUDCAD: ['AUD', 'CAD'], AUDCHF: ['AUD', 'CHF'],
+  GBPAUD: ['GBP', 'AUD'], GBPCAD: ['GBP', 'CAD'], GBPNZD: ['GBP', 'NZD'],
+  NZDJPY: ['NZD', 'JPY'], CHFJPY: ['CHF', 'JPY'],
 };
 const CCY_ORDER = ['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD', 'NZD'];
 
@@ -1212,7 +1240,7 @@ function renderMarketRead() {
     const bar = c.score >= 0
       ? `<div class="barp" style="width:${pct}%"></div>`
       : `<div class="barn" style="width:${pct}%"></div>`;
-    return `<div class="csrow ${cls}" title="${c.ccy}: net ${c.score >= 0 ? '+' : ''}${c.score.toFixed(2)} across ${c.pairs.join(', ')}">
+    return `<div class="csrow ${cls}" onclick="openCcyDrawer('${c.ccy}')" title="${c.ccy}: net ${c.score >= 0 ? '+' : ''}${c.score.toFixed(2)} across ${c.pairs.join(', ')} — click for detail">
       <span class="ccy">${c.ccy}</span>
       <span class="track"><span class="mid"></span>${bar}</span>
       <span class="val">${c.score >= 0 ? '+' : ''}${c.score.toFixed(2)}</span></div>`;
@@ -1262,6 +1290,156 @@ const CCY_SHORT = { USD: 'dollar', EUR: 'euro', GBP: 'pound', JPY: 'yen', CHF: '
 const ccyFull  = c => CCY_FULL[c] ?? c;
 const ccyShort = c => CCY_SHORT[c] ?? c;
 const riskPlain = cls => cls === 'off' ? 'Cautious (risk-off)' : cls === 'on' ? 'Risk-taking (risk-on)' : 'Undecided (mixed)';
+
+// ── Currency drill-down: technical + positioning + carry, one place, one click ──
+// The strength board above is a single momentum number per currency; this pulls
+// it apart so a click explains WHY — using data the page has already loaded
+// (cot, fred, brief/session/forecast), no extra network calls.
+const CCY_FRED10Y = { USD: 'us10y', EUR: 'de10y', GBP: 'gb10y', JPY: 'jp10y', AUD: 'au10y', CAD: 'ca10y', CHF: 'ch10y', NZD: null };
+// Traditional risk-sentiment bucket — framing context, not a signal on its own.
+const CCY_BUCKET = { USD: 'haven', JPY: 'haven', CHF: 'haven', AUD: 'risk', NZD: 'risk', EUR: 'neutral', GBP: 'neutral', CAD: 'neutral' };
+const CCY_BUCKET_NOTE = {
+  haven: 'Traditional haven — tends to firm when risk sentiment sours (stocks selling off, credit widening).',
+  risk: 'Risk/carry currency — tends to firm when risk appetite improves and funds reach for yield.',
+  neutral: 'Sits more neutral to the risk-on/risk-off swing than the havens or the carry currencies.',
+};
+
+function currencyDetail(ccy) {
+  const rs = allRows();
+  const cs = currencyStrength(rs);
+  const row = cs.find(c => c.ccy === ccy);
+
+  // 1) Technical — which pairs are actually pulling this currency, and how hard.
+  const legs = [];
+  for (const r of rs) {
+    const cc = PAIR_CCY[r.name];
+    if (!cc || !cc.includes(ccy)) continue;
+    const sig = pairSignal(r);
+    if (sig == null) continue;
+    const ccySig = cc[0] === ccy ? sig : -sig;   // reoriented to this currency's own direction
+    legs.push({ pair: dispName(r.name), sig: ccySig });
+  }
+  legs.sort((a, b) => b.sig - a.sig);
+
+  // 2) COT positioning — read straight off this currency's own CME future, not derived per-pair.
+  let cotInfo = null;
+  if (ccy !== 'USD' && cot?.[ccy]) {
+    const c = cot[ccy];
+    const oi = c.openInterest ?? 0;
+    cotInfo = {
+      specNet: c.specNet ?? null, oi,
+      pct: oi > 0 ? +(Math.abs(c.specNet ?? 0) / oi * 100).toFixed(1) : null,
+      z: c.specZ ?? null, pctile: c.specPct ?? null, wkChg: c.weeklyChg ?? null,
+      reportDate: c.reportDate ?? null, derived: false,
+    };
+  } else if (ccy === 'USD') {
+    // No standalone USD future in this feed — the mirror image of the other vs-USD futures.
+    const others = CCY_ORDER.filter(c => c !== 'USD' && cot?.[c]);
+    if (others.length) {
+      let sumNet = 0, sumOi = 0;
+      for (const c of others) { sumNet += -(cot[c].specNet ?? 0); sumOi += cot[c].openInterest ?? 0; }
+      cotInfo = { specNet: sumNet, oi: sumOi, pct: sumOi > 0 ? +(Math.abs(sumNet) / sumOi * 100).toFixed(1) : null,
+        z: null, pctile: null, wkChg: null, reportDate: cot[others[0]]?.reportDate ?? null, derived: true };
+    }
+  }
+
+  // 3) Rate & carry — 10Y yield level + direction (FRED), where a series is actually pulled.
+  let carry = null;
+  const fk = CCY_FRED10Y[ccy];
+  if (fk && fred?.[fk]?.value != null) {
+    const v = fred[fk].value, p = fred[fk].prev ?? null;
+    const dir = p == null ? null : (v > p + 0.02 ? 'rising' : v < p - 0.02 ? 'falling' : 'steady');
+    const all = CCY_ORDER.map(c => ({ c, y: fred?.[CCY_FRED10Y[c]]?.value ?? null })).filter(x => x.y != null);
+    all.sort((a, b) => b.y - a.y);
+    const rank = all.findIndex(x => x.c === ccy) + 1;
+    carry = { yield: v, dir, rank, of: all.length };
+  }
+
+  return { ccy, score: row?.score ?? null, n: row?.n ?? 0, legs, cot: cotInfo, carry, bucket: CCY_BUCKET[ccy] ?? 'neutral' };
+}
+
+function closeCcyDrawer() {
+  $('ovlCcy').classList.remove('open');
+  $('drawerCcy').classList.remove('open');
+}
+
+function openCcyDrawer(ccy) {
+  const det = currencyDetail(ccy);
+  $('ccyName').textContent = `${ccy} — ${ccyFull(ccy)}`;
+  const bucketChip = $('ccyBucket');
+  bucketChip.textContent = det.bucket === 'haven' ? 'HAVEN' : det.bucket === 'risk' ? 'RISK/CARRY' : 'NEUTRAL';
+  bucketChip.className = `chip ${det.bucket === 'haven' ? 'range' : det.bucket === 'risk' ? 'warn' : 'neu'}`;
+  bucketChip.title = CCY_BUCKET_NOTE[det.bucket];
+
+  // Section 1: today's flow (technical) — the per-pair breakdown behind the net score.
+  const legsHtml = det.legs.map(l => {
+    const cls = l.sig > 0.05 ? 'up' : l.sig < -0.05 ? 'dn' : 'flat';
+    return `<div class="ccy-legrow"><span class="lp">${l.pair}</span><span class="lv ${cls}">${l.sig >= 0 ? '+' : ''}${l.sig.toFixed(2)}</span></div>`;
+  }).join('') || '<div class="muted">No pair had a clear regime or session bias today — nothing to show.</div>';
+  const scoreMax = Math.max(0.25, Math.abs(det.score ?? 0));
+  const scorePct = det.score == null ? 0 : Math.min(50, 50 * Math.abs(det.score) / scoreMax);
+  const scoreBar = det.score == null ? '' : (det.score >= 0
+    ? `<div class="barp" style="width:${scorePct}%"></div>`
+    : `<div class="barn" style="width:${scorePct}%"></div>`);
+
+  // Section 2: COT positioning.
+  let cotHtml;
+  if (det.cot) {
+    const c = det.cot;
+    const barPct = Math.min(50, c.pct ?? 0);
+    const bar = (c.specNet ?? 0) >= 0
+      ? `<div class="barp" style="width:${barPct}%"></div>`
+      : `<div class="barn" style="width:${barPct}%"></div>`;
+    const dirWord = (c.specNet ?? 0) > 0 ? 'net long' : (c.specNet ?? 0) < 0 ? 'net short' : 'flat';
+    cotHtml = `
+      <div class="ccy-explain">${c.derived
+        ? `${ccy} has no standalone CME future — this is the mirror image of the other majors' positioning vs USD, so read it as a rough cross-check, not a direct read.`
+        : `Large speculators (CFTC weekly report) are <b>${dirWord}</b> ${ccy} — about <b>${(c.pct ?? 0).toFixed(1)}%</b> of open interest${c.pctile != null ? ` (${Math.round(c.pctile)}th percentile of recent history)` : ''}. This is <i>who's positioned</i>, not <i>who's moving</i> — a crowded one-way bet (≥20% OI) raises the odds of a snap-back squeeze if it's wrong.`}</div>
+      <div class="csrow"><span class="ccy">${ccy}</span><span class="track"><span class="mid"></span>${bar}</span><span class="val">${(c.specNet ?? 0) >= 0 ? '+' : ''}${fmtN(c.specNet ?? 0, 0)}</span></div>
+      <div class="ccy-stat">
+        ${c.wkChg != null ? `<span>week Δ <b>${c.wkChg >= 0 ? '+' : ''}${fmtN(c.wkChg, 0)}</b></span>` : ''}
+        ${c.z != null ? `<span>z-score <b>${c.z.toFixed(2)}</b></span>` : ''}
+        ${c.reportDate ? `<span>report <b>${c.reportDate}</b></span>` : ''}
+      </div>`;
+  } else {
+    cotHtml = `<div class="muted">No COT data available for ${ccy} right now.</div>`;
+  }
+
+  // Section 3: rate & carry.
+  let carryHtml;
+  if (det.carry) {
+    const cr = det.carry;
+    const rankPct = cr.of > 1 ? 100 * (cr.of - cr.rank) / (cr.of - 1) : 50;
+    carryHtml = `
+      <div class="ccy-explain">${ccyFull(ccy)}'s 10-year government yield is <b>${cr.yield.toFixed(2)}%</b>${cr.dir ? `, currently <b>${cr.dir}</b>` : ''} — ranked <b>#${cr.rank} of ${cr.of}</b> tracked currencies (higher = more attractive to hold for the carry, all else equal). Money tends to drift toward the higher payer, especially when risk appetite is calm.</div>
+      <div class="cone-row"><span class="cone-lbl">yield rank</span><span class="cone-track"><span class="cone-dot" style="left:${rankPct}%"></span></span><span class="cone-val">#${cr.rank}/${cr.of}</span></div>`;
+  } else {
+    carryHtml = `<div class="muted">No 10Y yield series pulled for ${ccy} yet${ccy === 'NZD' ? ' (FRED has no NZ series wired in)' : ''}.</div>`;
+  }
+
+  $('ccyBody').innerHTML = `
+    <div class="dr-sec">
+      <h3 class="help" title="Blend of each pair's structural HMM trend regime and today's live session bias, averaged across every pair ${ccy} appears in. This is what's moving TODAY, not a fundamental view.">Today's flow (technical)</h3>
+      <div class="ccy-explain">Net score <b>${det.score == null ? '—' : (det.score >= 0 ? '+' : '') + det.score.toFixed(2)}</b> across ${det.n} pair${det.n === 1 ? '' : 's'}.</div>
+      <div class="csrow"><span class="ccy">${ccy}</span><span class="track"><span class="mid"></span>${scoreBar}</span><span class="val">${det.score == null ? '—' : (det.score >= 0 ? '+' : '') + det.score.toFixed(2)}</span></div>
+      <div class="ccy-legs">${legsHtml}</div>
+    </div>
+    <div class="dr-sec">
+      <h3 class="help" title="Weekly CFTC Commitments of Traders — large speculators' net position in this currency's futures contract vs USD, as a share of open interest.">Positioning (COT, weekly)</h3>
+      ${cotHtml}
+    </div>
+    <div class="dr-sec">
+      <h3 class="help" title="10-year government bond yield — the classic carry-trade input. Not the policy rate itself, and not a timing signal on its own.">Rate & carry</h3>
+      ${carryHtml}
+    </div>
+    <div class="dr-sec">
+      <h3>Risk-sentiment bucket</h3>
+      <div class="ccy-explain">${CCY_BUCKET_NOTE[det.bucket]}</div>
+    </div>`;
+
+  $('ovlCcy').classList.add('open');
+  $('drawerCcy').classList.add('open');
+}
 
 // The "so what do I do" line, in plain words.
 function plainBottomLine({ risk, strongest, weakest, trendMaj, evSoon }) {
