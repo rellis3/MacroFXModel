@@ -84,9 +84,55 @@ last 18 months are visibly the weakest stretch.
 4. **~5 years is one regime cycle** (2022 bear, 2023–25 bull). No 2018, no
    2020. And the strategy *family* was discovered on this same data — the
    walk-forward protects the parameters, not the idea.
-5. **It does not explain itself.** Whether the direction call contributes
-   anything is a separate, registered, unrun question — see
-   `PREREGISTERED_EVALUATIONS.md` §5b.
+5. **It is not what it says on the tin.** See below — the direction call
+   was measured the same day and is null. The money above is real; the
+   stated mechanism for it is not.
+
+## The control arm — run 2026-07-28, registered in advance (§5b)
+
+| Full sample, n=609 | mean %/trade | Sharpe | total |
+|---|---|---|---|
+| Gates' direction (S1) | +0.1770 | 0.91 | +157% |
+| **Inverse — same days, same stop/TP/leverage/costs** | **+0.1883** | **0.98** | **+176%** |
+| Coin flip = (S1 + inverse)/2 | +0.1826 | — | — |
+| **dirAlpha = S1 − coin flip** | **−0.0056 (t = −0.08)** | | |
+
+**Trading the exact opposite of every QMR signal for five years makes
+slightly more money than following it.** The direction call contributes
+nothing, and the selectivity sweep says the gates aren't selecting days
+either — the coin-flip return is flat from gates-off (0.172%, n=856) to
+strict (0.186%, n=384), and the gates-off arm has the *higher* Sharpe.
+
+So Gate 1 and Gate 2 are decoration. What is actually earning: **enter NQ at
+13:00 UTC, stop ≈0.45%, TP 1.5% (3.3R), EOD exit, 1% risk** — a long
+realized-range trade that pays whenever the day clears the 3.3R hurdle in
+*some* direction. That also explains why the two negative walk-forward
+windows exist and why the fade patches (S2/S4) "worked": on a 3.3R payoff
+both directions profit on a trending day, so any subset will look positive.
+
+### The construction this implies
+
+Picking a side added variance without adding mean. So don't pick one — run
+**both sides at half size each** (identical 1% total risk, identical total
+notional, so identical costs):
+
+| Same days, same risk | Sharpe | CAGR | maxDD | win rate |
+|---|---|---|---|---|
+| Gates' direction | 0.91 | 21.0% | 20.3% | 31.5% |
+| Inverse | 0.98 | 22.7% | 21.9% | 30.2% |
+| **Both sides, half size** | **1.63** | 24.0% | **17.9%** | 50.4% |
+| Both sides, half size, gates off (n=856) | **1.72** | 32.5% | 22.9% | 47.9% |
+
+Same mean, far less variance — the arms correlate −0.31, and 38% of days
+stop both out. This is mechanical, not fitted: it removes a coin flip, it
+doesn't predict anything.
+
+**But it is not validated.** The stop/TP geometry it rests on came from a
+full-sample grid, so it inherits that selection and needs its own
+walk-forward, plus a check on whether it survives a compressed-volatility
+regime — 2021–2026 was an elevated-range period, and a long-range trade is
+exactly what a quiet regime punishes. Requires a hedging-enabled account
+(two simultaneous positions) or an OCO-equivalent.
 
 ## Live/backtest divergences still open
 

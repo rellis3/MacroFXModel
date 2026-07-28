@@ -18989,7 +18989,13 @@ async function _qmrValidationLine(kvKey) {
       const parsed = JSON.parse(raw);
       const v = parsed?.data ?? parsed ?? {};
       if (v.oos_sharpe != null && v.trades != null) {
-        return `Walk-forward OOS: Sharpe ${v.oos_sharpe} over ${v.trades} trades (as of ${v.as_of ?? '?'}), after-cost`;
+        let line = `Walk-forward OOS: Sharpe ${v.oos_sharpe} over ${v.trades} trades (as of ${v.as_of ?? '?'}), after-cost`;
+        // A validated SYSTEM is not a validated DIRECTION. The 2026-07-28
+        // control arm measured the direction call at dirAlpha −0.006%/trade
+        // (t=−0.08) — stamping an OOS Sharpe on a LONG/SHORT alert without
+        // that caveat would credit the direction with an edge it hasn't got.
+        if (v.note) line += `\n⚠ ${v.note}`;
+        return line;
       }
     }
   } catch {}

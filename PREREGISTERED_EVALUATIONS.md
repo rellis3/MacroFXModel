@@ -122,6 +122,36 @@ writing, and this bar is committed in the same push as the code.
   direction's own contribution measures −0.136% (extended), +0.011%
   (choppy), −0.006% (rejection). The clean-day majority is untested.
 
+### OUTCOME — ran 2026-07-28, same day: **NULL, on the registered terms**
+
+Full sample, n=609, default config:
+
+| | mean %/trade | Sharpe | total |
+|---|---|---|---|
+| Gates' direction (S1) | +0.1770 | 0.91 | +157% |
+| **Inverse, same days** | **+0.1883** | **0.98** | **+176%** |
+| Coin flip | +0.1826 | — | — |
+| **dirAlpha** | **−0.0056 (t = −0.08)** | | |
+
+Doing the exact opposite of what the gates say is, if anything, marginally
+better. `dirAlpha` sits on zero and its CI covers it many times over, so the
+registered null outcome applies: **QMR is a day-selector feeding an
+asymmetric payoff, not a continuation forecast. The direction claim is
+retired.**
+
+Unregistered follow-up, run immediately after (exploratory, flagged as
+such): a selectivity sweep shows the coin-flip return is **flat in gate
+strictness** — 0.172%/trade with the gates effectively off (n=856), 0.183%
+at the default (n=609), 0.186% strict (n=384), with |t| ≤ 0.44 on dirAlpha
+at every level. So the gates are not adding day-selection either. The
+all-days arm has the *higher* Sharpe (1.08 vs 0.91).
+
+What survives is the geometry: stop ≈0.45%, TP 1.5% (3.3R), EOD exit, 1%
+risk. That is a long-realized-range trade — it pays when the intraday move
+clears the 3.3R hurdle, in either direction. Its stop/TP were chosen by a
+full-sample grid, so **the geometry now needs its own walk-forward before
+any of this counts as validated** — that is a new evaluation, not this one.
+
 ## 6. Regime V7 (post slope-fix record)
 
 - **Record:** paper/demo from the slope-window fix onward (earlier live
