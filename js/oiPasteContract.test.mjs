@@ -21,6 +21,8 @@ import { dirname, join } from 'path';
 import { parseOIMatrix, oiParseTable, oiCalcMaxPain, pickPrimaryExpiry, resolveSmileExpiry,
   parseIVSettlement, oiMatrixTermStructure } from './oi.js';
 import { oiStoreToLevels } from './oiConfluence.js';
+import { buildOILevelText } from './oiLevelExport.js';
+import { buildOIZones } from './oiZones.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const fx = n => readFileSync(join(HERE, 'fixtures', n), 'utf8');
@@ -357,6 +359,69 @@ console.log('[soft near-money window — scaled by the reference move]');
     const wide = oiStoreToLevels({ ...inst, refMove: { move: 600, source: 'flat-vol' } });
     return at(wide, 'call_wall').includes(5370);
   })());
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 10. DOWNSTREAM WIRING — a field added to the record is worthless until every
+//     consumer sees it. gexFlip existed on the record and in the dashboard for a
+//     commit before reaching the export, the indicator or the bot; refMove reached
+//     wall selection but not the bot's reachability gate, which had silently left
+//     every index instrument with no reach check at all.
+// ─────────────────────────────────────────────────────────────────────────────
+console.log('[downstream wiring — export, indicator, bot]');
+{
+  const inst = {
+    spot: 4079, basis: 0.27, refMove: { move: 103.3, source: 'implied' },
+    maxPain: 4199.73, gammaFlip: 3659.73, gexFlip: 4099.13,
+    callWall: 4299.73, putWall: 3999.73,
+    callWalls: [{ strike: 4299.73, oi: 3188, tier: 'strong' }],
+    putWalls: [{ strike: 3999.73, oi: 4171, tier: 'strong' }],
+    savedAt: '28/07/2026, 09:00:00', exposures: { gex: -3.4e6 },
+    // tail noise first, real boundary near spot — the shape that broke the old scan
+    gexProfile: [
+      { strike: 3200, netGex: 1, gamma: 1e-6 }, { strike: 3250, netGex: -1, gamma: 1e-6 },
+      { strike: 3300, netGex: 2, gamma: 1e-6 },
+      { strike: 4050, netGex: 900, gamma: 2e-4 }, { strike: 4100, netGex: -900, gamma: 2e-4 },
+    ],
+  };
+  const lv = oiStoreToLevels(inst);
+  const types = new Set(lv.map(l => l.type));
+  ok('oiStoreToLevels emits gex_flip', types.has('gex_flip'));
+  ok('…and still emits the cheaper gamma_flip alongside it', types.has('gamma_flip'));
+  // The export must use the STORED flip, not re-derive it with a private copy of the
+  // old scan — that duplicate kept shipping the tail-latched value after the fix.
+  ok('exported gamma_flip is the stored value, not a re-derived first-crossing',
+    lv.find(l => l.type === 'gamma_flip')?.price === inst.gammaFlip,
+    `${lv.find(l => l.type === 'gamma_flip')?.price} vs stored ${inst.gammaFlip}`);
+  ok('and with no stored flip it uses the FIXED brick (near spot, interpolated)',
+    Math.abs(oiStoreToLevels({ ...inst, gammaFlip: null }).find(l => l.type === 'gamma_flip').price - 4075) < 1,
+    `${oiStoreToLevels({ ...inst, gammaFlip: null }).find(l => l.type === 'gamma_flip')?.price}`);
+  ok('gex_flip carries the right price', lv.find(l => l.type === 'gex_flip')?.price === 4099.13);
+
+  const txt = buildOILevelText({ 'XAU/USD': inst }, { generated: 'test' });
+  ok('C+Z export carries gex_flip to the indicator', /^OI .* : gex_flip$/m.test(txt), '');
+  ok('export still carries the walls and max pain',
+    /: call_wall/.test(txt) && /: put_wall/.test(txt) && /: max_pain/.test(txt));
+
+  // The Pine side must recognise the type, or the line is parsed and drawn grey.
+  const pine = readFileSync(join(HERE, '..', 'pine', 'Confluence Zones Indicator.pine'), 'utf8');
+  ok('indicator has a colour for gex_flip', /typ == "gex_flip"/.test(pine));
+  ok('indicator draws it dotted, like the other boundaries',
+    /gamma_flip" or typ == "gex_flip"/.test(pine));
+
+  // The bot's reachability gate must fall back to refMove. Without it, an index with
+  // a rejected straddle (expectedMove null) and maxReachPips 0 gets no gate at all.
+  const base = { minTier: 'weak', pip: 0.1, reachMult: 1.0, maxReachPips: 0 };
+  const far = { ...inst, exposures: { gex: -3.4e6 } };
+  const withRef = buildOIZones(far, 4079, { ...base, refMove: 103.3 });
+  const noRef   = buildOIZones(far, 4079, { ...base });
+  const flagged = z => (z.rationale || '').includes('reference move') || (z.rationale || '').includes('implied move');
+  ok('refMove is accepted by the planner without throwing', Array.isArray(withRef) && Array.isArray(noRef));
+  ok('a far entry is flagged when refMove is supplied',
+    withRef.some(flagged) || withRef.length === 0,
+    withRef.map(z => z.mode + '@' + z.entry).join(' '));
+  ok('and NOT flagged when neither expMove nor refMove exists (the gap that was live)',
+    !noRef.some(flagged));
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

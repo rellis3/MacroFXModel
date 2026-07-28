@@ -46,7 +46,7 @@ const CANON = {
 // Which level types to export, in the order they should print within a block, and
 // the price decimals per instrument class. The strongest call/put walls + max pain,
 // plus gamma_flip (regime boundary) and oi_volume (today's heaviest-volume strikes).
-const TYPE_ORDER = ['call_wall', 'gamma_flip', 'max_pain', 'put_wall', 'oi_volume'];
+const TYPE_ORDER = ['call_wall', 'gamma_flip', 'gex_flip', 'max_pain', 'put_wall', 'oi_volume'];
 const WANT = new Set(TYPE_ORDER);
 
 const JPY_KEY = /JPY/i;
@@ -90,7 +90,7 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
   const hdr = '──── OI WALLS & MAX PAIN ' + '─'.repeat(Math.max(0, LW - 25));
   const lines = [hdr];
   lines.push(`Generated: ${generated ?? 'latest'}`);
-  lines.push('Types: call_wall (red · resistance) · put_wall (green · support) · max_pain (yellow · magnet) · gamma_flip (purple) · oi_volume (blue · today)');
+  lines.push('Types: call_wall (red · resistance) · put_wall (green · support) · max_pain (yellow · magnet) · gamma_flip (purple) · gex_flip (violet · total-GEX zero) · oi_volume (blue · today)');
   lines.push('');
 
   const entries = Object.entries(store || {});

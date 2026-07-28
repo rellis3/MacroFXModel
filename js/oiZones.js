@@ -106,6 +106,10 @@ export function buildOIZones(inst, price, cfg = {}) {
     nearFlip = false,              // spot sits within ~0.5 ATR of the gamma flip → regime is at the
                                    // boundary and less reliable; trim size (distance-to-flip vol read).
     regimeWarning = null,          // flip-drift note (regime change loading) — appended to rationale.
+    refMove = null,                // symmetric fallback distance scale (inst.refMove.move): implied
+                                   // when trustworthy, else flat-vol. Used when expMove is absent —
+                                   // which is now the NORMAL case on indices, whose straddle column
+                                   // mis-parses and is correctly rejected, leaving expectedMove null.
     expMove = null,                // {upper,lower} option-implied range to expiry — a TP beyond it is
                                    // low-probability by expiry (flagged in the rationale, not blocked).
     vannaNote = null,              // vanna-state note (firing tailwind/headwind) — appended to rationale.
@@ -193,6 +197,13 @@ export function buildOIZones(inst, price, cfg = {}) {
     if (expMove && Number.isFinite(expMove.upper) && Number.isFinite(expMove.lower)) {
       const half = entry >= price ? (expMove.upper - price) : (price - expMove.lower);
       if (half > 0 && dist > reachMult * half) return `~${(dist / half).toFixed(1)}× implied move`;
+      return null;
+    }
+    // Symmetric reference move — same question, one less dimension. Without this the
+    // gate fell through to a pip cap that defaults to OFF, so every index instrument
+    // was armed with no reachability check at all.
+    if (Number.isFinite(refMove) && refMove > 0) {
+      if (dist > reachMult * refMove) return `~${(dist / refMove).toFixed(1)}× reference move`;
       return null;
     }
     if (maxReachPips > 0 && dist / pip > maxReachPips) return `${Math.round(dist / pip)}pip beyond ${maxReachPips}pip reach`;
