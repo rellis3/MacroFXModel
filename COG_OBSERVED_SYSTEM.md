@@ -272,3 +272,33 @@ Two things follow, and only the first is blocked on time:
 Measuring whether his calls have forward edge does **not** require
 understanding his system. Understanding his system without that measurement
 would be building on an unverified premise. Do them in that order.
+
+### Row 1 — 2026-07-21, resolved 2026-07-28
+
+The screenshot day, logged and resolved against OANDA M5:
+
+| | |
+|---|---|
+| Entry | SHORT @ 29,064.7, bar 13:30 UTC |
+| Stop | 29,192.6 (0.44%) |
+| Exit | 29,192.6 — **STOP** |
+| Raw / net move | −0.440% / −0.453% |
+| Account return | **−2.265%** at 5.0× leverage |
+| MFE / MAE | +0.544% / −0.447% |
+
+Three things this establishes, none of them about his edge:
+
+- **The leverage inference (§4e) is confirmed by the resolver arithmetic**:
+  2.2 ÷ 0.44 = 5.0×, and a full stop costs 2.265% of the account (his stated
+  2.2% risk plus our 0.8bp round-trip + 0.5bp stop-slip charge, scaled by 5×).
+- **Resolution is deliberately conservative.** His signal was 14:26 UK
+  (13:26 UTC); we fill at the open of the *next* 5-minute bar, 13:30 UTC — four
+  minutes late, never early. No resolution can flatter him by construction.
+- The trade ran +0.544% in his favour before reversing into the stop. The
+  close message was never captured for this day, so `close_time_assumed` is
+  set — though it doesn't matter here, since the stop resolved the day.
+
+**n = 1 proves nothing, and this row is not a random sample** — it exists
+because a screenshot was taken to show the UI, not because of its outcome. It
+is a pipeline test, not evidence. Treat the forward record as empty until
+~30 days accumulate against the §5 bar.
