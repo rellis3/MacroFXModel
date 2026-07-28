@@ -3987,7 +3987,7 @@ loadRlLiveStatus();
 const OI_DEFAULTS = {
   // strategy (server plan producer)
   minTier: 'strong', slBufferPips: 15, breakPips: 20, nearExpiryDTE: 2, extendedPips: 30,
-  fadeInPin: true, followBreaks: true, maxPainReversion: true,
+  fadeInPin: true, followBreaks: true, maxPainReversion: true, levelLadderTP: false,
   requireEstablished: false, avoidLiquidating: true, maxZonesPerSide: 4,
   secondaryTrim: 0.6, reachMult: 1.0, reachTrim: 0.7, maxReachPips: 0,   // PIN nearest-primary + reachability gate
   fx_enabled: false, fx_pairs: [],
@@ -4011,6 +4011,7 @@ function renderOiForm() {
   chk('oi_fade_in_pin', _oiCfg.fadeInPin ?? true);
   chk('oi_follow_breaks', _oiCfg.followBreaks ?? true);
   chk('oi_maxpain_reversion', _oiCfg.maxPainReversion ?? true);
+  chk('oi_level_ladder_tp', _oiCfg.levelLadderTP ?? false);
   chk('oi_avoid_liquidating', _oiCfg.avoidLiquidating ?? true);
   chk('oi_require_established', _oiCfg.requireEstablished);
   set('oi_sl_buffer_pips', _oiCfg.slBufferPips ?? OI_DEFAULTS.slBufferPips);
@@ -4044,6 +4045,7 @@ function readOiForm() {
   _oiCfg.fadeInPin = !!document.getElementById('oi_fade_in_pin')?.checked;
   _oiCfg.followBreaks = !!document.getElementById('oi_follow_breaks')?.checked;
   _oiCfg.maxPainReversion = !!document.getElementById('oi_maxpain_reversion')?.checked;
+  _oiCfg.levelLadderTP = !!document.getElementById('oi_level_ladder_tp')?.checked;
   _oiCfg.avoidLiquidating = !!document.getElementById('oi_avoid_liquidating')?.checked;
   _oiCfg.requireEstablished = !!document.getElementById('oi_require_established')?.checked;
   _oiCfg.slBufferPips = num('oi_sl_buffer_pips', OI_DEFAULTS.slBufferPips);

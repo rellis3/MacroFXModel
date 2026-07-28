@@ -7716,6 +7716,7 @@ const OI_BOT_UNIVERSE = ['gold', ...OI_BOT_INDEX];
 const OI_BOT_CFG_DEFAULTS = {
   minTier: 'strong', slBufferPips: 15, breakPips: 20, nearExpiryDTE: 2, extendedPips: 30,
   fadeInPin: true, followBreaks: true, maxPainReversion: true,
+  levelLadderTP: false,              // TP to the next structural level (walls/flips/max-pain/magnets), not always max pain
   requireEstablished: false, avoidLiquidating: true,
   maxZonesPerSide: 4,                // PIN: K NEAREST strong walls per side; breakout: K strongest by OI
   secondaryTrim: 0.6,                // PIN fade: nearest wall = primary (full size), further walls ×this
@@ -7805,6 +7806,10 @@ async function _refreshOIBotZones() {
         nearFlip: !!dist?.near, regimeWarning: drift?.toward ? `flip migrating toward spot (${drift.fromDate}→${drift.toDate}) — regime change loading` : null,
         expMove: inst.expectedMove ? { upper: inst.expectedMove.upper, lower: inst.expectedMove.lower } : null,
         refMove: inst.refMove?.move ?? null,
+        // Level-ladder nodes (used only when cfg.levelLadderTP is on): the gamma-flip regime
+        // boundary and the vanna-exposure flip, alongside walls/max-pain/vol-magnets on `inst`.
+        gammaFlipLevel: Number.isFinite(flip) ? flip : null,
+        vannaFlipLevel: Number.isFinite(inst.greeksFlow?.vannaFlip) ? inst.greeksFlow.vannaFlip : null,
         vannaNote: _vn && _vn.firing ? `vanna ${_vn.state} firing (IV ${_vn.ivFalling ? 'falling' : 'rising'}) — indices strong, gold/FX weak` : null });
       const gex = inst.exposures?.gex ?? 0;
       // When an in-universe instrument yields no zones, say why (flat regime / no
