@@ -5308,6 +5308,30 @@ app.get('/api/fx-carry', async (req, res) => {
 });
 
 // ── NQ-QMR M5 candles for trade viewer ───────────────────────────────────────
+// One UTC day of NAS100 M5 bars. Shared by the QMR trade viewer and the COG
+// signal-log resolver — H1 is too coarse to resolve a 14:26 entry honestly.
+async function _fetchNqM5Day(date) {
+  const from = `${date}T00:00:00.000000000Z`;
+  const nextDay = new Date(date + 'T00:00:00Z');
+  nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+  const to = nextDay.toISOString().substring(0, 10) + 'T00:00:00.000000000Z';
+
+  const key  = process.env.OANDA_KEY;
+  const base = _oandaBaseMe();
+  const url  = `${base}/v3/instruments/NAS100_USD/candles`
+             + `?granularity=M5&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&price=M`;
+  const r = await fetch(url, { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(20_000) });
+  if (!r.ok) throw new Error(`OANDA M5 HTTP ${r.status}`);
+  const data = await r.json();
+  return (data.candles ?? []).filter(c => c.mid).map(c => ({
+    t: c.time.substring(0, 16),
+    o: parseFloat(c.mid.o),
+    h: parseFloat(c.mid.h),
+    l: parseFloat(c.mid.l),
+    c: parseFloat(c.mid.c),
+  }));
+}
+
 app.get('/api/nq-qmr/m5-candles', async (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
   const { date } = req.query;
@@ -5315,31 +5339,199 @@ app.get('/api/nq-qmr/m5-candles', async (req, res) => {
     return res.status(400).json({ ok: false, error: 'date param required (YYYY-MM-DD)' });
   }
   try {
-    const from = `${date}T00:00:00.000000000Z`;
-    const nextDay = new Date(date + 'T00:00:00Z');
-    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-    const to = nextDay.toISOString().substring(0, 10) + 'T00:00:00.000000000Z';
-
-    const key  = process.env.OANDA_KEY;
-    const base = _oandaBaseMe();
-    const url  = `${base}/v3/instruments/NAS100_USD/candles`
-               + `?granularity=M5&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&price=M`;
-    const r = await fetch(url, { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(20_000) });
-    if (!r.ok) throw new Error(`OANDA M5 HTTP ${r.status}`);
-    const data = await r.json();
-    const bars = (data.candles ?? []).filter(c => c.mid).map(c => ({
-      t: c.time.substring(0, 16),
-      o: parseFloat(c.mid.o),
-      h: parseFloat(c.mid.h),
-      l: parseFloat(c.mid.l),
-      c: parseFloat(c.mid.c),
-    }));
+    const bars = await _fetchNqM5Day(date);
     res.json({ ok: true, bars });
   } catch (err) {
     console.error('[nq-qmr m5]', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
+
+// ── COG signal log — the primary-source ledger ───────────────────────────────
+// We will never have COG's source data. We DO have his outputs, and outputs
+// are labels: a stop distance % per day IS a volatility forecast in numeric
+// form; a Long/Short IS a direction label; a close time IS a holding period.
+// This is the same play `cogReverseEngineer.js` already ran successfully on
+// his published vol levels — treat the outputs as labels and fit.
+//
+// Until 2026-07-28 the entire evidence base for this repo's COG gate
+// architecture was two sentences of remembered paraphrase in code comments
+// (see COG_OBSERVED_SYSTEM.md). This ledger exists so that never repeats:
+// every message is recorded the day it arrives, and each trading day is
+// resolved against real OANDA M5 bars with real costs — so after N days we
+// hold a costed forward record of HIS calls that is completely independent of
+// ever understanding his model. Measuring his edge does not require
+// reverse-engineering him; reverse-engineering him without that measurement
+// would be building on an unverified premise.
+const COG_LOG_KV = 'cog_signal_log';
+
+// COG's UI timestamps are UK local; OANDA bars are UTC. Returns how many hours
+// London is ahead of UTC on that date (0 GMT / 1 BST). Probing at 12:00 keeps
+// the 01:00-UTC DST switch out of the answer for the 02:00-15:00 times we log.
+function _ukOffsetHours(dateStr) {
+  const probe = new Date(dateStr + 'T12:00:00Z');
+  const lon = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false }).format(probe);
+  return parseInt(lon, 10) - 12;
+}
+// 'HH:MM' UK on `date` → 'HH:MM' UTC (same calendar day for our time range).
+function _ukToUtcHHMM(dateStr, hhmm) {
+  const [h, m] = String(hhmm).split(':').map(Number);
+  const utcH = h - _ukOffsetHours(dateStr);
+  return `${String(utcH).padStart(2, '0')}:${String(m ?? 0).padStart(2, '0')}`;
+}
+
+// Deliberately NOT _qmrWalkTrade: that walk's contract includes a TP leg and a
+// hard EOD-hour exit, and COG has neither — he exits on his own "close trade"
+// message. Borrowing it would silently impose two rules he doesn't run. The
+// cost netting IS shared (_qmrNetReturn), because that part is identical.
+function _cogWalk(bars, dir, entry, stopPct) {
+  const stop = dir === 'LONG' ? entry * (1 - stopPct / 100) : entry * (1 + stopPct / 100);
+  let mfe = 0, mae = 0;
+  for (const b of bars) {
+    const fav = dir === 'LONG' ? (b.h - entry) / entry * 100 : (entry - b.l) / entry * 100;
+    const adv = dir === 'LONG' ? (b.l - entry) / entry * 100 : (entry - b.h) / entry * 100;
+    if (fav > mfe) mfe = fav;
+    if (adv < mae) mae = adv;
+    if (dir === 'LONG'  && b.l <= stop) return { stop, exit: stop, exitReason: 'STOP', movePct: -stopPct, mfe, mae };
+    if (dir === 'SHORT' && b.h >= stop) return { stop, exit: stop, exitReason: 'STOP', movePct: -stopPct, mfe, mae };
+  }
+  const last = bars[bars.length - 1];
+  if (!last) return null;
+  const movePct = dir === 'LONG' ? (last.c - entry) / entry * 100 : (entry - last.c) / entry * 100;
+  return { stop, exit: last.c, exitReason: 'CLOSE_MSG', movePct, mfe, mae };
+}
+
+// Resolve one logged day against real bars. Returns null when the day can't be
+// resolved yet (no trade, missing fields, bars not published) — never guesses.
+async function _cogResolveDay(e) {
+  if (e?.entry?.action !== 'TRADE' || !e.entry.direction || !e.entry.t) return null;
+  const tier    = e.entry.tier === 'conservative' ? 'Cons' : 'Std';
+  const stopPct = e.g2?.[`stop${tier}`];
+  const riskPct = e.g2?.[`risk${tier}`];
+  if (!(stopPct > 0)) return null;
+
+  const bars = await _fetchNqM5Day(e.date);
+  if (!bars.length) return null;
+
+  const entryUtc = _ukToUtcHHMM(e.date, e.entry.t);
+  const iEntry   = bars.findIndex(b => b.t.substring(11, 16) >= entryUtc);
+  if (iEntry === -1) return null;
+  const entryPx = bars[iEntry].o;
+
+  // Exit window: through the logged close message if we have one, else the
+  // rest of the day's bars (flagged, so a missing close is never silently
+  // treated as an intentional end-of-day exit).
+  let after = bars.slice(iEntry + 1), closeAssumed = true;
+  if (e.close?.t) {
+    const closeUtc = _ukToUtcHHMM(e.date, e.close.t);
+    const sliced = after.filter(b => b.t.substring(11, 16) <= closeUtc);
+    if (sliced.length) { after = sliced; closeAssumed = false; }
+  }
+  const walk = _cogWalk(after, e.entry.direction, entryPx, stopPct);
+  if (!walk) return null;
+
+  const leverage = riskPct > 0 ? riskPct / stopPct : 1;
+  return {
+    entry_px: +entryPx.toFixed(1), entry_bar_t: bars[iEntry].t,
+    stop_px: +walk.stop.toFixed(1), exit_px: +walk.exit.toFixed(1),
+    exit_reason: walk.exitReason, close_time_assumed: closeAssumed,
+    raw_move_pct: +walk.movePct.toFixed(4),
+    net_move_pct: +_qmrNetReturn(walk.movePct, walk.exitReason === 'STOP' ? 'STOP' : 'EOD', 1).toFixed(4),
+    account_return_pct: +_qmrNetReturn(walk.movePct, walk.exitReason === 'STOP' ? 'STOP' : 'EOD', leverage).toFixed(4),
+    leverage: +leverage.toFixed(2), mfe_pct: +walk.mfe.toFixed(3), mae_pct: +walk.mae.toFixed(3),
+    resolved_at: new Date().toISOString(),
+  };
+}
+
+async function _cogLoadLog() {
+  try {
+    const raw = await kv.get(COG_LOG_KV);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    const arr = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.data) ? parsed.data : []);
+    return arr;
+  } catch { return []; }
+}
+const _cogSaveLog = log => kv.put(COG_LOG_KV, JSON.stringify({ data: log, timestamp: Date.now() }));
+
+app.get('/api/cog-signals', async (_req, res) => {
+  const log = await _cogLoadLog();
+  res.json({ ok: true, n: log.length, entries: log });
+});
+
+// Upsert one day. Body is the entry shape in COG_OBSERVED_SYSTEM.md §5.
+app.post('/api/cog-signals', async (req, res) => {
+  const e = req.body ?? {};
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(e.date ?? '')) {
+    return res.status(400).json({ ok: false, error: 'date (YYYY-MM-DD) required' });
+  }
+  const log = await _cogLoadLog();
+  const i = log.findIndex(x => x.date === e.date);
+  // Merge rather than replace: the four messages arrive hours apart, so a
+  // later POST must not wipe the stages already logged that morning.
+  if (i === -1) log.unshift({ ...e, logged_at: new Date().toISOString() });
+  else log[i] = { ...log[i], ...e, outcome: e.outcome ?? log[i].outcome };
+  log.sort((a, b) => b.date.localeCompare(a.date));
+  await _cogSaveLog(log);
+  res.json({ ok: true, n: log.length });
+});
+
+app.delete('/api/cog-signals/:date', async (req, res) => {
+  const log = (await _cogLoadLog()).filter(x => x.date !== req.params.date);
+  await _cogSaveLog(log);
+  res.json({ ok: true, n: log.length });
+});
+
+// Resolve every unresolved TRADE day against real bars. Idempotent; `force`
+// re-resolves days that already have an outcome (after a correction).
+app.post('/api/cog-signals/resolve', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
+  const force = req.query.force === 'true';
+  const log = await _cogLoadLog();
+  const today = new Date().toISOString().substring(0, 10);
+  let resolved = 0, skipped = 0;
+  for (const e of log) {
+    if (e.date >= today) { skipped++; continue; }          // day not closed yet
+    if (e.outcome && !force) continue;
+    try {
+      const o = await _cogResolveDay(e);
+      if (o) { e.outcome = o; resolved++; } else skipped++;
+    } catch (err) { e.resolve_error = err.message; skipped++; }
+  }
+  await _cogSaveLog(log);
+  res.json({ ok: true, resolved, skipped, ...(_cogSummary(log)) });
+});
+
+// Forward record of HIS calls — after costs, on the account basis his own
+// risk/stop implies. No model of his system is involved anywhere in this.
+function _cogSummary(log) {
+  const done = log.filter(e => e.outcome?.account_return_pct != null);
+  if (!done.length) return { summary: null };
+  const r = done.map(e => e.outcome.account_return_pct);
+  let eq = 1; for (const x of r) eq *= (1 + x / 100);
+  const dirs = done.map(e => e.entry.direction);
+  // Run-length test (COG_OBSERVED_SYSTEM.md §4g): a slow liquidity-driven
+  // direction arrives in RUNS; a fast pre-open read alternates near randomly.
+  // This discriminates the two hypotheses with no model at all.
+  let runs = dirs.length ? 1 : 0;
+  for (let i = 1; i < dirs.length; i++) if (dirs[i] !== dirs[i - 1]) runs++;
+  const nL = dirs.filter(d => d === 'LONG').length, nS = dirs.length - nL;
+  const expRuns = dirs.length > 1 ? (2 * nL * nS) / dirs.length + 1 : null;
+  return {
+    summary: {
+      n: done.length,
+      wins: r.filter(x => x > 0).length,
+      winRate: +(100 * r.filter(x => x > 0).length / done.length).toFixed(1),
+      cumulativeReturnPct: +((eq - 1) * 100).toFixed(2),
+      avgPerTradePct: +(r.reduce((s, x) => s + x, 0) / done.length).toFixed(3),
+      stopOuts: done.filter(e => e.outcome.exit_reason === 'STOP').length,
+      longs: nL, shorts: nS,
+      directionRuns: runs,
+      runsExpectedIfRandom: expRuns != null ? +expRuns.toFixed(1) : null,
+      note: 'runs << expected ⇒ slow/persistent direction signal; runs ≈ expected ⇒ fast pre-open read',
+    },
+  };
+}
 
 // ── NQ-QMR parameter optimizer ────────────────────────────────────────────────
 app.get('/api/nq-qmr/optimize', async (req, res) => {

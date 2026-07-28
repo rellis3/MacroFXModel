@@ -169,6 +169,17 @@ export function openOIModal() {
   if (ivEl) ivEl.value = existing ? (existing.rawIV || '') : '';
   const ivtEl = document.getElementById('oiIVTermData');
   if (ivtEl) ivtEl.value = existing ? (existing.rawIVTerm || '') : '';
+  // The call/put swap only means anything on 6J/6C/6S, so hide it elsewhere rather
+  // than offer a toggle that would silently corrupt a normally-quoted pair. Restores
+  // whatever the last save used, so reopening shows the interpretation in force.
+  {
+    const inv = futuresIsInverted(sym);
+    const w = document.getElementById('oiSwapCPWrap'), h = document.getElementById('oiSwapCPHint');
+    const b = document.getElementById('oiSwapCP');
+    if (w) w.style.display = inv ? 'flex' : 'none';
+    if (h) h.style.display = inv ? '' : 'none';
+    if (b) b.checked = inv && !!existing?.cpSwapped;
+  }
   updateSmileHint();   // reopening with pastes already in place → show the hint straight away
   updateOIBasis();
   // localStorage may have been trimmed to fit its ~5MB quota (raw pastes dropped
@@ -1282,6 +1293,28 @@ export async function processOIData() {
       : parsed.strikes.map(s => s - basis);
   }
 
+  // ── INVERTED-PAIR CALL/PUT SWAP (opt-in, default OFF) ──────────────────────
+  //
+  // On 6J/6C/6S the CME quotes the FOREIGN currency in USD, so inverting the strike
+  // also inverts what the option means. 6J is USD-per-JPY: a 6J CALL pays off when 6J
+  // rises — JPY strengthening — which is USD/JPY FALLING. Heavy 6J call OI therefore
+  // creates resistance in 6J terms and, once flipped into USD/JPY terms, a FLOOR.
+  // On that reading a 6J call wall is a USD/JPY PUT wall, and the labels — plus the
+  // direction the bot trades them — are currently backwards for three pairs.
+  //
+  // That argument is from contract mechanics, not from a reference number, and the
+  // live data neither confirms nor refutes it (USD/JPY's put walls also sit below
+  // spot; USD/CAD's call wall sits above). So this is a SWITCH, not a correction:
+  // default OFF preserves today's behaviour exactly, and flipping it per pair lets
+  // paper trading settle the question instead of a guess. Swapping here — before max
+  // pain, the walls, the GEX profile and everything downstream — means one flag
+  // reaches the export, both bots and the dashboard with no second copy to drift.
+  const cpSwapped = futuresIsInverted(pair) && !!document.getElementById('oiSwapCP')?.checked;
+  if (cpSwapped) {
+    [parsed.calls, parsed.puts] = [parsed.puts, parsed.calls];
+    [parsed.callChg, parsed.putChg] = [parsed.putChg, parsed.callChg];
+  }
+
   // Fallback spot for Greeks if OANDA price unavailable
   if (!spot) spot = parsed.strikes[Math.floor(parsed.strikes.length / 2)];
 
@@ -1503,6 +1536,7 @@ export async function processOIData() {
 
   const inst = {
     pair, spot, futures: futuresUsed, basis: basis || null,
+    cpSwapped,       // inverted pairs only: were call/put labels flipped into pair terms?
     futuresSource,   // 'manual' | 'live-yahoo' | 'live-cfd-proxy' | 'iv-title-live' | 'heatmap-header-settle' | 'field'
     futuresSymbol,   // e.g. GC=F / 6E=F — WHICH contract the price came from
     spotSource,      // 'live-paired' when both legs came from one request (the honest basis)

@@ -168,5 +168,46 @@ console.log('[empty paste]');
 threw = await run({ oiRawData: '' });
 ok('no throw on an empty OI box', !threw, threw ? threw.message : '');
 
+// ── inverted-pair call/put swap: a SWITCH, verified in both positions ───────
+// The mechanism (a 6J call pays when USD/JPY falls, so a 6J call wall is USD/JPY
+// support) is unproven against a reference, so it ships default-OFF and gets flipped
+// per pair while paper trading. What IS testable: the flag reaches the derived levels,
+// off changes nothing, and it can never fire on a normally-quoted pair.
+console.log('[inverted-pair C/P swap]');
+{
+  FIELDS.oiPairSelect = 'USD/JPY';
+  FIELDS.oiSpotPrice = '163.500';
+  FIELDS.oiFuturesPrice = '';
+  el('oiPairSelect').value = 'USD/JPY';
+  el('oiSwapCP').checked = false;
+  globalThis.fetch = async (url) => String(url).includes('/api/futures-quote')
+    ? { ok: true, json: async () => ({ ok: true, price: 0.0061315, symbol: '6J=F', kind: 'future',
+        source: 'yahoo', spot: 163.500, spotSource: 'oanda', at: 1 }) }
+    : { ok: true, json: async () => ({ ok: true, data: {} }) };
+
+  await run();
+  const off = JSON.parse(localStorage.getItem('oi_store') || '{}')['USD/JPY'];
+  ok('unswapped run records the flag as false', off && off.cpSwapped === false, `${off?.cpSwapped}`);
+
+  el('oiSwapCP').checked = true;
+  await run();
+  const on = JSON.parse(localStorage.getItem('oi_store') || '{}')['USD/JPY'];
+  ok('swapped run records the flag as true', on?.cpSwapped === true, `${on?.cpSwapped}`);
+  ok('call and put OI totals exchange places',
+    on && off && on.totalCallOI === off.totalPutOI && on.totalPutOI === off.totalCallOI,
+    `off ${off?.totalCallOI}/${off?.totalPutOI} → on ${on?.totalCallOI}/${on?.totalPutOI}`);
+  ok('the derived walls move as a result',
+    on && off && (on.callWall !== off.callWall || on.putWall !== off.putWall),
+    `cw ${off?.callWall} → ${on?.callWall}`);
+
+  // Must be impossible to fire on a normally-quoted pair, even with the box ticked.
+  FIELDS.oiPairSelect = 'EUR/USD'; el('oiPairSelect').value = 'EUR/USD';
+  FIELDS.oiSpotPrice = '1.13800';
+  el('oiSwapCP').checked = true;
+  await run();
+  const eur = JSON.parse(localStorage.getItem('oi_store') || '{}')['EUR/USD'];
+  ok('a non-inverted pair ignores the flag entirely', eur?.cpSwapped === false, `${eur?.cpSwapped}`);
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

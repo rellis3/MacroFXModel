@@ -321,6 +321,7 @@ function diagBar(e){
     Number.isFinite(e.futuresStale)&&Math.abs(e.futuresStale)>0?' ('+(e.futuresStale/pip(SYM)).toFixed(0)+'p stale)':''}</span>`);
   c.push(`<span class="chip ${e.refMove?.source==='flat-vol'?'warn':'good'}">move <b>${esc(e.refMove?.source||'—')}</b></span>`);
   c.push(`<span class="chip ${e.greeksFlow?'good':''}">greeks <b>${e.greeksFlow?e.greeksFlow.source+' · '+e.greeksFlow.dteDays+'d':'none'}</b></span>`);
+  if(/JPY|CAD|CHF/.test(SYM)) c.push(`<span class="chip ${e.cpSwapped?'warn':''}">C/P <b>${e.cpSwapped?'flipped to pair terms':'as quoted (6J/6C/6S)'}</b></span>`);
   if(e.dataWarning) c.push(`<span class="chip bad">⚠ ${esc(e.dataWarning)}</span>`);
   return `<div class="diag">${c.join('')}</div>`;
 }

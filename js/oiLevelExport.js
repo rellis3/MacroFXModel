@@ -76,6 +76,9 @@ function fmtSaved(inst) {
   if (inst?.savedAt) bits.push(`saved ${inst.savedAt}`);
   if (Number.isFinite(inst?.spot)) bits.push(`spot ${inst.spot}`);
   if (Number.isFinite(inst?.dte)) bits.push(`DTE ${inst.dte}`);
+  // Inverted pairs can be exported under either call/put reading — say which, or a
+  // red 'call wall' below spot looks like a bug rather than a deliberate setting.
+  if (inst?.cpSwapped) bits.push('C/P flipped to pair terms');
   const rg = regimeOf(inst);
   if (rg) bits.push(`regime ${rg}`);
   return bits.length ? `· ${bits.join(' · ')}` : null;

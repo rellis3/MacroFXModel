@@ -144,6 +144,10 @@ const _CF_EXACT = new Set([
   // to stamp every gate/entry alert. Written by hand from a recorded run, never
   // recomputed live; losing it silently reverts every alert to "⚠ UNVALIDATED".
   'nq_qmr_validation', 'spx_qmr_validation', 'dow_qmr_validation', 'dax_qmr_validation',
+  // COG's own messages, logged by hand as they arrive — irreplaceable primary
+  // source (see COG_OBSERVED_SYSTEM.md). Losing this loses data that cannot be
+  // recomputed from anything, ever.
+  'cog_signal_log',
   'nav_layout',             // index.html command-hub custom category/order — user drag-drop, must survive redeploys and sync across devices
   'scratchpad_notes',       // index.html scratchpad modal — free-text personal notes, must survive redeploys and sync across devices
 ]);
