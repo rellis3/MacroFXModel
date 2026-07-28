@@ -127,7 +127,9 @@ import { fillRealismLadder as _fillRealismLadder } from './js/fillRealismEngine.
 import { honestPolicy as _honestPolicy, netPortfolio as _netPortfolio } from './js/honestPolicyEngine.js';   // COG's cell-selection on honest 1-min fills → portfolio curve
 import { reverseEngineer as _cogReverseEngineer, COG_CONST as _COG_CONST } from './js/cogReverseEngineer.js';   // infer COG's vol algorithm
 import { hvVarSeries as _hvVarSeries, yzVolSeries as _yzVolSeries, ewmaVarSeries as _ewmaVarSeries, garchSigmas as _garchSigmas } from './js/volBacktestEngine.js';
-import { sharpeStdError as _sharpeStdError, minTrackRecordLength as _minTrackRecordLength } from './js/metricsCore.js';   // Sharpe honesty pair (error bar + min track record)
+import { sharpeStdError as _sharpeStdError, minTrackRecordLength as _minTrackRecordLength,
+         sharpeStdError, minTrackRecordLength, histVaR, histCVaR, skewness, excessKurtosis,
+         profitFactor, winRate } from './js/metricsCore.js';   // Sharpe honesty pair + tearsheet distribution stats
 import { evaluateForecast } from './js/volForecastResearchEngine.js';
 import { evaluateEstimatorAB, buildLondonDaily } from './js/volEstimatorAB.js';
 import { analyzeCogLevels as _analyzeCogLevels } from './js/cogLevelPoc.js';   // COG-level POC
@@ -163,6 +165,7 @@ import { computeExitScore } from './js/cogExitEngine.js';
 import { runV2Backtest } from './js/cogStateEngine.js';
 import { loadHistoricalCogDataset } from './js/cogHistoricalDataLoader.js';
 import { runCogV3 } from './js/cogV3Engine.js';
+import { bothSidesWalk, groupBarsByDate, entryBarFor } from './js/qmrCore.js';
 import { runPivotSpike } from './js/pivotSpikeEngine.js';
 import { COG_V2_TRIGGER_WINDOW, COG_V2_NY_OPEN_MINUTE, COG_V2_ENTRY_DEADLINE_MINUTE, COG_V2_SETUP_NOTE, COG_V2_RISK_NOTE, COG_V2_IMPULSE_PARAMS, COG_V2_TRIGGER_SCORE, COG_V2_SETUP_HYSTERESIS, COG_V2_SLOW_SMOOTH, COG_V2_CONFIDENCE, COG_V2_MIN_SETUP_PERSIST_BARS } from './js/cogV2Config.js';
 import { liveSignal as hedgeV2Live, runComparison as hedgeV2Comparison, V2_DEFAULTS as HEDGE_V2_DEFAULTS } from './js/hedgeSignalV2Engine.js';
@@ -5517,6 +5520,149 @@ app.get('/api/nq-qmr/m5-candles', async (req, res) => {
     res.status(500).json({ ok: false, error: err.message });
   }
 });
+
+// ── QMR tearsheet — the shareable report ────────────────────────────────────
+// Full standard results card for either construction (directional | bothsides),
+// in the same field set COG's own tearsheet uses so the two are directly
+// comparable. Every metric comes from js/metricsCore.js — one definition of
+// Sharpe/Sortino/DD across the whole repo, never re-implemented here.
+// MAE per trade is read off the REAL intra-trade path (bothSidesWalk tracks the
+// combined mark bar by bar; the directional arm uses the engine's own MFE/MAE
+// scan), never approximated from the close-to-close return.
+app.get('/api/nq-qmr/tearsheet', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
+  try {
+    const instrument = NQ_QMR_INSTRUMENTS.has(req.query.instrument) ? req.query.instrument : 'NAS100_USD';
+    const mode = req.query.mode === 'directional' ? 'directional' : 'bothsides';
+    const accountEquity = Number.isFinite(+req.query.accountEquity) ? +req.query.accountEquity : 100_000;
+    const cfg = {};
+    for (const [k, def] of Object.entries(NQ_QMR_DEFAULTS)) {
+      cfg[k] = typeof def === 'string' ? (req.query[k] ?? def)
+             : (req.query[k] != null ? parseFloat(req.query[k]) : def);
+    }
+    cfg.showControl = true;
+    const bars = await _getNqQmrBars(instrument);
+    const raw  = _computeNqQmr(bars, cfg);
+
+    // Build the trade series for the requested construction.
+    let rows;
+    if (mode === 'directional') {
+      rows = raw.trades.map(t => ({
+        date: t.date, ret: t.tradeReturn, mae: t.maePct, mfe: t.mfePct,
+        direction: t.direction, exitReason: t.exitReason, stopPct: t.stopPct,
+        riskPct: cfg.riskPct,
+      }));
+    } else {
+      // Re-walk each traded day jointly for the honest combined path.
+      const byDate = groupBarsByDate(bars);
+      const dates  = Object.keys(byDate).sort();
+      const idx    = new Map(dates.map((d, i) => [d, i]));
+      rows = [];
+      for (const t of raw.trades) {
+        const i = idx.get(t.date); if (i == null || i < 1) continue;
+        const dayBars = byDate[t.date] || [];
+        const entryBar = dayBars.find(b => Math.abs(b.o - t.entry) < 1e-9) ?? entryBarFor(dayBars);
+        if (!entryBar) continue;
+        const after = dayBars.filter(b => b.t.substring(11, 13) > entryBar.t.substring(11, 13))
+                             .sort((a, b) => a.t.localeCompare(b.t));
+        const w = bothSidesWalk(after, t.entry, t.stopPct, cfg.tpPct);
+        if (!w) continue;
+        const lev = cfg.riskPct / t.stopPct;
+        // Cost once on the combined notional; stop slippage pro-rata to the
+        // number of legs that actually stopped (each leg is half the notional).
+        const slip = cfg.stopSlipPct * (w.stoppedLegs / 2);
+        rows.push({
+          date: t.date, ret: (w.movePct - cfg.costPct - slip) * lev,
+          mae: w.maePct * lev, mfe: w.mfePct * lev,
+          direction: 'BOTH', exitReason: w.exitReason, stopPct: t.stopPct,
+          riskPct: cfg.riskPct, stoppedLegs: w.stoppedLegs,
+        });
+      }
+    }
+    if (rows.length < 10) return res.json({ ok: false, error: `only ${rows.length} trades` });
+
+    const report = _qmrTearsheet(rows, accountEquity);
+    // Chronological IS/OOS split (70/30 by trade date — never by index shuffle).
+    const cut = Math.floor(rows.length * 0.7);
+    res.json({
+      ok: true, instrument, mode, accountEquity, config: cfg,
+      generatedAt: new Date().toISOString(),
+      ...report,
+      inSample:  _qmrTearsheet(rows.slice(0, cut), accountEquity),
+      outOfSample: _qmrTearsheet(rows.slice(cut), accountEquity),
+      splitDate: rows[cut]?.date ?? null,
+      trades: rows,
+    });
+  } catch (e) {
+    console.error('[qmr-tearsheet]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// One tearsheet from a {date, ret, mae}[] series. Calendar-daily basis with
+// flat weekdays as zeros — the same methodology _qmrStats uses, so the numbers
+// on this card and the backtest card can never disagree.
+function _qmrTearsheet(rows, accountEquity) {
+  const r = rows.map(x => x.ret / 100);
+  const d0 = new Date(rows[0].date + 'T00:00:00Z'), d1 = new Date(rows[rows.length - 1].date + 'T00:00:00Z');
+  let N = 0;
+  for (let t = d0.getTime(); t <= d1.getTime(); t += 864e5) { const w = new Date(t).getUTCDay(); if (w !== 0 && w !== 6) N++; }
+  N = Math.max(N, r.length);
+  const years = Math.max((d1 - d0) / (365.25 * 864e5), 0.01);
+  const muD = r.reduce((s, x) => s + x, 0) / N;
+  const varD = Math.max(r.reduce((s, x) => s + x * x, 0) / N - muD * muD, 0);
+  const sigD = Math.sqrt(varD);
+  const sharpe = sigD > 0 ? (muD / sigD) * Math.sqrt(252) : 0;
+  const downDev = Math.sqrt(r.reduce((s, x) => s + Math.min(x, 0) ** 2, 0) / N);
+  const sortino = downDev > 0 ? (muD / downDev) * Math.sqrt(252) : 0;
+
+  let eq = 1, peak = 1, maxDD = 0, ddStart = null, maxDDdur = 0, curDur = 0;
+  const curve = [];
+  for (const x of rows) {
+    eq *= (1 + x.ret / 100);
+    if (eq > peak) { peak = eq; curDur = 0; } else { curDur++; maxDDdur = Math.max(maxDDdur, curDur); }
+    maxDD = Math.max(maxDD, (peak - eq) / peak);
+    curve.push({ date: x.date, equity: +eq.toFixed(6), equityDollars: +(accountEquity * eq).toFixed(2) });
+  }
+  const cagr = (Math.pow(eq, 1 / years) - 1) * 100;
+  const pnls = rows.map(x => x.ret);
+  const wins = pnls.filter(x => x > 0), losses = pnls.filter(x => x <= 0);
+
+  // Monthly returns matrix (compounded within each month).
+  const byMonth = {};
+  for (const x of rows) (byMonth[x.date.substring(0, 7)] ??= []).push(x.ret);
+  const monthly = Object.entries(byMonth).map(([month, v]) => {
+    let e = 1; for (const y of v) e *= (1 + y / 100);
+    return { month, return: +((e - 1) * 100).toFixed(2) };
+  }).sort((a, b) => a.month.localeCompare(b.month));
+
+  return {
+    startDate: rows[0].date, endDate: rows[rows.length - 1].date, years: +years.toFixed(2),
+    totalReturn: +((eq - 1) * 100).toFixed(2), cagr: +cagr.toFixed(2),
+    monthlyReturn: +(((Math.pow(eq, 1 / Math.max(years * 12, 1)) - 1) * 100)).toFixed(2),
+    annualVol: +(sigD * Math.sqrt(252) * 100).toFixed(2),
+    sharpe: +sharpe.toFixed(3), sortino: +sortino.toFixed(3),
+    calmar: maxDD > 0 ? +(cagr / (maxDD * 100)).toFixed(3) : null,
+    omega: +profitFactor(pnls).toFixed(3),
+    maxDrawdown: +(-maxDD * 100).toFixed(2), maxDDdurationTrades: maxDDdur,
+    var95: +histVaR(pnls, 0.95).toFixed(3), var99: +histVaR(pnls, 0.99).toFixed(3),
+    cvar95: +histCVaR(pnls, 0.95).toFixed(3),
+    winRate: +(winRate(pnls) * 100).toFixed(2), profitFactor: +profitFactor(pnls).toFixed(3),
+    avgWin: wins.length ? +(wins.reduce((s, x) => s + x, 0) / wins.length).toFixed(3) : 0,
+    avgLoss: losses.length ? +(losses.reduce((s, x) => s + x, 0) / losses.length).toFixed(3) : 0,
+    avgTrade: +(pnls.reduce((s, x) => s + x, 0) / pnls.length).toFixed(3),
+    bestDay: +Math.max(...pnls).toFixed(2), worstDay: +Math.min(...pnls).toFixed(2),
+    bestMonth: monthly.length ? +Math.max(...monthly.map(m => m.return)).toFixed(2) : 0,
+    worstMonth: monthly.length ? +Math.min(...monthly.map(m => m.return)).toFixed(2) : 0,
+    skewness: +skewness(pnls).toFixed(3), excessKurtosis: +excessKurtosis(pnls).toFixed(3),
+    positiveMonths: monthly.filter(m => m.return > 0).length,
+    negativeMonths: monthly.filter(m => m.return <= 0).length,
+    monthCount: monthly.length, tradingDays: rows.length, totalTrades: rows.length,
+    sharpeSE: +(sharpeStdError(sharpe, N) || 0).toFixed(3),
+    minTrackYears: Number.isFinite(minTrackRecordLength(sharpe)) ? +minTrackRecordLength(sharpe).toFixed(1) : null,
+    monthly, curve,
+  };
+}
 
 // ── COG v3 — COG's macro signal on QMR's validated intraday chassis ─────────
 // See js/cogV3Engine.js for the full rationale. Short version: QMR kept COG's

@@ -148,6 +148,66 @@ export function qmrStats(trades, curve, equity) {
            totalReturn: +((equity - 1) * 100).toFixed(2) };
 }
 
+// Joint walk of the BOTH-SIDES book: long and short opened together at half
+// size each, so total notional (and therefore total cost) equals one full
+// position. Walks the two legs through the SAME bars simultaneously and tracks
+// the COMBINED mark bar by bar — which is the only honest way to get MAE/MFE
+// here, because the combined path is nothing like either leg's own path. At
+// entry the book is net flat; it only develops P&L once one leg closes.
+//
+// Geometry, for a stop s and target t (t > s): as price falls, the long stops
+// at -s BEFORE the short reaches -t, so the losing leg is capped at -1R while
+// the winner runs to +t. Both legs lose only on a whipsaw that takes out -s and
+// +s in the same session. Returns combined percentages already halved, so
+// `movePct` is directly comparable to a single full-size position's move.
+export function bothSidesWalk(bars, entry, stopPct, tpPct, timing = QMR_TIMING) {
+  if (!bars.length) return null;
+  const lStop = entry * (1 - stopPct / 100), lTp = tpPct > 0 ? entry * (1 + tpPct / 100) : null;
+  const sStop = entry * (1 + stopPct / 100), sTp = tpPct > 0 ? entry * (1 - tpPct / 100) : null;
+  let lDone = null, sDone = null;   // realised leg move %, once closed
+  let lStopped = false, sStopped = false;
+  let mfe = 0, mae = 0, exitReason = 'EOD';
+
+  const mark = px => {
+    const l = lDone != null ? lDone : (px - entry) / entry * 100;
+    const s = sDone != null ? sDone : (entry - px) / entry * 100;
+    return (l + s) / 2;
+  };
+
+  for (const bar of bars) {
+    // Stop before TP within a bar, on BOTH legs — intrabar path is unknown, so
+    // the conservative assumption is mandatory (same rule as walkTrade).
+    if (lDone == null && bar.l <= lStop) { lDone = -stopPct; lStopped = true; }
+    if (sDone == null && bar.h >= sStop) { sDone = -stopPct; sStopped = true; }
+    if (lDone == null && lTp !== null && bar.h >= lTp) lDone = tpPct;
+    if (sDone == null && sTp !== null && bar.l <= sTp) sDone = tpPct;
+
+    // Combined mark at this bar's extremes, with whichever legs are still open.
+    for (const px of [bar.l, bar.h, bar.c]) {
+      const m = mark(px);
+      if (m > mfe) mfe = m;
+      if (m < mae) mae = m;
+    }
+    if (lDone != null && sDone != null) { exitReason = 'BOTH_CLOSED'; break; }
+    if (parseInt(bar.t.substring(11, 13)) >= timing.eodHour) {
+      if (lDone == null) lDone = (bar.c - entry) / entry * 100;
+      if (sDone == null) sDone = (entry - bar.c) / entry * 100;
+      exitReason = 'EOD';
+      break;
+    }
+  }
+  const last = bars[bars.length - 1];
+  if (lDone == null) lDone = (last.c - entry) / entry * 100;
+  if (sDone == null) sDone = (entry - last.c) / entry * 100;
+
+  return {
+    movePct: (lDone + sDone) / 2,
+    longMovePct: lDone, shortMovePct: sDone,
+    stoppedLegs: (lStopped ? 1 : 0) + (sStopped ? 1 : 0),
+    exitReason, mfePct: mfe, maePct: mae,
+  };
+}
+
 // Group H1 bars by UTC date — the shared first step of every chassis consumer.
 export function groupBarsByDate(bars) {
   const byDate = {};
