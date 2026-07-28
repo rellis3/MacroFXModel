@@ -132,7 +132,26 @@ gates (≥100 trades, WR ≥58%, PF ≥1.5, max DD >−20%, top-5-day concentrat
 
 ## 4. QMR — The Most Speculative
 
-### No results exist
+> **UPDATE 2026-07-28 — this section is now partly out of date. Read
+> `QMR_WALKFORWARD_RESULT.md` first.** The demanded honest run has been
+> committed: 4 contiguous years, non-overlapping walk-forward, params fit on
+> IS only, after costs — **433 OOS trades, mean OOS Sharpe 1.18, 6/8 windows
+> positive, 3.45× (36% CAGR at ~3.4× leverage)**. Specific corrections to
+> what follows: (a) **costs ARE applied** inside `_computeNqQmr` now, before
+> leverage; (b) the one-hour gate lookahead named elsewhere in this repo was
+> fixed and the stats re-based; (c) the optimizer's trade-count-inflating
+> Sharpe was replaced with a daily-calendar Sharpe; (d) "no published
+> precedent" was too harsh — market intraday momentum (Gao/Han/Li/Zhou 2018),
+> the overnight-vs-intraday return decomposition (Lou/Polk/Skouras) and
+> opening-range breakout are all real, replicated relatives of this thesis.
+> What **stands**: the 5,250-config optimizer is still far too dense per
+> trade; the system is cost-critical (dead by 4bp round-trip); and the
+> Systems-2/3/4 criticism below was *right* — S2 and S4 now measure as noise
+> against their own counterfactuals. The still-unanswered question the fade
+> patches were pointing at is registered as `PREREGISTERED_EVALUATIONS.md`
+> §5b: does the direction call beat a coin flip on the same days at all?
+
+### No results exist (as of the original review — superseded, see above)
 The engine (`server.js` `_computeNqQmr()`, ~lines 2254–2654) computes everything
 live; **nothing has ever been committed**. The "interesting result" is something
 seen once on the dashboard, not a validated, reproducible figure.

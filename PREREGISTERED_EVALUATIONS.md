@@ -91,6 +91,37 @@ the clock instead.
   entry alerts (gates may keep logging for the record); DAX/DOW/SPX were
   never validated, so failure is the expected outcome there.
 
+## 5b. QMR direction-vs-geometry control arm (registered 2026-07-28)
+
+Registered **before** the run — the arm exists in code (`_computeNqQmr`'s
+`showControl`) but has never been executed against data at the time of
+writing, and this bar is committed in the same push as the code.
+
+- **The question:** S1's payoff is deliberately asymmetric (stop ≈ 0.45%,
+  TP 1.5% ≈ 3.3R). On any day that trends far enough to touch a TP, the
+  *average of both directions* is positive — so "S1 makes money" is not by
+  itself evidence the gates predict direction. Does the direction call add
+  anything over a coin flip on the same gate-selected days?
+- **Test:** inverse-direction control on every S1 day, identical
+  stop/TP/leverage/costs. `coinFlip = (S1 + inverse)/2`;
+  `dirAlpha = S1 − coinFlip` per trade, paired t across the same days.
+- **Direction has edge if:** `dirAlpha > 0` with paired t ≥ 2.0 at n ≥ 300.
+- **Direction is null if:** the 95% CI on `dirAlpha` contains 0, or
+  `dirAlpha` ≤ the per-trade cost floor. Then QMR is a **day-selector
+  feeding an asymmetric payoff**, not a continuation forecast — the gates
+  keep their job (choosing days), the direction claim is retired, and the
+  successor to test is a both-sides / synthetic-straddle construction on
+  the same selected days.
+- **Either outcome is publishable and neither rescues the other.** A null
+  here does NOT invalidate the walk-forward OOS result in
+  `QMR_WALKFORWARD_RESULT.md` — that money was made either way. It changes
+  only the *explanation*, and therefore what gets built next.
+- **Already-known partial evidence (why this is worth running):** on the
+  three subsets where the engine already computes both directions, the coin
+  flip pays +0.21% to +0.25% per trade against a cost floor of −0.027%, and
+  direction's own contribution measures −0.136% (extended), +0.011%
+  (choppy), −0.006% (rejection). The clean-day majority is untested.
+
 ## 6. Regime V7 (post slope-fix record)
 
 - **Record:** paper/demo from the slope-window fix onward (earlier live

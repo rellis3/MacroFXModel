@@ -140,6 +140,10 @@ const _CF_EXACT = new Set([
   'spx_qmr_status', 'spx_qmr_audit', 'spx_qmr_config',  // SPX-QMR — same persistence needs as NQ-QMR
   'dow_qmr_status', 'dow_qmr_audit', 'dow_qmr_config',  // DOW-QMR — same persistence needs as NQ-QMR
   'dax_qmr_status', 'dax_qmr_audit', 'dax_qmr_config',  // DAX-QMR — same persistence needs as NQ-QMR
+  // Committed walk-forward OOS result per instrument — read by _qmrValidationLine
+  // to stamp every gate/entry alert. Written by hand from a recorded run, never
+  // recomputed live; losing it silently reverts every alert to "⚠ UNVALIDATED".
+  'nq_qmr_validation', 'spx_qmr_validation', 'dow_qmr_validation', 'dax_qmr_validation',
   'nav_layout',             // index.html command-hub custom category/order — user drag-drop, must survive redeploys and sync across devices
   'scratchpad_notes',       // index.html scratchpad modal — free-text personal notes, must survive redeploys and sync across devices
 ]);

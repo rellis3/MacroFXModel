@@ -3289,6 +3289,7 @@ function _computeNqQmr(bars, cfg = {}) {
     extPctThreshold = 75,    // percentile (vs trailing history) of move-used-by-entry/ADR above which a confirmed day counts as "extended"
     showSystem4     = false, // also compute chop-fade trades (G1+G2 confirm, but the session's path was inefficient/choppy, not a clean trend)
     effPctThreshold = 25,    // percentile (vs trailing history) of trend efficiency BELOW which a confirmed day counts as "choppy"
+    showControl     = false, // also compute the INVERSE-direction control arm on every S1 day (see below)
     costPct         = QMR_COSTS.costPct,     // round-trip transaction cost (spread + commission), % of notional
     stopSlipPct     = QMR_COSTS.stopSlipPct, // extra slippage % of notional, charged only on stop exits (market order through a moving market)
   } = cfg;
@@ -3323,9 +3324,9 @@ function _computeNqQmr(bars, cfg = {}) {
   const extRatioHistory = []; // causal — confirm-day extension ratios seen strictly before "today"
   const effRatioHistory = []; // causal — confirm-day trend-efficiency ratios seen strictly before "today"
 
-  const trades = [], trades2 = [], trades3 = [], trades2cf = [], trades4 = [];
-  let equity1 = 1.0, equity2 = 1.0, equity3 = 1.0, equity4 = 1.0, equityCombo = 1.0;
-  const curve1 = [], curve2 = [], curve3 = [], curve4 = [], curveCombo = [];
+  const trades = [], trades2 = [], trades3 = [], trades2cf = [], trades4 = [], tradesCtl = [];
+  let equity1 = 1.0, equity2 = 1.0, equity3 = 1.0, equity4 = 1.0, equityCombo = 1.0, equityCtl = 1.0;
+  const curve1 = [], curve2 = [], curve3 = [], curve4 = [], curveCombo = [], curveCtl = [];
 
   for (let di = 1; di < dates.length; di++) {
     const today = dates[di];
@@ -3496,6 +3497,35 @@ function _computeNqQmr(bars, cfg = {}) {
       trades.push({ ...tradeBase, equity: +equity1.toFixed(6), system: 'S1', extended: isExtended, choppy: isChoppy });
       curve1.push({ date: today, equity: +equity1.toFixed(6) });
 
+      // ── CONTROL ARM: the same day, the INVERSE direction ─────────────────
+      // The null this system has never been tested against. S1's payoff is
+      // deliberately asymmetric (stop ≈ 0.45%, TP 1.5% ≈ 3.3R), so on any day
+      // that trends far enough to touch a TP, the AVERAGE of the two directions
+      // is positive regardless of which one the gates picked — the geometry
+      // pays, not the forecast. That means "S1 makes money" is NOT evidence the
+      // gates predict direction. The honest baseline is a coin flip on the very
+      // same gate-selected days, with identical stop/TP/leverage/costs:
+      //   coinFlip = (S1 + inverse) / 2   ← day selection + payoff geometry
+      //   dirAlpha =  S1 − coinFlip       ← what the DIRECTION call adds
+      // Everything else (day selection, stop, leverage, cost) is held identical,
+      // so the paired difference isolates the direction call and nothing else.
+      // Same fade-direction walk as S3/S4, applied to EVERY S1 day rather than
+      // only the extended/choppy subsets, so the whole sample is covered.
+      if (showControl) {
+        const ctlDir  = gate2 === 'LONG' ? 'SHORT' : 'LONG';
+        const ctlWalk = _qmrWalkTrade(afterEntry, ctlDir, entry, effStopPct, tpPct);
+        if (ctlWalk) {
+          const ctlReturn = _netReturn(ctlWalk.movePct, ctlWalk.exitReason, leverage);
+          equityCtl *= (1 + ctlReturn / 100);
+          tradesCtl.push({ date: today, gate1, gate2, direction: ctlDir, entry,
+                           stop: ctlWalk.stop, exit: ctlWalk.exit, exitReason: ctlWalk.exitReason,
+                           stopPct: +effStopPct.toFixed(3), movePct: +ctlWalk.movePct.toFixed(3),
+                           tradeReturn: +ctlReturn.toFixed(3), equity: +equityCtl.toFixed(6),
+                           system: 'CTL', extended: isExtended, choppy: isChoppy });
+          curveCtl.push({ date: today, equity: +equityCtl.toFixed(6) });
+        }
+      }
+
       // System 3: same day, opposite (fade) direction — only when the move into entry
       // is already at an extreme vs the trailing ADR baseline.
       if (isExtended) {
@@ -3569,6 +3599,40 @@ function _computeNqQmr(bars, cfg = {}) {
     result.curve4  = curve4;
     result.stats4  = _qmrStats(trades4, curve4, equity4);
   }
+  if (showControl) {
+    result.tradesControl = tradesCtl;
+    result.curveControl  = curveCtl;
+    result.statsControl  = _qmrStats(tradesCtl, curveCtl, equityCtl);
+    // Paired decomposition on the days BOTH arms traded (every S1 day with a
+    // walkable inverse). d = (S1 − inverse)/2 is the direction call's own
+    // per-trade contribution; its t-stat is a paired t on the same days, so
+    // day-selection and market drift cancel out of it by construction.
+    const ctlByDate = new Map(tradesCtl.map(t => [t.date, t]));
+    const paired    = trades.filter(t => ctlByDate.has(t.date));
+    const n         = paired.length;
+    if (n >= 2) {
+      const s1r  = paired.map(t => t.tradeReturn);
+      const ctlr = paired.map(t => ctlByDate.get(t.date).tradeReturn);
+      const d    = s1r.map((r, i) => (r - ctlr[i]) / 2);
+      const mean = a => a.reduce((s, v) => s + v, 0) / a.length;
+      const mS1 = mean(s1r), mCtl = mean(ctlr), mD = mean(d);
+      const sdD = Math.sqrt(d.reduce((s, v) => s + (v - mD) ** 2, 0) / (n - 1));
+      // Per-trade cost drag at this sample's average leverage — the level a
+      // genuinely uninformative direction call should sit at (negative).
+      const costFloor = -(costPct * mean(paired.map(t => riskPct / t.stopPct)));
+      result.control = {
+        n,
+        meanS1:        +mS1.toFixed(4),   // gates' direction, % per trade
+        meanInverse:   +mCtl.toFixed(4),  // opposite direction, same days
+        meanCoinFlip:  +((mS1 + mCtl) / 2).toFixed(4), // day selection + payoff geometry
+        dirAlpha:      +mD.toFixed(4),    // what the DIRECTION call adds per trade
+        dirAlphaT:     sdD > 0 ? +(mD / (sdD / Math.sqrt(n))).toFixed(2) : null,
+        costFloorPct:  +costFloor.toFixed(4),
+        gatesBeatCoinFlipDays: paired.filter((t, i) => s1r[i] > ctlr[i]).length,
+      };
+    }
+  }
+
   if (showSystem2 || showSystem3 || showSystem4) {
     // Carve extended/choppy days out of S1 when System 3/4 are replacing them with
     // a fade trade, so the combined curve never double-counts a single trading day.
@@ -4267,10 +4331,17 @@ app.get('/api/nq-qmr/backtest', async (req, res) => {
   cfg.showSystem2 = req.query.showSystem2 === 'true';
   cfg.showSystem3 = req.query.showSystem3 === 'true';
   cfg.showSystem4 = req.query.showSystem4 === 'true';
+  cfg.showControl = req.query.showControl === 'true';
 
-  const isNasDefault = instrument === 'NAS100_USD' && !cfg.showSystem2 && !cfg.showSystem3 && !cfg.showSystem4 && Object.entries(cfg).every(([k, v]) =>
-    typeof v === 'string' ? v === NQ_QMR_DEFAULTS[k] : Math.abs(v - NQ_QMR_DEFAULTS[k]) < 0.001
-  );
+  // Compare only the tunables against their defaults — iterating cfg itself
+  // walked the showSystem*/showControl booleans too, and `Math.abs(false -
+  // undefined) < 0.001` is NaN < 0.001 = false, so isNasDefault was ALWAYS
+  // false and the 23h result cache never once served a hit.
+  const isNasDefault = instrument === 'NAS100_USD'
+    && !cfg.showSystem2 && !cfg.showSystem3 && !cfg.showSystem4 && !cfg.showControl
+    && Object.entries(NQ_QMR_DEFAULTS).every(([k, def]) =>
+      typeof def === 'string' ? cfg[k] === def : Math.abs(cfg[k] - def) < 0.001
+    );
   if (isNasDefault && nqQmrResultCache.result && nqQmrResultCache.fetchedAt && Date.now() - nqQmrResultCache.fetchedAt < NQ_QMR_TTL_MS) {
     return res.json({ ok: true, cached: true, ...nqQmrResultCache.result });
   }
