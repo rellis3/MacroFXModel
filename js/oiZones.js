@@ -121,6 +121,12 @@ export function buildOIZones(inst, price, cfg = {}) {
                                    // never blocks. Uses ALL walls (incl. sub-minTier ones the bot skips).
     blockMinTier = 'moderate',     // a path wall must be ≥ this tier to count as a blocker (skip trivia)
     blockTrim = 0.9,               // entry-size haircut when a blocking wall sits in the path
+    levelLadderTP = false,         // opt-in: TP to the NEAREST structural level in the trade's profit
+                                   // direction (walls · max pain · gamma flip · vanna flip · vol magnets),
+                                   // trade level-to-level, instead of defaulting TP1 to (a far, weak-
+                                   // until-expiry) max pain. Off → the classic max-pain/next-wall targets.
+    gammaFlipLevel = null,         // the zero-GEX crossing (regime boundary) — a ladder node when present
+    vannaFlipLevel = null,         // vanna-exposure flip — a ladder node when an IV smile was pasted
   } = cfg;
 
   const gex = inst.exposures?.gex ?? inst.gex ?? 0;
@@ -210,6 +216,40 @@ export function buildOIZones(inst, price, cfg = {}) {
     return null;
   };
 
+  // ── Level-ladder targets (opt-in via levelLadderTP) ─────────────────────────
+  // Every price level the market reacts to becomes a TP candidate: walls (ANY tier —
+  // a wall the bot won't ENTER is still a level price stalls at), max pain, the gamma
+  // flip (regime boundary), the vanna flip, and today's volume magnets. For a trade,
+  // TP1 = the nearest node in the profit direction (bank at the first structure), TP2 =
+  // the next (runner). Max pain becomes one node among many rather than the hardcoded
+  // target — directly the "trade to the next level, level-to-level" behaviour.
+  const _ladder = levelLadderTP ? (() => {
+    const nodes = [];
+    const push = (lvl, kind) => { if (Number.isFinite(lvl)) nodes.push({ lvl, kind }); };
+    for (const w of (Array.isArray(inst.callWalls) ? inst.callWalls : [])) push(w?.strike, 'call wall');
+    for (const w of (Array.isArray(inst.putWalls) ? inst.putWalls : [])) push(w?.strike, 'put wall');
+    push(maxPain, 'max pain');
+    push(gammaFlipLevel, 'gamma flip');
+    push(vannaFlipLevel, 'vanna flip');
+    for (const v of (Array.isArray(inst.volumeMagnets) ? inst.volumeMagnets : [])) push(v?.strike, 'vol magnet');
+    return nodes;
+  })() : null;
+  // Nearest two nodes strictly in the profit direction (dir +1 = above entry, −1 = below),
+  // skipping the traded wall (ownLevel) and anything within tol of the entry; near-identical
+  // strikes collapse to the nearest. Returns {tp1,tp2,tp1kind,tp2kind} or null (nothing ahead).
+  const ladderTP = (entry, dir, ownLevel) => {
+    if (!_ladder) return null;
+    const ahead = _ladder
+      .filter(n => Math.abs(n.lvl - ownLevel) > tol && (dir > 0 ? n.lvl > entry + tol : n.lvl < entry - tol))
+      .sort((a, b) => Math.abs(a.lvl - entry) - Math.abs(b.lvl - entry));
+    const uniq = [];
+    for (const n of ahead) if (!uniq.some(u => Math.abs(u.lvl - n.lvl) <= tol)) uniq.push(n);
+    if (!uniq.length) return null;
+    return { tp1: uniq[0].lvl, tp1kind: uniq[0].kind, tp2: uniq[1]?.lvl ?? null, tp2kind: uniq[1]?.kind ?? null };
+  };
+  // Compose the TP rationale fragment for a ladder trade (empty when the ladder is off).
+  const ladderNote = L => L ? ` → ${L.tp1kind} ${+L.tp1.toFixed(6)}${L.tp2 != null ? ` then ${L.tp2kind} ${+L.tp2.toFixed(6)}` : ''}` : '';
+
   const zones = [];
   // Fallback measured-move TP: a trade with no wall-based target (both null) would go
   // to the broker SL-only. If fallbackTpR > 0, give it a TP at fallbackTpR × the stop
@@ -264,23 +304,27 @@ export function buildOIZones(inst, price, cfg = {}) {
     const supportPin = maxZonesPerSide > 0 ? support.slice(0, maxZonesPerSide) : support;
     resistPin.forEach((w, i) => {
       if (isLiquidating(w.strike, 'call') || !isEstablished(w.strike, 'call')) return;
-      const tp1 = (maxPain != null && maxPain < w.strike) ? maxPain : null;
-      const oppo = support.filter(p => p.strike < w.strike).sort((a, b) => b.strike - a.strike)[0]?.strike ?? null;
+      let tp1 = (maxPain != null && maxPain < w.strike) ? maxPain : null;
+      let tp2 = support.filter(p => p.strike < w.strike).sort((a, b) => b.strike - a.strike)[0]?.strike ?? null;
+      let tpNote = tp1 != null ? ` toward max pain ${maxPain}` : '';
+      if (levelLadderTP) { const L = ladderTP(w.strike, -1, w.strike); tp1 = L?.tp1 ?? null; tp2 = L?.tp2 ?? null; tpNote = ladderNote(L); }
       const sec = i > 0;
       add({ mode: 'fade', side: 'sell', level: w.strike, entry: w.strike, sl: w.strike + buf,
-        tp1, tp2: oppo, sizeFactor: +(sizeFactor(w) * (sec ? secondaryTrim : 1)).toFixed(2),
+        tp1, tp2, sizeFactor: +(sizeFactor(w) * (sec ? secondaryTrim : 1)).toFixed(2),
         blocker: nearestBlocker(w.strike, w.strike),
-        rationale: `${regime} · call wall ${w.strike} ${w.tier}${w.mult ? ` ${w.mult}×` : ''} → fade (resistance)${tp1 != null ? ` toward max pain ${maxPain}` : ''}${conc ? ` · ${conc}` : ''}${persNote(w)} · ${sec ? 'secondary (further wall)' : 'primary (nearest strong wall)'}` });
+        rationale: `${regime} · call wall ${w.strike} ${w.tier}${w.mult ? ` ${w.mult}×` : ''} → fade (resistance)${tpNote}${conc ? ` · ${conc}` : ''}${persNote(w)} · ${sec ? 'secondary (further wall)' : 'primary (nearest strong wall)'}` });
     });
     supportPin.forEach((w, i) => {
       if (isLiquidating(w.strike, 'put') || !isEstablished(w.strike, 'put')) return;
-      const tp1 = (maxPain != null && maxPain > w.strike) ? maxPain : null;
-      const oppo = resist.filter(c => c.strike > w.strike).sort((a, b) => a.strike - b.strike)[0]?.strike ?? null;
+      let tp1 = (maxPain != null && maxPain > w.strike) ? maxPain : null;
+      let tp2 = resist.filter(c => c.strike > w.strike).sort((a, b) => a.strike - b.strike)[0]?.strike ?? null;
+      let tpNote = tp1 != null ? ` toward max pain ${maxPain}` : '';
+      if (levelLadderTP) { const L = ladderTP(w.strike, +1, w.strike); tp1 = L?.tp1 ?? null; tp2 = L?.tp2 ?? null; tpNote = ladderNote(L); }
       const sec = i > 0;
       add({ mode: 'fade', side: 'buy', level: w.strike, entry: w.strike, sl: w.strike - buf,
-        tp1, tp2: oppo, sizeFactor: +(sizeFactor(w) * (sec ? secondaryTrim : 1)).toFixed(2),
+        tp1, tp2, sizeFactor: +(sizeFactor(w) * (sec ? secondaryTrim : 1)).toFixed(2),
         blocker: nearestBlocker(w.strike, w.strike),
-        rationale: `${regime} · put wall ${w.strike} ${w.tier}${w.mult ? ` ${w.mult}×` : ''} → fade (support)${tp1 != null ? ` toward max pain ${maxPain}` : ''}${conc ? ` · ${conc}` : ''}${persNote(w)} · ${sec ? 'secondary (further wall)' : 'primary (nearest strong wall)'}` });
+        rationale: `${regime} · put wall ${w.strike} ${w.tier}${w.mult ? ` ${w.mult}×` : ''} → fade (support)${tpNote}${conc ? ` · ${conc}` : ''}${persNote(w)} · ${sec ? 'secondary (further wall)' : 'primary (nearest strong wall)'}` });
     });
   }
 
@@ -295,17 +339,19 @@ export function buildOIZones(inst, price, cfg = {}) {
     };
     for (const w of calls) {
       const bn = breakNote(w.strike, 'call', +1);
+      let tp1 = calls.filter(c => c.strike > w.strike).sort((a, b) => a.strike - b.strike)[0]?.strike ?? null, tp2 = null, tpNote = '';
+      if (levelLadderTP) { const L = ladderTP(w.strike + brk, +1, w.strike); tp1 = L?.tp1 ?? null; tp2 = L?.tp2 ?? null; tpNote = ladderNote(L); }
       add({ mode: 'break', side: 'buy', level: w.strike, entry: w.strike + brk, sl: w.strike - buf,
-        tp1: calls.filter(c => c.strike > w.strike).sort((a, b) => a.strike - b.strike)[0]?.strike ?? null, tp2: null,
-        sizeFactor: +(sizeFactor(w) * bn.trim).toFixed(2), blocker: nearestBlocker(w.strike + brk, w.strike),
-        rationale: `${regime} · call wall ${w.strike} ${w.tier} → follow the break UP (short-gamma squeeze) past ${+(w.strike + brk).toFixed(6)}${persNote(w)}${bn.note}` });
+        tp1, tp2, sizeFactor: +(sizeFactor(w) * bn.trim).toFixed(2), blocker: nearestBlocker(w.strike + brk, w.strike),
+        rationale: `${regime} · call wall ${w.strike} ${w.tier} → follow the break UP (short-gamma squeeze) past ${+(w.strike + brk).toFixed(6)}${tpNote}${persNote(w)}${bn.note}` });
     }
     for (const w of puts) {
       const bn = breakNote(w.strike, 'put', -1);
+      let tp1 = puts.filter(p => p.strike < w.strike).sort((a, b) => b.strike - a.strike)[0]?.strike ?? null, tp2 = null, tpNote = '';
+      if (levelLadderTP) { const L = ladderTP(w.strike - brk, -1, w.strike); tp1 = L?.tp1 ?? null; tp2 = L?.tp2 ?? null; tpNote = ladderNote(L); }
       add({ mode: 'break', side: 'sell', level: w.strike, entry: w.strike - brk, sl: w.strike + buf,
-        tp1: puts.filter(p => p.strike < w.strike).sort((a, b) => b.strike - a.strike)[0]?.strike ?? null, tp2: null,
-        sizeFactor: +(sizeFactor(w) * bn.trim).toFixed(2), blocker: nearestBlocker(w.strike - brk, w.strike),
-        rationale: `${regime} · put wall ${w.strike} ${w.tier} → follow the break DOWN (short-gamma squeeze) past ${+(w.strike - brk).toFixed(6)}${persNote(w)}${bn.note}` });
+        tp1, tp2, sizeFactor: +(sizeFactor(w) * bn.trim).toFixed(2), blocker: nearestBlocker(w.strike - brk, w.strike),
+        rationale: `${regime} · put wall ${w.strike} ${w.tier} → follow the break DOWN (short-gamma squeeze) past ${+(w.strike - brk).toFixed(6)}${tpNote}${persNote(w)}${bn.note}` });
     }
   }
 

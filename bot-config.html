@@ -4013,6 +4013,8 @@ python oi_bot/oi_bot.py --live --url &lt;dashboard-url&gt;</pre>
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_follow_breaks"> on</label></div>
         <div class="form-row"><span class="form-lbl">Max-pain reversion <small>near expiry + extended from pin → fade toward it</small></span>
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_maxpain_reversion"> on</label></div>
+        <div class="form-row"><span class="form-lbl">Level-ladder targets <small style="color:#4dd0e1">new</small> <small>TP to the NEXT structural level in the trade's direction — walls · gamma flip · vanna flip · max pain · volume magnets — not always max pain. Trade level-to-level (TP1 = first level ahead, TP2 = the next). Off = classic max-pain / next-wall targets.</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_level_ladder_tp"> on</label></div>
         <div class="form-row"><span class="form-lbl">Avoid liquidating walls <small>skip a wall that's defended-then-fading (likely to break)</small></span>
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_avoid_liquidating"> on</label></div>
         <div class="form-row"><span class="form-lbl">Require established walls <small>only fade walls that persisted across days (needs OI history)</small></span>

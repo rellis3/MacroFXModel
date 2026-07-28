@@ -263,6 +263,40 @@ console.log('[explainNoZones — why an in-universe instrument produced 0 zones]
   ok('reason===null ⇔ buildOIZones produced zones', consistent);
 }
 
+console.log('[Level-ladder TP — trade to the next structural level, not always max pain]');
+{
+  // OFF (default): classic targets — the base PIN fade aims TP1 at max pain 4200.
+  const off = buildOIZones({ ...base, exposures: { gex: 5000 } }, 4200, cfg);
+  ok('ladder OFF → PIN fade TP1 is max pain (unchanged)', off.find(x => x.side === 'sell').tp1 === 4200);
+
+  // ON: TP1 becomes the NEAREST node in the profit direction. base nodes below the 4300
+  // call wall = {call wall 4250, max pain 4200, put walls 4100/4050} → TP1 4250, TP2 4200.
+  const on = buildOIZones({ ...base, exposures: { gex: 5000 } }, 4200, { ...cfg, levelLadderTP: true });
+  const sell = on.find(x => x.side === 'sell'), buy = on.find(x => x.side === 'buy');
+  ok('ladder ON → sell fade TP1 = nearest node below (call wall 4250)', sell.tp1 === 4250 && sell.tp2 === 4200, `${sell.tp1}/${sell.tp2}`);
+  ok('sell rationale names the ladder nodes', /→ call wall 4250 then max pain 4200/.test(sell.rationale), sell.rationale);
+  ok('ladder ON → buy fade TP1 = nearest node above (max pain 4200)', buy.tp1 === 4200 && buy.tp2 === 4250, `${buy.tp1}/${buy.tp2}`);
+
+  // Flips + volume magnets are ladder nodes too. gamma flip 4180, vanna flip 4260,
+  // vol magnet 4270 join walls + max pain.
+  const rich = { ...base, exposures: { gex: 5000 }, volumeMagnets: [{ strike: 4270, volume: 5000 }] };
+  const z = buildOIZones(rich, 4200, { ...cfg, levelLadderTP: true, gammaFlipLevel: 4180, vannaFlipLevel: 4260 });
+  const s = z.find(x => x.side === 'sell'), b = z.find(x => x.side === 'buy');
+  ok('sell fade TP1 = nearest below = vol magnet 4270, TP2 = vanna flip 4260', s.tp1 === 4270 && s.tp2 === 4260, `${s.tp1}/${s.tp2}`);
+  ok('sell rationale cites the vol magnet + vanna flip', /vol magnet 4270 then vanna flip 4260/.test(s.rationale), s.rationale);
+  ok('buy fade TP1 = nearest above = gamma flip 4180', b.tp1 === 4180 && b.tp2 === 4200, `${b.tp1}/${b.tp2}`);
+
+  // Breakout with the ladder: a vol magnet ABOVE the outermost wall becomes the target
+  // (classic would leave it TP-less → SL-only). entry 4320; nearest node above = 4400.
+  const brk = { ...base, exposures: { gex: -5000 },
+    callWalls: [{ strike: 4300, oi: 9000, tier: 'strong', mult: 3 }], putWalls: [{ strike: 4100, oi: 8000, tier: 'strong', mult: 3 }],
+    volumeMagnets: [{ strike: 4400, volume: 4000 }] };
+  const upClassic = buildOIZones(brk, 4200, cfg).find(x => x.mode === 'break' && x.side === 'buy');
+  const upLadder = buildOIZones(brk, 4200, { ...cfg, levelLadderTP: true }).find(x => x.mode === 'break' && x.side === 'buy');
+  ok('classic breakout past outermost wall → no TP', upClassic.tp1 == null);
+  ok('ladder breakout → TP1 = vol magnet above (4400)', upLadder.tp1 === 4400, `${upLadder.tp1}`);
+}
+
 console.log('[Guards]');
 ok('no inst / bad price → []', buildOIZones(null, 4200, cfg).length === 0 && buildOIZones(base, 0, cfg).length === 0);
 ok('NEUTRAL gex (flat) → no fade/break zones', buildOIZones({ ...base, exposures: { gex: 0 } }, 4200, cfg).every(z => z.mode === 'maxpain'));
