@@ -2906,6 +2906,15 @@ app.get('/api/oi-reachability', async (req, res) => {
     const dn = rows.filter(r => r.price < anchor).sort((a, b) => b.price - a.price)[0]?.price || 0;
     const race = (up || dn) ? _oiFirstTouch(ctx, i, up, dn, H, { nPaths: 400 }) : null;
     const density = _oiVisitDensity(ctx, i, H, { bins: 44, nPaths: 300 });
+    // The cone itself, so the chart can draw the envelope the probabilities came from.
+    // Same object intradayReachability walks — one cone, one set of numbers, no chance of
+    // the picture and the percentages disagreeing.
+    const cone = _fpCone(ctx, i, H);
+    const envelope = cone ? cone.steps.map(st => ({
+      time: st.time, center: +st.center.toFixed(8),
+      p50Up: +st.p50Up.toFixed(8), p50Dn: +st.p50Dn.toFixed(8),
+      p75Up: +st.p75Up.toFixed(8), p75Dn: +st.p75Dn.toFixed(8),
+    })) : null;
     const cal = _oiCalibFor(H);
 
     res.json({ ok: true, pair: key, horizonBars: H, horizonMin: H * 5, anchor,
@@ -2913,7 +2922,8 @@ app.get('/api/oi-reachability', async (req, res) => {
       calibration: { source: `eurusd-m5-${cal.label}`, exact: cal.exact, oosErrPp: cal.oosErrPp,
         curve: cal.curve,
         note: 'Raw MC touch probability is over-confident — a raw 94% touches about 68% of the time. These are CALIBRATED against a reliability curve fitted on EUR/USD M5 and verified out of sample (9.4pp -> 1.7pp at 1h). The curve is returned so the correction is auditable.' },
-      walls: rows, race, density });
+      walls: rows, race, density,
+      cone: envelope ? { anchorTime: cone.anchorTime, anchor: cone.anchor, steps: envelope } : null });
   } catch (e) {
     res.json({ ok: false, error: String(e?.message || e) });
   }

@@ -154,6 +154,14 @@ tr.dim td{opacity:.42}
   color:var(--tx);box-shadow:0 16px 40px rgba(0,0,0,.8);pointer-events:none}
 #tip b{color:var(--acc)}
 #tip em{color:var(--tx2);font-style:normal;display:block;margin-top:8px;font-size:12.5px}
+
+/* The reachability panel stacks a table, a race, a histogram and a curve. Stacked it ran
+   about five times the height of every other pane; as columns it matches them. */
+.rgrid{display:grid;grid-template-columns:1.35fr .95fr .8fr;gap:20px;align-items:start}
+@media(max-width:1250px){.rgrid{grid-template-columns:1fr}}
+.rgrid h4{margin:0 0 8px;font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--tx2);font-weight:600}
+.rgrid .note{font-size:12px;margin-top:9px}
+.rgrid svg{max-height:190px}
 </style>
 </head>
 <body>
@@ -294,6 +302,7 @@ const LINE_TYPES = [
 ];
 let LINES_ON = Object.fromEntries(LINE_TYPES.map(t=>[t.k,t.on]));
 let _chart=null, _series=null, _priceLines=[], _candleCache={}, _tf='H1';
+let _coneSeries=[], CONE_ON=true;
 
 // Every level the chart can draw, from the stored record. Walls come from the same
 // near-money selection the export uses, so the chart never shows a level the indicator
@@ -337,6 +346,38 @@ function drawLines(){
   });
 }
 
+// Draw the volatility cone forward from the last candle: P50 dotted, P75 dashed, plus
+// the drift centre. This is the SAME cone the touch probabilities are computed from — the
+// route returns it rather than the page rebuilding one, so the picture and the percentages
+// can never disagree about how wide the distribution is.
+function drawCone(){
+  _coneSeries.forEach(sr=>{ try{_chart.removeSeries(sr);}catch(_){} });
+  _coneSeries=[];
+  if(!CONE_ON || !_chart || !REACH?.ok || !REACH.cone?.steps?.length) return;
+  const LSty = window.LightweightCharts ? LightweightCharts.LineStyle : {Solid:0,Dotted:1,Dashed:2};
+  const defs=[
+    {k:'p75Up',col:'#e0a339',w:1,st:LSty.Dashed},
+    {k:'p50Up',col:'#46b87a',w:1,st:LSty.Dotted},
+    {k:'center',col:'#54a8de',w:2,st:LSty.Solid},
+    {k:'p50Dn',col:'#46b87a',w:1,st:LSty.Dotted},
+    {k:'p75Dn',col:'#e0a339',w:1,st:LSty.Dashed},
+  ];
+  // The cone's own step times are M5; the chart may be on H1+. Keep only steps that fall
+  // strictly after the last candle so the lines start at the edge and fan out, rather
+  // than doubling back over history.
+  const lastT = (_candleCache[(OANDA_SYM[SYM]||'')+'|'+_tf]||[]).slice(-1)[0]?.time || 0;
+  const steps = REACH.cone.steps.filter(st=>st.time>lastT);
+  if(!steps.length) return;
+  for(const d of defs){
+    try{
+      const sr=_chart.addLineSeries({color:d.col,lineWidth:d.w,lineStyle:d.st,
+        priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+      sr.setData(steps.map(st=>({time:st.time,value:st[d.k]})));
+      _coneSeries.push(sr);
+    }catch(_){}
+  }
+}
+
 async function loadCandles(){
   const os=OANDA_SYM[SYM]; if(!os) return null;
   const key=os+'|'+_tf;
@@ -373,6 +414,7 @@ async function mountChart(){
     _series.setData(rows);
     _chart.timeScale().fitContent();
     drawLines();
+    drawCone();
   }catch(err){
     el.insertAdjacentHTML('beforeend',`<div class="empty">Candles failed: ${esc(err.message)}</div>`);
   }
@@ -382,11 +424,16 @@ function chartToolbar(){
   const tf=['M15','H1','H4','D'].map(t=>`<button class="btn tfb ${t===_tf?'on':''}" data-tf="${t}">${t}</button>`).join('');
   const toggles=LINE_TYPES.map(t=>`<label class="ltog ${LINES_ON[t.k]?'on':''}" data-lk="${t.k}">
     <span class="sw" style="background:${LINES_ON[t.k]?t.col:'transparent'};border-color:${t.col}"></span>${t.label}</label>`).join('');
-  return `<div class="ctl"><div class="tfs">${tf}</div><div class="ltogs">${toggles}</div></div>`;
+  const cone=`<label class="ltog ${CONE_ON?'on':''}" id="coneTog"><span class="sw" style="background:${CONE_ON?'#54a8de':'transparent'};border-color:#54a8de"></span>Vol cone</label>`;
+  return `<div class="ctl"><div class="tfs">${tf}</div><div class="ltogs">${toggles}${cone}</div></div>`;
 }
 
 function wireChartToolbar(){
   document.querySelectorAll('.tfb').forEach(b=>b.onclick=()=>{ _tf=b.dataset.tf; render(); });
+  const ct=document.getElementById('coneTog');
+  if(ct) ct.onclick=()=>{ CONE_ON=!CONE_ON; ct.classList.toggle('on',CONE_ON);
+    ct.querySelector('.sw').style.background=CONE_ON?'#54a8de':'transparent';
+    if(CONE_ON && !REACH?.ok) loadReach(); else drawCone(); };
   document.querySelectorAll('.ltog').forEach(l=>l.onclick=()=>{
     LINES_ON[l.dataset.lk]=!LINES_ON[l.dataset.lk];
     const t=LINE_TYPES.find(x=>x.k===l.dataset.lk);
@@ -437,6 +484,7 @@ async function loadReach(){
   REACH_BUSY = false;
   const h2 = document.getElementById('reachBody');
   if(h2) h2.innerHTML = reachPanel(STORE[SYM], false);
+  drawCone();   // the fetch is what supplies the envelope
 }
 
 function reachPanel(e, big){
@@ -515,19 +563,20 @@ function reachPanel(e, big){
       cone is flat for every instrument, every time.</div>`;
   }
 
-  return `<div style="display:flex;gap:9px;align-items:center;margin-bottom:12px">
+  return `<div style="display:flex;gap:9px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
       <span class="muted" style="font-size:12.5px">Horizon</span>${hsel}
       <span class="muted" style="font-size:12px;margin-left:auto">${REACH.bars} bars · ${REACH.horizonMin}min ahead</span>
       <button class="btn" onclick="loadReach()">↻</button></div>
-    <table><thead><tr><th>Wall</th><th>Type</th><th>P(touch)</th><th></th><th>raw</th><th>median time</th></tr></thead>
-    <tbody>${rows}</tbody></table>
-    <div class="note"><b>P(touch)</b> is the chance price trades at that level at least once within the horizon —
-      a wick counts. It says nothing about whether the wall then HOLDS, which is a separate and unproven question.</div>
-    ${raceHtml}
-    <div style="margin-top:16px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx2)">Where paths dwell</div>
-    ${densHtml}
-    <div style="margin-top:16px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx2)">Is the probability trustworthy?</div>
-    ${curveSvg}`;
+    <div class="rgrid">
+      <div><h4>Probability of touch</h4>
+        <table><thead><tr><th>Wall</th><th>Type</th><th>P(touch)</th><th></th><th>raw</th><th>median</th></tr></thead>
+        <tbody>${rows}</tbody></table>
+        <div class="note"><b>P(touch)</b> is the chance price trades at that level at least once within the
+          horizon — a wick counts. It says nothing about whether the wall then HOLDS.</div>
+        ${raceHtml}</div>
+      <div><h4>Where paths dwell</h4>${densHtml}</div>
+      <div><h4>Is the probability trustworthy?</h4>${curveSvg}</div>
+    </div>`;
 }
 const norm = x => String(x||'').toLowerCase().replace(/[/_]/g,'');
 
