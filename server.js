@@ -61,6 +61,7 @@ import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _r
 import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS, BM_P75 as _BM_P75 } from './js/volBacktestEngine.js';
 import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED, fetchPriceOnly as _mveFetchPriceOnly } from './js/mve/liveAdapter.js';
 import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency, validateMechanicalAnchor as _mveValidateMechanical } from './js/mve/validateInstrument.js';
+import { volOuDiagnostic as _volOuDiagnostic, scoreVolPredictsForwardVol as _scoreVolPredictsForwardVol } from './js/volReversionCore.js';
 import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS, buildPortfolioReturns as _trendBuildPortfolio, portfolioReturnsByDate as _trendReturnsByDate } from './js/trendFollowEngine.js';
 import { blendStreams as _blendStreams } from './js/streamBlend.js';
 import { runGauntlet as _runStrategyGauntlet, GAUNTLET_SPECS as _GAUNTLET_SPECS, SIGNALS as _LAB_SIGNALS } from './js/strategyLabEngine.js';
@@ -6272,6 +6273,33 @@ app.get('/api/mve-validate-mechanical/:sym', async (req, res) => {
     report.dataSource = built.dataSource;
     if (report.ok) _mveValMechCache.set(sym, { at: Date.now(), data: report });
     res.status(report.ok ? 200 : 502).json(report);
+  } catch (e) {
+    res.status(500).json({ ok: false, instrument: sym, error: e.message });
+  }
+});
+
+// Vol mean-reversion (js/volReversionCore.js) — the institutional VRP/OU claim
+// tested directly on the instrument's OWN realized vol, not "does price revert to a
+// fair value" (both price branches above are NULL). OANDA D1 only, no FRED_KEY.
+// `diagnostic` = does vol-richness mean-revert at all (κ/half-life, a standalone
+// fact); `forecast` = does the z-scored reading beat vol's own raw-level persistence
+// at predicting forward realized vol (the real, narrower claim — see the module's
+// header comment on why a negative result here doesn't mean "vol doesn't revert").
+const _volReversionCache = new Map();
+app.get('/api/vol-reversion/:sym', async (req, res) => {
+  const sym = req.params.sym;
+  try {
+    const hit = _volReversionCache.get(sym);
+    if (hit && Date.now() - hit.at < 6 * 60 * 60 * 1000 && req.query.fresh !== '1') {
+      return res.json({ ...hit.data, cached: true });
+    }
+    const built = await _mveFetchPriceOnly({ sym, deps: { fetchD1: _btFetchD1 }, count: 5000 });
+    if (!built.ok) return res.status(502).json(built);
+    const diagnostic = _volOuDiagnostic(built.price);
+    const forecast = _scoreVolPredictsForwardVol(built.price);
+    const out = { ok: true, instrument: sym, diagnostic, forecast, dataSource: built.dataSource };
+    _volReversionCache.set(sym, { at: Date.now(), data: out });
+    res.json(out);
   } catch (e) {
     res.status(500).json({ ok: false, instrument: sym, error: e.message });
   }
