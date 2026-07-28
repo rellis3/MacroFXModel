@@ -4255,47 +4255,115 @@ function resetYsDefaults() {
 async function loadYsCreds() { try { _applyCredsToForm(await kvGet('yield_spread_credentials'), 'ys_', 'ys_mt5_password'); } catch (e) {} }
 async function saveYsCreds() { await _saveCreds('yield_spread_credentials', 'ys_', 'ys_mt5_password', 'ysCredsStatus'); }
 
+// Inline SVG sparkline of the z trajectory (last ~30 days) with the ±gate lines
+// dashed and the zero line drawn, so you SEE how far the line sits from the trade
+// gate and which way it's heading. Signed z: above 0 = LONG-side, below = SHORT-side.
+function _ysSpark(history, thr) {
+  const W = 130, H = 30, pad = 3;
+  const zs = (history || []).map(h => h.z).filter(v => typeof v === 'number');
+  if (zs.length < 2) return '<span style="color:var(--text3)">—</span>';
+  // Symmetric y-range that always includes ±gate so the dashed gate lines are visible.
+  const lim = Math.max(thr * 1.15, Math.max(...zs.map(Math.abs)) * 1.1, 0.5);
+  const x = i => pad + (i / (zs.length - 1)) * (W - 2 * pad);
+  const y = v => pad + (1 - (v + lim) / (2 * lim)) * (H - 2 * pad);
+  const pts = zs.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const last = zs[zs.length - 1];
+  const lineCol = Math.abs(last) >= thr ? '#f59e0b' : '#f472b6';
+  const gy1 = y(thr).toFixed(1), gy2 = y(-thr).toFixed(1), z0 = y(0).toFixed(1);
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="vertical-align:middle">
+    <line x1="0" y1="${z0}" x2="${W}" y2="${z0}" stroke="var(--border)" stroke-width="1"/>
+    <line x1="0" y1="${gy1}" x2="${W}" y2="${gy1}" stroke="#ef4444" stroke-width="1" stroke-dasharray="2,2" opacity="0.55"/>
+    <line x1="0" y1="${gy2}" x2="${W}" y2="${gy2}" stroke="#ef4444" stroke-width="1" stroke-dasharray="2,2" opacity="0.55"/>
+    <polyline points="${pts}" fill="none" stroke="${lineCol}" stroke-width="1.5"/>
+    <circle cx="${x(zs.length - 1).toFixed(1)}" cy="${y(last).toFixed(1)}" r="2" fill="${lineCol}"/>
+  </svg>`;
+}
+
+// Horizontal bar: |z| as a fraction of the entry gate. Fills + warms as it nears
+// the gate; amber "AT GATE" when |z| ≥ threshold (a trade fires).
+function _ysGateBar(absz, thr) {
+  const pct = Math.max(0, Math.min(100, (absz / thr) * 100));
+  const col = pct >= 100 ? '#f59e0b' : pct >= 75 ? '#fb923c' : pct >= 40 ? '#38bdf8' : 'var(--text3)';
+  const label = pct >= 100 ? 'AT GATE' : `${absz.toFixed(2)} / ${thr.toFixed(2)}`;
+  const need = pct >= 100 ? '' : ` <span style="color:var(--text3)">(needs +${(thr - absz).toFixed(2)})</span>`;
+  return `<div style="display:flex;align-items:center;gap:8px">
+    <div style="flex:0 0 90px;height:8px;background:var(--s3);border-radius:4px;overflow:hidden">
+      <div style="width:${pct.toFixed(0)}%;height:100%;background:${col}"></div>
+    </div>
+    <span style="color:${col};white-space:nowrap">${label}</span>${need}
+  </div>`;
+}
+
 async function loadYsLiveStatus() {
   const ageEl = document.getElementById('ysLiveAge'), modeEl = document.getElementById('ysLiveMode');
   const balEl = document.getElementById('ysLiveBal'), openEl = document.getElementById('ysOpenN');
   const uniEl = document.getElementById('ysUniN'), paEl = document.getElementById('ysPlanAge');
+  const noteEl = document.getElementById('ysGateNote');
   try {
     const [st, plan] = await Promise.all([kvGet('yield_spread_status'), kvGet('yield_spread_plan')]);
     if (paEl) paEl.textContent = plan?.generatedAt ? new Date(plan.generatedAt).toISOString().slice(0, 16).replace('T', ' ') + 'Z' : '—';
-    // Prefer the bot's per-pair view; fall back to the plan's signals so the table
-    // populates even before the bot is running.
-    const rows = st?.pairs || Object.entries(plan?.signals || {}).map(([pair, s]) => {
-      const z = s.z;
+    const thr = plan?.entryThreshold ?? YS_DEFAULTS.entry_threshold;
+    // Merge: z + 30d history come from the plan (server-computed truth); live
+    // position/held come from the bot's status. Works even before the bot runs.
+    const posByPair = {};
+    (st?.pairs || []).forEach(p => { posByPair[(p.pair || '').toLowerCase()] = p; });
+    const sigs = plan?.signals || {};
+    const rows = Object.keys(sigs).map(pair => {
+      const s = sigs[pair], z = s.z;
       const dir = (typeof z === 'number') ? ((z > 0) !== !!s.inverted ? 'LONG' : 'SHORT') : null;
-      const thr = plan?.entryThreshold ?? YS_DEFAULTS.entry_threshold;
-      return { pair, z, inverted: s.inverted, direction: dir,
-               signal: (typeof z === 'number' && Math.abs(z) >= thr) ? 'enter' : 'flat',
-               in_position: false, hold_days: null, asOf: s.asOf };
+      const live = posByPair[pair.toLowerCase()] || {};
+      const hist = s.history || [];
+      const prevZ = hist.length >= 2 ? hist[hist.length - 2].z : null;
+      return { pair, z, direction: dir, history: hist, prevZ, asOf: s.asOf,
+               in_position: !!live.in_position, hold_days: live.hold_days };
     });
-    if (!st) { if (ageEl) ageEl.textContent = plan ? 'Bot not running — showing the plan' : 'Bot not running — no plan yet'; }
+    // Liveness: how long since the bot last pushed status.
+    if (!st) { if (ageEl) { ageEl.textContent = plan ? 'Bot not running — showing the plan' : 'Bot not running — no plan yet'; ageEl.style.color = 'var(--text3)'; } }
     else {
-      if (ageEl)  { ageEl.textContent = st.running ? (st.plan_stale ? 'Running — plan STALE (entries halted)' : 'Running') : 'Idle'; ageEl.style.color = st.plan_stale ? 'var(--amber)' : 'var(--text3)'; }
+      const mins = st.pushed_at ? Math.round((Date.now() / 1000 - st.pushed_at) / 60) : null;
+      const liveStr = mins == null ? '' : mins < 3 ? `updated ${mins}m ago 🟢` : mins < 15 ? `updated ${mins}m ago` : `⚠ no update in ${mins}m — bot may be stopped`;
+      if (ageEl)  { ageEl.textContent = (st.running ? (st.plan_stale ? 'Running — plan STALE (entries halted)' : 'Running') : 'Idle') + (liveStr ? ' · ' + liveStr : ''); ageEl.style.color = (st.plan_stale || (mins != null && mins >= 15)) ? 'var(--amber)' : 'var(--text3)'; }
       if (modeEl) { modeEl.textContent = st.mode === 'live' ? '🟢 LIVE' : '📄 PAPER'; modeEl.style.color = st.mode === 'live' ? 'var(--green)' : 'var(--amber)'; }
       if (balEl)  balEl.textContent = st.balance != null ? `Balance ${st.balance}` : '';
     }
     if (openEl) openEl.textContent = (st?.mt5_positions || []).length;
     if (uniEl)  uniEl.textContent  = rows.length;
+    // Gate note: how close is the closest pair?
+    if (noteEl) {
+      const closest = rows.filter(r => typeof r.z === 'number').sort((a, b) => Math.abs(b.z) - Math.abs(a.z))[0];
+      noteEl.textContent = closest
+        ? `entry gate |z| ≥ ${thr.toFixed(2)} · closest: ${closest.pair.toUpperCase()} at ${Math.abs(closest.z).toFixed(2)} (${Math.round(Math.abs(closest.z) / thr * 100)}% there)`
+        : `entry gate |z| ≥ ${thr.toFixed(2)}`;
+    }
     const body = document.getElementById('ysLinesBody');
     if (body) {
       if (!rows.length) {
-        body.innerHTML = '<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">No plan yet — run <code>POST /api/yield-spread/refresh-plan</code> (needs FRED_KEY on the server)</td></tr>';
+        body.innerHTML = '<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">No plan yet — run <code>POST /api/yield-spread/refresh-plan</code> (needs FRED_KEY on the server)</td></tr>';
       } else {
         const dirCol = d => d === 'LONG' ? 'var(--green)' : d === 'SHORT' ? 'var(--red)' : 'var(--text3)';
-        const sigCol = s => s === 'enter' ? 'var(--amber)' : 'var(--text3)';
-        body.innerHTML = rows.map(r => `<tr style="border-top:1px solid var(--border)">
+        body.innerHTML = rows.map(r => {
+          const hasZ = typeof r.z === 'number';
+          const absz = hasZ ? Math.abs(r.z) : 0;
+          // Δ vs yesterday in |z| — is the pair moving TOWARD (▲) or AWAY (▼) from the gate?
+          let deltaCell = '<span style="color:var(--text3)">—</span>';
+          if (hasZ && typeof r.prevZ === 'number') {
+            const dAbs = absz - Math.abs(r.prevZ);
+            const toward = dAbs > 0.0005, away = dAbs < -0.0005;
+            const arrow = toward ? '▲' : away ? '▼' : '·';
+            const col = toward ? '#f59e0b' : away ? 'var(--text3)' : 'var(--text3)';
+            deltaCell = `<span style="color:${col}" title="${toward ? 'moving toward the gate' : away ? 'moving away from the gate' : 'flat'}">${arrow} ${dAbs >= 0 ? '+' : ''}${dAbs.toFixed(2)}</span>`;
+          }
+          const posCell = r.in_position
+            ? `<span style="color:var(--green)">${r.direction || 'IN'}${r.hold_days != null ? ' · ' + r.hold_days + 'd' : ''}</span>`
+            : '<span style="color:var(--text3)">flat</span>';
+          return `<tr style="border-top:1px solid var(--border)">
           <td style="padding:6px 10px;font-weight:600">${(r.pair || '').toUpperCase()}</td>
-          <td style="padding:6px 10px;text-align:right">${typeof r.z === 'number' ? (r.z > 0 ? '+' : '') + r.z.toFixed(2) : '—'}</td>
-          <td style="padding:6px 10px;color:${sigCol(r.signal)}">${r.signal || '—'}</td>
+          <td style="padding:6px 10px;text-align:right">${hasZ ? (r.z > 0 ? '+' : '') + r.z.toFixed(2) : '—'} <span style="font-size:10px">${deltaCell}</span></td>
+          <td style="padding:6px 10px">${hasZ ? _ysGateBar(absz, thr) : '—'}</td>
+          <td style="padding:6px 10px;text-align:center">${_ysSpark(r.history, thr)}</td>
           <td style="padding:6px 10px;color:${dirCol(r.direction)}">${r.direction || '—'}</td>
-          <td style="padding:6px 10px;color:${r.in_position ? 'var(--green)' : 'var(--text3)'}">${r.in_position ? 'yes' : '—'}</td>
-          <td style="padding:6px 10px;text-align:right;color:var(--text3)">${r.hold_days != null ? r.hold_days : '—'}</td>
-          <td style="padding:6px 10px;color:var(--text3)">${r.asOf || '—'}</td>
-        </tr>`).join('');
+          <td style="padding:6px 10px">${posCell}</td>
+        </tr>`; }).join('');
       }
     }
   } catch (e) { if (ageEl) { ageEl.textContent = e.message; } }

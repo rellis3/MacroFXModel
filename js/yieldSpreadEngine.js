@@ -228,9 +228,14 @@ export async function computeYieldSpreadSignals(opts = {}, pairKeys = Object.key
       const lastDate = dates[dates.length - 1] || null;
       const zInfo = lastDate ? zByDate.get(lastDate) : null;
       const inverted = resolveInverted(usdRole(pairKey), { autoOrient, manualInvert: !!(opts.invert && opts.invert[pairKey]) });
+      // Last ~30 days of z so the config page can draw a trajectory sparkline + a
+      // day-over-day "moving toward / away from the gate" arrow. Cheap — the full
+      // series is already computed; we just slice the tail.
+      const histN = opts.historyDays ?? 30;
+      const history = dates.slice(-histN).map(d => { const zi = zByDate.get(d); return { date: d, z: +zi.z.toFixed(3) }; });
       out[pairKey] = zInfo
-        ? { z: +zInfo.z.toFixed(3), spread: +zInfo.spread.toFixed(4), asOf: lastDate, inverted, label: cfg.label, pairDisplay: cfg.pairDisplay, pip: cfg.pip }
-        : { z: null, spread: null, asOf: null, inverted, label: cfg.label, pairDisplay: cfg.pairDisplay, pip: cfg.pip };
+        ? { z: +zInfo.z.toFixed(3), spread: +zInfo.spread.toFixed(4), asOf: lastDate, inverted, label: cfg.label, pairDisplay: cfg.pairDisplay, pip: cfg.pip, history }
+        : { z: null, spread: null, asOf: null, inverted, label: cfg.label, pairDisplay: cfg.pairDisplay, pip: cfg.pip, history: [] };
     } catch (e) {
       out[pairKey] = { z: null, error: e?.message || String(e), label: cfg.label, pairDisplay: cfg.pairDisplay, pip: cfg.pip };
     }

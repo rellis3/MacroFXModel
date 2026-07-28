@@ -4141,28 +4141,29 @@ python oi_bot/oi_bot.py --live --url &lt;dashboard-url&gt;</pre>
 
     <!-- Today's z-signal per pair -->
     <div class="card" style="padding:0">
-      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px;flex-wrap:wrap">
         <span style="font-size:12px;font-weight:600;color:#f472b6">Today's z-signal per pair</span>
-        <span class="bot-banner-sub" style="margin:0">the daily yield-spread z and the trade it implies</span>
+        <span class="bot-banner-sub" style="margin:0">how close each pair is to the trade gate, and which way it's moving</span>
+        <span id="ysGateNote" style="margin-left:auto;font-size:11px;color:var(--text3)"></span>
       </div>
       <div style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
           <thead>
             <tr style="background:var(--s2);color:var(--text3)">
               <th style="padding:6px 10px;text-align:left">Pair</th>
-              <th style="padding:6px 10px;text-align:right">z</th>
-              <th style="padding:6px 10px;text-align:left">Signal</th>
+              <th style="padding:6px 10px;text-align:right">z (Δ 1d)</th>
+              <th style="padding:6px 10px;text-align:left">Toward gate</th>
+              <th style="padding:6px 10px;text-align:center">Trend (30d)</th>
               <th style="padding:6px 10px;text-align:left">Direction</th>
-              <th style="padding:6px 10px;text-align:left">In position</th>
-              <th style="padding:6px 10px;text-align:right">Held (d)</th>
-              <th style="padding:6px 10px;text-align:left">As of</th>
+              <th style="padding:6px 10px;text-align:left">Position</th>
             </tr>
           </thead>
           <tbody id="ysLinesBody">
-            <tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">Run the bot (or refresh the plan) to see today's z per pair</td></tr>
+            <tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">Run the bot (or refresh the plan) to see today's z per pair</td></tr>
           </tbody>
         </table>
       </div>
+      <div class="bot-banner-sub" style="margin:0;padding:8px 16px 12px;font-size:10.5px">The <b>bar</b> fills as |z| approaches the entry gate; the <b>sparkline</b> is the last 30 days of z with the ±gate lines dashed. A trade fires only when the bar is full (|z| ≥ gate). This is a <b>low-frequency</b> strategy — long flat stretches are normal, not a fault.</div>
     </div>
 
     <!-- How to run -->
