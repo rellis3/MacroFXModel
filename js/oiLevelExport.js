@@ -80,15 +80,33 @@ function fmtSaved(inst) {
   // red 'call wall' below spot looks like a bug rather than a deliberate setting.
   if (inst?.cpSwapped) bits.push('C/P flipped to pair terms');
   const rg = regimeOf(inst);
-  if (rg) bits.push(`regime ${rg}`);
+  if (rg) bits.push(`regime ${rg}`);        // the indicator parses THIS for its tint
   return bits.length ? `· ${bits.join(' · ')}` : null;
+}
+
+// Positioning context for the paste: crowding percentile, which way, and how stale. On
+// its own line so the age is impossible to miss, and explicitly labelled "not a level"
+// because COT has no price coordinate — it conditions how you read the walls, it never
+// times them and it must never be drawn as a line.
+function fmtCot(c) {
+  if (!c || c.pct == null) return null;
+  const side = c.pct >= 90 ? 'CROWDED LONG' : c.pct <= 10 ? 'CROWDED SHORT'
+             : c.pct >= 70 ? 'leaning long' : c.pct <= 30 ? 'leaning short' : 'balanced';
+  const bits = [`cot ${c.pct}th pct — ${side}`];
+  if (c.share != null) bits.push(`net ${c.share}% of OI`);
+  if (c.reportDate) bits.push(`report ${c.reportDate}${c.ageDays != null ? ` (${c.ageDays}d old)` : ''}`);
+  return `· ${bits.join(' · ')} · positioning only, NOT a level`;
 }
 
 // store = { [pair]: inst } (the `oi_store` KV `.data` object). Pure.
 // topWalls defaults to null so the shared converter's TIER rule decides what's worth
 // drawing (course Lesson 4's 3× rule) instead of an arbitrary count. Pass a number to
 // force the old fixed-count behaviour.
-export function buildOILevelText(store, { topWalls = null, minTier = "moderate", maxWalls = 3, generated = null } = {}) {
+// `cot` (optional) = { [canonName]: {pct, share, net, reportDate, ageDays, side} }. COT has
+// NO price coordinate — it is positioning, not a level — so it is emitted on the per-pair
+// context line the indicator ignores, never as an `OI {price}` line. Drawing a horizontal
+// line for it would invent a price the data does not contain.
+export function buildOILevelText(store, { topWalls = null, minTier = "moderate", maxWalls = 3, generated = null, cot = null } = {}) {
   const LW = 44;
   const hdr = '──── OI WALLS & MAX PAIN ' + '─'.repeat(Math.max(0, LW - 25));
   const lines = [hdr];

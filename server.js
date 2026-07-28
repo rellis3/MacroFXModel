@@ -5815,6 +5815,32 @@ app.get('/api/nq-qmr/walkforward-retrain', async (req, res) => {
     function barsInRange(from, to) {
       return bars.filter(b => b.t.substring(0, 10) >= from && b.t.substring(0, 10) < to);
     }
+    // mode=bothsides walks the BOTH-SIDES construction instead of the
+    // directional one: on each selected day take BOTH directions at half size,
+    // so total risk and total notional (hence total cost) are unchanged. Its
+    // in-sample numbers are strong (NQ Sharpe 0.91 -> 1.63, win rate 31.5% ->
+    // 50.4%) precisely because the direction call measured at zero — removing a
+    // coin flip removes its variance without touching the mean. This runs it
+    // through the same IS/OOS protocol so that claim gets an honest number
+    // instead of an in-sample one.
+    const mode = req.query.mode === 'bothsides' ? 'bothsides' : 'directional';
+
+    // Half-size both-sides book from a showControl run. Cost is charged exactly
+    // once: r_a = (m_a - c)*L and r_b = (m_b - c)*L, so (r_a + r_b)/2 =
+    // ((m_a + m_b)/2 - c)*L — half the notional per leg, one position's cost.
+    function bothSidesStats(r) {
+      const ctl = new Map((r.tradesControl || []).map(t => [t.date, t.tradeReturn]));
+      const rows = r.trades.filter(t => ctl.has(t.date))
+        .map(t => ({ date: t.date, tradeReturn: (t.tradeReturn + ctl.get(t.date)) / 2 }));
+      let eq = 1; const curve = [];
+      for (const t of rows) { eq *= (1 + t.tradeReturn / 100); curve.push({ date: t.date, equity: eq }); }
+      return { stats: _qmrStats(rows, curve, eq), trades: rows, curve };
+    }
+    const evaluate = (bars, cfg) => {
+      const r = _computeNqQmr(bars, mode === 'bothsides' ? { ...cfg, showControl: true } : cfg);
+      return mode === 'bothsides' ? { ...r, ...bothSidesStats(r) } : r;
+    };
+
     function findBest(subBars) {
       let best = null;
       for (const g1 of wfGrid.gate1Threshold)
@@ -5824,7 +5850,7 @@ app.get('/api/nq-qmr/walkforward-retrain', async (req, res) => {
       for (const rp of wfGrid.riskPct)
       for (const tp of wfGrid.tpPct) {
         const cfg = { gate1Threshold: g1, gate2MinMovePct: g2, stopMultiplier: sm, minRangePct: mr, riskPct: rp, tpPct: tp };
-        const r   = _computeNqQmr(subBars, cfg);
+        const r   = evaluate(subBars, cfg);
         const s   = r.stats;
         if (s.n < 8 || s.cagr <= 0 || s.maxDD <= 0 || s.sharpe <= 0) continue;
         const score = s.sharpe * Math.sqrt(s.cagr) / s.maxDD;
@@ -5840,7 +5866,7 @@ app.get('/api/nq-qmr/walkforward-retrain', async (req, res) => {
       const oosBars = barsInRange(w.isEnd, w.oosEnd);
       const best = findBest(isBars);
       if (!best) { results.push({ isStart: w.isStart, isEnd: w.isEnd, oosEnd: w.oosEnd, bestCfg: null, isStats: null, oosStats: null }); continue; }
-      const oosR = _computeNqQmr(oosBars, best.cfg);
+      const oosR = evaluate(oosBars, best.cfg);
       for (const p of oosR.curve) {
         oosCurve.push({ date: p.date, equity: +(baseEq * p.equity).toFixed(6) });
       }
@@ -5848,7 +5874,7 @@ app.get('/api/nq-qmr/walkforward-retrain', async (req, res) => {
       results.push({ isStart: w.isStart, isEnd: w.isEnd, oosEnd: w.oosEnd, bestCfg: best.cfg, isStats: best.stats, oosStats: oosR.stats });
     }
     console.log(`[nq-qmr wf-retrain] ${results.length} windows, OOS curve pts: ${oosCurve.length}`);
-    res.json({ ok: true, instrument, windows: results, oosCurve });
+    res.json({ ok: true, instrument, mode, windows: results, oosCurve });
   } catch (err) {
     console.error('[nq-qmr wf-retrain]', err.message);
     res.status(500).json({ ok: false, error: err.message });
