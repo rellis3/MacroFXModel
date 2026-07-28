@@ -5771,8 +5771,22 @@ app.get('/api/nq-qmr/optimize', async (req, res) => {
 app.get('/api/nq-qmr/walkforward-retrain', async (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
   try {
-    const bars = await _getNqQmrBars();
-    const wfGrid = {
+    // Instrument-aware (2026-07-28). Gold moves in much smaller % ranges than
+    // the equity indices, so a grid centred on NQ's scale would search a region
+    // gold never occupies — its live defaults are gate2 0.05 / stop 0.30 /
+    // minRange 0.10 / tp 0.80 against NQ's 0.10 / 0.50 / 0.15 / 1.50. Same
+    // protocol, scale-appropriate search.
+    const instrument = NQ_QMR_INSTRUMENTS.has(req.query.instrument) ? req.query.instrument : 'NAS100_USD';
+    const bars = await _getNqQmrBars(instrument);
+    const GOLD_LIKE = instrument === 'XAU_USD';
+    const wfGrid = GOLD_LIKE ? {
+      gate1Threshold:  [0.55, 0.60, 0.65, 0.70],
+      gate2MinMovePct: [0.03, 0.05, 0.08],
+      stopMultiplier:  [0.35, 0.40, 0.45, 0.50, 0.55],
+      minRangePct:     [0.08, 0.10, 0.15],
+      riskPct:         [1.00],
+      tpPct:           [0.60, 0.80, 1.00],
+    } : {
       gate1Threshold:  [0.55, 0.60, 0.65, 0.70],
       gate2MinMovePct: [0.08, 0.10, 0.15],
       stopMultiplier:  [0.35, 0.40, 0.45, 0.50, 0.55],
@@ -5834,7 +5848,7 @@ app.get('/api/nq-qmr/walkforward-retrain', async (req, res) => {
       results.push({ isStart: w.isStart, isEnd: w.isEnd, oosEnd: w.oosEnd, bestCfg: best.cfg, isStats: best.stats, oosStats: oosR.stats });
     }
     console.log(`[nq-qmr wf-retrain] ${results.length} windows, OOS curve pts: ${oosCurve.length}`);
-    res.json({ ok: true, windows: results, oosCurve });
+    res.json({ ok: true, instrument, windows: results, oosCurve });
   } catch (err) {
     console.error('[nq-qmr wf-retrain]', err.message);
     res.status(500).json({ ok: false, error: err.message });
