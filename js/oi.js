@@ -1540,8 +1540,16 @@ export async function processOIData() {
   // looked green. These extra checks are SEMANTIC — they test whether the numbers
   // mean what they claim, not just whether they're the right size.
   const _warnings = [];
-  if (volumeRejected)
-    _warnings.push(`the VOLUME paste's strikes fall outside the option ladder — that table's columns differ from the OI report's, so no volume magnets were kept (re-copy the Volume view)`);
+  if (volumeRejected) {
+    // Name the actual numbers. The first version of this said the strikes "fall outside
+    // the option ladder", which is jargon for "column 1 isn't a strike" and told the
+    // reader nothing they could act on. Gold's paste has 6.3 in that column on every
+    // row against strikes of 2000-10000, so the fix is a different copy, not a setting.
+    const _vBad = _volParsed[0]?.strike;
+    _warnings.push(`volume ignored: its first column reads ${_vBad} on this paste, which is not a strike for ${pair} `
+      + `(strikes here run ${oiFmtStrike(_volLo / 0.9, pair)}–${oiFmtStrike(_volHi / 1.1, pair)}). `
+      + `Copy the Volume view whose FIRST column is the strike price — otherwise there is no strike to attach each volume to.`);
+  }
   // Truncation FIRST — it silently deletes strikes, and every level below is computed
   // on whatever survived. Gold lost every strike above 4010 (spot was 4078) this way.
   if (parsed.truncated)
