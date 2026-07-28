@@ -70,7 +70,7 @@ console.log('[wall reachability]');
   })(), rows.map(r => r.label + ':' + r.calibrated).join(' '));
   ok('calibrated never exceeds the ceiling', rows.every(r => r.calibrated <= 0.69));
   ok('side is labelled correctly', rows.find(r => r.label === 'near put').side === 'down');
-  ok('provenance of the correction is recorded', rows.every(r => r.calibSource === 'eurusd-m5-h12'));
+  ok('provenance of the correction is recorded', rows.every(r => r.calibSource === 'eurusd-m5-1h' && r.calibExact === true && r.calibOosErrPp === 1.7));
   ok('empty / junk input → []', wallReachability(ctx, i, [], 12).length === 0
     && wallReachability(null, i, walls, 12).length === 0);
 }

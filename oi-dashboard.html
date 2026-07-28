@@ -244,6 +244,7 @@ const HELP = {
   oichg:['OI change','Contracts added or removed since yesterday. <b>Building</b> = new money committing. <b>Closing</b> = positions unwinding, so the level is losing its backing.'],
   walls:['Wall tables','Every strike with meaningful open interest on that side.','<b>Tier</b> is the 3x rule — open interest as a multiple of neighbouring strikes, so a strong wall in a quiet area beats a big number in a busy one. <b>xnbr</b> is that multiple. <b>Delta</b> is the change since yesterday. Use <b>Walls: STRENGTH / NEAREST</b> in the header to re-sort by distance from price instead.'],
   perexp:['Per-expiry structure','Where each expiry pins, so you can see whether near and far horizons agree.','If a nearby expiry and a distant one pin at very different prices, expect the level to shift once the near one expires.'],
+  reach:['Reachability','The chance price <b>touches</b> each wall within the horizon, from a Monte Carlo over the volatility cone. A wick counts.','The raw model is over-confident — a raw 94% only touches about 68% of the time — so these are CORRECTED against a reliability curve fitted on real EUR/USD data and verified out of sample to about 2pp. The curve is shown beside the numbers so you can see how much correction was applied. It says nothing about whether a wall then HOLDS.'],
   volmag:['Volume magnets','Strikes with the heaviest <b>volume traded today</b>, as opposed to resting open interest.','Volume is activity, open interest is commitment. A strike busy today with little open interest is a fresh fight, not an established wall.'],
 };
 const h = k => HELP[k] ? `<i class="h" data-k="${k}">?</i>` : '';
@@ -257,6 +258,9 @@ function openZoom(key){
   document.getElementById('zoom').classList.add('open');
 }
 function closeZoom(){ document.getElementById('zoom').classList.remove('open'); }
+// Registered by hand: this panel fetches asynchronously rather than rendering from the
+// stored record, so it does not go through panel().
+PANELS['reach'] = { title: 'Reachability \u2014 will price get there?', render: (e,big) => reachPanel(e,big) };
 function panel(cls,key,title,helpKey,render,flush){
   PANELS[key]={title,render};
   const e=STORE[SYM];
@@ -413,6 +417,119 @@ function wireChartToolbar(){
     if (ev.target.closest && ev.target.closest('.h')) tipEl().style.display = 'none';
   });
 })();
+
+// ── REACHABILITY panel ───────────────────────────────────────────────────────
+// Fetched on demand (it runs a Monte Carlo server-side, so it is not part of the page
+// load). Shows the CALIBRATED probability that price touches each wall, the first-touch
+// race, and the reliability curve the correction came from — the curve is on screen next
+// to the numbers deliberately, because a probability shown without its accuracy invites
+// exactly the over-trust the raw version would have earned.
+let REACH = null, REACH_H = 12, REACH_BUSY = false;
+
+async function loadReach(){
+  if(REACH_BUSY) return; REACH_BUSY = true;
+  const host = document.getElementById('reachBody');
+  if(host) host.innerHTML = '<div class="empty">Running Monte Carlo…</div>';
+  try{
+    const r = await fetch(`/api/oi-reachability?pair=${encodeURIComponent(SYM)}&h=${REACH_H}`,{cache:'no-store'});
+    REACH = await r.json();
+  }catch(err){ REACH = {ok:false, error:err.message}; }
+  REACH_BUSY = false;
+  const h2 = document.getElementById('reachBody');
+  if(h2) h2.innerHTML = reachPanel(STORE[SYM], false);
+}
+
+function reachPanel(e, big){
+  if(!REACH) return `<div class="empty">Probability that price TOUCHES each wall, from the volatility cone.<br>
+    <button class="btn" style="margin-top:12px" onclick="loadReach()">Run for ${esc(nm(SYM))}</button></div>`;
+  if(!REACH.ok) return `<div class="empty">Could not compute: ${esc(REACH.error||'unknown')}<br>
+    <button class="btn" style="margin-top:12px" onclick="loadReach()">Retry</button></div>`;
+  if(REACH.pair && norm(REACH.pair)!==norm(SYM))
+    return `<div class="empty">Loaded for ${esc(REACH.pair)}, not ${esc(nm(SYM))}.<br>
+      <button class="btn" style="margin-top:12px" onclick="loadReach()">Run for ${esc(nm(SYM))}</button></div>`;
+
+  const c=REACH.calibration||{}, race=REACH.race, d=REACH.density;
+  const hsel=[12,48].map(hh=>`<button class="btn ${hh===REACH_H?'on':''}" onclick="REACH_H=${hh};loadReach()">${hh===12?'1h':'4h'}</button>`).join('');
+
+  // Reliability curve: predicted (x) vs realised (y). The diagonal is perfect.
+  let curveSvg='';
+  if(Array.isArray(c.curve)&&c.curve.length>1){
+    const W=340,Hh=big?300:190,P=30;
+    const X=v=>P+v*(W-2*P), Y=v=>Hh-P-v*(Hh-1.6*P);
+    curveSvg=`<svg viewBox="0 0 ${W} ${Hh}" style="max-width:${W}px">
+      <line x1="${X(0)}" y1="${Y(0)}" x2="${X(1)}" y2="${Y(1)}" stroke="var(--tx3)" stroke-width="1" stroke-dasharray="3 3"/>
+      <path d="${c.curve.map((p,i)=>(i?'L':'M')+X(p[0])+' '+Y(p[1])).join(' ')}" fill="none" stroke="var(--acc)" stroke-width="2"/>
+      ${c.curve.map(p=>`<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="2.5" fill="var(--acc)"/>`).join('')}
+      <text class="lbl" x="${P}" y="${Hh-8}">raw 0%</text>
+      <text class="lbl" x="${W-P}" y="${Hh-8}" text-anchor="end">raw 100%</text>
+      <text class="lbl" x="${P-6}" y="${Y(1)+4}" text-anchor="end">100%</text>
+      <text class="lbl" x="${P-6}" y="${Y(0)+4}" text-anchor="end">0%</text>
+    </svg>
+    <div class="note">Amber = what the model's raw number actually delivers. Grey diagonal = a perfect model.
+      It sags far below the diagonal at the top: <b>raw 94% really means about 68%</b>. The numbers below are
+      already corrected by this curve, so read them as-is. Correction verified out of sample to
+      <b>±${c.oosErrPp}pp</b>${c.exact?'':' (curve measured at a different horizon — treat as approximate)'}.</div>`;
+  }
+
+  const bar = p => {
+    const w=Math.round(p*100);
+    const col = p>=0.5?'var(--call)':p>=0.25?'var(--warn)':'var(--tx3)';
+    return `<span class="bar" style="width:${w}px;background:${col};opacity:.75"></span>`;
+  };
+  const rows=(REACH.walls||[]).map(w=>{
+    const mins=Number.isFinite(w.medBarsToTouch)?(w.medBarsToTouch*5):null;
+    const col=w.type==='call_wall'?'var(--call)':w.type==='put_wall'?'var(--put)':'var(--pain)';
+    return `<tr><td style="color:${col}">${fx(w.price,SYM)}</td>
+      <td class="muted">${esc((w.type||'').replace('_',' '))}</td>
+      <td><b>${(w.calibrated*100).toFixed(0)}%</b></td>
+      <td style="width:110px">${bar(w.calibrated)}</td>
+      <td class="muted">${(w.raw*100).toFixed(0)}%</td>
+      <td class="muted">${mins!=null?(mins<60?mins+'m':(mins/60).toFixed(1)+'h'):'—'}</td></tr>`;
+  }).join('');
+
+  const raceHtml = race ? `<table style="margin-top:6px"><tbody>
+    <tr><td class="muted">Reaches the wall ABOVE first</td><td><b>${(race.upFirst*100).toFixed(0)}%</b></td>
+      <td class="muted">${race.medBarsUp!=null?'median '+(race.medBarsUp*5)+'m':''}</td></tr>
+    <tr><td class="muted">Reaches the wall BELOW first</td><td><b>${(race.downFirst*100).toFixed(0)}%</b></td>
+      <td class="muted">${race.medBarsDown!=null?'median '+(race.medBarsDown*5)+'m':''}</td></tr>
+    <tr><td class="muted">Touches neither</td><td><b>${(race.neither*100).toFixed(0)}%</b></td><td></td></tr>
+    </tbody></table>
+    <div class="note">Which wall price gets to FIRST — not the same as two separate touch odds, which carry no
+      ordering and can sum past 100%. These are raw path frequencies: the single-barrier calibration above does
+      not transfer to a race, so treat them as relative, not exact.</div>` : '';
+
+  // Visit density — where paths DWELL. The well-posed version of "most touched path",
+  // which is degenerate here: under a driftless cone the modal path is flat, always.
+  let densHtml='';
+  if(d&&d.bins?.length){
+    const rowsD=d.bins.slice().reverse();
+    const Wd=300, rh=big?9:6;
+    densHtml=`<svg viewBox="0 0 ${Wd} ${rowsD.length*rh+16}" style="margin-top:4px">
+      ${rowsD.map((b,i)=>`<rect x="0" y="${i*rh}" width="${(b.rel*(Wd-70)).toFixed(1)}" height="${rh-1}"
+        fill="${Math.abs(b.mid-d.anchor)<d.binWidth?'var(--acc)':'var(--vol)'}" opacity=".8"/>`).join('')}
+      <text class="lbl" x="${Wd-66}" y="10">${fx(d.hi,SYM)}</text>
+      <text class="lbl" x="${Wd-66}" y="${rowsD.length*rh}">${fx(d.lo,SYM)}</text>
+    </svg>
+    <div class="note">Time the ${d.nPaths} simulated paths spend at each price. Amber band = spot. Mass piles up
+      around spot, which is why a single "most likely path" is not a real thing — the modal path in a driftless
+      cone is flat for every instrument, every time.</div>`;
+  }
+
+  return `<div style="display:flex;gap:9px;align-items:center;margin-bottom:12px">
+      <span class="muted" style="font-size:12.5px">Horizon</span>${hsel}
+      <span class="muted" style="font-size:12px;margin-left:auto">${REACH.bars} bars · ${REACH.horizonMin}min ahead</span>
+      <button class="btn" onclick="loadReach()">↻</button></div>
+    <table><thead><tr><th>Wall</th><th>Type</th><th>P(touch)</th><th></th><th>raw</th><th>median time</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <div class="note"><b>P(touch)</b> is the chance price trades at that level at least once within the horizon —
+      a wick counts. It says nothing about whether the wall then HOLDS, which is a separate and unproven question.</div>
+    ${raceHtml}
+    <div style="margin-top:16px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx2)">Where paths dwell</div>
+    ${densHtml}
+    <div style="margin-top:16px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx2)">Is the probability trustworthy?</div>
+    ${curveSvg}`;
+}
+const norm = x => String(x||'').toLowerCase().replace(/[/_]/g,'');
 
 async function load(){
   const r = await fetch('/api/kv/get?key=oi_store',{cache:'no-store'});
@@ -715,6 +832,10 @@ function render(){
     + panel('c4','term','ATM IV term structure','term',chartTerm)
     + panel('c4','perexp','Per-expiry structure','perexp',termTable,true)
     + panel('c4','vol','Volume magnets','volmag',volumePanel,true)
+    + '<div class="p c12"><h3><span class="grow">Reachability \u2014 will price get there?'
+      + h('reach') + '</span>'
+      + '<button class="zoom" onclick="openZoom(\'reach\')">&#10530; Enlarge</button></h3>'
+      + '<div class="body" id="reachBody">' + reachPanel(e,false) + '</div></div>'
     + '</div>';
   document.getElementById('ctlHost').innerHTML = chartToolbar();
   wireChartToolbar();

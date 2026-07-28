@@ -118,6 +118,7 @@ import { excursionFromM1, summarizeGiveback } from './js/giveback.js';   // per-
 import { volHorseRace as _volHorseRace, HR_MODELS as _HR_MODELS } from './js/volHorseRaceEngine.js';   // 8-model σ-forecast horse race per instrument (QLIKE/MZ), does HAR's gold win generalise
 import { scanConfirmedSignals as _scanConfirmedSignals, mergeLog as _mergeLog, forwardStats as _forwardStats } from './js/forwardTrackEngine.js';   // live post-research track record of the confirmed fade
 import { parseCalendarCsv as _parseCalendarCsv, pairCurrencies as _calPairCurrencies } from './js/newsCalendar.js';   // economic-calendar parser
+import { wallReachability as _oiWallReach, firstTouchRace as _oiFirstTouch, visitDensity as _oiVisitDensity, calibForHorizon as _oiCalibFor } from './js/oiReachability.js';   // calibrated P(touch) per OI wall
 import { buildIntradayContext as _fpBuildCtx, intradayCone as _fpCone, intradayTally as _fpTally, intradayRealizedZ as _fpRealZ, intradayReachability as _fpReach, reachabilityCalibration as _fpReachCalib, intradaySamplePaths as _fpPaths, dayRangeStatus as _fpDayRange, buildForecastContext as _fpBuildDaily, coneFromContext as _fpConeDaily, calibrationTally as _fpTallyDaily } from './js/forecastPathCore.js';   // forecast-path summary + reachability (cone claims API) + daily trend-direction (driftSource:'trend')
 import { makeClaim as _cfMakeClaim, shouldRecord as _cfShouldRecord, resolveClaims as _cfResolve, pruneStale as _cfPrune, summarizeForward as _cfSummarize } from './js/coneForwardTrack.js';   // cone forward-track (live claims vs outcomes)
 import { detectSurprise as _saDetect, shouldFire as _saShouldFire, recordFired as _saRecordFired, SURPRISE_DEFAULTS as _SA_DEFAULTS } from './js/surpriseAlertCore.js';   // cone surprise-alert (context ping, not a signal)
@@ -2843,6 +2844,82 @@ Reply in this exact format (use ** for bold headers):
 //      retail CFD tracks the future closely (course §Lesson 03: "index CFDs track
 //      the futures, basis small"), so it's a sound anchor; for FX it's spot, giving
 //      basis≈0 (a few pips off) — still far better than a garbage estimate.
+// ── OI-wall reachability: P(touch) per wall, first-touch race, visit density ──────
+// Server-side because it needs the M5 history the intraday cone warms up on.
+//
+// The horizon is CAPPED to the fitted calibration horizons (1h / 4h) rather than run out
+// to the option expiry. 11 DTE is ~3,200 M5 bars and the reliability map was measured at
+// 12 and 48; extrapolating a probability correction ~60x past where it was verified would
+// hand back a confident number with nothing behind it. "Will price reach this wall in the
+// next hour / four hours" is both answerable and the more useful question for a trade.
+app.get('/api/oi-reachability', async (req, res) => {
+  try {
+    const pair = req.query.pair;
+    if (!pair) return res.json({ ok: false, error: 'pair param required' });
+    const H = Math.max(4, Math.min(96, parseInt(req.query.h, 10) || 12));
+
+    const raw = await kv.get('oi_store').catch(() => null);
+    const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
+    const norm = x => String(x).toLowerCase().replace(/[/_]/g, '');
+    const key = Object.keys(store).find(k => norm(k) === norm(pair));
+    const inst = key ? store[key] : null;
+    if (!inst) return res.json({ ok: false, error: `no OI stored for ${pair}` });
+
+    const OA = { 'EUR/USD': 'EUR_USD', 'GBP/USD': 'GBP_USD', 'USD/JPY': 'USD_JPY', 'AUD/USD': 'AUD_USD',
+      'XAU/USD': 'XAU_USD', 'USD/CAD': 'USD_CAD', 'USD/CHF': 'USD_CHF', 'NAS100_USD': 'NAS100_USD',
+      'SPX500_USD': 'SPX500_USD', 'US30_USD': 'US30_USD', 'US2000_USD': 'US2000_USD',
+      'DE30_USD': 'DE30_EUR', 'UK100_GBP': 'UK100_GBP' };
+    const osym = OA[key];
+    if (!osym) return res.json({ ok: false, error: `no OANDA mapping for ${key}` });
+    if (!process.env.OANDA_KEY) return res.json({ ok: false, error: 'OANDA_KEY not configured' });
+
+    const base = (process.env.OANDA_ENV || 'live') === 'practice'
+      ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+    const cr = await fetch(
+      `${base}/v3/instruments/${encodeURIComponent(osym)}/candles?granularity=M5&count=2000&price=M`,
+      { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(20_000) });
+    if (!cr.ok) return res.json({ ok: false, error: `OANDA ${cr.status}` });
+    const cj = await cr.json();
+    const bars = (cj.candles || []).filter(c => c.complete && c.mid).map(c => ({
+      time: Math.floor(new Date(c.time).getTime() / 1000),
+      open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c,
+    }));
+    if (bars.length < 400) return res.json({ ok: false, error: `only ${bars.length} bars` });
+
+    const ctx = _fpBuildCtx(bars, {});
+    const i = bars.length, anchor = bars[i - 1].close;
+
+    // The same walls the chart draws: tiered and near-money, both sides, plus max pain.
+    // Stored levels are already SPOT-adjusted, which is the space the candles are in.
+    const rm = inst.refMove?.move;
+    const nearOK = s => !(rm > 0) || Math.abs(s - inst.spot) <= 2.5 * rm;
+    const walls = [];
+    (inst.callWalls || []).filter(w => w.tier && nearOK(w.strike)).slice(0, 4)
+      .forEach(w => walls.push({ price: w.strike, type: 'call_wall', label: `call ${fmtN(w.strike)}` }));
+    (inst.putWalls || []).filter(w => w.tier && nearOK(w.strike)).slice(0, 4)
+      .forEach(w => walls.push({ price: w.strike, type: 'put_wall', label: `put ${fmtN(w.strike)}` }));
+    if (Number.isFinite(inst.maxPain)) walls.push({ price: inst.maxPain, type: 'max_pain', label: 'max pain' });
+    if (!walls.length) return res.json({ ok: false, error: 'no tiered near-money walls for this pair' });
+
+    const rows = _oiWallReach(ctx, i, walls, H, { nPaths: 400 });
+    const up = rows.filter(r => r.price > anchor).sort((a, b) => a.price - b.price)[0]?.price || 0;
+    const dn = rows.filter(r => r.price < anchor).sort((a, b) => b.price - a.price)[0]?.price || 0;
+    const race = (up || dn) ? _oiFirstTouch(ctx, i, up, dn, H, { nPaths: 400 }) : null;
+    const density = _oiVisitDensity(ctx, i, H, { bins: 44, nPaths: 300 });
+    const cal = _oiCalibFor(H);
+
+    res.json({ ok: true, pair: key, horizonBars: H, horizonMin: H * 5, anchor,
+      bars: bars.length, asOf: Date.now(),
+      calibration: { source: `eurusd-m5-${cal.label}`, exact: cal.exact, oosErrPp: cal.oosErrPp,
+        curve: cal.curve,
+        note: 'Raw MC touch probability is over-confident — a raw 94% touches about 68% of the time. These are CALIBRATED against a reliability curve fitted on EUR/USD M5 and verified out of sample (9.4pp -> 1.7pp at 1h). The curve is returned so the correction is auditable.' },
+      walls: rows, race, density });
+  } catch (e) {
+    res.json({ ok: false, error: String(e?.message || e) });
+  }
+});
+function fmtN(v) { return Number.isFinite(v) ? (Math.abs(v) >= 100 ? v.toFixed(2) : v.toFixed(5)) : '—'; }
+
 app.get('/api/futures-quote', async (req, res) => {
   const FUTURES_MAP = {
     'EUR/USD': '6E=F', 'GBP/USD': '6B=F', 'USD/JPY': '6J=F', 'AUD/USD': '6A=F',

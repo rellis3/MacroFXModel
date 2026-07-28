@@ -52,16 +52,46 @@ export const REACH_CALIB = [
   [0.55, 0.50], [0.64, 0.56], [0.74, 0.59], [0.84, 0.66], [0.94, 0.68],
 ];
 
+// Same exercise at H=48 (4h), fitted Feb–Apr and tested May–Jul:
+// OOS mean error RAW 12.4pp → CALIBRATED 3.4pp. Worse than the 1h map (1.7pp) but a
+// large improvement and honest to use, so 4h is offered rather than extrapolated from
+// the 1h curve — the misses differ in shape, not just size.
+// NB the measured tail inverted slightly (0.841→0.595 then 0.933→0.587); `_monotone`
+// below irons that out, because a probability map that decreases is worse than useless.
+export const REACH_CALIB_H48 = [
+  [0.0402, 0.1469], [0.1442, 0.1911], [0.2439, 0.2665], [0.3451, 0.3778], [0.4466, 0.4167],
+  [0.5462, 0.4933], [0.6463, 0.5109], [0.7465, 0.5298], [0.8407, 0.5946], [0.9325, 0.5946],
+];
+
+// Only these horizons have a FITTED, out-of-sample-verified map. Anything else is
+// snapped to the nearest and says so via `calibSource`, rather than silently pretending
+// the correction was measured at that horizon.
+export const CALIB_BY_HORIZON = [
+  { bars: 12, label: '1h',  curve: REACH_CALIB,     oosErrPp: 1.7 },
+  { bars: 48, label: '4h',  curve: REACH_CALIB_H48, oosErrPp: 3.4 },
+];
+export function calibForHorizon(H) {
+  const c = CALIB_BY_HORIZON.slice().sort((a, b) => Math.abs(a.bars - H) - Math.abs(b.bars - H))[0];
+  return { ...c, exact: c.bars === H };
+}
+// Enforce non-decreasing. A fitted curve can wobble in a thin top bin (44 samples at
+// H=48); a map that goes DOWN would say a stronger raw signal is less likely to touch.
+function _monotone(curve) {
+  let best = -Infinity;
+  return curve.map(([x, y]) => { best = Math.max(best, y); return [x, best]; });
+}
+
 // Apply the map. Flat outside the fitted range rather than extrapolating — beyond the
 // data the honest answer is the edge value, not a straight line into 100%.
 export function calibrateTouch(p, curve = REACH_CALIB) {
   if (!Number.isFinite(p)) return null;
-  if (p <= curve[0][0]) return curve[0][1];
-  for (let i = 1; i < curve.length; i++) {
-    const [x0, y0] = curve[i - 1], [x1, y1] = curve[i];
+  const c = _monotone(curve);
+  if (p <= c[0][0]) return c[0][1];
+  for (let i = 1; i < c.length; i++) {
+    const [x0, y0] = c[i - 1], [x1, y1] = c[i];
     if (p <= x1) return y0 + (y1 - y0) * ((p - x0) / ((x1 - x0) || 1));
   }
-  return curve[curve.length - 1][1];
+  return c[c.length - 1][1];
 }
 
 // Per-wall reachability. `walls` = [{price, type, label}]. Returns one row per wall,
@@ -71,6 +101,7 @@ export function wallReachability(ctx, i, walls, horizonBars, opts = {}) {
   if (!ctx || !Array.isArray(walls) || !walls.length) return [];
   const anchor = ctx.bars?.[i - 1]?.close;
   if (!(anchor > 0)) return [];
+  const cal = calibForHorizon(horizonBars);
   const out = [];
   for (const w of walls) {
     if (!Number.isFinite(w?.price) || w.price <= 0) continue;
@@ -80,10 +111,12 @@ export function wallReachability(ctx, i, walls, horizonBars, opts = {}) {
     out.push({
       price: w.price, type: w.type ?? null, label: w.label ?? null,
       side: r.side, raw: +r.pTouch.toFixed(4),
-      calibrated: +calibrateTouch(r.pTouch).toFixed(4),
+      calibrated: +calibrateTouch(r.pTouch, cal.curve).toFixed(4),
       medBarsToTouch: r.medBarsToTouch, z: r.z,
       distFrac: +((w.price - anchor) / anchor).toFixed(6),
-      calibSource: 'eurusd-m5-h12',
+      // Which measured curve was applied, whether it was measured AT this horizon, and
+      // how wrong that curve was out of sample — so a caller can show the error bar.
+      calibSource: `eurusd-m5-${cal.label}`, calibExact: cal.exact, calibOosErrPp: cal.oosErrPp,
     });
   }
   return out.sort((a, b) => Math.abs(a.distFrac) - Math.abs(b.distFrac));
