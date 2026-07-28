@@ -1859,6 +1859,18 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
               openInterest: oiSer[0], oiPct: pctRank(h(oiSer), oiSer[0]),
               weeklyChg: pi(cur.change_in_m_money_long_all ?? cur.chg_mm_long) - pi(cur.change_in_m_money_short_all ?? cur.chg_mm_short),
               histLen: sorted.length, reportDate: _dateF ? (cur[_dateF] ?? '').toString().split('T')[0] : null,
+              // The 200-week series is computed here to rank the current value, then was
+              // thrown away — so nothing downstream could chart the trend that gives a
+              // percentile its meaning. Kept on the row (oldest→newest) and stripped from
+              // the default response below, since 35 instruments x 200 weeks x 3 series is
+              // far too much to ship on every poll.
+              _series: {
+                dates: sorted.map(r => (_dateF ? (r[_dateF] ?? '').toString().split('T')[0] : null)).reverse(),
+                specNet: specNets.slice().reverse(),
+                commNet: commNets.slice().reverse(),
+                oi: oiSer.slice().reverse(),
+                specShare: specShare.map(v => (v == null ? null : +(v * 100).toFixed(3))).reverse(),
+              },
             });
           }
           return results;
@@ -1910,6 +1922,18 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
               openInterest: oiSer[0], oiPct: pctRank(h(oiSer), oiSer[0]),
               weeklyChg: pi(cur.change_in_lev_money_long_all ?? cur.change_in_lev_money_long ?? cur.chg_lev_long) - pi(cur.change_in_lev_money_short_all ?? cur.change_in_lev_money_short ?? cur.chg_lev_short),
               histLen: sorted.length, reportDate: _dateF ? (cur[_dateF] ?? '').toString().split('T')[0] : null,
+              // The 200-week series is computed here to rank the current value, then was
+              // thrown away — so nothing downstream could chart the trend that gives a
+              // percentile its meaning. Kept on the row (oldest→newest) and stripped from
+              // the default response below, since 35 instruments x 200 weeks x 3 series is
+              // far too much to ship on every poll.
+              _series: {
+                dates: sorted.map(r => (_dateF ? (r[_dateF] ?? '').toString().split('T')[0] : null)).reverse(),
+                specNet: specNets.slice().reverse(),
+                commNet: commNets.slice().reverse(),
+                oi: oiSer.slice().reverse(),
+                specShare: specShare.map(v => (v == null ? null : +(v * 100).toFixed(3))).reverse(),
+              },
             });
           }
           return results;
@@ -1948,8 +1972,18 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
               disaggCount: disaggRows.length, tffCount: tffRows.length, fetchErrors } });
         }
 
-        const payload2 = { ok: true, instruments: allInstruments, reportDate: reportDate2,
-          count: allInstruments.length, fetchErrors: fetchErrors.length ? fetchErrors : undefined };
+        // ?history=EUR returns that one instrument's full weekly series; everything else
+        // is returned lean. Charting the trend behind a percentile needs the series, but
+        // shipping all 35 on every poll would be a ~2MB response for a page that only
+        // ever draws one at a time.
+        const wantHist = (url.searchParams.get('history') || '').toUpperCase();
+        const histRow = wantHist ? allInstruments.find(x => x.sym === wantHist) : null;
+        const history = histRow ? { sym: histRow.sym, label: histRow.label, ...histRow._series } : null;
+        const lean = allInstruments.map(({ _series, ...rest }) => rest);
+
+        const payload2 = { ok: true, instruments: lean, reportDate: reportDate2,
+          count: lean.length, history,
+          fetchErrors: fetchErrors.length ? fetchErrors : undefined };
 
         if (env.FX_SCORES) {
           await env.FX_SCORES.put('cot_extremes_v2', JSON.stringify({ ts: Date.now(), data: payload2 }),
