@@ -115,6 +115,17 @@ export function runCogV3(dailyDataset, h1Bars, cfg = {}) {
     requireLiquidity = true,  // liquidity acts as a PERMISSION filter on direction
     directionSource = 'crossasset', // 'crossasset' (cogDirectionGate) | 'netliq' | 'random'
     randomSeed      = 12345,
+    // LOOKAHEAD CONTROL — the single most important parameter in this file.
+    // The direction gate reads DAILY CLOSES of DXY, US2Y/10Y, HY credit, gold,
+    // copper, oil and ES/RTY. Those close at 21:00-22:00 UTC. This chassis
+    // enters at 13:00 UTC. So using day i's daily row to trade day i's 13:00
+    // bar consumes prices that do not exist yet — an 8-hour lookahead on every
+    // market input. fetchRealCogDataset applies publication lag to the FRED
+    // MACRO series (WALCL/TGA/RRP), but market closes have no publication lag
+    // to apply, so that protection does not cover Gate 3 at all.
+    // signalLagDays: 1 ⇒ trade day i using day i-1's completed row. This is the
+    // honest default; 0 exists only to MEASURE the size of the contamination.
+    signalLagDays   = 1,
   } = cfg;
 
   const dates = dailyDataset.dates;
@@ -166,11 +177,12 @@ export function runCogV3(dailyDataset, h1Bars, cfg = {}) {
     const dow = new Date(today + 'T12:00:00Z').getUTCDay();
     if (dow === 0 || dow === 6) continue;
 
-    // Daily macro row for this date. Strictly the PRIOR trading day's row would
-    // be even safer, but fetchRealCogDataset already applies each series'
-    // publication lag, so same-date is the intended alignment.
-    const di = dailyIdx.get(today);
-    if (di == null) { skips.noDaily++; continue; }
+    // Daily macro row, shifted back `signalLagDays` so the 13:00 UTC entry can
+    // only ever consume rows that were COMPLETE before the trading day began.
+    const diRaw = dailyIdx.get(today);
+    if (diRaw == null) { skips.noDaily++; continue; }
+    const di = diRaw - signalLagDays;
+    if (di < 0) { skips.noDaily++; continue; }
 
     // Liquidity permission
     let liqState = 'OFF';

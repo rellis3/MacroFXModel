@@ -2144,7 +2144,12 @@ ${s.cot ? `Report date: ${s.cot.reportDate ?? 'N/A'}  |  Open Interest: ${s.cot.
 Leveraged funds net: ${s.cot.levNet ?? 'N/A'} (${s.cot.levNetChg != null ? (s.cot.levNetChg >= 0 ? '+' : '') + s.cot.levNetChg : 'N/A'} wk)  |  Net % of OI: ${s.cot.levPct != null ? s.cot.levPct.toFixed(1) + '%' : 'N/A'}
 Spec traders: ${s.cot.numLevLong ?? 'N/A'} long · ${s.cot.numLevShort ?? 'N/A'} short  |  Avg size: ${s.cot.avgContracts ?? 'N/A'} contracts
 Asset Mgr net: ${s.cot.amNet ?? 'N/A'} (${s.cot.amNetChg != null ? (s.cot.amNetChg >= 0 ? '+' : '') + s.cot.amNetChg : 'N/A'} wk)  |  Dealer net: ${s.cot.dealerNet ?? 'N/A'}
-Gross L/S ratio: ${s.cot.grossRatio ?? 'N/A'}  |  Crowding: ${s.cot.crowdingPct != null ? s.cot.crowdingPct.toFixed(1) + '% of OI' : 'N/A'}${s.cot.crowdingPct >= 20 ? ' — EXTREME (unwind risk elevated)' : s.cot.crowdingPct >= 10 ? ' — ELEVATED' : ''}` : '  COT data not available (set CFTC URL via COT toolbar button)'}
+Gross L/S ratio: ${s.cot.grossRatio ?? 'N/A'}  |  Crowding: ${s.cot.crowdingPct != null ? s.cot.crowdingPct.toFixed(1) + '% of OI' : 'N/A'}${s.cot.crowdingPct >= 20 ? ' — EXTREME (unwind risk elevated)' : s.cot.crowdingPct >= 10 ? ' — ELEVATED' : ''}
+Crowding percentile (net as SHARE of OI, ranked — the read that survives OI itself changing): ${s.cot.crowdSharePct != null ? s.cot.crowdSharePct + 'th pct' : 'N/A'}${s.cot.crowdShare != null ? `  |  net = ${s.cot.crowdShare}% of OI` : ''}${s.cot.crowdSharePct >= 90 ? ' — CROWDED LONG this pair' : s.cot.crowdSharePct <= 10 ? ' — CROWDED SHORT this pair' : ''}${s.cot.inverted ? '  (futures are the foreign leg; already flipped into pair terms)' : ''}
+NOTE ON COT TIMING: this is a Tuesday snapshot released Friday, so it is ALWAYS several days old — treat it as a positioning/regime conditioner, never as a timing signal, and say so if you lean on it.` : '  COT data not available (set CFTC URL via COT toolbar button)'}
+${s.cotMarket ? `CROSS-MARKET POSITIONING (${s.cotMarket.n} instruments, report ${s.cotMarket.reportDate}) — is this pair's crowding idiosyncratic or part of a board-wide stretch?
+Extremes: ${s.cotMarket.extremes.length ? s.cotMarket.extremes.map(e => `${e.sym} ${e.pct}th (${e.side})`).join('  ·  ') : 'none at the 10th/90th percentile'}
+By group (median crowding percentile): ${s.cotMarket.byGroup.map(g => `${g.group} ${g.medPct ?? 'N/A'}`).join('  ·  ')}` : ''}
 
 HIGH CONFLUENCE ENTRIES (from multi-layer scanner)
 ${s.topEntries && s.topEntries.length > 0
@@ -2681,8 +2686,47 @@ async function _serverSnapshotFor(name, sym) {
       const c = (Array.isArray(arr) ? arr : []).find(x => x.sym === m[0]);
       if (c) {
         const oi = c.openInterest ?? 0, net = m[1] ? -(c.specNet ?? 0) : (c.specNet ?? 0);
+        // `m[1]` flips USD-quoted pairs (JPY/CAD/CHF futures are the foreign leg), so the
+        // net and its percentile must BOTH be expressed in pair terms or the brief will
+        // describe specs as long the pair when they are long the foreign currency.
+        const pctPair = m[1] && c.specSharePct != null ? 100 - c.specSharePct : c.specSharePct;
+        const rawPctPair = m[1] && c.specPct != null ? 100 - c.specPct : c.specPct;
         snap.cot = { reportDate: c.reportDate, openInterest: oi, levNet: net, levNetChg: c.weeklyChg,
-          levPct: c.specPct, crowdingPct: oi > 0 ? +(Math.abs(c.specNet ?? 0) / oi * 100).toFixed(1) : c.specPct };
+          levPct: rawPctPair,
+          // OI-normalised crowding — share of open interest AND its percentile, which is
+          // the read that survives open interest itself changing over the window.
+          crowdShare: c.specShare != null ? (m[1] ? -c.specShare : c.specShare) : null,
+          crowdSharePct: pctPair, crowdShareZ: c.specShareZ != null ? (m[1] ? -c.specShareZ : c.specShareZ) : null,
+          inverted: !!m[1],
+          crowdingPct: oi > 0 ? +(Math.abs(c.specNet ?? 0) / oi * 100).toFixed(1) : c.specPct };
+      }
+    }
+  } catch {}
+  // MARKET-WIDE COT — the higher-level read. The per-pair block above answers "how is
+  // this pair positioned"; this answers "where is the whole board stretched", which is
+  // what tells you whether one crowded pair is idiosyncratic or part of a broad
+  // risk-on/risk-off crowding. Extremes are taken on the OI-NORMALISED percentile.
+  try {
+    const cotRaw2 = await kv.get('cot_extremes_v2');
+    if (cotRaw2) {
+      const cd = JSON.parse(cotRaw2); const arr = cd.data?.instruments ?? cd.data ?? cd.instruments ?? [];
+      const list = (Array.isArray(arr) ? arr : []).filter(x => x && x.sym);
+      const pctOf = x => (x.specSharePct != null ? x.specSharePct : x.specPct);
+      const ext = list.filter(x => pctOf(x) != null && (pctOf(x) >= 90 || pctOf(x) <= 10))
+        .sort((a, b) => Math.abs(50 - pctOf(b)) - Math.abs(50 - pctOf(a)))
+        .slice(0, 8)
+        .map(x => ({ sym: x.sym, group: x.group, pct: pctOf(x),
+          side: pctOf(x) >= 90 ? 'crowded long' : 'crowded short',
+          z: x.specShareZ ?? x.specZ, wkChg: x.weeklyChg }));
+      if (list.length) {
+        snap.cotMarket = { reportDate: list[0].reportDate, n: list.length, extremes: ext,
+          // Direction of the crowd BY GROUP, so "risk-on positioning" is visible rather
+          // than inferred from a wall of individual rows.
+          byGroup: [...new Set(list.map(x => x.group))].map(g => {
+            const rows = list.filter(x => x.group === g && pctOf(x) != null);
+            return { group: g, n: rows.length,
+              medPct: rows.length ? Math.round(rows.map(pctOf).sort((a, b) => a - b)[rows.length >> 1]) : null };
+          }) };
       }
     }
   } catch {}

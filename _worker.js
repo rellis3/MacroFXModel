@@ -1830,11 +1830,31 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
             const commNets = sorted.map(r => pmL(r) - pmS(r));
             const oiSer    = sorted.map(r => pi(r.open_interest_all ?? r.open_interest));
             const h = a => a.slice(1);
+            // CROWDING = net position as a SHARE of open interest, then ranked.
+            //
+            // `specPct` alone ranks the RAW contract count over the window, which conflates
+            // "more crowded" with "bigger market": open interest itself moves a lot, so
+            // 50,000 net long means different things at different times. ES is the live
+            // example — its open interest sits at the 9th percentile of its own range while
+            // raw spec net ranks 64th, so the two disagree about how stretched positioning
+            // is. Dividing first and ranking after answers the question actually being
+            // asked. The raw percentiles stay alongside so nothing downstream breaks and
+            // the two reads can be compared directly.
+            const specShare = specNets.map((v, k) => (oiSer[k] > 0 ? v / oiSer[k] : null));
+            const commShare = commNets.map((v, k) => (oiSer[k] > 0 ? v / oiSer[k] : null));
+            const clean = a => a.filter(v => v != null && Number.isFinite(v));
             results.push({
               sym: inst.sym, label: inst.label, group: inst.group,
               specPct: pctRank(h(specNets), specNets[0]), commPct: pctRank(h(commNets), commNets[0]),
               specNet: specNets[0], commNet: commNets[0],
               specZ: zScore(h(specNets), specNets[0]), commZ: zScore(h(commNets), commNets[0]),
+              // OI-normalised. `*Share` is the signed fraction of OI (as %), `*SharePct`
+              // its percentile over the same window, `specShareZ` the z of that share.
+              specShare: specShare[0] != null ? +(specShare[0] * 100).toFixed(2) : null,
+              commShare: commShare[0] != null ? +(commShare[0] * 100).toFixed(2) : null,
+              specSharePct: specShare[0] != null ? pctRank(clean(h(specShare)), specShare[0]) : null,
+              commSharePct: commShare[0] != null ? pctRank(clean(h(commShare)), commShare[0]) : null,
+              specShareZ: specShare[0] != null ? zScore(clean(h(specShare)), specShare[0]) : null,
               grossRatio: mmS(cur) > 0 ? +(mmL(cur) / mmS(cur)).toFixed(2) : null,
               openInterest: oiSer[0], oiPct: pctRank(h(oiSer), oiSer[0]),
               weeklyChg: pi(cur.change_in_m_money_long_all ?? cur.chg_mm_long) - pi(cur.change_in_m_money_short_all ?? cur.chg_mm_short),
@@ -1861,11 +1881,31 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
             const commNets = sorted.map(r => { const net = (amL(r) - amS(r)) + (dlL(r) - dlS(r)); return inst.flip ? -net : net; });
             const oiSer    = sorted.map(r => pi(r.open_interest_all ?? r.open_interest));
             const h = a => a.slice(1);
+            // CROWDING = net position as a SHARE of open interest, then ranked.
+            //
+            // `specPct` alone ranks the RAW contract count over the window, which conflates
+            // "more crowded" with "bigger market": open interest itself moves a lot, so
+            // 50,000 net long means different things at different times. ES is the live
+            // example — its open interest sits at the 9th percentile of its own range while
+            // raw spec net ranks 64th, so the two disagree about how stretched positioning
+            // is. Dividing first and ranking after answers the question actually being
+            // asked. The raw percentiles stay alongside so nothing downstream breaks and
+            // the two reads can be compared directly.
+            const specShare = specNets.map((v, k) => (oiSer[k] > 0 ? v / oiSer[k] : null));
+            const commShare = commNets.map((v, k) => (oiSer[k] > 0 ? v / oiSer[k] : null));
+            const clean = a => a.filter(v => v != null && Number.isFinite(v));
             results.push({
               sym: inst.sym, label: inst.label, group: inst.group,
               specPct: pctRank(h(specNets), specNets[0]), commPct: pctRank(h(commNets), commNets[0]),
               specNet: specNets[0], commNet: commNets[0],
               specZ: zScore(h(specNets), specNets[0]), commZ: zScore(h(commNets), commNets[0]),
+              // OI-normalised. `*Share` is the signed fraction of OI (as %), `*SharePct`
+              // its percentile over the same window, `specShareZ` the z of that share.
+              specShare: specShare[0] != null ? +(specShare[0] * 100).toFixed(2) : null,
+              commShare: commShare[0] != null ? +(commShare[0] * 100).toFixed(2) : null,
+              specSharePct: specShare[0] != null ? pctRank(clean(h(specShare)), specShare[0]) : null,
+              commSharePct: commShare[0] != null ? pctRank(clean(h(commShare)), commShare[0]) : null,
+              specShareZ: specShare[0] != null ? zScore(clean(h(specShare)), specShare[0]) : null,
               grossRatio: levS(cur) > 0 ? +(levL(cur) / levS(cur)).toFixed(2) : null,
               openInterest: oiSer[0], oiPct: pctRank(h(oiSer), oiSer[0]),
               weeklyChg: pi(cur.change_in_lev_money_long_all ?? cur.change_in_lev_money_long ?? cur.chg_lev_long) - pi(cur.change_in_lev_money_short_all ?? cur.change_in_lev_money_short ?? cur.chg_lev_short),
