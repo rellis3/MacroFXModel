@@ -119,7 +119,21 @@ export function runCogV3(dailyDataset, h1Bars, cfg = {}) {
 
   const dates = dailyDataset.dates;
   const nD = dates.length;
-  const toSeriesById = s => s || {};
+  // The loader hands back {id: [{date,value}, …]}; every gate consumes
+  // {id: [value, …]}. Same conversion cogBacktestEngine does — getting this
+  // wrong is silent, not loud: the gates just see non-finite values and
+  // classify INVALID forever (first v3 run: netLiqCoverage 0, 1,257 days
+  // blocked, zero trades, no error anywhere).
+  const toSeriesById = seriesMap => {
+    const out = {};
+    for (const key of Object.keys(seriesMap || {})) {
+      const s = seriesMap[key];
+      out[key] = Array.isArray(s) && s.length && typeof s[0] === 'object' && s[0] !== null
+        ? s.map(p => p.value)
+        : s;
+    }
+    return out;
+  };
 
   // ── Daily signals, all causal ──────────────────────────────────────────────
   const calibration = { mode: 'percentile', windowDays, neutralPct };
