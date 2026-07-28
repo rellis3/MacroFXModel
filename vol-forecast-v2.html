@@ -3661,9 +3661,9 @@ function _renderHitChips(name, dayOpen, lineDefs, chartData, coarse = false) {
   const hitsEl = document.getElementById(`v2-level-hits-${name}`);
   if (!hitsEl || !dayOpen) return;
   const hits = [];
-  for (const { pct, side, title } of lineDefs) {
-    if (!pct) continue;
-    const target = dayOpen * (1 + side * pct / 100);
+  for (const { pct, side, title, price } of lineDefs) {
+    if (price == null && !pct) continue;
+    const target = price != null ? price : dayOpen * (1 + side * pct / 100);
     const bar = chartData.find(b => side > 0 ? b.high >= target : b.low <= target);
     if (bar) {
       const t = new Date(bar.time * 1000);
@@ -3686,8 +3686,8 @@ function _renderLevelLegend(name, dayOpen, lineDefs) {
   if (!dayOpen) { el.innerHTML = ''; return; }
   const dp  = _priceFmt(name).precision;
   const Dot = LightweightCharts?.LineStyle?.Dotted;
-  const rows = lineDefs.filter(d => d.pct).map(({ pct, side, color, style, title }) => {
-    const price = (dayOpen * (1 + side * pct / 100)).toFixed(dp);
+  const rows = lineDefs.filter(d => d.pct != null || d.price != null).map(({ pct, side, color, style, title, price: absPrice }) => {
+    const price = (absPrice != null ? absPrice : dayOpen * (1 + side * pct / 100)).toFixed(dp);
     const dash  = (style === Dot) ? 'dotted' : 'dashed';
     const on    = _lvlPinned(name, title);
     const jt    = title.replace(/'/g, "\\'");
@@ -3876,9 +3876,29 @@ async function loadM5Chart(name, f) {
         { pct: L.oc_median, side:  1, color: '#f472b6', style: LS.Dotted,      title: 'O-C med ↑', axis: true },
         { pct: L.oc_median, side: -1, color: '#f472b6', style: LS.Dotted,      title: 'O-C med ↓', axis: true },
       ];
-      const levelPrices = lineDefs
-        .filter(d => d.pct && anchorOpen)
-        .map(d => anchorOpen * (1 + d.side * d.pct / 100));
+      // Dynamic H-L COMPLETION lines as first-class lineDefs (absolute `price`, not a
+      // pct-of-open) so they get the same clickable legend row + pin toggle + hit chip
+      // as the 8 forecast lines. Expected High = running Low + forecast H-L; expected
+      // Low = running High − forecast H-L (median + 75th). They move with the day's
+      // extremes, so they're recomputed here every redraw.
+      const _proj = (() => {
+        const pb = (weekly || todayBarsRaw) ? hitsData : null;
+        if (!pb || !pb.length || !anchorOpen) return [];
+        const hi = Math.max(...pb.map(b => b.high)), lo = Math.min(...pb.map(b => b.low));
+        if (!isFinite(hi) || !isFinite(lo)) return [];
+        const hlR = L.hl_median > 0 ? anchorOpen * L.hl_median / 100 : null;
+        const hlR75 = L.hl_75 > 0 ? anchorOpen * L.hl_75 / 100 : null;
+        const out = [];
+        if (hlR)   { out.push({ price: lo + hlR,  side:  1, color: '#34d399', style: LS.Solid,  title: 'Proj H (Lo+HL)', axis: true },
+                               { price: hi - hlR,  side: -1, color: '#f87171', style: LS.Solid,  title: 'Proj L (Hi−HL)', axis: true }); }
+        if (hlR75) { out.push({ price: lo + hlR75, side:  1, color: '#34d399', style: LS.Dotted, title: 'Proj H 75%', axis: true },
+                               { price: hi - hlR75, side: -1, color: '#f87171', style: LS.Dotted, title: 'Proj L 75%', axis: true }); }
+        return out;
+      })();
+      lineDefs.push(..._proj);
+      // Price of any line: an explicit absolute `price`, else anchorOpen × (1 ± pct%).
+      const _linePrice = d => (d.price != null ? d.price : (anchorOpen != null && d.pct ? anchorOpen * (1 + d.side * d.pct / 100) : null));
+      const levelPrices = lineDefs.map(_linePrice).filter(p => p != null);
 
       const chart = LightweightCharts.createChart(w, {
         width:  w.clientWidth  || 280,
@@ -3939,13 +3959,14 @@ async function loadM5Chart(name, f) {
       // stays scannable (only Day H / live price / Day L keep labels). Clicking a
       // legend row pins that level's label back onto the chart (see toggleLevelLabel).
       const _lineRefs = {};
-      for (const { pct, side, color, style, title } of lineDefs) {
-        if (!pct || !anchorOpen) continue;
-        const pinned = _lvlPinned(name, title);
-        _lineRefs[title] = series.createPriceLine({
-          price: anchorOpen * (1 + side * pct / 100),
-          color, lineWidth: pinned ? 2 : 1, lineStyle: style,
-          title, axisLabelVisible: pinned,
+      for (const d of lineDefs) {
+        const price = _linePrice(d);
+        if (price == null) continue;
+        const pinned = _lvlPinned(name, d.title);
+        _lineRefs[d.title] = series.createPriceLine({
+          price,
+          color: d.color, lineWidth: pinned ? 2 : 1, lineStyle: d.style,
+          title: d.title, axisLabelVisible: pinned,
         });
       }
       _levelLineRefs[name] = _lineRefs;
@@ -3963,21 +3984,8 @@ async function loadM5Chart(name, f) {
           price: pLow, color: '#fbbf24', lineWidth: 1, lineStyle: LS.Dashed,
           title: `${periodLabel} L`, axisLabelVisible: true,
         });
-        // Dynamic H-L COMPLETION lines — project the missing extreme by the forecast
-        // H-L RANGE (a full range, 1×, not the ±band): expected High = running Low +
-        // H-L; expected Low = running High − H-L. These MOVE as the day's extremes
-        // update — they answer "if the low is in, where should the high reach, and
-        // vice-versa." Median (solid) + 75th (dotted). Range in price = anchor × hl%.
-        const hlR   = (anchorOpen && L.hl_median > 0) ? anchorOpen * L.hl_median / 100 : null;
-        const hlR75 = (anchorOpen && L.hl_75    > 0) ? anchorOpen * L.hl_75    / 100 : null;
-        if (hlR && isFinite(pHigh) && isFinite(pLow)) {
-          series.createPriceLine({ price: pLow + hlR,  color: '#34d399', lineWidth: 1, lineStyle: LS.Solid,  title: 'Proj H (Lo+HL)', axisLabelVisible: false });
-          series.createPriceLine({ price: pHigh - hlR, color: '#f87171', lineWidth: 1, lineStyle: LS.Solid,  title: 'Proj L (Hi−HL)', axisLabelVisible: false });
-        }
-        if (hlR75 && isFinite(pHigh) && isFinite(pLow)) {
-          series.createPriceLine({ price: pLow + hlR75,  color: '#34d399', lineWidth: 1, lineStyle: LS.Dotted, title: 'Proj H 75%', axisLabelVisible: false });
-          series.createPriceLine({ price: pHigh - hlR75, color: '#f87171', lineWidth: 1, lineStyle: LS.Dotted, title: 'Proj L 75%', axisLabelVisible: false });
-        }
+        // (The dynamic H-L completion lines are now drawn from lineDefs above, so they
+        // get the same legend row + pin toggle + hit chip as the forecast lines.)
       }
 
       // Current price line — solid, coloured by direction vs open
