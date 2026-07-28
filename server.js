@@ -162,6 +162,7 @@ import { COG_LIQUIDITY_1A_SCORE, COG_RISK_SCORE, COG_DIRECTION_SCORE, COG_THRESH
 import { computeExitScore } from './js/cogExitEngine.js';
 import { runV2Backtest } from './js/cogStateEngine.js';
 import { loadHistoricalCogDataset } from './js/cogHistoricalDataLoader.js';
+import { runCogV3 } from './js/cogV3Engine.js';
 import { runPivotSpike } from './js/pivotSpikeEngine.js';
 import { COG_V2_TRIGGER_WINDOW, COG_V2_NY_OPEN_MINUTE, COG_V2_ENTRY_DEADLINE_MINUTE, COG_V2_SETUP_NOTE, COG_V2_RISK_NOTE, COG_V2_IMPULSE_PARAMS, COG_V2_TRIGGER_SCORE, COG_V2_SETUP_HYSTERESIS, COG_V2_SLOW_SMOOTH, COG_V2_CONFIDENCE, COG_V2_MIN_SETUP_PERSIST_BARS } from './js/cogV2Config.js';
 import { liveSignal as hedgeV2Live, runComparison as hedgeV2Comparison, V2_DEFAULTS as HEDGE_V2_DEFAULTS } from './js/hedgeSignalV2Engine.js';
@@ -5433,6 +5434,54 @@ app.get('/api/nq-qmr/m5-candles', async (req, res) => {
     console.error('[nq-qmr m5]', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
+});
+
+// ── COG v3 — COG's macro signal on QMR's validated intraday chassis ─────────
+// See js/cogV3Engine.js for the full rationale. Short version: QMR kept COG's
+// intraday SHAPE with NQ-price inputs (signal measured at zero on 2026-07-28);
+// the cog*.js family kept COG's macro THESIS on a daily chassis that the first
+// real-data run exposed as broken. This route runs the right inputs on the
+// right chassis, and ships the coin-flip control alongside — so a positive
+// equity curve can never be mistaken for a working direction call.
+const cogV3Jobs = new Map();
+
+app.post('/api/cog-v3/run', express.json({ limit: '64kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
+  const cfg = (req.body && typeof req.body === 'object' ? req.body : {});
+  const jobId = `cogv3_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  cogV3Jobs.set(jobId, { status: 'running', startedAt: Date.now(), phase: 'Fetching macro + H1 data…' });
+  for (const [k, v] of cogV3Jobs) if (Date.now() - v.startedAt > 30 * 60_000) cogV3Jobs.delete(k);
+
+  (async () => {
+    try {
+      // H1 bars bound the usable window: OANDA H1 only reaches back ~5y, while
+      // the macro panel starts 2014. The overlap is the honest sample, and it
+      // is the SAME window QMR's own result was measured on — deliberately, so
+      // the two are directly comparable.
+      const [daily, h1] = await Promise.all([
+        fetchRealCogDataset({ start: cfg.start || '2020-01-01', end: cfg.end }),
+        _getNqQmrBars('NAS100_USD'),
+      ]);
+      cogV3Jobs.get(jobId).phase = 'Running gates + chassis + control arm…';
+      const result = runCogV3(daily, h1, cfg);
+      cogV3Jobs.set(jobId, {
+        status: 'done', startedAt: cogV3Jobs.get(jobId).startedAt,
+        result: { ok: true, dailyBars: daily.dates.length, h1Bars: h1.length, ...result },
+      });
+      console.log(`[cog-v3] ${jobId} done — ${result.trades.length} trades, dirAlpha ${result.control?.dirAlpha}`);
+    } catch (e) {
+      console.error('[cog-v3]', e.message, e.stack ?? '');
+      cogV3Jobs.set(jobId, { status: 'error', error: e.message, startedAt: Date.now() });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/cog-v3/status/:jobId', (req, res) => {
+  const job = cogV3Jobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'unknown jobId' });
+  res.json(job);
 });
 
 // ── COG signal log — the primary-source ledger ───────────────────────────────
