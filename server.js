@@ -8452,6 +8452,11 @@ app.get('/api/kv-health', async (_req, res) => {
       'yield_spread_config', 'yield_spread_credentials', 'yield_spread_plan',
       'volatility_bot_config', 'oi_bot_config', 'range_line_bot_config',
       'macro_equity_config', 'regime_bot_config', 'confluence_bot_config',
+      // Not config, but the two OI keys that CANNOT be rebuilt: the latest paste and
+      // the ~60-day archive. `oi_history` silently lived in the ephemeral store until
+      // 2026-07-28, so it is checked here to make a regression visible immediately
+      // rather than showing up as permanently-null day-over-day reads.
+      'oi_store', 'oi_history',
     ];
     const probe = await kv.probe(CHECK);
     res.json({ ok: true, ...kv.health(), ...probe });
