@@ -133,9 +133,12 @@ markup, the house content order, and a verification checklist.
 - **20 · Risk Management Deep Dive** (3) — coherent risk measures (VaR/CVaR
   & the Artzner axioms), tail risk hedging & portfolio convexity, stress
   testing/scenario analysis/reverse stress tests.
-- **21 · Advanced Portfolio Construction** (3) — risk parity & equal risk
+- **21 · Advanced Portfolio Construction** (4) — risk parity & equal risk
   contribution, Hierarchical Risk Parity, factor-based portfolio
-  construction. Direct sequels to Markowitz & Black-Litterman.
+  construction, active portfolio management (Information Ratio, the
+  Fundamental Law of Active Management, Active Share vs. tracking error,
+  and Sharpe's zero-sum-before-costs accounting identity). Direct sequels
+  to Markowitz & Black-Litterman.
 - **22 · Quantitative Research Process** (2) — the research pipeline
   (hypothesis to honest backtest), feature engineering/leakage/
   reproducibility. The methodology layer underneath every other category.
@@ -158,7 +161,7 @@ theory-lab/
   glossary.html       — searchable notation glossary
   assets/theory.css   — shared stylesheet (dark theme, MathJax, interactive-
                          chart, real-world-scenario, and skim-path classes)
-  lessons/*.html      — 97 lesson files (5 Foundation Mathematics + 8
+  lessons/*.html      — 98 lesson files (5 Foundation Mathematics + 8
                         primers/foundations + 34 numbered theory lessons +
                         5 Fixed Income Mathematics + 4 Numerical Methods +
                         4 further Market Microstructure lessons alongside
@@ -171,5 +174,7 @@ theory-lab/
                         Reinforcement Learning (3), Risk Management Deep
                         Dive (3), Advanced Portfolio Construction (3),
                         Quantitative Research Process (2), and Stochastic
-                        Differential Equations (5))
+                        Differential Equations (5) + 1 further Advanced
+                        Portfolio Construction lesson (Active Portfolio
+                        Management))
 ```
