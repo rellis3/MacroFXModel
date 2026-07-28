@@ -1145,7 +1145,12 @@ export async function processOIData() {
   // LIVE, PAIRED, AT ANALYSE TIME — the top priority source. Only a value the user
   // actually typed (dataset.manual==='1') outranks it; an auto-filled field does not,
   // which is what made every record read "manual" before.
-  const _typed = futEl?.dataset?.manual === '1';
+  // `futEl` is declared in openOIModal, NOT here — referencing it in this scope threw
+  // ReferenceError on every Analyse click (optional chaining does not guard an
+  // undeclared identifier, only a null one), and the .catch on the window binding
+  // turned that into a silent no-op. Look the element up locally.
+  const _futEl = document.getElementById('oiFuturesPrice');
+  const _typed = _futEl?.dataset?.manual === '1';
   const _live = await fetchPairedQuote(pair);
   let futuresEff = null, futuresSource = null, futuresSymbol = null, quoteAt = null, livePairedSpot = null;
   if (_typed && Number.isFinite(futuresRaw)) {
