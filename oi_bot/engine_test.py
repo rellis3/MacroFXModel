@@ -47,9 +47,16 @@ ok("sell break fires past wall-brk (4080)", any(x["zone_id"] == "break_sell_4100
 print("[priming — never retro-enter an overnight crossing]")
 sp = OISession("gold", 4200, [SELL_FADE, BUY_FADE])
 # Bot starts with price already ABOVE the call wall (4310) → prime it away, don't sell into a broken wall.
-sp.decide(4310, dry_run=True)
+sp.decide(4310, dry_run=True, now=1000.0)
 ok("primed call-wall fade does NOT fire later", all(x["zone_id"] != "fade_sell_4300" for x in sp.decide(4300)))
 ok("the un-primed put-wall fade still fires", any(x["zone_id"] == "fade_buy_4100" for x in sp.decide(4100)))
+# Priming now records WHEN + at what price, and how far past the entry — so a "hit but
+# no trade" is legible (was a silent set before).
+rec = sp.primed.get("fade_sell_4300")
+ok("primed record stores the time", rec and rec["at"] == 1000.0, str(rec))
+ok("primed record stores the price + entry", rec and rec["price"] == 4310 and rec["entry"] == 4300, str(rec))
+ok("primed record stores how far price was past the entry", rec and rec["past"] == 10, str(rec))
+ok("un-primed zone has no record", "fade_buy_4100" not in sp.primed)
 
 print("[maxpain — enters near current price, never primed]")
 sm = OISession("gold", 4260, [MAXPAIN])

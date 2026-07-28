@@ -267,6 +267,11 @@ def _instr_lines(plan, sessions):
             "maxPain": slice_.get("maxPain"),
             "zoneCount": slice_.get("zoneCount", len(slice_.get("zones", []))),
             "entered": sorted(sess.entered) if sess else [],
+            # Primed = zones the bot deliberately skipped because price had already
+            # passed their entry when the plan armed. Each carries when (`at`) + the
+            # price + how far past the entry (`past`) so the page can say WHY nothing
+            # traded, and whether it was primed on the level or after price left it.
+            "primed": [dict(zone_id=zid, **rec) for zid, rec in sorted(sess.primed.items())] if sess else [],
         })
     return out
 
@@ -344,10 +349,18 @@ def run(base_url: str, force_live: bool) -> None:
             else:
                 sessions[instr] = OISession(instr, spot, zones)
             # Prime: mark zones already triggered at the current price (best-effort).
+            # Log each NEWLY primed zone with the price + how far past the entry price
+            # already was — so a later "hit but no trade" is legible (priming was silent
+            # before, the #1 "why didn't it trade" confusion).
             try:
                 px0 = (quotes.price(instr) if quotes is not None else broker.price(instr))
                 if px0 is not None:
-                    sessions[instr].decide(px0, dry_run=True, tol=_tol(cfg, instr))
+                    _before = set(sessions[instr].primed)
+                    sessions[instr].decide(px0, dry_run=True, tol=_tol(cfg, instr), now=time.time())
+                    for _zid in sorted(set(sessions[instr].primed) - _before):
+                        _r = sessions[instr].primed[_zid]
+                        log.info(f"PRIMED {instr} {_zid} @ {_r['price']} — price already {_r['past']} past "
+                                 f"entry {_r['entry']} when the plan armed (skip: not chasing a stale break)")
             except Exception:
                 pass
         for instr in list(sessions):

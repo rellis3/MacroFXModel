@@ -4114,10 +4114,23 @@ async function loadOiLiveStatus() {
     if (uniEl)  uniEl.textContent  = rows.length;
     if (body) {
       if (!rows.length) {
-        body.innerHTML = '<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">No OI plan yet — paste the OI heatmap on index.html, then refresh the plan</td></tr>';
+        body.innerHTML = '<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">No OI plan yet — paste the OI heatmap on index.html, then refresh the plan</td></tr>';
       } else {
         const d = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym) ? 3 : (/^(nq|spx|dax|dow|rut|de30|us30|us2000|ftse|uk100)$/i.test(sym) ? 1 : (/gold|xau/i.test(sym) ? 2 : 5)));
         const regCol = r => r === 'PIN' ? 'var(--green)' : r === 'BREAKOUT' ? 'var(--red)' : 'var(--text3)';
+        // Primed = zones the bot skipped because price had already passed their entry when the
+        // plan armed. Show the count + a hover with WHEN and how far past, so a "hit but no
+        // trade" is self-explaining (was invisible before). `past` is in the instrument's price
+        // units; `at` is epoch seconds from the bot.
+        const primedCell = (r) => {
+          const p = r.primed || [];
+          if (!p.length) return '<span style="color:var(--text3)">—</span>';
+          const tip = p.map(z => {
+            const t = z.at ? new Date(z.at * 1000).toISOString().slice(11, 19) + 'Z' : '?';
+            return `${z.zone_id}: primed ${t} @ ${z.price} — ${z.past} past entry ${z.entry}`;
+          }).join('\n').replace(/"/g, '');
+          return `<span title="${tip}" style="color:var(--amber);cursor:help">${p.length} ⓘ</span>`;
+        };
         body.innerHTML = rows.map(r => {
           const stale = r.stale || _staleBy[r.instrument];
           return `<tr style="border-top:1px solid var(--border)"${stale ? ' title="' + String(stale).replace(/"/g, '') + '"' : ''}>
@@ -4127,6 +4140,7 @@ async function loadOiLiveStatus() {
           <td style="padding:6px 10px;text-align:right">${d(r.instrument, r.maxPain)}</td>
           <td style="padding:6px 10px;text-align:right">${stale ? '—' : (r.zoneCount ?? 0)}</td>
           <td style="padding:6px 10px;color:var(--text3)">${(r.entered || []).length}</td>
+          <td style="padding:6px 10px">${primedCell(r)}</td>
         </tr>`; }).join('');
       }
     }
