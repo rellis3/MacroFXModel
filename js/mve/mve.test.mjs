@@ -19,8 +19,8 @@ import { fitLoadings, factorImpliedReturn, coherenceCheck } from './factorModel.
 import { confidenceEngine, agreementScore, scaleAgreementByIndependence, baseRateReality } from './confidence.js';
 import { runMVE, valuationText } from './index.js';
 import { augmentSignalScore, mveFactorScore } from './signalAdapter.js';
-import { buildContext, ffAlign, runLiveMVE, normalizeSym, FACTOR_SPEC, OANDA_SYMBOL } from './liveAdapter.js';
-import { validateInstrument, oosMispricingSeries, poolConsistency } from './validateInstrument.js';
+import { buildContext, ffAlign, runLiveMVE, normalizeSym, FACTOR_SPEC, OANDA_SYMBOL, fetchPriceOnly } from './liveAdapter.js';
+import { validateInstrument, oosMispricingSeries, poolConsistency, validateMechanicalAnchor, oosMispricingSeriesKalman } from './validateInstrument.js';
 
 let failures = 0, tests = 0;
 const ok = (name, cond, extra = '') => { tests++; console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -296,6 +296,14 @@ console.log('\n── live adapter (pure builder, no network) ──');
   ok('runLiveMVE guards missing FRED_KEY', bad.ok === false && /FRED_KEY/.test(bad.error));
   const unsup = await runLiveMVE({ sym: 'ZZZ/USD', deps: fakeDeps });
   ok('runLiveMVE rejects unsupported symbol', unsup.ok === false && /unsupported/.test(unsup.error));
+
+  // fetchPriceOnly — the Kalman mechanical branch's fetch path: OANDA only, NO FRED
+  // dependency at all (unlike fetchContext, which requires fredKey unconditionally).
+  const priceOnlyDeps = { fetchD1: async () => bars };
+  const po = await fetchPriceOnly({ sym: 'NQ', deps: priceOnlyDeps });
+  ok('fetchPriceOnly (injected) returns price array, no FRED needed', po.ok === true && Array.isArray(po.price) && po.price.length === bars.length && po.dataSource?.oanda === 'NAS100_USD', po.error || '');
+  const poUnsup = await fetchPriceOnly({ sym: 'ZZZ', deps: priceOnlyDeps });
+  ok('fetchPriceOnly rejects unsupported symbol', poUnsup.ok === false && /unsupported/.test(poUnsup.error));
 }
 
 console.log('\n── NQ factor spec (index convention: real yield + HY OAS + VIX, no DXY) ──');
@@ -371,6 +379,46 @@ console.log('\n── OOS validation (does mispricing predict returns?) ──')
   // no-lookahead: OOS series length is bounded and starts after the train window
   const { idx } = oosMispricingSeries(price, [{ name: 'f1', series: f1 }, { name: 'f2', series: f2 }], { window: 150, minTrain: 180 });
   ok('OOS series starts after warmup', idx[0] >= 180 && idx.length > 100, `start=${idx[0]} n=${idx.length}`);
+
+  // ── KALMAN mechanical anchor (Garin's dog/owner "moving fair value") ──────────
+  // Price-only — no macro factors. qFrac=0.0004/rWindow=40 were calibrated ONCE
+  // against a pure random walk (this exact rw[] series) to match the SMA(150)
+  // benchmark's effective memory — see validateInstrument.js header comment.
+
+  // CASE 1: pure random walk — must NOT read as tradeable, same discipline as the
+  // regression branch's null case above (reuses the SAME rw[] series).
+  const repKalmanNull = validateMechanicalAnchor(rw, { instrument: 'RW', horizons: [1, 5, 10, 20, 60] });
+  ok('Kalman: runs on random walk', repKalmanNull.ok === true && repKalmanNull.oosPoints > 100, repKalmanNull.error || '');
+  const bestAbsEdgeKalmanRw = Math.max(...Object.values(repKalmanNull.perHorizon).filter(h => h.icEdge != null).map(h => Math.abs(h.icEdge)));
+  ok('Kalman: random walk ⇒ icEdge small (calibrated vs the SMA benchmark)', bestAbsEdgeKalmanRw < 0.12, `|bestEdge|=${bestAbsEdgeKalmanRw}`);
+  ok('Kalman: random walk never reads SURVIVES', !/SURVIVES/.test(repKalmanNull.verdict), repKalmanNull.verdict.slice(0, 40));
+
+  // CASE 2: a REGIME-SHIFTING fair value (level jumps every ~60 bars, fast reversion
+  // around whichever level is current) — engineered to test the Kalman filter's
+  // actual structural claim over a fixed-window SMA: right after a jump, a 150-bar
+  // trailing mean is still anchored to the OLD level while the (causally) adaptive
+  // Kalman state should catch up faster. If this branch has no real mechanism, there
+  // is no reason icEdge should be positive here specifically (it wasn't on the
+  // random walk above) — this is that mechanism's proof case, not a general claim.
+  const rk = rng(97);
+  const N2 = 900;
+  let fv = 100, dev2 = 0;
+  const regimePrice = [];
+  for (let i = 0; i < N2; i++) {
+    if (i > 0 && i % 60 === 0) fv += (gauss(rk) > 0 ? 1 : -1) * (12 + 6 * Math.abs(gauss(rk)));
+    dev2 = dev2 * 0.75 + 3 * gauss(rk);
+    regimePrice.push(fv + dev2);
+  }
+  const repKalmanRegime = validateMechanicalAnchor(regimePrice, { instrument: 'REGIME_SHIFT', horizons: [1, 5, 10, 20] });
+  ok('Kalman: runs on regime-shift series', repKalmanRegime.ok === true && repKalmanRegime.oosPoints > 100, repKalmanRegime.error || '');
+  const bestEdgeRegime = Math.max(...Object.values(repKalmanRegime.perHorizon).filter(h => h.icEdge != null).map(h => h.icEdge));
+  ok('Kalman: beats the stale SMA right after a regime shift (icEdge > 0)', bestEdgeRegime > 0.01, `bestEdge=${bestEdgeRegime}`);
+  ok('Kalman: verdict is a string with a call', typeof repKalmanRegime.verdict === 'string' && /SURVIVES|WEAK|NULL/.test(repKalmanRegime.verdict));
+  ok('Kalman: deflated Sharpe present', repKalmanRegime.strategy.deflatedSharpe != null);
+
+  // no-lookahead: same shape guarantee as the regression branch's series builder
+  const { idx: idxK } = oosMispricingSeriesKalman(regimePrice, { window: 150, minTrain: 180 });
+  ok('Kalman: OOS series starts after warmup', idxK[0] >= 180 && idxK.length > 100, `start=${idxK[0]} n=${idxK.length}`);
 }
 
 console.log('\n── cross-instrument consistency (must not overcall) ──');

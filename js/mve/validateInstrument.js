@@ -12,6 +12,7 @@
 
 import { olsFit, olsPredict, predictSigma } from './ols.js';
 import { deflatedSharpe } from './validation.js';
+import { kalmanStep } from './ssm.js';
 
 function pearson(xs, ys) {
   const n = xs.length;
@@ -65,6 +66,92 @@ export function oosMispricingSeries(price, factors, { window = 150, minTrain = 1
   return { idx, z, zBench };
 }
 
+// ── The KALMAN mechanical anchor (Garin's dog/owner "moving fair value") ─────────
+// Instead of regressing on macro factors, fair value is a HIDDEN STATE that
+// random-walks (xₜ = xₜ₋₁ + wₜ, q = how fast it's allowed to drift) and each day's
+// price is one noisy observation of it (r = trailing realized variance of daily
+// changes) — the local-level Kalman model already in js/mve/ssm.js, fed a single
+// price observation per day instead of multiple emitter readings. This is the
+// formal generalisation of an EMA (an EMA is this filter's fixed-gain steady state)
+// that adapts its effective memory to how noisy price currently is, instead of a
+// fixed window. Price-only — no FRED/macro factors needed.
+//
+// z      — the STANDARDIZED INNOVATION: today's price vs the filter's PRE-update
+//          prediction (state as of i-1, before price[i] is folded in) — no lookahead.
+// zBench — the SAME naive trailing-mean-anchor benchmark as oosMispricingSeries, so
+//          the two branches are graded against the identical yardstick.
+//
+// qFrac is the one tunable here (what fraction of the local noise variance counts as
+// persistent fair-value drift vs pure noise). Calibrated ONCE against a pure random
+// walk (qFrac=0.0004, rWindow=40 ⇒ mean |icEdge| ≈ 0.06 across 8 seeds, vs 0.15's
+// ≈0.23) so the filter's effective memory is comparable to the window=150 SMA
+// benchmark's — the same "same-memory-scale" discipline the regression branch gets
+// for free by fitting fv on the identical window as bmMean. This is a methodology
+// calibration (make the two anchors comparable), not fit to any real instrument's
+// outcome — fixed ex-ante per CLAUDE.md's minimal-DOF discipline.
+export function oosMispricingSeriesKalman(price, { window = 150, minTrain = 180, rWindow = 40, qFrac = 0.0004 } = {}) {
+  const N = price.length;
+  const idx = [], z = [], zBench = [];
+  const start = Math.max(window, minTrain);
+  if (N < start + 5) return { idx, z, zBench };
+
+  const diffs = new Array(N).fill(null);
+  for (let i = 1; i < N; i++) diffs[i] = price[i] - price[i - 1];
+  // Trailing realized variance of daily changes ending strictly BEFORE i (causal).
+  const rAt = (i) => {
+    const s = Math.max(1, i - rWindow);
+    const win = diffs.slice(s, i).filter(Number.isFinite);
+    if (win.length < 5) return null;
+    const m = win.reduce((a, b) => a + b, 0) / win.length;
+    return win.reduce((a, b) => a + (b - m) ** 2, 0) / Math.max(1, win.length - 1);
+  };
+
+  let state = { x: price[0], P: rAt(Math.min(start, N - 1)) || 1 };
+  for (let i = 1; i < N; i++) {
+    const r = rAt(i);
+    if (!(r > 0)) continue;             // not enough trailing history yet — hold state
+    const q = qFrac * r;
+    const Ppred = state.P + q;          // predicted variance BEFORE seeing price[i]
+
+    if (i >= start) {
+      const y = price.slice(i - window, i);
+      if (y.length >= 5) {
+        const bmMean = y.reduce((a, b) => a + b, 0) / y.length;
+        const bmVar = y.reduce((a, b) => a + (b - bmMean) ** 2, 0) / Math.max(1, y.length - 1);
+        const bmSd = Math.sqrt(bmVar);
+        const innovVar = Ppred + r;
+        if (bmSd > 0 && innovVar > 0) {
+          idx.push(i);
+          z.push((price[i] - state.x) / Math.sqrt(innovVar));   // pre-update ⇒ no lookahead
+          zBench.push((price[i] - bmMean) / bmSd);
+        }
+      }
+    }
+    state = kalmanStep(state, [{ value: price[i], r }], q);      // NOW fold in price[i]
+  }
+  return { idx, z, zBench };
+}
+
+// Full validation report — the KALMAN mechanical-anchor counterpart to
+// validateInstrument, scored through the identical scoreMispricing tail so the two
+// branches are directly comparable. Price-only ctx: no factors required.
+export function validateMechanicalAnchor(price, { instrument = 'UNKNOWN', window = 150, minTrain = 180,
+                                                    rWindow = 40, qFrac = 0.0004,
+                                                    horizons = [1, 5, 10, 20, 60],
+                                                    thresholds = [0.5, 1.0, 1.5, 2.0],
+                                                    actionableZ = 1.0,
+                                                    periodsPerYear = 252 } = {}) {
+  if (!price || price.length < minTrain + Math.max(...horizons) + 10) {
+    return { ok: false, error: `need ≥ ${minTrain + Math.max(...horizons) + 10} bars, got ${price?.length ?? 0}` };
+  }
+  const { idx, z, zBench } = oosMispricingSeriesKalman(price, { window, minTrain, rWindow, qFrac });
+  return scoreMispricing({
+    instrument, idx, z, zBench, price, window, horizons, thresholds, actionableZ, periodsPerYear,
+    sourceLabel: 'the KALMAN mechanical fair value (price-only, no macro factors)',
+    sourceShort: 'mechanical/Kalman-anchor',
+  });
+}
+
 // Full validation report.
 export function validateInstrument(ctx, { window = 150, minTrain = 180,
                                           horizons = [1, 5, 10, 20, 60],
@@ -76,6 +163,20 @@ export function validateInstrument(ctx, { window = 150, minTrain = 180,
     return { ok: false, error: `need ≥ ${minTrain + Math.max(...horizons) + 10} bars, got ${price?.length ?? 0}` };
   }
   const { idx, z, zBench } = oosMispricingSeries(price, factors, { window, minTrain });
+  return scoreMispricing({ instrument: ctx.instrument, idx, z, zBench, price, window, horizons, thresholds, actionableZ, periodsPerYear });
+}
+
+// ── Shared scoring tail — the IC/edge/deflated-Sharpe/verdict machinery, generic
+// over WHERE {idx,z,zBench} came from (factor regression here, a Kalman mechanical
+// anchor in validateMechanicalAnchor below). One scorer, parameterised — not a
+// second copy of the harness per fair-value source (CLAUDE.md Lego Principle 2).
+export function scoreMispricing({ instrument, idx, z, zBench, price, window = 150,
+                                   horizons = [1, 5, 10, 20, 60],
+                                   thresholds = [0.5, 1.0, 1.5, 2.0],
+                                   actionableZ = 1.0,
+                                   periodsPerYear = 252,
+                                   sourceLabel = 'the FACTOR fair value',   // verdict wording — override per fair-value source
+                                   sourceShort = 'macro-factor' }) {
   if (idx.length < 30) return { ok: false, error: `only ${idx.length} OOS points` };
 
   // ── IC + hit rate per horizon, vs the trailing-mean benchmark ──────────────
@@ -163,15 +264,15 @@ export function validateInstrument(ctx, { window = 150, minTrain = 180,
   const holdStr = best ? `${best.hold}-bar hold @ z≥${best.threshold}` : 'n/a';
   let verdict;
   if (bestEdge > 0.03 && dsr && dsr.dsr >= 0.95)
-    verdict = `SURVIVES: the FACTOR fair value beats a naive trailing-mean anchor OOS (best icEdge ${bestEdge} at ${bestH[0]}-bar) and the horizon-matched z-fade (${holdStr}) clears deflated-Sharpe ${dsr.dsr}. Candidate for wiring in — confirm on more history / other instruments first.`;
+    verdict = `SURVIVES: ${sourceLabel} beats a naive trailing-mean anchor OOS (best icEdge ${bestEdge} at ${bestH[0]}-bar) and the horizon-matched z-fade (${holdStr}) clears deflated-Sharpe ${dsr.dsr}. Candidate for wiring in — confirm on more history / other instruments first.`;
   else if (bestEdge > 0.03)
-    verdict = `WEAK/INCONCLUSIVE: the factor fair value shows real edge over the benchmark (icEdge ${bestEdge} at ${bestH[0]}-bar, the right slow-macro shape), but the best horizon-matched z-fade (${holdStr}) only reaches deflated Sharpe ${dsr?.dsr ?? 'n/a'} — short of the 0.95 bar. Promising, NOT proven. Do NOT wire in yet.`;
+    verdict = `WEAK/INCONCLUSIVE: ${sourceLabel} shows real edge over the benchmark (icEdge ${bestEdge} at ${bestH[0]}-bar, the right slow-macro shape), but the best horizon-matched z-fade (${holdStr}) only reaches deflated Sharpe ${dsr?.dsr ?? 'n/a'} — short of the 0.95 bar. Promising, NOT proven. Do NOT wire in yet.`;
   else
-    verdict = `NULL: the factor fair value does NOT beat a naive trailing-mean anchor OOS (best icEdge ${bestEdge}). Any apparent "reversion" is the spurious mean-reversion any anchor shows — there is no macro-factor edge here. Do NOT wire in. This is the expected, honest outcome for a slow macro anchor at daily horizons.`;
+    verdict = `NULL: ${sourceLabel} does NOT beat a naive trailing-mean anchor OOS (best icEdge ${bestEdge}). Any apparent "reversion" is the spurious mean-reversion any anchor shows — there is no ${sourceShort} edge here. Do NOT wire in. This is the expected, honest outcome for a slow anchor at daily horizons.`;
 
   return {
     ok: true,
-    instrument: ctx.instrument,
+    instrument,
     oosPoints: idx.length,
     window, horizons,
     perHorizon,

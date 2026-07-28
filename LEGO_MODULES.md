@@ -1078,7 +1078,7 @@ P0 cross-language unification
 > A self-contained set of bricks implementing the fair-value / mispricing engine
 > designed in `MARKET_VALUATION_ENGINE.md`. **Isolated by design:** nothing live
 > imports it, it adds no route, and it's unit-tested on synthetic data
-> (`node js/mve/mve.test.mjs`, 100 assertions). Reuses `statsCore` + `backtestStats`
+> (`node js/mve/mve.test.mjs`, 110 assertions). Reuses `statsCore` + `backtestStats`
 > (`deflatedSharpe`) read-only — copies nothing. Usage: `MVE_RUN_GUIDE.md`.
 > Status ✅ = built & tested (edge **unproven** — needs a live data adapter + OOS run).
 
@@ -1098,10 +1098,10 @@ P0 cross-language unification
 | Confidence engine | `js/mve/confidence.js` | logistic over agreement/fit/calibration/regime/reversion | ✅ |
 | Orchestrator + card | `js/mve/index.js` | `runMVE()`, `valuationCard()`, `valuationText()` | ✅ |
 | Signal adapter (opt-in) | `js/mve/signalAdapter.js` | blend MVE into `computeSignalScore` — **not wired** | ✅ 📄 |
-| Live data adapter | `js/mve/liveAdapter.js` | real OANDA D1 + FRED → `runMVE` ctx (FX=rate diffs, gold=real yield+DXY, **NQ=real yield+HY OAS+VIX, added 2026-07-27**); injected fetchers, pure `buildContext` | ✅ |
+| Live data adapter | `js/mve/liveAdapter.js` | real OANDA D1 + FRED → `runMVE` ctx (FX=rate diffs, gold=real yield+DXY, **NQ=real yield+HY OAS+VIX, added 2026-07-27, real-data verdict NULL — worse than inert, negative icEdge**); injected fetchers, pure `buildContext`; **`fetchPriceOnly` (2026-07-27)** — OANDA-only, no FRED, for the Kalman branch | ✅ |
 | Live endpoint | `server.js` `/api/mve/:sym` | additive read-only route (1h cache); does NOT feed any signal/bot | ✅ |
-| OOS validation | `js/mve/validateInstrument.js` | walk-forward no-lookahead IC of mispricing vs forward return, **benchmark-relative `icEdge`** (strips spurious detrend reversion), deflated Sharpe, verdict | ✅ |
-| Validation endpoint | `server.js` `/api/mve-validate/:sym` | the honesty gate — does the fair value predict returns OOS? | ✅ |
+| OOS validation | `js/mve/validateInstrument.js` | walk-forward no-lookahead IC of mispricing vs forward return, **benchmark-relative `icEdge`** (strips spurious detrend reversion), deflated Sharpe, verdict, via shared **`scoreMispricing`** tail. Two fair-value sources feed it: the factor regression (`oosMispricingSeries`) and **`oosMispricingSeriesKalman`/`validateMechanicalAnchor` (2026-07-27)** — a price-only Kalman local-level filter (Garin's dog/owner "moving fair value"), `qFrac`/`rWindow` calibrated once against a random walk to match the SMA(150) benchmark's memory | ✅ |
+| Validation endpoints | `server.js` `/api/mve-validate/:sym` + `/api/mve-validate-mechanical/:sym` | the honesty gate — does the fair value predict returns OOS? Regression branch run on real data (NQ/XAUUSD/AUDUSD NULL, EURUSD weak); Kalman branch built+tested on synthetic data, not yet run live (needs OANDA only, no FRED_KEY) | ✅ |
 | Demo page | `mve.html` | synthetic sandbox + **live** (OANDA+FRED) toggle + **🔬 OOS validation** | ✅ |
 
 **Not yet built (deliberate next steps, per `MVE_RUN_GUIDE.md` §7):** dashboard wiring

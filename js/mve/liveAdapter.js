@@ -162,3 +162,20 @@ export async function runLiveMVE({ sym, deps, count = 800, fromDate = '2018-01-0
 }
 
 export const SUPPORTED = Object.keys(FACTOR_SPEC);
+
+// ── Price-only fetch — for anchors that need no FRED factors at all, e.g. the
+// KALMAN mechanical branch in validateInstrument.js's validateMechanicalAnchor.
+// Any symbol with an OANDA_SYMBOL entry works here, independent of FACTOR_SPEC —
+// this branch genuinely doesn't need a factor spec (or FRED_KEY) to run.
+export async function fetchPriceOnly({ sym, deps, count = 5000 }) {
+  const key = normalizeSym(sym);
+  const oanda = OANDA_SYMBOL[key];
+  if (!oanda) return { ok: false, instrument: sym, error: `unsupported symbol ${sym}` };
+  if (!deps?.fetchD1) return { ok: false, error: 'missing fetchD1' };
+  let bars;
+  try { bars = await deps.fetchD1(oanda, count); }
+  catch (e) { return { ok: false, instrument: sym, error: `OANDA ${oanda}: ${e.message}` }; }
+  if (!bars || bars.length < 60) return { ok: false, instrument: sym, error: `need ≥60 bars, got ${bars?.length ?? 0}` };
+  const price = bars.map(b => b.close);
+  return { ok: true, price, dataSource: { oanda, bars: bars.length, asOf: bars[bars.length - 1].date } };
+}
