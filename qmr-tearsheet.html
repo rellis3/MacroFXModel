@@ -144,9 +144,9 @@ const INST_DEFAULTS={
   NAS100_USD:{gate1Threshold:0.60,gate2MinMovePct:0.10,stopMultiplier:0.45,minRangePct:0.15,tpPct:1.50,riskPct:1.00},
   SPX500_USD:{gate1Threshold:0.60,gate2MinMovePct:0.10,stopMultiplier:0.45,minRangePct:0.15,tpPct:1.50,riskPct:1.00},
   US30_USD:  {gate1Threshold:0.60,gate2MinMovePct:0.10,stopMultiplier:0.45,minRangePct:0.15,tpPct:1.50,riskPct:1.00},
-  XAU_USD:   {gate1Threshold:0.60,gate2MinMovePct:0.05,stopMultiplier:0.45,minRangePct:0.10,tpPct:0.80,riskPct:1.00},
+  XAU_USD:   {gate1Threshold:0.60,gate2MinMovePct:0.05,stopMultiplier:0.45,minRangePct:0.10,tpPct:0.80,riskPct:1.00,costPct:0.02154},
 };
-const COST_DEFAULTS={costPct:0.008,stopSlipPct:0.005};
+const COST_DEFAULTS={costPct:0.00937,stopSlipPct:0.005}  // NAS100 MEASURED round-trip; gold overrides below;
 const PARAM_IDS=['gate1Threshold','gate2MinMovePct','stopMultiplier','minRangePct','tpPct','riskPct','costPct','stopSlipPct'];
 
 // Walk-forward results actually RUN, keyed by instrument+mode. Anything not in
@@ -162,7 +162,7 @@ const M1V={
 };
 
 const WF={
-  'NAS100_USD|bothsides':  {sharpe:2.17,t:4.69,pos:'8/8',worst:'+1.1%'},  // joint-walk re-measure 2026-07-29 (was 2.31 under the old averaging method)
+  'NAS100_USD|bothsides':  {sharpe:1.98,t:3.74,pos:'7/8',worst:'-4.5%'},  // at the MEASURED 0.937bp spread. Was 2.17/8/8/+1.1% at the 0.8bp assumption.
   'NAS100_USD|directional':{sharpe:1.18,t:2.56,pos:'6/8',worst:'-11.2%'},
   'XAU_USD|directional':   {sharpe:0.83,t:1.59,pos:'4/8',worst:'-6.1%'},
 };

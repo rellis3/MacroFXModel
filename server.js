@@ -5623,6 +5623,18 @@ app.get('/api/nq-qmr/spread-check', async (req, res) => {
 // The entry price is held IDENTICAL to the H1 run (the open of the 13:00 bar,
 // which is the same tick either way), so the comparison isolates the exit path
 // and nothing else.
+// MEASURED round-trip spread per instrument (/api/nq-qmr/spread-check, 2500 H1
+// bid/ask candles, 2026-07-29). A single global costPct was wrong by 2.7x on
+// gold while being nearly right on NQ — the same class of per-instrument units
+// error that has bitten this system twice already. Gold's cost is dominated by
+// its EXIT: 0.68pt spread at the 13:00 entry vs 1.27pt at the 20:00 exit, because
+// 20:00 UTC is post-London-fix thin liquidity for metals while it is still cash
+// session for an equity index.
+const QMR_MEASURED_SPREAD = {
+  NAS100_USD: 0.00937, XAU_USD: 0.02154,
+};
+const qmrCostFor = inst => QMR_MEASURED_SPREAD[inst] ?? QMR_COSTS.costPct;
+
 const QMR_M1_KEY = {           // QMR instrument -> M1 parquet key in R2
   NAS100_USD: 'nq', SPX500_USD: 'spx500', US30_USD: 'us30', XAU_USD: 'gold',
   DE30_EUR: 'de30', UK100_GBP: 'uk100',
@@ -5752,6 +5764,9 @@ app.get('/api/nq-qmr/tearsheet', async (req, res) => {
       cfg[k] = typeof def === 'string' ? (req.query[k] ?? def)
              : (req.query[k] != null ? parseFloat(req.query[k]) : def);
     }
+    // Default to the MEASURED spread for this instrument, not the global
+    // assumption. An explicit ?costPct= still wins so the ladder can sweep.
+    if (req.query.costPct == null) cfg.costPct = qmrCostFor(instrument);
     cfg.showControl = true;
     const bars = await _getNqQmrBars(instrument);
 
