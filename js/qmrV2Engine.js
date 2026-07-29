@@ -71,7 +71,7 @@ export function runQmrV2(packed, cfg = {}) {
   const d = { ...(QMR_V2_DEFAULTS[key] ?? QMR_V2_DEFAULTS.nq), ...cfg };
   const {
     gate1Threshold, gate2MinMovePct, stopMultiplier, minRangePct, tpPct, riskPct, eodHour,
-    gatesMode = 'on', side = 'both',
+    gatesMode = 'on', side = 'both', exitFromHour = null,
     costPct = QMR_V2_SPREAD[key] ?? QMR_COSTS.costPct,
     stopSlipPct = QMR_COSTS.stopSlipPct,
     minStopPct = 0.10,
@@ -136,8 +136,13 @@ export function runQmrV2(packed, cfg = {}) {
     const entry = entryBar.o;
 
     // Exit walk on M1, from the entry minute through the exit hour.
+    // exitFromHour: null = honest (exposure starts the minute after entry).
+    // Set to entryHour+1 to REPRODUCE the v1 H1 engine, which walked bars
+    // strictly after the 13:00 bar and therefore could not stop you out during
+    // the hour you entered - an hour that contains the 13:30 UTC NY cash open.
+    const startAfter = exitFromHour == null ? entryHH : hh(exitFromHour) + ':00';
     const after = (byDateM1[today] || [])
-      .filter(b => b.t.substring(11, 16) > entryHH && parseInt(b.t.substring(11, 13)) <= eodHour)
+      .filter(b => b.t.substring(11, 16) >= startAfter && parseInt(b.t.substring(11, 13)) <= eodHour)
       .sort((a, b) => a.t.localeCompare(b.t));
     if (after.length < 30) { skips.noWalk++; continue; }
 
@@ -178,7 +183,7 @@ export function runQmrV2(packed, cfg = {}) {
   }
 
   return {
-    config: { instrument: key, gatesMode, side, gate1Threshold, gate2MinMovePct,
+    config: { instrument: key, gatesMode, side, exitFromHour, gate1Threshold, gate2MinMovePct,
               stopMultiplier, minRangePct, tpPct, riskPct, eodHour, costPct, stopSlipPct },
     dataSource: 'parquet-m1', m1Bars: m1.length, h1Bars: h1.length,
     dateRange: { start: trades[0]?.date ?? null, end: trades[trades.length - 1]?.date ?? null },
