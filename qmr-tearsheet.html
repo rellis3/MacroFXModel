@@ -156,7 +156,9 @@ const PARAM_IDS=['gate1Threshold','gate2MinMovePct','stopMultiplier','minRangePc
 // M1 intrabar validation — the H1 exit walk re-run on real 1-minute bars.
 // Keyed instrument|mode, only where actually run.
 const M1V={
-  'NAS100_USD|bothsides': {n:590,cover:97,diff:-0.0018,t:-0.15,disagree:36.1},
+  'NAS100_USD|bothsides':   {n:590,cover:97,diff:-0.0018,t:-0.15,disagree:36.1},
+  'NAS100_USD|directional': {n:590,cover:97,diff:-0.0092,t:-0.60,disagree:23.9},
+  'XAU_USD|directional':    {n:673,cover:97,diff:-0.0064,t:-0.99,disagree:34.3},
 };
 
 const WF={
