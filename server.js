@@ -3477,6 +3477,7 @@ function _computeNqQmr(bars, cfg = {}) {
     showSystem4     = false, // also compute chop-fade trades (G1+G2 confirm, but the session's path was inefficient/choppy, not a clean trend)
     effPctThreshold = 25,    // percentile (vs trailing history) of trend efficiency BELOW which a confirmed day counts as "choppy"
     showControl     = false, // also compute the INVERSE-direction control arm on every S1 day (see below)
+    eodHour         = QMR_TIMING.eodHour,    // exit-by hour (UTC). Per-instrument: 20:00 is cash-session for an equity index but post-London-fix thin liquidity for metals, where it is the single most expensive hour of the day to be flattening.
     costPct         = QMR_COSTS.costPct,     // round-trip transaction cost (spread + commission), % of notional
     stopSlipPct     = QMR_COSTS.stopSlipPct, // extra slippage % of notional, charged only on stop exits (market order through a moving market)
   } = cfg;
@@ -3587,7 +3588,7 @@ function _computeNqQmr(bars, cfg = {}) {
 
     // Exit walk via the shared _qmrWalkTrade (stop before TP within a bar,
     // then EOD) — the exact function the live forward-validation resolver uses.
-    const walk = _qmrWalkTrade(afterEntry, gate2, entry, effStopPct, tpPct);
+    const walk = _qmrWalkTrade(afterEntry, gate2, entry, effStopPct, tpPct, { ...QMR_TIMING, eodHour });
     if (!walk) continue;
     const { stop, exit, exitReason, movePct } = walk;
 
@@ -3672,7 +3673,7 @@ function _computeNqQmr(bars, cfg = {}) {
       // instead of fading it — the natural baseline for "is fading the rejection
       // actually better than ignoring it," same pattern as System 3's fade check.
       const cfDir  = gate1;
-      const cfWalk = _qmrWalkTrade(afterEntry, cfDir, entry, effStopPct, tpPct);
+      const cfWalk = _qmrWalkTrade(afterEntry, cfDir, entry, effStopPct, tpPct, { ...QMR_TIMING, eodHour });
       if (cfWalk) {
         const cfReturn = _netReturn(cfWalk.movePct, cfWalk.exitReason, leverage);
         trades2cf.push({ date: today, gate1, gate2, direction: cfDir, entry, stop: cfWalk.stop, exit: cfWalk.exit,
@@ -3700,7 +3701,7 @@ function _computeNqQmr(bars, cfg = {}) {
       // only the extended/choppy subsets, so the whole sample is covered.
       if (showControl) {
         const ctlDir  = gate2 === 'LONG' ? 'SHORT' : 'LONG';
-        const ctlWalk = _qmrWalkTrade(afterEntry, ctlDir, entry, effStopPct, tpPct);
+        const ctlWalk = _qmrWalkTrade(afterEntry, ctlDir, entry, effStopPct, tpPct, { ...QMR_TIMING, eodHour });
         if (ctlWalk) {
           const ctlReturn = _netReturn(ctlWalk.movePct, ctlWalk.exitReason, leverage);
           equityCtl *= (1 + ctlReturn / 100);
@@ -3717,7 +3718,7 @@ function _computeNqQmr(bars, cfg = {}) {
       // is already at an extreme vs the trailing ADR baseline.
       if (isExtended) {
         const fadeDir  = gate2 === 'LONG' ? 'SHORT' : 'LONG';
-        const fadeWalk = _qmrWalkTrade(afterEntry, fadeDir, entry, effStopPct, tpPct);
+        const fadeWalk = _qmrWalkTrade(afterEntry, fadeDir, entry, effStopPct, tpPct, { ...QMR_TIMING, eodHour });
 
         if (fadeWalk) {
           let fadeMfe = 0, fadeMae = 0;
@@ -3744,7 +3745,7 @@ function _computeNqQmr(bars, cfg = {}) {
       // a day flagged by both when S3 and S4 are both enabled.
       if (isChoppy) {
         const fadeDir  = gate2 === 'LONG' ? 'SHORT' : 'LONG';
-        const fadeWalk = _qmrWalkTrade(afterEntry, fadeDir, entry, effStopPct, tpPct);
+        const fadeWalk = _qmrWalkTrade(afterEntry, fadeDir, entry, effStopPct, tpPct, { ...QMR_TIMING, eodHour });
 
         if (fadeWalk) {
           let fadeMfe = 0, fadeMae = 0;
@@ -4481,7 +4482,7 @@ const nqQmrBarCache    = new Map(); // instrument → { bars, fetchedAt }
 const nqQmrResultCache = { result: null, fetchedAt: null }; // NAS100_USD default only
 const NQ_QMR_TTL_MS = 23 * 60 * 60 * 1000;
 
-const NQ_QMR_DEFAULTS = { gate1Threshold: 0.60, gate2MinMovePct: 0.10, stopPct: 0.50, stopMultiplier: 0.45, riskPct: 1.00, minRangePct: 0.15, tpPct: 1.50, direction: 'both', extPctThreshold: 75, effPctThreshold: 25, costPct: 0.008, stopSlipPct: 0.005 };
+const NQ_QMR_DEFAULTS = { eodHour: 20, gate1Threshold: 0.60, gate2MinMovePct: 0.10, stopPct: 0.50, stopMultiplier: 0.45, riskPct: 1.00, minRangePct: 0.15, tpPct: 1.50, direction: 'both', extPctThreshold: 75, effPctThreshold: 25, costPct: 0.008, stopSlipPct: 0.005 };
 
 async function _getNqQmrBars(instrument = 'NAS100_USD') {
   const cached = nqQmrBarCache.get(instrument);
@@ -5582,6 +5583,17 @@ app.get('/api/nq-qmr/spread-check', async (req, res) => {
       return { n: v.length, mean: +(v.reduce((s, x) => s + x, 0) / v.length).toFixed(5),
                median: +q(0.5).toFixed(5), p75: +q(0.75).toFixed(5), p95: +q(0.95).toFixed(5), max: +v[v.length - 1].toFixed(5) };
     };
+    // Full hourly curve — an exit hour should be CHOSEN from the spread profile,
+    // not inherited from a different instrument's session.
+    const byHourSummary = {};
+    for (const h of Object.keys(byHour).sort((a, b) => a - b)) {
+      byHourSummary[h] = {
+        openPts: summarise(byHour[h], 'openSpreadPts')?.mean ?? null,
+        closePts: summarise(byHour[h], 'closeSpreadPts')?.mean ?? null,
+        closePct: summarise(byHour[h], 'closeSpreadPct')?.mean ?? null,
+        n: byHour[h].length,
+      };
+    }
     const entryHour = QMR_TIMING.entryHour, eodHour = QMR_TIMING.eodHour;
     const entry = summarise(byHour[entryHour], 'openSpreadPct');   // filled at this bar's OPEN
     const exit  = summarise(byHour[eodHour],  'closeSpreadPct');   // flat at this bar's CLOSE
@@ -5593,7 +5605,7 @@ app.get('/api/nq-qmr/spread-check', async (req, res) => {
     res.json({
       ok: true, instrument, granularity: 'H1', candles: (d.candles ?? []).length,
       entryHourUTC: entryHour, exitHourUTC: eodHour,
-      entrySpreadPct: entry, exitSpreadPct: exit,
+      entrySpreadPct: entry, exitSpreadPct: exit, byHour: byHourSummary,
       entrySpreadPts: summarise(byHour[entryHour], 'openSpreadPts'),
       exitSpreadPts:  summarise(byHour[eodHour],  'closeSpreadPts'),
       measuredRoundTripPct: roundTripPct,
