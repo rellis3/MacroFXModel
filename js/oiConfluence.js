@@ -143,35 +143,104 @@ export function tradePctReturn(t) {
 // card. Pure — takes two inst snapshots ({maxPain, callWall, putWall, pcRatio,
 // totalCallOI, totalPutOI, callWalls[], putWalls[]}). Returns null if either side
 // is missing so callers degrade gracefully on the first day (no prior).
-export function oiDeltas(cur, prev) {
+// Strike spacing inferred from ONE day's ladder (the SMALLEST gap between that day's
+// wall strikes - walls are the top-N by OI, not contiguous, so gaps are multiples of the
+// spacing and the minimum IS the spacing). Deliberately not derived from both days
+// pooled: the two ladders are offset by the basis, so a pooled gap list alternates
+// drift-sized and spacing-sized gaps and any median of it is meaningless.
+function _spacingOf(snap) {
+  const ks = [...(snap?.callWalls || []), ...(snap?.putWalls || [])]
+    .map(w => w?.strike).filter(Number.isFinite).sort((a, b) => a - b);
+  let min = Infinity;
+  for (let i = 1; i < ks.length; i++) { const g = ks[i] - ks[i - 1]; if (g > 1e-9 && g < min) min = g; }
+  return Number.isFinite(min) ? min : null;
+}
+
+// Tolerance for calling two strikes "the same strike on different days".
+// MUST be < strike spacing (or adjacent strikes collide) and > plausible overnight basis
+// drift. A quarter of the spacing satisfies both with room (EUR/USD: 12.5 pips against a
+// 50-pip ladder and ~4.5 pips of observed drift).
+export function strikeMatchTol(cur, prev, explicit = null) {
+  if (Number.isFinite(explicit) && explicit > 0) return explicit;
+  const a = _spacingOf(cur), b = _spacingOf(prev);
+  const sp = (a != null && b != null) ? Math.min(a, b) : (a ?? b);
+  if (sp != null) return sp * 0.25;
+  const ref = cur?.spot ?? cur?.maxPain ?? prev?.spot;              // last resort: 10 bps
+  return Number.isFinite(ref) ? Math.abs(ref) * 0.001 : 0;
+}
+
+// Greedy nearest-within-tolerance pairing; each prior wall is consumed at most once so
+// two current strikes can never both claim the same prior one.
+function _pairWalls(cw, pw, tol) {
+  const used = new Set(), pairs = [];
+  for (const w of cw) {
+    let best = -1, bestD = Infinity;
+    for (let i = 0; i < pw.length; i++) {
+      if (used.has(i)) continue;
+      const dd = Math.abs((pw[i]?.strike ?? NaN) - w.strike);
+      if (dd <= tol && dd < bestD) { bestD = dd; best = i; }
+    }
+    if (best >= 0) { used.add(best); pairs.push([w, pw[best]]); } else pairs.push([w, null]);
+  }
+  return { pairs, faded: pw.filter((_, i) => !used.has(i)) };
+}
+
+// Day-over-day OI dynamics.
+//
+// WALL MATCHING IS BY TOLERANCE, NOT EQUALITY (fixed 2026-07-29). Archived strikes are
+// stored as SPOT-converted prices (strike - basis), and the futures/spot basis moves
+// overnight, so the identical CME strike lands on a different number each day (observed:
+// EUR/USD 1.157605 -> 1.158050, a 4.45-pip shift applied to EVERY strike). The old
+// `new Map(...).get(w.strike)` exact-float lookup therefore matched NOTHING: `strengthening`
+// and `weakening` came back permanently empty, every current wall was reported `appeared`
+// and every prior one `faded`, and `classifyOIChange` consequently told the daily brief
+// "fresh positioning building" for 9 of 11 unrelated instruments on the same day. That is a
+// confidently-wrong output, not a missing one. (`oiWallStability` was unaffected - it
+// already took a tolerance, which is why wall stability read correctly throughout.)
+//
+// `basisDrift` = the median signed shift across MATCHED walls, i.e. the overnight basis
+// move itself. The `*ShiftNet` fields subtract it, so a max pain that did not actually move
+// reads as 0 instead of inheriting the basis. Raw `*Shift` values are unchanged for
+// back-compat; prefer the Net ones for any "did this level really move" claim.
+export function oiDeltas(cur, prev, tol = null) {
   if (!cur || !prev || typeof cur !== 'object' || typeof prev !== 'object') return null;
   const d = (a, b) => (Number.isFinite(a) && Number.isFinite(b)) ? +(a - b).toFixed(6) : null;
   const totCur = (cur.totalCallOI || 0) + (cur.totalPutOI || 0);
   const totPrev = (prev.totalCallOI || 0) + (prev.totalPutOI || 0);
   const totalOIChange = Math.round(totCur - totPrev);
-  // Per-strike wall dynamics: match walls by strike across the two days.
+  const T = strikeMatchTol(cur, prev, tol);
+
+  const drifts = [];
   const wallDyn = (curW, prevW, kind) => {
     const cw = Array.isArray(curW) ? curW : [], pw = Array.isArray(prevW) ? prevW : [];
-    const pmap = new Map(pw.map(w => [w.strike, w.oi]));
+    const { pairs, faded } = _pairWalls(cw, pw, T);
     const strengthening = [], weakening = [], appeared = [];
-    for (const w of cw) {
-      const pv = pmap.get(w.strike);
-      if (pv == null) appeared.push({ strike: w.strike, oi: w.oi, kind });   // strike unimportant yesterday → fresh wall
-      else {
-        const dd = Math.round(w.oi - pv);
-        const pct = pv > 0 ? +((w.oi - pv) / pv * 100).toFixed(0) : null;    // OI change % (fresh-positioning vs liquidation)
-        if (dd > 0) strengthening.push({ strike: w.strike, delta: dd, pct, oi: w.oi, kind });
-        else if (dd < 0) weakening.push({ strike: w.strike, delta: dd, pct, oi: w.oi, kind });
-      }
+    for (const [w, p] of pairs) {
+      if (!p) { appeared.push({ strike: w.strike, oi: w.oi, kind }); continue; }
+      drifts.push(w.strike - p.strike);
+      const dd = Math.round(w.oi - p.oi);
+      const pct = p.oi > 0 ? +((w.oi - p.oi) / p.oi * 100).toFixed(0) : null;
+      const row = { strike: w.strike, delta: dd, pct, oi: w.oi, kind, prevStrike: p.strike };
+      if (dd > 0) strengthening.push(row); else if (dd < 0) weakening.push(row);
     }
-    const seen = new Set(cw.map(w => w.strike));
-    const faded = pw.filter(w => !seen.has(w.strike)).map(w => ({ strike: w.strike, oi: w.oi, kind }));
-    return { strengthening, weakening, appeared, faded };
+    return { strengthening, weakening, appeared,
+      faded: faded.map(w => ({ strike: w.strike, oi: w.oi, kind })) };
   };
+  const callWalls = wallDyn(cur.callWalls, prev.callWalls, 'call');
+  const putWalls  = wallDyn(cur.putWalls,  prev.putWalls,  'put');
+
+  drifts.sort((a, b) => a - b);
+  const basisDrift = drifts.length ? +drifts[drifts.length >> 1].toFixed(6) : null;
+  const net = v => (v == null || basisDrift == null) ? v : +(v - basisDrift).toFixed(6);
+
   return {
     maxPainShift: d(cur.maxPain, prev.maxPain),
     callWallShift: d(cur.callWall, prev.callWall),
     putWallShift: d(cur.putWall, prev.putWall),
+    maxPainShiftNet: net(d(cur.maxPain, prev.maxPain)),
+    callWallShiftNet: net(d(cur.callWall, prev.callWall)),
+    putWallShiftNet: net(d(cur.putWall, prev.putWall)),
+    basisDrift, strikeTol: +T.toFixed(6), matchedWalls: drifts.length,
     pcRatioChange: d(cur.pcRatio, prev.pcRatio),
     totalCallOIChange: Math.round((cur.totalCallOI || 0) - (prev.totalCallOI || 0)),
     totalPutOIChange: Math.round((cur.totalPutOI || 0) - (prev.totalPutOI || 0)),
@@ -179,8 +248,7 @@ export function oiDeltas(cur, prev) {
     totalOIChangePct: totPrev > 0 ? +((totCur - totPrev) / totPrev * 100).toFixed(1) : null,
     // L1: rising total OI = new money entering; falling = positions liquidating.
     flow: totalOIChange > 0 ? 'building' : totalOIChange < 0 ? 'unwinding' : 'flat',
-    callWalls: wallDyn(cur.callWalls, prev.callWalls, 'call'),
-    putWalls: wallDyn(cur.putWalls, prev.putWalls, 'put'),
+    callWalls, putWalls,
   };
 }
 

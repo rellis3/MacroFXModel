@@ -153,6 +153,12 @@ const PARAM_IDS=['gate1Threshold','gate2MinMovePct','stopMultiplier','minRangePc
 // here has never been walk-forwarded and the page must say so rather than
 // implying NQ's number applies — a hardcoded banner would have shown NQ's
 // 2.31 while displaying gold's card.
+// M1 intrabar validation — the H1 exit walk re-run on real 1-minute bars.
+// Keyed instrument|mode, only where actually run.
+const M1V={
+  'NAS100_USD|bothsides': {n:590,cover:97,diff:-0.0018,t:-0.15,disagree:36.1},
+};
+
 const WF={
   'NAS100_USD|bothsides':  {sharpe:2.17,t:4.69,pos:'8/8',worst:'+1.1%'},  // joint-walk re-measure 2026-07-29 (was 2.31 under the old averaging method)
   'NAS100_USD|directional':{sharpe:1.18,t:2.56,pos:'6/8',worst:'-11.2%'},
@@ -189,6 +195,13 @@ function render(j){
     : `<br><strong>⚠ This instrument + construction has NOT been walk-forwarded.</strong> Every number below
        is a single full-sample fit. Do not read it as out-of-sample evidence — the chronological 70/30 split
        further down is one holdout, which is much weaker than a walk-forward.`;
+  const mv=M1V[j.instrument+'|'+j.mode];
+  const mvLine = mv
+    ? `<br><strong>M1 intrabar validation:</strong> the H1 exit walk re-run on real 1-minute bars over
+       ${mv.n} trades (${mv.cover}% coverage) differs by <strong>${mv.diff}%/trade (t=${mv.t})</strong> —
+       indistinguishable from noise. ${mv.disagree}% of individual days resolve differently, but the errors
+       are unbiased and cancel, so the H1 stop-before-target assumption is not flattering these numbers.`
+    : '';
   $('banner').innerHTML = (bothSides
     ? `<strong>Both-sides construction.</strong> Long and short opened together at half size each, so total
        notional — and therefore total cost — equals one full position. It exists because the direction call
@@ -198,7 +211,7 @@ function render(j){
        construction discards a signal that appears to work.
        <strong>Requires a hedging-enabled account</strong> — a netting account flattens the two legs to zero
        and the construction ceases to exist.`
-    : `<strong>Directional construction</strong> — the incumbent live system.`) + wfLine;
+    : `<strong>Directional construction</strong> — the incumbent live system.`) + wfLine + mvLine;
 
   $('head').innerHTML =
       cell(sgn(j.totalReturn)+'%','Total return',j.totalReturn>=0?'pos':'neg')
