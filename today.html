@@ -1714,6 +1714,38 @@ function buildMacro() {
     }
   }
 
+  // 6) Copper (AUD/NZD) — a bellwether for China/global industrial demand, which
+  // the commodity currencies key off even more directly than oil. Same fred_data_v3
+  // payload as wti, {value, prev}, just sourced server-side from OANDA D1 (fetchD1)
+  // instead of FRED since copper has no FRED series.
+  if (has('copper')) {
+    const c = v('copper'), d = dirOf('copper', 0.02);
+    if (d !== 0) {
+      const body = `Copper is <b>${arrow(d)}</b> (around <b>$${c.toFixed(2)}</b>/lb).`;
+      const so = `That <b>${d > 0 ? 'helps' : 'pressures'} the Aussie and Kiwi</b> — the commodity currencies most tied to metals demand.`;
+      threads.push({ ic: '🟠', t: 'Copper', body, so });
+    }
+  }
+
+  // 7) Equity indices — risk mood read straight from today's session move (SPX500
+  // preferred, NQ fallback — both already-tracked brief instruments, no new fetch).
+  {
+    const eqName = brief?.instruments?.SPX500 ? 'SPX500' : (brief?.instruments?.NQ ? 'NQ' : null);
+    const eq = eqName ? brief.instruments[eqName] : null;
+    if (eq?.current_price != null && eq.session_open) {
+      const label = eqName === 'SPX500' ? 'S&P 500' : 'Nasdaq';
+      const chgPct = (eq.current_price / eq.session_open - 1) * 100;
+      if (Math.abs(chgPct) >= 0.15) {
+        const up = chgPct > 0;
+        const body = `Stocks are telling their own story: the <b>${label} is ${up ? 'up' : 'down'} ${Math.abs(chgPct).toFixed(1)}%</b> from today's session open.`;
+        const so = up
+          ? `Stocks higher usually means investors feel comfortable taking risk — a tailwind for the <b>Aussie, Kiwi and Canadian dollar</b>, and a headwind for the safe-haven yen, franc and gold.`
+          : `Stocks lower usually means investors are pulling in risk — a headwind for the <b>Aussie, Kiwi and Canadian dollar</b>, and support for the safe-haven yen, franc and gold.`;
+        threads.push({ ic: '📊', t: 'Stocks (risk mood)', body, so });
+      }
+    }
+  }
+
   // Per-currency "what this means for you"
   const usd = has('us10y') ? v('us10y') : null;
   const gap = k => (usd != null && v(k) != null) ? (usd - v(k)) : null;
