@@ -165,6 +165,7 @@ import { computeExitScore } from './js/cogExitEngine.js';
 import { runV2Backtest } from './js/cogStateEngine.js';
 import { loadHistoricalCogDataset } from './js/cogHistoricalDataLoader.js';
 import { runCogV3 } from './js/cogV3Engine.js';
+import { runQmrV2 } from './js/qmrV2Engine.js';
 import { bothSidesWalk, groupBarsByDate, entryBarFor, walkTrade } from './js/qmrCore.js';
 import { runPivotSpike } from './js/pivotSpikeEngine.js';
 import { COG_V2_TRIGGER_WINDOW, COG_V2_NY_OPEN_MINUTE, COG_V2_ENTRY_DEADLINE_MINUTE, COG_V2_SETUP_NOTE, COG_V2_RISK_NOTE, COG_V2_IMPULSE_PARAMS, COG_V2_TRIGGER_SCORE, COG_V2_SETUP_HYSTERESIS, COG_V2_SLOW_SMOOTH, COG_V2_CONFIDENCE, COG_V2_MIN_SETUP_PERSIST_BARS } from './js/cogV2Config.js';
@@ -5561,6 +5562,41 @@ app.get('/api/nq-qmr/m5-candles', async (req, res) => {
     console.error('[nq-qmr m5]', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
+});
+
+// ── QMR v2 — parquet M1, gates on/off, both-sides, any instrument ───────────
+// Async job: loading a 65-90MB M1 parquet takes ~15-30s before any work starts.
+const qmrV2Jobs = new Map();
+const QMR_V2_KEYS = new Set(['nq', 'spx500', 'us30', 'gold']);
+
+app.post('/api/qmr-v2/run', express.json({ limit: '32kb' }), (req, res) => {
+  const body = req.body || {};
+  const instrument = QMR_V2_KEYS.has(body.instrument) ? body.instrument : 'nq';
+  const jobId = `qv2_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  qmrV2Jobs.set(jobId, { status: 'running', startedAt: Date.now(), phase: `Loading ${instrument} M1 parquet…` });
+  for (const [k, v] of qmrV2Jobs) if (Date.now() - v.startedAt > 45 * 60_000) qmrV2Jobs.delete(k);
+
+  (async () => {
+    try {
+      const packed = await loadM1ForPair(instrument);
+      qmrV2Jobs.get(jobId).phase = 'Resampling H1 for gates, walking exits on M1…';
+      const result = runQmrV2(packed, { ...body, instrument });
+      if (result.error) throw new Error(result.error);
+      qmrV2Jobs.set(jobId, { status: 'done', startedAt: qmrV2Jobs.get(jobId).startedAt, result: { ok: true, ...result } });
+      console.log(`[qmr-v2] ${jobId} ${instrument} gates=${result.config.gatesMode} side=${result.config.side} — ${result.trades.length} trades, sharpe ${result.stats.sharpe}`);
+    } catch (e) {
+      console.error('[qmr-v2]', e.message);
+      qmrV2Jobs.set(jobId, { status: 'error', error: e.message, startedAt: Date.now() });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/qmr-v2/status/:jobId', (req, res) => {
+  const j = qmrV2Jobs.get(req.params.jobId);
+  if (!j) return res.status(404).json({ ok: false, error: 'unknown jobId' });
+  res.json(j);
 });
 
 // ── QMR hold-to-target — remove the CLOCK, keep the target ──────────────────
