@@ -5646,15 +5646,23 @@ app.get('/api/nq-qmr/tearsheet', async (req, res) => {
 //      capital, in real money.
 function _qmrFlatStats(rows, accountEquity) {
   const riskPct = rows[0]?.riskPct ?? 1;
-  let cum = 0, peak = 0, maxDD = 0, ddDur = 0, curDur = 0, ddPeakAt = null, ddTroughAt = null, runPeakAt = null;
+  // Two DIFFERENT durations, kept apart on purpose. The longest underwater
+  // streak is often a shallow grind in a different part of the curve than the
+  // deepest loss — printing one next to the other's depth implies they are the
+  // same episode when they need not be.
+  let cum = 0, peak = 0, maxDD = 0, longestUnderwater = 0, curDur = 0;
+  let ddPeakAt = null, ddTroughAt = null, runPeakAt = null, maxDDTrades = 0;
   const curve = [];
   for (const x of rows) {
     cum += x.ret;
     if (cum > peak) { peak = cum; curDur = 0; runPeakAt = x.date; }
     else {
       curDur++;
-      if (peak - cum > maxDD) { maxDD = peak - cum; ddPeakAt = runPeakAt; ddTroughAt = x.date; }
-      if (curDur > ddDur) ddDur = curDur;
+      if (peak - cum > maxDD) {
+        maxDD = peak - cum; ddPeakAt = runPeakAt; ddTroughAt = x.date;
+        maxDDTrades = curDur;            // trades from that peak to THIS trough
+      }
+      if (curDur > longestUnderwater) longestUnderwater = curDur;
     }
     curve.push({ date: x.date, cumPct: +cum.toFixed(4), balance: +(accountEquity * (1 + cum / 100)).toFixed(2) });
   }
@@ -5671,7 +5679,8 @@ function _qmrFlatStats(rows, accountEquity) {
     stakeRiskDollars: +(accountEquity * riskPct / 100).toFixed(2),
     maxDrawdownPct: +(-maxDD).toFixed(2),             // % of STARTING capital
     maxDrawdownDollars: +(-accountEquity * maxDD / 100).toFixed(2),
-    maxDDdurationTrades: ddDur,
+    maxDDdurationTrades: maxDDTrades,          // peak -> trough of the DEEPEST drawdown
+    longestUnderwaterTrades: longestUnderwater, // longest time below ANY peak (may be a different, shallower episode)
     maxDDFrom: ddPeakAt, maxDDTo: ddTroughAt,
     grossProfitDollars: +(accountEquity * grossWin / 100).toFixed(2),
     grossLossDollars: +(-accountEquity * grossLoss / 100).toFixed(2),
