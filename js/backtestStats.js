@@ -14,19 +14,12 @@
  */
 
 import { sortinoRatio, profitFactor, maxDrawdownFromPnls } from './metricsCore.js';
+import { mulberry32, blockResample } from './statsCore.js';
 
 const sum  = a => a.reduce((s, x) => s + x, 0);
 const mean = a => (a.length ? sum(a) / a.length : 0);
 const stdev = a => { if (a.length < 2) return 0; const m = mean(a); return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / a.length); };
 
-function mulberry32(a) {
-  return function () {
-    a |= 0; a = a + 0x6D2B79F5 | 0;
-    let t = Math.imul(a ^ a >>> 15, 1 | a);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  };
-}
 function pctile(arr, ps) {
   const s = [...arr].sort((a, b) => a - b);
   const at = p => s.length ? s[Math.min(s.length - 1, Math.max(0, Math.floor(p / 100 * s.length)))] : 0;
@@ -66,23 +59,9 @@ function compoundedMaxDD(returnsPct) {
 }
 function resample(arr, rng) { const n = arr.length, out = new Array(n); for (let i = 0; i < n; i++) out[i] = arr[(rng() * n) | 0]; return out; }
 function shuffle(arr, rng) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = (rng() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
-// Stationary (Politis–Romano) block bootstrap: resample CONTIGUOUS blocks of random
-// geometric length (mean `meanBlock`), wrapping at the end. Unlike the IID shuffle
-// (which destroys ordering), this preserves serial correlation / regime clustering —
-// losing days stay clumped — so it does NOT understate clustered tail drawdowns.
-// Geometric block length (vs fixed) keeps the resampled series stationary (no
-// fixed-boundary artifact). Same output length as the input.
-function blockResample(arr, rng, meanBlock) {
-  const n = arr.length, out = new Array(n);
-  if (!n) return out;
-  const p = 1 / Math.max(1, meanBlock);                   // per-step prob of jumping to a new block
-  let idx = (rng() * n) | 0;
-  for (let i = 0; i < n; i++) {
-    out[i] = arr[idx];
-    idx = (rng() < p) ? (rng() * n) | 0 : (idx + 1) % n;  // new random block, or continue the run
-  }
-  return out;
-}
+// blockResample (stationary Politis–Romano block bootstrap — preserves serial
+// correlation/regime clustering, unlike the IID shuffle above) now lives in
+// statsCore.js as a shared brick; imported above.
 function skewKurt(a) {
   const n = a.length; if (n < 3) return { skew: 0, kurt: 3 };
   const m = mean(a), sd = stdev(a); if (sd < 1e-12) return { skew: 0, kurt: 3 };

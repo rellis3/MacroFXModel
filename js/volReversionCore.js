@@ -24,22 +24,27 @@
 //      current level. Different, narrower claim; don't conflate the two.
 //
 // A THIRD claim — does vol-richness predict NQ's forward PRICE return (the "vol
-// spike → bounce" idea) — was attempted and dropped. Unlike price-vs-trailing-anchor
-// (where any anchor's spurious reversion is a known, well-behaved artifact to net
-// out), vol-richness is a much smoother/more autocorrelated series, and neither a
-// circular-shift nor a block-permuted surrogate of it calibrated to a small null on
-// a pure random walk (mean |icEdge| 0.06–0.30 across designs tried, sandbox-tested,
-// not shipped). That's a real finding, not a shortcut: this specific claim needs a
-// properly significance-corrected (block-bootstrap / Newey-West) test, which is
-// more scope than this pass — flagged here rather than shipped uncalibrated.
+// spike → bounce" idea)? A first attempt was dropped in the PR that introduced this
+// file: neither a circular-shift nor a naive block-permuted surrogate calibrated to
+// a small null on a pure random walk (mean |icEdge| 0.06–0.30 across designs tried).
+// Re-examined 2026-07-28: the missing piece wasn't the block-bootstrap METHOD, it was
+// a properly-clamped block length and a real calibration PROOF rather than an ad hoc
+// |icEdge| eyeball check. `scoreVolPredictsForwardReturn` below uses the new
+// `blockBootstrapIC` brick (statsCore.js — promoted from backtestStats.js's own
+// battle-tested stationary block bootstrap, not a new implementation) and its
+// calibration is verified directly in volReversionCore.test.mjs: the test's
+// FALSE-POSITIVE RATE on repeated independent pure-random-walk simulations, which is
+// the actual thing "calibrated" means — not the magnitude of any single |icEdge|
+// reading, which is expected to be nonzero even under a perfectly centered null.
 //
 // Reuses forwardRealizedVol/trailingRealizedVol/spearman from creditLeadLagEngine.js
-// (already generic, not credit-specific), rollingZScore from statsCore.js, and ouFit
-// from ouCore.js. No re-implementation of any of this project's shared math
-// (CLAUDE.md Lego Principle 1).
+// (already generic, not credit-specific), forwardReturns from nasdaqResearch.js,
+// rollingZScore + blockBootstrapIC from statsCore.js, and ouFit from ouCore.js. No
+// re-implementation of any of this project's shared math (CLAUDE.md Lego Principle 1).
 
 import { forwardRealizedVol, trailingRealizedVol, spearman } from './creditLeadLagEngine.js';
-import { rollingZScore } from './statsCore.js';
+import { forwardReturns } from './nasdaqResearch.js';
+import { rollingZScore, blockBootstrapIC } from './statsCore.js';
 import { ouFit } from './ouCore.js';
 
 // ── Vol-richness z-score: trailing realized vol, standardized against its OWN
@@ -101,4 +106,51 @@ export function scoreVolPredictsForwardVol(closes, { rvWindow = 20, zWindow = 15
       ? `SURVIVES vs persistence: vol-richness z beats vol's own raw-level persistence at predicting forward realized vol (best icEdge ${bestEdge}) — standardizing adds real information here, not just "vol is currently high".`
       : `NULL vs persistence: vol-richness z does NOT meaningfully beat vol's own raw level (best icEdge ${bestEdge}). Any forecast power is vol clustering (today's level predicting tomorrow's) — the z-score construction adds nothing beyond that.`;
   return { ok: true, oosFrac, horizons, perHorizon, bestEdge, verdict };
+}
+
+// ── Claim: vol-richness → forward PRICE return ("vol spike → bounce"), tested
+// against a block-bootstrap null rather than an i.i.d. t-test — both z and the
+// overlapping-window forward return are autocorrelated, so rankIC's t-test would
+// be too liberal (blockBootstrapIC's own docstring, statsCore.js). OOS-only
+// (same split convention as scoreVolPredictsForwardVol above) — the IS slice is
+// not reported as evidence (CLAUDE.md: "In-sample improvement is not evidence").
+export function scoreVolPredictsForwardReturn(closes, { rvWindow = 20, zWindow = 150, ann = 252,
+                                                          horizons = [5, 10, 20, 60], oosFrac = 0.35,
+                                                          nBoot = 1000, seed = 0x9e3779b9 } = {}) {
+  const T = closes.length;
+  const { z } = volRichnessZ(closes, { rvWindow, zWindow, ann });
+  const minHist = zWindow + rvWindow + 10;
+  if (T < minHist + Math.max(...horizons) + 60) {
+    return { ok: false, error: `need ≥ ${minHist + Math.max(...horizons) + 60} bars, got ${T}` };
+  }
+
+  const perHorizon = {};
+  for (const H of horizons) {
+    const fwd = forwardReturns(closes, H);
+    const idxAll = [];
+    for (let t = minHist; t < T; t++) if (Number.isFinite(z[t]) && Number.isFinite(fwd[t])) idxAll.push(t);
+    const split = Math.floor(idxAll.length * (1 - oosFrac));
+    const oosIdx = idxAll.slice(split);
+    if (oosIdx.length < 30) { perHorizon[H] = { n: oosIdx.length, insufficient: true }; continue; }
+    const zOos = oosIdx.map(t => z[t]), fwdOos = oosIdx.map(t => fwd[t]);
+    const test = blockBootstrapIC(zOos, fwdOos, { meanBlock: zWindow, nBoot, seed: (seed ^ (H * 0x1000193)) >>> 0 });
+    perHorizon[H] = test.ok ? test : { n: oosIdx.length, insufficient: true };
+  }
+
+  // Picking the best of N horizon tests is itself a multiple-comparison problem
+  // (CLAUDE.md: "count the cells and state the chance-baseline (multiple
+  // testing)") — measured directly on a pure random walk with this exact 4-horizon
+  // default: false-positive rate on the RAW best p-value is ~14%, not the nominal
+  // 5% (volReversionCore.test.mjs). Bonferroni-correct across the number of
+  // horizons actually tested (not the requested list — insufficient/skipped
+  // horizons don't count as trials).
+  const sig = Object.entries(perHorizon).filter(([, h]) => h.pValue != null);
+  const best = sig.length ? sig.reduce((a, b) => Math.abs(b[1].ic) > Math.abs(a[1].ic) ? b : a) : null;
+  const pAdj = best ? Math.min(1, best[1].pValue * sig.length) : null;
+  const verdict = !best ? 'insufficient data'
+    : pAdj < 0.05
+      ? `SURVIVES block-bootstrap null (Bonferroni-adjusted across ${sig.length} horizons): vol-richness IC vs forward H=${best[0]} price return is ${best[1].ic} (raw p=${best[1].pValue}, adj p=${pAdj.toFixed(4)}), beyond what the predictor's own serial dependence explains by chance alone.`
+      : `NULL vs block-bootstrap: no horizon's IC clears its own serial-dependence null after multiple-testing correction (best |IC|=${best[1].ic} at H=${best[0]}, raw p=${best[1].pValue}, adj p=${pAdj.toFixed(4)} across ${sig.length} horizons). No detectable "vol spike → bounce" effect once autocorrelation is accounted for.`;
+  return { ok: true, oosFrac, horizons, perHorizon,
+           best: best ? { horizon: +best[0], ...best[1], pAdjusted: +pAdj.toFixed(4) } : null, verdict };
 }

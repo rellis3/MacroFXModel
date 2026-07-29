@@ -64,17 +64,34 @@
         <option value="bothsides">Both-sides (half size each leg)</option>
         <option value="directional">Directional (incumbent)</option>
       </select></div>
-      <div><label>Account size</label><input id="acct" value="100000" style="width:120px"></div>
-      <div><label>Round-trip cost %</label><input id="cost" value="0.008" style="width:100px"></div>
-      <button onclick="run()">Run</button>
+      <div><label>Account size</label><input id="acct" value="100000" style="width:110px"></div>
+      <button onclick="run()">Run backtest</button>
       <span id="msg" class="muted" style="font-size:12px"></span>
     </div>
+    <div class="ctl" style="margin-top:14px;border-top:1px solid var(--bd);padding-top:14px">
+      <div><label>Gate 1 threshold</label><input id="p_gate1Threshold" style="width:88px"></div>
+      <div><label>Gate 2 min move %</label><input id="p_gate2MinMovePct" style="width:88px"></div>
+      <div><label>Stop multiplier</label><input id="p_stopMultiplier" style="width:88px"></div>
+      <div><label>Min o/n range %</label><input id="p_minRangePct" style="width:88px"></div>
+      <div><label>Take-profit %</label><input id="p_tpPct" style="width:88px"></div>
+      <div><label>Risk % / trade</label><input id="p_riskPct" style="width:88px"></div>
+      <div><label>Round-trip cost %</label><input id="p_costPct" style="width:96px"></div>
+      <div><label>Stop slippage %</label><input id="p_stopSlipPct" style="width:96px"></div>
+      <button class="ghost" onclick="resetDefaults();run()">Reset to defaults</button>
+    </div>
+    <p class="note">Defaults are per-instrument — gold trades far smaller % ranges than the equity
+      indices, so it carries its own stop/target/range scale. Changing instrument reloads that
+      instrument's defaults; edit any field and re-run to explore sensitivity.</p>
   </div>
 
   <div id="out" style="display:none">
     <div class="warn" id="banner"></div>
 
     <div class="panel"><h2>Headline — full sample</h2><div class="grid" id="head"></div></div>
+
+    <div class="panel"><h2>Fixed stake — no compounding, drawdown vs starting capital</h2>
+      <div class="grid" id="flatCard"></div>
+      <p class="note" id="flatNote"></p></div>
 
     <div class="panel"><h2>Equity curve</h2><div id="chart"></div>
       <p class="note" id="curveNote"></p></div>
@@ -93,6 +110,10 @@
     <div class="panel"><h2>Monthly returns</h2><div style="overflow-x:auto"><table class="heat" id="heat"></table></div>
       <p class="note">Read the recent rows in isolation before trusting the headline — a strong
       full-sample average can hide a decayed last 12–24 months.</p></div>
+
+    <div class="panel"><h2>Cost sensitivity — the load-bearing assumption</h2>
+      <div style="overflow-x:auto"><table id="costTable"></table></div>
+      <p class="note" id="costNote"></p></div>
 
     <div class="panel"><h2>Monte Carlo — trade-order bootstrap</h2><div id="mc"></div>
       <p class="note"><strong>This is expectation-setting, not robustness evidence.</strong> Resampling a
@@ -114,6 +135,35 @@
 <script>
 const $=id=>document.getElementById(id);
 let D=null;
+
+// Per-instrument defaults, mirroring nq-qmr-backtest.html. Gold's ranges are a
+// fraction of an index's, so running it on NQ's scale searches a region gold
+// never occupies — the same units mismatch that produced a 1-trade backtest
+// elsewhere in this repo. Keep these in step with that page.
+const INST_DEFAULTS={
+  NAS100_USD:{gate1Threshold:0.60,gate2MinMovePct:0.10,stopMultiplier:0.45,minRangePct:0.15,tpPct:1.50,riskPct:1.00},
+  SPX500_USD:{gate1Threshold:0.60,gate2MinMovePct:0.10,stopMultiplier:0.45,minRangePct:0.15,tpPct:1.50,riskPct:1.00},
+  US30_USD:  {gate1Threshold:0.60,gate2MinMovePct:0.10,stopMultiplier:0.45,minRangePct:0.15,tpPct:1.50,riskPct:1.00},
+  XAU_USD:   {gate1Threshold:0.60,gate2MinMovePct:0.05,stopMultiplier:0.45,minRangePct:0.10,tpPct:0.80,riskPct:1.00},
+};
+const COST_DEFAULTS={costPct:0.008,stopSlipPct:0.005};
+const PARAM_IDS=['gate1Threshold','gate2MinMovePct','stopMultiplier','minRangePct','tpPct','riskPct','costPct','stopSlipPct'];
+
+// Walk-forward results actually RUN, keyed by instrument+mode. Anything not in
+// here has never been walk-forwarded and the page must say so rather than
+// implying NQ's number applies — a hardcoded banner would have shown NQ's
+// 2.31 while displaying gold's card.
+const WF={
+  'NAS100_USD|bothsides':  {sharpe:2.17,t:4.69,pos:'8/8',worst:'+1.1%'},  // joint-walk re-measure 2026-07-29 (was 2.31 under the old averaging method)
+  'NAS100_USD|directional':{sharpe:1.18,t:2.56,pos:'6/8',worst:'-11.2%'},
+  'XAU_USD|directional':   {sharpe:0.83,t:1.59,pos:'4/8',worst:'-6.1%'},
+};
+
+function resetDefaults(){
+  const d=INST_DEFAULTS[$('inst').value]||INST_DEFAULTS.NAS100_USD;
+  for(const k of PARAM_IDS) $('p_'+k).value = d[k] ?? COST_DEFAULTS[k];
+}
+$('inst').addEventListener('change',()=>{resetDefaults();run();});
 const f=(v,d=2)=>v==null?'—':(+v).toFixed(d);
 const sgn=(v,d=2)=>v==null?'—':((v>0?'+':'')+(+v).toFixed(d));
 const cell=(v,k,cls)=>`<div class="stat"><div class="v ${cls||''}">${v}</div><div class="k">${k}</div></div>`;
@@ -121,7 +171,8 @@ const cell=(v,k,cls)=>`<div class="stat"><div class="v ${cls||''}">${v}</div><di
 async function run(){
   $('msg').textContent='running…';
   const q=new URLSearchParams({instrument:$('inst').value,mode:$('mode').value,
-    accountEquity:$('acct').value,costPct:$('cost').value});
+    accountEquity:$('acct').value});
+  for(const k of PARAM_IDS){const v=$('p_'+k).value.trim(); if(v!=='') q.set(k,v);}
   const j=await fetch('/api/nq-qmr/tearsheet?'+q).then(r=>r.json()).catch(e=>({ok:false,error:e.message}));
   if(!j.ok){$('msg').textContent='failed: '+j.error;return;}
   D=j;$('msg').textContent='';$('out').style.display='';
@@ -130,16 +181,24 @@ async function run(){
 
 function render(j){
   const bothSides=j.mode==='bothsides';
-  $('banner').innerHTML = bothSides
+  const wf=WF[j.instrument+'|'+j.mode];
+  const wfLine = wf
+    ? `<br><strong>Walk-forward OOS for this instrument + construction:</strong> mean Sharpe ${wf.sharpe}
+       (t=${wf.t}) over 8 non-overlapping 6-month windows, ${wf.pos} positive, worst window ${wf.worst}.
+       Params re-fit on each in-sample year and applied untouched to the next six months.`
+    : `<br><strong>⚠ This instrument + construction has NOT been walk-forwarded.</strong> Every number below
+       is a single full-sample fit. Do not read it as out-of-sample evidence — the chronological 70/30 split
+       further down is one holdout, which is much weaker than a walk-forward.`;
+  $('banner').innerHTML = (bothSides
     ? `<strong>Both-sides construction.</strong> Long and short opened together at half size each, so total
        notional — and therefore total cost — equals one full position. It exists because the direction call
-       measured at zero on this instrument (dirAlpha −0.006%/trade, t=−0.08) while the payoff geometry paid:
-       removing a coin flip removes its variance without touching the mean.
+       measured at zero on the equity indices (NQ dirAlpha −0.006%/trade, t=−0.08) while the payoff geometry
+       paid: removing a coin flip removes its variance without touching the mean. Note this does NOT hold on
+       gold, where the direction call carries the result and inverting it loses money — so on gold this
+       construction discards a signal that appears to work.
        <strong>Requires a hedging-enabled account</strong> — a netting account flattens the two legs to zero
-       and the construction does not exist. Walk-forward OOS: mean Sharpe 2.31 over 8 non-overlapping
-       6-month windows, 8/8 positive.`
-    : `<strong>Directional construction</strong> — the incumbent live system. Walk-forward OOS: mean Sharpe
-       1.18 over 8 non-overlapping windows, 6/8 positive, worst window −11.2%.`;
+       and the construction ceases to exist.`
+    : `<strong>Directional construction</strong> — the incumbent live system.`) + wfLine;
 
   $('head').innerHTML =
       cell(sgn(j.totalReturn)+'%','Total return',j.totalReturn>=0?'pos':'neg')
@@ -163,9 +222,11 @@ function render(j){
     + cell(j.minTrackYears==null?'—':f(j.minTrackYears,1)+'y','Min track record')
     + cell(f(j.tradingDays,0),'Trading days');
 
-  const card=o=>o?cell(sgn(o.totalReturn)+'%','Total',o.totalReturn>=0?'pos':'neg')
+  const card=o=>o?cell(sgn(o.totalReturn)+'%','Total (compounded)',o.totalReturn>=0?'pos':'neg')
+      +cell(sgn(o.flat?.totalReturnPct,1)+'%','Total (fixed stake)',(o.flat?.totalReturnPct??0)>=0?'pos':'neg')
       +cell(sgn(o.cagr)+'%','CAGR',o.cagr>=0?'pos':'neg')+cell(f(o.sharpe),'Sharpe',o.sharpe>1?'pos':'amber')
-      +cell(f(o.sortino),'Sortino')+cell(f(o.maxDrawdown)+'%','Max DD','neg')
+      +cell(f(o.sortino),'Sortino')+cell(f(o.maxDrawdown)+'%','Max DD (compounded)','neg')
+      +cell(f(o.flat?.maxDrawdownPct,1)+'%','Max DD (vs start)','neg')
       +cell(f(o.winRate)+'%','Win rate')+cell(o.totalTrades,'Trades'):'';
   $('isCard').innerHTML=card(j.inSample); $('oosCard').innerHTML=card(j.outOfSample);
   $('splitNote').innerHTML=`Chronological 70/30 split at <strong>${j.splitDate}</strong> — by trade date, never by
@@ -180,7 +241,7 @@ function render(j){
     + cell(f(j.excessKurtosis),'Excess kurtosis')
     + cell(j.positiveMonths+' / '+j.negativeMonths,'Pos / neg months');
 
-  drawCurve(j.curve); drawHeat(j.monthly); drawMC(j.trades.map(t=>t.ret));
+  drawFlat(j); drawCurve(j.curve); drawHeat(j.monthly); drawMC(j.trades.map(t=>t.ret)); drawCost(j);
 
   const lev=(j.config.riskPct/ (j.trades.reduce((s,t)=>s+t.stopPct,0)/j.trades.length)).toFixed(2);
   $('exportNote').innerHTML=`Account size <strong>$${(+$('acct').value).toLocaleString()}</strong>.
@@ -259,6 +320,82 @@ function drawMC(rets){
   </div>`;
 }
 
+const money=v=>(v<0?'-$':'$')+Math.abs(v).toLocaleString(undefined,{maximumFractionDigits:0});
+
+function drawFlat(j){
+  const F=j.flat; if(!F){$('flatCard').innerHTML='';return;}
+  $('flatCard').innerHTML =
+      cell(sgn(F.totalReturnPct,1)+'%','Total return (simple sum)',F.totalReturnPct>=0?'pos':'neg')
+    + cell(sgn(F.avgAnnualPct,1)+'%','Avg annual (not geometric)',F.avgAnnualPct>=0?'pos':'neg')
+    + cell(money(F.totalPnlDollars),'Total P&L',F.totalPnlDollars>=0?'pos':'neg')
+    + cell(money(F.finalBalance),'Final balance')
+    + cell(F.maxDrawdownPct.toFixed(1)+'%','Max DD (% of START capital)','neg')
+    + cell(money(F.maxDrawdownDollars),'Max DD in cash','neg')
+    + cell(F.maxDDdurationTrades,'Deepest DD: trades to trough')
+    + cell(F.longestUnderwaterTrades,'Longest underwater run')
+    + cell(F.returnOverMaxDD==null?'—':F.returnOverMaxDD.toFixed(2),'Return / max DD')
+    + cell(money(F.stakeRiskDollars),'Risk per trade (fixed)')
+    + cell(money(F.grossProfitDollars),'Gross profit','pos')
+    + cell(money(F.grossLossDollars),'Gross loss','neg');
+
+  const compTotal=j.totalReturn, flatTotal=F.totalReturnPct;
+  const share=compTotal!==0?(1-flatTotal/compTotal)*100:0;
+  $('flatNote').innerHTML=
+    `Every trade risks a fixed <strong>${money(F.stakeRiskDollars)}</strong>
+     (${j.config.riskPct}% of the <em>starting</em> $${(+$('acct').value).toLocaleString()}), so its cash P&L
+     never grows with the account — what a real fixed-risk account does until you deliberately resize.
+     <br><br>
+     <strong>Same trades, two accountings:</strong> compounded total
+     <strong>${sgn(compTotal,1)}%</strong> vs fixed-stake <strong>${sgn(flatTotal,1)}%</strong>
+     ${compTotal>flatTotal?`— <strong>${share.toFixed(0)}% of the compounded headline is compounding itself</strong>, not signal.`:'.'}
+     <br><br>
+     <strong>Why the drawdown differs.</strong> The compounded card divides a loss by a running <em>peak</em>,
+     so the same cash loss looks smaller the further into a winning run it lands — a late 20% is a much bigger
+     cheque than an early 20%. Here <strong>${F.maxDrawdownPct.toFixed(1)}% means ${F.maxDrawdownPct.toFixed(1)}%
+     of day-one capital</strong>, i.e. <strong>${money(F.maxDrawdownDollars)}</strong> of real money
+     ${F.maxDDFrom?`(peak ${F.maxDDFrom} → trough ${F.maxDDTo})`:''}. Compounded max DD reads
+     ${j.maxDrawdown.toFixed(1)}% on the same trades.
+     <br><br>
+     The <strong>Currency P&amp;L CSV export is already on this fixed-stake basis</strong> — constant risk per
+     row, no compounding — so it reconciles to this card, not to the one above.`;
+}
+
+function drawCost(j){
+  const cs=j.costSensitivity||[];
+  if(!cs.length){$('costTable').innerHTML='';$('costNote').textContent='';return;}
+  const live=cs.find(r=>Math.abs(r.costPct-j.config.costPct)<1e-9);
+  $('costTable').innerHTML='<tr><th>Round-trip cost</th><th>Stop slippage</th><th>Sharpe</th>'
+    +'<th>CAGR</th><th>Total return</th><th>Max DD</th><th>Win rate</th></tr>'
+    + cs.map(r=>{
+        const dead=r.sharpe<=0.25;
+        const cur=Math.abs(r.costPct-j.config.costPct)<1e-9;
+        return `<tr style="${cur?'background:#0e1a24':''}">
+          <td style="text-align:left">${(r.costPct*100).toFixed(1)}bp${cur?' <span class="muted">← current</span>':''}</td>
+          <td>${(r.stopSlipPct*100).toFixed(1)}bp</td>
+          <td class="${dead?'neg':'pos'}">${r.sharpe.toFixed(2)}</td>
+          <td class="${r.cagr>0?'pos':'neg'}">${sgn(r.cagr,1)}%</td>
+          <td class="${r.totalReturn>0?'pos':'neg'}">${sgn(r.totalReturn,0)}%</td>
+          <td class="neg">${r.maxDrawdown.toFixed(1)}%</td>
+          <td>${r.winRate.toFixed(0)}%</td></tr>`;
+      }).join('');
+  // Where does it stop working? Report the first rung that fails, not a guess.
+  const dead=cs.find(r=>r.cagr<=0);
+  const lastAlive=[...cs].reverse().find(r=>r.cagr>0);
+  $('costNote').innerHTML=
+    `Same trades throughout — cost never changes which days trade or where the stop sits, only what each
+     trade keeps, so this isolates the cost assumption rather than re-running a different backtest.
+     <br><strong>The card is currently priced at ${(j.config.costPct*100).toFixed(1)}bp round-trip
+     ${live?`(Sharpe ${live.sharpe.toFixed(2)})`:''}.</strong> `
+    + (dead
+        ? `Edge is <strong>gone by ${(dead.costPct*100).toFixed(1)}bp</strong>${lastAlive?`, last profitable rung ${(lastAlive.costPct*100).toFixed(1)}bp`:''}.
+           At ~${(j.config.riskPct/(j.trades.reduce((s,t)=>s+t.stopPct,0)/j.trades.length)).toFixed(1)}× average
+           leverage and ${(j.totalTrades/j.years).toFixed(0)} trades/yr, every extra 1bp of round-trip cost is
+           roughly ${((j.totalTrades/j.years)*(j.config.riskPct/(j.trades.reduce((s,t)=>s+t.stopPct,0)/j.trades.length))/100).toFixed(1)} points of CAGR.
+           <strong>The real OANDA spread for this instrument at the entry and exit hours has never been
+           measured — until it is, every number on this page rests on an assumption.</strong>`
+        : `It survives the whole ladder tested.`);
+}
+
 function csv(kind){
   if(!D)return;
   const acct=+$('acct').value, risk=D.config.riskPct;
@@ -269,11 +406,16 @@ function csv(kind){
     rows=D.trades.map(t=>`${t.date},${(t.ret/risk).toFixed(4)},${(t.mae/risk).toFixed(4)}`);}
   else{head='Trade Date,PnL ($),Risk ($)';
     rows=D.trades.map(t=>`${t.date},${(acct*t.ret/100).toFixed(2)},${(acct*risk/100).toFixed(2)}`);}
-  const blob=new Blob([head+'\n'+rows.join('\n')],{type:'text/csv'});
+  // BOM so Excel opens it as UTF-8 rather than mangling the header; anchor must
+  // be in the DOM before click() or Firefox silently does nothing.
+  const blob=new Blob(['﻿'+head+'\n'+rows.join('\n')],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`qmr_${D.instrument}_${D.mode}_${kind}.csv`;a.click();
+  a.href=url; a.download=`qmr_${D.instrument}_${D.mode}_${kind}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
+resetDefaults();
 run();
 </script>
 </body>

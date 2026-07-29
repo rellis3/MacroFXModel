@@ -61,7 +61,7 @@ import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _r
 import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS, BM_P75 as _BM_P75 } from './js/volBacktestEngine.js';
 import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED, fetchPriceOnly as _mveFetchPriceOnly } from './js/mve/liveAdapter.js';
 import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency, validateMechanicalAnchor as _mveValidateMechanical } from './js/mve/validateInstrument.js';
-import { volOuDiagnostic as _volOuDiagnostic, scoreVolPredictsForwardVol as _scoreVolPredictsForwardVol } from './js/volReversionCore.js';
+import { volOuDiagnostic as _volOuDiagnostic, scoreVolPredictsForwardVol as _scoreVolPredictsForwardVol, scoreVolPredictsForwardReturn as _scoreVolPredictsForwardReturn } from './js/volReversionCore.js';
 import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS, buildPortfolioReturns as _trendBuildPortfolio, portfolioReturnsByDate as _trendReturnsByDate } from './js/trendFollowEngine.js';
 import { blendStreams as _blendStreams } from './js/streamBlend.js';
 import { runGauntlet as _runStrategyGauntlet, GAUNTLET_SPECS as _GAUNTLET_SPECS, SIGNALS as _LAB_SIGNALS } from './js/strategyLabEngine.js';
@@ -114,7 +114,7 @@ import { sessionsAt as _sessionsAt } from './js/fillRealismEngine.js';   // 22:0
 import { fetchM1Gap as _fetchM1Gap } from './js/m1GapFill.js';   // OANDA M1 gap-fill so the viewer can show days past the parquet snapshot
 import { rvHarSigma as _rvHarSigma } from './js/indexRvHar.js';   // validated 5-min realized-vol HAR σ for index COG lines (not the GK shadow)
 import { ccHvSigma as _ccHvSigma, ccHvMulti as _ccHvMulti, ccHvIntraday as _ccHvIntraday } from './js/ccHvSigma.js';   // COG's own σ method (close-to-close HV) for reproducing his index lines
-import { resampleTo as _resampleTo } from './js/barUtils.js';   // resample the OANDA 1-min gap to 5-min before merging
+import { resampleTo as _resampleTo, extractBars } from './js/barUtils.js';   // resample the OANDA 1-min gap to 5-min before merging; extractBars slices the M1 packed arrays for the validator
 import { excursionFromM1, summarizeGiveback } from './js/giveback.js';   // per-bot give-back (MFE vs realised) analytics
 import { volHorseRace as _volHorseRace, HR_MODELS as _HR_MODELS } from './js/volHorseRaceEngine.js';   // 8-model σ-forecast horse race per instrument (QLIKE/MZ), does HAR's gold win generalise
 import { scanConfirmedSignals as _scanConfirmedSignals, mergeLog as _mergeLog, forwardStats as _forwardStats } from './js/forwardTrackEngine.js';   // live post-research track record of the confirmed fade
@@ -165,7 +165,7 @@ import { computeExitScore } from './js/cogExitEngine.js';
 import { runV2Backtest } from './js/cogStateEngine.js';
 import { loadHistoricalCogDataset } from './js/cogHistoricalDataLoader.js';
 import { runCogV3 } from './js/cogV3Engine.js';
-import { bothSidesWalk, groupBarsByDate, entryBarFor } from './js/qmrCore.js';
+import { bothSidesWalk, groupBarsByDate, entryBarFor, walkTrade } from './js/qmrCore.js';
 import { runPivotSpike } from './js/pivotSpikeEngine.js';
 import { COG_V2_TRIGGER_WINDOW, COG_V2_NY_OPEN_MINUTE, COG_V2_ENTRY_DEADLINE_MINUTE, COG_V2_SETUP_NOTE, COG_V2_RISK_NOTE, COG_V2_IMPULSE_PARAMS, COG_V2_TRIGGER_SCORE, COG_V2_SETUP_HYSTERESIS, COG_V2_SLOW_SMOOTH, COG_V2_CONFIDENCE, COG_V2_MIN_SETUP_PERSIST_BARS } from './js/cogV2Config.js';
 import { liveSignal as hedgeV2Live, runComparison as hedgeV2Comparison, V2_DEFAULTS as HEDGE_V2_DEFAULTS } from './js/hedgeSignalV2Engine.js';
@@ -5527,6 +5527,128 @@ app.get('/api/nq-qmr/m5-candles', async (req, res) => {
   }
 });
 
+// ── QMR M1 validation — does the H1 intrabar assumption hold? ───────────────
+// The whole both-sides result rests on one thing H1 bars CANNOT see: with a
+// ~0.45% stop against a 1.5% target, a single H1 bar routinely contains both
+// levels, and the edge depends entirely on which one price reached FIRST. The
+// engine assumes stop-first, which should be conservative — but that is a
+// reasoned argument, not a measurement, and CLAUDE.md lists exactly this
+// assumption as an anti-pattern ("prefer M1 fills").
+//
+// This re-walks every H1 trade on real M1 bars and diffs them trade by trade.
+// The entry price is held IDENTICAL to the H1 run (the open of the 13:00 bar,
+// which is the same tick either way), so the comparison isolates the exit path
+// and nothing else.
+const QMR_M1_KEY = {           // QMR instrument -> M1 parquet key in R2
+  NAS100_USD: 'nq', SPX500_USD: 'spx500', US30_USD: 'us30', XAU_USD: 'gold',
+  DE30_EUR: 'de30', UK100_GBP: 'uk100',
+};
+const qmrM1Jobs = new Map();
+
+app.post('/api/nq-qmr/m1-validate', express.json({ limit: '32kb' }), (req, res) => {
+  const body = req.body || {};
+  const instrument = NQ_QMR_INSTRUMENTS.has(body.instrument) ? body.instrument : 'NAS100_USD';
+  const m1Key = QMR_M1_KEY[instrument];
+  if (!m1Key) return res.status(400).json({ ok: false, error: `no M1 parquet mapped for ${instrument}` });
+  const mode = body.mode === 'directional' ? 'directional' : 'bothsides';
+  const jobId = `m1v_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  qmrM1Jobs.set(jobId, { status: 'running', startedAt: Date.now(), phase: `Loading ${m1Key} M1…` });
+  for (const [k, v] of qmrM1Jobs) if (Date.now() - v.startedAt > 45 * 60_000) qmrM1Jobs.delete(k);
+
+  (async () => {
+    try {
+      const cfg = { ...NQ_QMR_DEFAULTS, ...(body.cfg || {}), showControl: true };
+      const [bars, packed] = await Promise.all([
+        _getNqQmrBars(instrument),
+        loadM1ForPair(m1Key),
+      ]);
+      qmrM1Jobs.get(jobId).phase = 'Re-walking each trade on M1…';
+      const raw = _computeNqQmr(bars, cfg);
+      const h1Rows = mode === 'bothsides'
+        ? _qmrBothSidesRows(bars, raw, cfg)
+        : raw.trades.map(t => ({ date: t.date, ret: t.tradeReturn, exitReason: t.exitReason,
+                                 stopPct: t.stopPct, entry: t.entry, direction: t.direction }));
+      const entryByDate = new Map(raw.trades.map(t => [t.date, t]));
+
+      const cmp = [];
+      for (const r of h1Rows) {
+        const t = entryByDate.get(r.date); if (!t) continue;
+        // M1 bars strictly AFTER the entry bar, through the EOD hour — same
+        // window walkTrade sees, at 60x the resolution.
+        const dayStart = Math.floor(new Date(r.date + 'T00:00:00Z').getTime() / 1000);
+        const from = dayStart + (QMR_TIMING.entryHour + 1) * 3600;
+        const to   = dayStart + (QMR_TIMING.eodHour + 1) * 3600;
+        const m1 = extractBars(packed, from, to).map(b => ({
+          t: new Date(b.time * 1000).toISOString().substring(0, 16),
+          o: b.open, h: b.high, l: b.low, c: b.close,
+        }));
+        if (m1.length < 30) continue;         // thin/missing M1 day — skip, never guess
+        const lev = cfg.riskPct / t.stopPct;
+        let m1Ret, m1Reason;
+        if (mode === 'bothsides') {
+          const w = bothSidesWalk(m1, t.entry, t.stopPct, cfg.tpPct);
+          if (!w) continue;
+          m1Ret = (w.movePct - cfg.costPct - cfg.stopSlipPct * (w.stoppedLegs / 2)) * lev;
+          m1Reason = w.exitReason + ':' + w.stoppedLegs;
+        } else {
+          const w = walkTrade(m1, t.direction, t.entry, t.stopPct, cfg.tpPct);
+          if (!w) continue;
+          m1Ret = _qmrNetReturn(w.movePct, w.exitReason, lev, cfg.costPct, cfg.stopSlipPct);
+          m1Reason = w.exitReason;
+        }
+        cmp.push({ date: r.date, h1Ret: +r.ret.toFixed(4), m1Ret: +m1Ret.toFixed(4),
+                   diff: +(m1Ret - r.ret).toFixed(4), h1Reason: r.exitReason, m1Reason,
+                   m1Bars: m1.length });
+      }
+      if (cmp.length < 20) throw new Error(`only ${cmp.length} days had usable M1`);
+
+      const eqOf = a => { let e = 1; for (const x of a) e *= (1 + x / 100); return e; };
+      const mean = a => a.reduce((s, x) => s + x, 0) / a.length;
+      const diffs = cmp.map(c => c.diff);
+      const sd = Math.sqrt(diffs.reduce((s, x) => s + (x - mean(diffs)) ** 2, 0) / (diffs.length - 1));
+      const disagree = cmp.filter(c => Math.abs(c.diff) > 0.01);
+      qmrM1Jobs.set(jobId, {
+        status: 'done', startedAt: qmrM1Jobs.get(jobId).startedAt,
+        result: {
+          ok: true, instrument, mode, m1Key,
+          h1TradesTotal: h1Rows.length, comparedDays: cmp.length,
+          m1Coverage: +(cmp.length / h1Rows.length).toFixed(3),
+          h1Equity: +eqOf(cmp.map(c => c.h1Ret)).toFixed(4),
+          m1Equity: +eqOf(cmp.map(c => c.m1Ret)).toFixed(4),
+          h1MeanPerTrade: +mean(cmp.map(c => c.h1Ret)).toFixed(4),
+          m1MeanPerTrade: +mean(cmp.map(c => c.m1Ret)).toFixed(4),
+          meanDiff: +mean(diffs).toFixed(4),
+          // Paired t on the per-trade difference: is M1 systematically different
+          // from H1, or is the gap noise?
+          diffT: sd > 0 ? +(mean(diffs) / (sd / Math.sqrt(diffs.length))).toFixed(2) : null,
+          daysDisagreeing: disagree.length,
+          pctDaysDisagreeing: +(100 * disagree.length / cmp.length).toFixed(1),
+          worstDiff: +Math.min(...diffs).toFixed(3), bestDiff: +Math.max(...diffs).toFixed(3),
+          verdict: null, trades: cmp,
+        },
+      });
+      const R = qmrM1Jobs.get(jobId).result;
+      R.verdict = Math.abs(R.diffT ?? 0) < 2
+        ? `H1 ASSUMPTION HOLDS — M1 differs by ${R.meanDiff}%/trade (t=${R.diffT}), indistinguishable from noise`
+        : (R.meanDiff > 0
+            ? `H1 is CONSERVATIVE — M1 is +${R.meanDiff}%/trade better (t=${R.diffT}); the H1 result understates`
+            : `H1 is OPTIMISTIC — M1 is ${R.meanDiff}%/trade worse (t=${R.diffT}); every H1 number must be re-based`);
+      console.log(`[m1-validate] ${jobId} ${R.verdict}`);
+    } catch (e) {
+      console.error('[m1-validate]', e.message);
+      qmrM1Jobs.set(jobId, { status: 'error', error: e.message, startedAt: Date.now() });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/nq-qmr/m1-validate/status/:jobId', (req, res) => {
+  const j = qmrM1Jobs.get(req.params.jobId);
+  if (!j) return res.status(404).json({ ok: false, error: 'unknown jobId' });
+  res.json(j);
+});
+
 // ── QMR tearsheet — the shareable report ────────────────────────────────────
 // Full standard results card for either construction (directional | bothsides),
 // in the same field set COG's own tearsheet uses so the two are directly
@@ -5548,44 +5670,40 @@ app.get('/api/nq-qmr/tearsheet', async (req, res) => {
     }
     cfg.showControl = true;
     const bars = await _getNqQmrBars(instrument);
-    const raw  = _computeNqQmr(bars, cfg);
 
-    // Build the trade series for the requested construction.
-    let rows;
-    if (mode === 'directional') {
-      rows = raw.trades.map(t => ({
-        date: t.date, ret: t.tradeReturn, mae: t.maePct, mfe: t.mfePct,
-        direction: t.direction, exitReason: t.exitReason, stopPct: t.stopPct,
-        riskPct: cfg.riskPct,
-      }));
-    } else {
-      // Re-walk each traded day jointly for the honest combined path.
-      const byDate = groupBarsByDate(bars);
-      const dates  = Object.keys(byDate).sort();
-      const idx    = new Map(dates.map((d, i) => [d, i]));
-      rows = [];
-      for (const t of raw.trades) {
-        const i = idx.get(t.date); if (i == null || i < 1) continue;
-        const dayBars = byDate[t.date] || [];
-        const entryBar = dayBars.find(b => Math.abs(b.o - t.entry) < 1e-9) ?? entryBarFor(dayBars);
-        if (!entryBar) continue;
-        const after = dayBars.filter(b => b.t.substring(11, 13) > entryBar.t.substring(11, 13))
-                             .sort((a, b) => a.t.localeCompare(b.t));
-        const w = bothSidesWalk(after, t.entry, t.stopPct, cfg.tpPct);
-        if (!w) continue;
-        const lev = cfg.riskPct / t.stopPct;
-        // Cost once on the combined notional; stop slippage pro-rata to the
-        // number of legs that actually stopped (each leg is half the notional).
-        const slip = cfg.stopSlipPct * (w.stoppedLegs / 2);
-        rows.push({
-          date: t.date, ret: (w.movePct - cfg.costPct - slip) * lev,
-          mae: w.maePct * lev, mfe: w.mfePct * lev,
-          direction: 'BOTH', exitReason: w.exitReason, stopPct: t.stopPct,
-          riskPct: cfg.riskPct, stoppedLegs: w.stoppedLegs,
-        });
-      }
-    }
+    // Rows as a function of cost, so the cost-sensitivity card re-nets the SAME
+    // trades rather than re-running a different backtest. Costs never change
+    // which days trade or where the stop sits — only what each trade keeps —
+    // so a sweep that re-selected trades would be measuring two things at once.
+    const buildRows = (costPct, stopSlipPct) => {
+      const c = { ...cfg, costPct, stopSlipPct };
+      const raw = _computeNqQmr(bars, c);
+      return mode === 'directional'
+        ? raw.trades.map(t => ({
+            date: t.date, ret: t.tradeReturn, mae: t.maePct, mfe: t.mfePct,
+            direction: t.direction, exitReason: t.exitReason, stopPct: t.stopPct,
+            riskPct: c.riskPct,
+          }))
+        : _qmrBothSidesRows(bars, raw, c);
+    };
+
+    const rows = buildRows(cfg.costPct, cfg.stopSlipPct);
     if (rows.length < 10) return res.json({ ok: false, error: `only ${rows.length} trades` });
+
+    // Cost-sensitivity ladder (CLAUDE.md house rule). This system's edge is
+    // cost-critical — it dies between 2 and 4bp round-trip — so the card is not
+    // decoration, it is the single most load-bearing assumption on the page.
+    const COST_LADDER = [
+      [0.008, 0.005], [0.015, 0.010], [0.020, 0.015],
+      [0.030, 0.022], [0.040, 0.030], [0.060, 0.050],
+    ];
+    const costSensitivity = COST_LADDER.map(([c, s]) => {
+      const r = buildRows(c, s);
+      if (r.length < 10) return null;
+      const t = _qmrTearsheet(r, accountEquity);
+      return { costPct: c, stopSlipPct: s, sharpe: t.sharpe, cagr: t.cagr,
+               maxDrawdown: t.maxDrawdown, totalReturn: t.totalReturn, winRate: t.winRate };
+    }).filter(Boolean);
 
     const report = _qmrTearsheet(rows, accountEquity);
     // Chronological IS/OOS split (70/30 by trade date — never by index shuffle).
@@ -5593,7 +5711,7 @@ app.get('/api/nq-qmr/tearsheet', async (req, res) => {
     res.json({
       ok: true, instrument, mode, accountEquity, config: cfg,
       generatedAt: new Date().toISOString(),
-      ...report,
+      ...report, costSensitivity,
       inSample:  _qmrTearsheet(rows.slice(0, cut), accountEquity),
       outOfSample: _qmrTearsheet(rows.slice(cut), accountEquity),
       splitDate: rows[cut]?.date ?? null,
@@ -5604,6 +5722,101 @@ app.get('/api/nq-qmr/tearsheet', async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
+
+// THE single both-sides row builder. Both the tearsheet card and the
+// walk-forward call this — they previously each had their own, and the two
+// disagreed: the walk-forward averaged the two independent leg walks
+// ((r_long + r_short)/2) while the tearsheet used the joint bothSidesWalk. The
+// joint version is the correct one (it tracks WHEN each leg closes, so a leg
+// that stops early stops contributing) and it is slightly less flattering —
+// full-sample Sharpe 1.63 under averaging vs 1.57 joint. A page quoting a
+// walk-forward number from one method above cards computed with the other is
+// not a page anyone should share. One function, one answer.
+function _qmrBothSidesRows(bars, raw, cfg) {
+  const byDate = groupBarsByDate(bars);
+  const idx = new Map(Object.keys(byDate).sort().map((d, i) => [d, i]));
+  const rows = [];
+  for (const t of raw.trades) {
+    const i = idx.get(t.date); if (i == null || i < 1) continue;
+    const dayBars = byDate[t.date] || [];
+    const entryBar = dayBars.find(b => Math.abs(b.o - t.entry) < 1e-9) ?? entryBarFor(dayBars);
+    if (!entryBar) continue;
+    const after = dayBars.filter(b => b.t.substring(11, 13) > entryBar.t.substring(11, 13))
+                         .sort((a, b) => a.t.localeCompare(b.t));
+    const w = bothSidesWalk(after, t.entry, t.stopPct, cfg.tpPct);
+    if (!w) continue;
+    const lev = cfg.riskPct / t.stopPct;
+    // Cost once on the combined notional; stop slippage pro-rata to the number
+    // of legs that actually stopped (each leg is half the notional).
+    const slip = cfg.stopSlipPct * (w.stoppedLegs / 2);
+    rows.push({
+      date: t.date, ret: (w.movePct - cfg.costPct - slip) * lev,
+      mae: w.maePct * lev, mfe: w.mfePct * lev,
+      direction: 'BOTH', exitReason: w.exitReason, stopPct: t.stopPct,
+      riskPct: cfg.riskPct, stoppedLegs: w.stoppedLegs,
+    });
+  }
+  return rows;
+}
+
+// FIXED-STAKE (non-compounded) view of the same trades. Every trade risks the
+// same % of STARTING capital, so its dollar P&L never scales with account
+// growth — which is what a real fixed-risk account does until you deliberately
+// resize. Two things this exposes that the compounded card hides:
+//
+//   1. Total return is the SIMPLE SUM of per-trade returns, not a geometric
+//      product. Over five years compounding does a great deal of the headline
+//      work, and separating them shows exactly how much.
+//   2. Drawdown is measured against STARTING capital, not against a running
+//      peak. A compounded max-DD% divides the same dollar loss by an inflated
+//      peak, so the deeper into a winning run it happens the smaller it looks —
+//      a 20% compounded DD late in the curve can be a far bigger cash loss than
+//      a 20% DD early on. Here a drawdown of X% always means X% of day-one
+//      capital, in real money.
+function _qmrFlatStats(rows, accountEquity) {
+  const riskPct = rows[0]?.riskPct ?? 1;
+  // Two DIFFERENT durations, kept apart on purpose. The longest underwater
+  // streak is often a shallow grind in a different part of the curve than the
+  // deepest loss — printing one next to the other's depth implies they are the
+  // same episode when they need not be.
+  let cum = 0, peak = 0, maxDD = 0, longestUnderwater = 0, curDur = 0;
+  let ddPeakAt = null, ddTroughAt = null, runPeakAt = null, maxDDTrades = 0;
+  const curve = [];
+  for (const x of rows) {
+    cum += x.ret;
+    if (cum > peak) { peak = cum; curDur = 0; runPeakAt = x.date; }
+    else {
+      curDur++;
+      if (peak - cum > maxDD) {
+        maxDD = peak - cum; ddPeakAt = runPeakAt; ddTroughAt = x.date;
+        maxDDTrades = curDur;            // trades from that peak to THIS trough
+      }
+      if (curDur > longestUnderwater) longestUnderwater = curDur;
+    }
+    curve.push({ date: x.date, cumPct: +cum.toFixed(4), balance: +(accountEquity * (1 + cum / 100)).toFixed(2) });
+  }
+  const d0 = new Date(rows[0].date + 'T00:00:00Z'), d1 = new Date(rows[rows.length - 1].date + 'T00:00:00Z');
+  const years = Math.max((d1 - d0) / (365.25 * 864e5), 0.01);
+  const pnls = rows.map(x => x.ret);
+  const wins = pnls.filter(x => x > 0), losses = pnls.filter(x => x <= 0);
+  const grossWin = wins.reduce((s, x) => s + x, 0), grossLoss = Math.abs(losses.reduce((s, x) => s + x, 0));
+  return {
+    totalReturnPct: +cum.toFixed(2),
+    avgAnnualPct: +(cum / years).toFixed(2),          // simple, not geometric
+    totalPnlDollars: +(accountEquity * cum / 100).toFixed(2),
+    finalBalance: +(accountEquity * (1 + cum / 100)).toFixed(2),
+    stakeRiskDollars: +(accountEquity * riskPct / 100).toFixed(2),
+    maxDrawdownPct: +(-maxDD).toFixed(2),             // % of STARTING capital
+    maxDrawdownDollars: +(-accountEquity * maxDD / 100).toFixed(2),
+    maxDDdurationTrades: maxDDTrades,          // peak -> trough of the DEEPEST drawdown
+    longestUnderwaterTrades: longestUnderwater, // longest time below ANY peak (may be a different, shallower episode)
+    maxDDFrom: ddPeakAt, maxDDTo: ddTroughAt,
+    grossProfitDollars: +(accountEquity * grossWin / 100).toFixed(2),
+    grossLossDollars: +(-accountEquity * grossLoss / 100).toFixed(2),
+    returnOverMaxDD: maxDD > 0 ? +(cum / maxDD).toFixed(2) : null,
+    curve,
+  };
+}
 
 // One tearsheet from a {date, ret, mae}[] series. Calendar-daily basis with
 // flat weekdays as zeros — the same methodology _qmrStats uses, so the numbers
@@ -5667,6 +5880,7 @@ function _qmrTearsheet(rows, accountEquity) {
     sharpeSE: +(sharpeStdError(sharpe, N) || 0).toFixed(3),
     minTrackYears: Number.isFinite(minTrackRecordLength(sharpe)) ? +minTrackRecordLength(sharpe).toFixed(1) : null,
     monthly, curve,
+    flat: _qmrFlatStats(rows, accountEquity),
   };
 }
 
@@ -6018,17 +6232,18 @@ app.get('/api/nq-qmr/walkforward-retrain', async (req, res) => {
     // Half-size both-sides book from a showControl run. Cost is charged exactly
     // once: r_a = (m_a - c)*L and r_b = (m_b - c)*L, so (r_a + r_b)/2 =
     // ((m_a + m_b)/2 - c)*L — half the notional per leg, one position's cost.
-    function bothSidesStats(r) {
-      const ctl = new Map((r.tradesControl || []).map(t => [t.date, t.tradeReturn]));
-      const rows = r.trades.filter(t => ctl.has(t.date))
-        .map(t => ({ date: t.date, tradeReturn: (t.tradeReturn + ctl.get(t.date)) / 2 }));
+    // Uses the SHARED _qmrBothSidesRows (joint walk) so the walk-forward and the
+    // tearsheet can never quote numbers from different maths again.
+    function bothSidesStats(r, subBars, c) {
+      const rows = _qmrBothSidesRows(subBars, r, c).map(x => ({ date: x.date, tradeReturn: x.ret }));
       let eq = 1; const curve = [];
       for (const t of rows) { eq *= (1 + t.tradeReturn / 100); curve.push({ date: t.date, equity: eq }); }
       return { stats: _qmrStats(rows, curve, eq), trades: rows, curve };
     }
     const evaluate = (bars, cfg) => {
-      const r = _computeNqQmr(bars, mode === 'bothsides' ? { ...cfg, showControl: true } : cfg);
-      return mode === 'bothsides' ? { ...r, ...bothSidesStats(r) } : r;
+      const full = mode === 'bothsides' ? { ...NQ_QMR_DEFAULTS, ...cfg, showControl: true } : cfg;
+      const r = _computeNqQmr(bars, full);
+      return mode === 'bothsides' ? { ...r, ...bothSidesStats(r, bars, full) } : r;
     };
 
     function findBest(subBars) {
@@ -6977,6 +7192,10 @@ app.get('/api/mve-validate-mechanical/:sym', async (req, res) => {
 // fact); `forecast` = does the z-scored reading beat vol's own raw-level persistence
 // at predicting forward realized vol (the real, narrower claim — see the module's
 // header comment on why a negative result here doesn't mean "vol doesn't revert").
+// `priceReturn` = the third claim ("vol spike → bounce"), completed 2026-07-28 —
+// block-bootstrap significance vs the predictor's own serial dependence, Bonferroni-
+// corrected across horizons (see volReversionCore.js's header + test file for why the
+// original circular-shift attempt didn't calibrate and what fixed it).
 const _volReversionCache = new Map();
 app.get('/api/vol-reversion/:sym', async (req, res) => {
   const sym = req.params.sym;
@@ -6989,7 +7208,8 @@ app.get('/api/vol-reversion/:sym', async (req, res) => {
     if (!built.ok) return res.status(502).json(built);
     const diagnostic = _volOuDiagnostic(built.price);
     const forecast = _scoreVolPredictsForwardVol(built.price);
-    const out = { ok: true, instrument: sym, diagnostic, forecast, dataSource: built.dataSource };
+    const priceReturn = _scoreVolPredictsForwardReturn(built.price);
+    const out = { ok: true, instrument: sym, diagnostic, forecast, priceReturn, dataSource: built.dataSource };
     _volReversionCache.set(sym, { at: Date.now(), data: out });
     res.json(out);
   } catch (e) {
