@@ -198,14 +198,52 @@ function _estimateDrift(cur, prev, tol) {
     .map(w => w?.strike).filter(Number.isFinite);
   const cs = pick(cur), ps = pick(prev);
   if (!cs.length || !ps.length) return 0;
-  let best = 0, bestN = -1, bestAbs = Infinity;
+
+  // A rigid shift is only identifiable UP TO ONE STRIKE STEP. On a periodic ladder the
+  // offsets `drift` and `drift +/- spacing` both align strikes, and the alias can score
+  // HIGHER purely from which walls happen to be in each day's top-N. Observed on gold:
+  // true drift +0.635 scored 8 matches, the -99.365 alias (one 100-point step away) scored
+  // 10 and won - which then pairs each wall with a DIFFERENT strike and mis-attributes
+  // every firming/fading. So candidates are bounded by:
+  //   * 0.9x the strike spacing - past that the shift is aliased, not measured; and
+  //   * 0.5% of price - an overnight futures-basis move is a carry adjustment, orders of
+  //     magnitude smaller than that (gold 0.635 = 0.016%, NQ 81.25 = 0.29%, EUR/USD
+  //     4.45 pips = 0.04%). The -99.365 gold alias was 2.5%, physically impossible.
+  // The tighter of the two applies, since which one binds differs by instrument (FX has
+  // fine spacing relative to price; gold and the indices the reverse).
+  const sp = _spacingOf(cur) ?? _spacingOf(prev);
+  const ref = Math.abs(cur?.spot ?? cur?.maxPain ?? prev?.spot ?? 0);
+  const caps = [];
+  if (sp != null) caps.push(sp * 0.9);
+  if (ref > 0) caps.push(ref * 0.005);
+  const cap = caps.length ? Math.min(...caps) : Infinity;
+
+  const scored = [];
   for (const c of cs) for (const p of ps) {
     const off = c - p;
+    if (Math.abs(off) > cap) continue;                 // aliased or physically implausible
     let n = 0;
     for (const c2 of cs) if (ps.some(p2 => Math.abs((c2 - off) - p2) <= tol)) n++;
-    if (n > bestN || (n === bestN && Math.abs(off) < bestAbs)) { bestN = n; best = off; bestAbs = Math.abs(off); }
+    scored.push({ off, n });
   }
-  return bestN >= 2 ? best : 0;
+  if (!scored.length) return { drift: 0, n: 0, ambiguous: false };
+  // Ties break toward the SMALLEST shift - prefer "barely moved" over an equally
+  // well-supported larger shift.
+  scored.sort((a, b) => (b.n - a.n) || (Math.abs(a.off) - Math.abs(b.off)));
+  const top = scored[0];
+  if (top.n < 2) return { drift: 0, n: top.n, ambiguous: false };
+
+  // HONEST AMBIGUITY FLAG. Drift is recoverable only while it stays well under HALF the
+  // strike spacing; past that, shifting by (drift - spacing) aligns the ladder just as well
+  // and there is no way to tell the two apart from strikes alone. When a genuinely DIFFERENT
+  // offset scores within one match of the winner, say so rather than pick one and present it
+  // as fact - a mis-chosen offset pairs every wall with the wrong strike and would report
+  // fabricated firming/fading. Consumers should treat per-wall dynamics as unreliable when
+  // this is set. (Measured limit: a 25-pip ladder recovers a 13-pip drift but not 26 - at 26
+  // it selects the 1-pip alias. Real drifts run 0.02-0.3% of price against 0.2-1.2% spacing,
+  // so they sit inside the reliable band; this flag exists for when they do not.)
+  const rival = scored.find(x => Math.abs(x.off - top.off) > tol && x.n >= top.n - 1);
+  return { drift: top.off, n: top.n, ambiguous: !!rival };
 }
 
 // Day-over-day OI dynamics.
@@ -243,7 +281,8 @@ export function oiDeltas(cur, prev, tol = null) {
   // rigid shift of any size still produces one offset that matches every strike.
   // Ties break toward the SMALLEST offset (prefer "no drift" over an equally-good shift by
   // a whole strike-step, which is the one genuinely ambiguous case on a periodic ladder).
-  const drift0 = _estimateDrift(cur, prev, T2);
+  const _est = _estimateDrift(cur, prev, T2);
+  const drift0 = _est.drift;
 
   // PASS 2 - subtract the drift, then match TIGHTLY. After correction the same strike lands
   // on ~0 residual, so a small tolerance is now both safe and far more discriminating than
@@ -282,6 +321,8 @@ export function oiDeltas(cur, prev, tol = null) {
     callWallShiftNet: net(d(cur.callWall, prev.callWall)),
     putWallShiftNet: net(d(cur.putWall, prev.putWall)),
     basisDrift, strikeTol: +T2.toFixed(6), strikeTolPass1: +T.toFixed(6), matchedWalls: drifts.length,
+    // true => the shift could not be pinned down; per-wall firming/fading is unreliable.
+    driftAmbiguous: _est.ambiguous, driftSupport: _est.n,
     pcRatioChange: d(cur.pcRatio, prev.pcRatio),
     totalCallOIChange: Math.round((cur.totalCallOI || 0) - (prev.totalCallOI || 0)),
     totalPutOIChange: Math.round((cur.totalPutOI || 0) - (prev.totalPutOI || 0)),

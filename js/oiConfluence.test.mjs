@@ -272,14 +272,50 @@ console.log('[oiDeltas - basis drift must not fake wall turnover (regression, 20
   ok('max pain that did NOT move nets to 0', real.maxPainShiftNet === 0, String(real.maxPainShiftNet));
   ok('raw shift still exposes the uncorrected number', Math.abs(real.maxPainShift - 0.000445) < 1e-9);
 
-  // Drift larger than the strike spacing: proximity matching caps out at half a step, which is
-  // what forced the consensus (rigid-shift) estimator rather than nearest-neighbour pairing.
-  for (const pips of [13, 26, 40]) {
+  // Drift is recoverable while it stays well under HALF the strike spacing. These are inside
+  // that band (25-pip ladder). Real observed drifts are 0.02-0.3% of price against 0.2-1.2%
+  // spacing, so they land here.
+  for (const pips of [1, 5, 10, 13]) {
     const off = pips / 10000;
     const D = oiDeltas(mk(+(1.14 + off).toFixed(6), [110, 200, 270, 400], +(1.145 + off).toFixed(6)), mk(1.14, [100, 200, 300, 400], 1.145));
-    ok(`drift ${pips}p (spacing 25p) still matches all 4`, D.matchedWalls === 4, String(D.matchedWalls));
+    ok(`drift ${pips}p (spacing 25p) matches all 4`, D.matchedWalls === 4, String(D.matchedWalls));
     ok(`drift ${pips}p measured correctly`, Math.abs(D.basisDrift - off) < 1e-9, String(D.basisDrift));
     ok(`drift ${pips}p -> max pain net 0`, Math.abs(D.maxPainShiftNet) < 1e-9, String(D.maxPainShiftNet));
+  }
+
+  // BEYOND half the spacing the shift is genuinely UNIDENTIFIABLE from strikes alone -
+  // (drift - spacing) aligns the ladder equally well. The contract is therefore NOT "we
+  // recover it" (an earlier version of this test wrongly asserted 26p and 40p worked; at 26p
+  // it silently selects the 1-pip alias). The contract is that we FLAG it instead of
+  // presenting a guess as fact.
+  // What IS guaranteed past the bound: it FAILS SAFE toward "no drift" rather than inventing a
+  // large bogus shift (the gold -99.365 failure mode), and the mis-alignment stays VISIBLE as
+  // incomplete matching, so it cannot masquerade as a clean full-ladder read. At 40p a rival
+  // offset also survives and `driftAmbiguous` fires; at 26p the cap has already removed the
+  // true offset, leaving only the small alias - so incomplete matching is the only tell, and
+  // that is asserted rather than glossed.
+  for (const pips of [26, 40]) {
+    const off = pips / 10000;
+    const D = oiDeltas(mk(+(1.14 + off).toFixed(6), [110, 200, 270, 400], +(1.145 + off).toFixed(6)), mk(1.14, [100, 200, 300, 400], 1.145));
+    ok(`drift ${pips}p (> half spacing): no large bogus drift claimed`, Math.abs(D.basisDrift ?? 0) <= 0.00225, String(D.basisDrift));
+    ok(`drift ${pips}p (> half spacing): mis-alignment stays visible (matched < 4)`, D.matchedWalls < 4, String(D.matchedWalls));
+  }
+  ok('a rival offset within one match sets driftAmbiguous',
+     oiDeltas(mk(1.144, [110, 200, 270, 400], 1.149), mk(1.14, [100, 200, 300, 400], 1.145)).driftAmbiguous === true);
+
+  // THE GOLD ALIAS - the case that actually bit in production (2026-07-29). True drift was
+  // +0.635 on a ladder with 50 and 100-point gaps; the -99.365 alias (one 100-point step
+  // away) scored MORE matches purely from which walls sat in each day's top-8, won, and
+  // mis-paired every wall. The 0.9x-spacing / 0.5%-of-price cap now excludes it: -99.365 is
+  // 2.5% of a ~4000 price, physically impossible for an overnight basis move.
+  {
+    const gold = (off) => ({ spot: 4040 + off, maxPain: 4201.745 + off, totalCallOI: 5000, totalPutOI: 5000,
+      callWalls: [4401.745, 4501.745, 4701.745, 4801.745].map((k, i) => ({ strike: k + off, oi: 900 - i * 10 })),
+      putWalls: [3501.745, 3601.745, 3701.745, 3801.745, 3851.745, 3901.745, 4001.745].map((k, i) => ({ strike: k + off, oi: 800 - i * 10 })) });
+    const G = oiDeltas(gold(0.635), gold(0));
+    ok('gold: picks the true +0.635 drift, not the -99.365 alias', Math.abs(G.basisDrift - 0.635) < 1e-9, String(G.basisDrift));
+    ok('gold: max pain that only moved with the basis nets to 0', Math.abs(G.maxPainShiftNet) < 1e-9, String(G.maxPainShiftNet));
+    ok('gold: every wall matched, none phantom', G.matchedWalls === 11 && G.callWalls.appeared.length === 0 && G.putWalls.appeared.length === 0, String(G.matchedWalls));
   }
 
   // A genuinely relocated wall must STILL read as appeared+faded - drift correction must not
