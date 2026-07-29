@@ -6312,6 +6312,11 @@ app.get('/api/nq-qmr/walkforward-retrain', async (req, res) => {
     // through the same IS/OOS protocol so that claim gets an honest number
     // instead of an in-sample one.
     const mode = req.query.mode === 'bothsides' ? 'bothsides' : 'directional';
+    // Cost is now MEASURED, not assumed (see /api/nq-qmr/spread-check), so the
+    // walk-forward must be runnable at the measured level - otherwise the only
+    // out-of-sample number we have is priced at a spread that does not exist.
+    const wfCost = req.query.costPct != null ? parseFloat(req.query.costPct) : QMR_COSTS.costPct;
+    const wfSlip = req.query.stopSlipPct != null ? parseFloat(req.query.stopSlipPct) : QMR_COSTS.stopSlipPct;
 
     // Half-size both-sides book from a showControl run. Cost is charged exactly
     // once: r_a = (m_a - c)*L and r_b = (m_b - c)*L, so (r_a + r_b)/2 =
@@ -6325,7 +6330,9 @@ app.get('/api/nq-qmr/walkforward-retrain', async (req, res) => {
       return { stats: _qmrStats(rows, curve, eq), trades: rows, curve };
     }
     const evaluate = (bars, cfg) => {
-      const full = mode === 'bothsides' ? { ...NQ_QMR_DEFAULTS, ...cfg, showControl: true } : cfg;
+      const full = mode === 'bothsides'
+        ? { ...NQ_QMR_DEFAULTS, ...cfg, costPct: wfCost, stopSlipPct: wfSlip, showControl: true }
+        : { ...cfg, costPct: wfCost, stopSlipPct: wfSlip };
       const r = _computeNqQmr(bars, full);
       return mode === 'bothsides' ? { ...r, ...bothSidesStats(r, bars, full) } : r;
     };
@@ -6363,7 +6370,7 @@ app.get('/api/nq-qmr/walkforward-retrain', async (req, res) => {
       results.push({ isStart: w.isStart, isEnd: w.isEnd, oosEnd: w.oosEnd, bestCfg: best.cfg, isStats: best.stats, oosStats: oosR.stats });
     }
     console.log(`[nq-qmr wf-retrain] ${results.length} windows, OOS curve pts: ${oosCurve.length}`);
-    res.json({ ok: true, instrument, mode, windows: results, oosCurve });
+    res.json({ ok: true, instrument, mode, costPct: wfCost, stopSlipPct: wfSlip, windows: results, oosCurve });
   } catch (err) {
     console.error('[nq-qmr wf-retrain]', err.message);
     res.status(500).json({ ok: false, error: err.message });
