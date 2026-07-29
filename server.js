@@ -4568,7 +4568,18 @@ const _m5SrvCache = new Map();
 // vol-forecast weekly charts can reliably anchor off this week's Monday open.
 // D (daily) covers ~3 months, London-midnight aligned to match the forecaster's
 // anchor — the vol-forecast MONTHLY charts anchor off the month's first-day open.
-const _OHLC_GRAN = { M5: { count: 2000, ttl: 45_000 }, H1: { count: 100, ttl: 10 * 60_000 }, D: { count: 66, ttl: 15 * 60_000 } };
+// M15/M30/H4 were MISSING until 2026-07-29 while oi-dashboard.html's toolbar already
+// offered M15 and H4 - both 400'd with "Unsupported granularity", and the dashboard's
+// error path then destroyed its own chart canvas, so one click wedged the chart until a
+// reload. Counts are sized to a useful span per timeframe, TTL to its bar length.
+const _OHLC_GRAN = {
+  M5:  { count: 2000, ttl: 45_000 },        // ~1 trading week
+  M15: { count: 1200, ttl: 60_000 },        // ~12 trading days
+  M30: { count: 1000, ttl: 90_000 },        // ~3 weeks
+  H1:  { count: 100,  ttl: 10 * 60_000 },
+  H4:  { count: 500,  ttl: 10 * 60_000 },   // ~4 months
+  D:   { count: 66,   ttl: 15 * 60_000 },
+};
 app.get('/api/oanda_ohlc5m', async (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured' });
   const symbol = req.query.symbol;
@@ -4576,10 +4587,14 @@ app.get('/api/oanda_ohlc5m', async (req, res) => {
   const gran = (req.query.granularity || 'M5').toUpperCase();
   if (!_OHLC_GRAN[gran]) return res.status(400).json({ error: `Unsupported granularity: ${gran}` });
   const { count, ttl } = _OHLC_GRAN[gran];
+  // Opt-in: keep the still-forming bar so a chart can show a LIVE last candle instead of
+  // one that only moves when the bar closes. Off by default - existing consumers assume
+  // completed bars only, and a half-formed bar would silently change their maths.
+  const wantPartial = req.query.incomplete === '1' || req.query.incomplete === 'true';
   // OANDA quotes the DAX CFD as DE30_EUR though our canonical key is DE30_USD —
   // remap the instrument or the request 502s and the tab hangs. See _liqGateOandaSym.
   const instrument = _liqGateOandaSym(symbol.replace('/', '_'));
-  const cacheKey   = `ohlc_${gran}_${instrument}`;
+  const cacheKey   = `ohlc_${gran}_${instrument}${wantPartial ? '_p' : ''}`;   // partial must not share a cache entry
   const cached     = _m5SrvCache.get(cacheKey);
   if (cached && Date.now() - cached.ts < ttl) return res.json(cached.data);
   try {
@@ -4599,7 +4614,7 @@ app.get('/api/oanda_ohlc5m', async (req, res) => {
     // "now"; for intraday granularities only completed bars are used (the live latest
     // M5 bar is streamed in separately by the chart's rescan loop).
     const values = data.candles
-      .filter(c => c.mid && (gran === 'D' || c.complete))
+      .filter(c => c.mid && (gran === 'D' || wantPartial || c.complete))
       .map(c => ({
         // `datetime` is Europe/London wall-clock (kept for existing consumers);
         // `t` is the TRUE UTC epoch (seconds) — charts must use this so overlays
@@ -4610,7 +4625,7 @@ app.get('/api/oanda_ohlc5m', async (req, res) => {
         open: c.mid.o, high: c.mid.h, low: c.mid.l, close: c.mid.c,
       }))
       .reverse();
-    const result = { values, meta: { symbol, source: 'oanda', granularity: gran } };
+    const result = { values, meta: { symbol, source: 'oanda', granularity: gran, partial: wantPartial, at: Date.now() } };
     _m5SrvCache.set(cacheKey, { data: result, ts: Date.now() });
     res.json(result);
   } catch (err) {

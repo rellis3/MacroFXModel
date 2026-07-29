@@ -135,7 +135,14 @@ tr.dim td{opacity:.42}
 #pxWrap>h3{margin:0;padding:13px 17px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;
   color:var(--tx);border-bottom:1px solid var(--line);background:var(--bg3);
   display:flex;align-items:center;gap:8px;font-weight:600}
+#pxChartWrap{position:relative;height:430px;width:100%}
 #pxChart{height:430px;width:100%}
+/* Overlay for status/errors. Deliberately a SIBLING of #pxChart, never inside it - text
+   written into the chart host destroys the canvas and leaves a dead chart. */
+#pxMsg{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+  pointer-events:none;background:rgba(18,22,28,.86)}
+#pxMsg .empty{pointer-events:auto;text-align:center}
+#pxMsg .btn{margin-left:10px}
 .ctl{display:flex;gap:20px;flex-wrap:wrap;align-items:center;padding:11px 17px;
   border-bottom:1px solid var(--line);background:#0f1319}
 .tfs{display:flex;gap:5px}
@@ -181,7 +188,7 @@ tr.dim td{opacity:.42}
   </div>
 
   <div class="rail" id="rail"></div>
-  <div id="pxWrap"><h3><span class="grow">Price with OI levels</span></h3><div id="ctlHost"></div><div id="pxChart"></div></div>
+  <div id="pxWrap"><h3><span class="grow">Price with OI levels</span></h3><div id="ctlHost"></div><div id="pxChartWrap"><div id="pxChart"></div><div id="pxMsg"></div></div></div>
   <div id="main"></div>
 </div>
 
@@ -303,6 +310,12 @@ const LINE_TYPES = [
 ];
 let LINES_ON = Object.fromEntries(LINE_TYPES.map(t=>[t.k,t.on]));
 let _chart=null, _series=null, _priceLines=[], _candleCache={}, _tf='H1';
+// Candle refresh. The chart used to be a one-shot render with a permanent cache, so it
+// silently showed stale bars for as long as the tab stayed open ("frozen, not refreshing").
+// It polls the SAME feed index.html uses (/api/oanda_ohlc5m) - there was never a second
+// live feed to adopt, only a missing timer.
+const _TF_POLL={M5:30_000,M15:60_000,M30:60_000,H1:180_000,H4:300_000,D:600_000};
+let _pollTimer=null, _lastCandleAt=0, _chartToken=0;
 let _coneSeries=[], CONE_ON=true;
 
 // Every level the chart can draw, from the stored record. Walls come from the same
@@ -366,7 +379,7 @@ function drawCone(){
   // The cone's own step times are M5; the chart may be on H1+. Keep only steps that fall
   // strictly after the last candle so the lines start at the edge and fan out, rather
   // than doubling back over history.
-  const lastT = (_candleCache[(OANDA_SYM[SYM]||'')+'|'+_tf]||[]).slice(-1)[0]?.time || 0;
+  const lastT = (_candleCache[(OANDA_SYM[SYM]||'')+'|'+_tf]?.rows||[]).slice(-1)[0]?.time || 0;
   const steps = REACH.cone.steps.filter(st=>st.time>lastT);
   if(!steps.length) return;
   for(const d of defs){
@@ -379,24 +392,45 @@ function drawCone(){
   }
 }
 
-async function loadCandles(){
+async function loadCandles(force){
   const os=OANDA_SYM[SYM]; if(!os) return null;
   const key=os+'|'+_tf;
-  if(_candleCache[key]) return _candleCache[key];
-  const r=await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(os)}&granularity=${_tf}`,{cache:'no-store'});
-  if(!r.ok) throw new Error('candles '+r.status);
+  // TTL, not a permanent cache. Half the poll interval so a manual re-render between polls
+  // still gets fresh bars, but rapid pair-flipping doesn't hammer OANDA.
+  const ttl=(_TF_POLL[_tf]||60_000)/2;
+  const hit=_candleCache[key];
+  if(!force && hit && (Date.now()-hit.at)<ttl) return hit.rows;
+  // incomplete=1 keeps the still-forming bar so the last candle moves live rather than
+  // only when the bar closes.
+  const r=await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(os)}&granularity=${_tf}&incomplete=1`,{cache:'no-store'});
+  if(!r.ok){
+    let why=''; try{ why=(await r.json()).error||''; }catch(_){}
+    throw new Error(why||('HTTP '+r.status));
+  }
   const j=await r.json();
   const rows=(j.values||[]).map(v=>({
     time: Number(v.t), open:+v.open, high:+v.high, low:+v.low, close:+v.close,
   })).filter(c=>Number.isFinite(c.time)&&Number.isFinite(c.close)).sort((a,b)=>a.time-b.time);
-  _candleCache[key]=rows;
+  _candleCache[key]={rows,at:Date.now()};
+  _lastCandleAt=Date.now();
   return rows;
 }
 
-async function mountChart(){
+// Status text goes in a SIBLING overlay, never into #pxChart. Writing innerHTML into the
+// chart's own host element destroys the Lightweight-Charts canvas while `_chart` still
+// points at it, leaving a zombie that silently swallows every later setData - which is
+// exactly why one failed timeframe (M15 and H4 both 400'd server-side) wedged the chart
+// until F5.
+function chartMsg(html){
+  const m=document.getElementById('pxMsg'); if(!m) return;
+  m.innerHTML = html ? `<div class="empty">${html}</div>` : '';
+  m.style.display = html ? 'flex' : 'none';
+}
+
+async function mountChart(force){
   const el=document.getElementById('pxChart');
   if(!el) return;
-  if(!window.LightweightCharts){ el.innerHTML='<div class="empty">Chart library did not load.</div>'; return; }
+  if(!window.LightweightCharts){ chartMsg('Chart library did not load.'); return; }
   if(!_chart){
     _chart=LightweightCharts.createChart(el,{
       layout:{background:{color:'#12161c'},textColor:'#a8b1bd',fontSize:12},
@@ -409,20 +443,43 @@ async function mountChart(){
     _series=_chart.addCandlestickSeries({upColor:'#46b87a',downColor:'#e8615f',
       borderUpColor:'#46b87a',borderDownColor:'#e8615f',wickUpColor:'#46b87a',wickDownColor:'#e8615f'});
   }
+  // Guard against a slow fetch for a pair the user already navigated away from landing on
+  // the chart after a newer one (switching pairs quickly used to interleave responses).
+  const token=++_chartToken;
+  chartMsg('');
   try{
-    const rows=await loadCandles();
-    if(!rows||!rows.length){ el.innerHTML='<div class="empty">No candles for this instrument.</div>'; return; }
+    const rows=await loadCandles(force);
+    if(token!==_chartToken) return;                       // superseded by a later switch
+    if(!rows||!rows.length){ chartMsg('No candles for this instrument.'); return; }
     _series.setData(rows);
-    _chart.timeScale().fitContent();
+    // Only auto-fit on the FIRST paint for a given pair/timeframe; refitting on every poll
+    // would yank the view back while you are looking at it.
+    if(force!=='poll') _chart.timeScale().fitContent();
     drawLines();
     drawCone();
+    schedulePoll();
   }catch(err){
-    el.insertAdjacentHTML('beforeend',`<div class="empty">Candles failed: ${esc(err.message)}</div>`);
+    if(token!==_chartToken) return;
+    chartMsg(`Candles failed: ${esc(err.message)} <button class="btn" id="pxRetry">Retry</button>`);
+    const rb=document.getElementById('pxRetry');
+    if(rb) rb.onclick=()=>mountChart(true);
   }
 }
 
+// Poll the candle feed so the chart stays live. Paused while the tab is hidden (no point
+// burning OANDA calls against a chart nobody is looking at) and resumed on focus with an
+// immediate refresh, so coming back to the tab never shows a stale bar.
+function schedulePoll(){
+  clearTimeout(_pollTimer);
+  if(document.hidden) return;
+  _pollTimer=setTimeout(()=>mountChart('poll'), _TF_POLL[_tf]||60_000);
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden) clearTimeout(_pollTimer); else mountChart('poll');
+});
+
 function chartToolbar(){
-  const tf=['M15','H1','H4','D'].map(t=>`<button class="btn tfb ${t===_tf?'on':''}" data-tf="${t}">${t}</button>`).join('');
+  const tf=['M5','M15','M30','H1','H4','D'].map(t=>`<button class="btn tfb ${t===_tf?'on':''}" data-tf="${t}">${t}</button>`).join('');
   const toggles=LINE_TYPES.map(t=>`<label class="ltog ${LINES_ON[t.k]?'on':''}" data-lk="${t.k}">
     <span class="sw" style="background:${LINES_ON[t.k]?t.col:'transparent'};border-color:${t.col}"></span>${t.label}</label>`).join('');
   const cone=`<label class="ltog ${CONE_ON?'on':''}" id="coneTog"><span class="sw" style="background:${CONE_ON?'#54a8de':'transparent'};border-color:#54a8de"></span>Vol cone</label>`;
@@ -430,7 +487,10 @@ function chartToolbar(){
 }
 
 function wireChartToolbar(){
-  document.querySelectorAll('.tfb').forEach(b=>b.onclick=()=>{ _tf=b.dataset.tf; render(); });
+  document.querySelectorAll('.tfb').forEach(b=>b.onclick=()=>{
+    if(_tf===b.dataset.tf) return;
+    _tf=b.dataset.tf; clearTimeout(_pollTimer); render();
+  });
   const ct=document.getElementById('coneTog');
   if(ct) ct.onclick=()=>{ CONE_ON=!CONE_ON; ct.classList.toggle('on',CONE_ON);
     ct.querySelector('.sw').style.background=CONE_ON?'#54a8de':'transparent';
@@ -601,7 +661,13 @@ function renderRail(){
     return `<button class="${k===SYM?'on':''} ${a.h>36?'stale':''}" data-k="${esc(k)}">
       <span class="dot ${a.cls}"></span>${esc(nm(k))}<span class="muted">${a.txt}</span></button>`;
   }).join('');
-  document.querySelectorAll('#rail button').forEach(b=>b.onclick=()=>{SYM=b.dataset.k;render();});
+  document.querySelectorAll('#rail button').forEach(b=>b.onclick=()=>{
+    if(SYM===b.dataset.k) return;
+    // Cancel any in-flight poll for the OLD pair before switching, so its response can't
+    // land on the new pair's chart.
+    clearTimeout(_pollTimer); _chartToken++;
+    SYM=b.dataset.k; render();
+  });
 }
 
 // OI by strike. Reads callOI/putOI off gexProfile — the only CONTIGUOUS per-strike

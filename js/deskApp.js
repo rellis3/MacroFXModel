@@ -326,8 +326,9 @@ async function openDrill(name) {
 
   const b = S.brief?.instruments?.[name];
   const sym = b?.sym || (name.length === 6 ? name.slice(0, 3) + '_' + name.slice(3) : name);
-  // M5 is the only intraday granularity /api/oanda_ohlc5m serves (M5|H1|D —
-  // M15 is rejected with a 400). 2000 M5 bars ≈ a week; show the last ~24h.
+  // Stays on M5 by choice (2000 M5 bars ≈ a week; this panel shows the last ~24h).
+  // The endpoint now also serves M15/M30/H4 (added 2026-07-29 — it previously 400'd on
+  // anything outside M5|H1|D, which is what broke the OI dashboard's M15/H4 buttons).
   const res = await safe(j(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(sym)}`));
   const vals = res?.values;
   if (!Array.isArray(vals) || !vals.length) { cEl.innerHTML = `<div class="dim pad">no candle data${res?.error ? ` — ${esc(res.error)}` : ''}</div>`; return; }
