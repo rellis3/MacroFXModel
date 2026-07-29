@@ -166,6 +166,7 @@ import { runV2Backtest } from './js/cogStateEngine.js';
 import { loadHistoricalCogDataset } from './js/cogHistoricalDataLoader.js';
 import { runCogV3 } from './js/cogV3Engine.js';
 import { runQmrV2 } from './js/qmrV2Engine.js';
+import { checkOISignals } from './cog-replication/engine/oiSignalCheck.js';
 import { bothSidesWalk, groupBarsByDate, entryBarFor, walkTrade } from './js/qmrCore.js';
 import { runPivotSpike } from './js/pivotSpikeEngine.js';
 import { COG_V2_TRIGGER_WINDOW, COG_V2_NY_OPEN_MINUTE, COG_V2_ENTRY_DEADLINE_MINUTE, COG_V2_SETUP_NOTE, COG_V2_RISK_NOTE, COG_V2_IMPULSE_PARAMS, COG_V2_TRIGGER_SCORE, COG_V2_SETUP_HYSTERESIS, COG_V2_SLOW_SMOOTH, COG_V2_CONFIDENCE, COG_V2_MIN_SETUP_PERSIST_BARS } from './js/cogV2Config.js';
@@ -5561,6 +5562,31 @@ app.get('/api/nq-qmr/m5-candles', async (req, res) => {
   } catch (err) {
     console.error('[nq-qmr m5]', err.message);
     res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── COG replication: STEP 1 — does the OI archive carry the signal? ─────────
+// Gate on everything else. See cog-replication/README.md.
+app.get('/api/cog-rep/oi-signal-check', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
+  try {
+    const pairQ = req.query.pair || 'NAS100';
+    const raw = await kv.get('oi_history').catch(() => null);
+    if (!raw) return res.json({ ok: false, error: 'oi_history empty — nothing archived yet' });
+    const hist = JSON.parse(raw).data ?? JSON.parse(raw);
+    const norm = x => String(x).toLowerCase().replace(/[\/_\s]/g, '');
+    const key = Object.keys(hist).find(k => norm(k) === norm(pairQ));
+    if (!key) return res.json({ ok: false, error: `no archive for ${pairQ}`, available: Object.keys(hist) });
+
+    const instMap = { NAS100: 'NAS100_USD', SPX500: 'SPX500_USD', US30: 'US30_USD', XAUUSD: 'XAU_USD' };
+    const inst = instMap[norm(pairQ).toUpperCase()] || instMap[pairQ] || 'NAS100_USD';
+    const bars = await _getNqQmrBars(inst);
+    const result = checkOISignals(hist[key], groupBarsByDate(bars), {});
+    res.json({ ok: true, pair: key, instrument: inst,
+               archiveDays: Object.keys(hist[key]).length, ...result });
+  } catch (e) {
+    console.error('[cog-rep oi-check]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 
