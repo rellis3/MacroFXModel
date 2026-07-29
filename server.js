@@ -6307,7 +6307,7 @@ app.get('/api/nq-qmr/walkforward-retrain', async (req, res) => {
       stopMultiplier:  [0.35, 0.40, 0.45, 0.50, 0.55],
       minRangePct:     [0.12, 0.15, 0.20],
       riskPct:         [1.00],
-      tpPct:           [1.00, 1.25, 1.50],
+      tpPct:           [0, 1.00, 1.25, 1.50, 2.00],   // 0 = NO target, run to EOD. Excluding it was a real hole: the full-sample sweep shows no-target beats every TP on Sharpe AND drawdown, so every prior walk-forward selected the best of a set that omitted the best option.
     };
     function addMonths(d, m) { const r = new Date(d); r.setUTCMonth(r.getUTCMonth() + m); return r; }
     const allDates  = [...new Set(bars.map(b => b.t.substring(0, 10)))].sort();
