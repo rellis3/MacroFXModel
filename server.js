@@ -114,7 +114,7 @@ import { sessionsAt as _sessionsAt } from './js/fillRealismEngine.js';   // 22:0
 import { fetchM1Gap as _fetchM1Gap } from './js/m1GapFill.js';   // OANDA M1 gap-fill so the viewer can show days past the parquet snapshot
 import { rvHarSigma as _rvHarSigma } from './js/indexRvHar.js';   // validated 5-min realized-vol HAR σ for index COG lines (not the GK shadow)
 import { ccHvSigma as _ccHvSigma, ccHvMulti as _ccHvMulti, ccHvIntraday as _ccHvIntraday } from './js/ccHvSigma.js';   // COG's own σ method (close-to-close HV) for reproducing his index lines
-import { resampleTo as _resampleTo } from './js/barUtils.js';   // resample the OANDA 1-min gap to 5-min before merging
+import { resampleTo as _resampleTo, extractBars } from './js/barUtils.js';   // resample the OANDA 1-min gap to 5-min before merging; extractBars slices the M1 packed arrays for the validator
 import { excursionFromM1, summarizeGiveback } from './js/giveback.js';   // per-bot give-back (MFE vs realised) analytics
 import { volHorseRace as _volHorseRace, HR_MODELS as _HR_MODELS } from './js/volHorseRaceEngine.js';   // 8-model σ-forecast horse race per instrument (QLIKE/MZ), does HAR's gold win generalise
 import { scanConfirmedSignals as _scanConfirmedSignals, mergeLog as _mergeLog, forwardStats as _forwardStats } from './js/forwardTrackEngine.js';   // live post-research track record of the confirmed fade
@@ -165,7 +165,7 @@ import { computeExitScore } from './js/cogExitEngine.js';
 import { runV2Backtest } from './js/cogStateEngine.js';
 import { loadHistoricalCogDataset } from './js/cogHistoricalDataLoader.js';
 import { runCogV3 } from './js/cogV3Engine.js';
-import { bothSidesWalk, groupBarsByDate, entryBarFor } from './js/qmrCore.js';
+import { bothSidesWalk, groupBarsByDate, entryBarFor, walkTrade } from './js/qmrCore.js';
 import { runPivotSpike } from './js/pivotSpikeEngine.js';
 import { COG_V2_TRIGGER_WINDOW, COG_V2_NY_OPEN_MINUTE, COG_V2_ENTRY_DEADLINE_MINUTE, COG_V2_SETUP_NOTE, COG_V2_RISK_NOTE, COG_V2_IMPULSE_PARAMS, COG_V2_TRIGGER_SCORE, COG_V2_SETUP_HYSTERESIS, COG_V2_SLOW_SMOOTH, COG_V2_CONFIDENCE, COG_V2_MIN_SETUP_PERSIST_BARS } from './js/cogV2Config.js';
 import { liveSignal as hedgeV2Live, runComparison as hedgeV2Comparison, V2_DEFAULTS as HEDGE_V2_DEFAULTS } from './js/hedgeSignalV2Engine.js';
@@ -5525,6 +5525,128 @@ app.get('/api/nq-qmr/m5-candles', async (req, res) => {
     console.error('[nq-qmr m5]', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
+});
+
+// ── QMR M1 validation — does the H1 intrabar assumption hold? ───────────────
+// The whole both-sides result rests on one thing H1 bars CANNOT see: with a
+// ~0.45% stop against a 1.5% target, a single H1 bar routinely contains both
+// levels, and the edge depends entirely on which one price reached FIRST. The
+// engine assumes stop-first, which should be conservative — but that is a
+// reasoned argument, not a measurement, and CLAUDE.md lists exactly this
+// assumption as an anti-pattern ("prefer M1 fills").
+//
+// This re-walks every H1 trade on real M1 bars and diffs them trade by trade.
+// The entry price is held IDENTICAL to the H1 run (the open of the 13:00 bar,
+// which is the same tick either way), so the comparison isolates the exit path
+// and nothing else.
+const QMR_M1_KEY = {           // QMR instrument -> M1 parquet key in R2
+  NAS100_USD: 'nq', SPX500_USD: 'spx500', US30_USD: 'us30', XAU_USD: 'gold',
+  DE30_EUR: 'de30', UK100_GBP: 'uk100',
+};
+const qmrM1Jobs = new Map();
+
+app.post('/api/nq-qmr/m1-validate', express.json({ limit: '32kb' }), (req, res) => {
+  const body = req.body || {};
+  const instrument = NQ_QMR_INSTRUMENTS.has(body.instrument) ? body.instrument : 'NAS100_USD';
+  const m1Key = QMR_M1_KEY[instrument];
+  if (!m1Key) return res.status(400).json({ ok: false, error: `no M1 parquet mapped for ${instrument}` });
+  const mode = body.mode === 'directional' ? 'directional' : 'bothsides';
+  const jobId = `m1v_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  qmrM1Jobs.set(jobId, { status: 'running', startedAt: Date.now(), phase: `Loading ${m1Key} M1…` });
+  for (const [k, v] of qmrM1Jobs) if (Date.now() - v.startedAt > 45 * 60_000) qmrM1Jobs.delete(k);
+
+  (async () => {
+    try {
+      const cfg = { ...NQ_QMR_DEFAULTS, ...(body.cfg || {}), showControl: true };
+      const [bars, packed] = await Promise.all([
+        _getNqQmrBars(instrument),
+        loadM1ForPair(m1Key),
+      ]);
+      qmrM1Jobs.get(jobId).phase = 'Re-walking each trade on M1…';
+      const raw = _computeNqQmr(bars, cfg);
+      const h1Rows = mode === 'bothsides'
+        ? _qmrBothSidesRows(bars, raw, cfg)
+        : raw.trades.map(t => ({ date: t.date, ret: t.tradeReturn, exitReason: t.exitReason,
+                                 stopPct: t.stopPct, entry: t.entry, direction: t.direction }));
+      const entryByDate = new Map(raw.trades.map(t => [t.date, t]));
+
+      const cmp = [];
+      for (const r of h1Rows) {
+        const t = entryByDate.get(r.date); if (!t) continue;
+        // M1 bars strictly AFTER the entry bar, through the EOD hour — same
+        // window walkTrade sees, at 60x the resolution.
+        const dayStart = Math.floor(new Date(r.date + 'T00:00:00Z').getTime() / 1000);
+        const from = dayStart + (QMR_TIMING.entryHour + 1) * 3600;
+        const to   = dayStart + (QMR_TIMING.eodHour + 1) * 3600;
+        const m1 = extractBars(packed, from, to).map(b => ({
+          t: new Date(b.time * 1000).toISOString().substring(0, 16),
+          o: b.open, h: b.high, l: b.low, c: b.close,
+        }));
+        if (m1.length < 30) continue;         // thin/missing M1 day — skip, never guess
+        const lev = cfg.riskPct / t.stopPct;
+        let m1Ret, m1Reason;
+        if (mode === 'bothsides') {
+          const w = bothSidesWalk(m1, t.entry, t.stopPct, cfg.tpPct);
+          if (!w) continue;
+          m1Ret = (w.movePct - cfg.costPct - cfg.stopSlipPct * (w.stoppedLegs / 2)) * lev;
+          m1Reason = w.exitReason + ':' + w.stoppedLegs;
+        } else {
+          const w = walkTrade(m1, t.direction, t.entry, t.stopPct, cfg.tpPct);
+          if (!w) continue;
+          m1Ret = _qmrNetReturn(w.movePct, w.exitReason, lev, cfg.costPct, cfg.stopSlipPct);
+          m1Reason = w.exitReason;
+        }
+        cmp.push({ date: r.date, h1Ret: +r.ret.toFixed(4), m1Ret: +m1Ret.toFixed(4),
+                   diff: +(m1Ret - r.ret).toFixed(4), h1Reason: r.exitReason, m1Reason,
+                   m1Bars: m1.length });
+      }
+      if (cmp.length < 20) throw new Error(`only ${cmp.length} days had usable M1`);
+
+      const eqOf = a => { let e = 1; for (const x of a) e *= (1 + x / 100); return e; };
+      const mean = a => a.reduce((s, x) => s + x, 0) / a.length;
+      const diffs = cmp.map(c => c.diff);
+      const sd = Math.sqrt(diffs.reduce((s, x) => s + (x - mean(diffs)) ** 2, 0) / (diffs.length - 1));
+      const disagree = cmp.filter(c => Math.abs(c.diff) > 0.01);
+      qmrM1Jobs.set(jobId, {
+        status: 'done', startedAt: qmrM1Jobs.get(jobId).startedAt,
+        result: {
+          ok: true, instrument, mode, m1Key,
+          h1TradesTotal: h1Rows.length, comparedDays: cmp.length,
+          m1Coverage: +(cmp.length / h1Rows.length).toFixed(3),
+          h1Equity: +eqOf(cmp.map(c => c.h1Ret)).toFixed(4),
+          m1Equity: +eqOf(cmp.map(c => c.m1Ret)).toFixed(4),
+          h1MeanPerTrade: +mean(cmp.map(c => c.h1Ret)).toFixed(4),
+          m1MeanPerTrade: +mean(cmp.map(c => c.m1Ret)).toFixed(4),
+          meanDiff: +mean(diffs).toFixed(4),
+          // Paired t on the per-trade difference: is M1 systematically different
+          // from H1, or is the gap noise?
+          diffT: sd > 0 ? +(mean(diffs) / (sd / Math.sqrt(diffs.length))).toFixed(2) : null,
+          daysDisagreeing: disagree.length,
+          pctDaysDisagreeing: +(100 * disagree.length / cmp.length).toFixed(1),
+          worstDiff: +Math.min(...diffs).toFixed(3), bestDiff: +Math.max(...diffs).toFixed(3),
+          verdict: null, trades: cmp,
+        },
+      });
+      const R = qmrM1Jobs.get(jobId).result;
+      R.verdict = Math.abs(R.diffT ?? 0) < 2
+        ? `H1 ASSUMPTION HOLDS — M1 differs by ${R.meanDiff}%/trade (t=${R.diffT}), indistinguishable from noise`
+        : (R.meanDiff > 0
+            ? `H1 is CONSERVATIVE — M1 is +${R.meanDiff}%/trade better (t=${R.diffT}); the H1 result understates`
+            : `H1 is OPTIMISTIC — M1 is ${R.meanDiff}%/trade worse (t=${R.diffT}); every H1 number must be re-based`);
+      console.log(`[m1-validate] ${jobId} ${R.verdict}`);
+    } catch (e) {
+      console.error('[m1-validate]', e.message);
+      qmrM1Jobs.set(jobId, { status: 'error', error: e.message, startedAt: Date.now() });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/nq-qmr/m1-validate/status/:jobId', (req, res) => {
+  const j = qmrM1Jobs.get(req.params.jobId);
+  if (!j) return res.status(404).json({ ok: false, error: 'unknown jobId' });
+  res.json(j);
 });
 
 // ── QMR tearsheet — the shareable report ────────────────────────────────────
