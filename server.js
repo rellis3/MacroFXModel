@@ -5534,6 +5534,83 @@ app.get('/api/nq-qmr/m5-candles', async (req, res) => {
   }
 });
 
+// ── QMR spread check — measure the cost assumption instead of assuming it ───
+// Every QMR number rests on costPct = 0.008% (0.8bp) round-trip, and the
+// sensitivity ladder shows the edge dies between 2 and 4bp. That assumption has
+// never been checked against a real quote. It doesn't need to be guessed: the
+// engine fetches candles with price=M (mid), but OANDA also serves B and A, so
+// the actual quoted spread at the exact entry and exit hours is measurable.
+//
+// Cost model being tested: a mid-price backtest assumes you buy and sell at
+// mid. In reality you buy at ask and sell at bid, losing half the spread each
+// way — so the round-trip cost is ONE full spread, plus commission. This
+// endpoint therefore reports mean spread as % of price at the entry hour and
+// the exit hour, and their average is the honest costPct floor (before any
+// commission or stop-slippage, which are charged separately).
+app.get('/api/nq-qmr/spread-check', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
+  try {
+    const instrument = NQ_QMR_INSTRUMENTS.has(req.query.instrument) ? req.query.instrument : 'NAS100_USD';
+    const count = Math.min(Math.max(parseInt(req.query.count) || 2500, 200), 5000);
+    const base = _oandaBaseMe();
+    const url = `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles`
+              + `?granularity=H1&count=${count}&price=BA`;
+    const r = await fetch(url, {
+      headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!r.ok) throw new Error(`OANDA BA HTTP ${r.status}`);
+    const d = await r.json();
+
+    const byHour = {};
+    for (const c of (d.candles ?? [])) {
+      if (!c.complete || !c.bid || !c.ask) continue;
+      const hour = parseInt(c.time.substring(11, 13));
+      const bidO = parseFloat(c.bid.o), askO = parseFloat(c.ask.o);
+      const bidC = parseFloat(c.bid.c), askC = parseFloat(c.ask.c);
+      const mid = (bidO + askO) / 2;
+      if (!(mid > 0)) continue;
+      (byHour[hour] ??= []).push({
+        openSpreadPts: askO - bidO, openSpreadPct: (askO - bidO) / mid * 100,
+        closeSpreadPts: askC - bidC, closeSpreadPct: (askC - bidC) / ((bidC + askC) / 2) * 100,
+      });
+    }
+    const summarise = (arr, field) => {
+      if (!arr?.length) return null;
+      const v = arr.map(x => x[field]).sort((a, b) => a - b);
+      const q = p => v[Math.min(v.length - 1, Math.floor(v.length * p))];
+      return { n: v.length, mean: +(v.reduce((s, x) => s + x, 0) / v.length).toFixed(5),
+               median: +q(0.5).toFixed(5), p75: +q(0.75).toFixed(5), p95: +q(0.95).toFixed(5), max: +v[v.length - 1].toFixed(5) };
+    };
+    const entryHour = QMR_TIMING.entryHour, eodHour = QMR_TIMING.eodHour;
+    const entry = summarise(byHour[entryHour], 'openSpreadPct');   // filled at this bar's OPEN
+    const exit  = summarise(byHour[eodHour],  'closeSpreadPct');   // flat at this bar's CLOSE
+    // Round trip = you cross the spread once in total (buy ask / sell bid).
+    // Take the average of the two ends as the honest costPct floor.
+    const roundTripPct = entry && exit ? +(((entry.mean + exit.mean) / 2)).toFixed(5) : null;
+    const assumed = QMR_COSTS.costPct;
+
+    res.json({
+      ok: true, instrument, granularity: 'H1', candles: (d.candles ?? []).length,
+      entryHourUTC: entryHour, exitHourUTC: eodHour,
+      entrySpreadPct: entry, exitSpreadPct: exit,
+      entrySpreadPts: summarise(byHour[entryHour], 'openSpreadPts'),
+      exitSpreadPts:  summarise(byHour[eodHour],  'closeSpreadPts'),
+      measuredRoundTripPct: roundTripPct,
+      assumedCostPct: assumed,
+      ratio: roundTripPct != null ? +(roundTripPct / assumed).toFixed(2) : null,
+      verdict: roundTripPct == null ? 'insufficient data'
+        : roundTripPct <= assumed ? `MEASURED SPREAD IS INSIDE THE ASSUMPTION (${roundTripPct}% vs ${assumed}%) — the backtest cost is not optimistic on spread`
+        : roundTripPct <= assumed * 2.5 ? `SPREAD IS ${(roundTripPct / assumed).toFixed(1)}x THE ASSUMPTION (${roundTripPct}% vs ${assumed}%) — re-run the cost ladder at the measured level before trusting any headline`
+        : `SPREAD IS ${(roundTripPct / assumed).toFixed(1)}x THE ASSUMPTION (${roundTripPct}% vs ${assumed}%) — this alone may erase the edge; commission is ON TOP of this`,
+      note: 'Spread only. Commission and the extra slippage on stop exits are charged separately in the engine and are NOT included here. Mid-price backtests lose one full spread per round trip (buy ask, sell bid).',
+    });
+  } catch (e) {
+    console.error('[spread-check]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── QMR M1 validation — does the H1 intrabar assumption hold? ───────────────
 // The whole both-sides result rests on one thing H1 bars CANNOT see: with a
 // ~0.45% stop against a 1.5% target, a single H1 bar routinely contains both
