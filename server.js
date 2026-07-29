@@ -5578,8 +5578,13 @@ app.get('/api/cog-rep/oi-signal-check', async (req, res) => {
     const key = Object.keys(hist).find(k => norm(k) === norm(pairQ));
     if (!key) return res.json({ ok: false, error: `no archive for ${pairQ}`, available: Object.keys(hist) });
 
-    const instMap = { NAS100: 'NAS100_USD', SPX500: 'SPX500_USD', US30: 'US30_USD', XAUUSD: 'XAU_USD' };
-    const inst = instMap[norm(pairQ).toUpperCase()] || instMap[pairQ] || 'NAS100_USD';
+    // Map on the NORMALISED key. The previous version uppercased the normalised
+    // string and looked it up against un-normalised map keys, so every pair fell
+    // through to NAS100 - all four instruments returned an identical 2.462%
+    // range, which is what exposed it.
+    const instMap = { nas100usd: 'NAS100_USD', spx500usd: 'SPX500_USD',
+                      us30usd: 'US30_USD', xauusd: 'XAU_USD', us2000usd: 'US2000_USD' };
+    const inst = instMap[norm(key)] || 'NAS100_USD';
     const bars = await _getNqQmrBars(inst);
     const result = checkOISignals(hist[key], groupBarsByDate(bars), {});
     res.json({ ok: true, pair: key, instrument: inst,

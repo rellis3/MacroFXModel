@@ -46,8 +46,11 @@ def _num(v) -> float:
         return 0.0
 
 
-def strikes_from_settlements(payload: dict) -> dict:
-    """One settlements payload -> {strike: (callOI, putOI)}.
+def strikes_from_settlements(payload: dict, field: str = 'openInterest') -> dict:
+    """One settlements payload -> {strike: (call, put)} for `field`.
+
+    `field` is 'openInterest' or 'volume' — the same payload carries both, so the
+    OI matrix and the volume matrix cost one request between them.
 
     Drops the 'Total' summary row: left in, it becomes a 0.0 strike carrying the
     whole book's OI and would sit at the bottom of every ladder.
@@ -63,7 +66,7 @@ def strikes_from_settlements(payload: dict) -> dict:
             continue
         if k <= 0:
             continue
-        oi = _num(row.get('openInterest'))
+        oi = _num(row.get(field))
         c, p = out.get(k, (0.0, 0.0))
         if str(row.get('type', '')).lower().startswith('c'):
             out[k] = (oi, p)
