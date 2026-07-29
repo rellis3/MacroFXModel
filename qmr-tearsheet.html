@@ -149,7 +149,7 @@ const INST_DEFAULTS={
   NAS100_USD:{gate1Threshold:0.60,gate2MinMovePct:0.10,stopMultiplier:0.45,minRangePct:0.15,tpPct:1.50,riskPct:1.00},
   SPX500_USD:{gate1Threshold:0.60,gate2MinMovePct:0.10,stopMultiplier:0.45,minRangePct:0.15,tpPct:1.50,riskPct:1.00},
   US30_USD:  {gate1Threshold:0.60,gate2MinMovePct:0.10,stopMultiplier:0.45,minRangePct:0.15,tpPct:1.50,riskPct:1.00},
-  XAU_USD:   {gate1Threshold:0.60,gate2MinMovePct:0.05,stopMultiplier:0.45,minRangePct:0.10,tpPct:0.80,riskPct:1.00,costPct:0.02154,eodHour:20},  // 19:00 wins the full-sample sweep (0.689->0.852) but is NOT the default until its walk-forward agrees
+  XAU_USD:   {gate1Threshold:0.60,gate2MinMovePct:0.05,stopMultiplier:0.45,minRangePct:0.10,tpPct:0.80,riskPct:1.00,costPct:0.01521,eodHour:19},  // 19:00 + its own measured cost: walk-forward AGREED (OOS 0.34 -> 0.59), so it is now the default. Gold overall still fails the t>=2 bar.
 };
 const COST_DEFAULTS={costPct:0.00937,stopSlipPct:0.005,eodHour:20}  // NAS100 MEASURED round-trip; gold overrides below;
 const PARAM_IDS=['gate1Threshold','gate2MinMovePct','stopMultiplier','minRangePct','tpPct','riskPct','costPct','stopSlipPct','eodHour'];
@@ -169,7 +169,7 @@ const M1V={
 const WF={
   'NAS100_USD|bothsides':  {sharpe:1.98,t:3.74,pos:'7/8',worst:'-4.5%'},  // at the MEASURED 0.937bp spread. Was 2.17/8/8/+1.1% at the 0.8bp assumption.
   'NAS100_USD|directional':{sharpe:1.18,t:2.56,pos:'6/8',worst:'-11.2%'},
-  'XAU_USD|directional':   {sharpe:0.83,t:1.59,pos:'4/8',worst:'-6.1%'},
+  'XAU_USD|directional':   {sharpe:0.59,t:1.15,pos:'4/8',worst:'n/a'},   // 19:00 exit at the MEASURED 1.521bp. The old 0.83 was priced at 0.8bp, 2.7x below gold's real spread. 20:00 exit scores 0.34. Fix is real; gold still misses the t>=2 bar.
 };
 
 function resetDefaults(){

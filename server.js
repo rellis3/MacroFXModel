@@ -5765,7 +5765,7 @@ app.get('/api/nq-qmr/spread-check', async (req, res) => {
 // 20:00 UTC is post-London-fix thin liquidity for metals while it is still cash
 // session for an equity index.
 const QMR_MEASURED_SPREAD = {
-  NAS100_USD: 0.00937, XAU_USD: 0.02154,
+  NAS100_USD: 0.00937, XAU_USD: 0.01521,   // gold priced at its VALIDATED 19:00 exit (1.521bp); the 20:00 exit costs 2.154bp
 };
 const qmrCostFor = inst => QMR_MEASURED_SPREAD[inst] ?? QMR_COSTS.costPct;
 
