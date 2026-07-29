@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Point-in-Time Data &amp; Survivorship Bias — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Institutional Data Engineering / Point-in-Time Data &amp; Survivorship Bias</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Institutional Data Engineering 4 of 5</div>
+  <h1 class="tl-title">Point-in-Time Data &amp; Survivorship Bias</h1>
+  <p class="tl-dek">What "point-in-time" actually requires operationally, why revised data is a real and easy-to-miss lookahead bug, and the classic 1996 study that first quantified how badly survivorship bias distorts a database that only remembers the winners.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explains real industry practice, not a claim about this repo's own data pipeline</span>
+    <span>~16 min read</span>
+    <span>Prereqs: <a href="data-pipeline-raw-to-trading-ready.html">The Data Pipeline: Raw Feeds to Trading-Ready Data</a>, <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a></span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>"Point-in-time" is an operational property of the <em>data store itself</em>, not just of a feature computed from it: <strong>immutable dated snapshots</strong> (never a single mutable "current" table that gets overwritten in place).</li>
+      <li><strong>Revision tracking</strong>: many macro data series are revised weeks or months after first release — using today's fully-revised figure as if it were known on the original release date is a real, common, easy-to-miss lookahead bug.</li>
+      <li><strong>Embargo/publication-lag periods</strong>: the gap between when an event happened and when the data about it actually became available to trade on — these two dates are routinely different, and a pipeline that ignores the gap silently hands a backtest information it never really had.</li>
+      <li><strong>Survivorship bias</strong>, precisely defined: a database that only contains entities that still exist today silently excludes the failures, biasing any backtest run on it optimistically. Quantified for mutual funds by Elton, Gruber &amp; Blake (1996).</li>
+      <li>This lesson is the <strong>fuller, operational treatment</strong> — <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a> introduces point-in-time computability briefly, from the angle of what one feature needs; this lesson covers what the underlying data infrastructure itself has to guarantee for that to even be possible.</li>
+      <li>Point-in-time datasets are an established, real industry and academic practice — not an exotic or hypothetical concern.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+  <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp;
+  Reproducibility</a> already introduces the core idea: a feature has to be computable using only what
+  was genuinely known at the moment it's dated, and that lesson names revision and survivorship as two
+  of the ways this can quietly fail. That lesson's angle is the feature — given that a data store already
+  somehow supports "as of" queries correctly, what does a feature builder still need to get right on top
+  of that. This lesson goes one level deeper: what does the <em>data store itself</em> actually have to
+  do, mechanically, for an "as of" query to be honest in the first place? A feature can follow every rule
+  <a href="feature-engineering-leakage-reproducibility.html">that lesson</a> describes and still leak, if
+  the underlying data infrastructure it's querying was never built to distinguish "what we know today"
+  from "what was knowable back then."
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A newspaper archive that quietly rewrites yesterday's front page</h3>
+    <p>
+    Imagine a newspaper archive where, every time a correction runs, the digital copy of the <em>original</em>
+    article silently gets overwritten with the corrected version — no note that anything changed, no way
+    to see what the article actually said the day it was first printed. A historian using this archive to
+    study "what did the public believe on this date" would be quietly reading tomorrow's corrections into
+    yesterday's understanding, every single time. A properly built archive instead keeps every version:
+    the original front page exactly as printed that day, and each correction as a separate, dated
+    addendum layered on top — so a researcher can ask "what did this page say on the day it was printed"
+    and get a real, historically accurate answer, distinct from "what do we now believe was actually
+    true." Point-in-time data infrastructure is the second archive, applied to prices, macro releases, and
+    company financials: keep every historical vintage, don't let a later correction silently overwrite
+    what was actually known at the time.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>What "point-in-time" actually requires, operationally</h2>
+
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Immutable dated snapshots — not one mutable "current" table</h4>
+        <p>
+        A data store built for point-in-time correctness never overwrites a historical value in place. If
+        a number changes (a revision, a correction, a restated financial), the store adds a <em>new</em>
+        dated record rather than mutating the old one — so both "what the number said on its original
+        publication date" and "what the number says today" remain simultaneously available, forever. A
+        single mutable table holding only "the current value" of every series has already destroyed the
+        information needed to answer a point-in-time query correctly, the moment the first revision
+        happens.
+        </p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>Revision tracking — many series get restated after the fact</h4>
+        <p>
+        Macro data is the clearest example: a GDP or employment figure is typically published as a
+        preliminary estimate, then revised — sometimes more than once — as more complete source data comes
+        in, over weeks or months. A company's historical financials can be restated after an accounting
+        correction. A backtest that uses today's fully-revised figure as if it were the number a trader
+        actually saw on the original release date is using information from the future relative to that
+        date — a real, common, and easy-to-miss lookahead bug, precisely because the revised number
+        <em>looks</em> like an ordinary historical data point rather than an obvious leak.
+        </p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>Embargo / publication-lag periods — the gap between event and availability</h4>
+        <p>
+        Even a number that is never revised at all still has a gap between when the event it describes
+        happened and when the information about it actually became available to trade on. A month's
+        inflation reading describes conditions during that month, but isn't published until well into the
+        following month; a company's quarterly earnings describe a quarter that ended weeks before the
+        earnings call. A point-in-time-correct data store tags every record with both dates — the period
+        it describes and the date it actually became knowable — and any "as of" query must use the latter,
+        never the former, when deciding what a live system could have known.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A macro release's timeline: reference period, publication dates, and revisions, all distinct</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Timeline diagram showing a March GDP figure. The reference period (March) ends on March 31. A preliminary estimate is published on April 28, nearly a month later. A first revision is published May 26 with a different value. A final revision is published June 25 with yet another value. A backtest querying data as of April 15 must return no value at all, since nothing had been published yet at that date.">
+      <line x1="30" y1="130" x2="610" y2="130" style="stroke:var(--border)" stroke-width="2"/>
+
+      <circle cx="90" cy="130" r="5" style="fill:var(--text3)"/>
+      <text x="90" y="112" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:10px">Mar 31</text>
+      <text x="90" y="152" text-anchor="middle" style="fill:var(--text3);font-family:'DM Sans',sans-serif;font-size:9px">reference period ends</text>
+
+      <circle cx="230" cy="130" r="6" style="fill:var(--blue)"/>
+      <text x="230" y="90" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:10px;font-weight:600">Apr 28</text>
+      <text x="230" y="103" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:10px;font-weight:600">preliminary: 1.9%</text>
+      <line x1="230" y1="112" x2="230" y2="124" style="stroke:var(--blue)" stroke-width="1.4"/>
+
+      <circle cx="370" cy="130" r="6" style="fill:var(--amber)"/>
+      <text x="370" y="163" text-anchor="middle" style="fill:var(--amber);font-family:'DM Mono',monospace;font-size:10px;font-weight:600">May 26</text>
+      <text x="370" y="176" text-anchor="middle" style="fill:var(--amber);font-family:'DM Mono',monospace;font-size:10px;font-weight:600">1st revision: 1.6%</text>
+      <line x1="370" y1="136" x2="370" y2="148" style="stroke:var(--amber)" stroke-width="1.4"/>
+
+      <circle cx="510" cy="130" r="6" style="fill:var(--green)"/>
+      <text x="510" y="90" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:10px;font-weight:600">Jun 25</text>
+      <text x="510" y="103" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:10px;font-weight:600">final revision: 1.4%</text>
+      <line x1="510" y1="112" x2="510" y2="124" style="stroke:var(--green)" stroke-width="1.4"/>
+
+      <line x1="160" y1="200" x2="160" y2="136" style="stroke:var(--red)" stroke-width="1.4" stroke-dasharray="3,3"/>
+      <text x="160" y="216" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px;font-weight:600">Apr 15 query "as of"</text>
+      <text x="160" y="229" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px;font-weight:600">→ correct answer: no value published yet</text>
+
+      <text x="320" y="250" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px;font-style:italic">Three different numbers (1.9% → 1.6% → 1.4%) all describe "March GDP" — only the vintage published on or before the query date is valid.</text>
+    </svg>
+    <div class="tl-chart-caption">
+    The same underlying "March GDP" fact is published, then revised twice, at three different dates with
+    three different values. A point-in-time-correct query as of April 15th must return nothing at all
+    (the reference period hadn't even been published yet), and a query as of, say, May 30th must return
+    the May 26th first-revision value of 1.6% — never the eventual final 1.4%, which wasn't known until
+    June 25th.
+    </div>
+  </div>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>Vintage</td><td>The specific version of a data value as it stood on a given historical date, before any later revision.</td></tr>
+      <tr><td>Reference period</td><td>The period a data point describes (e.g. "March"), distinct from when it was actually published.</td></tr>
+      <tr><td>Publication/release date</td><td>The date a value first became publicly knowable — the date an "as of" query should key off, never the reference period.</td></tr>
+      <tr><td>Revision</td><td>A later, restated value for the same reference period, published after the original release.</td></tr>
+      <tr><td>Embargo / publication lag</td><td>The gap between when an event occurred and when data describing it became available to trade on.</td></tr>
+      <tr><td>Survivorship bias</td><td>The distortion introduced when a database only includes entities that still exist today, silently excluding failures, delistings, and discontinuations.</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Survivorship bias, defined precisely</h2>
+  <p>
+  Survivorship bias occurs when a dataset used to evaluate historical performance only includes entities
+  that are still active, listed, or reporting <em>today</em> — silently dropping anything that failed,
+  was delisted, defaulted, merged away, or otherwise stopped existing along the way. Because failure is
+  rarely random with respect to performance (the entities that disappear are disproportionately the weak
+  performers), any study built on a survivors-only universe is biased in a specific, predictable
+  direction: optimistic. It looks like the average result of "everything that was ever tried," when it's
+  actually the average result of "everything that happened to still be around when someone later built
+  the database."
+  </p>
+  <p>
+  This was rigorously quantified, not just argued informally, in a study that has become the standard
+  reference on the topic: Edwin J. Elton, Martin J. Gruber &amp; Christopher R. Blake, "Survivorship Bias
+  and Mutual Fund Performance," <em>Review of Financial Studies</em>, 9(4), 1996. Comparing a mutual fund
+  database that included only funds surviving to the end of the sample period against a more complete
+  database that also included funds that had since disappeared, the study found the survivors-only
+  database meaningfully overstated average fund performance — a direct, measured demonstration that
+  which entities are missing from a dataset is not a neutral, random omission, but a systematic bias with
+  a real, quantified magnitude.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>The arithmetic of a survivors-only average</h3>
+    <p>
+    Suppose a study starts with 100 hypothetical funds ten years ago. Over the decade, 20 of them
+    perform so poorly they're liquidated or merged away — disappearing from any database built by
+    querying "active funds" today — while the remaining 80 survive with an average annualized return of
+    9%. Suppose, generously, that the 20 funds that disappeared averaged a return of \(-15\%\) annualized
+    before folding (a plausible pattern, since poor performance is a common reason funds get shut down).
+    </p>
+    <p>
+    A database built from today's survivors reports the average return as simply <strong>9%</strong> —
+    that's all that's left to average. The true, complete-universe average across all 100 original funds
+    is:
+    </p>
+    <div class="tl-math">\[ \bar{r}_{true} = \frac{80 \times 0.09 + 20 \times (-0.15)}{100} = \frac{7.2 - 3.0}{100} = 4.2\% \]</div>
+    <p>
+    The survivors-only figure (9%) overstates the true historical average (4.2%) by more than a factor
+    of two — not because any single number in the survivors-only database is wrong, but because the
+    dataset silently excluded exactly the worst-performing fifth of the original universe.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">A real-world trading scenario</div>
+    <h3>The mutual fund database that only remembered the winners</h3>
+    <p>
+    A prospective investor compares the ten-year track record of actively managed mutual funds against a
+    passive index, using a fund database queried for "all funds available today." The active funds' average
+    return looks competitive with, or even ahead of, the index — a genuinely surprising and encouraging
+    result, at first glance. What the "available today" query silently omitted is every fund that
+    underperformed badly enough over the decade to be liquidated, merged into a better-performing sibling
+    fund, or otherwise closed — funds that, by construction, can no longer appear in a query for what's
+    currently available. Elton, Gruber &amp; Blake's 1996 study is exactly this scenario, made rigorous: a
+    survivors-only mutual fund database systematically overstates average fund performance relative to a
+    more complete database that also captures the funds that didn't make it, precisely because
+    underperformance and disappearance from the database are correlated, not independent.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+  Point-in-time datasets — archives that preserve every historical vintage of a series with its true
+  publication date, and universe definitions that include delisted/discontinued entities rather than only
+  today's survivors — are an established, real practice in academic and institutional finance research
+  specifically because the failure modes in this lesson are so easy to introduce by accident. Academic
+  researchers commonly rely on point-in-time vendor databases built specifically to avoid these problems,
+  and serious institutional research groups build or license similar infrastructure rather than querying a
+  single "current" table and hoping nothing downstream needs to distinguish a vintage from today's revised
+  value. The unifying discipline across every serious version of this practice is treating "what did we
+  actually know, and when" as a property the data infrastructure itself is built to answer correctly by
+  default — not something checked manually, study by study, after the fact.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🗓️</div>
+      <h4>Snapshot, never overwrite</h4>
+      <p>Every revision is a new dated record, never a mutation of the original historical value.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🏷️</div>
+      <h4>Two dates per record</h4>
+      <p>Reference period and true publication date, tracked separately — an "as of" query keys off the latter.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🗂️</div>
+      <h4>Include the delisted</h4>
+      <p>A universe query built from "what's active today" has already excluded the historical failures a strategy most needs testing against.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📚</div>
+      <h4>An established academic practice</h4>
+      <p>Point-in-time vendor databases are standard tooling in academic finance research — a well-known, real category of infrastructure, not a novel idea.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where point-in-time discipline quietly breaks down</h3>
+    <ul>
+      <li><strong>Storing only "the current value" of a macro or fundamental series.</strong> Once a revision overwrites the original figure in place, the information needed to answer "what did we know back then" is gone for good.</li>
+      <li><strong>Dating a release to its reference period instead of its publication date.</strong> A March figure joined to "March 31st" looks available for the entire month, when it may not have actually been published until weeks into April.</li>
+      <li><strong>Querying "active as of today" for a historical universe.</strong> This silently excludes every entity that failed, delisted, or was discontinued along the way — precisely the worst-case scenarios a strategy needs to be tested against.</li>
+      <li><strong>Assuming a revision is a rare, minor correction.</strong> For many macro series, revision is the norm on essentially every release, not an occasional footnote.</li>
+      <li><strong>Treating survivorship bias as only a stock-picking or mutual-fund concern.</strong> Any cross-sectional universe — currencies, bonds, indices, counterparties — is equally vulnerable if it's built from "what still exists today."</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Point-in-time correctness is an operational property of the data store, not just a feature-construction rule.</strong> Immutable dated snapshots, revision tracking, and publication-lag tagging all have to exist before a feature can even attempt to be point-in-time computable.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Using today's fully-revised data as if it were known on the original release date is a real, common lookahead bug.</strong> It's easy to miss precisely because a revised number looks like an ordinary historical data point.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Reference period and publication date are different things.</strong> An "as of" query must always key off the publication/availability date, never the period the data describes.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Survivorship bias is not a random omission — it's a systematic, quantified overstatement.</strong> Elton, Gruber &amp; Blake (1996) measured this directly for mutual funds: a survivors-only database overstates true average historical performance.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Point-in-time datasets are established, real infrastructure.</strong> Academic and institutional finance research commonly relies on vendor databases built specifically to preserve historical vintages and publication dates.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This lesson is the fuller treatment of a topic <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a> only introduces briefly.</strong> That lesson covers what a feature needs; this one covers what the data layer underneath has to guarantee.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why is a single mutable "current value" table fundamentally incompatible with point-in-time correctness?</summary>
+    <div class="tl-answer">
+    The moment a value is revised and the table is updated in place, the original historical vintage — the
+    number that was actually knowable on its original publication date — is overwritten and lost. Any
+    later "as of" query for a date before the revision can no longer retrieve the true historical value;
+    it will instead silently return the revised figure, which is a real lookahead leak even though nothing
+    about the query itself looks wrong.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Explain the difference between a data point's reference period and its publication date, and why an "as of" query must use the latter.</summary>
+    <div class="tl-answer">
+    The reference period is what the data describes (e.g., "March" for a March inflation reading); the
+    publication date is when that figure actually became publicly knowable (often weeks or months later).
+    A live system at any given point in time only ever has access to what has actually been published by
+    then — it has no way to know a figure describing a period that hasn't been published yet, no matter
+    how far in the past that period itself was. An "as of" query that joins by reference period instead of
+    publication date silently hands a backtest information from the future relative to the query date.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Define survivorship bias precisely, and explain why it produces a systematically optimistic result rather than a random error.</summary>
+    <div class="tl-answer">
+    Survivorship bias occurs when a dataset used to evaluate historical performance only contains entities
+    that still exist, are listed, or are actively reporting today, silently excluding anything that failed,
+    delisted, defaulted, or was discontinued along the way. It's systematically optimistic rather than
+    randomly noisy because failure and poor performance are correlated, not independent — the entities
+    that disappear are disproportionately the weak performers, so removing them from the average leaves
+    behind a subset that performed better than the true, complete universe ever did.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What did Elton, Gruber &amp; Blake (1996) actually demonstrate, and why does it matter that it was measured rather than just argued?</summary>
+    <div class="tl-answer">
+    They compared mutual fund performance computed from a survivors-only database against a more complete
+    database that also included funds that had since disappeared, and found the survivors-only version
+    meaningfully overstated average historical fund performance. It matters that this was measured, not
+    just argued, because it turns survivorship bias from a plausible-sounding theoretical concern into a
+    demonstrated, quantified distortion with a real, documented magnitude — the kind of evidence that
+    makes the concern impossible to dismiss as hypothetical.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In the worked example, why does the survivors-only average (9%) overstate the true universe average (4.2%) by more than double, and what real-world quantity does the missing 20 funds represent?</summary>
+    <div class="tl-answer">
+    The survivors-only average only ever includes the 80 funds that made it through the full decade, so
+    it never has the opportunity to be pulled down by the 20 funds that failed along the way — those 20
+    funds averaged a large loss (-15%) precisely because underperformance is a common reason a fund gets
+    liquidated or merged away. The true universe average has to weight in that -15% loss over 20% of the
+    original population, which pulls the honest average down to 4.2%. The missing 20 funds represent
+    exactly the failure cases a real investor choosing among 100 funds ten years ago would have been
+    exposed to, and which a survivors-only database has quietly erased from the record.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Edwin J. Elton, Martin J. Gruber &amp; Christopher R. Blake, "Survivorship Bias and Mutual Fund Performance," <em>Review of Financial Studies</em>, 9(4), 1996 — the classic study quantifying how a survivors-only mutual fund database overstates true historical average performance.</li>
+    <li>Dean Croushore &amp; Tom Stark, "A Real-Time Data Set for Macroeconomists," <em>Journal of Econometrics</em>, 105(1), 2001 — the foundational academic paper behind real-time/point-in-time macroeconomic data archives, documenting exactly how much macro series get revised after initial release and why that matters for research design.</li>
+    <li>Burton G. Malkiel, "Returns from Investing in Equity Mutual Funds 1971 to 1991," <em>Journal of Finance</em>, 50(2), 1995 — an earlier, complementary study documenting survivorship bias's effect on reported mutual fund returns over a different sample period.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="corporate-actions-series-continuity.html">← Corporate Actions &amp; Series Continuity</a>
+    <a href="data-architecture-storage-versioning.html">Data Architecture for Systematic Trading →</a>
+  </div>
+</div>
+</body>
+</html>

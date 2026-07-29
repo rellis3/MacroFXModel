@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Architecture for Systematic Trading: Storage, Versioning &amp; Reproducibility — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Institutional Data Engineering / Data Architecture for Systematic Trading: Storage, Versioning &amp; Reproducibility</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Institutional Data Engineering 5 of 5</div>
+  <h1 class="tl-title">Data Architecture for Systematic Trading: Storage, Versioning &amp; Reproducibility</h1>
+  <p class="tl-dek">The infrastructure layer underneath every other lesson in this category — how historical data is stored, why independently-recomputed "single sources of truth" quietly drift apart, and why a pipeline bug and a genuine strategy decay can look statistically identical from the equity curve alone.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explains real industry practice, not a claim about this repo's own data pipeline</span>
+    <span>~16 min read</span>
+    <span>Prereqs: <a href="data-pipeline-raw-to-trading-ready.html">The Data Pipeline: Raw Feeds to Trading-Ready Data</a></span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Time-series-oriented storage vs. general columnar storage</strong>: Parquet-style columnar formats are the modern practitioner-standard for large historical tick/bar datasets — fast columnar reads, efficient compression, schema evolution support.</li>
+      <li><strong>The "single source of truth" principle</strong>: multiple pipelines or teams independently recomputing the same adjusted series <em>will</em> drift apart over time — a real, well-known organizational failure mode, not just a technical one.</li>
+      <li><strong>Data lineage / audit trails</strong>: being able to answer, months later, "exactly which raw inputs and which code version produced this specific historical value."</li>
+      <li><strong>Schema versioning</strong>: a pipeline's output schema changing over time without a version tag silently breaks anything downstream that assumed the old shape.</li>
+      <li>This lesson is the infrastructure <a href="research-pipeline-hypothesis-to-backtest.html">The Research Pipeline: Hypothesis to Honest Backtest</a> assumes exists when it talks about reproducibility — and it connects directly to the same theme in <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a>.</li>
+      <li>A pipeline bug and a genuine strategy-alpha decay can look statistically identical from the equity curve alone — reproducible, versioned data lineage is the only way to rule the pipeline out first.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+  Every earlier lesson in this category — ingestion and bar construction, cleaning, corporate-action and
+  roll adjustment, point-in-time serving — produces a value that eventually has to live <em>somewhere</em>,
+  be trusted by more than one consumer, and be reproducible later. This lesson is that underlying layer:
+  not a new stage in the pipeline, but the architecture that makes every earlier stage's output durable,
+  auditable, and safe to build on for more than one project at a time. <a href="research-pipeline-hypothesis-to-backtest.html">The
+  Research Pipeline: Hypothesis to Honest Backtest</a> discusses reproducibility as part of a disciplined
+  research process — pinning data, code, and parameters together so a result can be regenerated later.
+  That discussion implicitly assumes a data architecture capable of actually delivering a pinned, specific
+  historical vintage on demand; this lesson is what has to exist underneath it for that assumption to be
+  true. It connects just as directly to <a href="feature-engineering-leakage-reproducibility.html">Feature
+  Engineering, Leakage &amp; Reproducibility</a>'s point that "the data hasn't changed since I ran this" is
+  rarely actually true without deliberate versioning — this lesson is the concrete architecture that
+  claim depends on.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Two accountants, two spreadsheets, one company</h3>
+    <p>
+    Imagine two accountants at the same company, each independently maintaining their own spreadsheet of
+    "adjusted revenue" for the same set of historical years, each applying similar but not identical
+    correction rules by hand. For the first year or two, the two spreadsheets agree closely — the
+    corrections are small and the underlying data is fresh in everyone's memory. Three years later, after
+    a dozen small judgment calls in each spreadsheet that were never written down or reconciled against
+    each other, the two numbers for the same historical year have quietly diverged, and nobody can say
+    with confidence which one is right, or even exactly why they differ anymore. Neither accountant did
+    anything obviously wrong in isolation — the failure is that there were ever two independently
+    maintained "sources of truth" for the same fact in the first place, with no shared, versioned record
+    of exactly what inputs and rules produced each number. A data architecture with a genuine single
+    source of truth and a real audit trail is the fix: one authoritative, versioned pipeline that everyone
+    reads from, with a permanent record of exactly what produced every historical value.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>Storage: time-series-oriented vs. general columnar formats</h2>
+  <p>
+  Historical tick and bar data has a specific shape: very long, mostly-numeric columns (price, volume,
+  timestamp), queried far more often by "give me a date range for these few columns" than by "give me one
+  full row." Traditional row-oriented storage (reading an entire record, all its columns, to get at just
+  one or two of them) is a poor structural match for that access pattern. <strong>Columnar
+  formats</strong> — Parquet-style storage being the modern practitioner-standard for large historical
+  datasets — instead store each column's values contiguously, which brings three concrete practical
+  benefits for this use case:
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">⚡</div>
+      <h4>Fast columnar reads</h4>
+      <p>A query that only needs the close price and timestamp over a date range reads only those columns, not every field in every row.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🗜️</div>
+      <h4>Efficient compression</h4>
+      <p>Values within one column (e.g. a price series) tend to be similar to their neighbors, which columnar layouts compress far better than mixed row-oriented data.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧬</div>
+      <h4>Schema evolution support</h4>
+      <p>A well-designed columnar format can add a new column to future files without breaking a reader that only expects the old columns — a genuine, structural version of the schema-versioning discipline discussed below.</p>
+    </div>
+  </div>
+
+  <p>
+  None of this makes columnar storage universally "correct" — a system that needs to append single new
+  ticks continuously and read them back immediately has different needs than one built to serve large
+  historical backtests — but for the specific job of storing and repeatedly querying large historical
+  tick/bar archives, columnar formats have become the practitioner default for good, concrete structural
+  reasons, not merely current fashion.
+  </p>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Single source of truth: why independent recomputation drifts</h2>
+  <p>
+  The "single source of truth" principle states that any given derived quantity — an adjusted close, a
+  cleaned tick series, a continuous futures contract — should be computed by exactly <strong>one</strong>
+  authoritative pipeline, with every downstream consumer reading its output, rather than each consumer
+  (or each team) independently recomputing the same quantity from the same raw inputs. This sounds
+  obvious stated abstractly, and it is nonetheless one of the most common real organizational failures in
+  data engineering, for a specific reason: two independent implementations of "the same" computation
+  virtually never stay bit-identical over time. A rounding convention chosen slightly differently, an edge
+  case handled slightly differently, a bug fix applied to one copy and not the other, a corporate action
+  or roll handled with a marginally different adjustment method — any one of these, applied inconsistently
+  across two supposedly-equivalent pipelines, causes a slow, silent divergence. Neither copy is
+  necessarily "wrong" in isolation; the failure is that there were ever two copies of the same
+  authoritative computation running independently at all.
+  </p>
+
+  <div class="tl-solid amber">
+    <strong>The trap:</strong> "our two systems compute adjusted close the same way" is a claim that is
+    almost never actually re-verified after the initial build — it's assumed true because it was true on
+    day one, and small, individually reasonable changes to either copy over months or years are what
+    actually cause the drift, not any single dramatic error.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Data lineage, audit trails, and schema versioning</h2>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Data lineage / audit trails</h4>
+      <p>
+      Lineage is the ability to answer, for any historical value sitting in the store today, exactly
+      which raw inputs and which version of the transforming logic produced it — not approximately, but
+      specifically enough to regenerate the exact same value from scratch. Without this, a value that
+      looks suspicious months later (an unexpected spike, a value that doesn't match an external source)
+      has no reconstructable history: there's no way to determine whether it reflects a genuine market
+      event, a since-fixed bug that produced a since-corrected version elsewhere, or a raw input that was
+      itself later found to be bad.
+      </p>
+    </div>
+    <div class="tl-compare-card green">
+      <h4>Schema versioning</h4>
+      <p>
+      A pipeline's output schema — which columns exist, what units they're in, what a null value means —
+      changes over time as the pipeline is improved: a column gets renamed, a unit changes from basis
+      points to a decimal fraction, a new field gets added. If that change isn't tagged with an explicit
+      version, anything downstream that was built assuming the old shape breaks silently — not with an
+      error, necessarily, but by quietly misinterpreting the new data as if it still meant the old thing.
+      A renamed or reunit-ed column that isn't versioned is a classic, silent-failure source of exactly
+      the kind of corruption this whole category is about.
+      </p>
+    </div>
+  </div>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>Columnar storage</td><td>A storage layout that groups values by column rather than by row — fast for reading a subset of columns across many rows, the common access pattern for time-series data.</td></tr>
+      <tr><td>Single source of truth</td><td>The principle that a derived quantity should be computed by exactly one authoritative pipeline, read by every downstream consumer, never independently recomputed.</td></tr>
+      <tr><td>Data lineage</td><td>The traceable record of exactly which raw inputs and which code version produced a given historical value.</td></tr>
+      <tr><td>Schema</td><td>The defined shape of a dataset — its columns, their units, and what a null or missing value means.</td></tr>
+      <tr><td>Schema version</td><td>An explicit tag marking which version of a schema a given batch of data conforms to, so downstream readers can detect and handle a shape change.</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A data lineage diagram: tracing one historical value back to its raw inputs and code version</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram showing a raw tick feed and a raw corporate-action feed both flowing into a cleaning stage tagged with a code version, then into an adjustment stage also tagged with a code version, producing a final adjusted-close value. An arrow points back from the final value through each stage to show that lineage lets you reconstruct exactly which inputs and code versions produced it.">
+      <rect x="20" y="20" width="150" height="50" rx="6" style="fill:var(--blue);opacity:.2;stroke:var(--blue)"/>
+      <text x="95" y="42" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:10.5px;font-weight:600">Raw tick feed</text>
+      <text x="95" y="58" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9px">vendor X, 2026-07-14</text>
+
+      <rect x="20" y="90" width="150" height="50" rx="6" style="fill:var(--purple);opacity:.2;stroke:var(--purple)"/>
+      <text x="95" y="112" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:10.5px;font-weight:600">Corp. action feed</text>
+      <text x="95" y="128" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9px">vendor Y, split table</text>
+
+      <line x1="170" y1="45" x2="230" y2="90" style="stroke:var(--text3)" stroke-width="1.4"/>
+      <line x1="170" y1="115" x2="230" y2="105" style="stroke:var(--text3)" stroke-width="1.4"/>
+
+      <rect x="235" y="75" width="150" height="55" rx="6" style="fill:var(--amber);opacity:.2;stroke:var(--amber)"/>
+      <text x="310" y="98" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:10.5px;font-weight:600">Cleaning stage</text>
+      <text x="310" y="114" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9px">code v3.2.1</text>
+
+      <line x1="385" y1="102" x2="445" y2="102" style="stroke:var(--text3)" stroke-width="1.4"/>
+
+      <rect x="450" y="75" width="150" height="55" rx="6" style="fill:var(--green);opacity:.2;stroke:var(--green)"/>
+      <text x="525" y="98" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:10.5px;font-weight:600">Adjustment stage</text>
+      <text x="525" y="114" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9px">code v1.4.0</text>
+
+      <line x1="525" y1="130" x2="525" y2="170" style="stroke:var(--text3)" stroke-width="1.4"/>
+
+      <rect x="435" y="175" width="180" height="55" rx="6" style="fill:var(--blue);opacity:.25;stroke:var(--blue)"/>
+      <text x="525" y="198" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:10.5px;font-weight:600">Adjusted close, 2026-07-14</text>
+      <text x="525" y="214" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9px">schema v2</text>
+
+      <path d="M 525,230 C 525,260 90,270 90,140" style="fill:none;stroke:var(--red)" stroke-width="1.4" stroke-dasharray="4,3"/>
+      <text x="290" y="278" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px;font-weight:600">lineage: this value is fully reconstructable — exact raw inputs + exact code versions, on record</text>
+    </svg>
+    <div class="tl-chart-caption">
+    Two raw feeds flow through a versioned cleaning stage and a versioned adjustment stage to produce one
+    final value, tagged with a schema version. Months later, that value's lineage can be traced back to
+    the exact raw records and exact code versions that produced it — the concrete capability "reproducibility"
+    actually depends on.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>A silent schema change: units drift from basis points to a decimal fraction</h3>
+    <p>
+    Suppose a "spread" column has always been recorded in basis points — a typical FX spread reading
+    might be \(1.8\) (meaning 1.8bp). A pipeline update changes the column to record the spread as a
+    decimal fraction instead — the same 1.8bp spread is now recorded as \(0.00018\) — because a new team
+    member reasonably thought a fraction was the more standard unit, and updated the column in place
+    without adding a version tag or renaming the column.
+    </p>
+    <p>
+    A downstream cost model that reads this column and was built assuming basis points now silently
+    multiplies every trade's assumed cost by roughly \(1.8/0.00018 = 10{,}000\times\) too small — treating
+    a spread of 1.8 (old convention, basis points) as if a "spread" of \(0.00018\) meant something 10,000
+    times tighter than intended. The backtest doesn't error out; it simply becomes dramatically, silently
+    optimistic about transaction costs from that date forward, because nothing in the pipeline's output
+    signaled that the column's meaning had changed. A schema version tag on the column (or a rename to
+    <code>spread_frac</code> alongside the old <code>spread_bp</code>) would have made this an explicit,
+    visible break instead of an invisible one.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">A real-world trading scenario</div>
+    <h3>Two teams, two "adjusted close" columns, two years of silent drift</h3>
+    <p>
+    A research team and a risk team at the same shop each maintain their own pipeline for computing a
+    daily adjusted close for a universe of instruments — the research team's copy feeds backtests, the
+    risk team's copy feeds position and exposure reporting. Both started from the same raw feed and the
+    same corporate-action logic, and for the first several months the two numbers matched exactly. Over
+    the following two years, the research team's pipeline picked up a bug fix for how it handles a rare
+    zero-volume day, and the risk team's pipeline separately picked up a change in how it rounds a
+    dividend-adjustment factor — each change reasonable and correctly reviewed in isolation, in its own
+    team's context, with no shared review process that would have compared the two pipelines' outputs
+    against each other.
+    </p>
+    <p>
+    Two years later, a discrepancy surfaces: a strategy's backtested P&amp;L (built on the research team's
+    adjusted close) doesn't reconcile with the risk team's reported exposure for the same position on the
+    same date, off by a small but real amount that compounds meaningfully over a long enough history. Both
+    teams' numbers are individually defensible — each followed a sensible internal logic — but there is no
+    single source of truth to check against, and reconstructing exactly when and why the two series
+    diverged takes real forensic effort precisely because neither pipeline kept an explicit, versioned
+    record of every change applied along the way. This is the single-source-of-truth failure mode made
+    concrete: not a dramatic single error, but two individually reasonable pipelines slowly drifting apart
+    with no shared reference to catch it.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+  Institutional data engineering teams treat storage format, single-source-of-truth ownership, lineage,
+  and schema versioning as infrastructure decisions made once and enforced organizationally, not
+  re-litigated per project: one team or system owns each authoritative derived series, every consumer
+  reads from it rather than recomputing it, every transform stage is tagged with the code version that
+  produced its output, and every schema change ships with an explicit version bump that downstream readers
+  can detect and react to. None of this is exotic engineering — it's the same discipline any mature
+  software system applies to its own internal APIs, applied specifically to historical market data,
+  because the cost of getting it wrong compounds silently for years before it surfaces.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where data architecture quietly breaks down</h3>
+    <ul>
+      <li><strong>Letting more than one pipeline independently compute "the same" adjusted series.</strong> Even with identical starting logic, two independently maintained copies will drift — the single-source-of-truth principle exists specifically to prevent this.</li>
+      <li><strong>Changing a column's meaning or units without a version tag.</strong> A silent unit or shape change doesn't error — it silently misleads anything downstream that assumed the old meaning, exactly like the basis-points-to-fraction example above.</li>
+      <li><strong>Treating storage format as a purely technical, no-consequence decision.</strong> The wrong storage layout for the actual access pattern (row-oriented storage for a workload that's almost entirely column-range queries) has real cost and performance consequences at scale.</li>
+      <li><strong>Assuming reproducibility without ever testing it.</strong> A team that believes "we could regenerate any historical value if we needed to" but has never actually tried doing so for a real historical value is assuming, not verifying, that its lineage is actually complete.</li>
+      <li><strong>Diagnosing a performance decline as pure alpha decay without first ruling out a pipeline bug.</strong> See the closing illustration below — the two look identical from an equity curve alone.</li>
+    </ul>
+  </div>
+
+  <div class="tl-solid red">
+    <strong>The closing illustration:</strong> a genuine, honest strategy-alpha decay and a silent data
+    pipeline bug can produce the exact same signature — a performance curve that quietly, gradually gets
+    worse over time, with no single dramatic break to point to. From the equity curve alone, these two
+    causes are statistically indistinguishable: both look like "the strategy just isn't working as well
+    lately." The only way to tell them apart is having reproducible, versioned data lineage good enough to
+    regenerate the exact historical inputs that produced each period's results and rule the pipeline out
+    first — confirming the same raw inputs, the same code version, and the same schema were actually in
+    effect throughout the period in question, before concluding the decline is real, economic alpha decay
+    rather than a slow, undetected pipeline problem.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Columnar storage is the modern practitioner-standard for large historical tick/bar archives.</strong> Fast column-range reads, efficient compression, and schema evolution support are concrete, structural reasons — not fashion.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Independently recomputed "single sources of truth" will drift apart over time.</strong> This is a real, well-documented organizational failure mode — individually reasonable changes on each side, with no shared reconciliation, is enough to cause it.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Data lineage means being able to regenerate any historical value from its exact raw inputs and code version.</strong> Without it, a suspicious value months later has no reconstructable history.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>An unversioned schema change breaks downstream consumers silently, not loudly.</strong> A renamed column or a changed unit doesn't error — it quietly misinterprets new data as if it still meant the old thing.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This lesson is the infrastructure the research-pipeline and feature-engineering reproducibility discussions assume exists.</strong> Pinning data/code/parameters together only works if the underlying architecture can actually deliver a pinned historical vintage.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A pipeline bug and genuine alpha decay look identical from the equity curve alone.</strong> Only reproducible, versioned lineage can rule the pipeline out before concluding the decline is real.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why is columnar storage a better structural fit than row-oriented storage for large historical tick/bar datasets?</summary>
+    <div class="tl-answer">
+    Historical tick/bar data is typically queried by "give me a date range for these few columns" (e.g.
+    close price and volume over a period) far more often than by "give me every field of one full row."
+    Columnar storage keeps each column's values contiguous, so a query only has to read the specific
+    columns it needs rather than loading every field of every row — this also compresses better, since
+    values within one column tend to be more similar to their neighbors than a mixed row of different
+    fields would be.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why does the single-source-of-truth principle matter even when two independent pipelines both start from correct logic?</summary>
+    <div class="tl-answer">
+    Two independently maintained implementations of "the same" computation virtually never stay
+    bit-identical over time, even if both were correct on day one. Small, individually reasonable changes
+    — a rounding convention, an edge-case fix, a slightly different adjustment method — applied to one
+    copy and not the other accumulate into a real, silent divergence, with neither copy necessarily being
+    "wrong" in isolation. The failure is structural: there were ever two independently maintained
+    authoritative copies of the same derived quantity at all, with no shared reconciliation to catch the
+    drift.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. In the basis-points-to-fraction worked example, why did the cost model fail silently instead of erroring out?</summary>
+    <div class="tl-answer">
+    The column's name and general shape stayed the same (a numeric "spread" field), so nothing in the
+    pipeline's structure signaled that its unit convention had changed from basis points to a decimal
+    fraction. A downstream cost model built assuming the old unit simply kept reading the new values as
+    if they meant the old thing, producing a wildly understated cost estimate without any error, exception,
+    or obviously broken output — exactly the kind of silent corruption an explicit schema version tag (or
+    a distinctly-named new column) would have converted into a visible, catchable break instead.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What does "data lineage" let a team do, months after a value was first computed, that they couldn't do without it?</summary>
+    <div class="tl-answer">
+    Lineage lets a team determine, for any specific historical value, exactly which raw inputs and which
+    version of the transforming code produced it — specifically enough to actually regenerate that exact
+    value from scratch. Without it, a suspicious-looking historical value has no reconstructable history:
+    there's no way to determine whether it reflects a genuine market event, a since-fixed bug whose
+    correction only propagated to some downstream consumers, or a raw input later found to be bad — the
+    team is reduced to guessing rather than verifying.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why can't a declining equity curve alone tell you whether a strategy's edge is genuinely decaying or whether a data pipeline bug is the real cause?</summary>
+    <div class="tl-answer">
+    Both a genuine, honest alpha decay and a silent pipeline bug (a slowly drifting adjusted-close series,
+    an unversioned schema change quietly corrupting an input, two independently recomputed sources
+    diverging) produce the same visible signature: performance that gradually gets worse over time with no
+    single dramatic break. The equity curve on its own carries no information distinguishing "the market
+    behavior this strategy exploited has genuinely weakened" from "the data feeding this strategy has
+    quietly become wrong." The only way to tell them apart is to use reproducible, versioned data lineage
+    to regenerate the exact historical inputs for the affected period and confirm they're unchanged and
+    correct — ruling the pipeline out as the cause before concluding the decline is real, economic alpha
+    decay.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Sergey Melnik, Andrey Gubarev, Jing Jing Long, Geoffrey Romer, Shiva Shivakumar, Matt Tolton &amp; Theo Vassilakis, "Dremel: Interactive Analysis of Web-Scale Datasets," <em>Proceedings of the VLDB Endowment</em>, 3(1-2), 2010 — the Google systems paper describing the nested-columnar storage model that directly inspired Parquet-style columnar formats now standard for large analytical datasets.</li>
+    <li>Mike Stonebraker, Daniel J. Abadi, Adam Batkin, Xuedong Chen, Mitch Cherniack, Miguel Ferreira, Edmond Lau, Amerson Lin, Sam Madden, Elizabeth O'Neil, Pat O'Neil, Alex Rasin, Nga Tran &amp; Stan Zdonik, "C-Store: A Column-oriented DBMS," <em>Proceedings of the 31st VLDB Conference</em>, 2005 — the foundational academic case for column-oriented database design over row-oriented systems for analytical query workloads.</li>
+    <li>Mark D. Wilkinson et al., "The FAIR Guiding Principles for Scientific Data Management and Stewardship," <em>Scientific Data</em>, 3, 2016 — the widely-cited standard for Findable, Accessible, Interoperable, and Reusable data management, directly applicable to the lineage and single-source-of-truth discipline in this lesson.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="point-in-time-data-survivorship-bias.html">← Point-in-Time Data &amp; Survivorship Bias</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+</body>
+</html>

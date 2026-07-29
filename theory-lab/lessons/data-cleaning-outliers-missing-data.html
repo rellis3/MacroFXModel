@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Cleaning: Outliers, Bad Ticks &amp; Missing Data — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Institutional Data Engineering / Data Cleaning: Outliers, Bad Ticks &amp; Missing Data</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Institutional Data Engineering 2 of 5</div>
+  <h1 class="tl-title">Data Cleaning: Outliers, Bad Ticks &amp; Missing Data</h1>
+  <p class="tl-dek">Fat-finger prints, stale quotes, halts, and gaps each need a different fix — and the single most common way to get the fix itself wrong is to clean using statistics computed over data that hadn't happened yet.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explains real industry practice, not a claim about this repo's own data pipeline</span>
+    <span>~16 min read</span>
+    <span>Prereqs: <a href="data-pipeline-raw-to-trading-ready.html">The Data Pipeline: Raw Feeds to Trading-Ready Data</a></span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Four concrete failure modes: <strong>bad/fat-finger prints</strong> (a single wildly-off tick), <strong>stale quotes</strong> (a feed that stops updating but doesn't disconnect), <strong>halts and gaps</strong>, and <strong>duplicate/out-of-order timestamps</strong>.</li>
+      <li>Standard detection: a <strong>rolling median/MAD-based outlier filter</strong> and a <strong>maximum-plausible-return-per-tick bound</strong> — both computed from data available up to that point, never the whole sample.</li>
+      <li>Missing-data handling is a genuine tradeoff, not a default: <strong>forward-fill</strong> (simple, but manufactures a fake flat/zero-return period), <strong>interpolation</strong> (smooths the gap, but invents data that never existed), and <strong>flagging-and-excluding</strong> (honest, but shrinks the usable sample) — each has a case where it's the wrong choice.</li>
+      <li><strong>Mandatory pitfall:</strong> cleaning with whole-sample statistics ("remove anything &gt;5σ from the full-sample mean") is itself a lookahead-bias bug, exactly like the feature-construction leaks in <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a> — a cleaning step must only use information available up to that point in time.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+  <a href="data-pipeline-raw-to-trading-ready.html">The Data Pipeline: Raw Feeds to Trading-Ready Data</a>
+  named cleaning as Stage 3 — the step that fixes what validation flagged. This lesson is that stage in
+  full: the concrete failure modes a raw feed actually produces, the standard ways to detect them, and
+  the real tradeoffs in how to handle what's missing once a bad or absent value has been identified.
+  None of this is exotic — every one of these failure modes shows up routinely in real feeds — but each
+  one has a specific wrong way to fix it that looks completely reasonable until it quietly corrupts
+  everything built downstream.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A copy editor who can only read pages that already exist</h3>
+    <p>
+    Imagine a copy editor checking a manuscript for typos. A good editor reads sentence by sentence,
+    flags a word that looks obviously wrong given everything read <em>so far</em>, and fixes it using
+    only the context available up to that point. A bad editor reads the entire book first, memorizes
+    every word choice the author eventually settles on in Chapter 20, and then goes back to "fix" a
+    slightly unusual word in Chapter 2 based on that future knowledge — even though nobody reading the
+    book in order would have had that context yet. The second editor isn't being more careful; they're
+    quietly using information from the future to judge the past. Data cleaning has exactly this trap: a
+    filter that decides whether today's tick is "outlier" or not by comparing it to statistics computed
+    over the entire dataset, including tomorrow's data, is the second editor — technically thorough, but
+    dishonest about what a live system standing at that moment could actually have known.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>Four concrete failure modes</h2>
+
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Bad or fat-finger prints — a single wildly-off tick</h4>
+        <p>
+        A single trade or quote print at a price wildly inconsistent with everything around it —
+        classically a manual order entry error (an extra zero, a decimal point in the wrong place), but
+        it can also come from a feed-side transmission glitch that corrupts one message. The signature is
+        distinctive: one isolated tick miles from its neighbors, immediately followed by the price
+        snapping straight back to where it was before.
+        </p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>Stale quotes — a feed that stops updating but doesn't disconnect</h4>
+        <p>
+        A feed connection can remain technically "up" — no disconnect event, no error code — while the
+        actual quotes stop refreshing, silently repeating the last known price or spread for minutes or
+        longer. This is more dangerous than an outright disconnect precisely because nothing in the
+        connection status signals a problem; a system consuming the feed sees a continuous stream of
+        valid-looking messages that simply aren't reflecting the real market anymore.
+        </p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>Exchange halts and gaps</h4>
+        <p>
+        Trading genuinely stops — a circuit breaker, a scheduled market closure, a liquidity event — and
+        then resumes, often at a meaningfully different price. Unlike a stale quote, a halt is a real
+        market event with a real (if wide) price jump on either side of it; the cleaning task isn't to
+        "fix" the gap as if it were an error, but to represent it honestly as a period with no valid
+        price observations, distinct from either a bad tick or ordinary low activity.
+        </p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">4</div>
+      <div class="tl-step-body">
+        <h4>Duplicate or out-of-order timestamps</h4>
+        <p>
+        Network retransmission, multiplexed feed sources, or clock-sync drift between an exchange's
+        matching engine and a vendor's distribution layer can all produce the same tick appearing twice,
+        or two ticks arriving in an order that doesn't match their true sequence timestamps. Left
+        unhandled, a duplicate silently double-counts a move (inflating apparent volume or repeating a
+        return), and an out-of-order pair can make a later validation or feature-construction step
+        compute a "return" between two prices that were never actually adjacent in time.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Standard detection approaches</h2>
+  <p>
+  Two conceptual tools do most of the work of catching the failure modes above, before any decision is
+  made about how to handle what's been flagged.
+  </p>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Rolling median/MAD-based outlier filter</h4>
+      <p>
+      Rather than comparing a new tick to a mean and standard deviation (both of which are themselves
+      distorted by the very outliers being hunted for), compute a rolling median and a rolling
+      <strong>median absolute deviation (MAD)</strong> — the median of the absolute deviations from the
+      median — using only data up to and including the current point. A new tick that falls many MADs
+      from the rolling median is flagged as a candidate outlier. The median and MAD are robust
+      statistics: unlike a mean/standard-deviation pair, a handful of extreme values barely moves them,
+      which is exactly the property needed to detect extreme values without the detector itself being
+      thrown off by them.
+      </p>
+      <div class="tl-math">\[ \text{MAD} = \text{median}\big(\,|x_i - \text{median}(x)|\,\big) \]</div>
+    </div>
+    <div class="tl-compare-card green">
+      <h4>Maximum-plausible-return-per-tick bound</h4>
+      <p>
+      Independently of any rolling statistic, set an absolute, instrument-specific bound on how large a
+      single-tick-to-single-tick return can plausibly be, given that instrument's typical volatility and
+      the minimum realistic time between two genuine consecutive prints. A tick implying a return outside
+      that bound is flagged regardless of what the rolling statistics say — a useful second check because
+      it catches an outlier even during a rolling window that has itself been contaminated by a recent
+      run of bad prints.
+      </p>
+    </div>
+  </div>
+
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>x_i</code><span>the value (price, return) being checked at position \(i\)</span></div>
+    <div class="tl-eq-chip c2"><code>median(x)</code><span>the rolling median, computed using only data up to \(i\)</span></div>
+    <div class="tl-eq-chip c3"><code>MAD</code><span>a robust, outlier-resistant measure of spread — barely moved by the extreme values it's meant to catch</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Missing-data handling: three approaches, three real tradeoffs</h2>
+  <p>
+  Once a value has been flagged as bad or is genuinely absent (a halt, a dropped connection), a decision
+  has to be made about what — if anything — fills the gap. None of the three standard approaches is
+  universally correct; each is the wrong choice in a specific, concrete situation.
+  </p>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Forward-fill</h4>
+      <p>
+      Repeat the last known good value for as long as the gap lasts. Simple, and often defensible for a
+      short gap in an illiquid instrument where "the price didn't move" is a reasonable assumption. The
+      failure case: forward-filling across a real market event (a halt around a shock, a stale-quote
+      period during a genuine news release) manufactures a flat, zero-return period that looks exactly
+      like real, calm information to anything downstream — a volatility estimator or a trend feature
+      built on top of it will read the manufactured flatness as an authentic quiet period, when in reality
+      the feed simply stopped reporting.
+      </p>
+    </div>
+    <div class="tl-compare-card amber">
+      <h4>Interpolation</h4>
+      <p>
+      Draw a line (linear or otherwise) between the last known good value before the gap and the first
+      known good value after it, filling the gap with points along that line. This avoids the artificial
+      flat-line problem and can be reasonable for a very short, clearly spurious single-tick gap. The
+      failure case: interpolating across a longer or more consequential gap invents data that never
+      existed — the interpolated path implies a smooth, gradual price move that may bear no resemblance
+      to what actually happened during a halt, which in reality often resumes at a sharp, discontinuous
+      level rather than anywhere close to the average of before-and-after.
+      </p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>Flagging and excluding</h4>
+      <p>
+      Mark the period as missing and exclude it from any calculation that would otherwise treat it as a
+      real observation, rather than filling it with any value at all. This is the most honest option —
+      it never manufactures data — but it shrinks the usable sample, and in a strategy or model that
+      needs a specific bar count or a continuous window (a fixed-length rolling feature, a fixed-size
+      backtest window), a run of excluded periods can force awkward downstream handling of its own. The
+      failure case: excluding too liberally on a feed with routine short micro-gaps can throw away a
+      meaningful fraction of otherwise-fine data for no real benefit.
+      </p>
+    </div>
+  </div>
+
+  <div class="tl-solid red">
+    <strong>The trap:</strong> cleaning a series using statistics computed over the <em>whole</em> sample
+    — "remove any point more than 5 standard deviations from the full-sample mean" — is itself a
+    lookahead-bias bug, exactly the same failure mode <a href="feature-engineering-leakage-reproducibility.html">Feature
+    Engineering, Leakage &amp; Reproducibility</a> describes for a feature built from full-sample
+    z-scores. A cleaning step is a computation like any other, and it has to obey the same rule: only use
+    information available up to that point in time. A full-sample outlier filter uses knowledge of every
+    future extreme value to decide whether today's tick "looks normal" — meaning a live system, cleaning
+    its feed in real time as ticks arrive, could never reproduce the exact same cleaning decisions the
+    backtest silently benefited from. This is genuinely the strongest overlap point between the two
+    lessons: both are instances of the identical underlying discipline (never let time index \(i\)'s
+    computation see data from \(> i\)) applied to two different stages of the same pipeline — cleaning
+    the raw series here, versus building a feature from an already-clean series there.
+  </div>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>Fat-finger print</td><td>A single trade/quote print at an implausible price, typically from manual entry error or a transmission glitch.</td></tr>
+      <tr><td>Stale quote</td><td>A feed connection that stays technically live while the actual price stops refreshing.</td></tr>
+      <tr><td>Halt/gap</td><td>A genuine period with no valid price observations — a real market event, not an error to "fix."</td></tr>
+      <tr><td>MAD</td><td>Median absolute deviation — the median of the absolute deviations from the median; a robust, outlier-resistant measure of spread.</td></tr>
+      <tr><td>Forward-fill</td><td>Repeating the last known good value across a gap.</td></tr>
+      <tr><td>Full-sample statistic</td><td>A mean/std/median/MAD computed using the entire dataset, including data chronologically after the point being cleaned — the contaminated, lookahead version.</td></tr>
+      <tr><td>Rolling (only-past) statistic</td><td>The same statistic computed using only data available up to and including the current point — the point-in-time-correct version.</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A fat-finger print flagged and cleaned using only rolling, only-past statistics</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart of a price series with a single spurious spike on day 5. A rolling median/MAD band computed only from days before the spike flags it as an outlier at the moment it occurs, without needing to see any later data. The cleaned series replaces the flagged point and continues.">
+      <text x="20" y="24" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">Raw series — one fat-finger tick on day 5</text>
+      <polyline points="40,180 100,175 160,178 220,172 280,40 340,176 400,174 460,170 520,168 580,165"
+        style="fill:none;stroke:var(--red);stroke-width:2"/>
+      <circle cx="280" cy="40" r="5" style="fill:var(--red)"/>
+      <text x="280" y="28" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px;font-weight:600">day 5: spurious spike</text>
+
+      <line x1="40" y1="230" x2="600" y2="230" style="stroke:var(--border)"/>
+      <text x="320" y="248" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">days 1 → 10, left to right</text>
+
+      <text x="20" y="100" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:10px" transform="rotate(-90 20,100)"></text>
+      <rect x="40" y="160" width="240" height="30" rx="4" style="fill:var(--blue);opacity:.15;stroke:var(--blue);stroke-dasharray:3,3"/>
+      <text x="160" y="152" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:9.5px">rolling median ± k·MAD, built from days 1-4 only</text>
+
+      <path d="M 280,40 L 280,175" style="stroke:var(--amber)" stroke-width="1.4" stroke-dasharray="3,3"/>
+      <text x="330" y="90" style="fill:var(--amber);font-family:'DM Mono',monospace;font-size:10px;font-weight:600">flagged: far outside the</text>
+      <text x="330" y="103" style="fill:var(--amber);font-family:'DM Mono',monospace;font-size:10px;font-weight:600">band built from days 1-4</text>
+
+      <polyline points="40,180 100,175 160,178 220,172 280,174 340,176 400,174 460,170 520,168 580,165"
+        style="fill:none;stroke:var(--green);stroke-width:2;stroke-dasharray:5,3" opacity="0.85"/>
+      <text x="500" y="200" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:10px;font-weight:600">cleaned series (day 5 replaced)</text>
+    </svg>
+    <div class="tl-chart-caption">
+    The rolling median/MAD band around day 5 is built using only days 1-4 — the flag fires without ever
+    looking at day 6 onward. This is the point-in-time-correct version of the filter; a full-sample
+    version would instead build the band from all 10 days, including days after the spike, which is
+    exactly the lookahead-bias trap described above.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Catching a fat-finger tick with rolling MAD, on six numbers</h3>
+    <p>
+    Take a short tick sequence for a spread: \(x = [1.02, 1.01, 1.03, 1.02, 4.50, 1.03]\) — position 5 is
+    a spurious print (say, a decimal-point entry error that should have read 1.045, not 4.50). Checking
+    position 5 using only positions 1-4:
+    </p>
+    <p>
+    Rolling median of \([1.02, 1.01, 1.03, 1.02]\) is \(1.02\). The absolute deviations from that median
+    are \([0.00, 0.01, 0.01, 0.00]\), so the rolling MAD is \(0.005\) (the median of those four
+    deviations). Position 5's value of \(4.50\) deviates from the rolling median by
+    \(|4.50 - 1.02| = 3.48\) — roughly <strong>696 MADs</strong> away. Even a generous threshold of, say,
+    10 MADs flags this instantly, using nothing but data from positions 1-4. A full-sample version of the
+    same check would instead compute the median and MAD over all six values (including the spike itself,
+    which distorts both), which is both circular — the outlier contaminates the very statistic used to
+    detect it — and, more importantly for the lookahead point, would have required already knowing
+    position 6's value to build the check applied at position 5.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">A real-world trading scenario</div>
+    <h3>The Tokyo-lunch fat-finger that a full-sample filter missed for two years</h3>
+    <p>
+    A research desk maintains a multi-year daily FX dataset and runs an annual cleaning pass: compute the
+    full-sample mean and standard deviation of daily returns for each pair, flag anything beyond 5
+    standard deviations as a fat finger, and manually review the flagged days. A one-off fat-finger print
+    during thin Tokyo-lunch liquidity in a minor cross sits at roughly 4.2 standard deviations under this
+    full-sample check — just inside the threshold — and passes through uncaught for two years, quietly
+    inflating that single day's realized volatility in every downstream calculation that touches it.
+    </p>
+    <p>
+    Rebuilding the same check as a rolling, only-past MAD filter (as this lesson recommends) flags the
+    same day immediately: measured against the handful of days immediately preceding it — the only
+    context a live system would have had on that actual date — the same print is enormously more extreme
+    in local, contemporaneous terms than it is against two years of full-sample statistics, which include
+    plenty of other volatile days elsewhere in the sample that quietly widen the full-sample standard
+    deviation and mask this one. The full-sample check wasn't just less precise; it was structurally the
+    wrong tool, because it could only ever have been run with two years of hindsight — not the way a
+    live cleaning pipeline actually has to operate, one new tick at a time.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+  Production data-cleaning pipelines run these checks as streaming, one-tick-at-a-time computations —
+  never as a single batch pass over a completed historical file — specifically so the exact same logic
+  that cleans a live feed in real time is what generates the historical, "already cleaned" dataset used
+  for research. Rolling-window outlier detectors, per-instrument plausible-return bounds, and explicit
+  gap/halt flags are standard, well-understood tools; the real engineering discipline is less about
+  inventing a cleverer filter and more about making sure the filter used to build historical research data
+  is provably the same filter (same window, same only-past discipline) that would run on a live tick
+  arriving right now.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📏</div>
+      <h4>Robust, not mean-based</h4>
+      <p>Median/MAD resist being distorted by the very outliers they're meant to catch — a mean/std-based filter can be fooled by its own targets.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🕰️</div>
+      <h4>Only-past, always</h4>
+      <p>Every rolling statistic used for cleaning must be recomputed fresh at each point using only prior data — the same discipline a feature needs.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧩</div>
+      <h4>Match the fix to the failure</h4>
+      <p>A fat finger, a stale quote, and a genuine halt are different events and usually need different handling, not one blanket rule.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🗒️</div>
+      <h4>Log what was changed</h4>
+      <p>Every cleaning decision (flagged, filled how, or excluded) should be recorded — an unrecorded fix is indistinguishable from silent corruption later.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where cleaning quietly goes wrong</h3>
+    <ul>
+      <li><strong>Using full-sample mean/standard deviation for outlier detection.</strong> The single most damaging version of this lesson's mandatory pitfall — it's both statistically fragile (a mean/std pair is distorted by the outliers it's hunting) and a lookahead-bias bug.</li>
+      <li><strong>Forward-filling across a genuine market event.</strong> Manufactures a fake flat/zero-return period that a volatility or trend feature will read as real, calm information.</li>
+      <li><strong>Interpolating across a long or consequential gap.</strong> Invents a smooth path through data that, in reality, likely resumed at a sharp discontinuity rather than anywhere near the interpolated average.</li>
+      <li><strong>Excluding too liberally on a feed with routine short micro-gaps.</strong> Shrinks the usable sample for no real benefit if the gaps are genuinely inconsequential.</li>
+      <li><strong>Confusing a halt with a bad tick.</strong> A halt is a real event with a real (if wide) price jump either side of it — it should be represented as missing, not "corrected" toward some assumed continuous path.</li>
+      <li><strong>Treating a duplicate/out-of-order timestamp as a data quality footnote.</strong> Left unhandled it silently double-counts a move or computes a return between two prices that were never actually adjacent in time.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Four distinct failure modes, four distinct signatures.</strong> Fat-finger prints, stale quotes, halts, and duplicate/out-of-order timestamps each need their own detection and handling — not one blanket rule.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Median/MAD is the robust default for outlier detection.</strong> It resists being distorted by the very extreme values it's meant to catch, unlike a mean/standard-deviation pair.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Cleaning with full-sample statistics is a lookahead-bias bug.</strong> The single sharpest, most easily missed mistake in this lesson — it must never happen, in cleaning any more than in feature construction.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Every missing-data strategy has a real, concrete failure case.</strong> Forward-fill manufactures fake calm; interpolation invents data; flagging-and-excluding shrinks the sample. There is no universally-correct default.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Detection and handling are separate decisions.</strong> Flagging a bad value is a different question from deciding what, if anything, replaces it — conflating the two hides the tradeoff.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Log every cleaning decision.</strong> An unrecorded fix is indistinguishable from silent corruption once enough time has passed.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why is a stale quote often more dangerous to catch than an outright feed disconnect?</summary>
+    <div class="tl-answer">
+    A disconnect is visible in the connection status itself — something downstream can check "is this
+    feed even up right now" and get an honest answer. A stale quote leaves the connection technically
+    live while the actual prices stop refreshing, so nothing in the connection metadata signals a
+    problem; a consuming system sees a continuous stream of valid-looking messages that simply aren't
+    reflecting the real market, and only a check on the content (is the price actually changing) rather
+    than the connection status can catch it.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why is median/MAD preferred over mean/standard deviation for outlier detection?</summary>
+    <div class="tl-answer">
+    A mean and standard deviation are themselves heavily influenced by extreme values — a single huge
+    outlier can drag the mean toward it and inflate the standard deviation, making the very outlier being
+    hunted for look less extreme relative to a yardstick it has already distorted. The median and median
+    absolute deviation are robust statistics: a handful of extreme values barely moves either one, so the
+    detector stays sensitive to genuinely extreme points instead of being fooled by them.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Give a concrete case where forward-fill is the wrong missing-data strategy, and explain why.</summary>
+    <div class="tl-answer">
+    Forward-filling across a genuine halt or a stale-quote period during a real news event manufactures a
+    flat, zero-return stretch that looks exactly like a calm, information-free period to anything
+    downstream. A volatility estimator or a trend-following feature built on top of that filled data will
+    read the manufactured flatness as authentic market quiet, when in reality the feed simply stopped
+    reporting during a period that may have been anything but calm — the fill has invented information
+    (that nothing happened) rather than honestly representing an absence of information.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What exactly makes "remove anything more than 5 standard deviations from the full-sample mean" a lookahead-bias bug, and which other lesson's failure mode does it mirror?</summary>
+    <div class="tl-answer">
+    Computing the mean and standard deviation over the entire sample uses every future data point,
+    relative to whichever row is currently being checked, to decide whether that row looks normal or
+    extreme. A live cleaning pipeline processing ticks one at a time as they arrive could never reproduce
+    this — it has no way to know the full-sample statistics until the sample is complete, which by
+    definition is after every row in it has already occurred. This is the identical failure mode
+    <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp;
+    Reproducibility</a> describes for a feature z-scored using full-sample mean/standard deviation instead
+    of only-past statistics — the same underlying rule (never let time index \(i\)'s computation see data
+    from \(&gt; i\)) applied one stage earlier, to cleaning the raw series rather than to a feature built
+    from it.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why can a maximum-plausible-return-per-tick bound catch something a rolling MAD filter might miss?</summary>
+    <div class="tl-answer">
+    A rolling MAD filter's own reference window can itself become contaminated — for example, by a
+    cluster of several bad prints occurring close together, which drags the rolling median and MAD toward
+    the contamination and makes a subsequent bad print look less extreme relative to an already-distorted
+    local baseline. An absolute, instrument-specific plausible-return bound doesn't depend on any recent
+    window at all, so it still flags an implausible move even during a stretch where the rolling
+    statistics have temporarily been thrown off by recent bad data.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Christophe Leys, Christophe Ley, Olivier Klein, Philippe Bernard &amp; Laurent Licata, "Detecting outliers: Do not use standard deviation around the mean, use absolute deviation around the median," <em>Journal of Experimental Social Psychology</em>, 49(4), 2013 — the standard, widely-cited case for median/MAD over mean/standard-deviation for robust outlier detection, applicable well beyond its original field.</li>
+    <li>Tim N. Falkenberry, "High Frequency Data Filtering," Tick Data Inc. technical paper, 2002 — a practitioner-oriented treatment of exactly the failure modes named in this lesson (bad ticks, out-of-sequence records, exchange-specific quirks) in real historical tick data.</li>
+    <li>Christian T. Brownlees &amp; Giampiero M. Gallo, "Financial econometric analysis at ultra-high frequency: Data handling concerns," <em>Computational Statistics &amp; Data Analysis</em>, 51(4), 2006 — an academic treatment of cleaning and filtering ultra-high-frequency data before any econometric modeling is applied to it.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="data-pipeline-raw-to-trading-ready.html">← The Data Pipeline: Raw Feeds to Trading-Ready Data</a>
+    <a href="corporate-actions-series-continuity.html">Corporate Actions &amp; Series Continuity →</a>
+  </div>
+</div>
+</body>
+</html>
