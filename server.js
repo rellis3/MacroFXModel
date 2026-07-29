@@ -2512,6 +2512,17 @@ async function _fetchYahooHeadlines(tickers = _YAHOO_NEWS_TICKERS, perTicker = 4
   }));
   return out;
 }
+// Strip Fed Chair name(s) out of headlines/calendar text before they reach the brief
+// prompt. Naming a specific official anchors the model's read on their personal
+// reputation/style — and any hardcoded name list goes stale the moment leadership
+// changes, which is exactly the bug this fixes: the brief was surfacing "Powell" long
+// after his term ended (May 2026) and Kevin Warsh became chair. The prompt instruction
+// below (never name an official, role-only wording) is the durable fix that survives
+// the next transition too; this regex is a belt-and-suspenders scrub of the current
+// and previous chair's names specifically, for whichever one a live feed uses.
+const _FED_CHAIR_NAMES = /\b(?:(?:Federal Reserve|Fed)\s+Chair(?:man|woman)?\s+|Chair(?:man|woman)?\s+)?(?:[A-Z][a-z]+\s+)?(?:Powell|Warsh)\b/g;
+const _redactFedChairName = s => s.replace(_FED_CHAIR_NAMES, 'the Fed Chair');
+
 const _MORNING_BRIEF_KV = 'morning_brief_v1';
 let _morningBriefRunning = false;
 async function _buildMorningBrief() {
@@ -2551,7 +2562,7 @@ async function _buildMorningBrief() {
     riskLine || null,
     ivLine || null,
   ].filter(Boolean).join('\n');
-  const heads = headlines.map(h => `• [${h.ticker}] ${h.title}`).join('\n') || '(no headlines fetched — read the macro data instead)';
+  const heads = headlines.map(h => `• [${h.ticker}] ${_redactFedChairName(h.title)}`).join('\n') || '(no headlines fetched — read the macro data instead)';
   // Today's scheduled economic calendar (central-bank decisions, CPI/NFP, etc.).
   // Without this the brief cannot mention FOMC/ECB/BoE days — the prompt forbids
   // inventing events, so a tier-1 event that isn't fed here is silently omitted.
@@ -2560,7 +2571,7 @@ async function _buildMorningBrief() {
     .filter(e => ['high', 'medium'].includes((e.impact ?? '').toLowerCase()) && e.ms >= Date.now() - 60 * 60000)
     .sort((a, b) => a.ms - b.ms)
     .slice(0, 12)
-    .map(e => `• ${new Date(e.ms).toISOString().slice(11, 16)} UTC — [${e.country}] ${e.event} (${(e.impact ?? '').toLowerCase()} impact)`)
+    .map(e => `• ${new Date(e.ms).toISOString().slice(11, 16)} UTC — [${e.country}] ${_redactFedChairName(e.event)} (${(e.impact ?? '').toLowerCase()} impact)`)
     .join('\n')
     || (_calFeedOk
       ? '(no tier-1/2 scheduled events on the calendar today)'
@@ -2568,6 +2579,8 @@ async function _buildMorningBrief() {
   const prompt = `You are writing the MORNING MARKET COLUMN for an FX/macro trading desk — the front page a trader reads before anything else. Work TOP-DOWN: macro & policy backdrop → risk regime → the US dollar → what it means for the FX complex and risk-sensitive instruments (indices, gold). Be specific and plain-spoken, like a sharp market columnist. Use ONLY the data, headlines and scheduled events below — do NOT invent events, numbers, or geopolitics you were not given. If headlines are thin, say the read is data-driven, not news-driven.
 
 If a central-bank decision (FOMC/ECB/BoE/BoJ etc.) or a tier-1 release (CPI, NFP, GDP) is on today's calendar below, it is the single most important thing on the page — LEAD with it, say what's expected/at stake, and frame the day as a wait-for-it around that event. Do not bury it.
+
+NEVER name a specific central-bank official (Fed Chair, FOMC governor, ECB/BoE/BoJ head, etc.) anywhere in your output, even if a name appears in the headlines or calendar below — refer to them only by role ("the Fed Chair", "the FOMC", "the ECB"). A named individual anchors the read on their personal reputation or past statements, and that read goes stale (or becomes wrong) the moment leadership changes — describe the institution and the decision, not the person.
 
 === MACRO SNAPSHOT (${fc?.session_label ?? 'today'}) ===
 ${macro}
@@ -9620,12 +9633,19 @@ const WEEKLY_INSTRUMENTS = [
   { name: 'NZDJPY', sym: 'NZD_JPY',    hmmKey: null        },
 ];
 
-// Instruments that have HMM regime data (keyed by state.hmmRegimes format)
+// Instruments that have HMM regime data (keyed by state.hmmRegimes format).
+// EURGBP/EURJPY/EURCHF/GBPCHF/AUDJPY/CADJPY are in DEFAULT_PAIRS and already get a
+// regime computed by runLevelsRefresh()'s HMM loop — they were just never forwarded
+// into the brief, so computeDailyBrief() silently fell back to session-bias-only for
+// them. Added 2026-07-29 (found via the today.html currency-strength drill-down) —
+// zero new cost, the regime data already exists in state.hmmRegimes.
 const BRIEF_HMM_KEYS = {
   GOLD:   'XAU/USD',  NQ: null,
   EURUSD: 'EUR/USD',  GBPUSD: 'GBP/USD',  USDJPY: 'USD/JPY',
   AUDUSD: 'AUD/USD',  NZDUSD: 'NZD/USD',  USDCAD: 'USD/CAD',
   USDCHF: 'USD/CHF',  GBPJPY: 'GBP/JPY',
+  EURGBP: 'EUR/GBP',  EURJPY: 'EUR/JPY',  EURCHF: 'EUR/CHF',
+  GBPCHF: 'GBP/CHF',  AUDJPY: 'AUD/JPY',  CADJPY: 'CAD/JPY',
 };
 
 function _oandaBaseW() {
