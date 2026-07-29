@@ -658,6 +658,8 @@ let sessionStats = null; // /api/session-stats — typical Asia/London/NY ranges
 let fredHist = null;     // /api/fredhistory — rate-spread driver series (story, lazy)
 let livePrices = null;   // /api/hedge-signals/prices — proximity watch (zoom 3)
 let cot = null;          // /api/cot-extremes — spec positioning per instrument (story + chip)
+const cotHistCache = {}; // ccy -> /api/cot-extremes?history= result (currency-drawer sparkline, lazy)
+let openDrawerCcy = null; // which ccy's drawer is currently open — guards the async COT-history repaint
 let weekly = null;       // /api/vol-forecast/weekly — week-to-date range consumption
 let oiStore = null;      // KV oi_store — CME options OI per pair (manual, stale-prone)
 let oiHistory = null;    // /api/oi-history — per-pair day-over-day deltas (walls firming/fading, flow)
@@ -1315,6 +1317,36 @@ function sigRead(sig, upWord, downWord) {
   return { word: up ? upWord : downWord, mag, cls: up ? 'bull' : 'bear', arrow: up ? '▲' : '▼' };
 }
 
+// Small inline trend line for a single time series — reused by the carry (FRED
+// yield) and COT (spec positioning) cards in the currency drawer so "getting
+// gradually stronger/weaker" is something you can see, not just a start/now pair
+// of numbers. Single series → no legend needed (the card heading already names
+// it); direct labels only at start/now, matching the house convention already
+// established in cot-extremes.html's history() chart rather than inventing a
+// new visual language.
+function miniSparkline(points, { decimals = 2, suffix = '' } = {}) {
+  const pts = (points ?? []).filter(p => Number.isFinite(p.v));
+  if (pts.length < 2) return '<div class="muted" style="margin-top:6px">Not enough history to chart yet.</div>';
+  const W = 320, H = 72, P = 8, PB = 20; // PB: bottom strip for date labels
+  const lo = Math.min(...pts.map(p => p.v)), hi = Math.max(...pts.map(p => p.v));
+  const X = i => P + (i / (pts.length - 1)) * (W - 2 * P);
+  const Y = v => (H - PB) - ((v - lo) / ((hi - lo) || 1)) * (H - PB - P);
+  const path = pts.map((p, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(p.v).toFixed(1)).join(' ');
+  const first = pts[0], last = pts[pts.length - 1];
+  const fmt = v => v.toFixed(decimals) + suffix;
+  const rising = last.v > first.v;
+  const nowClr = rising ? 'var(--bull)' : 'var(--bear)';
+  return `
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;display:block;margin-top:6px" preserveAspectRatio="xMidYMid meet">
+      <path d="${path}" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="${X(pts.length - 1).toFixed(1)}" cy="${Y(last.v).toFixed(1)}" r="3.5" fill="${nowClr}"/>
+      <text x="${X(0).toFixed(1)}" y="${(Y(first.v) - 8).toFixed(1)}" font-size="9.5" fill="var(--text3)">${fmt(first.v)}</text>
+      <text x="${X(pts.length - 1).toFixed(1)}" y="${(Y(last.v) - 8).toFixed(1)}" text-anchor="end" font-size="9.5" fill="${nowClr}">${fmt(last.v)}</text>
+      <text x="${P}" y="${H - 5}" font-size="9" fill="var(--text3)">${first.d ?? ''}</text>
+      <text x="${W - P}" y="${H - 5}" text-anchor="end" font-size="9" fill="var(--text3)">${last.d ?? ''}</text>
+    </svg>`;
+}
+
 function currencyDetail(ccy) {
   const rs = allRows();
   const cs = currencyStrength(rs);
@@ -1342,11 +1374,18 @@ function currencyDetail(ccy) {
   if (ccy !== 'USD' && cot?.[ccy]) {
     const c = cot[ccy];
     const oi = c.openInterest ?? 0;
+    // 200-week series is a separate lazy fetch (/api/cot-extremes?history=) — not
+    // part of the eagerly-loaded snapshot, so it's only here once openCcyDrawer's
+    // background load for this ccy has completed (cotHistCache warms it).
+    const hist = cotHistCache[ccy];
+    const series = (hist && hist !== 'loading')
+      ? hist.specShare.map((v, i) => ({ d: hist.dates?.[i], v })).filter(p => Number.isFinite(p.v)).slice(-52)
+      : null;
     cotInfo = {
       specNet: c.specNet ?? null, oi,
       pct: oi > 0 ? +(Math.abs(c.specNet ?? 0) / oi * 100).toFixed(1) : null,
       z: c.specZ ?? null, pctile: c.specPct ?? null, wkChg: c.weeklyChg ?? null,
-      reportDate: c.reportDate ?? null, derived: false,
+      reportDate: c.reportDate ?? null, derived: false, series,
     };
   } else if (ccy === 'USD') {
     // This feed's CFTC pull (_worker.js TFF list) doesn't currently include the ICE
@@ -1371,7 +1410,11 @@ function currencyDetail(ccy) {
     const all = CCY_ORDER.map(c => ({ c, y: fred?.[CCY_FRED10Y[c]]?.value ?? null })).filter(x => x.y != null);
     all.sort((a, b) => b.y - a.y);
     const rank = all.findIndex(x => x.c === ccy) + 1;
-    carry = { yield: v, dir, rank, of: all.length };
+    // FRED's DE/GB/JP/AU/CA/CH 10y series (IRLTLT01xxM156N) and US10Y (GS10) are
+    // monthly, not daily — the sparkline is labeled as such rather than implying
+    // a daily cadence the underlying data doesn't have. Last 24 obs ≈ 2 years.
+    const series = (fredHist?.[fk] ?? []).slice(-24).map(o => ({ d: o.date, v: o.value }));
+    carry = { yield: v, dir, rank, of: all.length, series };
   }
 
   // 4) DXY — a real, already-fetched PRICE-based dollar cross-check (not positioning).
@@ -1389,9 +1432,11 @@ function currencyDetail(ccy) {
 function closeCcyDrawer() {
   $('ovlCcy').classList.remove('open');
   $('drawerCcy').classList.remove('open');
+  openDrawerCcy = null;
 }
 
 function openCcyDrawer(ccy) {
+  openDrawerCcy = ccy;
   const det = currencyDetail(ccy);
   $('ccyName').textContent = `${ccy} — ${ccyFull(ccy)}`;
   const bucketChip = $('ccyBucket');
@@ -1430,6 +1475,9 @@ function openCcyDrawer(ccy) {
     const dxyLine = det.dxy
       ? `<div class="ccy-explain" style="margin-top:8px">A more direct dollar-strength read: the trade-weighted <b>Dollar Index (DXY)</b> is at <b>${det.dxy.value.toFixed(1)}</b>${det.dxy.dir ? `, currently <b>${det.dxy.dir}</b>` : ''} — a PRICE-weighted basket (mostly EUR/JPY/GBP), not a positioning measure like the COT numbers above.</div>`
       : '';
+    const cotSparkInner = c.derived ? ''
+      : c.series ? miniSparkline(c.series, { decimals: 1, suffix: '%' })
+      : '<div class="muted" style="margin-top:6px">Loading 52-week positioning history…</div>';
     cotHtml = `
       <div class="ccy-explain">${c.derived
         ? `This feed doesn't currently pull the ICE US Dollar Index future — a real CFTC-tracked contract (code 098662), just not wired into this dashboard yet — so USD's position here is derived as the mirror image of the other majors' futures vs USD. Read it as a rough cross-check, not a direct read.${dxyLine}`
@@ -1439,7 +1487,8 @@ function openCcyDrawer(ccy) {
         ${c.wkChg != null ? `<span>week Δ <b>${c.wkChg >= 0 ? '+' : ''}${fmtN(c.wkChg, 0)}</b></span>` : ''}
         ${c.z != null ? `<span>z-score <b>${c.z.toFixed(2)}</b></span>` : ''}
         ${c.reportDate ? `<span>report <b>${c.reportDate}</b></span>` : ''}
-      </div>`;
+      </div>
+      <div id="ccyCotSpark">${cotSparkInner}</div>`;
   } else {
     cotHtml = det.dxy
       ? `<div class="ccy-explain">No COT data available for ${ccy} right now. A more direct dollar-strength read: the trade-weighted <b>Dollar Index (DXY)</b> is at <b>${det.dxy.value.toFixed(1)}</b>${det.dxy.dir ? `, currently <b>${det.dxy.dir}</b>` : ''}.</div>`
@@ -1453,7 +1502,8 @@ function openCcyDrawer(ccy) {
     const rankPct = cr.of > 1 ? 100 * (cr.of - cr.rank) / (cr.of - 1) : 50;
     carryHtml = `
       <div class="ccy-explain">${ccyFull(ccy)}'s 10-year government yield is <b>${cr.yield.toFixed(2)}%</b>${cr.dir ? `, currently <b>${cr.dir}</b>` : ''} — ranked <b>#${cr.rank} of ${cr.of}</b> tracked currencies (higher = more attractive to hold for the carry, all else equal). Money tends to drift toward the higher payer, especially when risk appetite is calm.</div>
-      <div class="cone-row"><span class="cone-lbl">yield rank</span><span class="cone-track"><span class="cone-dot" style="left:${rankPct}%"></span></span><span class="cone-val">#${cr.rank}/${cr.of}</span></div>`;
+      <div class="cone-row"><span class="cone-lbl">yield rank</span><span class="cone-track"><span class="cone-dot" style="left:${rankPct}%"></span></span><span class="cone-val">#${cr.rank}/${cr.of}</span></div>
+      ${cr.series?.length ? `<div class="muted" style="font-size:11px;margin-top:8px">10Y yield, last ${cr.series.length} monthly readings — is it gradually building or fading:</div>${miniSparkline(cr.series, { decimals: 2, suffix: '%' })}` : ''}`;
   } else {
     carryHtml = `<div class="muted">No 10Y yield series pulled for ${ccy} yet${ccy === 'NZD' ? ' (FRED has no NZ series wired in)' : ''}.</div>`;
   }
@@ -1481,6 +1531,30 @@ function openCcyDrawer(ccy) {
 
   $('ovlCcy').classList.add('open');
   $('drawerCcy').classList.add('open');
+
+  loadCotHistoryFor(ccy);
+}
+
+// Lazy-loads the 200-week COT series for one currency (not part of the eagerly-
+// fetched snapshot) and, if this drawer is still open on the same currency when
+// it lands, repaints just the sparkline slot rather than the whole drawer.
+async function loadCotHistoryFor(ccy) {
+  if (ccy === 'USD' || cotHistCache[ccy]) return;   // USD has no direct COT future here (see cotInfo derivation)
+  cotHistCache[ccy] = 'loading';
+  try {
+    const r = await fetch(`/api/cot-extremes?history=${encodeURIComponent(ccy)}`, { cache: 'no-store' });
+    const j = await r.json();
+    cotHistCache[ccy] = (j?.ok && j.history?.sym === ccy) ? j.history : null;
+  } catch (e) {
+    cotHistCache[ccy] = null;
+  }
+  if (openDrawerCcy !== ccy) return;   // drawer moved on to a different currency — drop it
+  const slot = document.getElementById('ccyCotSpark');
+  if (!slot) return;
+  const hist = cotHistCache[ccy];
+  slot.innerHTML = hist
+    ? miniSparkline(hist.specShare.map((v, i) => ({ d: hist.dates?.[i], v })).filter(p => Number.isFinite(p.v)).slice(-52), { decimals: 1, suffix: '%' })
+    : '<div class="muted" style="margin-top:6px">No positioning history available.</div>';
 }
 
 // The "so what do I do" line, in plain words.
