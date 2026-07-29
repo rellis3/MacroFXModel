@@ -5630,6 +5630,56 @@ app.get('/api/nq-qmr/tearsheet', async (req, res) => {
   }
 });
 
+// FIXED-STAKE (non-compounded) view of the same trades. Every trade risks the
+// same % of STARTING capital, so its dollar P&L never scales with account
+// growth — which is what a real fixed-risk account does until you deliberately
+// resize. Two things this exposes that the compounded card hides:
+//
+//   1. Total return is the SIMPLE SUM of per-trade returns, not a geometric
+//      product. Over five years compounding does a great deal of the headline
+//      work, and separating them shows exactly how much.
+//   2. Drawdown is measured against STARTING capital, not against a running
+//      peak. A compounded max-DD% divides the same dollar loss by an inflated
+//      peak, so the deeper into a winning run it happens the smaller it looks —
+//      a 20% compounded DD late in the curve can be a far bigger cash loss than
+//      a 20% DD early on. Here a drawdown of X% always means X% of day-one
+//      capital, in real money.
+function _qmrFlatStats(rows, accountEquity) {
+  const riskPct = rows[0]?.riskPct ?? 1;
+  let cum = 0, peak = 0, maxDD = 0, ddDur = 0, curDur = 0, ddPeakAt = null, ddTroughAt = null, runPeakAt = null;
+  const curve = [];
+  for (const x of rows) {
+    cum += x.ret;
+    if (cum > peak) { peak = cum; curDur = 0; runPeakAt = x.date; }
+    else {
+      curDur++;
+      if (peak - cum > maxDD) { maxDD = peak - cum; ddPeakAt = runPeakAt; ddTroughAt = x.date; }
+      if (curDur > ddDur) ddDur = curDur;
+    }
+    curve.push({ date: x.date, cumPct: +cum.toFixed(4), balance: +(accountEquity * (1 + cum / 100)).toFixed(2) });
+  }
+  const d0 = new Date(rows[0].date + 'T00:00:00Z'), d1 = new Date(rows[rows.length - 1].date + 'T00:00:00Z');
+  const years = Math.max((d1 - d0) / (365.25 * 864e5), 0.01);
+  const pnls = rows.map(x => x.ret);
+  const wins = pnls.filter(x => x > 0), losses = pnls.filter(x => x <= 0);
+  const grossWin = wins.reduce((s, x) => s + x, 0), grossLoss = Math.abs(losses.reduce((s, x) => s + x, 0));
+  return {
+    totalReturnPct: +cum.toFixed(2),
+    avgAnnualPct: +(cum / years).toFixed(2),          // simple, not geometric
+    totalPnlDollars: +(accountEquity * cum / 100).toFixed(2),
+    finalBalance: +(accountEquity * (1 + cum / 100)).toFixed(2),
+    stakeRiskDollars: +(accountEquity * riskPct / 100).toFixed(2),
+    maxDrawdownPct: +(-maxDD).toFixed(2),             // % of STARTING capital
+    maxDrawdownDollars: +(-accountEquity * maxDD / 100).toFixed(2),
+    maxDDdurationTrades: ddDur,
+    maxDDFrom: ddPeakAt, maxDDTo: ddTroughAt,
+    grossProfitDollars: +(accountEquity * grossWin / 100).toFixed(2),
+    grossLossDollars: +(-accountEquity * grossLoss / 100).toFixed(2),
+    returnOverMaxDD: maxDD > 0 ? +(cum / maxDD).toFixed(2) : null,
+    curve,
+  };
+}
+
 // One tearsheet from a {date, ret, mae}[] series. Calendar-daily basis with
 // flat weekdays as zeros — the same methodology _qmrStats uses, so the numbers
 // on this card and the backtest card can never disagree.
@@ -5692,6 +5742,7 @@ function _qmrTearsheet(rows, accountEquity) {
     sharpeSE: +(sharpeStdError(sharpe, N) || 0).toFixed(3),
     minTrackYears: Number.isFinite(minTrackRecordLength(sharpe)) ? +minTrackRecordLength(sharpe).toFixed(1) : null,
     monthly, curve,
+    flat: _qmrFlatStats(rows, accountEquity),
   };
 }
 

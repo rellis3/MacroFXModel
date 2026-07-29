@@ -89,6 +89,10 @@
 
     <div class="panel"><h2>Headline — full sample</h2><div class="grid" id="head"></div></div>
 
+    <div class="panel"><h2>Fixed stake — no compounding, drawdown vs starting capital</h2>
+      <div class="grid" id="flatCard"></div>
+      <p class="note" id="flatNote"></p></div>
+
     <div class="panel"><h2>Equity curve</h2><div id="chart"></div>
       <p class="note" id="curveNote"></p></div>
 
@@ -218,9 +222,11 @@ function render(j){
     + cell(j.minTrackYears==null?'—':f(j.minTrackYears,1)+'y','Min track record')
     + cell(f(j.tradingDays,0),'Trading days');
 
-  const card=o=>o?cell(sgn(o.totalReturn)+'%','Total',o.totalReturn>=0?'pos':'neg')
+  const card=o=>o?cell(sgn(o.totalReturn)+'%','Total (compounded)',o.totalReturn>=0?'pos':'neg')
+      +cell(sgn(o.flat?.totalReturnPct,1)+'%','Total (fixed stake)',(o.flat?.totalReturnPct??0)>=0?'pos':'neg')
       +cell(sgn(o.cagr)+'%','CAGR',o.cagr>=0?'pos':'neg')+cell(f(o.sharpe),'Sharpe',o.sharpe>1?'pos':'amber')
-      +cell(f(o.sortino),'Sortino')+cell(f(o.maxDrawdown)+'%','Max DD','neg')
+      +cell(f(o.sortino),'Sortino')+cell(f(o.maxDrawdown)+'%','Max DD (compounded)','neg')
+      +cell(f(o.flat?.maxDrawdownPct,1)+'%','Max DD (vs start)','neg')
       +cell(f(o.winRate)+'%','Win rate')+cell(o.totalTrades,'Trades'):'';
   $('isCard').innerHTML=card(j.inSample); $('oosCard').innerHTML=card(j.outOfSample);
   $('splitNote').innerHTML=`Chronological 70/30 split at <strong>${j.splitDate}</strong> — by trade date, never by
@@ -235,7 +241,7 @@ function render(j){
     + cell(f(j.excessKurtosis),'Excess kurtosis')
     + cell(j.positiveMonths+' / '+j.negativeMonths,'Pos / neg months');
 
-  drawCurve(j.curve); drawHeat(j.monthly); drawMC(j.trades.map(t=>t.ret)); drawCost(j);
+  drawFlat(j); drawCurve(j.curve); drawHeat(j.monthly); drawMC(j.trades.map(t=>t.ret)); drawCost(j);
 
   const lev=(j.config.riskPct/ (j.trades.reduce((s,t)=>s+t.stopPct,0)/j.trades.length)).toFixed(2);
   $('exportNote').innerHTML=`Account size <strong>$${(+$('acct').value).toLocaleString()}</strong>.
@@ -312,6 +318,45 @@ function drawMC(rets){
     ${cell(sgn((act-1)*100,0)+'%','Actual')}
     ${cell(PATHS,'Paths')}
   </div>`;
+}
+
+const money=v=>(v<0?'-$':'$')+Math.abs(v).toLocaleString(undefined,{maximumFractionDigits:0});
+
+function drawFlat(j){
+  const F=j.flat; if(!F){$('flatCard').innerHTML='';return;}
+  $('flatCard').innerHTML =
+      cell(sgn(F.totalReturnPct,1)+'%','Total return (simple sum)',F.totalReturnPct>=0?'pos':'neg')
+    + cell(sgn(F.avgAnnualPct,1)+'%','Avg annual (not geometric)',F.avgAnnualPct>=0?'pos':'neg')
+    + cell(money(F.totalPnlDollars),'Total P&L',F.totalPnlDollars>=0?'pos':'neg')
+    + cell(money(F.finalBalance),'Final balance')
+    + cell(F.maxDrawdownPct.toFixed(1)+'%','Max DD (% of START capital)','neg')
+    + cell(money(F.maxDrawdownDollars),'Max DD in cash','neg')
+    + cell(F.maxDDdurationTrades,'DD duration (trades)')
+    + cell(F.returnOverMaxDD==null?'—':F.returnOverMaxDD.toFixed(2),'Return / max DD')
+    + cell(money(F.stakeRiskDollars),'Risk per trade (fixed)')
+    + cell(money(F.grossProfitDollars),'Gross profit','pos')
+    + cell(money(F.grossLossDollars),'Gross loss','neg');
+
+  const compTotal=j.totalReturn, flatTotal=F.totalReturnPct;
+  const share=compTotal!==0?(1-flatTotal/compTotal)*100:0;
+  $('flatNote').innerHTML=
+    `Every trade risks a fixed <strong>${money(F.stakeRiskDollars)}</strong>
+     (${j.config.riskPct}% of the <em>starting</em> $${(+$('acct').value).toLocaleString()}), so its cash P&L
+     never grows with the account — what a real fixed-risk account does until you deliberately resize.
+     <br><br>
+     <strong>Same trades, two accountings:</strong> compounded total
+     <strong>${sgn(compTotal,1)}%</strong> vs fixed-stake <strong>${sgn(flatTotal,1)}%</strong>
+     ${compTotal>flatTotal?`— <strong>${share.toFixed(0)}% of the compounded headline is compounding itself</strong>, not signal.`:'.'}
+     <br><br>
+     <strong>Why the drawdown differs.</strong> The compounded card divides a loss by a running <em>peak</em>,
+     so the same cash loss looks smaller the further into a winning run it lands — a late 20% is a much bigger
+     cheque than an early 20%. Here <strong>${F.maxDrawdownPct.toFixed(1)}% means ${F.maxDrawdownPct.toFixed(1)}%
+     of day-one capital</strong>, i.e. <strong>${money(F.maxDrawdownDollars)}</strong> of real money
+     ${F.maxDDFrom?`(peak ${F.maxDDFrom} → trough ${F.maxDDTo})`:''}. Compounded max DD reads
+     ${j.maxDrawdown.toFixed(1)}% on the same trades.
+     <br><br>
+     The <strong>Currency P&amp;L CSV export is already on this fixed-stake basis</strong> — constant risk per
+     row, no compounding — so it reconciles to this card, not to the one above.`;
 }
 
 function drawCost(j){
