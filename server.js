@@ -1979,7 +1979,12 @@ async function _injectServerContext(pair, s) {
           const priceDir = (Number.isFinite(cur?.spot) && Number.isFinite(prev?.spot)) ? (cur.spot - prev.spot) : 0;
           const confirm = oiPriceConfirmation(dl.totalOIChange, priceDir);
           s.oiChange = { fromDate: dates[dates.length - 2], toDate: dates[dates.length - 1], ...dl,
-            classify: cls?.summary ?? null, events: cls?.events ?? [], confirm };
+            classify: cls?.summary ?? null, events: cls?.events ?? [], confirm,
+            // "this instrument HAS no walls" vs "its walls didn't move" produce identical
+            // empty firming/fading lists. US30 is the live case: its book is dispersed
+            // enough that no strike clears the 3x rule, so it has max pain and a gamma flip
+            // but zero walls. Distinguish them or the brief implies a quiet book.
+            noWalls: !((cur.callWalls || []).length || (cur.putWalls || []).length) };
         }
         // Wall STABILITY: how many days each current wall has persisted (needs the
         // multi-day series). Tolerance ≈ 20 bps of the latest spot.
@@ -2087,7 +2092,8 @@ OI CHANGE vs ${s.oiChange.fromDate} (day-over-day positioning dynamics):
 Positioning: ${s.oiChange.flow.toUpperCase()} (total OI ${s.oiChange.totalOIChange >= 0 ? '+' : ''}${s.oiChange.totalOIChange}${s.oiChange.totalOIChangePct != null ? `, ${s.oiChange.totalOIChangePct >= 0 ? '+' : ''}${s.oiChange.totalOIChangePct}%` : ''}) ${s.oiChange.flow === 'building' ? '- new money entering' : s.oiChange.flow === 'unwinding' ? '- positions liquidating' : ''}${s.oiChange.confirm ? `
 Move confirmation (OI-change × price direction): ${s.oiChange.confirm.read.toUpperCase()} [${s.oiChange.confirm.trust}] — ${s.oiChange.confirm.note}` : ''}
 Max pain shift: ${s.oiChange.maxPainShiftNet ?? s.oiChange.maxPainShift ?? 0}${s.oiChange.basisDrift ? ` (net of ${(s.oiChange.basisDrift * 10000).toFixed(1)} pips of overnight futures-basis drift, which moves every archived strike and is NOT a positioning change)` : ''}  |  P/C ratio change: ${s.oiChange.pcRatioChange ?? 0}
-${s.oiChange.driftAmbiguous ? `⚠ The overnight futures-basis shift could NOT be pinned down for this pair, so the per-wall firming/fading below may be matching walls to the WRONG prior strike. Treat the per-strike detail as unreliable today; the whole-book totals above are unaffected.
+${s.oiChange.noWalls ? `NOTE: this instrument has NO call/put walls at all — no strike's OI clears the 3× concentration rule, i.e. its option book is DISPERSED rather than pinned to specific levels. So "no walls firming/fading" below means "there are none", not "they held steady". Max pain and the gamma flip are still valid.
+` : ''}${s.oiChange.driftAmbiguous ? `⚠ The overnight futures-basis shift could NOT be pinned down for this pair, so the per-wall firming/fading below may be matching walls to the WRONG prior strike. Treat the per-strike detail as unreliable today; the whole-book totals above are unaffected.
 ` : ''}Call walls firming: ${s.oiChange.callWalls.strengthening.map(w => `${w.strike}(+${w.delta})`).join(', ') || 'none'}  |  fading: ${[...s.oiChange.callWalls.weakening.map(w => `${w.strike}(${w.delta})`), ...s.oiChange.callWalls.faded.map(w => `${w.strike}(gone)`)].join(', ') || 'none'}
 Put walls firming: ${s.oiChange.putWalls.strengthening.map(w => `${w.strike}(+${w.delta})`).join(', ') || 'none'}  |  fading: ${[...s.oiChange.putWalls.weakening.map(w => `${w.strike}(${w.delta})`), ...s.oiChange.putWalls.faded.map(w => `${w.strike}(gone)`)].join(', ') || 'none'}
 New walls appeared: ${[...s.oiChange.callWalls.appeared.map(w => `C${w.strike}`), ...s.oiChange.putWalls.appeared.map(w => `P${w.strike}`)].join(', ') || 'none'}${s.oiChange.classify ? `
