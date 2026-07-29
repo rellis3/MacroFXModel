@@ -5548,6 +5548,115 @@ app.get('/api/nq-qmr/m5-candles', async (req, res) => {
   }
 });
 
+// ── QMR hold-to-target — remove the CLOCK, keep the target ──────────────────
+// The thesis is a capped loss against a ~3.3R win. But only ~11.5% of trades
+// reach the target; ~23% are closed by the 20:00 clock somewhere in between.
+// The EOD exit is an arbitrary clock, not a signal, and it truncates precisely
+// the trades the thesis says should eventually pay. This walks each trade
+// FORWARD ACROSS DAYS until the stop or the target resolves it.
+//
+// Modelled adversarially, because overnight is where this idea is most likely
+// to be flattered by a careless backtest:
+//   1. GAPS FILL AT THE OPEN, NOT THE STOP. A stop only caps a loss while the
+//      market is continuous. If a session opens beyond the stop, the fill is
+//      the open — so the "capped -1R" becomes -2R, -3R, whatever the gap was.
+//      This is the single assumption most likely to break the whole idea.
+//   2. Overnight financing is charged per night held.
+//   3. A hard max holding period, because an unresolved trade is capital tied
+//      up, and without a cap the test quietly assumes infinite patience.
+app.get('/api/nq-qmr/hold-to-target', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
+  try {
+    const instrument = NQ_QMR_INSTRUMENTS.has(req.query.instrument) ? req.query.instrument : 'NAS100_USD';
+    const maxDays = Math.min(Math.max(parseInt(req.query.maxDays) || 20, 1), 60);
+    // Overnight financing, % of NOTIONAL per night. Default ~4.5%/yr on the
+    // financed leg, a realistic retail index-CFD long rate. Applied per night
+    // per unit of notional, so at 3-5x leverage it compounds quickly.
+    const swapPctPerNight = req.query.swapPctPerNight != null ? parseFloat(req.query.swapPctPerNight) : 0.0123;
+    const cfg = {};
+    for (const [k, def] of Object.entries(NQ_QMR_DEFAULTS)) {
+      cfg[k] = typeof def === 'string' ? (req.query[k] ?? def)
+             : (req.query[k] != null ? parseFloat(req.query[k]) : def);
+    }
+    if (req.query.costPct == null) cfg.costPct = qmrCostFor(instrument);
+
+    const bars = await _getNqQmrBars(instrument);
+    const raw  = _computeNqQmr(bars, cfg);
+    const all  = [...bars].sort((a, b) => a.t.localeCompare(b.t));
+
+    const rows = [];
+    for (const t of raw.trades) {
+      const startIdx = all.findIndex(b => b.t.substring(0, 10) === t.date && Math.abs(b.o - t.entry) < 1e-9);
+      if (startIdx === -1) continue;
+      const dir = t.direction, stopPct = t.stopPct, lev = cfg.riskPct / stopPct;
+      const stopPx = dir === 'LONG' ? t.entry * (1 - stopPct / 100) : t.entry * (1 + stopPct / 100);
+      const tpPx   = dir === 'LONG' ? t.entry * (1 + cfg.tpPct / 100) : t.entry * (1 - cfg.tpPct / 100);
+      const lastDate = new Date(new Date(t.date + 'T00:00:00Z').getTime() + maxDays * 864e5)
+        .toISOString().substring(0, 10);
+
+      let exitPx = null, reason = 'TIMEOUT', nights = 0, gapped = false, prevDate = t.date;
+      for (let i = startIdx + 1; i < all.length; i++) {
+        const b = all[i];
+        const d = b.t.substring(0, 10);
+        if (d > lastDate) break;
+        if (d !== prevDate) { nights++; prevDate = d; }
+
+        // Gap check FIRST: if this bar opened through the stop, that is the
+        // fill. Never award the stop price to a trade that gapped past it.
+        if (dir === 'LONG'  && b.o <= stopPx) { exitPx = b.o; reason = 'STOP_GAP'; gapped = true; break; }
+        if (dir === 'SHORT' && b.o >= stopPx) { exitPx = b.o; reason = 'STOP_GAP'; gapped = true; break; }
+        if (dir === 'LONG'  && b.l <= stopPx) { exitPx = stopPx; reason = 'STOP'; break; }
+        if (dir === 'SHORT' && b.h >= stopPx) { exitPx = stopPx; reason = 'STOP'; break; }
+        if (dir === 'LONG'  && b.h >= tpPx)   { exitPx = tpPx;   reason = 'TP'; break; }
+        if (dir === 'SHORT' && b.l <= tpPx)   { exitPx = tpPx;   reason = 'TP'; break; }
+      }
+      if (exitPx == null) {
+        const lastBar = all.filter(b => b.t.substring(0, 10) <= lastDate).pop();
+        if (!lastBar) continue;
+        exitPx = lastBar.c;
+      }
+      const movePct = dir === 'LONG' ? (exitPx - t.entry) / t.entry * 100 : (t.entry - exitPx) / t.entry * 100;
+      const financing = swapPctPerNight * nights;
+      const ret = (movePct - cfg.costPct - (reason.startsWith('STOP') ? cfg.stopSlipPct : 0) - financing) * lev;
+      rows.push({ date: t.date, dir, reason, nights, gapped,
+                  movePct: +movePct.toFixed(3), financingPct: +financing.toFixed(4),
+                  ret: +ret.toFixed(3), eodRet: t.tradeReturn });
+    }
+    if (rows.length < 20) return res.json({ ok: false, error: `only ${rows.length} trades` });
+
+    const eqOf = a => { let e = 1; for (const x of a) e *= (1 + x / 100); return e; };
+    const mean = a => a.reduce((s, x) => s + x, 0) / a.length;
+    const mix = rows.reduce((o, r) => { o[r.reason] = (o[r.reason] || 0) + 1; return o; }, {});
+    const d = rows.map(r => r.ret - r.eodRet);
+    const sd = Math.sqrt(d.reduce((s, x) => s + (x - mean(d)) ** 2, 0) / (d.length - 1));
+    // Concentration: the 2026-07-29 take-profit lesson — a full-sample edge
+    // carried by a handful of trades is not an edge. Report it up front.
+    const sorted = [...d].sort((a, b) => b - a);
+    const tot = sorted.reduce((s, x) => s + x, 0);
+    const share = n => tot !== 0 ? +(100 * sorted.slice(0, n).reduce((s, x) => s + x, 0) / tot).toFixed(0) : null;
+
+    res.json({
+      ok: true, instrument, maxDays, swapPctPerNight, tpPct: cfg.tpPct, costPct: cfg.costPct,
+      trades: rows.length,
+      exitMix: mix,
+      gapThroughStop: rows.filter(r => r.gapped).length,
+      meanNightsHeld: +mean(rows.map(r => r.nights)).toFixed(2),
+      maxNightsHeld: Math.max(...rows.map(r => r.nights)),
+      holdEquity: +eqOf(rows.map(r => r.ret)).toFixed(3),
+      eodEquity: +eqOf(rows.map(r => r.eodRet)).toFixed(3),
+      holdMeanPerTrade: +mean(rows.map(r => r.ret)).toFixed(4),
+      eodMeanPerTrade: +mean(rows.map(r => r.eodRet)).toFixed(4),
+      meanDiff: +mean(d).toFixed(4),
+      diffT: sd > 0 ? +(mean(d) / (sd / Math.sqrt(d.length))).toFixed(2) : null,
+      advantageTop5Pct: share(5), advantageTop10Pct: share(10), advantageTop20Pct: share(20),
+      totalFinancingPct: +rows.reduce((s, r) => s + r.financingPct, 0).toFixed(2),
+    });
+  } catch (e) {
+    console.error('[hold-to-target]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── QMR spread check — measure the cost assumption instead of assuming it ───
 // Every QMR number rests on costPct = 0.008% (0.8bp) round-trip, and the
 // sensitivity ladder shows the edge dies between 2 and 4bp. That assumption has
