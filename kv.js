@@ -35,6 +35,8 @@ const KV_FILE   = path.join(DATA_DIR, 'kv.json');
 //    ai_alert_cfg                         — alert thresholds/pairs
 //    oi_store                             — user-pasted CME OI data (cannot auto-rebuild)
 //    oi_history                           — 60-day OI summary archive (only re-accumulable by waiting)
+//    range_line_oi                        — dated OI levels for the forward test (cannot be back-filled)
+//    hedge_signal_tg                      — hedge-signal Telegram credentials (user-entered)
 //    cot_data, cot_urls, cot_url          — CFTC COT data + user-set report URLs
 //    caps                                 — user-configured proximity caps
 //
@@ -52,6 +54,13 @@ const _CF_EXACT = new Set([
   'surprise_alert_config',   // cone surprise-alert: enable + Telegram creds + thresholds/pairs — user-entered, must survive redeploys
   'journal_store', 'journal_replay_store',
   'oi_store',               // user-pasted CME OI data — cannot be auto-rebuilt
+  'range_line_oi',          // DATED per-session OI levels per instrument (~120 days) - the OTHER half of the OI
+                            // forward test. The trade log was already durable but this was not, so the audit
+                            // joined 35 logged trades against ONE surviving OI date: 32 of 35 unjoinable,
+                            // tagged n=1. The test could never accumulate evidence. Built forward only -
+                            // CME serves no history, so a lost day is lost permanently.
+  'hedge_signal_tg',        // hedge-signal Telegram token + chat id - USER-ENTERED credentials. Same class as
+                            // the vol-level-alert creds this project already lost once to the ephemeral store.
   'oi_history',             // ~60-day day-over-day archive of the OI summary per pair. DERIVED from
                             // oi_store, but oi_store only ever holds the LATEST paste, so history is
                             // gone forever if lost — it can only be re-accumulated by waiting 60 more

@@ -8484,6 +8484,7 @@ async function _rlSnapshotOIFromStore() {
     const storeRaw = await kv.get('range_line_oi').catch(() => null);
     const store = storeRaw ? (JSON.parse(storeRaw).data ?? JSON.parse(storeRaw)) : {};
     store[day] = store[day] || {};
+    const before = JSON.stringify(store[day]);          // change-guard, see the put below
     const live = {};                                              // bot-consumable: key → [{price,source}]
     const regimes = {};                                           // key → 'PIN'|'BREAKOUT' (gamma regime)
     let n = 0;
@@ -8503,8 +8504,14 @@ async function _rlSnapshotOIFromStore() {
     }
     if (!n) return 0;
     const dates = Object.keys(store).sort();
-    for (const d of dates.slice(0, Math.max(0, dates.length - 120))) delete store[d];
-    await kv.put('range_line_oi', JSON.stringify({ data: store, timestamp: Date.now() }));
+    const trimmed = dates.slice(0, Math.max(0, dates.length - 120));
+    for (const d of trimmed) delete store[d];
+    // `range_line_oi` is now a CF KV key (durable). This runs every 10 min but the underlying
+    // paste changes ~once a day, so re-putting an identical blob 144x/day would spend ~14% of
+    // the CF free-plan write quota storing nothing. Write only on a real change.
+    if (JSON.stringify(store[day]) !== before || trimmed.length) {
+      await kv.put('range_line_oi', JSON.stringify({ data: store, timestamp: Date.now() }));
+    }
     // Ship the bot-consumable artifact (today's OI levels, source=type, pip-based
     // tolerance) — the live OI strengthen/override gate reads this, like it reads
     // range_line_confluence. Rebuilt each cycle from the morning's analyser paste.
@@ -8932,7 +8939,8 @@ app.get('/api/kv-health', async (_req, res) => {
       // the ~60-day archive. `oi_history` silently lived in the ephemeral store until
       // 2026-07-28, so it is checked here to make a regression visible immediately
       // rather than showing up as permanently-null day-over-day reads.
-      'oi_store', 'oi_history',
+      'oi_store', 'oi_history', 'range_line_oi',
+      'hedge_signal_tg',
     ];
     const probe = await kv.probe(CHECK);
     res.json({ ok: true, ...kv.health(), ...probe });
