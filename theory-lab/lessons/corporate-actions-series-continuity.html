@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Corporate Actions &amp; Series Continuity — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Institutional Data Engineering / Corporate Actions &amp; Series Continuity</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Institutional Data Engineering 3 of 5</div>
+  <h1 class="tl-title">Corporate Actions &amp; Series Continuity</h1>
+  <p class="tl-dek">A stock split, a dividend, or a futures roll all put a fake, non-tradeable jump in a raw price series — and the fix that removes the jump can itself break other calculations, if you don't know which tradeoff you're accepting.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explains real industry practice, not a claim about this repo's own data pipeline</span>
+    <span>~15 min read</span>
+    <span>Prereqs: <a href="data-pipeline-raw-to-trading-ready.html">The Data Pipeline: Raw Feeds to Trading-Ready Data</a></span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A raw, unadjusted price series shows a <strong>fake, non-tradeable jump</strong> across a stock split, a dividend, or a futures contract roll — a naive backtest misreads that jump as a real return.</li>
+      <li>Splits/dividends: fixed by <strong>back-adjusting</strong> historical prices with a cumulative adjustment factor computed from the corporate-action ratio.</li>
+      <li>Futures rolls: two named, well-known methodologies — <strong>back-adjustment ("Panama method")</strong>, which splices contracts by a constant additive offset so the roll date shows zero jump, and <strong>ratio-adjustment</strong>, which splices by a multiplicative ratio instead.</li>
+      <li><strong>The real, well-documented tradeoff:</strong> a back-adjusted series can go negative or lose its relationship to actual historically-traded price levels — which breaks any calculation based on percentage returns off that level, even though it correctly fixes the jump problem.</li>
+      <li>This is a classic, well-documented source of silent backtest corruption if missed — not a hypothetical edge case.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+  <a href="data-pipeline-raw-to-trading-ready.html">The Data Pipeline: Raw Feeds to Trading-Ready Data</a>
+  named normalization as Stage 4 — the step that turns a raw, cleaned series into one that's continuous
+  and tradeable-return-consistent across corporate actions and contract rolls. This lesson is that stage
+  in full. The failure mode here is unusually dangerous precisely because the raw data isn't "wrong" in
+  any way <a href="data-cleaning-outliers-missing-data.html">Data Cleaning</a> would catch — every
+  individual price print can be perfectly accurate, correctly timestamped, and free of any bad tick, and
+  the series can still be completely unusable for a backtest, because the jump between two accurate
+  prices doesn't represent a real, tradeable price move.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>The stock that "crashed" 50% overnight — except nobody lost a cent</h3>
+    <p>
+    A company announces a 2-for-1 stock split: every shareholder who owned one $100 share now owns two
+    $50 shares. Nothing about the company's value changed — the pizza was cut into more slices, not made
+    smaller. But a raw, unadjusted price chart shows the stock going from $100 to $50 overnight, which
+    looks, to any naive return calculation, exactly like a 50% single-day loss. Nobody who held the stock
+    actually lost anything; their two $50 shares are worth exactly what their one $100 share was worth the
+    day before. A backtest that computes "yesterday's close to today's close" as a real return, without
+    knowing a split happened, records a catastrophic loss on a day when the true, economic return was
+    zero. A futures contract roll produces the same kind of fake jump for a different reason: the front
+    month contract expiring and a new contract becoming the tradeable one can sit at meaningfully
+    different prices (a normal, expected effect of time and cost-of-carry), and splicing the two contracts
+    together without adjustment shows the same kind of overnight "jump" that never corresponded to an
+    actual trade anyone could have made.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>Splits and dividends: back-adjustment by a cumulative factor</h2>
+  <p>
+  For an equity split, the fix is conceptually simple: every price <em>before</em> the split date gets
+  multiplied by the split ratio, so the whole pre-split history is restated in "post-split share" terms.
+  A 2-for-1 split means every historical price before the split date is divided by 2 (equivalently,
+  multiplied by an adjustment factor of 0.5), so what used to read as a jump from $100 to $50 instead
+  reads as a smooth, continuous $50-ish series the whole way through, with the true day-of-split return
+  correctly showing as roughly zero.
+  </p>
+  <p>
+  A cash dividend is handled the same way, conceptually: on the ex-dividend date, the stock's price
+  typically drops by roughly the dividend amount (this is expected and correct — the company just paid
+  cash out the door, so its remaining value is genuinely lower by that amount), but a shareholder who
+  received the dividend didn't actually lose that value, they received it in cash instead. A
+  <strong>total-return-adjusted</strong> series restates historical prices to add back the cumulative
+  effect of dividends paid, so that a return computed from the adjusted series reflects what a
+  shareholder who reinvested every dividend would have actually experienced, rather than a raw
+  price-only return that treats the dividend as a pure loss.
+  </p>
+  <div class="tl-math">\[ P_t^{adj} = P_t \times \prod_{k:\, t_k > t} f_k \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>P_t^{adj}</code><span>the back-adjusted price at historical date \(t\)</span></div>
+    <div class="tl-eq-chip c2"><code>P_t</code><span>the original, raw (unadjusted) price at date \(t\)</span></div>
+    <div class="tl-eq-chip c4"><code>f_k</code><span>the adjustment factor for the \(k\)-th corporate action that occurred after \(t\) (a split ratio, or a dividend-reinvestment factor)</span></div>
+  </div>
+  <p>
+  The product runs over every corporate action that happened <em>after</em> date \(t\) — each one
+  contributes its own multiplicative factor, and they compound, so a price far enough in the past can
+  carry the accumulated effect of many splits and dividend payments between then and now.
+  </p>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Futures rolls: back-adjustment ("Panama method") vs. ratio-adjustment</h2>
+  <p>
+  A futures contract has a finite life and expires; a continuous historical series has to be built by
+  <strong>splicing</strong> together a sequence of individual contracts (the front month, then the next
+  front month once the roll happens, and so on). At the roll date, the old and new contracts are almost
+  never at exactly the same price — this price difference is a real, expected feature of futures pricing
+  (time value, cost of carry, differing supply/demand at different points on the curve), not an error —
+  but splicing the raw price series of contract A directly into contract B's raw price series at the roll
+  date reproduces exactly the same fake-jump problem a stock split does. Two named, well-established
+  methods exist to remove it.
+  </p>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Back-adjustment — the "Panama method"</h4>
+      <p>
+      At each roll date, compute the constant <strong>additive offset</strong> between the expiring
+      contract's price and the new contract's price, and shift every historical price before that roll
+      date by that same constant offset. The roll date itself shows exactly zero jump by construction,
+      and every subsequent roll's offset compounds onto the already-shifted history. Because the shift is
+      additive (a fixed number of price units, not a percentage), the shape of historical price
+      <em>changes</em> is preserved exactly — a $2 move is still a $2 move, unaffected by the shift.
+      </p>
+    </div>
+    <div class="tl-compare-card amber">
+      <h4>Ratio-adjustment</h4>
+      <p>
+      Instead of a constant additive offset, compute the <strong>multiplicative ratio</strong> between
+      the two contracts at the roll date, and scale every historical price before that roll date by that
+      ratio. This keeps every historical <em>percentage</em> return exactly correct across the roll (a
+      2% move is still a 2% move), at the cost of the actual historical price <em>levels</em> shifting by
+      a compounding multiplicative factor with every roll further back in time — the opposite tradeoff
+      from back-adjustment.
+      </p>
+    </div>
+  </div>
+
+  <div class="tl-solid red">
+    <strong>The trap:</strong> a back-adjusted ("Panama method") series can drift to unusual levels far
+    enough in the past — for a long enough history of a contract that has rolled many times, the
+    accumulated additive offsets can even push historical prices <strong>negative</strong>, a value that
+    obviously never actually traded. This breaks any calculation that depends on the price level being a
+    real, positive, tradeable number — most importantly, <em>percentage</em>-return calculations, since a
+    percentage return computed off a negative or artificially shifted price level is meaningless, even
+    though the back-adjusted series' point-to-point <em>price differences</em> (its absolute-dollar
+    returns) remain perfectly correct the whole way through. This is exactly the tradeoff ratio-adjustment
+    exists to avoid — but ratio-adjustment pays for it by distorting historical absolute price levels
+    instead. Neither method is free; both are well-documented, standard practitioner tools, and the choice
+    between them has to match what the downstream calculation actually needs (percentage returns, or
+    consistent dollar/point-based P&amp;L).
+  </div>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(P_t\)</td><td>The raw, unadjusted price at historical date \(t\).</td></tr>
+      <tr><td>\(P_t^{adj}\)</td><td>The back-adjusted price at date \(t\), after applying all later corporate-action factors.</td></tr>
+      <tr><td>Adjustment factor</td><td>The multiplicative ratio (split) or reinvestment factor (dividend) applied to restate historical prices.</td></tr>
+      <tr><td>Splice</td><td>Joining two different futures contracts' price series together at a roll date into one continuous series.</td></tr>
+      <tr><td>Panama method</td><td>The standard name for futures back-adjustment: a constant additive offset applied at each roll, preserving absolute price differences.</td></tr>
+      <tr><td>Ratio-adjustment</td><td>Futures continuity adjustment using a constant multiplicative ratio at each roll, preserving percentage returns instead of absolute levels.</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Raw (unadjusted) vs. back-adjusted futures series across a contract roll</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two line charts stacked vertically. The top chart shows a raw futures series with a visible discontinuous jump at the roll date, where the old contract's price drops sharply to meet the new contract's different price level. The bottom chart shows the same underlying data back-adjusted, so the roll date shows a smooth, continuous line with no jump, at the cost of the earlier portion of the series being shifted away from the prices that actually traded historically.">
+      <text x="20" y="24" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">Raw, unadjusted: front contract spliced directly into new contract</text>
+      <polyline points="40,70 120,66 200,60 260,58 261,95 340,92 420,88 500,84 580,80"
+        style="fill:none;stroke:var(--red);stroke-width:2"/>
+      <line x1="261" y1="50" x2="261" y2="115" style="stroke:var(--red)" stroke-width="1" stroke-dasharray="3,3"/>
+      <text x="261" y="42" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:9.5px;font-weight:600">roll date — fake jump</text>
+
+      <text x="20" y="160" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">Back-adjusted (Panama method): shifted so the roll shows zero jump</text>
+      <polyline points="40,210 120,206 200,200 260,198 340,196 420,192 500,188 580,184"
+        style="fill:none;stroke:var(--green);stroke-width:2"/>
+      <line x1="261" y1="180" x2="261" y2="230" style="stroke:var(--green)" stroke-width="1" stroke-dasharray="3,3"/>
+      <text x="261" y="245" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:9.5px;font-weight:600">same roll date — smooth splice</text>
+
+      <text x="150" y="260" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px;font-style:italic">Earlier history in the bottom line no longer equals the price that actually traded back then —</text>
+      <text x="150" y="273" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px;font-style:italic">that's the accepted tradeoff for removing the fake jump.</text>
+    </svg>
+    <div class="tl-chart-caption">
+    The top series is technically accurate at every single point (each segment is the real, traded price
+    of its contract) but shows a fake jump at the roll. The bottom series removes the jump by shifting the
+    earlier segment — the price differences (returns) are preserved, but the absolute historical price
+    level no longer matches what actually traded on those old dates.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Splicing a crude oil roll with the Panama method</h3>
+    <p>
+    Suppose the expiring front-month crude contract closes its final trading day at $78.40, and the new
+    front-month contract closes that same day at $78.90 — a $0.50 gap reflecting the futures curve, not
+    an error. Splicing the raw series directly would show a $0.50 jump on the roll date that no position
+    actually experienced (a trader holding a continuously-rolled position captured the roll at
+    approximately the prevailing spread, not a discontinuous overnight gain or loss).
+    </p>
+    <p>
+    Applying the Panama method: the additive offset is \(78.90 - 78.40 = 0.50\). Every historical price
+    before the roll date gets shifted up by exactly $0.50 — so a historical print of, say, $72.00 the week
+    before the roll becomes $72.50 in the back-adjusted series. The point-to-point dollar change between
+    any two historical days is completely unaffected by this shift (both days moved by the same constant),
+    so a strategy measuring dollar P&amp;L off this series gets exactly correct numbers. But the
+    <em>percentage</em> return between those same two days is now computed off a price level ($72.50)
+    that never actually traded on that historical date (the real traded price was $72.00) — a small
+    distortion for one roll, but one that compounds with every subsequent roll further back in a
+    multi-year history, which is exactly how a long-back-adjusted series can eventually reach unusual, or
+    even negative, levels.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">A real-world trading scenario</div>
+    <h3>The trend-following backtest that "breaks out" every quarter, right on the roll date</h3>
+    <p>
+    A researcher builds a momentum/trend-following signal on a commodity futures series stitched together
+    naively — splicing each new front-month contract's raw prices directly onto the previous one with no
+    adjustment at all. The backtest shows a suspiciously large, suspiciously reliable "breakout" return
+    clustering right around each quarterly contract roll — exactly the calendar pattern a roll would
+    produce, not a coincidence. The signal is not detecting a real momentum effect; it is detecting its
+    own data pipeline's un-adjusted roll jump, four times a year, every year, and a trend-following rule
+    is by construction exactly the kind of rule most likely to fire on a large single-day directional move,
+    real or fake. Once the same backtest is rerun on a properly back-adjusted series, the quarterly
+    "breakout" pattern disappears entirely — it was never a market phenomenon, it was an artifact of
+    stitching two different contracts together without correcting for the price gap between them.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+  Serious futures research desks typically maintain <em>both</em> a back-adjusted and a ratio-adjusted
+  (or unadjusted, per-contract) version of a continuous series side by side, and pick deliberately based
+  on what the calculation needs: absolute dollar P&amp;L and position-sizing math generally want the
+  back-adjusted (Panama) series, while long-horizon percentage-return statistics, correlation studies, or
+  anything comparing return magnitudes across very different historical eras generally want the
+  ratio-adjusted series, or the raw individual-contract data with rolls handled explicitly trade by trade.
+  Treating "which adjustment method" as a single, one-time infrastructure decision rather than a per-use-case
+  choice is itself a common source of quietly wrong results.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where series continuity quietly breaks a backtest</h3>
+    <ul>
+      <li><strong>Splicing raw contract prices with no adjustment at all.</strong> The single most damaging version of this mistake — every roll date manufactures a fake return large enough to distort any signal sensitive to big single-day moves (breakout rules, volatility estimators, drawdown statistics).</li>
+      <li><strong>Computing percentage returns off a back-adjusted (Panama) series without checking the price level makes sense.</strong> A back-adjusted series' absolute price differences are correct; its price <em>levels</em>, especially far in the past, may not be — and a percentage return needs the level, not just the difference.</li>
+      <li><strong>Forgetting a corporate action happened at all.</strong> A missed split or dividend produces the exact same fake-jump problem as a missed futures roll, just for equities instead of futures.</li>
+      <li><strong>Using the wrong adjustment method for the calculation.</strong> Percentage-return-based statistics want a ratio-adjusted series; dollar/point-based P&amp;L and position sizing want a back-adjusted (Panama) series — using the wrong one for the job silently distorts the result.</li>
+      <li><strong>Assuming a vendor's "continuous contract" series is automatically the right adjustment.</strong> Vendors differ in default methodology; know which one is being used before trusting the numbers it produces.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A raw price series is not directly usable across a split, dividend, or futures roll.</strong> The jump it shows is real in the raw data but fake as a tradeable return.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Splits/dividends are fixed by a cumulative back-adjustment factor.</strong> Historical prices are restated so the true, economic return across the corporate action shows correctly.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Futures rolls have two named, standard fixes.</strong> Back-adjustment (the "Panama method," additive) preserves absolute price differences; ratio-adjustment (multiplicative) preserves percentage returns.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Neither futures adjustment method is free.</strong> Back-adjusted series can drift to unusual or negative levels far in the past, breaking percentage-return math; ratio-adjusted series distort absolute historical price levels instead.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Getting this wrong is a classic, well-documented source of silent backtest corruption.</strong> An un-adjusted roll or split can manufacture large fake single-day returns that a momentum or breakout signal will misread as genuine market behavior.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Choose the adjustment method to match the calculation.</strong> Dollar P&amp;L and position sizing want back-adjustment; percentage-return statistics want ratio-adjustment.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why does a 2-for-1 stock split make a raw, unadjusted price series show a fake 50% loss, and what does back-adjustment do to fix it?</summary>
+    <div class="tl-answer">
+    A 2-for-1 split doubles the share count while halving the per-share price, with no actual change in
+    total shareholder value — the pizza is cut into more slices, not made smaller. A raw price series
+    simply shows the per-share price dropping by half overnight, which a naive return calculation reads as
+    a 50% loss even though nobody lost anything. Back-adjustment fixes this by multiplying every
+    historical price before the split date by the split ratio (here, roughly halving all the pre-split
+    prices), so the whole series is restated in consistent post-split terms and the split date itself
+    shows approximately a zero true return.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What's the difference between the Panama method and ratio-adjustment for splicing futures contracts across a roll?</summary>
+    <div class="tl-answer">
+    The Panama method (back-adjustment) shifts every historical price before a roll date by a constant
+    <em>additive</em> offset — the dollar/point gap between the expiring and new contract at the roll —
+    which preserves absolute price differences (dollar returns) exactly. Ratio-adjustment instead scales
+    every historical price by a constant <em>multiplicative</em> ratio, which preserves percentage returns
+    exactly instead. Both remove the fake jump at the roll date; they differ in which property of the
+    historical series (absolute differences vs. percentage returns) stays exactly correct as a result.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why can a long history of back-adjusted (Panama method) futures prices eventually go negative, and why does that matter?</summary>
+    <div class="tl-answer">
+    Each roll applies its own additive offset to every price before that roll date, and these offsets
+    compound going further back in history — a long enough series with many rolls can accumulate a large
+    enough total shift that sufficiently old historical prices are pushed below zero, a level that
+    obviously never actually traded. This matters because any calculation that needs the actual price
+    level to be a real, positive, tradeable number — most importantly a percentage return, which divides
+    by that level — becomes meaningless once the level itself is an artifact of the adjustment rather than
+    a real historical price, even though the series' point-to-point dollar differences remain completely
+    correct throughout.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. In the trend-following scenario, why did the quarterly "breakout" pattern disappear once the series was properly back-adjusted?</summary>
+    <div class="tl-answer">
+    The naive, un-adjusted series spliced each new front-month contract directly onto the previous one
+    without correcting for the price gap between them at each roll date, manufacturing a fake large
+    single-day price move four times a year, exactly on the roll dates. A trend-following/breakout rule is
+    specifically designed to react to large single-day directional moves, so it was firing on this
+    artifact rather than on any genuine market pattern. Once the series was back-adjusted so the roll
+    dates showed no fake jump, the rule had nothing artificial left to react to on those specific dates,
+    and the quarterly pattern vanished — confirming it was a data-pipeline artifact, not a real
+    momentum effect.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. A researcher wants to compute a correlation of percentage returns between two commodity futures over 15 years, including several rolls each. Which adjustment method should the series use, and why?</summary>
+    <div class="tl-answer">
+    Ratio-adjustment, because correlation of percentage returns depends on the returns being correctly
+    computed as percentages across every roll in the history. A back-adjusted (Panama) series preserves
+    absolute price differences but can distort the price levels used to compute a percentage return,
+    especially far back in a 15-year, multi-roll history — exactly the wrong property to have wrong when
+    the calculation in question is a percentage-return correlation.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Robert Carver, <em>Systematic Trading: A Unique New Method for Designing Trading and Investing Systems</em> (Harriman House, 2015) — a clear, practitioner-level explanation of continuous futures construction, naming and contrasting the Panama (back-adjustment) and ratio-adjustment methods and their respective tradeoffs.</li>
+    <li>Jack D. Schwager, <em>Schwager on Futures: Technical Analysis</em> (John Wiley &amp; Sons, 1996) — an early, widely-read treatment of the practical problems continuous/back-adjusted futures contracts create, including the negative-price and percentage-return-distortion issues discussed in this lesson.</li>
+    <li>Perry J. Kaufman, <em>Trading Systems and Methods</em> (Wiley, 5th ed., 2013) — covers back-adjustment and continuous contract construction as a standard prerequisite for building and testing any futures trading system.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="data-cleaning-outliers-missing-data.html">← Data Cleaning: Outliers, Bad Ticks &amp; Missing Data</a>
+    <a href="point-in-time-data-survivorship-bias.html">Point-in-Time Data &amp; Survivorship Bias →</a>
+  </div>
+</div>
+</body>
+</html>

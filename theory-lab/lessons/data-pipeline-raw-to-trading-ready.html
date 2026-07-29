@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Data Pipeline: Raw Feeds to Trading-Ready Data — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Institutional Data Engineering / The Data Pipeline: Raw Feeds to Trading-Ready Data</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Institutional Data Engineering 1 of 5</div>
+  <h1 class="tl-title">The Data Pipeline: Raw Feeds to Trading-Ready Data</h1>
+  <p class="tl-dek">A raw vendor feed and a backtest-ready dataset are not the same object — this is the map of every stage a tick has to pass through in between, and why the most common bar-construction choice is quietly the statistically weakest one.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explains real industry practice, not a claim about this repo's own data pipeline</span>
+    <span>~15 min read</span>
+    <span>Prereqs: none — this is the entry lesson for the category</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A raw feed goes through six stages before it's fit to build or backtest a strategy on: <strong>ingestion → validation → cleaning → normalization → storage → point-in-time serving</strong>. Skipping or collapsing a stage is how a "clean-looking" dataset still hides a corruption.</li>
+      <li>This lesson is the <strong>map</strong> — each stage gets its own deep-dive lesson later in this category: cleaning in <a href="data-cleaning-outliers-missing-data.html">Data Cleaning</a>, normalization in <a href="corporate-actions-series-continuity.html">Corporate Actions &amp; Series Continuity</a>, serving in <a href="point-in-time-data-survivorship-bias.html">Point-in-Time Data</a>, storage in <a href="data-architecture-storage-versioning.html">Data Architecture</a>.</li>
+      <li><strong>Bar construction</strong> is a separate, foundational choice inside "ingestion": how raw ticks get grouped into the bars a strategy actually sees. Time bars, tick bars, volume bars, and dollar bars are the four standard sampling clocks (Marcos López de Prado, <em>Advances in Financial Machine Learning</em>, Wiley 2018, Chapter 2).</li>
+      <li><strong>Time bars — the default almost everyone starts with — have a known statistical weakness:</strong> sampling at a fixed wall-clock interval oversamples quiet periods and undersamples bursts of activity, producing returns that are further from IID/Gaussian than volume- or dollar-bar sampling.</li>
+      <li>This category covers the <em>data layer underneath a feature</em> — ingesting, cleaning, and architecting the raw series itself, before any feature gets computed from it. <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a> covers the layer built <em>on top</em> of clean data — this lesson and its category are what has to be true first.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+  Every lesson elsewhere in this Theory Lab that talks about a feature, a signal, or a backtest quietly
+  assumes something upstream: that the price series feeding it is complete, correctly timestamped, free
+  of corporate-action jumps, and dated to when the information was actually knowable. <a href="feature-engineering-leakage-reproducibility.html">Feature
+  Engineering, Leakage &amp; Reproducibility</a> is explicit about this boundary — it covers what it
+  takes to build a <em>feature</em> honestly from data that is already clean. This category is the layer
+  underneath that: what it takes to get from a raw vendor feed to a dataset that is even eligible to have
+  a feature built on it in the first place. Get this layer wrong and no amount of discipline at the
+  feature stage rescues the result — a leak, a gap, or a stale value baked into the raw series propagates
+  into every feature and every backtest built downstream of it, silently.
+  </p>
+  <p>
+  This lesson is the map of the whole pipeline. Each stage after ingestion gets its own dedicated lesson
+  later in this category, so treat this one as the table of contents: read it end to end once, then come
+  back to the specific stage lesson when that's the problem in front of you.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A kitchen line, not a vending machine</h3>
+    <p>
+    A raw market data feed is closer to a delivery of unwashed vegetables and uncut meat than to a
+    finished meal. Nobody eats straight off the delivery truck. Between "raw ingredients arrive" and
+    "plated dish goes to the table," a real kitchen has a sequence of stations: check the delivery
+    against the order and reject anything spoiled (validation), wash and trim (cleaning), portion and
+    standardize cuts so every dish uses the same units (normalization), store what isn't used
+    immediately at the right temperature (storage), and only pull from what's actually ready when an
+    order comes in — never serve today's dish using an ingredient substitution decided next week
+    (point-in-time serving). A trading data pipeline has the exact same shape, and skipping a station
+    doesn't make the meal arrive faster — it makes a customer sick two stages later, usually somewhere
+    much harder to trace back to the missed step.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The six pipeline stages, in order</h2>
+  <p>
+  A raw feed passes through six stages before it is "trading-ready" — usable to build a feature, run a
+  backtest, or drive a live signal. Each stage exists to close a specific way the previous ones can still
+  leave the data unfit to use.
+  </p>
+
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Ingestion — raw ticks, quotes, and trades land as-is</h4>
+        <p>
+        The exchange or vendor feed delivers raw ticks (individual trade prints), quotes (bid/ask
+        updates), or both, exactly as transmitted, with no correction applied yet. This stage's only
+        job is capture: get every message that arrived, in the order and with the timestamp it arrived,
+        onto durable storage. Nothing gets fixed here — fixing anything before it's captured risks
+        losing the original record of what the feed actually said, which is the only ground truth a
+        later validation or cleaning step can be checked against.
+        </p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>Validation — schema checks, gap detection, sanity bounds</h4>
+        <p>
+        Before anything is trusted, it's checked structurally: does every record have the fields it's
+        supposed to (a schema check), are there suspicious gaps in the timestamp sequence (a session
+        that should have continuous quotes but goes quiet for an hour), and does every price fall inside
+        a plausible bound for that instrument (a sanity check that catches a feed error before it's ever
+        treated as a real price). Validation doesn't try to fix anything — it flags what looks wrong so
+        the next stage knows what needs attention.
+        </p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>Cleaning — fixing what validation flagged</h4>
+        <p>
+        Bad ticks, stale quotes, halts, duplicate or out-of-order timestamps, and missing values all get
+        handled here, using a specific, defensible method for each failure mode — never a blanket rule.
+        This stage is large enough, and easy enough to get subtly wrong, that it has its own lesson:
+        <a href="data-cleaning-outliers-missing-data.html">Data Cleaning: Outliers, Bad Ticks &amp; Missing Data</a>.
+        </p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">4</div>
+      <div class="tl-step-body">
+        <h4>Normalization — adjusting for corporate actions and contract rolls</h4>
+        <p>
+        A raw price series is not directly comparable across a stock split, a dividend, or (for futures)
+        a contract roll — each of those events puts a fake, non-tradeable jump in the raw series that a
+        naive backtest would misread as a real return. Normalization is the step that produces a
+        continuous, tradeable-return series across those events. This is its own lesson too:
+        <a href="corporate-actions-series-continuity.html">Corporate Actions &amp; Series Continuity</a>.
+        </p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">5</div>
+      <div class="tl-step-body">
+        <h4>Storage — where the cleaned, normalized series actually lives</h4>
+        <p>
+        Cleaned, normalized data needs a storage format and architecture that keeps a single, versioned
+        source of truth — not five teams independently recomputing "the adjusted close" and slowly
+        drifting apart. Storage format choices (time-series-oriented vs. general columnar), lineage, and
+        schema versioning are covered in <a href="data-architecture-storage-versioning.html">Data
+        Architecture for Systematic Trading</a>.
+        </p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">6</div>
+      <div class="tl-step-body">
+        <h4>Point-in-time serving — only handing out what was actually knowable then</h4>
+        <p>
+        The final stage answers a question that's easy to get wrong even with perfectly clean, correctly
+        normalized data sitting in a well-architected store: for a query "as of date X," does the answer
+        reflect only what was actually known on date X, or does it quietly include a later revision, a
+        later restatement, or an instrument that only exists in today's universe because it survived?
+        This is the deepest and most commonly mishandled stage, covered fully in <a href="point-in-time-data-survivorship-bias.html">Point-in-Time
+        Data &amp; Survivorship Bias</a>.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The six-stage pipeline, and which later lesson zooms into each stage</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flow diagram of six sequential stages: Ingestion, Validation, Cleaning, Normalization, Storage, and Point-in-time serving, connected left to right and wrapping to a second row, with the later stages labeled to indicate which dedicated lesson in this category covers them in depth.">
+      <defs>
+        <marker id="dp-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" style="fill:var(--text3)"/>
+        </marker>
+      </defs>
+
+      <rect x="20" y="20" width="130" height="70" rx="6" style="fill:var(--blue);opacity:.2;stroke:var(--blue)"/>
+      <text x="85" y="48" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">1. Ingestion</text>
+      <text x="85" y="64" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9px">raw ticks/quotes,</text>
+      <text x="85" y="76" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9px">as transmitted</text>
+
+      <line x1="150" y1="55" x2="182" y2="55" style="stroke:var(--text3)" stroke-width="1.4" marker-end="url(#dp-arrow)"/>
+
+      <rect x="185" y="20" width="130" height="70" rx="6" style="fill:var(--purple);opacity:.2;stroke:var(--purple)"/>
+      <text x="250" y="48" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">2. Validation</text>
+      <text x="250" y="64" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9px">schema, gaps,</text>
+      <text x="250" y="76" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9px">sanity bounds</text>
+
+      <line x1="315" y1="55" x2="347" y2="55" style="stroke:var(--text3)" stroke-width="1.4" marker-end="url(#dp-arrow)"/>
+
+      <rect x="350" y="20" width="130" height="70" rx="6" style="fill:var(--red);opacity:.18;stroke:var(--red)"/>
+      <text x="415" y="42" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">3. Cleaning</text>
+      <text x="415" y="58" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9px">→ Lesson 2</text>
+      <text x="415" y="72" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9px">this category</text>
+
+      <line x1="415" y1="90" x2="415" y2="122" style="stroke:var(--text3)" stroke-width="1.4" marker-end="url(#dp-arrow)"/>
+
+      <rect x="350" y="125" width="130" height="70" rx="6" style="fill:var(--amber);opacity:.2;stroke:var(--amber)"/>
+      <text x="415" y="147" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">4. Normalization</text>
+      <text x="415" y="163" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9px">→ Lesson 3</text>
+      <text x="415" y="177" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9px">this category</text>
+
+      <line x1="350" y1="160" x2="318" y2="160" style="stroke:var(--text3)" stroke-width="1.4" marker-end="url(#dp-arrow)"/>
+
+      <rect x="185" y="125" width="130" height="70" rx="6" style="fill:var(--green);opacity:.2;stroke:var(--green)"/>
+      <text x="250" y="147" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">5. Storage</text>
+      <text x="250" y="163" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9px">→ Lesson 5</text>
+      <text x="250" y="177" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9px">this category</text>
+
+      <line x1="185" y1="160" x2="153" y2="160" style="stroke:var(--text3)" stroke-width="1.4" marker-end="url(#dp-arrow)"/>
+
+      <rect x="20" y="125" width="130" height="70" rx="6" style="fill:var(--blue);opacity:.2;stroke:var(--blue)"/>
+      <text x="85" y="147" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">6. Point-in-time</text>
+      <text x="85" y="163" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9px">serving → Lesson 4</text>
+      <text x="85" y="177" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9px">this category</text>
+
+      <text x="320" y="240" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10.5px;font-style:italic">Bar construction (Section 03 below) is a choice made inside Stage 1, before validation ever runs.</text>
+      <text x="320" y="270" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10.5px;font-style:italic">Only trading-ready data — having passed all six stages — is fit to build a feature on.</text>
+    </svg>
+    <div class="tl-chart-caption">
+    Six stages, left to right then wrapping. Cleaning, normalization, storage, and point-in-time serving
+    each get a dedicated deep-dive lesson later in this category — this page is the map, not the full
+    treatment of any one stage.
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Bar construction: how raw ticks become the bars a strategy sees</h2>
+  <p>
+  Before validation or cleaning ever runs, ingestion has to make one foundational choice: how are
+  individual ticks grouped into the discrete "bars" (open/high/low/close observations) that everything
+  downstream — a chart, a feature, a backtest — actually operates on? Marcos López de Prado's
+  <em>Advances in Financial Machine Learning</em> (Wiley, 2018), Chapter 2, lays out four standard
+  sampling clocks for this, each grouping ticks by a different criterion reaching a threshold:
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🕒</div>
+      <h4>Time bars</h4>
+      <p>Close a bar every fixed wall-clock interval (every minute, every hour) regardless of how much trading happened inside it.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🔢</div>
+      <h4>Tick bars</h4>
+      <p>Close a bar after a fixed number of individual trade prints, however long or short that takes in wall-clock time.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📦</div>
+      <h4>Volume bars</h4>
+      <p>Close a bar once a fixed number of shares/contracts/units has traded, so a bar represents a constant amount of activity.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">💵</div>
+      <h4>Dollar bars</h4>
+      <p>Close a bar once a fixed notional value has traded (price × volume), which stays comparable even as an instrument's price level itself drifts over years.</p>
+    </div>
+  </div>
+
+  <p>
+  <strong>Time bars are the default almost everyone starts with</strong> — they're the most intuitive
+  and the easiest to build from a raw feed. They also have a specific, well-documented statistical
+  weakness. Trading activity is not smooth across a session: it clusters around the open, the close, and
+  news releases, and thins out during quiet stretches. A fixed wall-clock sampling interval doesn't know
+  this — it samples the same way regardless. The result is that a time bar during a quiet period is built
+  from very few underlying ticks (oversampling a period with little genuine information turnover), while
+  a time bar during a burst of activity is built from a huge number of ticks compressed into the same
+  fixed window (undersampling a period where a great deal actually happened). Volume bars and dollar bars
+  sample by activity itself rather than by the clock, so each bar represents a comparable amount of
+  genuine information turnover — which is why López de Prado's Chapter 2 shows returns built from
+  volume/dollar bars sitting closer to independent and identically distributed (IID) and closer to
+  Gaussian than returns built from time bars sampled at a comparable average frequency. This matters
+  directly for anything built downstream: many statistical tools (a lot of the parametric machinery
+  covered elsewhere in this Theory Lab) assume something close to IID, roughly-normal returns, and
+  feeding them time-bar returns is quietly handing them a worse-behaved input than the same underlying
+  data would have produced sampled a different way.
+  </p>
+
+  <div class="tl-solid amber">
+    <strong>The trap:</strong> time bars are not "wrong," and most of the industry still runs on them for
+    good practical reasons (simplicity, universal tooling, human-readable intervals) — but choosing them
+    without knowing why volume/dollar bars exist means silently accepting a statistically worse-behaved
+    return series, every single day, for every instrument sampled this way.
+  </div>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>Ingestion</td><td>Capturing a raw feed's ticks/quotes/trades exactly as transmitted, before any correction.</td></tr>
+      <tr><td>Validation</td><td>Structural checks — schema, gap detection, sanity bounds — that flag but don't fix problems.</td></tr>
+      <tr><td>Normalization</td><td>Adjusting a raw series for corporate actions or futures rolls so it becomes a continuous, tradeable-return series.</td></tr>
+      <tr><td>Point-in-time serving</td><td>Answering an "as of date X" query using only what was genuinely knowable on date X — no later revision, no survivorship.</td></tr>
+      <tr><td>Bar</td><td>One open/high/low/close observation built by grouping raw ticks under some sampling rule.</td></tr>
+      <tr><td>IID</td><td>Independent and identically distributed — the standard simplifying assumption behind much parametric statistics; real markets only approximate it, and some sampling schemes approximate it better than others.</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Same hour, two sampling clocks, very different bar counts</h3>
+    <p>
+    Consider one trading hour in a liquid FX pair that includes a scheduled data release 20 minutes in.
+    Suppose the raw tick feed shows roughly 200 ticks in the 15 minutes before the release, a burst of
+    roughly 4,000 ticks in the 5 minutes around the release itself, and roughly 300 ticks in the
+    remaining 40 minutes — a realistic activity-clustering pattern.
+    </p>
+    <p>
+    <strong>Time bars, 1-minute clock.</strong> This produces exactly 60 bars for the hour, no matter
+    what. The 5 minutes around the release get exactly 5 bars — the same number of observations as any
+    other 5 quiet minutes — even though those 5 minutes contained roughly 4,000 of the hour's
+    approximately 4,500 total ticks (about 89% of the hour's entire information content compressed into
+    5 of 60 bars, or about 8% of the bar count).
+    </p>
+    <p>
+    <strong>Volume bars, sized to produce roughly 60 bars/hour on average.</strong> Using a threshold
+    tuned so a typical hour produces about 60 bars, the pre-release lull (200 ticks in 15 minutes) might
+    only close 2-3 bars, while the release burst (4,000 ticks in 5 minutes) closes roughly 40-45 bars —
+    the sampling clock speeds up exactly when genuine activity speeds up, so each bar keeps representing
+    a comparable slice of actual information turnover instead of a comparable slice of the clock.
+    </p>
+    <p>
+    The time-bar version has quietly under-represented the single most informative 5 minutes of the
+    hour, and over-represented the quiet stretches either side of it — exactly the oversampling/undersampling
+    pattern this section describes, made concrete with tick counts.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">A real-world trading scenario</div>
+    <h3>The volatility-clustering model that "worked" better once the bars changed, not the model</h3>
+    <p>
+    A research team builds a short-horizon volatility model on 5-minute time bars for a currency pair.
+    The residuals from the model come back visibly fat-tailed and autocorrelated in a way that doesn't
+    match what the model's assumptions expect, and several rounds of re-specifying the model (adding
+    lags, trying a different volatility estimator) only partially help. Eventually the team reruns the
+    exact same model specification, unchanged, on dollar bars sized to produce a comparable average bar
+    count per session. The residual diagnostics improve meaningfully — not because the model got better,
+    but because the input return series is now closer to the well-behaved, activity-normalized series the
+    model's assumptions were implicitly built for. The lesson isn't "dollar bars fix everything" — it's
+    that a model's poor fit can sometimes be a data-representation problem hiding as a model-specification
+    problem, and bar choice is one of the first places to check before adding more complexity to the model
+    itself.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+  Institutional data-engineering teams treat the pipeline in this lesson as infrastructure, not a
+  one-time script: ingestion runs continuously and append-only, validation alerts are monitored like any
+  other production system health check, and the choice of bar construction is usually made once, deliberately,
+  per research use case, rather than re-decided ad hoc for every new study. Many desks maintain time bars
+  as the default "human-readable" view for charts and monitoring while maintaining volume- or dollar-bar
+  series in parallel specifically for statistical modeling work, precisely because the two serve different
+  purposes — a person scanning a chart wants a fixed, familiar time axis; a model consuming returns wants
+  the better-behaved statistical properties. Neither is fully correct or fully wrong in isolation.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where a pipeline quietly breaks down</h3>
+    <ul>
+      <li><strong>Treating "I have a chart" as "I have trading-ready data."</strong> A chart tolerates far more sloppiness than a backtest — a chart renderer silently interpolates over gaps and rarely flags a stale quote, so a series that looks fine on a chart can still fail every later stage in this pipeline.</li>
+      <li><strong>Fixing problems at the ingestion stage instead of just capturing them.</strong> Correcting a suspicious tick before it's durably stored destroys the original record needed to audit that correction later — capture first, fix in a separate, logged stage.</li>
+      <li><strong>Assuming time bars are statistically neutral because they're the most common choice.</strong> Popularity isn't evidence of statistical soundness — the oversampling/undersampling effect is real and documented, not a matter of opinion.</li>
+      <li><strong>Never revisiting the bar-construction choice once made.</strong> A bar scheme picked for one research question (a slow macro-driven strategy) may be a poor fit for a different one (a short-horizon microstructure study) built later on the same infrastructure.</li>
+      <li><strong>Skipping straight to modeling without confirming each pipeline stage actually ran.</strong> A dataset that "looks clean" by eye has not necessarily passed explicit validation, cleaning, and normalization steps — verify the stages happened, don't assume it from the data's appearance.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Six stages, in order: ingestion → validation → cleaning → normalization → storage → point-in-time serving.</strong> Each closes a specific way the earlier stages leave the data still unfit to build a strategy on.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Ingestion should capture, not correct.</strong> Fixing a suspicious record before it's durably stored destroys the ground truth a later audit needs.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Bar construction is a foundational choice made inside ingestion.</strong> Time, tick, volume, and dollar bars are the four standard sampling clocks (López de Prado, <em>AFML</em>, Ch. 2).</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Time bars oversample quiet periods and undersample bursts.</strong> This is a documented statistical weakness, not a stylistic preference — it pushes returns further from IID/Gaussian than volume- or dollar-bar sampling would.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This category is the layer beneath feature engineering.</strong> <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a> assumes the data is already clean — this category is what makes that assumption true.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This is a map, not a deep-dive.</strong> Cleaning, normalization, point-in-time serving, and storage each get their own full lesson next in this category.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Name the six pipeline stages in order and state, in one sentence each, what each stage is responsible for.</summary>
+    <div class="tl-answer">
+    Ingestion captures raw ticks/quotes/trades exactly as transmitted. Validation runs structural checks
+    — schema, gap detection, sanity bounds — flagging but not fixing problems. Cleaning fixes what
+    validation flagged (bad ticks, stale quotes, halts, duplicates, missing data), using a defensible
+    method per failure mode. Normalization adjusts for corporate actions and futures rolls so the series
+    becomes continuous and tradeable-return-consistent. Storage keeps the cleaned, normalized data in a
+    versioned, single-source-of-truth architecture. Point-in-time serving answers "as of date X" queries
+    using only what was genuinely knowable at that date, with no later revision or survivorship creeping
+    in.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why is fixing a suspicious record during ingestion itself considered a mistake, even if the fix is correct?</summary>
+    <div class="tl-answer">
+    Ingestion's only job is to durably capture what the feed actually said. If a correction is applied
+    before that capture happens, the original record — the only ground truth a later validation or
+    cleaning step could be audited against — is lost. Even a technically correct fix applied at this
+    stage removes the ability to later verify what was actually flagged, why, and whether the fix itself
+    was reasonable; cleaning belongs in its own separate, logged stage precisely so that audit trail
+    survives.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What are the four standard bar-construction sampling clocks, and what does each one hold fixed while a bar is being built?</summary>
+    <div class="tl-answer">
+    Time bars hold a fixed wall-clock interval fixed (close a bar every minute/hour regardless of
+    activity). Tick bars hold a fixed count of trade prints fixed. Volume bars hold a fixed traded
+    quantity (shares/contracts) fixed. Dollar bars hold a fixed traded notional value (price × volume)
+    fixed, staying comparable even as an instrument's price level drifts over long periods.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Explain, without using the word "IID," why a fixed-clock sampling scheme produces a statistically worse-behaved return series than an activity-based one.</summary>
+    <div class="tl-answer">
+    Trading activity clusters unevenly through a session — bursts around news and the open/close, lulls
+    in between. A fixed wall-clock interval samples at the same rate regardless of how much genuine
+    activity is happening inside it, so a quiet period gets the same number of observations as a very
+    active one, while an active period's huge amount of real information gets compressed into the same
+    small number of bars a quiet period would produce. An activity-based clock (volume or dollar bars)
+    speeds up exactly when genuine activity speeds up, so each bar keeps representing a comparable amount
+    of real information turnover — which is why its returns behave more consistently from bar to bar than
+    a fixed-clock scheme's returns do.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In the worked example, why did the 1-minute time-bar hour under-represent the release burst even though it used the same total ticks?</summary>
+    <div class="tl-answer">
+    The time-bar scheme allocates a fixed number of bars per fixed time (5 bars for any 5 minutes),
+    regardless of how many ticks arrive in that window. The release burst packed roughly 89% of the
+    hour's total tick count into the same 5 bars a quiet 5-minute stretch would also receive, so those 5
+    bars had to compress vastly more information into the same observation count as any other 5 bars in
+    the hour — the opposite of what an activity-based clock like volume bars would do, where a burst
+    simply produces far more bars in the same wall-clock span.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Marcos López de Prado, <em>Advances in Financial Machine Learning</em> (Wiley, 2018) — Chapter 2, "Financial Data Structures," is the primary source for the time/tick/volume/dollar bar taxonomy and the argument for why activity-based bars produce statistically better-behaved returns than time bars.</li>
+    <li>David Easley, Marcos López de Prado &amp; Maureen O'Hara, "The Volume Clock: Insights into the High-Frequency Paradigm," <em>Journal of Portfolio Management</em>, 39(1), 2012 — the original applied argument for sampling by volume/activity rather than by wall-clock time in high-frequency microstructure research.</li>
+    <li>Robert F. Engle &amp; Jeffrey R. Russell, "Autoregressive Conditional Duration: A New Model for Irregularly Spaced Transaction Data," <em>Econometrica</em>, 66(5), 1998 — foundational work on modeling the irregular, clustered timing of transactions directly, the statistical phenomenon that motivates activity-based bar sampling in the first place.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="data-cleaning-outliers-missing-data.html">Data Cleaning: Outliers, Bad Ticks &amp; Missing Data →</a>
+  </div>
+</div>
+</body>
+</html>

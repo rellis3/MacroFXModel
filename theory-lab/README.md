@@ -3,14 +3,16 @@
 A from-scratch, math-explained curriculum in the quantitative concepts behind
 this repo's FX/macro research — 34 numbered theory lessons, a 5-lesson
 Foundation Mathematics tier for readers starting from GCSE-level maths, 8
-background primers, and fourteen further categories spanning fixed income,
+background primers, and fifteen further categories spanning fixed income,
 numerical methods, market microstructure, options Greeks, Bayesian/state-space
 extensions, information theory, signal processing, graph theory, reinforcement
-learning, risk management, portfolio construction, research methodology, and
-stochastic differential equations. Covers everything from algebra and Euler's
-formula to the Heston model, Random Matrix Theory, Merton's continuous-time
-portfolio problem, Nelson-Siegel yield curves, dealer gamma exposure, MCMC,
-DebtRank, the Bellman equation, and Neural SDEs.
+learning, risk management, portfolio construction, research methodology,
+stochastic differential equations, and institutional data engineering.
+Covers everything from algebra and Euler's formula to the Heston model,
+Random Matrix Theory, Merton's continuous-time portfolio problem,
+Nelson-Siegel yield curves, dealer gamma exposure, MCMC, DebtRank, the
+Bellman equation, Neural SDEs, and the data-pipeline mechanics underneath
+all of it.
 
 Every card on the hub carries a **Beginner/Intermediate/Advanced** difficulty
 pill (`.tl-pill.tl-diff-pill`), and a filter bar at the top of the page
@@ -147,6 +149,13 @@ markup, the house content order, and a verification checklist.
   & correlated SDEs, short-rate models (Vasicek/CIR/Hull-White), Neural
   SDEs & Neural SPDEs (explicitly flagged as unvalidated research
   machinery, not built or tested in this repo).
+- **24 · Institutional Data Engineering** (5) — the raw-feed-to-trading-ready
+  data pipeline (bar construction: time/tick/volume/dollar bars), data
+  cleaning (bad ticks, stale quotes, missing-data tradeoffs, and cleaning
+  with whole-sample stats as a lookahead-bias bug), corporate actions &
+  futures-roll series continuity, point-in-time data & survivorship bias,
+  and data architecture (storage, versioning, lineage). The first category
+  focused on data infrastructure/process rather than math theory.
 
 Nothing in this folder is a trading signal. A lesson explaining a technique
 well is not evidence the technique works here — per `CLAUDE.md`'s Lego
@@ -161,7 +170,7 @@ theory-lab/
   glossary.html       — searchable notation glossary
   assets/theory.css   — shared stylesheet (dark theme, MathJax, interactive-
                          chart, real-world-scenario, and skim-path classes)
-  lessons/*.html      — 98 lesson files (5 Foundation Mathematics + 8
+  lessons/*.html      — 103 lesson files (5 Foundation Mathematics + 8
                         primers/foundations + 34 numbered theory lessons +
                         5 Fixed Income Mathematics + 4 Numerical Methods +
                         4 further Market Microstructure lessons alongside
@@ -176,5 +185,6 @@ theory-lab/
                         Quantitative Research Process (2), and Stochastic
                         Differential Equations (5) + 1 further Advanced
                         Portfolio Construction lesson (Active Portfolio
-                        Management))
+                        Management) + 5 Institutional Data Engineering
+                        lessons (category 24))
 ```
