@@ -72,6 +72,18 @@ export function runQmrV2(packed, cfg = {}) {
   const {
     gate1Threshold, gate2MinMovePct, stopMultiplier, minRangePct, tpPct, riskPct, eodHour,
     gatesMode = 'on', side = 'both', exitFromHour = null,
+    // COG sets his stop at ~08:53 ET — AFTER the 08:30 ET macro release — and
+    // its whole output is a stop distance + risk tier. QMR sizes its stop from
+    // the OVERNIGHT range, i.e. from volatility that already happened, then
+    // carries it through the release AND the cash open. Sizing to yesterday's
+    // vol and holding it through today's news is the leading hypothesis for why
+    // ours dies where his does not.
+    //   'overnight' = QMR original
+    //   'postdata'  = COG-style: size from the realised range between the data
+    //                 drop and entry, so the stop knows what just happened
+    stopSource = 'overnight',
+    postDataFromHour = 12,   // 12:00 UTC = 08:00 ET, so the window spans the 08:30 print
+    entryHour = null,        // null = QMR_TIMING.entryHour; 14 delays entry past the open
     costPct = QMR_V2_SPREAD[key] ?? QMR_COSTS.costPct,
     stopSlipPct = QMR_COSTS.stopSlipPct,
     minStopPct = 0.10,
@@ -130,7 +142,9 @@ export function runQmrV2(packed, cfg = {}) {
       dir = 'LONG';   // placeholder; unused when side === 'both'
     }
 
-    const entryBar = entryBarFor(byDateH1[today] || []);
+    const entryBar = entryHour == null
+      ? entryBarFor(byDateH1[today] || [])
+      : (byDateH1[today] || []).find(b => b.t.substring(11, 13) === hh(entryHour)) ?? null;
     if (!entryBar) { skips.noEntry++; continue; }
     const entryHH = entryBar.t.substring(11, 16);
     const entry = entryBar.o;
@@ -146,7 +160,21 @@ export function runQmrV2(packed, cfg = {}) {
       .sort((a, b) => a.t.localeCompare(b.t));
     if (after.length < 30) { skips.noWalk++; continue; }
 
-    const stopPct = Math.max(+(on.rangePct * stopMultiplier).toFixed(4), minStopPct);
+    // Stop calibration. postdata reads M1 strictly BEFORE the entry minute, so
+    // it uses only information that existed when the trade was placed.
+    let basisPct = on.rangePct;
+    if (stopSource === 'postdata') {
+      const win = (byDateM1[today] || []).filter(b => {
+        const hm = b.t.substring(11, 16);
+        return parseInt(b.t.substring(11, 13)) >= postDataFromHour && hm < entryHH;
+      });
+      if (win.length < 15) { skips.noWalk++; continue; }
+      const hi = Math.max(...win.map(b => b.h)), lo = Math.min(...win.map(b => b.l));
+      const mid = (hi + lo) / 2;
+      if (!(mid > 0)) { skips.noWalk++; continue; }
+      basisPct = (hi - lo) / mid * 100;
+    }
+    const stopPct = Math.max(+(basisPct * stopMultiplier).toFixed(4), minStopPct);
     const lev = riskPct / stopPct;
     const timing = { ...QMR_TIMING, eodHour };
 
@@ -183,7 +211,7 @@ export function runQmrV2(packed, cfg = {}) {
   }
 
   return {
-    config: { instrument: key, gatesMode, side, exitFromHour, gate1Threshold, gate2MinMovePct,
+    config: { instrument: key, gatesMode, side, exitFromHour, stopSource, postDataFromHour, entryHour, gate1Threshold, gate2MinMovePct,
               stopMultiplier, minRangePct, tpPct, riskPct, eodHour, costPct, stopSlipPct },
     dataSource: 'parquet-m1', m1Bars: m1.length, h1Bars: h1.length,
     dateRange: { start: trades[0]?.date ?? null, end: trades[trades.length - 1]?.date ?? null },

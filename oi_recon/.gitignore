@@ -1,0 +1,4 @@
+# Chrome profile holds YOUR live CME session cookies — never commit it.
+.chrome-profile/
+# Recon captures raw pages/JSON that may embed session ids.
+out/
