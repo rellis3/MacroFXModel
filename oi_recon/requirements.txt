@@ -1,0 +1,4 @@
+requests>=2.31
+playwright>=1.44
+# After installing:  playwright install chromium
+# (--probe and --diff work with requests alone; only --login/--browse need playwright)

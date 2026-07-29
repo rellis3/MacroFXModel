@@ -86,6 +86,18 @@
   </div>
 
   <div id="out" style="display:none">
+    <div class="warn" style="background:#2b0a0a;border-color:#b91c1c;color:#fca5a5">
+      <strong>⛔ WITHDRAWN 2026-07-29 — DO NOT TRADE OR SHARE THESE NUMBERS.</strong>
+      This engine walks exit bars <em>strictly after</em> the 13:00 UTC entry bar, so stops were not live
+      until 14:00. <strong>13:30 UTC is the NY cash open</strong> — every trade got a free pass through the
+      most volatile 30 minutes of the session while carrying a ~0.45% stop. Re-run on M1 with stops live
+      from the fill minute, same trades and period: <strong>Sharpe 1.56 → 0.06, total +167.8% → +0.03%</strong>.
+      The free hour was worth 0.1674%/trade against a total edge of 0.172%/trade — it <em>was</em> the edge.
+      <br><br>
+      The walk-forward (mean OOS 1.98), both-sides advantage, exit-rule tests and gold exit comparison all
+      inherit this and are void. The honest engine is <code>js/qmrV2Engine.js</code> via
+      <code>/api/qmr-v2/run</code>; see <code>FIX_TRACKER.md</code>.
+    </div>
     <div class="warn" id="banner"></div>
 
     <div class="panel"><h2>Headline — full sample</h2><div class="grid" id="head"></div></div>
