@@ -77,6 +77,7 @@
       <div><label>Risk % / trade</label><input id="p_riskPct" style="width:88px"></div>
       <div><label>Round-trip cost %</label><input id="p_costPct" style="width:96px"></div>
       <div><label>Stop slippage %</label><input id="p_stopSlipPct" style="width:96px"></div>
+      <div><label>Exit hour UTC</label><input id="p_eodHour" style="width:88px"></div>
       <button class="ghost" onclick="resetDefaults();run()">Reset to defaults</button>
     </div>
     <p class="note">Defaults are per-instrument — gold trades far smaller % ranges than the equity
@@ -111,6 +112,10 @@
       <p class="note">Read the recent rows in isolation before trusting the headline — a strong
       full-sample average can hide a decayed last 12–24 months.</p></div>
 
+    <div class="panel"><h2>Exit rule — tested from both directions</h2>
+      <div style="overflow-x:auto"><table id="exitTable"></table></div>
+      <p class="note" id="exitNote"></p></div>
+
     <div class="panel"><h2>Cost sensitivity — the load-bearing assumption</h2>
       <div style="overflow-x:auto"><table id="costTable"></table></div>
       <p class="note" id="costNote"></p></div>
@@ -144,10 +149,10 @@ const INST_DEFAULTS={
   NAS100_USD:{gate1Threshold:0.60,gate2MinMovePct:0.10,stopMultiplier:0.45,minRangePct:0.15,tpPct:1.50,riskPct:1.00},
   SPX500_USD:{gate1Threshold:0.60,gate2MinMovePct:0.10,stopMultiplier:0.45,minRangePct:0.15,tpPct:1.50,riskPct:1.00},
   US30_USD:  {gate1Threshold:0.60,gate2MinMovePct:0.10,stopMultiplier:0.45,minRangePct:0.15,tpPct:1.50,riskPct:1.00},
-  XAU_USD:   {gate1Threshold:0.60,gate2MinMovePct:0.05,stopMultiplier:0.45,minRangePct:0.10,tpPct:0.80,riskPct:1.00,costPct:0.02154},
+  XAU_USD:   {gate1Threshold:0.60,gate2MinMovePct:0.05,stopMultiplier:0.45,minRangePct:0.10,tpPct:0.80,riskPct:1.00,costPct:0.02154,eodHour:20},  // 19:00 wins the full-sample sweep (0.689->0.852) but is NOT the default until its walk-forward agrees
 };
-const COST_DEFAULTS={costPct:0.00937,stopSlipPct:0.005}  // NAS100 MEASURED round-trip; gold overrides below;
-const PARAM_IDS=['gate1Threshold','gate2MinMovePct','stopMultiplier','minRangePct','tpPct','riskPct','costPct','stopSlipPct'];
+const COST_DEFAULTS={costPct:0.00937,stopSlipPct:0.005,eodHour:20}  // NAS100 MEASURED round-trip; gold overrides below;
+const PARAM_IDS=['gate1Threshold','gate2MinMovePct','stopMultiplier','minRangePct','tpPct','riskPct','costPct','stopSlipPct','eodHour'];
 
 // Walk-forward results actually RUN, keyed by instrument+mode. Anything not in
 // here has never been walk-forwarded and the page must say so rather than
@@ -256,7 +261,7 @@ function render(j){
     + cell(f(j.excessKurtosis),'Excess kurtosis')
     + cell(j.positiveMonths+' / '+j.negativeMonths,'Pos / neg months');
 
-  drawFlat(j); drawCurve(j.curve); drawHeat(j.monthly); drawMC(j.trades.map(t=>t.ret)); drawCost(j);
+  drawExit(j); drawFlat(j); drawCurve(j.curve); drawHeat(j.monthly); drawMC(j.trades.map(t=>t.ret)); drawCost(j);
 
   const lev=(j.config.riskPct/ (j.trades.reduce((s,t)=>s+t.stopPct,0)/j.trades.length)).toFixed(2);
   $('exportNote').innerHTML=`Account size <strong>$${(+$('acct').value).toLocaleString()}</strong>.
@@ -373,6 +378,35 @@ function drawFlat(j){
      <br><br>
      The <strong>Currency P&amp;L CSV export is already on this fixed-stake basis</strong> — constant risk per
      row, no compounding — so it reconciles to this card, not to the one above.`;
+}
+
+// The exit rule was challenged from BOTH sides and survived both. Shown on the
+// page because "we tested the alternatives and they were worse" is stronger
+// evidence than a headline number, and because the losing tests are the ones a
+// reader would otherwise have to take on trust.
+function drawExit(j){
+  if(j.instrument!=='NAS100_USD'){$('exitTable').innerHTML='';$('exitNote').innerHTML=
+    '<span class="muted">Both challenges were run on NAS100. Not yet repeated for this instrument.</span>';return;}
+  $('exitTable').innerHTML=
+    '<tr><th>Variant</th><th>Sharpe</th><th>Mean/trade</th><th>Equity</th><th>Verdict</th></tr>'
+   +'<tr><td style="text-align:left">Stop 0.45% · target 1.5% · EOD close <span class="muted">(current)</span></td>'
+   +'<td class="pos">1.53</td><td class="pos">+0.172%</td><td>2.50</td><td style="text-align:left">—</td></tr>'
+   +'<tr><td style="text-align:left">Remove the TARGET, keep the clock</td><td class="pos">1.74</td>'
+   +'<td class="pos">+0.230%</td><td>3.75</td><td style="text-align:left" class="neg">Rejected — 10 trades supply 78% of the gain, 2022 alone 82%, and the walk-forward chose it in 0 of 8 windows</td></tr>'
+   +'<tr><td style="text-align:left">Remove the CLOCK, keep the target</td><td class="neg">—</td>'
+   +'<td class="neg">-0.093%</td><td class="neg">0.47</td><td style="text-align:left" class="neg">Rejected — 101 of 609 trades (16.6%) gap through the stop; t = -4.11</td></tr>';
+  $('exitNote').innerHTML=
+    `<strong>Removing the target</strong> looks better on the full sample (Sharpe 1.74 vs 1.53) but the gain is
+     carried by 10 trades out of 609 — 2022 alone supplies 82% of it, dominated by the October CPI reversal —
+     and the walk-forward independently rejected it in <strong>8 of 8</strong> windows.
+     <br><br>
+     <strong>Removing the EOD close</strong> does exactly what the thesis predicts: target hits DOUBLE, 70 → 140.
+     But 101 trades gap straight through the stop, and a stop only caps a loss while the market is continuous —
+     at ~3.5× leverage a 1% gap against a 0.45% stop is about −2.2R. It turns +0.172%/trade into
+     <strong>−0.093%</strong> (t = −4.11), equity 2.50 → 0.47.
+     <br><br>
+     So the EOD close is <strong>not an arbitrary clock — it is what keeps the stop a stop.</strong> The current
+     exit rule is the one that survives being attacked from both ends.`;
 }
 
 function drawCost(j){
