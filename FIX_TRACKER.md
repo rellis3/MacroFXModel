@@ -104,3 +104,45 @@ Legend: `[x]` done · `[ ]` open · `(owner)` needs an owner decision first ·
 - [ ] (research) COT six-step recipe through the harness for FX pairs
 - [ ] (research) CME OI walls/max-pain into GoldV2 obstacle map + zone scoring
 - [ ] (research) Verify "beats GARCH/Parkinson/Harvey" via OOS QLIKE on `vol-forecast-bench.html`
+
+## FALSIFIED 2026-07-29 — the QMR edge was a backtest artifact
+
+`_computeNqQmr` walks bars **strictly after** the 13:00 entry bar, so the first
+bar it can stop on is 14:00. **13:30 UTC is the NY cash open.** Every trade got
+a free pass through the most volatile 30 minutes of the session while carrying
+a ~0.45% stop.
+
+Isolated on identical data, trades and period — only the exposure window differs:
+
+| | Sharpe | Total | n |
+|---|---|---|---|
+| v1 window (stops live 14:00) | 1.56 | +167.77% | 590 |
+| **Honest (stops live 13:00)** | **0.06** | **+0.03%** | 590 |
+| v1 engine's original claim | 1.53 | +168.89% | 609 |
+
+`qmrV2Engine` reproduces v1 when given v1's window, so v2 is not buggy — the
+result *is* the free hour. Free-hour advantage **0.1674%/trade** against a total
+system edge of **0.172%/trade**. Only 49 of 590 trades differ; those 49 carry
+everything.
+
+**Why the M1 audit missed it:** the validator sliced M1 from `entryHour+1` so the
+comparison would isolate intrabar path resolution. It did that correctly and was
+structurally blind to the hour v1 never looks at — it validated v1 against itself
+on the one question that mattered.
+
+**Withdrawn:** both-sides walk-forward (mean OOS 1.98, t=3.74, 7/8), the tearsheet
+headline, the exit-rule tests, the gold exit-hour comparison, the NQ+Gold book.
+All computed on this engine. Both-sides is void in particular — its advantage
+over directional was measured inside the free hour.
+
+**Stands:** measured spreads (bid/ask data, engine-independent), `qmrCore` bricks,
+`qmrV2Engine`, and the M1 parquet path now covering 2016–2026.
+
+**Open:** the live forward record's underperformance (NQ −1.61%, SPX −3.14%,
+DOW −4.18%) was attributed to ordinary drawdown. A backtest granting a free hour
+would produce exactly this systematic live shortfall. `_qmrResolveForward` needs
+the same audit — it may share the window.
+
+- [ ] Audit `_qmrResolveForward` for the same entry-hour gap
+- [ ] Re-check whether any *other* engine in the repo uses "bars strictly after entry"
+- [ ] Decide: repair `_computeNqQmr`'s window, or retire v1 in favour of `qmrV2Engine`
