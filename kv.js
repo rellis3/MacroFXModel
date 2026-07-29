@@ -169,6 +169,9 @@ const _CF_EXACT = new Set([
   // source (see COG_OBSERVED_SYSTEM.md). Losing this loses data that cannot be
   // recomputed from anything, ever.
   'cog_signal_log',
+  // COG shadow emitter's daily gate output — the forward record. Cannot be
+  // recomputed after the fact: it is a stamped prediction, not a derivation.
+  'cog_shadow_log',
   'nav_layout',             // index.html command-hub custom category/order — user drag-drop, must survive redeploys and sync across devices
   'scratchpad_notes',       // index.html scratchpad modal — free-text personal notes, must survive redeploys and sync across devices
 ]);

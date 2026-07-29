@@ -1,0 +1,174 @@
+// cog-replication/engine/cogShadow.js — the shadow emitter.
+//
+// Emits OUR version of COG's three gates every trading day, stamped BEFORE his
+// alerts land, so the forward comparison is honest by construction. It places
+// no orders and gives no advice: it is a measuring instrument.
+//
+// Read cog-replication/README.md first. In short: the OI/GEX direction
+// hypothesis cannot be backtested (oi_history grows one day per manual paste
+// and currently holds 2 days), so a live shadow record is the only route.
+//
+// ── The three layers ────────────────────────────────────────────────────────
+//   G1 TIDE         is money flowing in?  → persistent BIAS      (weekly-ish)
+//   G2 TRANSMISSION how far / how violently today? → STOP % + TIER (daily)
+//   G3 MAGNET       where is it pulled?   → DIRECTION + TARGET   (daily)
+//
+// Mapping to COG's observed stages, with our schedule set to fire just AHEAD of
+// each of his so we can never be accused of copying him:
+//   his "Data threshold 1"  02:00–14:00 UK (variable)  → ours 08:00 UTC
+//   his "Data threshold 2"  ~13:53 UK = 12:53 UTC      → ours 12:45 UTC
+//   his "Order filled"      ~14:26 UK = 13:26 UTC      → ours 13:15 UTC
+//
+// ── What is inferred, and must not harden into fact ─────────────────────────
+// COG STATED: repo, reverse repo, central-bank balance sheets; "nothing to do
+// with NAS price". He never mentioned options positioning. G2's GEX mapping and
+// G3's wall-magnet rule are OUR INFERENCE from two matched screenshots. The
+// thresholds below are first guesses chosen to be interpretable, NOT calibrated
+// — nothing has been fitted, because there is nothing to fit against yet. Every
+// emission records its inputs so the rules can be re-derived later from the
+// accumulated record rather than re-invented.
+
+// ── G1 — the tide ───────────────────────────────────────────────────────────
+// Net liquidity = Fed balance sheet − Treasury General Account − reverse repo.
+// The framework COG described ("money pumped into the USA"). Direction comes
+// from its RATE OF CHANGE, not its level: a big balance sheet that is shrinking
+// is a headwind. HY credit is the risk-appetite switch — if credit is stressed,
+// liquidity does not reach equities.
+export function computeG1(series, opts = {}) {
+  const { rocWeeks = 4, creditStressBp = 25 } = opts;
+  const { walcl = [], tga = [], rrp = [], hy = [] } = series;
+  const last = a => (a.length ? a[a.length - 1] : null);
+  const back = (a, n) => (a.length > n ? a[a.length - 1 - n] : null);
+
+  const netNow = [walcl, tga, rrp].every(a => last(a) != null)
+    ? last(walcl).value - last(tga).value - last(rrp).value : null;
+  const netThen = [walcl, tga, rrp].every(a => back(a, rocWeeks) != null)
+    ? back(walcl, rocWeeks).value - back(tga, rocWeeks).value - back(rrp, rocWeeks).value : null;
+  if (netNow == null || netThen == null) {
+    return { state: 'INVALID', bias: null, reason: 'net liquidity inputs incomplete', netNow, netThen };
+  }
+  const netChgPct = netThen !== 0 ? (netNow - netThen) / Math.abs(netThen) * 100 : 0;
+
+  // Credit: widening HY over the same window is a veto, not a vote. Liquidity
+  // that cannot reach risk assets is not liquidity for this purpose.
+  const hyNow = last(hy)?.value ?? null, hyThen = back(hy, rocWeeks)?.value ?? null;
+  const hyChgBp = (hyNow != null && hyThen != null) ? (hyNow - hyThen) * 100 : null;
+  const creditStressed = hyChgBp != null && hyChgBp > creditStressBp;
+
+  let bias = netChgPct > 0 ? 'LONG' : netChgPct < 0 ? 'SHORT' : null;
+  let state = bias ? 'VALID' : 'NEUTRAL';
+  if (creditStressed) { state = 'INVALID'; bias = null; }
+
+  return {
+    state, bias,
+    netLiquidityUsdBn: +(netNow / 1000).toFixed(1),      // FRED millions → $bn
+    netChgPct: +netChgPct.toFixed(2), rocWeeks,
+    hyNow, hyChgBp: hyChgBp == null ? null : +hyChgBp.toFixed(1), creditStressed,
+    reason: creditStressed
+      ? `HY credit widened ${hyChgBp?.toFixed(0)}bp over ${rocWeeks}w — liquidity is not reaching risk assets`
+      : `net liquidity ${netChgPct >= 0 ? 'rising' : 'falling'} ${Math.abs(netChgPct).toFixed(2)}% over ${rocWeeks}w`,
+  };
+}
+
+// ── G2 — transmission: GEX → stop distance + risk tier ──────────────────────
+// COG's Gate 2 emits a stop distance % and a risk tier in two variants exactly
+// 2× apart (0.44%/2.2% and 0.21%/1.00%, both ≈5× leverage). GEX is the only
+// mechanism we have that produces a per-day range number from positioning:
+// dealers short gamma (negative GEX) amplify moves, long gamma dampens them.
+//
+// The base range is the instrument's own recent realised range — GEX scales it
+// rather than replacing it, so a broken/missing GEX degrades to a plain vol
+// stop instead of an invented one.
+export function computeG2(gex, baseRangePct, opts = {}) {
+  const { stopFraction = 0.45, riskPct = 1.0, negGexWiden = 1.35, posGexTighten = 0.85 } = opts;
+  if (!Number.isFinite(baseRangePct) || baseRangePct <= 0) {
+    return { state: 'INVALID', reason: 'no base range' };
+  }
+  const gexBn = Number.isFinite(gex) ? gex / 1e9 : null;
+  const regime = gexBn == null ? 'UNKNOWN' : gexBn < 0 ? 'SHORT_GAMMA' : 'LONG_GAMMA';
+  const mult = regime === 'SHORT_GAMMA' ? negGexWiden : regime === 'LONG_GAMMA' ? posGexTighten : 1;
+
+  const stopStd = +Math.max(baseRangePct * stopFraction * mult, 0.10).toFixed(3);
+  return {
+    state: 'VALID', regime, gexBn: gexBn == null ? null : +gexBn.toFixed(2),
+    baseRangePct: +baseRangePct.toFixed(3), gexMultiplier: mult,
+    // Two tiers, mirroring COG's own output shape.
+    standard:     { stopPct: stopStd, riskPct: +(riskPct * 2.2).toFixed(2) },
+    conservative: { stopPct: +(stopStd / 2).toFixed(3), riskPct: +riskPct.toFixed(2) },
+    reason: regime === 'SHORT_GAMMA'
+      ? `dealers SHORT gamma (GEX ${gexBn?.toFixed(1)}bn) — moves amplified, stop widened ${negGexWiden}×`
+      : regime === 'LONG_GAMMA'
+      ? `dealers LONG gamma (GEX ${gexBn?.toFixed(1)}bn) — moves dampened, stop tightened ${posGexTighten}×`
+      : 'no GEX available — plain volatility stop, no positioning adjustment',
+  };
+}
+
+// ── G3 — magnet: direction + target from the wall structure ─────────────────
+// Dealer hedging into large strikes creates flow toward them. The dominant wall
+// (heavier of call/put by OI) is the magnet; its side of spot is the direction.
+// Explicitly NOT price momentum — this is positioning, which is what COG said
+// his system reads.
+export function computeG3(oi, opts = {}) {
+  const { minEdgePct = 0.15, dominanceRatio = 1.2 } = opts;
+  if (!oi || !Number.isFinite(oi.spot) || oi.spot <= 0) {
+    return { state: 'INVALID', reason: 'no spot' };
+  }
+  const spot = oi.spot;
+  const cw = oi.callWall, pw = oi.putWall;
+  const cOI = oi.callWallOI ?? 0, pOI = oi.putWallOI ?? 0;
+  if (!Number.isFinite(cw) && !Number.isFinite(pw)) {
+    return { state: 'INVALID', reason: 'no walls in the book' };
+  }
+  // Dominant only if it is meaningfully heavier — a near-tie is not a magnet,
+  // it is a range, and calling it a direction would be inventing conviction.
+  let dom = null, domSide = null;
+  if (Number.isFinite(cw) && Number.isFinite(pw)) {
+    if (cOI >= pOI * dominanceRatio)      { dom = cw; domSide = 'CALL'; }
+    else if (pOI >= cOI * dominanceRatio) { dom = pw; domSide = 'PUT'; }
+  } else if (Number.isFinite(cw)) { dom = cw; domSide = 'CALL'; }
+  else                            { dom = pw; domSide = 'PUT'; }
+
+  if (dom == null) {
+    return { state: 'NEUTRAL', reason: `walls balanced (call OI ${cOI} vs put OI ${pOI}) — a range, not a magnet`,
+             callWall: cw, putWall: pw };
+  }
+  const edgePct = (dom - spot) / spot * 100;
+  if (Math.abs(edgePct) < minEdgePct) {
+    return { state: 'NEUTRAL', reason: `price sitting on the ${domSide} wall (${edgePct.toFixed(2)}%) — pinned, no travel`,
+             dominantWall: dom, edgePct: +edgePct.toFixed(3) };
+  }
+  return {
+    state: 'VALID', direction: edgePct > 0 ? 'LONG' : 'SHORT',
+    dominantWall: dom, dominantSide: domSide, target: dom,
+    edgePct: +edgePct.toFixed(3), spot,
+    callWall: cw, putWall: pw, callWallOI: cOI, putWallOI: pOI,
+    maxPain: oi.maxPain ?? null,
+    reason: `${domSide} wall at ${dom} is ${Math.abs(edgePct).toFixed(2)}% ${edgePct > 0 ? 'above' : 'below'} spot ${spot} (OI ${domSide === 'CALL' ? cOI : pOI} vs ${domSide === 'CALL' ? pOI : cOI})`,
+  };
+}
+
+// Combine into the day's shadow call. Deliberately conservative: all three must
+// line up. G1 supplies a bias, G3 the day's direction — if they disagree, we
+// stand aside and SAY SO, because a disagreement is itself data about which
+// layer drives COG's calls.
+export function combine(g1, g2, g3) {
+  const reasons = [];
+  if (g1.state === 'INVALID') reasons.push('G1 invalid: ' + g1.reason);
+  if (g2.state !== 'VALID')   reasons.push('G2 invalid: ' + (g2.reason ?? ''));
+  if (g3.state !== 'VALID')   reasons.push('G3 ' + g3.state.toLowerCase() + ': ' + (g3.reason ?? ''));
+
+  const agree = g1.bias && g3.direction && g1.bias === g3.direction;
+  const conflict = g1.bias && g3.direction && g1.bias !== g3.direction;
+  if (conflict) reasons.push(`G1 tide says ${g1.bias} but G3 magnet says ${g3.direction}`);
+
+  const action = (!reasons.length && agree) ? 'TRADE' : 'NO_TRADE';
+  return {
+    action,
+    direction: action === 'TRADE' ? g3.direction : null,
+    target: action === 'TRADE' ? g3.target : null,
+    stopPct: g2.state === 'VALID' ? g2.standard.stopPct : null,
+    riskPct: g2.state === 'VALID' ? g2.standard.riskPct : null,
+    conflict: !!conflict,
+    reasons,
+  };
+}

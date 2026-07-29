@@ -167,6 +167,7 @@ import { loadHistoricalCogDataset } from './js/cogHistoricalDataLoader.js';
 import { runCogV3 } from './js/cogV3Engine.js';
 import { runQmrV2 } from './js/qmrV2Engine.js';
 import { checkOISignals } from './cog-replication/engine/oiSignalCheck.js';
+import { computeG1 as computeCogG1, computeG2 as computeCogG2, computeG3 as computeCogG3, combine as combineCogGates } from './cog-replication/engine/cogShadow.js';
 import { bothSidesWalk, groupBarsByDate, entryBarFor, walkTrade } from './js/qmrCore.js';
 import { runPivotSpike } from './js/pivotSpikeEngine.js';
 import { COG_V2_TRIGGER_WINDOW, COG_V2_NY_OPEN_MINUTE, COG_V2_ENTRY_DEADLINE_MINUTE, COG_V2_SETUP_NOTE, COG_V2_RISK_NOTE, COG_V2_IMPULSE_PARAMS, COG_V2_TRIGGER_SCORE, COG_V2_SETUP_HYSTERESIS, COG_V2_SLOW_SMOOTH, COG_V2_CONFIDENCE, COG_V2_MIN_SETUP_PERSIST_BARS } from './js/cogV2Config.js';
@@ -5563,6 +5564,135 @@ app.get('/api/nq-qmr/m5-candles', async (req, res) => {
     console.error('[nq-qmr m5]', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
+});
+
+// ── COG SHADOW EMITTER ──────────────────────────────────────────────────────
+// Emits OUR three gates daily, stamped BEFORE COG's alerts land, into
+// cog_shadow_log for the forward comparison. Places no orders.
+// Schedule (UTC), each set just AHEAD of his so we can never be copying him:
+//   08:00  G1 tide          (his "threshold 1" is variable 01:00-13:00 UTC)
+//   12:45  G2 transmission  (his ~12:53; the 08:30 ET print lands 12:30)
+//   13:15  G3 magnet + call (his fill ~13:26)
+const COG_SHADOW_KV = 'cog_shadow_log';
+const COG_SHADOW_INST = 'NAS100_USD';
+const _cogShadowSent = { date: null, g1: false, g2: false, g3: false };
+
+async function _cogShadowLoad() {
+  try {
+    const raw = await kv.get(COG_SHADOW_KV);
+    if (!raw) return [];
+    const p = JSON.parse(raw);
+    return Array.isArray(p) ? p : (Array.isArray(p?.data) ? p.data : []);
+  } catch { return []; }
+}
+async function _cogShadowWrite(date, patch) {
+  const log = await _cogShadowLoad();
+  let i = log.findIndex(e => e.date === date);
+  if (i === -1) { log.unshift({ date }); i = 0; }
+  Object.assign(log[i], patch);
+  await kv.put(COG_SHADOW_KV, JSON.stringify({ data: log.slice(0, 180), timestamp: Date.now() }));
+  return log[i];
+}
+// FRED weekly series -> [{date,value}] ascending. Small windows; these are
+// weekly prints so a year is ~52 points.
+async function _cogFred(id, fromDate) {
+  try {
+    const m = await fetchFredSeries(id, fromDate, process.env.FRED_KEY);
+    return [...m.entries()].map(([date, value]) => ({ date, value }))
+      .filter(x => Number.isFinite(x.value)).sort((a, b) => a.date.localeCompare(b.date));
+  } catch { return []; }
+}
+async function _cogOiFor(pairKey) {
+  const raw = await kv.get('oi_store').catch(() => null);
+  if (!raw) return null;
+  const store = JSON.parse(raw).data ?? JSON.parse(raw);
+  const norm = x => String(x).toLowerCase().replace(/[\/_\s]/g, '');
+  const k = Object.keys(store || {}).find(x => norm(x) === norm(pairKey));
+  return k ? store[k] : null;
+}
+// Base range for G2: yesterday's realised session range, so GEX scales a real
+// number rather than an invented one.
+async function _cogBaseRange() {
+  try {
+    const bars = await _getNqQmrBars(COG_SHADOW_INST);
+    const byDate = groupBarsByDate(bars);
+    const days = Object.keys(byDate).sort();
+    for (let i = days.length - 1; i >= Math.max(0, days.length - 5); i--) {
+      const d = byDate[days[i]].filter(b => { const h = +b.t.substring(11, 13); return h >= 13 && h <= 20; });
+      if (d.length < 4) continue;
+      const hi = Math.max(...d.map(b => b.h)), lo = Math.min(...d.map(b => b.l)), mid = (hi + lo) / 2;
+      if (mid > 0) return { rangePct: (hi - lo) / mid * 100, from: days[i] };
+    }
+  } catch {}
+  return null;
+}
+
+async function cogShadowRun(stage) {
+  const today = new Date().toISOString().substring(0, 10);
+  if (_cogShadowSent.date !== today) { Object.assign(_cogShadowSent, { date: today, g1: false, g2: false, g3: false }); }
+  if (_cogShadowSent[stage]) return;
+  try {
+    if (stage === 'g1') {
+      const from = new Date(Date.now() - 400 * 864e5).toISOString().substring(0, 10);
+      const [walcl, tga, rrp, hy] = await Promise.all([
+        _cogFred('WALCL', from), _cogFred('WTREGEN', from),
+        _cogFred('RRPONTSYD', from), _cogFred('BAMLH0A0HYM2', from),
+      ]);
+      const g1 = computeCogG1({ walcl, tga, rrp, hy });
+      await _cogShadowWrite(today, { g1: { ...g1, at: new Date().toISOString() } });
+      await nqSendTg(`\u{1F30A} <b>COG-SHADOW | G1 TIDE</b>  ${g1.state}${g1.bias ? ' ' + g1.bias : ''}\n`
+        + `Net liquidity: $${g1.netLiquidityUsdBn}bn (${g1.netChgPct >= 0 ? '+' : ''}${g1.netChgPct}% / ${g1.rocWeeks}w)\n`
+        + `HY credit: ${g1.hyChgBp >= 0 ? '+' : ''}${g1.hyChgBp}bp\n${g1.reason}\n<i>Shadow only — no orders. Our inference, not COG's stated rule.</i>`);
+      _cogShadowSent.g1 = true;
+    }
+    if (stage === 'g2') {
+      const oi = await _cogOiFor(COG_SHADOW_INST);
+      const base = await _cogBaseRange();
+      const g2 = computeCogG2(oi?.exposures?.gex, base?.rangePct);
+      await _cogShadowWrite(today, { g2: { ...g2, baseFrom: base?.from ?? null, at: new Date().toISOString() } });
+      await nqSendTg(`\u{26A1} <b>COG-SHADOW | G2 TRANSMISSION</b>  ${g2.state}\n`
+        + (g2.state === 'VALID'
+          ? `Regime: ${g2.regime} (GEX ${g2.gexBn}bn)\nStandard:     stop ${g2.standard.stopPct}%  risk ${g2.standard.riskPct}%\nConservative: stop ${g2.conservative.stopPct}%  risk ${g2.conservative.riskPct}%\n${g2.reason}`
+          : g2.reason)
+        + `\n<i>Shadow only. GEX-to-stop mapping is OUR inference, uncalibrated.</i>`);
+      _cogShadowSent.g2 = true;
+    }
+    if (stage === 'g3') {
+      const oi = await _cogOiFor(COG_SHADOW_INST);
+      const g3 = computeCogG3(oi);
+      const rec = await _cogShadowWrite(today, { g3: { ...g3, at: new Date().toISOString() } });
+      const call = combineCogGates(rec.g1 ?? {}, rec.g2 ?? {}, g3);
+      await _cogShadowWrite(today, { call: { ...call, at: new Date().toISOString() } });
+      await nqSendTg(`\u{1F9F2} <b>COG-SHADOW | G3 MAGNET</b>  ${g3.state}\n`
+        + (g3.state === 'VALID' ? `${g3.reason}\n` : `${g3.reason}\n`)
+        + `\n<b>SHADOW CALL: ${call.action}${call.direction ? ' ' + call.direction : ''}</b>\n`
+        + (call.action === 'TRADE'
+          ? `Target ${call.target}  ·  stop ${call.stopPct}%  ·  risk ${call.riskPct}%`
+          : call.reasons.join('\n'))
+        + `\n<i>Shadow only — no orders. Log COG's actual beside this in cog-replication/FORWARD_LOG.md.</i>`);
+      _cogShadowSent.g3 = true;
+    }
+  } catch (e) { console.error('[cog-shadow ' + stage + ']', e.message); }
+}
+
+setInterval(() => {
+  const d = new Date(), h = d.getUTCHours(), m = d.getUTCMinutes(), dow = d.getUTCDay();
+  if (dow === 0 || dow === 6) return;
+  if (h === 8  && m >= 0  && m < 5)  cogShadowRun('g1');
+  if (h === 12 && m >= 45 && m < 50) cogShadowRun('g2');
+  if (h === 13 && m >= 15 && m < 20) cogShadowRun('g3');
+}, 60_000);
+
+app.get('/api/cog-rep/shadow', async (_req, res) => {
+  res.json({ ok: true, entries: await _cogShadowLoad() });
+});
+// Manual fire, for testing and for a missed schedule window.
+app.post('/api/cog-rep/shadow/run/:stage', async (req, res) => {
+  const st = req.params.stage;
+  if (!['g1', 'g2', 'g3'].includes(st)) return res.status(400).json({ ok: false, error: 'stage must be g1|g2|g3' });
+  _cogShadowSent[st] = false;
+  await cogShadowRun(st);
+  res.json({ ok: true, stage: st, entries: (await _cogShadowLoad()).slice(0, 3) });
 });
 
 // ── COG replication: STEP 1 — does the OI archive carry the signal? ─────────
