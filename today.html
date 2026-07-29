@@ -1298,6 +1298,11 @@ const riskPlain = cls => cls === 'off' ? 'Cautious (risk-off)' : cls === 'on' ? 
 // it apart so a click explains WHY — using data the page has already loaded
 // (cot, fred, brief/session/forecast), no extra network calls.
 const CCY_FRED10Y = { USD: 'us10y', EUR: 'de10y', GBP: 'gb10y', JPY: 'jp10y', AUD: 'au10y', CAD: 'ca10y', CHF: 'ch10y', NZD: null };
+// Short-end (policy-adjacent) rate — same fred_data_v3 payload already fetched for the
+// 10Y line above, just never surfaced. US has no dedicated short series in fred_data_v3,
+// so us2y stands in as the short-end proxy (same convention buildMacro's yield-curve
+// thread already uses). NZD stays null — no NZ series wired into FRED for either tenor.
+const CCY_FRED_SHORT = { USD: 'us2y', EUR: 'de_short', GBP: 'gb_short', JPY: 'jp_short', AUD: 'au_short', CAD: 'ca_short', CHF: 'ch_short', NZD: null };
 // Traditional risk-sentiment bucket — framing context, not a signal on its own.
 const CCY_BUCKET = { USD: 'haven', JPY: 'haven', CHF: 'haven', AUD: 'risk', NZD: 'risk', EUR: 'neutral', GBP: 'neutral', CAD: 'neutral' };
 const CCY_BUCKET_NOTE = {
@@ -1417,6 +1422,21 @@ function currencyDetail(ccy) {
     carry = { yield: v, dir, rank, of: all.length, series };
   }
 
+  // 3b) Short-end (policy-adjacent) rate — near-term carry, distinct from the 10Y level
+  // above. The 10Y is the market's long-run view; this is what's happening right now at
+  // the policy end, which matters most when the two diverge (e.g. a central bank cutting
+  // while long yields stay anchored on other expectations).
+  let shortRate = null;
+  const fkShort = CCY_FRED_SHORT[ccy];
+  if (fkShort && fred?.[fkShort]?.value != null) {
+    const v = fred[fkShort].value, p = fred[fkShort].prev ?? null;
+    const dir = p == null ? null : (v > p + 0.02 ? 'rising' : v < p - 0.02 ? 'falling' : 'steady');
+    const all = CCY_ORDER.map(c => ({ c, y: fred?.[CCY_FRED_SHORT[c]]?.value ?? null })).filter(x => x.y != null);
+    all.sort((a, b) => b.y - a.y);
+    const rank = all.findIndex(x => x.c === ccy) + 1;
+    shortRate = { yield: v, dir, rank, of: all.length };
+  }
+
   // 4) DXY — a real, already-fetched PRICE-based dollar cross-check (not positioning).
   // Only meaningful for USD; the other 7 currencies aren't components with a clean read.
   let dxy = null;
@@ -1426,7 +1446,7 @@ function currencyDetail(ccy) {
     dxy = { value: v, dir };
   }
 
-  return { ccy, score: row?.score ?? null, n: row?.n ?? 0, legs, cot: cotInfo, carry, dxy, bucket: CCY_BUCKET[ccy] ?? 'neutral' };
+  return { ccy, score: row?.score ?? null, n: row?.n ?? 0, legs, cot: cotInfo, carry, shortRate, dxy, bucket: CCY_BUCKET[ccy] ?? 'neutral' };
 }
 
 function closeCcyDrawer() {
@@ -1506,6 +1526,10 @@ function openCcyDrawer(ccy) {
       ${cr.series?.length ? `<div class="muted" style="font-size:11px;margin-top:8px">10Y yield, last ${cr.series.length} monthly readings — is it gradually building or fading:</div>${miniSparkline(cr.series, { decimals: 2, suffix: '%' })}` : ''}`;
   } else {
     carryHtml = `<div class="muted">No 10Y yield series pulled for ${ccy} yet${ccy === 'NZD' ? ' (FRED has no NZ series wired in)' : ''}.</div>`;
+  }
+  if (det.shortRate) {
+    const sr = det.shortRate;
+    carryHtml += `<div class="ccy-explain" style="margin-top:8px">Near-term (policy-adjacent) rate: <b>${sr.yield.toFixed(2)}%</b>${sr.dir ? `, currently <b>${sr.dir}</b>` : ''} — ranked <b>#${sr.rank} of ${sr.of}</b>. The 10Y above is the market's long-run view; this is what's happening at the short end right now, which matters most when the two diverge (e.g. a central bank cutting while long yields stay anchored).</div>`;
   }
 
   $('ccyBody').innerHTML = `
