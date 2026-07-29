@@ -5554,44 +5554,15 @@ app.get('/api/nq-qmr/tearsheet', async (req, res) => {
     // which days trade or where the stop sits — only what each trade keeps —
     // so a sweep that re-selected trades would be measuring two things at once.
     const buildRows = (costPct, stopSlipPct) => {
-    const raw  = _computeNqQmr(bars, { ...cfg, costPct, stopSlipPct });
-
-    // Build the trade series for the requested construction.
-    let rows;
-    if (mode === 'directional') {
-      rows = raw.trades.map(t => ({
-        date: t.date, ret: t.tradeReturn, mae: t.maePct, mfe: t.mfePct,
-        direction: t.direction, exitReason: t.exitReason, stopPct: t.stopPct,
-        riskPct: cfg.riskPct,
-      }));
-    } else {
-      // Re-walk each traded day jointly for the honest combined path.
-      const byDate = groupBarsByDate(bars);
-      const dates  = Object.keys(byDate).sort();
-      const idx    = new Map(dates.map((d, i) => [d, i]));
-      rows = [];
-      for (const t of raw.trades) {
-        const i = idx.get(t.date); if (i == null || i < 1) continue;
-        const dayBars = byDate[t.date] || [];
-        const entryBar = dayBars.find(b => Math.abs(b.o - t.entry) < 1e-9) ?? entryBarFor(dayBars);
-        if (!entryBar) continue;
-        const after = dayBars.filter(b => b.t.substring(11, 13) > entryBar.t.substring(11, 13))
-                             .sort((a, b) => a.t.localeCompare(b.t));
-        const w = bothSidesWalk(after, t.entry, t.stopPct, cfg.tpPct);
-        if (!w) continue;
-        const lev = cfg.riskPct / t.stopPct;
-        // Cost once on the combined notional; stop slippage pro-rata to the
-        // number of legs that actually stopped (each leg is half the notional).
-        const slip = stopSlipPct * (w.stoppedLegs / 2);
-        rows.push({
-          date: t.date, ret: (w.movePct - costPct - slip) * lev,
-          mae: w.maePct * lev, mfe: w.mfePct * lev,
-          direction: 'BOTH', exitReason: w.exitReason, stopPct: t.stopPct,
-          riskPct: cfg.riskPct, stoppedLegs: w.stoppedLegs,
-        });
-      }
-    }
-    return rows;
+      const c = { ...cfg, costPct, stopSlipPct };
+      const raw = _computeNqQmr(bars, c);
+      return mode === 'directional'
+        ? raw.trades.map(t => ({
+            date: t.date, ret: t.tradeReturn, mae: t.maePct, mfe: t.mfePct,
+            direction: t.direction, exitReason: t.exitReason, stopPct: t.stopPct,
+            riskPct: c.riskPct,
+          }))
+        : _qmrBothSidesRows(bars, raw, c);
     };
 
     const rows = buildRows(cfg.costPct, cfg.stopSlipPct);
@@ -5629,6 +5600,42 @@ app.get('/api/nq-qmr/tearsheet', async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
+
+// THE single both-sides row builder. Both the tearsheet card and the
+// walk-forward call this — they previously each had their own, and the two
+// disagreed: the walk-forward averaged the two independent leg walks
+// ((r_long + r_short)/2) while the tearsheet used the joint bothSidesWalk. The
+// joint version is the correct one (it tracks WHEN each leg closes, so a leg
+// that stops early stops contributing) and it is slightly less flattering —
+// full-sample Sharpe 1.63 under averaging vs 1.57 joint. A page quoting a
+// walk-forward number from one method above cards computed with the other is
+// not a page anyone should share. One function, one answer.
+function _qmrBothSidesRows(bars, raw, cfg) {
+  const byDate = groupBarsByDate(bars);
+  const idx = new Map(Object.keys(byDate).sort().map((d, i) => [d, i]));
+  const rows = [];
+  for (const t of raw.trades) {
+    const i = idx.get(t.date); if (i == null || i < 1) continue;
+    const dayBars = byDate[t.date] || [];
+    const entryBar = dayBars.find(b => Math.abs(b.o - t.entry) < 1e-9) ?? entryBarFor(dayBars);
+    if (!entryBar) continue;
+    const after = dayBars.filter(b => b.t.substring(11, 13) > entryBar.t.substring(11, 13))
+                         .sort((a, b) => a.t.localeCompare(b.t));
+    const w = bothSidesWalk(after, t.entry, t.stopPct, cfg.tpPct);
+    if (!w) continue;
+    const lev = cfg.riskPct / t.stopPct;
+    // Cost once on the combined notional; stop slippage pro-rata to the number
+    // of legs that actually stopped (each leg is half the notional).
+    const slip = cfg.stopSlipPct * (w.stoppedLegs / 2);
+    rows.push({
+      date: t.date, ret: (w.movePct - cfg.costPct - slip) * lev,
+      mae: w.maePct * lev, mfe: w.mfePct * lev,
+      direction: 'BOTH', exitReason: w.exitReason, stopPct: t.stopPct,
+      riskPct: cfg.riskPct, stoppedLegs: w.stoppedLegs,
+    });
+  }
+  return rows;
+}
 
 // FIXED-STAKE (non-compounded) view of the same trades. Every trade risks the
 // same % of STARTING capital, so its dollar P&L never scales with account
@@ -6103,17 +6110,18 @@ app.get('/api/nq-qmr/walkforward-retrain', async (req, res) => {
     // Half-size both-sides book from a showControl run. Cost is charged exactly
     // once: r_a = (m_a - c)*L and r_b = (m_b - c)*L, so (r_a + r_b)/2 =
     // ((m_a + m_b)/2 - c)*L — half the notional per leg, one position's cost.
-    function bothSidesStats(r) {
-      const ctl = new Map((r.tradesControl || []).map(t => [t.date, t.tradeReturn]));
-      const rows = r.trades.filter(t => ctl.has(t.date))
-        .map(t => ({ date: t.date, tradeReturn: (t.tradeReturn + ctl.get(t.date)) / 2 }));
+    // Uses the SHARED _qmrBothSidesRows (joint walk) so the walk-forward and the
+    // tearsheet can never quote numbers from different maths again.
+    function bothSidesStats(r, subBars, c) {
+      const rows = _qmrBothSidesRows(subBars, r, c).map(x => ({ date: x.date, tradeReturn: x.ret }));
       let eq = 1; const curve = [];
       for (const t of rows) { eq *= (1 + t.tradeReturn / 100); curve.push({ date: t.date, equity: eq }); }
       return { stats: _qmrStats(rows, curve, eq), trades: rows, curve };
     }
     const evaluate = (bars, cfg) => {
-      const r = _computeNqQmr(bars, mode === 'bothsides' ? { ...cfg, showControl: true } : cfg);
-      return mode === 'bothsides' ? { ...r, ...bothSidesStats(r) } : r;
+      const full = mode === 'bothsides' ? { ...NQ_QMR_DEFAULTS, ...cfg, showControl: true } : cfg;
+      const r = _computeNqQmr(bars, full);
+      return mode === 'bothsides' ? { ...r, ...bothSidesStats(r, bars, full) } : r;
     };
 
     function findBest(subBars) {
