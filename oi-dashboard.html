@@ -143,6 +143,7 @@ tr.dim td{opacity:.42}
   pointer-events:none;background:rgba(18,22,28,.86)}
 #pxMsg .empty{pointer-events:auto;text-align:center}
 #pxMsg .btn{margin-left:10px}
+.pxage{margin-left:10px;font-size:11px;color:#7c8794;align-self:center;white-space:nowrap}
 .ctl{display:flex;gap:20px;flex-wrap:wrap;align-items:center;padding:11px 17px;
   border-bottom:1px solid var(--line);background:#0f1319}
 .tfs{display:flex;gap:5px}
@@ -315,7 +316,7 @@ let _chart=null, _series=null, _priceLines=[], _candleCache={}, _tf='H1';
 // It polls the SAME feed index.html uses (/api/oanda_ohlc5m) - there was never a second
 // live feed to adopt, only a missing timer.
 const _TF_POLL={M5:30_000,M15:60_000,M30:60_000,H1:180_000,H4:300_000,D:600_000};
-let _pollTimer=null, _lastCandleAt=0, _chartToken=0;
+let _pollTimer=null, _lastCandleAt=0, _chartToken=0, _pollFails=0;
 let _coneSeries=[], CONE_ON=true;
 
 // Every level the chart can draw, from the stored record. Walls come from the same
@@ -457,14 +458,35 @@ async function mountChart(force){
     if(force!=='poll') _chart.timeScale().fitContent();
     drawLines();
     drawCone();
-    schedulePoll();
+    _pollFails=0;
+    paintAge();
   }catch(err){
     if(token!==_chartToken) return;
     chartMsg(`Candles failed: ${esc(err.message)} <button class="btn" id="pxRetry">Retry</button>`);
     const rb=document.getElementById('pxRetry');
     if(rb) rb.onclick=()=>mountChart(true);
+    _pollFails++;
+  }finally{
+    // ALWAYS reschedule (unless superseded). Scheduling only on success meant one transient
+    // network blip stopped the chart refreshing for the rest of the session - i.e. the exact
+    // "it looks frozen" symptom this polling was added to remove. Backs off on repeated
+    // failures so a persistently dead endpoint isn't hammered at the base interval.
+    if(token===_chartToken) schedulePoll();
   }
 }
+
+// "Updated Ns ago" beside the timeframe buttons. Without it there is no way to tell a live
+// chart from a stalled one by looking at it - a stale chart and a quiet market look
+// identical, which is what made the original behaviour so confusing. Turns red once the
+// data is well past its expected refresh.
+function paintAge(){
+  const el=document.getElementById('pxAge'); if(!el) return;
+  if(!_lastCandleAt){ el.textContent=''; return; }
+  const sec=Math.round((Date.now()-_lastCandleAt)/1000);
+  el.textContent = sec<60 ? `updated ${sec}s ago` : `updated ${Math.round(sec/60)}m ago`;
+  el.style.color = sec > (_TF_POLL[_tf]||60000)/1000*2.5 ? '#e8615f' : '';
+}
+setInterval(paintAge, 5000);
 
 // Poll the candle feed so the chart stays live. Paused while the tab is hidden (no point
 // burning OANDA calls against a chart nobody is looking at) and resumed on focus with an
@@ -472,7 +494,9 @@ async function mountChart(force){
 function schedulePoll(){
   clearTimeout(_pollTimer);
   if(document.hidden) return;
-  _pollTimer=setTimeout(()=>mountChart('poll'), _TF_POLL[_tf]||60_000);
+  const base=_TF_POLL[_tf]||60_000;
+  const wait=_pollFails ? Math.min(base*Math.pow(2,Math.min(_pollFails,4)), 10*60_000) : base;
+  _pollTimer=setTimeout(()=>mountChart('poll'), wait);
 }
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden) clearTimeout(_pollTimer); else mountChart('poll');
@@ -483,7 +507,7 @@ function chartToolbar(){
   const toggles=LINE_TYPES.map(t=>`<label class="ltog ${LINES_ON[t.k]?'on':''}" data-lk="${t.k}">
     <span class="sw" style="background:${LINES_ON[t.k]?t.col:'transparent'};border-color:${t.col}"></span>${t.label}</label>`).join('');
   const cone=`<label class="ltog ${CONE_ON?'on':''}" id="coneTog"><span class="sw" style="background:${CONE_ON?'#54a8de':'transparent'};border-color:#54a8de"></span>Vol cone</label>`;
-  return `<div class="ctl"><div class="tfs">${tf}</div><div class="ltogs">${toggles}${cone}</div></div>`;
+  return `<div class="ctl"><div class="tfs">${tf}<span id="pxAge" class="pxage"></span></div><div class="ltogs">${toggles}${cone}</div></div>`;
 }
 
 function wireChartToolbar(){
