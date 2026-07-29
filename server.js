@@ -19720,8 +19720,10 @@ async function refreshMacroContext() {
 }
 
 // ── Server-side FRED dashboard cache refresh ──────────────────────────────────
-// Fetches all 31 FRED series sequentially (600ms gaps = ~100 req/min) and stores
-// in fred_data_v3 KV. Runs at startup and every 6h so the /api/fred endpoint
+// Fetches all 31 FRED series sequentially (600ms gaps = ~100 req/min), merges in
+// a `copper` reading from OANDA D1 (not a FRED series — same {value, prev} shape
+// via the shared fetchD1 primitive), and stores the combined payload in
+// fred_data_v3 KV. Runs at startup and every 6h so the /api/fred endpoint
 // always serves from KV — no client-triggered concurrent FRED batches.
 const _FRED_DASH_SERIES = {
   vix: 'VIXCLS', vix3m: 'VXVCLS', us2y: 'GS2', us5y: 'GS5', us10y: 'GS10',
@@ -19854,12 +19856,25 @@ async function refreshFredDashboard(retry = 0) {
       await new Promise(res => setTimeout(res, 600)); // 600ms gap ≈ 100 req/min
     }
 
+    // Copper isn't a FRED series — pull it from OANDA D1 (shared fetchD1 primitive,
+    // same one the vol-forecast engine uses) and store it in the same {value, prev}
+    // shape so the daily-brief macro-backdrop thread can read it exactly like `wti`.
+    if (process.env.OANDA_KEY) {
+      try {
+        const bars = await _btFetchD1('XCU_USD', 2);
+        const last = bars.at(-1), prior = bars.at(-2);
+        out.copper = { value: last?.close ?? null, prev: prior?.close ?? null };
+      } catch {
+        out.copper = { value: null, prev: null };
+      }
+    }
+
     const critOk     = _FRED_DASH_CRIT.every(k => out[k]?.value != null);
     const validCount = Object.values(out).filter(v => v.value != null).length;
     if (critOk && validCount >= 10) {
       await kv.put(_FRED_DASH_KV, JSON.stringify({ d: out, t: Date.now() }), { expirationTtl: 86400 });
       await _writeBotFredKey(out);
-      console.log(`[FRED] Dashboard cache ready — ${validCount}/31 valid` +
+      console.log(`[FRED] Dashboard cache ready — ${validCount}/${Object.keys(out).length} valid` +
         ` VIX=${out.vix?.value} HY=${out.hy?.value} US10Y=${out.us10y?.value} NFCI=${out.nfci?.value}`);
     } else {
       const missing = _FRED_DASH_CRIT.filter(k => out[k]?.value == null);
