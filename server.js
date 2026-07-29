@@ -6464,6 +6464,7 @@ app.get('/api/nq-qmr/walkforward-retrain', async (req, res) => {
     // Cost is now MEASURED, not assumed (see /api/nq-qmr/spread-check), so the
     // walk-forward must be runnable at the measured level - otherwise the only
     // out-of-sample number we have is priced at a spread that does not exist.
+    const wfEod  = req.query.eodHour != null ? parseInt(req.query.eodHour) : QMR_TIMING.eodHour;
     const wfCost = req.query.costPct != null ? parseFloat(req.query.costPct) : QMR_COSTS.costPct;
     const wfSlip = req.query.stopSlipPct != null ? parseFloat(req.query.stopSlipPct) : QMR_COSTS.stopSlipPct;
 
@@ -6480,8 +6481,8 @@ app.get('/api/nq-qmr/walkforward-retrain', async (req, res) => {
     }
     const evaluate = (bars, cfg) => {
       const full = mode === 'bothsides'
-        ? { ...NQ_QMR_DEFAULTS, ...cfg, costPct: wfCost, stopSlipPct: wfSlip, showControl: true }
-        : { ...cfg, costPct: wfCost, stopSlipPct: wfSlip };
+        ? { ...NQ_QMR_DEFAULTS, ...cfg, eodHour: wfEod, costPct: wfCost, stopSlipPct: wfSlip, showControl: true }
+        : { ...cfg, eodHour: wfEod, costPct: wfCost, stopSlipPct: wfSlip };
       const r = _computeNqQmr(bars, full);
       return mode === 'bothsides' ? { ...r, ...bothSidesStats(r, bars, full) } : r;
     };
@@ -6519,7 +6520,7 @@ app.get('/api/nq-qmr/walkforward-retrain', async (req, res) => {
       results.push({ isStart: w.isStart, isEnd: w.isEnd, oosEnd: w.oosEnd, bestCfg: best.cfg, isStats: best.stats, oosStats: oosR.stats });
     }
     console.log(`[nq-qmr wf-retrain] ${results.length} windows, OOS curve pts: ${oosCurve.length}`);
-    res.json({ ok: true, instrument, mode, costPct: wfCost, stopSlipPct: wfSlip, windows: results, oosCurve });
+    res.json({ ok: true, instrument, mode, eodHour: wfEod, costPct: wfCost, stopSlipPct: wfSlip, windows: results, oosCurve });
   } catch (err) {
     console.error('[nq-qmr wf-retrain]', err.message);
     res.status(500).json({ ok: false, error: err.message });
