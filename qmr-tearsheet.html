@@ -107,6 +107,10 @@
       <p class="note">Read the recent rows in isolation before trusting the headline — a strong
       full-sample average can hide a decayed last 12–24 months.</p></div>
 
+    <div class="panel"><h2>Cost sensitivity — the load-bearing assumption</h2>
+      <div style="overflow-x:auto"><table id="costTable"></table></div>
+      <p class="note" id="costNote"></p></div>
+
     <div class="panel"><h2>Monte Carlo — trade-order bootstrap</h2><div id="mc"></div>
       <p class="note"><strong>This is expectation-setting, not robustness evidence.</strong> Resampling a
       strategy's own realised returns shows the range of outcomes consistent with that mean and standard
@@ -231,7 +235,7 @@ function render(j){
     + cell(f(j.excessKurtosis),'Excess kurtosis')
     + cell(j.positiveMonths+' / '+j.negativeMonths,'Pos / neg months');
 
-  drawCurve(j.curve); drawHeat(j.monthly); drawMC(j.trades.map(t=>t.ret));
+  drawCurve(j.curve); drawHeat(j.monthly); drawMC(j.trades.map(t=>t.ret)); drawCost(j);
 
   const lev=(j.config.riskPct/ (j.trades.reduce((s,t)=>s+t.stopPct,0)/j.trades.length)).toFixed(2);
   $('exportNote').innerHTML=`Account size <strong>$${(+$('acct').value).toLocaleString()}</strong>.
@@ -310,6 +314,42 @@ function drawMC(rets){
   </div>`;
 }
 
+function drawCost(j){
+  const cs=j.costSensitivity||[];
+  if(!cs.length){$('costTable').innerHTML='';$('costNote').textContent='';return;}
+  const live=cs.find(r=>Math.abs(r.costPct-j.config.costPct)<1e-9);
+  $('costTable').innerHTML='<tr><th>Round-trip cost</th><th>Stop slippage</th><th>Sharpe</th>'
+    +'<th>CAGR</th><th>Total return</th><th>Max DD</th><th>Win rate</th></tr>'
+    + cs.map(r=>{
+        const dead=r.sharpe<=0.25;
+        const cur=Math.abs(r.costPct-j.config.costPct)<1e-9;
+        return `<tr style="${cur?'background:#0e1a24':''}">
+          <td style="text-align:left">${(r.costPct*100).toFixed(1)}bp${cur?' <span class="muted">← current</span>':''}</td>
+          <td>${(r.stopSlipPct*100).toFixed(1)}bp</td>
+          <td class="${dead?'neg':'pos'}">${r.sharpe.toFixed(2)}</td>
+          <td class="${r.cagr>0?'pos':'neg'}">${sgn(r.cagr,1)}%</td>
+          <td class="${r.totalReturn>0?'pos':'neg'}">${sgn(r.totalReturn,0)}%</td>
+          <td class="neg">${r.maxDrawdown.toFixed(1)}%</td>
+          <td>${r.winRate.toFixed(0)}%</td></tr>`;
+      }).join('');
+  // Where does it stop working? Report the first rung that fails, not a guess.
+  const dead=cs.find(r=>r.cagr<=0);
+  const lastAlive=[...cs].reverse().find(r=>r.cagr>0);
+  $('costNote').innerHTML=
+    `Same trades throughout — cost never changes which days trade or where the stop sits, only what each
+     trade keeps, so this isolates the cost assumption rather than re-running a different backtest.
+     <br><strong>The card is currently priced at ${(j.config.costPct*100).toFixed(1)}bp round-trip
+     ${live?`(Sharpe ${live.sharpe.toFixed(2)})`:''}.</strong> `
+    + (dead
+        ? `Edge is <strong>gone by ${(dead.costPct*100).toFixed(1)}bp</strong>${lastAlive?`, last profitable rung ${(lastAlive.costPct*100).toFixed(1)}bp`:''}.
+           At ~${(j.config.riskPct/(j.trades.reduce((s,t)=>s+t.stopPct,0)/j.trades.length)).toFixed(1)}× average
+           leverage and ${(j.totalTrades/j.years).toFixed(0)} trades/yr, every extra 1bp of round-trip cost is
+           roughly ${((j.totalTrades/j.years)*(j.config.riskPct/(j.trades.reduce((s,t)=>s+t.stopPct,0)/j.trades.length))/100).toFixed(1)} points of CAGR.
+           <strong>The real OANDA spread for this instrument at the entry and exit hours has never been
+           measured — until it is, every number on this page rests on an assumption.</strong>`
+        : `It survives the whole ladder tested.`);
+}
+
 function csv(kind){
   if(!D)return;
   const acct=+$('acct').value, risk=D.config.riskPct;
@@ -320,10 +360,14 @@ function csv(kind){
     rows=D.trades.map(t=>`${t.date},${(t.ret/risk).toFixed(4)},${(t.mae/risk).toFixed(4)}`);}
   else{head='Trade Date,PnL ($),Risk ($)';
     rows=D.trades.map(t=>`${t.date},${(acct*t.ret/100).toFixed(2)},${(acct*risk/100).toFixed(2)}`);}
-  const blob=new Blob([head+'\n'+rows.join('\n')],{type:'text/csv'});
+  // BOM so Excel opens it as UTF-8 rather than mangling the header; anchor must
+  // be in the DOM before click() or Firefox silently does nothing.
+  const blob=new Blob(['﻿'+head+'\n'+rows.join('\n')],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`qmr_${D.instrument}_${D.mode}_${kind}.csv`;a.click();
+  a.href=url; a.download=`qmr_${D.instrument}_${D.mode}_${kind}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 resetDefaults();
 run();

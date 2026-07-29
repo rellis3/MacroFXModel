@@ -5548,7 +5548,13 @@ app.get('/api/nq-qmr/tearsheet', async (req, res) => {
     }
     cfg.showControl = true;
     const bars = await _getNqQmrBars(instrument);
-    const raw  = _computeNqQmr(bars, cfg);
+
+    // Rows as a function of cost, so the cost-sensitivity card re-nets the SAME
+    // trades rather than re-running a different backtest. Costs never change
+    // which days trade or where the stop sits — only what each trade keeps —
+    // so a sweep that re-selected trades would be measuring two things at once.
+    const buildRows = (costPct, stopSlipPct) => {
+    const raw  = _computeNqQmr(bars, { ...cfg, costPct, stopSlipPct });
 
     // Build the trade series for the requested construction.
     let rows;
@@ -5576,16 +5582,35 @@ app.get('/api/nq-qmr/tearsheet', async (req, res) => {
         const lev = cfg.riskPct / t.stopPct;
         // Cost once on the combined notional; stop slippage pro-rata to the
         // number of legs that actually stopped (each leg is half the notional).
-        const slip = cfg.stopSlipPct * (w.stoppedLegs / 2);
+        const slip = stopSlipPct * (w.stoppedLegs / 2);
         rows.push({
-          date: t.date, ret: (w.movePct - cfg.costPct - slip) * lev,
+          date: t.date, ret: (w.movePct - costPct - slip) * lev,
           mae: w.maePct * lev, mfe: w.mfePct * lev,
           direction: 'BOTH', exitReason: w.exitReason, stopPct: t.stopPct,
           riskPct: cfg.riskPct, stoppedLegs: w.stoppedLegs,
         });
       }
     }
+    return rows;
+    };
+
+    const rows = buildRows(cfg.costPct, cfg.stopSlipPct);
     if (rows.length < 10) return res.json({ ok: false, error: `only ${rows.length} trades` });
+
+    // Cost-sensitivity ladder (CLAUDE.md house rule). This system's edge is
+    // cost-critical — it dies between 2 and 4bp round-trip — so the card is not
+    // decoration, it is the single most load-bearing assumption on the page.
+    const COST_LADDER = [
+      [0.008, 0.005], [0.015, 0.010], [0.020, 0.015],
+      [0.030, 0.022], [0.040, 0.030], [0.060, 0.050],
+    ];
+    const costSensitivity = COST_LADDER.map(([c, s]) => {
+      const r = buildRows(c, s);
+      if (r.length < 10) return null;
+      const t = _qmrTearsheet(r, accountEquity);
+      return { costPct: c, stopSlipPct: s, sharpe: t.sharpe, cagr: t.cagr,
+               maxDrawdown: t.maxDrawdown, totalReturn: t.totalReturn, winRate: t.winRate };
+    }).filter(Boolean);
 
     const report = _qmrTearsheet(rows, accountEquity);
     // Chronological IS/OOS split (70/30 by trade date — never by index shuffle).
@@ -5593,7 +5618,7 @@ app.get('/api/nq-qmr/tearsheet', async (req, res) => {
     res.json({
       ok: true, instrument, mode, accountEquity, config: cfg,
       generatedAt: new Date().toISOString(),
-      ...report,
+      ...report, costSensitivity,
       inSample:  _qmrTearsheet(rows.slice(0, cut), accountEquity),
       outOfSample: _qmrTearsheet(rows.slice(cut), accountEquity),
       splitDate: rows[cut]?.date ?? null,
