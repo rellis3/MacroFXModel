@@ -157,14 +157,17 @@ function _spacingOf(snap) {
 }
 
 // Tolerance for calling two strikes "the same strike on different days".
-// MUST be < strike spacing (or adjacent strikes collide) and > plausible overnight basis
-// drift. A quarter of the spacing satisfies both with room (EUR/USD: 12.5 pips against a
-// 50-pip ladder and ~4.5 pips of observed drift).
+// This is the PASS-1 (drift-discovery) tolerance, so it is deliberately generous: it must
+// exceed the overnight basis drift, and stay under HALF the spacing or a strike could pair
+// with its neighbour. 0.45x spacing sits just inside that bound. Pass 2 re-matches at a
+// tight tolerance once the drift has been removed, so the loose pass-1 value never decides
+// the final pairing. (EUR/USD: 25-pip ladder -> 11.25 pips of pass-1 room against ~4.5 pips
+// of observed drift; the old fixed 0.25x gave only 6.25 and a 1.4x margin.)
 export function strikeMatchTol(cur, prev, explicit = null) {
   if (Number.isFinite(explicit) && explicit > 0) return explicit;
   const a = _spacingOf(cur), b = _spacingOf(prev);
   const sp = (a != null && b != null) ? Math.min(a, b) : (a ?? b);
-  if (sp != null) return sp * 0.25;
+  if (sp != null) return sp * 0.45;
   const ref = cur?.spot ?? cur?.maxPain ?? prev?.spot;              // last resort: 10 bps
   return Number.isFinite(ref) ? Math.abs(ref) * 0.001 : 0;
 }
@@ -183,6 +186,26 @@ function _pairWalls(cw, pw, tol) {
     if (best >= 0) { used.add(best); pairs.push([w, pw[best]]); } else pairs.push([w, null]);
   }
   return { pairs, faded: pw.filter((_, i) => !used.has(i)) };
+}
+
+// Rigid-shift estimator. Each (current, prior) strike pair proposes an offset; score it by
+// how many current strikes land within `tol` of SOME prior strike once shifted back by it,
+// and keep the best. Requires >=2 corroborating strikes so one coincidental pair can never
+// define the drift; returns 0 (assume no drift) when nothing corroborates. O(n^4) on the
+// wall list, which is <=8 per side - trivial.
+function _estimateDrift(cur, prev, tol) {
+  const pick = o => [...(o?.callWalls || []), ...(o?.putWalls || [])]
+    .map(w => w?.strike).filter(Number.isFinite);
+  const cs = pick(cur), ps = pick(prev);
+  if (!cs.length || !ps.length) return 0;
+  let best = 0, bestN = -1, bestAbs = Infinity;
+  for (const c of cs) for (const p of ps) {
+    const off = c - p;
+    let n = 0;
+    for (const c2 of cs) if (ps.some(p2 => Math.abs((c2 - off) - p2) <= tol)) n++;
+    if (n > bestN || (n === bestN && Math.abs(off) < bestAbs)) { bestN = n; best = off; bestAbs = Math.abs(off); }
+  }
+  return bestN >= 2 ? best : 0;
 }
 
 // Day-over-day OI dynamics.
@@ -209,22 +232,40 @@ export function oiDeltas(cur, prev, tol = null) {
   const totPrev = (prev.totalCallOI || 0) + (prev.totalPutOI || 0);
   const totalOIChange = Math.round(totCur - totPrev);
   const T = strikeMatchTol(cur, prev, tol);
+  const T2 = T * (0.15 / 0.45);          // tight, post-alignment residual tolerance
+
+  // PASS 1 - discover the overnight basis drift by CONSENSUS, not by proximity. Every
+  // (current, prior) strike pair proposes an offset; the winner is the offset that aligns
+  // the MOST strikes at once. Proximity pairing cannot be used here because it silently
+  // caps the detectable drift at half the strike spacing - the whole ladder shifts
+  // rigidly, so once the drift approaches one strike-step, "nearest" starts pairing each
+  // strike with its NEIGHBOUR and the estimate collapses. Consensus has no such bound: a
+  // rigid shift of any size still produces one offset that matches every strike.
+  // Ties break toward the SMALLEST offset (prefer "no drift" over an equally-good shift by
+  // a whole strike-step, which is the one genuinely ambiguous case on a periodic ladder).
+  const drift0 = _estimateDrift(cur, prev, T2);
+
+  // PASS 2 - subtract the drift, then match TIGHTLY. After correction the same strike lands
+  // on ~0 residual, so a small tolerance is now both safe and far more discriminating than
+  // the loose pass-1 window. `_raw` preserves the ORIGINAL prior strike for reporting.
+  const align = arr => (Array.isArray(arr) ? arr : [])
+    .map(w => ({ ...w, strike: w.strike + drift0, _raw: w.strike }));
 
   const drifts = [];
   const wallDyn = (curW, prevW, kind) => {
-    const cw = Array.isArray(curW) ? curW : [], pw = Array.isArray(prevW) ? prevW : [];
-    const { pairs, faded } = _pairWalls(cw, pw, T);
+    const cw = Array.isArray(curW) ? curW : [], pw = align(prevW);
+    const { pairs, faded } = _pairWalls(cw, pw, T2);
     const strengthening = [], weakening = [], appeared = [];
     for (const [w, p] of pairs) {
       if (!p) { appeared.push({ strike: w.strike, oi: w.oi, kind }); continue; }
-      drifts.push(w.strike - p.strike);
+      drifts.push(w.strike - (p._raw ?? p.strike));      // true drift vs the UNshifted strike
       const dd = Math.round(w.oi - p.oi);
       const pct = p.oi > 0 ? +((w.oi - p.oi) / p.oi * 100).toFixed(0) : null;
-      const row = { strike: w.strike, delta: dd, pct, oi: w.oi, kind, prevStrike: p.strike };
+      const row = { strike: w.strike, delta: dd, pct, oi: w.oi, kind, prevStrike: p._raw ?? p.strike };
       if (dd > 0) strengthening.push(row); else if (dd < 0) weakening.push(row);
     }
     return { strengthening, weakening, appeared,
-      faded: faded.map(w => ({ strike: w.strike, oi: w.oi, kind })) };
+      faded: faded.map(w => ({ strike: w._raw ?? w.strike, oi: w.oi, kind })) };
   };
   const callWalls = wallDyn(cur.callWalls, prev.callWalls, 'call');
   const putWalls  = wallDyn(cur.putWalls,  prev.putWalls,  'put');
@@ -240,7 +281,7 @@ export function oiDeltas(cur, prev, tol = null) {
     maxPainShiftNet: net(d(cur.maxPain, prev.maxPain)),
     callWallShiftNet: net(d(cur.callWall, prev.callWall)),
     putWallShiftNet: net(d(cur.putWall, prev.putWall)),
-    basisDrift, strikeTol: +T.toFixed(6), matchedWalls: drifts.length,
+    basisDrift, strikeTol: +T2.toFixed(6), strikeTolPass1: +T.toFixed(6), matchedWalls: drifts.length,
     pcRatioChange: d(cur.pcRatio, prev.pcRatio),
     totalCallOIChange: Math.round((cur.totalCallOI || 0) - (prev.totalCallOI || 0)),
     totalPutOIChange: Math.round((cur.totalPutOI || 0) - (prev.totalPutOI || 0)),

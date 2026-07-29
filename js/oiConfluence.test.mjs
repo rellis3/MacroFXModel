@@ -252,5 +252,55 @@ console.log('[oiPriceConfirmation — move backed by fresh positioning?]');
   ok('flat OI or flat price → null', oiPriceConfirmation(0, 3) === null && oiPriceConfirmation(500, 0) === null);
 }
 
+
+console.log('[oiDeltas - basis drift must not fake wall turnover (regression, 2026-07-29)]');
+{
+  // Archived strikes are SPOT-converted (strike - basis). The basis moves overnight, so the
+  // SAME CME strike is stored under a different number each day. Exact-float matching therefore
+  // matched nothing: strengthening/weakening were permanently empty, every wall read as
+  // `appeared`, and the daily brief was told "fresh positioning building" for 9 of 11 unrelated
+  // instruments on the same day. Real observed shape: EUR/USD 1.157605 -> 1.158050 (4.45 pips).
+  const mk = (base, ois, mp) => ({
+    spot: 1.14, maxPain: mp ?? base + 0.005, totalCallOI: 1000, totalPutOI: 1000,
+    callWalls: ois.map((o, i) => ({ strike: +(base + i * 0.0025).toFixed(6), oi: o })), putWalls: [] });
+
+  const real = oiDeltas(mk(1.140445, [110, 200, 270, 400], 1.145445), mk(1.14, [100, 200, 300, 400], 1.145));
+  ok('4.45-pip basis drift is detected, not treated as turnover', Math.abs(real.basisDrift - 0.000445) < 1e-9, String(real.basisDrift));
+  ok('all 4 walls match across the drift', real.matchedWalls === 4, String(real.matchedWalls));
+  ok('NO phantom appeared/faded walls', real.callWalls.appeared.length === 0 && real.callWalls.faded.length === 0);
+  ok('real OI moves survive: 1 firming, 1 fading', real.callWalls.strengthening.length === 1 && real.callWalls.weakening.length === 1);
+  ok('max pain that did NOT move nets to 0', real.maxPainShiftNet === 0, String(real.maxPainShiftNet));
+  ok('raw shift still exposes the uncorrected number', Math.abs(real.maxPainShift - 0.000445) < 1e-9);
+
+  // Drift larger than the strike spacing: proximity matching caps out at half a step, which is
+  // what forced the consensus (rigid-shift) estimator rather than nearest-neighbour pairing.
+  for (const pips of [13, 26, 40]) {
+    const off = pips / 10000;
+    const D = oiDeltas(mk(+(1.14 + off).toFixed(6), [110, 200, 270, 400], +(1.145 + off).toFixed(6)), mk(1.14, [100, 200, 300, 400], 1.145));
+    ok(`drift ${pips}p (spacing 25p) still matches all 4`, D.matchedWalls === 4, String(D.matchedWalls));
+    ok(`drift ${pips}p measured correctly`, Math.abs(D.basisDrift - off) < 1e-9, String(D.basisDrift));
+    ok(`drift ${pips}p -> max pain net 0`, Math.abs(D.maxPainShiftNet) < 1e-9, String(D.maxPainShiftNet));
+  }
+
+  // A genuinely relocated wall must STILL read as appeared+faded - drift correction must not
+  // launder real turnover into a match.
+  const pA = mk(1.14, [100, 200, 300, 400]), cA = mk(1.14, [100, 200, 300, 400]);
+  cA.callWalls[3].strike = 1.16;
+  const DA = oiDeltas(cA, pA);
+  ok('a truly relocated wall is appeared + faded', DA.callWalls.appeared.length === 1 && DA.callWalls.faded.length === 1);
+  ok('the untouched 3 still match', DA.matchedWalls === 3, String(DA.matchedWalls));
+  ok('faded reports the original strike', DA.callWalls.faded[0].strike === 1.1475, String(DA.callWalls.faded[0].strike));
+
+  // No corroboration => assert NO drift (null) rather than inventing one from a single pair.
+  const one = oiDeltas(mk(1.15, [100]), mk(1.14, [100]));
+  ok('a lone wall pair does NOT define a drift', one.basisDrift === null && one.matchedWalls === 0, String(one.basisDrift));
+
+  const zero = oiDeltas(mk(1.14, [100, 200, 300, 400]), mk(1.14, [90, 200, 300, 400]));
+  ok('no drift -> drift 0, all matched, 1 firming', zero.basisDrift === 0 && zero.matchedWalls === 4 && zero.callWalls.strengthening.length === 1);
+
+  ok('classifyOIChange no longer sees all-fresh on a pure basis shift',
+     (classifyOIChange(real)?.events || []).filter(e => e.type === 'fresh_wall').length === 0);
+}
+
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' FAILED ✗'}`);
 process.exit(failures === 0 ? 0 : 1);
