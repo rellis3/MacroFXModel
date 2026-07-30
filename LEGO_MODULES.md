@@ -1030,6 +1030,38 @@ a real backtest, pre-register the benchmark (does fading a double-extreme cross
 beat just fading either single-leg extreme alone, and does either beat a naive
 mean-reversion baseline) before running it.
 
+### 1aj. Stage-5 cycle timing — tested and closed (2026-07-30)
+
+The last live hope for this family was TIMING rather than direction: "the average
+WaveTrend cycle is N candles, we are N−1 in, so a reversal is due." Measured as a
+proper **hazard rate** (that claim is the gambler's fallacy unless h(n) actually
+rises with age), across four instruments.
+
+It looked real — the wt1×wt2 cross cycle is regular: mean 5.7–5.9 bars, **CV
+0.62–0.65**, rising hazard (rank corr 0.67–0.99), consistent IS and OOS. Then the
+control, the same measurement on a **pure random walk**:
+
+| params | EUR/USD | GBP/USD | USD/JPY | XAU/USD | **RANDOM WALK** |
+|---|---|---|---|---|---|
+| 9/12/3 | 5.1/0.74 | 5.1/0.74 | 5.1/0.75 | 5.1/0.74 | **5.1/0.72** |
+| 10/21/4 | 6.7/0.76 | 6.6/0.76 | 6.6/0.77 | 6.5/0.76 | **6.7/0.75** |
+| 9/12/8 | 8.1/0.64 | 8.0/0.65 | 8.2/0.65 | 8.1/0.65 | **8.2/0.65** |
+| 9/12/16 | 10.9/0.67 | 11.0/0.66 | 10.7/0.67 | 11.0/0.67 | **11.1/0.67** |
+
+Every column matches **including noise**, and the cycle length tracks the
+signal-line period exactly as filter theory predicts. WT1 is an EMA and WT2 an SMA
+of that EMA; two smoothed series of one input cross at a frequency set by their
+periods. **The "cycle" is the smoothing filter, not the market.**
+
+Two by-products worth keeping: the ~16-bar zero-cross cycle (closest to the "≈18
+candles" usually quoted) is the **memoryless** one — flat hazard, so age says
+nothing; and Money-Flow runs are **over-dispersed with a falling hazard**
+(CV 1.51–1.66), meaning a long-running green MFI is *less* likely to flip than a
+fresh one — the opposite of the usual intuition.
+
+Full record, including every earlier null and the two artifacts caught before they
+became "findings": **`VUMANCHU_DIRECTION_FINDINGS.md`**.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
