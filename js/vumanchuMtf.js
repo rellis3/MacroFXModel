@@ -98,6 +98,9 @@ export const MTF_THEME = {
   agree:   '#22c55e',
   disagree:'#ef4444',
   neutral: '#3a4456',
+  // Shading for the gap between the two waves — the disagreement made visible.
+  diffFastAbove: '#22c55e26',   // fast timeframe above the slow one
+  diffSlowAbove: '#ef444426',   // slow timeframe above the fast one
 };
 
 export const AGREE_MODES = ['direction', 'level', 'zone'];
@@ -109,6 +112,7 @@ const DEFAULTS = {
   obLevel: 53, osLevel: -53,
   agreeMode: 'level',         // NOT 'direction' — see the lag note in the header
   showSlowSignal: true,        // slow WT2 as a thin dashed line (explains `direction`)
+  showDiffFill: true,          // shade the fast-vs-slow gap, coloured by who's on top
   baselineShifts: 24,          // deterministic circular re-phasings for the baseline
   ribbonPx: 9,
   fastLabel: '', slowLabel: '',
@@ -367,6 +371,29 @@ export function renderVumanchuMtfPNG(fastBars, slowBars, opts = {}) {
 
   // Fast wave first (the familiar look), slow wave on top so it reads as context.
   cv.fillBetween(L.band.a, L.band.b, T.band);
+
+  // THE DIFFERENCE, shaded. The thin ribbon alone reads as an afterthought; the
+  // gap between the two waves IS the disagreement, so fill it and colour it by
+  // which timeframe is on top. Split into constant-sign runs because fillBetween
+  // takes one colour — a single fill would blend both meanings into one wash.
+  if (o.showDiffFill) {
+    const F = L.points.fastWt1, S = L.points.slowWt1;
+    let run = [];
+    const flush = () => {
+      if (run.length > 1) {
+        const a = run.map(k => F[k]), b = run.map(k => S[k]);
+        cv.fillBetween(a, b, F[run[0]].y < S[run[0]].y ? M.diffFastAbove : M.diffSlowAbove);
+      }
+      run = [];
+    };
+    for (let k = 0; k < F.length; k++) {
+      if (!F[k] || !S[k]) { flush(); continue; }
+      const sign = F[k].y < S[k].y;                      // y grows downward → fast above
+      if (run.length && (F[run[0]].y < S[run[0]].y) !== sign) flush();
+      run.push(k);
+    }
+    flush();
+  }
   cv.polyline(L.points.fastWt2, { color: T.wt2, width: 1.3 });
   cv.polyline(L.points.fastWt1, { color: T.wt1, width: 2.0 });
   if (o.showSlowSignal) cv.polyline(L.points.slowWt2, { color: M.slowWt2, width: 1.1, dash: [4, 4] });

@@ -911,6 +911,48 @@ is the real ceiling on how wide a ratio is usable.
 Still descriptive, like §1af: that MTF alignment can be *measured* is not evidence
 it *predicts* anything. Establishing that needs costs and a true OOS split.
 
+### 1ah. MTF stack — N timeframes, one directional series (2026-07-30)
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **MTF stack** | `js/mtfStack.js` | Generalises §1ag from 2 timeframes to N (2–6): a `SERIES_SOURCES` registry of directional series, each aligned onto the fastest grid via `vumanchuMtf.alignHtfCausal` (the causality guard is **imported, not reimplemented**), rendered as one labelled up/down ribbon row per timeframe plus a signed `alignmentScore` histogram. Reuses `vumanchuCore.computeWaveTrend`, `vwapReversionEngine.computeSessionVwap` (per day-slice — **no fourth VWAP definition added**), `pngCanvas`, and `vumanchuChart.THEME`. Ribbon rows deliberately sidestep the scale problem: N series in different units cannot honestly share one y-axis, but their SIGNS can. Reading the rows top-to-bottom shows a flip **cascade** — the fast timeframe turns first. Tested `js/mtfStack.test.mjs` (21 asserts) incl. a truncation causality test and the degeneracy measurement below pinned as an assertion. | `server.js` `GET /api/vumanchu/mtf-stack` + `POST /api/vumanchu/mtf-stack/send`; `vumanchu-chart.html` stack panel | ✅ built (descriptive — no edge claim) |
+
+**The finding that shaped this brick: "multi-timeframe VWAP" is degenerate, and it
+took two attempts to find a version that isn't.** Asked for a 1m/3m/5m/15m VWAP
+agreement read, the obvious implementations return ~100% agreement as *arithmetic*:
+
+| series (sign of) | all-agree across M1/M3/M5/M15 | verdict |
+|---|---|---|
+| price vs **cumulative** session VWAP | 99.3% | degenerate |
+| **cumulative** VWAP slope | 99.4% | degenerate |
+| price vs **rolling** VWAP(20) | 76.7% | usable — **default** |
+| **rolling** VWAP(20) slope | 74.1% | usable |
+
+Two separate causes, both measured:
+1. **A VWAP is near timeframe-invariant.** VWAP = Σ(tp×vol)/Σ(vol); bucketing bars
+   coarsely barely changes either sum. M1-computed vs M15-computed VWAP differ by a
+   max of **115 ppm**, with slope-direction agreement **100.0%** at every timeframe.
+2. **Taking its slope does not rescue it.** A cumulative average is a slow monotone
+   curve — its slope sign flipped only **2 times in an entire session** (0.07% of M1
+   bars), so "is VWAP rising" is the same answer everywhere.
+
+A **rolling-window** VWAP works because the window scales with the timeframe (20 M1
+bars = 20 min; 20 M15 bars = 5 h), so the curves are genuinely different objects —
+confirmed by sign-flip rate: rolling(20) flipped 22× on M1 vs 0× on M15, where the
+cumulative version flipped twice at every timeframe. The degenerate variants are
+**kept, not deleted**, marked `tfDependent: false`; `buildMtfStack` emits a
+`degenerate` string and the renderer stamps the warning onto the image, so the
+effect stays inspectable instead of merely asserted in a comment.
+
+`alignmentScore` (mean direction sign, −1..+1) is deliberately **not** called
+"confidence" — that would imply predictive weight nothing here has earned. As in
+§1ag it ships with a re-phasing `baselinePct`; read `delta`.
+
+Route notes: non-native OANDA granularities are **resampled from M1** via the shared
+`resampleBars` (OANDA's enum jumps M1, M2, M4, M5, M10 — there is no M3), with each
+synthetic bar restamped from its group's first M1 bar so the causal alignment has
+real bar-start times. M1 is fetched once and reused for every derived timeframe.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted

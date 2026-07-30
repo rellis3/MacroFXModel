@@ -29,6 +29,7 @@ import { detectPolarityFlip } from './js/polarity.js';
 import { assessEntry, resampleBars } from './js/vumanchu.js';
 import { renderVumanchuPNG, renderVumanchuSVG, vumanchuChartData, vumanchuCaption, MIN_BARS as VM_MIN_BARS } from './js/vumanchuChart.js';
 import { renderVumanchuMtfPNG, renderVumanchuMtfSVG, vumanchuMtfData, vumanchuMtfCaption, TF_SECONDS as VM_TF_SECONDS, AGREE_MODES as VM_AGREE_MODES } from './js/vumanchuMtf.js';
+import { renderMtfStackPNG, mtfStackData, mtfStackCaption, SERIES_SOURCES as MTF_SERIES_SOURCES, MAX_TFS as MTF_MAX_TFS, MIN_BARS as MTF_STACK_MIN_BARS } from './js/mtfStack.js';
 import { startVolForecastScheduler, forecastState, runVolForecast, getSessionStatus, ensureOhlcCache } from './js/volForecastScheduler.js';
 import { yangZhangVolSeries, hv20Series, ewmaVolSeries, computeForecast as _computeForecast } from './js/volForecast.js';
 import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
@@ -4918,6 +4919,146 @@ app.post('/api/vumanchu/mtf/send', express.json({ limit: '4kb' }), async (req, r
     res.json({ ok, bytes: png.length, caption: cap });
   } catch (err) {
     console.error('[vumanchu/mtf/send]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// ── MTF Stack — N timeframes of one directional series ────────────────────────
+// GET /api/vumanchu/mtf-stack?symbol=EUR/USD&tfs=M1,M3,M5,M15
+//   [&series=vwap_roll_dist|vwap_roll_slope|vwap_cum_dist|vwap_cum_slope|wt_hist|wt_level]
+//   [&bars=240][&window=20][&format=png|svg|json][&w=&h=&tz=]
+//
+// Timeframes OANDA does not serve natively (M2/M3/M4/M10 — its enum jumps M1, M2,
+// M4, M5, M10 and has no M3) are RESAMPLED from M1 via the shared `resampleBars`,
+// so "composite 3m" works. Native ones are fetched directly. M1 is fetched once and
+// reused for every derived timeframe.
+//
+// NOTE the degeneracy warning in js/mtfStack.js: a cumulative/session VWAP is
+// near timeframe-invariant, so the `vwap_cum_*` series return ~100% agreement as
+// arithmetic. They are exposed anyway (so the effect is inspectable) and both the
+// JSON and the rendered image say so.
+const _STACK_NATIVE = new Set(['M1', 'M5', 'M15', 'M30', 'H1', 'H4', 'D']);
+const _STACK_SERIES = Object.keys(MTF_SERIES_SOURCES);
+
+function _parseStackTfs(raw) {
+  const tfs = String(raw || 'M1,M5,M15').toUpperCase().split(',').map(s => s.trim()).filter(Boolean);
+  if (tfs.length < 2) throw new Error('tfs needs at least 2 timeframes, e.g. tfs=M1,M5,M15');
+  if (tfs.length > MTF_MAX_TFS) throw new Error(`tfs accepts at most ${MTF_MAX_TFS} timeframes`);
+  const seen = new Set();
+  for (const tf of tfs) {
+    const sec = VM_TF_SECONDS[tf];
+    if (!sec) throw new Error(`Unsupported timeframe: ${tf} (${Object.keys(VM_TF_SECONDS).join('/')})`);
+    if (seen.has(sec)) throw new Error(`Duplicate timeframe: ${tf}`);
+    seen.add(sec);
+    if (!_STACK_NATIVE.has(tf) && sec % 60 !== 0) throw new Error(`${tf} cannot be derived from M1`);
+  }
+  return tfs.sort((a, b) => VM_TF_SECONDS[a] - VM_TF_SECONDS[b]);
+}
+
+// Fetch every timeframe, resampling the non-native ones from a single M1 pull.
+async function _fetchStackBars(symbol, tfs, fastDisplayBars) {
+  const fastSec = VM_TF_SECONDS[tfs[0]], slowSec = VM_TF_SECONDS[tfs[tfs.length - 1]];
+  // Span the fast window plus enough of the SLOWEST timeframe to clear its warm-up.
+  const spanSec = (fastDisplayBars + 120) * fastSec + 160 * slowSec;
+  const derived = tfs.filter(tf => !_STACK_NATIVE.has(tf));
+  const needM1 = derived.length > 0 || tfs.includes('M1');
+  const out = {};
+  const m1Count = needM1 ? Math.min(4900, Math.ceil(spanSec / 60)) : 0;
+  const m1Bars = needM1 ? await _fetchVumanchuBars(symbol, 'M1', m1Count) : null;
+  await Promise.all(tfs.map(async tf => {
+    if (tf === 'M1') { out.M1 = m1Bars; return; }
+    if (_STACK_NATIVE.has(tf)) {
+      out[tf] = await _fetchVumanchuBars(symbol, tf, Math.min(4900, Math.ceil(spanSec / VM_TF_SECONDS[tf])));
+      return;
+    }
+    // Derived: aggregate M1 by an integer factor. resampleBars drops the trailing
+    // partial group, so the last bar is always a COMPLETE synthetic candle.
+    const factor = VM_TF_SECONDS[tf] / 60;
+    const agg = resampleBars(m1Bars, factor);
+    // resampleBars carries OHLCV but not the timestamp — restamp from each group's
+    // FIRST M1 bar so the causal alignment has real bar-start times to work with.
+    out[tf] = agg.map((b, i) => ({ ...b, t: m1Bars[i * factor].t }));
+  }));
+  return out;
+}
+
+app.get('/api/vumanchu/mtf-stack', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured' });
+  const symbol = req.query.symbol;
+  if (!symbol) return res.status(400).json({ error: 'symbol param required' });
+  const format = String(req.query.format || 'png').toLowerCase();
+  if (!['png', 'json'].includes(format)) return res.status(400).json({ error: 'format must be png|json' });
+  const series = String(req.query.series || 'vwap_roll_dist');
+  if (!_STACK_SERIES.includes(series)) return res.status(400).json({ error: `series must be ${_STACK_SERIES.join('|')}` });
+  let tfs;
+  try { tfs = _parseStackTfs(req.query.tfs); } catch (e) { return res.status(400).json({ error: e.message }); }
+
+  const clamp = (v, lo, hi, dflt) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n))) : dflt; };
+  const displayBars = clamp(req.query.bars, 60, 1200, 240);
+  const opts = {
+    source: series, displayBars,
+    seriesOpts: { window: clamp(req.query.window, 3, 200, 20), slopeBars: clamp(req.query.slopeBars, 1, 50, 1) },
+    width: clamp(req.query.w, 320, 2400, 1200),
+    height: clamp(req.query.h, 240, 1400, 520),
+    tzOffsetMin: clamp(req.query.tz, -840, 840, 0),
+    tfSeconds: Object.fromEntries(tfs.map(tf => [tf, VM_TF_SECONDS[tf]])),
+    title: String(req.query.title || symbol).slice(0, 40),
+  };
+
+  const cacheKey = `stack_${format}_${symbol}_${tfs.join('-')}_${JSON.stringify(opts)}`;
+  const ttl = VM_TF_SECONDS[tfs[0]] >= 3600 ? 5 * 60_000 : 45_000;
+  const hit = _vmChartCache.get(cacheKey);
+  if (hit && Date.now() - hit.ts < ttl) {
+    if (format === 'json') return res.json(hit.data);
+    res.type('image/png'); res.set('Cache-Control', `public, max-age=${Math.floor(ttl / 1000)}`);
+    return res.send(hit.data);
+  }
+  try {
+    const barsByTf = await _fetchStackBars(symbol, tfs, displayBars);
+    for (const tf of tfs) {
+      if (!barsByTf[tf] || barsByTf[tf].length < MTF_STACK_MIN_BARS) {
+        return res.status(422).json({ error: `Only ${barsByTf[tf]?.length ?? 0} ${tf} bars available; need ≥${MTF_STACK_MIN_BARS}` });
+      }
+    }
+    const data = format === 'json'
+      ? { symbol, ...mtfStackData(barsByTf, opts), caption: mtfStackCaption(barsByTf, opts) }
+      : renderMtfStackPNG(barsByTf, opts);
+    _vmChartCache.set(cacheKey, { data, ts: Date.now() });
+    if (_vmChartCache.size > 120) _vmChartCache.delete(_vmChartCache.keys().next().value);
+    if (format === 'json') return res.json(data);
+    res.type('image/png'); res.set('Cache-Control', `public, max-age=${Math.floor(ttl / 1000)}`);
+    return res.send(data);
+  } catch (err) {
+    console.error('[vumanchu/mtf-stack]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// POST /api/vumanchu/mtf-stack/send — push the stack to Telegram.
+app.post('/api/vumanchu/mtf-stack/send', express.json({ limit: '4kb' }), async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured' });
+  const { symbol, tfs: rawTfs = 'M1,M5,M15', series = 'vwap_roll_dist', bars = 240, window = 20, caption = '', token, chatId } = req.body ?? {};
+  const tok = token || state.tg?.token, cid = chatId || state.tg?.chatId;
+  if (!symbol) return res.status(400).json({ error: 'symbol required' });
+  if (!tok || !cid) return res.status(400).json({ error: 'No Telegram credentials configured' });
+  if (!_STACK_SERIES.includes(String(series))) return res.status(400).json({ error: `series must be ${_STACK_SERIES.join('|')}` });
+  let tfs;
+  try { tfs = _parseStackTfs(Array.isArray(rawTfs) ? rawTfs.join(',') : rawTfs); } catch (e) { return res.status(400).json({ error: e.message }); }
+  try {
+    const displayBars = Math.min(1200, Math.max(60, Number(bars) || 240));
+    const barsByTf = await _fetchStackBars(symbol, tfs, displayBars);
+    for (const tf of tfs) {
+      if (!barsByTf[tf] || barsByTf[tf].length < MTF_STACK_MIN_BARS) return res.status(422).json({ error: `Not enough ${tf} bars` });
+    }
+    const opts = { source: String(series), displayBars, seriesOpts: { window: Number(window) || 20 },
+                   tfSeconds: Object.fromEntries(tfs.map(tf => [tf, VM_TF_SECONDS[tf]])),
+                   title: symbol, width: 1150, height: 500 };
+    const png = renderMtfStackPNG(barsByTf, opts);
+    const cap = [mtfStackCaption(barsByTf, opts), String(caption).slice(0, 500)].filter(Boolean).join('\n');
+    const ok = await sendTelegramPhoto(tok, cid, png, cap);
+    res.json({ ok, bytes: png.length, caption: cap });
+  } catch (err) {
+    console.error('[vumanchu/mtf-stack/send]', err.message);
     res.status(502).json({ error: err.message });
   }
 });

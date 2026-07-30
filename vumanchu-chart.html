@@ -80,6 +80,25 @@
         <br>This is descriptive. Alignment being measurable is not evidence it predicts anything.
       </div>
     </div>
+
+    <div id="stWrap" style="display:none;margin-top:16px">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px">MTF stack — do all timeframes point the same way?</div>
+      <img id="stPane" alt="Multi-timeframe direction stack" style="width:100%;border:1px solid var(--line);border-radius:8px;background:var(--panel);display:block">
+      <div class="status" id="stStatus"></div>
+      <div class="urlbox" id="stUrlBox"></div>
+      <div class="muted" style="margin-top:8px;line-height:1.6">
+        One labelled row per timeframe, green = up / red = down, fastest at the top. The
+        <code>SCR</code> row is the alignment score: the mean direction sign, −1 (all down) to
+        +1 (all up). Watch a flip <b>cascade</b> down the rows — the fast timeframe turns first.
+        <br><b>Why a rolling VWAP and not the session VWAP?</b> A cumulative/session VWAP is
+        near timeframe-invariant — measured max 115&nbsp;ppm difference between the M1- and
+        M15-computed curve, and its slope sign flipped only twice in a whole session — so every
+        timeframe gives the same answer (~99% agreement) as arithmetic. A rolling window scales
+        with the timeframe (20 M1 bars = 20min, 20 M15 bars = 5h), so the curves genuinely differ.
+        <br><b>It is a score, not a confidence.</b> Unanimity is a description; nothing here has
+        been tested for predictive value. Read the delta against the baseline, as above.
+      </div>
+    </div>
   </div>
 
   <div class="side">
@@ -147,6 +166,30 @@
       <div id="mtfStats" class="muted" style="margin-top:7px"></div>
       <button id="mtfSend">Send MTF to Telegram</button>
       <div class="status" id="mtfSendStatus"></div>
+    </div>
+
+    <div class="card">
+      <h2>MTF stack (N timeframes)</h2>
+      <div class="field"><label for="stTfs">Timeframes</label><select id="stTfs">
+        <option value="M1,M3,M5,M15" selected>M1,M3,M5,M15</option>
+        <option value="M1,M5,M15">M1,M5,M15</option>
+        <option value="M5,M15,M30,H1">M5,M15,M30,H1</option>
+        <option value="M1,M3,M5,M15,M30,H1">M1,M3,M5,M15,M30,H1</option>
+      </select></div>
+      <div class="field"><label for="stSeries">Series</label><select id="stSeries">
+        <option value="vwap_roll_dist" selected>Price vs rolling VWAP</option>
+        <option value="vwap_roll_slope">Rolling VWAP slope</option>
+        <option value="wt_hist">WaveTrend hist</option>
+        <option value="wt_level">WaveTrend level</option>
+        <option value="vwap_cum_dist">Price vs session VWAP ⚠</option>
+        <option value="vwap_cum_slope">Session VWAP slope ⚠</option>
+      </select></div>
+      <div class="field"><label for="stWin">VWAP window</label><input type="number" id="stWin" value="20" min="3" max="200" step="1"></div>
+      <button id="stBtn">Show MTF stack ↓</button>
+      <div class="muted" style="margin-top:7px">⚠ = timeframe-invariant series; agreement over it is arithmetic, not information. The image says so too.</div>
+      <div id="stStats" class="muted" style="margin-top:7px"></div>
+      <button id="stSend">Send stack to Telegram</button>
+      <div class="status" id="stSendStatus"></div>
     </div>
 
     <div class="card">
@@ -320,6 +363,73 @@ $('mtfSend').addEventListener('click', async () => {
   } catch (e) {
     st.className = 'status err'; st.textContent = `⚠ ${e.message}`;
   } finally { btn.disabled = false; }
+});
+
+// ── MTF stack (N timeframes) ─────────────────────────────────────────────────
+const stQs = () => new URLSearchParams({
+  symbol: $('sym').value,
+  tfs:    $('stTfs').value,
+  series: $('stSeries').value,
+  window: $('stWin').value,
+  bars:   String(Math.max(120, Number($('bars').value) * 2)),
+  w:      $('w').value,
+  h:      '520',
+  tz:     String(-new Date().getTimezoneOffset()),
+});
+let stShown = false, stSeq = 0;
+async function refreshStack() {
+  if (!stShown) return;
+  const mine = ++stSeq, q = stQs();
+  $('stWrap').style.display = '';
+  $('stUrlBox').textContent = `GET /api/vumanchu/mtf-stack?${q}`;
+  $('stStatus').textContent = 'rendering…'; $('stStatus').className = 'status';
+  $('stPane').src = `/api/vumanchu/mtf-stack?${q}`;
+  try {
+    const r = await fetch(`/api/vumanchu/mtf-stack?${q}&format=json`);
+    const d = await r.json();
+    if (mine !== stSeq) return;
+    if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
+    const a = d.agreement, rd = d.reading;
+    const dCol = a.delta == null ? 'var(--muted)' : a.delta > 4 ? 'var(--bull)' : a.delta < -4 ? 'var(--bear)' : 'var(--muted)';
+    const sCol = rd.alignmentScore > 0 ? 'var(--bull)' : rd.alignmentScore < 0 ? 'var(--bear)' : 'var(--muted)';
+    $('stStatus').textContent = `${d.timeframes.join('/')} · ${d.sourceLabel} · score ${rd.alignmentScore ?? '—'} (${rd.direction ?? '—'})`;
+    $('stStats').innerHTML =
+      `<div class="row"><span>score</span><b style="color:${sCol}">${rd.alignmentScore != null ? (rd.alignmentScore >= 0 ? '+' : '') + rd.alignmentScore.toFixed(2) : '—'}</b></div>` +
+      `<div class="row"><span>direction</span><b style="color:${sCol}">${rd.direction ?? '—'}${rd.unanimous ? ' (all)' : ''}</b></div>` +
+      `<div class="row"><span>all-agree</span><span>${a.unanimousPct?.toFixed(1) ?? '—'}%</span></div>` +
+      `<div class="row"><span>baseline</span><span>${a.baselinePct?.toFixed(1) ?? '—'}%</span></div>` +
+      `<div class="row"><span>delta</span><b style="color:${dCol}">${a.delta != null ? (a.delta >= 0 ? '+' : '') + a.delta.toFixed(1) + 'pp' : '—'}</b></div>` +
+      rd.perTf.map(p => `<div class="row"><span>${p.tf}</span><span style="color:${p.dir > 0 ? 'var(--bull)' : p.dir < 0 ? 'var(--bear)' : 'var(--muted)'}">${p.dir > 0 ? '▲ up' : p.dir < 0 ? '▼ down' : '—'}</span></div>`).join('') +
+      (d.degenerate ? `<div class="muted" style="color:var(--bear);margin-top:6px">⚠ ${d.degenerate}</div>` : '');
+  } catch (e) {
+    if (mine !== stSeq) return;
+    $('stStatus').textContent = `⚠ ${e.message}`; $('stStatus').className = 'status err';
+    $('stStats').innerHTML = '';
+  }
+}
+$('stPane').addEventListener('error', () => {
+  $('stStatus').textContent = '⚠ stack image failed to render'; $('stStatus').className = 'status err';
+});
+$('stBtn').addEventListener('click', () => {
+  stShown = !stShown;
+  $('stBtn').textContent = stShown ? 'Hide MTF stack' : 'Show MTF stack ↓';
+  if (stShown) refreshStack(); else { $('stWrap').style.display = 'none'; $('stStats').innerHTML = ''; }
+});
+for (const id of ['stTfs','stSeries','stWin','sym','bars']) $(id).addEventListener('change', refreshStack);
+$('stSend').addEventListener('click', async () => {
+  const btn = $('stSend'), st = $('stSendStatus');
+  btn.disabled = true; st.className = 'status'; st.textContent = 'sending…';
+  try {
+    const r = await fetch('/api/vumanchu/mtf-stack/send', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ symbol: $('sym').value, tfs: $('stTfs').value, series: $('stSeries').value,
+                             window: Number($('stWin').value), bars: Math.max(120, Number($('bars').value) * 2) }),
+    });
+    const d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || 'send failed');
+    st.className = 'status ok'; st.textContent = `✓ sent (${(d.bytes / 1024).toFixed(0)} KB)`;
+  } catch (e) { st.className = 'status err'; st.textContent = `⚠ ${e.message}`; }
+  finally { btn.disabled = false; }
 });
 
 refresh();
