@@ -6,5 +6,9 @@
   "USD/CAD": 48,
   "USD/CHF": 86,
   "XAU/USD": 192,
-  "US30_USD": 318
+  "US30_USD": 318,
+  "NAS100_USD": {
+    "id": 146,
+    "slug": "equities/nasdaq/e-mini-nasdaq-100"
+  }
 }

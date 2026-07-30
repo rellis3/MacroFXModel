@@ -4273,19 +4273,27 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
       <button class="iqr-sub-btn" data-iqr="dax" onclick="iqrSwitch('dax')" style="background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text3);font-weight:500;padding:8px 18px;cursor:pointer;font-size:13px;font-family:'DM Mono',monospace">DAX 40</button>
     </div>
 
-    <div class="bot-banner" style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.28)">
-      <div class="bot-banner-icon">🎯</div>
+    <div class="bot-banner" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.30)">
+      <div class="bot-banner-icon">⛔</div>
       <div style="flex:1">
-        <div class="bot-banner-title" style="color:#f59e0b" id="iqrBannerTitle">NQ-QMR — Signal Relay</div>
-        <div class="bot-banner-sub" id="iqrBannerSub">External quant system · NQ (Nasdaq-100) · ~1-2 entries/week · 09:25 ET entry window · Two-gate validation before each trade</div>
+        <div class="bot-banner-title" style="color:#ef4444">NQ-QMR — RETIRED 2026-07-29</div>
+        <div class="bot-banner-sub">Falsified: the entire measured edge was a backtest artifact — stops were not live for the first hour after entry, covering the 13:30 UTC NY cash open. On honest exposure Sharpe 1.56 → 0.06. Alerts are OFF; gate state below still logs for the record. This was never COG's system — both its gates read NQ's own price, the one thing he said his system does not use.</div>
       </div>
       <div style="display:flex;gap:8px;flex-shrink:0;align-items:center">
-        <a href="nq-qmr-backtest.html" id="iqrBacktestLink" style="text-decoration:none">
-          <button style="background:transparent;border:1px solid #f59e0b;border-radius:7px;color:#f59e0b;font-weight:600;padding:8px 14px;cursor:pointer;font-size:12px">Backtester</button>
-        </a>
+        <a href="qmr-tearsheet.html" style="text-decoration:none"><button style="background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--text3);font-weight:600;padding:8px 14px;cursor:pointer;font-size:12px">Evidence</button></a>
         <button style="background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--text3);font-weight:600;padding:8px 14px;cursor:pointer;font-size:12px" onclick="nqLoadStatus()">↺ Refresh</button>
       </div>
     </div>
+
+    <div class="bot-banner" style="background:rgba(34,211,238,0.08);border:1px solid rgba(34,211,238,0.30);margin-top:10px">
+      <div class="bot-banner-icon">🔬</div>
+      <div style="flex:1">
+        <div class="bot-banner-title" style="color:#22d3ee">COG SHADOW — forward test</div>
+        <div class="bot-banner-sub">Our three gates, emitted daily and stamped <b>before</b> COG's alerts land, so the comparison is honest by construction. Places no orders. G1 tide 09:00 UK · G2 transmission 13:45 UK · G3 magnet 14:15 UK. Log his actual beside ours in <code>cog-replication/FORWARD_LOG.md</code>.</div>
+      </div>
+      <button style="background:transparent;border:1px solid #22d3ee;border-radius:7px;color:#22d3ee;font-weight:600;padding:8px 14px;cursor:pointer;font-size:12px;flex-shrink:0" onclick="cogShadowLoad()">↺ Load</button>
+    </div>
+    <div id="cogShadowPanel" style="margin-bottom:14px"></div>
 
     <!-- ── Auto-Monitor Live Status ─────────────────────────────────────────── -->
     <div class="card" style="margin-top:12px;padding:0;border-color:rgba(245,158,11,.3)">
@@ -4557,6 +4565,37 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
       Gate state in <code>nq_qmr_status</code> · audit history in <code>nq_qmr_audit</code>. Both written automatically by Railway server on each gate check.
     </div>
 
+  <script>
+  // COG shadow panel: three gates, the resulting call, and a flag when TIDE and
+  // FLOW disagree - the interesting case, since which layer wins is what tells
+  // us whether COG's direction is slow-macro or fast positioning.
+  async function cogShadowLoad(){
+    const el=document.getElementById('cogShadowPanel'); if(!el) return;
+    el.innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px">loading...</div>';
+    let d; try{ d=await fetch('/api/cog-rep/shadow').then(r=>r.json()); }
+    catch(e){ el.innerHTML='<div style="color:#ef4444;font-size:12px">failed: '+e.message+'</div>'; return; }
+    const rows=(d.entries||[]).slice(0,7);
+    if(!rows.length){ el.innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px">no emissions yet</div>'; return; }
+    const pill=(t,c)=>'<span style="padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;background:'+c+'22;color:'+c+'">'+t+'</span>';
+    const col=s=>s==='VALID'?'#22c55e':s==='INVALID'?'#ef4444':'#f59e0b';
+    el.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:11px;font-family:monospace">'
+      +'<tr style="color:var(--text3);text-align:left"><th style="padding:5px">Date</th><th>G1 tide</th><th>TIDE / FLOW</th><th>G2 stop/risk</th><th>G3 magnet</th><th>Call</th></tr>'
+      + rows.map(function(e){
+          const g1=e.g1||{},g2=e.g2||{},g3=e.g3||{},c=e.call||{};
+          const test=(g1.manual||g3.manual)?' '+pill('TEST','#8b9cb3'):'';
+          const tf=g1.tide?((g1.tide.bias||'-')+' / '+((g1.flow&&g1.flow.bias)||'flat')+(g1.agree?' OK':((g1.tide.bias&&g1.flow&&g1.flow.bias)?' DIFF':''))):'-';
+          return '<tr style="border-top:1px solid var(--border)">'
+            +'<td style="padding:5px">'+e.date+test+'</td>'
+            +'<td>'+(g1.state?pill(g1.state+(g1.bias?' '+g1.bias:''),col(g1.state)):'-')+'</td>'
+            +'<td style="color:var(--text3)">'+tf+'</td>'
+            +'<td>'+((g2.state==='VALID'&&g2.standard)?(g2.standard.stopPct+'% / '+g2.standard.riskPct+'%'+(g2.wasClamped?' <span style="color:#f59e0b">clamped</span>':'')):'-')+'</td>'
+            +'<td>'+(g3.state?pill(g3.state+(g3.direction?' '+g3.direction:''),col(g3.state)):'-')+'</td>'
+            +'<td><b style="color:'+(c.action==='TRADE'?'#22c55e':'var(--text3)')+'">'+(c.action||'-')+(c.direction?' '+c.direction:'')+'</b>'+(c.conflict?' <span style="color:#f59e0b">G1!=G3</span>':'')+'</td>'
+            +'</tr>';
+        }).join('')+'</table>';
+  }
+  document.querySelector('.tab-btn[data-tab="nqqmr"]')?.addEventListener('click',()=>setTimeout(cogShadowLoad,60));
+  </script>
   </div><!-- /tab-nqqmr -->
 
   <div class="tab-pane" id="tab-liquiditygate">

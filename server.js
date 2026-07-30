@@ -21077,7 +21077,20 @@ function _qmrFwdMsgLines(fwd, todayStr) {
   return msg;
 }
 
+// QMR ALERTS ARE RETIRED (2026-07-30). The price-gate system was falsified on
+// 2026-07-29 - its entire edge was the free-hour backtest artifact - so
+// alerting on it is noise from a system we proved does not work, sitting
+// beside the COG-shadow alerts that DO matter. Gated at the single send point
+// rather than ripped out of four monitors: gate state still logs to KV for the
+// record, and this is one line to reverse.
+// COG-shadow messages pass through - they are tagged and are the live work.
+const QMR_ALERTS_RETIRED = true;
+
 async function nqSendTg(msg) {
+  if (QMR_ALERTS_RETIRED && !/COG-SHADOW/.test(msg)) {
+    console.log('[qmr] alert suppressed (system retired):', String(msg).slice(0, 60));
+    return;
+  }
   // Check NQ-specific TG config first, fall back to shared state.tg
   try {
     const cfg    = await nqLoadMonCfg();

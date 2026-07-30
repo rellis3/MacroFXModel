@@ -1,0 +1,4 @@
+# Generated panels — ~310 MB for three instruments, rebuildable in ~90s from the
+# M1 cache with `python vumanchuLab/panel.py`. Not artifacts to version.
+data/
+__pycache__/
