@@ -59,6 +59,27 @@
     <img id="pane" alt="VuManChu WaveTrend pane">
     <div class="status" id="paneStatus"></div>
     <div class="urlbox" id="urlBox"></div>
+
+    <div id="mtfWrap" style="display:none;margin-top:16px">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px">Multi-timeframe overlay</div>
+      <img id="mtfPane" alt="VuManChu multi-timeframe overlay" style="width:100%;border:1px solid var(--line);border-radius:8px;background:var(--panel);display:block">
+      <div class="status" id="mtfStatus"></div>
+      <div class="urlbox" id="mtfUrlBox"></div>
+      <div class="muted" style="margin-top:8px;line-height:1.6">
+        <b>Read the delta, not the percentage.</b> Two timeframes of the same oscillator on
+        the same price are mechanically correlated — the slow wave is close to a smoothed
+        version of the fast one — so a high agreement % is mostly arithmetic. The baseline
+        is the same statistic over re-phasings of the slow series, which keeps each series'
+        own persistence but destroys their real time correspondence.
+        <br><b>Why not <code>direction</code>?</b> Comparing instantaneous slopes across two
+        very differently-lagged smoothings reads as systematic disagreement when the
+        dominant price cycle is short relative to the slow wave's lag — measured well
+        <i>below</i> its own baseline on trending data. <code>level</code> and
+        <code>zone</code> behave the way you'd expect; <code>zone</code> is the strongest
+        but is undefined unless both waves sit inside an OB/OS band.
+        <br>This is descriptive. Alignment being measurable is not evidence it predicts anything.
+      </div>
+    </div>
   </div>
 
   <div class="side">
@@ -106,6 +127,26 @@
     <div class="card">
       <h2>Divergences</h2>
       <div id="divs"><span class="muted">loading…</span></div>
+    </div>
+
+    <div class="card">
+      <h2>Multi-timeframe overlay</h2>
+      <div class="field"><label for="mtfSlow">Slow TF</label><select id="mtfSlow">
+        <option>M15</option><option selected>M30</option><option>H1</option><option>H4</option><option>D</option>
+      </select></div>
+      <div class="field"><label for="mtfAgree">Agreement</label><select id="mtfAgree">
+        <option value="level" selected>level (side of zero)</option>
+        <option value="zone">zone (both OB/OS)</option>
+        <option value="direction">direction (slope)</option>
+      </select></div>
+      <button id="mtfBtn">Show MTF overlay ↓</button>
+      <div class="muted" style="margin-top:7px">
+        Fast TF above is the x-axis; the slow wave is step-held onto it using only
+        <b>closed</b> slow bars, so nothing is shown before it existed.
+      </div>
+      <div id="mtfStats" class="muted" style="margin-top:7px"></div>
+      <button id="mtfSend">Send MTF to Telegram</button>
+      <div class="status" id="mtfSendStatus"></div>
     </div>
 
     <div class="card">
@@ -207,6 +248,77 @@ $('send').addEventListener('click', async () => {
   } catch (e) {
     st.className = 'status err';
     st.textContent = `⚠ ${e.message}`;
+  } finally { btn.disabled = false; }
+});
+
+// ── Multi-timeframe overlay ──────────────────────────────────────────────────
+const mtfQs = () => new URLSearchParams({
+  symbol: $('sym').value,
+  fast:   $('tf').value,
+  slow:   $('mtfSlow').value,
+  bars:   $('bars').value,
+  agree:  $('mtfAgree').value,
+  w:      $('w').value,
+  h:      String(Math.max(200, Math.round(Number($('h').value) * 1.05))),
+  tz:     String(-new Date().getTimezoneOffset()),
+});
+
+let mtfShown = false, mtfSeq = 0;
+async function refreshMtf() {
+  if (!mtfShown) return;
+  const mine = ++mtfSeq;
+  const q = mtfQs();
+  $('mtfWrap').style.display = '';
+  $('mtfUrlBox').textContent = `GET /api/vumanchu/mtf?${q}`;
+  $('mtfStatus').textContent = 'rendering…'; $('mtfStatus').className = 'status';
+  $('mtfPane').src = `/api/vumanchu/mtf?${q}`;
+  try {
+    const r = await fetch(`/api/vumanchu/mtf?${q}&format=json`);
+    const d = await r.json();
+    if (mine !== mtfSeq) return;
+    if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
+    const a = d.agreement;
+    const dCol = a.delta == null ? 'var(--muted)' : a.delta > 4 ? 'var(--bull)' : a.delta < -4 ? 'var(--bear)' : 'var(--muted)';
+    const sign = a.delta != null && a.delta >= 0 ? '+' : '';
+    $('mtfStatus').textContent = `${d.fastTf} vs ${d.slowTf} · ${a.mode} ${a.pct?.toFixed(0) ?? '—'}% vs ${a.baselinePct?.toFixed(0) ?? '—'}% baseline`;
+    $('mtfStats').innerHTML = `
+      <div class="row"><span>${a.mode}</span><b>${a.pct?.toFixed(1) ?? '—'}%</b></div>
+      <div class="row"><span>baseline</span><span>${a.baselinePct?.toFixed(1) ?? '—'}%</span></div>
+      <div class="row"><span>delta</span><b style="color:${dCol}">${a.delta != null ? sign + a.delta.toFixed(1) + 'pp' : '—'}</b></div>
+      <div class="row"><span>comparable</span><span>${a.comparableBars} / ${d.window.bars}</span></div>
+      <div class="row"><span>now</span><b style="color:${d.reading.agree === true ? 'var(--bull)' : d.reading.agree === false ? 'var(--bear)' : 'var(--muted)'}">${
+        d.reading.agree === true ? 'aligned' : d.reading.agree === false ? 'split' : 'n/a'}${d.reading.runBars ? ` ${d.reading.runBars}b` : ''}</b></div>`;
+  } catch (e) {
+    if (mine !== mtfSeq) return;
+    $('mtfStatus').textContent = `⚠ ${e.message}`; $('mtfStatus').className = 'status err';
+    $('mtfStats').innerHTML = '';
+  }
+}
+$('mtfPane').addEventListener('error', () => {
+  $('mtfStatus').textContent = '⚠ MTF image failed to render'; $('mtfStatus').className = 'status err';
+});
+$('mtfBtn').addEventListener('click', () => {
+  mtfShown = !mtfShown;
+  $('mtfBtn').textContent = mtfShown ? 'Hide MTF overlay' : 'Show MTF overlay ↓';
+  if (mtfShown) refreshMtf(); else { $('mtfWrap').style.display = 'none'; $('mtfStats').innerHTML = ''; }
+});
+for (const id of ['mtfSlow','mtfAgree']) $(id).addEventListener('change', refreshMtf);
+for (const id of ['sym','tf','bars']) $(id).addEventListener('change', refreshMtf);
+
+$('mtfSend').addEventListener('click', async () => {
+  const btn = $('mtfSend'), st = $('mtfSendStatus');
+  btn.disabled = true; st.className = 'status'; st.textContent = 'sending…';
+  try {
+    const r = await fetch('/api/vumanchu/mtf/send', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ symbol: $('sym').value, fast: $('tf').value, slow: $('mtfSlow').value,
+                             bars: Number($('bars').value), agree: $('mtfAgree').value }),
+    });
+    const d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || 'send failed');
+    st.className = 'status ok'; st.textContent = `✓ sent (${(d.bytes / 1024).toFixed(0)} KB)`;
+  } catch (e) {
+    st.className = 'status err'; st.textContent = `⚠ ${e.message}`;
   } finally { btn.disabled = false; }
 });
 

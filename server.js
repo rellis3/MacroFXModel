@@ -28,6 +28,7 @@ import { trainHMM5mAll, loadTrainedParams, fetchFredMacro } from './hmm5m-train.
 import { detectPolarityFlip } from './js/polarity.js';
 import { assessEntry, resampleBars } from './js/vumanchu.js';
 import { renderVumanchuPNG, renderVumanchuSVG, vumanchuChartData, vumanchuCaption, MIN_BARS as VM_MIN_BARS } from './js/vumanchuChart.js';
+import { renderVumanchuMtfPNG, renderVumanchuMtfSVG, vumanchuMtfData, vumanchuMtfCaption, TF_SECONDS as VM_TF_SECONDS, AGREE_MODES as VM_AGREE_MODES } from './js/vumanchuMtf.js';
 import { startVolForecastScheduler, forecastState, runVolForecast, getSessionStatus, ensureOhlcCache } from './js/volForecastScheduler.js';
 import { yangZhangVolSeries, hv20Series, ewmaVolSeries, computeForecast as _computeForecast } from './js/volForecast.js';
 import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
@@ -4804,6 +4805,119 @@ app.post('/api/vumanchu/chart/send', express.json({ limit: '4kb' }), async (req,
     res.json({ ok, bytes: png.length, caption: cap });
   } catch (err) {
     console.error('[vumanchu/chart/send]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// ── VuManChu MTF — two timeframes on one pane ─────────────────────────────────
+// GET /api/vumanchu/mtf?symbol=EUR/USD&fast=M5&slow=M30[&bars=200]
+//   [&agree=level|direction|zone][&format=png|svg|json][&w=&h=&tz=]
+//
+// The x-axis is the FAST timeframe; the slow wave is step-held onto it CAUSALLY
+// (each fast bar shows the last CLOSED slow bar), so the picture never shows a
+// slow reading before it existed. See js/vumanchuMtf.js for why `level` is the
+// default rather than the more intuitive `direction`.
+//
+// Sizing is the real constraint. The slow series needs its OWN warm-up, so it
+// must reach back over the whole fast window PLUS that warm-up — hence the
+// span-based count below rather than "same number of bars".
+const _MTF_WARM_SLOW = 220;   // slow bars of warm-up beyond the visible span
+app.get('/api/vumanchu/mtf', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured' });
+  const symbol = req.query.symbol;
+  if (!symbol) return res.status(400).json({ error: 'symbol param required' });
+  const fastTf = String(req.query.fast || 'M5').toUpperCase();
+  const slowTf = String(req.query.slow || 'M30').toUpperCase();
+  for (const [k, v] of [['fast', fastTf], ['slow', slowTf]]) {
+    if (!_VM_GRAN.has(v)) return res.status(400).json({ error: `Unsupported ${k} tf: ${v} (${[..._VM_GRAN].join('/')})` });
+  }
+  const fastSec = VM_TF_SECONDS[fastTf], slowSec = VM_TF_SECONDS[slowTf];
+  if (!(slowSec > fastSec)) {
+    return res.status(400).json({ error: `slow (${slowTf}) must be a COARSER timeframe than fast (${fastTf})` });
+  }
+  const format = String(req.query.format || 'png').toLowerCase();
+  if (!['png', 'svg', 'json'].includes(format)) return res.status(400).json({ error: 'format must be png|svg|json' });
+  const agree = String(req.query.agree || 'level');
+  if (!VM_AGREE_MODES.includes(agree)) return res.status(400).json({ error: `agree must be ${VM_AGREE_MODES.join('|')}` });
+
+  const clamp = (v, lo, hi, dflt) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n))) : dflt; };
+  const displayBars = clamp(req.query.bars, VM_MIN_BARS, 1000, 200);
+  const opts = {
+    displayBars, agreeMode: agree,
+    width:  clamp(req.query.w, 320, 2400, 1200),
+    height: clamp(req.query.h, 200, 1200, 460),
+    tzOffsetMin: clamp(req.query.tz, -840, 840, 0),
+    fastSec, slowSec, fastLabel: fastTf, slowLabel: slowTf,
+    title: String(req.query.title || symbol).slice(0, 40),
+  };
+
+  const fastCount = Math.min(4900, displayBars + 240);
+  // Slow bars needed to span the fast window, plus the slow series' own warm-up.
+  const slowCount = Math.min(4900, Math.ceil(fastCount * fastSec / slowSec) + _MTF_WARM_SLOW);
+  const cacheKey = `mtf_${format}_${symbol}_${fastTf}_${slowTf}_${JSON.stringify(opts)}`;
+  const ttl = fastSec >= 3600 ? 5 * 60_000 : 45_000;
+  const hit = _vmChartCache.get(cacheKey);
+  if (hit && Date.now() - hit.ts < ttl) {
+    if (format === 'json') return res.json(hit.data);
+    res.type(format === 'svg' ? 'image/svg+xml' : 'image/png');
+    res.set('Cache-Control', `public, max-age=${Math.floor(ttl / 1000)}`);
+    return res.send(hit.data);
+  }
+
+  try {
+    const [fastBars, slowBars] = await Promise.all([
+      _fetchVumanchuBars(symbol, fastTf, fastCount),
+      _fetchVumanchuBars(symbol, slowTf, slowCount),
+    ]);
+    for (const [k, b] of [[fastTf, fastBars], [slowTf, slowBars]]) {
+      if (b.length < VM_MIN_BARS) return res.status(422).json({ error: `Only ${b.length} ${k} bars available; need ≥${VM_MIN_BARS}` });
+    }
+    const data = format === 'json'
+      ? { symbol, ...vumanchuMtfData(fastBars, slowBars, opts), caption: vumanchuMtfCaption(fastBars, slowBars, opts) }
+      : format === 'svg' ? renderVumanchuMtfSVG(fastBars, slowBars, opts)
+      : renderVumanchuMtfPNG(fastBars, slowBars, opts);
+    _vmChartCache.set(cacheKey, { data, ts: Date.now() });
+    if (_vmChartCache.size > 120) _vmChartCache.delete(_vmChartCache.keys().next().value);
+    if (format === 'json') return res.json(data);
+    res.type(format === 'svg' ? 'image/svg+xml' : 'image/png');
+    res.set('Cache-Control', `public, max-age=${Math.floor(ttl / 1000)}`);
+    return res.send(data);
+  } catch (err) {
+    console.error('[vumanchu/mtf]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// POST /api/vumanchu/mtf/send — push the MTF pane to Telegram.
+app.post('/api/vumanchu/mtf/send', express.json({ limit: '4kb' }), async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured' });
+  const { symbol, fast = 'M5', slow = 'M30', bars: nBars = 200, agree = 'level', caption = '', token, chatId } = req.body ?? {};
+  const tok = token || state.tg?.token, cid = chatId || state.tg?.chatId;
+  if (!symbol) return res.status(400).json({ error: 'symbol required' });
+  if (!tok || !cid) return res.status(400).json({ error: 'No Telegram credentials configured' });
+  const fastTf = String(fast).toUpperCase(), slowTf = String(slow).toUpperCase();
+  if (!_VM_GRAN.has(fastTf) || !_VM_GRAN.has(slowTf)) return res.status(400).json({ error: 'Unsupported timeframe' });
+  const fastSec = VM_TF_SECONDS[fastTf], slowSec = VM_TF_SECONDS[slowTf];
+  if (!(slowSec > fastSec)) return res.status(400).json({ error: `slow (${slowTf}) must be coarser than fast (${fastTf})` });
+  if (!VM_AGREE_MODES.includes(String(agree))) return res.status(400).json({ error: `agree must be ${VM_AGREE_MODES.join('|')}` });
+  try {
+    const displayBars = Math.min(1000, Math.max(VM_MIN_BARS, Number(nBars) || 200));
+    const fastCount = Math.min(4900, displayBars + 240);
+    const slowCount = Math.min(4900, Math.ceil(fastCount * fastSec / slowSec) + _MTF_WARM_SLOW);
+    const [fastBars, slowBars] = await Promise.all([
+      _fetchVumanchuBars(symbol, fastTf, fastCount),
+      _fetchVumanchuBars(symbol, slowTf, slowCount),
+    ]);
+    if (fastBars.length < VM_MIN_BARS || slowBars.length < VM_MIN_BARS) {
+      return res.status(422).json({ error: `Not enough bars (${fastBars.length} ${fastTf}, ${slowBars.length} ${slowTf})` });
+    }
+    const opts = { displayBars, agreeMode: String(agree), fastSec, slowSec, fastLabel: fastTf, slowLabel: slowTf, title: symbol, width: 1100, height: 420 };
+    const png = renderVumanchuMtfPNG(fastBars, slowBars, opts);
+    const cap = [vumanchuMtfCaption(fastBars, slowBars, opts), String(caption).slice(0, 500)].filter(Boolean).join('\n');
+    const ok = await sendTelegramPhoto(tok, cid, png, cap);
+    res.json({ ok, bytes: png.length, caption: cap });
+  } catch (err) {
+    console.error('[vumanchu/mtf/send]', err.message);
     res.status(502).json({ error: err.message });
   }
 });

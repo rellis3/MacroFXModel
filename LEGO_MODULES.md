@@ -862,6 +862,55 @@ VuManChu-confirmed fade was already tested ≈null (`vumanchuFadeEngine`), and
 per §1's divergence-core row the operator's own docs say the SCRIPTED
 auto-divergence is explicitly not the edge. Drawing it well does not change that.
 
+### 1ag. Multi-timeframe WaveTrend overlay (2026-07-30)
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **VuManChu MTF** | `js/vumanchuMtf.js` | Two timeframes of the WaveTrend on one pane plus a measured agreement read. Composes `vumanchuCore.computeWaveTrend` (both timeframes, one compute), `pngCanvas`, and `vumanchuChart.THEME` (shared palette, so the two charts read as one system) — no new indicator maths. **`alignHtfCausal(fastBars, slowBars, slowSeries)`** is the reason this is a brick: the x-axis is the **FAST** timeframe and the slow wave is step-held onto it, taking only the last slow bar whose CLOSE is at or before each fast bar's close. The naive "which slow bar contains this fast bar" mapping **leaks up to one full slow bar of future** — the Pine `request.security` repainting bug — and still renders a beautiful, plausible chart, so only an explicit test catches it. Drawing on the slow grid instead would force the fast series to be downsampled, destroying the detail the comparison exists for. Returns `slowIdx[]` alongside the values as the caller's proof of causality. `agreementSeries` + `agreementStats` give per-bar agreement in three modes (`level` / `zone` / `direction`) measured **over the visible window only**, so the headline % describes the same bars as the ribbon under it (measuring over the fetched history let `comparableBars` exceed `window.bars` and silently describe a wider span — caught and fixed before deploy). Emitters: `renderVumanchuMtfPNG` / `…SVG` / `vumanchuMtfData` / `vumanchuMtfCaption`. Tested `js/vumanchuMtf.test.mjs` (41 asserts) — including a truncation test (removing future bars must not change any earlier aligned value) and a test that the naive contains-mapping *would* leak, so the causality test is proven to have teeth. | `server.js` `GET /api/vumanchu/mtf` (png/svg/json) + `POST /api/vumanchu/mtf/send`; `vumanchu-chart.html` MTF panel | ✅ built (descriptive — no edge claim) |
+
+**Two measured findings that changed the design**, both recorded because they are
+counter-intuitive enough to be "fixed" back by a future tidy-up:
+
+1. **The agreement % is mostly arithmetic, so it ships with a baseline.** Two
+   timeframes of the SAME oscillator on the SAME price are mechanically correlated
+   — the slow wave is close to a smoothed version of the fast one — so they agree
+   heavily *by construction*. `agreementStats` therefore reports `baselinePct`:
+   the same statistic over **deterministic** circular re-phasings of the slow
+   series (evenly spaced offsets, no RNG, so a cached image and its JSON can never
+   disagree), which preserves each series' own persistence while destroying their
+   true time correspondence. **Read `delta`, never `pct`.** The PNG header colours
+   by delta, not by the raw percentage, for the same reason.
+
+2. **`direction` is NOT the default, despite being what everyone asks for.** "Are
+   both waves rolling the same way" is the mode most corrupted by the indicator's
+   own lag: the slow wave's slope is a heavily-smoothed, delayed version of the
+   fast one's, so when the dominant price cycle is short relative to that lag the
+   two slopes sit out of phase and `direction` reads as *systematic disagreement*
+   — far BELOW its chance baseline, not near it. Measured at M5/M30, WT 9/12/3
+   (slow smoothing lag ≈ n2×ratio ≈ 72 fast bars), sweeping a sine's period:
+
+   | cycle ÷ lag | 1.0 | 1.7 | 3.5 | 7.0 | 14.0 | 27.9 | 55.9 |
+   |---|---|---|---|---|---|---|---|
+   | `direction` | 15.8% | 15.3% | 30.6% | 54.3% | 74.6% | 87.0% | 93.5% |
+   | baseline | ~51% | ~51% | ~51% | ~50% | ~49% | ~48% | ~48% |
+
+   Monotonic, crossing baseline at cycle ÷ lag ≈ 7. On a broadband fixture the
+   modes split hard: **direction −23.8pp, level +5.1pp, zone +15.2pp**. So the
+   default is **`level`** (comparable on nearly every bar, behaves as a reader
+   expects); `zone` shows the strongest agreement but is null unless BOTH waves sit
+   inside an OB/OS band (~⅓ of bars — check `comparableBars`); `direction` is kept
+   but its JSON carries an explicit caveat. `js/vumanchuMtf.test.mjs` pins the
+   long-cycle-agrees / short-cycle-disagrees relationship, which is also the
+   regression test for the alignment itself.
+
+Sizing note for the route: the slow series needs its OWN warm-up, so it is fetched
+by **span** (`ceil(fastCount × fastSec / slowSec) + 220` slow bars), not by "the
+same number of bars" — a large fast:slow ratio costs slow-side history, and that
+is the real ceiling on how wide a ratio is usable.
+
+Still descriptive, like §1af: that MTF alignment can be *measured* is not evidence
+it *predicts* anything. Establishing that needs costs and a true OOS split.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted

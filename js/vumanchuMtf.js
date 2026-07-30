@@ -47,6 +47,34 @@
  * a DESCRIPTION: that alignment can be measured is not evidence it predicts
  * anything. Testing that needs costs and an out-of-sample split.
  *
+ * ── WHY `direction` IS *NOT* THE DEFAULT (measured, and counter-intuitive) ────
+ * "Are both waves rolling the same way" is the natural reading of MTF agreement,
+ * and it is the mode most corrupted by the indicator's own lag. The slow wave's
+ * slope is a heavily-smoothed, delayed version of the fast wave's, so when the
+ * price's dominant cycle is SHORT relative to that lag the two slopes sit out of
+ * phase and `direction` reports systematic DISAGREEMENT — far below its own
+ * chance baseline, not near it.
+ *
+ * Measured on single-frequency fixtures at M5/M30 (WT 9/12/3, so the slow
+ * smoothing lag is ~n2×ratio ≈ 72 fast bars), sweeping the sine's period:
+ *
+ *     cycle ÷ lag :  1.0    1.7    3.5    7.0   14.0   27.9   55.9
+ *     direction   : 15.8%  15.3%  30.6%  54.3%  74.6%  87.0%  93.5%
+ *     baseline    : ~51%   ~51%   ~51%   ~50%   ~49%   ~48%   ~48%
+ *
+ * Monotonic, crossing its baseline at roughly cycle ÷ lag ≈ 7. On a broadband
+ * fixture (drift + three superposed cycles, closer to real price) the three modes
+ * split hard: direction 26.8% vs 50.6% base (−23.8pp), level 69.6% vs 64.6%
+ * (+5.1pp), zone 89.4% vs 74.3% (+15.2pp).
+ *
+ * So the default is `level`: it is comparable on nearly every bar and behaves the
+ * way a reader expects. `zone` shows the strongest agreement but is null whenever
+ * either wave is outside its OB/OS band (≈⅓ of bars comparable — check
+ * `comparableBars` before reading it). `direction` is kept because it is what
+ * people ask for, but a low number there is mostly differential smoothing lag,
+ * NOT the timeframes fighting. This is exactly why the baseline ships with the
+ * statistic.
+ *
  * Pure — no DOM, no network, no globals. Tested in js/vumanchuMtf.test.mjs.
  */
 import { computeWaveTrend } from './vumanchuCore.js';
@@ -79,7 +107,7 @@ const DEFAULTS = {
   displayBars: 200,
   n1: 9, n2: 12, sp: 3,        // the operator's WaveTrend, matching the sibling chart
   obLevel: 53, osLevel: -53,
-  agreeMode: 'direction',
+  agreeMode: 'level',         // NOT 'direction' — see the lag note in the header
   showSlowSignal: true,        // slow WT2 as a thin dashed line (explains `direction`)
   baselineShifts: 24,          // deterministic circular re-phasings for the baseline
   ribbonPx: 9,
@@ -243,10 +271,6 @@ export function vumanchuMtfLayout(fastBars, slowBars, opts = {}) {
   const a2 = alignHtfCausal(fastBars, slowBars, slowRaw.wt2, { fastSec: fSec, slowSec: sSec });
   const slow = { wt1: a1.values, wt2: a2.values };
 
-  const stats = agreementStats(fast, slow, o.agreeMode, {
-    shifts: o.baselineShifts, obLevel: o.obLevel, osLevel: o.osLevel,
-  });
-
   // Visible window: last displayBars, pushed past any leading non-finite in
   // EITHER series (the fast SMA warm-up, and the slow series before its first close).
   const firstFin = arr => { for (let i = 0; i < arr.length; i++) if (fin(arr[i])) return i; return arr.length; };
@@ -254,6 +278,17 @@ export function vumanchuMtfLayout(fastBars, slowBars, opts = {}) {
   const to = fastBars.length - 1;
   const from = Math.max(Math.min(warm, to), fastBars.length - o.displayBars);
   const nVis = to - from + 1;
+
+  // Agreement is measured over the VISIBLE WINDOW ONLY, so the headline
+  // percentage describes the same bars as the ribbon underneath it. Computing it
+  // over the whole fetched series (which included ~240 bars of warm-up history)
+  // made `comparableBars` exceed `window.bars` and quietly described a different
+  // span from the picture. `stats.series` is therefore window-indexed: element 0
+  // is bar `from`, so callers index it as `series[i - from]`.
+  const sliceWt = (s) => ({ wt1: s.wt1.slice(from, to + 1), wt2: s.wt2.slice(from, to + 1) });
+  const stats = agreementStats(sliceWt(fast), sliceWt(slow), o.agreeMode, {
+    shifts: o.baselineShifts, obLevel: o.obLevel, osLevel: o.osLevel,
+  });
 
   const padL = 10, padR = 62, padT = 30, padB = 22;
   const ribbon = o.ribbonPx;
@@ -288,12 +323,15 @@ export function vumanchuMtfLayout(fastBars, slowBars, opts = {}) {
     }
   }
 
-  // How long the current agree/disagree run has lasted, in fast bars.
+  // How long the current agree/disagree run has lasted, in fast bars. Window-
+  // indexed, so it is capped by the visible window (a longer real run reads as
+  // the full window, which is all the picture can support).
   const runBars = (() => {
-    const cur = stats.series[to];
-    if (cur === null) return null;
+    const last = nVis - 1;
+    const cur = stats.series[last];
+    if (cur === null || cur === undefined) return null;
     let n = 0;
-    for (let i = to; i >= from && stats.series[i] === cur; i--) n++;
+    for (let k = last; k >= 0 && stats.series[k] === cur; k--) n++;
     return n;
   })();
 
@@ -309,7 +347,7 @@ export function vumanchuMtfLayout(fastBars, slowBars, opts = {}) {
       fastWt2: fin(fast.wt2[to]) ? fast.wt2[to] : null,
       slowWt1: fin(slow.wt1[to]) ? slow.wt1[to] : null,
       slowWt2: fin(slow.wt2[to]) ? slow.wt2[to] : null,
-      agree: stats.series[to],
+      agree: stats.series[nVis - 1] ?? null,
       runBars,
     },
   };
@@ -340,7 +378,7 @@ export function renderVumanchuMtfPNG(fastBars, slowBars, opts = {}) {
   const ry = P.y + P.h + 3;
   cv.rect(P.x, ry, P.w, L.ribbon, T.bg);
   for (let i = L.from; i <= L.to; i++) {
-    const v = L.stats.series[i];
+    const v = L.stats.series[i - L.from];
     const x0 = L.xToPx(i), x1 = i < L.to ? L.xToPx(i + 1) : x0 + (P.w / Math.max(1, L.nVis - 1));
     cv.rect(x0, ry, Math.max(1, x1 - x0), L.ribbon, v === null ? M.neutral : v ? M.agree : M.disagree);
   }
@@ -377,8 +415,9 @@ export function renderVumanchuMtfPNG(fastBars, slowBars, opts = {}) {
     cv.text(hx, 12, lbl, { color: col, scale: 1 });
     hx += measureText(lbl, 1) + 5;
     if (s.baselinePct != null) {
-      const b = `VS ${s.baselinePct.toFixed(0)}% BASE`;
-      cv.text(hx, 12, b, { color: T.grid, scale: 1 });
+      // T.text, not T.grid — the baseline is the number that makes the headline
+      // percentage interpretable, so it must be as readable as the headline.
+      cv.text(hx, 12, `VS ${s.baselinePct.toFixed(0)}% BASE`, { color: T.text, scale: 1 });
     }
   }
 
@@ -422,7 +461,7 @@ export function renderVumanchuMtfSVG(fastBars, slowBars, opts = {}) {
   s.push(`<polyline points="${pl(L.points.slowWt1)}" fill="none" stroke="${M.slowWt1}" stroke-width="2.4"/>`);
   const ry = P.y + P.h + 3;
   for (let i = L.from; i <= L.to; i++) {
-    const v = L.stats.series[i];
+    const v = L.stats.series[i - L.from];
     const x0 = L.xToPx(i), x1 = i < L.to ? L.xToPx(i + 1) : x0 + (P.w / Math.max(1, L.nVis - 1));
     s.push(`<rect x="${x0.toFixed(1)}" y="${ry}" width="${Math.max(1, x1 - x0).toFixed(1)}" height="${L.ribbon}" fill="${v === null ? M.neutral : v ? M.agree : M.disagree}"/>`);
   }
@@ -455,7 +494,12 @@ export function vumanchuMtfData(fastBars, slowBars, opts = {}) {
       pct: r3(s.agreePct), baselinePct: r3(s.baselinePct),
       baselineMaxPct: r3(s.baselineMaxPct), delta: r3(s.delta),
       comparableBars: s.comparableBars, baselineShifts: s.baselineShifts,
-      note: 'pct alone is mostly structural correlation between two timeframes of the same oscillator — read delta vs baselinePct. Structural baseline, not a significance test, and descriptive only.',
+      note: 'pct alone is mostly structural correlation between two timeframes of the same oscillator — read delta vs baselinePct. Structural baseline, not a significance test, and descriptive only.'
+          + (s.mode === 'direction'
+              ? ' MODE CAVEAT: `direction` compares instantaneous slopes across two very differently-lagged smoothings, so a low/negative delta here is mostly the slow wave\'s smoothing lag, not the timeframes conflicting. Prefer level/zone.'
+              : s.mode === 'zone'
+                ? ' MODE CAVEAT: `zone` is null unless BOTH waves are inside an OB/OS band — check comparableBars against window.bars before reading pct.'
+                : ''),
     },
     window: { from: L.from, to: L.to, bars: L.nVis, totalFast: fastBars.length, totalSlow: slowBars.length },
   };
