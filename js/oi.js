@@ -1068,9 +1068,8 @@ export function oiRefMove(inst, pair) {
   return { move: spot * sig * Math.sqrt(dte / 365), source: 'flat-vol' };
 }
 
-export function oiGreeks(strike, spot, pair) {
+export function oiGreeks(strike, spot, pair, T = OI_GREEK_T) {
   const sigma = oiFlatVol(pair);
-  const T = OI_GREEK_T;
   const d1 = (Math.log(spot/strike) + 0.5*sigma*sigma*T) / (sigma*Math.sqrt(T));
   const nd1 = Math.exp(-0.5*d1*d1) / Math.sqrt(2*Math.PI);
   const gamma = nd1 / (spot*sigma*Math.sqrt(T));
@@ -1078,13 +1077,13 @@ export function oiGreeks(strike, spot, pair) {
   return { gamma, callDelta, putDelta: callDelta-1 };
 }
 
-export function oiCalcExposures(strikes, calls, puts, spot, pair) {
+export function oiCalcExposures(strikes, calls, puts, spot, pair, T = OI_GREEK_T) {
   if (!spot || spot <= 0) return { gex: 0, dex: 0 };
   const cs = isNQ(pair) ? 20 : isES(pair) ? 50 : isYM(pair) ? 5 : isRTY(pair) ? 50
            : isFDAX(pair) ? 25 : isFTSE(pair) ? 10 : pair.includes('XAU') ? 100 : 125000;
   let gex=0, dex=0;
   for (let i=0; i<strikes.length; i++) {
-    const {gamma, callDelta, putDelta} = oiGreeks(strikes[i], spot, pair);
+    const {gamma, callDelta, putDelta} = oiGreeks(strikes[i], spot, pair, T);
     gex += (calls[i]-puts[i]) * gamma * cs * spot;
     dex += (calls[i]*callDelta + puts[i]*putDelta) * cs;
   }
@@ -1380,7 +1379,15 @@ export async function processOIData() {
   if (!spot) spot = parsed.strikes[Math.floor(parsed.strikes.length / 2)];
 
   const maxPain = oiCalcMaxPain(parsed.strikes, parsed.calls, parsed.puts);
-  const exposures = oiCalcExposures(parsed.strikes, parsed.calls, parsed.puts, spot, pair);
+  // Greeks time-to-expiry: use the ACTUAL selected-expiry DTE (from pickPrimaryExpiry /
+  // the DTE tag) rather than the old fixed 14-DTE assumption. Gamma ∝ 1/√T, so this
+  // sharpens GEX magnitude and the gamma/GEX-flip levels to the expiry actually being
+  // analysed. Floored at 1 day (avoids the 0-DTE gamma singularity) and capped at 1y.
+  // IMPACT: shifts exposures.gex — hence the OI bot's PIN/BREAKOUT regime — and the
+  // flip nodes; wall / max-pain LEVELS are raw OI and unaffected. OI_GREEK_T stays the
+  // fallback when no DTE is known (the greek fns still default to it).
+  const greekT = Math.min(365, Math.max(1, Number.isFinite(dteEff) && dteEff > 0 ? dteEff : 14)) / 365;
+  const exposures = oiCalcExposures(parsed.strikes, parsed.calls, parsed.puts, spot, pair, greekT);
 
   const cs = isNQ(pair) ? 20 : isES(pair) ? 50 : isYM(pair) ? 5 : isRTY(pair) ? 50
            : isFDAX(pair) ? 25 : isFTSE(pair) ? 10 : pair.includes('XAU') ? 100 : 125000;
@@ -1482,7 +1489,7 @@ export async function processOIData() {
   const topLevels = withOI.slice(0, numLevels);
 
   const gexProfile = parsed.strikes.map((s,i) => {
-    const {gamma} = oiGreeks(s, spot, pair);
+    const {gamma} = oiGreeks(s, spot, pair, greekT);
     const callGex = parsed.calls[i] * gamma * cs * spot;
     const putGex  = parsed.puts[i]  * gamma * cs * spot;
     // Raw OI rides along with the gamma-weighted numbers. This is the only CONTIGUOUS
@@ -1645,7 +1652,7 @@ export async function processOIData() {
     // describing one book. Kept ALONGSIDE gammaFlip rather than replacing it, because
     // the bot and export already consume that field.
     gexFlip: gexFlipPrice(parsed.strikes, parsed.calls, parsed.puts, {
-      sigma: oiFlatVol(pair), T: OI_GREEK_T, mult: cs, spot }),
+      sigma: oiFlatVol(pair), T: greekT, mult: cs, spot }),
     dataWarning,   // ⚠ set when spot is far outside the strike range (stale/mis-scaled paste) — flag, don't silently analyse
     greeksFlow,   // charm/vanna exposure from a pasted IV surface (null unless the IV box is filled)
     expectedMove: expMove,   // ATM straddle → option-implied ± range to expiry
