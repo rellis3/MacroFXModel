@@ -5764,12 +5764,41 @@ async function _cogShadowWrite(date, patch) {
   await kv.put(COG_SHADOW_KV, JSON.stringify({ data: log.slice(0, 180), timestamp: Date.now() }));
   return log[i];
 }
-// FRED weekly series -> [{date,value}] ascending. Small windows; these are
-// weekly prints so a year is ~52 points.
-async function _cogFred(id, fromDate) {
+// DAILY TGA from the Treasury's Fiscal Data API - free, no key, current to the
+// prior business day. This is what makes G1 a DAILY signal: TGA and RRP both
+// publish daily and only WALCL is weekly, so net liquidity can move every day.
+// A purely weekly series cannot produce a fresh direction 60 times a year,
+// which was the standing objection to the entire macro thesis.
+// Returns [{date, value}] in $ MILLIONS, ascending - same unit as FRED's WALCL.
+async function _cogDailyTGA(days = 200) {
+  const url = 'https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1'
+            + '/accounting/dts/operating_cash_balance'
+            + '?sort=-record_date&page%5Bsize%5D=' + (days * 3)
+            + '&fields=record_date,account_type,close_today_bal,open_today_bal';
+  const r = await fetch(url, { signal: AbortSignal.timeout(25000) });
+  if (!r.ok) throw new Error('Treasury DTS HTTP ' + r.status);
+  const j = await r.json();
+  const out = [];
+  for (const row of (j.data || [])) {
+    if (!/Treasury General Account \(TGA\) Closing Balance/i.test(row.account_type || '')) continue;
+    // The newest row's close is often still the literal string 'null' until the
+    // statement finalises. Skip those rather than coercing them to 0.
+    const v = Number(row.close_today_bal);
+    if (Number.isFinite(v) && row.close_today_bal !== 'null') out.push({ date: row.record_date, value: v });
+  }
+  return out.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// FRED series -> [{date,value}] ascending.
+// UNITS: FRED ships WALCL and WTREGEN in MILLIONS but RRPONTSYD in BILLIONS.
+// Subtracting them raw understates RRP by 1000x and silently deletes it from
+// net liquidity - our first emission reported $5,917.8bn, which is WALCL minus
+// TGA with RRP contributing nothing. `scale` normalises everything to millions.
+async function _cogFred(id, fromDate, scale = 1) {
   try {
     const m = await fetchFredSeries(id, fromDate, process.env.FRED_KEY);
     return [...m.entries()].map(([date, value]) => ({ date, value }))
+      .map(x => ({ date: x.date, value: x.value * scale }))
       .filter(x => Number.isFinite(x.value)).sort((a, b) => a.date.localeCompare(b.date));
   } catch { return []; }
 }
@@ -5814,15 +5843,21 @@ async function cogShadowRun(stage, manual = false) {
   try {
     if (stage === 'g1') {
       const from = new Date(Date.now() - 400 * 864e5).toISOString().substring(0, 10);
-      const [walcl, tga, rrp, hy] = await Promise.all([
-        _cogFred('WALCL', from), _cogFred('WTREGEN', from),
-        _cogFred('RRPONTSYD', from), _cogFred('BAMLH0A0HYM2', from),
+      // RRPONTSYD is in BILLIONS on FRED -> x1000 to match WALCL/TGA millions.
+      // Daily TGA from Treasury; fall back to FRED's weekly WTREGEN if that feed
+      // dies, so a dead feed degrades to the old weekly reading rather than
+      // emitting a confidently wrong number.
+      const [walcl, rrp, hy] = await Promise.all([
+        _cogFred('WALCL', from), _cogFred('RRPONTSYD', from, 1000), _cogFred('BAMLH0A0HYM2', from),
       ]);
-      const g1 = computeCogG1({ walcl, tga, rrp, hy });
+      let tga = [], tgaSource = 'treasury-daily';
+      try { tga = await _cogDailyTGA(); } catch (e) { tgaSource = 'fred-weekly-fallback: ' + e.message; }
+      if (!tga.length) { tga = await _cogFred('WTREGEN', from); tgaSource = 'fred-weekly-fallback'; }
+      const g1 = Object.assign({}, computeCogG1({ walcl, tga, rrp, hy }), { tgaSource });
       await _cogShadowWrite(today, { g1: { ...g1, at: new Date().toISOString(), manual } });
       await nqSendTg(TAG + `\u{1F30A} <b>COG-SHADOW | G1 TIDE</b>  ${_cogUkNow()} UK  ${g1.state}${g1.bias ? ' ' + g1.bias : ''}\n`
         + `Net liquidity: $${g1.netLiquidityUsdBn}bn (${g1.netChgPct >= 0 ? '+' : ''}${g1.netChgPct}% / ${g1.rocWeeks}w)\n`
-        + `HY credit: ${g1.hyChgBp >= 0 ? '+' : ''}${g1.hyChgBp}bp\n${g1.reason}\n<i>Shadow only — no orders. Our inference, not COG's stated rule.</i>`);
+        + `HY credit: ${g1.hyChgBp >= 0 ? '+' : ''}${g1.hyChgBp}bp\n${g1.reason}\n<i>Shadow only — no orders. TIDE and FLOW both emitted; which tracks COG's Gate 1 is what the record decides.</i>`);
       _cogShadowSent.g1 = true;
     }
     if (stage === 'g2') {
