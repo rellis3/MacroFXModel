@@ -1012,14 +1012,15 @@ Route notes: non-native OANDA granularities are **resampled from M1** via the sh
 synthetic bar restamped from its group's first M1 bar so the causal alignment has
 real bar-start times. M1 is fetched once and reused for every derived timeframe.
 
-### 1ai. Cross-pair extreme-crowding-alert selector (2026-07-30) — double-extreme COT combos
+### 1ai. Per-currency extreme-crowding cards + reinforcing-pair selector (2026-07-30)
 
 | Brick | File | Owns | Consumers | Status |
 |---|---|---|---|---|
-| **Extreme crowding alerts** | `cot-extremes.html` (`crowdState`, `pairAlerts`, `FX_PAIRS`) | A selector on top of the existing per-currency COT percentile/z-score (already computed in `_worker.js`'s `/api/cot-extremes`): for each of the 25 FX pairs (list mirrors `js/instrumentRegistry.js`'s canonical FX set — plain-script page, no ES modules, so hand-mirrored rather than imported), flags a "double extreme" when BOTH legs sit at/beyond the page's existing 90th/10th percentile crowding cutoff (same threshold as `extremes()`/`colFor()`) AND the two legs' direction reinforces on the cross (base crowded long + quote crowded short ⇒ the cross itself reads crowded long). Renders as a card grid at the top of `cot-extremes.html`, styled with the page's existing `--long`/`--short` tokens. USD-leg pairs (EURUSD, GBPUSD, AUDUSD, NZDUSD, USDCAD, USDCHF, USDJPY) are not covered — this feed has no direct CFTC USD-index future, so there's no historical series to percentile-rank a USD leg against (same known gap as `today.html`'s currency-strength drawer's derived USD row). | `cot-extremes.html` | 🔲 view-only, **no backtest — a crowding/interpretation aid, not a validated signal** |
+| **Extreme crowding alerts** | `cot-extremes.html` (`crowdState`, `crowdingCards`, `FX_PAIRS`) | One colour-tinted card **per currency** individually at/beyond the page's existing 90th/10th percentile crowding cutoff (same threshold as `extremes()`/`colFor()`) — Z-score, percentile, Net % OI, badge ("OVERCROWDED LONG"/"HEAVILY SHORT"), all reusing already-computed COT percentile/z-score fields from `_worker.js`'s `/api/cot-extremes`. First cut gated the card behind a *pair* both legs being extreme at once, matching the reviewed reference screenshot's framing too literally — restyled to one card per stretched currency (so a single extreme currency always shows something, not just the rarer double-extreme case) plus a **secondary text annotation** underneath (reusing `FX_PAIRS`, the 25-pair set mirroring `js/instrumentRegistry.js`'s canonical FX list — plain-script page, no ES modules, so hand-mirrored) flagging when two currently-stretched currencies pair into a real FX cross reinforcing the same direction (base crowded long + quote crowded short ⇒ the cross reads crowded long). USD itself has no card — this feed has no direct CFTC USD-index future, so USD-leg pairs (EURUSD, GBPUSD, AUDUSD, NZDUSD, USDCAD, USDCHF, USDJPY) aren't covered (same known gap as `today.html`'s currency-strength drawer's derived USD row). | `cot-extremes.html` | 🔲 view-only, **no backtest — a crowding/interpretation aid, not a validated signal** |
 
-This is a *selector*, not a strategy: it composes two already-built Tier-2 COT
-readings into a "both sides stretched, same direction" flag, the same shape as
+This is a *selector*, not a strategy: it composes an already-built Tier-2 COT
+reading (per-currency percentile/z-score) into "stretched enough to flag," with
+a secondary combinatorial read across two cards, the same shape as
 `dayTypeScore → selectStrategy` (Lego Principle 4). Per CLAUDE.md's evaluation
 rules, a method is not a strategy until tested — this has not been run through
 the honest IS/OOS harness (Lego Principle 5), so it ships with an explicit

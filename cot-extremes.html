@@ -75,18 +75,18 @@ tr.clk:hover td{background:rgba(255,255,255,.03)}
 .bar{height:13px;border-radius:2px;display:inline-block;vertical-align:middle}
 
 .pa-grid{display:flex;flex-wrap:wrap;gap:14px}
-.pa-card{flex:1 1 260px;min-width:240px;background:var(--bg3);border:1px solid var(--line2);
-  border-radius:7px;padding:14px 16px}
-.pa-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
-.pa-pair{font-family:var(--mono);font-weight:700;font-size:15px;letter-spacing:.03em}
+.pa-card{flex:1 1 220px;min-width:200px;background:var(--bg3);border:1px solid var(--line2);
+  border-radius:8px;padding:14px 16px}
+.pa-card.long{border-color:var(--long);background:rgba(232,97,95,.08)}
+.pa-card.short{border-color:var(--short);background:rgba(70,184,122,.08)}
+.pa-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.pa-pair{font-family:var(--mono);font-weight:700;font-size:16px;letter-spacing:.03em;color:var(--tx)}
 .pa-badge{font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:3px 8px;border-radius:4px;
   border:1px solid currentColor;white-space:nowrap}
-.pa-legs{display:flex;gap:10px}
-.pa-leg{flex:1;min-width:0}
-.pa-leg>b{font-size:13px;color:var(--tx)}
-.pa-stats{display:flex;flex-direction:column;gap:2px;margin-top:4px;font-family:var(--mono);
-  font-size:12px;color:var(--tx2)}
-.pa-stats b{color:var(--tx)}
+.pa-stats-row{display:flex;gap:18px}
+.pa-stat{flex:1;min-width:0}
+.pa-lbl{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx3);margin-bottom:3px}
+.pa-val{font-family:var(--mono);font-weight:700;font-size:15px}
 
 svg{display:block;width:100%;height:auto;overflow:visible}
 .lbl{fill:var(--tx2);font-family:var(--mono);font-size:12px}
@@ -211,40 +211,51 @@ const FX_PAIRS = [
 // cutoff as extremes()/colFor() elsewhere on this page); null = not stretched.
 const crowdState = x => { const p = pctOf(x); return p==null ? null : p>=90?'long':p<=10?'short':null; };
 
-function pairAlerts(big){
-  const bySym = {};
-  (DATA.instruments||[]).forEach(x => { if (x.group === 'fx') bySym[x.sym] = x; });
-  const rows = [];
+// One card PER CURRENCY that is individually at a 90th/10th-percentile crowding
+// extreme (not gated behind a second currency also being extreme) — this is the
+// card unit itself; two of these read together is what makes a pair "doubly"
+// crowded, called out as a text annotation underneath rather than requiring both
+// at once just to show anything.
+function crowdingCards(big){
+  const list = (DATA.instruments||[]).filter(x => x.group === 'fx' && crowdState(x));
+  if (!list.length) return '<div class="empty">No currency is currently at a 90th/10th-percentile crowding extreme — nothing stretched enough to flag right now.</div>';
+  list.sort((a, b) => Math.abs(50 - pctOf(b)) - Math.abs(50 - pctOf(a)));
+
+  const stat = (lbl, val, clr) => `<div class="pa-stat"><div class="pa-lbl">${lbl}</div><div class="pa-val" style="color:${clr}">${val}</div></div>`;
+  const cardsHtml = list.map(x => {
+    const st = crowdState(x), clr = st === 'long' ? 'var(--long)' : 'var(--short)';
+    const label = st === 'long' ? '&#9888; OVERCROWDED LONG' : '&#9661; HEAVILY SHORT';
+    const z = zOf(x), p = pctOf(x), sh = x.specShare;
+    return `<div class="pa-card ${st}">`
+      + `<div class="pa-head"><span class="pa-pair">${esc(x.sym)}</span>`
+      + `<span class="pa-badge" style="color:${clr}">${label}</span></div>`
+      + `<div class="pa-stats-row">`
+      +   stat('Z-SCORE', z != null ? sgn(z) + z : '—', clr)
+      +   stat('PCTILE', p ?? '—', clr)
+      +   stat('NET % OI', sh != null ? sgn(sh) + sh + '%' : '—', clr)
+      + `</div></div>`;
+  }).join('');
+
+  // Secondary read: two of the cards above, traded against each other, reinforcing
+  // the same direction on a real FX cross (the "double extreme" framing) — text
+  // only, since the cards themselves are the per-currency source of truth.
+  const bySym = {}; list.forEach(x => bySym[x.sym] = x);
+  const combos = [];
   FX_PAIRS.forEach(([base, quote]) => {
     const A = bySym[base], B = bySym[quote];
     if (!A || !B) return;
     const sA = crowdState(A), sB = crowdState(B);
-    // Only a "double extreme" alert when both legs are stretched AND pulling the
-    // same way on the cross (base long + quote short ⇒ the cross itself is
-    // crowded long). One stretched leg alone, or legs pulling opposite ways,
-    // isn't the double-extreme case this panel is for — see extremes() above
-    // for single-market crowding.
     let dir = null;
     if (sA === 'long' && sB === 'short') dir = 'long';
     else if (sA === 'short' && sB === 'long') dir = 'short';
-    if (!dir) return;
-    rows.push({ base, quote, dir, A, B });
+    if (dir) combos.push(`<b>${esc(base)}${esc(quote)}</b> (specs already max ${dir})`);
   });
-  if (!rows.length) return '<div class="empty">No FX cross currently has both legs at a 90th/10th-percentile crowding extreme, reinforcing the same direction.</div>';
-  const leg = x => `<div class="pa-leg"><b>${esc(x.sym)}</b><div class="pa-stats">`
-    + `<span>Z <b>${zOf(x) ?? '—'}</b></span><span>Pctile <b>${pctOf(x) ?? '—'}</b></span>`
-    + `<span>Net % OI <b>${x.specShare != null ? sgn(x.specShare) + x.specShare + '%' : '—'}</b></span></div></div>`;
-  const cards = rows.map(r => {
-    const clr = r.dir === 'long' ? 'var(--long)' : 'var(--short)';
-    const label = r.dir === 'long' ? 'OVERCROWDED LONG' : 'OVERCROWDED SHORT';
-    return `<div class="pa-card" style="border-color:${clr}">`
-      + `<div class="pa-head"><span class="pa-pair">${esc(r.base)}${esc(r.quote)}</span>`
-      + `<span class="pa-badge" style="color:${clr}">${label}</span></div>`
-      + `<div class="pa-legs">${leg(r.A)}${leg(r.B)}</div></div>`;
-  }).join('');
-  return `<div class="pa-grid">${cards}</div>`
-    + '<div class="note">Both legs sit at or beyond the 90th/10th percentile of their own 200-week range, reinforcing the same directional read on the cross. This is a crowding read, not a trade signal — it says the fuel for more of the same is thin on both sides at once, not which way or when it unwinds. It has not been backtested; treat it as context to combine with price and your own risk process, not a rule to act on alone.'
-    + ' USD-leg pairs (EURUSD, GBPUSD, AUDUSD, NZDUSD, USDCAD, USDCHF, USDJPY) aren\'t covered here — this feed doesn\'t currently pull a direct CFTC USD-index future (same gap as the currency-strength drawer\'s USD row on the dashboard), so there\'s no historical series to rank a USD leg against.</div>';
+  const comboLine = combos.length
+    ? `Reinforcing pairs right now: ${combos.join(', ')} — both legs are stretched the same way on that cross.`
+    : `None of the cards above currently pair into a reinforcing cross (i.e. no two are stretched in the direction that reinforces on their FX rate) — each is still worth reading on its own.`;
+  return `<div class="pa-grid">${cardsHtml}</div>`
+    + `<div class="note">${comboLine} This is a crowding read, not a trade signal — it says the fuel for more of the same is thin, not which way or when it unwinds. It has not been backtested; treat it as context to combine with price and your own risk process, not a rule to act on alone.`
+    + ' USD itself has no card here — this feed has no direct CFTC USD-index future, so USD-leg pairs (EURUSD, GBPUSD, AUDUSD, NZDUSD, USDCAD, USDCHF, USDJPY) can\'t be read this way (same gap as the dashboard\'s currency-strength drawer).</div>';
 }
 
 // ── crowding leaderboard: every market ranked, both directions on one axis ──
@@ -413,7 +424,7 @@ function render(){
     +'. Positioning changes inside that gap and you cannot see it, so treat every number here as a '
     +'<b>crowding / regime conditioner</b>, never as a timing signal.</div>';
   document.getElementById('main').innerHTML='<div class="grid">'
-    + panel('c12','alerts','Extreme crowding alerts','paira',pairAlerts,true)
+    + panel('c12','alerts','Extreme crowding alerts','paira',crowdingCards,true)
     + panel('c7','lead','Crowding leaderboard','pct',leaderboard)
     + panel('c5','ext','Crowded trades','extreme',extremes,true)
     + panel('c7','scat','Specs vs commercials','scatter',scatter)
