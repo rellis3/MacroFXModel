@@ -5222,9 +5222,17 @@ app.get('/api/vol-forecast/backtest-range', async (req, res) => {
       const slice = dailyD1.slice(Math.max(0, i - 800), i);    // strictly before d, scheduler window
       if (slice.length < 60) continue;
       let fc; try { fc = _computeForecast(slice, cls); } catch { continue; }
+      // Bot σ — the SAME source the Volatility Bot uses (volSigmaSeries via nextSigma,
+      // NOT _computeForecast, whose correction constants drift from the bot). Strictly
+      // before d ⇒ no lookahead. Lets the reversion page draw the bot's actual lines
+      // (COG geometry × this σ) as a distinct calc for touch analysis. NQ still swaps
+      // to cc-HV on the client (matching the bot), same as the COG calc does.
+      let botVa = null;
+      try { const bs = _nextSigma(slice, cls); if (bs > 0) botVa = +(bs * Math.sqrt(252) * 100).toFixed(2); } catch { /* bot σ is optional enrichment */ }
       days[d.date] = {
         hl_median: fc.hl_median, hl_75: fc.hl_75,
         oc_median: fc.oc_median, oc_75: fc.oc_75, vol_annual: fc.vol_annual,
+        bot_vol_annual: botVa,
       };
     }
     // For NQ, add the per-day close-to-close HV σ (London-aligned D1, window 30) that

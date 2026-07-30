@@ -131,6 +131,7 @@
     <div class="seg" id="calc">
       <button data-c="original" class="on">Original</button>
       <button data-c="cog">COG</button>
+      <button data-c="bot" title="The Volatility Bot's actual lines: COG geometry × the bot's σ (volSigmaSeries — the backtest math the bot uses, not the vol-forecast σ the COG calc uses; NQ swaps to cc-HV like the bot). Backtest source only.">Bot</button>
     </div>
     <label>Source</label>
     <div class="seg" id="src">
@@ -288,6 +289,7 @@ const COG_SQRT252 = Math.sqrt(252);
 const _REPLAY_CCHV = new Set(['nq']);
 const $ = id => document.getElementById(id);
 function calcMode() { return $('calc').querySelector('button.on')?.dataset.c || 'original'; }
+function calcLabel() { const m = calcMode(); return m === 'cog' ? 'COG' : m === 'bot' ? 'Bot' : 'Original'; }
 function srcMode()  { return $('src').querySelector('button.on')?.dataset.s || 'backtest'; }
 function tfGran()   { return $('tf').querySelector('button.on')?.dataset.g || 'M15'; }
 function setStatus(t) { $('status').textContent = t; }
@@ -296,9 +298,16 @@ function setStatus(t) { $('status').textContent = t; }
 // day's vol_annual (COG). Returns {hl_median,hl_75,oc_median,oc_75} or null.
 function bandsFor(f) {
   if (!f) return null;
-  if (calcMode() === 'cog') {
+  const mode = calcMode();
+  // COG geometry for both COG and BOT — they differ only in the σ SOURCE:
+  //   COG = the vol-forecast σ (f.vol_annual, with correction constants)
+  //   BOT = the bot's σ (f.bot_vol_annual = volSigmaSeries, no corrections)
+  // Both swap NQ to cc-HV (matching the live bot / COG export). BOT needs the
+  // Backtest source (bot_vol_annual is only computed there); falls back to the COG
+  // σ if it's missing so the calc still draws.
+  if (mode === 'cog' || mode === 'bot') {
     const name = ($('pair').value || '').toLowerCase();
-    let va = f.vol_annual;
+    let va = (mode === 'bot') ? (f.bot_vol_annual ?? f.vol_annual) : f.vol_annual;
     if (_REPLAY_CCHV.has(name) && f.cchv_annual > 4 && f.cchv_annual < 200) va = f.cchv_annual;
     if (!(va > 0)) return null;
     const s = va / COG_SQRT252;
@@ -432,7 +441,7 @@ let dpr = window.devicePixelRatio || 1;
 
 function updateStatus() {
   if (!_meta) return;
-  const calc = calcMode() === 'cog' ? 'COG' : 'Original';
+  const calc = calcLabel();
   const srcLbl = _meta.src === 'backtest' ? 'Backtest' : 'Archive';
   setStatus(`${_meta.name.toUpperCase()} · ${_meta.gran} · ${calc} · ${srcLbl} · ${_meta.candles} candles · ${_meta.sessions} sessions (${_meta.withFc} with forecast)`);
 }
@@ -827,7 +836,7 @@ function renderStats() {
   if (!days.length) { el.innerHTML = '<div class="st-empty">Generate a range to see the tally.</div>'; return; }
   const all = days.flatMap(d => d.trades);
   const { byKey, total } = tallyTrades(all);
-  const calc = calcMode() === 'cog' ? 'COG' : 'Original';
+  const calc = calcLabel();
   const rows = LADDER_LINES.map(L => {
     const s = byKey[L.key];
     const armed = state.armed.has(L.key);
@@ -931,7 +940,7 @@ function renderScan(cells, slGrid, best, u) {
   const at = (si, ti) => cells.find(c => c.si === si && c.ti === ti);
   $('scanUnit').textContent = u.label;
   const n0 = cells.length ? cells[0].n : 0;
-  $('scanSub').textContent = `${$('pair').value.toUpperCase()} · ${STYLES[state.style].label} · ${state.eod === 'run' ? 'Let run' : 'Kill@EOD'} · ${calcMode() === 'cog' ? 'COG' : 'Original'} · ${n0} touches`;
+  $('scanSub').textContent = `${$('pair').value.toUpperCase()} · ${STYLES[state.style].label} · ${state.eod === 'run' ? 'Let run' : 'Kill@EOD'} · ${calcLabel()} · ${n0} touches`;
   let html = `<table class="scan-heat"><tr><th class="rot">SL＼TP</th>` + SCAN_TP_MULTS.map(t => `<th>${t}×</th>`).join('') + '</tr>';
   for (let si = 0; si < slGrid.length; si++) {
     html += `<tr><td class="rowlab">${slGrid[si].unit} ${u.label}</td>`;
@@ -1106,7 +1115,7 @@ function runFadeFollow() {
       ? `Vol-spent <b class="neg">runs opposite</b> to the premise — MORE spent reverted more (${hi.revPct.toFixed(0)}% high vs ${lo.revPct.toFixed(0)}% low), the same sign prior M1 testing found.`
       : `Vol-spent is <b>flat</b> across its range (${lo.revPct.toFixed(0)}% low vs ${hi.revPct.toFixed(0)}% high revert) — no separation.`;
   }
-  $('ffSub').textContent = `${$('pair').value.toUpperCase()} · ${tfGran()} · ${calcMode() === 'cog' ? 'COG' : 'Original'} · ${all.n} touches`;
+  $('ffSub').textContent = `${$('pair').value.toUpperCase()} · ${tfGran()} · ${calcLabel()} · ${all.n} touches`;
   $('ffHead').innerHTML = `Base rate over <b>${all.n}</b> touches: <b class="pos">${all.revPct.toFixed(0)}% revert</b> · <b class="neg">${all.contPct.toFixed(0)}% continue</b> · ${all.undPct.toFixed(0)}% undecided. ${headline}`;
   $('ffBody').innerHTML =
       ffSection('By vol-spent at touch — the exhaustion premise', spentT, 'Spent = realized range at the touch ÷ the forecast’s expected day range. Premise: LOW spent → reversal, so the fade edge should fall as spent rises.')
