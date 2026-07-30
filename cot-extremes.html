@@ -79,6 +79,9 @@ tr.clk:hover td{background:rgba(255,255,255,.03)}
   border-radius:8px;padding:14px 16px}
 .pa-card.long{border-color:var(--long);background:rgba(232,97,95,.08)}
 .pa-card.short{border-color:var(--short);background:rgba(70,184,122,.08)}
+.pa-card.derived{border-style:dashed}
+.pa-derived-tag{font-size:9px;font-weight:700;letter-spacing:.05em;color:var(--tx3);
+  border:1px solid var(--line2);border-radius:3px;padding:1px 5px;vertical-align:middle;cursor:help}
 .pa-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
 .pa-pair{font-family:var(--mono);font-weight:700;font-size:16px;letter-spacing:.03em;color:var(--tx)}
 .pa-badge{font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:3px 8px;border-radius:4px;
@@ -211,13 +214,88 @@ const FX_PAIRS = [
 // cutoff as extremes()/colFor() elsewhere on this page); null = not stretched.
 const crowdState = x => { const p = pctOf(x); return p==null ? null : p>=90?'long':p<=10?'short':null; };
 
+// ── derived USD crowding read ──────────────────────────────────────────────
+// This feed has no direct CFTC USD-index future, so there is no real specNet
+// series to percentile-rank. today.html's currency-strength drawer already
+// derives a USD SNAPSHOT by mirroring the other 7 majors (sum of -specNet,
+// divided by their combined OI) — but that only covers "today", which can't be
+// percentile/Z-scored against nothing. Extended here across time: fetch the
+// 7 majors' own 200-week histories (same /api/cot-extremes?history= endpoint
+// the drill-down chart already uses — no new backend route), aggregate the
+// same mirror at every historical date, then percentile-rank/Z-score that
+// derived series against ITS OWN history using the exact same math the
+// backend applies to every real instrument (pctRank/zScore, copied verbatim
+// from _worker.js). This is a DERIVED / SYNTHETIC read, not a real tracked
+// position — labeled as such everywhere it surfaces.
+const USD_MIRROR_CCYS = ['EUR','GBP','JPY','AUD','CAD','CHF','NZD'];
+let usdDerived = null;   // null = not yet requested; 'loading'; or {dates,specNet,specShare}
+
+// Verbatim from _worker.js's /api/cot-extremes handler (pctRank/zScore + the
+// h()/clean() self-exclusion convention: rank today against history EXCLUDING
+// today, same as the backend's `h = a => a.slice(1)` on its newest-first arrays).
+const pctRankCalc = (hist, cur) => { if (!hist.length) return 50; return Math.round(hist.filter(v => v < cur).length / hist.length * 100); };
+const zScoreCalc = (hist, cur) => {
+  const n = hist.length; if (n < 2) return 0;
+  const mean = hist.reduce((s, v) => s + v, 0) / n;
+  const std = Math.sqrt(hist.reduce((s, v) => s + (v - mean) ** 2, 0) / n);
+  return std > 0 ? +((cur - mean) / std).toFixed(2) : 0;
+};
+
+async function loadUsdMirror(){
+  if (usdDerived !== null) return;   // already loading, succeeded, or permanently failed (false)
+  usdDerived = 'loading';
+  const results = await Promise.all(USD_MIRROR_CCYS.map(async ccy => {
+    try {
+      const r = await fetch('/api/cot-extremes?history=' + encodeURIComponent(ccy), { cache: 'no-store' });
+      const j = await r.json();
+      return (j && j.ok && j.history && j.history.sym === ccy) ? j.history : null;
+    } catch (e) { return null; }
+  }));
+  // Aggregate net/OI by report date across whichever of the 7 majors reported
+  // that date; require at least 4-of-7 present so the mirror isn't built from
+  // just one or two currencies on a date some other market was missing/stale.
+  const byDate = new Map();
+  results.forEach(h => {
+    if (!h || !Array.isArray(h.dates)) return;
+    h.dates.forEach((d, i) => {
+      const net = h.specNet?.[i], oi = h.oi?.[i];
+      if (!Number.isFinite(net) || !Number.isFinite(oi)) return;
+      const row = byDate.get(d) || { net: 0, oi: 0, n: 0 };
+      row.net += -net; row.oi += oi; row.n += 1;
+      byDate.set(d, row);
+    });
+  });
+  const dates = [...byDate.keys()].sort().filter(d => byDate.get(d).n >= 4);
+  const specNet = dates.map(d => byDate.get(d).net);
+  const specShare = dates.map(d => { const r = byDate.get(d); return r.oi > 0 ? +(r.net / r.oi * 100).toFixed(3) : null; });
+  usdDerived = (specNet.length >= 10) ? { dates, specNet, specShare } : false;   // false = tried, not enough data — don't retry
+  render();
+}
+
+// Today's derived USD reading — percentile/Z of the mirror series' latest
+// point against its own history (excluding itself), in the exact shape
+// crowdState()/pctOf()/zOf() expect so it flows through the same card code.
+function usdDerivedReading(){
+  if (!usdDerived || usdDerived === 'loading') return null;
+  const shares = usdDerived.specShare;
+  if (!shares.length || !Number.isFinite(shares[shares.length - 1])) return null;
+  const cur = shares[shares.length - 1];
+  const hist = shares.slice(0, -1).filter(v => Number.isFinite(v));
+  if (hist.length < 10) return null;
+  const p = pctRankCalc(hist, cur), z = zScoreCalc(hist, cur);
+  return { sym: 'USD', group: 'fx', specSharePct: p, specPct: p, specShareZ: z, specZ: z, specShare: +cur.toFixed(1), _derived: true };
+}
+
 // One card PER CURRENCY that is individually at a 90th/10th-percentile crowding
 // extreme (not gated behind a second currency also being extreme) — this is the
 // card unit itself; two of these read together is what makes a pair "doubly"
 // crowded, called out as a text annotation underneath rather than requiring both
 // at once just to show anything.
 function crowdingCards(big){
+  if (usdDerived === null) loadUsdMirror();   // fire-and-forget; re-renders itself when ready
+  const usd = usdDerivedReading();
   const list = (DATA.instruments||[]).filter(x => x.group === 'fx' && crowdState(x));
+  if (usd && crowdState(usd)) list.push(usd);
   if (!list.length) return '<div class="empty">No currency is currently at a 90th/10th-percentile crowding extreme — nothing stretched enough to flag right now.</div>';
   list.sort((a, b) => Math.abs(50 - pctOf(b)) - Math.abs(50 - pctOf(a)));
 
@@ -226,8 +304,8 @@ function crowdingCards(big){
     const st = crowdState(x), clr = st === 'long' ? 'var(--long)' : 'var(--short)';
     const label = st === 'long' ? '&#9888; OVERCROWDED LONG' : '&#9661; HEAVILY SHORT';
     const z = zOf(x), p = pctOf(x), sh = x.specShare;
-    return `<div class="pa-card ${st}">`
-      + `<div class="pa-head"><span class="pa-pair">${esc(x.sym)}</span>`
+    return `<div class="pa-card ${st}${x._derived ? ' derived' : ''}">`
+      + `<div class="pa-head"><span class="pa-pair">${esc(x.sym)}${x._derived ? ' <span class="pa-derived-tag" title="Derived: mirror of the other 7 majors’ positioning, not a real CFTC-tracked USD-index future — see the note below.">DERIVED</span>' : ''}</span>`
       + `<span class="pa-badge" style="color:${clr}">${label}</span></div>`
       + `<div class="pa-stats-row">`
       +   stat('Z-SCORE', z != null ? sgn(z) + z : '—', clr)
@@ -238,7 +316,8 @@ function crowdingCards(big){
 
   // Secondary read: two of the cards above, traded against each other, reinforcing
   // the same direction on a real FX cross (the "double extreme" framing) — text
-  // only, since the cards themselves are the per-currency source of truth.
+  // only, since the cards themselves are the per-currency source of truth. USD's
+  // derived reading is included here too, so USD-leg pairs can now show up.
   const bySym = {}; list.forEach(x => bySym[x.sym] = x);
   const combos = [];
   FX_PAIRS.forEach(([base, quote]) => {
@@ -248,14 +327,20 @@ function crowdingCards(big){
     let dir = null;
     if (sA === 'long' && sB === 'short') dir = 'long';
     else if (sA === 'short' && sB === 'long') dir = 'short';
-    if (dir) combos.push(`<b>${esc(base)}${esc(quote)}</b> (specs already max ${dir})`);
+    if (dir) combos.push(`<b>${esc(base)}${esc(quote)}</b>${(A._derived || B._derived) ? ' (USD leg derived)' : ''} (specs already max ${dir})`);
   });
   const comboLine = combos.length
     ? `Reinforcing pairs right now: ${combos.join(', ')} — both legs are stretched the same way on that cross.`
     : `None of the cards above currently pair into a reinforcing cross (i.e. no two are stretched in the direction that reinforces on their FX rate) — each is still worth reading on its own.`;
+  const usdNote = (usdDerived === null || usdDerived === 'loading')
+    ? ' USD has no direct CFTC USD-index future in this feed; a derived mirror-of-the-other-7-majors read is loading in the background (needs all 7 majors’ 200-week histories) and will appear here once it lands.'
+    : usd
+      ? ' USD\'s card (marked DERIVED) is a synthetic mirror of the other 7 majors’ positioning — sum of the opposite of their net specs, divided by their combined open interest, percentile/Z-scored against that derived series’ own 200-week history. This feed has no direct CFTC USD-index future to track directly, so treat the USD card as a looser read than the other 7 (real, individually tracked) currencies.'
+      : usdDerived
+        ? ' USD (derived mirror of the other 7 majors) isn\'t currently at a crowding extreme, so it has no card above — this feed still has no direct CFTC USD-index future to track directly either way.'
+        : ' USD\'s derived mirror read couldn\'t be built (not enough overlapping history across the other 7 majors right now) — this feed has no direct CFTC USD-index future as a fallback.';
   return `<div class="pa-grid">${cardsHtml}</div>`
-    + `<div class="note">${comboLine} This is a crowding read, not a trade signal — it says the fuel for more of the same is thin, not which way or when it unwinds. It has not been backtested; treat it as context to combine with price and your own risk process, not a rule to act on alone.`
-    + ' USD itself has no card here — this feed has no direct CFTC USD-index future, so USD-leg pairs (EURUSD, GBPUSD, AUDUSD, NZDUSD, USDCAD, USDCHF, USDJPY) can\'t be read this way (same gap as the dashboard\'s currency-strength drawer).</div>';
+    + `<div class="note">${comboLine} This is a crowding read, not a trade signal — it says the fuel for more of the same is thin, not which way or when it unwinds. It has not been backtested; treat it as context to combine with price and your own risk process, not a rule to act on alone.${usdNote}</div>`;
 }
 
 // ── crowding leaderboard: every market ranked, both directions on one axis ──
