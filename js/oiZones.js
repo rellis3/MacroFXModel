@@ -127,6 +127,20 @@ export function buildOIZones(inst, price, cfg = {}) {
                                    // until-expiry) max pain. Off → the classic max-pain/next-wall targets.
     gammaFlipLevel = null,         // the zero-GEX crossing (regime boundary) — a ladder node when present
     vannaFlipLevel = null,         // vanna-exposure flip — a ladder node when an IV smile was pasted
+    gexFlipLevel = null,           // total-GEX zero crossing — a react/ladder node when present
+    reactAtLevels = false,         // opt-in Mode D: trade BETWEEN structural nodes (walls ≥ reactMinTier +
+                                   // gamma/gex/vanna flips + volume magnets), treated BY REGIME — fade a
+                                   // node toward the next node (PIN full size; BREAKOUT counter-trend trim).
+    reactMinTier = 'moderate',     // which walls count as reaction nodes (flips/magnets always count)
+    reactBreakoutTrim = 0.6,       // size haircut for a react-fade in BREAKOUT (fading is counter-trend
+                                   // in short gamma — nodes still act as intraday S/R, but respect the trend)
+    vannaState = null,             // {state:'tailwind'|'headwind', firing} — conditions size BY MODE per theory:
+                                   // tailwind (dealer flow amplifies the move) boosts FOLLOW-breaks + trims
+                                   // fades; headwind mirrors. Only when firing. null = no effect.
+    vannaBoost = 1.15, vannaTrim = 0.85,
+    charmActive = false,           // charm firing near expiry → amplify the max-pain PIN (Mode C): charm
+                                   // flows pin price toward strikes as time decays into expiry/the close.
+    charmBoost = 1.2,
   } = cfg;
 
   const gex = inst.exposures?.gex ?? inst.gex ?? 0;
@@ -266,13 +280,24 @@ export function buildOIZones(inst, price, cfg = {}) {
     }
     if (regimeWarning) rationale = `${rationale} · ⚠ ${regimeWarning}`;
     if (vannaNote) rationale = `${rationale} · ${vannaNote}`;
+    // Vanna conditioner (theory): a 'tailwind' state = dealer vega-hedging AMPLIFIES the
+    // prevailing move (buy strength / sell weakness) → supports continuation, so it boosts
+    // FOLLOW-breaks and trims mean-reversion fades; 'headwind' mirrors. Applied to size
+    // below, by mode (fade/react = reversion, break = follow), only when firing.
+    let _vannaMult = 1;
+    if (vannaState?.firing && (z.mode === 'fade' || z.mode === 'react' || z.mode === 'break')) {
+      const isFollow = z.mode === 'break';
+      const tail = vannaState.state === 'tailwind';
+      _vannaMult = (tail === isFollow) ? vannaBoost : vannaTrim;   // tail+follow / head+fade → boost; else trim
+      rationale = `${rationale} · vanna ${vannaState.state} → size ${_vannaMult > 1 ? 'up' : 'down'}`;
+    }
     // A take-profit sitting beyond the option-implied expected-move band is a
     // low-probability target by expiry — flag it (don't block the trade).
     if (expMove && tp1 != null && (tp1 > expMove.upper || tp1 < expMove.lower))
       rationale = `${rationale} · ⚠ TP beyond implied move (low-prob by expiry)`;
     // A wall between spot and this entry is the first level price hits — flag it and
     // trim entry size (price may reject/stall there before reaching the traded wall).
-    let sizeFactor = z.sizeFactor;
+    let sizeFactor = +(z.sizeFactor * _vannaMult).toFixed(2);
     if (z.blocker) {
       rationale = `${rationale} · ⚠ ${z.blocker.tier} ${z.blocker.kind} wall ${+z.blocker.strike.toFixed(6)} in the path (price hits it first)`;
       sizeFactor = +(sizeFactor * blockTrim).toFixed(2);
@@ -362,10 +387,66 @@ export function buildOIZones(inst, price, cfg = {}) {
     const guardWall = side === 'sell'
       ? calls.filter(c => c.strike > price).sort((a, b) => a.strike - b.strike)[0]?.strike
       : puts.filter(p => p.strike < price).sort((a, b) => b.strike - a.strike)[0]?.strike;
+    // Charm (theory): as time decays into expiry, dealer charm-hedging pins price toward
+    // the big strikes — so near expiry a firing charm AMPLIFIES the max-pain pull. Boost size.
+    const mcSize = charmActive ? +(1.0 * charmBoost).toFixed(2) : 1.0;
     add({ mode: 'maxpain', side, level: maxPain, entry: price,
       sl: guardWall != null ? (side === 'sell' ? guardWall + buf : guardWall - buf) : (side === 'sell' ? price + buf * 4 : price - buf * 4),
-      tp1: maxPain, tp2: null, sizeFactor: 1.0,
-      rationale: `max-pain reversion · ${dte}DTE · price extended from pin ${maxPain} → fade toward it` });
+      tp1: maxPain, tp2: null, sizeFactor: mcSize,
+      rationale: `max-pain reversion · ${dte}DTE · price extended from pin ${maxPain} → fade toward it${charmActive ? ' · charm firing → pin amplified into expiry' : ''}` });
+  }
+
+  // ── Mode D — react at levels (opt-in reactAtLevels): trade BETWEEN structural nodes,
+  // treated BY REGIME (the dealer-gamma theory the owner asked for). Nodes = walls ≥
+  // reactMinTier + gamma/gex/vanna flips + volume magnets. A node ABOVE spot is resistance
+  // → SELL (react-fade down to the next node); a node BELOW is support → BUY (react-fade up).
+  //   • PIN (long dealer gamma): mean-reversion regime → fading nodes is the natural play,
+  //     full size (the reachability/vanna conditioners still apply in add()).
+  //   • BREAKOUT (short gamma): price TRENDS, so fading a node is a counter-trend scalp —
+  //     nodes still act as intraday S/R (the flip capping a rally is the classic short-gamma
+  //     rejection), but size is trimmed ×reactBreakoutTrim to respect the trend; the Mode-B
+  //     follow-breaks carry the continuation. This is the level-to-level "trade between the
+  //     levels" behaviour, with the break handling "…unless it's in the same direction".
+  // Skips a node already traded by Modes A/B on the SAME side (no duplicate zone); the
+  // opposite side is allowed so a wall is bracketed (buy the bounce / sell the break).
+  if (reactAtLevels && regime !== 'NEUTRAL') {
+    const rTierOK = w => _rank(w?.tier) >= _rank(reactMinTier);
+    const rnodes = [];
+    const push = (lvl, kind) => { if (Number.isFinite(lvl)) rnodes.push({ lvl, kind }); };
+    for (const w of (Array.isArray(inst.callWalls) ? inst.callWalls : [])) if (rTierOK(w)) push(w.strike, 'call wall');
+    for (const w of (Array.isArray(inst.putWalls) ? inst.putWalls : [])) if (rTierOK(w)) push(w.strike, 'put wall');
+    push(gammaFlipLevel, 'gamma flip');
+    push(gexFlipLevel, 'gex flip');
+    push(vannaFlipLevel, 'vanna flip');
+    for (const v of (Array.isArray(inst.volumeMagnets) ? inst.volumeMagnets : [])) push(v?.strike, 'vol magnet');
+    // Collapse near-identical nodes (first push wins → a wall label beats a coincident flip/magnet).
+    const dedup = [];
+    for (const n of rnodes) if (!dedup.some(d => Math.abs(d.lvl - n.lvl) <= tol)) dedup.push(n);
+    const nextNode = (from, dir) => dedup
+      .filter(n => dir > 0 ? n.lvl > from + tol : n.lvl < from - tol)
+      .sort((a, b) => Math.abs(a.lvl - from) - Math.abs(b.lvl - from))[0] ?? null;
+    const trim = regime === 'BREAKOUT' ? reactBreakoutTrim : 1;
+    const trimNote = trim < 1 ? ' · counter-trend (short-gamma) trimmed' : '';
+    const already = (lvl, side) => zones.some(z => Number.isFinite(z.level) && Math.abs(z.level - lvl) <= tol && z.side === side);
+    const cap = a => (maxZonesPerSide > 0 ? a.slice(0, maxZonesPerSide) : a);
+    const above = cap(dedup.filter(n => n.lvl > price + tol).sort((a, b) => a.lvl - b.lvl));   // resistance
+    const below = cap(dedup.filter(n => n.lvl < price - tol).sort((a, b) => b.lvl - a.lvl));   // support
+    for (const n of above) {
+      if (already(n.lvl, 'sell')) continue;
+      const t1 = nextNode(n.lvl, -1), t2 = t1 ? nextNode(t1.lvl, -1) : null;
+      add({ mode: 'react', side: 'sell', level: n.lvl, entry: n.lvl, sl: n.lvl + buf,
+        tp1: t1?.lvl ?? null, tp2: t2?.lvl ?? null, sizeFactor: +(1 * trim).toFixed(2),
+        blocker: nearestBlocker(n.lvl, n.lvl),
+        rationale: `${regime} · ${n.kind} ${+n.lvl.toFixed(6)} → react-fade (resistance)${t1 ? ` → ${t1.kind} ${+t1.lvl.toFixed(6)}` : ''}${trimNote}` });
+    }
+    for (const n of below) {
+      if (already(n.lvl, 'buy')) continue;
+      const t1 = nextNode(n.lvl, +1), t2 = t1 ? nextNode(t1.lvl, +1) : null;
+      add({ mode: 'react', side: 'buy', level: n.lvl, entry: n.lvl, sl: n.lvl - buf,
+        tp1: t1?.lvl ?? null, tp2: t2?.lvl ?? null, sizeFactor: +(1 * trim).toFixed(2),
+        blocker: nearestBlocker(n.lvl, n.lvl),
+        rationale: `${regime} · ${n.kind} ${+n.lvl.toFixed(6)} → react-fade (support)${t1 ? ` → ${t1.kind} ${+t1.lvl.toFixed(6)}` : ''}${trimNote}` });
+    }
   }
 
   return zones.sort((a, b) => Math.abs(a.entry - price) - Math.abs(b.entry - price));

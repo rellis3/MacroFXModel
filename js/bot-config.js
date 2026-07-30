@@ -3988,6 +3988,7 @@ const OI_DEFAULTS = {
   // strategy (server plan producer)
   minTier: 'strong', slBufferPips: 15, breakPips: 20, nearExpiryDTE: 2, extendedPips: 30,
   fadeInPin: true, followBreaks: true, maxPainReversion: true, levelLadderTP: false,
+  reactAtLevels: false, reactMinTier: 'moderate', reactBreakoutTrim: 0.6,
   requireEstablished: false, avoidLiquidating: true, maxZonesPerSide: 4,
   secondaryTrim: 0.6, reachMult: 1.0, reachTrim: 0.7, maxReachPips: 0,   // PIN nearest-primary + reachability gate
   fx_enabled: false, fx_pairs: [],
@@ -4012,6 +4013,9 @@ function renderOiForm() {
   chk('oi_follow_breaks', _oiCfg.followBreaks ?? true);
   chk('oi_maxpain_reversion', _oiCfg.maxPainReversion ?? true);
   chk('oi_level_ladder_tp', _oiCfg.levelLadderTP ?? false);
+  chk('oi_react_at_levels', _oiCfg.reactAtLevels ?? false);
+  set('oi_react_min_tier', _oiCfg.reactMinTier ?? 'moderate');
+  set('oi_react_breakout_trim', _oiCfg.reactBreakoutTrim ?? OI_DEFAULTS.reactBreakoutTrim);
   chk('oi_avoid_liquidating', _oiCfg.avoidLiquidating ?? true);
   chk('oi_require_established', _oiCfg.requireEstablished);
   set('oi_sl_buffer_pips', _oiCfg.slBufferPips ?? OI_DEFAULTS.slBufferPips);
@@ -4046,6 +4050,9 @@ function readOiForm() {
   _oiCfg.followBreaks = !!document.getElementById('oi_follow_breaks')?.checked;
   _oiCfg.maxPainReversion = !!document.getElementById('oi_maxpain_reversion')?.checked;
   _oiCfg.levelLadderTP = !!document.getElementById('oi_level_ladder_tp')?.checked;
+  _oiCfg.reactAtLevels = !!document.getElementById('oi_react_at_levels')?.checked;
+  _oiCfg.reactMinTier = document.getElementById('oi_react_min_tier')?.value || 'moderate';
+  _oiCfg.reactBreakoutTrim = num('oi_react_breakout_trim', OI_DEFAULTS.reactBreakoutTrim);
   _oiCfg.avoidLiquidating = !!document.getElementById('oi_avoid_liquidating')?.checked;
   _oiCfg.requireEstablished = !!document.getElementById('oi_require_established')?.checked;
   _oiCfg.slBufferPips = num('oi_sl_buffer_pips', OI_DEFAULTS.slBufferPips);

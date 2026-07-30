@@ -297,6 +297,56 @@ console.log('[Level-ladder TP — trade to the next structural level, not always
   ok('ladder breakout → TP1 = vol magnet above (4400)', upLadder.tp1 === 4400, `${upLadder.tp1}`);
 }
 
+console.log('[Mode D — react at levels: trade between nodes, treated by regime]');
+{
+  const inst = { exposures: { gex: 5000 }, maxPain: 4200,   // PIN
+    callWalls: [{ strike: 4300, oi: 9000, tier: 'strong' }, { strike: 4250, oi: 5000, tier: 'moderate' }],
+    putWalls:  [{ strike: 4100, oi: 9000, tier: 'strong' }, { strike: 4150, oi: 5000, tier: 'moderate' }],
+    volumeMagnets: [{ strike: 4270, volume: 5000 }] };
+  // OFF by default → no react zones.
+  ok('reactAtLevels OFF → no react zones', !buildOIZones(inst, 4200, cfg).some(z => z.mode === 'react'));
+  // ON (PIN): react-fade at moderate walls + flips + volume magnet; strong walls stay Mode-A (no dup).
+  const z = buildOIZones(inst, 4200, { ...cfg, reactAtLevels: true, gammaFlipLevel: 4210, gexFlipLevel: 4190, maxZonesPerSide: 10 });
+  const react = z.filter(x => x.mode === 'react');
+  ok('react zones are emitted', react.length > 0, `${react.length}`);
+  ok('node ABOVE spot → react-fade SELL (resistance)', react.some(x => x.level === 4210 && x.side === 'sell') , react.map(x=>`${x.level}${x.side}`).join(','));
+  ok('gamma flip is a react node (labelled)', react.some(x => x.level === 4210 && /gamma flip/.test(x.rationale)));
+  ok('gex flip below spot → react-fade BUY (support)', react.some(x => x.level === 4190 && x.side === 'buy' && /gex flip/.test(x.rationale)));
+  ok('volume magnet is a react node', react.some(x => x.level === 4270 && /vol magnet/.test(x.rationale)));
+  ok('MODERATE wall traded by react (Mode A is strong-only)', react.some(x => x.level === 4250));
+  ok('strong wall NOT duplicated (only the Mode-A fade at 4300 sell)', z.filter(x => x.level === 4300 && x.side === 'sell').length === 1);
+  // PIN react = NOT regime-trimmed (the nearest node with no path-blocker is full size;
+  // further nodes may still take the ×0.9 path-block trim — that's the blocker feature, not the regime).
+  ok('PIN react nearest node (no blocker) = full size', react.find(x => x.level === 4210)?.sizeFactor === 1, `${react.find(x=>x.level===4210)?.sizeFactor}`);
+  ok('PIN react never regime-trimmed to 0.6 (that is BREAKOUT only)', react.every(x => x.sizeFactor > 0.6));
+  ok('react TP is the next node (level-to-level)', react.find(x => x.level === 4250 && x.side==='sell')?.tp1 != null);
+
+  // BREAKOUT: react-fades are counter-trend → trimmed + annotated.
+  const zb = buildOIZones({ ...inst, exposures: { gex: -5000 } }, 4200, { ...cfg, reactAtLevels: true, gammaFlipLevel: 4210, reactBreakoutTrim: 0.6, maxZonesPerSide: 10 });
+  const rb = zb.filter(x => x.mode === 'react');
+  ok('BREAKOUT react-fade trimmed (<1) + counter-trend note', rb.length && rb.every(x => x.sizeFactor < 1) && rb.every(x => /counter-trend/.test(x.rationale)), rb.map(x=>x.sizeFactor).join(','));
+}
+
+console.log('[Vanna + charm conditioners — treat the greeks as theory says]');
+{
+  const pin = { exposures: { gex: 5000 }, maxPain: 4200, callWalls: [{ strike: 4300, oi: 9000, tier: 'strong' }], putWalls: [{ strike: 4100, oi: 9000, tier: 'strong' }] };
+  const brk = { ...pin, exposures: { gex: -5000 } };
+  const fadeBase = buildOIZones(pin, 4200, cfg).find(x => x.mode === 'fade' && x.side === 'sell');
+  const fadeTail = buildOIZones(pin, 4200, { ...cfg, vannaState: { state: 'tailwind', firing: true } }).find(x => x.mode === 'fade' && x.side === 'sell');
+  const brkBase = buildOIZones(brk, 4200, cfg).find(x => x.mode === 'break' && x.side === 'buy');
+  const brkTail = buildOIZones(brk, 4200, { ...cfg, vannaState: { state: 'tailwind', firing: true } }).find(x => x.mode === 'break' && x.side === 'buy');
+  ok('vanna tailwind TRIMS a fade (reversion against the amplified move)', fadeTail.sizeFactor < fadeBase.sizeFactor && /vanna tailwind → size down/.test(fadeTail.rationale), `${fadeTail.sizeFactor}<${fadeBase.sizeFactor}`);
+  ok('vanna tailwind BOOSTS a follow-break (continuation)', brkTail.sizeFactor > brkBase.sizeFactor && /vanna tailwind → size up/.test(brkTail.rationale), `${brkTail.sizeFactor}>${brkBase.sizeFactor}`);
+  const fadeHead = buildOIZones(pin, 4200, { ...cfg, vannaState: { state: 'headwind', firing: true } }).find(x => x.mode === 'fade' && x.side === 'sell');
+  ok('vanna headwind mirrors (boosts the fade)', fadeHead.sizeFactor > fadeBase.sizeFactor);
+  ok('vanna not firing → no size change', buildOIZones(pin, 4200, { ...cfg, vannaState: { state: 'tailwind', firing: false } }).find(x => x.mode === 'fade').sizeFactor === fadeBase.sizeFactor);
+  // Charm: near-expiry max-pain reversion amplified.
+  const mpInst = { ...pin, expiries: { OG3: { dte: 1, maxPain: 4200 } } };
+  const mp0 = buildOIZones(mpInst, 4260, cfg).find(x => x.mode === 'maxpain');
+  const mpC = buildOIZones(mpInst, 4260, { ...cfg, charmActive: true }).find(x => x.mode === 'maxpain');
+  ok('charm firing → max-pain reversion size boosted + noted', mpC.sizeFactor > mp0.sizeFactor && /charm firing/.test(mpC.rationale), `${mpC.sizeFactor}>${mp0.sizeFactor}`);
+}
+
 console.log('[Guards]');
 ok('no inst / bad price → []', buildOIZones(null, 4200, cfg).length === 0 && buildOIZones(base, 0, cfg).length === 0);
 ok('NEUTRAL gex (flat) → no fade/break zones', buildOIZones({ ...base, exposures: { gex: 0 } }, 4200, cfg).every(z => z.mode === 'maxpain'));
