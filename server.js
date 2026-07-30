@@ -4698,7 +4698,7 @@ app.get('/api/oanda_ohlc5m', async (req, res) => {
 
 // ── VuManChu pane as an image ─────────────────────────────────────────────────
 // GET /api/vumanchu/chart?symbol=EUR/USD&tf=M15[&bars=160][&format=png|svg|json]
-//   [&w=1200&h=440][&vwap=wtdiff|cumvwap|none][&hidden=1][&tz=0][&title=]
+//   [&w=1200&h=440][&vwap=wtdiff|cumvwap|none][&mf=0|1][&hidden=1][&tz=0][&title=]
 // Renders the WaveTrend pane (WT1/WT2 + fill, the yellow VWAP oscillator, and
 // divergence lines on both) via js/vumanchuChart.js. `format=json` returns the
 // reading/slope/divergence list that drives a Telegram caption.
@@ -4747,6 +4747,10 @@ app.get('/api/vumanchu/chart', async (req, res) => {
     tzOffsetMin: clamp(req.query.tz, -840, 840, 0),
     showHidden: req.query.hidden === '1' || req.query.hidden === 'true',
     vwapSeries: ['wtdiff', 'cumvwap', 'none'].includes(String(req.query.vwap)) ? String(req.query.vwap) : 'wtdiff',
+    // Money Flow is ON by default. &mf=0 hides it. NOTE for FX: `volume` here is
+    // OANDA's TICK COUNT, so this is an activity-weighted candle-direction read,
+    // not money changing hands — see js/vumanchuChart.js.
+    showMoneyFlow: !(req.query.mf === '0' || req.query.mf === 'false'),
     title: String(req.query.title || symbol).slice(0, 40),
     subtitle: `${gran} · ${displayBars} bars`,
   };

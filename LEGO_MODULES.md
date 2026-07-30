@@ -911,6 +911,65 @@ is the real ceiling on how wide a ratio is usable.
 Still descriptive, like §1af: that MTF alignment can be *measured* is not evidence
 it *predicts* anything. Establishing that needs costs and a true OOS split.
 
+### 1ai. Money-Flow layer + the predictiveness null (2026-07-30)
+
+`js/vumanchuChart.js` now draws **Money Flow** as a zero-split wave (green above,
+red below, filled to the zero line, behind the WaveTrend so the gridlines and wave
+sit on top). Options `showMoneyFlow` (default ON), `mfPeriod`, `mfScale`,
+`mfTargetAmp`, `mfPctile`, `mfClamp`; API param `&mf=0` hides it; `reading.moneyFlow`
+added to the JSON. `computeMoneyFlow` was already in `vumanchuCore` — only the
+render is new, and no brick maths changed.
+
+**Two display defects found and worked around (not in the brick — in how it must be
+drawn).** `computeMoneyFlow` divides by `max(|raw|)` over the array it is handed:
+1. **Outlier-dominated.** Real EUR/USD M15 has ~18× tick-count outliers (busiest bar
+   21941 vs median 1172), so one spike sets the divisor and flattens the whole wave
+   — the first render was an invisible line. Fixed by rescaling for DISPLAY from a
+   robust percentile (`mfPctile` 90 → `mfTargetAmp`).
+2. **Long-tailed.** Even rescaled, the drawn range hit −12.9…+98.2 against a ±106
+   domain — one excursion would fill the pane. Clamped (`mfClamp` 66), amplitude
+   only, never sign.
+Both are display-side; Spearman IC is rank-invariant to a positive rescale, so
+**neither affected the measurements below**. The same single-max normalisation makes
+the *displayed* value window-dependent (amplitude shifts with how many bars were
+fetched) — stated on the page.
+
+**MEASURED: Money Flow does not help direction, and neither does anything else in
+this family.** 13 months of real EUR/USD M15 (26,880 bars, 100% volume coverage),
+Spearman IC vs forward return, block-bootstrap null, IS/OOS 70/30:
+
+| component | corr vs `-wt1` | IC h=16 IS | IC h=16 OOS |
+|---|---|---|---|
+| Money Flow | **−0.75** | −0.034 | **+0.016** (sign flips) |
+| rolling-VWAP distance | 0.87 | 0.042 | −0.005 |
+| rolling-VWAP slope | −0.80 | −0.036 | 0.020 |
+| session-VWAP distance | 0.73 | 0.041 | 0.012 |
+| RSI(14) | 0.90 | 0.050 | 0.009 |
+| WaveTrend hist | −0.18 | −0.005 | −0.003 |
+
+The decisive structural point: **these are not independent views.** A VWAP is a
+volume-weighted moving average and WaveTrend is price-versus-an-EMA — both are
+"price relative to its recent average", hence 0.73–0.90 correlation. An
+equal-weight composite (zero fitted parameters) **lost to the best single component
+in all 6 cells**, and |score| showed **no calibration** in either half
+(non-monotonic; OOS strongest quintile paid 0.03bp against a 0.69bp round-trip
+cost; hit rates 48–52%). So there is no "confidence" to output.
+
+`vumanchuCore.computeVWAP().osc` looked like the exception (IC −0.14/−0.15 at h=96,
+nearly uncorrelated with WaveTrend) but is an artifact: it measures price against a
+VWAP **cumulative from bar 0 of whatever window you pass**, so it is
+**window-dependent** (same final bar: −47.62 on 13 months vs −48.97 on 6) and its
+peak normalisation uses whole-series data. Rank-invariant, so it did not fabricate
+the IC — but it is not a reproducible live signal, and its IC growing with horizon
+is the signature of a slow level tracking the sample's own drift. The well-defined
+session-anchored version sits at 0.004–0.068 like everything else.
+
+Full write-up and the earlier WaveTrend-only nulls (MTF agreement adds nothing;
+oscillator slope null; the 67%-hit-rate-for-1.3bp mechanism where the oscillator
+resets because its moving average catches up rather than because price reverts) are
+in the findings doc. **Keep this family for reading structure and timing an entry
+whose direction comes from elsewhere; it does not source direction.**
+
 ### 1ah. MTF stack — N timeframes, one directional series (2026-07-30)
 
 | Brick | File | Owns | Consumers | Status |

@@ -121,6 +121,7 @@
           <option value="cumvwap">cum-VWAP osc</option>
           <option value="none">off</option>
         </select></div>
+      <label class="chk"><input type="checkbox" id="mf" checked> <span class="swatch" style="background:#3ddc84"></span>Money Flow wave</label>
       <label class="chk"><input type="checkbox" id="hidden"> Hidden (continuation) divergences</label>
       <div class="muted" style="margin-top:7px">
         <span class="swatch" style="background:var(--wt1)"></span>WT1
@@ -129,6 +130,14 @@
         <span class="swatch" style="background:var(--bull);margin-left:8px"></span>bull div
       </div>
       <div class="muted" style="margin-top:6px">Yellow-cored dots mark a divergence on the yellow line rather than the wave.</div>
+      <div class="muted" style="margin-top:6px">
+        <b>Money Flow caveats.</b> On FX <code>volume</code> is OANDA's <i>tick count</i>, not size
+        traded — so this is activity-weighted candle direction, not money changing hands. Its
+        amplitude is also rescaled for display: the brick divides by the single largest bar, and
+        real M15 has ~18× volume outliers that squash the wave flat, so the drawn height is set
+        from a robust percentile and clamped. Shape and sign are the indicator's; height is not
+        information.
+      </div>
     </div>
 
     <div class="card">
@@ -217,6 +226,7 @@ const qs = () => new URLSearchParams({
   vwap:   $('vwap').value,
   tz:     String(-new Date().getTimezoneOffset()),   // label the axis in local time
   ...($('hidden').checked ? { hidden: '1' } : {}),
+  ...($('mf').checked ? {} : { mf: '0' }),
 });
 
 let seq = 0;
@@ -271,7 +281,7 @@ $('pane').addEventListener('error', () => {
 });
 
 $('bars').addEventListener('input', () => { $('barsVal').textContent = $('bars').value; });
-for (const id of ['sym','tf','vwap','hidden']) $(id).addEventListener('change', refresh);
+for (const id of ['sym','tf','vwap','hidden','mf']) $(id).addEventListener('change', refresh);
 $('bars').addEventListener('change', refresh);
 $('refresh').addEventListener('click', refresh);
 $('openPng').addEventListener('click', () => window.open(`/api/vumanchu/chart?${qs()}`, '_blank'));

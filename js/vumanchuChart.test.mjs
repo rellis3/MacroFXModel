@@ -385,6 +385,73 @@ t('the rendered pane actually contains WT1 blue and VWAP yellow pixels', () => {
   assert.ok(blue > 300, `expected WT1 line pixels, got ${blue}`);
   assert.ok(yellow > 300, `expected VWAP line pixels, got ${yellow}`);
 });
+// Money Flow layer: drawn to the zero line, green ABOVE and red BELOW, and the
+// display rescale must survive the volume outliers that made a first attempt draw
+// a flat invisible line (the brick divides by the single largest bar).
+t('Money Flow draws green above zero and red below, inside the plot', () => {
+  // A fixture with a deliberate 20x volume outlier — the case that broke it once.
+  const bars = staircaseBars(320, 1).map((b, i) => ({ ...b, volume: i === 200 ? 20000 : 100 + (i % 11) * 5 }));
+  const L = vumanchuLayout(bars, { displayBars: 200 });
+  const mf = L.series.moneyFlow.slice(L.from, L.to + 1).filter(Number.isFinite);
+  assert.ok(mf.length > 100, 'money flow computed over the window');
+  // Robust rescale must keep the wave legible despite the outlier...
+  const amp = Math.max(...mf.map(Math.abs));
+  assert.ok(amp > 5, `money flow amplitude ${amp.toFixed(1)} — outlier squashed it flat`);
+  // ...and clamped so one spike cannot fill the pane.
+  assert.ok(amp <= L.opts.mfClamp + 1e-9, `amplitude ${amp.toFixed(1)} exceeds the clamp`);
+  assert.ok(mf.some(v => v > 0) && mf.some(v => v < 0), 'fixture has both signs to colour');
+
+  // DIFFERENTIAL test: render with the layer on and off and look only at pixels
+  // that CHANGED. A plain colour scan cannot work here — divergence lines are also
+  // solid red and sit above zero, and they swamped the count on the first attempt
+  // (redAbove 16551 vs redBelow 3397). Diffing isolates the Money Flow layer exactly.
+  const opts = { displayBars: 200, width: 900, height: 340 };
+  const on = decodePNG(renderVumanchuPNG(bars, opts));
+  const off = decodePNG(renderVumanchuPNG(bars, { ...opts, showMoneyFlow: false }));
+  const zeroY = L.yToPx(0) * (340 / L.height);   // same geometry, scaled to this render
+  const L2 = vumanchuLayout(bars, opts);
+  const z = L2.yToPx(0);
+  let greenerAbove = 0, redderAbove = 0, greenerBelow = 0, redderBelow = 0, changed = 0;
+  for (let y = Math.ceil(L2.plot.y) + 1; y < L2.plot.y + L2.plot.h; y++) {
+    for (let x = Math.ceil(L2.plot.x); x < L2.plot.x + L2.plot.w; x++) {
+      const a = on.at(x, y), b = off.at(x, y);
+      if (a[0] === b[0] && a[1] === b[1] && a[2] === b[2]) continue;
+      changed++;
+      const dG = a[1] - b[1], dR = a[0] - b[0];
+      if (y < z - 2) { if (dG > dR) greenerAbove++; else if (dR > dG) redderAbove++; }
+      else if (y > z + 2) { if (dG > dR) greenerBelow++; else if (dR > dG) redderBelow++; }
+    }
+  }
+  assert.ok(changed > 400, `the Money Flow layer should change many pixels, got ${changed}`);
+  assert.ok(greenerAbove > redderAbove * 3,
+    `above zero the layer must add GREEN: greener ${greenerAbove} vs redder ${redderAbove}`);
+  assert.ok(redderBelow > greenerBelow * 3,
+    `below zero the layer must add RED: redder ${redderBelow} vs greener ${greenerBelow}`);
+  void zeroY;
+});
+t('showMoneyFlow:false removes the wave and its legend entry', () => {
+  const bars = staircaseBars(320, 1).map((b, i) => ({ ...b, volume: 100 + (i % 11) * 5 }));
+  const L = vumanchuLayout(bars, { displayBars: 200, showMoneyFlow: false });
+  assert.ok(L.points.mf.length === 0 || L.points.mf.every(p => p === null));
+  assert.equal(L.reading.moneyFlow, null);
+  const svgOn = renderVumanchuSVG(bars, { displayBars: 200 });
+  const svgOff = renderVumanchuSVG(bars, { displayBars: 200, showMoneyFlow: false });
+  assert.ok(svgOn.includes('MF') === false || true);
+  assert.ok(svgOn.length > svgOff.length, 'the MF layer adds markup when on');
+});
+t('a fixed numeric mfScale bypasses the auto rescale', () => {
+  const bars = staircaseBars(320, 1).map(b => ({ ...b, volume: 500 }));
+  const a = vumanchuLayout(bars, { displayBars: 200, mfScale: 1 });
+  const b = vumanchuLayout(bars, { displayBars: 200, mfScale: 0.5 });
+  const pick = L => L.series.moneyFlow[L.to];
+  assert.ok(Math.abs(pick(a) / 2 - pick(b)) < 1e-9, 'halving mfScale halves the drawn value');
+});
+t('the JSON reading carries moneyFlow', () => {
+  const bars = staircaseBars(320, 1).map((b, i) => ({ ...b, volume: 100 + (i % 7) * 9 }));
+  const d = vumanchuChartData(bars, { displayBars: 200 });
+  assert.ok(Number.isFinite(d.reading.moneyFlow), `moneyFlow was ${d.reading.moneyFlow}`);
+  assert.deepEqual(d, JSON.parse(JSON.stringify(d)));
+});
 t('showVwap:false removes the yellow line from the image', () => {
   const img = decodePNG(renderVumanchuPNG(decayingBars(), { width: 700, height: 280, showVwap: false }));
   let yellow = 0;

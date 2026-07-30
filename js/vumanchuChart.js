@@ -50,7 +50,7 @@
  *
  * Pure: no DOM, no network, no globals. Unit-tested in js/vumanchuChart.test.mjs.
  */
-import { computeWaveTrend, computeVWAP, waveTrendReading } from './vumanchuCore.js';
+import { computeWaveTrend, computeVWAP, computeMoneyFlow, waveTrendReading } from './vumanchuCore.js';
 import { findDivergences } from './divergenceCore.js';
 import { createCanvas, measureText, GLYPH_H } from './pngCanvas.js';
 
@@ -74,6 +74,11 @@ export const THEME = {
   bull:      '#22c55e',
   bearDim:   '#a13636',
   bullDim:   '#2a7a4d',
+  // Money-Flow wave, filled to the zero line and split by sign.
+  mfUp:      '#22c55e59',
+  mfDn:      '#ef444459',
+  mfUpLine:  '#3ddc84',
+  mfDnLine:  '#f2686b',
 };
 
 // Defaults match the OPERATOR'S VuManChu Cipher B setup, not the generic Cipher B
@@ -96,6 +101,31 @@ const DEFAULTS = {
   reach: 2,          // VuManChu's 5-bar fractal
   maxDivs: 5,        // most recent N divergences per oscillator (spaghetti guard)
   showVwap: true,
+  showMoneyFlow: true,   // the green/red wave hugging zero
+  mfPeriod: 14,
+  // DISPLAY scaling only — nothing here is fed to anything but the canvas.
+  //
+  // `computeMoneyFlow` divides by `max(|raw|)` over the array it is given, where
+  // raw = (close-open)/range x volume. That single-max normalisation is
+  // OUTLIER-DOMINATED: on real EUR/USD M15 the busiest bar carried ~18x the median
+  // tick count (21941 vs 1172), so one spike sets the divisor and squashes every
+  // other bar to near-invisibility. First attempt at drawing this produced a flat
+  // line for exactly that reason.
+  //   'auto' (default) rescales by a ROBUST spread (the mfPctile-th percentile of
+  //   |mf| over the drawn window) up to `mfTargetAmp`, so the wave is legible and
+  //   stable regardless of outliers or how many bars were fetched.
+  //   A number instead applies that fixed multiplier to the brick's output.
+  // Either way the SHAPE and the sign are the brick's; only the amplitude is set
+  // here, and amplitude is not information (the brick's own scale is arbitrary).
+  mfScale: 'auto',
+  mfTargetAmp: 30,
+  mfPctile: 90,
+  // Money Flow's distribution has a long tail (measured drawn range -12.9..+98.2
+  // against a +/-106 domain before clamping — one excursion would have filled the
+  // whole pane and buried the wave). Clamped for DISPLAY so a single spike cannot
+  // swamp the pane; the clamp is on amplitude only, never on sign, so the
+  // green/red reading is untouched. Raise it to see the raw excursions.
+  mfClamp: 66,
   showHidden: false, // regular (exhaustion) divergences only, by default
   vwapSeries: 'wtdiff',   // Pine's wtVwap. See the header note before changing.
   title: '', subtitle: '',
@@ -141,6 +171,13 @@ export function vumanchuLayout(bars, opts = {}) {
   const wtOpts = { n1: o.n1, n2: o.n2, sp: o.sp };
   const { wt1, wt2 } = computeWaveTrend(bars, wtOpts);
   const vwapOsc = o.showVwap ? resolveVwapSeries(o.vwapSeries, bars, wt1, wt2) : wt1.map(() => NaN);
+  // Money Flow: (close-open)/range x volume, EMA-smoothed and peak-normalised by
+  // the brick. NOTE two honest caveats, surfaced in the page copy as well:
+  //  • the peak normalisation is over the array it is given, so the AMPLITUDE
+  //    shifts a little with how many bars were fetched (rank order is unaffected).
+  //  • on FX `volume` is OANDA's TICK COUNT, not size traded, so this is an
+  //    activity-weighted candle-direction read, not money changing hands.
+  const moneyFlowRaw = o.showMoneyFlow ? computeMoneyFlow(bars, { period: o.mfPeriod }) : wt1.map(() => NaN);
   const priceHi = bars.map(b => b.high), priceLo = bars.map(b => b.low);
 
   // Visible window: the last displayBars, pushed forward past any leading
@@ -150,6 +187,20 @@ export function vumanchuLayout(bars, opts = {}) {
   const to = bars.length - 1;
   const nVis = to - from + 1;
 
+  // Robust display rescale of Money Flow, now that the drawn window is known.
+  const moneyFlow = (() => {
+    if (!o.showMoneyFlow) return moneyFlowRaw;
+    if (typeof o.mfScale === 'number') return moneyFlowRaw.map(v => fin(v) ? v * o.mfScale : NaN);
+    const win = [];
+    for (let i = from; i <= to; i++) if (fin(moneyFlowRaw[i])) win.push(Math.abs(moneyFlowRaw[i]));
+    if (!win.length) return moneyFlowRaw;
+    win.sort((a, b) => a - b);
+    const ref = win[Math.min(win.length - 1, Math.floor(win.length * o.mfPctile / 100))] || 0;
+    const k = ref > 0 ? o.mfTargetAmp / ref : 0;
+    const lim = Math.abs(o.mfClamp);
+    return moneyFlowRaw.map(v => fin(v) ? Math.max(-lim, Math.min(lim, v * k)) : NaN);
+  })();
+
   // Geometry. Right gutter holds the current-value chips; bottom holds the axis.
   const padL = 10, padR = 62, padT = 30, padB = 22;
   const plot = { x: padL, y: padT, w: o.width - padL - padR, h: o.height - padT - padB };
@@ -158,7 +209,7 @@ export function vumanchuLayout(bars, opts = {}) {
   // "how far from zero" is misleading on an asymmetric scale.
   let peak = 0;
   for (let i = from; i <= to; i++) {
-    for (const v of [wt1[i], wt2[i], vwapOsc[i]]) if (fin(v)) peak = Math.max(peak, Math.abs(v));
+    for (const v of [wt1[i], wt2[i], vwapOsc[i], moneyFlow[i]]) if (fin(v)) peak = Math.max(peak, Math.abs(v));
   }
   const yMax = Math.max(o.obLevel * 1.6, peak * 1.08, 80);
   const yToPx = v => plot.y + plot.h / 2 - (v / yMax) * (plot.h / 2);
@@ -221,18 +272,20 @@ export function vumanchuLayout(bars, opts = {}) {
 
   const reading = waveTrendReading(bars, { obLevel: o.obLevel, osLevel: o.osLevel, ...wtOpts });
   const lastVwap = (() => { for (let i = to; i >= from; i--) if (fin(vwapOsc[i])) return vwapOsc[i]; return null; })();
+  const lastMf = (() => { for (let i = to; i >= from; i--) if (fin(moneyFlow[i])) return moneyFlow[i]; return null; })();
 
   return {
     opts: o, width: o.width, height: o.height, plot, yMax, from, to,
     yToPx, xToPx,
-    points: { wt1: ptsFor(wt1), wt2: ptsFor(wt2), vwap: o.showVwap ? ptsFor(vwapOsc) : [] },
+    points: { wt1: ptsFor(wt1), wt2: ptsFor(wt2), vwap: o.showVwap ? ptsFor(vwapOsc) : [], mf: o.showMoneyFlow ? ptsFor(moneyFlow) : [] },
     band: { a: bandA, b: bandB },
-    series: { wt1, wt2, vwapOsc },
+    series: { wt1, wt2, vwapOsc, moneyFlow },
     gridlines, divergences, timeLabels,
     reading: {
       wt1: fin(reading.value) ? reading.value : null,
       wt2: fin(reading.signalValue) ? reading.signalValue : null,
       vwapOsc: lastVwap,
+      moneyFlow: lastMf,
       signal: reading.signal,
     },
   };
@@ -245,6 +298,39 @@ export function renderVumanchuPNG(bars, opts = {}) {
   const cv = createCanvas(L.width, L.height, T.bg);
 
   cv.rect(P.x, P.y, P.w, P.h, T.panel);
+
+  // Money Flow first, so the zero/OB/OS gridlines and the WaveTrend wave both sit
+  // on top of it — the layering in a stock Cipher B pane. Filled to the zero line
+  // and split by sign into constant-colour runs (fillBetween takes one colour, so
+  // a single fill would wash green and red into one meaningless tint).
+  if (o.showMoneyFlow && L.points.mf.length) {
+    const zeroY = L.yToPx(0);
+    const pts = L.points.mf;
+    let run = [];
+    const flush = () => {
+      if (run.length > 1) {
+        const up = pts[run[0]].y < zeroY;                    // y grows downward
+        const a = run.map(k => pts[k]);
+        const b = run.map(k => ({ x: pts[k].x, y: zeroY }));
+        cv.fillBetween(a, b, up ? T.mfUp : T.mfDn);
+        cv.polyline(a, { color: up ? T.mfUpLine : T.mfDnLine, width: 1.1 });
+      }
+      run = [];
+    };
+    for (let k = 0; k < pts.length; k++) {
+      if (!pts[k]) { flush(); continue; }
+      const up = pts[k].y < zeroY;
+      if (run.length && (pts[run[0]].y < zeroY) !== up) {
+        // Carry the boundary point into the next run so the two fills meet with no
+        // 1px gap at the zero crossing.
+        run.push(k); flush(); run.push(k - 1 >= 0 && pts[k - 1] ? k - 1 : k);
+        run = [k];
+        continue;
+      }
+      run.push(k);
+    }
+    flush();
+  }
 
   for (const g of L.gridlines) {
     if (g.style === 'edge') continue;
@@ -310,7 +396,8 @@ export function renderVumanchuPNG(bars, opts = {}) {
 
   const sigCol = L.reading.signal === 'OVERSOLD' || L.reading.signal === 'BULLISH' ? T.bull
                : L.reading.signal === 'OVERBOUGHT' || L.reading.signal === 'BEARISH' ? T.bear : T.text;
-  const legend = [['WT1', T.wt1], ['WT2', T.wt2], ...(o.showVwap ? [['VWAP', T.vwap]] : []), [L.reading.signal, sigCol]];
+  const legend = [['WT1', T.wt1], ['WT2', T.wt2], ...(o.showVwap ? [['VWAP', T.vwap]] : []),
+                  ...(o.showMoneyFlow ? [['MF', T.mfUpLine]] : []), [L.reading.signal, sigCol]];
   let lx = L.width - 8;
   for (const [lbl, col] of [...legend].reverse()) {
     const w = measureText(lbl, 1);
@@ -346,6 +433,23 @@ export function renderVumanchuSVG(bars, opts = {}) {
     if (g.label) s.push(`<text x="${P.x + P.w + 5}" y="${(g.y + 3).toFixed(1)}" fill="${T.grid}" font-size="10">${esc(g.label)}</text>`);
   }
 
+  if (o.showMoneyFlow && L.points.mf.length) {
+    const zeroY = L.yToPx(0);
+    const runs = []; let cur = [];
+    for (const p of L.points.mf) {
+      if (!p) { if (cur.length > 1) runs.push(cur); cur = []; continue; }
+      const up = p.y < zeroY;
+      if (cur.length && (cur[0].y < zeroY) !== up) { cur.push(p); if (cur.length > 1) runs.push(cur); cur = [p]; }
+      cur.push(p);
+    }
+    if (cur.length > 1) runs.push(cur);
+    for (const r of runs) {
+      const up = r[0].y < zeroY;
+      const fwdPts = r.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' L ');
+      s.push(`<path d="M ${fwdPts} L ${r.at(-1).x.toFixed(1)},${zeroY.toFixed(1)} L ${r[0].x.toFixed(1)},${zeroY.toFixed(1)} Z" fill="${(up ? T.mfUp : T.mfDn).slice(0, 7)}" fill-opacity="${(parseInt((up ? T.mfUp : T.mfDn).slice(7, 9), 16) / 255).toFixed(2)}"/>`);
+      s.push(`<polyline points="${r.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')}" fill="none" stroke="${up ? T.mfUpLine : T.mfDnLine}" stroke-width="1.1"/>`);
+    }
+  }
   if (L.band.a.length > 1) {
     s.push(`<path d="M ${pl(L.band.a).replace(/ /g, ' L ')} L ${pl([...L.band.b].reverse()).replace(/ /g, ' L ')} Z" fill="${T.band.slice(0, 7)}" fill-opacity="${(parseInt(T.band.slice(7, 9), 16) / 255).toFixed(2)}"/>`);
   }
@@ -384,7 +488,7 @@ export function vumanchuChartData(bars, opts = {}) {
   const L = vumanchuLayout(bars, opts);
   const r3 = v => v == null || !Number.isFinite(v) ? null : +v.toFixed(3);
   return {
-    reading: { ...L.reading, wt1: r3(L.reading.wt1), wt2: r3(L.reading.wt2), vwapOsc: r3(L.reading.vwapOsc) },
+    reading: { ...L.reading, wt1: r3(L.reading.wt1), wt2: r3(L.reading.wt2), vwapOsc: r3(L.reading.vwapOsc), moneyFlow: r3(L.reading.moneyFlow) },
     slope: (() => {           // sign of WT1's last move — the "skew/slope" read
       const p = L.points.wt1.filter(Boolean);
       if (p.length < 2) return null;
