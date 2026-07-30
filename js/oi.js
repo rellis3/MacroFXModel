@@ -269,8 +269,22 @@ export function updateSmileHint() {
     body = `⚠ Smile box holds <b>${smileCode}</b>, but the walls are on <b>${hint.code}</b>${hint.date ? ` (${hint.date})` : ''}. Charm/vanna/skew would describe a different expiry — re-paste ${hint.code}'s per-strike chain.`;
   } else if (haveChain && !smileCode) {
     body = `👉 Smile box holds a chain but no title line, so its expiry can't be confirmed — the walls are on <b>${hint.code || `~${hint.dte} DTE`}</b>. Re-paste including the title line if unsure.`;
-  } else if (hint.code) {
+  } else if (hint.code && hint.codeConfirmed) {
     body = `👉 Smile box (optional): paste expiry <b>${hint.code}</b>${hint.date ? ` (${hint.date}, ${hint.matchedDte ?? hint.dte} DTE)` : ''} — its per-strike chain. Include the title line so the LIVE futures price and DTE are read automatically.`;
+  } else if (hint.code) {
+    // NOT confirmed. This code was inferred by DTE proximity from the Settlements table,
+    // which MIXES weekly and monthly products. Stating it as fact sends the user hunting for
+    // a code that may not exist under the PRODUCT tab they have open — reported on gold: the
+    // hint asked for G4TQ6 while the PRODUCT (OG) tabs offered only OG5N6/OGU6/OGV6/…
+    // So lead with the EXPIRY DATE (unambiguous, and it maps to whichever tab holds it) and
+    // label the code as the closest row rather than the answer.
+    const wk = hint.matchedIsMonthly === false;
+    const dteTxt = (hint.matchedDte ?? hint.dte);
+    body = `👉 Smile box (optional): paste the chain for the expiry dated <b>${hint.date || `~${hint.dte} DTE`}</b>`
+      + `${hint.date && dteTxt != null ? ` (${dteTxt} DTE)` : ''}.`
+      + ` Closest Settlements row is <b>${hint.code}</b>${wk ? ' — a <b>weekly</b>' : ''}, but your OI heatmap carried no expiry code, so this could not be confirmed against the walls.`
+      + `${wk && hint.monthlyRoot ? ` If the OI you pasted was the monthly (<b>${hint.monthlyRoot}…</b>), pick that product's expiry on the matching date instead — weeklies and monthlies sit under separate PRODUCT tabs.` : ''}`
+      + ` Include the title line so the LIVE futures price and DTE are read automatically.`;
   } else {
     body = `👉 Smile box (optional): paste the ~<b>${hint.dte} DTE</b> expiry's per-strike chain (add the Settlements table above to get its exact code).`;
   }
@@ -882,6 +896,37 @@ function _parseDMY(s) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+// The CME Settlements table MIXES option products: for EUR/USD it lists weekday weeklies
+// (MO4N6 Monday, TU4N6 Tuesday, WE5N6 Wednesday...) alongside the monthlies (EUUQ6, EUUU6,
+// EUUV6...); gold lists G4TQ6-style weeklies beside the OG monthlies. They are SEPARATE
+// products in QuikStrike, each under its own PRODUCT tab.
+//
+// This matters because the smile hint used to name whichever row was nearest by DTE, which
+// can be a weekly while the walls were computed from a MONTHLY heatmap column. The user is
+// then told to paste an expiry that does not appear in the product list they are looking at
+// (reported on gold: hint asked for G4TQ6 while the PRODUCT (OG) tabs offered only
+// OG5N6/OGU6/OGV6/...). Unactionable.
+//
+// The monthly root is inferred from the data rather than hard-coded per instrument: it is
+// the symbol prefix that recurs across the MOST DISTINCT month-year suffixes. Monthlies
+// span many months under one root (EUU -> Q6,U6,V6,X6,Z6); a weekly root is tied to one or
+// two (MO4 -> N6). No CME product table to maintain.
+function _monthlyRoot(rows) {
+  const byPrefix = new Map();
+  for (const r of rows || []) {
+    const sym = String(r?.symbol || '');
+    if (sym.length < 4) continue;
+    const prefix = sym.slice(0, -2), suffix = sym.slice(-2);
+    if (!byPrefix.has(prefix)) byPrefix.set(prefix, new Set());
+    byPrefix.get(prefix).add(suffix);
+  }
+  let best = null, bestN = 1;                      // needs >=2 distinct months to be "monthly"
+  for (const [prefix, months] of byPrefix) {
+    if (months.size > bestN) { bestN = months.size; best = prefix; }
+  }
+  return best;
+}
+
 export function resolveSmileExpiry(rawOI, rawIVTerm, { dte = null, haveSmile = false, rawIV = '', now = null } = {}) {
   let primaryDte = null, primaryCode = null;
   if (rawOI && rawOI.trim()) {
@@ -905,6 +950,11 @@ export function resolveSmileExpiry(rawOI, rawIVTerm, { dte = null, haveSmile = f
   const out = { dte: Number.isFinite(hintDte) ? hintDte : null, code: primaryCode, date: null,
                 matchedDte: null, matchedOn: primaryCode ? 'code' : null,
                 tableAsOf: null, tableStaleDays: null,
+                // `codeConfirmed` = the code came from the HEATMAP the walls were computed
+                // from, so it is the right product by construction. False means it was
+                // inferred from the Settlements table by DTE proximity and may name a
+                // different product (weekly vs monthly) — the UI must not state it as fact.
+                codeConfirmed: !!primaryCode, monthlyRoot: null, matchedIsMonthly: null,
                 haveSmile: !!haveSmile };
   if (Array.isArray(rows) && rows.length) {
     const liquid = rows.filter(r => r.straddle > 0 && r.iv > 0);
@@ -920,8 +970,12 @@ export function resolveSmileExpiry(rawOI, rawIVTerm, { dte = null, haveSmile = f
         : pool.slice().sort((a, b) => a.dte - b.dte)[0];   // no DTE known → front liquid expiry
       if (m) out.matchedOn = Number.isFinite(hintDte) ? 'dte' : 'front';
     }
+    out.monthlyRoot = _monthlyRoot(pool);
     if (m) {
       out.code = m.symbol || out.code; out.date = m.expiry || null; out.matchedDte = m.dte ?? null;
+      out.codeConfirmed = out.matchedOn === 'code';
+      const sym = String(m.symbol || '');
+      out.matchedIsMonthly = out.monthlyRoot ? sym.startsWith(out.monthlyRoot) : null;
       if (out.dte == null) out.dte = m.dte ?? null;
       // How old is this Settlements table REALLY?
       //
