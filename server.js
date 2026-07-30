@@ -27,6 +27,7 @@ import { computeHMM5mV2, computeMacroContext } from './hmm5m-v2.js';
 import { trainHMM5mAll, loadTrainedParams, fetchFredMacro } from './hmm5m-train.js';
 import { detectPolarityFlip } from './js/polarity.js';
 import { assessEntry, resampleBars } from './js/vumanchu.js';
+import { renderVumanchuPNG, renderVumanchuSVG, vumanchuChartData, vumanchuCaption, MIN_BARS as VM_MIN_BARS } from './js/vumanchuChart.js';
 import { startVolForecastScheduler, forecastState, runVolForecast, getSessionStatus, ensureOhlcCache } from './js/volForecastScheduler.js';
 import { yangZhangVolSeries, hv20Series, ewmaVolSeries, computeForecast as _computeForecast } from './js/volForecast.js';
 import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
@@ -471,6 +472,8 @@ const DEFAULT_CFG = {
   pairCooldownMin: 240, // minutes before any alert on the same pair (4 h default)
   onlyAligned: false,
   vuManChu:    'info',  // 'off' | 'info' (show in message only) | 'filter' (affect grade)
+  vuManChuChart: true,  // attach the rendered WaveTrend pane as a photo after each alert
+                        // (ignored when vuManChu is 'off' — see sendVumanchuChart)
   regimeChangeAlerts: true, // send Telegram when live 1m HMM regime changes
 };
 
@@ -1387,6 +1390,45 @@ async function sendTelegram(token, chatId, text) {
   } catch { return false; }
 }
 
+// sendPhoto sibling of sendTelegram — multipart, using Node 18+'s built-in
+// FormData/Blob (no dependency). NOTE the caption cap: Telegram allows 1024
+// characters on a photo caption vs 4096 on a message, which is why the bots keep
+// sending their full text alert and attach the chart as a SEPARATE photo rather
+// than folding the message into a caption — `formatAlert` output routinely
+// exceeds 1024 once the plain-English decoder block is appended.
+async function sendTelegramPhoto(token, chatId, png, caption = '') {
+  try {
+    const fd = new FormData();
+    fd.append('chat_id', String(chatId));
+    if (caption) { fd.append('caption', caption.slice(0, 1024)); fd.append('parse_mode', 'HTML'); }
+    fd.append('photo', new Blob([png], { type: 'image/png' }), 'vumanchu.png');
+    const r = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
+      method: 'POST', body: fd, signal: AbortSignal.timeout(20_000),
+    });
+    const j = await r.json();
+    if (j.ok !== true) console.error('[TG PHOTO]', j.description ?? 'failed');
+    return j.ok === true;
+  } catch (e) { console.error('[TG PHOTO]', e.message); return false; }
+}
+
+// Render + send the VuManChu pane for a pair, from the SAME M5 bars the alert
+// text read. Silent no-op when history is short or the chart is switched off, so
+// it can never block or break the text alert it accompanies.
+// Enable/disable with cfg.vuManChuChart (default ON whenever vuManChu !== 'off').
+async function sendVumanchuChart(sym, extraCaption = '') {
+  try {
+    if (!state.tg?.token || !state.tg?.chatId) return false;
+    const vmMode = state.cfg?.vuManChu ?? 'info';
+    if (vmMode === 'off' || state.cfg?.vuManChuChart === false) return false;
+    const bars = vumanchuM5Bars(sym);
+    if (!bars || bars.length < VM_MIN_BARS) return false;
+    const opts = { title: sym, subtitle: `M5 · ${Math.min(90, bars.length)} bars`, displayBars: 90, width: 1100, height: 400 };
+    const png = renderVumanchuPNG(bars, opts);
+    const caption = [vumanchuCaption(bars, opts), extraCaption].filter(Boolean).join('\n');
+    return await sendTelegramPhoto(state.tg.token, state.tg.chatId, png, caption);
+  } catch (e) { console.error('[VM CHART]', e.message); return false; }
+}
+
 function _gradeColor(grade) {
   return grade === 'A+' ? '#22c55e' : grade === 'A' ? '#4ade80' : grade === 'B' ? '#f59e0b' : grade === 'C' ? '#94a3b8' : '#ef4444';
 }
@@ -1447,6 +1489,25 @@ function computeGrade(entry, hmmData, swing30m = null) {
                 :                                       'CAUTION';
 
   return { grade, verdict, reasons: reasons.slice(0, 3), warnings: warnings.slice(0, 2) };
+}
+
+// The M5 series every VuManChu read in the monitor is taken from: the cached M1
+// monitor bars (`fetchHMMBars` — OANDA's raw STRING OHLC, hence the parseFloat)
+// resampled ×5. Extracted so the alert TEXT and the alert CHART are provably the
+// same bars; two copies of this prep is exactly how a picture starts disagreeing
+// with the caption beside it. Returns null when there isn't enough history.
+function vumanchuM5Bars(sym) {
+  const m1Bars = state.hmm5mBars?.[sym];
+  if (!m1Bars || m1Bars.length < 160) return null;
+  const parsedBars = m1Bars.map(b => ({
+    open:   parseFloat(b.open  ?? b.mid?.o ?? b.o ?? b.close ?? b.mid?.c ?? b.c),
+    high:   parseFloat(b.high  ?? b.mid?.h ?? b.h ?? b.close ?? b.mid?.c ?? b.c),
+    low:    parseFloat(b.low   ?? b.mid?.l ?? b.l ?? b.close ?? b.mid?.c ?? b.c),
+    close:  parseFloat(b.close ?? b.mid?.c ?? b.c),
+    volume: parseFloat(b.volume ?? b.vol ?? 0),
+  }));
+  const m5Bars = resampleBars(parsedBars, 5);
+  return m5Bars.length >= 31 ? m5Bars : null;
 }
 
 function formatAlert(sym, entry, price, distPips) {
@@ -1552,17 +1613,9 @@ function formatAlert(sym, entry, price, distPips) {
   let vmExplain = null;
   if (vmMode !== 'off') {
     try {
-      const m1Bars = state.hmm5mBars?.[sym];
-      if (m1Bars && m1Bars.length >= 160) {
-        const parsedBars = m1Bars.map(b => ({
-          open:   parseFloat(b.open  ?? b.mid?.o ?? b.o ?? b.close ?? b.mid?.c ?? b.c),
-          high:   parseFloat(b.high  ?? b.mid?.h ?? b.h ?? b.close ?? b.mid?.c ?? b.c),
-          low:    parseFloat(b.low   ?? b.mid?.l ?? b.l ?? b.close ?? b.mid?.c ?? b.c),
-          close:  parseFloat(b.close ?? b.mid?.c ?? b.c),
-          volume: parseFloat(b.volume ?? b.vol ?? 0),
-        }));
-        const m5Bars = resampleBars(parsedBars, 5);
-        if (m5Bars.length >= 31) {
+      const m5Bars = vumanchuM5Bars(sym);
+      if (m5Bars) {
+        {
           const vm = assessEntry(m5Bars, entry.direction);
 
           if (vmMode === 'filter' && vm.signal === 'oppose') {
@@ -1832,6 +1885,10 @@ async function monitorTick() {
 
           const msg  = formatAlert(sym, winner.eff, price, winner.distPips);
           const sent = await sendTelegram(state.tg.token, state.tg.chatId, msg);
+
+          // The VuManChu structure the message describes in words, as a picture
+          // beside it. Best-effort and awaited only so the two arrive in order.
+          if (sent) await sendVumanchuChart(sym);
 
           if (sent) { state.lastAlert = new Date().toISOString(); state.alertCount++; }
 
@@ -4634,6 +4691,120 @@ app.get('/api/oanda_ohlc5m', async (req, res) => {
   } catch (err) {
     console.error('[oanda_ohlc5m]', err.message);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ── VuManChu pane as an image ─────────────────────────────────────────────────
+// GET /api/vumanchu/chart?symbol=EUR/USD&tf=M15[&bars=160][&format=png|svg|json]
+//   [&w=1200&h=440][&vwap=wtdiff|cumvwap|none][&hidden=1][&tz=0][&title=]
+// Renders the WaveTrend pane (WT1/WT2 + fill, the yellow VWAP oscillator, and
+// divergence lines on both) via js/vumanchuChart.js. `format=json` returns the
+// reading/slope/divergence list that drives a Telegram caption.
+//
+// Bars come from OANDA in CHRONOLOGICAL order and are deliberately NOT reversed
+// here — unlike /api/oanda_ohlc5m, which flips to newest-first for the dashboard.
+// The chart brick requires oldest-first; feeding it reversed bars mirrors the
+// picture silently. `volume` is carried through (the other route drops it) so
+// vwap=cumvwap has real weights to work with.
+const _VM_GRAN = new Set(['M1', 'M5', 'M15', 'M30', 'H1', 'H4', 'D']);
+const _vmChartCache = new Map();
+
+async function _fetchVumanchuBars(symbol, gran, count) {
+  const instrument = _liqGateOandaSym(symbol.replace('/', '_'));
+  const url = `${_oandaBaseMe()}/v3/instruments/${encodeURIComponent(instrument)}/candles`
+            + `?granularity=${gran}&count=${Math.min(4900, count)}&price=M`;
+  const r = await fetch(url, {
+    headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
+    signal:  AbortSignal.timeout(20_000),
+  });
+  if (!r.ok) throw new Error(`OANDA ${r.status}: ${(await r.text().catch(() => 'err')).slice(0, 160)}`);
+  const d = await r.json();
+  if (!d.candles) throw new Error('No candles returned');
+  return d.candles.filter(c => c.mid && c.complete !== false).map(c => ({
+    open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c,
+    volume: c.volume ?? 1,
+    t: Math.floor(new Date(c.time).getTime() / 1000),
+  }));
+}
+
+app.get('/api/vumanchu/chart', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured' });
+  const symbol = req.query.symbol;
+  if (!symbol) return res.status(400).json({ error: 'symbol param required' });
+  const gran = String(req.query.tf || req.query.granularity || 'M15').toUpperCase();
+  if (!_VM_GRAN.has(gran)) return res.status(400).json({ error: `Unsupported tf: ${gran} (${[..._VM_GRAN].join('/')})` });
+  const format = String(req.query.format || 'png').toLowerCase();
+  if (!['png', 'svg', 'json'].includes(format)) return res.status(400).json({ error: 'format must be png|svg|json' });
+
+  const clamp = (v, lo, hi, dflt) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n))) : dflt; };
+  const displayBars = clamp(req.query.bars, VM_MIN_BARS, 1000, 160);
+  const opts = {
+    displayBars,
+    width:  clamp(req.query.w, 320, 2400, 1200),
+    height: clamp(req.query.h, 160, 1200, 440),
+    tzOffsetMin: clamp(req.query.tz, -840, 840, 0),
+    showHidden: req.query.hidden === '1' || req.query.hidden === 'true',
+    vwapSeries: ['wtdiff', 'cumvwap', 'none'].includes(String(req.query.vwap)) ? String(req.query.vwap) : 'wtdiff',
+    title: String(req.query.title || symbol).slice(0, 40),
+    subtitle: `${gran} · ${displayBars} bars`,
+  };
+
+  // Warm-up headroom: the WT EMAs plus room for divergence pivots before the
+  // visible window, so the drawn pane never shows the seeding transient.
+  const fetchCount = Math.min(4900, displayBars + 240);
+  const cacheKey = `vm_${format}_${symbol}_${gran}_${JSON.stringify(opts)}`;
+  const ttl = gran === 'D' ? 15 * 60_000 : gran.startsWith('H') ? 5 * 60_000 : 45_000;
+  const hit = _vmChartCache.get(cacheKey);
+  if (hit && Date.now() - hit.ts < ttl) {
+    if (format === 'json') return res.json(hit.data);
+    res.type(format === 'svg' ? 'image/svg+xml' : 'image/png');
+    res.set('Cache-Control', `public, max-age=${Math.floor(ttl / 1000)}`);
+    return res.send(hit.data);
+  }
+
+  try {
+    const bars = await _fetchVumanchuBars(symbol, gran, fetchCount);
+    if (bars.length < VM_MIN_BARS) {
+      return res.status(422).json({ error: `Only ${bars.length} bars available at ${gran}; need ≥${VM_MIN_BARS}` });
+    }
+    const data = format === 'json' ? { symbol, tf: gran, ...vumanchuChartData(bars, opts), caption: vumanchuCaption(bars, opts) }
+               : format === 'svg' ? renderVumanchuSVG(bars, opts)
+               : renderVumanchuPNG(bars, opts);
+    _vmChartCache.set(cacheKey, { data, ts: Date.now() });
+    if (_vmChartCache.size > 120) _vmChartCache.delete(_vmChartCache.keys().next().value);
+    if (format === 'json') return res.json(data);
+    res.type(format === 'svg' ? 'image/svg+xml' : 'image/png');
+    res.set('Cache-Control', `public, max-age=${Math.floor(ttl / 1000)}`);
+    return res.send(data);
+  } catch (err) {
+    console.error('[vumanchu/chart]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// POST /api/vumanchu/chart/send — push the pane to Telegram on demand.
+// Body: { symbol, tf?, bars?, caption?, token?, chatId? } (creds default to the
+// monitor's configured bot). Used by the dashboard's "Send to Telegram" button.
+app.post('/api/vumanchu/chart/send', express.json({ limit: '4kb' }), async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured' });
+  const { symbol, tf = 'M15', bars: nBars = 160, caption = '', token, chatId } = req.body ?? {};
+  const tok = token || state.tg?.token, cid = chatId || state.tg?.chatId;
+  if (!symbol) return res.status(400).json({ error: 'symbol required' });
+  if (!tok || !cid) return res.status(400).json({ error: 'No Telegram credentials configured' });
+  const gran = String(tf).toUpperCase();
+  if (!_VM_GRAN.has(gran)) return res.status(400).json({ error: `Unsupported tf: ${gran}` });
+  try {
+    const displayBars = Math.min(1000, Math.max(VM_MIN_BARS, Number(nBars) || 160));
+    const bars = await _fetchVumanchuBars(symbol, gran, Math.min(4900, displayBars + 240));
+    if (bars.length < VM_MIN_BARS) return res.status(422).json({ error: `Only ${bars.length} bars at ${gran}` });
+    const opts = { displayBars, title: symbol, subtitle: `${gran} · ${displayBars} bars`, width: 1100, height: 400 };
+    const png = renderVumanchuPNG(bars, opts);
+    const cap = [vumanchuCaption(bars, opts), String(caption).slice(0, 600)].filter(Boolean).join('\n');
+    const ok = await sendTelegramPhoto(tok, cid, png, cap);
+    res.json({ ok, bytes: png.length, caption: cap });
+  } catch (err) {
+    console.error('[vumanchu/chart/send]', err.message);
+    res.status(502).json({ error: err.message });
   }
 });
 
