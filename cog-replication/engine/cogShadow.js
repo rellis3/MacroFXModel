@@ -80,26 +80,60 @@ export function computeG1(series, opts = {}) {
 // rather than replacing it, so a broken/missing GEX degrades to a plain vol
 // stop instead of an invented one.
 export function computeG2(gex, baseRangePct, opts = {}) {
-  const { stopFraction = 0.45, riskPct = 1.0, negGexWiden = 1.35, posGexTighten = 0.85 } = opts;
-  if (!Number.isFinite(baseRangePct) || baseRangePct <= 0) {
-    return { state: 'INVALID', reason: 'no base range' };
-  }
+  // OBSERVED ENVELOPE — the owner has never seen COG quote a stop above 0.48%,
+  // and has seen 0.44% (standard) and 0.21% (conservative). Our first attempt
+  // produced 1.97% by scaling the daily range, which is 4x outside anything he
+  // has ever emitted. That is not a tuning gap, it falsifies the mapping.
+  //
+  // What his numbers actually say:
+  //   0.44 / 0.21 = 2.1   the two tiers are ONE number, halved
+  //   2.2 / 0.44 = 5.0    and 1.00 / 0.21 = 4.76 — leverage is ~5x in both
+  // So the stop does not scale with daily volatility. It sits in a tight
+  // 0.21-0.48% band, and Gate 2's real decision is WHICH TIER — the stop falls
+  // out of hitting ~5x leverage at the chosen risk.
+  //
+  // GEX therefore selects the tier rather than widening the stop: dealers short
+  // gamma means moves get amplified, which argues for LESS size, not a looser
+  // stop. Volatility still nudges the stop inside the observed band so the
+  // model is not purely hardcoded to him, but it can never leave that band.
+  const {
+    stopFloorPct = 0.20, stopCapPct = 0.48,   // the owner's observed envelope
+    anchorStopPct = 0.44,                     // his standard tier
+    targetLeverage = 5.0,                     // implied by both his tiers
+    volFraction = 0.30,                       // how much realised range nudges inside the band
+  } = opts;
+
   const gexBn = Number.isFinite(gex) ? gex / 1e9 : null;
   const regime = gexBn == null ? 'UNKNOWN' : gexBn < 0 ? 'SHORT_GAMMA' : 'LONG_GAMMA';
-  const mult = regime === 'SHORT_GAMMA' ? negGexWiden : regime === 'LONG_GAMMA' ? posGexTighten : 1;
 
-  const stopStd = +Math.max(baseRangePct * stopFraction * mult, 0.10).toFixed(3);
+  // Nudge within the band, then CLAMP. The clamp is empirical, from the owner's
+  // observation - flagged rather than buried, because it is the one number here
+  // fitted to COG rather than derived.
+  const raw = Number.isFinite(baseRangePct) && baseRangePct > 0
+    ? baseRangePct * volFraction : anchorStopPct;
+  const clamped = Math.min(Math.max(raw, stopFloorPct), stopCapPct);
+  const wasClamped = raw > stopCapPct || raw < stopFloorPct;
+
+  // Short gamma ⇒ amplified moves ⇒ take the conservative (half-size) tier.
+  const tier = regime === 'SHORT_GAMMA' ? 'conservative' : 'standard';
+  const stopStd = +clamped.toFixed(3);
+  const stopCons = +(clamped / 2).toFixed(3);
+
   return {
     state: 'VALID', regime, gexBn: gexBn == null ? null : +gexBn.toFixed(2),
-    baseRangePct: +baseRangePct.toFixed(3), gexMultiplier: mult,
-    // Two tiers, mirroring COG's own output shape.
-    standard:     { stopPct: stopStd, riskPct: +(riskPct * 2.2).toFixed(2) },
-    conservative: { stopPct: +(stopStd / 2).toFixed(3), riskPct: +riskPct.toFixed(2) },
-    reason: regime === 'SHORT_GAMMA'
-      ? `dealers SHORT gamma (GEX ${gexBn?.toFixed(1)}bn) — moves amplified, stop widened ${negGexWiden}×`
-      : regime === 'LONG_GAMMA'
-      ? `dealers LONG gamma (GEX ${gexBn?.toFixed(1)}bn) — moves dampened, stop tightened ${posGexTighten}×`
-      : 'no GEX available — plain volatility stop, no positioning adjustment',
+    baseRangePct: Number.isFinite(baseRangePct) ? +baseRangePct.toFixed(3) : null,
+    rawStopPct: +raw.toFixed(3), wasClamped, observedEnvelope: [stopFloorPct, stopCapPct],
+    recommendedTier: tier,
+    standard:     { stopPct: stopStd,  riskPct: +(stopStd * targetLeverage).toFixed(2) },
+    conservative: { stopPct: stopCons, riskPct: +(stopCons * targetLeverage).toFixed(2) },
+    reason: (wasClamped
+      ? `realised range implied ${raw.toFixed(2)}% — CLAMPED to COG's observed ${stopFloorPct}-${stopCapPct}% envelope. `
+      : '')
+      + (regime === 'SHORT_GAMMA'
+        ? `dealers SHORT gamma (GEX ${gexBn?.toFixed(1)}bn) — moves amplified, so take the CONSERVATIVE tier (less size, not a looser stop)`
+        : regime === 'LONG_GAMMA'
+        ? `dealers LONG gamma (GEX ${gexBn?.toFixed(1)}bn) — moves dampened, standard tier`
+        : 'no GEX — defaulting to standard tier'),
   };
 }
 

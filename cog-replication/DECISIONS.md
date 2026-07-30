@@ -2,6 +2,24 @@
 
 Newest first. Every entry: what was decided, why, and what would reverse it.
 
+## 2026-07-30 — G2 remapped: GEX picks the TIER, it does not widen the stop
+
+**Decided:** the stop is clamped to COG's observed 0.20–0.48% envelope, and GEX
+selects which tier (standard vs conservative) rather than scaling the stop.
+**Why:** owner reports he has **never seen COG quote a stop above 0.48%**. Our
+first emission produced **1.97%** by scaling the daily range — 4x outside
+anything COG has ever emitted, so the mapping was falsified, not mistuned. His
+own numbers say what it really is: 0.44/0.21 = 2.1 (one number, halved) and
+2.2/0.44 = 5.0 with 1.00/0.21 = 4.76 (leverage ~5x in both). The stop is not a
+volatility estimate — it is what falls out of hitting ~5x at the chosen risk,
+so Gate 2 is really a **tier decision**. Short gamma means amplified moves,
+which argues for *less size*, not a looser stop.
+**Caveat:** the 0.20–0.48% clamp is the one number here **fitted to COG rather
+than derived**, and it is flagged as such in the code and on every alert that
+hits it.
+**Reverses if:** a logged COG stop lands outside that envelope — then the clamp
+is wrong and the whole tier reading needs revisiting.
+
 ## 2026-07-29 — Forward-test, don't backtest
 
 **Decided:** the OI/GEX direction hypothesis is tested by a live shadow record,
