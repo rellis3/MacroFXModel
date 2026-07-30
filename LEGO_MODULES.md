@@ -953,6 +953,22 @@ Route notes: non-native OANDA granularities are **resampled from M1** via the sh
 synthetic bar restamped from its group's first M1 bar so the causal alignment has
 real bar-start times. M1 is fetched once and reused for every derived timeframe.
 
+### 1ai. Cross-pair extreme-crowding-alert selector (2026-07-30) — double-extreme COT combos
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Extreme crowding alerts** | `cot-extremes.html` (`crowdState`, `pairAlerts`, `FX_PAIRS`) | A selector on top of the existing per-currency COT percentile/z-score (already computed in `_worker.js`'s `/api/cot-extremes`): for each of the 25 FX pairs (list mirrors `js/instrumentRegistry.js`'s canonical FX set — plain-script page, no ES modules, so hand-mirrored rather than imported), flags a "double extreme" when BOTH legs sit at/beyond the page's existing 90th/10th percentile crowding cutoff (same threshold as `extremes()`/`colFor()`) AND the two legs' direction reinforces on the cross (base crowded long + quote crowded short ⇒ the cross itself reads crowded long). Renders as a card grid at the top of `cot-extremes.html`, styled with the page's existing `--long`/`--short` tokens. USD-leg pairs (EURUSD, GBPUSD, AUDUSD, NZDUSD, USDCAD, USDCHF, USDJPY) are not covered — this feed has no direct CFTC USD-index future, so there's no historical series to percentile-rank a USD leg against (same known gap as `today.html`'s currency-strength drawer's derived USD row). | `cot-extremes.html` | 🔲 view-only, **no backtest — a crowding/interpretation aid, not a validated signal** |
+
+This is a *selector*, not a strategy: it composes two already-built Tier-2 COT
+readings into a "both sides stretched, same direction" flag, the same shape as
+`dayTypeScore → selectStrategy` (Lego Principle 4). Per CLAUDE.md's evaluation
+rules, a method is not a strategy until tested — this has not been run through
+the honest IS/OOS harness (Lego Principle 5), so it ships with an explicit
+in-page disclaimer rather than any performance claim. If it's ever promoted to
+a real backtest, pre-register the benchmark (does fading a double-extreme cross
+beat just fading either single-leg extreme alone, and does either beat a naive
+mean-reversion baseline) before running it.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted

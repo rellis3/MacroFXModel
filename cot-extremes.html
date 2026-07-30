@@ -74,6 +74,20 @@ tr.clk:hover td{background:rgba(255,255,255,.03)}
 .pill{font-size:11px;padding:2px 7px;border-radius:4px;border:1px solid currentColor;margin-left:6px}
 .bar{height:13px;border-radius:2px;display:inline-block;vertical-align:middle}
 
+.pa-grid{display:flex;flex-wrap:wrap;gap:14px}
+.pa-card{flex:1 1 260px;min-width:240px;background:var(--bg3);border:1px solid var(--line2);
+  border-radius:7px;padding:14px 16px}
+.pa-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.pa-pair{font-family:var(--mono);font-weight:700;font-size:15px;letter-spacing:.03em}
+.pa-badge{font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:3px 8px;border-radius:4px;
+  border:1px solid currentColor;white-space:nowrap}
+.pa-legs{display:flex;gap:10px}
+.pa-leg{flex:1;min-width:0}
+.pa-leg>b{font-size:13px;color:var(--tx)}
+.pa-stats{display:flex;flex-direction:column;gap:2px;margin-top:4px;font-family:var(--mono);
+  font-size:12px;color:var(--tx2)}
+.pa-stats b{color:var(--tx)}
+
 svg{display:block;width:100%;height:auto;overflow:visible}
 .lbl{fill:var(--tx2);font-family:var(--mono);font-size:12px}
 .gl{stroke:var(--line);stroke-width:1;stroke-dasharray:2 4}
@@ -147,6 +161,7 @@ const HELP = {
   scatter:['Specs vs commercials','Each dot is one market: speculative crowding across, commercial crowding up.','They should sit near a downward diagonal, because commercials take the other side. A market well <b>off</b> that line means the usual mirror has broken — worth a look, not a signal.'],
   hist:['200-week history','Net positioning over time, with the current reading marked.','A percentile means little without the shape behind it: the 90th after a steady climb is a different situation from the 90th after a spike.'],
   extreme:['Crowded trades','Markets at or beyond the 90th / 10th percentile of their own 200-week range.','These are where an unwind has the most fuel. Which way it breaks is not something this data tells you.'],
+  paira:['Extreme crowding alerts','Flags an FX cross where BOTH legs sit at a 90th/10th-percentile crowding extreme, and the direction reinforces on the cross (e.g. the base crowded long, the quote crowded short).','This is a crowding read, not a trade signal: it says the fuel for more of the same is thin on both sides at once, not which way or when it unwinds. It has not been backtested — treat it as context to combine with price and your own risk process, not a rule to act on alone.'],
 };
 const h = k => HELP[k] ? '<i class="h" data-k="'+k+'">?</i>' : '';
 
@@ -177,6 +192,59 @@ function panel(cls,key,title,helpKey,render,flush){
   return '<div class="p '+cls+'"><h3><span class="grow">'+title+h(helpKey)+'</span>'
     + '<button class="zoom" onclick="openZoom(\'' + key + '\')">&#10530; Enlarge</button></h3>'
     + '<div class="body'+(flush?' flush':'')+'">'+render(false)+'</div></div>';
+}
+
+// ── extreme crowding alerts: where BOTH legs of an FX cross are stretched, ──
+// reinforcing the same direction on the pair (not just one currency alone).
+// Pair list + base/quote ordering matches js/instrumentRegistry.js's canonical
+// FX set exactly — this page is plain script (no ES modules), so the 25 pairs
+// are mirrored here rather than imported; if the registry's FX list changes,
+// update both.
+const FX_PAIRS = [
+  ['EUR','USD'],['GBP','USD'],['AUD','USD'],['NZD','USD'],['USD','CAD'],['USD','CHF'],
+  ['EUR','GBP'],['EUR','AUD'],['EUR','CAD'],['EUR','CHF'],['EUR','NZD'],
+  ['AUD','NZD'],['AUD','CAD'],['AUD','CHF'],['GBP','AUD'],['GBP','CAD'],['GBP','CHF'],['GBP','NZD'],
+  ['USD','JPY'],['EUR','JPY'],['GBP','JPY'],['AUD','JPY'],['CAD','JPY'],['CHF','JPY'],['NZD','JPY'],
+];
+
+// 'long'/'short' at the existing 90th/10th percentile extreme threshold (same
+// cutoff as extremes()/colFor() elsewhere on this page); null = not stretched.
+const crowdState = x => { const p = pctOf(x); return p==null ? null : p>=90?'long':p<=10?'short':null; };
+
+function pairAlerts(big){
+  const bySym = {};
+  (DATA.instruments||[]).forEach(x => { if (x.group === 'fx') bySym[x.sym] = x; });
+  const rows = [];
+  FX_PAIRS.forEach(([base, quote]) => {
+    const A = bySym[base], B = bySym[quote];
+    if (!A || !B) return;
+    const sA = crowdState(A), sB = crowdState(B);
+    // Only a "double extreme" alert when both legs are stretched AND pulling the
+    // same way on the cross (base long + quote short ⇒ the cross itself is
+    // crowded long). One stretched leg alone, or legs pulling opposite ways,
+    // isn't the double-extreme case this panel is for — see extremes() above
+    // for single-market crowding.
+    let dir = null;
+    if (sA === 'long' && sB === 'short') dir = 'long';
+    else if (sA === 'short' && sB === 'long') dir = 'short';
+    if (!dir) return;
+    rows.push({ base, quote, dir, A, B });
+  });
+  if (!rows.length) return '<div class="empty">No FX cross currently has both legs at a 90th/10th-percentile crowding extreme, reinforcing the same direction.</div>';
+  const leg = x => `<div class="pa-leg"><b>${esc(x.sym)}</b><div class="pa-stats">`
+    + `<span>Z <b>${zOf(x) ?? '—'}</b></span><span>Pctile <b>${pctOf(x) ?? '—'}</b></span>`
+    + `<span>Net % OI <b>${x.specShare != null ? sgn(x.specShare) + x.specShare + '%' : '—'}</b></span></div></div>`;
+  const cards = rows.map(r => {
+    const clr = r.dir === 'long' ? 'var(--long)' : 'var(--short)';
+    const label = r.dir === 'long' ? 'OVERCROWDED LONG' : 'OVERCROWDED SHORT';
+    return `<div class="pa-card" style="border-color:${clr}">`
+      + `<div class="pa-head"><span class="pa-pair">${esc(r.base)}${esc(r.quote)}</span>`
+      + `<span class="pa-badge" style="color:${clr}">${label}</span></div>`
+      + `<div class="pa-legs">${leg(r.A)}${leg(r.B)}</div></div>`;
+  }).join('');
+  return `<div class="pa-grid">${cards}</div>`
+    + '<div class="note">Both legs sit at or beyond the 90th/10th percentile of their own 200-week range, reinforcing the same directional read on the cross. This is a crowding read, not a trade signal — it says the fuel for more of the same is thin on both sides at once, not which way or when it unwinds. It has not been backtested; treat it as context to combine with price and your own risk process, not a rule to act on alone.'
+    + ' USD-leg pairs (EURUSD, GBPUSD, AUDUSD, NZDUSD, USDCAD, USDCHF, USDJPY) aren\'t covered here — this feed doesn\'t currently pull a direct CFTC USD-index future (same gap as the currency-strength drawer\'s USD row on the dashboard), so there\'s no historical series to rank a USD leg against.</div>';
 }
 
 // ── crowding leaderboard: every market ranked, both directions on one axis ──
@@ -345,6 +413,7 @@ function render(){
     +'. Positioning changes inside that gap and you cannot see it, so treat every number here as a '
     +'<b>crowding / regime conditioner</b>, never as a timing signal.</div>';
   document.getElementById('main').innerHTML='<div class="grid">'
+    + panel('c12','alerts','Extreme crowding alerts','paira',pairAlerts,true)
     + panel('c7','lead','Crowding leaderboard','pct',leaderboard)
     + panel('c5','ext','Crowded trades','extreme',extremes,true)
     + panel('c7','scat','Specs vs commercials','scatter',scatter)
