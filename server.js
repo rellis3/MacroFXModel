@@ -5088,7 +5088,17 @@ async function fetchOandaCandleRange(instrument, gran, fromISO, toISO) {
       out.push({
         _ms: tMs,
         datetime: new Date(c.time).toLocaleString('sv-SE', { timeZone: 'Europe/London' }).substring(0, 19),
+        // `t` = TRUE UTC epoch seconds. `datetime` above is Europe/London wall-clock
+        // (kept for existing consumers); anything doing time maths should use `t`.
+        t: Math.floor(tMs / 1000),
         open: c.mid.o, high: c.mid.h, low: c.mid.l, close: c.mid.c,
+        // OANDA's tick count. Carried through because VWAP and Money-Flow style
+        // indicators are undefined without a weight, and until now NO route in this
+        // repo served volume-bearing bars over a long history — which made the
+        // volume half of VuManChu untestable on more than the last ~50 days.
+        // For FX this is a TICK count, not traded size; treat it as an activity
+        // proxy, never as real volume.
+        volume: c.volume ?? null,
       });
       lastTime = c.time;
     }
