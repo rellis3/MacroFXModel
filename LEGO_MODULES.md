@@ -838,6 +838,32 @@ plumbing-correctness check, not a result.
 
 ---
 
+### 1af. Server-side raster + the VuManChu pane as an image (2026-07-30)
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **PNG canvas** (Tier 1) | `js/pngCanvas.js` | The platform's first server-side rasteriser: an RGB framebuffer with coverage-anti-aliased draw ops (`line` incl. dashes, `polyline`, `fillBetween`, `rect`, `disc`, `text`) plus a real PNG encoder (`toPNG`/`encodePNG`, colour type 2) built on Node's **built-in `zlib`** — **zero dependencies, no browser**. ~70ms for a 1200×440 pane. Text is an embedded 5×7 bitmap font (ASCII 0x20–0x5A + `·`/`×`, lowercase folded to uppercase, unknown glyphs advance silently) so there is no font file or font parser; labels render ALL CAPS by design. `fillBetween` walks the band **column-by-column** rather than per-segment, so it stays gap-free when bars pack tighter than 1px. **Why not playwright:** it is declared in `package.json` but imported nowhere, and `start.sh` has no browser-install step — there is no working headless Chromium on Railway, and adding one costs ~400MB of build plus RAM in a container already supervising three Python bots. Reusable for any future series→image need (equity curves, vol bands, OI). Tested `js/vumanchuChart.test.mjs` — the PNG assertions **decode the emitted bytes back to pixels** (chunk walk → inflate → un-filter → CRC check against `zlib.crc32`), so "returned a Buffer" cannot pass for "returned a valid image". | `js/vumanchuChart.js` | ✅ built |
+| **VuManChu chart** (Tier 2 render) | `js/vumanchuChart.js` | The WaveTrend pane as a picture, from ONE `vumanchuLayout` geometry pass consumed by three emitters: `renderVumanchuPNG` (Telegram), `renderVumanchuSVG` (web, real font so labels keep casing), `vumanchuChartData`/`vumanchuCaption` (the text read + a <1024-char caption). Composes bricks only — **no new maths**: `vumanchuCore.computeWaveTrend` (WT1/WT2 + fill), `vumanchuCore.waveTrendReading` (latest-bar OB/OS), `divergenceCore.findDivergences` run on **both** oscillators (it is oscillator-agnostic, so one detector serves the wave and the yellow line), `pngCanvas` to draw. Money flow is deliberately **not** drawn. Defaults are the **operator's** Cipher B setup, taken from `forecast-reversion.html` where `divergenceCore` was validated bit-for-bit against his Pine `f_findDivs`: **WT 9/12/3**, drawn bands **53/−53**, and a SEPARATE asymmetric divergence gate **`divOb` 45 / `divOs` −65** — kept as distinct options because collapsing them into obLevel/osLevel silently changes which divergences qualify (a first cut here did exactly that). Warm-up is computed then discarded: oscillators run on the full history, only the last `displayBars` are drawn, so the EMA seeding transient never reaches the image. Requires **oldest-first** bars (`MIN_BARS` 60) — reversed input mirrors the picture silently, which is why the route deliberately does not reverse OANDA's payload the way `/api/oanda_ohlc5m` does. **Yellow-line caveat, measured not assumed:** `vwapSeries` defaults to `'wtdiff'` (`wt1−wt2`, Pine's `wtVwap`) because on a trending 200-bar fixture the alternative `'cumvwap'` (`vumanchuCore.computeVWAP().osc`) ran 35→100 — a one-way ramp pinned at its own normalisation peak, yielding **zero** divergences, versus wtdiff's −11→+14 about zero with 5. A VWAP anchored at bar 0 of an arbitrary window drifts monotonically once price trends, so its "oscillator" stops oscillating — worth scrutiny wherever `cumvwap` IS consumed (`vumanchuFadeEngine`). **Not** checked against the operator's actual Pine file; that is the whole of the evidence. `vumanchuCore` was NOT modified, so no engine's numbers move. Tested `js/vumanchuChart.test.mjs` (50 asserts: geometry/window/clamping, divergence endpoints tracking their own series, operator params pinned, gate independence, in-plot colour scans for bear/bull/none, SVG escaping, determinism). | `server.js` `GET /api/vumanchu/chart` (png/svg/json, cached per granularity) + `POST /api/vumanchu/chart/send`; `vumanchu-chart.html` (linked from `index.html`); level-bot Telegram alerts via `sendVumanchuChart` | ✅ built (render brick — no edge claim; it draws a read, it does not test one) |
+
+Also added in `server.js`: `sendTelegramPhoto` (multipart via Node 18+'s built-in
+`FormData`/`Blob`, no dependency) and `vumanchuM5Bars(sym)` — the M1-monitor→M5
+resample **extracted out of `formatAlert`** so the alert TEXT and the attached
+CHART are provably the same bars; two copies of that prep is precisely how a
+picture starts disagreeing with the caption beside it. Note the alert keeps
+sending its full text message and attaches the chart as a **separate photo**:
+Telegram caps a photo caption at 1024 chars vs 4096 for a message, and
+`formatAlert` routinely exceeds 1024 once the plain-English decoder block is
+appended — folding the message into a caption would truncate live alerts.
+Toggle: `cfg.vuManChuChart` (default on; ignored when `cfg.vuManChu` is `'off'`).
+
+This is a **render** brick pair, not a strategy one. It makes an existing read
+visible; it says nothing about whether that read has edge. The underlying
+VuManChu-confirmed fade was already tested ≈null (`vumanchuFadeEngine`), and
+per §1's divergence-core row the operator's own docs say the SCRIPTED
+auto-divergence is explicitly not the edge. Drawing it well does not change that.
+
+---
+
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
 
 Ranked by **drift risk × reuse**. "Live" = a copy runs in a production bot, so a
