@@ -25,7 +25,9 @@ const flag = (name, dflt = null) => {
   argv.splice(i, 2);
   return v;
 };
-const base = flag('--base', 'http://localhost:3000');
+// Defaults to the deployed dashboard, because that is where the morning paste
+// actually lands. Pass --base http://localhost:3000 when running a local server.
+const base = flag('--base', 'https://macrofxmodel-production.up.railway.app');
 const kvPair = flag('--kv');
 const files = argv.filter(a => !a.startsWith('--'));
 
@@ -34,7 +36,19 @@ async function pastedRaw() {
     if (files.length < 2) die('need <pasted.tsv> <fetched.tsv>, or --kv "EUR/USD" <fetched.tsv>');
     return { raw: readFileSync(files[0], 'utf8'), from: files[0] };
   }
-  const r = await fetch(`${base}/api/kv/get?key=oi_store`);
+  // A refused connection here used to surface as an unhandled TypeError and a node
+  // stack trace, which reads like a broken script rather than "nothing is serving
+  // that port". Say what happened and what to do instead.
+  let r;
+  try {
+    r = await fetch(`${base}/api/kv/get?key=oi_store`);
+  } catch (e) {
+    die(`cannot reach ${base} (${e.cause?.code || e.message}).\n`
+      + '        Either start the dashboard locally, or point at the deployed one:\n'
+      + '          --base https://macrofxmodel-production.up.railway.app\n'
+      + '        Or skip KV entirely and pass the pasted table as a file:\n'
+      + '          node compare_matrix.mjs pasted.tsv fetched.tsv');
+  }
   if (!r.ok) die(`KV read failed: HTTP ${r.status} from ${base}`);
   const j = await r.json();
   if (j.miss) die('oi_store is empty in KV — paste in the dashboard first');

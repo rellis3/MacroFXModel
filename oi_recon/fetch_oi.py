@@ -43,7 +43,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-from matrix_build import (build_matrix_tsv, parse_term_tsv,          # noqa: E402
+from matrix_build import (build_matrix_tsv, futures_from_parity,     # noqa: E402
+                          parse_term_tsv, quikstrike_code,
                           strikes_from_settlements)
 from products import CME_PRODUCTS                                    # noqa: E402
 from recon import _launch, outdir, safe_name                         # noqa: E402
@@ -142,11 +143,15 @@ def _expiry_list(page, root_id: int):
     out, trade_date = [], None
     for group in data if isinstance(data, list) else []:
         for e in group.get('expirations', []) or []:
-            code = (e.get('expiration') or {}).get('code')
+            exp = e.get('expiration') or {}
+            code = exp.get('code')
             pid, cid = e.get('productId'), e.get('contractId')
             if not (code and pid and cid):
                 continue
             out.append(dict(code=code, contractId=cid, productId=pid,
+                            # 'EUUQ6' — what QuikStrike, the term table and
+                            # resolveSmileExpiry all speak. See quikstrike_code.
+                            qs=quikstrike_code(cid, code, exp.get('twoDigitsCode')),
                             label=e.get('label'), group=group.get('label')))
             for td in e.get('tradeDates', []) or []:
                 d = td.get('formatedDate')
@@ -208,13 +213,17 @@ def mode_fetch(pair: str | None, headless: bool, delay: float, n_exp: int) -> No
         # chosen by near-money OI, not by column position, so that degrades the
         # labels only, never the levels.
         def _order(e):
-            dt = code_dates.get(e['contractId']) or code_dates.get(e['code'])
+            dt = code_dates.get(e['qs']) or code_dates.get(e['contractId'])
             if dt:
                 dd, mm, yy = dt.split('/')
                 return (0, int(yy), int(mm), int(dd))
-            return (1, 0, 0, 0)
+            return (1, 0, 0, 0)                    # undated: after everything dated
         exps.sort(key=_order)
         picked = exps[:n_exp]
+        undated = sum(1 for e in picked if not code_dates.get(e['qs']))
+        if undated:
+            print(f'  {sym:<11}   note: {undated}/{len(picked)} picked expiries have no '
+                  'date seed - order is API order and DTE labels are omitted')
 
         oi_cols, vol_cols, futures = [], [], None
         for e in picked:
@@ -225,8 +234,13 @@ def mode_fetch(pair: str | None, headless: bool, delay: float, n_exp: int) -> No
             oi = strikes_from_settlements(payload, 'openInterest')
             vl = strikes_from_settlements(payload, 'volume')
             if oi:
-                oi_cols.append(dict(code=e['contractId'], strikes=oi))
-                vol_cols.append(dict(code=e['contractId'], strikes=vl))
+                oi_cols.append(dict(code=e['qs'], strikes=oi))
+                vol_cols.append(dict(code=e['qs'], strikes=vl))
+                # The anchor comes from the FRONT expiry, where the ATM strike is
+                # most liquid and put-call parity is tightest. Without it
+                # pickPrimaryExpiry cannot score near-money OI at all.
+                if futures is None:
+                    futures = futures_from_parity(payload)
             time.sleep(delay)
 
         if len(oi_cols) < 2:
@@ -244,7 +258,10 @@ def mode_fetch(pair: str | None, headless: bool, delay: float, n_exp: int) -> No
             fn = d / f'{safe_name(sym)}_{label}_matrix.tsv'
             fn.write_text(tsv, encoding='utf-8')
             written.append(fn)
-        print(f'  {sym:<11} {len(oi_cols)} expiries - tradeDate {trade_date} -> 2 files')
+        anchor = (f'{futures:g} (put-call parity)' if futures else
+                  'NONE - primary expiry will be scored on total OI, not near-money')
+        print(f'  {sym:<11} {len(oi_cols)} expiries - tradeDate {trade_date} '
+              f'- futures {anchor} -> 2 files')
 
     ctx.close()
     (d / 'fetch_manifest.json').write_text(json.dumps(
