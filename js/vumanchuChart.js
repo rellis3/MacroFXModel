@@ -50,7 +50,7 @@
  *
  * Pure: no DOM, no network, no globals. Unit-tested in js/vumanchuChart.test.mjs.
  */
-import { computeWaveTrend, computeVWAP, computeMoneyFlow, waveTrendReading } from './vumanchuCore.js';
+import { computeWaveTrend, computeVWAP, computeMoneyFlowVMC, waveTrendReading } from './vumanchuCore.js';
 import { findDivergences } from './divergenceCore.js';
 import { createCanvas, measureText, GLYPH_H } from './pngCanvas.js';
 
@@ -101,31 +101,18 @@ const DEFAULTS = {
   reach: 2,          // VuManChu's 5-bar fractal
   maxDivs: 5,        // most recent N divergences per oscillator (spaghetti guard)
   showVwap: true,
-  showMoneyFlow: true,   // the green/red wave hugging zero
-  mfPeriod: 14,
-  // DISPLAY scaling only — nothing here is fed to anything but the canvas.
-  //
-  // `computeMoneyFlow` divides by `max(|raw|)` over the array it is given, where
-  // raw = (close-open)/range x volume. That single-max normalisation is
-  // OUTLIER-DOMINATED: on real EUR/USD M15 the busiest bar carried ~18x the median
-  // tick count (21941 vs 1172), so one spike sets the divisor and squashes every
-  // other bar to near-invisibility. First attempt at drawing this produced a flat
-  // line for exactly that reason.
-  //   'auto' (default) rescales by a ROBUST spread (the mfPctile-th percentile of
-  //   |mf| over the drawn window) up to `mfTargetAmp`, so the wave is legible and
-  //   stable regardless of outliers or how many bars were fetched.
-  //   A number instead applies that fixed multiplier to the brick's output.
-  // Either way the SHAPE and the sign are the brick's; only the amplitude is set
-  // here, and amplitude is not information (the brick's own scale is arbitrary).
-  mfScale: 'auto',
-  mfTargetAmp: 30,
-  mfPctile: 90,
-  // Money Flow's distribution has a long tail (measured drawn range -12.9..+98.2
-  // against a +/-106 domain before clamping — one excursion would have filled the
-  // whole pane and buried the wave). Clamped for DISPLAY so a single spike cannot
-  // swamp the pane; the clamp is on amplitude only, never on sign, so the
-  // green/red reading is untouched. Raise it to see the raw excursions.
-  mfClamp: 66,
+  showMoneyFlow: true,
+  // VuManChu's Pine defaults (f_rsimfi): SMA period 60, multiplier 150, offset 2.5.
+  // Reviewed against the operator's source 2026-07-30 — this is a candle-body
+  // ratio with NO volume term, so it needs none of the robust rescaling the
+  // volume-weighted `computeMoneyFlow` required: it is not peak-normalised, so it
+  // is neither window-dependent nor outlier-dominated, and it lands naturally in a
+  // compact band around zero on the ±100 WaveTrend scale.
+  mfPeriod: 60,
+  mfMultiplier: 150,
+  mfOffset: 2.5,
+  mfScale: 1,          // 1 = draw the indicator's own units, as TradingView does
+  mfClamp: 100,
   showHidden: false, // regular (exhaustion) divergences only, by default
   vwapSeries: 'wtdiff',   // Pine's wtVwap. See the header note before changing.
   title: '', subtitle: '',
@@ -177,7 +164,9 @@ export function vumanchuLayout(bars, opts = {}) {
   //    shifts a little with how many bars were fetched (rank order is unaffected).
   //  • on FX `volume` is OANDA's TICK COUNT, not size traded, so this is an
   //    activity-weighted candle-direction read, not money changing hands.
-  const moneyFlowRaw = o.showMoneyFlow ? computeMoneyFlow(bars, { period: o.mfPeriod }) : wt1.map(() => NaN);
+  const moneyFlowRaw = o.showMoneyFlow
+    ? computeMoneyFlowVMC(bars, { period: o.mfPeriod, multiplier: o.mfMultiplier, offset: o.mfOffset })
+    : wt1.map(() => NaN);
   const priceHi = bars.map(b => b.high), priceLo = bars.map(b => b.low);
 
   // Visible window: the last displayBars, pushed forward past any leading

@@ -493,7 +493,10 @@ t('a regular BULL divergence puts green pixels inside the plot', () => {
 t('no divergences → no red or green marks inside the plot', () => {
   const bars = flatBars(200);
   assert.equal(vumanchuLayout(bars).divergences.length, 0);
-  const marks = inPlotCount({ bars, width: 600, height: 260 },
+  // Money Flow off: this asserts about DIVERGENCE marks, and the faithful Pine
+  // MFI carries a -2.5 offset, so a perfectly flat candle reads slightly bearish
+  // and legitimately paints a thin red band. That is the indicator, not a bug.
+  const marks = inPlotCount({ bars, width: 600, height: 260, showMoneyFlow: false },
     ([r, g, b]) => (r > 190 && g < 110 && b < 110) || (g > 150 && r < 110 && b < 130));
   assert.equal(marks, 0, `expected a clean plot, got ${marks} coloured pixels`);
 });
