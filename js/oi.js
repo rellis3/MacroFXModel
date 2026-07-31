@@ -1068,8 +1068,8 @@ export function oiRefMove(inst, pair) {
   return { move: spot * sig * Math.sqrt(dte / 365), source: 'flat-vol' };
 }
 
-export function oiGreeks(strike, spot, pair, T = OI_GREEK_T) {
-  const sigma = oiFlatVol(pair);
+export function oiGreeks(strike, spot, pair, T = OI_GREEK_T, sigma) {
+  if (!(sigma > 0)) sigma = oiFlatVol(pair);   // per-strike IV (v2 smile) when given, else flat vol (v1)
   const d1 = (Math.log(spot/strike) + 0.5*sigma*sigma*T) / (sigma*Math.sqrt(T));
   const nd1 = Math.exp(-0.5*d1*d1) / Math.sqrt(2*Math.PI);
   const gamma = nd1 / (spot*sigma*Math.sqrt(T));
@@ -1077,13 +1077,13 @@ export function oiGreeks(strike, spot, pair, T = OI_GREEK_T) {
   return { gamma, callDelta, putDelta: callDelta-1 };
 }
 
-export function oiCalcExposures(strikes, calls, puts, spot, pair, T = OI_GREEK_T) {
+export function oiCalcExposures(strikes, calls, puts, spot, pair, T = OI_GREEK_T, sigmaFn = null) {
   if (!spot || spot <= 0) return { gex: 0, dex: 0 };
   const cs = isNQ(pair) ? 20 : isES(pair) ? 50 : isYM(pair) ? 5 : isRTY(pair) ? 50
            : isFDAX(pair) ? 25 : isFTSE(pair) ? 10 : pair.includes('XAU') ? 100 : 125000;
   let gex=0, dex=0;
   for (let i=0; i<strikes.length; i++) {
-    const {gamma, callDelta, putDelta} = oiGreeks(strikes[i], spot, pair, T);
+    const {gamma, callDelta, putDelta} = oiGreeks(strikes[i], spot, pair, T, sigmaFn ? sigmaFn(strikes[i]) : undefined);
     gex += (calls[i]-puts[i]) * gamma * cs * spot;
     dex += (calls[i]*callDelta + puts[i]*putDelta) * cs;
   }
@@ -1387,7 +1387,6 @@ export async function processOIData() {
   // flip nodes; wall / max-pain LEVELS are raw OI and unaffected. OI_GREEK_T stays the
   // fallback when no DTE is known (the greek fns still default to it).
   const greekT = Math.min(365, Math.max(1, Number.isFinite(dteEff) && dteEff > 0 ? dteEff : 14)) / 365;
-  const exposures = oiCalcExposures(parsed.strikes, parsed.calls, parsed.puts, spot, pair, greekT);
 
   const cs = isNQ(pair) ? 20 : isES(pair) ? 50 : isYM(pair) ? 5 : isRTY(pair) ? 50
            : isFDAX(pair) ? 25 : isFTSE(pair) ? 10 : pair.includes('XAU') ? 100 : 125000;
@@ -1473,6 +1472,48 @@ export async function processOIData() {
     rawIV,
   });
 
+  // ── Greek vol source — v1 (flat) vs v2 (pasted IV smile) ────────────────────
+  // v1 'flat' = the fixed per-class vol (oiFlatVol). v2 'smile' = the per-strike IV you
+  // paste (the SAME surface charm/vanna use), nearest-strike matched; strikes outside the
+  // smile fall back to the picked expiry's ATM IV, and flat vol is the last resort. Gamma
+  // ∝ 1/σ, so using the real ~7% FX IV instead of the 12% guess materially changes GEX and
+  // the flip. Default v1 (behaviour unchanged); flip to v2 to use the paste. Only differs
+  // when IV was actually pasted. Shifts exposures.gex → the bot's PIN/BREAKOUT regime.
+  const greekVolMode = document.getElementById('oiGreekVol')?.value === 'smile' ? 'smile' : 'flat';
+  const flatSig = oiFlatVol(pair);
+  let _smK = null, _smIV = null, _atmRealVol = null;
+  if (ivSmile && Array.isArray(ivSmile.strikes) && ivSmile.strikes.length) {
+    _smK = ivSmile.strikes; _smIV = ivSmile.iv;
+    let bi = 0, bd = Infinity;
+    for (let i = 0; i < _smK.length; i++) { const d = Math.abs(_smK[i] - spot); if (d < bd) { bd = d; bi = i; } }
+    if (_smIV[bi] > 0) _atmRealVol = _smIV[bi];              // ATM of the smile (decimal)
+  }
+  if (_atmRealVol == null && Array.isArray(tsRows) && tsRows.length) {
+    const tgt = primaryExpiry?.dte ?? (Number.isFinite(dteEff) ? dteEff : null);
+    const liq = tsRows.filter(r => r.iv > 0);
+    const pick = liq.length
+      ? (Number.isFinite(tgt) ? liq.slice().sort((a, b) => Math.abs(a.dte - tgt) - Math.abs(b.dte - tgt))[0]
+                              : liq.slice().sort((a, b) => a.dte - b.dte)[0])
+      : null;
+    if (pick && pick.iv > 0) _atmRealVol = pick.iv / 100;    // term-structure iv is in percent
+  }
+  const _nearestSmileIV = (k) => {
+    if (!_smK) return null;
+    let bi = -1, bd = Infinity;
+    for (let i = 0; i < _smK.length; i++) { const d = Math.abs(_smK[i] - k); if (d < bd) { bd = d; bi = i; } }
+    return (bi >= 0 && _smIV[bi] > 0) ? _smIV[bi] : null;
+  };
+  const _useSmile = greekVolMode === 'smile' && (!!_smK || _atmRealVol != null);
+  const _sigCache = new Map();
+  const sigmaFor = (k) => {
+    if (_sigCache.has(k)) return _sigCache.get(k);
+    let v = flatSig;
+    if (_useSmile) { const s = _nearestSmileIV(k); v = (s > 0) ? s : (_atmRealVol > 0 ? _atmRealVol : flatSig); }
+    _sigCache.set(k, v); return v;
+  };
+  const greekVolSource = _useSmile ? (_smK ? 'smile' : 'atm-iv') : 'flat';
+  const exposures = oiCalcExposures(parsed.strikes, parsed.calls, parsed.puts, spot, pair, greekT, sigmaFor);
+
   const withOI = parsed.strikes.map((s,i) => {
     const {gamma, callDelta, putDelta} = oiGreeks(s, spot, pair);
     const callGex = parsed.calls[i] * gamma * cs * spot;
@@ -1489,7 +1530,7 @@ export async function processOIData() {
   const topLevels = withOI.slice(0, numLevels);
 
   const gexProfile = parsed.strikes.map((s,i) => {
-    const {gamma} = oiGreeks(s, spot, pair, greekT);
+    const {gamma} = oiGreeks(s, spot, pair, greekT, sigmaFor(s));
     const callGex = parsed.calls[i] * gamma * cs * spot;
     const putGex  = parsed.puts[i]  * gamma * cs * spot;
     // Raw OI rides along with the gamma-weighted numbers. This is the only CONTIGUOUS
@@ -1652,7 +1693,8 @@ export async function processOIData() {
     // describing one book. Kept ALONGSIDE gammaFlip rather than replacing it, because
     // the bot and export already consume that field.
     gexFlip: gexFlipPrice(parsed.strikes, parsed.calls, parsed.puts, {
-      sigma: oiFlatVol(pair), T: greekT, mult: cs, spot }),
+      sigmaFn: sigmaFor, sigma: flatSig, T: greekT, mult: cs, spot }),
+    greekVolMode, greekVolSource,   // v1 'flat' vs v2 'smile'/'atm-iv' — which vol the gamma/GEX/flip used
     dataWarning,   // ⚠ set when spot is far outside the strike range (stale/mis-scaled paste) — flag, don't silently analyse
     greeksFlow,   // charm/vanna exposure from a pasted IV surface (null unless the IV box is filled)
     expectedMove: expMove,   // ATM straddle → option-implied ± range to expiry
