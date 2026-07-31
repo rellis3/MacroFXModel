@@ -16532,6 +16532,7 @@ const _FREDHISTORY_SERIES = {
   us2y: 'GS2', us5y: 'GS5', us10y: 'GS10', dxy: 'DTWEXBGS',
   tips: 'DFII10', tips5: 'DFII5', bei: 'T10YIE', vix: 'VIXCLS',
   hy: 'BAMLH0A0HYM2', usd_jpy: 'DEXJPUS',
+  sofr: 'SOFR', rrp: 'RRPONTSYD',   // repo rate + reverse-repo facility usage (macro-change strip)
   de10y: 'IRLTLT01DEM156N', gb10y: 'IRLTLT01GBM156N',
   jp10y: 'IRLTLT01JPM156N', au10y: 'IRLTLT01AUM156N',
   ca10y: 'IRLTLT01CAM156N', ch10y: 'IRLTLT01CHM156N',

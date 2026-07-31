@@ -28,6 +28,11 @@ export const MACRO_CHANGE_SPEC = {
   hy:    { label: 'HY credit spread', bps: true,  kind: 'spread', up: 'widening', down: 'tightening' },
   vix:   { label: 'VIX',              bps: false, kind: 'level', dp: 2 },
   dxy:   { label: 'DXY (broad $)',    bps: false, kind: 'level', dp: 2 },
+  // Money-market plumbing: SOFR = the overnight REPO rate (% → bps); RRP = the
+  // Fed's reverse-repo facility usage ($bn level → change shows liquidity
+  // draining/building). Both daily.
+  sofr:  { label: 'SOFR (repo rate)',    bps: true,  kind: 'rate' },
+  rrp:   { label: 'Reverse repo (RRP)',  bps: false, kind: 'flow', unit: 'bn', dp: 0 },
 };
 
 const _round = (x, dp = 0) => { const m = 10 ** dp; return Math.round(x * m) / m; };
@@ -66,7 +71,7 @@ export function buildMacroChanges(histByKey = {}, spec = MACRO_CHANGE_SPEC, opts
     // of the feature — with 5d/20d shown alongside as context.
     const lead = deltas[windows[0]];
     const row = {
-      key, label: meta.label, unit: meta.bps ? 'bps' : 'pt', kind: meta.kind,
+      key, label: meta.label, unit: meta.unit ?? (meta.bps ? 'bps' : 'pt'), kind: meta.kind,
       last: s.last, lastDate: s.lastDate, deltas,
       dir: _dirOf(lead),
       note: meta.up ? (lead > 0 ? meta.up : lead < 0 ? meta.down : '') : '',
@@ -99,6 +104,7 @@ function _fmtLast(row) {
   if (row.kind === 'rate') return `${_round(row.last, 2)}%`;
   if (row.kind === 'spread') return `${_round(row.last, 2)}% (${_round(row.last * 100, 0)}bps)`;
   if (row.kind === 'curve') return `${_round(row.last, 0)}bps`;   // last already in bps
+  if (row.kind === 'flow')  return `$${_round(row.last, 0)}bn`;   // RRP facility usage
   return `${_round(row.last, 2)}`;
 }
 const _sign = v => (v == null ? 'n/a' : (v > 0 ? '+' : '') + v);

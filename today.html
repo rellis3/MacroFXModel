@@ -754,7 +754,8 @@ function renderMacroMoved() {
     }).filter(Boolean).join(' · ');
     const lastFmt = r.kind === 'rate' ? `${(+r.last).toFixed(2)}%`
       : r.kind === 'spread' ? `${Math.round(r.last * 100)}bps`
-      : r.kind === 'curve' ? `${Math.round(r.last)}bps` : (+r.last).toFixed(1);
+      : r.kind === 'curve' ? `${Math.round(r.last)}bps`
+      : r.kind === 'flow' ? `$${Math.round(r.last)}bn` : (+r.last).toFixed(1);
     const title = `${r.label}: now ${lastFmt}. Change vs prior day / week / month.${r.note ? ' ' + r.note + ' today.' : ''} Directional context, not a signal.`;
     return `<span class="gev" title="${title}"><b>${r.label}</b> ${lastFmt} <span style="color:${tint(d1, spread)}">${arrow}</span> <span style="opacity:.8">${parts}</span>${r.note ? ` <i style="opacity:.7">${r.note}</i>` : ''}</span>`;
   }).join('');

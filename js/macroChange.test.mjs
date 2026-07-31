@@ -42,6 +42,15 @@ ok('2s10s last ≈ (4.50-4.11)*100 = 39bps', curve.last === 39, String(curve.las
 ok('2s10s 1d = d10y(+6) - d2y(+1) = +5bps', curve.deltas[1] === 5, String(curve.deltas[1]));
 ok('2s10s inserted right after us10y', rows[rows.findIndex(r => r.key === 'us10y') + 1].key === 'us2s10s');
 
+// ── money-market plumbing: flow ($bn) + rate (SOFR) ──
+const rrp  = mk([420, 420, 420, 420, 420, 500, 480, 470, 460, 450, 445, 440, 438, 436, 435, 434, 433, 432, 431, 430, 428, 426, 424, 435, 405]);
+const sofr = mk(Array(24).fill(4.31).concat([4.33]));
+const mm = buildMacroChanges({ rrp, sofr }, MACRO_CHANGE_SPEC, { windows: [1, 5, 20] });
+const rrpRow = mm.rows.find(r => r.key === 'rrp');
+ok('rrp flow unit is bn (no bps scaling)', rrpRow?.unit === 'bn' && rrpRow.deltas[1] === -30, `${rrpRow?.unit} ${rrpRow?.deltas[1]}`);
+ok('rrp last formats as $405bn', /Reverse repo \(RRP\) \$405bn/.test(mm.text), mm.text.split('\n').find(l => l.startsWith('Reverse')) || '');
+ok('sofr rate delta in bps (+2)', mm.rows.find(r => r.key === 'sofr')?.deltas[1] === 2, String(mm.rows.find(r => r.key === 'sofr')?.deltas[1]));
+
 // ── formatting ──
 ok('text has one line per row', text.split('\n').length === rows.length);
 ok('text sign-formats deltas', /1d \+6bps/.test(text));
