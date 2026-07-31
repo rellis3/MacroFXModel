@@ -3,6 +3,7 @@ import { kvGet, kvSet } from './utils.js';
 import { wallStrengthTier, oiSkew, oiConcentration, clusterStrikes, wallFreshness, volumePCRatio } from './oiConfluence.js';
 import { gammaFlip } from './gammaFlow.js';
 import { charmVannaExposure, gexFlipPrice } from './gammaGreeks.js';
+import { fullBookGex } from './fullBookGex.js';
 import { expectedMove, expectedMoveFromStraddle, ivTermStructure, ivDynamics, riskReversal, vannaState } from './ivMetrics.js';
 
 // ── Storage ──────────────────────────────────────────────────────────────────
@@ -712,6 +713,29 @@ export function oiMatrixTermStructure(raw, minOI = 1) {
       callWall: cw?.s ?? null, putWall: pw?.s ?? null, totalOI: total });
   }
   return out;
+}
+
+// Per-expiry legs from the full matrix, basis-shifted to spot-equivalent prices, for the
+// FULL-BOOK GEX (aggregate every expiry, not just the selected one). Reuses _matrixRows
+// (one parse) and mirrors the basis/inversion the single-expiry parse applies. Drops
+// strikes below minOI per expiry and expiries with < 2 real strikes. Returns
+// [{ dte, strikes, calls, puts }] or null for the simple (non-matrix) format.
+export function oiMatrixExpiryLegs(raw, { basis = 0, inverted = false, minOI = 1 } = {}) {
+  const parsed = _matrixRows(raw);
+  if (!parsed) return null;
+  const shift = s => basis !== 0 ? (inverted ? 1 / s - basis : s - basis) : s;
+  const nExp = Math.max(0, ...parsed.rows.map(r => (Array.isArray(r.cp) ? r.cp.length : 0)));
+  const legs = [];
+  for (let e = 0; e < nExp; e++) {
+    const strikes = [], calls = [], puts = [];
+    for (const r of parsed.rows) {
+      const c = Math.abs(r.cp[e]?.[0] ?? 0), p = Math.abs(r.cp[e]?.[1] ?? 0);
+      if (c + p < minOI) continue;
+      strikes.push(shift(r.strike)); calls.push(c); puts.push(p);
+    }
+    if (strikes.length >= 2) legs.push({ dte: parsed.dtes[e] ?? null, strikes, calls, puts });
+  }
+  return legs.length ? legs : null;
 }
 
 export function oiParseTable(raw) {
@@ -1514,6 +1538,32 @@ export async function processOIData() {
   const greekVolSource = _useSmile ? (_smK ? 'smile' : 'atm-iv') : 'flat';
   const exposures = oiCalcExposures(parsed.strikes, parsed.calls, parsed.puts, spot, pair, greekT, sigmaFor);
 
+  // ── Full-book GEX (v3) — aggregate gamma across EVERY expiry, each weighted by its own
+  // gamma via that expiry's DTE + ATM IV. The SpotGamma/SqueezeMetrics whole-book view.
+  // ANALYSIS-ONLY: computed alongside the single-expiry exposures above, NOT wired to the
+  // bot — the traded PIN/BREAKOUT regime stays on the validated single-expiry number until
+  // this is proven to read the tape better (most likely to matter on indices, not FX).
+  let fullBook = null;
+  {
+    const legs = oiMatrixExpiryLegs(rawOI, { basis, inverted: futuresIsInverted(pair), minOI });
+    if (legs && legs.length >= 2) {
+      // Each expiry's ATM IV from the settlements term structure (percent→decimal), matched
+      // by DTE; flat vol when absent. Per-strike skew per expiry is deferred — gamma is
+      // ATM-led, so the ATM level is the first-order correction.
+      const atmFor = (dte) => {
+        if (Array.isArray(tsRows) && tsRows.length && Number.isFinite(dte)) {
+          const liq = tsRows.filter(r => r.iv > 0);
+          const pick = liq.length ? liq.slice().sort((a, b) => Math.abs(a.dte - dte) - Math.abs(b.dte - dte))[0] : null;
+          if (pick && pick.iv > 0) return pick.iv / 100;
+        }
+        return flatSig;
+      };
+      for (const l of legs) l.sigma = atmFor(l.dte);
+      fullBook = fullBookGex(legs, spot, { mult: cs, flatSigma: flatSig });
+      if (fullBook) fullBook.volSource = (Array.isArray(tsRows) && tsRows.length) ? 'atm-iv' : 'flat';
+    }
+  }
+
   const withOI = parsed.strikes.map((s,i) => {
     const {gamma, callDelta, putDelta} = oiGreeks(s, spot, pair);
     const callGex = parsed.calls[i] * gamma * cs * spot;
@@ -1695,6 +1745,7 @@ export async function processOIData() {
     gexFlip: gexFlipPrice(parsed.strikes, parsed.calls, parsed.puts, {
       sigmaFn: sigmaFor, sigma: flatSig, T: greekT, mult: cs, spot }),
     greekVolMode, greekVolSource,   // v1 'flat' vs v2 'smile'/'atm-iv' — which vol the gamma/GEX/flip used
+    fullBook,   // v3 full-book GEX across ALL expiries (analysis-only; bot uses single-expiry exposures)
     dataWarning,   // ⚠ set when spot is far outside the strike range (stale/mis-scaled paste) — flag, don't silently analyse
     greeksFlow,   // charm/vanna exposure from a pasted IV surface (null unless the IV box is filled)
     expectedMove: expMove,   // ATM straddle → option-implied ± range to expiry
