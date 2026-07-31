@@ -121,6 +121,7 @@ import { ccHvSigma as _ccHvSigma, ccHvMulti as _ccHvMulti, ccHvIntraday as _ccHv
 import { resampleTo as _resampleTo, extractBars } from './js/barUtils.js';   // resample the OANDA 1-min gap to 5-min before merging; extractBars slices the M1 packed arrays for the validator
 import { excursionFromM1, summarizeGiveback } from './js/giveback.js';   // per-bot give-back (MFE vs realised) analytics
 import { wtSeriesForPair, classifyEntry, summarize as summarizeVmc, OPERATOR_WT } from './js/backtestVmc.js';   // backtest VMC-confirmation test
+import { studyTrade as _studyExit, summarizeExitStudy } from './js/backtestExitStudy.js';   // backtest exit-rule replay (TP-resite/trail/BE/time-stop)
 import { volHorseRace as _volHorseRace, HR_MODELS as _HR_MODELS } from './js/volHorseRaceEngine.js';   // 8-model σ-forecast horse race per instrument (QLIKE/MZ), does HAR's gold win generalise
 import { scanConfirmedSignals as _scanConfirmedSignals, mergeLog as _mergeLog, forwardStats as _forwardStats } from './js/forwardTrackEngine.js';   // live post-research track record of the confirmed fade
 import { parseCalendarCsv as _parseCalendarCsv, pairCurrencies as _calPairCurrencies } from './js/newsCalendar.js';   // economic-calendar parser
@@ -9574,6 +9575,49 @@ app.get('/api/backtest-vmc', async (req, res) => {
       trades: classified.sort((a, b) => (b.entry_ts || 0) - (a.entry_ts || 0)).slice(0, 60),
     };
     _btVmcCache[ck] = { at: Date.now(), data: payload };
+    res.json(payload);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── Backtest exit-study: replay each trade's real M1 path under ALTERNATIVE exit
+// rules (closer fixed TP, chandelier trail, breakeven move, time-stop) vs the
+// actual exit. Answers whether the far ~2R+ target is leaving money / round-
+// tripping (analysis/backtest_entry_quality.py: RR>3 targets hit 1-in-7).
+// EXPLORATORY — same 279 trades, one window; gross R (cost ~equal across rules).
+let _btExitCache = null;
+app.get('/api/backtest-exit-study', async (req, res) => {
+  try {
+    if (req.query.refresh !== '1' && _btExitCache && Date.now() - _btExitCache.at < 30 * 60_000)
+      return res.json(_btExitCache.data);
+    const file = path.join(__dirname, 'analysis', 'data', 'backtest_enriched.json');
+    let trades;
+    try { trades = JSON.parse(fs.readFileSync(file, 'utf8')); }
+    catch { return res.status(404).json({ ok: false, error: 'backtest_enriched.json not found' }); }
+
+    const byKey = {};
+    for (const t of trades) {
+      const k = (() => { try { return resolveKey(t.pair); } catch { return String(t.pair || '').toLowerCase(); } })();
+      if (k && t.entry_ts && t.exit_ts) (byKey[k] ||= []).push(t);
+    }
+    const studies = [];
+    const perPair = {};
+    for (const [k, ts] of Object.entries(byKey)) {
+      let packed = null; try { packed = await loadM1ForPair(k, BT_M1_DIR); } catch { packed = null; }
+      let covered = 0;
+      for (const t of ts) {
+        // replay entry → a horizon past the actual exit (bounded so trailing/time
+        // rules can run on, but never runaway): min(exit+24h, entry+72h).
+        const to = Math.min(t.exit_ts + 24 * 3600, t.entry_ts + 72 * 3600);
+        const bars = packed ? extractBars(packed, t.entry_ts, to) : [];
+        if (bars.length < 2) continue;
+        studies.push({ ..._studyExit(bars, t), pair: t.pair, conv: t.conv, rr: t.rr, actualExit: t.pnl_r });
+        covered++;
+      }
+      perPair[k] = { n: ts.length, covered, hasM1: !!packed };
+    }
+    const summary = summarizeExitStudy(studies);
+    const payload = { ok: true, generatedAt: Date.now(), nTrades: trades.length, covered: studies.length, summary, perPair };
+    _btExitCache = { at: Date.now(), data: payload };
     res.json(payload);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });

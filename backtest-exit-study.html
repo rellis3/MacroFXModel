@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backtest exit study · would a different exit bank more?</title>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --panel2:#1c2230; --line:#30363d; --fg:#e6edf3; --dim:#8b949e;
+          --good:#3fb950; --bad:#f85149; --warn:#d29922; --accent:#58a6ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; }
+  header { padding:20px 24px; border-bottom:1px solid var(--line); }
+  h1 { margin:0 0 4px; font-size:20px; } h2 { font-size:15px; margin:22px 0 6px; }
+  .sub { color:var(--dim); font-size:13px; max-width:840px; }
+  a { color:var(--accent); text-decoration:none; }
+  .wrap { padding:20px 24px; max-width:1000px; margin:0 auto; }
+  .explain { background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:12px 14px;
+             font-size:12.5px; color:var(--dim); margin-bottom:16px; }
+  .explain b { color:var(--fg); }
+  .bar { display:flex; gap:12px; align-items:center; margin-bottom:16px; }
+  button { background:var(--panel2); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:6px 12px; cursor:pointer; font-size:13px; }
+  button:hover { border-color:var(--accent); }
+  table { width:100%; border-collapse:collapse; margin-top:6px; font-size:13px; }
+  th,td { text-align:right; padding:6px 10px; border-bottom:1px solid var(--line); font-variant-numeric:tabular-nums; }
+  th:first-child,td:first-child { text-align:left; }
+  th { color:var(--dim); font-weight:600; }
+  .good { color:var(--good); } .bad { color:var(--bad); } .warn { color:var(--warn); }
+  tr.actual { background:rgba(88,166,255,0.08); }
+  tr.best td { font-weight:700; }
+  .tag { font-size:10px; padding:1px 6px; border-radius:4px; margin-left:6px; }
+  .tag.actual { background:var(--accent); color:#001; } .tag.best { background:var(--good); color:#001; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin:6px 0 4px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; }
+  .card h3 { margin:0 0 8px; font-size:12px; color:var(--dim); font-weight:600; }
+  .big { font-size:22px; font-weight:700; }
+  .verdict { border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin:14px 0; font-size:13.5px; }
+  .empty { color:var(--dim); padding:20px 0; }
+  .nfloor { color:var(--warn); font-size:11px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Backtest exit study — would a different exit bank more?</h1>
+  <div class="sub">Replays each trade's <b>real M1 path</b> under alternative exit rules, entry held fixed. The bot's fixed
+  ~2R (often &gt;3R) target hits 1-in-7 and round-trips; this tests closer targets, a trailing stop, a breakeven move and
+  a time-stop against the actual exit. <a href="index.html">← Dashboard</a></div>
+</header>
+<div class="wrap">
+  <div class="explain">
+    <b>How to read it.</b> Every rule is scored in <b>R</b> (risk = |entry−SL|) on the SAME trades, so they're directly
+    comparable; gross R, since cost is ~equal across rules. If a rule's total/expectancy beats <b>actual</b> by a real
+    margin, it's a candidate exit change — to <b>validate OOS</b>, not ship. <b>EXPLORATORY:</b> 279 trades, one ~2-month
+    window; barrier ties resolve adverse-first (conservative). This is about <i>exits</i> — the entry edge is a separate,
+    harder problem (see the entry analysis).
+  </div>
+  <div class="bar"><button id="run">↻ Recompute</button><span id="stamp" class="sub"></span></div>
+  <div id="out"><div class="empty">Reconstructing exits from M1…</div></div>
+</div>
+<script>
+const r3 = (x) => x == null || !isFinite(x) ? '—' : (x >= 0 ? '+' : '') + x.toFixed(3);
+const r1 = (x) => x == null || !isFinite(x) ? '—' : (x >= 0 ? '+' : '') + x.toFixed(1);
+const cls = (x) => x > 0 ? 'good' : (x < 0 ? 'bad' : '');
+const floor = (n) => n < 30 ? ` <span class="nfloor">(n<30)</span>` : '';
+const LABELS = { actual:'Actual exit (as traded)', 'tp1R':'Fixed TP 1R', 'tp1.5R':'Fixed TP 1.5R', 'tp2R':'Fixed TP 2R',
+  'tp3R':'Fixed TP 3R', 'trail0.5/0.5':'Trail (arm .5R, .5R back)', 'trail1/1':'Trail (arm 1R, 1R back)',
+  'be@1R':'Breakeven move @ +1R', 'time4h':'Time-stop 4h', 'time8h':'Time-stop 8h' };
+
+async function run() {
+  const out = document.getElementById('out');
+  out.innerHTML = '<div class="empty">Reconstructing exits from M1…</div>';
+  try {
+    const d = await (await fetch('/api/backtest-exit-study?refresh=1')).json();
+    if (!d.ok) throw new Error(d.error || 'failed');
+    document.getElementById('stamp').textContent =
+      `${d.covered}/${d.nTrades} trades covered · as of ${new Date(d.generatedAt).toLocaleString()}`;
+    const s = d.summary, rules = Object.entries(s.byRule);
+    const actual = s.byRule.actual;
+    const ranked = rules.filter(([k]) => k !== 'actual' && s.byRule[k].n).sort((a, b) => b[1].expR - a[1].expR);
+    const best = ranked[0];
+    const rows = rules.sort((a, b) => (b[1].expR ?? -9) - (a[1].expR ?? -9)).map(([k, m]) => {
+      if (!m.n) return '';
+      const isA = k === 'actual', isB = best && k === best[0];
+      return `<tr class="${isA ? 'actual' : ''} ${isB ? 'best' : ''}"><td>${LABELS[k] || k}${floor(m.n)}${isA ? '<span class="tag actual">actual</span>' : ''}${isB ? '<span class="tag best">best</span>' : ''}</td>
+        <td>${m.n}</td><td class="${cls(m.totR)}">${r1(m.totR)}R</td><td class="${cls(m.expR)}">${r3(m.expR)}R</td><td>${m.winPct}%</td></tr>`;
+    }).join('');
+    const lift = best ? best[1].expR - actual.expR : 0;
+    const vcl = lift > 0.1 ? 'good' : (lift < 0 ? 'warn' : 'warn');
+    const vtxt = !best ? 'No rules computed.' : lift > 0.1
+      ? `Best rule <b>${LABELS[best[0]] || best[0]}</b> beats the actual exit by <b>${lift.toFixed(2)}R/trade</b> (${r1(best[1].totR)}R vs ${r1(actual.totR)}R). A candidate exit change — validate OOS before touching the bot.`
+      : `No exit rule materially beats the actual (${lift >= 0 ? '+' : ''}${lift.toFixed(2)}R). The exit isn't the main lever here.`;
+    out.innerHTML = `
+      <div class="cards">
+        <div class="card"><h3>Actual exit</h3><div class="big ${cls(actual.expR)}">${r3(actual.expR)}R</div><div class="sub">${r1(actual.totR)}R total · ${actual.winPct}% win</div></div>
+        ${best ? `<div class="card"><h3>Best alternative</h3><div class="big ${cls(best[1].expR)}">${r3(best[1].expR)}R</div><div class="sub">${LABELS[best[0]] || best[0]} · ${best[1].winPct}% win</div></div>` : ''}
+        <div class="card"><h3>Winners' median MFE</h3><div class="big">${s.winnersMedianMfe}R</div><div class="sub">peak reached before exit</div></div>
+      </div>
+      <div class="verdict ${vcl}"><b>Read:</b> ${vtxt}</div>
+      <h2>Exit rule comparison (same trades, gross R)</h2>
+      <table><thead><tr><th>Exit rule</th><th>n</th><th>total R</th><th>expectancy</th><th>win%</th></tr></thead><tbody>${rows}</tbody></table>
+      <h2>Excursion — how far trades ran (R)</h2>
+      <table><thead><tr><th></th><th>p25</th><th>p50</th><th>p75</th><th>p90</th></tr></thead><tbody>
+        <tr><td>MFE (favourable)</td><td>${s.mfe.p25}</td><td>${s.mfe.p50}</td><td>${s.mfe.p75}</td><td>${s.mfe.p90}</td></tr>
+        <tr><td>MAE (adverse)</td><td>${s.mae.p25}</td><td>${s.mae.p50}</td><td>${s.mae.p75}</td><td>${s.mae.p90}</td></tr>
+      </tbody></table>
+      <details style="margin-top:10px"><summary style="color:var(--accent);cursor:pointer;font-size:12px">M1 coverage per pair</summary>
+        <table><thead><tr><th>pair</th><th>trades</th><th>covered</th><th>M1?</th></tr></thead><tbody>
+        ${Object.entries(d.perPair).map(([k, p]) => `<tr><td>${k}</td><td>${p.n}</td><td>${p.covered}</td><td>${p.hasM1 ? '✓' : '—'}</td></tr>`).join('')}
+        </tbody></table></details>`;
+  } catch (e) { out.innerHTML = `<div class="empty">Error: ${e.message}</div>`; }
+}
+document.getElementById('run').onclick = run;
+run();
+</script>
+</body>
+</html>
