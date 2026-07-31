@@ -131,16 +131,21 @@ def detect_divergences(price: np.ndarray, osc: np.ndarray, reach=REACH,
             o1, o2 = osc[i1], osc[i2]
             if not (np.isfinite(o1) and np.isfinite(o2)):
                 continue
+            # `gap` is the SIZE of the oscillator disagreement, and `span` the
+            # bars between the two pivots. Presence and stacking were tested;
+            # magnitude never was, and a 5-point divergence is not a 30-point
+            # one.
+            span = i2 - i1
             if is_high:
                 if p2 > p1 and (o1 - o2) >= osc_min:
-                    events.append((c2, -1, 'regular'))   # bear: lower high on osc
+                    events.append((c2, -1, 'regular', o1 - o2, span))
                 elif p2 < p1 and (o2 - o1) >= osc_min:
-                    events.append((c2, -1, 'hidden'))
+                    events.append((c2, -1, 'hidden', o2 - o1, span))
             else:
                 if p2 < p1 and (o2 - o1) >= osc_min:
-                    events.append((c2, +1, 'regular'))   # bull: higher low on osc
+                    events.append((c2, +1, 'regular', o2 - o1, span))
                 elif p2 > p1 and (o1 - o2) >= osc_min:
-                    events.append((c2, +1, 'hidden'))
+                    events.append((c2, +1, 'hidden', o1 - o2, span))
     events.sort(key=lambda e: e[0])
     return events
 
@@ -166,8 +171,8 @@ def build_log(instrument: str, event_tf: int = 5, start=None, end=None,
     other = {}
     for name in ('VWAP', 'MF'):
         d = {}
-        for (i, dirn, kind) in comp[name]:
-            d.setdefault(dirn, []).append(i)
+        for ev in comp[name]:
+            d.setdefault(ev[1], []).append(ev[0])
         other[name] = {k: np.array(sorted(v)) for k, v in d.items()}
 
     sigma = pd.Series(close).pct_change().rolling(
@@ -177,7 +182,7 @@ def build_log(instrument: str, event_tf: int = 5, start=None, end=None,
 
     rows = []
     last_dir, last_i, streak = 0, -10**9, 0
-    for (i, dirn, kind) in comp['WT']:
+    for (i, dirn, kind, gap, span) in comp['WT']:
         if i >= n - max(HORIZONS) - 1 or not np.isfinite(sigma[i]) or sigma[i] <= 0:
             continue
         # streak bookkeeping — same direction, close enough together
@@ -208,6 +213,9 @@ def build_log(instrument: str, event_tf: int = 5, start=None, end=None,
             'has_vwap': 'VWAP' in comps, 'has_mf': 'MF' in comps,
             'wt_level': 'OB' if wt1[i] >= 53 else ('OS' if wt1[i] <= -53 else 'mid'),
             'vol_bucket': int(vb[i]),
+            # magnitude of the disagreement, and how far apart the two pivots were
+            'gap': round(float(gap), 2),
+            'span': int(span),
         }
         for h in HORIZONS:
             e = min(n - 1, i + h)
@@ -331,6 +339,21 @@ def main():
 
     print('\n-- regular vs hidden --')
     print(summarise(log, 'kind', h, base, unit).to_string(index=False))
+
+    print('\n-- (c) DIVERGENCE MAGNITUDE: does a BIGGER gap mean a bigger move? --')
+    log['gap_q'] = pd.qcut(log['gap'], 4,
+                           labels=['Q1 small', 'Q2', 'Q3', 'Q4 large'],
+                           duplicates='drop').astype(str)
+    print(summarise(log, 'gap_q', h, base, unit).to_string(index=False))
+
+    print('\n-- magnitude x VWAP co-divergence (the cell that actually worked) --')
+    log['gap_vwap'] = log['gap_q'] + np.where(log['has_vwap'], ' +VWAP', ' WT only')
+    print(summarise(log, 'gap_vwap', h, base, unit).to_string(index=False))
+
+    print('\n-- PIVOT SPAN: how far apart were the two peaks? --')
+    log['span_q'] = pd.qcut(log['span'], 4, labels=['Q1 near', 'Q2', 'Q3', 'Q4 far'],
+                            duplicates='drop').astype(str)
+    print(summarise(log, 'span_q', h, base, unit).to_string(index=False))
 
     print('\n-- volatility-regime control (does stacking just mean "busy market"?) --')
     print(summarise(log, ['vol_bucket', 'combo'], h, base, unit, min_n=40)

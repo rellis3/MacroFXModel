@@ -4,7 +4,9 @@
   "SPX500_USD": { "pid": 103, "pf": 26,   "match": "S&P 500" },
   "NAS100_USD": { "pid": 121, "pf": 26,   "match": "Nasdaq" },
   "US2000_USD": { "pid": 133, "pf": 26,   "match": "Russell" },
-  "DE30_USD":   { "pid": 130, "pf": 26,   "match": "DAX" },
+
+  "//_130": "pid 130 was supplied as DAX but the tool header returned 'EXPIRATION: YM3Q6' - a DOW code. The product check refused rather than writing Dow's book to DE30_USD_*.tsv, which would have validated perfectly. Remapped to US30_USD, which was missing from this table anyway. DAX is a Eurex product, so QuikStrike (a CME tool) very likely does not carry it at all - run --learn-pid --product DE30_USD to confirm before assuming a pid exists.",
+  "US30_USD":   { "pid": 130, "pf": 26,   "match": "Dow" },
 
   "XAU/USD":    { "pid": 40,  "pf": null, "match": "Gold" },
 

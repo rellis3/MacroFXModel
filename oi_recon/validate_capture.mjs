@@ -38,6 +38,23 @@ function check(file) {
   const notes = [];
 
   if (!kind) {
+    // A change/volume grid for an ILLIQUID product can be structurally perfect
+    // and still parse to null: parseOIMatrix drops all-zero rows and then needs
+    // >=2 strikes. Dow proved it - valid 'C P C P' header, 216 strike rows, and
+    // a term table showing total OI of 11. 'Nothing traded' is a real answer, so
+    // distinguish it from 'we captured the wrong thing' by checking STRUCTURE.
+    const sparseFile = /chg|change|vol/i.test(file);
+    const rows = raw.split('\n').filter(r => r.trim());
+    const hasCP = rows.some(r => {
+      const c = r.split('\t').map(x => x.trim()).filter(Boolean);
+      return c.length >= 4 && c.every(x => x === 'C' || x === 'P');
+    });
+    const ladder = rows.filter(r => /^\s*[-+]?[\d,]+\.?\d*\s*\t/.test(r)).length;
+    if (sparseFile && hasCP && ladder >= 10) {
+      notes.push(`${ladder} strike rows, valid C/P header, but no non-zero cells`);
+      notes.push('empty grid — nothing traded / no OI change in this product today');
+      return { file, kind: 'empty-grid', fails: [], notes };
+    }
     return { file, kind: '?', fails: ['no parser recognised this table'], notes };
   }
 
@@ -49,12 +66,18 @@ function check(file) {
     // "truncated" for having few strikes was a false alarm on real data (9 changed
     // strikes on EUR/USD). Identified by filename, since the parser cannot tell a
     // change grid from a level grid - they are the same shape.
+    // CHANGE and VOLUME grids are both sparse by nature - only strikes that
+    // traded (or whose OI moved) carry a value, and parseOIMatrix drops all-zero
+    // rows. Exempting only the change grid was half a fix: USD/CHF's volume came
+    // back at 6 strikes and was flagged truncated when thin is simply what CHF
+    // volume looks like (GBP 24, EUR 26). Only the OI LEVEL grid must be deep.
+    const sparse = /chg|change|vol/i.test(file);
     const isChange = /chg|change/i.test(file);
     notes.push(`${m.strikes.length} strikes · futures ${m.futures ?? '-'}`
-             + (isChange ? ' · change grid (sparse by design)' : ''));
+             + (sparse ? ` · ${isChange ? 'change' : 'volume'} grid (sparse by design)` : ''));
     notes.push(`callOI ${tc.toLocaleString()} · putOI ${tp.toLocaleString()}`);
     notes.push(`primary ${m.primaryExpiry?.code ?? '-'} (dte ${m.primaryExpiry?.dte ?? '-'})`);
-    if (!isChange && m.strikes.length < 10)
+    if (!sparse && m.strikes.length < 10)
       fails.push(`only ${m.strikes.length} strikes — truncated ladder`);
     if (tc + tp === 0) fails.push('total OI is ZERO — columns almost certainly misread');
     const cw = m.strikes[argmax(m.calls)], pw = m.strikes[argmax(m.puts)];

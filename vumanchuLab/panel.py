@@ -198,6 +198,54 @@ def timeframe_features(bars: pd.DataFrame, minutes: int, wt_params: dict) -> pd.
                                       sigma_window=SIGMA_WINDOW, min_periods=SIGMA_MIN)
     f['vwap_slope'] = np.sign(pd.Series(f['vwap_dist']).diff(3).to_numpy())
 
+    # ── THE CANDLE ITSELF ────────────────────────────────────────────────────
+    # Every other column here is oscillator-derived. Nothing described the BAR,
+    # which for a candles-vs-VuManChu study is the obvious hole: WT oversold on
+    # a long-lower-wick rejection bar and WT oversold on a full-bodied red bar
+    # are the same cell today, and no trader would read them the same way.
+    rng = h - l
+    rng_safe = np.where(rng > 0, rng, np.nan)
+    body = np.abs(c - o)
+    f['body_frac'] = body / rng_safe                       # 1 = marubozu, 0 = doji
+    f['upper_wick'] = (h - np.maximum(o, c)) / rng_safe
+    f['lower_wick'] = (np.minimum(o, c) - l) / rng_safe
+    f['close_pos'] = (c - l) / rng_safe                    # 1 = closed on the high
+    f['bar_dir'] = np.sign(c - o)
+    # Is this a wide or a quiet bar for this market lately? Causal percentile.
+    f['range_pct'] = (pd.Series(rng, index=bars.index)
+                      .rolling(2000, min_periods=200).rank(pct=True).to_numpy())
+
+    # ── APPROACH VELOCITY — how FAST the wave got where it is ────────────────
+    # A slow grind to -60 and a three-bar plunge to -60 are different states.
+    # Same concept the volatility bot already found useful as a cell key
+    # (`approachVel` in pylego/strategy/volatility.py), never applied to VMC.
+    w1 = pd.Series(wt1, index=bars.index)
+    f['wt_vel3'] = w1.diff(3).to_numpy()
+    f['wt_vel10'] = w1.diff(10).to_numpy()
+    # Bars since wt1 last crossed ZERO (distinct from the wt1/wt2 cross above).
+    zc = np.r_[False, np.sign(wt1[1:]) != np.sign(wt1[:-1])]
+    f['bars_since_zero'] = (pd.Series(np.arange(len(c)), index=bars.index)
+                            .groupby(np.cumsum(zc)).cumcount())
+
+    # ── YELLOW-LINE AMPLITUDE ────────────────────────────────────────────────
+    # sign(wt1-wt2) is used in half a dozen places; its SIZE nowhere. A wide
+    # gap is fast momentum; near-zero is the pre-cross convergence state.
+    f['wt_gap'] = np.abs(diff)
+    f['wt_gap_pct'] = (pd.Series(np.abs(diff), index=bars.index)
+                       .rolling(2000, min_periods=200).rank(pct=True).to_numpy())
+
+    # ── FIRST TOUCH vs RE-TOUCH of the extreme ───────────────────────────────
+    # How many times has the wave entered THIS extreme without having visited
+    # the opposite one? A third push into oversold is not a first arrival.
+    z = f['wt_zone'].to_numpy()
+    ext = z != 0
+    entered = ext & ~np.r_[False, ext[:-1]]
+    # last extreme visited, forward-filled (causal)
+    last_ext = pd.Series(np.where(ext, z, np.nan), index=bars.index).ffill()
+    flip = (last_ext != last_ext.shift()).fillna(True)
+    f['zone_touch_n'] = (pd.Series(entered, index=bars.index)
+                         .groupby(flip.cumsum()).cumsum().to_numpy())
+
     # Trailing realised vol on this grid — the scale every outcome is put in.
     ret = pd.Series(c, index=bars.index).pct_change()
     f['sigma'] = ret.rolling(SIGMA_WINDOW, min_periods=SIGMA_MIN).std().to_numpy()
@@ -273,7 +321,13 @@ def build_panel(instrument: str, timeframes=TIMEFRAMES, stride: int = 5,
     base_close_sec = base_f['close_sec'].to_numpy(float)
     for col in ('wt1', 'wt2', 'wt_diff', 'wt_side', 'wt_dir', 'wt_zone',
                 'bars_since_cross', 'mf', 'mf_sign', 'mf_slope',
-                'vwap_dist', 'vwap_slope'):
+                'vwap_dist', 'vwap_slope',
+                # the candle itself
+                'body_frac', 'upper_wick', 'lower_wick', 'close_pos', 'bar_dir',
+                'range_pct',
+                # approach velocity + yellow-line amplitude + re-touch count
+                'wt_vel3', 'wt_vel10', 'bars_since_zero',
+                'wt_gap', 'wt_gap_pct', 'zone_touch_n'):
         panel[f'tf{base_tf}_{col}'] = base_f[col].to_numpy()
     panel['sigma'] = base_f['sigma'].to_numpy()
     panel['has_volume'] = bool(base_f['has_volume'].iloc[0])
@@ -283,7 +337,8 @@ def build_panel(instrument: str, timeframes=TIMEFRAMES, stride: int = 5,
         blk = blocks[tf]
         slow_close = blk['close_sec'].to_numpy(float)
         for col in ('wt1', 'wt2', 'wt_side', 'wt_dir', 'wt_zone', 'mf', 'mf_sign',
-                    'vwap_dist'):
+                    'vwap_dist', 'wt_vel3', 'wt_gap_pct', 'zone_touch_n',
+                    'body_frac', 'close_pos'):
             panel[f'tf{tf}_{col}'] = align_htf_causal(
                 base_close_sec, slow_close, blk[col].to_numpy(float))
 

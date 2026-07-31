@@ -67,9 +67,18 @@ DISCRETE = [
     'agree_direction_1v5', 'agree_level_1v5', 'agree_zone_1v5',
     'agree_level_1v15', 'agree_zone_1v15',
     'stack_side', 'stack_zone', 'stack_n_agree',
+    # candle shape + re-touch (added after the first sweep — the search can only
+    # find what is in its vocabulary, and none of the candle was)
+    'tf1_bar_dir', 'tf1_zone_touch_n', 'tf15_zone_touch_n',
 ]
 CONTINUOUS = ['tf1_wt1', 'tf1_mf', 'tf1_vwap_dist', 'tf1_bars_since_cross',
-              'tf15_wt1', 'tf15_vwap_dist', 'sigma']
+              'tf15_wt1', 'tf15_vwap_dist', 'sigma',
+              # the candle
+              'tf1_body_frac', 'tf1_upper_wick', 'tf1_lower_wick', 'tf1_close_pos',
+              'tf1_range_pct',
+              # approach velocity + yellow-line amplitude
+              'tf1_wt_vel3', 'tf1_wt_vel10', 'tf1_bars_since_zero',
+              'tf1_wt_gap_pct', 'tf15_wt_vel3', 'tf15_wt_gap_pct']
 
 
 def prepare(path: str) -> pd.DataFrame:

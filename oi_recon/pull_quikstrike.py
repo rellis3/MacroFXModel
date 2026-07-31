@@ -475,6 +475,108 @@ def _click_view(ctx, frame, ids: str, text: str) -> bool:
     return False
 
 
+def _has_option(frame, wanted: str) -> bool:
+    try:
+        return bool(frame.evaluate(
+            """(w) => Array.from(document.querySelectorAll('select'))
+                 .some(s => Array.from(s.options).some(o => o.text.trim() === w))""", wanted))
+    except Exception:                                    # noqa: BLE001
+        return False
+
+
+# The tool prints the view in its own header ("Gold (OG|GC) Open Interest Matrix").
+# That is the ONLY reliable per-view marker: all three heatmap views expose the
+# same '(All)' strike selector, so waiting on that confirmed "a matrix view" and
+# happily returned the previous one - which is how OI, OI Change and Volume came
+# back byte-identical for gold.
+VIEW_TITLE = {
+    'oi':      ('open interest matrix', 'change'),   # (must contain, must NOT contain)
+    'chg':     ('change', None),
+    'vol':     ('volume', None),
+    'settles': ('settle', None),
+}
+
+
+def _view_label(frame) -> str:
+    """The tool's own view heading, e.g. 'Gold (OG|GC) Open Interest Matrix'.
+
+    Read from the TITLE ELEMENT, not from body.innerText. The first cut sliced
+    the first 300 characters of the body, which includes the LEFT NAV - and the
+    nav lists 'OI Change'. So the OI view was rejected for containing 'change'
+    while Change and Volume passed on menu text rather than on the actual view.
+    The check was reading the menu, not the page.
+
+    Leaf elements only, and never inside an <a>, so nav links cannot match.
+    """
+    # Scan ALL elements and keep the SHORTEST match, rather than childless ones
+    # only: the settles heading is assembled from several <span>s, so no leaf node
+    # holds the whole string and gold's Settlements view was rejected while being
+    # unmistakably loaded (its ucSettlesTB toolbar was right there).
+    # 'Settles' is also a clean discriminator against the nav's 'Settlements' -
+    # that word does not contain the substring.
+    js = r"""() => {
+      const re = /(Open Interest Change|OI Change|Open Interest|Volume)\s+Matrix|\bSettles\b/i;
+      let best = '';
+      for (const e of Array.from(document.querySelectorAll('div,span,td,h1,h2,h3,b'))) {
+        if (e.closest('a')) continue;
+        const t = (e.innerText || '').replace(/\s+/g, ' ').trim();
+        if (!t || t.length > 120 || !re.test(t)) continue;
+        if (!best || t.length < best.length) best = t;
+      }
+      return best;
+    }"""
+    try:
+        return (frame.evaluate(js) or '').strip()
+    except Exception:                                    # noqa: BLE001
+        return ''
+
+
+def _view_title_ok(frame, key: str) -> bool:
+    lab = _view_label(frame).lower()
+    if not lab:
+        return False
+    # Order matters: 'Open Interest Change Matrix' contains 'Open Interest'.
+    if 'settles' in lab:
+        return key == 'settles'
+    if 'change' in lab:
+        return key == 'chg'
+    if 'volume' in lab:
+        return key == 'vol'
+    if 'open interest' in lab:
+        return key == 'oi'
+    return False
+
+
+def _ensure_view(ctx, page, fr, key: str, tries: int = 3):
+    """Click a view and WAIT until its own toolbar appears; retry if it doesn't.
+
+    A single click was not enough: the session restores the last view, and on
+    gold the nav click silently no-opped, leaving all three heatmap pulls reading
+    the Settlements table. The marker is the view's distinctive control - the
+    strike selector offering '(All)' for the matrix views, the report selector
+    offering 'Standard' for settlements - so we wait for evidence the view
+    actually changed rather than for a fixed delay.
+    """
+    ids, text, _ = VIEWS[key]
+    marker = 'Standard' if key == 'settles' else '(All)'
+    for attempt in range(tries):
+        if not _click_view(ctx, fr, ids, text):
+            return fr, False
+        _settle(fr, page, 2500)
+        fr = _wait_for_tool(ctx, page, 20) or fr
+        for _ in range(12):                              # up to ~24s for the postback
+            if _has_option(fr, marker) and _view_title_ok(fr, key):
+                return fr, True
+            page.wait_for_timeout(2000)
+            fr = _qs_frame(ctx) or fr
+        # Say WHAT was on screen, not just that it wasn't right. Four rounds were
+        # lost this session to "did not switch" messages that named no evidence.
+        print(f'  {key:<8}   view did not switch (attempt {attempt + 1}/{tries}) '
+              f'- marker {marker!r}={_has_option(fr, marker)}, '
+              f'label={_view_label(fr)!r}')
+    return fr, False
+
+
 def _settle(frame, page, ms: int = 2500) -> None:
     """WebForms postbacks have no completion signal we can await reliably."""
     try:
@@ -524,9 +626,28 @@ def mode_inspect(headless: bool) -> None:
 
 
 def mode_pull(product: str | None, views: list, headless: bool, all_strikes: bool) -> None:
-    d = outdir('quikstrike')
     ctx = _launch(headless=headless)
-    page = ctx.pages[0] if ctx.pages else ctx.new_page()
+    try:
+        page = ctx.pages[0] if ctx.pages else ctx.new_page()
+        pull_product(ctx, page, product, views, all_strikes)
+    finally:
+        try:
+            ctx.close()
+        except Exception:                                # noqa: BLE001
+            pass
+
+
+def pull_product(ctx, page, product: str | None, views: list,
+                 all_strikes: bool = True) -> dict:
+    """One product, on an EXISTING browser context. Returns {box: path|None}.
+
+    Split out of mode_pull so a scheduled sweep can drive every product through
+    a single session instead of launching (and re-minting) a browser per product.
+    Never raises: a scheduled run must not lose nine products because the tenth
+    misbehaved.
+    """
+    d = outdir('quikstrike')
+    results: dict = {}
     # Cached session first (no wrapper load at all), minting only if it fails.
     minted = _cached_url()
     src = 'cached'
@@ -535,8 +656,7 @@ def mode_pull(product: str | None, views: list, headless: bool, all_strikes: boo
         src = 'minted'
     if not minted:
         print('[pull] could not reach the QuikStrike tool - is the session logged in?')
-        ctx.close()
-        return
+        return results
     print(f'[pull] session ({src}): {minted[:80]}')
 
     # DIRECT NAVIGATION, no iframe and no product popup. pid identifies the
@@ -552,8 +672,7 @@ def mode_pull(product: str | None, views: list, headless: bool, all_strikes: boo
         page.goto(target, wait_until='domcontentloaded', timeout=90_000)
     except Exception as e:                               # noqa: BLE001
         print(f'[pull] navigation failed: {type(e).__name__}')
-        ctx.close()
-        return
+        return results
     _settle(None, page, 4000)
     fr = _wait_for_tool(ctx, page, 30)
     if not fr and src == 'cached':
@@ -572,8 +691,7 @@ def mode_pull(product: str | None, views: list, headless: bool, all_strikes: boo
     if not fr:
         print('[pull] tool did not finish loading')
         _dump_frame(page.main_frame, 'main document')
-        ctx.close()
-        return
+        return results
     if minted:
         _cache_url(minted)
     print(f'[pull] tool ready{" (pid " + str(ent["pid"]) + ")" if ent else ""}')
@@ -595,19 +713,20 @@ def mode_pull(product: str | None, views: list, headless: bool, all_strikes: boo
             print(f'    header says: {" | ".join(first[:3])[:120]}')
             print(f'    pid={ent["pid"]} pf={ent.get("pf")} may be mispaired - '
                   f'run --learn-pid --product "{product}" to record the real one.')
-            ctx.close()
-            return
+            return results
         print(f'[pull] product confirmed: "{want}" present in header')
 
     written = []
+    seen_tables: dict = {}          # content hash -> which view produced it
     for key in views:
         ids, text, box = VIEWS[key]
-        if not _click_view(ctx, fr, ids, text):
-            print(f'  {key:<8} ! view link not found ({ids} / "{text}")')
+        fr, switched = _ensure_view(ctx, page, fr, key)
+        if switched:
+            print(f'  {key:<8} view    -> "{_view_label(fr)}"')
+        if not switched:
+            print(f'  {key:<8} ! could not switch to this view - skipping it')
             _dump_frame(fr, f'what the frame actually contains ({key})')
-            break                       # all views live in the same nav; retrying is noise
-        _settle(fr, page)
-        fr = _wait_for_tool(ctx, page, 20) or fr
+            continue
         if all_strikes:
             got = _set_select_by_option(fr, '(All)')
             if got:
@@ -638,7 +757,18 @@ def mode_pull(product: str | None, views: list, headless: bool, all_strikes: boo
             if rep:
                 _settle(fr, page)
                 fr = _wait_for_tool(ctx, page, 20) or fr
+        # VERIFY THE VIEW, don't trust the click. On gold, the session restored
+        # the Settlements view from the previous run, the nav click did not move
+        # off it, and all three heatmap views captured the SAME settlements table
+        # - three byte-identical files under three names. A wrong-view capture is
+        # complete, well-formed and wrong, so shape is checked against the view.
         tsv, n, why = _best_table(fr, ctx)
+        want_kind = 'expiry table' if key == 'settles' else 'strike ladder'
+        if tsv and not why.startswith(want_kind):
+            print(f'  {key:<8} ! wrong view: expected a {want_kind}, got "{why}".')
+            print(f'  {"":<8}   The nav click did not land - refusing to write '
+                  f'another view\'s table under {VIEWS[key][2]}.')
+            continue
         if key == 'settles':
             norm = _settles_normalised(fr)
             if norm:
@@ -650,6 +780,21 @@ def mode_pull(product: str | None, views: list, headless: bool, all_strikes: boo
             _dump_tables(fr, ctx)
             _dump_frame(fr, f'controls on the {key} view')
             continue
+        import hashlib
+        h = hashlib.sha1(tsv.encode('utf-8', 'replace')).hexdigest()[:12]
+        # Two EMPTY grids over the same strikes are legitimately identical - Dow's
+        # change and volume matrices both came back blank because Dow options
+        # barely trade (term-table OI of 11). Only treat a repeat as a failed view
+        # switch when the table actually carries data.
+        has_data = any(
+            any(c.strip() for c in row.split('\t')[1:])
+            for row in tsv.split('\n')
+            if row and row[0].isdigit())
+        if h in seen_tables and has_data:
+            print(f'  {key:<8} ! IDENTICAL to the {seen_tables[h]} capture - the view '
+                  'did not actually change. Refusing to write a duplicate.')
+            continue
+        seen_tables[h] = key
         fn = d / f'{safe_name(product or "current")}_{box}.tsv'
         _atomic(fn, tsv)
         written.append(fn)
@@ -675,7 +820,8 @@ def mode_pull(product: str | None, views: list, headless: bool, all_strikes: boo
                   'groups are shifting OI. See the toggle dump below.')
             _dump_frame(fr, 'controls that might hide the extra vol columns')
 
-    ctx.close()
+    # No ctx.close() here: the CALLER owns the browser, so a scheduled sweep can
+    # drive every product through one session instead of re-launching per product.
     if written:
         print()
         r = subprocess.run(['node', str(HERE / 'validate_capture.mjs'), *map(str, written)],
@@ -684,7 +830,11 @@ def mode_pull(product: str | None, views: list, headless: bool, all_strikes: boo
                         if 'ExperimentalWarning' not in l and 'trace-warnings' not in l))
         if r.returncode:
             print('  *** a table FAILED validation - do not ingest it ***')
+        results['_validated'] = (r.returncode == 0)
     print(f'\n[pull] {len(written)} file(s) -> {d}')
+    for f in written:
+        results[f.name] = str(f)
+    return results
 
 
 def mode_settings(product: str | None, view: str, headless: bool) -> None:
@@ -791,9 +941,18 @@ def main() -> None:
         return mode_settings(a.product, 'settles', a.headless)
     if a.inspect:
         return mode_inspect(a.headless)
-    views = [v.strip() for v in a.views.split(',') if v.strip() in VIEWS]
+    asked = [v.strip() for v in a.views.split(',') if v.strip()]
+    views = [v for v in asked if v in VIEWS]
+    # Silently dropping a typo'd view name means you think you captured it.
+    unknown = [v for v in asked if v not in VIEWS]
+    if unknown:
+        print(f'! unknown view(s) ignored: {", ".join(unknown)} '
+              f'(valid: {", ".join(VIEWS)})')
     if not views:
         sys.exit('no valid --views; choose from ' + ','.join(VIEWS))
+    # Settles first: it is the light view, and switching TO it from a 482x43
+    # matrix is what timed out. Views are independent, so order is free.
+    views.sort(key=lambda v: 0 if v == 'settles' else 1)
     mode_pull(a.product, views, a.headless, not a.no_all_strikes)
 
 
