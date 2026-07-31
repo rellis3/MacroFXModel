@@ -74,6 +74,7 @@ import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } fr
 import { compareForecastLines as _compareForecastLines } from './js/forecastDriftCompare.js';
 import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
 import { fetchWeekEvents as _fetchWeekEvents } from './js/econCalendar.js';
+import { buildMacroChanges as _buildMacroChanges, MACRO_CHANGE_SPEC as _MACRO_CHANGE_SPEC } from './js/macroChange.js';
 import { macroContext as _macroContext, macroContextByDate as _macroContextByDate, MACRO_FRED_SERIES as _MACRO_FRED_SERIES, riskSensFor as _riskSensFor } from './js/macroCore.js';
 import { analyzePair as _mcondAnalyzePair, summarizeRows as _mcondSummarize, verdict as _mcondVerdict } from './js/macroConditionerEngine.js';
 import { creditGate as _creditGateBrick } from './js/creditCore.js';
@@ -1952,6 +1953,10 @@ async function _injectServerContext(pair, s) {
   const key = _forecastKeyForPair(pair);
   const fc  = key ? forecastState.latest.instruments[key] : null;
 
+  // Macro deltas (what moved 1d/5d/20d) — shared with the morning brief so the
+  // per-pair read can anchor on shifts ("10Y +6bps today"), not just levels.
+  if (!s.macroChanges) { try { const mc = await _loadMacroChanges(); if (mc?.text) s.macroChanges = mc.text; } catch { /* prompt tolerates absence */ } }
+
   if (fc && !s.volCone) {
     s.volCone = {
       vol_annual: fc.vol_annual ?? null, vol_pct: fc.vol_pct ?? null,
@@ -2174,6 +2179,9 @@ AUD/JPY carry: ${s.audjpy ?? 'N/A'}  (prev: ${s.audjpyPrev ?? 'N/A'})
 NFCI: ${s.nfci ?? 'N/A'}
 10Y TIPS real yield: ${s.tips ?? 'N/A'}%  |  Breakeven inflation: ${s.bei ?? 'N/A'}%
 Cross-asset risk sentiment: ${s.riskSentiment ?? 'N/A'}
+${s.macroChanges ? `
+WHAT MOVED (macro change vs prior day / 1w / 1m — anchor the read on the SHIFT, e.g. "10Y +6bps today → yields grinding higher, USD-supportive", not just the level):
+${s.macroChanges}` : ''}
 
 Foreign curves: ${s.foreignCurves ?? 'N/A'}
 
@@ -2593,6 +2601,28 @@ const _FED_CHAIR_NAMES = /\b(?:(?:Federal Reserve|Fed)\s+Chair(?:man|woman)?\s+|
 const _redactFedChairName = s => s.replace(_FED_CHAIR_NAMES, 'the Fed Chair');
 
 const _MORNING_BRIEF_KV = 'morning_brief_v1';
+
+// Day-over-day / 1w / 1m change on the tracked macro series, so the briefs can
+// SAY what moved ("10Y +6bps today → yields grinding higher"), not just the
+// level. Reads the fredhistory_series_<key> KV (already cached, ascending
+// [{date,value}]) and runs the pure macroChange brick. Cached 30 min.
+let _macroChangeCache = { at: 0, data: null };
+async function _loadMacroChanges() {
+  if (_macroChangeCache.data && Date.now() - _macroChangeCache.at < 30 * 60_000) return _macroChangeCache.data;
+  const keys = Object.keys(_MACRO_CHANGE_SPEC);
+  const hist = {};
+  await Promise.all(keys.map(async k => {
+    try { const raw = await kv.get(`fredhistory_series_${k}`); if (raw) hist[k] = JSON.parse(raw); } catch { /* series skipped */ }
+  }));
+  const data = _buildMacroChanges(hist, _MACRO_CHANGE_SPEC);
+  _macroChangeCache = { at: Date.now(), data };
+  return data;
+}
+app.get('/api/macro-changes', async (_req, res) => {
+  try { const d = await _loadMacroChanges(); res.json({ ok: true, rows: d.rows, windows: d.windows }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 let _morningBriefRunning = false;
 async function _buildMorningBrief() {
   const key = process.env.ANT_KEY;
@@ -2635,6 +2665,7 @@ async function _buildMorningBrief() {
   // Today's scheduled economic calendar (central-bank decisions, CPI/NFP, etc.).
   // Without this the brief cannot mention FOMC/ECB/BoE days — the prompt forbids
   // inventing events, so a tier-1 event that isn't fed here is silently omitted.
+  const macroChanges = await _loadMacroChanges().catch(() => null);
   const events = await _fetchTodayEvents().catch(() => []);
   const bigEvents = events
     .filter(e => ['high', 'medium'].includes((e.impact ?? '').toLowerCase()) && e.ms >= Date.now() - 60 * 60000)
@@ -2654,6 +2685,7 @@ NEVER name a specific central-bank official (Fed Chair, FOMC governor, ECB/BoE/B
 === MACRO SNAPSHOT (${fc?.session_label ?? 'today'}) ===
 ${macro}
 ${fc?.meta?.news_flag ? `Scheduled risk event today: ${fc.meta.news_flag}` : ''}
+${macroChanges?.text ? `\n=== WHAT MOVED (change vs prior day / 1w / 1m — USE THIS to say what's shifting, not just the level) ===\n${macroChanges.text}` : ''}
 
 === TODAY'S SCHEDULED ECONOMIC EVENTS ===
 ${bigEvents}
@@ -2664,6 +2696,7 @@ ${heads}
 READABILITY IS THE #1 GOAL — write for a sharp trader who is NOT a rates/vol specialist:
 - Every line must be understandable by a smart non-specialist. The FIRST time you use a desk term (2s10s, OAS, backwardation, EVZ, real yield, breakeven), add a 3-6 word plain gloss right there (e.g. "the 2s10s curve — long rates minus short — at +36bp").
 - Lead the headline and theme with the plain-English "so what" (what it means / what to do), not the metric. Speak numbers like a person ("the 10-year near 4.5%", "VIX easing to 15"), not to spurious decimals.
+- USE THE "WHAT MOVED" DELTAS. Anchor the read on what's actually SHIFTING, not just today's levels: e.g. "the 10-year is up 6bps today (and +12 on the week) — yields grinding higher, dollar-supportive", "credit spreads tightening 5bps this week — no stress signal". A level with no direction is half the story; say the move and what it implies.
 - Be honest about weight: rates/curve, credit spreads and the vol-risk-premium are the evidenced macro reads — lean on them. Don't state technicals or positioning as mechanism-of-fact, and don't manufacture a strong directional call from a quiet, data-light tape — say when it's a lean.
 - NO FOLKLORE-AS-FACT. Options positioning, implied-vol percentiles (EVZ/GVZ/VIX rank), gamma, technical levels and S/R do NOT reliably PREDICT what comes next — they describe where the market is positioned NOW. NEVER claim one "historically precedes", "reliably leads", "tends to precede", or "signals an incoming" move, and never say "the tape wants to" or state "smart money is doing X" as fact. Elevated EVZ means options are priced for a bigger move than realized — say exactly that ("options are braced for movement the tape hasn't delivered"), not that it foreshadows one. Describe positioning; hedge the inference.
 
@@ -20257,6 +20290,7 @@ const _FREDHISTORY_SERIES = {
   us2y: 'GS2', us5y: 'GS5', us10y: 'GS10', dxy: 'DTWEXBGS',
   tips: 'DFII10', tips5: 'DFII5', bei: 'T10YIE', vix: 'VIXCLS',
   hy: 'BAMLH0A0HYM2', usd_jpy: 'DEXJPUS',
+  sofr: 'SOFR', rrp: 'RRPONTSYD',   // repo rate + reverse-repo facility usage (macro-change strip)
   de10y: 'IRLTLT01DEM156N', gb10y: 'IRLTLT01GBM156N',
   jp10y: 'IRLTLT01JPM156N', au10y: 'IRLTLT01AUM156N',
   ca10y: 'IRLTLT01CAM156N', ch10y: 'IRLTLT01CHM156N',
