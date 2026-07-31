@@ -77,10 +77,21 @@ DEFAULTS = {
     "useServerRegime":       False,     # enable 1m HMM quality gate
     "regimeVetoConfidence":  70,        # min confidence % to trigger veto
 
-    # Kill switches (in R units, 0 = disabled)
-    "killDaily":         2.0,
+    # Kill switches (0 = disabled). NOTE: these were INEFFECTIVE until the switch
+    # was made restart-persistent (risk.py) — the bot restarts often and the
+    # in-memory daily counter zeroed each time, so the worst live day was −18.5R
+    # against a 2R limit that never fired. Backtest (analysis/backtest_entry_quality.py)
+    # on the live book: a working −3R day-stop halves BOTH total loss and drawdown.
+    "killDaily":         3.0,           # max daily R loss (was 2.0; 3.0 tested best on the live book)
     "killWeekly":        5.0,
     "killMonthly":       10.0,
+    "killDailyPct":      3.0,           # max daily % account drawdown — the ROBUST guard: read from
+                                        # live balance, independent of close-detection (catches SL/TP
+                                        # hits the bot never journalled). 0 = off.
+    "killDayTrades":     0,             # max trades opened per day (0 = off). Backtested cut: 3/day
+                                        # slashed drawdown but is aggressive — opt in and validate OOS.
+    "killConsecLosses":  0,             # pause new entries for the rest of the day after N consecutive
+                                        # losses (0 = off). Backtested 3 helped; in-sample, tune OOS.
 
     # Poll interval
     "pollInterval":      2,             # seconds between price checks

@@ -111,3 +111,4 @@ logs/confluence_spx_state.json
 volatilityExhaustion/_wt_bars.json
 volatilityExhaustion/_wt_js.json
 backtestSystem/mt5_history.json
+backtestSystem/killswitch_state.json
