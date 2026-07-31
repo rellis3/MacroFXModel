@@ -140,11 +140,15 @@ def main():
                      help='UTC date (YYYY-MM-DD) to backfill from (default: 2026-05-20, the bot\'s first logged day)')
     ap.add_argument('--days', type=int, default=None, help='Backfill the last N days instead of --from')
     ap.add_argument('--dry-run', action='store_true', help='Print what would be pushed, without pushing')
+    ap.add_argument('--out', default=None,
+                    help='Write the reconstructed round-trip trades to this JSON file (LOCAL only — '
+                         'no DASHBOARD_URL / push needed). For offline entry-quality analysis.')
     args = ap.parse_args()
 
     dashboard_url = _connect()
-    if not dashboard_url and not args.dry_run:
-        log.error('DASHBOARD_URL not set — nothing to push to. Use --dry-run to inspect deals without pushing.')
+    if not dashboard_url and not args.dry_run and not args.out:
+        log.error('DASHBOARD_URL not set — nothing to push to. Use --out FILE to save locally, '
+                  'or --dry-run to inspect deals without pushing.')
         sys.exit(1)
 
     date_from = (datetime.now(timezone.utc) - timedelta(days=args.days)) if args.days \
@@ -166,6 +170,13 @@ def main():
     total_pnl = sum(t['profit'] + t['swap'] for t in trades)
     dates = sorted({datetime.fromtimestamp(t['time_close'], tz=timezone.utc).strftime('%Y-%m-%d') for t in trades})
     log.info(f'Date range: {dates[0]} -> {dates[-1]}  ({len(dates)} distinct days)  net P&L: {total_pnl:+.2f}')
+
+    if args.out:
+        with open(args.out, 'w', encoding='utf-8') as fh:
+            json.dump(trades, fh, indent=2)
+        log.info(f'Wrote {len(trades)} round-trip trades to {args.out} '
+                 f'(local — nothing pushed to KV).')
+        return
 
     if args.dry_run:
         log.info('--dry-run: not pushing. Sample trades:')

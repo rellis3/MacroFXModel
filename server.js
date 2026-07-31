@@ -120,6 +120,7 @@ import { rvHarSigma as _rvHarSigma } from './js/indexRvHar.js';   // validated 5
 import { ccHvSigma as _ccHvSigma, ccHvMulti as _ccHvMulti, ccHvIntraday as _ccHvIntraday } from './js/ccHvSigma.js';   // COG's own σ method (close-to-close HV) for reproducing his index lines
 import { resampleTo as _resampleTo, extractBars } from './js/barUtils.js';   // resample the OANDA 1-min gap to 5-min before merging; extractBars slices the M1 packed arrays for the validator
 import { excursionFromM1, summarizeGiveback } from './js/giveback.js';   // per-bot give-back (MFE vs realised) analytics
+import { wtSeriesForPair, classifyEntry, summarize as summarizeVmc, OPERATOR_WT } from './js/backtestVmc.js';   // backtest VMC-confirmation test
 import { volHorseRace as _volHorseRace, HR_MODELS as _HR_MODELS } from './js/volHorseRaceEngine.js';   // 8-model σ-forecast horse race per instrument (QLIKE/MZ), does HAR's gold win generalise
 import { scanConfirmedSignals as _scanConfirmedSignals, mergeLog as _mergeLog, forwardStats as _forwardStats } from './js/forwardTrackEngine.js';   // live post-research track record of the confirmed fade
 import { parseCalendarCsv as _parseCalendarCsv, pairCurrencies as _calPairCurrencies } from './js/newsCalendar.js';   // economic-calendar parser
@@ -9524,6 +9525,59 @@ app.post('/api/oi-bot/zones/refresh', async (_req, res) => {
 // dashboard (no Python). Rows carry mfe_pips live now (pylego brokers); older
 // rows are enriched here from the M1 path via loadM1ForPair. Cached 5 min — the
 // M1 walk is the only cost. ?refresh=1 forces a recompute.
+// ── Backtest VMC-confirmation test: does WaveTrend exhaustion at entry separate
+// the backtestSystem bot's winning fades from its losing ones? The bot's own
+// confidence vote is anti-predictive (see analysis/backtest_entry_quality.py);
+// this reconstructs causal VMC at each historical entry from fresh R2 M1 and
+// buckets win-rate by VMC agreement. EXPLORATORY — n≈279, one forward window.
+// The enriched trade set is a committed snapshot (analysis/data/backtest_enriched.json).
+let _btVmcCache = {};
+app.get('/api/backtest-vmc', async (req, res) => {
+  try {
+    const tf = Math.max(1, Math.min(240, parseInt(req.query.tf) || 15));   // TF minutes
+    const ob = Math.max(20, Math.min(80, parseInt(req.query.ob) || 45));   // WT exhaustion band
+    const ck = `${tf}:${ob}`;
+    if (req.query.refresh !== '1' && _btVmcCache[ck] && Date.now() - _btVmcCache[ck].at < 30 * 60_000)
+      return res.json(_btVmcCache[ck].data);
+
+    const file = path.join(__dirname, 'analysis', 'data', 'backtest_enriched.json');
+    let trades;
+    try { trades = JSON.parse(fs.readFileSync(file, 'utf8')); }
+    catch { return res.status(404).json({ ok: false, error: 'backtest_enriched.json not found — export it first' }); }
+
+    // Group by instrument key; load M1 + build one causal WT series per pair.
+    const byKey = {};
+    for (const t of trades) {
+      const k = (() => { try { return resolveKey(t.pair); } catch { return String(t.pair || '').toLowerCase(); } })();
+      if (k && t.entry_ts) (byKey[k] ||= []).push(t);
+    }
+    const classified = [];
+    const perPair = {};
+    for (const [k, ts] of Object.entries(byKey)) {
+      let packed = null; try { packed = await loadM1ForPair(k, BT_M1_DIR); } catch { packed = null; }
+      const tmin = Math.min(...ts.map(t => t.entry_ts)) - 10 * 86400;   // 10-day WT warm-up
+      const tmax = Math.max(...ts.map(t => t.entry_ts)) + 3600;
+      const series = packed ? wtSeriesForPair(packed, tmin, tmax, tf, OPERATOR_WT) : null;
+      let covered = 0;
+      for (const t of ts) {
+        const c = classifyEntry(series, t.entry_ts, t.direction, ob);
+        if (c.cls !== 'unknown') covered++;
+        classified.push({ ...t, vmc: c.cls, wt1: c.wt1, signal: c.signal });
+      }
+      perPair[k] = { n: ts.length, covered, hasM1: !!packed };
+    }
+    const summary = summarizeVmc(classified);
+    const payload = {
+      ok: true, generatedAt: Date.now(), tf, ob, nTrades: trades.length,
+      wtParams: OPERATOR_WT, summary, perPair,
+      // recent classified trades for the table (newest first by entry_ts)
+      trades: classified.sort((a, b) => (b.entry_ts || 0) - (a.entry_ts || 0)).slice(0, 60),
+    };
+    _btVmcCache[ck] = { at: Date.now(), data: payload };
+    res.json(payload);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 let _givebackCache = { at: 0, data: null };
 app.get('/api/giveback', async (req, res) => {
   try {
