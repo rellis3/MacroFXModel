@@ -13,7 +13,8 @@ Two things this record settles that no backtest can:
 
 | Date | Our G1 bias | Our G2 stop% / tier | Our G3 dir + target | COG G1 (time) | COG G2 (time, stop%/risk%) | COG dir (time) | Match? | Outcome | Notes |
 |---|---|---|---|---|---|---|---|---|---|
-| _(first row lands when the emitter ships)_ | | | | | | | | | |
+| 2026-07-31 | VALID **LONG** (09:00) — TIDE LONG / FLOW SHORT, disagree | _pending_ | _pending_ | **VALID (10:55)** “Data threshold 1”, SETUP FORMING | _pending_ | _pending_ | **G1 state: MATCH** | | Ours fired 09:00, his 10:55 — ours first, as designed. FLOW was on the WEEKLY fallback (TGA parse bug, fixed same day) so its SHORT read is unreliable for this row. |
+| 2026-07-30 | VALID LONG (09:00) | VALID | VALID **SHORT** (14:15) | — none | — | — none | **inaction: MATCH** | | Our call was NO_TRADE on a G1/G3 conflict; he produced nothing. Both stood aside. |
 
 ## Pre-registered bar
 

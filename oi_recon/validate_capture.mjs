@@ -44,10 +44,18 @@ function check(file) {
   if (kind === 'matrix') {
     const m = parseOIMatrix(raw);
     const tc = sum(m.calls), tp = sum(m.puts);
-    notes.push(`${m.strikes.length} strikes · futures ${m.futures ?? '-'}`);
+    // An OI CHANGE matrix is sparse by nature: only strikes whose open interest
+    // moved carry a value, and parseOIMatrix drops all-zero rows. Flagging it as
+    // "truncated" for having few strikes was a false alarm on real data (9 changed
+    // strikes on EUR/USD). Identified by filename, since the parser cannot tell a
+    // change grid from a level grid - they are the same shape.
+    const isChange = /chg|change/i.test(file);
+    notes.push(`${m.strikes.length} strikes · futures ${m.futures ?? '-'}`
+             + (isChange ? ' · change grid (sparse by design)' : ''));
     notes.push(`callOI ${tc.toLocaleString()} · putOI ${tp.toLocaleString()}`);
     notes.push(`primary ${m.primaryExpiry?.code ?? '-'} (dte ${m.primaryExpiry?.dte ?? '-'})`);
-    if (m.strikes.length < 10) fails.push(`only ${m.strikes.length} strikes — truncated ladder`);
+    if (!isChange && m.strikes.length < 10)
+      fails.push(`only ${m.strikes.length} strikes — truncated ladder`);
     if (tc + tp === 0) fails.push('total OI is ZERO — columns almost certainly misread');
     const cw = m.strikes[argmax(m.calls)], pw = m.strikes[argmax(m.puts)];
     const lo = Math.min(...m.strikes), hi = Math.max(...m.strikes);

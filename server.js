@@ -6052,8 +6052,15 @@ async function _cogDailyTGA(days = 200) {
     if (!/Treasury General Account \(TGA\) Closing Balance/i.test(row.account_type || '')) continue;
     // The newest row's close is often still the literal string 'null' until the
     // statement finalises. Skip those rather than coercing them to 0.
-    const v = Number(row.close_today_bal);
-    if (Number.isFinite(v) && row.close_today_bal !== 'null') out.push({ date: row.record_date, value: v });
+    // DTS quirk: on the row LABELLED 'Closing Balance', close_today_bal is the
+    // literal string 'null' and the figure sits in open_today_bal. Reading only
+    // close_today_bal returned an empty series, which silently fell back to
+    // FRED's WEEKLY WTREGEN - so 'FLOW day-over-day' was really a SEVEN-DAY
+    // change wearing a daily label. The fallback was working; the label was lying.
+    const c = Number(row.close_today_bal), o = Number(row.open_today_bal);
+    const v = (row.close_today_bal !== 'null' && Number.isFinite(c)) ? c
+            : (row.open_today_bal !== 'null' && Number.isFinite(o)) ? o : null;
+    if (v != null) out.push({ date: row.record_date, value: v });
   }
   return out.sort((a, b) => a.date.localeCompare(b.date));
 }

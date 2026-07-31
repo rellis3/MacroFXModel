@@ -75,6 +75,20 @@ def _api_get(page, url: str):
         return None, f'bad JSON: {e}'
 
 
+def _atomic_write(path: Path, text: str) -> None:
+    """Write via a temp file + rename, never in place.
+
+    Once anything reads these on a schedule (a dashboard, a cron ingest), a
+    partial file must be unobservable. os.replace is atomic on the same volume,
+    so a reader sees either the old file or the whole new one - never a
+    half-written matrix, which would parse cleanly and be wrong.
+    """
+    import os
+    tmp = path.with_suffix(path.suffix + '.part')
+    tmp.write_text(text, encoding='utf-8')
+    os.replace(tmp, path)
+
+
 def _load(path: Path, default):
     try:
         return json.loads(path.read_text())
@@ -273,7 +287,8 @@ def _fetch_expiry(page, exp: dict, trade_date: str):
     return _api_get(page, url)
 
 
-def mode_fetch(pair: str | None, headless: bool, delay: float, n_exp: int) -> None:
+def mode_fetch(pair: str | None, headless: bool, delay: float, n_exp: int,
+               want_date: str | None = None) -> None:
     ids = _load(IDS_FILE, {})
     if not ids:
         sys.exit(f'No product ids yet - run:  python fetch_oi.py --discover')
@@ -305,6 +320,11 @@ def mode_fetch(pair: str | None, headless: bool, delay: float, n_exp: int) -> No
             continue
 
         exps, trade_date, err = _expiry_list(page, root)
+        # Pinning the date is what makes a paste-vs-fetch diff meaningful: OI
+        # moves every session, so comparing two different settlements shows
+        # drift and reads exactly like a bug.
+        if want_date:
+            trade_date = want_date
         if err or not exps:
             print(f'  {sym:<11} ! expiry list failed: {err or "empty"}')
             continue
@@ -358,20 +378,22 @@ def mode_fetch(pair: str | None, headless: bool, delay: float, n_exp: int) -> No
                 print(f'  {sym:<11} ! {label}: {e}')
                 continue
             fn = d / f'{safe_name(sym)}_{label}_matrix.tsv'
-            fn.write_text(tsv, encoding='utf-8')
+            _atomic_write(fn, tsv)
             written.append(fn)
             # Record the SYMBOL alongside the filename. safe_name() is not
             # reversible: 'EUR/USD' and 'EUR_USD' both flatten to 'EUR_USD', and
             # 'NAS100_USD' is already underscored - so the comparator must be told
             # the symbol, not made to guess it back out of the path.
-            written_syms.append(dict(file=fn.name, sym=sym, kind=label))
+            written_syms.append(dict(file=fn.name, sym=sym, kind=label,
+                                     tradeDate=trade_date, expiries=len(oi_cols),
+                                     futures=futures))
         anchor = (f'{futures:g} (put-call parity)' if futures else
                   'NONE - primary expiry will be scored on total OI, not near-money')
         print(f'  {sym:<11} {len(oi_cols)} expiries - tradeDate {trade_date} '
               f'- futures {anchor} -> 2 files')
 
     ctx.close()
-    (d / 'fetch_manifest.json').write_text(json.dumps(
+    _atomic_write(d / 'fetch_manifest.json', json.dumps(
         dict(files=written_syms, when=date.today().isoformat()), indent=2))
     print(f'\n[fetch] {len(written)} file(s) -> {d}')
     _validate(written)
@@ -515,6 +537,57 @@ def mode_watch(pair: str, headless: bool) -> None:
         print('        products.py. Re-run and finish ON the settlements page.')
 
 
+def mode_audit_dates(pair: str, contract: str, n: int, headless: bool) -> None:
+    """Same expiry, several settlement dates - which one matches the paste?
+
+    A paste-vs-fetch gap that is mostly-equal with scattered revisions is the
+    signature of preliminary vs final open interest, not of a parsing fault. CME
+    publishes preliminary OI in the evening and revises it next morning, and the
+    payload says which it is (`reportType`). So pull the same contract across the
+    last few dates and print totals + reportType: whichever row matches the paste
+    identifies both the date AND the revision state we should be requesting.
+    """
+    ids = _load(IDS_FILE, {})
+    root = _id_of(ids.get(pair))
+    if not root:
+        sys.exit(f'no product id for {pair} - run --discover first')
+    prod = next((x for x in CME_PRODUCTS if x['sym'] == pair), None)
+    slug = _slug_of(ids.get(pair), prod['slug'] if prod else '')
+    ctx = _launch(headless=headless)
+    page = ctx.pages[0] if ctx.pages else ctx.new_page()
+    page.goto(f'https://www.cmegroup.com/markets/{slug}.settlements.options.html',
+              wait_until='domcontentloaded', timeout=90_000)
+    exps, _, err = _expiry_list(page, root)
+    if err:
+        ctx.close()
+        sys.exit(f'expiry list failed: {err}')
+    exp = next((e for e in exps if e['contractId'] == contract or e['qs'] == contract), None)
+    if not exp:
+        ctx.close()
+        sys.exit(f'{contract} not listed. Saw: ' + ', '.join(e['qs'] for e in exps[:12]))
+    data, err = _api_get(page, f'{API}/TradeDateAndExpirations/{root}?isProtected')
+    dates = []
+    for g in data or []:
+        for e in g.get('expirations') or []:
+            if e.get('contractId') == exp['contractId']:
+                dates = [t.get('formatedDate') for t in (e.get('tradeDates') or [])][:n]
+    print(f'\n[audit-dates] {pair} {exp["qs"]} ({exp["contractId"]}) - {len(dates)} date(s)\n')
+    print('  tradeDate    reportType    updateTime                     callOI      putOI')
+    for d in dates:
+        payload, ferr = _fetch_expiry(page, exp, d)
+        if ferr:
+            print(f'  {d}  {ferr}')
+            continue
+        oi = strikes_from_settlements(payload, 'openInterest')
+        c = int(sum(x for x, _ in oi.values()))
+        p_ = int(sum(y for _, y in oi.values()))
+        print(f'  {d}   {str(payload.get("reportType")):<13} '
+              f'{str(payload.get("updateTime"))[:28]:<30} {c:>9,} {p_:>10,}')
+        time.sleep(1.5)
+    ctx.close()
+    print('\n  Compare each row against the pasted totals for the same expiry.')
+
+
 def mode_seed_dates(base: str) -> None:
     """Write code_dates/<SYM>.tsv for every instrument, from the pasted term tables.
 
@@ -578,6 +651,10 @@ def main() -> None:
                     help='ask the API what product id N is (1 request)')
     ap.add_argument('--save', action='store_true',
                     help='with --check-id --pair: store it if it looks right')
+    ap.add_argument('--audit-dates', action='store_true',
+                    help='with --pair --contract: same expiry across recent settlement dates')
+    ap.add_argument('--contract', help='contract id or QuikStrike code, e.g. EUUQ26')
+    ap.add_argument('--n', type=int, default=4, help='how many dates (default 4)')
     ap.add_argument('--watch', action='store_true',
                     help='with --pair: open a browser, YOU navigate, it records the id')
     ap.add_argument('--fetch', action='store_true', help='fetch + write + validate')
@@ -590,6 +667,8 @@ def main() -> None:
     ap.add_argument('--slug', help='with --discover --pair: the real CME path or full '
                                    'URL of that product OPTIONS settlements page')
     ap.add_argument('--expiries', type=int, default=8, help='nearest N expiries (default 8)')
+    ap.add_argument('--trade-date', metavar='MM/DD/YYYY',
+                    help='pin the settlement date (default: latest published)')
     ap.add_argument('--headless', action='store_true', help='no visible window (overnight)')
     ap.add_argument('--delay', type=float, default=1.5, help='seconds between requests')
     a = ap.parse_args()
@@ -599,6 +678,10 @@ def main() -> None:
         return mode_selftest()
     if a.check_id:
         return mode_check_id(a.check_id, a.pair, a.save, a.headless)
+    if a.audit_dates:
+        if not (a.pair and a.contract):
+            sys.exit('--audit-dates needs --pair and --contract')
+        return mode_audit_dates(a.pair, a.contract, a.n, a.headless)
     if a.watch:
         if not a.pair:
             sys.exit('--watch needs --pair, e.g. --watch --pair "SPX500_USD"')
@@ -606,7 +689,7 @@ def main() -> None:
     if a.discover:
         return mode_discover(a.pair, a.headless, max(1.0, a.delay), a.slug)
     if a.fetch:
-        return mode_fetch(a.pair, a.headless, a.delay, a.expiries)
+        return mode_fetch(a.pair, a.headless, a.delay, a.expiries, a.trade_date)
     ap.print_help()
     print('\nFirst run:\n  python fetch_oi.py --selftest\n'
           '  python fetch_oi.py --discover --pair "EUR/USD"\n'

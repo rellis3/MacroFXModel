@@ -71,7 +71,14 @@ export function computeG1(series, opts = {}) {
   }
 
   const cur = daily[daily.length - 1], prev = daily[daily.length - 2];
-  const flowBn = (cur.net - prev.net) / 1000;                    // millions → $bn
+  const flowBn = (cur.net - prev.net) / 1000;                    // millions -> $bn
+  // The gap between the two most recent points. If the daily TGA feed fails we
+  // fall back to WEEKLY data, and a 7-day change reported as 'day-over-day' is
+  // a lie the output cannot detect. Carry the span so the label always matches
+  // the data, and widen the threshold proportionally - a weekly move of 10bn is
+  // not the same event as a daily one.
+  const flowSpanDays = Math.max(1, Math.round(
+    (new Date(cur.date) - new Date(prev.date)) / 864e5));
 
   // TIDE — the persistent bias (multi-week trend).
   const nBack = Math.min(daily.length - 1, rocWeeks * 5);        // ~5 business days/week
@@ -86,7 +93,8 @@ export function computeG1(series, opts = {}) {
   const creditStressed = hyChgBp != null && hyChgBp > creditStressBp;
 
   const tideBias = tideChgPct > 0 ? 'LONG' : tideChgPct < 0 ? 'SHORT' : null;
-  const flowBias = flowBn > flowThresholdBn ? 'LONG' : flowBn < -flowThresholdBn ? 'SHORT' : null;
+  const flowThr = flowThresholdBn * flowSpanDays;   // scale the bar to the span
+  const flowBias = flowBn > flowThr ? 'LONG' : flowBn < -flowThr ? 'SHORT' : null;
 
   // BOTH readings are emitted. Which one tracks COG's Gate 1 is exactly what
   // the forward record is for — picking one now would be inventing the answer.
@@ -98,14 +106,14 @@ export function computeG1(series, opts = {}) {
     netLiquidityUsdBn: +(cur.net / 1000).toFixed(1),
     asOfDate: cur.date, dailyDays: daily.length,
     tide: { chgPct: +tideChgPct.toFixed(2), overDays: nBack, bias: tideBias },
-    flow: { dayOverDayBn: +flowBn.toFixed(1), fromDate: prev.date, toDate: cur.date,
-            bias: flowBias, thresholdBn: flowThresholdBn },
+    flow: { changeBn: +flowBn.toFixed(1), spanDays: flowSpanDays, isDaily: flowSpanDays === 1,
+            fromDate: prev.date, toDate: cur.date, bias: flowBias, thresholdBn: +flowThr.toFixed(1) },
     agree: !!(tideBias && flowBias && tideBias === flowBias),
     hyNow, hyChgBp: hyChgBp == null ? null : +hyChgBp.toFixed(1), creditStressed,
     reason: creditStressed
       ? `HY credit widened ${hyChgBp?.toFixed(0)}bp over ${rocWeeks}w — liquidity is not reaching risk assets`
       : `TIDE ${tideChgPct >= 0 ? '+' : ''}${tideChgPct.toFixed(2)}% over ${nBack}d`
-        + ` · FLOW ${flowBn >= 0 ? '+' : ''}${flowBn.toFixed(1)}bn day-over-day`
+        + ` · FLOW ${flowBn >= 0 ? '+' : ''}${flowBn.toFixed(1)}bn over ${flowSpanDays}d`        + (flowSpanDays > 1 ? ' (WEEKLY FALLBACK - not the daily signal)' : '')
         + (tideBias && flowBias && tideBias !== flowBias ? ' — TIDE and FLOW DISAGREE' : ''),
   };
 }

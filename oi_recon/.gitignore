@@ -2,3 +2,6 @@
 .chrome-profile/
 # Recon captures raw pages/JSON that may embed session ids.
 out/
+
+# Holds live QuikStrike insid/qsid - session identifiers, never commit.
+.qs_session.json

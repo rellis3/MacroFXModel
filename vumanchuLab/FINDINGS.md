@@ -452,6 +452,176 @@ Lookback now scales as `max(60, 5k + min_gap)`. **Every divergence number above
 is post-fix**; the pre-fix run would have supported slice 3's "no" for the
 wrong reason.
 
+---
+
+# Slice 5 — divergence STACKING and the size of what follows (`divergence_stack.py`)
+
+The owner's hypothesis, from two annotated pullbacks on a gold 5m chart: one
+divergence -> small pullback; the divergence repeating over two peaks (a
+"double") AND the VWAP oscillator diverging too -> a much bigger reversal.
+
+That is a MAGNITUDE question ("given a divergence, how big is what follows"),
+not the binary one slice 3 tested and nulled. Divergences are detected
+causally as they confirm (5-bar fractal, reach 2), logged with their streak,
+which components co-diverge, and the forward MFE/MAE in sigma. Baseline is a
+RANDOM-BAR control drawn to the same direction mix — in a trending market an
+MFE in any direction looks impressive without one.
+
+12,754 (gold) / 26,768 (eurusd) / 12,669 (nq) WaveTrend divergences, 180m
+forward.
+
+## D1. The "double" on its own — NULL, 3 out of 3
+
+| streak | gold | eurusd | nq |
+|---|---|---|---|
+| double, WT only (vs control) | −0.021 | −0.005 | −0.034 |
+
+Stacking divergences without VWAP does nothing anywhere. Gold's own streak
+table: 1 -> +0.000, 2 -> +0.021 (t 1.32), 3 -> −0.037. Flat.
+
+## D2. VWAP co-divergence — REAL, and it replicates
+
+| cell (vs random-bar control, σ) | gold | eurusd | nq |
+|---|---|---|---|
+| single + VWAP | +0.046 (t 1.6) | **+0.130** (t 5.9) | **+0.101** (t 3.5) |
+| **double + VWAP** | **+0.216** (t 4.2) | **+0.150** (t 4.5) | **+0.148** (t 3.4) |
+| double, WT only | −0.021 | −0.005 | −0.034 |
+| single, WT only | −0.005 | −0.013 | −0.036 |
+
+`double + VWAP` is the best cell on all three instruments. But on eurusd it is
+barely better than `single + VWAP` (0.150 vs 0.130) — so **the VWAP
+co-divergence is doing the work, not the double.** Gold is the only instrument
+where the double clearly adds on top.
+
+Money Flow again contributes nothing: gold `WT+MF` = −0.002 vs `WT` alone
+−0.014. Only VWAP joining changes anything.
+
+## D3. The catch — on FX and the index it is VOLATILITY, not direction
+
+`edge_ratio` = MFE ÷ |MAE|, i.e. does price actually go the divergence's way
+more than against it:
+
+| double + VWAP | MFE | MAE | edge ratio |
+|---|---|---|---|
+| gold | 0.970 | −0.752 | **1.29** |
+| eurusd | 0.871 | −0.896 | 0.97 |
+| nq | 0.886 | −0.868 | 1.02 |
+
+On **gold** the excursion is genuinely asymmetric — it goes the divergence's
+way. On **eurusd the MAE is LARGER than the MFE**, and nq is symmetric. There,
+a WT+VWAP co-divergence says "a bigger move is coming", not "a reversal is
+coming". Alerting it as a reversion signal on FX or an index would be
+mislabelling a volatility-expansion signal.
+
+## D4. Regular vs hidden, finally the textbook sign
+
+Regular beats hidden on all three (gold +0.024/−0.023, eurusd +0.019/−0.014,
+nq −0.002/−0.038). Small, but consistently signed the way the definitions say
+— regular = reversal, hidden = continuation.
+
+## D5. Vol-regime caveat
+
+Gold split by volatility tercile: `double + VWAP` is the best cell in all
+three buckets (+0.342 calm, +0.091 mid, +0.177 high) but only 2 of 3 clear
+t>=2, and in the calm bucket EVERY cell beats the control — meaning the
+random-bar control is not volatility-matched and the pooled +0.216 is
+flattered. The within-bucket numbers are the honest ones, and they are roughly
+half the pooled figure.
+
+## Verdict on the hypothesis
+
+- **"the double makes it bigger"** — not supported. Null on all three without
+  VWAP.
+- **"VWAP diverging too makes it bigger"** — supported, replicated 3/3,
+  t = 3.4–5.9.
+- **"...and that means a reversal"** — supported on gold only. On eurusd and
+  nq the move is bigger in BOTH directions.
+
+This is the first mechanism-specific positive in the study. It is a
+descriptive magnitude effect measured against a control, not a tested entry —
+no costs, no exit rule, no OOS split on this slice yet. Those are the next
+steps, in that order.
+
+---
+
+# Slice 6 — unguided search (`discover.py`)
+
+Every earlier slice tested a hand-framed hypothesis. This one enumerates the
+condition space itself — all discrete VMC state plus continuous features cut
+into terciles, as singles AND all pairs — and puts every cell through a funnel
+where each stage is a real holdout.
+
+## X1. The funnel (discovery = gold, confirmation = eurusd + nq)
+
+| stage | test | survivors | chance |
+|---|---|---|---|
+| 0 | enumerated | 1,808 | — |
+| 1 | \|t_IS\| >= 2.5 (first 60% by time) | 150 | ~22 |
+| 2 | + OOS same sign, \|t\| >= 1 (last 40%) | 102 | ~24 |
+| 3 | + same sign on BOTH other markets | 102 | ~26 |
+
+102 vs ~26. Deduplicating cells that are the same underlying bar-set wearing
+different feature names (checked explicitly — max 6 aliases, median 1) leaves
+**77 distinct survivors, still ~3x chance.**
+
+Independently of any hypothesis, the search rediscovered the study's two main
+findings: fast-timeframe WT oversold confirmed by a slower timeframe -> reverts,
+and its mirror (timeframes in conflict + stretched VWAP -> continues, the one
+cell with a consistently NEGATIVE delta on all three markets). That is a real
+validation — hand-framing and blind search converged.
+
+## X2. The oddity the search surfaced, and why it matters more than the survivors
+
+Nearly every survivor had **OOS delta roughly DOUBLE its IS delta** (1.55 ->
+3.57, 1.29 -> 3.31, 1.38 -> 3.30, 1.57 -> 3.29 ...). Selection bias inflates
+in-sample and deflates out-of-sample. This was the opposite, on almost every
+row — which is a signature of the effect changing over time, not of robustness.
+
+Chasing it with a per-year breakdown of the core condition (WT oversold):
+
+| year | eurusd | gold | nq |
+|---|---|---|---|
+| 2016 | +2.00 | | |
+| 2017 | +1.59 | | |
+| 2018 | +0.30 | | |
+| 2019 | +1.11 | | |
+| 2020 | +2.68 | | |
+| 2021 | +0.40 | +1.12 | +3.04 |
+| 2022 | +0.21 | +1.65 | −0.18 |
+| 2023 | +1.23 | +0.46 | +1.97 |
+| 2024 | +0.65 | +2.16 | +3.02 |
+| 2025 | +2.11 | +3.35 | +2.51 |
+| 2026 | +0.24 | +2.71 | +1.65 |
+
+Two readings, and they pull in opposite directions:
+
+**The good one — the SIGN is extraordinarily persistent.** 22 of 23
+instrument-years are positive (eurusd 11/11, gold 6/6, nq 5/6). Under a
+coin-flip null that is p ~ 5e-6. This is the strongest single piece of evidence
+in the whole study, and it is about DIRECTION, not size.
+
+**The bad one — the MAGNITUDE is regime-dependent and not stable.** Gold's
+effect roughly TRIPLED from 2021-23 (~1.1pp) to 2024-26 (~2.7pp); eurusd swings
+between +0.21 and +2.68 with no pattern; nq has a negative year. So gold's
+"strong OOS" in the funnel above was its 2024-26 regime, **not** evidence of a
+durable edge — the funnel's stage-2 result is flattered by exactly that.
+
+Practical consequence: the direction of this effect is about as well
+established as anything gets in this repo; the size of it on any given year is
+not forecastable from its own history.
+
+## X3. Honest limits of the search
+
+- It can only search features that exist in the panel. The divergence-stacking
+  idea (slice 5) was outside the panel's vocabulary — blind search could never
+  have proposed it. Widening the feature set is the fix, and it is the main
+  thing that would make this engine better.
+- Survivors are still SEARCH results. Clearing three holdouts makes them leads
+  worth a forward test, not established effects.
+- The chance expectations assume independence between cells; the cells overlap
+  heavily by construction, so treat "3x chance" as corroboration of a small
+  number of underlying effects, not as 77 findings.
+
 ## Multiple testing
 
 41 cells per instrument per horizon; ~1.9 expected to clear |t|≥2 by chance.

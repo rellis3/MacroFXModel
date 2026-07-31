@@ -217,10 +217,10 @@ def _probe_verdict(manifest: list) -> None:
 # automated about the sign-in and nothing is stored by this script but the
 # browser profile Chrome writes itself.
 # ─────────────────────────────────────────────────────────────────────────────
-def mode_login() -> None:
+def mode_login(url: str = 'https://www.cmegroup.com/') -> None:
     ctx = _launch(headless=False)
     page = ctx.pages[0] if ctx.pages else ctx.new_page()
-    page.goto('https://www.cmegroup.com/', wait_until='domcontentloaded')
+    page.goto(url, wait_until='domcontentloaded')
     print('\n' + '=' * 72)
     print(' A Chrome window is open. Sign in to CME yourself - this script does')
     print(' not read, store or transmit your credentials. Navigate to one of the')
@@ -636,14 +636,29 @@ def _dump_tables(page, d: Path, sym: str, suffix: str) -> None:
 
 
 def _launch(headless: bool):
+    """Launch the persistent, already-logged-in Chrome.
+
+    `headless=True` does NOT use Chrome's headless mode. Akamai blocks true
+    headless outright, so an unattended run would fail at 2am in a way an
+    interactive test never reproduces. Instead the same real, rendering browser
+    is launched with its window parked far off-screen: identical to the browser
+    you use by hand, just not in your way.
+
+    Note what this is and isn't. It is not fingerprint spoofing or impersonation
+    - it is the same Chrome, the same profile, the same session you logged into
+    yourself. It IS the difference between an unattended run working and not, so
+    treat it as part of the same operator decision as everything else here.
+    """
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
         sys.exit('Playwright not installed.  pip install playwright  &&  playwright install chromium')
     pw = sync_playwright().start()
     PROFILE.mkdir(parents=True, exist_ok=True)
-    kw = dict(user_data_dir=str(PROFILE), headless=headless,
-              viewport={'width': 1600, 'height': 1000}, args=['--start-maximized'])
+    args = ['--start-maximized'] if not headless else [
+        '--window-position=-32000,-32000', '--window-size=1600,1000']
+    kw = dict(user_data_dir=str(PROFILE), headless=False,
+              viewport={'width': 1600, 'height': 1000}, args=args)
     # Prefer real installed Chrome — it is the browser you logged in with.
     try:
         return pw.chromium.launch_persistent_context(channel='chrome', **kw)
@@ -742,7 +757,7 @@ def main() -> None:
     if a.probe:
         mode_probe(a.delay, a.limit)
     if a.login:
-        mode_login()
+        mode_login(a.url)
     if a.browse:
         mode_browse(a.delay, a.limit, a.headless, a.only)
     if a.record:
