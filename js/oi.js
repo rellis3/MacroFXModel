@@ -1503,7 +1503,10 @@ export async function processOIData() {
   // ∝ 1/σ, so using the real ~7% FX IV instead of the 12% guess materially changes GEX and
   // the flip. Default v1 (behaviour unchanged); flip to v2 to use the paste. Only differs
   // when IV was actually pasted. Shifts exposures.gex → the bot's PIN/BREAKOUT regime.
-  const greekVolMode = document.getElementById('oiGreekVol')?.value === 'smile' ? 'smile' : 'flat';
+  // Default v2 (real IV): use the pasted smile / ATM IV when available, flat only as the
+  // fallback — so the bot and the vol-forecast export (which read the stored greeks) get
+  // the real-vol GEX/flip automatically. Force 'flat' on the select for a v1 A/B.
+  const greekVolMode = document.getElementById('oiGreekVol')?.value === 'flat' ? 'flat' : 'smile';
   const flatSig = oiFlatVol(pair);
   let _smK = null, _smIV = null, _atmRealVol = null;
   if (ivSmile && Array.isArray(ivSmile.strikes) && ivSmile.strikes.length) {
