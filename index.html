@@ -782,6 +782,14 @@ Columns: CallChg CallPrior CallSettle | Strike | PutSettle PutPrior PutChg | Vol
         <input class="oi-input" type="number" id="oiDTE" placeholder="4" min="0" max="365" style="width:80px">
         <div class="oi-hint">Optional tag. Paste the FULL matrix and the walls auto-select the nearest expiry with real near-money liquidity (per the OI course) — this field only labels the per-expiry view and is auto-filled from that expiry if left blank.</div>
       </div>
+      <div>
+        <label class="oi-lbl">Greek vol <span style="color:var(--text3);font-weight:400">(gamma / GEX / flip)</span></label>
+        <select class="oi-input" id="oiGreekVol" style="width:160px">
+          <option value="smile">IV smile · v2 (default)</option>
+          <option value="flat">Flat vol · v1</option>
+        </select>
+        <div class="oi-hint">v2 (default) uses the per-strike IV you paste — or the picked expiry's ATM IV — for gamma/GEX/flip, the real vol since gamma ∝ 1/σ; falls back to flat when no IV is pasted. The bot and the vol-forecast export read these stored greeks, so they get the real-vol regime/flip automatically. Switch to v1 (fixed flat vol) only to A/B. Shifts the PIN/BREAKOUT regime; wall prices are unaffected.</div>
+      </div>
     </div>
 
     <div class="oi-form-row">
