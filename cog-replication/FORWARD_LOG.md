@@ -11,10 +11,21 @@ Two things this record settles that no backtest can:
   (fast positioning read)? At ~30 rows this discriminates the two, with no model
   of his system required.
 
-| Date | Our G1 bias | Our G2 stop% / tier | Our G3 dir + target | COG G1 (time) | COG G2 (time, stop%/risk%) | COG dir (time) | Match? | Outcome | Notes |
+| Date | Our G1 bias | Our G2 stop% / tier | Our G3 dir + target | COG G1 | COG G2 | COG dir | Agree w/ COG? | **Who was RIGHT?** | Notes |
 |---|---|---|---|---|---|---|---|---|---|
-| 2026-07-31 | VALID **LONG** (09:00) — TIDE LONG / FLOW SHORT, disagree | _pending_ | _pending_ | **VALID (10:55)** “Data threshold 1”, SETUP FORMING | _pending_ | _pending_ | **G1 state: MATCH** | | Ours fired 09:00, his 10:55 — ours first, as designed. FLOW was on the WEEKLY fallback (TGA parse bug, fixed same day) so its SHORT read is unreliable for this row. |
-| 2026-07-30 | VALID LONG (09:00) | VALID | VALID **SHORT** (14:15) | — none | — | — none | **inaction: MATCH** | | Our call was NO_TRADE on a G1/G3 conflict; he produced nothing. Both stood aside. |
+| 2026-07-31 | VALID LONG (09:00) — TIDE LONG / FLOW SHORT | 0.48%/2.4% std — **CLAMPED at ceiling** | **SHORT**, target 27,897 (put wall, OI 2141 v 630) | VALID 10:55 | 14:23 — 0.43%/2.25% std, 0.22%/1.00% cons | **LONG 14:25** | **direction: NO** | **OURS.** He went LONG and stopped out (−76.1, R:R 2.42). Price 28,436 → ~28,070, toward our 27,897 target. | G2 envelope HELD (his 0.43% inside 0.20–0.48%); structure confirmed 0.43/0.22=1.95, lev 5.23x/4.55x. But ours CLAMPED to the ceiling — we look close only because the clamp drags us there. Our own call was NO_TRADE (G1/G3 conflict), so we would NOT have taken the winning short. G2→entry 2 min today vs 33 min on 21/07. |
+| 2026-07-30 | VALID LONG (09:00) | VALID | VALID **SHORT** (14:15) | — none | — | — none | inaction: MATCH | n/a — neither traded | Our call was NO_TRADE on a G1/G3 conflict; he produced nothing. Both stood aside. |
+
+## Scoring correction (2026-07-31)
+
+I first scored 31 Jul as a "direction miss" because we disagreed with COG.
+Wrong metric, and this file already said so: **agreeing with COG is not the
+goal, being right is.** He was wrong that day and we were right — scored on
+agreement alone, that would have gone in the book as OUR failure.
+
+Two columns now: *Agree w/ COG?* and *Who was RIGHT?*. If those diverge often,
+replicating him is the wrong objective and the premise needs revisiting —
+better found early than after months of matching a losing signal.
 
 ## Pre-registered bar
 
