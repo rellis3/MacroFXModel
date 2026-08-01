@@ -33,6 +33,84 @@ const kvPair = flag('--kv');
 const files = argv.filter(a => !a.startsWith('--'));
 
 const allDir = flag('--all');
+const sweepDir = flag('--sweep');
+
+// ── --sweep: the QuikStrike sweep's four boxes vs the morning pastes ─────────
+// Every comparison runs BOTH sides through js/oi.js, never a reimplementation,
+// so this compares the numbers the dashboard would actually use. Note the KV
+// side is the COMPACTED form oiAnalyse stores (js/oi.js:1788) - fewer rows than
+// the raw paste, same parsed result, which is what matters here.
+if (sweepDir) {
+  const { readdirSync, existsSync } = await import('fs');
+  const { join } = await import('path');
+  if (!existsSync(sweepDir)) die(`no such directory: ${sweepDir}`);
+  const store = await kvStore();
+  const { parseIVSettlement, parseSettlementTermStructure } = await import('../js/oi.js');
+
+  const files = readdirSync(sweepDir).filter(f => /_(rawOI|rawChg|rawVol|rawIVTerm)\.tsv$/.test(f));
+  const rows = [];
+  for (const f of files.sort()) {
+    const box = f.match(/_(raw[A-Za-z]+)\.tsv$/)[1];
+    const stem = f.slice(0, f.length - box.length - 5);
+    const sym = store[stem] ? stem
+              : store[stem.replace('_', '/')] ? stem.replace('_', '/') : null;
+    if (!sym) { rows.push({ sym: stem, box, note: 'no oi_store entry' }); continue; }
+    const pasted = store[sym]?.[box];
+    if (!pasted) { rows.push({ sym, box, note: 'not in KV' }); continue; }
+    const swept = readFileSync(join(sweepDir, f), 'utf8');
+    rows.push(cmpBox(sym, box, pasted, swept));
+  }
+
+  console.log(`\nPASTE (KV) vs SWEEP — ${rows.length} table(s)\n`);
+  console.log('  sym          box         paste            sweep            verdict');
+  let bad = 0;
+  for (const r of rows) {
+    if (r.note) { console.log(`  ${r.sym.padEnd(12)} ${r.box.padEnd(11)} ${r.note}`); continue; }
+    console.log(`  ${r.sym.padEnd(12)} ${r.box.padEnd(11)} ${r.p.padEnd(16)} ${r.s.padEnd(16)} ${r.verdict}`);
+    if (r.bad) bad++;
+  }
+  console.log(`\n  ${rows.length - bad} agree · ${bad} differ`);
+  console.log('\n  Differences are EXPECTED where the two sides are different sessions:');
+  console.log('  your paste is this morning\'s screen, the sweep is the latest settlement.');
+  console.log('  What matters is whether the LEVELS agree, not the raw counts.');
+  process.exit(0);
+
+  function cmpBox(sym, box, pasted, swept) {
+    try {
+      if (box === 'rawIVTerm') {
+        const P = parseSettlementTermStructure(pasted) || [];
+        const S = parseSettlementTermStructure(swept) || [];
+        const pm = new Map(P.map(r => [r.symbol, r]));
+        const shared = S.filter(r => pm.has(r.symbol));
+        const ivSame = shared.filter(r => Math.abs((pm.get(r.symbol).iv || 0) - (r.iv || 0)) < 0.005).length;
+        return { sym, box, p: `${P.length} expiries`, s: `${S.length} expiries`,
+                 verdict: `${ivSame}/${shared.length} ATM IV match`,
+                 bad: shared.length === 0 };
+      }
+      if (box === 'rawVol') {
+        const pv = oiParseVolume(pasted), sv = oiParseVolume(swept);
+        const pm = new Map(pv.map(v => [v.strike, v.volume]));
+        const shared = sv.filter(v => pm.has(v.strike));
+        const same = shared.filter(v => pm.get(v.strike) === v.volume).length;
+        return { sym, box, p: `${pv.length} strikes`, s: `${sv.length} strikes`,
+                 verdict: shared.length ? `${same}/${shared.length} strikes match` : 'no shared strikes',
+                 bad: !shared.length };
+      }
+      const P = parseOIMatrix(pasted), S = parseOIMatrix(swept);
+      if (!P || !S) return { sym, box, p: P ? 'ok' : 'null', s: S ? 'ok' : 'null',
+                             verdict: 'one side did not parse', bad: true };
+      const w = m => a => m.strikes[a.indexOf(Math.max(...a))];
+      const mpP = oiCalcMaxPain(P.strikes, P.calls, P.puts);
+      const mpS = oiCalcMaxPain(S.strikes, S.calls, S.puts);
+      const same = [mpP === mpS, w(P)(P.calls) === w(S)(S.calls), w(P)(P.puts) === w(S)(S.puts)];
+      return { sym, box, p: `mp ${mpP}`, s: `mp ${mpS}`,
+               verdict: `${same.filter(Boolean).length}/3 levels match (maxPain, call/put wall)`,
+               bad: same.filter(Boolean).length < 2 };
+    } catch (e) {
+      return { sym, box, note: 'threw: ' + e.message };
+    }
+  }
+}
 
 async function kvStore() {
   let r;

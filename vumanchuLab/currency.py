@@ -67,7 +67,13 @@ def build(instruments=FX, freq: str = '15min') -> pd.DataFrame:
         try:
             print(f'  [{i}/{len(instruments)}] {p} ...', end='', flush=True)
             pan = get_panel(p)
-            s = pan['tf1_wt1'].resample(freq).last()
+            # CAUSALITY: label='right', closed='right' stamps each bucket with
+            # its END, so a later ffill can only ever reach data that has
+            # already closed. The default (label='left') stamps the bucket with
+            # its START while `.last()` takes the value from its END — ffilling
+            # from that leaks up to one full bucket of future into every row,
+            # which produced a +21pp "finding" on the first run.
+            s = pan['tf1_wt1'].resample(freq, label='right', closed='right').last()
             cols[p] = s
             print(' ok')
         except Exception as e:
@@ -78,15 +84,22 @@ def build(instruments=FX, freq: str = '15min') -> pd.DataFrame:
     return wide
 
 
-def currency_states(wide: pd.DataFrame) -> pd.DataFrame:
+def currency_states(wide: pd.DataFrame, exclude: str | None = None) -> pd.DataFrame:
     """Per-currency strength: mean WT across every pair it appears in, signed
     so + always means that currency is STRONG.
 
     A pair's WT is a statement about the BASE currency: WT high on EURUSD means
     EUR strong / USD weak. So the base gets +wt and the quote gets -wt.
+
+    `exclude` DROPS a pair from the construction — mandatory when testing that
+    pair. Leaving EURUSD in means EUR carries +wt_eurusd and USD carries
+    -wt_eurusd, so the EUR-USD spread contains 2x the pair's own value and the
+    "incremental" test is conditioning the signal on itself.
     """
     ccy = {}
     for p in wide.columns:
+        if exclude and p == exclude:
+            continue
         b, q = split_pair(p)
         ccy.setdefault(b, []).append(wide[p])
         ccy.setdefault(q, []).append(-wide[p])
@@ -106,17 +119,18 @@ def main():
         wide = pd.read_parquet(CACHE)
         print(f'loaded {CACHE}  {wide.shape}')
 
-    ccy = currency_states(wide)
+    ccy_all = currency_states(wide)          # for the descriptive block only
     # Breadth: how many pairs are stretched, and net direction.
     stretched_up = (wide >= 53).sum(axis=1)
     stretched_dn = (wide <= -53).sum(axis=1)
     breadth = stretched_up - stretched_dn
 
+
     print(f'\n{"="*88}')
-    print(f'CURRENCY DECOMPOSITION — {wide.shape[1]} pairs -> {ccy.shape[1]} currencies')
+    print(f'CURRENCY DECOMPOSITION — {wide.shape[1]} pairs -> {ccy_all.shape[1]} currencies')
     print(f'{"="*88}')
     print('\nmean |currency state| (how far each typically swings):')
-    print(ccy.abs().mean().round(2).sort_values(ascending=False).to_string())
+    print(ccy_all.abs().mean().round(2).sort_values(ascending=False).to_string())
     print(f'\nbreadth: {(breadth.abs() >= 5).mean()*100:.1f}% of bars have >=5 pairs '
           f'net stretched the same way')
 
@@ -125,6 +139,11 @@ def main():
     b, q = split_pair(inst)
     print(f'\n-- INCREMENTAL TEST on {inst} ({b} vs {q}) --')
     df = add_context(get_panel(inst))
+    # Rebuild the currency states with THIS pair excluded — otherwise the
+    # spread contains 2x the pair's own wt1 and the test is circular.
+    ccy = currency_states(wide, exclude=inst)
+    print(f'   (currency states rebuilt with {inst} EXCLUDED — '
+          f'{wide.shape[1]-1} pairs contribute)')
     df['ccy_base'] = ccy[b].reindex(df.index, method='ffill')
     df['ccy_quote'] = ccy[q].reindex(df.index, method='ffill')
     df['ccy_spread'] = df['ccy_base'] - df['ccy_quote']

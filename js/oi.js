@@ -843,7 +843,18 @@ export function parseIVSettlement(raw) {
   // price only on this view's title, so it is the one trustworthy source we get.
   const fm = raw.match(/\bvs\s+([\d,]+\.?\d*)/i);
   if (fm) { const f = parseFloat(fm[1].replace(/,/g, '')); if (Number.isFinite(f) && f > 0) out.futures = f; }
-  const em = raw.match(/\(([A-Z0-9|]+)\)\s*([A-Z]{2}\w{3})\s*\(/);
+  // Expiry code from the title, e.g. "Gold (OG|GC) G4TQ6 (26.40 DTE) vs …".
+  // `[A-Z]{2}\w{3}` demanded exactly five characters starting with TWO letters,
+  // which silently failed on two real shapes and left those products unable to
+  // CONFIRM which expiry sits in the smile box (they fell back to DTE matching,
+  // which is date-sensitive — see resolveSmileExpiry):
+  //     G4TQ6  — digit in position 2 (gold weeklies)
+  //     EWN6   — only four characters (ES/NQ weeklies)
+  // Verified against every code shape in the live book: EUUQ6 YM3Q6 G4TQ6 EWN6
+  // NEN6 RTMN6 JPUU6 CHUU6 CAUU6 ADUQ6 GBUQ6 OG5N6 BP5N6 E5DN6 E1AQ6 EW1Q6.
+  // Still anchored between the "(EUU|6E)" group and the " (26.40 DTE)" clause,
+  // so it cannot wander onto the product or underlying codes.
+  const em = raw.match(/\(([A-Z0-9|]+)\)\s*([A-Z][A-Z0-9]{2,4}\d)\s*\(/);
   if (em) out.expiryCode = em[2];
   for (const line of raw.split('\n')) {
     const c = line.replace(/\r$/, '').split('\t');
