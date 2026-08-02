@@ -33,6 +33,7 @@
 // appear (the store simply has no entry for them) — no invented numbers.
 
 import { oiStoreToLevels } from './oiConfluence.js';
+import { levelExpectation } from './levelExpectation.js';
 import { gammaFlip, distanceToFlip, rolloffSummary } from './gammaFlow.js';
 
 // Canonical chart-ticker per oi_store key. Mirrors the Confluence-Zones indicator's
@@ -112,6 +113,10 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
   const lines = [hdr];
   lines.push(`Generated: ${generated ?? 'latest'}`);
   lines.push('Types: call_wall (red · resistance) · put_wall (green · support) · max_pain (yellow · magnet) · gamma_flip (purple) · gex_flip (violet · total-GEX zero) · oi_volume (blue · today)');
+  lines.push('What to expect: Reject (turns away) · Break (goes through) · Magnet (drifts to)'
+           + ' · Pin (sticks here) · Edge (changes here) · far = beyond ~2.5x expected move');
+  lines.push('  Reject vs Break is decided by the zone: calm = hedging fights the move so levels'
+           + ' hold; jumpy = hedging feeds the move so the same level gives way.');
   lines.push('');
 
   const entries = Object.entries(store || {});
@@ -160,7 +165,17 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     if (rr) lines.push(`· risk reversal ${rr.rr >= 0 ? '+' : ''}${rr.rr} (${rr.tilt} tilt)`);
     for (const l of levels) {
       const tier = Number.isFinite(l.tier) && l.tier > 0 ? ` t${l.tier}` : '';
-      lines.push(`OI ${l.price.toFixed(dp)} : ${l.type}${tier}`);
+      // Expectation appended as a THIRD token behind a '.' marker. The Pine parser
+      // splits the RHS on spaces, takes token 0 as the type and a 't'-prefixed token
+      // 1 as the tier, and ignores the rest - so this is invisible to any indicator
+      // that has not been updated, and readable by one that has. Terse on purpose:
+      // these are drawn on the chart and a clause per line makes it unreadable.
+      const ex = levelExpectation(l, {
+        spot: inst.spot, gexFlips: inst.gexFlips,
+        gammaFlip: inst.gammaFlip, refMove: inst.refMove?.move,
+      });
+      const note = ex ? ` . ${ex.mid}` : '';
+      lines.push(`OI ${l.price.toFixed(dp)} : ${l.type}${tier}${note}`);
     }
     lines.push('');
     emitted++;

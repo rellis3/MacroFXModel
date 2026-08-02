@@ -237,6 +237,7 @@ var string[] czTypes  = array.new_string()
 
 var float[]  oiPrices = array.new_float()
 var string[] oiTypes  = array.new_string()
+var string[] oiNotes  = array.new_string()   // expectation, e.g. "Reject (turns away)" / "Break (goes through)"
 var int[]    oiTiers  = array.new_int()
 var string   oiRegime = na
 
@@ -323,10 +324,17 @@ if barstate.isfirst
                             tstr = str.trim(array.get(rhsParts, 1))
                             if str.startswith(tstr, "t")
                                 tier := int(str.tonumber(str.replace_all(tstr, "t", "")))
+                        // Expectation note: everything after the ' . ' marker. Absent on
+                        // older paste blocks, so default to empty and draw nothing.
+                        string note = ""
+                        noteParts = str.split(rhs, " . ")
+                        if array.size(noteParts) >= 2
+                            note := str.trim(array.get(noteParts, 1))
                         if not na(price) and price > 0
                             array.push(oiPrices, price)
                             array.push(oiTypes,  typ)
                             array.push(oiTiers,  na(tier) ? 0 : tier)
+                            array.push(oiNotes,  note)
                 continue
 
 // =====================================================
@@ -666,7 +674,9 @@ if show_table and barstate.islast
                 row += 1
                 bg = color.new(zCol, 82)
                 table.cell(czTable, 0, row, str.tostring(zPrice), text_color=zCol, text_size=size.tiny, bgcolor=bg)
-                table.cell(czTable, 1, row, zType + tierStr,      text_color=zCol, text_size=size.tiny, bgcolor=bg)
+                zNote  = i < array.size(oiNotes) ? array.get(oiNotes, i) : ""
+                noteStr = zNote != "" ? "  " + zNote : ""
+                table.cell(czTable, 1, row, zType + tierStr + noteStr, text_color=zCol, text_size=size.tiny, bgcolor=bg)
                 table.cell(czTable, 2, row, str.tostring(pipDist) + "p", text_color=zCol, text_size=size.tiny, bgcolor=bg)
 
         // CZ zone rows

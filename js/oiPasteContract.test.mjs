@@ -399,7 +399,26 @@ console.log('[downstream wiring — export, indicator, bot]');
   ok('gex_flip carries the right price', lv.find(l => l.type === 'gex_flip')?.price === 4099.13);
 
   const txt = buildOILevelText({ 'XAU/USD': inst }, { generated: 'test' });
-  ok('C+Z export carries gex_flip to the indicator', /^OI .* : gex_flip$/m.test(txt), '');
+  // The line now carries a terse expectation after a ' . ' marker, so this is no
+  // longer end-anchored — but the TYPE TOKEN must still be exactly what the Pine
+  // parser reads, which is the actual contract. Asserted the way the indicator
+  // parses it (split on ' : ', then on spaces, token 0 = type, a 't'-prefixed
+  // token 1 = tier) so a future annotation cannot silently shift the type.
+  ok('C+Z export carries gex_flip to the indicator', /^OI .* : gex_flip(\s|$)/m.test(txt), '');
+  {
+    const oiLines = txt.split('\n').filter(l => l.startsWith('OI '));
+    const parsedLikePine = oiLines.map(l => {
+      const rhs = l.split(' : ')[1] ?? '';
+      const parts = rhs.split(' ');
+      return { type: parts[0], tier: (parts[1] || '').startsWith('t') ? parts[1] : null };
+    });
+    ok('every exported line still yields a clean type token for the indicator',
+      parsedLikePine.length > 0 && parsedLikePine.every(p => /^[a-z_]+$/.test(p.type)),
+      parsedLikePine.map(p => p.type).join(','));
+    ok('the annotation never lands where the tier is read',
+      parsedLikePine.every(p => p.tier === null || /^t\d$/.test(p.tier)),
+      parsedLikePine.map(p => p.tier).filter(Boolean).join(','));
+  }
   ok('export still carries the walls and max pain',
     /: call_wall/.test(txt) && /: put_wall/.test(txt) && /: max_pain/.test(txt));
 

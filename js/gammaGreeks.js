@@ -93,12 +93,28 @@ export function bsGamma(spot, strike, T, sigma, { r = 0 } = {}) {
 //
 // Above the flip dealers are long gamma (hedging damps moves); below it they are short
 // gamma (hedging amplifies). Returns the interpolated crossing nearest spot, or null.
-export function gexFlipPrice(strikes, calls, puts, { sigmaFn, sigma = 0.2, T, r = 0, mult = 1,
-                                                     spot = null, span = 0.25, steps = 400 } = {}) {
-  if (!Array.isArray(strikes) || strikes.length < 2 || !(T > 0)) return null;
+// EVERY crossing, not just the nearest — [{ price, dir, distPct }] sorted by price.
+//
+// A one-sided book does not give the textbook single handover. USD/CAD (P/C 0.34,
+// 24 strikes) has THREE crossings — 1.4103, 1.4296, 1.4936 — so net GEX alternates
+// and the book is really a set of BANDS:
+//     …–1.4103  long gamma   suppress
+//   1.4103–1.4296  SHORT gamma  amplify   <- a short-gamma pocket, spot sits at its edge
+//   1.4296–1.4936  long gamma   suppress
+// Returning only the nearest reported that pocket's lower edge as if it were the
+// whole structure, and — because three roots sit 0.6%, 2.0% and 6.6% away — a few
+// pips of basis changed WHICH root won, which read as a 9.4% "drift" between two
+// runs over the same book. The roots were not moving; a different one was chosen.
+//
+// `dir` is the side of the sign change and is the part a consumer actually needs:
+// 'long->short' crossing upward means price is entering amplification, 'short->long'
+// means it is entering suppression. Three bare prices cannot be told apart.
+export function gexFlipCrossings(strikes, calls, puts, { sigmaFn, sigma = 0.2, T, r = 0, mult = 1,
+                                                         spot = null, span = 0.25, steps = 400 } = {}) {
+  if (!Array.isArray(strikes) || strikes.length < 2 || !(T > 0)) return [];
   const anchor = Number.isFinite(spot) && spot > 0
     ? spot : strikes.slice().sort((a, b) => a - b)[Math.floor(strikes.length / 2)];
-  if (!(anchor > 0)) return null;
+  if (!(anchor > 0)) return [];
   const sig = k => { const s = sigmaFn ? sigmaFn(k) : sigma; return (s > 0 ? s : sigma); };
   const total = S => {
     let t = 0;
@@ -109,18 +125,30 @@ export function gexFlipPrice(strikes, calls, puts, { sigmaFn, sigma = 0.2, T, r 
     return t;
   };
   const lo = anchor * (1 - span), hi = anchor * (1 + span), step = (hi - lo) / steps;
-  const hits = [];
+  const out = [];
   let prev = { S: lo, v: total(lo) };
   for (let S = lo + step; S <= hi; S += step) {
     const v = total(S);
     if (Number.isFinite(prev.v) && Number.isFinite(v) && prev.v !== 0 && Math.sign(v) !== Math.sign(prev.v)) {
       const t = Math.abs(prev.v) / (Math.abs(prev.v) + Math.abs(v));
-      hits.push(prev.S + t * (S - prev.S));
+      const price = prev.S + t * (S - prev.S);
+      out.push({ price, dir: prev.v > 0 ? 'long->short' : 'short->long',
+                 distPct: +(((price / anchor) - 1) * 100).toFixed(2) });
     }
     prev = { S, v };
   }
+  return out;
+}
+
+// The crossing nearest spot — unchanged behaviour, kept so every existing caller and
+// the stored `gexFlip` scalar keep meaning exactly what they did. Delegates to
+// gexFlipCrossings so there is ONE scan, not a second copy free to drift.
+export function gexFlipPrice(strikes, calls, puts, opts = {}) {
+  const hits = gexFlipCrossings(strikes, calls, puts, opts);
   if (!hits.length) return null;
-  return hits.reduce((m, h) => (Math.abs(h - anchor) < Math.abs(m - anchor) ? h : m));
+  const anchor = Number.isFinite(opts.spot) && opts.spot > 0
+    ? opts.spot : strikes.slice().sort((a, b) => a - b)[Math.floor(strikes.length / 2)];
+  return hits.reduce((m, h) => (Math.abs(h.price - anchor) < Math.abs(m.price - anchor) ? h : m)).price;
 }
 
 // Aggregate charm & vanna exposure across the chain, mirroring GEX:

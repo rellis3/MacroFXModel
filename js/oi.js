@@ -2,7 +2,7 @@ import { S } from './state.js';
 import { kvGet, kvSet } from './utils.js';
 import { wallStrengthTier, oiSkew, oiConcentration, clusterStrikes, wallFreshness, volumePCRatio } from './oiConfluence.js';
 import { gammaFlip } from './gammaFlow.js';
-import { charmVannaExposure, gexFlipPrice } from './gammaGreeks.js';
+import { charmVannaExposure, gexFlipPrice, gexFlipCrossings } from './gammaGreeks.js';
 import { fullBookGex } from './fullBookGex.js';
 import { expectedMove, expectedMoveFromStraddle, ivTermStructure, ivDynamics, riskReversal, vannaState } from './ivMetrics.js';
 
@@ -1770,6 +1770,13 @@ export async function buildOIEntry({
     // describing one book. Kept ALONGSIDE gammaFlip rather than replacing it, because
     // the bot and export already consume that field.
     gexFlip: gexFlipPrice(parsed.strikes, parsed.calls, parsed.puts, {
+      sigmaFn: sigmaFor, sigma: flatSig, T: greekT, mult: cs, spot }),
+    // EVERY crossing, each with the direction of the sign change. A one-sided book
+    // (USD/CAD, P/C 0.34) crosses three times, so the scalar above reports one edge
+    // of a short-gamma POCKET as if it were the whole structure - and which edge it
+    // picks moves with a few pips of basis. Both are stored: the scalar for every
+    // existing consumer, the array for anything that wants the real shape.
+    gexFlips: gexFlipCrossings(parsed.strikes, parsed.calls, parsed.puts, {
       sigmaFn: sigmaFor, sigma: flatSig, T: greekT, mult: cs, spot }),
     greekVolMode, greekVolSource,   // v1 'flat' vs v2 'smile'/'atm-iv' — which vol the gamma/GEX/flip used
     fullBook,   // v3 full-book GEX across ALL expiries (analysis-only; bot uses single-expiry exposures)

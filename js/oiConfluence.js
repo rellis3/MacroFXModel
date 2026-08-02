@@ -557,7 +557,16 @@ export function oiStoreToLevels(inst, { topWalls = null, minTier = "moderate", m
   // answer the same question with different accuracy and consumers weight them
   // differently — see `gex_flip` handling in ConfluenceBot's level_matrix, where it is
   // deliberately credited as a BOUNDARY (like gamma_flip) and never as a magnet.
-  push(inst.gexFlip, 'gex_flip');
+  // Every crossing, not just the nearest. A one-sided book crosses more than once,
+  // and each crossing is a real regime edge: the bands between them alternate
+  // long/short gamma. Falls back to the scalar for entries stored before `gexFlips`
+  // existed. Distance relevance is already handled downstream (level_matrix's
+  // `near()`, oiZones' reachMult x refMove), so no filtering is duplicated here.
+  if (Array.isArray(inst.gexFlips) && inst.gexFlips.length) {
+    for (const f of inst.gexFlips) push(f?.price, 'gex_flip');
+  } else {
+    push(inst.gexFlip, 'gex_flip');
+  }
   // Volume magnets are today's flow, not resting structure, and carry no tier — keep
   // them to a small count so they stay a hint rather than crowding the chart.
   for (const v of (Array.isArray(inst.volumeMagnets) ? inst.volumeMagnets : []).slice(0, Number.isFinite(topWalls) ? topWalls : 2)) push(v?.strike, 'oi_volume');
