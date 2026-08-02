@@ -124,9 +124,12 @@ def main():
     }
 
     for inst in [s.strip() for s in a.instruments.split(',') if s.strip()]:
-        p = os.path.join(DATA, f'panel_{inst}.parquet')
-        if not os.path.exists(p):
-            print(f'!! no panel for {inst}, skipping'); continue
+        # NO panel-parquet guard. `enrich()` builds its shape frame from the M1
+        # cache directly (build_shape_frame + component_frame) and never opens a
+        # panel file — an earlier `if not os.path.exists(panel_<inst>.parquet)`
+        # check here silently skipped 28 of 31 instruments, which is why the
+        # live logger was only ever covering gold/eurusd/nq. Requiring ~5 GB of
+        # panels to emit a 4 MB table was the wrong dependency.
         table['instruments'][inst] = {}
         for h in (int(x) for x in a.horizons.split(',')):
             print(f'  {inst} h={h}m ...', end='', flush=True)
@@ -142,10 +145,17 @@ def main():
                 total += len(rows)
             table['instruments'][inst][str(h)] = block
             print(f' {total} cells')
+        # Write after EVERY instrument. A full-universe run is ~2 hours; failing
+        # at instrument 28 and losing the other 27 would be an avoidable waste,
+        # and a partial table is perfectly usable — the live side only ever asks
+        # for the instruments it finds in it.
+        with open(a.out, 'w') as fh:
+            json.dump(table, fh, separators=(',', ':'))
 
     with open(a.out, 'w') as fh:
         json.dump(table, fh, separators=(',', ':'))
-    print(f'\nwrote {a.out} ({os.path.getsize(a.out)/1024:.0f} KB)')
+    print(f'\nwrote {a.out} ({os.path.getsize(a.out)/1024:.0f} KB) — '
+          f'{len(table["instruments"])} instruments')
 
 
 if __name__ == '__main__':

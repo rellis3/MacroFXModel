@@ -5171,10 +5171,25 @@ function _vmPriorMove(bars, mins) {
   return then > 0 ? now / then - 1 : null;
 }
 
+// One M1 pull per instrument per minute, shared by the route and the cron.
+// At 3 instruments a fetch-per-read was free; at 31 the page would make 31
+// sequential OANDA calls (30s+) and the cron would repeat the identical work
+// minutes later. The TTL is deliberately shorter than one M1 bar, so a cached
+// read can never be based on a bar older than the one currently forming.
+const _vmBarCache = new Map();
+async function _vmBars(instKey) {
+  const hit = _vmBarCache.get(instKey);
+  if (hit && Date.now() - hit.ts < 55_000) return hit.bars;
+  const bars = await _fetchVumanchuBars(_vmSymbolFor(instKey), 'M1', 1400);
+  _vmBarCache.set(instKey, { bars, ts: Date.now() });
+  if (_vmBarCache.size > 60) _vmBarCache.delete(_vmBarCache.keys().next().value);
+  return bars;
+}
+
 async function _vmReadState(instKey, horizon = 60) {
   const table = _vmLoadTable();
   if (!table) throw new Error('state table not built — run vumanchuLab/export_table.py');
-  const bars = await _fetchVumanchuBars(_vmSymbolFor(instKey), 'M1', 1400);
+  const bars = await _vmBars(instKey);
   if (bars.length < 400) throw new Error(`only ${bars.length} M1 bars for ${instKey}`);
   const state = computeVumanchuState(bars, { timeframes: [1, 5, 15] });
   const hit = lookupVumanchuState(state, table, { instrument: instKey, horizon });
@@ -5203,7 +5218,13 @@ app.get('/api/vumanchu/state', async (req, res) => {
   if (bad.length) return res.status(400).json({ error: `no table rows for ${bad.join(',')}`, known });
 
   const out = [];
-  for (const inst of want) {
+  // Batched concurrency: 31 sequential fetches took 30s+ and would time out a
+  // page load. Six at a time is a few seconds and stays well inside OANDA's
+  // rate limit. Failures are per-instrument so one bad symbol cannot blank the
+  // whole board.
+  const BATCH = 6;
+  for (let i = 0; i < want.length; i += BATCH) {
+    await Promise.all(want.slice(i, i + BATCH).map(async inst => {
     try {
       const r = await _vmReadState(inst, horizon);
       out.push({
@@ -5220,7 +5241,9 @@ app.get('/api/vumanchu/state', async (req, res) => {
     } catch (e) {
       out.push({ instrument: inst, error: e.message });
     }
+    }));
   }
+  out.sort((a, b) => a.instrument.localeCompare(b.instrument));
   res.json({ horizon, generatedAt: Math.floor(Date.now() / 1000), rows: out });
 });
 
@@ -5246,7 +5269,9 @@ async function _vmLogCycle() {
   _vmLogBusy = true;
   try {
     const rows = [];
-    for (const inst of known) {
+    const BATCH = 6;
+    for (let i = 0; i < known.length; i += BATCH) {
+      await Promise.all(known.slice(i, i + BATCH).map(async inst => {
       try {
         const r = await _vmReadState(inst, 60);
         rows.push(vmBuildRow({
@@ -5257,6 +5282,7 @@ async function _vmLogCycle() {
       } catch (e) {
         console.warn(`[vmlog] ${inst}: ${e.message}`);
       }
+      }));
     }
     const w = await vmAppendRows(kv, rows);
 
