@@ -66,6 +66,10 @@ class Tee:
     def write(self, s):
         sys.__stdout__.write(s)
         self.f.write(s)
+        # Flush every write. Without this the log stays 0 bytes until the process
+        # exits, which is useless precisely when you want it: watching an 8-minute
+        # sweep that may be failing.
+        self.f.flush()
 
     def flush(self):
         sys.__stdout__.flush()

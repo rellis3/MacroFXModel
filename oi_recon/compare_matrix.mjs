@@ -73,7 +73,10 @@ if (sweepDir) {
   console.log('\n  Differences are EXPECTED where the two sides are different sessions:');
   console.log('  your paste is this morning\'s screen, the sweep is the latest settlement.');
   console.log('  What matters is whether the LEVELS agree, not the raw counts.');
-  process.exit(0);
+  // Exit non-zero when tables disagree. This used to always exit 0, which would
+  // have made any wrapper report success regardless of the comparison - the exact
+  // silent-partial-success failure the sweep's own exit code was written to avoid.
+  process.exit(bad ? 1 : 0);
 
   function cmpBox(sym, box, pasted, swept) {
     try {

@@ -421,6 +421,36 @@ def _best_table(frame, ctx=None):
     return best, best_s, best_why
 
 
+def _stable_table(frame, ctx, page, tries: int = 5, gap_ms: int = 1500):
+    """Read the table repeatedly until two consecutive reads agree.
+
+    THE FAILURE THIS FIXES. On 2026-08-02 the S&P capture came back with 76 rows
+    and 31 strikes; the same table had given 482 strikes on previous runs, and the
+    manual paste had 342. It was read mid-render. Nothing caught it: 31 strikes
+    clears the validator's 10-strike floor, the open interest was non-zero and
+    plausible, and 31 is not one of the 10/15/25/50 window sizes the strike guard
+    watches for. It would have been ingested as a real book missing 311 strikes.
+
+    A partially rendered table GROWS between reads; a finished one does not. So
+    stability is the signal, and it costs one extra read on the happy path.
+    """
+    prev, prev_n = None, -1
+    for _ in range(tries):
+        tsv, score, why = _best_table(frame, ctx)
+        n = shape(tsv or '')['rows']
+        if tsv and n == prev_n and n > 0:
+            return tsv, score, why, True            # two reads agree
+        prev, prev_n = tsv, n
+        try:
+            page.wait_for_timeout(gap_ms)
+        except Exception:                            # noqa: BLE001
+            break
+        frame = _qs_frame(ctx) or frame
+    # Never settled: hand back the last read but say so, so the caller can refuse.
+    tsv, score, why = _best_table(frame, ctx)
+    return tsv, score, why, False
+
+
 def _dump_tables(frame, ctx=None) -> None:
     """What tables ARE present, when none looked like a strike ladder."""
     frames = list(_frames(ctx)) if ctx else [frame]
@@ -707,6 +737,28 @@ def pull_product(ctx, page, product: str | None, views: list,
             head = fr.evaluate("() => (document.body?.innerText || '').slice(0, 400)")
         except Exception:                                # noqa: BLE001
             head = ''
+        # A CACHED SESSION EXPIRES INTO AN ERROR PAGE, not into a failure to load.
+        # 2026-08-02: a URL minted on 31 July returned "There was a problem loading
+        # this content or tool" for all 11 products. That page still has selects and
+        # links, so _wait_for_tool reported the tool ready and the re-mint fallback
+        # never fired - the run refused 11 times instead of recovering once. So an
+        # expired session is detected HERE, where the evidence is, and retried.
+        expired = 'problem loading this content' in (head or '').lower()
+        if (expired or want.lower() not in (head or '').lower()) and src == 'cached':
+            print(f'  [pull] cached session looks {"expired" if expired else "wrong"}'
+                  ' - re-minting and retrying once')
+            fresh = _mint_tool_url(ctx, page)
+            if fresh:
+                _cache_url(fresh)
+                target = _with_pid(fresh, ent['pid'], ent.get('pf')) if ent else fresh
+                try:
+                    page.goto(target, wait_until='domcontentloaded', timeout=90_000)
+                    _settle(None, page, 4000)
+                    fr = _wait_for_tool(ctx, page, 30) or fr
+                    head = fr.evaluate("() => (document.body?.innerText || '').slice(0, 400)")
+                except Exception:                        # noqa: BLE001
+                    pass
+
         if want.lower() not in (head or '').lower():
             first = (head or '').strip().splitlines()
             print(f'  ! REFUSING: expected "{want}" in the tool header, not found.')
@@ -762,7 +814,10 @@ def pull_product(ctx, page, product: str | None, views: list,
         # off it, and all three heatmap views captured the SAME settlements table
         # - three byte-identical files under three names. A wrong-view capture is
         # complete, well-formed and wrong, so shape is checked against the view.
-        tsv, n, why = _best_table(fr, ctx)
+        tsv, n, why, stable = _stable_table(fr, ctx, page)
+        if not stable:
+            print(f'  {key:<8} ! table never stopped growing - refusing a mid-render read')
+            continue
         want_kind = 'expiry table' if key == 'settles' else 'strike ladder'
         if tsv and not why.startswith(want_kind):
             print(f'  {key:<8} ! wrong view: expected a {want_kind}, got "{why}".')
