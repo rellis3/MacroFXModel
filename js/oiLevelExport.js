@@ -82,8 +82,22 @@ function fmtSaved(inst) {
   // Inverted pairs can be exported under either call/put reading — say which, or a
   // red 'call wall' below spot looks like a bug rather than a deliberate setting.
   if (inst?.cpSwapped) bits.push('C/P flipped to pair terms');
-  const rg = regimeOf(inst);
-  if (rg) bits.push(`regime ${rg}`);        // the indicator parses THIS for its tint
+  // Regime: when a near-dated "day" expiry is present, IT is what the bot trades, so the
+  // tinted `regime` word follows the near-dated GEX sign (user's call). The far/primary
+  // book still shows, but as "long/short-gamma" — deliberately NOT the words PIN/BREAKOUT/
+  // regime, so the indicator's tint parse (which fires on any "REGIME" line and lets
+  // BREAKOUT win ties) can't pick up the far regime by accident.
+  const rgFar = regimeOf(inst);
+  const day = inst?.dayExpiry;
+  if (day && Number.isFinite(day.dte)) {
+    const gd = day?.exposures?.gex;
+    const rgDay = Number.isFinite(gd) && gd !== 0 ? (gd > 0 ? 'PIN' : 'BREAKOUT') : null;
+    if (rgDay) bits.push(`regime ${rgDay}`);                        // NEAR-DATED — the tinted regime + what the bot trades
+    bits.push(`day ${day.dte}dte vs primary ${inst?.dte ?? '?'}dte`);
+    if (rgFar) bits.push(`primary book ${rgFar === 'PIN' ? 'long-gamma' : 'short-gamma'}`);   // context only, no tint trigger
+  } else if (rgFar) {
+    bits.push(`regime ${rgFar}`);            // single-expiry: the indicator parses THIS for its tint
+  }
   return bits.length ? `· ${bits.join(' · ')}` : null;
 }
 
@@ -173,21 +187,36 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     // price — how hard the level is defended right now, the price-proximity + DTE
     // weighting the raw wall list lacks. Read off the stored gexProfile; null when
     // absent (older entries) → no heat segment, so the line is unchanged.
-    const heated = levelHeat(gexProfile, levels);
+    // Heat each level off ITS OWN expiry's gamma profile: the near-dated "day" levels
+    // (l.dte === dayExpiry.dte) off the near-dated book, everything else off the primary
+    // — a near-dated wall's gamma defense is far stronger (γ ∝ 1/√T), so it deserves its
+    // own profile, not the far book's. Keyed by level object so display order is untouched.
+    const dayEx = inst.dayExpiry && typeof inst.dayExpiry === 'object' ? inst.dayExpiry : null;
+    const dayDte = dayEx && Number.isFinite(dayEx.dte) ? dayEx.dte : null;
+    const dayGP = dayEx && Array.isArray(dayEx.gexProfile) ? dayEx.gexProfile : [];
+    const isDay = (l) => dayDte != null && l.dte === dayDte;
+    const farLevels = levels.filter(l => !isDay(l));
+    const dayLevels = dayDte != null ? levels.filter(isDay) : [];
+    const heatOf = new Map();
+    levelHeat(gexProfile, farLevels).forEach((x, i) => heatOf.set(farLevels[i], x.heatBucket || ''));
+    if (dayLevels.length && dayGP.length) levelHeat(dayGP, dayLevels).forEach((x, i) => heatOf.set(dayLevels[i], x.heatBucket || ''));
     // P(touch) per level ("82%~2h"), keyed by exact price — computed live at the export
     // endpoint (needs current bars); absent here in the pure/offline path.
     const rp = (reachByPair && reachByPair[pair]) ? reachByPair[pair] : null;
-    for (const l of heated) {
+    for (const l of levels) {
       const tier = Number.isFinite(l.tier) && l.tier > 0 ? ` t${l.tier}` : '';
+      // DTE tag ("14dte") after the tier when a level carries one — present only in
+      // dual-expiry mode, so single-expiry pastes are byte-identical. Pine reads it as its
+      // own token (it doesn't start with 't', so it never confuses the tier scan).
+      const dteTag = Number.isFinite(l.dte) ? ` ${l.dte}dte` : '';
       // The RHS carries ordered ' . ' segments the Pine parser reads by index — token 0
-      // is the type, a 't'-prefixed token 1 the tier, and everything after is invisible to
+      // is the type, a 't'-prefixed token the tier, and everything after is invisible to
       // an un-updated indicator. Order: (1) expectation, (2) heat, (3) P(touch).
-      const ex = levelExpectation(l, {
-        spot: inst.spot, gexFlips: inst.gexFlips,
-        gammaFlip: inst.gammaFlip, refMove: inst.refMove?.move,
-      });
+      const ex = levelExpectation(l, isDay(l)
+        ? { spot: inst.spot, gammaFlip: dayEx.gammaFlip, refMove: inst.refMove?.move }
+        : { spot: inst.spot, gexFlips: inst.gexFlips, gammaFlip: inst.gammaFlip, refMove: inst.refMove?.move });
       const note  = ex ? ex.mid : '';
-      const heat  = l.heatBucket || '';
+      const heat  = heatOf.get(l) || '';
       const touch = rp ? (rp[l.price.toFixed(6)] || '') : '';
       // Touch (index 3) needs a heat placeholder ('-') so its position is stable when
       // heat is absent; trailing-absent segments are dropped, so a line with no heat and
@@ -198,7 +227,7 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
         else if (heat) suffix = ` . ${note} . ${heat}`;
         else           suffix = ` . ${note}`;
       }
-      lines.push(`OI ${l.price.toFixed(dp)} : ${l.type}${tier}${suffix}`);
+      lines.push(`OI ${l.price.toFixed(dp)} : ${l.type}${tier}${dteTag}${suffix}`);
     }
     lines.push('');
     emitted++;

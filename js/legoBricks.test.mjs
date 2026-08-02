@@ -21,6 +21,8 @@ import { refreshVolatilityPlan } from './volatilityBotProducer.js';
 import { bucketM1IntoSessions } from './forecastAnalyser.js';
 import { londonMidnightSec } from './volBacktestEngine.js';
 import { buildOILevelText } from './oiLevelExport.js';
+import { computeExpiryLevels, pickNearExpiry } from './oi.js';
+import { oiStoreToLevels } from './oiConfluence.js';
 
 let failures = 0;
 const ok   = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -742,6 +744,68 @@ console.log('\n[oiLevelExport]');
      text.split('\n').filter(l => /^\d|^-?\d/.test(l.trim())).every(l => l.startsWith('OI ')));
   // Empty store → graceful placeholder, never a throw.
   ok('OI export handles empty store gracefully', buildOILevelText({}).includes('no OI data'));
+}
+
+// ── near-dated "day" expiry: bricks + dual-expiry export ─────────────────────
+console.log('\n[oi day-expiry]');
+{
+  // computeExpiryLevels — walls/max-pain/regime from one spot-equivalent ladder.
+  const cel = computeExpiryLevels(
+    [1.08, 1.09, 1.10, 1.11, 1.12],
+    [100, 500, 3000, 800, 200],       // calls
+    [200, 4000, 3500, 300, 100],      // puts
+    1.10, 'EUR/USD', { dte: 2, minOI: 20 });
+  ok('computeExpiryLevels returns walls both sides', cel && cel.callWalls.length > 0 && cel.putWalls.length > 0);
+  ok('computeExpiryLevels carries its DTE', cel.dte === 2, `${cel?.dte}`);
+  ok('computeExpiryLevels tags a regime from GEX sign', cel.regime === 'PIN' || cel.regime === 'BREAKOUT', cel.regime);
+  ok('computeExpiryLevels max pain is finite', Number.isFinite(cel.maxPain), `${cel.maxPain}`);
+  ok('computeExpiryLevels builds a per-strike profile', Array.isArray(cel.gexProfile) && cel.gexProfile.length === 5);
+
+  // pickNearExpiry — the SHORTEST expiry that still has real near-money OI.
+  const legs = [
+    { dte: 2,  strikes: [1.09, 1.10, 1.11], calls: [2000, 3000, 1500], puts: [1800, 2800, 1400] },
+    { dte: 14, strikes: [1.09, 1.10, 1.11], calls: [3000, 5000, 2500], puts: [2800, 4800, 2400] },
+  ];
+  ok('pickNearExpiry picks the nearer expiry when it has real OI', pickNearExpiry(legs, 1.10, { belowDte: 14 })?.dte === 2);
+  const thin = [
+    { dte: 1,  strikes: [1.10, 1.11], calls: [5, 3], puts: [5, 2] },   // near but ~empty
+    { dte: 14, strikes: [1.09, 1.10, 1.11], calls: [3000, 5000, 2500], puts: [2800, 4800, 2400] },
+  ];
+  ok('pickNearExpiry skips a too-thin front expiry (no day set)', pickNearExpiry(thin, 1.10, { belowDte: 14 }) === null);
+
+  // Dual-expiry store → oiStoreToLevels emits BOTH sets, DTE-tagged.
+  const dual = {
+    'EUR/USD': {
+      pair: 'EUR/USD', spot: 1.0955, dte: 14, savedAt: '7/21/2026, 08:15:00',
+      maxPain: 1.0948, callWall: 1.1000, putWall: 1.0900,
+      callWalls: [{ strike: 1.1000, oi: 9000, tier: 'strong' }],
+      putWalls:  [{ strike: 1.0900, oi: 8000, tier: 'strong' }],
+      exposures: { gex: 1200 },                          // primary (far) → PIN
+      dayExpiry: {
+        dte: 2, maxPain: 1.0950,
+        callWalls: [{ strike: 1.0980, oi: 4000, tier: 'strong' }],
+        putWalls:  [{ strike: 1.0920, oi: 3500, tier: 'strong' }],
+        callWall: 1.0980, putWall: 1.0920,
+        exposures: { gex: -500 },                        // near-dated (day) → BREAKOUT
+        gexProfile: [{ strike: 1.0940, callGex: 50, putGex: 80 }, { strike: 1.0950, callGex: 600, putGex: 900 }, { strike: 1.0980, callGex: 40, putGex: 20 }],
+        gammaFlip: 1.0955, regime: 'BREAKOUT',
+      },
+    },
+  };
+  const dlevels = oiStoreToLevels(dual['EUR/USD']);
+  ok('oiStoreToLevels tags the far set with the primary DTE', dlevels.some(l => l.price === 1.1000 && l.dte === 14));
+  ok('oiStoreToLevels emits the near-dated day walls tagged with their DTE', dlevels.some(l => l.price === 1.0980 && l.dte === 2 && l.type === 'call_wall'));
+  ok('oiStoreToLevels emits the day max_pain', dlevels.some(l => l.price === 1.0950 && l.dte === 2 && l.type === 'max_pain'));
+
+  const dtext = buildOILevelText(dual, { generated: 'x' });
+  ok('dual export tags far walls with 14dte', /OI 1\.10000 : call_wall[^\n]* 14dte/.test(dtext), dtext.split('\n').find(l => l.startsWith('OI 1.10000')));
+  ok('dual export emits day walls tagged 2dte', /OI 1\.09800 : call_wall[^\n]* 2dte/.test(dtext), dtext.split('\n').find(l => l.startsWith('OI 1.09800')));
+  ok('dual export tints the NEAR-DATED regime (BREAKOUT), far book shown as long/short-gamma',
+    /regime BREAKOUT/.test(dtext) && /(long-gamma|short-gamma)/.test(dtext) && !/regime PIN/.test(dtext),
+    dtext.split('\n').find(l => l.includes('regime')));
+  // Single-expiry (no dayExpiry) → NO dte tags, byte-identical shape.
+  const single = { 'EUR/USD': { ...dual['EUR/USD'], dayExpiry: undefined } };
+  ok('no dayExpiry → no dte tag on any line', !/\ddte/.test(buildOILevelText(single, { generated: 'x' })));
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);

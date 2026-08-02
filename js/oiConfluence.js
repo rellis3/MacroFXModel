@@ -573,8 +573,40 @@ export function oiStoreToLevels(inst, { topWalls = null, minTier = "moderate", m
   // Institutional CLUSTER zones (≥2 merged strikes) — a higher-conviction level the
   // bots/OI-bot can trade off. Emit the zone centre as `oi_cluster`.
   for (const c of (Array.isArray(inst.clusters) ? inst.clusters : [])) if ((c?.count ?? 0) >= 2) push(c.center, 'oi_cluster');
+
+  // ── NEAR-DATED "day" level set ──────────────────────────────────────────────
+  // The levels so far are the primary (liquid, often ~14 DTE) expiry — swing context
+  // that price may not reach intraday. When `inst.dayExpiry` is present (the shortest
+  // expiry with real near-money OI), emit ITS walls / max-pain / gamma-flip too, each
+  // carrying its own `dte`, and tag the far primary levels with the primary DTE so the
+  // chart, export and bot can tell the two apart. Reuses the SAME headOK / _selectWalls
+  // gating as the primary — one selection rule, not a second copy. Absent dayExpiry
+  // (single-expiry pastes / older records) → nothing here, and no `dte` tags, so the
+  // output is byte-identical to before.
+  const dayEx = inst.dayExpiry && typeof inst.dayExpiry === 'object' ? inst.dayExpiry : null;
+  if (dayEx) {
+    const primDte = Number.isFinite(inst.dte) ? inst.dte : null;
+    if (primDte != null) for (const l of out) if (l.dte == null) l.dte = primDte;   // tag the far set
+    const dte = Number.isFinite(dayEx.dte) ? dayEx.dte : null;
+    const dcw = Array.isArray(dayEx.callWalls) ? dayEx.callWalls : [];
+    const dpw = Array.isArray(dayEx.putWalls) ? dayEx.putWalls : [];
+    const dpush = (price, type, tier = null) => {
+      if (!(Number.isFinite(price) && price > 0)) return;
+      const l = { price: +price, type }; if (tier) l.tier = tier; if (dte != null) l.dte = dte; out.push(l);
+    };
+    dpush(dayEx.maxPain, 'max_pain');
+    if (headOK(dcw, dayEx.callWall)) dpush(dayEx.callWall, 'call_wall', dcw.find(w => w.strike === dayEx.callWall)?.tier ?? null);
+    if (headOK(dpw, dayEx.putWall)) dpush(dayEx.putWall, 'put_wall', dpw.find(w => w.strike === dayEx.putWall)?.tier ?? null);
+    for (const w of _selectWalls(dcw, wallOpts)) dpush(w?.strike, 'call_wall', w?.tier ?? null);
+    for (const w of _selectWalls(dpw, wallOpts)) dpush(w?.strike, 'put_wall', w?.tier ?? null);
+    const dgp = Array.isArray(dayEx.gexProfile) ? dayEx.gexProfile : [];
+    dpush(Number.isFinite(dayEx.gammaFlip) ? dayEx.gammaFlip : gammaFlip(dgp, inst.spot), 'gamma_flip');
+  }
+
   const seen = new Set(), dedup = [];
-  for (const l of out) { const k = `${l.type}@${l.price}`; if (!seen.has(k)) { seen.add(k); dedup.push(l); } }
+  // Key includes `dte` so a day level and a far level that land on the same price are
+  // both kept (that coincidence is confluence, not a duplicate to drop).
+  for (const l of out) { const k = `${l.type}@${l.price}@${l.dte ?? ''}`; if (!seen.has(k)) { seen.add(k); dedup.push(l); } }
   return dedup;
 }
 
