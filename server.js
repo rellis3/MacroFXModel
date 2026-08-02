@@ -5298,6 +5298,119 @@ if (process.env.VM_LOG_ENABLED !== '0') {
   setTimeout(_vmLogCycle, 45_000);          // one shortly after boot
 }
 
+
+// GET /api/vumanchu/health — "is the logger actually running?"
+//
+// Deliberately separate from /api/vumanchu/log: this makes NO OANDA call and no
+// state computation, so it answers in milliseconds and still answers when the
+// data feed is down. Checking liveness through a route that itself depends on
+// the feed would report STALE for the one failure it is least able to
+// distinguish — a dead cron and a dead upstream look identical from there.
+//
+// It fails LOUD. A green tick that is technically true while nothing has been
+// written for two days is worse than no check at all, so `ok` is false the
+// moment writes stop arriving at roughly the configured cadence.
+app.get('/api/vumanchu/health', async (req, res) => {
+  try {
+    const rows = await vmReadRange(kv, 3);
+    const now = Math.floor(Date.now() / 1000);
+    const lastWrite = rows.reduce((m, r) => Math.max(m, r.loggedAt || 0), 0);
+    const minsSince = lastWrite ? Math.round((now - lastWrite) / 60) : null;
+
+    // Two missed cycles = something is wrong. Weekends are NOT excused: OANDA
+    // still serves bars for a closed market, so the cron should keep writing;
+    // silence means the cron itself stopped.
+    const staleAfter = VM_LOG_MIN * 2 + 5;
+    const ok = minsSince != null && minsSince <= staleAfter;
+
+    const today = rows.filter(r => (r.loggedAt || 0) > now - 86400);
+    const perInstrument = {};
+    for (const r of rows) {
+      const p = (perInstrument[r.instrument] ||= { rows: 0, lastSeenMin: null, reads: {} });
+      p.rows++;
+      p.reads[r.read] = (p.reads[r.read] || 0) + 1;
+      const age = Math.round((now - (r.loggedAt || 0)) / 60);
+      if (p.lastSeenMin == null || age < p.lastSeenMin) p.lastSeenMin = age;
+    }
+
+    res.json({
+      ok,
+      status: !lastWrite ? 'NO DATA — the cron has never written'
+            : ok ? 'RUNNING'
+            : `STALE — nothing written for ${minsSince} min (expected every ${VM_LOG_MIN})`,
+      cadenceMin: VM_LOG_MIN,
+      enabled: process.env.VM_LOG_ENABLED !== '0',
+      lastWriteUtc: lastWrite ? new Date(lastWrite * 1000).toISOString() : null,
+      minutesSinceLastWrite: minsSince,
+      last24h: {
+        logged: today.length,
+        resolved: today.filter(r => r.resolved).length,
+        pending: today.filter(r => !r.resolved).length,
+        skippedFlat: today.filter(r => r.skipped === 'flat').length,
+      },
+      last3d: { rows: rows.length, score: vmScoreRows(rows) },
+      perInstrument,
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, status: 'ERROR', error: e.message });
+  }
+});
+
+// ── daily heartbeat to Telegram ──────────────────────────────────────────────
+// The point of a holiday check-in is not having to remember to open a page. One
+// message a day says whether it is alive and what it has scored so far; if the
+// message stops arriving, that is itself the alert.
+const VM_HEARTBEAT_UTC = process.env.VM_HEARTBEAT_UTC || '07:30';
+let _vmHeartbeatSentOn = null;
+
+async function _vmHeartbeat() {
+  const tok = state.tg?.token, cid = state.tg?.chatId;
+  if (!tok || !cid) return;
+  try {
+    const rows = await vmReadRange(kv, 7);
+    const now = Math.floor(Date.now() / 1000);
+    const last = rows.reduce((m, r) => Math.max(m, r.loggedAt || 0), 0);
+    const mins = last ? Math.round((now - last) / 60) : null;
+    const alive = mins != null && mins <= VM_LOG_MIN * 2 + 5;
+    const day = rows.filter(r => (r.loggedAt || 0) > now - 86400);
+    const s = vmScoreRows(rows);
+
+    const lines = [
+      `${alive ? '✅' : '🔴'} <b>VuManChu logger — ${alive ? 'running' : 'NOT RUNNING'}</b>`,
+      last ? `last write ${mins} min ago (every ${VM_LOG_MIN} min)` : 'no writes yet',
+      '',
+      `<b>Last 24h</b>  ${day.length} logged · ${day.filter(r => r.resolved).length} resolved`,
+      `<b>7-day record</b>  ${s.scored} scored`,
+    ];
+    if (s.scored) {
+      lines.push(
+        `hit ${s.hitPct}% vs baseline ${s.claimedBaselinePct}% → <b>${s.edgePP > 0 ? '+' : ''}${s.edgePP}pp</b>`,
+        // Without the noise band a 3pp swing on 200 rows reads as a result. It
+        // is not, and the heartbeat should not let it look like one.
+        Math.abs(s.edgePP) < s.noiseBandPP
+          ? `inside the ±${s.noiseBandPP}pp noise band — too early to say`
+          : `outside the ±${s.noiseBandPP}pp noise band`);
+    } else {
+      lines.push('nothing scored yet');
+    }
+    await sendTelegram(tok, cid, lines.join('\n'));
+  } catch (e) {
+    console.error('[vm-heartbeat]', e.message);
+  }
+}
+
+if (process.env.VM_LOG_ENABLED !== '0' && process.env.VM_HEARTBEAT !== '0') {
+  setInterval(() => {
+    const d = new Date();
+    const hhmm = String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');
+    const today = d.toISOString().slice(0, 10);
+    if (hhmm === VM_HEARTBEAT_UTC && _vmHeartbeatSentOn !== today) {
+      _vmHeartbeatSentOn = today;
+      _vmHeartbeat();
+    }
+  }, 60_000);
+}
+
 // POST /api/vumanchu/mtf-stack/send — push the stack to Telegram.
 app.post('/api/vumanchu/mtf-stack/send', express.json({ limit: '4kb' }), async (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured' });
