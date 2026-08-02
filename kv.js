@@ -54,6 +54,9 @@ const _CF_EXACT = new Set([
   'surprise_alert_config',   // cone surprise-alert: enable + Telegram creds + thresholds/pairs — user-entered, must survive redeploys
   'journal_store', 'journal_replay_store',
   'oi_store',               // user-pasted CME OI data — cannot be auto-rebuilt
+  'oi_expect_log',          // forward record: what each OI level's expectation CLAIMED, per session.
+                            // Accumulates a post-hoc-proof-resistant log and CANNOT be rebuilt - the
+                            // levels and the spot they were judged against are gone once the day is.
   'oi_store_py',            // SHADOW of oi_store, written by the automated QuikStrike
                             // sweep (oi_recon/). Deliberately NOT in _worker.js's
                             // PERMANENT_KEYS: while it is only being compared against the
