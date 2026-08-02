@@ -54,6 +54,11 @@ const _CF_EXACT = new Set([
   'surprise_alert_config',   // cone surprise-alert: enable + Telegram creds + thresholds/pairs — user-entered, must survive redeploys
   'journal_store', 'journal_replay_store',
   'oi_store',               // user-pasted CME OI data — cannot be auto-rebuilt
+  'oi_store_py',            // SHADOW of oi_store, written by the automated QuikStrike
+                            // sweep (oi_recon/). Deliberately NOT in _worker.js's
+                            // PERMANENT_KEYS: while it is only being compared against the
+                            // real thing, a 48h TTL is wanted — the key should expire on
+                            // its own rather than linger once the trial ends.
   'range_line_oi',          // DATED per-session OI levels per instrument (~120 days) - the OTHER half of the OI
                             // forward test. The trade log was already durable but this was not, so the audit
                             // joined 35 logged trades against ONE surviving OI date: 32 of 35 unjoinable,

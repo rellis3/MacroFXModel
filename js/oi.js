@@ -205,9 +205,13 @@ export function closeOIModal() {
 // it with a spot field populated at some other time. Nothing recorded the gap, and the
 // dashboard reported the result as "you typed it" because the field simply had a value
 // in it. Returns null on failure so the caller falls back to whatever is on screen.
-async function fetchPairedQuote(pair) {
+// `baseUrl` is '' in the browser (relative URL resolves against the page) and an
+// origin under Node, where a relative /api/… has nothing to resolve against.
+// Both legs — futures price AND paired spot — come back in this ONE response, so
+// the basis is taken at a single instant rather than assembled from two moments.
+async function fetchPairedQuote(pair, baseUrl = '') {
   try {
-    const r = await fetch(`/api/futures-quote?pair=${encodeURIComponent(pair)}`, { cache: 'no-store' });
+    const r = await fetch(`${baseUrl}/api/futures-quote?pair=${encodeURIComponent(pair)}`, { cache: 'no-store' });
     const d = await r.json();
     if (!d?.ok || !(d.price > 0)) return null;
     return d;
@@ -1227,24 +1231,35 @@ export function oiFmtChg(n) {
 
 // ── Process & save ───────────────────────────────────────────────────────────
 
-export async function processOIData() {
-  const pair = S.currentPair ? S.currentPair.symbol : document.getElementById('oiPairSelect').value;
-  const rawOI = document.getElementById('oiRawData').value;
-  const rawChg = document.getElementById('oiChangeData').value;
-  const rawVol = document.getElementById('oiVolumeData')?.value || '';
-  const rawIV = document.getElementById('oiIVData')?.value || '';   // optional QuikStrike settlement paste (implied vol → charm/vanna)
-  const rawIVTerm = document.getElementById('oiIVTermData')?.value || '';   // optional 2nd paste: "Settlements" per-expiry table → IV term structure
-  const expiryLabel = (document.getElementById('oiExpiryLabel')?.value || '').trim();
-  const dteRaw = parseFloat(document.getElementById('oiDTE')?.value);
-  const spotRaw    = parseFloat(document.getElementById('oiSpotPrice').value);
-  const futuresRaw = parseFloat(document.getElementById('oiFuturesPrice')?.value);
-  const numLevels = parseInt(document.getElementById('oiNumLevels').value) || 8;
-  const minOI = parseInt(document.getElementById('oiMinOI').value) || 20;
-
-  if (!rawOI.trim()) { oiToast('Paste CME OI data first', true); return; }
-
+// ── Derivation core ──────────────────────────────────────────────────────────
+// Everything the modal computes, with NO DOM: paste text in, a complete store
+// entry out. Split out of processOIData so the browser and a headless ingest run
+// the SAME code — the alternative was a second implementation in the scraper,
+// which is the drift failure TRADABILITY_REVIEW.md documents and the reason the
+// vendor-oracle test (js/oiPasteContract.test.mjs) exists.
+//
+// The six things the modal used to read off the DOM are now parameters:
+//   manualFutures  #oiFuturesPrice[data-manual]  — did the user type a price?
+//   swapCP         #oiSwapCP                     — inverted-pair call/put flip
+//   greekVol       #oiGreekVol                   — 'flat' | 'smile'
+//   dashboardQuote window._latestQuote           — last-resort spot
+//   priorEntry     oiLoadStore()[pair]           — for the per-expiry history fold
+//   baseUrl        (new)                         — '' in a browser; an origin in Node,
+//                                                  where a relative /api/… cannot resolve
+//
+// Returns { inst, … } — inst is COMPLETE and ready to store. It never half-builds:
+// a partial entry does not error, it just makes oiStoreToLevels return nothing and
+// the bots see a pair with no OI levels.
+export async function buildOIEntry({
+  pair, rawOI, rawChg = '', rawVol = '', rawIV = '', rawIVTerm = '',
+  expiryLabel = '', dteRaw = NaN, spotRaw = NaN, futuresRaw = NaN,
+  numLevels = 8, minOI = 20,
+  manualFutures = false, swapCP = false, greekVol = 'smile',
+  dashboardQuote = null, priorEntry = null, baseUrl = '',
+} = {}) {
+  if (!rawOI || !rawOI.trim()) return { error: 'no OI data' };
   const parsed = oiParseTable(rawOI);
-  if (!parsed || parsed.strikes.length < 2) { oiToast('Could not parse — check data format', true); return; }
+  if (!parsed || parsed.strikes.length < 2) return { error: 'could not parse' };
 
   // Which expiry column the walls/max-pain were actually computed from. For a full
   // multi-expiry matrix paste this is auto-selected (nearest expiry with significant
@@ -1272,9 +1287,9 @@ export async function processOIData() {
   // ReferenceError on every Analyse click (optional chaining does not guard an
   // undeclared identifier, only a null one), and the .catch on the window binding
   // turned that into a silent no-op. Look the element up locally.
-  const _futEl = document.getElementById('oiFuturesPrice');
-  const _typed = _futEl?.dataset?.manual === '1';
-  const _live = await fetchPairedQuote(pair);
+  // (was: the #oiFuturesPrice data-manual marker; now a caller-supplied flag)
+  const _typed = !!manualFutures;
+  const _live = await fetchPairedQuote(pair, baseUrl);
   let futuresEff = null, futuresSource = null, futuresSymbol = null, quoteAt = null, livePairedSpot = null;
   if (_typed && Number.isFinite(futuresRaw)) {
     futuresEff = futuresRaw; futuresSource = 'manual';
@@ -1291,10 +1306,8 @@ export async function processOIData() {
   if (!Number.isFinite(futuresEff) && Number.isFinite(parsed.futures)) {
     futuresEff = parsed.futures; futuresSource = 'heatmap-header-settle';
   }
-  if (Number.isFinite(futuresEff)) {
-    const fe = document.getElementById('oiFuturesPrice');
-    if (fe && !fe.value) fe.value = String(futuresEff);
-  }
+  // The resolved futures price is returned to the caller, which decides
+  // whether to reflect it in any UI field.
   // How stale the fallback is, when we can measure it (live title vs settle header).
   const futuresStale = (Number.isFinite(_ivTitle?.futures) && Number.isFinite(parsed.futures))
     ? _ivTitle.futures - parsed.futures : null;
@@ -1312,8 +1325,8 @@ export async function processOIData() {
   let spot = null, spotSource = null;
   if (Number.isFinite(livePairedSpot) && livePairedSpot > 0) { spot = livePairedSpot; spotSource = 'live-paired'; }
   if (!spot && !isNaN(spotRaw)) { spot = spotRaw; spotSource = 'field'; }
-  if (!spot && window._latestQuote && S.currentPair && S.currentPair.symbol === pair) {
-    spot = window._latestQuote.price ?? window._latestQuote.mid; spotSource = 'dashboard-quote';
+  if (!spot && Number.isFinite(dashboardQuote) && dashboardQuote > 0) {
+    spot = dashboardQuote; spotSource = 'dashboard-quote';
   }
 
   // ── Basis conversion: Spot Level = CME Strike − Basis  (Basis = Futures − Spot) ──
@@ -1404,7 +1417,7 @@ export async function processOIData() {
   // paper trading settle the question instead of a guess. Swapping here — before max
   // pain, the walls, the GEX profile and everything downstream — means one flag
   // reaches the export, both bots and the dashboard with no second copy to drift.
-  const cpSwapped = futuresIsInverted(pair) && !!document.getElementById('oiSwapCP')?.checked;
+  const cpSwapped = futuresIsInverted(pair) && !!swapCP;
   if (cpSwapped) {
     [parsed.calls, parsed.puts] = [parsed.puts, parsed.calls];
     [parsed.callChg, parsed.putChg] = [parsed.putChg, parsed.callChg];
@@ -1517,7 +1530,7 @@ export async function processOIData() {
   // Default v2 (real IV): use the pasted smile / ATM IV when available, flat only as the
   // fallback — so the bot and the vol-forecast export (which read the stored greeks) get
   // the real-vol GEX/flip automatically. Force 'flat' on the select for a v1 A/B.
-  const greekVolMode = document.getElementById('oiGreekVol')?.value === 'flat' ? 'flat' : 'smile';
+  const greekVolMode = greekVol === 'flat' ? 'flat' : 'smile';
   const flatSig = oiFlatVol(pair);
   let _smK = null, _smIV = null, _atmRealVol = null;
   if (ivSmile && Array.isArray(ivSmile.strikes) && ivSmile.strikes.length) {
@@ -1792,17 +1805,56 @@ export async function processOIData() {
     rawIVTerm: rawIVTerm && rawIVTerm.trim() ? rawIVTerm : null   // "Settlements" term-structure paste (re-parse on reopen)
   };
 
-  const store = oiLoadStore();
   // Per-expiry: preserve prior expiry entries and record THIS paste under its label
   // (near-dated = strongest gamma/pin — Lesson 5). The top-level inst stays the
   // primary/combined view; `expiries` builds up a DTE-keyed sub-view over saves.
-  const priorExpiries = store[pair]?.expiries || {};
+  const priorExpiries = priorEntry?.expiries || {};
   if (expiryLabel && Number.isFinite(dteEff)) {
     priorExpiries[expiryLabel] = { dte: dteEff, savedAtMs: Date.now(),
       maxPain, callWall: inst.callWall, putWall: inst.putWall,
       callWalls: callWalls.slice(0, 8), putWalls: putWalls.slice(0, 8), pcRatio };
   }
   if (Object.keys(priorExpiries).length) inst.expiries = priorExpiries;
+  return { inst, parsed, maxPain, basis, basisClamped, primaryExpiry, ivPasteHint,
+           futuresEff, dteEff };
+}
+
+export async function processOIData() {
+  const pair = S.currentPair ? S.currentPair.symbol : document.getElementById('oiPairSelect').value;
+  const rawOI = document.getElementById('oiRawData').value;
+  const rawChg = document.getElementById('oiChangeData').value;
+  const rawVol = document.getElementById('oiVolumeData')?.value || '';
+  const rawIV = document.getElementById('oiIVData')?.value || '';   // optional QuikStrike settlement paste (implied vol → charm/vanna)
+  const rawIVTerm = document.getElementById('oiIVTermData')?.value || '';   // optional 2nd paste: "Settlements" per-expiry table → IV term structure
+  const expiryLabel = (document.getElementById('oiExpiryLabel')?.value || '').trim();
+  const dteRaw = parseFloat(document.getElementById('oiDTE')?.value);
+  const spotRaw    = parseFloat(document.getElementById('oiSpotPrice').value);
+  const futuresRaw = parseFloat(document.getElementById('oiFuturesPrice')?.value);
+  const numLevels = parseInt(document.getElementById('oiNumLevels').value) || 8;
+  const minOI = parseInt(document.getElementById('oiMinOI').value) || 20;
+
+
+  if (!rawOI.trim()) { oiToast('Paste CME OI data first', true); return; }
+
+  const store = oiLoadStore();
+  const res = await buildOIEntry({
+    pair, rawOI, rawChg, rawVol, rawIV, rawIVTerm, expiryLabel, dteRaw,
+    spotRaw, futuresRaw, numLevels, minOI,
+    manualFutures: document.getElementById('oiFuturesPrice')?.dataset?.manual === '1',
+    swapCP: !!document.getElementById('oiSwapCP')?.checked,
+    greekVol: document.getElementById('oiGreekVol')?.value,
+    dashboardQuote: (window._latestQuote && S.currentPair && S.currentPair.symbol === pair)
+      ? (window._latestQuote.price ?? window._latestQuote.mid) : null,
+    priorEntry: store[pair],
+  });
+  if (res.error) { oiToast(res.error === 'could not parse'
+    ? 'Could not parse — check data format' : 'Paste CME OI data first', true); return; }
+  const { inst, parsed, maxPain, basis, basisClamped, primaryExpiry, ivPasteHint, futuresEff } = res;
+  // Reflect the resolved futures price back into the field (UI only).
+  {
+    const fe = document.getElementById('oiFuturesPrice');
+    if (fe && !fe.value && Number.isFinite(futuresEff)) fe.value = String(futuresEff);
+  }
   store[pair] = inst;
   const _saved = oiSaveStore(store);   // async KV union-merge + local cache
 
