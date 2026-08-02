@@ -622,6 +622,74 @@ not forecastable from its own history.
   heavily by construction, so treat "3x chance" as corroboration of a small
   number of underlying effects, not as 77 findings.
 
+---
+
+# Slice 7 — the second unguided sweep, with the candle in the vocabulary
+
+Slice 6 searched 1,808 cells and noted its own hardest limit: *the search can
+only find what is in its vocabulary, and none of the candle was*. The panel then
+gained 32 columns — candle geometry, approach velocity, yellow-line amplitude,
+re-touch count — and the faithful Money Flow. Re-run on the wider space:
+
+| stage | survivors | chance |
+|---|---|---|
+| 0 enumerated | 6,925 | — |
+| 1 \|t_IS\| >= 2.5 | 278 | ~86 |
+| 2 + OOS same sign | 172 | ~44 |
+| 3 + same sign on both other markets | **162** | ~43 |
+
+~3.8x chance. **13 of the top 20 survivors involve the newly added features.**
+
+## Y1. The strongest cell the blind search has ever produced is a CANDLE cell
+
+```
+stack_zone x tf1_lower_wick_T = -1.0|2
+    all three timeframes oversold AND a long lower wick (top tercile)
+    IS +4.06pp   OOS +4.75pp   eurusd +2.97   nq +2.43
+```
+
+A rejection candle at an aligned-oversold stack. This is the hypothesis that was
+ranked first when the question "what else is worth adding" was asked, on the
+grounds that every one of the panel's 57 columns was oscillator-derived and not
+one described the bar. That gap turned out to contain the best cell in the study.
+
+Supporting cells, same family:
+- `tf1_wt_zone x tf1_bar_dir = -1|-1.0` — oversold WITH a down candle: OOS +3.80,
+  confirms 1.23 / 1.68
+- `tf1_wt_zone x tf15_wt_vel3_T`, `x tf1_wt_vel10_T` — approach velocity, several
+  cells, OOS +3.3 to +4.1
+- `tf1_wt_zone x tf1_range_pct_T` — wide-vs-quiet bar, OOS +4.08
+
+## Y2. The corrected Money Flow does something — but not much
+
+`tf1_wt_zone x tf5_mfv_sign` looks strong on gold (IS +3.12 / OOS +4.19) and then
+**fails cross-instrument** (eurusd +0.49, nq +1.04). The better one is
+`tf1_wt_zone x tf1_mfv_sign` (OOS +3.47, confirms 1.31 / 2.34).
+
+So the faithful formula surfaces cells the volume-weighted one never could — the
+old series was 0.37-correlated with WaveTrend and could only restate it, this one
+is 0.005. But it is a minor contributor, not a rehabilitation of Money Flow. Every
+earlier MF conclusion stands; they were just reached on the wrong series.
+
+## Y3. The caveats did not go away
+
+**OOS exceeds IS on essentially every surviving row** (1.55->3.57, 1.24->3.80,
+1.30->3.47). Identical signature to slice 6, and the per-year cut already showed
+what it is: gold's 2024-26 regime, not robustness. Magnitude remains
+regime-dependent; only the sign has been durable.
+
+**162 survivors that overlap heavily** — corroboration of a small number of
+effects, not 162 findings. The headline lower-wick cell has t_oos = 1.69, under 2.
+
+## What it does NOT change
+
+The frozen table (`vumanchu_state_table.json`) is keyed on zone and shape cells
+only. None of these candle/velocity features are in it, so the live read at
+`/api/vumanchu/state` is unaffected. Adding them means a new key schema, a
+regenerated table, and a matching change to `js/vumanchuState.js` plus its parity
+test — real work, not a config change, and it should not be done until the
+forward log has had something to say about the cells already shipped.
+
 ## Multiple testing
 
 41 cells per instrument per horizon; ~1.9 expected to clear |t|≥2 by chance.
