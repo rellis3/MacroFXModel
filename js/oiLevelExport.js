@@ -36,6 +36,7 @@ import { oiStoreToLevels } from './oiConfluence.js';
 import { levelExpectation } from './levelExpectation.js';
 import { levelHeat } from './levelHeat.js';
 import { gammaFlip, distanceToFlip, rolloffSummary } from './gammaFlow.js';
+import { rebuildGexProfile } from './oi.js';
 
 // Canonical chart-ticker per oi_store key. Mirrors the Confluence-Zones indicator's
 // normalisation targets so the same chart symbols the user already uses resolve here
@@ -127,6 +128,10 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     const levels = oiStoreToLevels(inst, { topWalls, minTier, maxWalls }).filter(l => WANT.has(l.type));
     if (!levels.length) continue;
 
+    // Self-heal a gexProfile the localStorage quota-trim shed (rebuildable from the
+    // stored raw paste) so heat + P(touch) survive; returns inst.gexProfile untouched
+    // when present. Everything below reads THIS, not inst.gexProfile directly.
+    const gexProfile = rebuildGexProfile(inst);
     const canon = canonName(pair);
     const dp = priceDp(pair, canon);
     // Order by type group, then by price descending (top of the book first).
@@ -139,7 +144,7 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     if (cotLine) lines.push(cotLine);
     // Gamma-flow context (human-only — the indicator ignores non-"OI " lines):
     // distance-to-flip vol read + a per-expiry roll-off block. No new data.
-    const flip = Number.isFinite(inst.gammaFlip) ? inst.gammaFlip : gammaFlip(inst.gexProfile);
+    const flip = Number.isFinite(inst.gammaFlip) ? inst.gammaFlip : gammaFlip(gexProfile);
     const dist = distanceToFlip(inst.spot, flip);          // no ATR here → % based
     if (dist) lines.push(`· flip ${flip.toFixed(dp)} · spot ${dist.pct >= 0 ? '+' : ''}${dist.pct}% → ${dist.side === 'positive' ? '+gamma (pin/dampen)' : dist.side === 'negative' ? '−gamma (breakout)' : 'at flip'}${dist.near ? ' · NEAR flip (unstable)' : ''}`);
     const roll = rolloffSummary(inst.termStructure);
@@ -168,7 +173,7 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     // price — how hard the level is defended right now, the price-proximity + DTE
     // weighting the raw wall list lacks. Read off the stored gexProfile; null when
     // absent (older entries) → no heat segment, so the line is unchanged.
-    const heated = levelHeat(inst.gexProfile, levels);
+    const heated = levelHeat(gexProfile, levels);
     // P(touch) per level ("82%~2h"), keyed by exact price — computed live at the export
     // endpoint (needs current bars); absent here in the pure/offline path.
     const rp = (reachByPair && reachByPair[pair]) ? reachByPair[pair] : null;

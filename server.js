@@ -95,6 +95,7 @@ import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
 import { refreshRangeLineConfluence, packLiveM1 } from './js/rangeLineConfluenceProducer.js';
 import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas, classifyOIChange, oiWallStability, oiPriceConfirmation } from './js/oiConfluence.js';
 import { buildOILevelText } from './js/oiLevelExport.js';
+import { rebuildGexProfile as _oiRebuildGex } from './js/oi.js';   // self-heal a quota-trimmed gexProfile
 import { buildOIZones, explainNoZones } from './js/oiZones.js';
 import { gammaFlip as computeGammaFlip, distanceToFlip, flipDrift, rolloffSummary } from './js/gammaFlow.js';
 import { buildRangeZones } from './js/rangeLineZones.js';
@@ -10101,6 +10102,26 @@ app.get('/api/oi-levels', async (_req, res) => {
     }
     res.json({ ok: true, byInstrument, instruments: Object.keys(byInstrument) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// The oi_store, but with each instrument's gexProfile SELF-HEALED — rebuilt from the
+// stored raw paste when the localStorage quota-trim shed it (it's dropped first as
+// "rebuildable"). The OI dashboard reads this instead of the raw KV key so the OI-by-
+// strike chart, heat and gamma-flip never come up blank just because a pair got trimmed.
+// Returns the SAME { data } envelope as /api/kv/get so the dashboard's read is unchanged.
+app.get('/api/oi-store', async (_req, res) => {
+  try {
+    const raw = await kv.get('oi_store').catch(() => null);
+    const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
+    for (const inst of Object.values(store || {})) {
+      if (inst && typeof inst === 'object'
+          && !(Array.isArray(inst.gexProfile) && inst.gexProfile.length)) {
+        const gp = _oiRebuildGex(inst);
+        if (gp.length) inst.gexProfile = gp;
+      }
+    }
+    res.json({ data: store });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // KV persistence health — does bot config/credentials survive a redeploy? The

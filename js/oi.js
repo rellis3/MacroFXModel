@@ -1116,10 +1116,59 @@ export function oiGreeks(strike, spot, pair, T = OI_GREEK_T, sigma) {
   return { gamma, callDelta, putDelta: callDelta-1 };
 }
 
+// Contract size (multiplier) per instrument — the ONE definition, so the exposures,
+// the GEX profile and any rebuild all price gamma in the same units. Was inlined in
+// two places (oiCalcExposures + the profile loop); two copies drift, this doesn't.
+export function oiContractSize(pair) {
+  return isNQ(pair) ? 20 : isES(pair) ? 50 : isYM(pair) ? 5 : isRTY(pair) ? 50
+       : isFDAX(pair) ? 25 : isFTSE(pair) ? 10 : (pair || '').includes('XAU') ? 100 : 125000;
+}
+
+// Per-strike GEX profile from a spot-equivalent ladder — one definition, used by the
+// analyse path AND the rebuild below so both produce byte-identical rows. Raw OI rides
+// along (the only CONTIGUOUS per-strike record stored; topLevels is a top-N ranking),
+// so an OI-by-strike chart has somewhere to read callOI/putOI. Sorted by strike.
+export function buildGexProfile(strikes, calls, puts, spot, pair, T = OI_GREEK_T, sigmaFn = null, cs = null) {
+  const mult = Number.isFinite(cs) ? cs : oiContractSize(pair);
+  return strikes.map((s, i) => {
+    const { gamma } = oiGreeks(s, spot, pair, T, sigmaFn ? sigmaFn(s) : undefined);
+    const callGex = (calls[i] || 0) * gamma * mult * spot;
+    const putGex  = (puts[i]  || 0) * gamma * mult * spot;
+    return { strike: s, callOI: calls[i] || 0, putOI: puts[i] || 0, callGex, putGex, netGex: callGex - putGex };
+  }).sort((a, b) => a.strike - b.strike);
+}
+
+// SELF-HEAL: reconstruct a stored entry's gexProfile when the localStorage quota trim
+// shed it (`_saveLocalCache` drops gexProfile FIRST as "rebuildable"). Pure + network-free
+// — re-parses the stored raw matrix and re-applies the STORED basis / call-put swap / DTE
+// so the ladder lands exactly where the original did. The per-strike IV smile is trimmed
+// alongside the profile, so gamma falls back to flat vol (v1); heat and P(touch) read the
+// RELATIVE per-strike shape, which a uniform vol shift preserves — so a trimmed pair still
+// gets its hot/cold + touch labels instead of silently losing them. Returns the existing
+// profile untouched when present, or [] when there's no raw paste to rebuild from.
+export function rebuildGexProfile(inst) {
+  if (!inst) return [];
+  if (Array.isArray(inst.gexProfile) && inst.gexProfile.length) return inst.gexProfile;
+  const raw = inst.rawOI || Object.values(inst.expiries || {}).map(e => e?.rawOI).find(Boolean);
+  if (!raw || !String(raw).trim()) return [];
+  const parsed = oiParseTable(raw);
+  if (!parsed || parsed.strikes.length < 2) return [];
+  const pair = inst.pair || '';
+  const basis = Number.isFinite(inst.basis) ? inst.basis : 0;
+  let strikes = parsed.strikes;
+  if (basis !== 0) {
+    strikes = futuresIsInverted(pair) ? strikes.map(s => 1 / s - basis) : strikes.map(s => s - basis);
+  }
+  let calls = parsed.calls, puts = parsed.puts;
+  if (inst.cpSwapped) { const t = calls; calls = puts; puts = t; }
+  const spot = Number.isFinite(inst.spot) && inst.spot > 0 ? inst.spot : strikes[Math.floor(strikes.length / 2)];
+  const T = Math.min(365, Math.max(1, Number.isFinite(inst.dte) && inst.dte > 0 ? inst.dte : 14)) / 365;
+  return buildGexProfile(strikes, calls, puts, spot, pair, T, null, oiContractSize(pair));
+}
+
 export function oiCalcExposures(strikes, calls, puts, spot, pair, T = OI_GREEK_T, sigmaFn = null) {
   if (!spot || spot <= 0) return { gex: 0, dex: 0 };
-  const cs = isNQ(pair) ? 20 : isES(pair) ? 50 : isYM(pair) ? 5 : isRTY(pair) ? 50
-           : isFDAX(pair) ? 25 : isFTSE(pair) ? 10 : pair.includes('XAU') ? 100 : 125000;
+  const cs = oiContractSize(pair);
   let gex=0, dex=0;
   for (let i=0; i<strikes.length; i++) {
     const {gamma, callDelta, putDelta} = oiGreeks(strikes[i], spot, pair, T, sigmaFn ? sigmaFn(strikes[i]) : undefined);
@@ -1436,8 +1485,7 @@ export async function buildOIEntry({
   // fallback when no DTE is known (the greek fns still default to it).
   const greekT = Math.min(365, Math.max(1, Number.isFinite(dteEff) && dteEff > 0 ? dteEff : 14)) / 365;
 
-  const cs = isNQ(pair) ? 20 : isES(pair) ? 50 : isYM(pair) ? 5 : isRTY(pair) ? 50
-           : isFDAX(pair) ? 25 : isFTSE(pair) ? 10 : pair.includes('XAU') ? 100 : 125000;
+  const cs = oiContractSize(pair);
 
   // Charm/vanna exposure from a pasted implied-vol surface (CME QuikStrike settlement
   // table). Optional — only when the IV box is filled. Self-consistent: uses the IV
@@ -1606,17 +1654,9 @@ export async function buildOIEntry({
   withOI.sort((a,b)=>b.totalOI-a.totalOI);
   const topLevels = withOI.slice(0, numLevels);
 
-  const gexProfile = parsed.strikes.map((s,i) => {
-    const {gamma} = oiGreeks(s, spot, pair, greekT, sigmaFor(s));
-    const callGex = parsed.calls[i] * gamma * cs * spot;
-    const putGex  = parsed.puts[i]  * gamma * cs * spot;
-    // Raw OI rides along with the gamma-weighted numbers. This is the only CONTIGUOUS
-    // per-strike record stored (topLevels is a top-N ranking, not a ladder), so an
-    // OI-by-strike chart has nowhere else to read from — the dashboard's version came
-    // out blank because it looked for callOI/putOI here and they didn't exist.
-    return { strike:s, callOI: parsed.calls[i], putOI: parsed.puts[i],
-             callGex, putGex, netGex: callGex - putGex };
-  }).sort((a,b) => a.strike - b.strike);
+  // The only CONTIGUOUS per-strike record stored (topLevels is a top-N ranking, not a
+  // ladder) — shared `buildGexProfile` so a quota-trim rebuild reproduces it exactly.
+  const gexProfile = buildGexProfile(parsed.strikes, parsed.calls, parsed.puts, spot, pair, greekT, sigmaFor, cs);
 
   // Ranked call walls (highest call OI first) and put walls (highest put OI first)
   const callWalls = parsed.strikes

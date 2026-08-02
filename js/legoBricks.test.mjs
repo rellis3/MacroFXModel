@@ -704,6 +704,40 @@ console.log('\n[oiLevelExport]');
     ok('OI export omits P(touch) for levels with no reach entry',
       !/82%~2h/.test(textR.split('\n').find(l => l.startsWith('OI 1.10000 : call_wall')) || ''));
   }
+  // SELF-HEAL: an entry whose gexProfile was shed by the localStorage quota-trim
+  // (dropped FIRST as "rebuildable") still gets heat + P(touch), because the export
+  // rebuilds the profile from the stored raw paste. This is the EUR/USD "no gex
+  // profile in the morning" case — the profile is reconstructed, not lost.
+  {
+    const rawOI = [
+      '1.0850\t100\t400',
+      '1.0900\t2000\t8000',
+      '1.0950\t15000\t18000',   // heaviest OI, nearest spot → gamma peak → hot
+      '1.1000\t600\t200',       // light + off-peak → cold
+      '1.1050\t150\t80',
+    ].join('\n');
+    const trimmed = {
+      'EUR/USD': {
+        pair: 'EUR/USD', spot: 1.0955, dte: 4, basis: 0, savedAt: '7/21/2026, 08:15:00',
+        maxPain: 1.0948, callWall: 1.1000, putWall: 1.0900,
+        callWalls: [{ strike: 1.1000, oi: 9000, tier: 3 }],
+        putWalls:  [{ strike: 1.0900, oi: 8000, tier: 3 }],
+        exposures: { gex: 1200 },
+        rawOI,                    // gexProfile DELIBERATELY ABSENT (quota-trimmed)
+      },
+    };
+    const th = buildOILevelText(trimmed, { generated: 'x' });
+    const mp = th.split('\n').find(l => l.startsWith('OI 1.09480 : max_pain'));
+    ok('OI export self-heals heat from rawOI when gexProfile was quota-trimmed',
+      / \. (hot|warm|cold)\s*$/.test(mp || ''), mp);
+    const cw = th.split('\n').find(l => l.startsWith('OI 1.10000 : call_wall'));
+    ok('OI export self-heal marks the far call_wall cold', /\. cold\s*$/.test(cw || ''), cw);
+    // Rebuild + reach compose: the heat placeholder never eats the touch slot.
+    const thr = buildOILevelText(trimmed, { generated: 'x', reachByPair: { 'EUR/USD': { '1.094800': '82%~2h' } } });
+    const mpr = thr.split('\n').find(l => l.startsWith('OI 1.09480 : max_pain'));
+    ok('OI export self-heal composes with P(touch)',
+      / \. (hot|warm|cold|-) \. 82%~2h\s*$/.test(mpr || ''), mpr);
+  }
   ok('OI export parser lines all start with "OI "',
      text.split('\n').filter(l => /^\d|^-?\d/.test(l.trim())).every(l => l.startsWith('OI ')));
   // Empty store → graceful placeholder, never a throw.
