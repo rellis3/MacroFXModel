@@ -108,7 +108,7 @@ function fmtCot(c) {
 // NO price coordinate — it is positioning, not a level — so it is emitted on the per-pair
 // context line the indicator ignores, never as an `OI {price}` line. Drawing a horizontal
 // line for it would invent a price the data does not contain.
-export function buildOILevelText(store, { topWalls = null, minTier = "moderate", maxWalls = 3, generated = null, cot = null } = {}) {
+export function buildOILevelText(store, { topWalls = null, minTier = "moderate", maxWalls = 3, generated = null, cot = null, reachByPair = null } = {}) {
   const LW = 44;
   const hdr = '──── OI WALLS & MAX PAIN ' + '─'.repeat(Math.max(0, LW - 25));
   const lines = [hdr];
@@ -169,22 +169,31 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     // weighting the raw wall list lacks. Read off the stored gexProfile; null when
     // absent (older entries) → no heat segment, so the line is unchanged.
     const heated = levelHeat(inst.gexProfile, levels);
+    // P(touch) per level ("82%~2h"), keyed by exact price — computed live at the export
+    // endpoint (needs current bars); absent here in the pure/offline path.
+    const rp = (reachByPair && reachByPair[pair]) ? reachByPair[pair] : null;
     for (const l of heated) {
       const tier = Number.isFinite(l.tier) && l.tier > 0 ? ` t${l.tier}` : '';
-      // Expectation appended as a THIRD token behind a '.' marker. The Pine parser
-      // splits the RHS on spaces, takes token 0 as the type and a 't'-prefixed token
-      // 1 as the tier, and ignores the rest - so this is invisible to any indicator
-      // that has not been updated, and readable by one that has. Terse on purpose:
-      // these are drawn on the chart and a clause per line makes it unreadable.
+      // The RHS carries ordered ' . ' segments the Pine parser reads by index — token 0
+      // is the type, a 't'-prefixed token 1 the tier, and everything after is invisible to
+      // an un-updated indicator. Order: (1) expectation, (2) heat, (3) P(touch).
       const ex = levelExpectation(l, {
         spot: inst.spot, gexFlips: inst.gexFlips,
         gammaFlip: inst.gammaFlip, refMove: inst.refMove?.move,
       });
-      const note = ex ? ` . ${ex.mid}` : '';
-      // Heat as a SECOND ' . ' segment (parse index 2) — only when the expectation
-      // (index 1) is present, so the indicator's index-1 note read is never disturbed.
-      const heatSeg = (note && l.heatBucket) ? ` . ${l.heatBucket}` : '';
-      lines.push(`OI ${l.price.toFixed(dp)} : ${l.type}${tier}${note}${heatSeg}`);
+      const note  = ex ? ex.mid : '';
+      const heat  = l.heatBucket || '';
+      const touch = rp ? (rp[l.price.toFixed(6)] || '') : '';
+      // Touch (index 3) needs a heat placeholder ('-') so its position is stable when
+      // heat is absent; trailing-absent segments are dropped, so a line with no heat and
+      // no touch is byte-identical to before.
+      let suffix = '';
+      if (note) {
+        if (touch)     suffix = ` . ${note} . ${heat || '-'} . ${touch}`;
+        else if (heat) suffix = ` . ${note} . ${heat}`;
+        else           suffix = ` . ${note}`;
+      }
+      lines.push(`OI ${l.price.toFixed(dp)} : ${l.type}${tier}${suffix}`);
     }
     lines.push('');
     emitted++;

@@ -693,6 +693,17 @@ console.log('\n[oiLevelExport]');
     ok('OI export adds NO heat segment when there is no gexProfile (NQ block)',
       !/ \. (hot|warm|cold)\s*$/.test(nqLine || ''), nqLine);
   }
+  // P(touch) as a THIRD ' . ' segment (index 3), keyed by exact price. Appended after the
+  // expectation (1) and heat (2); a '-' placeholder holds heat's slot if heat were absent.
+  {
+    const reachByPair = { 'EUR/USD': { '1.094800': '82%~2h' } };
+    const textR = buildOILevelText(store, { generated: 'x', reachByPair });
+    const mpR = textR.split('\n').find(l => l.startsWith('OI 1.09480 : max_pain'));
+    ok('OI export appends P(touch) after expectation + heat',
+      / \. [^.\n]+ \. (hot|warm|cold|-) \. 82%~2h\s*$/.test(mpR || ''), mpR);
+    ok('OI export omits P(touch) for levels with no reach entry',
+      !/82%~2h/.test(textR.split('\n').find(l => l.startsWith('OI 1.10000 : call_wall')) || ''));
+  }
   ok('OI export parser lines all start with "OI "',
      text.split('\n').filter(l => /^\d|^-?\d/.test(l.trim())).every(l => l.startsWith('OI ')));
   // Empty store → graceful placeholder, never a throw.

@@ -124,5 +124,17 @@ console.log('[visit density]');
   ok('rel is normalised to the peak', Math.abs(Math.max(...d.bins.map(x => x.rel)) - 1) < 1e-9);
 }
 
+console.log("[reach labels — ETA + touch string]");
+{
+  const { fmtReachEta, reachLabel } = await import("./oiReachability.js");
+  ok("null bars → ?", fmtReachEta(null) === "?" );
+  ok("9 M5 bars → 45m", fmtReachEta(9,5) === "45m", fmtReachEta(9,5));
+  ok("60 M5 bars → 5h", fmtReachEta(60,5) === "5h", fmtReachEta(60,5));
+  ok("600 M5 bars → 2d", fmtReachEta(600,5) === "2d", fmtReachEta(600,5));
+  ok("reachLabel formats pct~eta", reachLabel({calibrated:0.82, medBarsToTouch:24},5) === "82%~2h", reachLabel({calibrated:0.82, medBarsToTouch:24},5));
+  ok("reachLabel empty when no prob", reachLabel({calibrated:null}) === "" && reachLabel(null) === "");
+  ok("reachLabel ~? when no median touch", reachLabel({calibrated:0.11, medBarsToTouch:null}) === "11%~?");
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

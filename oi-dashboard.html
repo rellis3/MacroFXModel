@@ -1017,9 +1017,12 @@ document.addEventListener('keydown',ev=>{ if(ev.key==='Escape') closeZoom(); });
 // The same C+Z / OI paste block the vol-forecast page produces, reachable from here so
 // the TradingView lines can be grabbed without leaving the analysis.
 document.getElementById('expBtn').onclick=async()=>{
-  const b=document.getElementById('expBtn'); const was=b.textContent; b.textContent='fetching…';
+  const b=document.getElementById('expBtn'); const was=b.textContent; b.textContent='fetching + P(touch)…';
   try{
-    const r=await fetch('/api/vol-forecast/zones',{cache:'no-store'});
+    // '?reach=1' opts this export into the live calibrated P(touch) per level (one OANDA M5
+    // fetch + Monte-Carlo per pair). It is slower than the plain zones pull, so it lives on
+    // this OI-focused button rather than the vol-forecast pages, which stay fast.
+    const r=await fetch('/api/vol-forecast/zones?reach=1',{cache:'no-store'});
     const txt=await r.text();
     document.getElementById('zoomTitle').textContent='C+Z / OI export — paste into the TradingView indicator';
     document.getElementById('zoomBody').innerHTML='<button class="btn" id="cpBtn" style="margin-bottom:12px">Copy to clipboard</button>'
