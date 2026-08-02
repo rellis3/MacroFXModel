@@ -106,6 +106,24 @@ export function calibrateTouch(p, curve = REACH_CALIB) {
   return c[c.length - 1][1];
 }
 
+// Compact ETA label from a median first-touch BAR count (each bar = `barMin` minutes).
+// null (fewer than half the paths touched → no reliable median) → '?'. e.g. 9 M5 bars
+// → '45m', 60 → '5h', 600 → '2d'. Pure.
+export function fmtReachEta(medBars, barMin = 5) {
+  if (!Number.isFinite(medBars) || medBars < 0) return '?';
+  const mins = medBars * barMin;
+  if (mins < 60) return `${Math.max(1, Math.round(mins))}m`;
+  if (mins < 60 * 24) return `${Math.round(mins / 60)}h`;
+  return `${Math.round(mins / 1440)}d`;
+}
+
+// One-token touch label for the export line: "82%~2h" (calibrated P(touch) + median ETA).
+// Empty string when there's no usable probability, so the caller appends nothing. Pure.
+export function reachLabel(row, barMin = 5) {
+  if (!row || !Number.isFinite(row.calibrated)) return '';
+  return `${Math.round(row.calibrated * 100)}%~${fmtReachEta(row.medBarsToTouch, barMin)}`;
+}
+
 // Per-wall reachability. `walls` = [{price, type, label}]. Returns one row per wall,
 // sorted nearest-first, each with the calibrated probability, the raw one, and the
 // median number of bars to first touch among the paths that got there.

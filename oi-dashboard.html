@@ -667,7 +667,11 @@ function reachPanel(e, big){
 const norm = x => String(x||'').toLowerCase().replace(/[/_]/g,'');
 
 async function load(){
-  const r = await fetch('/api/kv/get?key=oi_store',{cache:'no-store'});
+  // /api/oi-store = the KV oi_store with each gexProfile self-healed (rebuilt from the
+  // stored raw paste if the localStorage quota-trim shed it), so the OI-by-strike chart
+  // and gamma-flip never come up blank for a trimmed pair. Falls back to the raw KV key.
+  let r = await fetch('/api/oi-store',{cache:'no-store'});
+  if(!r.ok) r = await fetch('/api/kv/get?key=oi_store',{cache:'no-store'});
   if(!r.ok) throw new Error('KV '+r.status);
   const j = await r.json();
   STORE = j.data || j.value || {};
@@ -1017,9 +1021,12 @@ document.addEventListener('keydown',ev=>{ if(ev.key==='Escape') closeZoom(); });
 // The same C+Z / OI paste block the vol-forecast page produces, reachable from here so
 // the TradingView lines can be grabbed without leaving the analysis.
 document.getElementById('expBtn').onclick=async()=>{
-  const b=document.getElementById('expBtn'); const was=b.textContent; b.textContent='fetching…';
+  const b=document.getElementById('expBtn'); const was=b.textContent; b.textContent='fetching + P(touch)…';
   try{
-    const r=await fetch('/api/vol-forecast/zones',{cache:'no-store'});
+    // '?reach=1' opts this export into the live calibrated P(touch) per level (one OANDA M5
+    // fetch + Monte-Carlo per pair). It is slower than the plain zones pull, so it lives on
+    // this OI-focused button rather than the vol-forecast pages, which stay fast.
+    const r=await fetch('/api/vol-forecast/zones?reach=1',{cache:'no-store'});
     const txt=await r.text();
     document.getElementById('zoomTitle').textContent='C+Z / OI export — paste into the TradingView indicator';
     document.getElementById('zoomBody').innerHTML='<button class="btn" id="cpBtn" style="margin-bottom:12px">Copy to clipboard</button>'

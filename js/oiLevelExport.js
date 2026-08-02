@@ -34,7 +34,9 @@
 
 import { oiStoreToLevels } from './oiConfluence.js';
 import { levelExpectation } from './levelExpectation.js';
+import { levelHeat } from './levelHeat.js';
 import { gammaFlip, distanceToFlip, rolloffSummary } from './gammaFlow.js';
+import { rebuildGexProfile } from './oi.js';
 
 // Canonical chart-ticker per oi_store key. Mirrors the Confluence-Zones indicator's
 // normalisation targets so the same chart symbols the user already uses resolve here
@@ -107,7 +109,7 @@ function fmtCot(c) {
 // NO price coordinate — it is positioning, not a level — so it is emitted on the per-pair
 // context line the indicator ignores, never as an `OI {price}` line. Drawing a horizontal
 // line for it would invent a price the data does not contain.
-export function buildOILevelText(store, { topWalls = null, minTier = "moderate", maxWalls = 3, generated = null, cot = null } = {}) {
+export function buildOILevelText(store, { topWalls = null, minTier = "moderate", maxWalls = 3, generated = null, cot = null, reachByPair = null } = {}) {
   const LW = 44;
   const hdr = '──── OI WALLS & MAX PAIN ' + '─'.repeat(Math.max(0, LW - 25));
   const lines = [hdr];
@@ -126,6 +128,10 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     const levels = oiStoreToLevels(inst, { topWalls, minTier, maxWalls }).filter(l => WANT.has(l.type));
     if (!levels.length) continue;
 
+    // Self-heal a gexProfile the localStorage quota-trim shed (rebuildable from the
+    // stored raw paste) so heat + P(touch) survive; returns inst.gexProfile untouched
+    // when present. Everything below reads THIS, not inst.gexProfile directly.
+    const gexProfile = rebuildGexProfile(inst);
     const canon = canonName(pair);
     const dp = priceDp(pair, canon);
     // Order by type group, then by price descending (top of the book first).
@@ -138,7 +144,7 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     if (cotLine) lines.push(cotLine);
     // Gamma-flow context (human-only — the indicator ignores non-"OI " lines):
     // distance-to-flip vol read + a per-expiry roll-off block. No new data.
-    const flip = Number.isFinite(inst.gammaFlip) ? inst.gammaFlip : gammaFlip(inst.gexProfile);
+    const flip = Number.isFinite(inst.gammaFlip) ? inst.gammaFlip : gammaFlip(gexProfile);
     const dist = distanceToFlip(inst.spot, flip);          // no ATR here → % based
     if (dist) lines.push(`· flip ${flip.toFixed(dp)} · spot ${dist.pct >= 0 ? '+' : ''}${dist.pct}% → ${dist.side === 'positive' ? '+gamma (pin/dampen)' : dist.side === 'negative' ? '−gamma (breakout)' : 'at flip'}${dist.near ? ' · NEAR flip (unstable)' : ''}`);
     const roll = rolloffSummary(inst.termStructure);
@@ -163,19 +169,36 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     }
     const rr = inst.riskReversal;
     if (rr) lines.push(`· risk reversal ${rr.rr >= 0 ? '+' : ''}${rr.rr} (${rr.tilt} tilt)`);
-    for (const l of levels) {
+    // Gamma HEAT per level (hot/warm/cold) from the gamma-weighted exposure at that
+    // price — how hard the level is defended right now, the price-proximity + DTE
+    // weighting the raw wall list lacks. Read off the stored gexProfile; null when
+    // absent (older entries) → no heat segment, so the line is unchanged.
+    const heated = levelHeat(gexProfile, levels);
+    // P(touch) per level ("82%~2h"), keyed by exact price — computed live at the export
+    // endpoint (needs current bars); absent here in the pure/offline path.
+    const rp = (reachByPair && reachByPair[pair]) ? reachByPair[pair] : null;
+    for (const l of heated) {
       const tier = Number.isFinite(l.tier) && l.tier > 0 ? ` t${l.tier}` : '';
-      // Expectation appended as a THIRD token behind a '.' marker. The Pine parser
-      // splits the RHS on spaces, takes token 0 as the type and a 't'-prefixed token
-      // 1 as the tier, and ignores the rest - so this is invisible to any indicator
-      // that has not been updated, and readable by one that has. Terse on purpose:
-      // these are drawn on the chart and a clause per line makes it unreadable.
+      // The RHS carries ordered ' . ' segments the Pine parser reads by index — token 0
+      // is the type, a 't'-prefixed token 1 the tier, and everything after is invisible to
+      // an un-updated indicator. Order: (1) expectation, (2) heat, (3) P(touch).
       const ex = levelExpectation(l, {
         spot: inst.spot, gexFlips: inst.gexFlips,
         gammaFlip: inst.gammaFlip, refMove: inst.refMove?.move,
       });
-      const note = ex ? ` . ${ex.mid}` : '';
-      lines.push(`OI ${l.price.toFixed(dp)} : ${l.type}${tier}${note}`);
+      const note  = ex ? ex.mid : '';
+      const heat  = l.heatBucket || '';
+      const touch = rp ? (rp[l.price.toFixed(6)] || '') : '';
+      // Touch (index 3) needs a heat placeholder ('-') so its position is stable when
+      // heat is absent; trailing-absent segments are dropped, so a line with no heat and
+      // no touch is byte-identical to before.
+      let suffix = '';
+      if (note) {
+        if (touch)     suffix = ` . ${note} . ${heat || '-'} . ${touch}`;
+        else if (heat) suffix = ` . ${note} . ${heat}`;
+        else           suffix = ` . ${note}`;
+      }
+      lines.push(`OI ${l.price.toFixed(dp)} : ${l.type}${tier}${suffix}`);
     }
     lines.push('');
     emitted++;

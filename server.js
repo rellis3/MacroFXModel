@@ -95,6 +95,7 @@ import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
 import { refreshRangeLineConfluence, packLiveM1 } from './js/rangeLineConfluenceProducer.js';
 import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas, classifyOIChange, oiWallStability, oiPriceConfirmation } from './js/oiConfluence.js';
 import { buildOILevelText } from './js/oiLevelExport.js';
+import { rebuildGexProfile as _oiRebuildGex } from './js/oi.js';   // self-heal a quota-trimmed gexProfile
 import { buildOIZones, explainNoZones } from './js/oiZones.js';
 import { gammaFlip as computeGammaFlip, distanceToFlip, flipDrift, rolloffSummary } from './js/gammaFlow.js';
 import { buildRangeZones } from './js/rangeLineZones.js';
@@ -129,7 +130,7 @@ import { studyTrade as _studyExit, summarizeExitStudy } from './js/backtestExitS
 import { volHorseRace as _volHorseRace, HR_MODELS as _HR_MODELS } from './js/volHorseRaceEngine.js';   // 8-model σ-forecast horse race per instrument (QLIKE/MZ), does HAR's gold win generalise
 import { scanConfirmedSignals as _scanConfirmedSignals, mergeLog as _mergeLog, forwardStats as _forwardStats } from './js/forwardTrackEngine.js';   // live post-research track record of the confirmed fade
 import { parseCalendarCsv as _parseCalendarCsv, pairCurrencies as _calPairCurrencies } from './js/newsCalendar.js';   // economic-calendar parser
-import { wallReachability as _oiWallReach, firstTouchRace as _oiFirstTouch, visitDensity as _oiVisitDensity, calibForHorizon as _oiCalibFor } from './js/oiReachability.js';   // calibrated P(touch) per OI wall
+import { wallReachability as _oiWallReach, firstTouchRace as _oiFirstTouch, visitDensity as _oiVisitDensity, calibForHorizon as _oiCalibFor, reachLabel as _oiReachLabel } from './js/oiReachability.js';   // calibrated P(touch) per OI wall
 import { buildIntradayContext as _fpBuildCtx, intradayCone as _fpCone, intradayTally as _fpTally, intradayRealizedZ as _fpRealZ, intradayReachability as _fpReach, reachabilityCalibration as _fpReachCalib, intradaySamplePaths as _fpPaths, dayRangeStatus as _fpDayRange, buildForecastContext as _fpBuildDaily, coneFromContext as _fpConeDaily, calibrationTally as _fpTallyDaily } from './js/forecastPathCore.js';   // forecast-path summary + reachability (cone claims API) + daily trend-direction (driftSource:'trend')
 import { makeClaim as _cfMakeClaim, shouldRecord as _cfShouldRecord, resolveClaims as _cfResolve, pruneStale as _cfPrune, summarizeForward as _cfSummarize } from './js/coneForwardTrack.js';   // cone forward-track (live claims vs outcomes)
 import { detectSurprise as _saDetect, shouldFire as _saShouldFire, recordFired as _saRecordFired, SURPRISE_DEFAULTS as _SA_DEFAULTS } from './js/surpriseAlertCore.js';   // cone surprise-alert (context ping, not a signal)
@@ -10202,6 +10203,26 @@ app.get('/api/oi-levels', async (_req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// The oi_store, but with each instrument's gexProfile SELF-HEALED — rebuilt from the
+// stored raw paste when the localStorage quota-trim shed it (it's dropped first as
+// "rebuildable"). The OI dashboard reads this instead of the raw KV key so the OI-by-
+// strike chart, heat and gamma-flip never come up blank just because a pair got trimmed.
+// Returns the SAME { data } envelope as /api/kv/get so the dashboard's read is unchanged.
+app.get('/api/oi-store', async (_req, res) => {
+  try {
+    const raw = await kv.get('oi_store').catch(() => null);
+    const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
+    for (const inst of Object.values(store || {})) {
+      if (inst && typeof inst === 'object'
+          && !(Array.isArray(inst.gexProfile) && inst.gexProfile.length)) {
+        const gp = _oiRebuildGex(inst);
+        if (gp.length) inst.gexProfile = gp;
+      }
+    }
+    res.json({ data: store });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // KV persistence health — does bot config/credentials survive a redeploy? The
 // bot-config page polls this to show a red banner when the backend is the ephemeral
 // file store (the "account details keep being lost" failure) so it's never silent.
@@ -10355,7 +10376,7 @@ app.get('/api/vol-forecast/export', (_req, res) => {
 // Clusters Fibonacci retracements (3/5/10-day swings), previous daily opens/H/L,
 // weekly pivots, vol forecast absolute levels, and round numbers. Returns zones
 // with 2+ distinct level types. Format: CZ {price} : {count} {type1},{type2},...
-app.get('/api/vol-forecast/zones', async (_req, res) => {
+app.get('/api/vol-forecast/zones', async (req, res) => {
   if (!forecastState.latest) {
     return res.status(202).type('text/plain').send('Forecast not yet available — check back in 60s.');
   }
@@ -10379,7 +10400,45 @@ app.get('/api/vol-forecast/zones', async (_req, res) => {
       // COT rides along as a per-pair CONTEXT line only — it has no price coordinate, so
       // it is never emitted as an `OI {price}` level the indicator would draw.
       const cot = await _cotForExport();
-      const oiText = buildOILevelText(store, { generated: forecastState.latest.session_date, cot });
+      // P(touch) per level — calibrated reachability, live from M5, per pair. Opt-in via
+      // '?reach=1' so the default export stays fast (this fans out one OANDA fetch + a
+      // Monte-Carlo per pair). Fail-safe + time-bounded: any pair that errors, or the whole
+      // batch timing out, simply yields no touch labels — never a broken export.
+      let reachByPair = null;
+      if (String(req.query.reach || '') === '1' && process.env.OANDA_KEY) {
+        const OA = { 'EUR/USD':'EUR_USD','GBP/USD':'GBP_USD','USD/JPY':'USD_JPY','AUD/USD':'AUD_USD',
+          'XAU/USD':'XAU_USD','USD/CAD':'USD_CAD','USD/CHF':'USD_CHF','NAS100_USD':'NAS100_USD',
+          'SPX500_USD':'SPX500_USD','US30_USD':'US30_USD','US2000_USD':'US2000_USD','DE30_USD':'DE30_EUR','UK100_GBP':'UK100_GBP' };
+        const H = Math.max(4, Math.min(288, parseInt(req.query.reachH, 10) || 48));   // default 4h (calibrated horizon)
+        const oB = (process.env.OANDA_ENV || 'live') === 'practice' ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+        const forPair = async (k) => {
+          const osym = OA[k], inst = store[k];
+          if (!osym || !inst) return null;
+          const levels = (oiStoreToLevels(inst) || []).filter(l => Number.isFinite(l?.price) && l.price > 0);
+          if (!levels.length) return null;
+          const cr = await fetch(`${oB}/v3/instruments/${encodeURIComponent(osym)}/candles?granularity=M5&count=2000&price=M`,
+            { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(12_000) });
+          if (!cr.ok) return null;
+          const cj = await cr.json();
+          const bars = (cj.candles || []).filter(c => c.complete && c.mid).map(c => ({
+            time: Math.floor(new Date(c.time).getTime() / 1000), open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c }));
+          if (bars.length < 400) return null;
+          const ctx = _fpBuildCtx(bars, {});
+          const rows = _oiWallReach(ctx, bars.length, levels.map(l => ({ price: l.price, type: l.type })), H, { nPaths: 300 });
+          const m = {};
+          for (const r of rows) { const lab = _oiReachLabel(r, 5); if (lab) m[r.price.toFixed(6)] = lab; }
+          return Object.keys(m).length ? m : null;
+        };
+        try {
+          const keys = Object.keys(store).filter(k => OA[k]);
+          const compute = Promise.all(keys.map(k => forPair(k).then(r => [k, r]).catch(() => [k, null])));
+          const results = await Promise.race([compute, new Promise(r => setTimeout(() => r([]), 25_000))]);
+          const rp = {};
+          for (const [k, r] of results) if (r) rp[k] = r;
+          reachByPair = Object.keys(rp).length ? rp : null;
+        } catch { reachByPair = null; }
+      }
+      const oiText = buildOILevelText(store, { generated: forecastState.latest.session_date, cot, reachByPair });
       if (oiText && !oiText.includes('no OI data')) text += '\n\n' + oiText;
     } catch { /* OI is a bonus section — never fail the zones export over it */ }
     res.type('text/plain').send(text);
