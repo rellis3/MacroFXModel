@@ -208,6 +208,11 @@ function isCfKey(key) {
   if (key.startsWith('vol_forecast_')) return true;
   // vol_reference_* are user-pasted reference exports — cannot be auto-rebuilt
   if (key.startsWith('vol_reference_')) return true;
+  // vmlog_* are the VuManChu forward-validation log (one key per UTC day) — the
+  // record of what the engine predicted vs what price actually did. It is the
+  // ONLY out-of-sample evidence the VuManChu work will ever have and it cannot
+  // be rebuilt after the fact, so it must survive redeploys.
+  if (key.startsWith('vmlog_')) return true;
   return _CF_EXACT.has(key) || key.startsWith('journal_') || key.startsWith('ai_');
 }
 

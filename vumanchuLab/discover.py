@@ -51,6 +51,12 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Redirecting stdout to a file makes Python pick the locale codec (cp1252 on
+# Windows), which dies on the sigma/arrow glyphs this module prints. Force
+# UTF-8 so `> out.txt` behaves the same as the console.
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
 from vumanchuLab.analyse import DATA  # noqa: E402
 
 PRIOR_ROWS = 12       # panel rows (stride 5 => 12 rows = 60 min)
@@ -70,6 +76,8 @@ DISCRETE = [
     # candle shape + re-touch (added after the first sweep — the search can only
     # find what is in its vocabulary, and none of the candle was)
     'tf1_bar_dir', 'tf1_zone_touch_n', 'tf15_zone_touch_n',
+    # the FAITHFUL money flow — the mf_* columns measured the wrong formula
+    'tf1_mfv_sign', 'tf1_mfv_slope', 'tf5_mfv_sign', 'tf15_mfv_sign',
 ]
 CONTINUOUS = ['tf1_wt1', 'tf1_mf', 'tf1_vwap_dist', 'tf1_bars_since_cross',
               'tf15_wt1', 'tf15_vwap_dist', 'sigma',
@@ -78,7 +86,8 @@ CONTINUOUS = ['tf1_wt1', 'tf1_mf', 'tf1_vwap_dist', 'tf1_bars_since_cross',
               'tf1_range_pct',
               # approach velocity + yellow-line amplitude
               'tf1_wt_vel3', 'tf1_wt_vel10', 'tf1_bars_since_zero',
-              'tf1_wt_gap_pct', 'tf15_wt_vel3', 'tf15_wt_gap_pct']
+              'tf1_wt_gap_pct', 'tf15_wt_vel3', 'tf15_wt_gap_pct',
+              'tf1_mfv', 'tf1_mfv_pct', 'tf15_mfv']
 
 
 def prepare(path: str) -> pd.DataFrame:

@@ -28,6 +28,10 @@ import { trainHMM5mAll, loadTrainedParams, fetchFredMacro } from './hmm5m-train.
 import { detectPolarityFlip } from './js/polarity.js';
 import { assessEntry, resampleBars } from './js/vumanchu.js';
 import { renderVumanchuPNG, renderVumanchuSVG, vumanchuChartData, vumanchuCaption, MIN_BARS as VM_MIN_BARS } from './js/vumanchuChart.js';
+import { computeState as computeVumanchuState, lookupState as lookupVumanchuState,
+         interpret as interpretVumanchuState } from './js/vumanchuState.js';
+import { appendRows as vmAppendRows, readRange as vmReadRange, buildRow as vmBuildRow,
+         resolveDue as vmResolveDue, scoreRows as vmScoreRows, logKey as vmLogKey } from './js/vumanchuLogger.js';
 import { renderVumanchuMtfPNG, renderVumanchuMtfSVG, vumanchuMtfData, vumanchuMtfCaption, TF_SECONDS as VM_TF_SECONDS, AGREE_MODES as VM_AGREE_MODES } from './js/vumanchuMtf.js';
 import { renderMtfStackPNG, mtfStackData, mtfStackCaption, SERIES_SOURCES as MTF_SERIES_SOURCES, MAX_TFS as MTF_MAX_TFS, MIN_BARS as MTF_STACK_MIN_BARS } from './js/mtfStack.js';
 import { startVolForecastScheduler, forecastState, runVolForecast, getSessionStatus, ensureOhlcCache } from './js/volForecastScheduler.js';
@@ -192,6 +196,34 @@ const REFRESH_LEVELS_MS  = parseInt(process.env.REFRESH_LEVELS_MS  || String(30 
 const HMM5M_REFRESH_MS        = parseInt(process.env.HMM5M_REFRESH_MS   || String(30 * 1000)); // 30s — V2 bot polls at 30s cadence
 const MACRO_REFRESH_MS        = parseInt(process.env.MACRO_REFRESH_MS    || String(6 * 60 * 60 * 1000)); // 6h — FRED data updates once daily
 const HMM5M_ALERT_COOLDOWN_MS = 15 * 60 * 1000; // min gap between regime-change Telegram alerts per pair
+
+// ── Bounded TTL caches ───────────────────────────────────────────────────────
+// Most caches here check `Date.now() - hit.ts < TTL` on READ but never delete,
+// so a stale entry is ignored yet never freed. That is fine for caches keyed by
+// instrument/pair (key space = the instrument list), but several are keyed by
+// user-supplied query params — `tb_${lookback}_${rebalDays}_${targetVol}_${costBps}`
+// has two floats in it — so the key space is bounded only by what someone types
+// into a URL, and each value holds a full backtest result. In a process that
+// lives as long as this one, that grows monotonically.
+//
+// `capMap` bounds them. Eviction CANNOT change a response: every one of these
+// caches is read as `hit ? return hit.data : recompute`, so an evicted key just
+// takes the miss branch and recomputes the identical value. The two branches are
+// already required to agree — that is what makes it a cache rather than state.
+// The only observable effect is recompute frequency.
+//
+// Caps are set well above any plausible single-session working set, so in normal
+// use nothing is ever evicted. Map iteration is insertion-ordered ⇒ FIFO.
+// This generalises the pattern already used for `_vmChartCache` and
+// `m1CandleCache` (via M1_CACHE_MAX).
+//
+// NOT for dedupe Sets (`_tdeShadowSeen`, `_tdePosShadowSeen`) — those are
+// double-book guards, not caches, and evicting a live key is a real defect.
+function capMap(map, max) {
+  while (map.size > max) map.delete(map.keys().next().value);
+}
+const CACHE_MAX_PARAM  = 200;   // caches keyed by query params (floats ⇒ unbounded key space)
+const CACHE_MAX_SERIES = 300;   // _m5SrvCache: 4 endpoints share it, date-range keys
 
 // ── Site login gate ──────────────────────────────────────────────────────────
 // Two independent password zones: 'main' (dashboard + cog/ + everything else)
@@ -4724,6 +4756,7 @@ app.get('/api/oanda_ohlc5m', async (req, res) => {
       .reverse();
     const result = { values, meta: { symbol, source: 'oanda', granularity: gran, partial: wantPartial, at: Date.now() } };
     _m5SrvCache.set(cacheKey, { data: result, ts: Date.now() });
+    capMap(_m5SrvCache, CACHE_MAX_SERIES);
     res.json(result);
   } catch (err) {
     console.error('[oanda_ohlc5m]', err.message);
@@ -5073,6 +5106,198 @@ app.get('/api/vumanchu/mtf-stack', async (req, res) => {
   }
 });
 
+// ─── VuManChu state + forward-validation logger ──────────────────────────────
+// The live read (`/api/vumanchu/state`) keys into the FROZEN table the offline
+// lab produced (`vumanchuLab/data/vumanchu_state_table.json`). The brain stays
+// where it was measured; this only looks the current state up in it — the same
+// learn-offline / ship-a-file pattern as levelsV2 and the volatility bot.
+//
+// The logger writes every read to `vmlog_<UTC-date>` BEFORE the outcome exists,
+// then resolves it once the horizon has elapsed. That record is the only
+// out-of-sample evidence the VuManChu work will ever have, which is why the key
+// is registered in all three KV persistence gates.
+const _VM_STATE_TABLE_PATH = path.join(__dirname, 'vumanchuLab', 'data', 'vumanchu_state_table.json');
+let _vmStateTable = null, _vmStateTableAt = 0;
+
+function _vmLoadTable() {
+  // Re-read at most every 5 min so a regenerated table is picked up without a
+  // redeploy, but a burst of requests does not hammer the disk.
+  if (_vmStateTable && Date.now() - _vmStateTableAt < 300_000) return _vmStateTable;
+  try {
+    _vmStateTable = JSON.parse(fs.readFileSync(_VM_STATE_TABLE_PATH, 'utf8'));
+    _vmStateTableAt = Date.now();
+  } catch (e) {
+    console.warn('[vumanchu/state] table unreadable:', e.message);
+    _vmStateTable = null;
+  }
+  return _vmStateTable;
+}
+
+// Instruments the frozen table actually covers. Reading a pair the table does
+// not contain would silently fall through to "no match" on every bar, so the
+// list is derived from the table rather than hard-coded.
+function _vmTableInstruments() {
+  const t = _vmLoadTable();
+  return t ? Object.keys(t.instruments || {}) : [];
+}
+
+// Map a table instrument key (gold, eurusd, nq) to the OANDA symbol the bar
+// fetcher wants.
+const _VM_OANDA_SYM = {
+  gold: 'XAU/USD', nq: 'NAS100/USD', spx: 'SPX500/USD', dow: 'US30/USD',
+  us30: 'US30/USD', us2000: 'US2000/USD',
+};
+function _vmSymbolFor(instKey) {
+  if (_VM_OANDA_SYM[instKey]) return _VM_OANDA_SYM[instKey];
+  const s = String(instKey).toUpperCase();
+  return s.length === 6 ? `${s.slice(0, 3)}/${s.slice(3)}` : s;
+}
+
+/** Per-minute return sd over the last `n` M1 bars — the scale the lab used. */
+function _vmSigma(bars, n = 500) {
+  const c = bars.slice(-n - 1).map(b => b.close);
+  if (c.length < 30) return null;
+  const r = [];
+  for (let i = 1; i < c.length; i++) if (c[i - 1] > 0) r.push(c[i] / c[i - 1] - 1);
+  const m = r.reduce((s, v) => s + v, 0) / r.length;
+  return Math.sqrt(r.reduce((s, v) => s + (v - m) ** 2, 0) / (r.length - 1));
+}
+
+/** Signed return over the prior `mins` minutes, from the M1 tail. */
+function _vmPriorMove(bars, mins) {
+  if (bars.length < mins + 1) return null;
+  const now = bars[bars.length - 1].close;
+  const then = bars[bars.length - 1 - mins].close;
+  return then > 0 ? now / then - 1 : null;
+}
+
+async function _vmReadState(instKey, horizon = 60) {
+  const table = _vmLoadTable();
+  if (!table) throw new Error('state table not built — run vumanchuLab/export_table.py');
+  const bars = await _fetchVumanchuBars(_vmSymbolFor(instKey), 'M1', 1400);
+  if (bars.length < 400) throw new Error(`only ${bars.length} M1 bars for ${instKey}`);
+  const state = computeVumanchuState(bars, { timeframes: [1, 5, 15] });
+  const hit = lookupVumanchuState(state, table, { instrument: instKey, horizon });
+  const verdict = interpretVumanchuState(state, hit);
+  const last = bars[bars.length - 1];
+  return {
+    instrument: instKey, horizon,
+    slotTs: last.t, price: last.close,
+    sigma: _vmSigma(bars), priorMove: _vmPriorMove(bars, horizon),
+    state, hit, verdict,
+  };
+}
+
+// GET /api/vumanchu/state?symbol=gold[&horizon=60]
+// Omit `symbol` to read every instrument the frozen table covers.
+app.get('/api/vumanchu/state', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured' });
+  const table = _vmLoadTable();
+  if (!table) return res.status(503).json({ error: 'state table not built' });
+  const horizon = [60, 240].includes(+req.query.horizon) ? +req.query.horizon : 60;
+  const known = _vmTableInstruments();
+  const want = req.query.symbol
+    ? [String(req.query.symbol).toLowerCase().replace('/', '')]
+    : known;
+  const bad = want.filter(i => !known.includes(i));
+  if (bad.length) return res.status(400).json({ error: `no table rows for ${bad.join(',')}`, known });
+
+  const out = [];
+  for (const inst of want) {
+    try {
+      const r = await _vmReadState(inst, horizon);
+      out.push({
+        instrument: inst, horizon, at: r.slotTs, price: r.price,
+        read: r.verdict.read, why: r.verdict.why,
+        matched: r.hit.matched, cell: r.hit.cell, n: r.hit.n,
+        pRevert: r.hit.pRevert, baseline: r.hit.baseline, deltaPP: r.hit.deltaPP,
+        yearsSameSign: r.hit.yearsSameSign, years: r.hit.years,
+        yearMinPP: r.hit.yearMinPP, yearMaxPP: r.hit.yearMaxPP,
+        stackZone: r.state.stackZone,
+        codes: [1, 5, 15].map(tf => r.state.per[tf]?.code ?? null),
+        wt: [1, 5, 15].map(tf => r.state.per[tf]?.wt1 ?? null),
+      });
+    } catch (e) {
+      out.push({ instrument: inst, error: e.message });
+    }
+  }
+  res.json({ horizon, generatedAt: Math.floor(Date.now() / 1000), rows: out });
+});
+
+// GET /api/vumanchu/log?days=14 — the forward-validation record + its score.
+app.get('/api/vumanchu/log', async (req, res) => {
+  const days = Math.min(90, Math.max(1, +req.query.days || 14));
+  try {
+    const rows = await vmReadRange(kv, days);
+    res.json({ days, score: vmScoreRows(rows), rows: rows.slice(-4000) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── the cron: log a read per instrument, then resolve what is due ────────────
+const VM_LOG_MIN = Math.max(5, +(process.env.VM_LOG_MIN || 15));   // cadence, minutes
+let _vmLogBusy = false;
+
+async function _vmLogCycle() {
+  if (_vmLogBusy || !process.env.OANDA_KEY) return;
+  const known = _vmTableInstruments();
+  if (!known.length) return;
+  _vmLogBusy = true;
+  try {
+    const rows = [];
+    for (const inst of known) {
+      try {
+        const r = await _vmReadState(inst, 60);
+        rows.push(vmBuildRow({
+          instrument: inst, slotTs: r.slotTs, state: r.state, hit: r.hit,
+          verdict: r.verdict, price: r.price, sigma: r.sigma,
+          horizon: 60, priorMove: r.priorMove,
+        }));
+      } catch (e) {
+        console.warn(`[vmlog] ${inst}: ${e.message}`);
+      }
+    }
+    const w = await vmAppendRows(kv, rows);
+
+    // Resolve anything whose horizon has elapsed. Look back 3 days so a weekend
+    // or an outage does not strand rows unresolved forever.
+    const recent = await vmReadRange(kv, 3);
+    const priceAt = async (inst, ts) => {
+      try {
+        const bars = await _fetchVumanchuBars(_vmSymbolFor(inst), 'M1', 1400);
+        let best = null;
+        for (const b of bars) { if (b.t <= ts) best = b.close; else break; }
+        // Only price it if a bar exists reasonably near the due time — a stale
+        // pre-weekend close must not be scored as a real forward move.
+        const nearest = bars.filter(b => Math.abs(b.t - ts) < 3600);
+        return nearest.length ? best : null;
+      } catch { return null; }
+    };
+    const byDay = {};
+    for (const r of recent) (byDay[vmLogKey((r.slotTs || 0) * 1000)] ||= []).push(r);
+    let resolved = 0;
+    for (const [key, group] of Object.entries(byDay)) {
+      const before = group.filter(r => r.resolved).length;
+      await vmResolveDue(group, priceAt);
+      const after = group.filter(r => r.resolved).length;
+      if (after > before) { await kv.put(key, JSON.stringify(group)); resolved += after - before; }
+    }
+    if (w.added || resolved) {
+      console.log(`[vmlog] logged ${w.added} read(s), resolved ${resolved}`);
+    }
+  } catch (e) {
+    console.error('[vmlog]', e.message);
+  } finally {
+    _vmLogBusy = false;
+  }
+}
+
+if (process.env.VM_LOG_ENABLED !== '0') {
+  setInterval(_vmLogCycle, VM_LOG_MIN * 60_000);
+  setTimeout(_vmLogCycle, 45_000);          // one shortly after boot
+}
+
 // POST /api/vumanchu/mtf-stack/send — push the stack to Telegram.
 app.post('/api/vumanchu/mtf-stack/send', express.json({ limit: '4kb' }), async (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured' });
@@ -5172,6 +5397,7 @@ app.get('/api/ohlc-range', async (req, res) => {
     const values = await fetchOandaCandleRange(instrument, gran, fromISO, toISO);
     const result = { values, meta: { symbol, granularity: gran, from, to, count: values.length } };
     _m5SrvCache.set(cacheKey, { data: result, ts: Date.now() });
+    capMap(_m5SrvCache, CACHE_MAX_SERIES);
     res.json(result);
   } catch (err) {
     console.error('[ohlc-range]', err.message);
@@ -5305,6 +5531,7 @@ app.get('/api/vol-forecast/backtest-range', async (req, res) => {
     }
     const result = { ok: true, pair: pair || symbol, cls, from, to, days, generated: true };
     _m5SrvCache.set(cacheKey, { data: result, ts: Date.now() });
+    capMap(_m5SrvCache, CACHE_MAX_SERIES);
     res.json(result);
   } catch (e) {
     console.error('[backtest-range]', e.message);
@@ -5558,6 +5785,7 @@ app.get('/api/yield-coupling', async (req, res) => {
       fxInstrument, availability, ceiling, spreads,
       note: 'Standardized (z) overlay. Bond price is inverse yield; spread oriented FX-bullish-when-positive. 2Y spreads are US-leg-only where OANDA has no foreign 2Y CFD. "Earliest" is the deepest M5 bar OANDA serves per instrument — the ceiling for any backtest.' };
     _yieldCoupCache.set(cacheKey, { data: result, ts: Date.now() });
+    capMap(_yieldCoupCache, CACHE_MAX_PARAM);
     res.json(result);
   } catch (err) {
     console.error('[yield-coupling]', err.message);
@@ -5773,6 +6001,7 @@ app.get('/api/trend-basket', async (req, res) => {
     }
     const data = { ...result, qualityAB, availability, universe: TREND_UNIVERSE.map(u => u.ccy) };
     _trendCache.set(cacheKey, { data, ts: Date.now() });
+    capMap(_trendCache, CACHE_MAX_PARAM);
     res.json(data);
   } catch (err) {
     console.error('[trend-basket]', err.message);
@@ -5821,6 +6050,7 @@ app.get('/api/econ-trend', async (req, res) => {
       universe: Object.keys(ECON_UNIVERSE),
     };
     _econTrendCache.set(cacheKey, { data, ts: Date.now() });
+    capMap(_econTrendCache, CACHE_MAX_PARAM);
     res.json(data);
   } catch (err) {
     console.error('[econ-trend]', err.message);
@@ -5890,6 +6120,7 @@ app.get('/api/credit-stress', async (req, res) => {
       priceAvailability, fredAvailability,
     };
     _csiCache.set(cacheKey, { data, ts: Date.now() });
+    capMap(_csiCache, CACHE_MAX_PARAM);
     res.json(data);
   } catch (err) {
     console.error('[credit-stress]', err.message);
@@ -6002,6 +6233,7 @@ app.get('/api/fx-carry', async (req, res) => {
 
     const data = { ...result, availability, universe: CARRY_UNIVERSE.map(u => u.ccy), financing, haircut };
     _carryCache.set(cacheKey, { data, ts: Date.now() });
+    capMap(_carryCache, CACHE_MAX_PARAM);
     res.json(data);
   } catch (err) {
     console.error('[fx-carry]', err.message);
@@ -7929,6 +8161,7 @@ async function _getLiquidityGateBars(instrument, fromDate) {
       + `21:00/22:00 UTC anchor hours the day-bar builder requires`);
   }
   liqGateBarCache.set(cacheKey, { bars, fetchedAt: Date.now() });
+  capMap(liqGateBarCache, CACHE_MAX_PARAM);   // keyed `instrument:fromDate` ⇒ grows daily
   return bars;
 }
 
@@ -8285,7 +8518,7 @@ app.get('/api/trend/backtest', async (req, res) => {
     if (result.ok) { try { result.robustness = _trendRobustness(markets, { longShort, volTargetPort }); } catch (e) { result.robustness = { ok: false, error: e.message }; } }
     // True OOS: select lookback config on the IS half, evaluate on the held-out half.
     if (result.ok) { try { result.isOos = _trendIsOos(markets, { longShort, volTargetPort }); } catch (e) { result.isOos = { ok: false, error: e.message }; } }
-    if (result.ok) _trendBtCache.set(key, { at: Date.now(), data: result });
+    if (result.ok) { _trendBtCache.set(key, { at: Date.now(), data: result }); capMap(_trendBtCache, CACHE_MAX_PARAM); }
     res.status(result.ok ? 200 : 502).json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
@@ -8511,7 +8744,7 @@ app.get('/api/trend-v2/backtest', async (req, res) => {
     if (markets.length < 3) return res.status(502).json({ ok: false, error: `only ${markets.length} markets fetched`, skipped });
     const result = _runTrendAB(markets, { costBp, longShort, volTargetPort });
     result.universe = { requested: _TREND_UNIVERSE.length, used: markets.map(m => `${m.symbol}:${m.assetClass}`), skipped };
-    if (result.ok) _trendV2Cache.set(key, { at: Date.now(), data: result });
+    if (result.ok) { _trendV2Cache.set(key, { at: Date.now(), data: result }); capMap(_trendV2Cache, CACHE_MAX_PARAM); }
     res.status(result.ok ? 200 : 502).json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
@@ -16864,6 +17097,7 @@ async function _fetchVolLevelCandles(sym, gran = 'M5', count = 150) {
       .map(c => ({ open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c,
                    t: Math.floor(new Date(c.time).getTime() / 1000) }));   // epoch sec, for session slicing
     _m5SrvCache.set(cacheKey, { data: bars, ts: Date.now() });
+    capMap(_m5SrvCache, CACHE_MAX_SERIES);
     return bars;
   } catch { return null; }
 }
@@ -19857,10 +20091,23 @@ async function _loadMacroFredHistoryFull(onLog = () => {}) {
 }
 
 const tdeBackfillJobs = new Map();
+// The only job Map of ~65 without a purge — every other one has a _purgeStale*Jobs.
+// Each job holds a full `log` array for the life of the process. Stricter than the
+// neighbours on purpose: a backfill can run for a long time, so this only drops
+// jobs that have already FINISHED (the status route's own 404 is "not found or
+// expired", so an expired id is an anticipated state). A running job is never
+// evicted, so an in-flight poll can't be broken.
+function _purgeStaleTdeBackfillJobs() {
+  const cut = Date.now() - 60 * 60_000;
+  for (const [id, j] of tdeBackfillJobs) {
+    if (j.status !== 'running' && (j.startedAt ?? 0) < cut) tdeBackfillJobs.delete(id);
+  }
+}
 let tdeBackfillRunning = false;
 function tdeStartBackfillJob(pairs, { incremental, gapFill = true, macro = true }) {
   const jobId = `tdebf_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const job = { status: 'running', startedAt: Date.now(), log: [] };
+  _purgeStaleTdeBackfillJobs();
   tdeBackfillJobs.set(jobId, job);
   tdeBackfillRunning = true;
   (async () => {
@@ -21994,6 +22241,7 @@ async function _iqrRestoreFromKv(mon) {
 })();
 
 // ─────────────────────────────────────────────────────────────────────────────
+
 
 app.listen(PORT, () => {
   const oanda   = process.env.OANDA_KEY ? '✓' : '✗ missing';

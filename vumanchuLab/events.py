@@ -57,11 +57,17 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Redirecting stdout to a file makes Python pick the locale codec (cp1252 on
+# Windows), which dies on the sigma/arrow glyphs this module prints. Force
+# UTF-8 so `> out.txt` behaves the same as the console.
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
 from vumanchuLab.panel import (  # noqa: E402
     OB, OS, SIGMA_MIN, SIGMA_WINDOW, TIMEFRAMES, epoch_seconds, load_m1, resample,
 )
 from pylego.indicators.vumanchu import (  # noqa: E402
-    OPERATOR_WT, align_htf_causal, causal_money_flow, causal_vwap_dist, wave_trend,
+    OPERATOR_WT, align_htf_causal, causal_vwap_dist, money_flow_vmc, wave_trend,
 )
 
 EVENT_TF = 5          # minutes — the grid turns are detected on
@@ -188,7 +194,15 @@ def component_frame(instrument: str, event_tf: int = EVENT_TF, start=None, end=N
     v = vol if np.isfinite(vol).any() else None
 
     wt = wave_trend(h, l, c, **OPERATOR_WT)
-    mf = causal_money_flow(o, h, l, c, v, period=14, window=2000)
+    # THE FAITHFUL Pine money flow — sma(((c-o)/(h-l))*150, 60) - 2.5, no volume.
+    # This module previously used `causal_money_flow` (volume-weighted, EMA(14),
+    # peak-normalised), which is a different series: Spearman ~0.40 to this one,
+    # ~37% correlated with WaveTrend where this one is ~0.005, and near-degenerate
+    # (36% of its values inside +/-2 on gold vs 14% here). Every Money-Flow
+    # conclusion in `events.py` / `divergence_stack.py` before this change was
+    # measured on that wrong series. See `money_flow_vmc`'s docstring and
+    # `MD files/VUMANCHU_DIRECTION_FINDINGS.md` §4.
+    mf = money_flow_vmc(o, h, l, c, period=60, multiplier=150.0, offset=2.5)
     vd = causal_vwap_dist(h, l, c, v, window=20, sigma_window=SIGMA_WINDOW,
                           min_periods=SIGMA_MIN)
 

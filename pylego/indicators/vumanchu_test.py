@@ -21,9 +21,15 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+# Redirecting stdout to a file makes Python pick the locale codec (cp1252 on
+# Windows), which dies on the sigma/arrow glyphs this module prints. Force
+# UTF-8 so `> out.txt` behaves the same as the console.
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
 from pylego.indicators.vumanchu import (  # noqa: E402
     WT_EPS, agreement, align_htf_causal, causal_money_flow, causal_vwap_dist, ema,
-    money_flow_raw, parity_money_flow, parity_vwap_osc, rephasing_baseline,
+    money_flow_raw, money_flow_vmc, parity_money_flow, parity_vwap_osc, rephasing_baseline,
     rolling_vwap, sma, wave_trend,
 )
 
@@ -95,6 +101,12 @@ def main():
 
     close_to(parity_money_flow(o, h, l, c, v, period=14), V['money_flow_14'],
              'computeMoneyFlow(period=14)')
+
+    # The FAITHFUL Pine money flow — the one that should have been used all along.
+    close_to(money_flow_vmc(o, h, l, c), V['money_flow_vmc'],
+             'computeMoneyFlowVMC(60,150,2.5) — the real Pine formula')
+    close_to(money_flow_vmc(no_, nh, nl, nc), V['money_flow_vmc_nv'],
+             'computeMoneyFlowVMC — needs no volume at all')
 
     vw, osc = parity_vwap_osc(h, l, c, v)
     close_to(vw, V['vwap_cumulative'], 'computeVWAP — cumulative vwap')

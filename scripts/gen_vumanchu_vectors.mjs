@@ -17,7 +17,7 @@ import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { computeWaveTrend, computeMoneyFlow, computeVWAP, ema, sma } from '../js/vumanchuCore.js';
+import { computeWaveTrend, computeMoneyFlow, computeMoneyFlowVMC, computeVWAP, ema, sma } from '../js/vumanchuCore.js';
 import { alignHtfCausal } from '../js/vumanchuMtf.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -97,6 +97,8 @@ const payload = {
   wt_flat: { params: { n1: 9, n2: 12, sp: 3 }, wt1: flat.wt1, wt2: flat.wt2 },
   wt_no_volume: { params: { n1: 10, n2: 21, sp: 4 }, wt1: noVolWt.wt1, wt2: noVolWt.wt2 },
   money_flow_14: computeMoneyFlow(bars, { period: 14 }),
+  money_flow_vmc: computeMoneyFlowVMC(bars, { period: 60, multiplier: 150, offset: 2.5 }),
+  money_flow_vmc_nv: computeMoneyFlowVMC(barsNoVol, { period: 60, multiplier: 150, offset: 2.5 }),
   vwap_cumulative: vwap.vwap,
   vwap_osc: vwap.osc,
   mtf: {

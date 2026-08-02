@@ -163,6 +163,47 @@ def parity_money_flow(open_, high, low, close, volume=None, period: int = 14) ->
     return ema(raw / peak * 100.0, period)
 
 
+def money_flow_vmc(open_, high, low, close, period: int = 60,
+                   multiplier: float = 150.0, offset: float = 2.5) -> np.ndarray:
+    """THE FAITHFUL VuManChu Money Flow. Use this one.
+
+    Ports `js/vumanchuCore.computeMoneyFlowVMC`, which is the actual Pine:
+
+        f_rsimfi(_period, _multiplier, _tf) =>
+            sma(((close - open) / (high - low)) * _multiplier, _period) - rsiMFIPosY
+        // period 60, multiplier 150, offset 2.5
+
+    WHY THIS MATTERS — a correction, not an addition
+    ------------------------------------------------
+    `parity_money_flow` (and therefore `causal_money_flow`, built on the same
+    per-bar term) is NOT this. It multiplies by VOLUME, smooths with EMA(14)
+    instead of SMA(60), and peak-normalises. Spearman between the two is ~0.39
+    — they are not the same series. The volume-weighted one is also
+    near-degenerate in practice: ~90% of its values sit inside +/-2.
+
+    `MD files/VUMANCHU_DIRECTION_FINDINGS.md` §4 measured the difference and
+    found the faithful version to be the best single feature in that entire
+    study, and near-INDEPENDENT of the WaveTrend histogram (corr 0.01) — which
+    is the property that lets it add information rather than restate price.
+
+    Every "Money Flow adds nothing" conclusion in `vumanchuLab/FINDINGS.md` was
+    measured on the volume-weighted series and does not apply to this one.
+
+    Fully causal: SMA of a per-bar term, no normalisation, nothing global. The
+    leading `period-1` bars are NaN rather than guessed.
+
+    On FX this needs no volume at all, which also removes the tick-count
+    caveat that qualified every earlier Money Flow statement.
+    """
+    o = np.asarray(open_, dtype=float)
+    h = np.asarray(high, dtype=float)
+    l = np.asarray(low, dtype=float)
+    c = np.asarray(close, dtype=float)
+    rng = h - l
+    raw = np.where(rng > 0, (c - o) / np.where(rng > 0, rng, 1.0) * multiplier, 0.0)
+    return sma(raw, period) - offset
+
+
 def causal_money_flow(open_, high, low, close, volume=None, period: int = 14,
                       window: int = 2000, pctile: float = 99.0,
                       min_periods: int = 200, clamp: float = 150.0) -> np.ndarray:

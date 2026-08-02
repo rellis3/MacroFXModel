@@ -1,0 +1,20 @@
+ 
+================================================== 
+ RUN STARTED 02/08/2026 17:45:40.60 
+================================================== 
+
+=== DAILY OI - 2026-08-02 ===
+
+  [ingest] running...
+  [compare] running...
+
+=== VERDICT ===
+
+  capture   44 table(s) reused from quikstrike
+  ingest    11 complete Â· 0 skipped
+  compare   44 agree Â· 0 differ
+
+  target    oi_store_py
+
+  VERDICT   OK
+[02/08/2026 17:45:57.27] finished with exit code 0 

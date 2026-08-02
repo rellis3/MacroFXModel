@@ -40,6 +40,12 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Redirecting stdout to a file makes Python pick the locale codec (cp1252 on
+# Windows), which dies on the sigma/arrow glyphs this module prints. Force
+# UTF-8 so `> out.txt` behaves the same as the console.
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
 from vumanchuLab.analyse import DATA, batch_means_se  # noqa: E402
 from vumanchuLab.panel import M1_DIRS, TIMEFRAMES, build_panel  # noqa: E402
 from pylego.instruments import asset_class, resolve_key  # noqa: E402

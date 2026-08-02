@@ -50,9 +50,15 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Redirecting stdout to a file makes Python pick the locale codec (cp1252 on
+# Windows), which dies on the sigma/arrow glyphs this module prints. Force
+# UTF-8 so `> out.txt` behaves the same as the console.
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
 from pylego.indicators.vumanchu import (  # noqa: E402
     OPERATOR_WT, agreement, align_htf_causal, causal_money_flow, causal_vwap_dist,
-    wave_trend,
+    money_flow_vmc, wave_trend,
 )
 from pylego.instruments import asset_class, resolve_key  # noqa: E402
 
@@ -192,6 +198,24 @@ def timeframe_features(bars: pd.DataFrame, minutes: int, wt_params: dict) -> pd.
     f['mf_sign'] = np.sign(mf)
     f['mf_slope'] = np.sign(pd.Series(mf).diff(3).to_numpy())
 
+    # ── THE FAITHFUL MONEY FLOW (`mfv_*`) ────────────────────────────────────
+    # The `mf_*` columns above are the VOLUME-WEIGHTED EMA(14) variant, which is
+    # NOT VuManChu's Money Flow — see `money_flow_vmc`'s docstring and
+    # `MD files/VUMANCHU_DIRECTION_FINDINGS.md` §4. Spearman between the two is
+    # ~0.39, and the old one is near-degenerate (~90% of values inside +/-2),
+    # which is why every "Money Flow adds nothing" result in FINDINGS.md was
+    # measured on the wrong series.
+    #
+    # `mf_*` is retained ONLY so earlier results stay reproducible. New work
+    # reads `mfv_*`. On FX this needs no volume, so the tick-count caveat that
+    # qualified every previous Money Flow statement does not apply to it.
+    mfv = money_flow_vmc(o, h, l, c, period=60, multiplier=150.0, offset=2.5)
+    f['mfv'] = mfv
+    f['mfv_sign'] = np.sign(mfv)
+    f['mfv_slope'] = np.sign(pd.Series(mfv).diff(3).to_numpy())
+    f['mfv_pct'] = (pd.Series(mfv, index=bars.index)
+                    .rolling(20000, min_periods=2000).rank(pct=True).to_numpy())
+
     # VWAP: the ROLLING distance in sigma units, never the cumulative anchor
     # (which is measured degenerate across timeframes).
     f['vwap_dist'] = causal_vwap_dist(h, l, c, v, window=20,
@@ -321,6 +345,7 @@ def build_panel(instrument: str, timeframes=TIMEFRAMES, stride: int = 5,
     base_close_sec = base_f['close_sec'].to_numpy(float)
     for col in ('wt1', 'wt2', 'wt_diff', 'wt_side', 'wt_dir', 'wt_zone',
                 'bars_since_cross', 'mf', 'mf_sign', 'mf_slope',
+                'mfv', 'mfv_sign', 'mfv_slope', 'mfv_pct',
                 'vwap_dist', 'vwap_slope',
                 # the candle itself
                 'body_frac', 'upper_wick', 'lower_wick', 'close_pos', 'bar_dir',
@@ -337,6 +362,7 @@ def build_panel(instrument: str, timeframes=TIMEFRAMES, stride: int = 5,
         blk = blocks[tf]
         slow_close = blk['close_sec'].to_numpy(float)
         for col in ('wt1', 'wt2', 'wt_side', 'wt_dir', 'wt_zone', 'mf', 'mf_sign',
+                    'mfv', 'mfv_sign', 'mfv_pct',
                     'vwap_dist', 'wt_vel3', 'wt_gap_pct', 'zone_touch_n',
                     'body_frac', 'close_pos'):
             panel[f'tf{tf}_{col}'] = align_htf_causal(

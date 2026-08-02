@@ -1,466 +1,231 @@
-# Infrastructure Cost Analysis - CPU & Memory Optimization Report
+# Infrastructure Cost & Technical Debt — Verified Audit
 
-**Date:** 2026-08-01  
-**Analysis Scope:** Python scripts, bots, backtest systems, data processing  
-**Objective:** Identify resource-intensive operations causing increased infrastructure costs
-
----
-
-## Executive Summary
-
-Analysis reveals **multiple high-impact CPU and memory issues** across the trading system that are likely driving increased infrastructure costs:
-
-### Critical Issues Found:
-
-1. **6+ continuous polling loops** running 24/7 with aggressive intervals (1-60 seconds)
-2. **Inefficient pandas operations** (`.iterrows()`, repeated `.append()`, `pd.concat` in loops)
-3. **Memory-intensive data processing** without cleanup
-4. **Redundant data fetching** and computation
-5. **Unoptimized backtest systems** with nested loops on large datasets
-
-### Estimated Impact:
-
-- **High CPU usage**: Continuous polling + inefficient loops = sustained 40-70% CPU
-- **Memory growth**: Unbounded list appends + pandas inefficiency = 2-4GB+ per bot
-- **Network overhead**: Redundant API calls = unnecessary bandwidth costs
+**Original draft:** 2026-08-01 (AI-generated, largely unverified)
+**Corrected:** 2026-08-02 — every claim below re-checked against the code
+**Scope:** what actually runs in production, and what actually grows without bound
 
 ---
 
-## 1. CONTINUOUS POLLING LOOPS (High CPU Impact)
+## ⚠️ Status of the original version of this document
 
-### 1.1 Main Trading Bot - [`bot/main.py`](bot/main.py:1385)
+The 2026-08-01 draft of this file was generated without reading the files it
+cited. Most of its headline claims were wrong, and its line references pointed
+at code that does not exist. It has been replaced wholesale.
 
-```python
-while True:
-    tick_start = time.time()
-    # State refresh every 60s (default)
-    # Price tick evaluation
-    time.sleep(price_interval)  # Default: 10s
-```
-
-**Impact:** Runs 24/7, evaluates all enabled pairs every 10 seconds
-
-- **CPU:** Continuous evaluation of regime signals, beta estimation, level proximity
-- **Memory:** Caches state, beta estimates, regime snapshots
-- **Recommendation:** Increase `price_interval` to 30-60s for non-critical pairs
-
-### 1.2 Regime Bot - [`bot/regime_bot.py`](bot/regime_bot.py:526)
-
-```python
-while True:
-    cycle += 1
-    cfg = load_config(base_url)  # Re-read every cycle
-    # Fetch regimes for all pairs
-    # Evaluate entries/exits
-    time.sleep(max(cfg.get('interval_secs', 60), 30))
-```
-
-**Impact:** 60-second polling for regime changes
-
-- **Recommendation:** Use event-driven updates or increase to 120s
-
-### 1.3 Yield Spread Bot - [`YieldSpreadBot/yield_spread_bot.py`](YieldSpreadBot/yield_spread_bot.py:357)
-
-```python
-while True:
-    nowt = time.time()
-    # Plan refresh every 600s
-    # Config refresh every 60s
-    time.sleep(max(cfg.get("tick_secs", 10), 1))  # 10s default
-```
-
-**Impact:** 10-second tick loop for spread monitoring
-
-- **Recommendation:** Increase to 30s minimum
-
-### 1.4 Backtest System - [`backtestSystem/main.py`](backtestSystem/main.py:532)
-
-```python
-while True:
-    now = london_now()
-    # Fetch positions, check exits, evaluate entries
-    time.sleep(poll_interval)  # Configurable
-```
-
-**Impact:** Continuous backtest execution
-
-- **Recommendation:** Should only run during market hours
-
-### 1.5 Confluence Bot - [`ConfluenceBot/main.py`](ConfluenceBot/main.py:1738)
-
-```python
-while True:
-    now = time.time()
-    if now - self.last_state_refresh >= self.args.state_interval:
-        self._state_refresh_all()  # Heavy operation
-    self._price_tick_all()
-    time.sleep(self.args.price_interval)
-```
-
-**Impact:** State refresh includes rebuilding engines, fetching multi-timeframe data
-
-- **Recommendation:** Cache more aggressively, increase intervals
-
-### 1.6 Hedge Bot - [`bot/hedge_bot.py`](bot/hedge_bot.py:490)
-
-```python
-while True:
-    cycle += 1
-    cfg = _load_config(base_url)
-    signals = _fetch_signals(base_url)
-    # Check positions, evaluate hedges
-    time.sleep(interval)
-```
-
-**Total Polling Impact:**
-
-- 6 bots × 10-60s intervals = **360-600 API calls/minute**
-- Each call triggers JSON parsing, state updates, calculations
-- **Recommendation:** Implement shared state cache, reduce polling frequency
+**Do not cite the original figures.** The retracted claims are listed in §5 so
+that anyone who acted on them can unwind it.
 
 ---
 
-## 2. INEFFICIENT PANDAS OPERATIONS (High Memory Impact)
+## 1. What actually runs 24/7
 
-### 2.1 `.iterrows()` Anti-Pattern
+This is the axis the original draft never established, and it determines
+everything about cost. Per [`start.sh`](../start.sh), the Railway service runs
+**four** processes:
 
-Found in **33 locations** - extremely slow and memory-intensive:
+| Process | Type |
+|---|---|
+| `node server.js` | web server + ~40 `setInterval` schedulers, single long-lived process |
+| `RegimeV2/regime_bot_v2.py` | supervised, auto-restart |
+| `bot/main.py` | supervised, auto-restart |
+| `Gold/main.py` | supervised, auto-restart |
 
-**Example:** [`analysis/trade_analyzer.py`](analysis/trade_analyzer.py:210)
+**Everything else in this repo is a manually-run script or an unwired fork.**
+`bot/regime_bot.py`, `YieldSpreadBot/`, `ConfluenceBot/`, `bot/hedge_bot.py`,
+`backtestSystem/`, `portfolioBacktest/`, `oi_recon/`, `archive/`,
+`vumanchuLab/`, `volatility_bot/layer2_*` — none of these are started by the
+Railway service. Optimising them saves **zero** infrastructure cost. (Some bots
+run on the separate MT5 box; that is not this service's bill.)
 
-```python
-for _, row in lookup.iterrows():  # ❌ SLOW
-    key = f"{row['regime']}|{row['signal']}|{row['strength']}"
-```
-
-**Fix:** Use vectorized operations or `.apply()`:
-
-```python
-lookup['key'] = lookup['regime'] + '|' + lookup['signal'] + '|' + lookup['strength']
-```
-
-**Impact:** `.iterrows()` is 100-500x slower than vectorized operations
-
-- **Locations:** `trade_analyzer.py`, `bot_giveback.py`, `train_gold_model.py`, volatility bot scripts
-
-### 2.2 List Append in Loops (Memory Fragmentation)
-
-Found in **300+ locations**:
-
-**Example:** [`archive/asia_range_backtest.py`](archive/asia_range_backtest.py:185)
-
-```python
-for _, bar in candles.iterrows():  # ❌ Double anti-pattern
-    # ... processing ...
-    trades.append({...})  # ❌ Repeated reallocation
-```
-
-**Fix:** Pre-allocate or use list comprehension:
-
-```python
-trades = [process_bar(bar) for bar in candles.itertuples()]
-```
-
-### 2.3 `pd.concat()` in Loops
-
-**Example:** [`bot/scripts/train_gold_model.py`](bot/scripts/train_gold_model.py:140)
-
-```python
-X = pd.concat([df[available_numeric], cat_dummies], axis=1)  # OK if once
-# But if in a loop: ❌ Creates new DataFrame each time
-```
-
-**Impact:** Each concat creates a new DataFrame, copying all data
-
-- **Recommendation:** Collect in list, concat once at end
+**`server.js` is the cost centre.** It is a ~22,000-line single process holding
+all caches, all job state, and ~40 timers. Any real memory issue lives there.
 
 ---
 
-## 3. MEMORY LEAKS & UNBOUNDED GROWTH
+## 2. Confirmed issue: caches that check TTL on read but never delete
 
-### 3.1 Unbounded History Buffers
+**This is the one genuine memory leak, and the original draft missed it.**
 
-**Example:** [`bot/regime_bot.py`](bot/regime_bot.py:307-308)
+30 top-level `Map`/`Set` caches exist in `server.js`. **25 of them never call
+`.delete()` or `.clear()`.** They check `Date.now() - hit.ts < TTL` on read, so
+stale entries are *ignored* — but never *freed*. Memory grows monotonically for
+the life of the process.
 
-```python
-def push(self, regime: str, confidence: float, vol_z: float, run_length: int) -> None:
-    self._buf.append((regime, confidence, vol_z, run_length))  # ❌ No limit
+The severity depends on key cardinality. Three tiers:
+
+### 2a. Keyed by user-supplied query parameters — effectively unbounded
+
+Each value holds a full backtest/analysis result. The key space is not bounded
+by anything the system controls; it is bounded by what a user types into a URL.
+
+| Cache | Key | Location |
+|---|---|---|
+| `_trendCache` | `tb_${lookback}_${rebalDays}_${targetVol}_${costBps}` — two floats | [`server.js:5722`](../server.js#L5722) |
+| `_econTrendCache` | `et_${rebalDays}_${targetVol}_${costBps}_${placebos}` | [`server.js:5798`](../server.js#L5798) |
+| `_carryCache` | `carry_${rebalDays}_${targetVol}_${costBps}_${signalMode}` | [`server.js:5949`](../server.js#L5949) |
+| `_yieldCoupCache` | `yc_${symbol}_${gran}_${count}_${corrWindow}_${maxLag}_${days}` | [`server.js:5426`](../server.js#L5426) |
+| `_m5SrvCache` | `range_…_${from}_${to}` / `btrange_…_${from}_${to}` — date-range keyed | [`server.js:5168`](../server.js#L5168), [`5247`](../server.js#L5247) |
+| `_trendBtCache` | `${costBp}\|${longShort}\|${volTargetPort}` — float | [`server.js:8265`](../server.js#L8265) |
+| `_trendV2Cache` | `${costBp}\|${longShort}\|${volTargetPort}` — float | [`server.js:8495`](../server.js#L8495) |
+| `_csiCache` | `csi_${zWindow}` — int 60-504, so ≤445 entries | [`server.js:5845`](../server.js#L5845) |
+
+`targetVol` is a clamped float in [0.02, 0.40]. Dragging a slider on the
+dashboard mints a distinct permanent entry per position.
+
+### 2b. Keyed by date — grows with wall-clock time
+
+| Cache | Key | Location |
+|---|---|---|
+| `liqGateBarCache` | `${instrument}:${fromDate}` — holds bar arrays | [`server.js:7913`](../server.js#L7913) |
+
+Adds N entries per day, forever, each holding OHLC bars.
+
+### 2c. Monotonic dedupe `Set`s
+
+| Set | Contents | Location |
+|---|---|---|
+| `_tdeShadowSeen` | one entry per `position_id` ever booked | [`server.js:19586`](../server.js#L19586) |
+| `_tdePosShadowSeen` | one entry per ticket ever shadow-logged | [`server.js:19518`](../server.js#L19518) |
+
+Small per entry, but never pruned. **These are correctness guards, not caches** —
+evicting a key can cause a double-book. They need a bounded structure sized well
+above realistic position count, not a blind cap.
+
+### 2d. Bounded already — no action needed
+
+`_fpSummaryCache`, `_fpReachBars`, `nqQmrBarCache`, `_volReversionCache`,
+`_mveCache` (`sym|useSSM|regime`), `_ycRealCache` (tenor), `_ycCtxCache`
+(symbol), `_gliFxCache` (stem), `_mveValCache` / `_mveValMechCache` (sym),
+`_fpIvCache` (sid), `_fpTrendDirCache` (name), `_tdeSynthCache` (pair) and
+`_blendCache` (`momrev|horizon`) are keyed by instrument/pair/enum. Their key
+space is the instrument list. They hold bars, but they do not grow.
+
+### The fix already exists in this repo
+
+[`server.js:4815`](../server.js#L4815) already does the right thing:
+
+```js
+if (_vmChartCache.size > 120) _vmChartCache.delete(_vmChartCache.keys().next().value);
 ```
 
-**Impact:** Grows indefinitely over days/weeks
+`m1CandleCache` does the same via `M1_CACHE_MAX`. Five caches already follow this
+FIFO-cap pattern. The remaining 25 should use the same pattern, ideally lifted
+into one shared `capMap(map, n)` helper.
 
-- **Recommendation:** Implement circular buffer with max size
-
-### 3.2 Event/Trade Lists Without Cleanup
-
-**Example:** [`bot/main.py`](bot/main.py:599-600)
-
-```python
-_cycle_states.append({...})
-_cycle_events.append({...})
-# Never cleared! ❌
-```
-
-**Impact:** Memory grows with each cycle
-
-- **Recommendation:** Clear after processing or limit size
-
-### 3.3 Cache Without Eviction
-
-Multiple caches store data indefinitely:
-
-- `_candleCache` in OI chart scripts
-- `ohlcCache` in forecast scheduler
-- Beta history files
-
-**Recommendation:** Implement LRU cache with size limits
+**Why this is behaviour-preserving:** an evicted entry becomes a cache *miss*,
+which recomputes exactly the value it would have returned. Outputs are
+unchanged; only recompute frequency rises. §2c is the sole exception.
 
 ---
 
-## 4. REDUNDANT COMPUTATIONS
+## 3. Confirmed issue: duplicated indicator math
 
-### 4.1 Repeated Data Fetching
+Not a cost issue — a **correctness** issue, and a direct violation of Lego
+Principle 1 in `CLAUDE.md` ("one shared core, imported — never copied"). This is
+exactly the silent-drift failure mode that doc warns about.
 
-**Example:** Multiple bots fetch same OANDA data independently
+### JavaScript — `js/indicatorCore.js` is the declared single source of truth, and is bypassed 5×
 
-- `bot/main.py` fetches H4 bars for beta estimation
-- `regime_bot.py` fetches regime data
-- `volatility_bot.py` fetches D1 bars
+| `ema` copy | |
+|---|---|
+| [`js/indicatorCore.js:24`](../js/indicatorCore.js#L24) | **canonical** |
+| [`js/utils.js:239`](../js/utils.js#L239) | copy |
+| [`js/backtest-engine.js:46`](../js/backtest-engine.js#L46) | copy |
+| [`js/nasdaqTransforms.js:70`](../js/nasdaqTransforms.js#L70) | copy |
+| [`js/rangeBiasCore.js:82`](../js/rangeBiasCore.js#L82) | copy |
+| [`js/vumanchuCore.js:31`](../js/vumanchuCore.js#L31) | copy |
 
-**Recommendation:** Shared data cache service
+`sma` is duplicated 4×, `trueRange` 2×, and ATR exists in three named variants
+across `indicatorCore.atrWilder`, `barUtils.calcATR` and `nasdaqTransforms.atr`.
 
-### 4.2 Duplicate Indicator Calculations
+### Python — 8 `_ema` copies, 3 `_atr` copies
 
-**Example:** RSI, EMA, ATR calculated in multiple places:
+`Gold/`, `GoldV2/` and `ConfluenceBot/` are near-identical forks that each carry
+their own copy:
 
-- [`backtestSystem/indicators.py`](backtestSystem/indicators.py)
-- [`bot/utils/indicators.py`](bot/utils/indicators.py)
-- [`ConfluenceBot/modules/vumanchu.py`](ConfluenceBot/modules/vumanchu.py)
+- `_ema`: [`bot/utils/indicators.py:15`](../bot/utils/indicators.py#L15),
+  `ConfluenceBot/modules/htf_bias.py:37`, `ConfluenceBot/modules/vumanchu.py:54`,
+  `Gold/modules/htf_bias.py:25`, `Gold/modules/vumanchu.py:68`,
+  `GoldV2/modules/htf_bias.py:37`, `GoldV2/modules/vumanchu.py:54`,
+  `RegimeV2/beta_regime_table.py:213`
+- `_atr`: `ConfluenceBot/modules/session_engine.py:102`,
+  `Gold/modules/session_engine.py:102`, `GoldV2/modules/session_engine.py:102`
+- Also `scripts/build_corr_history.py:200`, `volatilityExhaustion/mtf_divergence.py:40`
 
-**Recommendation:** Centralized indicator service with caching
+`pylego/indicators/vumanchu.py` already exists as the intended destination
+(see `PYTHON_LEGO.md`).
 
----
-
-## 5. BACKTEST SYSTEM INEFFICIENCIES
-
-### 5.1 Nested Loops on Large Datasets
-
-**Example:** [`archive/asia_range_backtest.py`](archive/asia_range_backtest.py:185-210)
-
-```python
-for _, bar in candles.iterrows():  # ❌ Outer loop
-    for trade in still_open:  # Inner loop
-        # Check TP/SL for each bar
-```
-
-**Impact:** O(n²) complexity on multi-year datasets
-
-- **Recommendation:** Vectorize with numpy, use event-driven approach
-
-### 5.2 Inefficient Fill Simulation
-
-Multiple backtests simulate fills bar-by-bar instead of using vectorized operations
-
-**Recommendation:** Use numpy arrays for price data, vectorized comparisons
+**Mandatory constraint:** the copies may have already drifted. Consolidating a
+drifted copy onto the canonical one would silently change a live bot's output.
+Any consolidation must be gated on a numerical-equivalence harness first, and
+only bit-identical copies may be merged. Non-identical copies are a separate
+decision, not a refactor.
 
 ---
 
-## 6. CRON/SCHEDULED JOBS
+## 4. Minor confirmed issues
 
-### 6.1 Cloudflare Cron Worker - [`cron-worker/cron-worker.js`](cron-worker/cron-worker.js:176)
-
-```javascript
-// Runs every 1 minute (1,440 times/day)
-export default {
-  async scheduled(event, env, ctx) {
-    // Proximity alerts for all pairs
-    // Fetches OANDA prices
-    // Checks cooldowns
-  },
-};
-```
-
-**Impact:** 1,440 executions/day, each fetching prices for all pairs
-
-- **Recommendation:** Increase to 5-minute intervals for non-critical alerts
-
-### 6.2 Server-Side Schedulers - [`server.js`](server.js:20687-20738)
-
-Multiple daily jobs:
-
-- Vol forecast: 22:00 UTC daily
-- Range bot plan: 06:15 UTC daily
-- Vol book rebuild: configurable
-- FRED refresh: 6-hour intervals
-- Morning brief: configurable
-
-**Impact:** Generally well-optimized, but FRED 6h might be excessive
-
-- **Recommendation:** FRED data updates daily, reduce to 12h intervals
+| Issue | Detail | Location |
+|---|---|---|
+| One job Map never purges | 64 of 65 job Maps have a `_purgeStale*Jobs` function. `tdeBackfillJobs` does not. | [`server.js:19859`](../server.js#L19859) |
+| Unbounded log file | `beta_history.jsonl` gains ~1,440 records/day, each holding all beta estimates. No rotation. Masked so far because Railway disk is ephemeral and resets on deploy. | [`bot/main.py:426`](../bot/main.py#L426) |
+| `.iterrows()` — 16 real instances | In `regime_classifier_mtf.py` (3), `volatility_bot/layer2_*` (7), `vumanchuLab/` (2), `bot/scripts/train_gold_model.py` (2), `Gold/mfe_mae_analysis.py` (1), `archive/` (1). **None run 24/7** — this is analysis-script ergonomics, not infrastructure cost. | — |
 
 ---
 
-## 7. SPECIFIC HIGH-IMPACT ISSUES
+## 5. Retracted claims from the 2026-08-01 draft
 
-### 7.1 Analysis Scripts - [`analysis/trade_analyzer.py`](analysis/trade_analyzer.py)
+Listed so anyone who acted on the original can unwind it.
 
-**Lines 145-1365:** Massive analysis function with:
+| Original claim | Finding |
+|---|---|
+| "6+ continuous polling loops running 24/7" | 3 Python bots + node. Four of the six named bots are not started by the service. |
+| "`.iterrows()` found in **33 locations**" | 27 matches exist, **11 of them inside MD files including this one**. 16 real. |
+| "Example: `analysis/trade_analyzer.py:210` — `for _, row in lookup.iterrows()`" | `trade_analyzer.py` contains **zero** `.iterrows()`. The snippet was invented. Same for `analysis/bot_giveback.py`. |
+| "§7.1 `trade_analyzer.py` lines 145-1365: multiple `.iterrows()` loops" | Same fabrication. |
+| "List append in loops — found in **300+ locations**" | Unsubstantiated; `list.append` in a loop is normal Python, not a defect. |
+| "`pd.concat()` in loops" | **No instance found.** Every multi-concat is the correct collect-then-concat-once form. The draft's own example is a single call and it concedes "OK if once". |
+| "Unbounded history buffer, `bot/regime_bot.py:307`" | Line 301 is `deque(maxlen=window)`. Bounded by construction. |
+| "`_cycle_states` / `_cycle_events` never cleared, `bot/main.py:599-600`" | Wrong file — they are in `regime_bot.py`, and they **are** reset at the top of every cycle (L528-529). |
+| "Caches without eviction: `_candleCache`, `ohlcCache`" | `_candleCache` is **browser-side** in `oi-dashboard.html` (per-tab, keyed `symbol\|tf`). `ohlcCache` is keyed by instrument name and bounded by `INSTRUMENTS.length`. Neither leaks. The 25 caches that *do* leak went unmentioned. |
+| "O(n²) nested loops in `archive/asia_range_backtest.py`, `portfolioBacktest/`, `oi_recon/`" | All manually-run scripts. Zero infrastructure cost. |
+| "**$440-640/month savings**, 70-95% CPU / 70-115% memory reduction" | No basis was given for any figure. A "70-115% memory reduction" is not a coherent quantity. **No cost estimate in the original document should be relied on.** |
 
-- Multiple `.iterrows()` loops
-- Repeated list appends
-- String concatenation in loops
-- No result caching
-
-**Impact:** Runs on every trade analysis request
-
-- **Recommendation:** Cache results, optimize loops, use vectorization
-
-### 7.2 OI Recon - [`oi_recon/pull_quikstrike.py`](oi_recon/pull_quikstrike.py:254)
-
-```python
-while True:  # ❌ Infinite loop waiting for user
-    try:
-        if not [p for p in ctx.pages if not p.is_closed()]:
-            break
-        page.wait_for_timeout(1500)
-```
-
-**Impact:** Browser automation running continuously
-
-- **Recommendation:** Should be manual/scheduled, not continuous
-
-### 7.3 Portfolio Backtest - [`portfolioBacktest/portfolio_backtest.py`](portfolioBacktest/portfolio_backtest.py:357-380)
-
-Nested loops with repeated calculations:
-
-```python
-for pos in open_positions:
-    for h1_ts in h1_timestamps:  # Inner loop
-        # Repeated price lookups
-```
-
-**Recommendation:** Pre-compute price arrays, vectorize
+No load, memory or CPU measurement was taken for either the original document or
+this correction. **No claim about actual spend is made here.** Establishing real
+numbers requires measurement (§6), not another static read.
 
 ---
 
-## PRIORITY RECOMMENDATIONS
+## 6. What would need measuring before any cost claim
 
-### 🔴 CRITICAL (Immediate - High Impact)
+Nothing in this repo currently records resource use, so cost attribution is
+guesswork either way. Before optimising for spend rather than correctness:
 
-1. **Increase polling intervals:**
-   - Main bot: 10s → 30s (3x reduction in CPU)
-   - Regime bot: 60s → 120s (2x reduction)
-   - Yield spread: 10s → 30s (3x reduction)
-   - **Estimated savings:** 40-50% CPU reduction
+1. Railway per-service memory and CPU over a week — is `server.js` RSS actually
+   climbing between deploys? That is the direct test of §2.
+2. Which endpoints in §2a are actually being hit, and with how many distinct
+   parameter combinations.
+3. Whether the bill is compute-driven at all, or driven by egress/build minutes.
 
-2. **Fix `.iterrows()` anti-patterns:**
-   - Replace all 33 instances with vectorized operations
-   - **Estimated savings:** 10-20x speedup in analysis scripts
-
-3. **Implement bounded buffers:**
-   - Add max size to all history buffers
-   - Clear event/state lists after processing
-   - **Estimated savings:** Prevent memory leaks, 30-50% memory reduction
-
-4. **Add market hours check:**
-   - Backtest system should sleep outside trading hours
-   - **Estimated savings:** 60% reduction in off-hours CPU
-
-### 🟡 HIGH PRIORITY (This Week)
-
-5. **Shared data cache:**
-   - Implement Redis/in-memory cache for OANDA data
-   - Share between bots to reduce API calls
-   - **Estimated savings:** 50-70% reduction in API calls
-
-6. **Optimize analysis scripts:**
-   - Cache trade analysis results
-   - Vectorize all pandas operations
-   - **Estimated savings:** 5-10x faster analysis
-
-7. **Implement LRU caches:**
-   - Add size limits to all caches
-   - Evict old data automatically
-   - **Estimated savings:** Prevent unbounded memory growth
-
-### 🟢 MEDIUM PRIORITY (This Month)
-
-8. **Vectorize backtests:**
-   - Replace nested loops with numpy operations
-   - Use event-driven fill simulation
-   - **Estimated savings:** 10-50x faster backtests
-
-9. **Consolidate indicator calculations:**
-   - Single indicator service with caching
-   - **Estimated savings:** Reduce duplicate computation
-
-10. **Optimize cron intervals:**
-    - Cloudflare worker: 1min → 5min
-    - FRED refresh: 6h → 12h
-    - **Estimated savings:** 80% reduction in cron executions
+§2 and §3 are worth fixing on **correctness and hygiene** grounds regardless of
+what the measurement says. That is the honest justification for them — not a
+dollar figure.
 
 ---
 
-## MONITORING RECOMMENDATIONS
+## 7. Prioritised remediation
 
-1. **Add resource metrics:**
-   - CPU usage per bot
-   - Memory usage over time
-   - API call counts
-   - Cache hit rates
+Full sequencing, risk classification and per-item verification steps live in
+[`TECH_DEBT_REMEDIATION_PLAN.md`](TECH_DEBT_REMEDIATION_PLAN.md).
 
-2. **Set up alerts:**
-   - Memory > 80% of limit
-   - CPU sustained > 70%
-   - Unusual API call spikes
+Summary of order:
 
-3. **Regular profiling:**
-   - Weekly CPU profiling of main bots
-   - Memory leak detection
-   - Slow query identification
+1. **Cache eviction** (§2a, §2b) + `tdeBackfillJobs` (§4) — provably no
+   behavioural change; a miss recomputes the same value.
+2. **Dedupe `Set`s** (§2c) — separate phase; wrong cap causes a double-book.
+3. **Indicator consolidation** (§3) — gated on an equivalence harness; only
+   bit-identical copies merge.
+4. **Housekeeping** — `beta_history.jsonl` rotation; `.iterrows()` opportunistically.
 
----
-
-## ESTIMATED COST SAVINGS
-
-Based on typical cloud pricing:
-
-| Optimization       | CPU Reduction | Memory Reduction | Monthly Savings    |
-| ------------------ | ------------- | ---------------- | ------------------ |
-| Polling intervals  | 40-50%        | 10-20%           | $150-200           |
-| Fix .iterrows()    | 5-10%         | 20-30%           | $80-120            |
-| Bounded buffers    | -             | 30-50%           | $100-150           |
-| Market hours check | 15-20%        | -                | $50-80             |
-| Shared cache       | 10-15%        | 10-15%           | $60-90             |
-| **TOTAL**          | **70-95%**    | **70-115%**      | **$440-640/month** |
-
-_Note: Percentages are cumulative reductions from baseline_
-
----
-
-## IMPLEMENTATION PRIORITY
-
-**Week 1:** Critical fixes (polling, .iterrows(), bounded buffers)  
-**Week 2:** High priority (shared cache, analysis optimization)  
-**Week 3:** Medium priority (vectorization, consolidation)  
-**Week 4:** Monitoring and validation
-
----
-
-## CONCLUSION
-
-The infrastructure cost increase is primarily driven by:
-
-1. **Aggressive polling** (6 bots × 10-60s intervals)
-2. **Inefficient pandas operations** (300+ anti-patterns)
-3. **Memory leaks** (unbounded buffers)
-4. **Redundant computations** (duplicate data fetching)
-
-Implementing the critical recommendations should reduce costs by **$440-640/month** (50-70% reduction) with minimal code changes and no functionality loss.
-
-**Next Steps:**
-
-1. Implement critical fixes this week
-2. Deploy with monitoring
-3. Measure actual savings
-4. Proceed with high/medium priority items based on results
+**Out of scope by owner decision:** all polling and scheduler interval changes.
