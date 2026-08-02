@@ -238,6 +238,7 @@ var string[] czTypes  = array.new_string()
 var float[]  oiPrices = array.new_float()
 var string[] oiTypes  = array.new_string()
 var string[] oiNotes  = array.new_string()   // expectation, e.g. "Reject (turns away)" / "Break (goes through)"
+var string[] oiHeats  = array.new_string()   // gamma heat at the level: "hot" / "warm" / "cold" (blank on older pastes)
 var int[]    oiTiers  = array.new_int()
 var string   oiRegime = na
 
@@ -327,14 +328,19 @@ if barstate.isfirst
                         // Expectation note: everything after the ' . ' marker. Absent on
                         // older paste blocks, so default to empty and draw nothing.
                         string note = ""
+                        string heat = ""
                         noteParts = str.split(rhs, " . ")
                         if array.size(noteParts) >= 2
                             note := str.trim(array.get(noteParts, 1))
+                        // Heat is the SECOND ' . ' segment (index 2). Blank on older pastes.
+                        if array.size(noteParts) >= 3
+                            heat := str.trim(array.get(noteParts, 2))
                         if not na(price) and price > 0
                             array.push(oiPrices, price)
                             array.push(oiTypes,  typ)
                             array.push(oiTiers,  na(tier) ? 0 : tier)
                             array.push(oiNotes,  note)
+                            array.push(oiHeats,  heat)
                 continue
 
 // =====================================================
@@ -504,17 +510,24 @@ if barstate.islast
             zCol   = f_oiColour(zType)
             zStyle = f_oiStyle(zType)
             zW     = oi_base_w + (zTier >= 3 ? 2 : zTier == 2 ? 1 : 0)
+            // Gamma HEAT (additive): hot = a touch thicker + full colour, cold = thinner +
+            // faded (paper price passes through). Blank heat = unchanged from before.
+            zHeat  = i < array.size(oiHeats) ? array.get(oiHeats, i) : ""
+            zW    := math.max(1, zW + (zHeat == "hot" ? 1 : zHeat == "cold" ? -1 : 0))
+            zColH  = zHeat == "cold" ? color.new(zCol, 60) : zHeat == "warm" ? color.new(zCol, 25) : zCol
             ln = line.new(x1, zPrice, x2, zPrice,
-                 color=zCol, width=zW, style=zStyle,
+                 color=zColH, width=zW, style=zStyle,
                  xloc=xloc.bar_time, extend=zExt)
             array.push(oiLines, ln)
             if show_oi_lbl
                 string lText = zType
                 if zTier > 0
                     lText := lText + " t" + str.tostring(zTier)
+                if zHeat != ""
+                    lText := lText + " " + zHeat
                 lb = label.new(bar_index + 2, zPrice, lText,
                      style=label.style_label_left,
-                     color=lblBg, textcolor=zCol,
+                     color=lblBg, textcolor=zColH,
                      size=size.small)
                 array.push(oiLabels, lb)
 
@@ -675,7 +688,8 @@ if show_table and barstate.islast
                 bg = color.new(zCol, 82)
                 table.cell(czTable, 0, row, str.tostring(zPrice), text_color=zCol, text_size=size.tiny, bgcolor=bg)
                 zNote  = i < array.size(oiNotes) ? array.get(oiNotes, i) : ""
-                noteStr = zNote != "" ? "  " + zNote : ""
+                zHeatT = i < array.size(oiHeats) ? array.get(oiHeats, i) : ""
+                noteStr = (zNote != "" ? "  " + zNote : "") + (zHeatT != "" ? "  [" + zHeatT + "]" : "")
                 table.cell(czTable, 1, row, zType + tierStr + noteStr, text_color=zCol, text_size=size.tiny, bgcolor=bg)
                 table.cell(czTable, 2, row, str.tostring(pipDist) + "p", text_color=zCol, text_size=size.tiny, bgcolor=bg)
 

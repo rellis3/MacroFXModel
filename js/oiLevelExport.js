@@ -34,6 +34,7 @@
 
 import { oiStoreToLevels } from './oiConfluence.js';
 import { levelExpectation } from './levelExpectation.js';
+import { levelHeat } from './levelHeat.js';
 import { gammaFlip, distanceToFlip, rolloffSummary } from './gammaFlow.js';
 
 // Canonical chart-ticker per oi_store key. Mirrors the Confluence-Zones indicator's
@@ -163,7 +164,12 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     }
     const rr = inst.riskReversal;
     if (rr) lines.push(`· risk reversal ${rr.rr >= 0 ? '+' : ''}${rr.rr} (${rr.tilt} tilt)`);
-    for (const l of levels) {
+    // Gamma HEAT per level (hot/warm/cold) from the gamma-weighted exposure at that
+    // price — how hard the level is defended right now, the price-proximity + DTE
+    // weighting the raw wall list lacks. Read off the stored gexProfile; null when
+    // absent (older entries) → no heat segment, so the line is unchanged.
+    const heated = levelHeat(inst.gexProfile, levels);
+    for (const l of heated) {
       const tier = Number.isFinite(l.tier) && l.tier > 0 ? ` t${l.tier}` : '';
       // Expectation appended as a THIRD token behind a '.' marker. The Pine parser
       // splits the RHS on spaces, takes token 0 as the type and a 't'-prefixed token
@@ -175,7 +181,10 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
         gammaFlip: inst.gammaFlip, refMove: inst.refMove?.move,
       });
       const note = ex ? ` . ${ex.mid}` : '';
-      lines.push(`OI ${l.price.toFixed(dp)} : ${l.type}${tier}${note}`);
+      // Heat as a SECOND ' . ' segment (parse index 2) — only when the expectation
+      // (index 1) is present, so the indicator's index-1 note read is never disturbed.
+      const heatSeg = (note && l.heatBucket) ? ` . ${l.heatBucket}` : '';
+      lines.push(`OI ${l.price.toFixed(dp)} : ${l.type}${tier}${note}${heatSeg}`);
     }
     lines.push('');
     emitted++;
