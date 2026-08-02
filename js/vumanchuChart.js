@@ -59,6 +59,10 @@ import { createCanvas, measureText, GLYPH_H } from './pngCanvas.js';
 export const MIN_BARS = 60;
 
 export const THEME = {
+  projFill:  '#5bc0f81c',   // p10-p90 — deliberately faint; it is a wide band
+  projFill2: '#5bc0f832',   // p25-p75
+  projMid:   '#8fd4ff',     // median, dashed: a description of what followed, not a forecast
+  projLine:  '#26374d',
   bg:        '#0b0e14',
   panel:     '#111722',
   grid:      '#1b2230',
@@ -194,6 +198,16 @@ export function vumanchuLayout(bars, opts = {}) {
   const padL = 10, padR = 62, padT = 30, padB = 22;
   const plot = { x: padL, y: padT, w: o.width - padL - padR, h: o.height - padT - padB };
 
+  // When a forward WaveTrend projection is supplied, the BARS compress into the
+  // left portion and the fan occupies the right. Projecting the oscillator works
+  // where projecting price does not: WT is bounded +/-100 and self-normalising,
+  // so the fan lives on the same axis at the same scale as the line it extends —
+  // no exaggeration needed to make it legible (a price cone tilted by the same
+  // information would be ~1 pip on a 50-pip envelope).
+  const proj = o.projection && o.projection.steps?.length ? o.projection : null;
+  const projFrac = proj ? Math.min(0.4, Math.max(0.12, o.projectionWidth ?? 0.26)) : 0;
+  const barsW = plot.w * (1 - projFrac);
+
   // Symmetric y domain so the zero line sits dead centre — an oscillator read as
   // "how far from zero" is misleading on an asymmetric scale.
   let peak = 0;
@@ -202,7 +216,9 @@ export function vumanchuLayout(bars, opts = {}) {
   }
   const yMax = Math.max(o.obLevel * 1.6, peak * 1.08, 80);
   const yToPx = v => plot.y + plot.h / 2 - (v / yMax) * (plot.h / 2);
-  const xToPx = i => nVis <= 1 ? plot.x + plot.w : plot.x + ((i - from) / (nVis - 1)) * plot.w;
+  const xToPx = i => nVis <= 1 ? plot.x + barsW : plot.x + ((i - from) / (nVis - 1)) * barsW;
+  const projMaxMin = proj ? Math.max(...proj.steps.map(st => st.mins)) : 0;
+  const xProj = mins => plot.x + barsW + (projMaxMin ? (mins / projMaxMin) * (plot.w - barsW) : 0);
 
   const ptsFor = arr => {
     const out = [];
@@ -214,6 +230,24 @@ export function vumanchuLayout(bars, opts = {}) {
   for (let i = from; i <= to; i++) {
     if (fin(wt1[i]) && fin(wt2[i])) { bandA.push({ x: xToPx(i), y: yToPx(wt1[i]) }); bandB.push({ x: xToPx(i), y: yToPx(wt2[i]) }); }
   }
+
+  // The fan, anchored at the last real WT1 value so it visibly CONTINUES the
+  // line rather than floating beside it.
+  const projection = (() => {
+    if (!proj) return null;
+    const anchorX = xToPx(to), anchorY = yToPx(wt1[to]);
+    const band = key => [{ x: anchorX, y: anchorY }]
+      .concat(proj.steps.map(st => ({ x: xProj(st.mins), y: yToPx(st[key]) })));
+    return {
+      anchor: { x: anchorX, y: anchorY },
+      x0: plot.x + barsW,
+      p10: band('p10'), p25: band('p25'), p50: band('p50'),
+      p75: band('p75'), p90: band('p90'),
+      state: proj.state ?? null, n: proj.n ?? null,
+      label: proj.label ?? null,
+      lastMins: projMaxMin,
+    };
+  })();
 
   const gridlines = [
     { v: yMax,       label: null,             style: 'edge' },
@@ -266,6 +300,7 @@ export function vumanchuLayout(bars, opts = {}) {
   return {
     opts: o, width: o.width, height: o.height, plot, yMax, from, to,
     yToPx, xToPx,
+    projection,
     points: { wt1: ptsFor(wt1), wt2: ptsFor(wt2), vwap: o.showVwap ? ptsFor(vwapOsc) : [], mf: o.showMoneyFlow ? ptsFor(moneyFlow) : [] },
     band: { a: bandA, b: bandB },
     series: { wt1, wt2, vwapOsc, moneyFlow },
@@ -332,6 +367,17 @@ export function renderVumanchuPNG(bars, opts = {}) {
   }
 
   cv.fillBetween(L.band.a, L.band.b, T.band);
+  // Forward WaveTrend fan. Drawn UNDER the wave so the real line stays dominant
+  // and the projection reads as context rather than as data.
+  if (L.projection) {
+    const J = L.projection;
+    cv.line(J.x0, P.y, J.x0, P.y + P.h, { color: T.projLine, width: 1, dash: [3, 3] });
+    cv.fillBetween(J.p10, J.p90, T.projFill);
+    cv.fillBetween(J.p25, J.p75, T.projFill2);
+    cv.polyline(J.p50, { color: T.projMid, width: 1.6, dash: [4, 3] });
+    if (J.label) cv.text(J.x0 + 4, P.y + 4, J.label, { color: T.projMid, scale: 1 });
+  }
+
   cv.polyline(L.points.wt2, { color: T.wt2, width: 1.4 });
   cv.polyline(L.points.wt1, { color: T.wt1, width: 2.1 });
   if (o.showVwap) cv.polyline(L.points.vwap, { color: T.vwap, width: 1.5 });

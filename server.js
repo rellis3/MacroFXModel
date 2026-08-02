@@ -4822,6 +4822,10 @@ app.get('/api/vumanchu/chart', async (req, res) => {
     title: String(req.query.title || symbol).slice(0, 40),
     subtitle: `${gran} · ${displayBars} bars`,
   };
+  // &proj=1 overlays the forward WaveTrend fan: percentiles of where WT1 went
+  // the last N times it looked like this. Off by default so every existing
+  // caller (Telegram alerts included) is untouched.
+  const wantProj = req.query.proj === '1' || req.query.proj === 'true';
 
   // Warm-up headroom: the WT EMAs plus room for divergence pivots before the
   // visible window, so the drawn pane never shows the seeding transient.
@@ -4840,6 +4844,35 @@ app.get('/api/vumanchu/chart', async (req, res) => {
     const bars = await _fetchVumanchuBars(symbol, gran, fetchCount);
     if (bars.length < VM_MIN_BARS) {
       return res.status(422).json({ error: `Only ${bars.length} bars available at ${gran}; need ≥${VM_MIN_BARS}` });
+    }
+    if (wantProj) {
+      // The fan was measured on a 5m grid, so it is only honest on a pane drawn
+      // at that granularity — the state vocabulary means something different at
+      // M1 or H1. Silently attaching it elsewhere would misrepresent it.
+      const instKey = String(symbol).toLowerCase().replace('/', '').replace('_', '');
+      const t = _vmLoadProj();
+      if (gran === `M${t?.event_tf_min ?? 5}`) {
+        const st = computeVumanchuState(bars, { timeframes: [5], dropForming: true });
+        const code = st.per[5]?.code;
+        if (code) {
+          opts.projection = _vmProjectionFor(instKey, code);
+          if (opts.projection) {
+            // Badge the read from the frozen table alongside the fan. NONE is
+            // shown as plainly as FADE — an overlay that only spoke when it had
+            // an opinion would make the engine look far more decisive than the
+            // ~2/3-of-bars-say-nothing measurement says it is.
+            const full = computeVumanchuState(bars, { timeframes: [1, 5, 15], dropForming: true });
+            const tbl = _vmLoadTable();
+            if (tbl) {
+              const hit = lookupVumanchuState(full, tbl, { instrument: instKey, horizon: 60 });
+              const v = interpretVumanchuState(full, hit);
+              opts.projection.label = hit?.matched
+                ? `${code} · ${v.read} ${hit.deltaPP > 0 ? '+' : ''}${hit.deltaPP}pp · n=${hit.n.toLocaleString()}`
+                : `${code} · NO READ · n=${opts.projection.n.toLocaleString()}`;
+            }
+          }
+        }
+      }
     }
     const data = format === 'json' ? { symbol, tf: gran, ...vumanchuChartData(bars, opts), caption: vumanchuCaption(bars, opts) }
                : format === 'svg' ? renderVumanchuSVG(bars, opts)
@@ -5117,6 +5150,23 @@ app.get('/api/vumanchu/mtf-stack', async (req, res) => {
 // out-of-sample evidence the VuManChu work will ever have, which is why the key
 // is registered in all three KV persistence gates.
 const _VM_STATE_TABLE_PATH = path.join(__dirname, 'vumanchuLab', 'data', 'vumanchu_state_table.json');
+const _VM_PROJ_PATH = path.join(__dirname, 'vumanchuLab', 'data', 'vumanchu_wt_projection.json');
+let _vmProj = null, _vmProjAt = 0;
+function _vmLoadProj() {
+  if (_vmProj && Date.now() - _vmProjAt < 300_000) return _vmProj;
+  try { _vmProj = JSON.parse(fs.readFileSync(_VM_PROJ_PATH, 'utf8')); _vmProjAt = Date.now(); }
+  catch { _vmProj = null; }
+  return _vmProj;
+}
+
+/** The forward WaveTrend fan for an instrument's CURRENT state, if we have one. */
+function _vmProjectionFor(instKey, code) {
+  const t = _vmLoadProj();
+  const row = t?.instruments?.[instKey]?.[code];
+  if (!row?.steps?.length) return null;
+  return { steps: row.steps, state: code, n: row.n,
+           label: `${code} · n=${row.n.toLocaleString()}` };
+}
 let _vmStateTable = null, _vmStateTableAt = 0;
 
 function _vmLoadTable() {
