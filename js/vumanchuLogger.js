@@ -37,6 +37,17 @@
 
 export const LOG_PREFIX = 'vmlog_';          // registered in all three KV gates
 export const DEFAULT_HORIZON = 60;           // minutes; the lab's headline horizon
+// Outcomes are captured at SEVERAL horizons from one read, because the offline
+// work left the horizon question genuinely open: the DIRECTIONAL edge grows out
+// to a day (windows.py: +2.04pp at 15m, +1.95 at 60m, +2.86 at 240m, +3.93 at
+// 1440m) while the sigma-normalised MAGNITUDE decays to nothing by ~6h. Those
+// are consistent — sigma scales as sqrt(t) — but they point at different best
+// horizons, and only forward data settles it.
+//
+// This costs one extra price lookup per horizon and is the difference between a
+// week of logs that can answer that question and a week that cannot. Schema
+// changes are the one thing that CANNOT be applied retroactively.
+export const HORIZONS = [15, 60, 240, 1440];
 export const MIN_PRIOR_SIGMA = 0.5;          // the lab's floor for a meaningful move
 
 /** `vmlog_YYYY-MM-DD` for a Date (UTC). One key per day keeps values small. */
@@ -91,7 +102,8 @@ export async function readRange(kv, days = 14, { now = Date.now() } = {}) {
  * `priceNow` and `sigma` are captured so resolution needs only the later price.
  */
 export function buildRow({ instrument, slotTs, state, hit, verdict, price, sigma,
-                           horizon = DEFAULT_HORIZON, priorMove = null }) {
+                           horizon = DEFAULT_HORIZON, priorMove = null,
+                           horizons = HORIZONS }) {
   return {
     instrument,
     slotTs,                                   // bar the read was taken at (epoch s)
@@ -109,6 +121,11 @@ export function buildRow({ instrument, slotTs, state, hit, verdict, price, sigma
     price,
     sigma,                                    // per-minute return sd, for the 0.5σ floor
     priorMove,                                // signed return over the prior `horizon`
+    horizons,                                 // every horizon this row will be scored at
+    // One entry per horizon, filled in as each elapses. A row is only fully
+    // resolved once the longest has. `resolved` stays as the headline-horizon
+    // flag so the health check and scorer keep a single obvious meaning.
+    outcomes: {},
     resolved: false,
   };
 }
@@ -121,40 +138,63 @@ export function buildRow({ instrument, slotTs, state, hit, verdict, price, sigma
  * being scored on a stale quote — a weekend gap would otherwise be recorded as
  * a real forward move.
  */
-export async function resolveDue(rows, priceAt, { now = Date.now() } = {}) {
+export async function resolveDue(rows, priceAt, { now = Date.now(), pathAt = null } = {}) {
   const nowSec = Math.floor(now / 1000);
   let resolved = 0, skipped = 0, pending = 0;
   for (const r of rows) {
-    if (r.resolved) continue;
-    const dueAt = r.slotTs + r.horizon * 60;
-    if (nowSec < dueAt) { pending++; continue; }
+    const horizons = r.horizons?.length ? r.horizons : [r.horizon];
+    r.outcomes ||= {};
+    let anyPending = false;
 
-    const later = await priceAt(r.instrument, dueAt);
-    if (later == null || !Number.isFinite(later) || !Number.isFinite(r.price)) {
-      pending++; continue;                    // unpriceable: leave for a later pass
+    for (const h of horizons) {
+      if (r.outcomes[h]) continue;                       // already scored
+      const dueAt = r.slotTs + h * 60;
+      if (nowSec < dueAt) { anyPending = true; continue; }
+
+      const later = await priceAt(r.instrument, dueAt);
+      if (later == null || !Number.isFinite(later) || !Number.isFinite(r.price)) {
+        anyPending = true; continue;                     // unpriceable: retry later
+      }
+      const fwd = later / r.price - 1;
+      const scale = Number.isFinite(r.sigma) ? r.sigma * Math.sqrt(h) : null;
+      const priorSig = scale && Number.isFinite(r.priorMove) ? r.priorMove / scale : null;
+      const o = { priceLater: later, fwdMove: fwd, fwdSigma: scale ? fwd / scale : null };
+
+      // The path between entry and the horizon, when the caller can supply it.
+      // Without this the log records only where price ENDED, so "went the right
+      // way first, then reversed" is unanswerable — and that is exactly the
+      // shape the fade question is about.
+      if (pathAt) {
+        const ex = await pathAt(r.instrument, r.slotTs, dueAt, r.price);
+        if (ex) {
+          o.mfe = ex.mfe; o.mae = ex.mae;
+          o.mfeSigma = scale ? ex.mfe / scale : null;
+          o.maeSigma = scale ? ex.mae / scale : null;
+          o.tMfeMin = ex.tMfeMin;                        // minutes to best excursion
+        }
+      }
+
+      if (priorSig == null || Math.abs(priorSig) < MIN_PRIOR_SIGMA) {
+        o.skipped = 'flat';
+      } else {
+        const priorDir = Math.sign(r.priorMove);
+        const fwdDir = Math.sign(fwd);
+        o.reverted = fwdDir !== 0 && fwdDir !== priorDir;
+        o.correct = r.read === 'NONE' ? null : (r.read === 'FADE') === o.reverted;
+      }
+      r.outcomes[h] = o;
     }
 
-    const fwd = later / r.price - 1;
-    // The lab's floor: below 0.5σ over the horizon there is no move to revert.
-    const scale = Number.isFinite(r.sigma) ? r.sigma * Math.sqrt(r.horizon) : null;
-    const priorSig = scale && Number.isFinite(r.priorMove) ? r.priorMove / scale : null;
-
-    r.resolved = true;
-    r.priceLater = later;
-    r.fwdMove = fwd;
-    r.fwdSigma = scale ? fwd / scale : null;
-
-    if (priorSig == null || Math.abs(priorSig) < MIN_PRIOR_SIGMA) {
-      r.skipped = 'flat';                     // excluded from scoring, kept for audit
-      skipped++;
-      continue;
+    // Mirror the headline horizon onto the top level so the health check, the
+    // page and scoreRows keep working off one obvious set of fields.
+    const head = r.outcomes[r.horizon];
+    if (head && !r.resolved) {
+      r.resolved = true;
+      r.priceLater = head.priceLater; r.fwdMove = head.fwdMove; r.fwdSigma = head.fwdSigma;
+      if (head.skipped) { r.skipped = head.skipped; skipped++; }
+      else { r.reverted = head.reverted; r.correct = head.correct; resolved++; }
     }
-    const priorDir = Math.sign(r.priorMove);
-    const fwdDir = Math.sign(fwd);
-    r.reverted = fwdDir !== 0 && fwdDir !== priorDir;
-    r.correct = r.read === 'NONE' ? null
-              : (r.read === 'FADE') === r.reverted;
-    resolved++;
+    if (anyPending) pending++;
   }
   return { resolved, skipped, pending };
 }
@@ -168,7 +208,16 @@ export async function resolveDue(rows, priceAt, { now = Date.now() } = {}) {
  * `edgePP` is the number that decides whether the forward record agrees with
  * the backtest, and `expectedPP` is what the table promised.
  */
-export function scoreRows(rows) {
+export function scoreRows(rows, horizon = null) {
+  // With no horizon, score the headline fields (back-compatible). With one,
+  // score that horizon's own outcome — this is what makes the forward test of
+  // "which horizon is actually best" possible.
+  if (horizon != null) {
+    rows = rows.map(r => {
+      const o = r.outcomes?.[horizon];
+      return o ? { ...r, ...o, resolved: true } : { ...r, resolved: false };
+    });
+  }
   const done = rows.filter(r => r.resolved && !r.skipped);
   const scored = done.filter(r => r.correct != null);
   const byRead = {};

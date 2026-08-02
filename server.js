@@ -5252,7 +5252,12 @@ app.get('/api/vumanchu/log', async (req, res) => {
   const days = Math.min(90, Math.max(1, +req.query.days || 14));
   try {
     const rows = await vmReadRange(kv, days);
-    res.json({ days, score: vmScoreRows(rows), rows: rows.slice(-4000) });
+    // Score EVERY horizon, so the open question the offline work could not
+    // settle — which forward window the read is actually best at — is answered
+    // by the forward record itself rather than re-argued from the backtest.
+    const byHorizon = {};
+    for (const h of [15, 60, 240, 1440]) byHorizon[h] = vmScoreRows(rows, h);
+    res.json({ days, score: vmScoreRows(rows), byHorizon, rows: rows.slice(-4000) });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -5286,9 +5291,10 @@ async function _vmLogCycle() {
     }
     const w = await vmAppendRows(kv, rows);
 
-    // Resolve anything whose horizon has elapsed. Look back 3 days so a weekend
-    // or an outage does not strand rows unresolved forever.
-    const recent = await vmReadRange(kv, 3);
+    // Resolve anything whose horizon has elapsed. The longest horizon is 1440m,
+    // so a row needs a full day plus weekend slack before it can finish — look
+    // back 4 days or the 1440m outcomes would never be filled in.
+    const recent = await vmReadRange(kv, 4);
     const priceAt = async (inst, ts) => {
       try {
         const bars = await _fetchVumanchuBars(_vmSymbolFor(inst), 'M1', 1400);
@@ -5300,12 +5306,29 @@ async function _vmLogCycle() {
         return nearest.length ? best : null;
       } catch { return null; }
     };
+    // The intra-window path, so the log records HOW the move unfolded and not
+    // just where it ended. Reuses the cached M1 pull, so it costs nothing extra.
+    const pathAt = async (inst, fromTs, toTs, entry) => {
+      try {
+        const bars = await _vmBars(inst);
+        const seg = bars.filter(b => b.t > fromTs && b.t <= toTs);
+        if (seg.length < 2 || !Number.isFinite(entry) || entry <= 0) return null;
+        let mfe = 0, mae = 0, tMfe = 0;
+        for (const b of seg) {
+          const up = b.high / entry - 1, dn = b.low / entry - 1;
+          if (up > mfe) { mfe = up; tMfe = Math.round((b.t - fromTs) / 60); }
+          if (dn < mae) mae = dn;
+        }
+        return { mfe, mae, tMfeMin: tMfe };
+      } catch { return null; }
+    };
+
     const byDay = {};
     for (const r of recent) (byDay[vmLogKey((r.slotTs || 0) * 1000)] ||= []).push(r);
     let resolved = 0;
     for (const [key, group] of Object.entries(byDay)) {
       const before = group.filter(r => r.resolved).length;
-      await vmResolveDue(group, priceAt);
+      await vmResolveDue(group, priceAt, { pathAt });
       const after = group.filter(r => r.resolved).length;
       if (after > before) { await kv.put(key, JSON.stringify(group)); resolved += after - before; }
     }
@@ -12014,7 +12037,24 @@ app.get('/api/vol-backtest', (req, res) => {
     const instEquity = {};
     for (const inst of instruments) {
       const instTrades = trades.filter(r => r.instrument === inst && r.filled);
-      const byDay = {};
+      // The intra-window path, so the log records HOW the move unfolded and not
+    // just where it ended. Reuses the cached M1 pull, so it costs nothing extra.
+    const pathAt = async (inst, fromTs, toTs, entry) => {
+      try {
+        const bars = await _vmBars(inst);
+        const seg = bars.filter(b => b.t > fromTs && b.t <= toTs);
+        if (seg.length < 2 || !Number.isFinite(entry) || entry <= 0) return null;
+        let mfe = 0, mae = 0, tMfe = 0;
+        for (const b of seg) {
+          const up = b.high / entry - 1, dn = b.low / entry - 1;
+          if (up > mfe) { mfe = up; tMfe = Math.round((b.t - fromTs) / 60); }
+          if (dn < mae) mae = dn;
+        }
+        return { mfe, mae, tMfeMin: tMfe };
+      } catch { return null; }
+    };
+
+    const byDay = {};
       for (const r of instTrades) {
         const d = r.date.substring(0, 10);
         byDay[d] = (byDay[d] || 0) + r.pnl_pct;
