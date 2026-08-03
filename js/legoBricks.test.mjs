@@ -823,6 +823,24 @@ console.log('\n[oi day-expiry]');
   ok('re-analysed dayExpiry carries its own walls + regime', re.inst?.dayExpiry
     && Number.isFinite(re.inst.dayExpiry.callWall) && Number.isFinite(re.inst.dayExpiry.putWall)
     && (re.inst.dayExpiry.regime === 'PIN' || re.inst.dayExpiry.regime === 'BREAKOUT'));
+
+  // terms:'futures' adds the stored basis back so the lines overlay a FUTURES chart
+  // (a colleague on CME/COMEX). Default 'spot' is unchanged.
+  const goldStore = {
+    'XAU/USD': {
+      pair: 'XAU/USD', spot: 4110, basis: 4, dte: 1, savedAt: 'x',
+      maxPain: 4150, callWall: 4300, putWall: 3900,
+      callWalls: [{ strike: 4300, oi: 9000, tier: 'strong' }],
+      putWalls:  [{ strike: 3900, oi: 8000, tier: 'strong' }],
+      exposures: { gex: 500 },
+    },
+  };
+  const spotTxt = buildOILevelText(goldStore, { generated: 'x' });
+  const futTxt  = buildOILevelText(goldStore, { generated: 'x', terms: 'futures' });
+  ok('spot export draws the call wall at the spot strike (4300)', /OI 4300\.00 : call_wall/.test(spotTxt), spotTxt.split('\n').find(l => l.includes('call_wall')));
+  ok('futures export adds the basis back (+4 → 4304)', /OI 4304\.00 : call_wall/.test(futTxt), futTxt.split('\n').find(l => l.includes('call_wall')));
+  ok('futures export flags the terms on a context line', /futures\/CME terms/i.test(futTxt));
+  ok('spot export carries NO futures-terms note', !/futures\/CME terms/i.test(spotTxt));
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);

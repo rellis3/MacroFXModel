@@ -326,6 +326,21 @@ function futuresIsInverted(pair) {
   return pair === 'USD/JPY' || pair === 'USD/CAD' || pair === 'USD/CHF' || pair.includes('JPY');
 }
 
+// Convert a SPOT-equivalent level back to FUTURES/CME price terms — the exact inverse of
+// the analyse-time basis shift (Spot Level = CME Strike − Basis). For overlaying our levels
+// on a FUTURES chart (a colleague trading CME/COMEX sees strikes in futures terms, not spot).
+// Non-inverted: raw = level + basis. Inverted (6J/6C/6S): level = 1/raw − basis ⇒ raw = 1/(level+basis).
+// basis 0 (or clamped) means no shift was applied, so the level already IS in futures terms.
+export function oiFuturesTermsPrice(price, inst) {
+  const basis = Number.isFinite(inst?.basis) ? inst.basis : 0;
+  if (!(Number.isFinite(price) && basis)) return price;
+  if (futuresIsInverted(inst?.pair || '')) {
+    const denom = price + basis;
+    return denom !== 0 ? 1 / denom : price;
+  }
+  return price + basis;
+}
+
 // A genuine futures→spot basis is small: FX carry is a fraction of a %, gold
 // carry ~<1%, index fair-value ~1-2%. A basis larger than this is NOT a real
 // basis — it's a bad ATM estimate (e.g. estimateSpotFromOI's put/call centroid

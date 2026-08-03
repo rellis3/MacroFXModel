@@ -36,7 +36,7 @@ import { oiStoreToLevels } from './oiConfluence.js';
 import { levelExpectation } from './levelExpectation.js';
 import { levelHeat } from './levelHeat.js';
 import { gammaFlip, distanceToFlip, rolloffSummary } from './gammaFlow.js';
-import { rebuildGexProfile } from './oi.js';
+import { rebuildGexProfile, oiFuturesTermsPrice } from './oi.js';
 
 // Canonical chart-ticker per oi_store key. Mirrors the Confluence-Zones indicator's
 // normalisation targets so the same chart symbols the user already uses resolve here
@@ -123,7 +123,11 @@ function fmtCot(c) {
 // NO price coordinate — it is positioning, not a level — so it is emitted on the per-pair
 // context line the indicator ignores, never as an `OI {price}` line. Drawing a horizontal
 // line for it would invent a price the data does not contain.
-export function buildOILevelText(store, { topWalls = null, minTier = "moderate", maxWalls = 3, generated = null, cot = null, reachByPair = null } = {}) {
+export function buildOILevelText(store, { topWalls = null, minTier = "moderate", maxWalls = 3, generated = null, cot = null, reachByPair = null, terms = 'spot' } = {}) {
+  // terms: 'spot' (default — XAU/USD / OANDA spot, what the platform trades) or 'futures'
+  // (raw CME/COMEX price terms, for overlaying on a futures chart). Only the DISPLAYED price
+  // changes; P(touch) is still keyed off the spot price it was computed at.
+  const futuresTerms = terms === 'futures';
   const LW = 44;
   const hdr = '──── OI WALLS & MAX PAIN ' + '─'.repeat(Math.max(0, LW - 25));
   const lines = [hdr];
@@ -148,10 +152,14 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     const gexProfile = rebuildGexProfile(inst);
     const canon = canonName(pair);
     const dp = priceDp(pair, canon);
+    // Futures-terms display converter (identity in spot mode). Only the printed number
+    // changes — sorting, dedup and the P(touch) key all still use the spot price.
+    const px = (p) => futuresTerms ? oiFuturesTermsPrice(p, inst) : p;
     // Order by type group, then by price descending (top of the book first).
     levels.sort((a, b) => (TYPE_ORDER.indexOf(a.type) - TYPE_ORDER.indexOf(b.type)) || (b.price - a.price));
 
     lines.push(canon);
+    if (futuresTerms) lines.push('· prices in FUTURES/CME terms (basis added back — for a futures chart)');
     const ctx = fmtSaved(inst);
     if (ctx) lines.push(ctx);
     const cotLine = fmtCot(cot?.[canon]);
@@ -160,25 +168,25 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     // distance-to-flip vol read + a per-expiry roll-off block. No new data.
     const flip = Number.isFinite(inst.gammaFlip) ? inst.gammaFlip : gammaFlip(gexProfile);
     const dist = distanceToFlip(inst.spot, flip);          // no ATR here → % based
-    if (dist) lines.push(`· flip ${flip.toFixed(dp)} · spot ${dist.pct >= 0 ? '+' : ''}${dist.pct}% → ${dist.side === 'positive' ? '+gamma (pin/dampen)' : dist.side === 'negative' ? '−gamma (breakout)' : 'at flip'}${dist.near ? ' · NEAR flip (unstable)' : ''}`);
+    if (dist) lines.push(`· flip ${px(flip).toFixed(dp)} · spot ${dist.pct >= 0 ? '+' : ''}${dist.pct}% → ${dist.side === 'positive' ? '+gamma (pin/dampen)' : dist.side === 'negative' ? '−gamma (breakout)' : 'at flip'}${dist.near ? ' · NEAR flip (unstable)' : ''}`);
     const roll = rolloffSummary(inst.termStructure);
     if (roll && roll.nExpiries > 1) {
       const ts = (inst.termStructure || []).slice().sort((a, b) => a.dte - b.dte).slice(0, 4);
-      lines.push(`· term: ${ts.map(e => `${e.dte}DTE mp${Number(e.maxPain).toFixed(dp)}`).join('  ')}${roll.rollingSoon ? ' · near rolls off soon' : ''}`);
+      lines.push(`· term: ${ts.map(e => `${e.dte}DTE mp${px(Number(e.maxPain)).toFixed(dp)}`).join('  ')}${roll.rollingSoon ? ' · near rolls off soon' : ''}`);
     }
     const gk = inst.greeksFlow;
     if (gk) {
       lines.push(`· charm/vanna (IV ${gk.dteDays}DTE): CEX ${gk.cex >= 0 ? '+' : ''}${gk.cex} · VEX ${gk.vex >= 0 ? '+' : ''}${gk.vex}${gk.vanna ? ` · vanna ${gk.vanna.state}${gk.vanna.firing ? ' firing' : ''}` : ''}`);
       // charm/vanna flip levels as drawable OI lines (the regime boundaries for each).
-      if (gk.charmFlip != null) lines.push(`OI ${Number(gk.charmFlip).toFixed(dp)} : charm_flip`);
-      if (gk.vannaFlip != null) lines.push(`OI ${Number(gk.vannaFlip).toFixed(dp)} : vanna_flip`);
+      if (gk.charmFlip != null) lines.push(`OI ${px(Number(gk.charmFlip)).toFixed(dp)} : charm_flip`);
+      if (gk.vannaFlip != null) lines.push(`OI ${px(Number(gk.vannaFlip)).toFixed(dp)} : vanna_flip`);
     }
     // Expected-move band as two OI-parseable levels so the indicator can draw the
     // option-implied range live; plus the directional risk-reversal tilt (EOD data).
     const em = inst.expectedMove;
     if (em && em.upper != null) {
-      lines.push(`OI ${em.upper.toFixed(dp)} : exp_move_hi`);
-      lines.push(`OI ${em.lower.toFixed(dp)} : exp_move_lo`);
+      lines.push(`OI ${px(em.upper).toFixed(dp)} : exp_move_hi`);
+      lines.push(`OI ${px(em.lower).toFixed(dp)} : exp_move_lo`);
       lines.push(`· exp move ±${em.move} (${em.pct}%)${em.dte != null ? ` to ${em.dte}DTE` : ''} — EOD`);
     }
     const rr = inst.riskReversal;
@@ -227,7 +235,7 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
         else if (heat) suffix = ` . ${note} . ${heat}`;
         else           suffix = ` . ${note}`;
       }
-      lines.push(`OI ${l.price.toFixed(dp)} : ${l.type}${tier}${dteTag}${suffix}`);
+      lines.push(`OI ${px(l.price).toFixed(dp)} : ${l.type}${tier}${dteTag}${suffix}`);
     }
     lines.push('');
     emitted++;
