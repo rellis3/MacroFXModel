@@ -1111,6 +1111,28 @@ fit exists; replacing the inverse-pinball-loss softmax with real stacking
 (a small periodically-refit regression minimizing log-loss) once enough live
 forward-tracked history exists to fit one without overfitting.
 
+### 1al. Expected-Move Board — multi-pair orchestration of 1ak + dayTypeCore + gammaFlow (2026-08-03)
+
+Built from an owner request to consolidate a "continue or fade, and by how
+much, over the next N bars" read across the full pair universe in one place,
+using what's already built rather than inventing anything new. Pure
+orchestration brick — every input is an existing, already-registered module;
+this only wires them together per pair and loops the wiring across pairs.
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Expected-move core** | `js/expectedMoveCore.js` (`computeExpectedMove`, `wallModifier`) | One pair's consolidated read: magnitude from the §1ak Cone A/B blend (same call sequence `forecast-blend.html` uses — `buildIntradayContext`/`buildAnalogContext`/`intradayCone`/`analogCone`/`fitBlendWeights`/`weightAFor`/`blendCones`), direction from `dayTypeCore.classifyDayType`'s T (TREND→trust the blend's own median-path lean as CONTINUE_UP/DOWN, RANGE→FADE, MIXED→MIXED — dayTypeCore's estimators are magnitude-only/unsigned, so the actual up/down call comes from the blended cone's `center` vs `anchor`, not from dayTypeCore itself), and an optional GEX wall-proximity modifier (`gammaFlow.gammaFlip`/`distanceToFlip` + call/put-wall distance) read from the pair's `oi_store` entry when the user has pasted OI data for it — inert (`wall: null`) otherwise. No new math anywhere; see the file's own header for the exact validation-status caveat per layer (Cone A/B is OOS-graded per pair, dayTypeScore backs live strategies elsewhere, the GEX read is explicitly folklore-tier per `gammaFlow.js`). | `server.js` `/api/expected-moves/run` | 🟢 built + unit-tested (`expectedMoveCore.test.mjs`, synthetic data) — **not yet run on real OANDA history**, same caveat as §1ak |
+| **Expected-Move Board route** | `server.js` (`POST /api/expected-moves/run`, `GET /api/expected-moves/status/:jobId`) | Async-job loop (same pattern as `/api/poi-reaction/run`) over `POI_ALL_PAIRS` (the canonical 26 FX+gold pairs), fetching each pair's M15/M5 bars via the existing `_wbtFetchIntraday`/`_wbtInstrMap` (no new fetch logic — same paginated OANDA path `/api/weekly-vol-backtest/m15\|m5/:pair` uses internally), reading `oi_store` from KV once per job (not per pair) for the wall modifier. | `expected-moves.html` | 🟢 built |
+| **Expected-Move Board viewer** | `expected-moves.html` | One row per pair: price, CONTINUE_UP/DOWN/FADE/MIXED + T%, expected move in pips (center/±p50/±p75) at the chosen horizon, Cone B's (regime,vol) bucket, a call/put-wall tag when price is near a pasted wall, a ⚠ for low-confidence flags. Sortable by move size / conviction / pair. Carries an explicit on-page notice (mirrors this section's caveat) that this is a decision-support readout, not a validated combined-edge strategy. | — | 🟡 view-only, unverified against live OANDA data in this sandbox (Railway-only); logic verified via `expectedMoveCore.test.mjs` on synthetic data |
+
+Not built (deliberately, scope discipline): a persisted forward-track record
+of the board's own calls (would let "how often did CONTINUE calls actually
+continue" be graded, but needs live tracked history first); a portfolio-level
+view (correlated exposure across the 26 pairs, e.g. don't count 5 EUR-cross
+CONTINUE_UP calls as 5 independent bets); wiring in a 3rd/4th cone leg (OU
+half-life, options-implied density) — those stay §1ak's roadmap, this board
+just consumes whatever `coneBlend` produces.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted

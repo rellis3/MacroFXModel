@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Expected Moves — All Pairs</title>
+<style>
+  :root { --bg:#0b0e14; --panel:#11151f; --line:#1f2937; --text:#cbd5e1; --muted:#64748b; --accent:#5b9dff; --good:#34d399; --bad:#f87171; --warn:#fbbf24; --purple:#c084fc; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 'DM Sans',system-ui,sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
+  h1 { margin:0; font-size:16px; font-weight:600; }
+  .sub { color:var(--muted); font-size:12px; max-width:900px; }
+  .wrap { padding:16px 20px; }
+  .ctl { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:0 0 14px; }
+  select, button { background:#1e293b; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer; }
+  button#run { border-color:var(--accent); color:var(--accent); font-weight:600; }
+  button#run:disabled { opacity:.5; cursor:default; }
+  #status { font-size:12px; color:var(--muted); }
+  .err { color:var(--bad); }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:14px; }
+  .card.notice { font-size:12px; color:var(--muted); }
+  table { width:100%; border-collapse:collapse; font-family:'DM Mono',monospace; font-size:12px; }
+  th, td { text-align:right; padding:6px 8px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th { color:var(--muted); font-weight:500; cursor:pointer; user-select:none; }
+  th:hover { color:var(--text); }
+  td:first-child, th:first-child { text-align:left; }
+  td.pair { text-align:left; font-weight:600; color:var(--text); }
+  .dir { display:inline-block; padding:2px 7px; border-radius:4px; font-weight:600; font-size:11px; }
+  .dir-up { background:rgba(52,211,153,.15); color:var(--good); }
+  .dir-down { background:rgba(248,113,113,.15); color:var(--bad); }
+  .dir-fade { background:rgba(91,157,255,.15); color:var(--accent); }
+  .dir-mixed { background:rgba(100,116,139,.15); color:var(--muted); }
+  .wall-tag { display:inline-block; padding:1px 6px; border-radius:4px; font-size:10px; }
+  .wall-call { background:rgba(248,113,113,.15); color:var(--bad); }
+  .wall-put { background:rgba(52,211,153,.15); color:var(--good); }
+  .muted { color:var(--muted); }
+  .warn-ico { color:var(--warn); cursor:help; }
+  tr.errored td { color:var(--muted); font-style:italic; }
+  #errList { font-size:12px; color:var(--muted); margin-top:8px; }
+  .legend { font-size:11px; color:var(--muted); margin-top:8px; }
+  .legend b { color:var(--text); }
+</style>
+</head>
+<body>
+<header>
+  <h1>📊 Expected Moves — All Pairs</h1>
+  <div class="sub">Per pair, per bar: the blended Cone A (model) + Cone B (analog) expected-move envelope (<a href="forecast-blend.html" style="color:var(--accent)">forecast-blend.html</a>'s math), <code>dayTypeScore</code>'s continue-vs-fade read, and — where you've pasted OI data — the GEX wall proximity modifier. A consolidated decision-support readout, not a validated combined-edge strategy: see the notice below before trading off it.</div>
+</header>
+
+<div class="wrap">
+  <div class="ctl">
+    <select id="gran">
+      <option value="M15" selected>M15 · intraday</option>
+      <option value="M5">M5 · intraday</option>
+    </select>
+    <select id="horizon"></select>
+    <select id="sort">
+      <option value="move">Sort: expected move (biggest first)</option>
+      <option value="conviction">Sort: direction conviction (T)</option>
+      <option value="pair">Sort: pair A→Z</option>
+    </select>
+    <button id="run">Run all pairs</button>
+    <span id="status"></span>
+  </div>
+
+  <div class="card notice">
+    <b>Read this before trading off it.</b> Cone A/B/Blend calibration is graded
+    out-of-sample per pair by <code>coneBlend</code>'s own walk-forward fit —
+    that part has real evidence behind it. <code>dayTypeScore</code> backs live
+    strategies elsewhere in this repo. The GEX wall read is, in its own module's
+    words, <i>"positioning context, not a validated signal — folklore-tier edge,
+    partial on FX."</i> Combining all three here is convenience, not a claim that
+    the combination itself has been backtested or has edge. Treat every row as
+    a starting point for your own read, not an answer.
+  </div>
+
+  <div class="card">
+    <table id="tbl">
+      <thead>
+        <tr>
+          <th data-k="pair">Pair</th>
+          <th data-k="price">Price</th>
+          <th data-k="dir">Direction</th>
+          <th data-k="T">Conviction (T)</th>
+          <th data-k="move">Expected move (center)</th>
+          <th data-k="p50">±p50 band</th>
+          <th data-k="p75">±p75 band</th>
+          <th data-k="coneB">Cone B state</th>
+          <th data-k="wall">Wall</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="rows"><tr><td colspan="10" class="muted">Click "Run all pairs" — this fetches history and fits a walk-forward blend per pair, so it takes a while for 26 pairs.</td></tr></tbody>
+    </table>
+    <div id="errList"></div>
+    <div class="legend">
+      <b>CONTINUE_UP/DOWN</b> = trend-day-ness high (dayType label TREND), blend's median path leans that way.
+      <b>FADE</b> = dayType label RANGE — treat the drift lean as noise, expect reversion toward anchor.
+      <b>MIXED</b> = dayType label MIXED — low conviction either way.
+      <b>Wall</b> = price is within 10 pips of a pasted call/put wall right now (red = call wall/short-gamma/amplifying, green = put wall/long-gamma/dampening) — blank if no OI data pasted for that pair or price isn't near one.
+      ⚠ = low-confidence flag (thin analog bucket, or one cone unavailable).
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const HORIZONS = [['8','2 hours'],['16','4 hours'],['32','8 hours']];
+for (const [v, label] of HORIZONS) $('horizon').add(new Option(label, v));
+$('horizon').value = '16';
+
+let lastResult = null;
+let pollTimer = null;
+
+function fmtPips(v) { return v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(1); }
+function dirClass(call) {
+  return call === 'CONTINUE_UP' ? 'dir-up' : call === 'CONTINUE_DOWN' ? 'dir-down' : call === 'FADE' ? 'dir-fade' : 'dir-mixed';
+}
+function dirLabel(call) {
+  return { CONTINUE_UP: '▲ CONTINUE UP', CONTINUE_DOWN: '▼ CONTINUE DOWN', CONTINUE: '● CONTINUE', FADE: '↔ FADE', MIXED: '~ MIXED' }[call] || call;
+}
+function wallTag(w) {
+  if (!w || !w.near) return '';
+  const cls = w.near.level === 'call_wall' ? 'wall-call' : 'wall-put';
+  const lbl = w.near.level === 'call_wall' ? 'CALL WALL' : 'PUT WALL';
+  return `<span class="wall-tag ${cls}" title="${w.near.effect} (${w.near.distPips.toFixed(1)}p away)">${lbl}</span>`;
+}
+
+function sortRows(rows, mode) {
+  const ok = rows.filter(r => r.ok), bad = rows.filter(r => !r.ok);
+  if (mode === 'pair') ok.sort((a, z) => a.display.localeCompare(z.display));
+  else if (mode === 'conviction') ok.sort((a, z) => z.direction.T - a.direction.T);
+  else ok.sort((a, z) => Math.abs(z.expected.pipsCenter ?? 0) - Math.abs(a.expected.pipsCenter ?? 0));
+  return { ok, bad };
+}
+
+function render() {
+  if (!lastResult) return;
+  const { ok, bad } = sortRows(lastResult.pairs, $('sort').value);
+  const dg = r => r.digits ?? 5;
+  const rowsHtml = ok.map(r => {
+    const warn = r.warnings?.length ? `<span class="warn-ico" title="${r.warnings.join(' · ')}">⚠</span>` : '';
+    return `<tr>
+      <td class="pair">${r.display}</td>
+      <td>${r.expected.anchor.toFixed(dg(r))}</td>
+      <td><span class="dir ${dirClass(r.direction.call)}">${dirLabel(r.direction.call)}</span></td>
+      <td>${(r.direction.T * 100).toFixed(0)}% <span class="muted">(${r.direction.dayTypeLabel})</span></td>
+      <td>${fmtPips(r.expected.pipsCenter)}p</td>
+      <td>${fmtPips(r.expected.p50.pipsDown)} / ${fmtPips(r.expected.p50.pipsUp)}</td>
+      <td>${fmtPips(r.expected.p75.pipsDown)} / ${fmtPips(r.expected.p75.pipsUp)}</td>
+      <td class="muted">${r.coneB ? `${r.coneB.regime}·${r.coneB.vol}` : '—'}</td>
+      <td>${wallTag(r.wall)}</td>
+      <td>${warn}</td>
+    </tr>`;
+  }).join('');
+  $('rows').innerHTML = rowsHtml || '<tr><td colspan="10" class="muted">no pairs returned</td></tr>';
+  $('errList').innerHTML = bad.length
+    ? `<b>Unavailable (${bad.length}):</b> ` + bad.map(r => `${(r.display || r.pair || '').toUpperCase() || '?'} — ${r.error}`).join(' · ')
+    : '';
+}
+
+async function poll(jobId) {
+  try {
+    const j = await fetch(`/api/expected-moves/status/${jobId}`).then(r => r.json());
+    if (!j.ok) throw new Error(j.error || 'status check failed');
+    if (j.status === 'running') {
+      $('status').textContent = `running… ${j.pairsDone}/${j.pairsTotal} pairs`;
+      pollTimer = setTimeout(() => poll(jobId), 1500);
+      return;
+    }
+    if (j.status === 'error') throw new Error(j.error || 'job failed');
+    lastResult = j;
+    const nOk = j.pairs.filter(r => r.ok).length;
+    $('status').textContent = `done — ${nOk}/${j.pairs.length} pairs, generated ${new Date(j.generatedAt).toLocaleTimeString()}`;
+    $('status').className = '';
+    $('run').disabled = false;
+    render();
+  } catch (err) {
+    $('status').textContent = err.message;
+    $('status').className = 'err';
+    $('run').disabled = false;
+  }
+}
+
+$('run').onclick = async () => {
+  clearTimeout(pollTimer);
+  $('run').disabled = true;
+  $('status').textContent = 'starting…';
+  $('status').className = '';
+  $('rows').innerHTML = '<tr><td colspan="10" class="muted">running…</td></tr>';
+  $('errList').innerHTML = '';
+  try {
+    const body = { gran: $('gran').value, H: +$('horizon').value };
+    const j = await fetch('/api/expected-moves/run', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    }).then(r => r.json());
+    if (!j.ok) throw new Error(j.error || 'failed to start');
+    poll(j.jobId);
+  } catch (err) {
+    $('status').textContent = err.message;
+    $('status').className = 'err';
+    $('run').disabled = false;
+  }
+};
+$('sort').onchange = render;
+$('horizon').onchange = () => { if (lastResult) { $('status').textContent = 'horizon changed — click Run again to refetch at the new horizon'; } };
+</script>
+</body>
+</html>

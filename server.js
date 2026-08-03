@@ -16261,6 +16261,84 @@ function _wbtIntradayRoute(gran, defCount) {
 app.get('/api/weekly-vol-backtest/m15/:pair', _wbtIntradayRoute('M15', 200));
 app.get('/api/weekly-vol-backtest/m5/:pair',  _wbtIntradayRoute('M5',  500));
 
+// ── Expected-Move Board — one consolidated continue/fade + magnitude read per
+// pair, across the full FX+gold universe (POI_ALL_PAIRS, the same 26 pairs
+// forecast-blend.html covers). Wires forecastPathCore (Cone A) + analogCone
+// (Cone B) + coneBlend + dayTypeCore + gammaFlow together via
+// js/expectedMoveCore.js — no new math, see that module's header. Async-job
+// pattern, same as /api/poi-reaction/run.
+const expMoveJobs = new Map();
+function _purgeStaleExpMoveJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, j] of expMoveJobs) if (j.startedAt < cutoff) expMoveJobs.delete(id);
+}
+app.post('/api/expected-moves/run', express.json({ limit: '256kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+  const b = req.body ?? {};
+  const gran = (b.gran === 'M5' ? 'M5' : 'M15');
+  const H = Math.min(64, Math.max(4, Math.round(+b.H || 16)));
+  let pairs = Array.isArray(b.pairs) && b.pairs.length
+    ? b.pairs.map(p => String(p).toLowerCase().replace('/', '')).filter(p => POI_ALL_PAIRS.includes(p))
+    : POI_ALL_PAIRS;
+  if (!pairs.length) pairs = POI_ALL_PAIRS;
+
+  const jobId = `xm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleExpMoveJobs();
+  expMoveJobs.set(jobId, { status: 'running', startedAt, pairsTotal: pairs.length, pairsDone: 0 });
+
+  (async () => {
+    try {
+      const { computeExpectedMove } = await import('./js/expectedMoveCore.js');
+      const { pipSize, priceDigits, resolveKey, INSTRUMENTS } = await import('./js/instrumentRegistry.js');
+
+      let oiStore = {};
+      try {
+        const raw = await kv.get('oi_store');
+        if (raw) { const parsed = JSON.parse(raw); oiStore = parsed.data ?? parsed ?? {}; }
+      } catch { /* OI data is optional context — never fail the job for it */ }
+
+      const lookbackDays = gran === 'M5' ? 70 : 260;
+      const today = new Date().toISOString().substring(0, 10);
+      const fromD = new Date(Date.now() - lookbackDays * 86400e3).toISOString().substring(0, 10);
+
+      const results = [];
+      for (const pair of pairs) {
+        try {
+          const key = resolveKey(pair);
+          if (!key) throw new Error(`unknown pair: ${pair}`);
+          const oanda = _wbtInstrMap[key];
+          if (!oanda) throw new Error(`no OANDA symbol for ${pair}`);
+          const bars = await _wbtFetchIntraday(oanda, gran, { from: fromD, to: today });
+          const display = INSTRUMENTS[key]?.display;
+          const oiInst = oiStore[display] ?? oiStore[key.toUpperCase()] ?? null;
+          const r = computeExpectedMove({ pair: key, bars, H, pip: pipSize(key), oiInst });
+          results.push({ ...r, pair: key, display: display ?? key.toUpperCase(), digits: priceDigits(key), n: bars.length });
+        } catch (e) {
+          results.push({ pair, ok: false, error: e?.message || String(e) });
+        }
+        const j = expMoveJobs.get(jobId); if (j) { j.pairsDone++; expMoveJobs.set(jobId, j); }
+      }
+
+      expMoveJobs.set(jobId, { status: 'done', startedAt, result: { gran, H, generatedAt: Date.now(), pairs: results } });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[expected-moves/run]', msg, e?.stack ?? '');
+      expMoveJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/expected-moves/status/:jobId', (req, res) => {
+  const job = expMoveJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', pairsDone: job.pairsDone, pairsTotal: job.pairsTotal });
+  if (job.status === 'error') return res.json({ ok: true, status: 'error', error: job.error });
+  res.json({ ok: true, status: 'done', ...job.result });
+});
+
 // ── Forecast-path summary — the cone's calibrated claims as a compact API ─────
 // Per pair: the LIVE 4h event-aware cone (P75 envelope + drift), the surprise
 // percentile vs the day-open cone, which UTC hours the cone is trustworthy at
