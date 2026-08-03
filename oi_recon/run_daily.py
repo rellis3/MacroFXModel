@@ -60,9 +60,24 @@ def run(cmd, label):
     """Run a stage, stream nothing, return (rc, output). Each stage already
     prints its own detail to its own log; here we only need the verdict."""
     print(f'  [{label}] running...', flush=True)
-    r = subprocess.run(cmd, cwd=HERE, capture_output=True, text=True)
+    # text=True alone decodes with the console codepage (cp1252 here) while node
+    # emits UTF-8, so the '·' in "11 complete · 0 skipped" arrived as 'Â·' and was
+    # written that way into the run journal - the file meant to be read after a
+    # fortnight away. errors='replace' keeps a stray byte from killing the run.
+    r = subprocess.run(cmd, cwd=HERE, capture_output=True, text=True,
+                       encoding='utf-8', errors='replace')
     out = (r.stdout or '') + (r.stderr or '')
     return r.returncode, out
+
+
+def ascii_only(s):
+    """Windows consoles here are cp1252 and cannot render the separators node
+    prints ('·', '→'), so a summary line quoted verbatim comes out as mojibake in
+    both the console and the run journal. Fold to ASCII rather than fight the
+    codepage - this tool's own output has been ASCII since the first crash."""
+    return (str(s).replace('·', '-').replace('→', '->')
+            .replace('—', '-').replace('–', '-')
+            .encode('ascii', 'replace').decode('ascii'))
 
 
 def grab(out, *needles):
@@ -70,7 +85,7 @@ def grab(out, *needles):
     rather than re-deriving (and possibly disagreeing with) it."""
     for line in out.splitlines():
         if all(n in line for n in needles):
-            return line.strip()
+            return ascii_only(line.strip())
     return None
 
 
