@@ -807,6 +807,24 @@ Columns: CallChg CallPrior CallSettle | Strike | PutSettle PutPrior PutChg | Vol
       </div>
     </div>
 
+    <!-- NIGHTLY AUTOMATED PULL — global setting, not per-pair. Separated visually
+         because everything above changes THIS pair's analysis; this changes where
+         the unattended 00:30 sweep publishes all eleven. -->
+    <div style="margin-top:14px;padding:10px 12px;border-radius:7px;border:1px solid var(--border);background:rgba(255,255,255,0.02)">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <div style="font-size:11px;color:var(--text2);font-weight:600">🤖 Nightly automated pull</div>
+        <div id="oiAutoTargetState" style="font-size:10px;color:var(--text3)">checking…</div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;cursor:pointer">
+        <input type="checkbox" id="oiAutoTargetLive" onchange="setOIAutoTarget(this.checked)">
+        <span>Let the automated pull write <b>live</b> data (feeds the bots)</span>
+      </label>
+      <div class="oi-hint" style="margin-top:5px;line-height:1.5">
+        <b>Off</b> — the sweep writes the <code>oi_store_py</code> shadow only. Bots keep using your manual pastes, so they go stale if you stop pasting.<br>
+        <b>On</b> — the sweep writes <code>oi_store</code> itself. The OI bot's zones, the range-line snapshot and the history archive pick it up within 10 minutes on their own timers. Untick to hand control back to manual pasting from the next run — no need to be at the machine running the scraper.
+      </div>
+    </div>
+
     <div class="oi-actions">
       <button class="oi-btn" onclick="closeOIModal()">✕ Close</button>
       <button class="oi-btn oi-btn-primary" onclick="processOIData()">Analyse →</button>

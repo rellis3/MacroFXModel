@@ -7,7 +7,7 @@ import { filterConfluences, enhanceConfluences, mergeCrossSources } from './conf
 import { calculateTierScores } from './macro.js';
 import { calculateVolRegime, calculatePivots } from './vol.js';
 import { loadCaps, openCfgModal, closeCfgModal, saveCaps, resetCaps, vbRebuildNow } from './caps.js';
-import { oiLoadStoreFromKV, openOIModal, closeOIModal, processOIData, removeOIInstrument, calcOISpot, updateOIBasis, autoEstimateBasis } from './oi.js';
+import { oiLoadStoreFromKV, openOIModal, closeOIModal, processOIData, removeOIInstrument, calcOISpot, updateOIBasis, autoEstimateBasis, setOIAutoTarget, loadOIAutoTarget } from './oi.js';
 import { setCompassMode, toggleCompassFX, toggleCompassDiv, loadAndRenderCompass } from './compass.js';
 import { fvGapToPips, runSignalEngine, runEntryScanner, renderSignalAndEntries, detectCandlePatterns, openRangeBiasModal, closeRangeBiasModal, saveRangeBiasModal } from './signal.js';
 import { renderARMAAndTransition } from './arma.js';
@@ -49,6 +49,9 @@ window.removeOIInstrument     = removeOIInstrument;
 window.calcOISpot             = calcOISpot;
 window.updateOIBasis          = updateOIBasis;
 window.autoEstimateBasis      = autoEstimateBasis;
+// Async like processOIData — wrap so a network failure logs instead of vanishing.
+window.setOIAutoTarget        = (live) => setOIAutoTarget(live).catch(e => console.error('[OI] auto-target save failed:', e));
+window.loadOIAutoTarget       = () => loadOIAutoTarget().catch(e => console.error('[OI] auto-target read failed:', e));
 window.openCfgModal           = openCfgModal;
 window.closeCfgModal          = closeCfgModal;
 window.saveCaps               = saveCaps;

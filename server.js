@@ -10326,6 +10326,81 @@ app.get('/api/oi-store', async (_req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── WHERE THE NIGHTLY SWEEP WRITES ───────────────────────────────────────────
+// The automated QuikStrike pull (oi_recon/) builds the same entries the OI modal
+// does. This setting decides whether it publishes them to `oi_store` — the key the
+// OI bot planner, the range-line snapshot and the history archive all read — or to
+// the `oi_store_py` shadow, where they are only compared.
+//
+// IT IS A KV SETTING, NOT A SCRIPT FLAG, DELIBERATELY. The scraper runs on a machine
+// at home; the decision to trust it has to be reversible from anywhere. Read nightly
+// by ingest.mjs, so unticking the box takes effect on the next run with nothing to
+// redeploy and no access to that machine needed.
+//
+// DEFAULTS TO SHADOW. A missing or unreadable key must never be interpreted as
+// permission to drive live bots — the safe direction is the one that happens by
+// accident.
+const OI_AUTO_TARGET_DEFAULT = { live: false, updatedAt: null, note: '' };
+
+async function _oiAutoTarget() {
+  try {
+    const raw = await kv.get('oi_auto_target');
+    if (!raw) return { ...OI_AUTO_TARGET_DEFAULT };
+    const p = JSON.parse(raw);
+    const v = p?.data ?? p;
+    return { ...OI_AUTO_TARGET_DEFAULT, ...v, live: v?.live === true };
+  } catch { return { ...OI_AUTO_TARGET_DEFAULT }; }
+}
+
+app.get('/api/oi/auto-target', async (_req, res) => {
+  try {
+    const cfg = await _oiAutoTarget();
+    res.json({ ok: true, ...cfg, key: cfg.live ? 'oi_store' : 'oi_store_py' });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post('/api/oi/auto-target', async (req, res) => {
+  try {
+    // Only an explicit boolean true switches the feed live. A truthy string from a
+    // hand-rolled curl ("false", "0") must not arm it.
+    const live = req.body?.live === true;
+    const cfg = { live, updatedAt: new Date().toISOString(),
+                  note: String(req.body?.note ?? '').slice(0, 200) };
+    await kv.put('oi_auto_target', JSON.stringify({ data: cfg, timestamp: Date.now() }));
+    console.log(`[oi-auto-target] nightly sweep now writes ${live ? 'oi_store (LIVE - bots read this)' : 'oi_store_py (shadow)'}`);
+    res.json({ ok: true, ...cfg, key: live ? 'oi_store' : 'oi_store_py' });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Nightly-sweep heartbeat. The scraper runs on a machine at home and posts its
+// verdict here; the server owns the Telegram credentials, so the local task never
+// holds a token and the alert comes from Railway like every other alert.
+//
+// A FAILED RUN IS NOT THE ONLY THING WORTH KNOWING. A scheduled task that stops
+// firing altogether — the machine asleep, the task disabled by a Windows update —
+// sends nothing at all, and silence is indistinguishable from success unless the
+// last heartbeat is recorded. So every run stamps `oi_sweep_last`, and the audit
+// reads it to spot the nights that never reported.
+app.post('/api/oi/sweep-alert', async (req, res) => {
+  try {
+    const ok = req.body?.ok === true;
+    const detail = String(req.body?.detail ?? '').slice(0, 1500);
+    const target = String(req.body?.target ?? '').slice(0, 40);
+    const stamp = { at: new Date().toISOString(), ok, target, detail };
+    await kv.put('oi_sweep_last', JSON.stringify({ data: stamp, timestamp: Date.now() })).catch(() => {});
+
+    // Only shout on failure. A nightly "it worked" for a fortnight trains you to
+    // ignore the one that matters.
+    let notified = false;
+    if (!ok && state.tg?.token && state.tg?.chatId && state.cfg?.serverEnabled !== false) {
+      notified = await sendTelegram(state.tg.token, state.tg.chatId,
+        `⚠️ <b>Nightly OI sweep FAILED</b>\n<code>${detail || 'no detail'}</code>\n\nTarget: ${target || 'unknown'}\nLevels for today were not captured. CME serves no history, so this day cannot be recovered.`,
+      ).catch(() => false);
+    }
+    res.json({ ok: true, notified });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 // KV persistence health — does bot config/credentials survive a redeploy? The
 // bot-config page polls this to show a red banner when the backend is the ephemeral
 // file store (the "account details keep being lost" failure) so it's never silent.

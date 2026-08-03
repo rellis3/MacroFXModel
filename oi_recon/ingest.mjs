@@ -28,9 +28,37 @@ const has = n => { const i = argv.indexOf(n); if (i < 0) return false; argv.spli
 
 const dir   = flag('--dir');
 const base  = flag('--base', 'https://macrofxmodel-production.up.railway.app');
-const key   = flag('--key', 'oi_store_py');
+const keyArg = flag('--key', null);          // explicit override; else ask the server
 const write = has('--write');
 if (!dir || !existsSync(dir)) { console.error('usage: node ingest.mjs --dir <sweep dir> [--write] [--key oi_store_py]'); process.exit(2); }
+
+// WHERE TO PUBLISH is a server-side setting (`oi_auto_target`, toggled in the OI
+// modal), not a flag baked into the scheduled task. The scraper runs on a machine
+// that may be unattended for weeks; handing the feed back to manual pasting has to
+// be possible from a phone, without editing the command line the scheduler runs.
+//
+// An explicit --key still wins, for one-off manual runs.
+//
+// UNREACHABLE MEANS SHADOW. If the setting cannot be read we must not fall through
+// to the live key: "the server was down so we wrote to the bots' input anyway" is
+// the exact failure this switch exists to make impossible. Refusing is not an
+// option either — that would drop a capture that CME will not serve again — so it
+// degrades to the shadow and says so loudly.
+async function resolveKey() {
+  if (keyArg) return { key: keyArg, why: 'explicit --key' };
+  try {
+    const r = await fetch(`${base}/api/oi/auto-target`);
+    const j = await r.json();
+    if (!j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    return { key: j.live ? 'oi_store' : 'oi_store_py',
+             why: j.live ? 'oi_auto_target = LIVE' : 'oi_auto_target = shadow' };
+  } catch (e) {
+    return { key: 'oi_store_py', why: `setting unreadable (${e.message}) - DEFAULTED TO SHADOW`, degraded: true };
+  }
+}
+
+const target = await resolveKey();
+const key = target.key;
 
 // Fields without which the entry is useless downstream. Checked explicitly
 // because their absence is silent: oiStoreToLevels just yields no levels.
@@ -65,6 +93,25 @@ try {
   console.log('  (could not read oi_store - falling back to module defaults)\n');
 }
 
+// PRIOR ENTRY IS A DIFFERENT QUESTION FROM SETTINGS, and must come from whichever
+// key this run is actually writing. `priorEntry` carries the per-expiry history that
+// makes day-over-day OI change meaningful, so it has to chain against yesterday's
+// entry in the SAME series. Taking it from oi_store while writing the shadow would
+// compare every day against a manual paste that stops moving the moment the pastes
+// stop - which is precisely what happens during an unattended run, and it would
+// show up as plausible-looking but fabricated OI deltas rather than as an error.
+let priorStore = liveStore;
+if (key !== 'oi_store') {
+  try {
+    const j = await (await fetch(`${base}/api/kv/get?key=${key}`)).json();
+    priorStore = (!j.miss && j.data) ? j.data : {};
+    console.log(`  (chaining day-over-day history against ${key}: ${Object.keys(priorStore).length} prior entry/entries)\n`);
+  } catch {
+    priorStore = {};
+    console.log(`  (could not read ${key} - no prior entries, day-over-day deltas start fresh)\n`);
+  }
+}
+
 console.log(`\nINGEST  ${dir}  ->  ${write ? `KV '${key}' at ${base}` : 'DRY RUN (nothing written)'}\n`);
 console.log('  sym          strikes  maxPain      callWall     putWall      complete');
 
@@ -78,12 +125,13 @@ for (const stem of stems.sort()) {
 
   let r;
   try {
-    const prior = liveStore[sym] || null;
+    const settings = liveStore[sym] || null;      // human-tuned, always from oi_store
+    const prior = priorStore[sym] || null;        // yesterday in the SAME series (see above)
     r = await buildOIEntry({
       pair: sym, rawOI, rawChg: rd(stem, 'rawChg'), rawVol: rd(stem, 'rawVol'),
       rawIV: rd(stem, 'rawIV'), rawIVTerm: rd(stem, 'rawIVTerm'), baseUrl: base,
-      numLevels: prior?.numLevels, minOI: prior?.minOI,
-      swapCP: !!prior?.cpSwapped,      // the inverted-pair call/put flip is a per-pair choice
+      numLevels: settings?.numLevels, minOI: settings?.minOI,
+      swapCP: !!settings?.cpSwapped,   // the inverted-pair call/put flip is a per-pair choice
       priorEntry: prior,               // carries the per-expiry history forward
     });
   } catch (e) { console.log(`  ${sym.padEnd(12)} threw: ${e.message}`); bad++; continue; }
@@ -99,6 +147,10 @@ for (const stem of stems.sort()) {
 }
 
 console.log(`\n  ${Object.keys(payload).length} complete · ${bad} skipped`);
+// Say where this is going BEFORE the write, and say it whether or not --write is
+// set, so a dry run still reveals which key a real run would have touched.
+console.log(`  target: ${key}${key === 'oi_store' ? '  ** LIVE - the bots read this **' : '  (shadow)'}  [${target.why}]`);
+if (target.degraded) console.log('  NOTE: could not confirm the live/shadow setting; wrote the shadow to be safe.');
 if (!write) { console.log('\n  Dry run. Re-run with --write to publish.'); process.exit(bad ? 1 : 0); }
 if (!Object.keys(payload).length) { console.error('\n  nothing complete to write'); process.exit(1); }
 

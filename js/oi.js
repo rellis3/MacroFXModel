@@ -193,7 +193,66 @@ export function openOIModal() {
   // blank even though KV still holds the full paste. Backfill from KV so the modal
   // never looks empty after a big save. Async; fills only still-blank boxes.
   _backfillRawFromKV(sym);
+  loadOIAutoTarget();
   document.getElementById('oiModalOverlay').classList.add('open');
+}
+
+// ── Where the nightly automated pull publishes ────────────────────────────────
+// A KV setting rather than a flag on the scraper, so the feed can be handed back to
+// manual pasting from any device — the machine running the sweep may be at home and
+// switched on for a fortnight while nobody is there to edit a command line.
+//
+// The checkbox reflects the SERVER's answer, never an optimistic local guess: a
+// failed write that left the box ticked would say the bots are on live data when
+// they are not, which is the one mistake this control exists to prevent.
+export async function loadOIAutoTarget() {
+  const box = document.getElementById('oiAutoTargetLive');
+  const state = document.getElementById('oiAutoTargetState');
+  if (!box || !state) return;
+  try {
+    const r = await fetch('/api/oi/auto-target', { cache: 'no-store' });
+    const j = await r.json();
+    if (!j?.ok) throw new Error(j?.error || 'read failed');
+    _paintOIAutoTarget(j);
+  } catch (e) {
+    box.checked = false;
+    box.disabled = true;
+    state.style.color = 'var(--amber)';
+    state.textContent = `unreachable — ${e.message}`;
+  }
+}
+
+function _paintOIAutoTarget(j) {
+  const box = document.getElementById('oiAutoTargetLive');
+  const state = document.getElementById('oiAutoTargetState');
+  if (!box || !state) return;
+  box.checked = j.live === true;
+  box.disabled = false;
+  const when = j.updatedAt ? new Date(j.updatedAt).toLocaleString('en-GB') : 'never set';
+  state.style.color = j.live ? 'var(--amber)' : 'var(--text3)';
+  state.textContent = j.live
+    ? `LIVE → oi_store · set ${when}`
+    : `shadow → oi_store_py · ${when}`;
+}
+
+export async function setOIAutoTarget(live) {
+  const box = document.getElementById('oiAutoTargetLive');
+  const state = document.getElementById('oiAutoTargetState');
+  if (state) { state.style.color = 'var(--text3)'; state.textContent = 'saving…'; }
+  if (box) box.disabled = true;
+  try {
+    const r = await fetch('/api/oi/auto-target', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ live: live === true, note: 'set from OI modal' }),
+    });
+    const j = await r.json();
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    _paintOIAutoTarget(j);
+  } catch (e) {
+    // Re-read rather than assume the intended value stuck.
+    if (state) { state.style.color = 'var(--red)'; state.textContent = `save failed — ${e.message}`; }
+    setTimeout(loadOIAutoTarget, 1200);
+  }
 }
 
 export function closeOIModal() {

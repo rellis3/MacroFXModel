@@ -62,6 +62,14 @@ const _CF_EXACT = new Set([
                             // PERMANENT_KEYS: while it is only being compared against the
                             // real thing, a 48h TTL is wanted — the key should expire on
                             // its own rather than linger once the trial ends.
+  'oi_sweep_last',          // heartbeat from the nightly scraper. Its VALUE matters less than
+                            // its AGE - a task that silently stopped firing sends no failure,
+                            // so the only evidence is a last-seen stamp that stops advancing.
+  'oi_auto_target',         // WHERE the nightly sweep writes: the shadow, or the real
+                            // oi_store the bots read. Set from the OI modal so the feed can
+                            // be switched back to manual from a phone, without access to the
+                            // machine running the scraper — the whole point is that the
+                            // rollback does not depend on being at the PC.
   'range_line_oi',          // DATED per-session OI levels per instrument (~120 days) - the OTHER half of the OI
                             // forward test. The trade log was already durable but this was not, so the audit
                             // joined 35 logged trades against ONE surviving OI date: 32 of 35 unjoinable,

@@ -20,7 +20,12 @@ console.log('[parse cap raised — full chain no longer truncated at 100]');
 {
   const parsed = oiParseTable(fullChain(260));
   ok('parses well past 100 strikes', parsed.strikes.length === 260, `got ${parsed.strikes.length}`);
-  ok('caps at 500 for absurdly large pastes', oiParseTable(fullChain(800)).strikes.length === 500);
+  // The cap is 4000, not the original 500. Gold's GC paste carries 924 strikes and
+  // row 500 landed BELOW spot, so the old cap silently cut the book in half and took
+  // the real walls with it. This asserts the chain that broke it survives intact —
+  // an 800-row paste must come back whole, not truncated.
+  ok('an 800-strike chain is not truncated', oiParseTable(fullChain(800)).strikes.length === 800);
+  ok('still caps absurd pastes at MAX_STRIKE_ROWS', oiParseTable(fullChain(4500)).strikes.length === 4000);
 }
 
 console.log('[compact copy round-trips for reopen → re-analyse]');
