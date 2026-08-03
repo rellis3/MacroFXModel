@@ -766,12 +766,23 @@ console.log('\n[oi day-expiry]');
     { dte: 2,  strikes: [1.09, 1.10, 1.11], calls: [2000, 3000, 1500], puts: [1800, 2800, 1400] },
     { dte: 14, strikes: [1.09, 1.10, 1.11], calls: [3000, 5000, 2500], puts: [2800, 4800, 2400] },
   ];
-  ok('pickNearExpiry picks the nearer expiry when it has real OI', pickNearExpiry(legs, 1.10, { belowDte: 14 })?.dte === 2);
+  ok('pickNearExpiry picks the nearer expiry when it has real OI', pickNearExpiry(legs, 1.10, { belowDte: 14 })?.leg?.dte === 2);
   const thin = [
-    { dte: 1,  strikes: [1.10, 1.11], calls: [5, 3], puts: [5, 2] },   // near but ~empty
+    { dte: 1,  strikes: [1.10, 1.11], calls: [5, 3], puts: [5, 2] },   // near but ~empty (15 lots — under both floors)
     { dte: 14, strikes: [1.09, 1.10, 1.11], calls: [3000, 5000, 2500], puts: [2800, 4800, 2400] },
   ];
-  ok('pickNearExpiry skips a too-thin front expiry (no day set)', pickNearExpiry(thin, 1.10, { belowDte: 14 }) === null);
+  const thinPick = pickNearExpiry(thin, 1.10, { belowDte: 14 });
+  ok('pickNearExpiry skips a too-thin front expiry (no day set)', thinPick.leg === null);
+  ok('pickNearExpiry says WHY it skipped (thin near spot)', /thin near spot/i.test(thinPick.reason), thinPick.reason);
+  // Absolute floor: a near expiry that is a small FRACTION of a huge monthly still
+  // qualifies if it clears the absolute lots floor (the gold case — dailies dwarfed by
+  // the monthly but still tradeable).
+  const goldLegs = [
+    { dte: 1,  strikes: [4040, 4050, 4060], calls: [300, 400, 250], puts: [280, 350, 220] },   // ~1800 lots near spot
+    { dte: 24, strikes: [4040, 4050, 4060], calls: [40000, 50000, 30000], puts: [38000, 48000, 28000] },  // huge monthly
+  ];
+  const gp = pickNearExpiry(goldLegs, 4050, { belowDte: 24 });
+  ok('pickNearExpiry surfaces a near expiry dwarfed by the monthly (absolute floor)', gp.leg?.dte === 1, `${gp.reason}`);
 
   // Dual-expiry store → oiStoreToLevels emits BOTH sets, DTE-tagged.
   const dual = {
@@ -823,6 +834,24 @@ console.log('\n[oi day-expiry]');
   ok('re-analysed dayExpiry carries its own walls + regime', re.inst?.dayExpiry
     && Number.isFinite(re.inst.dayExpiry.callWall) && Number.isFinite(re.inst.dayExpiry.putWall)
     && (re.inst.dayExpiry.regime === 'PIN' || re.inst.dayExpiry.regime === 'BREAKOUT'));
+
+  // terms:'futures' adds the stored basis back so the lines overlay a FUTURES chart
+  // (a colleague on CME/COMEX). Default 'spot' is unchanged.
+  const goldStore = {
+    'XAU/USD': {
+      pair: 'XAU/USD', spot: 4110, basis: 4, dte: 1, savedAt: 'x',
+      maxPain: 4150, callWall: 4300, putWall: 3900,
+      callWalls: [{ strike: 4300, oi: 9000, tier: 'strong' }],
+      putWalls:  [{ strike: 3900, oi: 8000, tier: 'strong' }],
+      exposures: { gex: 500 },
+    },
+  };
+  const spotTxt = buildOILevelText(goldStore, { generated: 'x' });
+  const futTxt  = buildOILevelText(goldStore, { generated: 'x', terms: 'futures' });
+  ok('spot export draws the call wall at the spot strike (4300)', /OI 4300\.00 : call_wall/.test(spotTxt), spotTxt.split('\n').find(l => l.includes('call_wall')));
+  ok('futures export adds the basis back (+4 → 4304)', /OI 4304\.00 : call_wall/.test(futTxt), futTxt.split('\n').find(l => l.includes('call_wall')));
+  ok('futures export flags the terms on a context line', /futures\/CME terms/i.test(futTxt));
+  ok('spot export carries NO futures-terms note', !/futures\/CME terms/i.test(spotTxt));
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);

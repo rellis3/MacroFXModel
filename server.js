@@ -10541,7 +10541,8 @@ app.get('/api/vol-forecast/zones', async (req, res) => {
           reachByPair = Object.keys(rp).length ? rp : null;
         } catch { reachByPair = null; }
       }
-      const oiText = buildOILevelText(store, { generated: forecastState.latest.session_date, cot, reachByPair });
+      const terms = String(req.query.terms || '') === 'futures' ? 'futures' : 'spot';   // default spot; 'futures' for a futures/CME chart
+      const oiText = buildOILevelText(store, { generated: forecastState.latest.session_date, cot, reachByPair, terms });
       if (oiText && !oiText.includes('no OI data')) text += '\n\n' + oiText;
     } catch { /* OI is a bonus section — never fail the zones export over it */ }
     res.type('text/plain').send(text);

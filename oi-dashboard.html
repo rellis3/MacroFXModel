@@ -182,6 +182,7 @@ tr.dim td{opacity:.42}
       <button class="btn" id="unitBtn">Showing: SPOT-ADJ</button>
       <button class="btn" id="sortBtn">Walls: STRENGTH</button>
       <button class="btn" id="expBtn">⬇ Export lines</button>
+      <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);cursor:pointer" title="Export the lines in raw CME/COMEX futures price terms instead of OANDA spot — to overlay on a futures chart. Adds the basis back. Default: spot."><input type="checkbox" id="futTerms" style="cursor:pointer"> futures terms</label>
       <button class="btn" id="reanBtn" title="Re-derive every pair's levels from the OI data already stored (adds the day-expiry / latest compute) — no re-paste. Pinned to the saved basis.">↻ Re-analyse all</button>
       <button class="btn" id="reload">Reload</button>
       <a class="btn" href="cot-extremes.html" style="text-decoration:none">COT positioning</a>
@@ -1042,7 +1043,8 @@ document.getElementById('expBtn').onclick=async()=>{
     // '?reach=1' opts this export into the live calibrated P(touch) per level (one OANDA M5
     // fetch + Monte-Carlo per pair). It is slower than the plain zones pull, so it lives on
     // this OI-focused button rather than the vol-forecast pages, which stay fast.
-    const r=await fetch('/api/vol-forecast/zones?reach=1',{cache:'no-store'});
+    const fut=document.getElementById('futTerms')?.checked ? '&terms=futures' : '';
+    const r=await fetch('/api/vol-forecast/zones?reach=1'+fut,{cache:'no-store'});
     const txt=await r.text();
     document.getElementById('zoomTitle').textContent='C+Z / OI export — paste into the TradingView indicator';
     document.getElementById('zoomBody').innerHTML='<button class="btn" id="cpBtn" style="margin-bottom:12px">Copy to clipboard</button>'
