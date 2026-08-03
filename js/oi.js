@@ -34,7 +34,12 @@ function _trimStoreForLocal(store, { rawText = false, profile = false } = {}) {
   for (const [k, v] of Object.entries(store)) {
     const c = { ...v };
     if (rawText) { delete c.rawOI; delete c.rawChg; delete c.rawVol; delete c.rawIV; delete c.rawIVTerm; }
-    if (profile) { delete c.gexProfile; delete c.ivSmile; }
+    if (profile) {
+      delete c.gexProfile; delete c.ivSmile;
+      // The near-dated set's per-strike profile is the same "rebuildable" bulk — drop it
+      // too, but keep the day walls/max-pain/regime (small, and what the bot trades).
+      if (c.dayExpiry && typeof c.dayExpiry === 'object') { c.dayExpiry = { ...c.dayExpiry }; delete c.dayExpiry.gexProfile; }
+    }
     if (c.expiries) {
       const ex = {};
       for (const [el, ev] of Object.entries(c.expiries)) {
@@ -1178,6 +1183,66 @@ export function oiCalcExposures(strikes, calls, puts, spot, pair, T = OI_GREEK_T
   return { gex, dex };
 }
 
+// Levels for ONE expiry from its spot-equivalent ladder — the compact bundle the bot
+// trades and the chart/export draw, computed with the SAME bricks the primary path uses
+// (wallStrengthTier, oiCalcMaxPain, buildGexProfile, oiCalcExposures, gammaFlip) so a
+// near-dated expiry's walls match a primary one's by construction — no second copy of the
+// wall/greek math to drift. Pure/offline. Used for `inst.dayExpiry` (the reachable "day"
+// level set that sits alongside the far, liquid primary expiry).
+export function computeExpiryLevels(strikes, calls, puts, spot, pair, { dte = null, minOI = 20, numLevels = 8, sigmaFn = null } = {}) {
+  if (!Array.isArray(strikes) || strikes.length < 2 || !(spot > 0)) return null;
+  const T = Math.min(365, Math.max(1, Number.isFinite(dte) && dte > 0 ? dte : 14)) / 365;
+  const cs = oiContractSize(pair);
+  // 3× strength tiers: each wall's OI vs its 2-either-side neighbours (identical to the
+  // primary path — the `neigh` helper mirrors oi.js's inline version).
+  const byStrike = strikes.map((s, i) => ({ s, c: calls[i] || 0, p: puts[i] || 0 })).sort((a, b) => a.s - b.s);
+  const sIdx = new Map(byStrike.map((o, i) => [o.s, i]));
+  const neigh = (strike, key) => {
+    const i = sIdx.get(strike); if (i == null) return [];
+    return [i - 2, i - 1, i + 1, i + 2].filter(j => byStrike[j]).map(j => byStrike[j][key]);
+  };
+  const callWalls = strikes.map((s, i) => ({ strike: s, oi: calls[i] || 0 })).filter(w => w.oi >= minOI)
+    .sort((a, b) => b.oi - a.oi).slice(0, numLevels);
+  const putWalls = strikes.map((s, i) => ({ strike: s, oi: puts[i] || 0 })).filter(w => w.oi >= minOI)
+    .sort((a, b) => b.oi - a.oi).slice(0, numLevels);
+  for (const w of callWalls) { const t = wallStrengthTier(w.oi, neigh(w.strike, 'c')); w.mult = t.multiple; w.tier = t.tier; }
+  for (const w of putWalls)  { const t = wallStrengthTier(w.oi, neigh(w.strike, 'p')); w.mult = t.multiple; w.tier = t.tier; }
+  const maxPain = oiCalcMaxPain(strikes, calls, puts);
+  const gexProfile = buildGexProfile(strikes, calls, puts, spot, pair, T, sigmaFn, cs);
+  const exposures = oiCalcExposures(strikes, calls, puts, spot, pair, T, sigmaFn);
+  const cwHead = callWalls.filter(w => w.strike >= spot).sort((a, b) => a.strike - b.strike)[0] ?? callWalls[0] ?? null;
+  const pwHead = putWalls.filter(w => w.strike <= spot).sort((a, b) => b.strike - a.strike)[0] ?? putWalls[0] ?? null;
+  return {
+    dte: Number.isFinite(dte) ? dte : null,
+    maxPain, callWalls, putWalls,
+    callWall: cwHead?.strike ?? 0, putWall: pwHead?.strike ?? 0,
+    exposures, gexProfile,
+    gammaFlip: gammaFlip(gexProfile, spot),
+    regime: exposures.gex > 0 ? 'PIN' : exposures.gex < 0 ? 'BREAKOUT' : null,   // sign of net dealer GEX
+  };
+}
+
+// Pick the near-dated "day" expiry from the per-expiry legs: the SHORTEST-DTE leg that
+// still carries real near-money OI (so we surface a reachable level set, not the noise of
+// an all-but-empty front weekly). `near` = OI within `bandFrac` of spot; a leg qualifies
+// only if its near-money OI clears `minNearFrac` of the strongest leg's — the "strong"
+// filter the user asked for. Returns the leg (or null when nothing below `belowDte`
+// qualifies, i.e. the primary already IS the nearest real expiry).
+export function pickNearExpiry(legs, spot, { belowDte = Infinity, minNearFrac = 0.15, bandFrac = 0.03 } = {}) {
+  if (!Array.isArray(legs) || !legs.length || !(spot > 0)) return null;
+  const band = Math.abs(spot) * bandFrac;
+  const scored = legs.map(l => {
+    let near = 0;
+    for (let i = 0; i < l.strikes.length; i++) if (Math.abs(l.strikes[i] - spot) <= band) near += (l.calls[i] || 0) + (l.puts[i] || 0);
+    return { leg: l, dte: l.dte, near };
+  }).filter(x => Number.isFinite(x.dte));
+  const maxNear = scored.reduce((m, x) => Math.max(m, x.near), 0);
+  if (!(maxNear > 0)) return null;
+  const floor = maxNear * minNearFrac;
+  const cand = scored.filter(x => x.dte < belowDte && x.near >= floor).sort((a, b) => a.dte - b.dte);
+  return cand.length ? cand[0].leg : null;
+}
+
 // ── Gravity + PIN/BREAKOUT regime ────────────────────────────────────────────
 //
 // gravityScore = totalOI at nearest strike / (ATR in pips)
@@ -1618,24 +1683,35 @@ export async function buildOIEntry({
   // ANALYSIS-ONLY: computed alongside the single-expiry exposures above, NOT wired to the
   // bot — the traded PIN/BREAKOUT regime stays on the validated single-expiry number until
   // this is proven to read the tape better (most likely to matter on indices, not FX).
-  let fullBook = null;
+  let fullBook = null, dayExpiry = null;
   {
     const legs = oiMatrixExpiryLegs(rawOI, { basis, inverted: futuresIsInverted(pair), minOI });
+    // Each expiry's ATM IV from the settlements term structure (percent→decimal), matched
+    // by DTE; flat vol when absent. Per-strike skew per expiry is deferred — gamma is
+    // ATM-led, so the ATM level is the first-order correction.
+    const atmFor = (dte) => {
+      if (Array.isArray(tsRows) && tsRows.length && Number.isFinite(dte)) {
+        const liq = tsRows.filter(r => r.iv > 0);
+        const pick = liq.length ? liq.slice().sort((a, b) => Math.abs(a.dte - dte) - Math.abs(b.dte - dte))[0] : null;
+        if (pick && pick.iv > 0) return pick.iv / 100;
+      }
+      return flatSig;
+    };
     if (legs && legs.length >= 2) {
-      // Each expiry's ATM IV from the settlements term structure (percent→decimal), matched
-      // by DTE; flat vol when absent. Per-strike skew per expiry is deferred — gamma is
-      // ATM-led, so the ATM level is the first-order correction.
-      const atmFor = (dte) => {
-        if (Array.isArray(tsRows) && tsRows.length && Number.isFinite(dte)) {
-          const liq = tsRows.filter(r => r.iv > 0);
-          const pick = liq.length ? liq.slice().sort((a, b) => Math.abs(a.dte - dte) - Math.abs(b.dte - dte))[0] : null;
-          if (pick && pick.iv > 0) return pick.iv / 100;
-        }
-        return flatSig;
-      };
       for (const l of legs) l.sigma = atmFor(l.dte);
       fullBook = fullBookGex(legs, spot, { mult: cs, flatSigma: flatSig });
       if (fullBook) fullBook.volSource = (Array.isArray(tsRows) && tsRows.length) ? 'atm-iv' : 'flat';
+
+      // NEAR-DATED "day" level set — the shortest-DTE expiry with real near-money OI, so the
+      // bot trades levels price can reach in a day while the far primary stays as context.
+      // Same wall/greek bricks as the primary (computeExpiryLevels), its own DTE + ATM IV.
+      const primDte = Number.isFinite(dteEff) ? dteEff : (primaryExpiry?.dte ?? Infinity);
+      const nearLeg = pickNearExpiry(legs, spot, { belowDte: primDte });
+      if (nearLeg) {
+        const sig = Number.isFinite(nearLeg.sigma) && nearLeg.sigma > 0 ? nearLeg.sigma : atmFor(nearLeg.dte);
+        dayExpiry = computeExpiryLevels(nearLeg.strikes, nearLeg.calls, nearLeg.puts, spot, pair,
+          { dte: nearLeg.dte, minOI, numLevels, sigmaFn: sig > 0 ? () => sig : null });
+      }
     }
   }
 
@@ -1801,6 +1877,7 @@ export async function buildOIEntry({
     quoteAt,         // when that paired quote was taken, so a stale basis is provable
     futuresStale,    // live-title minus heatmap-settle, when both are available (how wrong the fallback would be)
     basisAt: Date.now(),   // the basis is only valid for the moment both legs were read (course L229)
+    dayExpiry,   // near-dated "day" level set (reachable walls/max-pain/regime); null when the primary already IS the nearest real expiry
     maxPain, exposures, topLevels, gexProfile,
     gammaFlip: gammaFlip(gexProfile, spot),   // nearest-spot interpolated crossing of the per-strike profile
     // The rigorous flip: total net GEX re-evaluated at candidate prices, root-found.

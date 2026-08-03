@@ -9901,10 +9901,21 @@ async function _refreshOIBotZones() {
       // fallback so a wall-less breakout isn't left SL-only; gold/indices use their own.
       const isFx = !OI_BOT_UNIVERSE.includes(key);
       const fallbackTpR = isFx ? (cfg.fxFallbackTpR ?? 2.0) : (cfg.fallbackTpR ?? 0);
+      // The bot TRADES the near-dated "day" expiry when present: its walls are reachable
+      // intraday (the far primary walls price won't hit are chart/plan context only), and
+      // its regime is the near-dated GEX sign (user's call). `pickNearExpiry` already
+      // required real near-money OI, so this is never a thin/noisy front weekly. No day
+      // expiry (single-expiry paste) → tradeInst IS inst, so nothing changes.
+      const dayEx = inst.dayExpiry && typeof inst.dayExpiry === 'object' ? inst.dayExpiry : null;
+      const tradeInst = dayEx
+        ? { ...inst, dte: dayEx.dte, maxPain: dayEx.maxPain, callWalls: dayEx.callWalls, putWalls: dayEx.putWalls,
+            callWall: dayEx.callWall, putWall: dayEx.putWall, exposures: dayEx.exposures,
+            gexProfile: dayEx.gexProfile, gammaFlip: dayEx.gammaFlip, gexFlip: undefined, gexFlips: undefined, dayExpiry: undefined }
+        : inst;
       // Gamma-flow context (the "connecting info" around the flip). All no-new-data:
       // distance-to-flip = vol read; flip-drift = regime-change warning (from oi_history);
       // roll-off = near-expiry read. Fed to the planner (sizing/warning) AND surfaced.
-      const flip = Number.isFinite(inst.gammaFlip) ? inst.gammaFlip : computeGammaFlip(inst.gexProfile);
+      const flip = Number.isFinite(tradeInst.gammaFlip) ? tradeInst.gammaFlip : computeGammaFlip(tradeInst.gexProfile);
       const dist = distanceToFlip(inst.spot, flip);        // no ATR server-side → % based
       const flipSeries = (() => {
         const pk = Object.keys(hist || {}).find(k => String(k).toLowerCase().replace(/[/_]/g, '') === key);
@@ -9916,29 +9927,36 @@ async function _refreshOIBotZones() {
       const gammaFlow = { flip: flip ?? null, dist, drift, rolloff };
 
       const _vn = inst.greeksFlow?.vanna;
-      const zones = stale ? [] : buildOIZones(inst, inst.spot, { ...cfg, pip, stability, change, fallbackTpR,
+      const zones = stale ? [] : buildOIZones(tradeInst, inst.spot, { ...cfg, pip, stability, change, fallbackTpR,
         nearFlip: !!dist?.near, regimeWarning: drift?.toward ? `flip migrating toward spot (${drift.fromDate}→${drift.toDate}) — regime change loading` : null,
         expMove: inst.expectedMove ? { upper: inst.expectedMove.upper, lower: inst.expectedMove.lower } : null,
         refMove: inst.refMove?.move ?? null,
         // Level-ladder + react-at-level nodes: the gamma-flip regime boundary, the GEX-flip,
         // and the vanna-exposure flip, alongside walls/max-pain/vol-magnets on `inst`.
         gammaFlipLevel: Number.isFinite(flip) ? flip : null,
-        gexFlipLevel: Number.isFinite(inst.gexFlip) ? inst.gexFlip : (Number.isFinite(inst.gexFlipPrice) ? inst.gexFlipPrice : null),
+        gexFlipLevel: Number.isFinite(tradeInst.gexFlip) ? tradeInst.gexFlip : (Number.isFinite(inst.gexFlipPrice) ? inst.gexFlipPrice : null),
         vannaFlipLevel: Number.isFinite(inst.greeksFlow?.vannaFlip) ? inst.greeksFlow.vannaFlip : null,
         // Greek conditioners (theory-driven, from the pasted IV smile — null/false when no smile):
         // vanna tailwind/headwind sizes follow-vs-fade; charm amplifies the near-expiry pin.
         vannaState: _vn && _vn.firing ? { state: _vn.state, firing: true } : null,
         charmActive: Number.isFinite(inst.greeksFlow?.cex) && inst.greeksFlow.cex !== 0,
         vannaNote: _vn && _vn.firing ? `vanna ${_vn.state} firing (IV ${_vn.ivFalling ? 'falling' : 'rising'}) — indices strong, gold/FX weak` : null });
-      const gex = inst.exposures?.gex ?? 0;
+      const gex = tradeInst.exposures?.gex ?? 0;   // traded regime = near-dated when a day expiry is present
       // When an in-universe instrument yields no zones, say why (flat regime / no
       // strong walls / walls out of range) — so a blank plan is legibly intentional.
       let diag = null;
       if (!stale && zones.length === 0) {
-        try { diag = explainNoZones(inst, inst.spot, { ...cfg, pip }); } catch { diag = null; }
+        try { diag = explainNoZones(tradeInst, inst.spot, { ...cfg, pip }); } catch { diag = null; }
       }
-      instruments[key] = { spot: inst.spot ?? null, maxPain: inst.maxPain ?? null,
+      // Far/primary expiry kept as context on the plan (the user still wants to SEE the
+      // 14-day book) — it just isn't what the bot trades.
+      const farGex = inst.exposures?.gex ?? 0;
+      const farExpiry = dayEx ? { dte: inst.dte ?? null, maxPain: inst.maxPain ?? null,
+        regime: farGex > 0 ? 'PIN' : farGex < 0 ? 'BREAKOUT' : 'NEUTRAL',
+        callWall: inst.callWall ?? null, putWall: inst.putWall ?? null } : null;
+      instruments[key] = { spot: inst.spot ?? null, maxPain: tradeInst.maxPain ?? null, dte: tradeInst.dte ?? null,
         regime: gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : 'NEUTRAL', zones, zoneCount: zones.length, stale, diag,
+        farExpiry,   // the far primary book (null unless a nearer day expiry was traded instead)
         gammaFlow, termStructure: Array.isArray(inst.termStructure) ? inst.termStructure : null,
         greeksFlow: inst.greeksFlow ?? null, expectedMove: inst.expectedMove ?? null,
         ivDynamics: inst.ivDynamics ?? null, riskReversal: inst.riskReversal ?? null };
