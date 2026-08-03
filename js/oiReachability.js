@@ -118,10 +118,14 @@ export function fmtReachEta(medBars, barMin = 5) {
 }
 
 // One-token touch label for the export line: "82%~2h" (calibrated P(touch) + median ETA).
-// Empty string when there's no usable probability, so the caller appends nothing. Pure.
+// Empty string when there's no usable probability OR the level rounds to 0% (won't be
+// reached in the horizon) — so a far, unreachable level shows NOTHING rather than a wall of
+// "0%~?" noise, and the caller appends nothing. Pure.
 export function reachLabel(row, barMin = 5) {
   if (!row || !Number.isFinite(row.calibrated)) return '';
-  return `${Math.round(row.calibrated * 100)}%~${fmtReachEta(row.medBarsToTouch, barMin)}`;
+  const pct = Math.round(row.calibrated * 100);
+  if (pct <= 0) return '';   // unreachable in the window → blank, not "0%~?"
+  return `${pct}%~${fmtReachEta(row.medBarsToTouch, barMin)}`;
 }
 
 // Per-wall reachability. `walls` = [{price, type, label}]. Returns one row per wall,
