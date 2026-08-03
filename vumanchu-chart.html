@@ -123,6 +123,17 @@
         </select></div>
       <label class="chk"><input type="checkbox" id="mf" checked> <span class="swatch" style="background:#3ddc84"></span>Money Flow wave</label>
       <label class="chk"><input type="checkbox" id="hidden"> Hidden (continuation) divergences</label>
+      <label class="chk"><input type="checkbox" id="proj">
+        <span class="swatch" style="background:#8fd4ff"></span>Forward WaveTrend fan <span class="muted">(M5)</span></label>
+      <div class="muted" id="projNote" style="margin-top:6px;display:none">
+        <b>What the fan is.</b> Percentiles of where WT1 actually went the last N times the wave
+        looked like this — p10–p90 and p25–p75 bands with a dashed median, anchored to the current
+        WT1 so it continues the line. It projects the OSCILLATOR, not price: WT is bounded ±100 and
+        self-normalising, so the fan sits at the same scale as the line it extends. A price cone
+        tilted by the same information would be about 1 pip on a 50-pip envelope — invisible.
+        <b>Bands, not a forecast</b> — they describe past continuations from this state.
+        M5 only, because that is the granularity it was measured on.
+      </div>
       <div class="muted" style="margin-top:7px">
         <span class="swatch" style="background:var(--wt1)"></span>WT1
         <span class="swatch" style="background:var(--wt2);margin-left:8px"></span>WT2
@@ -150,6 +161,18 @@
     <div class="card">
       <h2>Current read</h2>
       <div id="reading"><span class="muted">loading…</span></div>
+    </div>
+
+    <div class="card">
+      <h2>Historical read <span class="muted" style="text-transform:none;letter-spacing:0">— frozen table</span></h2>
+      <div id="vmRead"><span class="muted">loading…</span></div>
+      <div class="muted" style="margin-top:7px">
+        What price did the last <i>n</i> times all three timeframes looked like this, against a bar
+        matched on hour, volatility regime and prior-move size. <b>NONE is the expected answer most
+        of the time</b> — conflicting timeframes are ~2/3 of bars and carry no signal, and a cell
+        whose sign did not hold across most years reads NONE however large its delta.
+        <code>delta</code> is the only informative number, and it is a tilt of a few points.
+      </div>
     </div>
 
     <div class="card">
@@ -227,10 +250,37 @@ const qs = () => new URLSearchParams({
   tz:     String(-new Date().getTimezoneOffset()),   // label the axis in local time
   ...($('hidden').checked ? { hidden: '1' } : {}),
   ...($('mf').checked ? {} : { mf: '0' }),
+  ...($('proj').checked ? { proj: '1' } : {}),
 });
+
+async function loadVmRead() {
+  const el = $('vmRead');
+  try {
+    const inst = $('sym').value;
+    const r = await fetch(`/api/vumanchu/state?symbol=${encodeURIComponent(inst)}&horizon=60`);
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
+    const x = (d.rows || [])[0];
+    if (!x || x.error) { el.innerHTML = `<span class="muted">${x?.error || 'no row'}</span>`; return; }
+    const col = x.read === 'FADE' ? 'var(--bull)' : x.read === 'FOLLOW' ? 'var(--bear)' : 'var(--muted)';
+    const pp  = x.deltaPP == null ? '—' : `${x.deltaPP > 0 ? '+' : ''}${x.deltaPP}pp`;
+    el.innerHTML = `
+      <div class="row"><span>Read</span><b style="color:${col}">${x.read}</b></div>
+      <div class="row"><span>State (1m·5m·15m)</span><span>${(x.codes||[]).map(c=>c??'—').join(' · ')}</span></div>
+      <div class="row"><span>P(revert) / baseline</span><span>${x.pRevert==null?'—':(100*x.pRevert).toFixed(1)+'%'}
+        <span class="muted">vs ${x.baseline==null?'—':(100*x.baseline).toFixed(1)+'%'}</span></span></div>
+      <div class="row"><span>Delta</span><b style="color:${col}">${pp}</b></div>
+      <div class="row"><span>Sample</span><span>${x.n?.toLocaleString() ?? '—'} <span class="muted">(${x.matched ?? '—'})</span></span></div>
+      <div class="row"><span>Sign held</span><span>${x.yearsSameSign ?? '—'}/${x.years ?? '—'} yrs
+        <span class="muted">${x.yearMinPP==null?'':`(${x.yearMinPP} … ${x.yearMaxPP})`}</span></span></div>`;
+  } catch (e) {
+    el.innerHTML = `<span class="muted">${e.message}</span>`;
+  }
+}
 
 let seq = 0;
 async function refresh() {
+  loadVmRead();
   const mine = ++seq;
   const q = qs();
   const pngUrl = `/api/vumanchu/chart?${q}`;
@@ -281,7 +331,23 @@ $('pane').addEventListener('error', () => {
 });
 
 $('bars').addEventListener('input', () => { $('barsVal').textContent = $('bars').value; });
-for (const id of ['sym','tf','vwap','hidden','mf']) $(id).addEventListener('change', refresh);
+for (const id of ['sym','tf','vwap','hidden','mf','proj']) $(id).addEventListener('change', refresh);
+
+// The fan was measured on an M5 grid. `level/form` means something different at
+// M1 or H1, so the server ignores proj there — say so in the UI rather than let
+// the box look ticked while nothing draws, which is exactly how this shipped
+// silently broken the first time.
+function syncProj() {
+  const isM5 = $('tf').value === 'M5';
+  $('proj').disabled = !isM5;
+  $('projNote').style.display = $('proj').checked ? '' : 'none';
+  const lab = $('proj').closest('label');
+  lab.style.opacity = isM5 ? '1' : '.45';
+  lab.title = isM5 ? '' : 'The fan was measured on M5 — switch the timeframe to M5 to enable it';
+}
+$('tf').addEventListener('change', syncProj);
+$('proj').addEventListener('change', syncProj);
+syncProj();
 $('bars').addEventListener('change', refresh);
 $('refresh').addEventListener('click', refresh);
 $('openPng').addEventListener('click', () => window.open(`/api/vumanchu/chart?${qs()}`, '_blank'));
