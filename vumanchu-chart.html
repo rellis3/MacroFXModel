@@ -164,6 +164,19 @@
     </div>
 
     <div class="card">
+      <h2>Setup watch <span class="muted" style="text-transform:none;letter-spacing:0">— 5m/15m/1h stack</span></h2>
+      <div id="vmTrans"><span class="muted">loading…</span></div>
+      <div class="muted" style="margin-top:7px">
+        How often the aligned setup <b>forms</b> from here — not whether price will move.
+        <b>The excess column is the point:</b> measured across 31 instruments a matched random
+        walk aligns just as often (median excess <b>−1.5pp</b>, only 14% of cells positive), so
+        these probabilities are correct and carry <b>no information about price</b>. Useful for
+        knowing when to watch; not evidence of anything.
+        This is a slower stack than the 1m/5m/15m one the read above uses.
+      </div>
+    </div>
+
+    <div class="card">
       <h2>Historical read <span class="muted" style="text-transform:none;letter-spacing:0">— frozen table</span></h2>
       <div id="vmRead"><span class="muted">loading…</span></div>
       <div class="muted" style="margin-top:7px">
@@ -253,6 +266,37 @@ const qs = () => new URLSearchParams({
   ...($('proj').checked ? { proj: '1' } : {}),
 });
 
+async function loadVmTrans() {
+  const el = $('vmTrans');
+  try {
+    const r = await fetch(`/api/vumanchu/transitions?symbol=${encodeURIComponent($('sym').value)}`);
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
+    const now = d.live?.state;
+    const cur = d.current;
+    if (!now) { el.innerHTML = '<span class="muted">no live stack read</span>'; return; }
+    const zones = (d.live.zones || []).join(' · ');
+    if (!cur) {
+      el.innerHTML = `<div class="row"><span>Now</span><b>${now}</b></div>
+        <div class="muted">${zones} — already aligned or too rare to have a row</div>`;
+      return;
+    }
+    const pick = m => cur.steps.find(s => s.mins === m);
+    const rows = [30, 60, 120, 240].map(m => {
+      const s = pick(m); if (!s) return '';
+      const v = s.p_align ?? s.p_exit, rw = s.p_align_rw ?? s.p_exit_rw, ex = s.p_align_excess ?? s.p_exit_excess;
+      const lab = s.p_exit != null ? 'no longer aligned' : 'aligned';
+      return `<div class="row"><span>${m < 60 ? m + 'm' : (m / 60) + 'h'} ${lab}</span>
+        <span><b>${v}%</b> <span class="muted">vs ${rw}% random
+        <b style="color:${Math.abs(ex) < 1 ? 'var(--muted)' : ex > 0 ? 'var(--bull)' : 'var(--bear)'}">
+        ${ex > 0 ? '+' : ''}${ex}</b></span></span></div>`;
+    }).join('');
+    el.innerHTML = `<div class="row"><span>Now</span><b>${now}</b>
+        <span class="muted">${zones}</span></div>${rows}
+      <div class="row"><span>Sample</span><span class="muted">${cur.n.toLocaleString()} bars (${cur.freq_pct}% of the time)</span></div>`;
+  } catch (e) { el.innerHTML = `<span class="muted">${e.message}</span>`; }
+}
+
 async function loadVmRead() {
   const el = $('vmRead');
   try {
@@ -280,7 +324,7 @@ async function loadVmRead() {
 
 let seq = 0;
 async function refresh() {
-  loadVmRead();
+  loadVmRead(); loadVmTrans();
   const mine = ++seq;
   const q = qs();
   const pngUrl = `/api/vumanchu/chart?${q}`;
