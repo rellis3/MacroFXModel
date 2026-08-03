@@ -182,6 +182,7 @@ tr.dim td{opacity:.42}
       <button class="btn" id="unitBtn">Showing: SPOT-ADJ</button>
       <button class="btn" id="sortBtn">Walls: STRENGTH</button>
       <button class="btn" id="expBtn">⬇ Export lines</button>
+      <button class="btn" id="reanBtn" title="Re-derive every pair's levels from the OI data already stored (adds the day-expiry / latest compute) — no re-paste. Pinned to the saved basis.">↻ Re-analyse all</button>
       <button class="btn" id="reload">Reload</button>
       <a class="btn" href="cot-extremes.html" style="text-decoration:none">COT positioning</a>
       <a class="btn" href="index.html" style="text-decoration:none">Dashboard</a>
@@ -1015,6 +1016,21 @@ function render(){
 document.getElementById('unitBtn').onclick=()=>{SPOTADJ=!SPOTADJ;render();};
 document.getElementById('sortBtn').onclick=()=>{SORT=(SORT==='strength')?'proximity':'strength';render();};
 document.getElementById('reload').onclick=()=>boot();
+// Re-derive every stored pair's levels from the OI already in KV (adds day-expiry / latest
+// compute) via the headless re-analyse endpoint — no re-paste. Pinned to the saved basis;
+// then reload so the fresh levels show.
+document.getElementById('reanBtn').onclick=async()=>{
+  const b=document.getElementById('reanBtn'); const was=b.textContent; b.disabled=true; b.textContent='re-analysing…';
+  try{
+    const r=await fetch('/api/oi/reanalyse',{method:'POST'});
+    const j=await r.json();
+    if(!j.ok) throw new Error(j.error||'failed');
+    const withDay=(j.reanalysed||[]).filter(x=>x.dayExpiry!=null).length;
+    b.textContent=`✓ ${j.count} pairs · ${withDay} with day levels`;
+    await boot();
+    setTimeout(()=>{ b.textContent=was; b.disabled=false; }, 3500);
+  }catch(err){ b.textContent='failed: '+err.message; b.disabled=false; setTimeout(()=>{ b.textContent=was; }, 4000); }
+};
 document.getElementById('zoom').addEventListener('click',ev=>{ if(ev.target.id==='zoom') closeZoom(); });
 document.addEventListener('keydown',ev=>{ if(ev.key==='Escape') closeZoom(); });
 

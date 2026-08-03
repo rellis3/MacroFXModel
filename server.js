@@ -95,7 +95,7 @@ import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
 import { refreshRangeLineConfluence, packLiveM1 } from './js/rangeLineConfluenceProducer.js';
 import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas, classifyOIChange, oiWallStability, oiPriceConfirmation } from './js/oiConfluence.js';
 import { buildOILevelText } from './js/oiLevelExport.js';
-import { rebuildGexProfile as _oiRebuildGex } from './js/oi.js';   // self-heal a quota-trimmed gexProfile
+import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse
 import { buildOIZones, explainNoZones } from './js/oiZones.js';
 import { gammaFlip as computeGammaFlip, distanceToFlip, flipDrift, rolloffSummary } from './js/gammaFlow.js';
 import { buildRangeZones } from './js/rangeLineZones.js';
@@ -10004,6 +10004,70 @@ app.get('/api/oi-bot/zones', async (req, res) => {
 app.post('/api/oi-bot/zones/refresh', async (_req, res) => {
   try { const n = await _refreshOIBotZones(); res.json({ ok: true, instruments: n }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Re-analyse EVERY stored pair from the OI data ALREADY in `oi_store` — one hit to bring
+// every entry onto the latest compute (e.g. the near-dated `dayExpiry`) WITHOUT re-pasting.
+// This is what the OI modal's Analyse does, run headless per pair from the saved raw chain
+// via the SAME `buildOIEntry`, so the levels are identical to a manual re-analyse.
+//
+//   • default (pinned): reuses each entry's stored futures/spot → levels reproduced exactly,
+//     just enriched. The saved-at timestamp is preserved (the OI chain is as old as it was —
+//     a re-analyse doesn't make stale data look fresh).
+//   • ?live=1: re-fetches the live paired quote so the BASIS refreshes to the current price
+//     (levels shift with spot) — use when you want a fresh read on the same chain.
+//   • ?pair=EUR/USD,XAU/USD limits to specific pairs; omit to do all.
+//
+// Writes back with a union-merge (a fresh pair wins; a pair is never dropped) and refreshes
+// the OI-bot plan off the new store. This is also the shape an automated upload would use:
+// push the raw chains into `oi_store`, then POST here to derive every level in one place.
+app.post('/api/oi/reanalyse', async (req, res) => {
+  try {
+    const live = String(req.query.live || '') === '1';
+    const only = req.query.pair ? new Set(String(req.query.pair).split(',').map(s => s.trim()).filter(Boolean)) : null;
+    const raw = await kv.get('oi_store').catch(() => null);
+    const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
+    const pairs = Object.keys(store || {}).filter(p => !only || only.has(p));
+    const reanalysed = [], skipped = [], errors = [], fresh = {};
+    for (const pair of pairs) {
+      const inst = store[pair];
+      const rawOI = inst?.rawOI || Object.values(inst?.expiries || {}).map(e => e?.rawOI).find(Boolean);
+      if (!rawOI || !String(rawOI).trim()) { skipped.push({ pair, reason: 'no stored raw OI' }); continue; }
+      try {
+        const r = await _oiBuildEntry({
+          pair, rawOI,
+          rawChg: inst.rawChg || '', rawVol: inst.rawVol || '', rawIV: inst.rawIV || '', rawIVTerm: inst.rawIVTerm || '',
+          dteRaw:     Number.isFinite(inst.dte)     ? inst.dte     : NaN,
+          spotRaw:    Number.isFinite(inst.spot)    ? inst.spot    : NaN,
+          futuresRaw: Number.isFinite(inst.futures) ? inst.futures : NaN,
+          manualFutures: Number.isFinite(inst.futures),   // pin the stored basis anchor
+          swapCP: !!inst.cpSwapped,
+          greekVol: inst.greekVolMode === 'flat' ? 'flat' : 'smile',
+          numLevels: Number.isFinite(inst.numLevels) ? inst.numLevels : 8,
+          minOI:     Number.isFinite(inst.minOI)     ? inst.minOI     : 20,
+          priorEntry: inst,          // preserve the per-expiry history
+          skipLiveQuote: !live,      // pinned unless ?live=1
+        });
+        if (r?.error) { errors.push({ pair, error: r.error }); continue; }
+        // The OI chain is as old as the original paste — keep its staleness honest.
+        if (inst.savedAt) r.inst.savedAt = inst.savedAt;
+        if (Number.isFinite(inst.savedAtMs)) r.inst.savedAtMs = inst.savedAtMs;
+        fresh[pair] = r.inst;
+        const gx = r.inst?.exposures?.gex ?? 0;
+        reanalysed.push({ pair, dte: r.inst?.dte ?? null,
+          dayExpiry: r.inst?.dayExpiry?.dte ?? null,
+          regime: gx > 0 ? 'PIN' : gx < 0 ? 'BREAKOUT' : 'NEUTRAL' });
+      } catch (e) { errors.push({ pair, error: e.message }); }
+    }
+    if (Object.keys(fresh).length) {
+      const merged = { ...store };
+      for (const [p, v] of Object.entries(fresh)) merged[p] = { ...(store[p] || {}), ...v };
+      await kv.put('oi_store', JSON.stringify({ data: merged, timestamp: Date.now() }));
+    }
+    let zonesRefreshed = null;
+    if (Object.keys(fresh).length) { try { zonesRefreshed = await _refreshOIBotZones(); } catch (e) { zonesRefreshed = `failed: ${e.message}`; } }
+    res.json({ ok: true, live, count: reanalysed.length, reanalysed, skipped, errors, zonesRefreshed });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ── Give-back analytics: per-bot MFE-vs-realised from the durable trade logs.

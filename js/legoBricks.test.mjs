@@ -21,7 +21,7 @@ import { refreshVolatilityPlan } from './volatilityBotProducer.js';
 import { bucketM1IntoSessions } from './forecastAnalyser.js';
 import { londonMidnightSec } from './volBacktestEngine.js';
 import { buildOILevelText } from './oiLevelExport.js';
-import { computeExpiryLevels, pickNearExpiry } from './oi.js';
+import { computeExpiryLevels, pickNearExpiry, buildOIEntry } from './oi.js';
 import { oiStoreToLevels } from './oiConfluence.js';
 
 let failures = 0;
@@ -806,6 +806,23 @@ console.log('\n[oi day-expiry]');
   // Single-expiry (no dayExpiry) → NO dte tags, byte-identical shape.
   const single = { 'EUR/USD': { ...dual['EUR/USD'], dayExpiry: undefined } };
   ok('no dayExpiry → no dte tag on any line', !/\ddte/.test(buildOILevelText(single, { generated: 'x' })));
+
+  // buildOIEntry (what /api/oi/reanalyse calls per stored pair) wires dayExpiry through
+  // end-to-end, HEADLESS + pinned to the stored basis (skipLiveQuote → no network).
+  const M = [
+    '\t6EU6', '1.0955\t6EU6', 'Strike\tNEAR', '2 DTE\tFAR', '30 DTE\tX', 'C\tP\tC\tP',
+    '1.0850\t120\t900\t400\t1500',
+    '1.0900\t3000\t6000\t5000\t7000',
+    '1.0950\t9000\t9500\t12000\t13000',
+    '1.1000\t2500\t1200\t6000\t3000',
+    '1.1050\t300\t150\t2000\t900',
+  ].join('\n');
+  const re = await buildOIEntry({ pair: 'EUR/USD', rawOI: M, spotRaw: 1.0955, futuresRaw: 1.0955, manualFutures: true, skipLiveQuote: true });
+  ok('buildOIEntry runs headless + pins the stored spot (skipLiveQuote)', !re.error && Math.abs(re.inst.spot - 1.0955) < 1e-9, re.error || `${re.inst?.spot}`);
+  ok('buildOIEntry populates the near-dated dayExpiry from a multi-expiry matrix', !!re.inst?.dayExpiry && re.inst.dayExpiry.dte === 2, `${re.inst?.dayExpiry?.dte}`);
+  ok('re-analysed dayExpiry carries its own walls + regime', re.inst?.dayExpiry
+    && Number.isFinite(re.inst.dayExpiry.callWall) && Number.isFinite(re.inst.dayExpiry.putWall)
+    && (re.inst.dayExpiry.regime === 'PIN' || re.inst.dayExpiry.regime === 'BREAKOUT'));
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);
