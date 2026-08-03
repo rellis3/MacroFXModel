@@ -1369,7 +1369,7 @@ export async function buildOIEntry({
   expiryLabel = '', dteRaw = NaN, spotRaw = NaN, futuresRaw = NaN,
   numLevels = 8, minOI = 20,
   manualFutures = false, swapCP = false, greekVol = 'smile',
-  dashboardQuote = null, priorEntry = null, baseUrl = '',
+  dashboardQuote = null, priorEntry = null, baseUrl = '', skipLiveQuote = false,
 } = {}) {
   if (!rawOI || !rawOI.trim()) return { error: 'no OI data' };
   const parsed = oiParseTable(rawOI);
@@ -1403,7 +1403,10 @@ export async function buildOIEntry({
   // turned that into a silent no-op. Look the element up locally.
   // (was: the #oiFuturesPrice data-manual marker; now a caller-supplied flag)
   const _typed = !!manualFutures;
-  const _live = await fetchPairedQuote(pair, baseUrl);
+  // skipLiveQuote: a re-analyse of a STORED entry pins the saved futures/spot so the levels
+  // are reproduced exactly (just enriched with any new compute) — no live re-fetch, so the
+  // basis can't silently drift to the current price. The dashboard/paste path leaves it off.
+  const _live = skipLiveQuote ? null : await fetchPairedQuote(pair, baseUrl);
   let futuresEff = null, futuresSource = null, futuresSymbol = null, quoteAt = null, livePairedSpot = null;
   if (_typed && Number.isFinite(futuresRaw)) {
     futuresEff = futuresRaw; futuresSource = 'manual';
