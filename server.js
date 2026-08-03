@@ -6625,6 +6625,11 @@ async function cogShadowRun(stage, manual = false) {
   const today = new Date().toISOString().substring(0, 10);
   if (_cogShadowSent.date !== today) { Object.assign(_cogShadowSent, { date: today, g1: false, g2: false, g3: false }); }
   if (_cogShadowSent[stage]) return;
+  // Claim the stage BEFORE any await. The scheduler ticks every 60s inside a
+  // 5-minute window, so setting this only on success let the timer re-enter
+  // while the first run was still awaiting network - three identical G3 alerts
+  // at 14:15, 14:16 and 14:19. Released on failure so a real error can retry.
+  _cogShadowSent[stage] = true;
   try {
     if (stage === 'g1') {
       const from = new Date(Date.now() - 400 * 864e5).toISOString().substring(0, 10);
@@ -6640,10 +6645,11 @@ async function cogShadowRun(stage, manual = false) {
       if (!tga.length) { tga = await _cogFred('WTREGEN', from); tgaSource = 'fred-weekly-fallback'; }
       const g1 = Object.assign({}, computeCogG1({ walcl, tga, rrp, hy }), { tgaSource });
       await _cogShadowWrite(today, { g1: { ...g1, at: new Date().toISOString(), manual } });
-      await nqSendTg(TAG + `\u{1F30A} <b>COG-SHADOW | G1 TIDE</b>  ${_cogUkNow()} UK  ${g1.state}${g1.bias ? ' ' + g1.bias : ''}\n`
-        + `Net liquidity: $${g1.netLiquidityUsdBn}bn (${g1.netChgPct >= 0 ? '+' : ''}${g1.netChgPct}% / ${g1.rocWeeks}w)\n`
-        + `HY credit: ${g1.hyChgBp >= 0 ? '+' : ''}${g1.hyChgBp}bp\n${g1.reason}\n<i>Shadow only — no orders. TIDE and FLOW both emitted; which tracks COG's Gate 1 is what the record decides.</i>`);
-      _cogShadowSent.g1 = true;
+      await nqSendTg(TAG + `\u{1F30A} <b>COG-SHADOW | G1 TIDE</b>  ${_cogUkNow()} UK
+<b>BIAS ONLY - NOT a trade</b>  ${g1.state}${g1.bias ? ' ' + g1.bias : ''}\n`
+        + `Net liquidity: $${g1.netLiquidityUsdBn}bn  (as of ${g1.asOfDate})
+`
+        + `HY credit: ${g1.hyChgBp >= 0 ? '+' : ''}${g1.hyChgBp}bp\n${g1.reason}\n<i>Shadow only — no orders. No order from this message - the tradeable call comes at 14:15 UK in G3 MAGNET.</i>`);
     }
     if (stage === 'g2') {
       const oi = await _cogOiFor(COG_SHADOW_INST);
@@ -6655,7 +6661,6 @@ async function cogShadowRun(stage, manual = false) {
           ? `Regime: ${g2.regime} (GEX ${g2.gexBn}bn)\nStandard:     stop ${g2.standard.stopPct}%  risk ${g2.standard.riskPct}%\nConservative: stop ${g2.conservative.stopPct}%  risk ${g2.conservative.riskPct}%\n${g2.reason}`
           : g2.reason)
         + `\n<i>Shadow only. GEX-to-stop mapping is OUR inference, uncalibrated.</i>`);
-      _cogShadowSent.g2 = true;
     }
     if (stage === 'g3') {
       const oi = await _cogOiFor(COG_SHADOW_INST);
@@ -6663,16 +6668,22 @@ async function cogShadowRun(stage, manual = false) {
       const rec = await _cogShadowWrite(today, { g3: { ...g3, at: new Date().toISOString(), manual } });
       const call = combineCogGates(rec.g1 ?? {}, rec.g2 ?? {}, g3);
       await _cogShadowWrite(today, { call: { ...call, at: new Date().toISOString() } });
-      await nqSendTg(TAG + `\u{1F9F2} <b>COG-SHADOW | G3 MAGNET</b>  ${_cogUkNow()} UK  ${g3.state}\n`
-        + (g3.state === 'VALID' ? `${g3.reason}\n` : `${g3.reason}\n`)
-        + `\n<b>SHADOW CALL: ${call.action}${call.direction ? ' ' + call.direction : ''}</b>\n`
+      await nqSendTg(TAG + `\u{1F9F2} <b>COG-SHADOW | G3 MAGNET</b>  ${_cogUkNow()} UK` + `\n\n`
         + (call.action === 'TRADE'
-          ? `Target ${call.target}  ·  stop ${call.stopPct}%  ·  risk ${call.riskPct}%`
-          : call.reasons.join('\n'))
-        + `\n<i>Shadow only — no orders. Log COG's actual beside this in cog-replication/FORWARD_LOG.md.</i>`);
-      _cogShadowSent.g3 = true;
+            ? `\u{1F535} <b>TRADE: ${call.direction} NQ</b>\n`
+              + `Entry   market, now\n`
+              + `Stop    ${call.stopPct}% from entry\n`
+              + `Target  ${call.target}\n`
+              + `Risk    ${call.riskPct}% of account\n\n`
+              + `<i>why: ${g3.reason}</i>\n`
+            : `\u{26AA} <b>NO TRADE TODAY</b>\n`
+              + (call.reasons || []).map(r => '\u2022 ' + r).join('\n') + `\n`)
+        + `\n<i>Shadow only - no orders placed. Log COG's actual beside this in cog-replication/FORWARD_LOG.md.</i>`);
     }
-  } catch (e) { console.error('[cog-shadow ' + stage + ']', e.message); }
+  } catch (e) {
+    _cogShadowSent[stage] = false;   // let a genuine failure retry in-window
+    console.error('[cog-shadow ' + stage + ']', e.message);
+  }
 }
 
 setInterval(() => {
