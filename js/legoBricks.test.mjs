@@ -766,12 +766,23 @@ console.log('\n[oi day-expiry]');
     { dte: 2,  strikes: [1.09, 1.10, 1.11], calls: [2000, 3000, 1500], puts: [1800, 2800, 1400] },
     { dte: 14, strikes: [1.09, 1.10, 1.11], calls: [3000, 5000, 2500], puts: [2800, 4800, 2400] },
   ];
-  ok('pickNearExpiry picks the nearer expiry when it has real OI', pickNearExpiry(legs, 1.10, { belowDte: 14 })?.dte === 2);
+  ok('pickNearExpiry picks the nearer expiry when it has real OI', pickNearExpiry(legs, 1.10, { belowDte: 14 })?.leg?.dte === 2);
   const thin = [
-    { dte: 1,  strikes: [1.10, 1.11], calls: [5, 3], puts: [5, 2] },   // near but ~empty
+    { dte: 1,  strikes: [1.10, 1.11], calls: [5, 3], puts: [5, 2] },   // near but ~empty (15 lots — under both floors)
     { dte: 14, strikes: [1.09, 1.10, 1.11], calls: [3000, 5000, 2500], puts: [2800, 4800, 2400] },
   ];
-  ok('pickNearExpiry skips a too-thin front expiry (no day set)', pickNearExpiry(thin, 1.10, { belowDte: 14 }) === null);
+  const thinPick = pickNearExpiry(thin, 1.10, { belowDte: 14 });
+  ok('pickNearExpiry skips a too-thin front expiry (no day set)', thinPick.leg === null);
+  ok('pickNearExpiry says WHY it skipped (thin near spot)', /thin near spot/i.test(thinPick.reason), thinPick.reason);
+  // Absolute floor: a near expiry that is a small FRACTION of a huge monthly still
+  // qualifies if it clears the absolute lots floor (the gold case — dailies dwarfed by
+  // the monthly but still tradeable).
+  const goldLegs = [
+    { dte: 1,  strikes: [4040, 4050, 4060], calls: [300, 400, 250], puts: [280, 350, 220] },   // ~1800 lots near spot
+    { dte: 24, strikes: [4040, 4050, 4060], calls: [40000, 50000, 30000], puts: [38000, 48000, 28000] },  // huge monthly
+  ];
+  const gp = pickNearExpiry(goldLegs, 4050, { belowDte: 24 });
+  ok('pickNearExpiry surfaces a near expiry dwarfed by the monthly (absolute floor)', gp.leg?.dte === 1, `${gp.reason}`);
 
   // Dual-expiry store → oiStoreToLevels emits BOTH sets, DTE-tagged.
   const dual = {

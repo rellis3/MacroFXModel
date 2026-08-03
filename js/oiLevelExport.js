@@ -95,8 +95,10 @@ function fmtSaved(inst) {
     if (rgDay) bits.push(`regime ${rgDay}`);                        // NEAR-DATED — the tinted regime + what the bot trades
     bits.push(`day ${day.dte}dte vs primary ${inst?.dte ?? '?'}dte`);
     if (rgFar) bits.push(`primary book ${rgFar === 'PIN' ? 'long-gamma' : 'short-gamma'}`);   // context only, no tint trigger
-  } else if (rgFar) {
-    bits.push(`regime ${rgFar}`);            // single-expiry: the indicator parses THIS for its tint
+  } else {
+    if (rgFar) bits.push(`regime ${rgFar}`);            // single-expiry: the indicator parses THIS for its tint
+    // No day set — say WHY, so a missing near-dated block isn't a silent mystery.
+    if (inst?.dayExpiryReason && inst.dayExpiryReason !== 'ok') bits.push(`no day levels: ${inst.dayExpiryReason}`);
   }
   return bits.length ? `· ${bits.join(' · ')}` : null;
 }

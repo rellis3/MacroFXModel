@@ -1240,11 +1240,13 @@ export function computeExpiryLevels(strikes, calls, puts, spot, pair, { dte = nu
 // Pick the near-dated "day" expiry from the per-expiry legs: the SHORTEST-DTE leg that
 // still carries real near-money OI (so we surface a reachable level set, not the noise of
 // an all-but-empty front weekly). `near` = OI within `bandFrac` of spot; a leg qualifies
-// only if its near-money OI clears `minNearFrac` of the strongest leg's — the "strong"
-// filter the user asked for. Returns the leg (or null when nothing below `belowDte`
-// qualifies, i.e. the primary already IS the nearest real expiry).
-export function pickNearExpiry(legs, spot, { belowDte = Infinity, minNearFrac = 0.15, bandFrac = 0.03 } = {}) {
-  if (!Array.isArray(legs) || !legs.length || !(spot > 0)) return null;
+// if its near-money OI clears EITHER `minNearFrac` of the strongest leg's OR an absolute
+// `minNearOI` floor — the relative gate alone punished instruments whose monthly dwarfs the
+// dailies (gold: a tradeable 1-DTE can still be <6% of the huge front monthly). Returns
+// `{ leg, dte, reason }` — leg null when nothing qualifies, with `reason` spelling out WHY
+// (so a missing day set is never silent). `reason:'ok'` when a leg was picked.
+export function pickNearExpiry(legs, spot, { belowDte = Infinity, minNearFrac = 0.06, minNearOI = 500, bandFrac = 0.03 } = {}) {
+  if (!Array.isArray(legs) || !legs.length || !(spot > 0)) return { leg: null, reason: 'no expiry legs parsed' };
   const band = Math.abs(spot) * bandFrac;
   const scored = legs.map(l => {
     let near = 0;
@@ -1252,10 +1254,16 @@ export function pickNearExpiry(legs, spot, { belowDte = Infinity, minNearFrac = 
     return { leg: l, dte: l.dte, near };
   }).filter(x => Number.isFinite(x.dte));
   const maxNear = scored.reduce((m, x) => Math.max(m, x.near), 0);
-  if (!(maxNear > 0)) return null;
-  const floor = maxNear * minNearFrac;
-  const cand = scored.filter(x => x.dte < belowDte && x.near >= floor).sort((a, b) => a.dte - b.dte);
-  return cand.length ? cand[0].leg : null;
+  if (!(maxNear > 0)) return { leg: null, reason: 'no near-money OI in any expiry' };
+  const under = scored.filter(x => x.dte < belowDte);
+  if (!under.length) return { leg: null, reason: `primary is already the nearest expiry (none under ${belowDte}DTE)` };
+  const floor = Math.min(maxNear * minNearFrac, minNearOI);   // qualify on the LOWER bar — relative OR absolute
+  const cand = under.filter(x => x.near >= floor).sort((a, b) => a.dte - b.dte);
+  if (!cand.length) {
+    const best = under.slice().sort((a, b) => b.near - a.near)[0];
+    return { leg: null, reason: `nearest expiries too thin near spot — best is ${best.dte}DTE at ${Math.round(best.near)} lots (${Math.round(best.near / maxNear * 100)}% of the primary book, floor ${Math.round(floor)})` };
+  }
+  return { leg: cand[0].leg, dte: cand[0].dte, reason: 'ok' };
 }
 
 // ── Gravity + PIN/BREAKOUT regime ────────────────────────────────────────────
@@ -1701,7 +1709,7 @@ export async function buildOIEntry({
   // ANALYSIS-ONLY: computed alongside the single-expiry exposures above, NOT wired to the
   // bot — the traded PIN/BREAKOUT regime stays on the validated single-expiry number until
   // this is proven to read the tape better (most likely to matter on indices, not FX).
-  let fullBook = null, dayExpiry = null;
+  let fullBook = null, dayExpiry = null, dayExpiryReason = null;
   {
     const legs = oiMatrixExpiryLegs(rawOI, { basis, inverted: futuresIsInverted(pair), minOI });
     // Each expiry's ATM IV from the settlements term structure (percent→decimal), matched
@@ -1724,12 +1732,17 @@ export async function buildOIEntry({
       // bot trades levels price can reach in a day while the far primary stays as context.
       // Same wall/greek bricks as the primary (computeExpiryLevels), its own DTE + ATM IV.
       const primDte = Number.isFinite(dteEff) ? dteEff : (primaryExpiry?.dte ?? Infinity);
-      const nearLeg = pickNearExpiry(legs, spot, { belowDte: primDte });
-      if (nearLeg) {
+      const pick = pickNearExpiry(legs, spot, { belowDte: primDte });
+      dayExpiryReason = pick.reason;
+      if (pick.leg) {
+        const nearLeg = pick.leg;
         const sig = Number.isFinite(nearLeg.sigma) && nearLeg.sigma > 0 ? nearLeg.sigma : atmFor(nearLeg.dte);
         dayExpiry = computeExpiryLevels(nearLeg.strikes, nearLeg.calls, nearLeg.puts, spot, pair,
           { dte: nearLeg.dte, minOI, numLevels, sigmaFn: sig > 0 ? () => sig : null });
       }
+    } else {
+      dayExpiryReason = legs && legs.length === 1 ? 'only one expiry column parsed (not a multi-expiry paste)'
+        : 'no multi-expiry matrix (simple paste)';
     }
   }
 
@@ -1896,6 +1909,7 @@ export async function buildOIEntry({
     futuresStale,    // live-title minus heatmap-settle, when both are available (how wrong the fallback would be)
     basisAt: Date.now(),   // the basis is only valid for the moment both legs were read (course L229)
     dayExpiry,   // near-dated "day" level set (reachable walls/max-pain/regime); null when the primary already IS the nearest real expiry
+    dayExpiryReason,   // why there is (or isn't) a day set — surfaced so a missing one is never silent
     maxPain, exposures, topLevels, gexProfile,
     gammaFlip: gammaFlip(gexProfile, spot),   // nearest-spot interpolated crossing of the per-strike profile
     // The rigorous flip: total net GEX re-evaluated at candidate prices, root-found.
