@@ -4643,7 +4643,7 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
       <div class="pos-header">
         <div>
           <div class="card-title">Open Positions — All Bots</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:2px">Live snapshot from each bot's KV status. Refreshes every 30s while tab is open.</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">Live snapshot from each bot's KV status. Refreshes every 30s while tab is open. All times shown in <b>UK time</b>.</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
           <div class="pos-summary" id="posSummary"></div>
@@ -4702,7 +4702,7 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
       <div class="pos-header">
         <div>
           <div class="card-title">Trade History</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:2px">Closed trades persisted from each bot's MT5 deal history. Updates every status push (~30s).</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">Closed trades persisted from each bot's MT5 deal history. Updates every status push (~30s). All times shown in <b>UK time</b>.<span id="histTzNote"></span></div>
         </div>
         <button class="btn-save" style="padding:6px 14px;font-size:12px" onclick="loadHistoryTab()">↺ Refresh</button>
       </div>
@@ -6786,9 +6786,12 @@ async function _checkHedgeClosures(openTickets, closedTodayMap, priceMap) {
     if (!entry) { closed.add(ticket); continue; }
     if (entry.hedge_close_price != null) { closed.add(ticket); continue; }
 
+    // closed_at is PERSISTED to the audit trail, so it must be true UTC — the
+    // deal's raw time_close is on the broker's clock (see _tradeUtc).
     const closedDeal  = closedTodayMap[ticket];
-    const closed_at   = closedDeal
-      ? new Date(closedDeal.time_close * 1000).toISOString()
+    const closedUtc   = closedDeal ? _tradeUtc(closedDeal, 'time_close') : null;
+    const closed_at   = closedUtc
+      ? new Date(closedUtc * 1000).toISOString()
       : new Date().toISOString();
     const hedgeSym    = (entry.hedge_symbol || '').toUpperCase();
     const hedge_close_price = hedgeSym ? (priceMap[hedgeSym] ?? null) : null;
@@ -6967,6 +6970,10 @@ async function loadPositionsTab() {
     if (ageSecs !== null && ageSecs > 300) staleBots.push(bot.label);
     const positions = data.mt5_positions || [];
     positions.forEach(p => allPositions.push({ ...p, _bot: bot, _account: data.account_login || null }));
+    // Live rows declare their time base; remember it so untagged HISTORY rows
+    // for the same bot can be placed on the right clock too.
+    _learnTzOffsets(positions.map(p => ({ ...p, bot_key: bot.key })));
+    _learnTzOffsets((data.today_closed_trades || []).map(t => ({ ...t, bot_key: bot.key })));
     (data.today_closed_trades || []).forEach(t => {
       if (t.position_id) closedTodayMap[t.position_id] = t;
     });
@@ -7051,10 +7058,7 @@ async function loadPositionsTab() {
       const pClass = net >= 0 ? 'pos-profit-pos' : 'pos-profit-neg';
       const dClass = p.direction === 'BUY' ? 'pos-buy' : 'pos-sell';
 
-      const openedTs = p.time_open ? new Date(p.time_open * 1000) : null;
-      const openedStr = openedTs
-        ? openedTs.toISOString().replace('T', ' ').slice(0, 16) + ' UTC'
-        : '—';
+      const openedStr = _fmtTime(_tradeUtc(p, 'time_open'));
 
       const conflictHtml = (idx === 0 && showConflictBadge)
         ? `<span class="pos-conflict-badge">${hasConflict ? '⚠ CONFLICT' : '⚠ MULTI-BOT'}</span>`
@@ -7523,10 +7527,77 @@ function _fmtDuration(secs) {
   return `${m}m`;
 }
 
-function _fmtTime(ts) {
-  if (!ts) return '—';
-  return new Date(ts * 1000).toISOString().replace('T',' ').slice(0,16)+' UTC';
+// ── Time base: broker clock → true UTC → UK display ───────────────────────────
+// MT5 stamps time_open/time_close on the BROKER's wall clock, not UTC (+3h on the
+// live account in summer) — see pylego/broker/clock.py. Paper fills are stamped
+// with real UTC. Both land in this one table, so a row's epoch means nothing
+// until you know its base. Bots now ship that base per row as `tz_offset_sec`.
+//
+// Rows written before that shipped are untagged: fall back to the offset the
+// SAME bot is currently reporting, then to any offset seen this page load. Read
+// every trade timestamp through _tradeUtc so exactly one place knows the rule.
+const _tzByBot = {};             // bot_key -> offset declared on a tagged row
+let _tzSeenAny = null;           // any non-zero offset seen (broker-wide fallback)
+let _tzAssumed = false;          // true once a row has been shown on a guess
+
+// Live-positions rows carry the bot under `_bot`; history rows under `bot_key`.
+const _rowBotKey = r => r?.bot_key || r?._bot?.key || '';
+
+// Remember what we learn. An offset is only discoverable from a row that carries
+// one, so a page opened straight onto an OLD date range — every bot flat, no
+// trades that day — would have nothing to learn from and would render legacy
+// rows uncorrected. Cache the last known offsets so the audit stays readable
+// whatever today's book looks like.
+const _TZ_CACHE_KEY = 'botTzOffsets';
+try {
+  const cached = JSON.parse(localStorage.getItem(_TZ_CACHE_KEY) || 'null');
+  if (cached) {
+    Object.assign(_tzByBot, cached.byBot || {});
+    if (typeof cached.any === 'number') _tzSeenAny = cached.any;
+  }
+} catch (e) { /* corrupt cache — just learn from scratch */ }
+
+function _learnTzOffsets(rows) {
+  let learned = false;
+  for (const r of rows || []) {
+    const off = r?.tz_offset_sec;
+    if (typeof off !== 'number') continue;
+    const bk = _rowBotKey(r);
+    if (bk) { _tzByBot[bk] = off; learned = true; }
+    if (off !== 0) { _tzSeenAny = off; learned = true; }
+  }
+  if (learned) {
+    try { localStorage.setItem(_TZ_CACHE_KEY, JSON.stringify({ byBot: _tzByBot, any: _tzSeenAny })); }
+    catch (e) { /* quota — the cache is an optimisation, not a requirement */ }
+  }
 }
+
+// Broker-clock epoch -> true UTC epoch. null when the trade has no such stamp.
+function _tradeUtc(t, field) {
+  const raw = t?.[field];
+  if (!raw) return null;
+  if (typeof t.tz_offset_sec === 'number') return raw - t.tz_offset_sec;
+  const guess = _tzByBot[_rowBotKey(t)] ?? _tzSeenAny ?? 0;
+  if (guess) _tzAssumed = true;
+  return raw - guess;
+}
+
+const _UK_DT = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit',
+  hour: '2-digit', minute: '2-digit', hour12: false,
+});
+function _ukParts(utcSec) {
+  return Object.fromEntries(_UK_DT.formatToParts(new Date(utcSec * 1000)).map(p => [p.type, p.value]));
+}
+// Trade times are shown in UK wall time (what the user was looking at when the
+// trade fired). The stored value stays true UTC — DST is applied at render only.
+function _fmtTime(utcSec) {
+  if (!utcSec) return '—';
+  const p = _ukParts(utcSec);
+  return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute} UK`;
+}
+function _ukHour(utcSec) { return parseInt(_ukParts(utcSec).hour, 10) % 24; }
+function _ukDate(utcSec) { const p = _ukParts(utcSec); return `${p.year}-${p.month}-${p.day}`; }
 
 // ── Analytics breakdown ───────────────────────────────────────────────────────
 
@@ -7600,13 +7671,13 @@ function _renderCrossBotAnalysis(trades, container, from, to) {
   };
 
   const getBotLabel = t => { const b = _POS_BOTS.find(b => b.key === t.bot_key); return b ? b.label : (t.bot_key || '?'); };
-  const SESSION_ORDER = ['Asian  (00–07)','London (07–12)','LN/NY  (12–17)','NY     (17–21)','Off-hrs (21–24)'];
+  const SESSION_ORDER = ['Asian  (00–08 UK)','London (08–13 UK)','LN/NY  (13–18 UK)','NY     (18–22 UK)','Off-hrs (22–24 UK)'];
   const DOW = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
   const byPair    = agg(t => t.symbol || '?');
   const byBot     = agg(t => t.bot_key, (t,k) => getBotLabel(t));
-  const bySess    = agg(t => t.time_open ? _getSession(new Date(t.time_open*1000).getUTCHours()) : null);
-  const byDow     = agg(t => t.time_open ? DOW[(new Date(t.time_open*1000).getUTCDay()+6)%7] : null);
+  const bySess    = agg(t => { const u = _tradeUtc(t,'time_open'); return u ? _getSession(_ukHour(u)) : null; });
+  const byDow     = agg(t => { const u = _tradeUtc(t,'time_open'); return u ? DOW[(new Date(_ukDate(u)+'T00:00:00Z').getUTCDay()+6)%7] : null; });
 
   // Bot × Pair cross-table
   const comboMap = {};
@@ -7738,12 +7809,15 @@ function _renderCrossBotAnalysis(trades, container, from, to) {
 }
 window._renderCrossBotAnalysis = _renderCrossBotAnalysis;
 
-function _getSession(utcHour) {
-  if (utcHour < 7)  return 'Asian  (00–07)';
-  if (utcHour < 12) return 'London (07–12)';
-  if (utcHour < 17) return 'LN/NY  (12–17)';
-  if (utcHour < 21) return 'NY     (17–21)';
-  return 'Off-hrs (21–24)';
+// Session buckets are keyed on UK wall time, not UTC. London's open is 08:00
+// London every day of the year; a fixed-UTC bucket drifts an hour across the
+// DST boundary and files half the summer's London opens under "Asian".
+function _getSession(ukHour) {
+  if (ukHour < 8)  return 'Asian  (00–08 UK)';
+  if (ukHour < 13) return 'London (08–13 UK)';
+  if (ukHour < 18) return 'LN/NY  (13–18 UK)';
+  if (ukHour < 22) return 'NY     (18–22 UK)';
+  return 'Off-hrs (22–24 UK)';
 }
 
 function _mkBrkdnTable(rows, title) {
@@ -7795,25 +7869,26 @@ function renderHistAnalytics(trades) {
   const byPair = aggregate(t => t.symbol || '?');
 
   // By Session
-  const SESSION_ORDER = ['Asian  (00–07)', 'London (07–12)', 'LN/NY  (12–17)', 'NY     (17–21)', 'Off-hrs (21–24)'];
+  const SESSION_ORDER = ['Asian  (00–08 UK)', 'London (08–13 UK)', 'LN/NY  (13–18 UK)', 'NY     (18–22 UK)', 'Off-hrs (22–24 UK)'];
   const bySess = aggregate(
-    t => t.time_open ? _getSession(new Date(t.time_open * 1000).getUTCHours()) : null,
+    t => { const u = _tradeUtc(t, 'time_open'); return u ? _getSession(_ukHour(u)) : null; },
     (a, b) => SESSION_ORDER.indexOf(a.label) - SESSION_ORDER.indexOf(b.label)
   );
 
-  // By Day of Week
+  // By Day of Week (UK calendar day — a 23:30 UK Friday entry is a Friday trade,
+  // not the Saturday its UTC stamp would fall on after a DST shift)
   const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const byDow = aggregate(
-    t => t.time_open ? DOW[(new Date(t.time_open * 1000).getUTCDay() + 6) % 7] : null,
+    t => { const u = _tradeUtc(t, 'time_open'); return u ? DOW[(new Date(_ukDate(u) + 'T00:00:00Z').getUTCDay() + 6) % 7] : null; },
     (a, b) => DOW.indexOf(a.label) - DOW.indexOf(b.label)
   );
 
   // By Direction
   const byDir = aggregate(t => t.direction || '?');
 
-  // By Hour (UTC)
+  // By Hour (UK)
   const byHour = aggregate(
-    t => t.time_open ? String(new Date(t.time_open * 1000).getUTCHours()).padStart(2, '0') + ':xx UTC' : null,
+    t => { const u = _tradeUtc(t, 'time_open'); return u ? String(_ukHour(u)).padStart(2, '0') + ':xx UK' : null; },
     (a, b) => a.label.localeCompare(b.label)
   );
 
@@ -7827,7 +7902,7 @@ function renderHistAnalytics(trades) {
     _mkBrkdnTable(byPair, 'By Pair'),
     _mkBrkdnTable(bySess, 'By Session'),
     _mkBrkdnTable(byDow,  'By Day of Week'),
-    _mkBrkdnTable(byHour, 'By Hour (UTC open)'),
+    _mkBrkdnTable(byHour, 'By Hour (UK open)'),
     _mkBrkdnTable(byDir,  'By Direction'),
   ];
   if (byBot.length > 1) parts.push(_mkBrkdnTable(byBot, 'By Bot'));
@@ -7895,6 +7970,10 @@ async function loadHistoryTab() {
     return;
   }
   _lastHistTrades = trades;
+  // Learn each bot's time base from the rows that declare one, so rows written
+  // before bots shipped `tz_offset_sec` can still be placed on the right clock.
+  _tzAssumed = false;
+  _learnTzOffsets(trades);
 
   // Join the TDE shadow book (what the model said at entry, keyed by position_id).
   // Advisory only — v0 is an uncalibrated prior; this tracks call-vs-outcome so we
@@ -7910,9 +7989,13 @@ async function loadHistoryTab() {
   } catch { /* advisory — ignore */ }
 
   // Build trade map for calendar
+  // Calendar buckets by the UK day the trade CLOSED. `t.date` is the KV bucket
+  // the server filed it under (its own UTC day) — near midnight the two differ,
+  // and the trade belongs on the day the user saw it close.
   _calTradeMap = {};
   trades.forEach(t => {
-    const d = t.date || (t.time_close ? new Date(t.time_close*1000).toISOString().slice(0,10) : null);
+    const u = _tradeUtc(t, 'time_close');
+    const d = u ? _ukDate(u) : t.date;
     if (d) { if (!_calTradeMap[d]) _calTradeMap[d] = []; _calTradeMap[d].push(t); }
   });
   renderCal();
@@ -7951,8 +8034,10 @@ async function loadHistoryTab() {
     const net    = (t.profit || 0) + (t.swap || 0);
     const pClass = net >= 0 ? 'pos-profit-pos' : 'pos-profit-neg';
     const dClass = t.direction === 'BUY' ? 'pos-buy' : 'pos-sell';
-    const dur    = (t.time_open && t.time_close) ? _fmtDuration(t.time_close - t.time_open) : '—';
-    const dateStr = t.time_close ? new Date(t.time_close*1000).toISOString().slice(5,10) : (t.date || '—');
+    const uOpen  = _tradeUtc(t, 'time_open');
+    const uClose = _tradeUtc(t, 'time_close');
+    const dur    = (uOpen && uClose) ? _fmtDuration(uClose - uOpen) : '—';
+    const dateStr = uClose ? _ukDate(uClose).slice(5) : (t.date || '—');
     const openPriceStr  = t.open_price  != null ? t.open_price.toFixed(5)  : '—';
     const closePriceStr = t.close_price != null ? t.close_price.toFixed(5) : '—';
     const badgeStyle = `background:${bot.bg};border:1px solid ${bot.bd};color:${bot.color}`;
@@ -7970,12 +8055,24 @@ async function loadHistoryTab() {
       `<td class="${(t.profit||0) >= 0 ? 'pos-profit-pos' : 'pos-profit-neg'}">${(t.profit||0) >= 0 ? '+' : ''}${(t.profit||0).toFixed(2)}</td>` +
       `<td class="${(t.swap||0) < 0 ? 'pos-profit-neg' : ''}">${(t.swap||0).toFixed(2)}</td>` +
       `<td class="${pClass}">${net >= 0 ? '+' : ''}${net.toFixed(2)}</td>` +
-      `<td style="color:var(--text3);font-size:11px">${_fmtTime(t.time_open)}</td>` +
-      `<td style="color:var(--text3);font-size:11px">${_fmtTime(t.time_close)}</td>` +
+      `<td style="color:var(--text3);font-size:11px">${_fmtTime(uOpen)}</td>` +
+      `<td style="color:var(--text3);font-size:11px">${_fmtTime(uClose)}</td>` +
       `<td style="color:var(--text3);font-size:11px">${dur}</td>` +
       `</tr>`;
   });
   tbody.innerHTML = rows.join('');
+
+  // Be explicit when a row's clock was inferred rather than declared. Rows
+  // written before the bots shipped `tz_offset_sec` carry no time base, so the
+  // shift applied to them is the offset their bot reports NOW — right unless
+  // the broker changed DST in between. Say so rather than presenting a guess
+  // as fact.
+  const tzNote = document.getElementById('histTzNote');
+  if (tzNote) {
+    tzNote.innerHTML = _tzAssumed
+      ? ` <span style="color:var(--amber)">⚠ Some rows predate per-trade time-base tagging — shifted by the broker offset currently reported (${((_tzSeenAny || 0) / 3600).toFixed(0)}h).</span>`
+      : '';
+  }
 
   // Totals row
   if (tfoot) tfoot.innerHTML =
@@ -8078,7 +8175,8 @@ function _mt5ToOandaSymbol(raw) {
 
 // Returns the London offset in minutes (0 for GMT, 60 for BST).
 // Bars from /api/oanda_ohlc1m are in London local time ("fake UTC").
-// Trade timestamps (t.time_open / t.time_close) are true UTC.
+// The input must be a TRUE UTC epoch — feed it _tradeUtc(t, ...), never the raw
+// t.time_open, which is stamped on the broker's clock (see _tradeUtc above).
 // Adding this offset converts true UTC → fake UTC so markers align with bars.
 function _londonOffsetMinutes(epochSec) {
   const lonStr    = new Date(epochSec * 1000).toLocaleString('sv-SE', { timeZone: 'Europe/London' }).slice(0, 19);
@@ -8115,6 +8213,11 @@ async function openTradeChartModal(idx) {
   title.textContent = `${t.symbol || '—'} · ${bot.label}`;
 
   const net = (t.profit || 0) + (t.swap || 0);
+  // TRUE UTC fills. Everything below (window, markers, meta) works off these —
+  // the raw t.time_* are on the broker's clock and would place the whole chart
+  // hours away from the trade.
+  const utcOpen  = _tradeUtc(t, 'time_open');
+  const utcClose = _tradeUtc(t, 'time_close');
   const sym = _mt5ToOandaSymbol(t.symbol);
   const sym_uc  = (t.symbol || '').toUpperCase();
   const isGold  = sym_uc.includes('XAU') || sym_uc.includes('GOLD') || sym_uc.includes('XAG');
@@ -8129,25 +8232,25 @@ async function openTradeChartModal(idx) {
     ['Entry', priceFmt(t.open_price)],
     ['Close', priceFmt(t.close_price)],
     ['Net P&L', `${net >= 0 ? '+' : ''}${net.toFixed(2)}`],
-    ['Duration', (t.time_open && t.time_close) ? _fmtDuration(t.time_close - t.time_open) : '—'],
-    ['Open (UTC)', t.time_open  ? new Date(t.time_open  * 1000).toISOString().replace('T',' ').slice(0,16) : '—'],
-    ['Close (UTC)', t.time_close ? new Date(t.time_close * 1000).toISOString().replace('T',' ').slice(0,16) : '—'],
+    ['Duration', (utcOpen && utcClose) ? _fmtDuration(utcClose - utcOpen) : '—'],
+    ['Open',  _fmtTime(utcOpen)],
+    ['Close', _fmtTime(utcClose)],
   ];
   if (t.comment) metaItems.push(['Comment', t.comment]);
   meta.innerHTML = metaItems.map(([lbl, val]) =>
     `<div class="tc-meta-item"><span class="tc-meta-lbl">${lbl}</span><span class="tc-meta-val">${val}</span></div>`
   ).join('');
 
-  if (!sym)                          { status.textContent = `Can't map symbol "${t.symbol}" to an OANDA instrument.`; return; }
-  if (!t.time_open || !t.time_close) { status.textContent = 'Missing open/close time for this trade.'; return; }
+  if (!sym)                    { status.textContent = `Can't map symbol "${t.symbol}" to an OANDA instrument.`; return; }
+  if (!utcOpen || !utcClose)   { status.textContent = 'Missing open/close time for this trade.'; return; }
 
   // Start the fetch on the last TRADING day at/before the open. A paper trade
   // can be stamped inside the weekend gap (stale-quote fill while the market
   // is closed): starting the window on that calendar date would begin after
   // Friday's close and contain no candles until the Sunday reopen, leaving
   // nothing near the entry to draw the marker on.
-  const openDateStr  = new Date(t.time_open  * 1000).toLocaleString('sv-SE', { timeZone: 'Europe/London' }).slice(0, 10);
-  const closeDateStr = new Date(t.time_close * 1000).toLocaleString('sv-SE', { timeZone: 'Europe/London' }).slice(0, 10);
+  const openDateStr  = _ukDate(utcOpen);
+  const closeDateStr = _ukDate(utcClose);
   let fromDay = new Date(openDateStr + 'T00:00:00Z');
   if (fromDay.getUTCDay() === 6)      fromDay = new Date(+fromDay - 86400000);     // Sat → Fri
   else if (fromDay.getUTCDay() === 0) fromDay = new Date(+fromDay - 2 * 86400000); // Sun → Fri
@@ -8164,8 +8267,8 @@ async function openTradeChartModal(idx) {
     // Keep bars in "fake UTC" (London local treated as UTC) — same as gold-zones.html.
     // Convert true-UTC trade timestamps to the same coordinate system for markers,
     // each with its own offset (a multi-day trade can span a GMT/BST switch).
-    const entryTs = t.time_open  + _londonOffsetMinutes(t.time_open)  * 60;
-    const exitTs  = t.time_close + _londonOffsetMinutes(t.time_close) * 60;
+    const entryTs = utcOpen  + _londonOffsetMinutes(utcOpen)  * 60;
+    const exitTs  = utcClose + _londonOffsetMinutes(utcClose) * 60;
 
     const bars = j.values.map(v => ({
       time: Math.floor(new Date(v.datetime.replace(' ', 'T') + 'Z').getTime() / 1000),

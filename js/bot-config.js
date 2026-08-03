@@ -3381,7 +3381,12 @@ async function loadMeLivePosTab() {
       if (posBodyEl) posBodyEl.innerHTML = '<tr><td colspan="7" class="pos-empty">No open positions</td></tr>';
     } else {
       if (posBodyEl) posBodyEl.innerHTML = positions.map(p => {
-        const opened = p.time_open ? new Date(p.time_open * 1000).toLocaleDateString() : '—';
+        // time_open is on the BROKER's clock; `tz_offset_sec` is the shift the bot
+        // applied (0 for paper, +2/+3h for MT5) — see pylego/broker/clock.py.
+        const openedUtc = p.time_open ? p.time_open - (p.tz_offset_sec || 0) : null;
+        const opened = openedUtc
+          ? new Date(openedUtc * 1000).toLocaleDateString('en-GB', { timeZone: 'Europe/London' })
+          : '—';
         const pnlCls = p.profit >= 0 ? 'pos' : 'neg';
         return `<tr>
           <td>${p.symbol}</td>

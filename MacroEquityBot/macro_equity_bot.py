@@ -28,6 +28,8 @@ from typing import Optional
 import requests
 
 sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # repo root → pylego
+from pylego.broker.clock import ServerClock  # noqa: E402  (broker-clock offset — MT5 stamps aren't UTC)
 from fred_signal import (
     fetch_all_fred, compute_macro_score,
     compute_target_alloc, _fetch_vix_prices,
@@ -415,6 +417,20 @@ def is_last_trading_day_of_month() -> bool:
 
 # ── Position serialization (same shape as regimev2) ───────────────────────────
 
+_SERVER_CLOCK = None
+
+
+def _tz_offset_sec():
+    """Seconds the broker's clock runs ahead of UTC. MT5 stamps `.time` fields on
+    the SERVER's wall clock, so every time_open/time_close below is shifted by
+    this much — the serialisers ship it so the dashboard renders the real instant
+    instead of assuming UTC. See pylego/broker/clock.py."""
+    global _SERVER_CLOCK
+    if _SERVER_CLOCK is None:
+        _SERVER_CLOCK = ServerClock(mt5 if HAS_MT5 else None, log=log)
+    return _SERVER_CLOCK.offset_sec()
+
+
 def _serialize_open_positions() -> list[dict]:
     if not HAS_MT5:
         return []
@@ -429,6 +445,7 @@ def _serialize_open_positions() -> list[dict]:
             'profit':     round(float(p.profit), 2),
             'swap':       round(float(p.swap), 2),
             'time_open':  int(p.time),
+            'tz_offset_sec': _tz_offset_sec(),
             'comment':    str(p.comment or ''),
         }
         for p in (mt5.positions_get() or [])
@@ -475,6 +492,7 @@ def _serialize_closed_trades() -> list[dict]:
             'commission':  round(sum(d.commission for d in ds), 2),
             'time_open':   int(en.time) if en else None,
             'time_close':  int(ex.time),
+            'tz_offset_sec': _tz_offset_sec(),
             'comment':     str(ex.comment or ''),
         })
     return out

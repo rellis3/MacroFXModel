@@ -44,9 +44,12 @@ from typing import Optional
 # Insert Gold's own directory first, then bot/ for utils/.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'bot'))
+sys.path.insert(2, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # repo root → pylego
 
 import requests
 from dotenv import load_dotenv
+
+from pylego.broker.clock import ServerClock   # broker-clock offset — MT5 stamps aren't UTC
 
 from utils.sl_tp_engine import SLTPEngine
 from utils.state_reader import fetch_quote, DASHBOARD_URL
@@ -231,6 +234,20 @@ def _load_config(base_url: str) -> dict:
     return cfg
 
 
+_SERVER_CLOCK = None
+
+
+def _tz_offset_sec():
+    """Seconds the broker's clock runs ahead of UTC. MT5 stamps `.time` fields on
+    the SERVER's wall clock, so every time_open/time_close below is shifted by
+    this much — the serialisers ship it so the dashboard renders the real instant
+    instead of assuming UTC. See pylego/broker/clock.py."""
+    global _SERVER_CLOCK
+    if _SERVER_CLOCK is None:
+        _SERVER_CLOCK = ServerClock(mt5 if HAS_MT5 else None, log=log)
+    return _SERVER_CLOCK.offset_sec()
+
+
 def _serialize_open_positions(magic: int) -> list:
     if not HAS_MT5:
         return []
@@ -246,6 +263,7 @@ def _serialize_open_positions(magic: int) -> list:
                 'profit':     round(float(p.profit), 2),
                 'swap':       round(float(p.swap), 2),
                 'time_open':  int(p.time),
+                'tz_offset_sec': _tz_offset_sec(),
                 'comment':    str(p.comment or ''),
             }
             for p in (mt5.positions_get() or [])
@@ -311,6 +329,7 @@ def _serialize_closed_trades(magic: int) -> list:
                 'commission':  round(sum(d.commission for d in outs), 2),
                 'time_open':   time_open,
                 'time_close':  int(last_out.time),
+                'tz_offset_sec': _tz_offset_sec(),
                 'comment':     str(ind.comment if ind else last_out.comment or ''),
             })
         return sorted(result, key=lambda t: t['time_close'])
@@ -333,6 +352,7 @@ def _serialize_paper_trade(bot_state) -> list:
         'profit':     round(t.pnl_pips, 2),
         'swap':       0.0,
         'time_open':  int(t.entry_time.timestamp()),
+        'tz_offset_sec': 0,   # paper stamps are already true UTC (unlike MT5's)
         'comment':    f'paper {t.zone_id}',
         'sl':         round(t.sl, 2),
         'tp1':        round(t.tp1, 2),

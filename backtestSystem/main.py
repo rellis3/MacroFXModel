@@ -17,7 +17,8 @@ from dotenv import load_dotenv
 from config    import load_config, sl_distance, tp_distance, chandelier_stop, _deep_merge
 from mt5_utils import (connect, fetch_bars_5m, fetch_bars_30m, fetch_bars_daily,
                        fetch_price, get_balance, get_open_positions, place_order,
-                       pip_size, london_now, move_sl_to_be, modify_sl, fetch_close_price)
+                       pip_size, london_now, move_sl_to_be, modify_sl, fetch_close_price,
+                       tz_offset_sec)
 import journal
 from levels    import (compute_asia_range, compute_monday_range, project_fib_levels,
                        detect_confluences, get_yesterday_range_bars)
@@ -667,6 +668,7 @@ def main() -> None:
                             'profit':     round(p.profit, 2),
                             'swap':       round(p.swap, 2),
                             'time_open':  int(p.time),
+                            'tz_offset_sec': tz_offset_sec(),
                             'comment':    str(p.comment or ''),
                         }
                         for p in open_pos

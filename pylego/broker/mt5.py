@@ -27,6 +27,8 @@ import time
 from datetime import datetime, timezone, timedelta
 from typing import Callable
 
+from pylego.broker.clock import ServerClock
+
 
 class Mt5Broker:
     def __init__(
@@ -56,6 +58,12 @@ class Mt5Broker:
             except ImportError:
                 self.mt5 = None
                 self.available = False
+
+        # MT5 stamps every `.time` field on the BROKER's wall clock, not UTC.
+        # The serialisers publish this offset per row (`tz_offset_sec`) so a
+        # reader can tell a broker-clock stamp from a true-UTC one instead of
+        # guessing — see pylego/broker/clock.py.
+        self.clock = ServerClock(self.mt5, log=self.log)
 
     # ── Connection ──────────────────────────────────────────────────────────
     def connect(self, account: str, password: str, server: str, path: str | None = None) -> bool:
@@ -96,7 +104,16 @@ class Mt5Broker:
                 )
                 mt5.shutdown()
                 return False
+        # Measure (and log) the broker's clock offset once the session is up, so
+        # a wrong time base is visible at startup rather than in a trade chart.
+        self.clock.offset_sec(force=True)
         return True
+
+    def server_offset_sec(self) -> int | None:
+        """Seconds the broker's wall clock runs AHEAD of UTC — the amount every
+        `time_open` / `time_close` this brick emits is shifted by. None when it
+        can't be measured (market closed on a cold start); never assume 0."""
+        return self.clock.offset_sec()
 
     def shutdown(self) -> None:
         if self.available and self.mt5:
@@ -209,6 +226,7 @@ class Mt5Broker:
         if not self.available:
             return []
         try:
+            tz_off = self.server_offset_sec()
             return [
                 {
                     'ticket':     int(p.ticket),
@@ -220,6 +238,10 @@ class Mt5Broker:
                     'profit':     round(float(p.profit), 2),
                     'swap':       round(float(p.swap), 2),
                     'time_open':  int(p.time),
+                    # MT5 stamps `p.time` on the broker's clock, not UTC. Ship
+                    # the offset with the row so the dashboard renders the right
+                    # instant instead of assuming a base — pylego/broker/clock.py.
+                    'tz_offset_sec': tz_off,
                     'comment':    str(p.comment or ''),
                 }
                 for p in (self.mt5.positions_get() or [])
@@ -234,6 +256,7 @@ class Mt5Broker:
             return []
         try:
             mt5 = self.mt5
+            tz_off = self.server_offset_sec()
             today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
             deals = mt5.history_deals_get(today, today + timedelta(days=1)) or []
             by_pos: dict = {}
@@ -288,6 +311,9 @@ class Mt5Broker:
                     'commission':  round(sum(d.commission for d in outs), 2),
                     'time_open':   time_open,
                     'time_close':  int(last_out.time),
+                    # Broker-clock offset for the two stamps above (see
+                    # serialize_open_positions / pylego/broker/clock.py).
+                    'tz_offset_sec': tz_off,
                     'comment':     str(ind.comment if ind else last_out.comment or ''),
                     # MFE/MAE (pips) reconstructed from the M1 path — the give-back
                     # inputs the dashboard/analysis read without re-walking M1.

@@ -70,13 +70,24 @@ const usd  = (x) => x == null || !isFinite(x) ? '—' : (x < 0 ? '-$' : '$') + M
 const pctv = (x) => x == null || !isFinite(x) ? '—' : Math.round(x * 100) + '%';
 const cls  = (x) => x > 0 ? 'pos' : (x < 0 ? 'neg' : '');
 
+// MT5 stamps trade times on the BROKER's wall clock, not UTC; `tz_offset_sec` is
+// the shift the bot applied (0 for paper) — see pylego/broker/clock.py. Subtract
+// it to get true UTC, then render UK wall time like the rest of the dashboard.
+const ukTime = (epoch, tzOffsetSec) => {
+  if (!epoch) return '—';
+  return new Date((epoch - (tzOffsetSec || 0)) * 1000)
+    .toLocaleString('en-GB', { timeZone: 'Europe/London', month: '2-digit', day: '2-digit',
+                               hour: '2-digit', minute: '2-digit', hour12: false })
+    .replace(',', '');
+};
+
 function card(b) {
   if (!b.n) return `<div class="card"><h2>${b.label}</h2>
     <div class="empty">No closed trades logged yet${b.pending ? ` · <span class="pending">${b.pending} awaiting MFE</span>` : ''}.
     New trades will appear here as they close.</div></div>`;
   const gb = b.totalGivebackUsd;
   const rows = b.trades.slice(0, 12).map(t => `<tr>
-    <td>${t.time_close ? new Date(t.time_close * 1000).toISOString().slice(5, 16).replace('T', ' ') : '—'}</td>
+    <td>${ukTime(t.time_close, t.tz_offset_sec)}</td>
     <td>${t.symbol || ''} ${t.direction || ''}</td>
     <td>${fmt1(t.mfePips)}</td>
     <td class="${cls(t.realizedPips)}">${fmt1(t.realizedPips)}</td>

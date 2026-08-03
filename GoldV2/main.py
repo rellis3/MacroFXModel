@@ -66,6 +66,7 @@ from modules.exits import plan_exits
 
 from journal import GoldV2Journal
 from pylego import events as EV      # event-blackout brick (KV event_windows_v1)
+from pylego.broker.clock import ServerClock   # broker-clock offset — MT5 stamps aren't UTC
 
 load_dotenv()
 
@@ -517,6 +518,20 @@ def _close_live_position(ticket: int) -> bool:
 
 # ── Serialization for the dashboard positions tab ─────────────────────────────
 
+_SERVER_CLOCK = None
+
+
+def _tz_offset_sec():
+    """Seconds the broker's clock runs ahead of UTC. MT5 stamps `.time` fields on
+    the SERVER's wall clock, so every time_open/time_close below is shifted by
+    this much — the serialisers ship it so the dashboard renders the real instant
+    instead of assuming UTC. See pylego/broker/clock.py."""
+    global _SERVER_CLOCK
+    if _SERVER_CLOCK is None:
+        _SERVER_CLOCK = ServerClock(mt5 if HAS_MT5 else None, log=log)
+    return _SERVER_CLOCK.offset_sec()
+
+
 def _serialize_open_positions(magic: int) -> list:
     if not HAS_MT5:
         return []
@@ -532,6 +547,7 @@ def _serialize_open_positions(magic: int) -> list:
                 'profit':     round(float(p.profit), 2),
                 'swap':       round(float(p.swap), 2),
                 'time_open':  int(p.time),
+                'tz_offset_sec': _tz_offset_sec(),
                 'comment':    str(p.comment or ''),
             }
             for p in (mt5.positions_get() or [])
@@ -593,6 +609,7 @@ def _serialize_closed_trades(magic: int) -> list:
                 'commission':  round(sum(d.commission for d in outs), 2),
                 'time_open':   time_open,
                 'time_close':  int(last_out.time),
+                'tz_offset_sec': _tz_offset_sec(),
                 'comment':     str(ind.comment if ind else last_out.comment or ''),
             })
         return sorted(result, key=lambda t: t['time_close'])
@@ -618,6 +635,7 @@ def _serialize_paper_trades(trades: list[ManagedTrade], price: float,
             'profit':     round(sign * (exec_px - t.entry_price) * t.lot_size * 100, 2),
             'swap':       0.0,
             'time_open':  int(t.entry_dt().timestamp()),
+            'tz_offset_sec': 0,   # paper stamps are already true UTC (unlike MT5's)
             'comment':    f'paper {t.trade_id} {t.zone_id}',
             'sl':         round(t.sl, 2),
             'tp1':        round(t.tp1, 2),
