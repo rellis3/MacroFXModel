@@ -134,6 +134,10 @@ console.log("[reach labels — ETA + touch string]");
   ok("reachLabel formats pct~eta", reachLabel({calibrated:0.82, medBarsToTouch:24},5) === "82%~2h", reachLabel({calibrated:0.82, medBarsToTouch:24},5));
   ok("reachLabel empty when no prob", reachLabel({calibrated:null}) === "" && reachLabel(null) === "");
   ok("reachLabel ~? when no median touch", reachLabel({calibrated:0.11, medBarsToTouch:null}) === "11%~?");
+  // A level that rounds to 0% (unreachable in the horizon) shows NOTHING, not "0%~?".
+  ok("reachLabel blanks a 0% level", reachLabel({calibrated:0, medBarsToTouch:null}) === "");
+  ok("reachLabel blanks a rounds-to-0% level", reachLabel({calibrated:0.004, medBarsToTouch:null}) === "", reachLabel({calibrated:0.004, medBarsToTouch:null}));
+  ok("reachLabel keeps a 1% level", reachLabel({calibrated:0.011, medBarsToTouch:null}) === "1%~?");
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
