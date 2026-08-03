@@ -3,11 +3,15 @@
 data/
 __pycache__/
 
-# ...EXCEPT the frozen state table. That one is SHIPPED, not generated at run
-# time: server.js reads it to answer /api/vumanchu/state, so if it is not in the
-# repo Railway boots with no table and every live read returns "table not built".
-# This is the learn-offline / ship-a-file contract (PYTHON_LEGO.md §3) — the
-# brain is measured in Python and the live side only ever reads the artifact.
+# ...EXCEPT the frozen artifacts the LIVE side reads. These are SHIPPED, not
+# generated at run time — server.js reads them to answer /api/vumanchu/*, so if
+# they are not in the repo Railway boots without them and the features fail
+# silently (a missing table just means "no read"/"no fan", never an error).
+# This is the learn-offline / ship-a-file contract, PYTHON_LEGO.md §3.
+#
+# ANY new frozen artifact must be added here too. The wt_projection file was
+# added and NOT listed, so it never shipped and the fan silently never drew.
 !data/
 data/*
 !data/vumanchu_state_table.json
+!data/vumanchu_wt_projection.json

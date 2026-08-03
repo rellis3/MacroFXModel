@@ -1,0 +1,21 @@
+ 
+================================================== 
+ RUN STARTED 03/08/2026  0:36:27.82 
+================================================== 
+
+=== DAILY OI - 2026-08-03 ===
+
+  [capture] running...
+  [ingest] running...
+  [compare] running...
+
+=== VERDICT ===
+
+  capture   44/44 tables captured
+  ingest    11 complete · 0 skipped
+  compare   44 agree · 0 differ
+
+  target    oi_store_py
+
+  VERDICT   OK
+[03/08/2026  0:44:19.90] finished with exit code 0 

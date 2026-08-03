@@ -4850,13 +4850,22 @@ app.get('/api/vumanchu/chart', async (req, res) => {
       // The fan was measured on a 5m grid, so it is only honest on a pane drawn
       // at that granularity — the state vocabulary means something different at
       // M1 or H1. Silently attaching it elsewhere would misrepresent it.
-      const instKey = String(symbol).toLowerCase().replace('/', '').replace('_', '');
+      const instKey = _vmInstKey(symbol);
       const t = _vmLoadProj();
+      if (!t) {
+        console.warn('[vumanchu/chart] proj=1 but no projection table on disk');
+      } else if (gran !== `M${t.event_tf_min ?? 5}`) {
+        console.warn(`[vumanchu/chart] proj=1 ignored: fan was measured on M${t.event_tf_min}, pane is ${gran}`);
+      }
       if (gran === `M${t?.event_tf_min ?? 5}`) {
         const st = computeVumanchuState(bars, { timeframes: [5], dropForming: true });
         const code = st.per[5]?.code;
         if (code) {
           opts.projection = _vmProjectionFor(instKey, code);
+          if (!opts.projection) {
+            console.warn(`[vumanchu/chart] proj=1: no fan for ${instKey}/${code} `
+              + `(table has ${Object.keys(t.instruments || {}).join(',') || 'nothing'})`);
+          }
           if (opts.projection) {
             // Badge the read from the frozen table alongside the fan. NONE is
             // shown as plainly as FADE — an overlay that only spoke when it had
@@ -5198,6 +5207,18 @@ const _VM_OANDA_SYM = {
   gold: 'XAU/USD', nq: 'NAS100/USD', spx: 'SPX500/USD', dow: 'US30/USD',
   us30: 'US30/USD', us2000: 'US2000/USD',
 };
+// Symbol -> the key the frozen tables are indexed by. MUST go through the
+// instrument registry: naive string-mangling turns 'XAU/USD' into 'xauusd',
+// while every table is keyed 'gold'. That mismatch fails SILENTLY — a miss just
+// means "no fan" — which is exactly how the overlay shipped drawing nothing.
+function _vmInstKey(symbol) {
+  const raw = String(symbol);
+  for (const form of [raw, raw.replace('/', '_'), raw.replace('_', '/')]) {
+    try { const k = resolveKey(form); if (k) return k; } catch { /* try next */ }
+  }
+  return raw.toLowerCase().replace(/[\/_]/g, '');
+}
+
 function _vmSymbolFor(instKey) {
   if (_VM_OANDA_SYM[instKey]) return _VM_OANDA_SYM[instKey];
   const s = String(instKey).toUpperCase();
