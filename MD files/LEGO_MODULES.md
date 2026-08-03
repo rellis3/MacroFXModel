@@ -1074,6 +1074,40 @@ fresh one — the opposite of the usual intuition.
 Full record, including every earlier null and the two artifacts caught before they
 became "findings": **`VUMANCHU_DIRECTION_FINDINGS.md`**.
 
+### 1ak. Analog cone + trailing-error-weighted blend (2026-08-03)
+
+Second forward-path envelope alongside `forecastPathCore`'s model-based
+intraday cone, and a combiner — built from an owner conversation about what
+other prediction-cone families are worth knowing (options-implied density,
+GEX regime, OU half-life, event-implied, realized-vol cone, regime-
+conditional, Kalman fair value) before attempting to combine any of them.
+This is the first (of that list), lowest-lift pair: a genuinely orthogonal
+empirical cone + the combining machinery, shipped and OOS-graded before
+adding a third leg.
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Analog cone (Cone B)** | `js/analogCone.js` (`buildAnalogContext`, `analogCone`, `analogSamplePaths`, `analogConeCalibration`) | An EMPIRICAL forward-path envelope — no distributional assumption. Buckets every bar by (trend regime × realized-vol tertile) causally, reusing `classifyRegime` (`volBacktestEngine.js`) and `rollingPercentile` (`statsCore.js`) rather than inventing new regime math; a query pools every prior bar sharing the CURRENT bucket (capped at `maxAnalogs`, most-recent-first — bounds cost and is a deliberate recency bias, not an arbitrary one) whose own forward window doesn't reach into the query, and the envelope is the empirical quantile spread of what those analogs' own forward paths actually did. Reports `nAnalogs`/`nEpisodes` (raw matched windows vs. maximal contiguous runs — the closer estimate of INDEPENDENT samples) and `lowConfidence` below `minAnalogs`, so a thin bucket says so rather than drawing a confident line off five samples. `analogConeCalibration` grades it against the claimed P50/P75 coverage AND against an unconditional (no state-matching) naive floor — the regime/vol matching only earns its complexity if it beats that floor. | `js/coneBlend.js`, `forecast-blend.html` | 🟢 built + unit-tested (`analogCone.test.mjs`, synthetic data) — **not yet run on real OANDA history**, so whether the state-matched cone actually beats the naive floor live is untested |
+| **Cone calibration core** | `js/coneCalibrationCore.js` (`gradeCone`, `tallyGrades`) | The shared "does this envelope contain what it claims" per-step P50/P75 coverage + direction hit-rate tally, extracted so `analogCone.js` and `coneBlend.js` share one copy instead of drifting from day one. | `js/analogCone.js`, `js/coneBlend.js` | 🟢 built. `forecastPathCore.calibrationTally` carries its own inline copy of the same logic and predates this extraction — **known drift, see §3 item 12** — left alone rather than refactored under this task's blast radius (a production page) |
+| **Cone blend** | `js/coneBlend.js` (`fitBlendWeights`, `blendCones`, `weightAFor`, `blendCalibration`) | Combines Cone A + Cone B via quantile averaging in log-return space (Vincentization — matching quantiles blended, NOT a full Bayesian mixture of the two distributions; stated precisely so it isn't oversold as more than the lightweight stand-in for BMA it actually is). Weights are fit by walking forward on non-overlapping windows, scoring each cone's own envelope with pinball (quantile) loss against the realized path, inverse-error softmax — bucketed by Cone B's own (regime, volBucket) read (reused, not a new axis) with a global fallback when a bucket has under `minBucketN` graded windows (a thin bucket is not trusted with its own weight — the sample-starvation problem raised before building this). **IS/OOS split is load-bearing**: weights fit on `[0, isFrac×n)`, `blendCalibration` grades blend / Cone A alone / Cone B alone only on the held-out remainder (Lego Principle 5 — a blend that only wins in-sample is not a result). `opts.fit`/`opts.ctxA`/`opts.ctxB` passthrough avoids rebuilding the O(n)-to-O(n·volPctPeriod) contexts 2-3× per page load. | `forecast-blend.html` | 🟢 built + unit-tested (`coneBlend.test.mjs`) — **OOS win/loss vs Cone A and Cone B alone not yet measured on real data**; ship-then-measure, per the "Built ≠ works ≠ has edge" rule |
+| **Forecast Blend viewer** | `forecast-blend.html` | Chart page (M15/M5 only — Cone A's intraday engine + Cone B's epoch-second-time contract are both intraday-specific; D1 is out of scope for this build) showing Cone A / Cone B / Blend as toggle-able overlays, the live weight + which bucket it came from, and the OOS calibration table (blend vs Cone A vs Cone B, claimed 50%/75%/coin-flip). Reuses `createLevelChart`/`instrumentRegistry` and the same `/api/weekly-vol-backtest/m15\|m5/:pair` route `forecast-path.html` already calls — no new backend route. **Deliberately not built yet** (sequencing, not oversight): replay slider, a persisted forward-track record, and any third/fourth cone leg (OU half-life timing, options-implied risk-neutral density) — those are the next steps IF this one earns them on OOS numbers. | — | 🟡 view-only, unverified against live OANDA data in this sandbox (OANDA is Railway-only); logic verified end-to-end against synthetic data (`smoke test`, not committed — ad hoc) |
+
+Next steps if the OOS numbers justify them (in order, per the sequencing
+discussion that preceded this build): cross-pair pooling of the bucket
+weight-fit (bucket by `pairType`, not per-pair — this repo's 26-pair coverage
+is a real advantage here, though FX cross-correlation means it's more like a
+3-6× effective sample boost than 26×, not free); a real walk-forward
+(rolling, not one static split) validation of the weights themselves; a
+third cone leg (OU half-life reversion timing — the most orthogonal
+remaining candidate, since Cone A and a realized-vol cone are both
+price-derived while OU timing measures something different); options-implied
+risk-neutral density (Breeden-Litzenberger off a FITTED smile, not raw
+finite-differenced strikes — FX is delta-quoted, not strike-dense, so this
+needs an SVI-style smoothing step first) as a fourth leg once an IV surface
+fit exists; replacing the inverse-pinball-loss softmax with real stacking
+(a small periodically-refit regression minimizing log-loss) once enough live
+forward-tracked history exists to fit one without overfitting.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
@@ -1251,6 +1285,16 @@ unifying them changes existing numbers, so adopt deliberately with an OOS re-run
     future feature that wants a Hurst reading; this resolution says the
     *live range-bias feature specifically* carries no information, not that
     Hurst is unusable everywhere.
+12. **`forecastPathCore.calibrationTally` vs `coneCalibrationCore` (2026-08-03,
+    not yet unified).** `forecastPathCore.js`'s `calibrationTally` carries an
+    INLINE copy of the same "per-step P50/P75 coverage + direction hit-rate"
+    tally logic that `js/coneCalibrationCore.js` (`gradeCone`/`tallyGrades`)
+    now exports as a shared brick for `analogCone.js`/`coneBlend.js`. Left
+    unrefactored deliberately: `forecastPathCore.js` backs the production
+    `forecast-path.html` page, and unifying it was outside this task's blast
+    radius (CLAUDE.md's "don't refactor v1/production code in place" caution).
+    If a third consumer of this tally shape shows up, that's the trigger to
+    repoint `calibrationTally` at `coneCalibrationCore` and retire the copy.
 
 ---
 
