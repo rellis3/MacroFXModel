@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Expected Moves — All Pairs</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
   :root { --bg:#0b0e14; --panel:#11151f; --line:#1f2937; --text:#cbd5e1; --muted:#64748b; --accent:#5b9dff; --good:#34d399; --bad:#f87171; --warn:#fbbf24; --purple:#c084fc; }
   * { box-sizing:border-box; }
@@ -18,6 +19,8 @@
   button#run:disabled { opacity:.5; cursor:default; }
   #status { font-size:12px; color:var(--muted); }
   .err { color:var(--bad); }
+  .good { color:var(--good); }
+  .warn { color:var(--warn); }
   .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:14px; }
   .card.notice { font-size:12px; color:var(--muted); }
   table { width:100%; border-collapse:collapse; font-family:'DM Mono',monospace; font-size:12px; }
@@ -40,12 +43,24 @@
   #errList { font-size:12px; color:var(--muted); margin-top:8px; }
   .legend { font-size:11px; color:var(--muted); margin-top:8px; }
   .legend b { color:var(--text); }
+  tr.rowclick { cursor:pointer; }
+  tr.rowclick:hover td { background:#161c2a; }
+  tr.selected td { background:#182236; }
+  #chartCard { display:none; }
+  #chart { height:420px; background:#0b0e14; border:1px solid var(--line); border-radius:8px; }
+  .swatch { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:5px; vertical-align:middle; }
+  .chartToggles button.on { border-color:var(--accent); color:var(--accent); }
+  .kv { display:flex; justify-content:space-between; font-family:'DM Mono',monospace; font-size:12px; padding:2px 0; max-width:420px; }
+  .kv b { font-weight:500; }
+  .chartHead { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px; }
+  .chartHead h2 { margin:0; font-size:13px; }
+  #chartInfo { display:flex; gap:18px; flex-wrap:wrap; margin-top:8px; }
 </style>
 </head>
 <body>
 <header>
   <h1>📊 Expected Moves — All Pairs</h1>
-  <div class="sub">Per pair, per bar: the blended Cone A (model) + Cone B (analog) expected-move envelope (<a href="forecast-blend.html" style="color:var(--accent)">forecast-blend.html</a>'s math), <code>dayTypeScore</code>'s continue-vs-fade read, and — where you've pasted OI data — the GEX wall proximity modifier. A consolidated decision-support readout, not a validated combined-edge strategy: see the notice below before trading off it.</div>
+  <div class="sub">Per pair, per bar: the blended Cone A (model) + Cone B (analog) expected-move envelope (<a href="forecast-blend.html" style="color:var(--accent)">forecast-blend.html</a>'s math), <code>dayTypeScore</code>'s continue-vs-fade read, and — where you've pasted OI data — the GEX wall proximity modifier. A consolidated decision-support readout, not a validated combined-edge strategy: see the notice below before trading off it. <b>Click any row to plot that pair's cone on the chart.</b></div>
 </header>
 
 <div class="wrap">
@@ -62,6 +77,19 @@
     </select>
     <button id="run">Run all pairs</button>
     <span id="status"></span>
+  </div>
+
+  <div class="card" id="chartCard">
+    <div class="chartHead">
+      <h2 id="chartTitle">Select a pair below to see its cone drawn on the chart</h2>
+      <div class="ctl chartToggles" style="margin:0;">
+        <button id="tA" class="on"><span class="swatch" style="background:#5b9dff"></span>Cone A (model)</button>
+        <button id="tB" class="on"><span class="swatch" style="background:#c084fc"></span>Cone B (analog)</button>
+        <button id="tBlend" class="on"><span class="swatch" style="background:#34d399"></span>Blend</button>
+      </div>
+    </div>
+    <div id="chart"></div>
+    <div id="chartInfo"></div>
   </div>
 
   <div class="card notice">
@@ -104,7 +132,13 @@
   </div>
 </div>
 
-<script>
+<script type="module">
+import { createLevelChart } from './js/levelChart.js?v=1';
+import { priceDigits } from './js/instrumentRegistry.js?v=1';
+import { buildIntradayContext, intradayCone, INTRADAY_DEFAULTS } from './js/forecastPathCore.js?v=1';
+import { buildAnalogContext, analogCone } from './js/analogCone.js?v=1';
+import { fitBlendWeights, blendCones, weightAFor } from './js/coneBlend.js?v=1';
+
 const $ = id => document.getElementById(id);
 const HORIZONS = [['8','2 hours'],['16','4 hours'],['32','8 hours']];
 for (const [v, label] of HORIZONS) $('horizon').add(new Option(label, v));
@@ -112,6 +146,104 @@ $('horizon').value = '16';
 
 let lastResult = null;
 let pollTimer = null;
+let selectedPair = null;
+
+// ── Per-pair chart (same call sequence forecast-blend.html uses for one pair,
+// triggered by clicking a board row instead of navigating to a separate page) ──
+let chartView = null, chartExtra = [];
+const chartToggles = { a: true, b: true, blend: true };
+
+function ensureChart() {
+  if (chartView) return chartView;
+  chartView = createLevelChart($('chart'), { height: 420 });
+  return chartView;
+}
+function clearChartExtra() {
+  for (const s of chartExtra) { try { chartView.chart.removeSeries(s); } catch {} }
+  chartExtra = [];
+}
+function chartLine(color, width, style) {
+  const dg = selectedPair ? priceDigits(selectedPair) : 5;
+  const s = chartView.chart.addLineSeries({ color, lineWidth: width, lineStyle: style, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+    priceFormat: { type: 'price', precision: dg, minMove: Math.pow(10, -dg) } });
+  chartExtra.push(s);
+  return s;
+}
+function drawCone(cone, color) {
+  if (!cone) return;
+  const t0 = { time: cone.anchorTime, value: cone.anchor };
+  const mk = k => [t0, ...cone.steps.map(s => ({ time: s.time, value: s[k] }))];
+  chartLine(color, 2, 0).setData(mk('center'));
+  chartLine(color, 1, 2).setData(mk('p50Up'));
+  chartLine(color, 1, 2).setData(mk('p50Dn'));
+  chartLine(color, 1, 3).setData(mk('p75Up'));
+  chartLine(color, 1, 3).setData(mk('p75Dn'));
+}
+
+async function loadChart(pairKey, display, digits) {
+  selectedPair = pairKey;
+  $('chartCard').style.display = 'block';
+  $('chartTitle').textContent = `${display} — loading…`;
+  const view = ensureChart();
+  clearChartExtra();
+  $('chartInfo').innerHTML = '';
+  try {
+    const gran = $('gran').value, H = +$('horizon').value;
+    const lookbackDays = gran === 'M5' ? 70 : 260;
+    const today = new Date().toISOString().substring(0, 10);
+    const fromD = new Date(Date.now() - lookbackDays * 86400e3).toISOString().substring(0, 10);
+    const url = `/api/weekly-vol-backtest/${gran.toLowerCase()}/${pairKey.toLowerCase()}?from=${fromD}&to=${today}`;
+    const j = await fetch(url, { signal: AbortSignal.timeout(45_000) }).then(r => r.json());
+    if (!j.ok) throw new Error(j.error || 'candle fetch failed');
+    const bars = j.candles;
+    if (bars.length < INTRADAY_DEFAULTS.warmupBars + 600) throw new Error(`only ${bars.length} bars — not enough history for both cones + a real IS/OOS split`);
+
+    view.series.applyOptions({ priceFormat: { type: 'price', precision: digits, minMove: Math.pow(10, -digits) } });
+    view.setCandles(bars);
+    const ctxA = buildIntradayContext(bars), ctxB = buildAnalogContext(bars);
+    const i = bars.length;
+    const coneA = intradayCone(ctxA, i, H);
+    const coneB = analogCone(ctxB, i, H);
+    let wA = 0.5, bucketTrusted = false;
+    if (coneA && coneB) {
+      try {
+        const fit = fitBlendWeights(bars, H, { ctxA, ctxB });
+        wA = weightAFor(fit, coneB.target.regime, coneB.target.vol);
+        bucketTrusted = fit.bucketWeights.get(`${coneB.target.regime}_${coneB.target.vol}`) != null;
+      } catch { /* thin history — 50/50 fallback, same as expectedMoveCore.js */ }
+    }
+    const blend = blendCones(coneA, coneB, wA);
+
+    if (chartToggles.a) drawCone(coneA, '#5b9dff');
+    if (chartToggles.b) drawCone(coneB, '#c084fc');
+    if (chartToggles.blend) drawCone(blend, '#34d399');
+    view.chart.timeScale().setVisibleLogicalRange({ from: bars.length - Math.max(90, H * 6), to: bars.length + H + 4 });
+
+    $('chartTitle').textContent = `${display} — ${gran} · ${bars.length} bars`;
+    let info = '';
+    if (coneA) info += `<div class="kv"><span>Cone A anchor / σ per bar</span><b>${coneA.anchor.toFixed(digits)} / ${(coneA.sigmaBar * 100).toFixed(3)}%</b></div>`;
+    if (coneB) {
+      info += `<div class="kv"><span>Cone B state</span><b>${coneB.target.regime} · ${coneB.target.vol} vol</b></div>`;
+      info += `<div class="kv"><span>Cone B analogs</span><b class="${coneB.lowConfidence ? 'warn' : 'good'}">${coneB.nAnalogs} windows / ${coneB.nEpisodes} episodes</b></div>`;
+    }
+    info += `<div class="kv"><span>Blend weight A (model) / B (analog)</span><b>${(wA * 100).toFixed(0)}% / ${((1 - wA) * 100).toFixed(0)}%</b></div>`;
+    info += `<div class="kv"><span>Bucket trusted</span><b>${bucketTrusted ? 'yes — own regime/vol bucket had enough graded windows' : 'no — global fallback weight'}</b></div>`;
+    $('chartInfo').innerHTML = info;
+  } catch (err) {
+    $('chartTitle').textContent = `${display} — ${err.message}`;
+  }
+}
+for (const id of ['tA', 'tB', 'tBlend']) {
+  $(id).onclick = () => {
+    const key = id === 'tA' ? 'a' : id === 'tB' ? 'b' : 'blend';
+    chartToggles[key] = !chartToggles[key];
+    $(id).classList.toggle('on', chartToggles[key]);
+    if (selectedPair && lastResult) {
+      const r = lastResult.pairs.find(p => p.pair === selectedPair);
+      if (r) loadChart(r.pair, r.display, r.digits ?? 5);
+    }
+  };
+}
 
 function fmtPips(v) { return v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(1); }
 function dirClass(call) {
@@ -141,7 +273,8 @@ function render() {
   const dg = r => r.digits ?? 5;
   const rowsHtml = ok.map(r => {
     const warn = r.warnings?.length ? `<span class="warn-ico" title="${r.warnings.join(' · ')}">⚠</span>` : '';
-    return `<tr>
+    const sel = r.pair === selectedPair ? ' selected' : '';
+    return `<tr class="rowclick${sel}" data-pair="${r.pair}" data-display="${r.display}" data-digits="${r.digits ?? 5}" title="Click to plot this pair's cone on the chart">
       <td class="pair">${r.display}</td>
       <td>${r.expected.anchor.toFixed(dg(r))}</td>
       <td><span class="dir ${dirClass(r.direction.call)}">${dirLabel(r.direction.call)}</span></td>
@@ -158,6 +291,9 @@ function render() {
   $('errList').innerHTML = bad.length
     ? `<b>Unavailable (${bad.length}):</b> ` + bad.map(r => `${(r.display || r.pair || '').toUpperCase() || '?'} — ${r.error}`).join(' · ')
     : '';
+  for (const tr of $('rows').querySelectorAll('tr[data-pair]')) {
+    tr.onclick = () => loadChart(tr.dataset.pair, tr.dataset.display, +tr.dataset.digits);
+  }
 }
 
 async function poll(jobId) {
