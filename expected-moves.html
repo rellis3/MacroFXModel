@@ -70,12 +70,17 @@
       <option value="M5">M5 · intraday</option>
     </select>
     <select id="horizon"></select>
+    <select id="universe">
+      <option value="fx" selected>Universe: FX + Gold (26)</option>
+      <option value="idx">Universe: Indices (6)</option>
+      <option value="all">Universe: All (32)</option>
+    </select>
     <select id="sort">
       <option value="move">Sort: expected move (biggest first)</option>
       <option value="conviction">Sort: direction conviction (T)</option>
       <option value="pair">Sort: pair A→Z</option>
     </select>
-    <button id="run">Run all pairs</button>
+    <button id="run">Run pairs</button>
     <span id="status"></span>
   </div>
 
@@ -101,6 +106,11 @@
     partial on FX."</i> Combining all three here is convenience, not a claim that
     the combination itself has been backtested or has edge. Treat every row as
     a starting point for your own read, not an answer.
+    <b>Indices specifically:</b> Cone A's session-shape profile buckets drift/vol
+    by UTC hour-of-day, which is tuned for FX's ~continuous trading — it hasn't
+    been checked against index/gold-future CFDs' own daily settlement break
+    (~22:00 UTC). It will run and produce a read, just an unvalidated one; treat
+    index rows with more skepticism than FX until that's checked.
   </div>
 
   <div class="card">
@@ -119,7 +129,7 @@
           <th></th>
         </tr>
       </thead>
-      <tbody id="rows"><tr><td colspan="10" class="muted">Click "Run all pairs" — this fetches history and fits a walk-forward blend per pair, so it takes a while for 26 pairs.</td></tr></tbody>
+      <tbody id="rows"><tr><td colspan="10" class="muted">Pick a universe and click "Run pairs" — this fetches history and fits a walk-forward blend per pair, so it takes a while for the full set.</td></tr></tbody>
     </table>
     <div id="errList"></div>
     <div class="legend">
@@ -319,6 +329,15 @@ async function poll(jobId) {
   }
 }
 
+// Mirrors server.js's POI_ALL_PAIRS / POI_INDEX_PAIRS — client-side only for
+// building the `pairs` request; the server independently validates against
+// its own lists regardless of what's sent here.
+const FX_GOLD_PAIRS = ['eurusd','gbpusd','audusd','nzdusd','usdcad','usdchf','usdjpy','eurjpy','gbpjpy','audjpy','cadjpy','chfjpy','nzdjpy','eurgbp','euraud','eurcad','eurchf','eurnzd','audnzd','audcad','audchf','gbpaud','gbpcad','gbpchf','gbpnzd','gold'];
+const INDEX_PAIRS = ['nq','spx500','us30','de30','uk100','us2000'];
+function pairsForUniverse(u) {
+  return u === 'idx' ? INDEX_PAIRS : u === 'all' ? [...FX_GOLD_PAIRS, ...INDEX_PAIRS] : FX_GOLD_PAIRS;
+}
+
 $('run').onclick = async () => {
   clearTimeout(pollTimer);
   $('run').disabled = true;
@@ -327,7 +346,8 @@ $('run').onclick = async () => {
   $('rows').innerHTML = '<tr><td colspan="10" class="muted">running…</td></tr>';
   $('errList').innerHTML = '';
   try {
-    const body = { gran: $('gran').value, H: +$('horizon').value };
+    const pairs = pairsForUniverse($('universe').value);
+    const body = { gran: $('gran').value, H: +$('horizon').value, pairs };
     const j = await fetch('/api/expected-moves/run', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     }).then(r => r.json());

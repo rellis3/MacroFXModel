@@ -1122,16 +1122,34 @@ this only wires them together per pair and loops the wiring across pairs.
 | Brick | File | Owns | Consumers | Status |
 |---|---|---|---|---|
 | **Expected-move core** | `js/expectedMoveCore.js` (`computeExpectedMove`, `wallModifier`) | One pair's consolidated read: magnitude from the §1ak Cone A/B blend (same call sequence `forecast-blend.html` uses — `buildIntradayContext`/`buildAnalogContext`/`intradayCone`/`analogCone`/`fitBlendWeights`/`weightAFor`/`blendCones`), direction from `dayTypeCore.classifyDayType`'s T (TREND→trust the blend's own median-path lean as CONTINUE_UP/DOWN, RANGE→FADE, MIXED→MIXED — dayTypeCore's estimators are magnitude-only/unsigned, so the actual up/down call comes from the blended cone's `center` vs `anchor`, not from dayTypeCore itself), and an optional GEX wall-proximity modifier (`gammaFlow.gammaFlip`/`distanceToFlip` + call/put-wall distance) read from the pair's `oi_store` entry when the user has pasted OI data for it — inert (`wall: null`) otherwise. No new math anywhere; see the file's own header for the exact validation-status caveat per layer (Cone A/B is OOS-graded per pair, dayTypeScore backs live strategies elsewhere, the GEX read is explicitly folklore-tier per `gammaFlow.js`). | `server.js` `/api/expected-moves/run` | 🟢 built + unit-tested (`expectedMoveCore.test.mjs`, synthetic data) — **not yet run on real OANDA history**, same caveat as §1ak |
-| **Expected-Move Board route** | `server.js` (`POST /api/expected-moves/run`, `GET /api/expected-moves/status/:jobId`) | Async-job loop (same pattern as `/api/poi-reaction/run`) over `POI_ALL_PAIRS` (the canonical 26 FX+gold pairs), fetching each pair's M15/M5 bars via the existing `_wbtFetchIntraday`/`_wbtInstrMap` (no new fetch logic — same paginated OANDA path `/api/weekly-vol-backtest/m15\|m5/:pair` uses internally), reading `oi_store` from KV once per job (not per pair) for the wall modifier. | `expected-moves.html` | 🟢 built |
-| **Expected-Move Board viewer** | `expected-moves.html` | One row per pair: price, CONTINUE_UP/DOWN/FADE/MIXED + T%, expected move in pips (center/±p50/±p75) at the chosen horizon, Cone B's (regime,vol) bucket, a call/put-wall tag when price is near a pasted wall, a ⚠ for low-confidence flags. Sortable by move size / conviction / pair. Carries an explicit on-page notice (mirrors this section's caveat) that this is a decision-support readout, not a validated combined-edge strategy. | — | 🟡 view-only, unverified against live OANDA data in this sandbox (Railway-only); logic verified via `expectedMoveCore.test.mjs` on synthetic data |
+| **Expected-Move Board route** | `server.js` (`POST /api/expected-moves/run`, `GET /api/expected-moves/status/:jobId`) | Async-job loop (same pattern as `/api/poi-reaction/run`) over a universe (`POI_ALL_PAIRS`, the 26 FX+gold pairs, by default; `POI_INDEX_PAIRS` — the 6 index CFDs, `nq/spx500/us30/de30/uk100/us2000` — opt-in via the request's `pairs`), fetching each pair's M15/M5 bars via `_wbtFetchIntraday` with the OANDA symbol read straight off `instrumentRegistry`'s `INSTRUMENTS[key].oanda` (**not** `_wbtInstrMap` — that table is keyed by `weeklyVolBacktestEngine`'s own names (`spx500`/`de30`/`uk100`/`us30`/`us2000`), which don't match `instrumentRegistry`'s canonical short keys (`spx`/`dax`/`ftse`/`dow`/`rut`) that `resolveKey()` returns; using `_wbtInstrMap[key]` after `resolveKey()` 404'd every index except `nq`, caught while wiring indices in — the FX+gold path was unaffected since those canonical keys already matched `_wbtInstrMap`'s naming 1:1), reading `oi_store` from KV once per job (not per pair) for the wall modifier. | `expected-moves.html` | 🟢 built |
+| **Expected-Move Board viewer** | `expected-moves.html` | One row per pair: price, CONTINUE_UP/DOWN/FADE/MIXED + T%, expected move in pips (center/±p50/±p75) at the chosen horizon, Cone B's (regime,vol) bucket, a call/put-wall tag when price is near a pasted wall, a ⚠ for low-confidence flags. Sortable by move size / conviction / pair. A universe selector (FX+Gold 26 / Indices 6 / All 32) picks which pair set the run job covers. Clicking a row draws that pair's cone on an inline chart — same call sequence + `createLevelChart` `forecast-blend.html` uses, ported so `forecast-blend.html`'s single-pair view and this board's per-row view now render the same thing; the one thing NOT ported is `forecast-blend.html`'s OOS calibration table (`blendCalibration`'s P50/P75 coverage grading) — that's still `forecast-blend.html`-only. Carries an explicit on-page notice (mirrors this section's caveat, plus an indices-specific one below) that this is a decision-support readout, not a validated combined-edge strategy. | — | 🟡 view-only, unverified against live OANDA data in this sandbox (Railway-only); logic verified via `expectedMoveCore.test.mjs` on synthetic data |
+
+**Indices caveat (flagged, not silently ignored, 2026-08-04):** Cone A's
+session-shape profile (`buildIntradayContext`, `forecastPathCore.js`) buckets
+drift/vol purely by UTC hour-of-day — right for FX's ~continuous trading,
+untested for index/gold-future CFDs' own daily settlement break (~22:00 UTC).
+It runs without erroring (UTC-hour bucketing doesn't require continuous data,
+just enough per-hour samples) and produces a read, but that hour's bucket is
+built mostly from reopen-gap bars rather than a typical trading hour — whether
+that meaningfully degrades cone quality vs FX has not been checked. Cone B
+(regime/vol-bucketed analogs, via `classifyRegime`'s existing per-asset-class
+params) and `dayTypeCore` are both already asset-class-agnostic. Also fixed in
+the same pass: `instrumentRegistry.js`'s `EXTRA_ALIASES` was missing `us30`,
+`uk100`, `us2000`/`rus2000` (only the `spx500`/`de30`/`nas100` families had
+aliases) — `resolveKey('us30')` etc silently returned `null` for anyone who'd
+have hit this before now. Two-line completion of the existing pattern, not a
+new mechanism.
 
 Not built (deliberately, scope discipline): a persisted forward-track record
 of the board's own calls (would let "how often did CONTINUE calls actually
 continue" be graded, but needs live tracked history first); a portfolio-level
-view (correlated exposure across the 26 pairs, e.g. don't count 5 EUR-cross
-CONTINUE_UP calls as 5 independent bets); wiring in a 3rd/4th cone leg (OU
-half-life, options-implied density) — those stay §1ak's roadmap, this board
-just consumes whatever `coneBlend` produces.
+view (correlated exposure across the pair universe, e.g. don't count 5
+EUR-cross CONTINUE_UP calls as 5 independent bets); wiring in a 3rd/4th cone
+leg (OU half-life, options-implied density) — those stay §1ak's roadmap, this
+board just consumes whatever `coneBlend` produces; the calibration-table gap
+noted above (add it here, or keep `forecast-blend.html` as the
+calibration-specific view — an open call, not yet decided).
 
 ---
 

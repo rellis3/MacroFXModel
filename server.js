@@ -16262,11 +16262,22 @@ app.get('/api/weekly-vol-backtest/m15/:pair', _wbtIntradayRoute('M15', 200));
 app.get('/api/weekly-vol-backtest/m5/:pair',  _wbtIntradayRoute('M5',  500));
 
 // ── Expected-Move Board — one consolidated continue/fade + magnitude read per
-// pair, across the full FX+gold universe (POI_ALL_PAIRS, the same 26 pairs
-// forecast-blend.html covers). Wires forecastPathCore (Cone A) + analogCone
-// (Cone B) + coneBlend + dayTypeCore + gammaFlow together via
-// js/expectedMoveCore.js — no new math, see that module's header. Async-job
-// pattern, same as /api/poi-reaction/run.
+// pair. Default universe is FX+gold (POI_ALL_PAIRS, the same 26 pairs
+// forecast-blend.html covers); POI_INDEX_PAIRS opts into the 6 index CFDs on
+// request. Wires forecastPathCore (Cone A) + analogCone (Cone B) + coneBlend +
+// dayTypeCore + gammaFlow together via js/expectedMoveCore.js — no new math,
+// see that module's header. Async-job pattern, same as /api/poi-reaction/run.
+//
+// Indices caveat (NOT validated, flagged not silently ignored): Cone A's
+// session-shape profile (buildIntradayContext, forecastPathCore.js) buckets
+// drift/vol purely by UTC hour-of-day, which is right for FX's ~continuous
+// trading but untested for index/gold-future CFDs' own daily settlement
+// break (~22:00 UTC) — that hour's bucket will be built mostly from
+// reopen-gap bars instead of a typical trading hour. It won't crash (UTC-hour
+// bucketing doesn't require continuous data), it just hasn't been checked for
+// whether that changes cone quality vs FX. Cone B (regime/vol-bucketed
+// analogs) and dayTypeCore are both asset-class-agnostic already.
+const POI_INDEX_PAIRS = ['nq', 'spx500', 'us30', 'de30', 'uk100', 'us2000'];
 const expMoveJobs = new Map();
 function _purgeStaleExpMoveJobs() {
   const cutoff = Date.now() - 60 * 60_000;
@@ -16277,8 +16288,9 @@ app.post('/api/expected-moves/run', express.json({ limit: '256kb' }), (req, res)
   const b = req.body ?? {};
   const gran = (b.gran === 'M5' ? 'M5' : 'M15');
   const H = Math.min(64, Math.max(4, Math.round(+b.H || 16)));
+  const universe = [...POI_ALL_PAIRS, ...POI_INDEX_PAIRS];
   let pairs = Array.isArray(b.pairs) && b.pairs.length
-    ? b.pairs.map(p => String(p).toLowerCase().replace('/', '')).filter(p => POI_ALL_PAIRS.includes(p))
+    ? b.pairs.map(p => String(p).toLowerCase().replace('/', '')).filter(p => universe.includes(p))
     : POI_ALL_PAIRS;
   if (!pairs.length) pairs = POI_ALL_PAIRS;
 
@@ -16307,7 +16319,12 @@ app.post('/api/expected-moves/run', express.json({ limit: '256kb' }), (req, res)
         try {
           const key = resolveKey(pair);
           if (!key) throw new Error(`unknown pair: ${pair}`);
-          const oanda = _wbtInstrMap[key];
+          // Read the OANDA symbol straight off instrumentRegistry, not _wbtInstrMap —
+          // that table is keyed by weeklyVolBacktestEngine's own names (spx500/de30/
+          // uk100/us30/us2000), which don't match instrumentRegistry's canonical short
+          // keys (spx/dax/ftse/dow/rut) that resolveKey() returns. instrumentRegistry
+          // already carries the right OANDA symbol per canonical key — use that directly.
+          const oanda = INSTRUMENTS[key]?.oanda;
           if (!oanda) throw new Error(`no OANDA symbol for ${pair}`);
           const bars = await _wbtFetchIntraday(oanda, gran, { from: fromD, to: today });
           const display = INSTRUMENTS[key]?.display;
