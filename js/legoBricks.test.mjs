@@ -855,6 +855,23 @@ console.log('\n[oi day-expiry]');
   const cmpTxt = buildOILevelText({ 'EUR/USD': cmp.inst }, { generated: 'x' });
   ok('export renders the per-expiry breakdown block', /per-expiry \(mp = max pain/.test(cmpTxt) && /30DTE  mp /.test(cmpTxt));
 
+  // allExpiry: draw EVERY expiry's max-pain/walls as DTE-tagged OI lines, filling in the
+  // expiries the primary+day sets don't already cover. Default export must NOT gain them.
+  const many = [
+    '\t6EU6', '1.1545\t6EU6', 'Strike\tA', '1 DTE\tB', '5 DTE\tC', '30 DTE\tD', 'C\tP\tC\tP\tC\tP',
+    '1.1500\t500\t900\t700\t1200\t6000\t5000',
+    '1.1545\t3000\t3500\t4000\t3800\t3000\t2500',
+    '1.1580\t2500\t600\t3000\t500\t1500\t400',
+  ].join('\n');
+  const mr = await buildOIEntry({ pair: 'EUR/USD', rawOI: many, spotRaw: 1.1545, futuresRaw: 1.1545, manualFutures: true, skipLiveQuote: true });
+  const defLines = buildOILevelText({ 'EUR/USD': mr.inst }, { generated: 'x' }).split('\n').filter(l => l.startsWith('OI '));
+  const allLines = buildOILevelText({ 'EUR/USD': mr.inst }, { generated: 'x', allExpiry: true }).split('\n').filter(l => l.startsWith('OI '));
+  ok('allExpiry adds OI lines beyond the default set', allLines.length > defLines.length, `${defLines.length} → ${allLines.length}`);
+  const coveredDtes = new Set([mr.inst.dte, mr.inst.dayExpiry?.dte].filter(Number.isFinite));
+  const midDte = (mr.inst.perExpiry || []).map(e => e.dte).find(d => !coveredDtes.has(d));
+  ok('allExpiry draws the uncovered middle expiry as lines', midDte != null && allLines.some(l => l.includes(`max_pain ${midDte}dte`)), `mid=${midDte}`);
+  ok('default export does NOT include that middle expiry', !defLines.some(l => l.includes(`max_pain ${midDte}dte`)));
+
   // terms:'futures' adds the stored basis back so the lines overlay a FUTURES chart
   // (a colleague on CME/COMEX). Default 'spot' is unchanged.
   const goldStore = {

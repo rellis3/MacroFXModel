@@ -125,7 +125,7 @@ function fmtCot(c) {
 // NO price coordinate — it is positioning, not a level — so it is emitted on the per-pair
 // context line the indicator ignores, never as an `OI {price}` line. Drawing a horizontal
 // line for it would invent a price the data does not contain.
-export function buildOILevelText(store, { topWalls = null, minTier = "moderate", maxWalls = 3, generated = null, cot = null, reachByPair = null, terms = 'spot' } = {}) {
+export function buildOILevelText(store, { topWalls = null, minTier = "moderate", maxWalls = 3, generated = null, cot = null, reachByPair = null, terms = 'spot', allExpiry = false } = {}) {
   // terms: 'spot' (default — XAU/USD / OANDA spot, what the platform trades) or 'futures'
   // (raw CME/COMEX price terms, for overlaying on a futures chart). Only the DISPLAYED price
   // changes; P(touch) is still keyed off the spot price it was computed at.
@@ -249,6 +249,21 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
         else           suffix = ` . ${note}`;
       }
       lines.push(`OI ${px(l.price).toFixed(dp)} : ${l.type}${tier}${dteTag}${suffix}`);
+    }
+    // All-expiry lines (opt-in): draw each OTHER expiry's max-pain + raw call/put wall as
+    // DTE-tagged OI lines, so the whole term structure shows on the CHART, not just the text
+    // table. The expiries already drawn in detail (primary + day) are skipped to avoid dupes;
+    // the indicator's DTE styling fades the far ones. These walls are the RAW biggest-OI
+    // strike per side (unfiltered), so a far tail-hedge strike can appear — that's the point
+    // for a cross-desk compare, and it recedes visually.
+    if (allExpiry && Array.isArray(inst.perExpiry)) {
+      const covered = new Set([inst.dte, inst.dayExpiry?.dte].filter(Number.isFinite));
+      for (const e of inst.perExpiry) {
+        if (!Number.isFinite(e.dte) || covered.has(e.dte)) continue;
+        if (Number.isFinite(e.maxPain))  lines.push(`OI ${px(e.maxPain).toFixed(dp)} : max_pain ${e.dte}dte`);
+        if (Number.isFinite(e.callWall)) lines.push(`OI ${px(e.callWall).toFixed(dp)} : call_wall ${e.dte}dte`);
+        if (Number.isFinite(e.putWall))  lines.push(`OI ${px(e.putWall).toFixed(dp)} : put_wall ${e.dte}dte`);
+      }
     }
     lines.push('');
     emitted++;
