@@ -837,6 +837,24 @@ console.log('\n[oi day-expiry]');
     && Number.isFinite(re.inst.dayExpiry.callWall) && Number.isFinite(re.inst.dayExpiry.putWall)
     && (re.inst.dayExpiry.regime === 'PIN' || re.inst.dayExpiry.regime === 'BREAKOUT'));
 
+  // Per-expiry SPOT-terms breakdown — for cross-desk comparison / calc verification. A
+  // LONGER expiry whose OI is centred below a rallied spot shows max-pain/walls below spot
+  // (exactly the "colleague's max pain is under our spot" case), while near expiries sit at
+  // spot. Proves the raw-OI calc is per-expiry and deterministic.
+  const cmpOI = [
+    '\t6EU6', '1.1545\t6EU6', 'Strike\tA', '1 DTE\tB', '30 DTE\tC', 'C\tP\tC\tP',
+    '1.1450\t50\t200\t8000\t9000',   // far expiry's heavy OI, below spot
+    '1.1545\t3000\t3500\t3000\t2500',
+    '1.1580\t2500\t600\t1500\t400',
+  ].join('\n');
+  const cmp = await buildOIEntry({ pair: 'EUR/USD', rawOI: cmpOI, spotRaw: 1.1545, futuresRaw: 1.1545, manualFutures: true, skipLiveQuote: true });
+  const pe = cmp.inst?.perExpiry || [];
+  ok('perExpiry has a row per expiry', pe.length === 2 && pe[0].dte === 1 && pe[1].dte === 30, pe.map(e => e.dte).join(','));
+  ok('a far expiry shows max pain BELOW spot (the cross-desk case)', pe.find(e => e.dte === 30)?.maxPain < 1.1545, `${pe.find(e => e.dte === 30)?.maxPain}`);
+  ok('a near expiry maxPain sits at/near spot', Math.abs((pe.find(e => e.dte === 1)?.maxPain ?? 0) - 1.1545) < 0.005);
+  const cmpTxt = buildOILevelText({ 'EUR/USD': cmp.inst }, { generated: 'x' });
+  ok('export renders the per-expiry breakdown block', /per-expiry \(mp = max pain/.test(cmpTxt) && /30DTE  mp /.test(cmpTxt));
+
   // terms:'futures' adds the stored basis back so the lines overlay a FUTURES chart
   // (a colleague on CME/COMEX). Default 'spot' is unchanged.
   const goldStore = {

@@ -171,8 +171,19 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     const flip = Number.isFinite(inst.gammaFlip) ? inst.gammaFlip : gammaFlip(gexProfile);
     const dist = distanceToFlip(inst.spot, flip);          // no ATR here → % based
     if (dist) lines.push(`· flip ${px(flip).toFixed(dp)} · spot ${dist.pct >= 0 ? '+' : ''}${dist.pct}% → ${dist.side === 'positive' ? '+gamma (pin/dampen)' : dist.side === 'negative' ? '−gamma (breakout)' : 'at flip'}${dist.near ? ' · NEAR flip (unstable)' : ''}`);
+    // Per-expiry breakdown (spot terms) — the same raw-OI max pain / call & put wall for
+    // EVERY expiry, so you can line ANY single expiry up against another desk's OI panel and
+    // confirm the calc (max pain is deterministic: same expiry + same chain ⇒ same number).
     const roll = rolloffSummary(inst.termStructure);
-    if (roll && roll.nExpiries > 1) {
+    const pe = (inst.perExpiry || []).slice().sort((a, b) => a.dte - b.dte).slice(0, 8);
+    if (pe.length) {
+      lines.push('· per-expiry (mp = max pain · cw/pw = call/put wall):');
+      for (const e of pe) {
+        const f = (v, lbl) => Number.isFinite(v) ? `${lbl} ${px(v).toFixed(dp)}` : `${lbl} —`;
+        lines.push(`·   ${String(e.dte).padStart(3)}DTE  ${f(e.maxPain, 'mp')}  ${f(e.callWall, 'cw')}  ${f(e.putWall, 'pw')}`);
+      }
+      if (roll?.rollingSoon) lines.push('·   (near expiry rolls off soon)');
+    } else if (roll && roll.nExpiries > 1) {
       const ts = (inst.termStructure || []).slice().sort((a, b) => a.dte - b.dte).slice(0, 4);
       lines.push(`· term: ${ts.map(e => `${e.dte}DTE mp${px(Number(e.maxPain)).toFixed(dp)}`).join('  ')}${roll.rollingSoon ? ' · near rolls off soon' : ''}`);
     }

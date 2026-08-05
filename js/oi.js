@@ -1592,6 +1592,18 @@ export async function buildOIEntry({
   const _persArr = parsed.strikes.map(s => _persMap?.get(s) ?? 0);
   const termStructure = oiMatrixTermStructure(rawOI, minOI);   // null for the simple format
 
+  // Per-expiry SPOT-terms breakdown — the same max-pain / call-wall / put-wall that the
+  // primary path computes, but for EVERY expiry, basis-shifted so it lines up with the
+  // drawn levels (termStructure itself stays RAW for its existing consumers). Lets a user
+  // compare any single expiry against another desk's OI panel and confirm the raw-OI calcs
+  // (max pain is deterministic — same expiry + same chain ⇒ identical number).
+  const _shiftToSpot = (s) => !Number.isFinite(s) ? null
+    : (basis === 0 ? s : (futuresIsInverted(pair) ? 1 / s - basis : s - basis));
+  const perExpiry = (termStructure || []).map(e => ({
+    dte: e.dte, maxPain: _shiftToSpot(e.maxPain),
+    callWall: _shiftToSpot(e.callWall), putWall: _shiftToSpot(e.putWall), totalOI: e.totalOI,
+  })).filter(e => Number.isFinite(e.dte)).sort((a, b) => a.dte - b.dte);
+
   // Apply basis shift to all strikes (converts futures strikes → spot-equivalent prices).
   // Inverted pairs (6J/6C/6S): CME strikes are in foreign-currency-per-USD space, so invert first.
   if (basis !== 0) {
@@ -2006,6 +2018,7 @@ export async function buildOIEntry({
     volFlow: (volPcRatio != null) ? { volPcRatio, oiPcRatio: +pcRatio.toFixed(2),   // today's flow vs resting positioning
       divergence: Math.abs(Math.log((volPcRatio || 1) / Math.max(pcRatio, 0.01))) > 0.4 } : null,
     termStructure,   // per-expiry max pain / walls / DTE — for the daily brief & analysis (not the bot)
+    perExpiry,       // SPOT-terms per-expiry {dte, maxPain, callWall, putWall} — for cross-desk comparison / calc verification
     primaryExpiry,   // the expiry the walls/max-pain were auto-selected from (DTE + near-money OI)
     dte: Number.isFinite(dteEff) ? dteEff : (primaryExpiry?.dte ?? null),
     totalCallOI, totalPutOI, pcRatio, totalCallChg, totalPutChg,
