@@ -184,6 +184,8 @@ ok('resolveKey aliases → eurusd', ['EUR/USD', 'EUR_USD', 'EURUSD', 'eurusd', '
 ok('pip sizes correct', pipSize('EUR/USD') === 0.0001 && pipSize('USD/JPY') === 0.01 && pipSize('XAU/USD') === 1.0);
 ok('gold canonical pip = 1.0 (not the 0.1 drift)', pipSize('gold') === 1.0);
 ok('NQ resolves via OANDA + assetClass index', instrument('NAS100_USD').key === 'nq' && instrument('nq').assetClass === 'index');
+ok('index short-name aliases resolve (us30/uk100/us2000 were missing from EXTRA_ALIASES)',
+  resolveKey('us30') === 'dow' && resolveKey('uk100') === 'ftse' && resolveKey('us2000') === 'rut' && resolveKey('rus2000') === 'rut');
 ok('unknown instrument throws', (() => { try { instrument('ZZZ/ZZZ'); return false; } catch { return true; } })());
 ok('registry covers ≥30 instruments', INSTRUMENT_KEYS.length >= 30);
 

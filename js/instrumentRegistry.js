@@ -66,7 +66,8 @@ const REG = {
 // field on the canonical record (e.g. 'spx500'→spx, 'de30'→dax). Without these the
 // volatility-bot producer would silently drop those index survivors. Exported so
 // the JS→JSON generator applies the SAME extras (one source, both languages).
-export const EXTRA_ALIASES = { spx500: 'spx', us500: 'spx', de30: 'dax', ger40: 'dax', nas100: 'nq', ndx: 'nq', us100: 'nq' };
+export const EXTRA_ALIASES = { spx500: 'spx', us500: 'spx', de30: 'dax', ger40: 'dax', nas100: 'nq', ndx: 'nq', us100: 'nq',
+  us30: 'dow', uk100: 'ftse', us2000: 'rut', rus2000: 'rut' };
 
 const ALIAS = (() => {
   const m = new Map();
