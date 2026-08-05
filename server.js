@@ -84,6 +84,7 @@ import { analyzePair as _mcondAnalyzePair, summarizeRows as _mcondSummarize, ver
 import { creditGate as _creditGateBrick } from './js/creditCore.js';
 import { creditRegime as _creditRegime } from './js/creditHmm.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
+import { resampleBars as plResampleBars, runPatternScan } from './js/patternEngine.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
 import { runRangeExtBacktest, summarizeRangeExt, RANGE_EXT_INSTRUMENTS } from './js/rangeExtEngine.js';
@@ -19559,6 +19560,104 @@ app.get('/api/vol-backtest/candles/:pair', async (req, res) => {
     res.json({ ok: true, pair, n: candles.length, candles });
   } catch (e) {
     console.error('[candles]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Pattern Lab: chart-pattern detection & historical outcome scanner ────────
+// Detects flags/pennants, head & shoulders, double/triple tops-bottoms, and
+// triangles/channels (js/patternEngine.js) across timeframes resampled from
+// the same M1 parquet source as the vol-backtest routes above. Serves
+// precomputed scans written by scripts/pattern-lab-backtest.mjs when
+// available, falling back to a live (in-memory cached) compute otherwise.
+
+const PATTERN_LAB_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'analysis', 'output', 'pattern-lab');
+const PL_TF_MINUTES = { '1m': 1, '5m': 5, '15m': 15, '30m': 30, '1h': 60, '4h': 240, '1d': 1440 };
+const plScanCache = new Map(); // `${pair}:${minutes}` -> tfData
+
+function plNormalizeTf(tf) {
+  if (tf && PL_TF_MINUTES[tf] != null) return { minutes: PL_TF_MINUTES[tf], label: tf };
+  const minutes = parseInt(tf, 10) || 30;
+  const label = Object.entries(PL_TF_MINUTES).find(([, m]) => m === minutes)?.[0] || `${minutes}m`;
+  return { minutes, label };
+}
+
+async function plGetPacked(pair) {
+  if (!m1CandleCache.has(pair)) {
+    if (m1CandleCache.size >= M1_CACHE_MAX) m1CandleCache.delete(m1CandleCache.keys().next().value);
+    const packed = await loadM1ForPair(pair);
+    if (!packed) return null;
+    m1CandleCache.set(pair, packed);
+  }
+  return m1CandleCache.get(pair);
+}
+
+app.get('/api/pattern-lab/instruments', (_req, res) => {
+  const instruments = [...Object.keys(M1_DRIVE_IDS), 'gold'].sort();
+  let precomputed = [];
+  try { precomputed = fs.readdirSync(PATTERN_LAB_DIR).filter(f => f.endsWith('.json')).map(f => f.replace('.json', '')); } catch {}
+  res.json({ ok: true, instruments, precomputed });
+});
+
+app.get('/api/pattern-lab/candles/:pair', async (req, res) => {
+  const pair = req.params.pair.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const { minutes } = plNormalizeTf(req.query.tf);
+  const { from, to } = req.query;
+  try {
+    const packed = await plGetPacked(pair);
+    if (!packed) return res.status(404).json({ ok: false, error: `No M1 data for ${pair} — check R2 credentials or local parquet files` });
+    const bars = plResampleBars(packed, minutes);
+    const fromTs = from ? Math.floor(new Date(from + 'T00:00:00Z').getTime() / 1000) : 0;
+    const toTs   = to   ? Math.floor(new Date(to   + 'T23:59:59Z').getTime() / 1000) : 2_000_000_000;
+    const candles = [];
+    for (const b of bars) {
+      if (b.time >= fromTs && b.time <= toTs) candles.push({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close });
+      if (candles.length >= 20000) break;
+    }
+    res.json({ ok: true, pair, minutes, n: candles.length, candles });
+  } catch (e) {
+    console.error('[pattern-lab/candles]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get('/api/pattern-lab/scan/:pair', async (req, res) => {
+  const pair = req.params.pair.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const { minutes, label } = plNormalizeTf(req.query.tf);
+  const cacheKey = `${pair}:${minutes}`;
+  try {
+    if (!req.query.refresh) {
+      if (plScanCache.has(cacheKey)) return res.json({ ok: true, pair, tf: label, minutes, ...plScanCache.get(cacheKey) });
+
+      const diskFile = path.join(PATTERN_LAB_DIR, `${pair}.json`);
+      if (fs.existsSync(diskFile)) {
+        const full = JSON.parse(fs.readFileSync(diskFile, 'utf8'));
+        const tfData = full.timeframes[label];
+        if (tfData) {
+          plScanCache.set(cacheKey, tfData);
+          return res.json({ ok: true, pair, tf: label, minutes, ...tfData });
+        }
+      }
+    }
+
+    // Live compute fallback — also used for ?refresh=1 to force a re-scan.
+    const packed = await plGetPacked(pair);
+    if (!packed) return res.status(404).json({ ok: false, error: `No M1 data for ${pair} — check R2 credentials or local parquet files` });
+    const bars = plResampleBars(packed, minutes);
+    const { instances, stats } = runPatternScan(bars, {});
+    const tfData = {
+      barCount: bars.length,
+      firstBarTime: bars[0]?.time ?? null,
+      lastBarTime: bars[bars.length - 1]?.time ?? null,
+      stats,
+      totalCount: instances.length,
+      shownCount: Math.min(instances.length, 500),
+      instances: instances.slice(-500),
+    };
+    plScanCache.set(cacheKey, tfData);
+    res.json({ ok: true, pair, tf: label, minutes, ...tfData });
+  } catch (e) {
+    console.error('[pattern-lab/scan]', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
