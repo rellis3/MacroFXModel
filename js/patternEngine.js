@@ -148,6 +148,7 @@ const FLAG_OPTS = {
   poleMinBars: 4, poleMaxBars: 20, poleMinAtrMult: 3, poleMinEfficiency: 0.55,
   consolMinBars: 5, consolMaxBars: 50, consolPivotN: 2,
   maxRetracePct: 0.65, breakoutMaxBars: 30, parallelTolPct: 0.35,
+  flagFlatSlopeAtrFrac: 0.05,
 };
 
 function findPole(bars, atr, start, opts) {
@@ -188,7 +189,7 @@ function findConsolidation(bars, atr, pole, opts) {
 
     const upperSlope = (h2.price - h1.price) / (h2.idx - h1.idx);
     const lowerSlope = (l2.price - l1.price) / (l2.idx - l1.idx);
-    const localAtr = atr[winStart + winEnd] || atr[atr.length - 1];
+    const localAtr = atr[winEnd] || atr[atr.length - 1];
     if (!localAtr) continue;
 
     // Retracement guard — consolidation shouldn't give back most of the pole.
@@ -199,16 +200,24 @@ function findConsolidation(bars, atr, pole, opts) {
       : (highestInWin - bars[winStart].close) / pole.height;
     if (retrace > opts.maxRetracePct) continue;
 
+    // A flag/pennant channel must drift flat-to-against the pole, not with
+    // it — a channel still climbing in the pole's direction is just the
+    // move continuing, not a distinguishable consolidation (and isn't what
+    // any textbook flag/pennant diagram looks like).
+    const flatThresh = (opts.flagFlatSlopeAtrFrac ?? 0.05) * localAtr;
+    const avgSlope = (upperSlope + lowerSlope) / 2;
+    const opposingOrFlat = pole.direction === 'up' ? avgSlope <= flatThresh : avgSlope >= -flatThresh;
+    if (!opposingOrFlat) continue;
+
     const slopeDiff = Math.abs(upperSlope - lowerSlope);
-    const converging = (upperSlope < -0.05 * localAtr / opts.consolPivotN && lowerSlope > 0.05 * localAtr / opts.consolPivotN)
-      || Math.sign(upperSlope) !== Math.sign(lowerSlope);
-    const isParallel = slopeDiff < opts.parallelTolPct * localAtr / 10;
+    const converging = Math.sign(upperSlope) !== Math.sign(lowerSlope) && slopeDiff > flatThresh;
+    const isParallel = !converging && slopeDiff <= (opts.parallelTolPct ?? 0.35) * localAtr;
 
     const shapeType = converging ? 'pennant' : (isParallel ? 'flag' : null);
     if (!shapeType) continue;
 
     return {
-      absEndIdx: winStart + winEnd,
+      absEndIdx: winEnd,
       shapeType,
       upper: { p1: { idx: winStart + h1.idx, price: h1.price }, p2: { idx: winStart + h2.idx, price: h2.price } },
       lower: { p1: { idx: winStart + l1.idx, price: l1.price }, p2: { idx: winStart + l2.idx, price: l2.price } },
@@ -270,7 +279,7 @@ export function detectFlagsPennants(bars, atr, opts = {}) {
 
 // ── Detector: head & shoulders (regular + inverse) ───────────────────────────
 
-const HS_OPTS = { pivotN: 3, headMinAtrMult: 1.0, shoulderTolAtrMult: 2.5, breakoutMaxBars: 40 };
+const HS_OPTS = { pivotN: 5, headMinAtrMult: 1.5, shoulderTolAtrMult: 2.0, breakoutMaxBars: 40 };
 
 function detectHeadShouldersOneSide(bars, atr, opts, inverse) {
   const o = { ...HS_OPTS, ...opts };
@@ -344,7 +353,7 @@ export function detectHeadShoulders(bars, atr, opts = {}) {
 
 // ── Detector: double / triple top & bottom ───────────────────────────────────
 
-const DT_OPTS = { pivotN: 3, extremeTolAtrMult: 1.5, minRetraceAtrMult: 1.5, breakoutMaxBars: 40, maxSpanExtra: 1 };
+const DT_OPTS = { pivotN: 5, extremeTolAtrMult: 1.2, minRetraceAtrMult: 2.5, minBarsBetweenTouches: 10, breakoutMaxBars: 40 };
 
 function detectExtremesOneSide(bars, atr, opts, isTop) {
   const o = { ...DT_OPTS, ...opts };
@@ -355,10 +364,14 @@ function detectExtremesOneSide(bars, atr, opts, isTop) {
     const localAtr = atr[extremes[i].idx] || atr[atr.length - 1];
     if (!localAtr) { i++; continue; }
 
-    // Try to extend a run of 2 or 3 pivots at roughly the same level.
+    // Try to extend a run of 2 or 3 pivots at roughly the same level, each
+    // separated by at least minBarsBetweenTouches so adjacent noise wiggles
+    // on the same swing can't count as separate "touches".
     let run = [extremes[i]];
     for (let j = i + 1; j < extremes.length && run.length < 3; j++) {
       const ref = run[0].price;
+      const last = run[run.length - 1];
+      if (extremes[j].idx - last.idx < o.minBarsBetweenTouches) continue;
       if (Math.abs(extremes[j].price - ref) <= o.extremeTolAtrMult * localAtr) run.push(extremes[j]);
       else break;
     }
@@ -410,7 +423,7 @@ export function detectDoubleTripleExtremes(bars, atr, opts = {}) {
 
 // ── Detector: triangles & multi-touch channels ───────────────────────────────
 
-const TRI_OPTS = { pivotN: 3, windowBars: 120, minTouchesPerSide: 3, touchTolPct: 0.0025, flatSlopeAtrFrac: 0.02, breakoutMaxBars: 40 };
+const TRI_OPTS = { pivotN: 5, windowBars: 120, minTouchesPerSide: 3, touchTolPct: 0.0025, flatSlopeAtrFrac: 0.02, breakoutMaxBars: 40 };
 
 export function detectTrianglesChannels(bars, atr, opts = {}) {
   const o = { ...TRI_OPTS, ...opts };
@@ -436,12 +449,18 @@ export function detectTrianglesChannels(bars, atr, opts = {}) {
         const upperFlat = Math.abs(upperSlope) < flatThresh;
         const lowerFlat = Math.abs(lowerSlope) < flatThresh;
 
+        // Ascending/descending triangle = one flat side + one sloped side.
+        // Symmetrical triangle = opposite-sign slopes converging to an apex.
+        // Rising/falling wedge = SAME-sign slopes that still converge (the
+        // steeper line is catching up to the other) — distinct from a
+        // channel, where same-sign slopes stay roughly parallel.
         let shapeType = null;
         if (upperFlat && lowerSlope > flatThresh) shapeType = 'ascending_triangle';
         else if (lowerFlat && upperSlope < -flatThresh) shapeType = 'descending_triangle';
         else if (upperSlope < -flatThresh && lowerSlope > flatThresh) shapeType = 'symmetrical_triangle';
-        else if (Math.sign(upperSlope) === Math.sign(lowerSlope) && Math.abs(upperSlope - lowerSlope) < flatThresh) {
-          shapeType = upperSlope > flatThresh ? 'channel_up' : (upperSlope < -flatThresh ? 'channel_down' : null);
+        else if (Math.sign(upperSlope) === Math.sign(lowerSlope) && Math.abs(upperSlope) > flatThresh && Math.abs(lowerSlope) > flatThresh) {
+          if (upperSlope < lowerSlope - flatThresh) shapeType = upperSlope > 0 ? 'rising_wedge' : 'falling_wedge';
+          else if (Math.abs(upperSlope - lowerSlope) < flatThresh) shapeType = upperSlope > 0 ? 'channel_up' : 'channel_down';
         }
 
         if (shapeType) {
@@ -450,6 +469,11 @@ export function detectTrianglesChannels(bars, atr, opts = {}) {
           const lowerAbs1 = { idx: winStart + l1.idx, price: l1.price };
           const lowerAbs2 = { idx: winStart + l2.idx, price: l2.price };
           const heightAtStart = lineAt(upperAbs1, upperAbs2, upperAbs1.idx) - lineAt(lowerAbs1, lowerAbs2, lowerAbs1.idx);
+          // Anchor the reported start to the earliest pivot actually used in
+          // the fitted lines, not the arbitrary scan window — otherwise every
+          // instance reports the same ~windowBars duration regardless of how
+          // large the real shape is.
+          const patternStartIdx = winStart + Math.min(h1.idx, l1.idx);
 
           let confirmIdx = null, direction = null;
           const scanFrom = winEnd + 1;
@@ -464,7 +488,7 @@ export function detectTrianglesChannels(bars, atr, opts = {}) {
             const outcome = computeOutcome(bars, confirmIdx, direction, Math.abs(heightAtStart), opts);
             instances.push({
               type: shapeType,
-              startIdx: winStart, startTime: bars[winStart].time,
+              startIdx: patternStartIdx, startTime: bars[patternStartIdx].time,
               confirmIdx, confirmTime: bars[confirmIdx].time,
               direction, measuredMove: round4(Math.abs(heightAtStart)),
               lines: [
