@@ -63,6 +63,19 @@ table.pl-stats tr.active td { background: #1c2b4a; }
 .pl-badge.target { background: rgba(0,201,125,0.15); color: #00c97d; }
 .pl-badge.stop { background: rgba(239,83,80,0.15); color: #ef5350; }
 .pl-badge.timeout { background: rgba(122,136,168,0.15); color: #7a88a8; }
+.pl-badge.conf-hi { background: rgba(0,201,125,0.15); color: #00c97d; }
+.pl-badge.conf-mid { background: rgba(247,183,49,0.15); color: #f7b731; }
+.pl-badge.conf-lo { background: rgba(122,136,168,0.15); color: #7a88a8; }
+.pl-badge.aligned-yes { background: rgba(84,160,255,0.15); color: #54a0ff; }
+.pl-badge.aligned-no { background: rgba(239,83,80,0.12); color: #ef5350; }
+.pl-badge.aligned-unknown { background: rgba(122,136,168,0.1); color: #5a6380; }
+
+/* ── Confidence bucket panel ── */
+.pl-bucket-wrap { padding: 6px 12px 10px; border-bottom: 1px solid #1c2133; }
+table.pl-buckets { width: 100%; border-collapse: collapse; font-size: 10.5px; font-family: 'DM Mono', monospace; }
+table.pl-buckets th { text-align: right; color: #5a6380; font-weight: 500; padding: 2px 6px; }
+table.pl-buckets th:first-child, table.pl-buckets td:first-child { text-align: left; }
+table.pl-buckets td { text-align: right; padding: 2px 6px; }
 
 /* ── Explainer footer ── */
 .pl-footer { border-top: 1px solid #1c2133; padding: 8px 12px; font-size: 10.5px; color: #5a6380; line-height: 1.5; }
@@ -82,6 +95,9 @@ table.pl-stats tr.active td { background: #1c2b4a; }
     <span class="pl-lbl">TIMEFRAME</span>
     <div class="pl-toggle" id="tfToggle"></div>
     <div class="pl-sep"></div>
+    <span class="pl-lbl">MIN CONF</span>
+    <div class="pl-toggle" id="confToggle"></div>
+    <div class="pl-sep"></div>
     <button class="pl-btn" id="rescanBtn" title="Force a fresh scan for this pair/timeframe">↻ Rescan</button>
     <div class="pl-status" id="statusLbl">—</div>
   </div>
@@ -95,7 +111,14 @@ table.pl-stats tr.active td { background: #1c2b4a; }
       <div class="pl-section-title">Pattern outcomes — this timeframe, full history</div>
       <div class="pl-stats-wrap">
         <table class="pl-stats" id="statsTable">
-          <thead><tr><th>Pattern</th><th>N</th><th>Hit%</th><th>AvgRet%</th><th>Dur(bars)</th></tr></thead>
+          <thead><tr><th>Pattern</th><th>N</th><th>Hit%</th><th>AvgRet%</th><th>Dur</th><th>Conf</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="pl-section-title">Confidence score validation</div>
+      <div class="pl-bucket-wrap">
+        <table class="pl-buckets" id="bucketTable">
+          <thead><tr><th>Score</th><th>N</th><th>Hit%</th><th>AvgRet%</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -103,8 +126,11 @@ table.pl-stats tr.active td { background: #1c2b4a; }
       <div class="pl-inst-wrap" id="instList"></div>
       <div class="pl-footer">
         <b>Hit%</b> = forward walk reached the measured-move target before hitting the stop.
-        <b>AvgRet%</b> = mean close-to-close return at outcome across all instances (incl. stops/timeouts).
-        Click a stat row to filter by type, click an instance to see the exact geometry the engine used.
+        <b>Conf</b> = 0-100 score from impulse quality, shape/touch quality, retracement, volatility
+        compression, breakout strength &amp; acceptance (see bucket table above — does a higher score
+        actually predict a better outcome for this pair/timeframe?). <b>HTF</b> badge = does the next
+        timeframe up agree with this pattern's direction. Click a stat row to filter by type, click an
+        instance to see the exact geometry the engine used.
       </div>
     </div>
   </div>
@@ -129,6 +155,9 @@ let currentPair = 'eurusd';
 let currentTf = '30m';
 let activeType = null;
 let activeInstance = null;
+let minConfidence = 0;
+
+function confTier(score) { return score >= 80 ? 'conf-hi' : score >= 65 ? 'conf-mid' : score >= 50 ? 'conf-mid' : 'conf-lo'; }
 
 function fmtType(t) { return t.replace(/_/g, ' '); }
 
@@ -185,6 +214,18 @@ function buildTfToggle() {
   }
 }
 
+function buildConfToggle() {
+  const wrap = document.getElementById('confToggle');
+  wrap.innerHTML = '';
+  for (const c of [0, 50, 65, 80]) {
+    const btn = document.createElement('button');
+    btn.className = 'pl-toggle-btn' + (c === minConfidence ? ' active' : '');
+    btn.textContent = c === 0 ? 'all' : `${c}+`;
+    btn.onclick = () => { minConfidence = c; buildConfToggle(); renderInstanceList(); };
+    wrap.appendChild(btn);
+  }
+}
+
 async function loadScan(force) {
   document.getElementById('statusLbl').textContent = 'scanning…';
   const url = `/api/pattern-lab/scan/${currentPair}?tf=${currentTf}${force ? '&refresh=1' : ''}`;
@@ -192,9 +233,11 @@ async function loadScan(force) {
   if (!res.ok) { document.getElementById('statusLbl').textContent = 'error: ' + res.error; return; }
   currentScan = res;
   activeType = null;
+  const htfNote = res.htfTimeframe ? ` · htf=${res.htfTimeframe}` : '';
   document.getElementById('statusLbl').textContent =
-    `${res.barCount.toLocaleString()} bars · ${res.totalCount.toLocaleString()} instances found (showing latest ${res.shownCount})`;
+    `${res.barCount.toLocaleString()} bars · ${res.totalCount.toLocaleString()} instances found (showing latest ${res.shownCount})${htfNote}`;
   renderStats();
+  renderBuckets();
   renderInstanceList();
   if (res.instances.length) selectInstance(res.instances[res.instances.length - 1]);
   else { clearOverlay(); document.getElementById('emptyHint').textContent = 'No pattern instances detected at this timeframe for this pair.'; }
@@ -211,8 +254,23 @@ function renderStats() {
       <td>${s.count}</td>
       <td>${s.hitRatePct}</td>
       <td style="color:${s.avgForwardReturnPct >= 0 ? '#00c97d' : '#ef5350'}">${s.avgForwardReturnPct}</td>
-      <td>${s.avgDurationBars}</td>`;
+      <td>${s.avgDurationBars}</td>
+      <td>${s.avgConfidence ?? '—'}</td>`;
     tr.onclick = () => { activeType = activeType === s.type ? null : s.type; renderStats(); renderInstanceList(); };
+    tbody.appendChild(tr);
+  }
+}
+
+function renderBuckets() {
+  const tbody = document.querySelector('#bucketTable tbody');
+  tbody.innerHTML = '';
+  for (const b of currentScan.confidenceBuckets || []) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${b.range}</td>
+      <td>${b.count}</td>
+      <td>${b.hitRatePct}</td>
+      <td style="color:${b.avgForwardReturnPct >= 0 ? '#00c97d' : '#ef5350'}">${b.avgForwardReturnPct}</td>`;
     tbody.appendChild(tr);
   }
 }
@@ -220,13 +278,21 @@ function renderStats() {
 function renderInstanceList() {
   const wrap = document.getElementById('instList');
   wrap.innerHTML = '';
-  const list = (currentScan.instances || []).filter(i => !activeType || i.type === activeType).slice().reverse();
+  const list = (currentScan.instances || [])
+    .filter(i => !activeType || i.type === activeType)
+    .filter(i => (i.confidence?.total ?? 0) >= minConfidence)
+    .slice().reverse();
   document.getElementById('instListTitle').textContent =
     `Instances${activeType ? ' — ' + fmtType(activeType) : ''} (${list.length} shown, latest first)`;
   for (const inst of list) {
     const row = document.createElement('div');
     row.className = 'pl-inst-row' + (activeInstance === inst ? ' active' : '');
     const date = new Date(inst.confirmTime * 1000).toISOString().substring(0, 16).replace('T', ' ');
+    const conf = inst.confidence?.total ?? null;
+    const htf = inst.htf;
+    const htfBadge = htf
+      ? `<span class="pl-badge ${htf.aligned === true ? 'aligned-yes' : htf.aligned === false ? 'aligned-no' : 'aligned-unknown'}" title="${htf.timeframe} regime: ${htf.regime || 'unknown'}">HTF ${htf.aligned === true ? '✓' : htf.aligned === false ? '✗' : '–'}</span>`
+      : '';
     row.innerHTML = `
       <div class="pl-inst-top">
         <span class="pl-inst-type">${fmtType(inst.type)}</span>
@@ -235,6 +301,8 @@ function renderInstanceList() {
       <div class="pl-inst-bottom">
         <span class="pl-badge ${inst.direction}">${inst.direction === 'up' ? '▲ up' : '▼ down'}</span>
         <span class="pl-badge ${inst.outcome.outcome}">${inst.outcome.outcome}</span>
+        ${conf != null ? `<span class="pl-badge ${confTier(conf)}" title="acceptance ${inst.acceptance ? Math.round(inst.acceptance.holdFrac * 100) + '%' : '—'}">conf ${conf}</span>` : ''}
+        ${htfBadge}
         <span>${inst.outcome.forwardReturnPct}% · ${inst.confirmIdx - inst.startIdx} bars</span>
       </div>`;
     row.onclick = () => selectInstance(inst, row);
@@ -296,6 +364,7 @@ document.getElementById('rescanBtn').onclick = () => loadScan(true);
 (async function init() {
   buildChart();
   buildTfToggle();
+  buildConfToggle();
   await loadInstruments();
   await loadScan();
 })();

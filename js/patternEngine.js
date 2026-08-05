@@ -141,6 +141,130 @@ function computeOutcome(bars, confirmIdx, direction, measuredMove, opts = {}) {
 }
 
 function round4(x) { return Math.round(x * 10000) / 10000; }
+function clamp01(x) { return Math.max(0, Math.min(1, x)); }
+
+// ── Trend / market-structure classification ──────────────────────────────────
+//
+// Classifies structure the way price-action traders actually read it: walk
+// the confirmed swing highs/lows chronologically and label each new pair as
+// Higher-High/Higher-Low (uptrend), Lower-High/Lower-Low (downtrend), or
+// mixed (range/CHoCH). Patterns should never be evaluated in a vacuum — this
+// is what lets a detector (or a human) ask "does this bull flag actually
+// agree with the prevailing trend?" instead of just "does the shape match?"
+//
+// Returns a sparse list of regime change-points; use regimeAt() to look up
+// whichever regime was in force at any bar index in O(log n).
+export function classifySwingStructure(bars, pivotN = 5) {
+  const highs = pivotHighs(bars, pivotN);
+  const lows = pivotLows(bars, pivotN);
+  const events = [
+    ...highs.map(p => ({ ...p, kind: 'high' })),
+    ...lows.map(p => ({ ...p, kind: 'low' })),
+  ].sort((a, b) => a.idx - b.idx);
+
+  const series = [{ idx: 0, time: bars[0]?.time ?? 0, regime: 'range', dir: null, label: 'insufficient structure' }];
+  let prevHigh = null, lastHigh = null, prevLow = null, lastLow = null;
+
+  for (const ev of events) {
+    if (ev.kind === 'high') { prevHigh = lastHigh; lastHigh = ev; }
+    else { prevLow = lastLow; lastLow = ev; }
+    if (!prevHigh || !prevLow) continue;
+
+    const hh = lastHigh.price > prevHigh.price;
+    const hl = lastLow.price  > prevLow.price;
+    const lh = lastHigh.price < prevHigh.price;
+    const ll = lastLow.price  < prevLow.price;
+
+    let regime = 'range', dir = null, label = 'mixed structure (CHoCH)';
+    if (hh && hl) { regime = 'trend_up'; dir = 'up'; label = 'HH + HL'; }
+    else if (lh && ll) { regime = 'trend_down'; dir = 'down'; label = 'LH + LL'; }
+
+    const last = series[series.length - 1];
+    if (regime !== last.regime || dir !== last.dir) series.push({ idx: ev.idx, time: ev.time, regime, dir, label });
+  }
+  return series;
+}
+
+// Binary search: the regime in force at bar index `idx` (last change-point <= idx).
+export function regimeAt(series, idx) {
+  if (!series || !series.length) return null;
+  let lo = 0, hi = series.length - 1, ans = series[0];
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (series[mid].idx <= idx) { ans = series[mid]; lo = mid + 1; }
+    else hi = mid - 1;
+  }
+  return ans;
+}
+
+// Nearest bar on `bars` at-or-before `time` (epoch seconds) — used to look up
+// a higher timeframe's regime at the moment a lower-timeframe pattern confirmed.
+function barIdxAtOrBefore(bars, time) {
+  let lo = 0, hi = bars.length - 1, ans = 0;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (bars[mid].time <= time) { ans = mid; lo = mid + 1; }
+    else hi = mid - 1;
+  }
+  return ans;
+}
+
+// After a confirmed breakout, "acceptance" asks whether price actually stays
+// beyond the breakout level rather than immediately snapping back in — a
+// cheap, high-value filter for false breakouts, especially on noisy
+// lower timeframes where a single-bar close-through is easy to fake.
+function computeAcceptance(bars, confirmIdx, breakoutLevel, direction, opts = {}) {
+  const acceptBars = opts.acceptanceBars ?? 3;
+  const minHoldFrac = opts.acceptanceMinHoldFrac ?? 0.66;
+  const lastIdx = Math.min(bars.length - 1, confirmIdx + acceptBars);
+  let held = 0, checked = 0;
+  for (let k = confirmIdx + 1; k <= lastIdx; k++) {
+    checked++;
+    const holds = direction === 'up' ? bars[k].close >= breakoutLevel : bars[k].close <= breakoutLevel;
+    if (holds) held++;
+  }
+  const holdFrac = checked ? held / checked : 0;
+  return { checked, held, holdFrac: round4(holdFrac), accepted: checked > 0 && holdFrac >= minHoldFrac };
+}
+
+// Generic 0-100 confidence score, composed from sub-scores every detector
+// attaches at creation time (inst.rawScores — each already 0-1: impulseQuality,
+// shapeQuality, retracementQuality) plus two shared, type-agnostic checks:
+// volatility compression during the pattern's formation, and breakout
+// strength. Acceptance (does the breakout hold) is folded in last. Trend
+// alignment (own-timeframe and higher-timeframe) is deliberately kept OUT of
+// this number and exposed as separate fields — "is this a well-formed shape"
+// and "is the context favorable" are different questions a trader asks, and
+// collapsing them into one opaque score hides which one is failing.
+const CONFIDENCE_WEIGHTS = { impulseQuality: 20, shapeQuality: 20, retracementQuality: 15, volCompression: 15, breakoutStrength: 15, acceptance: 15 };
+
+function computeConfidence(inst, bars, atr, atrSlow) {
+  const raw = inst.rawScores || {};
+  const slowAtStart = atrSlow[inst.startIdx] || atrSlow[0] || 0;
+  const volRatio = slowAtStart > 0 ? (atr[inst.startIdx] || atr[0]) / slowAtStart : 1;
+  // Contraction (ratio < 1) is what every reference pattern shows during
+  // formation — score peaks at a healthy contraction (~0.6) and falls off
+  // for no contraction at all or absurdly dead volatility.
+  const volCompression = clamp01(1 - Math.abs(volRatio - 0.6) / 0.6);
+
+  const localAtr = atr[inst.confirmIdx] || atr[atr.length - 1] || 1;
+  const breakoutDistance = inst.breakoutLevel != null
+    ? Math.abs(bars[inst.confirmIdx].close - inst.breakoutLevel) / localAtr
+    : 0;
+  const breakoutStrength = clamp01(breakoutDistance / 0.75); // a full ATR through the line = max score
+
+  const acceptanceScore = inst.acceptance ? inst.acceptance.holdFrac : 0;
+
+  const sub = {
+    impulseQuality: clamp01(raw.impulseQuality ?? 0.5),
+    shapeQuality: clamp01(raw.shapeQuality ?? 0.5),
+    retracementQuality: clamp01(raw.retracementQuality ?? 0.5),
+    volCompression, breakoutStrength, acceptance: acceptanceScore,
+  };
+  let score = 0;
+  for (const [k, w] of Object.entries(CONFIDENCE_WEIGHTS)) score += sub[k] * w;
+  return { total: Math.round(score), sub: Object.fromEntries(Object.entries(sub).map(([k, v]) => [k, round4(v)])) };
+}
 
 // ── Detector: flags & pennants ───────────────────────────────────────────────
 
@@ -148,7 +272,7 @@ const FLAG_OPTS = {
   poleMinBars: 4, poleMaxBars: 20, poleMinAtrMult: 3, poleMinEfficiency: 0.55,
   consolMinBars: 5, consolMaxBars: 50, consolPivotN: 2,
   maxRetracePct: 0.65, breakoutMaxBars: 30, parallelTolPct: 0.35,
-  flagFlatSlopeAtrFrac: 0.05,
+  flagFlatSlopeAtrFrac: 0.05, touchTolPct: 0.003,
 };
 
 function findPole(bars, atr, start, opts) {
@@ -166,7 +290,7 @@ function findPole(bars, atr, start, opts) {
     if (Math.abs(netMove) >= opts.poleMinAtrMult * localAtr && efficiency >= opts.poleMinEfficiency) {
       const score = Math.abs(netMove) / localAtr;
       if (!best || score > best.score) {
-        best = { startIdx: start, endIdx: end, direction: netMove > 0 ? 'up' : 'down', height: Math.abs(netMove), score };
+        best = { startIdx: start, endIdx: end, direction: netMove > 0 ? 'up' : 'down', height: Math.abs(netMove), score, efficiency };
       }
     }
   }
@@ -216,9 +340,12 @@ function findConsolidation(bars, atr, pole, opts) {
     const shapeType = converging ? 'pennant' : (isParallel ? 'flag' : null);
     if (!shapeType) continue;
 
+    const upperTouches = lineTouches(highs, h1.idx, h1.price, h2.idx, h2.price, opts.touchTolPct ?? 0.003);
+    const lowerTouches = lineTouches(lows, l1.idx, l1.price, l2.idx, l2.price, opts.touchTolPct ?? 0.003);
+
     return {
       absEndIdx: winEnd,
-      shapeType,
+      shapeType, upperTouches, lowerTouches, retrace,
       upper: { p1: { idx: winStart + h1.idx, price: h1.price }, p2: { idx: winStart + h2.idx, price: h2.price } },
       lower: { p1: { idx: winStart + l1.idx, price: l1.price }, p2: { idx: winStart + l2.idx, price: l2.price } },
     };
@@ -234,8 +361,8 @@ function findBreakout(bars, consol, direction, opts) {
       { idx: boundary.p2.idx, price: boundary.p2.price },
       i,
     );
-    if (direction === 'up' && bars[i].close > level) return i;
-    if (direction === 'down' && bars[i].close < level) return i;
+    if (direction === 'up' && bars[i].close > level) return { idx: i, level };
+    if (direction === 'down' && bars[i].close < level) return { idx: i, level };
   }
   return null;
 }
@@ -250,13 +377,23 @@ export function detectFlagsPennants(bars, atr, opts = {}) {
     if (!pole) { i++; continue; }
     const consol = findConsolidation(bars, atr, pole, o);
     if (!consol) { i = pole.endIdx + 1; continue; }
-    const confirmIdx = findBreakout(bars, consol, pole.direction, o);
-    if (!confirmIdx) { i = consol.absEndIdx + 1; continue; }
+    const breakout = findBreakout(bars, consol, pole.direction, o);
+    if (!breakout) { i = consol.absEndIdx + 1; continue; }
+    const confirmIdx = breakout.idx;
 
     const outcome = computeOutcome(bars, confirmIdx, pole.direction, pole.height, opts);
     const label = pole.direction === 'up'
       ? (consol.shapeType === 'pennant' ? 'bull_pennant' : 'bull_flag')
       : (consol.shapeType === 'pennant' ? 'bear_pennant' : 'bear_flag');
+
+    // impulseQuality: how forceful/clean the pole was beyond the minimum bar.
+    // shapeQuality: total touches on both trendlines beyond the 4 anchors.
+    // retracementQuality: peaks near the middle of the healthy 20-50% band.
+    const rawScores = {
+      impulseQuality: clamp01(0.5 * (pole.score / (o.poleMinAtrMult * 3)) + 0.5 * pole.efficiency),
+      shapeQuality: clamp01((consol.upperTouches + consol.lowerTouches - 4) / 6),
+      retracementQuality: 1 - clamp01(Math.abs(consol.retrace - 0.35) / 0.35),
+    };
 
     instances.push({
       type: label,
@@ -264,6 +401,8 @@ export function detectFlagsPennants(bars, atr, opts = {}) {
       confirmIdx, confirmTime: bars[confirmIdx].time,
       direction: pole.direction,
       measuredMove: round4(pole.height),
+      breakoutLevel: breakout.level,
+      rawScores,
       lines: [
         { role: 'pole', p1: { idx: pole.startIdx, time: bars[pole.startIdx].time, price: bars[pole.startIdx].open }, p2: { idx: pole.endIdx, time: bars[pole.endIdx].time, price: bars[pole.endIdx].close } },
         { role: 'upper', p1: { idx: consol.upper.p1.idx, time: bars[consol.upper.p1.idx].time, price: consol.upper.p1.price }, p2: { idx: consol.upper.p2.idx, time: bars[consol.upper.p2.idx].time, price: consol.upper.p2.price } },
@@ -319,11 +458,19 @@ function detectHeadShouldersOneSide(bars, atr, opts, inverse) {
           const measuredMove = Math.abs(H.price - lineAt(n1abs, n2abs, H.idx));
           const direction = inverse ? 'up' : 'down';
           const outcome = computeOutcome(bars, confirmIdx, direction, measuredMove, opts);
+          const leftLen = H.idx - L.idx, rightLen = R.idx - H.idx;
+          const rawScores = {
+            impulseQuality: clamp01(headMargin / (o.headMinAtrMult * 3 * localAtr)),
+            shapeQuality: 1 - clamp01(Math.abs(L.price - R.price) / (o.shoulderTolAtrMult * localAtr)),
+            retracementQuality: 1 - clamp01(Math.abs(leftLen - rightLen) / Math.max(leftLen, rightLen)),
+          };
           instances.push({
             type: inverse ? 'inverse_head_shoulders' : 'head_shoulders',
             startIdx: L.idx, startTime: bars[L.idx].time,
             confirmIdx, confirmTime: bars[confirmIdx].time,
             direction, measuredMove: round4(measuredMove),
+            breakoutLevel: lineAt(n1abs, n2abs, confirmIdx),
+            rawScores,
             lines: [
               { role: 'neckline', p1: { idx: n1abs.idx, time: bars[n1abs.idx].time, price: n1abs.price }, p2: { idx: n2abs.idx, time: bars[n2abs.idx].time, price: n2abs.price } },
             ],
@@ -395,11 +542,21 @@ function detectExtremesOneSide(bars, atr, opts, isTop) {
     if (confirmIdx) {
       const direction = isTop ? 'down' : 'up';
       const outcome = computeOutcome(bars, confirmIdx, direction, retrace, opts);
+      const maxTouchDiff = Math.max(...run.map(p => Math.abs(p.price - run[0].price)));
+      const gaps = run.slice(1).map((p, k) => p.idx - run[k].idx);
+      const gapEvenness = gaps.length < 2 ? 1 : 1 - clamp01(Math.abs(gaps[0] - gaps[1]) / Math.max(gaps[0], gaps[1]));
+      const rawScores = {
+        impulseQuality: clamp01(retrace / (o.minRetraceAtrMult * 3 * localAtr)),
+        shapeQuality: 1 - clamp01(maxTouchDiff / (o.extremeTolAtrMult * localAtr)),
+        retracementQuality: gapEvenness,
+      };
       instances.push({
         type: `${run.length === 2 ? 'double' : 'triple'}_${isTop ? 'top' : 'bottom'}`,
         startIdx: run[0].idx, startTime: run[0].time,
         confirmIdx, confirmTime: bars[confirmIdx].time,
         direction, measuredMove: round4(retrace),
+        breakoutLevel: levelAbs.price,
+        rawScores,
         lines: [
           { role: 'support', p1: { idx: levelAbs.idx, time: bars[levelAbs.idx].time, price: levelAbs.price }, p2: { idx: confirmIdx, time: bars[confirmIdx].time, price: levelAbs.price } },
         ],
@@ -475,22 +632,35 @@ export function detectTrianglesChannels(bars, atr, opts = {}) {
           // large the real shape is.
           const patternStartIdx = winStart + Math.min(h1.idx, l1.idx);
 
-          let confirmIdx = null, direction = null;
+          let confirmIdx = null, direction = null, breakoutLevel = null;
           const scanFrom = winEnd + 1;
           for (let i = scanFrom; i <= Math.min(scanFrom + o.breakoutMaxBars, bars.length - 1); i++) {
             const up = lineAt(upperAbs1, upperAbs2, i);
             const dn = lineAt(lowerAbs1, lowerAbs2, i);
-            if (bars[i].close > up) { confirmIdx = i; direction = 'up'; break; }
-            if (bars[i].close < dn) { confirmIdx = i; direction = 'down'; break; }
+            if (bars[i].close > up) { confirmIdx = i; direction = 'up'; breakoutLevel = up; break; }
+            if (bars[i].close < dn) { confirmIdx = i; direction = 'down'; breakoutLevel = dn; break; }
           }
 
           if (confirmIdx) {
             const outcome = computeOutcome(bars, confirmIdx, direction, Math.abs(heightAtStart), opts);
+            // Triangles/wedges are expected to converge — score how much the
+            // gap actually narrowed by breakout. Channels are expected to
+            // stay parallel — score how close the two slopes are instead.
+            const heightAtConfirm = lineAt(upperAbs1, upperAbs2, confirmIdx) - lineAt(lowerAbs1, lowerAbs2, confirmIdx);
+            const isConverging = shapeType.includes('triangle') || shapeType.includes('wedge');
+            const rawScores = {
+              impulseQuality: clamp01((upperTouches + lowerTouches - o.minTouchesPerSide * 2) / (o.minTouchesPerSide * 2)),
+              shapeQuality: 1 - clamp01(Math.abs(upperTouches - lowerTouches) / (upperTouches + lowerTouches)),
+              retracementQuality: isConverging
+                ? clamp01(1 - Math.abs(heightAtConfirm) / Math.max(Math.abs(heightAtStart), 1e-9))
+                : 1 - clamp01(Math.abs(upperSlope - lowerSlope) / flatThresh),
+            };
             instances.push({
               type: shapeType,
               startIdx: patternStartIdx, startTime: bars[patternStartIdx].time,
               confirmIdx, confirmTime: bars[confirmIdx].time,
               direction, measuredMove: round4(Math.abs(heightAtStart)),
+              breakoutLevel, rawScores,
               lines: [
                 { role: 'upper', p1: { idx: upperAbs1.idx, time: bars[upperAbs1.idx].time, price: upperAbs1.price }, p2: { idx: upperAbs2.idx, time: bars[upperAbs2.idx].time, price: upperAbs2.price } },
                 { role: 'lower', p1: { idx: lowerAbs1.idx, time: bars[lowerAbs1.idx].time, price: lowerAbs1.price }, p2: { idx: lowerAbs2.idx, time: bars[lowerAbs2.idx].time, price: lowerAbs2.price } },
@@ -513,6 +683,9 @@ export function detectTrianglesChannels(bars, atr, opts = {}) {
 
 export function runPatternScan(bars, opts = {}) {
   const atr = computeATR(bars, opts.atrPeriod ?? 14);
+  const atrSlow = computeATR(bars, opts.atrSlowPeriod ?? 50);
+  const structure = classifySwingStructure(bars, opts.structurePivotN ?? 5);
+
   const instances = [
     ...detectFlagsPennants(bars, atr, opts),
     ...detectHeadShoulders(bars, atr, opts),
@@ -520,18 +693,46 @@ export function runPatternScan(bars, opts = {}) {
     ...detectTrianglesChannels(bars, atr, opts),
   ].sort((a, b) => a.confirmIdx - b.confirmIdx);
 
+  for (const inst of instances) {
+    inst.acceptance = computeAcceptance(bars, inst.confirmIdx, inst.breakoutLevel, inst.direction, opts);
+    const regime = regimeAt(structure, inst.startIdx);
+    inst.trendRegime = regime ? regime.regime : null;
+    inst.trendAligned = regime && regime.dir ? regime.dir === inst.direction : null;
+    inst.confidence = computeConfidence(inst, bars, atr, atrSlow);
+  }
+
   const stats = aggregateStats(instances);
-  return { instances, stats };
+  return { instances, stats, structure };
+}
+
+// Cross-timeframe confluence: for each instance detected on `bars` (its own
+// timeframe), look up the regime in force on a HIGHER timeframe at the same
+// moment (via its own classifySwingStructure() series) and tag whether the
+// two agree. Call once per (own timeframe, higher timeframe) pair — e.g. the
+// CLI/server run this for 5m against 15m, 15m against 1h, and so on, so a
+// 15m bull-flag candidate can be scored against "is the 1h even trending up".
+export function annotateHtfAlignment(instances, htfBars, htfStructure, htfLabel) {
+  for (const inst of instances) {
+    const htfIdx = barIdxAtOrBefore(htfBars, inst.confirmTime);
+    const regime = regimeAt(htfStructure, htfIdx);
+    inst.htf = {
+      timeframe: htfLabel,
+      regime: regime ? regime.regime : null,
+      aligned: regime && regime.dir ? regime.dir === inst.direction : null,
+    };
+  }
+  return instances;
 }
 
 export function aggregateStats(instances) {
   const byType = {};
   for (const inst of instances) {
-    if (!byType[inst.type]) byType[inst.type] = { type: inst.type, count: 0, targets: 0, stops: 0, timeouts: 0, sumReturn: 0, sumDurationBars: 0, sumBarsToOutcome: 0, outcomesWithBars: 0 };
+    if (!byType[inst.type]) byType[inst.type] = { type: inst.type, count: 0, targets: 0, stops: 0, timeouts: 0, sumReturn: 0, sumDurationBars: 0, sumBarsToOutcome: 0, outcomesWithBars: 0, sumConfidence: 0 };
     const s = byType[inst.type];
     s.count++;
     s.sumReturn += inst.outcome.forwardReturnPct;
     s.sumDurationBars += (inst.confirmIdx - inst.startIdx);
+    s.sumConfidence += inst.confidence?.total ?? 0;
     if (inst.outcome.outcome === 'target') s.targets++;
     else if (inst.outcome.outcome === 'stop') s.stops++;
     else s.timeouts++;
@@ -546,5 +747,25 @@ export function aggregateStats(instances) {
     avgForwardReturnPct: s.count ? round4(s.sumReturn / s.count) : 0,
     avgDurationBars: s.count ? round4(s.sumDurationBars / s.count) : 0,
     avgBarsToOutcome: s.outcomesWithBars ? round4(s.sumBarsToOutcome / s.outcomesWithBars) : null,
+    avgConfidence: s.count ? round4(s.sumConfidence / s.count) : 0,
   })).sort((a, b) => b.count - a.count);
+}
+
+// Buckets every instance (across all pattern types) by confidence score and
+// reports hit rate / avg return per bucket. This is the check that actually
+// proves the scoring weights are doing something — if a 80+ bucket doesn't
+// outperform a <50 bucket, the weights need rethinking, not the detectors.
+const CONFIDENCE_BUCKETS = [[0, 50], [50, 65], [65, 80], [80, 101]];
+export function confidenceBucketStats(instances) {
+  return CONFIDENCE_BUCKETS.map(([lo, hi]) => {
+    const inBucket = instances.filter(i => (i.confidence?.total ?? 0) >= lo && (i.confidence?.total ?? 0) < hi);
+    const targets = inBucket.filter(i => i.outcome.outcome === 'target').length;
+    const sumReturn = inBucket.reduce((a, i) => a + i.outcome.forwardReturnPct, 0);
+    return {
+      range: `${lo}-${hi - 1}`,
+      count: inBucket.length,
+      hitRatePct: inBucket.length ? round4((targets / inBucket.length) * 100) : 0,
+      avgForwardReturnPct: inBucket.length ? round4(sumReturn / inBucket.length) : 0,
+    };
+  });
 }
