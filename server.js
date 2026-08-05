@@ -84,7 +84,7 @@ import { analyzePair as _mcondAnalyzePair, summarizeRows as _mcondSummarize, ver
 import { creditGate as _creditGateBrick } from './js/creditCore.js';
 import { creditRegime as _creditRegime } from './js/creditHmm.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
-import { resampleBars as plResampleBars, runPatternScan } from './js/patternEngine.js';
+import { resampleBars as plResampleBars, runPatternScan, annotateHtfAlignment as plAnnotateHtfAlignment, confidenceBucketStats as plConfidenceBucketStats, classifySwingStructure as plClassifySwingStructure } from './js/patternEngine.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
 import { runRangeExtBacktest, summarizeRangeExt, RANGE_EXT_INSTRUMENTS } from './js/rangeExtEngine.js';
@@ -19662,11 +19662,25 @@ app.get('/api/pattern-lab/scan/:pair', async (req, res) => {
     if (!packed) return res.status(404).json({ ok: false, error: `No M1 data for ${pair} — check R2 credentials or local parquet files` });
     const bars = plResampleBars(packed, minutes);
     const { instances, stats } = runPatternScan(bars, {});
+
+    // Cross-timeframe confluence: annotate against the next-higher timeframe
+    // (e.g. 15m instances tagged against what the 1h trend is doing).
+    const higherMinutes = Object.values(PL_TF_MINUTES).filter(m => m > minutes).sort((a, b) => a - b)[0];
+    let htfLabel = null;
+    if (higherMinutes) {
+      htfLabel = Object.entries(PL_TF_MINUTES).find(([, m]) => m === higherMinutes)?.[0] || `${higherMinutes}m`;
+      const htfBars = plResampleBars(packed, higherMinutes);
+      const htfStructure = plClassifySwingStructure(htfBars, 5);
+      plAnnotateHtfAlignment(instances, htfBars, htfStructure, htfLabel);
+    }
+
     const tfData = {
       barCount: bars.length,
       firstBarTime: bars[0]?.time ?? null,
       lastBarTime: bars[bars.length - 1]?.time ?? null,
+      htfTimeframe: htfLabel,
       stats,
+      confidenceBuckets: plConfidenceBucketStats(instances),
       totalCount: instances.length,
       shownCount: Math.min(instances.length, 500),
       instances: instances.slice(-500),
