@@ -100,7 +100,8 @@ async function main() {
   for (const [label, tf] of Object.entries(result.timeframes)) {
     console.log(`\n${label} (${tf.barCount.toLocaleString()} bars, htf=${tf.htfTimeframe || 'none'}):`);
     for (const s of tf.stats) {
-      console.log(`  ${s.type.padEnd(24)} n=${String(s.count).padEnd(5)} hit=${s.hitRatePct}%  avgRet=${s.avgForwardReturnPct}%  avgDur=${s.avgDurationBars}bars  avgConf=${s.avgConfidence}`);
+      const playedOut = s.playedOutRatePct == null ? 'n/a' : `${s.playedOutRatePct}%`;
+      console.log(`  ${s.type.padEnd(24)} n=${String(s.count).padEnd(5)} playedOut=${String(playedOut).padEnd(7)} hit=${s.hitRatePct}%  avgRet=${s.avgForwardReturnPct}%  avgDur=${s.avgDurationBars}bars  avgConf=${s.avgConfidence}`);
     }
     console.log('  confidence buckets:', tf.confidenceBuckets.map(b => `${b.range}=n${b.count}/hit${b.hitRatePct}%`).join('  '));
   }

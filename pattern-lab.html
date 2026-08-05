@@ -111,7 +111,7 @@ table.pl-buckets td { text-align: right; padding: 2px 6px; }
       <div class="pl-section-title">Pattern outcomes — this timeframe, full history</div>
       <div class="pl-stats-wrap">
         <table class="pl-stats" id="statsTable">
-          <thead><tr><th>Pattern</th><th>N</th><th>Hit%</th><th>AvgRet%</th><th>Dur</th><th>Conf</th></tr></thead>
+          <thead><tr><th>Pattern</th><th>N</th><th>Hit%</th><th>AvgRet%</th><th>Dur</th><th>Conf</th><th title="% that broke in the direction the pattern theoretically implies">PlayedOut%</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -125,7 +125,12 @@ table.pl-buckets td { text-align: right; padding: 2px 6px; }
       <div class="pl-section-title" id="instListTitle">Instances</div>
       <div class="pl-inst-wrap" id="instList"></div>
       <div class="pl-footer">
-        <b>Hit%</b> = forward walk reached the measured-move target before hitting the stop.
+        <b>PlayedOut%</b> = % that broke in the direction the pattern theoretically implies (pole
+        direction for flags/pennants, reversal direction for H&amp;S/double-triple, conventional bias
+        for triangles/wedges/channels — n/a for symmetrical triangle, which has no textbook bias). The
+        rest still get logged as failed/reversed instances rather than silently dropped, so this is the
+        real base rate, not a rate conditioned on success. <b>Hit%</b> = forward walk reached the
+        measured-move target before hitting the stop, regardless of which way it actually broke.
         <b>Conf</b> = 0-100 score from impulse quality, shape/touch quality, retracement, volatility
         compression, breakout strength &amp; acceptance (see bucket table above — does a higher score
         actually predict a better outcome for this pair/timeframe?). <b>HTF</b> badge = does the next
@@ -255,7 +260,8 @@ function renderStats() {
       <td>${s.hitRatePct}</td>
       <td style="color:${s.avgForwardReturnPct >= 0 ? '#00c97d' : '#ef5350'}">${s.avgForwardReturnPct}</td>
       <td>${s.avgDurationBars}</td>
-      <td>${s.avgConfidence ?? '—'}</td>`;
+      <td>${s.avgConfidence ?? '—'}</td>
+      <td>${s.playedOutRatePct == null ? 'n/a' : s.playedOutRatePct}</td>`;
     tr.onclick = () => { activeType = activeType === s.type ? null : s.type; renderStats(); renderInstanceList(); };
     tbody.appendChild(tr);
   }
@@ -293,6 +299,10 @@ function renderInstanceList() {
     const htfBadge = htf
       ? `<span class="pl-badge ${htf.aligned === true ? 'aligned-yes' : htf.aligned === false ? 'aligned-no' : 'aligned-unknown'}" title="${htf.timeframe} regime: ${htf.regime || 'unknown'}">HTF ${htf.aligned === true ? '✓' : htf.aligned === false ? '✗' : '–'}</span>`
       : '';
+    const playedOutBadge = inst.playedOut == null ? ''
+      : inst.playedOut
+        ? `<span class="pl-badge aligned-yes" title="expected ${inst.expectedDirection}, broke ${inst.direction} — played out as the pattern implies">as expected</span>`
+        : `<span class="pl-badge aligned-no" title="expected ${inst.expectedDirection}, broke ${inst.direction} instead — pattern failed/reversed">failed ✗</span>`;
     row.innerHTML = `
       <div class="pl-inst-top">
         <span class="pl-inst-type">${fmtType(inst.type)}</span>
@@ -301,6 +311,7 @@ function renderInstanceList() {
       <div class="pl-inst-bottom">
         <span class="pl-badge ${inst.direction}">${inst.direction === 'up' ? '▲ up' : '▼ down'}</span>
         <span class="pl-badge ${inst.outcome.outcome}">${inst.outcome.outcome}</span>
+        ${playedOutBadge}
         ${conf != null ? `<span class="pl-badge ${confTier(conf)}" title="acceptance ${inst.acceptance ? Math.round(inst.acceptance.holdFrac * 100) + '%' : '—'}">conf ${conf}</span>` : ''}
         ${htfBadge}
         <span>${inst.outcome.forwardReturnPct}% · ${inst.confirmIdx - inst.startIdx} bars</span>

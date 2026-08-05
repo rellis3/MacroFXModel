@@ -358,16 +358,17 @@ function findConsolidation(bars, atr, pole, opts) {
   return null;
 }
 
-function findBreakout(bars, consol, direction, opts) {
-  const boundary = direction === 'up' ? consol.upper : consol.lower;
+// Checks BOTH boundaries and returns whichever breaks first — a flag/pennant
+// is only confirmed as a real "did the pole's move continue" test if failure
+// (breaking the wrong way) is a possible outcome too. Searching only the
+// pole's direction would silently drop every failed flag from the data
+// entirely, making the pattern look more reliable than it is.
+function findBreakout(bars, consol, opts) {
   for (let i = consol.absEndIdx + 1; i <= Math.min(consol.absEndIdx + opts.breakoutMaxBars, bars.length - 1); i++) {
-    const level = lineAt(
-      { idx: boundary.p1.idx, price: boundary.p1.price },
-      { idx: boundary.p2.idx, price: boundary.p2.price },
-      i,
-    );
-    if (direction === 'up' && bars[i].close > level) return { idx: i, level };
-    if (direction === 'down' && bars[i].close < level) return { idx: i, level };
+    const upLevel = lineAt({ idx: consol.upper.p1.idx, price: consol.upper.p1.price }, { idx: consol.upper.p2.idx, price: consol.upper.p2.price }, i);
+    const dnLevel = lineAt({ idx: consol.lower.p1.idx, price: consol.lower.p1.price }, { idx: consol.lower.p2.idx, price: consol.lower.p2.price }, i);
+    if (bars[i].close > upLevel) return { idx: i, level: upLevel, direction: 'up' };
+    if (bars[i].close < dnLevel) return { idx: i, level: dnLevel, direction: 'down' };
   }
   return null;
 }
@@ -382,11 +383,15 @@ export function detectFlagsPennants(bars, atr, opts = {}) {
     if (!pole) { i++; continue; }
     const consol = findConsolidation(bars, atr, pole, o);
     if (!consol) { i = pole.endIdx + 1; continue; }
-    const breakout = findBreakout(bars, consol, pole.direction, o);
+    const breakout = findBreakout(bars, consol, o);
     if (!breakout) { i = consol.absEndIdx + 1; continue; }
     const confirmIdx = breakout.idx;
 
-    const outcome = computeOutcome(bars, confirmIdx, pole.direction, pole.height, opts);
+    // The pattern's IDENTITY (bull flag vs bear flag) is fixed by the pole
+    // that formed it — a "bull flag" stays a bull flag whether it goes on to
+    // continue up (as expected) or fails and breaks down. Direction below is
+    // what ACTUALLY happened; expectedDirection is what the pole implies.
+    const outcome = computeOutcome(bars, confirmIdx, breakout.direction, pole.height, opts);
     const label = pole.direction === 'up'
       ? (consol.shapeType === 'pennant' ? 'bull_pennant' : 'bull_flag')
       : (consol.shapeType === 'pennant' ? 'bear_pennant' : 'bear_flag');
@@ -404,7 +409,9 @@ export function detectFlagsPennants(bars, atr, opts = {}) {
       type: label,
       startIdx: pole.startIdx, startTime: bars[pole.startIdx].time,
       confirmIdx, confirmTime: bars[confirmIdx].time,
-      direction: pole.direction,
+      direction: breakout.direction,
+      expectedDirection: pole.direction,
+      playedOut: breakout.direction === pole.direction,
       measuredMove: round4(pole.height),
       breakoutLevel: breakout.level,
       rawScores,
@@ -463,16 +470,31 @@ function detectHeadShouldersOneSide(bars, atr, opts, inverse) {
         const minProminence = o.shoulderProminenceAtrMult * localAtr;
         if (leftProminence < minProminence || rightProminence < minProminence) { ci++; continue; }
 
-        let confirmIdx = null;
+        // A real head & shoulders test needs a real chance to fail — check
+        // for a neckline break (expected reversal) OR a new extreme beyond
+        // the right shoulder itself (standard invalidation: the reversal
+        // never got going, price just kept making new highs/lows). The
+        // right shoulder — not the neckline — is the correct failure
+        // boundary: the neckline sits far below/above where price actually
+        // is at R, so checking against it directly would trigger "failure"
+        // on virtually the very next bar regardless of what price does.
+        const expectedDirection = inverse ? 'up' : 'down';
+        const failureLevel = R.price;
+        let confirmIdx = null, direction = null;
         for (let i = R.idx + 1; i <= Math.min(R.idx + o.breakoutMaxBars, bars.length - 1); i++) {
           const neckAt = lineAt(n1abs, n2abs, i);
-          if (inverse && bars[i].close > neckAt) { confirmIdx = i; break; }
-          if (!inverse && bars[i].close < neckAt) { confirmIdx = i; break; }
+          if (inverse) {
+            if (bars[i].close > neckAt) { confirmIdx = i; direction = 'up'; break; }
+            if (bars[i].close < failureLevel) { confirmIdx = i; direction = 'down'; break; }
+          } else {
+            if (bars[i].close < neckAt) { confirmIdx = i; direction = 'down'; break; }
+            if (bars[i].close > failureLevel) { confirmIdx = i; direction = 'up'; break; }
+          }
         }
 
         if (confirmIdx) {
           const measuredMove = Math.abs(H.price - lineAt(n1abs, n2abs, H.idx));
-          const direction = inverse ? 'up' : 'down';
+          const confirmedBreakoutLevel = direction === expectedDirection ? lineAt(n1abs, n2abs, confirmIdx) : failureLevel;
           const outcome = computeOutcome(bars, confirmIdx, direction, measuredMove, opts);
           const leftLen = H.idx - L.idx, rightLen = R.idx - H.idx;
           const symmetryScore = 1 - clamp01(Math.abs(L.price - R.price) / (o.shoulderTolAtrMult * localAtr));
@@ -486,8 +508,9 @@ function detectHeadShouldersOneSide(bars, atr, opts, inverse) {
             type: inverse ? 'inverse_head_shoulders' : 'head_shoulders',
             startIdx: L.idx, startTime: bars[L.idx].time,
             confirmIdx, confirmTime: bars[confirmIdx].time,
-            direction, measuredMove: round4(measuredMove),
-            breakoutLevel: lineAt(n1abs, n2abs, confirmIdx),
+            direction, expectedDirection, playedOut: direction === expectedDirection,
+            measuredMove: round4(measuredMove),
+            breakoutLevel: confirmedBreakoutLevel,
             rawScores,
             lines: [
               { role: 'neckline', p1: { idx: n1abs.idx, time: bars[n1abs.idx].time, price: n1abs.price }, p2: { idx: n2abs.idx, time: bars[n2abs.idx].time, price: n2abs.price } },
@@ -561,14 +584,22 @@ function detectExtremesOneSide(bars, atr, opts, isTop) {
     if (!segmentsOk) { i++; continue; }
     const retrace = Math.abs(run[0].price - levelAbs.price);
 
+    // Failure case: instead of breaking the support/resistance formed by the
+    // touches, price instead pushes to a NEW extreme beyond the touch zone —
+    // a top that fails by making a higher high instead of breaking down, or
+    // vice versa. Track that too, or "how often does a double top actually
+    // hold" can never be answered — only "given it held, what happened".
+    const touchLevel = isTop ? Math.max(...run.map(p => p.price)) : Math.min(...run.map(p => p.price));
+    const expectedDirection = isTop ? 'down' : 'up';
     const lastTouch = run[run.length - 1];
-    let confirmIdx = null;
+    let confirmIdx = null, direction = null, breakoutLevel = null;
     for (let k = lastTouch.idx + 1; k <= Math.min(lastTouch.idx + o.breakoutMaxBars, bars.length - 1); k++) {
-      if (isTop && bars[k].close < levelAbs.price) { confirmIdx = k; break; }
-      if (!isTop && bars[k].close > levelAbs.price) { confirmIdx = k; break; }
+      if (isTop && bars[k].close < levelAbs.price) { confirmIdx = k; direction = 'down'; breakoutLevel = levelAbs.price; break; }
+      if (!isTop && bars[k].close > levelAbs.price) { confirmIdx = k; direction = 'up'; breakoutLevel = levelAbs.price; break; }
+      if (isTop && bars[k].close > touchLevel) { confirmIdx = k; direction = 'up'; breakoutLevel = touchLevel; break; }
+      if (!isTop && bars[k].close < touchLevel) { confirmIdx = k; direction = 'down'; breakoutLevel = touchLevel; break; }
     }
     if (confirmIdx) {
-      const direction = isTop ? 'down' : 'up';
       const outcome = computeOutcome(bars, confirmIdx, direction, retrace, opts);
       const maxTouchDiff = Math.max(...run.map(p => Math.abs(p.price - run[0].price)));
       const gaps = run.slice(1).map((p, k) => p.idx - run[k].idx);
@@ -582,8 +613,9 @@ function detectExtremesOneSide(bars, atr, opts, isTop) {
         type: `${run.length === 2 ? 'double' : 'triple'}_${isTop ? 'top' : 'bottom'}`,
         startIdx: run[0].idx, startTime: run[0].time,
         confirmIdx, confirmTime: bars[confirmIdx].time,
-        direction, measuredMove: round4(retrace),
-        breakoutLevel: levelAbs.price,
+        direction, expectedDirection, playedOut: direction === expectedDirection,
+        measuredMove: round4(retrace),
+        breakoutLevel,
         rawScores,
         lines: [
           { role: 'support', p1: { idx: levelAbs.idx, time: bars[levelAbs.idx].time, price: levelAbs.price }, p2: { idx: confirmIdx, time: bars[confirmIdx].time, price: levelAbs.price } },
@@ -609,6 +641,20 @@ export function detectDoubleTripleExtremes(bars, atr, opts = {}) {
 // ── Detector: triangles & multi-touch channels ───────────────────────────────
 
 const TRI_OPTS = { pivotN: 5, windowBars: 120, minTouchesPerSide: 3, touchTolPct: 0.0025, flatSlopeAtrFrac: 0.02, breakoutMaxBars: 40 };
+
+// Conventional TA bias per shape — the flat/rising side of an ascending
+// triangle is expected to give way upward (buyers repeatedly testing
+// resistance); a rising wedge is expected to resolve bearish (support
+// rising faster than resistance signals exhaustion, not strength); a
+// channel's own established slope is expected to be what continues on a
+// breakout. Symmetrical triangles are the textbook exception — genuinely
+// undecided until they break — so they get no expectation (null), not a
+// forced 50/50 guess.
+const TRI_EXPECTED_DIRECTION = {
+  ascending_triangle: 'up', descending_triangle: 'down', symmetrical_triangle: null,
+  rising_wedge: 'down', falling_wedge: 'up',
+  channel_up: 'up', channel_down: 'down',
+};
 
 export function detectTrianglesChannels(bars, atr, opts = {}) {
   const o = { ...TRI_OPTS, ...opts };
@@ -683,11 +729,13 @@ export function detectTrianglesChannels(bars, atr, opts = {}) {
                 ? clamp01(1 - Math.abs(heightAtConfirm) / Math.max(Math.abs(heightAtStart), 1e-9))
                 : 1 - clamp01(Math.abs(upperSlope - lowerSlope) / flatThresh),
             };
+            const expectedDirection = TRI_EXPECTED_DIRECTION[shapeType] ?? null;
             instances.push({
               type: shapeType,
               startIdx: patternStartIdx, startTime: bars[patternStartIdx].time,
               confirmIdx, confirmTime: bars[confirmIdx].time,
-              direction, measuredMove: round4(Math.abs(heightAtStart)),
+              direction, expectedDirection, playedOut: expectedDirection ? direction === expectedDirection : null,
+              measuredMove: round4(Math.abs(heightAtStart)),
               breakoutLevel, rawScores,
               lines: [
                 { role: 'upper', p1: { idx: upperAbs1.idx, time: bars[upperAbs1.idx].time, price: upperAbs1.price }, p2: { idx: upperAbs2.idx, time: bars[upperAbs2.idx].time, price: upperAbs2.price } },
@@ -755,7 +803,7 @@ export function annotateHtfAlignment(instances, htfBars, htfStructure, htfLabel)
 export function aggregateStats(instances) {
   const byType = {};
   for (const inst of instances) {
-    if (!byType[inst.type]) byType[inst.type] = { type: inst.type, count: 0, targets: 0, stops: 0, timeouts: 0, sumReturn: 0, sumDurationBars: 0, sumBarsToOutcome: 0, outcomesWithBars: 0, sumConfidence: 0 };
+    if (!byType[inst.type]) byType[inst.type] = { type: inst.type, count: 0, targets: 0, stops: 0, timeouts: 0, sumReturn: 0, sumDurationBars: 0, sumBarsToOutcome: 0, outcomesWithBars: 0, sumConfidence: 0, withExpectation: 0, playedOut: 0 };
     const s = byType[inst.type];
     s.count++;
     s.sumReturn += inst.outcome.forwardReturnPct;
@@ -765,6 +813,7 @@ export function aggregateStats(instances) {
     else if (inst.outcome.outcome === 'stop') s.stops++;
     else s.timeouts++;
     if (inst.outcome.barsToOutcome != null) { s.sumBarsToOutcome += inst.outcome.barsToOutcome; s.outcomesWithBars++; }
+    if (inst.playedOut != null) { s.withExpectation++; if (inst.playedOut) s.playedOut++; }
   }
   return Object.values(byType).map(s => ({
     type: s.type,
@@ -776,6 +825,11 @@ export function aggregateStats(instances) {
     avgDurationBars: s.count ? round4(s.sumDurationBars / s.count) : 0,
     avgBarsToOutcome: s.outcomesWithBars ? round4(s.sumBarsToOutcome / s.outcomesWithBars) : null,
     avgConfidence: s.count ? round4(s.sumConfidence / s.count) : 0,
+    // % of instances that broke in the direction the pattern theoretically
+    // implies (pole direction for flags/pennants, reversal direction for
+    // H&S/double-triple, conventional bias for triangles/wedges/channels).
+    // null for symmetrical_triangle, which has no textbook directional bias.
+    playedOutRatePct: s.withExpectation ? round4((s.playedOut / s.withExpectation) * 100) : null,
   })).sort((a, b) => b.count - a.count);
 }
 
