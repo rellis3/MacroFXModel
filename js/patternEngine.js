@@ -272,7 +272,7 @@ const FLAG_OPTS = {
   poleMinBars: 4, poleMaxBars: 20, poleMinAtrMult: 3, poleMinEfficiency: 0.55,
   consolMinBars: 5, consolMaxBars: 50, consolPivotN: 2,
   maxRetracePct: 0.65, breakoutMaxBars: 30, parallelTolPct: 0.35,
-  flagFlatSlopeAtrFrac: 0.05, touchTolPct: 0.003,
+  flagFlatSlopeAtrFrac: 0.05, touchTolPct: 0.003, minTouchesTotal: 5,
 };
 
 function findPole(bars, atr, start, opts) {
@@ -342,6 +342,11 @@ function findConsolidation(bars, atr, pole, opts) {
 
     const upperTouches = lineTouches(highs, h1.idx, h1.price, h2.idx, h2.price, opts.touchTolPct ?? 0.003);
     const lowerTouches = lineTouches(lows, l1.idx, l1.price, l2.idx, l2.price, opts.touchTolPct ?? 0.003);
+    // A flag/pennant needs to actually be confirmed as a channel — the two
+    // anchor points on each line are the bare minimum to draw ANY line, not
+    // evidence price is respecting it. Require at least one extra touch
+    // beyond the 4 anchors before calling this a real, drawable channel.
+    if (upperTouches + lowerTouches < (opts.minTouchesTotal ?? 5)) continue;
 
     return {
       absEndIdx: winEnd,
@@ -418,7 +423,7 @@ export function detectFlagsPennants(bars, atr, opts = {}) {
 
 // ── Detector: head & shoulders (regular + inverse) ───────────────────────────
 
-const HS_OPTS = { pivotN: 5, headMinAtrMult: 1.5, shoulderTolAtrMult: 2.0, breakoutMaxBars: 40 };
+const HS_OPTS = { pivotN: 5, headMinAtrMult: 1.5, shoulderTolAtrMult: 2.0, shoulderProminenceAtrMult: 0.75, breakoutMaxBars: 40 };
 
 function detectHeadShouldersOneSide(bars, atr, opts, inverse) {
   const o = { ...HS_OPTS, ...opts };
@@ -447,6 +452,17 @@ function detectHeadShouldersOneSide(bars, atr, opts, inverse) {
         const n1abs = { idx: L.idx + n1.idx, price: n1.price };
         const n2abs = { idx: H.idx + n2.idx, price: n2.price };
 
+        // Each shoulder must be a real peak on its OWN, not just similar in
+        // height to the other one — require a genuine pullback on both sides
+        // (toward its neckline trough) before we'll call it a shoulder at
+        // all. Without this, a shoulder sitting inside a chop cluster can
+        // still match the other shoulder's height and pass every check
+        // above while looking like noise on the actual chart.
+        const leftProminence  = inverse ? (n1.price - L.price) : (L.price - n1.price);
+        const rightProminence = inverse ? (n2.price - R.price) : (R.price - n2.price);
+        const minProminence = o.shoulderProminenceAtrMult * localAtr;
+        if (leftProminence < minProminence || rightProminence < minProminence) { ci++; continue; }
+
         let confirmIdx = null;
         for (let i = R.idx + 1; i <= Math.min(R.idx + o.breakoutMaxBars, bars.length - 1); i++) {
           const neckAt = lineAt(n1abs, n2abs, i);
@@ -459,9 +475,11 @@ function detectHeadShouldersOneSide(bars, atr, opts, inverse) {
           const direction = inverse ? 'up' : 'down';
           const outcome = computeOutcome(bars, confirmIdx, direction, measuredMove, opts);
           const leftLen = H.idx - L.idx, rightLen = R.idx - H.idx;
+          const symmetryScore = 1 - clamp01(Math.abs(L.price - R.price) / (o.shoulderTolAtrMult * localAtr));
+          const prominenceScore = clamp01(Math.min(leftProminence, rightProminence) / (minProminence * 3));
           const rawScores = {
             impulseQuality: clamp01(headMargin / (o.headMinAtrMult * 3 * localAtr)),
-            shapeQuality: 1 - clamp01(Math.abs(L.price - R.price) / (o.shoulderTolAtrMult * localAtr)),
+            shapeQuality: 0.5 * symmetryScore + 0.5 * prominenceScore,
             retracementQuality: 1 - clamp01(Math.abs(leftLen - rightLen) / Math.max(leftLen, rightLen)),
           };
           instances.push({
@@ -525,13 +543,23 @@ function detectExtremesOneSide(bars, atr, opts, isTop) {
     if (run.length < 2) { i++; continue; }
 
     // Support/resistance = the intervening swing(s) between the touches.
+    // For a triple top/bottom this checks EACH consecutive pair separately —
+    // a real third touch needs its own genuine pullback, not just a shallow
+    // wiggle riding on the back of one deep trough elsewhere in the span.
     const oppFinder = isTop ? pivotLows : pivotHighs;
-    const between = oppFinder(bars.slice(run[0].idx, run[run.length - 1].idx + 1), Math.max(1, Math.floor(o.pivotN / 2)));
-    if (!between.length) { i++; continue; }
-    const levelPt = between.reduce((best, p) => (isTop ? p.price < best.price : p.price > best.price) ? p : best, between[0]);
-    const levelAbs = { idx: run[0].idx + levelPt.idx, price: levelPt.price };
+    let levelAbs = null, segmentsOk = true;
+    for (let k = 0; k < run.length - 1; k++) {
+      const segBars = bars.slice(run[k].idx, run[k + 1].idx + 1);
+      const segExtremes = oppFinder(segBars, Math.max(1, Math.floor(o.pivotN / 2)));
+      if (!segExtremes.length) { segmentsOk = false; break; }
+      const segPt = segExtremes.reduce((best, p) => (isTop ? p.price < best.price : p.price > best.price) ? p : best, segExtremes[0]);
+      const segAbs = { idx: run[k].idx + segPt.idx, price: segPt.price };
+      const segRetrace = Math.abs(run[k].price - segAbs.price);
+      if (segRetrace < o.minRetraceAtrMult * localAtr) { segmentsOk = false; break; }
+      if (!levelAbs || (isTop ? segAbs.price < levelAbs.price : segAbs.price > levelAbs.price)) levelAbs = segAbs;
+    }
+    if (!segmentsOk) { i++; continue; }
     const retrace = Math.abs(run[0].price - levelAbs.price);
-    if (retrace < o.minRetraceAtrMult * localAtr) { i++; continue; }
 
     const lastTouch = run[run.length - 1];
     let confirmIdx = null;
