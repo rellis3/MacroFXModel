@@ -10678,7 +10678,8 @@ app.get('/api/vol-forecast/zones', async (req, res) => {
         } catch { reachByPair = null; }
       }
       const terms = String(req.query.terms || '') === 'futures' ? 'futures' : 'spot';   // default spot; 'futures' for a futures/CME chart
-      const oiText = buildOILevelText(store, { generated: forecastState.latest.session_date, cot, reachByPair, terms });
+      const allExpiry = String(req.query.allExpiry || '') === '1';   // draw EVERY expiry's max-pain/walls as lines (not just primary+day)
+      const oiText = buildOILevelText(store, { generated: forecastState.latest.session_date, cot, reachByPair, terms, allExpiry });
       if (oiText && !oiText.includes('no OI data')) text += '\n\n' + oiText;
     } catch { /* OI is a bonus section — never fail the zones export over it */ }
     res.type('text/plain').send(text);
