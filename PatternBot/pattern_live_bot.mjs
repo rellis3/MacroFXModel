@@ -132,24 +132,42 @@ function buildAlertMessage(pair, tf, inst, stat) {
   return lines.join('\n');
 }
 
-async function scanPairTimeframe(pair, tf, state, alerts) {
+const DEFAULT_COOLDOWN_HOURS = 4;
+
+// { seen: {"pair:tf": lastConfirmTimeSeconds}, lastAlert: {"pair:tf:type": lastAlertMs} }
+// `seen` stops the exact same confirmed instance from re-alerting on the next
+// cycle (it's still inside the fetched window). `lastAlert` is a second, coarser
+// safety net: don't re-alert the same pair/tf/pattern-type combo within the
+// cooldown window even for a genuinely different instance — e.g. a
+// triangle/channel whose fixed-size scan window realigns slightly with each
+// live fetch (new bars push the window forward) can otherwise re-detect what a
+// human would call the same ongoing shape with a slightly different confirm
+// time each cycle. The cooldown catches that class of near-duplicate even
+// without pinning down every way it can happen.
+async function scanPairTimeframe(pair, tf, state, cooldownMs, alerts) {
   const bars = await fetchLiveBars(pair, tf);
   if (!bars || bars.length < 50) return null;
 
   const { instances } = runPatternScan(bars, {});
   const key = `${pair}:${tf}`;
-  const lastSeen = state[key] ?? null;
+  const lastSeen = state.seen[key] ?? null;
   const isFirstRun = lastSeen == null;
 
   const newOnes = isFirstRun ? [] : instances.filter(i => i.confirmTime > lastSeen).sort((a, b) => a.confirmTime - b.confirmTime);
   const latestConfirm = instances.length ? Math.max(...instances.map(i => i.confirmTime)) : (lastSeen ?? Math.floor(Date.now() / 1000));
 
   for (const inst of newOnes) {
+    const alertKey = `${pair}:${tf}:${inst.type}`;
+    const lastAlertMs = state.lastAlert[alertKey] ?? 0;
+    if (Date.now() - lastAlertMs < cooldownMs) {
+      console.log(`[pattern-bot] ${alertKey} suppressed (cooldown)`);
+      continue;
+    }
     const stat = await fetchHistoricalStat(pair, tf, inst.type);
     const message = buildAlertMessage(pair, tf, inst, stat);
     const res = await apiPost('/api/telegram', { message, parseMode: 'HTML' });
-    if (res.ok) alerts.sent++;
-    else { alerts.failed++; console.warn(`[pattern-bot] telegram send failed for ${key} ${inst.type}: ${res.error}`); }
+    if (res.ok) { alerts.sent++; state.lastAlert[alertKey] = Date.now(); }
+    else { alerts.failed++; console.warn(`[pattern-bot] telegram send failed for ${alertKey}: ${res.error}`); }
     await sleep(500); // pace Telegram sends
   }
 
@@ -157,8 +175,19 @@ async function scanPairTimeframe(pair, tf, state, alerts) {
 }
 
 async function scanOnce() {
-  const state = (await kvGet('pattern_bot_state')) || {};
-  const newState = { ...state };
+  const config = (await kvGet('pattern_bot_config')) || {};
+  // Defaults to OFF — matches this repo's existing alert-system convention
+  // (the dashboard's own alert toggle starts disabled too) and means a fresh
+  // deploy never starts pushing to Telegram without someone opting in first.
+  if (config.enabled !== true) {
+    console.log('[pattern-bot] disabled (set pattern_bot_config.enabled=true to turn on) — skipping cycle');
+    await kvPut('pattern_bot_status', { lastRunAt: new Date().toISOString(), enabled: false }).catch(() => {});
+    return;
+  }
+  const cooldownMs = (config.cooldownHours ?? DEFAULT_COOLDOWN_HOURS) * 3600_000;
+
+  const stored = (await kvGet('pattern_bot_state')) || {};
+  const state = { seen: { ...(stored.seen || {}) }, lastAlert: { ...(stored.lastAlert || {}) } };
   const alerts = { sent: 0, failed: 0 };
   let errors = 0;
 
@@ -166,8 +195,8 @@ async function scanOnce() {
     for (const tf of TIMEFRAMES) {
       const key = `${pair}:${tf}`;
       try {
-        const latestConfirm = await scanPairTimeframe(pair, tf, state, alerts);
-        if (latestConfirm != null) newState[key] = latestConfirm;
+        const latestConfirm = await scanPairTimeframe(pair, tf, state, cooldownMs, alerts);
+        if (latestConfirm != null) state.seen[key] = latestConfirm;
       } catch (e) {
         errors++;
         console.warn(`[pattern-bot] ${key} failed: ${e.message}`);
@@ -176,9 +205,10 @@ async function scanOnce() {
     }
   }
 
-  await kvPut('pattern_bot_state', newState).catch(e => console.warn('[pattern-bot] state save failed:', e.message));
+  await kvPut('pattern_bot_state', state).catch(e => console.warn('[pattern-bot] state save failed:', e.message));
   await kvPut('pattern_bot_status', {
     lastRunAt: new Date().toISOString(),
+    enabled: true,
     pairsScanned: LIVE_PAIRS.length,
     timeframesScanned: TIMEFRAMES.length,
     alertsSent: alerts.sent,
