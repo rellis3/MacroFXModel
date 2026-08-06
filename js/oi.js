@@ -1602,7 +1602,14 @@ export async function buildOIEntry({
   const perExpiry = (termStructure || []).map(e => ({
     dte: e.dte, maxPain: _shiftToSpot(e.maxPain),
     callWall: _shiftToSpot(e.callWall), putWall: _shiftToSpot(e.putWall), totalOI: e.totalOI,
-  })).filter(e => Number.isFinite(e.dte)).sort((a, b) => a.dte - b.dte);
+  }))
+    // A column with NO wall ≥ minOI is empty/thin — its max pain is computed on a handful of
+    // stray strikes and is garbage (e.g. a 9DTE reading 0.908 on EUR/USD). Require at least
+    // one real wall, and blank a max pain that lands absurdly far from spot, so neither the
+    // text table nor an all-expiry line draws junk.
+    .map(e => ({ ...e, maxPain: (spot > 0 && Number.isFinite(e.maxPain) && (e.maxPain < spot * 0.7 || e.maxPain > spot * 1.3)) ? null : e.maxPain }))
+    .filter(e => Number.isFinite(e.dte) && (Number.isFinite(e.callWall) || Number.isFinite(e.putWall)))
+    .sort((a, b) => a.dte - b.dte);
 
   // Apply basis shift to all strikes (converts futures strikes → spot-equivalent prices).
   // Inverted pairs (6J/6C/6S): CME strikes are in foreign-currency-per-USD space, so invert first.

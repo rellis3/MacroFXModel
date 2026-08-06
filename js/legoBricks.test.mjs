@@ -852,6 +852,16 @@ console.log('\n[oi day-expiry]');
   ok('perExpiry has a row per expiry', pe.length === 2 && pe[0].dte === 1 && pe[1].dte === 30, pe.map(e => e.dte).join(','));
   ok('a far expiry shows max pain BELOW spot (the cross-desk case)', pe.find(e => e.dte === 30)?.maxPain < 1.1545, `${pe.find(e => e.dte === 30)?.maxPain}`);
   ok('a near expiry maxPain sits at/near spot', Math.abs((pe.find(e => e.dte === 1)?.maxPain ?? 0) - 1.1545) < 0.005);
+  // A near-EMPTY expiry column (no wall ≥ minOI → garbage max pain, e.g. 0.908 on EUR/USD)
+  // is dropped, so neither the text table nor an all-expiry line draws junk.
+  const emptyCol = [
+    '\t6EU6', '1.1532\t6EU6', 'Strike\tA', '1 DTE\tB', '9 DTE\tC', 'C\tP\tC\tP',
+    '1.1450\t3000\t5000\t2\t3', '1.1500\t2000\t2500\t1\t2', '1.1550\t2500\t600\t3\t1',
+  ].join('\n');
+  const ec = await buildOIEntry({ pair: 'EUR/USD', rawOI: emptyCol, spotRaw: 1.1532, futuresRaw: 1.1532, manualFutures: true, skipLiveQuote: true });
+  ok('perExpiry drops a near-empty column (no walls → junk max pain)',
+    (ec.inst.perExpiry || []).every(e => e.dte !== 9) && (ec.inst.perExpiry || []).some(e => e.dte === 1),
+    (ec.inst.perExpiry || []).map(e => e.dte).join(','));
   const cmpTxt = buildOILevelText({ 'EUR/USD': cmp.inst }, { generated: 'x' });
   ok('export renders the per-expiry breakdown block', /per-expiry \(mp = max pain/.test(cmpTxt) && /30DTE  mp /.test(cmpTxt));
 
