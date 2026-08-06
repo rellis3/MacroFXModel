@@ -82,6 +82,25 @@ table.pl-buckets td { text-align: right; padding: 2px 6px; }
 .pl-footer b { color: #7a88a8; }
 
 .pl-loading { display: flex; align-items: center; justify-content: center; height: 100%; color: #5a6380; font-family: 'DM Mono', monospace; font-size: 12px; }
+
+/* ── Live Bot modal ── */
+.pl-modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 50; align-items: center; justify-content: center; }
+.pl-modal-backdrop.open { display: flex; }
+.pl-modal { width: 340px; max-width: 92vw; background: #131722; border: 1px solid #2a3348; border-radius: 8px; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+.pl-modal-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid #1c2133; font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 600; }
+.pl-modal-close { background: none; border: none; color: #7a88a8; font-size: 14px; cursor: pointer; padding: 2px 6px; }
+.pl-modal-close:hover { color: #d1d4dc; }
+.pl-modal-body { padding: 14px; }
+.pl-lb-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; }
+.pl-lb-label { font-size: 12px; color: #7a88a8; font-family: 'DM Mono', monospace; }
+.pl-lb-input { width: 70px; background: #1c2133; border: 1px solid #2a3348; color: #d1d4dc; border-radius: 4px; padding: 5px 8px; font-size: 12px; font-family: 'DM Mono', monospace; text-align: right; }
+.pl-btn-toggle.on { background: rgba(0,201,125,0.15); color: #00c97d; border-color: rgba(0,201,125,0.3); }
+.pl-btn-toggle.off { background: rgba(122,136,168,0.1); color: #7a88a8; }
+.pl-btn-primary { background: #2f6fed; color: #fff; border-color: #2f6fed; }
+.pl-btn-primary:hover { background: #2560d6; }
+.pl-lb-divider { height: 1px; background: #1c2133; margin: 12px 0; }
+.pl-lb-status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; font-size: 11px; font-family: 'DM Mono', monospace; color: #7a88a8; }
+.pl-lb-status-grid b { color: #d1d4dc; }
 </style>
 </head>
 <body>
@@ -99,7 +118,42 @@ table.pl-buckets td { text-align: right; padding: 2px 6px; }
     <div class="pl-toggle" id="confToggle"></div>
     <div class="pl-sep"></div>
     <button class="pl-btn" id="rescanBtn" title="Force a fresh scan for this pair/timeframe">↻ Rescan</button>
+    <button class="pl-btn" id="liveBotBtn">🤖 Live Bot</button>
     <div class="pl-status" id="statusLbl">—</div>
+  </div>
+
+  <div class="pl-modal-backdrop" id="liveBotBackdrop">
+    <div class="pl-modal">
+      <div class="pl-modal-head">
+        <span>🤖 Live Pattern Bot</span>
+        <button class="pl-modal-close" id="liveBotClose">✕</button>
+      </div>
+      <div class="pl-modal-body">
+        <div class="pl-lb-row">
+          <span class="pl-lb-label">Status</span>
+          <span class="pl-badge" id="lbStatusBadge">—</span>
+        </div>
+        <div class="pl-lb-row">
+          <span class="pl-lb-label">Alerts</span>
+          <button class="pl-btn pl-btn-toggle" id="lbEnableBtn">—</button>
+        </div>
+        <div class="pl-lb-row">
+          <span class="pl-lb-label">Cooldown (hours)</span>
+          <input type="number" id="lbCooldown" class="pl-lb-input" min="1" max="168" step="1">
+        </div>
+        <button class="pl-btn pl-btn-primary" id="lbSaveBtn" style="width:100%;margin-top:4px;">Save</button>
+        <div class="pl-lb-divider"></div>
+        <div class="pl-lb-status-grid" id="lbStatusGrid">Loading status…</div>
+        <button class="pl-btn" id="lbRefreshBtn" style="width:100%;margin-top:8px;">↻ Refresh status</button>
+        <div class="pl-footer" style="padding:10px 0 0;">
+          Scans 26 pairs × 15m/30m/1h/4h every ~10 min and Telegram-alerts on newly confirmed
+          patterns, with a per pair/timeframe/pattern-type cooldown to stop repeat alerts on the
+          same forming shape. Telegram credentials are shared with the other bots (set via the
+          dashboard's Alerts settings) — this panel only controls whether the pattern bot itself
+          scans and sends.
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="pl-body">
@@ -371,6 +425,69 @@ function drawOverlay(inst) {
 }
 
 document.getElementById('rescanBtn').onclick = () => loadScan(true);
+
+// ── Live Bot control panel ───────────────────────────────────────────────────
+// Reads/writes the same pattern_bot_config / pattern_bot_status KV keys the
+// live scanner (PatternBot/pattern_live_bot.mjs) checks every cycle — this is
+// just a UI over the exact same /api/kv/get + /api/kv/set calls a curl command
+// would make, so there's nothing to remember or retype.
+let lbConfig = { enabled: false, cooldownHours: 4 };
+
+async function kvGet(key) {
+  const res = await fetch(`/api/kv/get?key=${encodeURIComponent(key)}`).then(r => r.json()).catch(() => null);
+  return res && !res.miss ? res.data : null;
+}
+async function kvSet(key, data) {
+  return fetch('/api/kv/set', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ key, data, timestamp: Date.now() }),
+  }).then(r => r.json()).catch(() => ({ ok: false }));
+}
+
+function renderLbToggle() {
+  const btn = document.getElementById('lbEnableBtn');
+  btn.textContent = lbConfig.enabled ? 'ON — click to disable' : 'OFF — click to enable';
+  btn.className = 'pl-btn pl-btn-toggle ' + (lbConfig.enabled ? 'on' : 'off');
+  document.getElementById('lbStatusBadge').textContent = lbConfig.enabled ? 'enabled' : 'disabled';
+  document.getElementById('lbStatusBadge').className = 'pl-badge ' + (lbConfig.enabled ? 'up' : 'timeout');
+  document.getElementById('lbCooldown').value = lbConfig.cooldownHours ?? 4;
+}
+
+async function loadLbStatus() {
+  const grid = document.getElementById('lbStatusGrid');
+  const status = await kvGet('pattern_bot_status');
+  if (!status) { grid.textContent = 'No status yet — bot has not run since this was added, or is still starting up.'; return; }
+  const ago = status.lastRunAt ? Math.round((Date.now() - new Date(status.lastRunAt).getTime()) / 60000) : null;
+  grid.innerHTML = `
+    <div>Last run</div><div><b>${ago == null ? '—' : ago + 'm ago'}</b></div>
+    <div>Pairs × TFs</div><div><b>${status.pairsScanned ?? '—'} × ${status.timeframesScanned ?? '—'}</b></div>
+    <div>Alerts sent</div><div><b>${status.alertsSent ?? 0}</b></div>
+    <div>Alerts failed</div><div><b>${status.alertsFailed ?? 0}</b></div>
+    <div>Scan errors</div><div><b>${status.errors ?? 0}</b></div>`;
+}
+
+async function openLbModal() {
+  document.getElementById('liveBotBackdrop').classList.add('open');
+  lbConfig = (await kvGet('pattern_bot_config')) || { enabled: false, cooldownHours: 4 };
+  renderLbToggle();
+  await loadLbStatus();
+}
+function closeLbModal() { document.getElementById('liveBotBackdrop').classList.remove('open'); }
+
+document.getElementById('liveBotBtn').onclick = openLbModal;
+document.getElementById('liveBotClose').onclick = closeLbModal;
+document.getElementById('liveBotBackdrop').onclick = e => { if (e.target.id === 'liveBotBackdrop') closeLbModal(); };
+document.getElementById('lbEnableBtn').onclick = () => { lbConfig.enabled = !lbConfig.enabled; renderLbToggle(); };
+document.getElementById('lbRefreshBtn').onclick = loadLbStatus;
+document.getElementById('lbSaveBtn').onclick = async () => {
+  const cooldownHours = Math.max(1, Math.min(168, parseInt(document.getElementById('lbCooldown').value, 10) || 4));
+  lbConfig = { enabled: lbConfig.enabled, cooldownHours };
+  const btn = document.getElementById('lbSaveBtn');
+  btn.textContent = 'Saving…';
+  const res = await kvSet('pattern_bot_config', lbConfig);
+  btn.textContent = res.ok ? 'Saved ✓' : 'Save failed';
+  setTimeout(() => { btn.textContent = 'Save'; }, 1500);
+};
 
 (async function init() {
   buildChart();
