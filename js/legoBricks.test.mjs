@@ -21,7 +21,7 @@ import { refreshVolatilityPlan } from './volatilityBotProducer.js';
 import { bucketM1IntoSessions } from './forecastAnalyser.js';
 import { londonMidnightSec } from './volBacktestEngine.js';
 import { buildOILevelText } from './oiLevelExport.js';
-import { computeExpiryLevels, pickNearExpiry, buildOIEntry } from './oi.js';
+import { computeExpiryLevels, pickNearExpiry, buildOIEntry, oiDayBandFrac, oiBandSelect } from './oi.js';
 import { oiStoreToLevels } from './oiConfluence.js';
 
 let failures = 0;
@@ -881,16 +881,43 @@ console.log('\n[oi day-expiry]');
     jn.inst.callWalls.some(w => Math.abs(w.strike - 157.80) < 0.05 && w.oi === 9000));
   const eu = await buildOIEntry({ pair: 'EUR/USD', rawOI: '\t6E\n1.15\t6E\nStrike\tA\n30 DTE\tB\nC\tP\n1.1450\t500\t900\n1.1500\t3000\t2500\n1.1550\t2000\t400', spotRaw: 1.15, futuresRaw: 1.15, manualFutures: true, skipLiveQuote: true, swapCP: true });
   ok('non-inverted pair never flips (swapCP:true ignored on EUR/USD)', eu.inst.cpSwapped === false);
+
+  // The day's trading band (from annualised vol, K=3 ≈ beyond the 99th-pct day) + catch level.
+  ok('oiDayBandFrac: gold ~18% vol → ~3.4% band', Math.abs(oiDayBandFrac(18, 'XAU/USD') - 0.034) < 0.002, `${oiDayBandFrac(18, 'XAU/USD')}`);
+  ok('oiDayBandFrac: EUR/USD ~7.5% vol → ~1.4% band', Math.abs(oiDayBandFrac(7.5, 'EUR/USD') - 0.0142) < 0.002, `${oiDayBandFrac(7.5, 'EUR/USD')}`);
+  ok('oiDayBandFrac: bigger K → wider band', oiDayBandFrac(10, 'USD/JPY', { k: 4 }) > oiDayBandFrac(10, 'USD/JPY', { k: 3 }));
+  ok('oiDayBandFrac: no vol → sane flat-vol fallback', oiDayBandFrac(null, 'EUR/USD') > 0.005 && oiDayBandFrac(null, 'EUR/USD') < 0.05);
+  {
+    const lv = [90, 98, 99, 101, 102, 110].map(p => ({ price: p, type: 'x' }));
+    const sel = oiBandSelect(lv, 100, 0.03);   // band [97, 103]
+    ok('oiBandSelect: keeps in-band levels', sel.inBand.map(l => l.price).join(',') === '98,99,101,102');
+    ok('oiBandSelect: catch = nearest beyond band each side', sel.catch.map(l => l.price).sort((a, b) => a - b).join(',') === '90,110'
+      && sel.catch.every(l => l.catch === true));
+    ok('oiBandSelect: no band → everything in-band, no catch', (() => { const s = oiBandSelect(lv, 100, 0); return s.inBand.length === 6 && s.catch.length === 0; })());
+  }
+  // Band-bounded export: a mid-expiry wall inside the band draws; the default export without a
+  // band is unchanged (no per-expiry lines unless allExpiry).
+  {
+    const many = [   // distinct per-expiry peaks: 1d cw1.1560, 5d cw1.1575/pw1.1520 (in band), 30d far
+      '\t6E', '1.1545\t6E', 'Strike\tA', '1 DTE\tB', '5 DTE\tC', '30 DTE\tD', 'C\tP\tC\tP\tC\tP',
+      '1.1450\t20\t50\t20\t60\t200\t9000', '1.1520\t100\t200\t300\t8000\t400\t500', '1.1530\t400\t9000\t200\t300\t300\t400',
+      '1.1560\t9000\t300\t500\t400\t600\t300', '1.1575\t300\t100\t8000\t200\t500\t200', '1.1650\t100\t50\t200\t40\t9000\t100',
+    ].join('\n');
+    const m = await buildOIEntry({ pair: 'EUR/USD', rawOI: many, spotRaw: 1.1545, futuresRaw: 1.1545, manualFutures: true, skipLiveQuote: true });
+    const band = oiDayBandFrac(7.5, 'EUR/USD');
+    const noBand = buildOILevelText({ 'EUR/USD': m.inst }, { generated: 'x' }).split('\n').filter(l => l.startsWith('OI '));
+    const withBand = buildOILevelText({ 'EUR/USD': m.inst }, { generated: 'x', bandByPair: { 'EUR/USD': band } }).split('\n').filter(l => l.startsWith('OI '));
+    ok('band export adds the in-band mid-expiry (5dte) walls', withBand.some(l => /5dte/.test(l)) && !noBand.some(l => /5dte/.test(l)), `${noBand.length}→${withBand.length}`);
+  }
   const cmpTxt = buildOILevelText({ 'EUR/USD': cmp.inst }, { generated: 'x' });
   ok('export renders the per-expiry breakdown block', /per-expiry \(mp = max pain/.test(cmpTxt) && /30DTE  mp /.test(cmpTxt));
 
   // allExpiry: draw EVERY expiry's max-pain/walls as DTE-tagged OI lines, filling in the
   // expiries the primary+day sets don't already cover. Default export must NOT gain them.
-  const many = [
+  const many = [   // distinct per-expiry peaks so a middle expiry draws its own lines
     '\t6EU6', '1.1545\t6EU6', 'Strike\tA', '1 DTE\tB', '5 DTE\tC', '30 DTE\tD', 'C\tP\tC\tP\tC\tP',
-    '1.1500\t500\t900\t700\t1200\t6000\t5000',
-    '1.1545\t3000\t3500\t4000\t3800\t3000\t2500',
-    '1.1580\t2500\t600\t3000\t500\t1500\t400',
+    '1.1450\t20\t50\t20\t60\t200\t9000', '1.1520\t100\t200\t300\t8000\t400\t500', '1.1530\t400\t9000\t200\t300\t300\t400',
+    '1.1560\t9000\t300\t500\t400\t600\t300', '1.1575\t300\t100\t8000\t200\t500\t200', '1.1650\t100\t50\t200\t40\t9000\t100',
   ].join('\n');
   const mr = await buildOIEntry({ pair: 'EUR/USD', rawOI: many, spotRaw: 1.1545, futuresRaw: 1.1545, manualFutures: true, skipLiveQuote: true });
   const defLines = buildOILevelText({ 'EUR/USD': mr.inst }, { generated: 'x' }).split('\n').filter(l => l.startsWith('OI '));
