@@ -97,7 +97,7 @@ import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
 import { refreshRangeLineConfluence, packLiveM1 } from './js/rangeLineConfluenceProducer.js';
 import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas, classifyOIChange, oiWallStability, oiPriceConfirmation } from './js/oiConfluence.js';
 import { buildOILevelText } from './js/oiLevelExport.js';
-import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse
+import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band
 import { buildOIZones, explainNoZones } from './js/oiZones.js';
 import { gammaFlip as computeGammaFlip, distanceToFlip, flipDrift, rolloffSummary } from './js/gammaFlow.js';
 import { buildRangeZones } from './js/rangeLineZones.js';
@@ -10680,8 +10680,18 @@ app.get('/api/vol-forecast/zones', async (req, res) => {
         } catch { reachByPair = null; }
       }
       const terms = String(req.query.terms || '') === 'futures' ? 'futures' : 'spot';   // default spot; 'futures' for a futures/CME chart
-      const allExpiry = String(req.query.allExpiry || '') === '1';   // draw EVERY expiry's max-pain/walls as lines (not just primary+day)
-      const oiText = buildOILevelText(store, { generated: forecastState.latest.session_date, cot, reachByPair, terms, allExpiry });
+      const allExpiry = String(req.query.allExpiry || '') === '1';   // full unbounded term structure (vs the default day-band selection)
+      // The day's trading band per pair (from the forecast's annualised vol, K=3 ≈ beyond the
+      // 99th-pct day). Drives which OTHER-expiry walls show by default: in-band + a catch level.
+      // `?bandK=` overrides the multiplier. Flat-vol fallback inside oiDayBandFrac when no vol.
+      const bandK = Math.max(1, Math.min(6, parseFloat(req.query.bandK) || 3));
+      const bandByPair = {};
+      for (const p of Object.keys(store || {})) {
+        const fk = (() => { try { return _forecastKeyForPair(p); } catch { return null; } })();
+        const vol = fk && forecastState.latest?.instruments?.[fk]?.vol_annual;
+        bandByPair[p] = _oiDayBand(Number.isFinite(vol) ? vol : null, p, { k: bandK });
+      }
+      const oiText = buildOILevelText(store, { generated: forecastState.latest.session_date, cot, reachByPair, terms, allExpiry, bandByPair });
       if (oiText && !oiText.includes('no OI data')) text += '\n\n' + oiText;
     } catch { /* OI is a bonus section — never fail the zones export over it */ }
     res.type('text/plain').send(text);

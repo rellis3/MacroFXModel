@@ -36,7 +36,7 @@ import { oiStoreToLevels } from './oiConfluence.js';
 import { levelExpectation } from './levelExpectation.js';
 import { levelHeat } from './levelHeat.js';
 import { gammaFlip, distanceToFlip, rolloffSummary } from './gammaFlow.js';
-import { rebuildGexProfile, oiFuturesTermsPrice } from './oi.js';
+import { rebuildGexProfile, oiFuturesTermsPrice, oiBandSelect } from './oi.js';
 
 // Canonical chart-ticker per oi_store key. Mirrors the Confluence-Zones indicator's
 // normalisation targets so the same chart symbols the user already uses resolve here
@@ -125,7 +125,11 @@ function fmtCot(c) {
 // NO price coordinate — it is positioning, not a level — so it is emitted on the per-pair
 // context line the indicator ignores, never as an `OI {price}` line. Drawing a horizontal
 // line for it would invent a price the data does not contain.
-export function buildOILevelText(store, { topWalls = null, minTier = "moderate", maxWalls = 3, generated = null, cot = null, reachByPair = null, terms = 'spot', allExpiry = false } = {}) {
+export function buildOILevelText(store, { topWalls = null, minTier = "moderate", maxWalls = 3, generated = null, cot = null, reachByPair = null, terms = 'spot', allExpiry = false, bandByPair = null } = {}) {
+  // bandByPair: { pair: bandFrac } — the day's trading band (from the vol forecast). When
+  // present, the DEFAULT export shows every expiry's walls WITHIN the band + a catch level
+  // beyond it (so a blowout always has a level ahead), instead of only primary+day. The
+  // explicit `allExpiry` toggle still shows the full unbounded term structure.
   // terms: 'spot' (default — XAU/USD / OANDA spot, what the platform trades) or 'futures'
   // (raw CME/COMEX price terms, for overlaying on a futures chart). Only the DISPLAYED price
   // changes; P(touch) is still keyed off the spot price it was computed at.
@@ -224,6 +228,7 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     // P(touch) per level ("82%~2h"), keyed by exact price — computed live at the export
     // endpoint (needs current bars); absent here in the pure/offline path.
     const rp = (reachByPair && reachByPair[pair]) ? reachByPair[pair] : null;
+    const drawn = new Set();   // type@price of every detailed line drawn, so the per-expiry pass doesn't duplicate
     for (const l of levels) {
       const tier = Number.isFinite(l.tier) && l.tier > 0 ? ` t${l.tier}` : '';
       // DTE tag ("14dte") after the tier when a level carries one — present only in
@@ -249,20 +254,38 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
         else           suffix = ` . ${note}`;
       }
       lines.push(`OI ${px(l.price).toFixed(dp)} : ${l.type}${tier}${dteTag}${suffix}`);
+      drawn.add(`${l.type}@${l.price.toFixed(dp)}`);
     }
-    // All-expiry lines (opt-in): draw each OTHER expiry's max-pain + raw call/put wall as
-    // DTE-tagged OI lines, so the whole term structure shows on the CHART, not just the text
-    // table. The expiries already drawn in detail (primary + day) are skipped to avoid dupes;
-    // the indicator's DTE styling fades the far ones. These walls are the RAW biggest-OI
-    // strike per side (unfiltered), so a far tail-hedge strike can appear — that's the point
-    // for a cross-desk compare, and it recedes visually.
-    if (allExpiry && Array.isArray(inst.perExpiry)) {
-      const covered = new Set([inst.dte, inst.dayExpiry?.dte].filter(Number.isFinite));
+    // Other-expiry lines: draw each OTHER expiry's max-pain + raw call/put wall as DTE-tagged
+    // OI lines so the whole term structure is on the CHART, not just the text table. The
+    // expiries already drawn in detail (primary + day) are skipped to avoid dupes.
+    //   • DEFAULT (a band is known): only the walls WITHIN the day's trading band + a CATCH
+    //     level just beyond it each side — so you never miss a level price can reach today,
+    //     and a blowout always has the next level ahead, without drawing the far tail.
+    //   • allExpiry toggle: the FULL unbounded term structure (cross-desk compare).
+    // Either way the indicator's DTE styling fades the further-dated ones.
+    const bandFrac = bandByPair && Number.isFinite(bandByPair[pair]) ? bandByPair[pair] : null;
+    if ((allExpiry || bandFrac) && Array.isArray(inst.perExpiry)) {
+      // Candidate pool = EVERY expiry's max-pain + biggest call/put wall (perExpiry), deduped
+      // against the detailed primary/day lines already drawn (so the catch can be a far
+      // primary wall the near-money selector dropped, and we never double-draw).
+      const cands = [];
       for (const e of inst.perExpiry) {
-        if (!Number.isFinite(e.dte) || covered.has(e.dte)) continue;
-        if (Number.isFinite(e.maxPain))  lines.push(`OI ${px(e.maxPain).toFixed(dp)} : max_pain ${e.dte}dte`);
-        if (Number.isFinite(e.callWall)) lines.push(`OI ${px(e.callWall).toFixed(dp)} : call_wall ${e.dte}dte`);
-        if (Number.isFinite(e.putWall))  lines.push(`OI ${px(e.putWall).toFixed(dp)} : put_wall ${e.dte}dte`);
+        if (!Number.isFinite(e.dte)) continue;
+        for (const [v, t] of [[e.maxPain, 'max_pain'], [e.callWall, 'call_wall'], [e.putWall, 'put_wall']]) {
+          if (Number.isFinite(v) && !drawn.has(`${t}@${v.toFixed(dp)}`)) cands.push({ price: v, type: t, dte: e.dte });
+        }
+      }
+      let emit = cands;
+      if (!allExpiry && bandFrac) {
+        const sel = oiBandSelect(cands, inst.spot, bandFrac);   // in-band + a catch level beyond each side
+        emit = [...sel.inBand, ...sel.catch];
+      }
+      const seen = new Set();
+      for (const c of emit) {
+        const k = `${c.type}@${c.price.toFixed(dp)}`;
+        if (seen.has(k)) continue; seen.add(k);
+        lines.push(`OI ${px(c.price).toFixed(dp)} : ${c.type} ${c.dte}dte${c.catch ? ' catch' : ''}`);
       }
     }
     lines.push('');

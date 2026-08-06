@@ -1248,6 +1248,37 @@ export function rebuildGexProfile(inst) {
   return buildGexProfile(strikes, calls, puts, spot, pair, T, null, oiContractSize(pair));
 }
 
+// THE DAY'S TRADING BAND — how far price can plausibly travel today, as a fraction of price.
+// Drives which OI levels are "in play today" (shown/traded) vs far context. Built from the
+// forecast's annualised vol: σ_daily = σ_annual/√252, and a K-multiple of that for the tail.
+// K=3 is a one-sided ~99.7th percentile — DELIBERATELY beyond the largest normal day, because
+// missing a level price actually reaches is worse than a little extra width; a "catch" level
+// (nearest wall beyond the band) guarantees coverage past even this. Pure. Falls back to a
+// flat per-class vol when no live vol is available, so it always returns a sane band.
+export function oiDayBandFrac(volAnnualPct, pair, { k = 3, minFrac = 0.004 } = {}) {
+  let volPct = Number.isFinite(volAnnualPct) && volAnnualPct > 0 ? volAnnualPct : (oiFlatVol(pair) * 100);
+  const sigmaDaily = (volPct / 100) / Math.sqrt(252);   // annual→daily (252 trading days)
+  return Math.max(minFrac, k * sigmaDaily);             // half-width fraction of price; floored so a quiet day still shows a band
+}
+
+// Split levels into IN-BAND (within the day's band of spot), plus the nearest CATCH level
+// above and below the band (so a blowout always has a level ahead). Pure; used by both the
+// export/indicator and the bot so display and execution agree on "what's in play today".
+export function oiBandSelect(levels, spot, bandFrac, { withCatch = true } = {}) {
+  const arr = (Array.isArray(levels) ? levels : []).filter(l => Number.isFinite(l?.price) && l.price > 0);
+  if (!(spot > 0) || !(bandFrac > 0)) return { inBand: arr, catch: [] };
+  const lo = spot * (1 - bandFrac), hi = spot * (1 + bandFrac);
+  const inBand = arr.filter(l => l.price >= lo && l.price <= hi);
+  const catches = [];
+  if (withCatch) {
+    const above = arr.filter(l => l.price > hi).sort((a, b) => a.price - b.price)[0];
+    const below = arr.filter(l => l.price < lo).sort((a, b) => b.price - a.price)[0];
+    if (above) catches.push({ ...above, catch: true });
+    if (below) catches.push({ ...below, catch: true });
+  }
+  return { inBand, catch: catches, lo, hi };
+}
+
 export function oiCalcExposures(strikes, calls, puts, spot, pair, T = OI_GREEK_T, sigmaFn = null) {
   if (!spot || spot <= 0) return { gex: 0, dex: 0 };
   const cs = oiContractSize(pair);
