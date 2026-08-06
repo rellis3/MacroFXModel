@@ -184,7 +184,10 @@ export function openOIModal() {
     const b = document.getElementById('oiSwapCP');
     if (w) w.style.display = inv ? 'flex' : 'none';
     if (h) h.style.display = inv ? '' : 'none';
-    if (b) b.checked = inv && !!existing?.cpSwapped;
+    // Flip is the DEFAULT for inverted pairs now: a NEW inverted pair opens with the box
+    // ticked; a saved entry restores its own choice (an explicit un-flip persists). Old
+    // pre-default entries read as un-flipped here but a re-analyse migrates them to the flip.
+    if (b) b.checked = inv && (existing ? existing.cpSwapped !== false : true);
   }
   updateSmileHint();   // reopening with pastes already in place → show the hint straight away
   updateOIBasis();
@@ -1450,7 +1453,7 @@ export async function buildOIEntry({
   pair, rawOI, rawChg = '', rawVol = '', rawIV = '', rawIVTerm = '',
   expiryLabel = '', dteRaw = NaN, spotRaw = NaN, futuresRaw = NaN,
   numLevels = 8, minOI = 20,
-  manualFutures = false, swapCP = false, greekVol = 'smile',
+  manualFutures = false, swapCP = undefined, greekVol = 'smile',   // swapCP: undefined = inverted-pair default (flip ON); false forces OFF
   dashboardQuote = null, priorEntry = null, baseUrl = '', skipLiveQuote = false,
 } = {}) {
   if (!rawOI || !rawOI.trim()) return { error: 'no OI data' };
@@ -1619,23 +1622,22 @@ export async function buildOIEntry({
       : parsed.strikes.map(s => s - basis);
   }
 
-  // ── INVERTED-PAIR CALL/PUT SWAP (opt-in, default OFF) ──────────────────────
+  // ── INVERTED-PAIR CALL/PUT SWAP (default ON for 6J/6C/6S) ──────────────────
   //
   // On 6J/6C/6S the CME quotes the FOREIGN currency in USD, so inverting the strike
   // also inverts what the option means. 6J is USD-per-JPY: a 6J CALL pays off when 6J
   // rises — JPY strengthening — which is USD/JPY FALLING. Heavy 6J call OI therefore
   // creates resistance in 6J terms and, once flipped into USD/JPY terms, a FLOOR.
-  // On that reading a 6J call wall is a USD/JPY PUT wall, and the labels — plus the
-  // direction the bot trades them — are currently backwards for three pairs.
+  // On that reading a 6J call wall is a USD/JPY PUT wall.
   //
-  // That argument is from contract mechanics, not from a reference number, and the
-  // live data neither confirms nor refutes it (USD/JPY's put walls also sit below
-  // spot; USD/CAD's call wall sits above). So this is a SWITCH, not a correction:
-  // default OFF preserves today's behaviour exactly, and flipping it per pair lets
-  // paper trading settle the question instead of a guess. Swapping here — before max
-  // pain, the walls, the GEX profile and everything downstream — means one flag
-  // reaches the export, both bots and the dashboard with no second copy to drift.
-  const cpSwapped = futuresIsInverted(pair) && !!swapCP;
+  // This is now the DEFAULT for inverted pairs (2026-08): the un-flipped labels put
+  // every USD/JPY "put wall" ABOVE spot — puts are support, so that's backwards — and an
+  // external CME OI dashboard (Bennett's) plus the dealer-hedging economics both read it
+  // flipped. `swapCP === false` still forces it OFF per pair (the escape hatch), but the
+  // default (undefined) flips. Swapping here — before max pain, the walls, the GEX profile
+  // and everything downstream — means ONE flag reaches the export, both bots and the
+  // dashboard with no second copy to drift; the bot trades the flipped labels too.
+  const cpSwapped = futuresIsInverted(pair) && (swapCP !== false);
   if (cpSwapped) {
     [parsed.calls, parsed.puts] = [parsed.puts, parsed.calls];
     [parsed.callChg, parsed.putChg] = [parsed.putChg, parsed.callChg];

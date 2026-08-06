@@ -862,6 +862,25 @@ console.log('\n[oi day-expiry]');
   ok('perExpiry drops a near-empty column (no walls → junk max pain)',
     (ec.inst.perExpiry || []).every(e => e.dte !== 9) && (ec.inst.perExpiry || []).some(e => e.dte === 1),
     (ec.inst.perExpiry || []).map(e => e.dte).join(','));
+
+  // Inverted-pair (6J/6C/6S) call/put swap now defaults ON — a 6J CALL wall reads as a
+  // USD/JPY PUT wall (dealer-hedging convention; matches external CME OI dashboards). The
+  // un-flipped labels put every put wall ABOVE spot, which is backwards.
+  const jpyOI = [
+    '\t6J', '0.006337\t6J', 'Strike\tA', '30 DTE\tB', 'C\tP',
+    '0.006300\t500\t400', '0.006337\t9000\t800', '0.006370\t600\t7000',   // heavy CALL at 0.006337 (=USD/JPY 157.80)
+  ].join('\n');
+  const jf = await buildOIEntry({ pair: 'USD/JPY', rawOI: jpyOI, spotRaw: 157.8, futuresRaw: 0.006337, manualFutures: true, skipLiveQuote: true });
+  const jn = await buildOIEntry({ pair: 'USD/JPY', rawOI: jpyOI, spotRaw: 157.8, futuresRaw: 0.006337, manualFutures: true, skipLiveQuote: true, swapCP: false });
+  ok('inverted pair flips call/put by DEFAULT', jf.inst.cpSwapped === true);
+  ok('swapCP:false forces the flip OFF (escape hatch)', jn.inst.cpSwapped === false);
+  ok('flipped: the heavy-CALL 6J strike reads as a USD/JPY PUT wall',
+    jf.inst.putWalls.some(w => Math.abs(w.strike - 157.80) < 0.05 && w.oi === 9000),
+    jf.inst.putWalls.map(w => w.strike.toFixed(2) + ':' + w.oi).join(' '));
+  ok('un-flipped: the same strike reads as a CALL wall',
+    jn.inst.callWalls.some(w => Math.abs(w.strike - 157.80) < 0.05 && w.oi === 9000));
+  const eu = await buildOIEntry({ pair: 'EUR/USD', rawOI: '\t6E\n1.15\t6E\nStrike\tA\n30 DTE\tB\nC\tP\n1.1450\t500\t900\n1.1500\t3000\t2500\n1.1550\t2000\t400', spotRaw: 1.15, futuresRaw: 1.15, manualFutures: true, skipLiveQuote: true, swapCP: true });
+  ok('non-inverted pair never flips (swapCP:true ignored on EUR/USD)', eu.inst.cpSwapped === false);
   const cmpTxt = buildOILevelText({ 'EUR/USD': cmp.inst }, { generated: 'x' });
   ok('export renders the per-expiry breakdown block', /per-expiry \(mp = max pain/.test(cmpTxt) && /30DTE  mp /.test(cmpTxt));
 
