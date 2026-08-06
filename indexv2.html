@@ -1058,7 +1058,7 @@ async function loadMacroBackdrop(){
    shape — rather than reinventing the tier-score wiring. ── */
 async function loadDrillExtras(d){
   if (drillCache[d.sym]) return drillCache[d.sym];
-  const extras = { macroTier:null, regimeInfo:null, catchup:null, patterns:null, patternsErr:null };
+  const extras = { macroTier:null, regimeInfo:null, catchup:null, patterns:null, patternsErr:null, d1bars:null };
   const pairDef = d.ac==='fx' || d.sym==='GOLD' ? PAIRS.find(p=>p.symbol===(BRIEF_HMM_KEYS[d.sym]||'')) : null;
 
   const jobs = [];
@@ -1072,11 +1072,20 @@ async function loadDrillExtras(d){
         ]);
         S.ohlcData = S.ohlcData || {};
         S.ohlc5m = S.ohlc5m || {};
-        if (d1?.values) S.ohlcData[pairDef.symbol] = d1;
+        if (d1?.values) { S.ohlcData[pairDef.symbol] = d1; extras.d1bars = d1.values; }
         if (m5?.values) S.ohlc5m[pairDef.symbol] = m5;
         S.currentPair = pairDef;
         extras.macroTier = calculateTierScores();
       } catch(e){ console.warn('[tier score]', d.sym, e.message||e); }
+    })());
+  } else {
+    // Indices aren't in PAIRS/BRIEF_HMM_KEYS (no tier score defined for them),
+    // but the chart still needs daily bars — fetch directly via the OANDA symbol.
+    jobs.push((async()=>{
+      try {
+        const d1 = await jget(`/api/ohlc?symbol=${encodeURIComponent(d.oanda)}`);
+        if (d1?.values) extras.d1bars = d1.values;
+      } catch(e){ console.warn('[chart bars]', d.sym, e.message||e); }
     })());
   }
 
@@ -1129,8 +1138,8 @@ function drawSparkline(vals, w, h, color){
 function drawChart(d){
   const W=1000,H=260,pad={t:14,b:22,l:6,r:118};
   const bars = (d._d1bars||[]).slice(-64);
-  if (bars.length<5) return `<div class="pending" style="padding:40px 0;text-align:center">Chart needs OANDA_KEY — not available in this environment. Will render live once deployed.</div>`;
-  const hi=Math.max(...bars.map(b=>+b.mid.h)), lo=Math.min(...bars.map(b=>+b.mid.l));
+  if (bars.length<5) return `<div class="pending" style="padding:40px 0;text-align:center">No daily candle data for this pair yet.</div>`;
+  const hi=Math.max(...bars.map(b=>+b.high)), lo=Math.min(...bars.map(b=>+b.low));
   const allPx = [hi,lo].concat(d.pivots.map(p=>p.px));
   const min=Math.min(...allPx), max=Math.max(...allPx);
   const y = v => pad.t + (max-v)/(max-min) * (H-pad.t-pad.b);
@@ -1146,7 +1155,7 @@ function drawChart(d){
   });
   bars.forEach((b,i)=>{
     const cx = pad.l + i*bw + bw/2;
-    const o=+b.mid.o,c=+b.mid.c,h=+b.mid.h,l=+b.mid.l;
+    const o=+b.open,c=+b.close,h=+b.high,l=+b.low;
     const up = c>=o;
     const color = up?'#3ecf8e':'#f2704a';
     svg += `<line x1="${cx}" y1="${y(h)}" x2="${cx}" y2="${y(l)}" stroke="${color}" stroke-width="1"/>`;
@@ -1221,6 +1230,7 @@ async function renderDrill(){
   el.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text3)">Loading ${d.sym}…</div>`;
   const extras = await loadDrillExtras(d);
   if (selectedSym !== d.sym) return; // user moved on
+  d._d1bars = extras.d1bars;
 
   const rr = (lbl,val,color)=>`<div class="rr"><span class="rr-lbl">${lbl}</span><div class="rr-bar"><span style="width:${val??0}%;background:${color}"></span></div><span class="rr-val">${val??'—'}%</span></div>`;
   const rd = rateDiffFor(d.sym);
@@ -1250,8 +1260,13 @@ async function renderDrill(){
       <div class="dcard-hd"><span class="eyebrow">Proven Edge — Range-Line Zones</span><span class="trust validated">✅ proven — Sharpe 4.7–6 OOS</span></div>
       <div class="dcard-body">
         ${!d.zonesRaw ? `<div class="pending">Range-Line bot has no live status/plan/confluence stored for this pair yet.</div>`
-        : (d.zonesRaw.zones||[]).length ? d.zonesRaw.zones.map(z=>`<div class="zone-row"><span class="conf-badge conf-${z.confluence?.rank>=2?'multi':z.confluence?.rank===1?'dual':'single'}">${z.confluence?.bucket||'—'}</span><div class="zone-info"><b>${z.label} ${z.side}</b><div class="zi-sub">${z.distPips!=null?z.distPips.toFixed(0)+'p · ':''}${fmtPx(z.level)} · ${z.decision}</div></div>${z.gated?`<span class="zone-tag agree">gated</span>`:''}</div>`).join('')
-        : `<div class="pending">No zone within today's remaining expected range.</div>`}
+        : (()=>{ const all=d.zonesRaw.zones||[]; const tradeable=all.filter(z=>z.tradeable).sort((a,b)=>Math.abs(a.distPips??1e9)-Math.abs(b.distPips??1e9));
+          if(!tradeable.length) return `<div class="pending">No tradeable (fade/follow) zone in today's ladder — ${all.length} level${all.length===1?'':'s'} scanned, all skip.</div>`;
+          const shown = tradeable.slice(0,8);
+          const rows = shown.map(z=>`<div class="zone-row"><span class="conf-badge conf-${z.confluence?.rank>=2?'multi':z.confluence?.rank===1?'dual':'single'}">${z.confluence?.bucket||'—'}</span><div class="zone-info"><b>${z.label} ${z.side}</b><div class="zi-sub">${z.distPips!=null?z.distPips.toFixed(0)+'p · ':''}${fmtPx(z.level)} · ${z.decision}</div></div>${z.gated?`<span class="zone-tag agree">gated</span>`:''}</div>`).join('');
+          const hidden = tradeable.length - shown.length;
+          return rows + (hidden>0 ? `<div class="forward-line"><span>+${hidden} more tradeable zone${hidden===1?'':'s'} further out (${all.length-tradeable.length} skip-decision levels not shown at all)</span></div>` : `<div class="forward-line"><span>${all.length-tradeable.length} skip-decision levels in the full ladder not shown</span></div>`);
+        })() }
       </div>
     </div>
 
