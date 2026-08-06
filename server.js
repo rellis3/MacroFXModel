@@ -85,6 +85,7 @@ import { creditGate as _creditGateBrick } from './js/creditCore.js';
 import { creditRegime as _creditRegime } from './js/creditHmm.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
 import { resampleBars as plResampleBars, runPatternScan, annotateHtfAlignment as plAnnotateHtfAlignment, confidenceBucketStats as plConfidenceBucketStats, classifySwingStructure as plClassifySwingStructure } from './js/patternEngine.js';
+import { OANDA_INSTRUMENT_MAP, clampToNow, fetchIntradayOnce, fetchIntraday } from './js/oandaIntraday.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
 import { runRangeExtBacktest, summarizeRangeExt, RANGE_EXT_INSTRUMENTS } from './js/rangeExtEngine.js';
@@ -16142,10 +16143,12 @@ app.get('/api/cross-pair-research', async (req, res) => {
 
 // Weekly backtest D1 candle viewer — fetches D1 bars from OANDA for a date range.
 // Used by the chart modal in weekly-vol-backtest.html (M1 parquets may not cover 2025+).
-// Route-only map for the d1/m15/m5 candle viewers. US2000 is served here for
+// Instrument map + intraday fetch live in js/oandaIntraday.js (shared with the
+// pattern-lab live-candles route below) — US2000 is included there for
 // forecast-path.html (it's in the vol-forecast trade list) WITHOUT adding it to
 // WEEKLY_INSTRUMENTS — that would silently widen the weekly backtest universe.
-const _wbtInstrMap = { ...Object.fromEntries(WBT_INSTRUMENTS.map(i => [i.name.toLowerCase(), i.oanda])), us2000: 'US2000_USD' };
+const _wbtInstrMap = OANDA_INSTRUMENT_MAP;
+const _wbtClampTo = clampToNow;
 
 // Resolve an OANDA symbol for the d1/m15/m5 candle-viewer routes. Primary:
 // _wbtInstrMap (weeklyVolBacktestEngine's own names — eurusd, nq, spx500, de30,
@@ -16162,13 +16165,6 @@ function _wbtResolveOanda(name) {
   if (_wbtInstrMap[name]) return _wbtInstrMap[name];
   const key = resolveKey(name);
   return key ? (instrument(key).oanda ?? null) : null;
-}
-
-// OANDA rejects a `to` timestamp in the future with HTTP 400 — so `to=<today>`
-// (today 23:59:59Z hasn't happened yet) breaks the request. Clamp to now.
-function _wbtClampTo(toDate) {
-  const iso = toDate + 'T23:59:59Z';
-  return new Date(iso).getTime() > Date.now() ? new Date().toISOString().replace(/\.\d+Z$/, 'Z') : iso;
 }
 
 app.get('/api/weekly-vol-backtest/d1/:pair', async (req, res) => {
@@ -16206,60 +16202,10 @@ app.get('/api/weekly-vol-backtest/d1/:pair', async (req, res) => {
   }
 });
 
-// Fetch intraday candles (epoch-second times) for one OANDA instrument —
-// shared by the candle-viewer routes and the forecast-path summary. Throws on
-// a non-OK response with OANDA's errorMessage included.
-async function _wbtFetchIntradayOnce(oanda, gran, { from, to, count } = {}) {
-  const base = _oandaBaseW();
-  let url = `${base}/v3/instruments/${encodeURIComponent(oanda)}/candles?granularity=${gran}&price=M`;
-  if (from) url += `&from=${encodeURIComponent(from)}`;
-  if (to)   url += `&to=${encodeURIComponent(to)}`;
-  // count is valid with a `from` (OANDA returns `count` candles forward) or
-  // alone; it must NOT be combined with `to` (from+to defines the span).
-  if (count && !to) url += `&count=${count}`;
-  else if (!from && !to) url += `&count=200`;
-  const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(20_000) });
-  if (!r.ok) {
-    let msg = `OANDA HTTP ${r.status}`;
-    try { const j = await r.json(); if (j?.errorMessage) msg += ` — ${j.errorMessage}`; } catch { /* body not JSON */ }
-    throw new Error(msg);
-  }
-  const data = await r.json();
-  return (data.candles ?? [])
-    .filter(c => c.complete !== false && c.mid)
-    .map(c => ({ time: Math.floor(new Date(c.time).getTime() / 1000), open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c }));
-}
-
-// Fetch intraday candles (epoch-second times), PAGINATED past OANDA's 5000-
-// candle/request cap: walks the [from, to] window forward in time chunks so a
-// multi-month M15/M5 history stitches into one ascending, de-duplicated series.
-// The event-σ A/B needs ≥20 event windows → months of M15, not the ~50 days a
-// single request allows.
-async function _wbtFetchIntraday(oanda, gran, { from, to, count } = {}) {
-  const toMs = to ? new Date(_wbtClampTo(to)).getTime() : Date.now();
-  if (!from) return _wbtFetchIntradayOnce(oanda, gran, { count });   // count-only (no range)
-  // OANDA rejects a from+to request spanning >5000 candles ("Maximum value for
-  // 'count' exceeded") — it does NOT return the first 5000. So page with
-  // from+count (5000 forward from the cursor), advancing until we pass `to`.
-  let cursorMs = new Date(from + 'T00:00:00Z').getTime();
-  const out = [];
-  for (let page = 0; page < 24 && cursorMs < toMs; page++) {   // hard cap 24 pages
-    const chunk = await _wbtFetchIntradayOnce(oanda, gran, {
-      from: new Date(cursorMs).toISOString().replace(/\.\d+Z$/, 'Z'),
-      count: 5000,
-    });
-    if (!chunk.length) break;
-    let added = 0;
-    for (const c of chunk) {
-      if (c.time * 1000 > toMs) break;                                // past the window
-      if (!out.length || c.time > out[out.length - 1].time) { out.push(c); added++; }
-    }
-    const lastMs = chunk[chunk.length - 1].time * 1000;
-    if (lastMs >= toMs || chunk.length < 5000 || added === 0) break;  // reached `to` / caught up
-    cursorMs = lastMs + 1000;
-  }
-  return out;
-}
+// Intraday fetch (single page + paginated) now lives in js/oandaIntraday.js —
+// aliased here so the routes below didn't need touching.
+const _wbtFetchIntradayOnce = fetchIntradayOnce;
+const _wbtFetchIntraday = fetchIntraday;
 
 // Weekly backtest intraday candle viewer — same as D1 but at a finer
 // granularity, epoch-second times. One handler, mounted per granularity.
@@ -19648,6 +19594,31 @@ app.get('/api/pattern-lab/candles/:pair', async (req, res) => {
   } catch (e) {
     console.error('[pattern-lab/candles]', e.message);
     res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Live candles straight from OANDA (not the static M1 parquet) — this is what
+// the live pattern scanner (PatternBot/pattern_live_bot.mjs) polls. Only the
+// granularities OANDA actually serves at intraday resolution are supported;
+// 1m is deliberately not exposed here (too noisy to alert on live, per the
+// historical study) even though the M1 parquet route above supports it.
+const PL_LIVE_GRAN = { '5m': 'M5', '15m': 'M15', '30m': 'M30', '1h': 'H1', '4h': 'H4', '1d': 'D' };
+
+app.get('/api/pattern-lab/live-candles/:pair', async (req, res) => {
+  const pair = req.params.pair.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const { label } = plNormalizeTf(req.query.tf);
+  const gran = PL_LIVE_GRAN[label];
+  if (!gran) return res.status(400).json({ ok: false, error: `tf must be one of ${Object.keys(PL_LIVE_GRAN).join(', ')}` });
+  const oanda = OANDA_INSTRUMENT_MAP[pair];
+  if (!oanda) return res.status(404).json({ ok: false, error: `Unknown pair: ${pair}` });
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+  const count = Math.min(5000, Math.max(50, parseInt(req.query.count, 10) || 500));
+  try {
+    const candles = await fetchIntradayOnce(oanda, gran, { count });
+    res.json({ ok: true, pair, tf: label, gran, n: candles.length, candles });
+  } catch (e) {
+    console.error('[pattern-lab/live-candles]', e.message);
+    res.status(/OANDA HTTP/.test(e.message) ? 502 : 500).json({ ok: false, error: e.message });
   }
 });
 
