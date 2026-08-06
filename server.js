@@ -10102,7 +10102,8 @@ app.post('/api/oi/reanalyse', async (req, res) => {
           spotRaw:    Number.isFinite(inst.spot)    ? inst.spot    : NaN,
           futuresRaw: Number.isFinite(inst.futures) ? inst.futures : NaN,
           manualFutures: Number.isFinite(inst.futures),   // pin the stored basis anchor
-          swapCP: !!inst.cpSwapped,
+          swapCP: undefined,   // use the inverted-pair default (flip ON) so re-analyse migrates old un-flipped 6J/6C/6S entries
+
           greekVol: inst.greekVolMode === 'flat' ? 'flat' : 'smile',
           numLevels: Number.isFinite(inst.numLevels) ? inst.numLevels : 8,
           minOI:     Number.isFinite(inst.minOI)     ? inst.minOI     : 20,
