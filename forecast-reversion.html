@@ -133,6 +133,12 @@
       <button data-c="cog">COG</button>
       <button data-c="bot" title="The Volatility Bot's actual lines: COG geometry × the bot's σ (volSigmaSeries — the backtest math the bot uses, not the vol-forecast σ the COG calc uses; NQ swaps to cc-HV like the bot). Backtest source only.">Bot</button>
     </div>
+    <label title="Overlay OTHER calcs' lines on top of the active Calc above, view-only (no touch markers, no trades) — so you can see how far apart Original/COG/Bot place their levels for the same day.">Compare</label>
+    <span class="seg" id="calcCompare">
+      <button data-cc="original" title="Overlay Original's lines">+Orig</button>
+      <button data-cc="cog" title="Overlay COG's lines">+COG</button>
+      <button data-cc="bot" title="Overlay Bot's lines">+Bot</button>
+    </span>
     <div class="seg" id="touch">
       <button data-t="markers" title="Mark with a coloured dot where price first reached each armed level that day">● Markers</button>
       <button data-t="only" title="Each day, draw only the armed levels price actually touched — hide the untouched ones">◱ Touched only</button>
@@ -300,9 +306,11 @@ function setStatus(t) { $('status').textContent = t; }
 
 // Band %s a day should use: archived fields (Original) or COG constants × that
 // day's vol_annual (COG). Returns {hl_median,hl_75,oc_median,oc_75} or null.
-function bandsFor(f) {
+// `mode` defaults to the active Calc toggle; pass one explicitly to read a
+// DIFFERENT calc's bands regardless of the UI selection (the Compare overlay).
+function bandsFor(f, mode) {
   if (!f) return null;
-  const mode = calcMode();
+  mode = mode || calcMode();
   // COG geometry for both COG and BOT — they differ only in the σ SOURCE:
   //   COG = the vol-forecast σ (f.vol_annual, with correction constants)
   //   BOT = the bot's σ (f.bot_vol_annual = volSigmaSeries, no corrections)
@@ -321,7 +329,8 @@ function bandsFor(f) {
 }
 
 // ── State ────────────────────────────────────────────────────────────────────
-const state = { armed: new Set(LADDER_LINES.map(l => l.key)), showStats: false, style: 'fade_all', sltpMode: 'level', eod: 'kill', showOsc: false };
+const state = { armed: new Set(LADDER_LINES.map(l => l.key)), showStats: false, style: 'fade_all', sltpMode: 'level', eod: 'kill', showOsc: false, compareCalcs: new Set() };
+const CALC_TAG = { original: 'Orig', cog: 'COG', bot: 'Bot' };
 const HOLD_SESSIONS = 5;   // 'let run' holds a trade at most this many sessions past EOD
 function styleMode() { return $('style').querySelector('button.on')?.dataset.y || 'fade_all'; }
 function eodModeSel() { return $('eod').querySelector('button.on')?.dataset.e || 'kill'; }
@@ -383,6 +392,15 @@ let dpr = window.devicePixelRatio || 1;
     $('calc').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
     recomputeAndDraw();
     if (days.length) updateStatus();
+  });
+  // Compare toggle: overlay OTHER calcs' lines (view-only — no touch data, no
+  // trades, so just redraw, no recompute) on top of the active Calc above.
+  $('calcCompare').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const m = b.dataset.cc;
+    if (state.compareCalcs.has(m)) state.compareCalcs.delete(m); else state.compareCalcs.add(m);
+    b.classList.toggle('on', state.compareCalcs.has(m));
+    scheduleDraw();
   });
   // Touch overlays (Markers / Touched-only) are view-only — toggle + redraw, no recompute.
   $('touch').addEventListener('click', e => {
@@ -746,19 +764,24 @@ function drawOverlay() {
 
     // Forecast lines — only the currently-armed levels (the ones that can produce
     // a trade). Labelled like Replay: name + signed % from the open + the price.
-    const bands = bandsFor(d.f);
-    if (bands) {
+    // `compareMode` non-null ⇒ drawing an OVERLAY calc (Compare chips): view-only
+    // reference lines at that calc's prices, fainter + tagged, no touch data (only
+    // the active Calc's bands feed d.touch/trades) and unaffected by Touched-only.
+    const drawForecastLines = (mode, compareMode) => {
+      const bands = bandsFor(d.f, mode);
+      if (!bands) return;
       for (const L of LADDER_LINES) {
         if (!state.armed.has(L.key)) continue;
         const pct = bands[L.band];
         if (pct == null || !(pct > 0)) continue;
         const price = d.open * (1 + L.side * pct / 100);
-        const tp = d.touch?.[L.key];                 // { price, t } precomputed; t=null ⇒ never touched
+        const tp = compareMode ? null : d.touch?.[L.key];   // { price, t } precomputed; t=null ⇒ never touched
         const touched = !!(tp && tp.t != null);
-        if (touchedOnly && !touched) continue;        // "Touched only" hides untouched armed levels
-        const text = wide ? `${L.label} ${fmtPct(L.side * pct)} ${price.toFixed(pf.precision)}` : '';
-        line(price, L.color, L.dash, text, false, 0.55);
-        if (touchMarkers && touched) {                // dot where price first reached the level
+        if (!compareMode && touchedOnly && !touched) continue;   // "Touched only" hides untouched armed levels
+        const tag = compareMode ? `${CALC_TAG[mode]} ` : '';
+        const text = wide ? `${tag}${L.label} ${fmtPct(L.side * pct)} ${price.toFixed(pf.precision)}` : '';
+        line(price, L.color, L.dash, text, false, compareMode ? 0.32 : 0.55);
+        if (!compareMode && touchMarkers && touched) {       // dot where price first reached the level
           const mx = ts.timeToCoordinate(tp.t), my = series.priceToCoordinate(price);
           if (mx != null && my != null) {
             octx.save();
@@ -769,7 +792,9 @@ function drawOverlay() {
           }
         }
       }
-    }
+    };
+    drawForecastLines(calcMode(), null);                          // active Calc — trades/touch-aware
+    for (const m of state.compareCalcs) if (m !== calcMode()) drawForecastLines(m, m);  // overlay-only refs
 
     // Realized High / Low (white, solid)
     const hiPct = (d.high - d.open) / d.open * 100;
