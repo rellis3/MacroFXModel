@@ -16147,6 +16147,23 @@ app.get('/api/cross-pair-research', async (req, res) => {
 // WEEKLY_INSTRUMENTS — that would silently widen the weekly backtest universe.
 const _wbtInstrMap = { ...Object.fromEntries(WBT_INSTRUMENTS.map(i => [i.name.toLowerCase(), i.oanda])), us2000: 'US2000_USD' };
 
+// Resolve an OANDA symbol for the d1/m15/m5 candle-viewer routes. Primary:
+// _wbtInstrMap (weeklyVolBacktestEngine's own names — eurusd, nq, spx500, de30,
+// uk100, us30, us2000 — what every existing caller (forecast-path.html,
+// weekly-vol-backtest.html, forecast-blend.html) has always passed; unchanged
+// behavior for all of them). Fallback: instrumentRegistry's canonical short keys
+// (spx/dax/ftse/dow/rut) — those differ from weeklyVolBacktestEngine's names for
+// every index except nq, so expected-moves.html's chart (which reads pair keys
+// straight off instrumentRegistry, same bug already fixed for /api/expected-
+// moves/run) 404'd on any index row after the first NAS100 one — 'nq' happens to
+// match both naming schemes, which is why that specific pair "just worked" and
+// made the bug look like a one-off flake rather than what it was.
+function _wbtResolveOanda(name) {
+  if (_wbtInstrMap[name]) return _wbtInstrMap[name];
+  const key = resolveKey(name);
+  return key ? (instrument(key).oanda ?? null) : null;
+}
+
 // OANDA rejects a `to` timestamp in the future with HTTP 400 — so `to=<today>`
 // (today 23:59:59Z hasn't happened yet) breaks the request. Clamp to now.
 function _wbtClampTo(toDate) {
@@ -16156,7 +16173,7 @@ function _wbtClampTo(toDate) {
 
 app.get('/api/weekly-vol-backtest/d1/:pair', async (req, res) => {
   const name  = req.params.pair.toLowerCase().replace(/[^a-z]/g, '');
-  const oanda = _wbtInstrMap[name];
+  const oanda = _wbtResolveOanda(name);
   if (!oanda) return res.status(404).json({ ok: false, error: `Unknown pair: ${name}` });
   if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
 
@@ -16249,7 +16266,7 @@ async function _wbtFetchIntraday(oanda, gran, { from, to, count } = {}) {
 function _wbtIntradayRoute(gran, defCount) {
   return async (req, res) => {
     const name  = req.params.pair.toLowerCase().replace(/[^a-z]/g, '');
-    const oanda = _wbtInstrMap[name];
+    const oanda = _wbtResolveOanda(name);
     if (!oanda) return res.status(404).json({ ok: false, error: `Unknown pair: ${name}` });
     if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
     try {
@@ -16321,12 +16338,7 @@ app.post('/api/expected-moves/run', express.json({ limit: '256kb' }), (req, res)
         try {
           const key = resolveKey(pair);
           if (!key) throw new Error(`unknown pair: ${pair}`);
-          // Read the OANDA symbol straight off instrumentRegistry, not _wbtInstrMap —
-          // that table is keyed by weeklyVolBacktestEngine's own names (spx500/de30/
-          // uk100/us30/us2000), which don't match instrumentRegistry's canonical short
-          // keys (spx/dax/ftse/dow/rut) that resolveKey() returns. instrumentRegistry
-          // already carries the right OANDA symbol per canonical key — use that directly.
-          const oanda = INSTRUMENTS[key]?.oanda;
+          const oanda = _wbtResolveOanda(key);   // same resolver the d1/m15/m5 candle routes use — one place, not two independent fallbacks
           if (!oanda) throw new Error(`no OANDA symbol for ${pair}`);
           const bars = await _wbtFetchIntraday(oanda, gran, { from: fromD, to: today });
           const display = INSTRUMENTS[key]?.display;
