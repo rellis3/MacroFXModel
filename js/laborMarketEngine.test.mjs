@@ -4,8 +4,9 @@
 import {
   toSeries, monthOverMonth, yoyPct, latestZScore,
   payrollScore, wageScore, unemploymentTrendScore, participationTrendScore,
+  quitsScore, jobOpeningsScore,
   breadthScore, revisionScore,
-  laborMarketScore, LABOR_UNIVERSE, SECTOR_UNIVERSE,
+  laborMarketScore, LABOR_UNIVERSE, SECTOR_UNIVERSE, UNEMPLOYMENT_UNIT_LABEL,
 } from './laborMarketEngine.js';
 
 let failures = 0;
@@ -101,6 +102,27 @@ console.log('[participationTrendScore — rising participation reads strong]');
   ok('rising participation -> positive score', r.score > 0, r.score);
 }
 
+console.log('[quitsScore — rising quits rate reads as worker confidence/strong]');
+{
+  const vals = Array.from({ length: 20 }, (_, i) => 2.0 + i * 0.02);
+  const m = monthlySeries('2023-01', vals);
+  const r = quitsScore(m);
+  ok('rising quits rate -> positive score', r.score > 0, r.score);
+  ok('reports latestRate', r.latestRate != null);
+}
+{
+  const m = monthlySeries('2024-01', [2.0, 2.1]);
+  ok('too little history -> null score, not a crash', quitsScore(m).score === null);
+}
+
+console.log('[jobOpeningsScore — rising openings rate reads as tight/strong]');
+{
+  const vals = Array.from({ length: 20 }, (_, i) => 5.0 - i * 0.03); // falling openings
+  const m = monthlySeries('2023-01', vals);
+  const r = jobOpeningsScore(m);
+  ok('falling openings rate -> negative score', r.score < 0, r.score);
+}
+
 console.log('[breadthScore — diffusion index + concentration]');
 {
   // 10 sectors, latest month: 7 growing, 1 flat, 2 shrinking. One sector
@@ -167,6 +189,15 @@ console.log('[laborMarketScore — composite + participation trap flag]');
   ok('wageGrowth absent when no wage data given', r.dims.wageGrowth === undefined);
 }
 {
+  // JOLTS dims flow through the composite the same way fetchLaborData hands
+  // them off (data.quitsRate, data.jobOpenings).
+  const quitsRate = monthlySeries('2023-01', Array.from({ length: 20 }, (_, i) => 2.0 + i * 0.02));
+  const jobOpenings = monthlySeries('2023-01', Array.from({ length: 20 }, (_, i) => 5.0 + i * 0.02));
+  const r = laborMarketScore({ quitsRate, jobOpenings });
+  ok('quitsConfidence dim present and feeds the composite', 'quitsConfidence' in r.dims && r.strength != null, JSON.stringify(r.coverage));
+  ok('jobOpenings dim present and feeds the composite', 'jobOpenings' in r.dims);
+}
+{
   const r = laborMarketScore({});
   ok('empty input -> null strength, not a crash', r.strength === null && r.coverage.length === 0);
 }
@@ -184,12 +215,16 @@ console.log('[laborMarketScore — composite + participation trap flag]');
 
 console.log('[LABOR_UNIVERSE / SECTOR_UNIVERSE]');
 {
-  ok('USD has all five factors', ['payrolls', 'unemployment', 'participation', 'wages', 'hours'].every(k => k in LABOR_UNIVERSE.USD));
+  ok('USD has all seven factors', ['payrolls', 'unemployment', 'participation', 'wages', 'hours', 'quitsRate', 'jobOpenings'].every(k => k in LABOR_UNIVERSE.USD));
   ok('other currencies have unemployment only', Object.entries(LABOR_UNIVERSE).filter(([k]) => k !== 'USD')
     .every(([, cfg]) => Object.keys(cfg).length === 1 && cfg.unemployment));
   ok('covers all 8 currencies from ECON_UNIVERSE', Object.keys(LABOR_UNIVERSE).length === 8, Object.keys(LABOR_UNIVERSE).join(','));
   ok('SECTOR_UNIVERSE has 10 supersectors, all unique series IDs', Object.keys(SECTOR_UNIVERSE).length === 10
     && new Set(Object.values(SECTOR_UNIVERSE)).size === 10, Object.values(SECTOR_UNIVERSE).join(','));
+  ok('CHF uses SECO registered unemployment, not the OECD-harmonized rate', LABOR_UNIVERSE.CHF.unemployment === 'LMUNRLTTCHM647S', LABOR_UNIVERSE.CHF.unemployment);
+  ok('CHF still unemployment-only (one factor)', Object.keys(LABOR_UNIVERSE.CHF).length === 1);
+  ok('CHF is labeled as a level, not a % rate', UNEMPLOYMENT_UNIT_LABEL.CHF !== '%', UNEMPLOYMENT_UNIT_LABEL.CHF);
+  ok('every other currency defaults to %', Object.entries(UNEMPLOYMENT_UNIT_LABEL).filter(([c]) => c !== 'CHF').every(([, u]) => u === '%'));
 }
 
 if (failures) { console.error(`\n${failures} FAILURE(S)`); process.exit(1); }

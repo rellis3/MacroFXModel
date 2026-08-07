@@ -228,6 +228,9 @@ function isCfKey(key) {
   // "point-in-time record, not a cache" reasoning as vmlog_/vol_forecast_.
   // Infrequent writes (a handful per ~6-week meeting cycle), well within quota.
   if (key.startsWith('fomc_')) return true;
+  // ecb_* — same reasoning as fomc_ above, the ECB engine's own point-in-time
+  // captures.
+  if (key.startsWith('ecb_')) return true;
   return _CF_EXACT.has(key) || key.startsWith('journal_') || key.startsWith('ai_');
 }
 

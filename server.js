@@ -72,10 +72,12 @@ import { volOuDiagnostic as _volOuDiagnostic, scoreVolPredictsForwardVol as _sco
 import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS, buildPortfolioReturns as _trendBuildPortfolio, portfolioReturnsByDate as _trendReturnsByDate } from './js/trendFollowEngine.js';
 import { blendStreams as _blendStreams } from './js/streamBlend.js';
 import { runGauntlet as _runStrategyGauntlet, GAUNTLET_SPECS as _GAUNTLET_SPECS, SIGNALS as _LAB_SIGNALS } from './js/strategyLabEngine.js';
-import { fetchLaborData, laborMarketScore, LABOR_UNIVERSE } from './js/laborMarketEngine.js';
+import { fetchLaborData, laborMarketScore, LABOR_UNIVERSE, UNEMPLOYMENT_UNIT_LABEL } from './js/laborMarketEngine.js';
 import { FOMC_MEETINGS, pendingAsOf as fomcPendingAsOf } from './js/fomcCalendar.js';
 import { FETCHERS as FOMC_FETCHERS, extractVote as fomcExtractVote } from './js/fomcFetch.js';
 import { wordDiff as fomcWordDiff, diffToPromptLines as fomcDiffToPromptLines, diffTables as fomcDiffTables } from './js/fomcDiff.js';
+import { ECB_MEETINGS, pendingAsOf as ecbPendingAsOf } from './js/ecbCalendar.js';
+import { FETCHERS as ECB_FETCHERS } from './js/ecbFetch.js';
 import { runTrendAB as _runTrendAB } from './js/trendFollowV2Engine.js';
 import { volSigmaSeries as _volSigmaSeries, nextSigma as _nextSigma } from './js/forecastCore.js';
 import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } from './js/creditLeadLagEngine.js';
@@ -3220,6 +3222,168 @@ app.get('/api/fomc/fetch-status', async (_req, res) => {
 // race on the same KV writes.
 setInterval(() => { _fomcRunCheck('poll'); }, 30 * 60_000);
 
+// ── ECB Sentiment Engine ───────────────────────────────────────────────────────
+// Same shape as the FOMC engine (calendar-driven fetch → diff vs previous →
+// Anthropic-grounded read), but the ECB combines the scripted statement and
+// the full press-conference Q&A into ONE document ("statement"), and its
+// minutes-equivalent ("accounts") is fetched via an index-page lookup rather
+// than a constructed URL — see js/ecbFetch.js's header for why (the Fed's
+// URLs are directly guessable from the date; the ECB's are not).
+function _ecbKindLabel(kind) {
+  return {
+    statement: 'ECB INTRODUCTORY STATEMENT (WITH Q&A) — the combined scripted remarks and full press-conference transcript',
+    accounts: 'ECB ACCOUNTS OF THE MONETARY POLICY MEETING — released 5+ weeks after the meeting as the detailed delayed record of the discussion',
+  }[kind] || kind.toUpperCase();
+}
+function _ecbReadingGuidance(kind) {
+  if (kind === 'accounts') {
+    return `\nREADING TECHNIQUE for the Accounts specifically: like FOMC minutes, this reports views by DEGREE OF CONSENSUS, not by name — track qualifiers like "some members," "many members," "a large number of members," "a few members" wherever they appear; that language reveals how contested a view is inside the Governing Council. Also hunt for "however"/"that said"/"nonetheless" clauses, which often carry the real underlying concern.\n`;
+  }
+  return '';
+}
+function _ecbPrevMeetingDate(meetingDate) {
+  const idx = ECB_MEETINGS.findIndex(m => m.date === meetingDate);
+  return idx > 0 ? ECB_MEETINGS[idx - 1].date : null;
+}
+async function _ecbGetRaw(kind, date) {
+  const raw = await kv.get(`ecb_raw_${kind}_${date}`);
+  return raw ? JSON.parse(raw) : null;
+}
+
+async function _buildEcbAnalysis(kind, meetingDate) {
+  const key = process.env.ANT_KEY;
+  if (!key) throw new Error('ANT_KEY not configured');
+  const rawRec = await _ecbGetRaw(kind, meetingDate);
+  if (!rawRec) throw new Error(`no raw ${kind} text captured for ${meetingDate} yet`);
+  const { text, url } = rawRec;
+  const clipped = text.length > _FOMC_MAX_CHARS ? text.slice(0, _FOMC_MAX_CHARS) + '\n[...truncated...]' : text;
+
+  let diffBlock = '', diffSegments = null;
+  const prevDate = _ecbPrevMeetingDate(meetingDate);
+  if (prevDate) {
+    const prevRec = await _ecbGetRaw(kind, prevDate);
+    if (prevRec) {
+      const d = fomcWordDiff(prevRec.text, text);
+      diffSegments = d.segments;
+      const lines = fomcDiffToPromptLines(d, 2);
+      diffBlock = `=== WORDING CHANGES vs the ${prevDate} ${kind} ===\n` +
+        (lines.length ? lines.slice(0, 40).join('\n') : '(no material wording changes — near-identical to the prior release)');
+    }
+  }
+
+  const prompt = `You are analysing the ${_ecbKindLabel(kind)} from the ${meetingDate} ECB Governing Council meeting for an FX/macro trading desk. Read it for HAWKISH vs DOVISH signal and likely market impact on EUR — this feeds a central-bank sentiment page traders check right after release, so be specific and plain-spoken.
+${_ecbReadingGuidance(kind)}
+NEVER name a specific individual (ECB President, Governing Council member, reporter) anywhere in your output — refer to them only by role. A named individual anchors the read on personal reputation, which goes stale (or becomes wrong) the moment leadership changes.
+
+Ground every claim in the text below — do NOT invent numbers, names, or events not present in it.
+
+${diffBlock}
+
+=== FULL TEXT ===
+${text.length > _FOMC_MAX_CHARS ? clipped : text}
+
+Also score five separate dimensions, each 0.0 (no signal of this in the text) to 1.0 (dominant theme) — magnitude, not direction, independent of each other and of hawkishScore:
+- inflationConcern, growthConcern, financialStabilityConcern: how much the text dwells on each
+- fragmentationConcern: how much it dwells on divergence or stress in borrowing costs across euro-area member states — a risk specific to a single currency spanning many sovereigns, which the Fed does not have an equivalent of
+- committeeConfidence: how confident vs. uncertain/hedged the tone reads (0=deeply uncertain/hedged, 1=confident/decisive)
+
+Respond with ONLY valid JSON, no markdown:
+{"headline":"one-sentence front-page read, plain-English so-what first","hawkishScore":-1.0 to 1.0 (negative=dovish, positive=hawkish, 0=neutral),"regime":"HAWKISH|DOVISH|NEUTRAL|MIXED","confidence":"LOW|MEDIUM|HIGH (how confident YOU are in this read)","dimensions":{"inflationConcern":0.0-1.0,"growthConcern":0.0-1.0,"financialStabilityConcern":0.0-1.0,"fragmentationConcern":0.0-1.0,"committeeConfidence":0.0-1.0},"summary":"2-3 plain-spoken sentences","whatChanged":"1-2 sentences on what's different from last time, grounded ONLY in the wording changes above — say plainly if there was no material change","keyQuotes":[{"quote":"short verbatim excerpt from the text above, under 30 words","why":"why this line matters","asset":"EUR|Bunds|Peripheral spreads|Equities","lean":"BULLISH|BEARISH|NEUTRAL"}] (max 5, ranked most market-moving first),"byAsset":[{"asset":"EUR|Bunds|Peripheral spreads|Equities|FX majors","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line"}]}`;
+
+  const antRes = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2800, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.', messages: [{ role: 'user', content: prompt }] }),
+  });
+  if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}: ${(await antRes.text()).slice(0, 200)}`);
+  const antData = await antRes.json();
+  if (antData.stop_reason === 'max_tokens') throw new Error('response truncated — try again');
+  const clean = (antData.content?.[0]?.text ?? '').replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  const analysis = JSON.parse(clean);
+
+  const payload = { kind, meetingDate, analysis, diffSegments, prevDate, sourceUrl: url, generatedAt: new Date().toISOString() };
+  await kv.put(`ecb_analysis_${kind}_${meetingDate}`, JSON.stringify(payload)).catch(() => {});
+  await kv.put('ecb_latest', JSON.stringify({ kind, meetingDate })).catch(() => {});
+  return payload;
+}
+
+async function _ecbAutoCheck(reason = 'schedule') {
+  const pending = ecbPendingAsOf(Date.now(), 120);
+  const log = [];
+  for (const rel of pending) {
+    // 'projections' (ECB's SEP-equivalent) is tracked on the calendar — the
+    // release genuinely happens — but has no fetcher yet, deliberately
+    // deferred the same way FOMC's SEP was before it got table support.
+    // Skip silently rather than logging it as a failure every tick.
+    const fetcher = ECB_FETCHERS[rel.kind];
+    if (!fetcher) continue;
+    const already = await _ecbGetRaw(rel.kind, rel.meetingDate);
+    if (already) continue;
+    try {
+      const r = await fetcher(rel.meetingDate);
+      if (!r.ok) { if (!r.notYetPublished) log.push(`${rel.kind} ${rel.meetingDate} ✗ ${r.error || r.status}`); continue; }
+      await kv.put(`ecb_raw_${rel.kind}_${rel.meetingDate}`, JSON.stringify({ text: r.text, url: r.url, fetchedAt: new Date().toISOString() }));
+      log.push(`${rel.kind} ${rel.meetingDate} ✓ fetched`);
+      if (process.env.ANT_KEY) {
+        try { await _buildEcbAnalysis(rel.kind, rel.meetingDate); log.push(`${rel.kind} ${rel.meetingDate} ✓ analysed`); }
+        catch (e) { log.push(`${rel.kind} ${rel.meetingDate} analysis ✗ ${e.message}`); }
+      }
+    } catch (e) { log.push(`${rel.kind} ${rel.meetingDate} ✗ ${e.message}`); }
+  }
+  await kv.put('ecb_fetch_log', JSON.stringify({ at: new Date().toISOString(), reason, log })).catch(() => {});
+  if (log.length) console.log(`[ecb] (${reason}) ${log.join(' · ')}`);
+  return log;
+}
+
+app.get('/api/ecb/calendar', (_req, res) => {
+  res.json({ ok: true, meetings: ECB_MEETINGS, pending: ecbPendingAsOf(Date.now(), 120) });
+});
+app.get('/api/ecb/latest', async (_req, res) => {
+  try {
+    const ptr = await kv.get('ecb_latest');
+    if (!ptr) return res.json({ ok: false, error: 'No ECB analysis yet — click Fetch now.' });
+    const { kind, meetingDate } = JSON.parse(ptr);
+    const raw = await kv.get(`ecb_analysis_${kind}_${meetingDate}`);
+    if (!raw) return res.json({ ok: false, error: 'Pointer set but analysis missing — click Fetch now.' });
+    res.json({ ok: true, ...JSON.parse(raw) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/ecb/meeting/:date', async (req, res) => {
+  const date = req.params.date;
+  const out = {};
+  for (const kind of ['statement', 'accounts']) {
+    const raw = await kv.get(`ecb_analysis_${kind}_${date}`).catch(() => null);
+    if (raw) out[kind] = JSON.parse(raw);
+  }
+  res.json({ ok: true, meetingDate: date, releases: out });
+});
+app.get('/api/ecb/history', async (req, res) => {
+  const n = Math.min(24, Math.max(1, parseInt(req.query.n) || 8));
+  const past = ECB_MEETINGS.filter(m => Date.parse(m.date) <= Date.now()).slice(-n);
+  const out = [];
+  for (const m of past) {
+    const raw = await kv.get(`ecb_analysis_statement_${m.date}`).catch(() => null);
+    if (raw) { const p = JSON.parse(raw); out.push({ meetingDate: m.date, headline: p.analysis?.headline, hawkishScore: p.analysis?.hawkishScore, regime: p.analysis?.regime }); }
+    else out.push({ meetingDate: m.date, headline: null, hawkishScore: null, regime: null });
+  }
+  res.json({ ok: true, history: out });
+});
+let _ecbCheckRunning = false;
+function _ecbRunCheck(reason) {
+  if (_ecbCheckRunning) return false;
+  _ecbCheckRunning = true;
+  _ecbAutoCheck(reason).catch(() => {}).finally(() => { _ecbCheckRunning = false; });
+  return true;
+}
+app.post('/api/ecb/fetch-now', (_req, res) => {
+  const started = _ecbRunCheck('manual');
+  res.json({ ok: true, started, alreadyRunning: !started });
+});
+app.get('/api/ecb/fetch-status', async (_req, res) => {
+  const raw = await kv.get('ecb_fetch_log').catch(() => null);
+  res.json({ ok: true, running: _ecbCheckRunning, last: raw ? JSON.parse(raw) : null });
+});
+setInterval(() => { _ecbRunCheck('poll'); }, 30 * 60_000);
+
 // ── Labor Market Strength Engine ──────────────────────────────────────────────
 // Numeric-composition score (payrolls, wages, unemployment, participation) —
 // NOT a text-reading engine like FOMC/Beige Book; the BLS Employment
@@ -3243,7 +3407,7 @@ async function _buildLaborMarketScores() {
       availability[ccy] = [{ error: e.message }];
     }
   }));
-  const payload = { byCcy, availability, generatedAt: new Date().toISOString() };
+  const payload = { byCcy, availability, unemploymentUnits: UNEMPLOYMENT_UNIT_LABEL, generatedAt: new Date().toISOString() };
   await kv.put(_LABOR_MARKET_KV, JSON.stringify(payload)).catch(() => {});
   return payload;
 }
