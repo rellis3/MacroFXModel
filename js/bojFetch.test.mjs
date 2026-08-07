@@ -8,11 +8,16 @@ const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e 
 
 console.log('[URL builders — matched against real confirmed examples]');
 {
-  ok('statementUrl matches the real Jan 2026 page', statementUrl('2026-01-23') === 'https://www.boj.or.jp/en/mopo/mpmdeci/state_2026/k260123a.htm', statementUrl('2026-01-23'));
-  ok('statementUrl matches the real Apr 2026 page', statementUrl('2026-04-28') === 'https://www.boj.or.jp/en/mopo/mpmdeci/state_2026/k260428a.htm');
-  ok('outlookHighlightUrl matches the real Jul 2025 example (pre-2026 sanity check)', outlookHighlightUrl('2025-07-31') === 'https://www.boj.or.jp/en/mopo/outlook/highlight/ten202507.htm', outlookHighlightUrl('2025-07-31'));
-  ok('opinionsUrl matches the real Jan 2026 example', opinionsUrl('2026-01-23') === 'https://www.boj.or.jp/en/mopo/mpmsche_minu/opinion_2026/opi260123.htm', opinionsUrl('2026-01-23'));
-  ok('minutesPdfUrl matches the real Sep 2025 example (dir year = meeting year)', minutesPdfUrl('2025-09-19') === 'https://www.boj.or.jp/en/mopo/mpmsche_minu/minu_2025/g250919.pdf', minutesPdfUrl('2025-09-19'));
+  // Corrected 2026-08-07 via a live /api/boj/debug-fetch diagnostic: the
+  // original .htm guesses for statement/opinions both 404'd for real; a
+  // follow-up search confirmed the actual live documents are PDFs at these
+  // paths (e.g. the exact July 2026 statement was found indexed at this URL).
+  ok('statementUrl matches the real Jan 2026 PDF', statementUrl('2026-01-23') === 'https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2026/k260123a.pdf', statementUrl('2026-01-23'));
+  ok('statementUrl matches the real Jul 2026 PDF', statementUrl('2026-07-31') === 'https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2026/k260731a.pdf');
+  ok('outlookHighlightUrl matches the real Jan 2026 example', outlookHighlightUrl('2026-01-23') === 'https://www.boj.or.jp/en/mopo/outlook/highlight/ten202601.htm', outlookHighlightUrl('2026-01-23'));
+  ok('outlookHighlightUrl matches the real Apr 2026 example', outlookHighlightUrl('2026-04-28') === 'https://www.boj.or.jp/en/mopo/outlook/highlight/ten202604.htm');
+  ok('opinionsUrl matches the real Jan 2026 PDF', opinionsUrl('2026-01-23') === 'https://www.boj.or.jp/en/mopo/mpmsche_minu/opinion_2026/opi260123.pdf', opinionsUrl('2026-01-23'));
+  ok('minutesPdfUrl matches the real Apr 2026 example (dir year = meeting year)', minutesPdfUrl('2026-04-28') === 'https://www.boj.or.jp/en/mopo/mpmsche_minu/minu_2026/g260428.pdf', minutesPdfUrl('2026-04-28'));
 }
 
 console.log('[extractVote — real confirmed BoJ phrasing]');
