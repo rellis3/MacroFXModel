@@ -3158,14 +3158,36 @@ app.get('/api/fomc/history', async (req, res) => {
   }
   res.json({ ok: true, history: out });
 });
-app.post('/api/fomc/fetch-now', async (_req, res) => {
-  try { res.json({ ok: true, log: await _fomcAutoCheck('manual') }); }
-  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+// Fire-and-forget + poll, NOT await-and-respond: a cold start (or a stretch
+// with several unfetched meetings in the 120-day lookback) can mean many
+// sequential document fetches, each with its own 20s network timeout — that
+// can run past a minute easily, which platform reverse proxies (Railway
+// included) kill well before it finishes. The browser then reports a bare
+// "Failed to fetch" with zero detail, since the connection was cut, not
+// because anything the server did actually failed. Returning immediately and
+// letting the page poll /api/fomc/fetch-status (backed by the same heartbeat
+// the 30-min auto-poll already writes) sidesteps that ceiling entirely.
+let _fomcCheckRunning = false;
+function _fomcRunCheck(reason) {
+  if (_fomcCheckRunning) return false;
+  _fomcCheckRunning = true;
+  _fomcAutoCheck(reason).catch(() => {}).finally(() => { _fomcCheckRunning = false; });
+  return true;
+}
+app.post('/api/fomc/fetch-now', (_req, res) => {
+  const started = _fomcRunCheck('manual');
+  res.json({ ok: true, started, alreadyRunning: !started });
+});
+app.get('/api/fomc/fetch-status', async (_req, res) => {
+  const raw = await kv.get(_FOMC_HEARTBEAT_KV).catch(() => null);
+  res.json({ ok: true, running: _fomcCheckRunning, last: raw ? JSON.parse(raw) : null });
 });
 // 30-min poll — cheap no-op on every tick until something is actually due;
 // the interval only needs to be finer than the gap between "expected" and
-// "actually posted" so a late release is still caught same-day.
-setInterval(() => { _fomcAutoCheck('poll').catch(() => {}); }, 30 * 60_000);
+// "actually posted" so a late release is still caught same-day. Shares the
+// same running-guard as the manual trigger so the two can never overlap and
+// race on the same KV writes.
+setInterval(() => { _fomcRunCheck('poll'); }, 30 * 60_000);
 
 // ── Backtest AI analysis — sends config + results to Claude, returns structured feedback ──
 app.post('/api/ai-backtest', async (req, res) => {
