@@ -277,16 +277,31 @@ async function loadTimeline() {
 }
 function jumpTo(date) { $('meetingSel').value = date; selectMeeting(date); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
+// The server kicks the check off in the background and returns immediately
+// (see server.js's _fomcRunCheck note) — a check touching several documents
+// can run past a minute, longer than most reverse-proxy request timeouts, so
+// this polls short-lived status requests instead of holding one long POST
+// open (that's what previously surfaced as a bare, un-actionable "Fetch
+// failed: Failed to fetch" — the proxy killing the connection, not the fetch
+// itself failing).
 async function fetchNow() {
   const btn = $('fetchBtn');
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Checking…';
   try {
-    const r = await jget('/api/fomc/fetch-now', { method: 'POST' });
-    $('lastCheck').textContent = `Last checked ${new Date().toLocaleTimeString()}${r.log?.length ? ' · ' + r.log.join(' · ') : ' · nothing new'}`;
+    const kick = await jget('/api/fomc/fetch-now', { method: 'POST' });
+    if (kick.alreadyRunning) $('lastCheck').textContent = 'A check is already running…';
+    for (let i = 0; i < 60; i++) {
+      const st = await jget('/api/fomc/fetch-status');
+      if (st.last) {
+        $('lastCheck').textContent = `Checked ${new Date(st.last.at).toLocaleTimeString()}${st.last.log?.length ? ' · ' + st.last.log.join(' · ') : ' · nothing new'}`;
+      }
+      if (!st.running) break;
+      await new Promise(r => setTimeout(r, 3000));
+    }
     meetingData = {};
     await loadCalendar();
   } catch (e) {
-    $('lastCheck').textContent = 'Fetch failed: ' + e.message;
+    $('lastCheck').textContent = 'Could not reach the server: ' + e.message;
   } finally {
     btn.disabled = false; btn.innerHTML = '⟳ Fetch now';
   }
