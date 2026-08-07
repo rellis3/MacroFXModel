@@ -3018,6 +3018,17 @@ function _fomcKindLabel(kind) {
     sep: 'SUMMARY OF ECONOMIC PROJECTIONS (the "dot plot" document)',
   }[kind] || kind.toUpperCase();
 }
+// Document-specific reading technique — minutes in particular reward a
+// specific method (see education/QUANT_MACRO_LESSONS_1-6.md §3.2) that a
+// generic "read for hawkish/dovish" instruction misses entirely: the real
+// signal sits in HOW consensus is worded and in the caveat clauses, not just
+// the topic sentences.
+function _fomcReadingGuidance(kind) {
+  if (kind === 'minutes') {
+    return `\nREADING TECHNIQUE for minutes specifically: minutes report views by DEGREE OF CONSENSUS, not by name — track the quantifier ladder ("a few" < "several" < "many" < "most" < "all") wherever it's used; that ladder tells you how contested a view is inside the committee, which is a stronger signal than the view itself. Also hunt specifically for "however"/"that said"/"nonetheless" clauses — the qualifier after one of these usually reveals the real underlying concern more than the sentence it follows. Note the stated balance of risks (which scenarios were explicitly weighed) if present.\n`;
+  }
+  return '';
+}
 function _fomcPrevMeetingDate(meetingDate) {
   const idx = FOMC_MEETINGS.findIndex(m => m.date === meetingDate);
   return idx > 0 ? FOMC_MEETINGS[idx - 1].date : null;
@@ -3057,7 +3068,7 @@ async function _buildFomcAnalysis(kind, meetingDate) {
   }
 
   const prompt = `You are analysing the ${_fomcKindLabel(kind)} from the ${meetingDate} FOMC meeting for an FX/macro trading desk. Read it for HAWKISH vs DOVISH signal and likely market impact — this feeds a "FOMC sentiment" page traders check right after release, so be specific and plain-spoken.
-
+${_fomcReadingGuidance(kind)}
 NEVER name a specific individual (Fed Chair, governor, reporter) anywhere in your output — refer to them only by role. A named individual anchors the read on personal reputation, which goes stale (or becomes wrong) the moment leadership changes.
 
 Ground every claim in the text below — do NOT invent numbers, names, or events not present in it.
