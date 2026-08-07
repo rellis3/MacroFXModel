@@ -45,3 +45,48 @@ export function resolveUrl(href, origin) {
   if (href.startsWith('http://') || href.startsWith('https://')) return href;
   return origin.replace(/\/$/, '') + (href.startsWith('/') ? href : '/' + href);
 }
+
+// ── RSS feed discovery ───────────────────────────────────────────────────────
+// Learned live (2026-08-07): the ECB's HTML index page for statements is
+// JavaScript-rendered — a plain fetch() only ever sees the <head> shell
+// (fonts, favicons), never the actual list, which made findLinkByUrlDatePattern
+// above silently and permanently fail against it (confirmed via a debug
+// endpoint hitting the real page from the deployed server: 100KB fetched, the
+// target date not present ANYWHERE in it). RSS feeds are server-rendered XML
+// by nature — no JS execution needed — and the ECB publishes one at
+// ecb.europa.eu/rss/press.xml covering press releases, statements and
+// conferences. Prefer this over HTML-index scraping wherever a bank offers
+// it; keep the HTML-index finders above for banks that don't.
+
+// Generic RSS 2.0 <item> parser -> [{title, link, pubDate}]. Strips CDATA
+// wrappers, which many RSS generators use for title/link/description.
+export function parseRssItems(xml) {
+  const items = [];
+  const stripCdata = s => s == null ? null : s.replace(/^\s*<!\[CDATA\[/, '').replace(/\]\]>\s*$/, '').trim();
+  for (const m of xml.matchAll(/<item>([\s\S]*?)<\/item>/gi)) {
+    const block = m[1];
+    const get = tag => {
+      const mm = block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i'));
+      return mm ? stripCdata(mm[1]) : null;
+    };
+    items.push({ title: get('title'), link: get('link'), pubDate: get('pubDate') });
+  }
+  return items;
+}
+
+// First item whose <link> matches the given RegExp — e.g. /is260723~/i for a
+// URL-date-predictable document (ECB statements).
+export function findRssLinkByUrlPattern(items, re) {
+  const hit = items.find(it => it.link && re.test(it.link));
+  return hit ? hit.link : null;
+}
+
+// First item whose <title> contains ALL the given terms (case-insensitive) —
+// for documents whose title names a date in prose but whose URL doesn't
+// predictably encode it (same "lower confidence" caveat as
+// findLinkByDateText above).
+export function findRssLinkByTitleText(items, terms) {
+  const hit = items.find(it => it.title && terms.every(t =>
+    new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(it.title)));
+  return hit ? hit.link : null;
+}

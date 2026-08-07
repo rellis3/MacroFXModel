@@ -2,25 +2,26 @@
 //
 // Unlike the Fed (js/fomcFetch.js — direct date-templated URLs), the ECB's
 // document URLs carry an unpredictable hash suffix (ecb.is260611~372040d313.
-// en.html) — the actual URL for a given meeting has to be discovered on an
-// index page first (js/cbIndexFetch.js), then fetched. Two-step fetch
-// instead of one-step construct-and-fetch.
+// en.html) — the actual URL for a given meeting has to be discovered first,
+// then fetched. Two-step fetch instead of one-step construct-and-fetch.
 //
-// CAVEAT (same as fomcFetch.js): this sandbox's egress policy blocks
-// ecb.europa.eu, so none of this was verified against a live fetch — the
-// index-page URLs and matching patterns below are built from real URLs
-// surfaced via web search during this build (see js/ecbCalendar.js and
-// js/cbIndexFetch.test.mjs for the exact examples used), not guessed
-// wholesale, but the live page structure should be re-checked once deployed.
+// Discovery mechanism: RSS, not HTML-index scraping. The first version of
+// this file scraped the ECB's HTML statement-index page — that turned out to
+// be JavaScript-rendered (confirmed LIVE 2026-08-07 via a debug endpoint
+// hitting the real page from the deployed server: 100KB fetched, the target
+// date not present ANYWHERE in the raw HTML, because a plain fetch() never
+// executes the page's JS and only ever sees the <head> shell). RSS feeds are
+// server-rendered XML by construction — ecb.europa.eu/rss/press.xml, real
+// and confirmed reachable — so this uses that instead. See
+// js/cbIndexFetch.js's RSS section for the parsing.
 import { htmlToText, stripBoilerplate } from './fomcFetch.js';
-import { findLinkByUrlDatePattern, findLinkByDateText, resolveUrl } from './cbIndexFetch.js';
+import { parseRssItems, findRssLinkByUrlPattern, findRssLinkByTitleText } from './cbIndexFetch.js';
 
 const UA = 'Mozilla/5.0 (compatible; MacroFX/1.0; +https://github.com/)';
 const FETCH_TIMEOUT_MS = 20_000;
 const ORIGIN = 'https://www.ecb.europa.eu';
 
-export const STATEMENT_INDEX_URL = `${ORIGIN}/press/press_conference/monetary-policy-statement/html/index.en.html`;
-export const ACCOUNTS_INDEX_URL = `${ORIGIN}/press/accounts/html/index.en.html`;
+export const PRESS_RSS_URL = `${ORIGIN}/rss/press.xml`;
 export const yymmdd = dateStr => dateStr.replaceAll('-', '').slice(2);
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -36,49 +37,55 @@ async function fetchText(url) {
 // covering both the scripted remarks AND the full press-conference
 // transcript (the Fed splits these into two separate releases; the ECB
 // doesn't). URL date fragment IS the meeting date itself (verified: Jun 11
-// 2026 meeting -> ecb.is260611~...), so the index-page lookup only needs to
-// match that one predictable fragment, not fuzzy date text.
+// 2026 meeting -> ecb.is260611~...), so the RSS lookup only needs to match
+// that one predictable fragment against each item's <link>, not fuzzy title
+// text.
 export async function fetchStatement(dateStr) {
-  const idx = await fetchText(STATEMENT_INDEX_URL);
-  if (!idx.ok) return { ...idx, url: STATEMENT_INDEX_URL, text: null };
-  const href = findLinkByUrlDatePattern(idx.raw, 'is', yymmdd(dateStr));
-  if (!href) {
-    // The index page itself fetched fine (200 OK) — this is NOT the same as
-    // "not yet published" and must not be treated as one. A statement that's
-    // actually weeks old failing to match here means the URL pattern is
-    // wrong, the page paginates the target date out of the fetched HTML, or
-    // the list renders client-side (this fetch never executes JS) — all
-    // real problems that silently masquerade as "still waiting" forever if
-    // this returns notYetPublished:true like a genuine 404 does.
-    // notYetPublished:false makes _ecbAutoCheck log it instead of staying
-    // quiet, so the failure is visible rather than indistinguishable from
-    // "check again next week."
-    return { ok: false, notYetPublished: false, error: `date pattern "is${yymmdd(dateStr)}" not found on index page (fetched ${idx.raw.length} bytes) — see js/ecbFetch.js's fetchStatement comment`, url: STATEMENT_INDEX_URL, text: null };
+  const feed = await fetchText(PRESS_RSS_URL);
+  if (!feed.ok) return { ...feed, url: PRESS_RSS_URL, text: null };
+  const items = parseRssItems(feed.raw);
+  const pattern = new RegExp(`is${yymmdd(dateStr)}~`, 'i');
+  const link = findRssLinkByUrlPattern(items, pattern);
+  if (!link) {
+    // The feed fetched fine — this is NOT the same as "not yet published"
+    // and must not be treated as one (that's the exact bug that made a
+    // weeks-old statement show as permanently "due" with the HTML-scraping
+    // approach). Two real possibilities remain: genuinely not published
+    // yet (if checked same-day, before the feed picks it up), or the item
+    // has aged out of the feed's rolling window (RSS feeds only keep the
+    // most recent N items — a real risk for catching up several
+    // months-old dates on a cold start, not for ongoing same-week polling).
+    // notYetPublished:false surfaces this in the log either way rather than
+    // going silent.
+    return { ok: false, notYetPublished: false, error: `date pattern "is${yymmdd(dateStr)}" not found among ${items.length} RSS items (fetched ${feed.raw.length} bytes) — either not yet published, or aged out of the feed's rolling window if this is an older date`, url: PRESS_RSS_URL, text: null };
   }
-  const url = resolveUrl(href, ORIGIN);
-  const doc = await fetchText(url);
-  if (!doc.ok) return { ...doc, url, text: null };
-  return { ok: true, url, text: stripBoilerplate(htmlToText(doc.raw)) };
+  const doc = await fetchText(link);
+  if (!doc.ok) return { ...doc, url: link, text: null };
+  return { ok: true, url: link, text: stripBoilerplate(htmlToText(doc.raw)) };
 }
 
 // Accounts of the monetary policy meeting — the ECB's minutes equivalent,
 // published 5+ weeks after the meeting on a date NOT derivable from the
-// meeting date (unlike the Fed's fixed +21 days). Matched by the index
-// page's own link TEXT naming the meeting date in prose ("Meeting of
-// 17-18 December 2025"), not a URL pattern — lower-confidence match, see
-// js/cbIndexFetch.js's header. Tries the decision day number; that number
-// appears in the link text whichever side of a 2-day range it falls on
-// (confirmed in cbIndexFetch.test.mjs), so one term set covers both cases.
+// meeting date (unlike the Fed's fixed +21 days). Matched by RSS item TITLE
+// text naming the meeting date in prose ("Meeting of 17-18 December 2025"),
+// not a URL pattern — lower-confidence match, see js/cbIndexFetch.js's
+// header. Tries the decision day number; that number appears in the title
+// whichever side of a 2-day range it falls on (confirmed in
+// cbIndexFetch.test.mjs), so one term set covers both cases. Kept
+// notYetPublished:true (silent) on a miss, unlike statement above — Accounts
+// have a genuinely wide 4-7 week legitimate "not out yet" window, so a miss
+// early in that window is expected, not a diagnostic problem the way a
+// same-day-expected statement missing is.
 export async function fetchAccounts(dateStr) {
-  const idx = await fetchText(ACCOUNTS_INDEX_URL);
-  if (!idx.ok) return { ...idx, url: ACCOUNTS_INDEX_URL, text: null };
+  const feed = await fetchText(PRESS_RSS_URL);
+  if (!feed.ok) return { ...feed, url: PRESS_RSS_URL, text: null };
+  const items = parseRssItems(feed.raw);
   const [y, m, d] = dateStr.split('-').map(Number);
-  const href = findLinkByDateText(idx.raw, [String(d), MONTHS[m - 1], String(y)]);
-  if (!href) return { ok: false, notYetPublished: true, url: ACCOUNTS_INDEX_URL, text: null };
-  const url = resolveUrl(href, ORIGIN);
-  const doc = await fetchText(url);
-  if (!doc.ok) return { ...doc, url, text: null };
-  return { ok: true, url, text: stripBoilerplate(htmlToText(doc.raw)) };
+  const link = findRssLinkByTitleText(items, [String(d), MONTHS[m - 1], String(y)]);
+  if (!link) return { ok: false, notYetPublished: true, url: PRESS_RSS_URL, text: null };
+  const doc = await fetchText(link);
+  if (!doc.ok) return { ...doc, url: link, text: null };
+  return { ok: true, url: link, text: stripBoilerplate(htmlToText(doc.raw)) };
 }
 
 export const FETCHERS = {

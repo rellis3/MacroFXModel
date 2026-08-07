@@ -5,7 +5,7 @@
 // ECB build (ecb.is260611~372040d313.en.html style URLs; "Meeting of
 // 17-18 December 2025" style accounts index link text).
 //   node js/cbIndexFetch.test.mjs
-import { findLinkByUrlDatePattern, findLinkByDateText, resolveUrl } from './cbIndexFetch.js';
+import { findLinkByUrlDatePattern, findLinkByDateText, resolveUrl, parseRssItems, findRssLinkByUrlPattern, findRssLinkByTitleText } from './cbIndexFetch.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -48,6 +48,44 @@ console.log('[resolveUrl]');
   ok('relative URL resolved against origin', resolveUrl('/press/a.html', 'https://www.ecb.europa.eu') === 'https://www.ecb.europa.eu/press/a.html');
   ok('relative URL without leading slash resolved', resolveUrl('a.html', 'https://www.ecb.europa.eu/press') === 'https://www.ecb.europa.eu/press/a.html');
   ok('null href -> null', resolveUrl(null, 'https://x.com') === null);
+}
+
+console.log('[parseRssItems / findRssLinkByUrlPattern / findRssLinkByTitleText]');
+{
+  // Regression fixture: the ECB's statement HTML index page turned out to be
+  // JavaScript-rendered (confirmed live, 2026-08-07 — a plain fetch() only
+  // saw the <head> shell, never the list). RSS is server-rendered XML, which
+  // is what this covers instead.
+  const rss = `<?xml version="1.0" encoding="UTF-8"?>
+  <rss version="2.0"><channel>
+    <item>
+      <title><![CDATA[Monetary policy statement (with Q&A), 11 June 2026]]></title>
+      <link>https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2026/html/ecb.is260611~372040d313.en.html</link>
+      <pubDate>Thu, 11 Jun 2026 14:45:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Meeting of 17-18 December 2025</title>
+      <link>https://www.ecb.europa.eu/press/accounts/2026/html/ecb.mg260122~5ca84e0f51.en.html</link>
+      <pubDate>Thu, 22 Jan 2026 08:00:00 GMT</pubDate>
+    </item>
+  </channel></rss>`;
+  const items = parseRssItems(rss);
+  ok('parses both items', items.length === 2, items.length);
+  ok('CDATA-wrapped title is unwrapped and trimmed', items[0].title === 'Monetary policy statement (with Q&A), 11 June 2026', JSON.stringify(items[0].title));
+  ok('plain (non-CDATA) title also parses', items[1].title === 'Meeting of 17-18 December 2025');
+  ok('link is captured', items[0].link.includes('ecb.is260611'));
+
+  const stmtLink = findRssLinkByUrlPattern(items, /is260611~/i);
+  ok('finds the statement by URL pattern', stmtLink === items[0].link, stmtLink);
+  ok('no match for a different date -> null', findRssLinkByUrlPattern(items, /is260101~/i) === null);
+
+  const acctLink = findRssLinkByTitleText(items, ['17', 'December', '2025']);
+  ok('finds the accounts item by title text', acctLink === items[1].link, acctLink);
+  ok('also matches the other day of the 2-day meeting', findRssLinkByTitleText(items, ['18', 'December', '2025']) === items[1].link);
+  ok('no match -> null', findRssLinkByTitleText(items, ['1', 'January', '2099']) === null);
+}
+{
+  ok('empty/malformed XML -> empty array, not a crash', parseRssItems('<rss><channel></channel></rss>').length === 0);
 }
 
 if (failures) { console.error(`\n${failures} FAILURE(S)`); process.exit(1); }
