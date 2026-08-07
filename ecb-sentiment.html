@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FOMC Sentiment</title>
+<title>ECB Sentiment</title>
 <style>
   :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;
     --text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
@@ -32,7 +32,6 @@
   .chip.conf{background:var(--card2);color:var(--text3);border:1px solid var(--border)}
   .chip.ai{background:var(--card2);color:var(--text3);border:1px solid var(--border);font-weight:600}
 
-  /* kind tabs */
   .tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
   .tab{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:7px;padding:6px 13px;font-size:12.5px;font-weight:600}
   .tab.on{background:var(--blue);border-color:var(--blue);color:#fff}
@@ -42,7 +41,6 @@
 
   .empty{color:var(--text2);font-size:13px;line-height:1.6;padding:8px 0}
 
-  /* headline + gauge */
   .headline{font-size:17px;font-weight:700;line-height:1.4;margin-bottom:10px}
   .gauge-row{display:flex;align-items:center;gap:12px;margin-bottom:14px}
   .gauge{flex:1;position:relative;height:10px;background:var(--card2);border-radius:5px}
@@ -53,46 +51,29 @@
   .summary{font-size:13.5px;color:var(--text2);line-height:1.6;margin-bottom:10px}
   .whatchanged{font-size:12.5px;color:var(--text2);background:var(--card2);border-left:3px solid var(--amber);border-radius:0 7px 7px 0;padding:8px 12px;margin-bottom:10px}
   .whatchanged b{color:var(--amber);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:3px}
-  .votenote{font-size:12.5px;color:var(--text2);margin-bottom:6px}
-  .votenote b{color:var(--text)}
 
-  /* concern/confidence sub-dimensions */
   .dims{margin:4px 0 12px}
-  .dim-row{display:grid;grid-template-columns:150px 1fr 34px;align-items:center;gap:8px;margin-bottom:5px}
+  .dim-row{display:grid;grid-template-columns:170px 1fr 34px;align-items:center;gap:8px;margin-bottom:5px}
   .dim-lbl{font-size:11px;color:var(--text3)}
   .dim-track{height:7px;background:var(--card2);border-radius:4px;position:relative;overflow:hidden}
   .dim-fill{position:absolute;left:0;top:0;bottom:0;background:var(--blue);border-radius:4px}
   .dim-val{font-size:10.5px;color:var(--text3);text-align:right;font-variant-numeric:tabular-nums}
 
-  /* key quotes */
   .quote{background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-bottom:8px}
   .quote .qtext{font-size:13px;font-style:italic;color:var(--text);margin-bottom:5px}
   .quote .qmeta{display:flex;gap:8px;align-items:center;font-size:11px;color:var(--text3)}
   .quote .qwhy{color:var(--text2)}
 
-  /* asset chips */
   .assets{display:flex;flex-wrap:wrap;gap:7px}
   .a-chip{display:inline-flex;align-items:center;gap:5px;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:11.5px}
   .a-chip b{font-weight:700} .a-chip.up b{color:var(--bull)} .a-chip.dn b{color:var(--bear)} .a-chip.nu b{color:var(--text2)}
   .a-chip .an{color:var(--text3)}
 
-  /* SEP raw table — actual dot-plot/projection numbers, not just the AI's paraphrase */
-  .septable{width:100%;border-collapse:collapse;margin-bottom:14px;font-size:12px}
-  .septable caption{text-align:left;font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;caption-side:top}
-  .septable td,.septable th{border:1px solid var(--border);padding:5px 8px;text-align:left;white-space:nowrap}
-  .septable th{background:var(--card2);color:var(--text2);font-weight:600}
-  .septable tr td:first-child{color:var(--text2);font-weight:600;white-space:normal}
-  .septable-wrap{overflow-x:auto;margin-bottom:4px}
-  .tdiff-line{font-size:12.5px;color:var(--text2);padding:3px 0;border-bottom:1px solid var(--border)}
-  .tdiff-line:last-child{border-bottom:none}
-
-  /* redline diff */
   .redline{font-size:13px;line-height:1.85;color:var(--text2)}
   .redline .add{background:var(--bull-bg);color:var(--bull);border-radius:3px;padding:0 2px}
   .redline .del{background:var(--bear-bg);color:var(--bear);text-decoration:line-through;border-radius:3px;padding:0 2px}
   .redline-stats{font-size:11px;color:var(--text3);margin-bottom:10px}
 
-  /* timeline */
   .timeline{display:flex;gap:6px;align-items:flex-end;height:70px;margin-bottom:6px}
   .tl-bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer}
   .tl-track{width:100%;height:50px;position:relative;background:var(--card2);border-radius:4px;overflow:hidden}
@@ -102,7 +83,6 @@
   .tl-lbl{font-size:9px;color:var(--text3)}
   .tl-bar:hover .tl-lbl{color:var(--text)}
 
-  /* release checklist */
   .relrow{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:12.5px}
   .relrow .k{width:90px;color:var(--text2);font-weight:600}
   .relrow .stat{font-size:11px;padding:2px 8px;border-radius:5px}
@@ -119,11 +99,11 @@
 <body>
 
 <div class="hdr">
-  <h1>🏛 FOMC Sentiment</h1>
+  <h1>🇪🇺 ECB Sentiment</h1>
   <div class="spacer"></div>
   <span class="stamp" id="lastCheck"></span>
   <button class="hbtn primary" id="fetchBtn" onclick="fetchNow()">⟳ Fetch now</button>
-  <a class="hbtn" href="ecb-sentiment.html">ECB Sentiment</a>
+  <a class="hbtn" href="fomc-sentiment.html">FOMC Sentiment</a>
   <a class="hbtn" href="labor-market.html">Labor Market</a>
   <a class="hbtn" href="today.html">Daily Brief</a>
   <a class="hbtn" href="index.html">Dashboard</a>
@@ -134,7 +114,7 @@
   <div class="card" id="releasesCard">
     <h2>Tracked releases — latest meeting</h2>
     <div id="releasesBody" class="empty">Loading calendar…</div>
-    <div class="note">Fully automated: polls federalreserve.gov every 30 min against the known meeting calendar and fetches the moment each document is published — no manual step needed. "Fetch now" just forces an immediate check instead of waiting for the next poll.</div>
+    <div class="note">Fully automated: polls ecb.europa.eu every 30 min against the known Governing Council calendar. Unlike the Fed, ECB document URLs aren't directly constructible from the date — the fetcher looks them up on the ECB's own index pages, so a fresh release can take slightly longer to appear than the FOMC page's. "Accounts" (the ECB's minutes-equivalent) publish 5+ weeks after the meeting on a date that varies, so its "due" window is wider than a single day.</div>
   </div>
 
   <div class="card">
@@ -143,7 +123,7 @@
     <div class="tabs" id="kindTabs" style="margin-top:12px"></div>
 
     <div id="analysisBody" class="empty">No analysis yet — click "Fetch now" above, or wait for the next automated check.</div>
-    <div class="note">The FIRST market reaction to a fresh release is algorithmic and keyword-based — it often reverses within the day. The real repositioning typically plays out over the following 2-5 days, especially for the press conference. Read this as the input to a view, not a signal to chase the initial spike.</div>
+    <div class="note">The FIRST market reaction to a fresh release is algorithmic and keyword-based — it often reverses within the day. The real repositioning typically plays out over the following 2-5 days. Read this as the input to a view, not a signal to chase the initial spike.</div>
   </div>
 
   <div class="card" id="redlineCard" style="display:none">
@@ -163,11 +143,13 @@
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// ECB combines the scripted statement + full press-conference Q&A into ONE
+// document (unlike the Fed's separate statement/transcript releases) — see
+// js/ecbFetch.js. Only two kinds, no SEP-equivalent table view yet
+// (projections deferred, same as FOMC's SEP was before it got table support).
 const KINDS = [
-  { k:'statement', label:'Statement' },
-  { k:'transcript', label:'Press Conf.' },
-  { k:'minutes', label:'Minutes' },
-  { k:'sep', label:'SEP / Dots' },
+  { k:'statement', label:'Statement (with Q&A)' },
+  { k:'accounts', label:'Accounts' },
 ];
 
 let calendar = null, meetingData = {}, curMeeting = null, curKind = 'statement';
@@ -183,9 +165,9 @@ function leanCls(lean) { return lean === 'BULLISH' ? 'up' : lean === 'BEARISH' ?
 
 const DIM_LABELS = {
   inflationConcern: 'Inflation concern',
-  laborConcern: 'Labor market concern',
   growthConcern: 'Growth concern',
   financialStabilityConcern: 'Financial stability concern',
+  fragmentationConcern: 'Fragmentation concern',
   committeeConfidence: 'Committee confidence',
 };
 function renderDims(dims) {
@@ -198,10 +180,10 @@ function renderDims(dims) {
 }
 
 async function loadCalendar() {
-  calendar = await jget('/api/fomc/calendar');
+  calendar = await jget('/api/ecb/calendar');
   const past = calendar.meetings.filter(m => Date.parse(m.date) <= Date.now());
   const sel = $('meetingSel');
-  sel.innerHTML = past.slice().reverse().map(m => `<option value="${m.date}">${m.date}${m.sep ? ' (SEP)' : ''}</option>`).join('');
+  sel.innerHTML = past.slice().reverse().map(m => `<option value="${m.date}">${m.date}${m.projections ? ' (projections)' : ''}</option>`).join('');
   curMeeting = past.at(-1)?.date;
   if (curMeeting) { sel.value = curMeeting; renderReleaseChecklist(); await selectMeeting(curMeeting); }
   loadTimeline();
@@ -224,7 +206,7 @@ function renderReleaseChecklist() {
 
 async function selectMeeting(date) {
   curMeeting = date;
-  if (!meetingData[date]) meetingData[date] = await jget(`/api/fomc/meeting/${date}`);
+  if (!meetingData[date]) meetingData[date] = await jget(`/api/ecb/meeting/${date}`);
   renderReleaseChecklist();
   const releases = meetingData[date].releases || {};
   const have = Object.keys(releases);
@@ -258,11 +240,8 @@ function renderAnalysis() {
     ${renderDims(a.dimensions)}
     <div class="summary">${esc(a.summary || '')}</div>
     ${a.whatChanged ? `<div class="whatchanged"><b>What changed</b>${esc(a.whatChanged)}</div>` : ''}
-    ${rel.vote ? `<div class="votenote"><b>Vote:</b> ${rel.vote.for}-${rel.vote.against}${rel.vote.dissenters?.length ? ` · dissent: ${rel.vote.dissenters.map(esc).join(', ')} (${esc(rel.vote.dissentReason || '')})` : ' (unanimous)'}</div>` : ''}
-    ${a.voteNote ? `<div class="votenote">${esc(a.voteNote)}</div>` : ''}
     ${(a.keyQuotes || []).map(q => `<div class="quote"><div class="qtext">“${esc(q.quote)}”</div><div class="qmeta"><span class="chip ${leanCls(q.lean)==='up'?'dove':q.lean==='BEARISH'?'hawk':'neu'}" style="font-size:9.5px">${esc(q.asset)} · ${esc(q.lean)}</span><span class="qwhy">${esc(q.why)}</span></div></div>`).join('')}
     ${a.byAsset?.length ? `<div class="assets" style="margin-top:8px">${a.byAsset.map(x => `<span class="a-chip ${leanCls(x.lean)}"><b>${esc(x.asset)} ${esc(x.lean)}</b><span class="an">${esc(x.note)}</span></span>`).join('')}</div>` : ''}
-    ${renderRawTables(rel.rawTables)}
     <div class="note">${rel.generatedAt ? `Analysed ${new Date(rel.generatedAt).toLocaleString()} · ` : ''}${rel.sourceUrl ? `<a href="${esc(rel.sourceUrl)}" target="_blank" rel="noopener">source ↗</a> · ` : ''}${rel.prevDate ? `diffed vs ${esc(rel.prevDate)}` : 'no prior release captured to diff against'}.</div>
   `;
   if (rel.diffSegments?.length) {
@@ -271,31 +250,13 @@ function renderAnalysis() {
     const removed = rel.diffSegments.filter(s => s.type === 'del').length;
     $('redlineStats').textContent = `vs ${rel.prevDate} ${curKind} — ${added} addition${added===1?'':'s'}, ${removed} removal${removed===1?'':'s'}`;
     $('redlineBody').innerHTML = rel.diffSegments.map(s => s.type === 'same' ? esc(s.text) : `<span class="${s.type}">${esc(s.text)}</span>`).join(' ');
-  } else if (rel.tableDiffLines?.length) {
-    $('redlineCard').style.display = '';
-    $('redlineStats').textContent = `vs ${rel.prevDate} SEP — ${rel.tableDiffLines.length} cell${rel.tableDiffLines.length === 1 ? '' : 's'} changed (columns matched by year, not position)`;
-    $('redlineBody').innerHTML = rel.tableDiffLines.map(l => `<div class="tdiff-line">${esc(l)}</div>`).join('');
   } else {
     $('redlineCard').style.display = 'none';
   }
 }
 
-// The actual SEP numbers (extractTables' raw grid — see js/fomcFetch.js),
-// not just the AI's paraphrase of them. Row/column labels come straight from
-// the Fed's own accessible-version markup.
-function renderRawTables(tables) {
-  if (!tables?.length) return '';
-  return tables.map((rows, i) => {
-    const [header, ...body] = rows;
-    return `<div class="septable-wrap"><table class="septable"><caption>SEP Table ${i + 1}${curKind === 'sep' ? ' (source figures)' : ''}</caption>
-      <thead><tr>${header.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead>
-      <tbody>${body.map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody>
-    </table></div>`;
-  }).join('');
-}
-
 async function loadTimeline() {
-  const { history } = await jget('/api/fomc/history?n=8');
+  const { history } = await jget('/api/ecb/history?n=8');
   $('timeline').innerHTML = history.map(h => {
     const score = h.hawkishScore ?? 0;
     const pct = Math.min(50, Math.abs(score) * 50);
@@ -309,21 +270,18 @@ async function loadTimeline() {
 }
 function jumpTo(date) { $('meetingSel').value = date; selectMeeting(date); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
-// The server kicks the check off in the background and returns immediately
-// (see server.js's _fomcRunCheck note) — a check touching several documents
-// can run past a minute, longer than most reverse-proxy request timeouts, so
-// this polls short-lived status requests instead of holding one long POST
-// open (that's what previously surfaced as a bare, un-actionable "Fetch
-// failed: Failed to fetch" — the proxy killing the connection, not the fetch
-// itself failing).
+// Fire-and-forget + poll — same pattern the FOMC page was fixed to use
+// (see server.js's _ecbRunCheck note); a check touching an index-page
+// lookup plus a document fetch can run past a proxy's request timeout if
+// held open as one blocking POST.
 async function fetchNow() {
   const btn = $('fetchBtn');
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Checking…';
   try {
-    const kick = await jget('/api/fomc/fetch-now', { method: 'POST' });
+    const kick = await jget('/api/ecb/fetch-now', { method: 'POST' });
     if (kick.alreadyRunning) $('lastCheck').textContent = 'A check is already running…';
     for (let i = 0; i < 60; i++) {
-      const st = await jget('/api/fomc/fetch-status');
+      const st = await jget('/api/ecb/fetch-status');
       if (st.last) {
         $('lastCheck').textContent = `Checked ${new Date(st.last.at).toLocaleTimeString()}${st.last.log?.length ? ' · ' + st.last.log.join(' · ') : ' · nothing new'}`;
       }
