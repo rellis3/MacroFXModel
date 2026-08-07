@@ -221,6 +221,13 @@ function isCfKey(key) {
   // ONLY out-of-sample evidence the VuManChu work will ever have and it cannot
   // be rebuilt after the fact, so it must survive redeploys.
   if (key.startsWith('vmlog_')) return true;
+  // fomc_* is the FOMC sentiment engine: raw statement/transcript/minutes text
+  // + the AI analysis built from it, one set per meeting. A source page can be
+  // revised or reworded after the fact (preliminary → final transcript), so a
+  // lost capture cannot be re-fetched into an identical state later — same
+  // "point-in-time record, not a cache" reasoning as vmlog_/vol_forecast_.
+  // Infrequent writes (a handful per ~6-week meeting cycle), well within quota.
+  if (key.startsWith('fomc_')) return true;
   return _CF_EXACT.has(key) || key.startsWith('journal_') || key.startsWith('ai_');
 }
 
