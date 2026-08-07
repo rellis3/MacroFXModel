@@ -741,7 +741,7 @@ footer{margin-top:40px;padding:18px 0;border-top:1px solid var(--border-soft);fo
         <span class="sf-chip sf-infl">Inflation ✓ breakeven · core PCE · ifo</span>
       </div>
     </div>
-    <button class="st-more">Read full brief ›</button>
+    <a class="st-more" href="today.html" target="_blank">Read full brief ›</a>
   </div>
 
   <!-- ═══════════════════ CROSS-ASSET BOARD ═══════════════════ -->
@@ -1217,7 +1217,7 @@ function trustChipHtml(d){
 function renderTable(){
   const rows = sortedFiltered();
   document.getElementById('board-tbody').innerHTML = rows.map(d=>`
-    <tr class="${d.sym===selectedSym?'selected':''} ${d.notable?'notable':''}" onclick="window.__selectSym('${d.sym}')">
+    <tr data-sym="${d.sym}" class="${d.sym===selectedSym?'selected':''} ${d.notable?'notable':''}" onclick="window.__selectSym('${d.sym}')">
       <td><div class="sym-cell"><span class="ac-dot ${d.ac}"></span><div><div class="sym-name">${d.sym}</div><div class="sym-full">${d.full}</div></div></div></td>
       <td class="px-cell mono">${d.price!=null?`<b>${fmtPx(d.price)}</b><span class="chg ${d.chg>=0?'up':'down'}">${d.chg>=0?'+':''}${d.chg}%</span>`:'<span class="pending">no OANDA feed</span>'}</td>
       <td>${rangeBar(d)}</td>
@@ -1426,6 +1426,7 @@ async function renderDrill(){
 window.__selectSym = function(sym){
   selectedSym = sym;
   renderTable(); renderCards(); renderDrill();
+  startLiveStream(sym);
   document.getElementById('drill').scrollIntoView({behavior:'smooth',block:'nearest'});
 };
 
@@ -1529,15 +1530,75 @@ document.querySelectorAll('.viewtoggle button').forEach(btn=>btn.addEventListene
 }));
 
 /* ── boot ─────────────────────────────────────────────────────────── */
+let lastBoardFetchAt = null;
+const BOARD_REFRESH_MS = 30000;
+
+// "data Xs" pill — real elapsed time since the last successful board fetch,
+// not the static placeholder this used to be. Ticks every second.
+function tickDataAgePill(){
+  const el = document.querySelector('.pill.stale');
+  if (!el || !lastBoardFetchAt) return;
+  const secs = Math.round((Date.now()-lastBoardFetchAt)/1000);
+  const dot = el.querySelector('.dot');
+  el.innerHTML = '';
+  if (dot) el.appendChild(dot); else { const d=document.createElement('span'); d.className='dot'; el.appendChild(d); }
+  el.appendChild(document.createTextNode(secs<90 ? `data ${secs}s` : `data ${Math.round(secs/60)}m — stale, refresh due`));
+}
+setInterval(tickDataAgePill, 1000);
+
+// Live price for the pair currently in the drill-down, via the same SSE
+// endpoint index.html streams from (/api/oanda_stream) — matching its actual
+// design: one stream for the pair in view, not one per board row. The full
+// board (all 21 rows) instead refreshes on a 30s poll below, same tradeoff
+// index.html itself makes (SSE for the focused pair, poll for the rest).
+let _liveSse = null;
+function stopLiveStream(){ if(_liveSse){ try{_liveSse.close();}catch(e){} _liveSse=null; } }
+function startLiveStream(sym){
+  stopLiveStream();
+  const d = DATA.find(x=>x.sym===sym);
+  if (!d) return;
+  try {
+    _liveSse = new EventSource(`/api/oanda_stream?symbol=${encodeURIComponent(d.oanda)}`);
+    _liveSse.onmessage = evt => {
+      try {
+        const msg = JSON.parse(evt.data);
+        if (msg.price == null) return;
+        d.price = msg.price;
+        d.chg = (d.sessionOpen) ? +((d.price/d.sessionOpen-1)*100).toFixed(2) : d.chg;
+        // Live-patch just the price/Δ text in place — avoid a full re-render
+        // (and the drill-down's cached macro-tier/pattern fetches) on every tick.
+        const pxEl = document.querySelector('#drill-hd .dh-px');
+        if (pxEl && selectedSym===sym) pxEl.innerHTML = `<b class="mono">${fmtPx(d.price)}</b><span class="chg ${d.chg>=0?'up':'down'}">${d.chg>=0?'+':''}${d.chg}%</span>`;
+        const row = document.querySelector(`tr[data-sym="${sym}"] .px-cell`);
+        if (row) row.innerHTML = `<b>${fmtPx(d.price)}</b><span class="chg ${d.chg>=0?'up':'down'}">${d.chg>=0?'+':''}${d.chg}%</span>`;
+      } catch(e){}
+    };
+    _liveSse.onerror = () => { stopLiveStream(); };
+  } catch(e){ console.warn('[live stream]', sym, e.message||e); }
+}
+
 (async function boot(){
   document.getElementById('board-tbody').innerHTML = `<tr><td colspan="6" style="padding:24px;text-align:center;color:var(--text3)">Loading /api/daily-brief…</td></tr>`;
   await loadBoard();
+  lastBoardFetchAt = Date.now(); tickDataAgePill();
   renderTable(); renderCards(); renderExceptions(); renderBook();
   if (DATA.length && !DATA.find(d=>d.sym===selectedSym)) selectedSym = DATA[0].sym;
   renderDrill();
+  startLiveStream(selectedSym);
   // Non-blocking: fill in FRED/macro-backdrop context once available.
   loadFred().then(()=>renderDrill());
   loadMacroBackdrop().then(()=>{ renderMacroBanner(); renderUsdPill(); renderContextFooter(); });
+
+  // Board-wide refresh (price, regime, trust tier, zones) every 30s — the
+  // heavier per-pair drill extras stay cached in drillCache and aren't re-fetched.
+  setInterval(async ()=>{
+    if (document.hidden) return;
+    await loadBoard();
+    lastBoardFetchAt = Date.now(); tickDataAgePill();
+    renderTable(); renderCards(); renderExceptions(); renderBook();
+    renderDrill();
+  }, BOARD_REFRESH_MS);
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) startLiveStream(selectedSym); });
 })();
 
 </script>
