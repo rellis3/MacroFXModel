@@ -79,6 +79,8 @@ import { wordDiff as fomcWordDiff, diffToPromptLines as fomcDiffToPromptLines, d
 import { ECB_MEETINGS, pendingAsOf as ecbPendingAsOf } from './js/ecbCalendar.js';
 import { FETCHERS as ECB_FETCHERS, PRESS_RSS_URL as ECB_PRESS_RSS_URL, yymmdd as ecbYymmdd } from './js/ecbFetch.js';
 import { parseRssItems as ecbParseRssItems } from './js/cbIndexFetch.js';
+import { BOE_MEETINGS, pendingAsOf as boePendingAsOf } from './js/boeCalendar.js';
+import { FETCHERS as BOE_FETCHERS, extractVote as boeExtractVote } from './js/boeFetch.js';
 import { runTrendAB as _runTrendAB } from './js/trendFollowV2Engine.js';
 import { volSigmaSeries as _volSigmaSeries, nextSigma as _nextSigma } from './js/forecastCore.js';
 import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } from './js/creditLeadLagEngine.js';
@@ -3411,6 +3413,170 @@ app.get('/api/ecb/debug-index', async (req, res) => {
     });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+
+// ── BoE Sentiment Engine ───────────────────────────────────────────────────────
+// Same shape as the FOMC/ECB engines, but structurally the simplest of the
+// three: BoE's URLs are directly constructible from the date (js/boeFetch.js
+// — no index-page/RSS lookup needed, unlike the ECB), and the "Monetary
+// Policy Summary and Minutes" is ONE document published SAME DAY as the
+// decision — no delayed minutes-equivalent to poll for separately. 4 of 8
+// meetings/year additionally publish a quarterly Monetary Policy Report +
+// press-conference transcript.
+function _boeKindLabel(kind) {
+  return {
+    summary: 'BoE MONETARY POLICY SUMMARY AND MINUTES — the combined decision announcement and minutes, published the same day (unlike the Fed\'s 3-week-delayed minutes or the ECB\'s 5-6-week Accounts, the BoE publishes these together immediately)',
+    report: 'BoE MONETARY POLICY REPORT — the quarterly economic projections document, published alongside 4 of the 8 meetings/year',
+    transcript: 'BoE MONETARY POLICY REPORT PRESS CONFERENCE TRANSCRIPT — Q&A following the quarterly Monetary Policy Report',
+  }[kind] || kind.toUpperCase();
+}
+function _boeReadingGuidance(kind) {
+  if (kind === 'summary') {
+    return `\nREADING TECHNIQUE: the vote split (see VOTE below) is one of the strongest signals here — the BoE MPC votes member-by-member and a widening or narrowing split between meetings is a direct read on how contested the policy stance is internally, often a cleaner signal than the prose itself.\n`;
+  }
+  return '';
+}
+function _boePrevMeetingDate(meetingDate) {
+  const idx = BOE_MEETINGS.findIndex(m => m.date === meetingDate);
+  return idx > 0 ? BOE_MEETINGS[idx - 1].date : null;
+}
+async function _boeGetRaw(kind, date) {
+  const raw = await kv.get(`boe_raw_${kind}_${date}`);
+  return raw ? JSON.parse(raw) : null;
+}
+
+async function _buildBoeAnalysis(kind, meetingDate) {
+  const key = process.env.ANT_KEY;
+  if (!key) throw new Error('ANT_KEY not configured');
+  const rawRec = await _boeGetRaw(kind, meetingDate);
+  if (!rawRec) throw new Error(`no raw ${kind} text captured for ${meetingDate} yet`);
+  const { text, url } = rawRec;
+  const clipped = text.length > _FOMC_MAX_CHARS ? text.slice(0, _FOMC_MAX_CHARS) + '\n[...truncated...]' : text;
+
+  const vote = kind === 'summary' ? boeExtractVote(text) : null;
+  const voteBlock = vote
+    ? `=== VOTE ===\n${vote.unanimous ? 'Unanimous' : `Majority ${vote.majority}-${vote.minority}`}`
+    : '';
+
+  let diffBlock = '', diffSegments = null;
+  const prevDate = _boePrevMeetingDate(meetingDate);
+  if (prevDate) {
+    const prevRec = await _boeGetRaw(kind, prevDate);
+    if (prevRec) {
+      const d = fomcWordDiff(prevRec.text, text);
+      diffSegments = d.segments;
+      const lines = fomcDiffToPromptLines(d, 2);
+      diffBlock = `=== WORDING CHANGES vs the ${prevDate} ${kind} ===\n` +
+        (lines.length ? lines.slice(0, 40).join('\n') : '(no material wording changes — near-identical to the prior release)');
+    }
+  }
+
+  const prompt = `You are analysing the ${_boeKindLabel(kind)} from the ${meetingDate} BoE MPC meeting for an FX/macro trading desk. Read it for HAWKISH vs DOVISH signal and likely market impact on GBP — this feeds a central-bank sentiment page traders check right after release, so be specific and plain-spoken.
+${_boeReadingGuidance(kind)}
+NEVER name a specific individual (Governor, MPC member, reporter) anywhere in your output — refer to them only by role. A named individual anchors the read on personal reputation, which goes stale (or becomes wrong) the moment membership changes.
+
+Ground every claim in the text below — do NOT invent numbers, names, or events not present in it.
+
+${voteBlock}
+
+${diffBlock}
+
+=== FULL TEXT ===
+${clipped}
+
+Also score five separate dimensions, each 0.0 (no signal of this in the text) to 1.0 (dominant theme) — magnitude, not direction, independent of each other and of hawkishScore:
+- inflationConcern, laborConcern, growthConcern, financialStabilityConcern: how much the text dwells on each (the BoE has a dual-ish remit like the Fed — price stability primary, but explicitly considers growth/employment too, unlike the ECB's single mandate)
+- committeeConfidence: how confident vs. uncertain/hedged the tone reads (0=deeply uncertain/hedged, 1=confident/decisive)
+
+Respond with ONLY valid JSON, no markdown:
+{"headline":"one-sentence front-page read, plain-English so-what first","hawkishScore":-1.0 to 1.0 (negative=dovish, positive=hawkish, 0=neutral),"regime":"HAWKISH|DOVISH|NEUTRAL|MIXED","confidence":"LOW|MEDIUM|HIGH (how confident YOU are in this read)","dimensions":{"inflationConcern":0.0-1.0,"laborConcern":0.0-1.0,"growthConcern":0.0-1.0,"financialStabilityConcern":0.0-1.0,"committeeConfidence":0.0-1.0},"summary":"2-3 plain-spoken sentences","whatChanged":"1-2 sentences on what's different from last time, grounded ONLY in the wording changes above — say plainly if there was no material change","voteNote":"1 sentence on what the vote split implies for the policy debate, or null if no vote data was given","keyQuotes":[{"quote":"short verbatim excerpt from the text above, under 30 words","why":"why this line matters","asset":"GBP|Gilts|Equities","lean":"BULLISH|BEARISH|NEUTRAL"}] (max 5, ranked most market-moving first),"byAsset":[{"asset":"GBP|Gilts|Equities|FX majors","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line"}]}`;
+
+  const antRes = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2800, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.', messages: [{ role: 'user', content: prompt }] }),
+  });
+  if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}: ${(await antRes.text()).slice(0, 200)}`);
+  const antData = await antRes.json();
+  if (antData.stop_reason === 'max_tokens') throw new Error('response truncated — try again');
+  const clean = (antData.content?.[0]?.text ?? '').replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  const analysis = JSON.parse(clean);
+
+  const payload = { kind, meetingDate, analysis, vote, diffSegments, prevDate, sourceUrl: url, generatedAt: new Date().toISOString() };
+  await kv.put(`boe_analysis_${kind}_${meetingDate}`, JSON.stringify(payload)).catch(() => {});
+  await kv.put('boe_latest', JSON.stringify({ kind, meetingDate })).catch(() => {});
+  return payload;
+}
+
+async function _boeAutoCheck(reason = 'schedule') {
+  const pending = boePendingAsOf(Date.now(), 120);
+  const log = [];
+  for (const rel of pending) {
+    const already = await _boeGetRaw(rel.kind, rel.meetingDate);
+    if (already) continue;
+    try {
+      const r = await BOE_FETCHERS[rel.kind](rel.meetingDate);
+      if (!r.ok) { if (!r.notYetPublished) log.push(`${rel.kind} ${rel.meetingDate} ✗ ${r.error || r.status}`); continue; }
+      await kv.put(`boe_raw_${rel.kind}_${rel.meetingDate}`, JSON.stringify({ text: r.text, url: r.url, fetchedAt: new Date().toISOString() }));
+      log.push(`${rel.kind} ${rel.meetingDate} ✓ fetched`);
+      if (process.env.ANT_KEY) {
+        try { await _buildBoeAnalysis(rel.kind, rel.meetingDate); log.push(`${rel.kind} ${rel.meetingDate} ✓ analysed`); }
+        catch (e) { log.push(`${rel.kind} ${rel.meetingDate} analysis ✗ ${e.message}`); }
+      }
+    } catch (e) { log.push(`${rel.kind} ${rel.meetingDate} ✗ ${e.message}`); }
+  }
+  await kv.put('boe_fetch_log', JSON.stringify({ at: new Date().toISOString(), reason, log })).catch(() => {});
+  if (log.length) console.log(`[boe] (${reason}) ${log.join(' · ')}`);
+  return log;
+}
+
+app.get('/api/boe/calendar', (_req, res) => {
+  res.json({ ok: true, meetings: BOE_MEETINGS, pending: boePendingAsOf(Date.now(), 120) });
+});
+app.get('/api/boe/latest', async (_req, res) => {
+  try {
+    const ptr = await kv.get('boe_latest');
+    if (!ptr) return res.json({ ok: false, error: 'No BoE analysis yet — click Fetch now.' });
+    const { kind, meetingDate } = JSON.parse(ptr);
+    const raw = await kv.get(`boe_analysis_${kind}_${meetingDate}`);
+    if (!raw) return res.json({ ok: false, error: 'Pointer set but analysis missing — click Fetch now.' });
+    res.json({ ok: true, ...JSON.parse(raw) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/boe/meeting/:date', async (req, res) => {
+  const date = req.params.date;
+  const out = {};
+  for (const kind of ['summary', 'report', 'transcript']) {
+    const raw = await kv.get(`boe_analysis_${kind}_${date}`).catch(() => null);
+    if (raw) out[kind] = JSON.parse(raw);
+  }
+  res.json({ ok: true, meetingDate: date, releases: out });
+});
+app.get('/api/boe/history', async (req, res) => {
+  const n = Math.min(24, Math.max(1, parseInt(req.query.n) || 8));
+  const past = BOE_MEETINGS.filter(m => Date.parse(m.date) <= Date.now()).slice(-n);
+  const out = [];
+  for (const m of past) {
+    const raw = await kv.get(`boe_analysis_summary_${m.date}`).catch(() => null);
+    if (raw) { const p = JSON.parse(raw); out.push({ meetingDate: m.date, headline: p.analysis?.headline, hawkishScore: p.analysis?.hawkishScore, regime: p.analysis?.regime }); }
+    else out.push({ meetingDate: m.date, headline: null, hawkishScore: null, regime: null });
+  }
+  res.json({ ok: true, history: out });
+});
+let _boeCheckRunning = false;
+function _boeRunCheck(reason) {
+  if (_boeCheckRunning) return false;
+  _boeCheckRunning = true;
+  _boeAutoCheck(reason).catch(() => {}).finally(() => { _boeCheckRunning = false; });
+  return true;
+}
+app.post('/api/boe/fetch-now', (_req, res) => {
+  const started = _boeRunCheck('manual');
+  res.json({ ok: true, started, alreadyRunning: !started });
+});
+app.get('/api/boe/fetch-status', async (_req, res) => {
+  const raw = await kv.get('boe_fetch_log').catch(() => null);
+  res.json({ ok: true, running: _boeCheckRunning, last: raw ? JSON.parse(raw) : null });
+});
+setInterval(() => { _boeRunCheck('poll'); }, 30 * 60_000);
 
 // ── Labor Market Strength Engine ──────────────────────────────────────────────
 // Numeric-composition score (payrolls, wages, unemployment, participation) —
