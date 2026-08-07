@@ -81,6 +81,38 @@ def make_spec(instrument: str, z: dict) -> dict:
     }
 
 
+def stack_conflict(symbols, dir_up: bool, entry: float, open_positions: list,
+                   min_dist: float) -> dict | None:
+    """Return the first OPEN position that would make a new entry a redundant stack —
+    same instrument (any spelling in ``symbols``), same direction, and within
+    ``min_dist`` (price units) of ``entry`` — else ``None``.
+
+    Two zones that point the same way at nearly the same price are ONE bet, not two
+    (the wall fade + the max-pain reversion + a react-at-levels long all cluster near
+    the pin), so opening both silently doubles the open risk on a single directional
+    view — exactly what the Effective-Bets panel flags. The executor uses this to
+    refuse (defer, not burn) the second one.
+
+    ``symbols`` is a set/collection because the broker book may key by the canonical
+    key (paper) or the venue symbol (MT5) — pass both. ``min_dist <= 0`` only blocks
+    an exact-price duplicate; a negative ``min_dist`` disables the check entirely."""
+    if min_dist is None or min_dist < 0:
+        return None
+    want = "BUY" if dir_up else "SELL"
+    for p in (open_positions or []):
+        if p.get("symbol") not in symbols or p.get("direction") != want:
+            continue
+        op = p.get("open_price")
+        if op is None:
+            continue
+        try:
+            if abs(float(op) - float(entry)) <= min_dist:
+                return p
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
 class OISession:
     """Per-instrument execution state: the plan's zones + one-shot bookkeeping.
 

@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from oi_bot.engine import OISession, zone_id, should_fire, make_spec, _tp  # noqa: E402
+from oi_bot.engine import OISession, zone_id, should_fire, make_spec, _tp, stack_conflict  # noqa: E402
 
 fails = 0
 def ok(name, cond, extra=""):
@@ -74,6 +74,34 @@ ok("rationale + regime carried (for the comment/audit)", spec["rationale"] == "P
 print("[guards]")
 ok("px None → no fire", OISession("gold", 4200, [SELL_FADE]).decide(None) == [])
 ok("no zones → no fire", OISession("gold", 4200, []).decide(4300) == [])
+
+print("[stack guard — one bet, not two: same instrument + direction near an open]")
+SYMS = {"gbpusd", "GBPUSD"}
+# One long GBPUSD already open at 1.34525; a second long zone at 1.34526 is 0.1 pip away.
+OPEN = [{"symbol": "gbpusd", "direction": "BUY", "open_price": 1.34525, "ticket": 111}]
+ok("blocks a same-dir entry within min_dist",
+   stack_conflict(SYMS, True, 1.34526, OPEN, 0.0010) is not None)
+ok("returns the actual conflicting position",
+   (stack_conflict(SYMS, True, 1.34526, OPEN, 0.0010) or {}).get("ticket") == 111)
+ok("allows a genuinely distant same-dir level (60 pips away)",
+   stack_conflict(SYMS, True, 1.35125, OPEN, 0.0010) is None)
+ok("opposite direction is never a stack (a hedge, not a double)",
+   stack_conflict(SYMS, False, 1.34526, OPEN, 0.0010) is None)
+ok("different instrument is never a stack",
+   stack_conflict(SYMS, True, 1.34526,
+                  [{"symbol": "eurusd", "direction": "BUY", "open_price": 1.34525, "ticket": 9}],
+                  0.0010) is None)
+ok("matches the VENUE symbol spelling too (MT5 book)",
+   stack_conflict(SYMS, True, 1.34526,
+                  [{"symbol": "GBPUSD", "direction": "BUY", "open_price": 1.34525, "ticket": 7}],
+                  0.0010) is not None)
+ok("negative min_dist disables the guard",
+   stack_conflict(SYMS, True, 1.34525, OPEN, -1) is None)
+ok("empty book → nothing to conflict with",
+   stack_conflict(SYMS, True, 1.34526, [], 0.0010) is None)
+ok("missing open_price is skipped, not crashed",
+   stack_conflict(SYMS, True, 1.34526,
+                  [{"symbol": "gbpusd", "direction": "BUY", "ticket": 5}], 0.0010) is None)
 
 print(f"\n{'ALL PASSED ✓' if fails == 0 else str(fails) + ' FAILED ✗'}")
 sys.exit(0 if fails == 0 else 1)

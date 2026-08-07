@@ -3995,6 +3995,7 @@ const OI_DEFAULTS = {
   // execution (the bot)
   paper_mode: true, kill_switch: false, risk_pct: 0.5, max_lot: 2.0, max_open: 12,
   touch_tol_pips: 2, max_spread_pips: null, tick_secs: 3, status_secs: 30, plan_secs: 600,
+  stack_guard: true, stack_guard_pips: 10,   // refuse a 2nd same-dir entry within N pips of an open one (one bet, not two)
   enabled_pairs: [], broker_symbols: {},
   // telegram entry alerts (blank token/chat → shared tg_config)
   tg_enabled: false, tg_token: '', tg_chat_id: '',
@@ -4028,6 +4029,8 @@ function renderOiForm() {
   set('oi_max_lot', _oiCfg.max_lot ?? OI_DEFAULTS.max_lot);
   set('oi_max_open', _oiCfg.max_open ?? OI_DEFAULTS.max_open);
   set('oi_touch_tol_pips', _oiCfg.touch_tol_pips ?? OI_DEFAULTS.touch_tol_pips);
+  chk('oi_stack_guard', _oiCfg.stack_guard ?? true);
+  set('oi_stack_guard_pips', _oiCfg.stack_guard_pips ?? OI_DEFAULTS.stack_guard_pips);
   set('oi_max_spread_pips', _oiCfg.max_spread_pips ?? '');
   set('oi_enabled_pairs', (_oiCfg.enabled_pairs ?? []).join(', '));
   set('oi_tick_secs', _oiCfg.tick_secs ?? OI_DEFAULTS.tick_secs);
@@ -4065,6 +4068,8 @@ function readOiForm() {
   _oiCfg.max_lot = num('oi_max_lot', OI_DEFAULTS.max_lot);
   _oiCfg.max_open = Math.round(num('oi_max_open', OI_DEFAULTS.max_open));
   _oiCfg.touch_tol_pips = num('oi_touch_tol_pips', OI_DEFAULTS.touch_tol_pips);
+  _oiCfg.stack_guard = !!document.getElementById('oi_stack_guard')?.checked;
+  _oiCfg.stack_guard_pips = num('oi_stack_guard_pips', OI_DEFAULTS.stack_guard_pips);
   const ms = document.getElementById('oi_max_spread_pips')?.value;
   _oiCfg.max_spread_pips = (ms === '' || ms == null) ? null : (parseFloat(ms) || null);
   _oiCfg.enabled_pairs = list('oi_enabled_pairs');

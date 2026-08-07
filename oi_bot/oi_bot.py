@@ -39,7 +39,7 @@ from pylego.broker.paper import PaperBroker                  # noqa: E402
 from pylego.quotes import QuoteFeed                          # noqa: E402
 from pylego.costs import expected_fill, max_spread           # noqa: E402
 from pylego.risk_guard import RiskGuard, log_block_transition  # noqa: E402
-from oi_bot.engine import OISession                          # noqa: E402
+from oi_bot.engine import OISession, stack_conflict          # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("oi_bot")
@@ -66,6 +66,12 @@ DEFAULT_CFG = {
     "tick_secs": 3,               # local price watch + touch detection
     "enabled_pairs": [],          # [] = every instrument in the plan (already gated by the producer)
     "touch_tol_pips": 2,          # slack (in the pair's pips) around an entry level for the touch test
+    # Stack guard: refuse a SECOND same-instrument, same-direction entry within
+    # `stack_guard_pips` (the pair's pips) of one already open — two zones clustered
+    # near the pin are one bet, not two (see Effective-Bets). Defers, doesn't burn:
+    # the deferred zone can still fire once the conflicting position is gone.
+    "stack_guard": True,
+    "stack_guard_pips": 10,
     "paper_spread_pips": {},      # paper-fill spread OVERRIDES, {pair: pips in the pair's own units}
     # Telegram entry alerts (optional). tg_token/tg_chat_id fall back to the shared
     # tg_config (Level bot) if left blank — one alert per fill with the full trade.
@@ -328,6 +334,7 @@ def run(base_url: str, force_live: bool) -> None:
 
     sessions: dict[str, OISession] = {}
     reject_until: dict[str, float] = {}          # zone_id → epoch to retry after (anti-spam)
+    stack_skips: dict[str, int] = {}             # zone_id → conflicting ticket (once-per-change logging)
     plan = None
     last_plan = last_status = 0.0
     event_windows = None                    # KV event_windows_v1 payload (or None)
@@ -465,12 +472,35 @@ def run(base_url: str, force_live: bool) -> None:
                             log.info(f"EVENT GATE [{instr}]: clear — entries resumed")
                     if ev_why:
                         continue
+                # Stack guard: this bot's live book, once per instrument-tick. The
+                # broker keys positions by canonical (paper) OR venue symbol (MT5),
+                # so match on both spellings. New fills below are appended in-loop so
+                # two zones firing on the SAME tick can't both slip through.
+                stack_on = bool(cfg.get("stack_guard", True))
+                open_book = broker.serialize_open_positions() if stack_on else []
+                sym_set = {instr, instr.upper(), _broker_sym(instr), _broker_sym(instr).upper()}
+                stack_d = _stack_dist(cfg, instr)
                 for spec in sess.decide(px, tol=_tol(cfg, instr)):
                     if spec["sl"] is None:
                         continue
                     zid = spec["zone_id"]
                     if reject_until.get(zid, 0) > nowt:
                         continue                       # in reject cooldown — don't hammer the broker
+                    # Refuse a redundant same-direction stack near an open position
+                    # (one bet, not two). Defer, don't burn: the zone re-fires once
+                    # the conflicting position is gone. Log once per (zone → ticket).
+                    if stack_on:
+                        conflict = stack_conflict(sym_set, spec["dir_up"], spec["entry"],
+                                                  open_book, stack_d)
+                        if conflict is not None:
+                            ctk = conflict.get("ticket")
+                            if stack_skips.get(zid) != ctk:
+                                stack_skips[zid] = ctk
+                                log.info(f"STACK GUARD [{instr}] {zid} deferred — already "
+                                         f"{'LONG' if spec['dir_up'] else 'SHORT'} @ "
+                                         f"{conflict.get('open_price')} (ticket {ctk}) within "
+                                         f"{cfg.get('stack_guard_pips', 10)}p; would be one bet")
+                            continue
                     exp_px = expected_fill(spec["entry"], spec["dir_up"], instr, broker)
                     lots = size_for(instr, bal, cfg.get("risk_pct", 0.5), exp_px - spec["sl"],
                                     cfg.get("max_lot", 2.0), spec["size_factor"])
@@ -487,6 +517,14 @@ def run(base_url: str, force_live: bool) -> None:
                         guard.record_trade(instr)
                         sess.mark_entered(zid)
                         reject_until.pop(zid, None)
+                        stack_skips.pop(zid, None)
+                        # Reflect this fill so a second same-tick zone sees it and
+                        # the stack guard blocks it (paper's book updates immediately;
+                        # MT5's positions_get may lag a tick).
+                        if stack_on:
+                            open_book.append({"symbol": _broker_sym(instr), "direction":
+                                              ("BUY" if spec["dir_up"] else "SELL"),
+                                              "open_price": exp_px, "ticket": tid})
                         log.info(f"{'[PAPER] ' if paper else ''}{instr} {spec['mode'].upper()} "
                                  f"{direction} @~{spec['entry']} SL {spec['sl']} TP {spec['tp']} "
                                  f"→ ticket {tid} lots {lots} ({spec['size_factor']}×)")
@@ -510,6 +548,14 @@ def _tol(cfg: dict, instr: str) -> float:
     """Touch tolerance in PRICE units for an instrument (config is in pips)."""
     try:
         return float(cfg.get("touch_tol_pips", 2) or 0) * I.pip_size(instr)
+    except Exception:
+        return 0.0
+
+
+def _stack_dist(cfg: dict, instr: str) -> float:
+    """Stack-guard proximity in PRICE units for an instrument (config is in pips)."""
+    try:
+        return float(cfg.get("stack_guard_pips", 10) or 0) * I.pip_size(instr)
     except Exception:
         return 0.0
 
