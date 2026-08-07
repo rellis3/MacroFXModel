@@ -771,7 +771,7 @@ footer{margin-top:40px;padding:18px 0;border-top:1px solid var(--border-soft);fo
     <div class="scrollx" id="board-table-wrap" style="margin-top:12px">
       <table class="board">
         <thead><tr>
-          <th>Instrument</th><th>Price</th><th>Vol percentile (5d)</th><th>Regime</th><th>Forecast trust</th><th>Nearest Range-Line zone</th>
+          <th>Instrument</th><th>Price</th><th>Vol percentile (252d)</th><th>Regime</th><th>Forecast trust</th><th>Nearest Range-Line zone</th>
         </tr></thead>
         <tbody id="board-tbody"></tbody>
       </table>
@@ -908,6 +908,8 @@ const RATE_BASIS = {
 
 async function jget(url){ try{ const r=await fetch(url); if(!r.ok) return null; return await r.json(); }catch(e){ return null; } }
 function fmtPx(v){ if(v==null) return '—'; return v>=1000? v.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) : v.toFixed(v<10?4:2); }
+// same convention as oi-dashboard.html's fOI() — B/M/K suffix, no decimals below 1K
+function fOI(n){ if(!Number.isFinite(n)) return '—'; const a=Math.abs(n); return a>=1e9?(n/1e9).toFixed(2)+'B':a>=1e6?(n/1e6).toFixed(1)+'M':a>=1000?(n/1000).toFixed(1)+'K':String(Math.round(n)); }
 function zClass(v){ return v>0.3?'pos':v<-0.3?'neg':'flat'; }
 function coneChip(state){ const m={STRETCHED:'warn',NORMAL:'neu',QUIET:'range'}; return m[state]||'neu'; }
 function dirChip(dir){ const m={LONG:'bull',SHORT:'bear',NEUTRAL:'neu'}; return m[dir]||'neu'; }
@@ -984,7 +986,11 @@ async function loadBoard(){
       v1, v2, agree,
       pivots,
       vol: b ? { annual: b.vol_annual, hlMed: b.levels?.hl_med?.pct ?? null, hl75: b.levels?.hl_75?.pct ?? null, ocMed: b.levels?.oh_med?.pct ?? null } : null,
-      conePct: b?.cone_5d ?? null,
+      // vol_pct (252-day window) not cone_5d (5-bar window, pegs at 100 for
+      // every instrument at once on a flagged-news day — the news multiplier
+      // applies globally, so all 5 window bars fall below the bumped forecast
+      // simultaneously; see js/volForecast.js's _buildOutput/computeForecast).
+      conePct: b?.vol_pct ?? null,
       sizingMult: b?.regime?.sizing_mult ?? null,
       sizingLabel: b?.regime?.sizing_label ?? null,
       trendProb: b?.regime?.trend_prob ?? null,
@@ -1365,8 +1371,8 @@ async function renderDrill(){
         <div class="oi-list">
           <div class="oi-row"><span class="oi-lbl">Max pain</span><span class="oi-val mono">${fmtPx(d.oi.maxPain)}</span></div>
           <div class="oi-row"><span class="oi-lbl">Gamma flip (GEX-based)</span><span class="oi-val mono">${fmtPx(d.oi.gexFlip ?? d.oi.gammaFlip)}</span></div>
-          <div class="oi-row"><span class="oi-lbl">Net GEX / DEX</span><span class="oi-val mono">${d.oi.exposures?.gex ?? '—'} / ${d.oi.exposures?.dex ?? '—'}</span></div>
-          <div class="oi-row"><span class="oi-lbl">Put/Call ratio</span><span class="oi-val mono">${d.oi.pcRatio ?? '—'}</span></div>
+          <div class="oi-row"><span class="oi-lbl">Net GEX / DEX</span><span class="oi-val mono">${fOI(d.oi.exposures?.gex)} / ${fOI(d.oi.exposures?.dex)}</span></div>
+          <div class="oi-row"><span class="oi-lbl">Put/Call ratio</span><span class="oi-val mono">${Number.isFinite(d.oi.pcRatio)?d.oi.pcRatio.toFixed(2):'—'}</span></div>
           <div class="oi-row"><span class="oi-lbl">Expected move</span><span class="oi-val mono">${d.oi.expectedMove ? `±${d.oi.expectedMove.pct}%` : '—'}</span></div>
         </div>
         <div class="wall-lbls" style="margin-top:8px"><span>Put wall ${fmtPx(d.oi.putWall)}</span><span>Call wall ${fmtPx(d.oi.callWall)}</span></div>
@@ -1390,7 +1396,7 @@ async function renderDrill(){
     <div class="dcard">
       <div class="dcard-hd"><span class="eyebrow">Pattern Match</span><span class="trust context">🧪 context, self-calibrating</span></div>
       <div class="dcard-body">
-        ${extras.patterns===null ? `<div class="pending">${extras.patternsErr?'Pattern scan unavailable in this environment.':'Loading…'}</div>` : !extras.patterns.length ? `<div class="pending">No patterns detected in the current window.</div>` : extras.patterns.map(p=>`<div class="pattern-row"><div><div class="pattern-name">${p.pattern||p.type||'Pattern'}</div><div class="pattern-tf">${p.timeframe||''} · confidence ${p.confidence ?? '—'}${p.confidence!=null?'%':''}</div></div></div>`).join('')}
+        ${extras.patterns===null ? `<div class="pending">${extras.patternsErr?'Pattern scan unavailable in this environment.':'Loading…'}</div>` : !extras.patterns.length ? `<div class="pending">No patterns detected in the current window.</div>` : extras.patterns.map(p=>`<div class="pattern-row"><div><div class="pattern-name">${(p.type||'Pattern').replace(/_/g,' ')}</div><div class="pattern-tf">1h${p.htf?.aligned!=null?` · HTF (${p.htf.timeframe||'?'}) ${p.htf.aligned?'aligned':'not aligned'}`:''} · confidence ${p.confidence?.total ?? '—'}${p.confidence?.total!=null?'%':''}</div></div></div>`).join('')}
       </div>
     </div>
 
@@ -1435,12 +1441,28 @@ function renderExceptions(){
     ? items.slice(0,12).map(e=>`<div class="exc-row"><span class="exc-dot ${e.dot}"></span><span class="exc-txt"><b>${e.who}</b>${e.txt}</span></div>`).join('')
     : `<div class="exc-empty">Nothing notable right now.</div>`;
 }
+// Each bot writes its own status KV key (no single aggregate key exists) —
+// mirrors performance.html's kvGet() pattern. Heartbeat lives at data.timestamp
+// for every bot except the legacy Main/Levels bot, which uses data.loop_at.
+const BOT_STATUS_KEYS = [
+  { key:'range_line_bot_status', label:'Range-Line Bot' },
+  { key:'oi_bot_status',         label:'OI / Gamma Bot' },
+  { key:'regime_bot_v2_status',  label:'Regime V2 (HMM)' },
+  { key:'gold_bot_status',       label:'Gold Bot' },
+  { key:'volatility_bot_status', label:'Volatility Bot' },
+  { key:'bot_status',            label:'Main Bot (Levels)', heartbeatField:'loop_at' },
+];
+function isStaleMin(iso, maxMin){ if(!iso) return true; const ageMs = Date.now()-new Date(iso).getTime(); return !(ageMs>=0) || ageMs > maxMin*60000; }
 async function renderBook(){
-  const status = await jget('/api/kv/get?key=bot_status');
-  const bots = status?.data ? Object.entries(status.data).map(([name,s])=>({n:name, m:s?.lastSeen||'—'})) : [];
-  document.getElementById('bot-list').innerHTML = bots.length
-    ? bots.slice(0,6).map(b=>`<div class="bot-row"><span class="bot-dot up"></span><span class="bot-name">${b.n}</span><span class="bot-meta mono">${b.m}</span></div>`).join('')
-    : `<div class="pending" style="padding:14px 16px">Bot status not available in this environment.</div>`;
+  const results = await Promise.all(BOT_STATUS_KEYS.map(async b=>{
+    const r = await jget(`/api/kv/get?key=${b.key}`);
+    const ts = r?.data?.[b.heartbeatField || 'timestamp'] || null;
+    return { ...b, ts, stale: isStaleMin(ts, 10) };
+  }));
+  const live = results.filter(b=>b.ts);
+  document.getElementById('bot-list').innerHTML = live.length
+    ? live.map(b=>`<div class="bot-row"><span class="bot-dot ${b.stale?'':'up'}" style="${b.stale?'background:var(--text3)':''}"></span><span class="bot-name">${b.label}</span><span class="bot-meta mono">${b.stale?'stale · ':''}${new Date(b.ts).toLocaleTimeString()}</span></div>`).join('')
+    : `<div class="pending" style="padding:14px 16px">No bot heartbeats found — none of the tracked KV status keys have data yet.</div>`;
 }
 
 /* ── macro banner + USD pill + context footer ────────────────────── */
