@@ -77,7 +77,7 @@ import { FOMC_MEETINGS, pendingAsOf as fomcPendingAsOf } from './js/fomcCalendar
 import { FETCHERS as FOMC_FETCHERS, extractVote as fomcExtractVote } from './js/fomcFetch.js';
 import { wordDiff as fomcWordDiff, diffToPromptLines as fomcDiffToPromptLines, diffTables as fomcDiffTables } from './js/fomcDiff.js';
 import { ECB_MEETINGS, pendingAsOf as ecbPendingAsOf } from './js/ecbCalendar.js';
-import { FETCHERS as ECB_FETCHERS } from './js/ecbFetch.js';
+import { FETCHERS as ECB_FETCHERS, STATEMENT_INDEX_URL as ECB_STATEMENT_INDEX_URL, ACCOUNTS_INDEX_URL as ECB_ACCOUNTS_INDEX_URL, yymmdd as ecbYymmdd } from './js/ecbFetch.js';
 import { runTrendAB as _runTrendAB } from './js/trendFollowV2Engine.js';
 import { volSigmaSeries as _volSigmaSeries, nextSigma as _nextSigma } from './js/forecastCore.js';
 import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } from './js/creditLeadLagEngine.js';
@@ -3383,6 +3383,39 @@ app.get('/api/ecb/fetch-status', async (_req, res) => {
   res.json({ ok: true, running: _ecbCheckRunning, last: raw ? JSON.parse(raw) : null });
 });
 setInterval(() => { _ecbRunCheck('poll'); }, 30 * 60_000);
+
+// Diagnostic — the index page fetched fine (100KB+, confirmed live 2026-08-07)
+// but the date-pattern match keeps missing, meaning the URL-pattern
+// assumption itself is wrong, not that the fetch is blocked. This sandbox
+// cannot reach ecb.europa.eu to inspect the real markup directly, so this
+// endpoint does that inspection FROM the deployed server (which can reach
+// it) and reports back exactly what's there, instead of guessing another
+// regex blind. Safe to leave in permanently — read-only, no side effects.
+app.get('/api/ecb/debug-index', async (req, res) => {
+  try {
+    const kind = req.query.kind === 'accounts' ? 'accounts' : 'statement';
+    const url = kind === 'accounts' ? ECB_ACCOUNTS_INDEX_URL : ECB_STATEMENT_INDEX_URL;
+    const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MacroFX/1.0; +https://github.com/)' }, signal: AbortSignal.timeout(20_000) });
+    const raw = await r.text();
+    const dateStr = req.query.date; // e.g. 2026-07-23
+    const digits = dateStr ? ecbYymmdd(dateStr) : null;
+    const lower = raw.toLowerCase();
+    const bareDateIdx = digits ? lower.indexOf(digits) : -1;
+    const isPrefixedIdx = digits ? lower.indexOf(`is${digits}`) : -1;
+    const firstHrefIdx = raw.search(/href=/i);
+    const allEcbLinks = [...raw.matchAll(/href="([^"]*ecb\.[a-z]{2}\d{6}[^"]*)"/gi)].slice(0, 15).map(m => m[1]);
+    res.json({
+      ok: true, url, status: r.status, bytes: raw.length,
+      dateChecked: dateStr, digitsSearched: digits,
+      bareDateFoundAnywhere: bareDateIdx >= 0,
+      isPrefixedDateFound: isPrefixedIdx >= 0,
+      snippetNearBareDate: bareDateIdx >= 0 ? raw.slice(Math.max(0, bareDateIdx - 150), bareDateIdx + 150) : null,
+      snippetNearFirstHref: firstHrefIdx >= 0 ? raw.slice(firstHrefIdx, firstHrefIdx + 300) : null,
+      sampleEcbDatedLinksFound: allEcbLinks,
+      first800Chars: raw.slice(0, 800),
+    });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 
 // ── Labor Market Strength Engine ──────────────────────────────────────────────
 // Numeric-composition score (payrolls, wages, unemployment, participation) —
