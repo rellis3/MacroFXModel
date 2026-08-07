@@ -104,6 +104,7 @@
   <span class="stamp" id="lastCheck"></span>
   <button class="hbtn primary" id="fetchBtn" onclick="fetchNow()">⟳ Fetch now</button>
   <a class="hbtn" href="fomc-sentiment.html">FOMC Sentiment</a>
+  <a class="hbtn" href="boe-sentiment.html">BoE Sentiment</a>
   <a class="hbtn" href="labor-market.html">Labor Market</a>
   <a class="hbtn" href="today.html">Daily Brief</a>
   <a class="hbtn" href="index.html">Dashboard</a>
@@ -184,7 +185,14 @@ async function loadCalendar() {
   const past = calendar.meetings.filter(m => Date.parse(m.date) <= Date.now());
   const sel = $('meetingSel');
   sel.innerHTML = past.slice().reverse().map(m => `<option value="${m.date}">${m.date}${m.projections ? ' (projections)' : ''}</option>`).join('');
-  curMeeting = past.at(-1)?.date;
+  // Preserve whatever meeting the user has selected across a reload (e.g.
+  // after "Fetch now" completes, which calls this again) — only default to
+  // the latest meeting on first load, or if the previous selection somehow
+  // isn't in the list anymore. Previously this always snapped back to the
+  // latest meeting on every reload, silently discarding a manual pick of an
+  // older date.
+  const stillValid = curMeeting && past.some(m => m.date === curMeeting);
+  if (!stillValid) curMeeting = past.at(-1)?.date;
   if (curMeeting) { sel.value = curMeeting; renderReleaseChecklist(); await selectMeeting(curMeeting); }
   loadTimeline();
 }

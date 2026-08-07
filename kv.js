@@ -231,6 +231,8 @@ function isCfKey(key) {
   // ecb_* — same reasoning as fomc_ above, the ECB engine's own point-in-time
   // captures.
   if (key.startsWith('ecb_')) return true;
+  // boe_* — same reasoning as fomc_/ecb_ above.
+  if (key.startsWith('boe_')) return true;
   return _CF_EXACT.has(key) || key.startsWith('journal_') || key.startsWith('ai_');
 }
 
