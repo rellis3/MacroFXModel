@@ -61,6 +61,40 @@ export function wordDiff(prevText, text) {
   };
 }
 
+// Structured cell-level diff for SEP-style tables (js/fomcFetch.js's
+// extractTables output — array of tables, each an array of rows, each row's
+// first cell a label). A word-diff on the markdown rendering would work but
+// loses row/column identity where it matters most: SEP year columns ROLL
+// FORWARD every meeting (this meeting's "2027" column sits at a different
+// index than last meeting's "2027" column), so columns are matched by their
+// HEADER TEXT, not position — the one thing a positional diff would get
+// wrong on exactly the data where it matters most.
+export function diffTables(prevTables, curTables) {
+  const lines = [];
+  const n = Math.max(prevTables.length, curTables.length);
+  for (let t = 0; t < n; t++) {
+    const prevRows = prevTables[t] || [];
+    const curRows = curTables[t] || [];
+    const prevHeader = prevRows[0] || [];
+    const curHeader = curRows[0] || [];
+    const prevByLabel = new Map(prevRows.slice(1).map(r => [r[0], r]));
+    for (const row of curRows.slice(1)) {
+      const label = row[0];
+      const prevRow = prevByLabel.get(label);
+      if (!prevRow) { lines.push(`Table ${t + 1}: NEW ROW "${label}" = ${row.slice(1).join(', ')}`); continue; }
+      for (let c = 1; c < row.length; c++) {
+        const curCol = curHeader[c] ?? `col${c}`;
+        const prevIdx = prevHeader.indexOf(curCol);
+        const prevVal = prevIdx >= 0 ? prevRow[prevIdx] : undefined;
+        const curVal = row[c];
+        if (prevIdx < 0) { if (curVal) lines.push(`Table ${t + 1} "${label}" — new column "${curCol}": ${curVal}`); }
+        else if (prevVal !== curVal) lines.push(`Table ${t + 1} "${label}" (${curCol}): ${prevVal} → ${curVal}`);
+      }
+    }
+  }
+  return lines;
+}
+
 // Plain-text summary of just the changed spans (add/del segments with >=1
 // word), for feeding the sentiment prompt without the full statement twice —
 // "REMOVED: 'growth has slowed' / ADDED: 'growth has moderated'" style lines.

@@ -38,9 +38,18 @@ export function transcriptPdfUrl(dateStr) {
 export function sepPdfUrl(dateStr) {
   return `https://www.federalreserve.gov/monetarypolicy/files/fomcprojtabl${yyyymmdd(dateStr)}.pdf`;
 }
+// The Fed publishes an "accessible version" of the SEP alongside the PDF —
+// built for screen readers, which in practice means real semantic <table>
+// markup instead of PDF layout text. The dot plot and the GDP/unemployment/
+// inflation projections ARE tables; extracting them from this page (see
+// extractTables/tablesToMarkdown below) is far more reliable than pulling
+// numbers back out of PDF text where column alignment is lost.
+export function sepAccessibleUrl(dateStr) {
+  return `https://www.federalreserve.gov/monetarypolicy/fomcprojtabl${yyyymmdd(dateStr)}.htm`;
+}
 
 const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", apos: "'", nbsp: ' ', rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“', mdash: '—', ndash: '–' };
-function decodeEntities(s) {
+export function decodeEntities(s) {
   return s.replace(/&(#\d+|[a-z]+);/gi, (m, code) => {
     if (code[0] === '#') return String.fromCharCode(parseInt(code.slice(1), 10));
     return ENTITIES[code.toLowerCase()] ?? m;
@@ -71,6 +80,43 @@ export function stripBoilerplate(text) {
   for (const m of startMarkers) { const idx = out.search(m); if (idx > 0) { out = out.slice(idx); break; } }
   for (const m of endMarkers) { const match = out.match(m); if (match && match.index > 200) { out = out.slice(0, match.index); break; } }
   return out.trim();
+}
+
+// Generic HTML <table> extractor — deliberately does NOT assume anything
+// about row/column semantics (which SEP row is "median" vs "range", which
+// column is which year). Those labels live IN the cells the Fed's own
+// accessible markup already provides, and hardcoding a guess at the exact
+// real structure (unverifiable from this sandbox — see the fetch-module
+// header note) risks silently misreporting a number, which for a policy-rate
+// table is a much worse failure than a slightly noisy transcript excerpt.
+// Faithfully preserving the grid and handing it to the model with its own
+// labels intact is the honest tradeoff.
+export function extractTables(html) {
+  const tables = [];
+  for (const tMatch of html.matchAll(/<table\b[^>]*>([\s\S]*?)<\/table>/gi)) {
+    const rows = [];
+    for (const rMatch of tMatch[1].matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)) {
+      const cells = [];
+      for (const cMatch of rMatch[1].matchAll(/<t[hd]\b[^>]*>([\s\S]*?)<\/t[hd]>/gi)) {
+        cells.push(decodeEntities(cMatch[1].replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim());
+      }
+      if (cells.length) rows.push(cells);
+    }
+    if (rows.length) tables.push(rows);
+  }
+  return tables;
+}
+
+// Tables → a clean, LLM-readable text block (markdown-style pipes). Ragged
+// rows are padded to the widest row in that table so columns still line up
+// for a reader even when a table has occasional merged/short rows.
+export function tablesToMarkdown(tables) {
+  return tables.map((rows, i) => {
+    const width = Math.max(...rows.map(r => r.length));
+    const lines = rows.map(r => '| ' + Array.from({ length: width }, (_, c) => r[c] ?? '').join(' | ') + ' |');
+    if (rows.length) lines.splice(1, 0, '|' + ' --- |'.repeat(width));
+    return `Table ${i + 1}:\n${lines.join('\n')}`;
+  }).join('\n\n');
 }
 
 async function fetchText(url) {
@@ -129,12 +175,28 @@ export async function fetchTranscript(dateStr) {
   return { ok: true, url, text: parsed.text.replace(/[ \t]+/g, ' ').replace(/\n\s*\n\s*/g, '\n\n').trim(), pages: parsed.numpages };
 }
 
+// Accessible HTML table version first (real <table> markup, numbers stay
+// aligned with their row/column labels) — falls back to the PDF only if the
+// accessible page isn't there, on the theory that garbled-but-present beats
+// nothing if the Fed ever drops the accessible version for a given meeting.
 export async function fetchSep(dateStr) {
-  const url = sepPdfUrl(dateStr);
-  const r = await fetchBuffer(url);
-  if (!r.ok) return { ...r, url, text: null };
+  const htmlUrl = sepAccessibleUrl(dateStr);
+  const htmlRes = await fetchText(htmlUrl);
+  if (htmlRes.ok) {
+    const tables = extractTables(htmlRes.raw);
+    if (tables.length) {
+      return { ok: true, url: htmlUrl, text: tablesToMarkdown(tables), tableCount: tables.length, format: 'table' };
+    }
+    // Page loaded but had no <table> elements — treat it as text, not tables.
+    return { ok: true, url: htmlUrl, text: stripBoilerplate(htmlToText(htmlRes.raw)), format: 'text' };
+  }
+  // Accessible HTML wasn't there (404) or errored — fall back to the PDF
+  // rather than reporting the whole SEP as unavailable.
+  const pdfUrl = sepPdfUrl(dateStr);
+  const r = await fetchBuffer(pdfUrl);
+  if (!r.ok) return { ...r, url: pdfUrl, text: null };
   const parsed = await pdfParse(r.buffer);
-  return { ok: true, url, text: parsed.text.trim(), pages: parsed.numpages };
+  return { ok: true, url: pdfUrl, text: parsed.text.trim(), pages: parsed.numpages, format: 'pdf' };
 }
 
 // kind → fetcher, so callers (server.js scheduler) can dispatch generically
