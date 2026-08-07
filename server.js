@@ -72,6 +72,9 @@ import { volOuDiagnostic as _volOuDiagnostic, scoreVolPredictsForwardVol as _sco
 import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS, buildPortfolioReturns as _trendBuildPortfolio, portfolioReturnsByDate as _trendReturnsByDate } from './js/trendFollowEngine.js';
 import { blendStreams as _blendStreams } from './js/streamBlend.js';
 import { runGauntlet as _runStrategyGauntlet, GAUNTLET_SPECS as _GAUNTLET_SPECS, SIGNALS as _LAB_SIGNALS } from './js/strategyLabEngine.js';
+import { FOMC_MEETINGS, pendingAsOf as fomcPendingAsOf } from './js/fomcCalendar.js';
+import { FETCHERS as FOMC_FETCHERS, extractVote as fomcExtractVote } from './js/fomcFetch.js';
+import { wordDiff as fomcWordDiff, diffToPromptLines as fomcDiffToPromptLines } from './js/fomcDiff.js';
 import { runTrendAB as _runTrendAB } from './js/trendFollowV2Engine.js';
 import { volSigmaSeries as _volSigmaSeries, nextSigma as _nextSigma } from './js/forecastCore.js';
 import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } from './js/creditLeadLagEngine.js';
@@ -2989,6 +2992,180 @@ setInterval(async () => {
     if (lonHour === cfg.hourLondon && _autoBriefLastRun !== today) { _autoBriefLastRun = today; _runAutoBrief('daily').catch(() => {}); }
   } catch {}
 }, 20 * 60_000);
+
+// ── FOMC Sentiment Engine ─────────────────────────────────────────────────────
+// Fully automated, no config toggle: polls federalreserve.gov against the known
+// meeting calendar (js/fomcCalendar.js) and, the moment a statement, transcript,
+// minutes, or SEP lands, fetches it, diffs it against the same document type
+// from the PREVIOUS meeting (js/fomcDiff.js — the wording delta is often the
+// real hawkish/dovish tell), and runs it through the same Anthropic-grounded
+// read used elsewhere (_buildMorningBrief, _buildPairAnalysis). Minutes arrive
+// three weeks after the statement and go through the identical engine as a
+// delayed/deeper review, not a separate code path.
+//
+// Storage: fomc_raw_<kind>_<date> (fetched text + source URL), fomc_analysis_
+// <kind>_<date> (the structured AI read), fomc_latest (pointer to the newest
+// one built). One set per meeting-and-kind — see kv.js's fomc_ prefix note for
+// why these are irreplaceable point-in-time captures, not caches.
+const _FOMC_HEARTBEAT_KV = 'fomc_fetch_log';
+const _FOMC_MAX_CHARS = 14_000; // prompt-input cap for long minutes/transcripts
+
+function _fomcKindLabel(kind) {
+  return {
+    statement: 'FOMC POLICY STATEMENT',
+    transcript: 'PRESS CONFERENCE TRANSCRIPT (Q&A, less scripted than the statement — often moves markets more)',
+    minutes: 'FOMC MINUTES — released three weeks after the meeting as the detailed delayed record of the discussion',
+    sep: 'SUMMARY OF ECONOMIC PROJECTIONS (the "dot plot" document)',
+  }[kind] || kind.toUpperCase();
+}
+function _fomcPrevMeetingDate(meetingDate) {
+  const idx = FOMC_MEETINGS.findIndex(m => m.date === meetingDate);
+  return idx > 0 ? FOMC_MEETINGS[idx - 1].date : null;
+}
+async function _fomcGetRaw(kind, date) {
+  const raw = await kv.get(`fomc_raw_${kind}_${date}`);
+  return raw ? JSON.parse(raw) : null;
+}
+
+async function _buildFomcAnalysis(kind, meetingDate) {
+  const key = process.env.ANT_KEY;
+  if (!key) throw new Error('ANT_KEY not configured');
+  const rawRec = await _fomcGetRaw(kind, meetingDate);
+  if (!rawRec) throw new Error(`no raw ${kind} text captured for ${meetingDate} yet`);
+  const { text, url } = rawRec;
+  const clipped = text.length > _FOMC_MAX_CHARS ? text.slice(0, _FOMC_MAX_CHARS) + '\n[...truncated...]' : text;
+
+  const vote = kind === 'statement' ? fomcExtractVote(text) : null;
+  const voteBlock = vote
+    ? `=== VOTE ===\n${vote.for}-${vote.against}${vote.dissenters.length ? `. Dissenters: ${vote.dissenters.join(', ')} (${vote.dissentReason})` : ' (unanimous)'}`
+    : '';
+
+  // Diff vs the SAME document type from the previous meeting, when captured —
+  // this is the redline the standalone page renders and the strongest single
+  // input for "what actually changed" (see js/fomcDiff.js).
+  let diffBlock = '', diffSegments = null;
+  const prevDate = _fomcPrevMeetingDate(meetingDate);
+  if (prevDate) {
+    const prevRec = await _fomcGetRaw(kind, prevDate);
+    if (prevRec) {
+      const d = fomcWordDiff(prevRec.text, text);
+      diffSegments = d.segments;
+      const lines = fomcDiffToPromptLines(d, 2); // 2+ word runs — skip punctuation-only noise
+      diffBlock = `=== WORDING CHANGES vs the ${prevDate} ${kind} ===\n` +
+        (lines.length ? lines.slice(0, 40).join('\n') : '(no material wording changes — near-identical to the prior release)');
+    }
+  }
+
+  const prompt = `You are analysing the ${_fomcKindLabel(kind)} from the ${meetingDate} FOMC meeting for an FX/macro trading desk. Read it for HAWKISH vs DOVISH signal and likely market impact — this feeds a "FOMC sentiment" page traders check right after release, so be specific and plain-spoken.
+
+NEVER name a specific individual (Fed Chair, governor, reporter) anywhere in your output — refer to them only by role. A named individual anchors the read on personal reputation, which goes stale (or becomes wrong) the moment leadership changes.
+
+Ground every claim in the text below — do NOT invent numbers, names, or events not present in it.
+
+${voteBlock}
+
+${diffBlock}
+
+=== FULL TEXT ===
+${_redactFedChairName(clipped)}
+
+Also score five separate dimensions, each 0.0 (no signal of this in the text) to 1.0 (dominant theme) — these are MAGNITUDE of concern/confidence, not direction, and are independent of each other and of hawkishScore (e.g. text can show high inflation concern AND high growth concern at once):
+- inflationConcern: how much the text dwells on inflation running above/below target
+- laborConcern: how much it dwells on labor market softness or overheating
+- growthConcern: how much it dwells on growth/activity risks
+- financialStabilityConcern: how much it dwells on financial-system/market-stability risk
+- committeeConfidence: how confident vs. uncertain/hedged the tone reads about the outlook (0=deeply uncertain/hedged, 1=confident/decisive)
+
+Respond with ONLY valid JSON, no markdown:
+{"headline":"one-sentence front-page read, plain-English so-what first","hawkishScore":-1.0 to 1.0 (negative=dovish, positive=hawkish, 0=neutral),"regime":"HAWKISH|DOVISH|NEUTRAL|MIXED","confidence":"LOW|MEDIUM|HIGH (how confident YOU are in this read, not the Committee's tone)","dimensions":{"inflationConcern":0.0-1.0,"laborConcern":0.0-1.0,"growthConcern":0.0-1.0,"financialStabilityConcern":0.0-1.0,"committeeConfidence":0.0-1.0},"summary":"2-3 plain-spoken sentences","whatChanged":"1-2 sentences on what's different from last time, grounded ONLY in the wording changes above — say plainly if there was no material change","voteNote":"1 sentence on what the vote/dissent split implies for the policy debate, or null if no vote data was given","keyQuotes":[{"quote":"short verbatim excerpt from the text above, under 30 words","why":"why this line matters","asset":"USD|Rates|Equities|Gold","lean":"BULLISH|BEARISH|NEUTRAL"}] (max 5, ranked most market-moving first),"byAsset":[{"asset":"USD|Rates|Equities|Gold|FX majors","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line"}]}`;
+
+  const antRes = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2800, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.', messages: [{ role: 'user', content: prompt }] }),
+  });
+  if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}: ${(await antRes.text()).slice(0, 200)}`);
+  const antData = await antRes.json();
+  if (antData.stop_reason === 'max_tokens') throw new Error('response truncated — try again');
+  const clean = (antData.content?.[0]?.text ?? '').replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  const analysis = JSON.parse(clean);
+
+  const payload = { kind, meetingDate, analysis, vote, diffSegments, prevDate, sourceUrl: url, generatedAt: new Date().toISOString() };
+  await kv.put(`fomc_analysis_${kind}_${meetingDate}`, JSON.stringify(payload)).catch(() => {});
+  await kv.put('fomc_latest', JSON.stringify({ kind, meetingDate })).catch(() => {});
+  return payload;
+}
+
+// One tick: check every release due per the calendar, fetch anything not yet
+// captured, and analyse anything freshly fetched. Idempotent — already-captured
+// raw text is left alone, so re-running (poll or manual) is always cheap and
+// safe. Not-yet-published (404) is silent and just retried next tick; every
+// other failure is logged so a dead feed is visible, not swallowed.
+async function _fomcAutoCheck(reason = 'schedule') {
+  const pending = fomcPendingAsOf(Date.now(), 120);
+  const log = [];
+  for (const rel of pending) {
+    const already = await _fomcGetRaw(rel.kind, rel.meetingDate);
+    if (already) continue;
+    try {
+      const r = await FOMC_FETCHERS[rel.kind](rel.meetingDate);
+      if (!r.ok) { if (!r.notYetPublished) log.push(`${rel.kind} ${rel.meetingDate} ✗ ${r.error || r.status}`); continue; }
+      await kv.put(`fomc_raw_${rel.kind}_${rel.meetingDate}`, JSON.stringify({ text: r.text, url: r.url, fetchedAt: new Date().toISOString() }));
+      log.push(`${rel.kind} ${rel.meetingDate} ✓ fetched`);
+      if (process.env.ANT_KEY) {
+        try { await _buildFomcAnalysis(rel.kind, rel.meetingDate); log.push(`${rel.kind} ${rel.meetingDate} ✓ analysed`); }
+        catch (e) { log.push(`${rel.kind} ${rel.meetingDate} analysis ✗ ${e.message}`); }
+      }
+    } catch (e) { log.push(`${rel.kind} ${rel.meetingDate} ✗ ${e.message}`); }
+  }
+  await kv.put(_FOMC_HEARTBEAT_KV, JSON.stringify({ at: new Date().toISOString(), reason, log })).catch(() => {});
+  if (log.length) console.log(`[fomc] (${reason}) ${log.join(' · ')}`);
+  return log;
+}
+
+app.get('/api/fomc/calendar', (_req, res) => {
+  res.json({ ok: true, meetings: FOMC_MEETINGS, pending: fomcPendingAsOf(Date.now(), 120) });
+});
+app.get('/api/fomc/latest', async (_req, res) => {
+  try {
+    const ptr = await kv.get('fomc_latest');
+    if (!ptr) return res.json({ ok: false, error: 'No FOMC analysis yet — click Fetch now.' });
+    const { kind, meetingDate } = JSON.parse(ptr);
+    const raw = await kv.get(`fomc_analysis_${kind}_${meetingDate}`);
+    if (!raw) return res.json({ ok: false, error: 'Pointer set but analysis missing — click Fetch now.' });
+    res.json({ ok: true, ...JSON.parse(raw) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/fomc/meeting/:date', async (req, res) => {
+  const date = req.params.date;
+  const out = {};
+  for (const kind of ['statement', 'transcript', 'minutes', 'sep']) {
+    const raw = await kv.get(`fomc_analysis_${kind}_${date}`).catch(() => null);
+    if (raw) out[kind] = JSON.parse(raw);
+  }
+  res.json({ ok: true, meetingDate: date, releases: out });
+});
+// Last N meetings' statement scores, for the timeline strip on the standalone
+// page. Walks the known calendar backward from today rather than a KV list
+// scan — cheap and matches how the calendar already orders meetings.
+app.get('/api/fomc/history', async (req, res) => {
+  const n = Math.min(24, Math.max(1, parseInt(req.query.n) || 8));
+  const past = FOMC_MEETINGS.filter(m => Date.parse(m.date) <= Date.now()).slice(-n);
+  const out = [];
+  for (const m of past) {
+    const raw = await kv.get(`fomc_analysis_statement_${m.date}`).catch(() => null);
+    if (raw) { const p = JSON.parse(raw); out.push({ meetingDate: m.date, headline: p.analysis?.headline, hawkishScore: p.analysis?.hawkishScore, regime: p.analysis?.regime }); }
+    else out.push({ meetingDate: m.date, headline: null, hawkishScore: null, regime: null });
+  }
+  res.json({ ok: true, history: out });
+});
+app.post('/api/fomc/fetch-now', async (_req, res) => {
+  try { res.json({ ok: true, log: await _fomcAutoCheck('manual') }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// 30-min poll — cheap no-op on every tick until something is actually due;
+// the interval only needs to be finer than the gap between "expected" and
+// "actually posted" so a late release is still caught same-day.
+setInterval(() => { _fomcAutoCheck('poll').catch(() => {}); }, 30 * 60_000);
 
 // ── Backtest AI analysis — sends config + results to Claude, returns structured feedback ──
 app.post('/api/ai-backtest', async (req, res) => {
