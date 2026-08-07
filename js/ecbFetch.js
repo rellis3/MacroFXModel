@@ -42,7 +42,19 @@ export async function fetchStatement(dateStr) {
   const idx = await fetchText(STATEMENT_INDEX_URL);
   if (!idx.ok) return { ...idx, url: STATEMENT_INDEX_URL, text: null };
   const href = findLinkByUrlDatePattern(idx.raw, 'is', yymmdd(dateStr));
-  if (!href) return { ok: false, notYetPublished: true, url: STATEMENT_INDEX_URL, text: null };
+  if (!href) {
+    // The index page itself fetched fine (200 OK) — this is NOT the same as
+    // "not yet published" and must not be treated as one. A statement that's
+    // actually weeks old failing to match here means the URL pattern is
+    // wrong, the page paginates the target date out of the fetched HTML, or
+    // the list renders client-side (this fetch never executes JS) — all
+    // real problems that silently masquerade as "still waiting" forever if
+    // this returns notYetPublished:true like a genuine 404 does.
+    // notYetPublished:false makes _ecbAutoCheck log it instead of staying
+    // quiet, so the failure is visible rather than indistinguishable from
+    // "check again next week."
+    return { ok: false, notYetPublished: false, error: `date pattern "is${yymmdd(dateStr)}" not found on index page (fetched ${idx.raw.length} bytes) — see js/ecbFetch.js's fetchStatement comment`, url: STATEMENT_INDEX_URL, text: null };
+  }
   const url = resolveUrl(href, ORIGIN);
   const doc = await fetchText(url);
   if (!doc.ok) return { ...doc, url, text: null };
