@@ -73,6 +73,33 @@ export async function fetchFredObservations(seriesId, fromDate, fredKey) {
   return out;
 }
 
+// The AS-FIRST-PUBLISHED value for each observation date — FRED/ALFRED vintage
+// data via output_type=4 ("initial release only"). Needs realtime_start/end to
+// activate output_type at all; the wide sentinel range (FRED's own documented
+// convention for "every vintage on record") returns the earliest release for
+// every date in the observation window, which for a monthly series like
+// nonfarm payrolls is exactly "what BLS first reported that month" — the
+// number a revision-surprise score needs to diff against the CURRENT
+// (most-revised) value from fetchFredObservations above. Used by
+// js/laborMarketEngine.js's revisionScore(); not needed for series nobody
+// revises after the fact (rates, unemployment rate is barely revised).
+export async function fetchFredInitialRelease(seriesId, fromDate, fredKey) {
+  const url = `https://api.stlouisfed.org/fred/series/observations`
+            + `?series_id=${seriesId}&api_key=${fredKey}&file_type=json`
+            + `&observation_start=${fromDate}&sort_order=asc`
+            + `&output_type=4&realtime_start=1776-07-04&realtime_end=9999-12-31`;
+  const r = await fetch(url, { signal: AbortSignal.timeout(25_000) });
+  if (!r.ok) throw new Error(`FRED ${seriesId} (initial release) HTTP ${r.status}`);
+  const json = await r.json();
+  const out = new Map();
+  for (const obs of json.observations ?? []) {
+    if (obs.value === '.' || obs.value == null) continue;
+    const v = parseFloat(obs.value);
+    if (isFinite(v)) out.set(obs.date, v);
+  }
+  return out;
+}
+
 export function _shiftDate(dateStr, deltaDays) {
   const d = new Date(dateStr + 'T00:00:00Z');
   d.setUTCDate(d.getUTCDate() + deltaDays);

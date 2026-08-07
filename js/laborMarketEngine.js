@@ -19,7 +19,7 @@
 // the other 7 currencies' wage-growth and participation data was not
 // possible from this environment (see fetchLaborData's header note) — they
 // get unemployment-trend-only coverage until each is verified and added.
-import { fetchFredObservations } from './zscoreSpreadEngine.js';
+import { fetchFredObservations, fetchFredInitialRelease } from './zscoreSpreadEngine.js';
 import { ECON_UNIVERSE } from './econTrendEngine.js';
 
 export const LABOR_UNIVERSE = Object.fromEntries(
@@ -30,6 +30,26 @@ export const LABOR_UNIVERSE = Object.fromEntries(
 // payrolls series, CES0500000003 is THE average-hourly-earnings series BLS/
 // FRED headlines use for wage growth.
 LABOR_UNIVERSE.USD = { ...LABOR_UNIVERSE.USD, payrolls: 'PAYEMS', participation: 'CIVPART', wages: 'CES0500000003', hours: 'AWHAETP' };
+
+// BLS's CES supersector employment series — the industry breakdown behind the
+// headline payroll number (table B-1 of the Employment Situation release).
+// Each mnemonic below was individually confirmed against a live FRED series
+// page during this build (not guessed) — same diligence as the FOMC URLs.
+// "Other services" (~2% of nonfarm payrolls) is the one supersector omitted;
+// couldn't get an independently-confirmed mnemonic for it, and it's small
+// enough that leaving it out doesn't materially distort breadth/concentration.
+export const SECTOR_UNIVERSE = {
+  mining: 'USMINE',
+  construction: 'USCONS',
+  manufacturing: 'MANEMP',
+  tradeTransportUtilities: 'USTPU',
+  information: 'USINFO',
+  financialActivities: 'USFIRE',
+  professionalBusiness: 'USPBS',
+  privateEducationHealth: 'USEHS', // PRIVATE only — excludes public education/health, which sits inside "government"
+  leisureHospitality: 'USLAH',
+  government: 'USGOVT',
+};
 
 // ── Pure stats helpers ───────────────────────────────────────────────────────
 
@@ -158,20 +178,72 @@ export function participationTrendScore(partObsMap) {
   return { latestLevel: latest?.value ?? null, latestDate: latest?.date ?? null, z, score: zToScore(z) };
 }
 
+// Breadth of hiring across the SECTOR_UNIVERSE supersectors — is job growth
+// broad-based or carried by one or two industries? `sectorData` = { <sector
+// name>: FRED Map, ... } (js/laborMarketEngine.js's fetchSectorBreadth output).
+// `diffusion` is BLS's own standard framing (% of industries growing + half
+// of unchanged) — the number market commentary means by "broad-based" vs
+// "narrow" job growth. `concentration` flags "one sector carried the whole
+// print" (e.g. healthcare/government alone explaining most of the net gain)
+// even when diffusion itself looks fine.
+export function breadthScore(sectorData = {}) {
+  const entries = Object.entries(sectorData).map(([name, obsMap]) => {
+    const series = monthOverMonth(toSeries(obsMap));
+    const latest = series.at(-1);
+    return { name, chg: latest?.chg ?? null, date: latest?.date ?? null };
+  }).filter(e => e.chg != null);
+  if (!entries.length) return { sectors: [], diffusion: null, topContributor: null, concentration: null, score: null };
+
+  const positive = entries.filter(e => e.chg > 0).length;
+  const flat = entries.filter(e => e.chg === 0).length;
+  const diffusion = +(((positive + flat / 2) / entries.length) * 100).toFixed(1);
+
+  const totalAbsChg = entries.reduce((s, e) => s + Math.abs(e.chg), 0);
+  const topContributor = [...entries].sort((a, b) => Math.abs(b.chg) - Math.abs(a.chg))[0];
+  const concentration = totalAbsChg > 0 ? +((Math.abs(topContributor.chg) / totalAbsChg) * 100).toFixed(1) : null;
+
+  // Diffusion centered at 50% -> [-1,1]: 100% (every sector adding) = +1,
+  // 0% (every sector shedding) = -1, 50% (even split) = neutral.
+  const score = clip((diffusion - 50) / 50);
+  return { sectors: entries.sort((a, b) => b.chg - a.chg), diffusion, topContributor, concentration, score };
+}
+
+// Revision surprise on payrolls — the CURRENT (most-revised) value for each
+// month vs what BLS FIRST reported for that same month, z-scored against the
+// series' own revision history. Reported standalone, like wages — a big
+// downward revision to last month is about how misleading the PRIOR print
+// was, not a verdict on the current one, so it deliberately does not feed
+// the strength composite. `currentObsMap` = fetchFredObservations(PAYEMS,…),
+// `initialObsMap` = fetchFredInitialRelease(PAYEMS,…) (zscoreSpreadEngine.js).
+export function revisionScore(currentObsMap, initialObsMap) {
+  const cur = toSeries(currentObsMap);
+  const revisions = cur.map(pt => {
+    const initVal = initialObsMap?.get(pt.date);
+    return initVal == null ? null : { date: pt.date, initial: initVal, current: pt.value, revision: +(pt.value - initVal).toFixed(1) };
+  }).filter(Boolean);
+  if (!revisions.length) return { history: [], latestRevision: null, latestDate: null, z: null, score: null };
+  const z = latestZScore(revisions.map(r => r.revision));
+  const latest = revisions.at(-1);
+  return { history: revisions.slice(-6), latestRevision: latest.revision, latestDate: latest.date, z, score: zToScore(z) };
+}
+
 // Composite read for one currency. `data` = { payrolls?, wages?, unemployment?,
-// participation? } each a raw FRED Map (or undefined if that series isn't in
-// LABOR_UNIVERSE for this currency). Strength composite averages ONLY the
-// dimensions that read as "is the labor market tightening or loosening"
-// (payrolls, unemployment, participation) — wages is reported alongside but
-// deliberately excluded (see file header).
+// participation?, sectors?, payrollsInitialRelease? } each a raw FRED Map (or
+// undefined if that series isn't in LABOR_UNIVERSE for this currency).
+// Strength composite averages the dimensions that read as "is the labor
+// market tightening or loosening" (payrolls, unemployment, participation,
+// breadth) — wages and revisionSurprise are reported alongside but
+// deliberately excluded (see file header + revisionScore's own note).
 export function laborMarketScore(data = {}) {
   const dims = {};
   if (data.payrolls) dims.payrollGrowth = payrollScore(data.payrolls);
   if (data.wages) dims.wageGrowth = wageScore(data.wages);
   if (data.unemployment) dims.unemploymentTrend = unemploymentTrendScore(data.unemployment);
   if (data.participation) dims.participationTrend = participationTrendScore(data.participation);
+  if (data.sectors) dims.breadth = breadthScore(data.sectors);
+  if (data.payrolls && data.payrollsInitialRelease) dims.revisionSurprise = revisionScore(data.payrolls, data.payrollsInitialRelease);
 
-  const strengthInputs = [dims.payrollGrowth?.score, dims.unemploymentTrend?.score, dims.participationTrend?.score]
+  const strengthInputs = [dims.payrollGrowth?.score, dims.unemploymentTrend?.score, dims.participationTrend?.score, dims.breadth?.score]
     .filter(s => s != null);
   const strength = strengthInputs.length ? +(strengthInputs.reduce((s, v) => s + v, 0) / strengthInputs.length).toFixed(2) : null;
 
@@ -187,10 +259,12 @@ export function laborMarketScore(data = {}) {
   return { dims, strength, flag, coverage: Object.keys(dims) };
 }
 
-// Fetch every configured series for one currency. Never throws on a single
-// missing/failed series (a country with only `unemployment` configured is
-// expected, not an error) — availability is reported alongside the data so a
-// caller can tell partial coverage from a dead feed.
+// Fetch every configured series for one currency, PLUS (USD only) the
+// SECTOR_UNIVERSE breadth series and the payrolls revision-vintage data.
+// Never throws on a single missing/failed series (a country with only
+// `unemployment` configured is expected, not an error; a sector series
+// failing just narrows breadth coverage) — availability is reported
+// alongside the data so a caller can tell partial coverage from a dead feed.
 export async function fetchLaborData(ccy, fredKey, fromDate = '2015-01-01') {
   const cfg = LABOR_UNIVERSE[ccy];
   if (!cfg) throw new Error(`No labor-market series configured for ${ccy}`);
@@ -204,5 +278,27 @@ export async function fetchLaborData(ccy, fredKey, fromDate = '2015-01-01') {
       availability.push({ factor, series: seriesId, n: 0, error: e.message });
     }
   }));
+
+  if (ccy === 'USD') {
+    const sectors = {};
+    await Promise.all(Object.entries(SECTOR_UNIVERSE).map(async ([name, seriesId]) => {
+      try {
+        const obs = await fetchFredObservations(seriesId, fromDate, fredKey);
+        sectors[name] = obs;
+        availability.push({ factor: `sector:${name}`, series: seriesId, n: obs.size });
+      } catch (e) {
+        availability.push({ factor: `sector:${name}`, series: seriesId, n: 0, error: e.message });
+      }
+    }));
+    if (Object.keys(sectors).length) data.sectors = sectors;
+
+    try {
+      data.payrollsInitialRelease = await fetchFredInitialRelease('PAYEMS', fromDate, fredKey);
+      availability.push({ factor: 'payrollsInitialRelease', series: 'PAYEMS', n: data.payrollsInitialRelease.size });
+    } catch (e) {
+      availability.push({ factor: 'payrollsInitialRelease', series: 'PAYEMS', n: 0, error: e.message });
+    }
+  }
+
   return { data, availability };
 }

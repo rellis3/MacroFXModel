@@ -4,7 +4,8 @@
 import {
   toSeries, monthOverMonth, yoyPct, latestZScore,
   payrollScore, wageScore, unemploymentTrendScore, participationTrendScore,
-  laborMarketScore, LABOR_UNIVERSE,
+  breadthScore, revisionScore,
+  laborMarketScore, LABOR_UNIVERSE, SECTOR_UNIVERSE,
 } from './laborMarketEngine.js';
 
 let failures = 0;
@@ -100,6 +101,52 @@ console.log('[participationTrendScore — rising participation reads strong]');
   ok('rising participation -> positive score', r.score > 0, r.score);
 }
 
+console.log('[breadthScore — diffusion index + concentration]');
+{
+  // 10 sectors, latest month: 7 growing, 1 flat, 2 shrinking. One sector
+  // (healthcare) dominates the net change.
+  const mk = (base, lastChg) => monthlySeries('2025-06', [base, base + lastChg]);
+  const sectors = {
+    healthcare: mk(5000, 40), government: mk(3000, 5), construction: mk(800, 3),
+    manufacturing: mk(1200, 2), finance: mk(900, 1), info: mk(300, 1),
+    leisure: mk(1600, -2), mining: mk(600, 0), trade: mk(2500, -1), prof: mk(2100, 4),
+  };
+  const r = breadthScore(sectors);
+  ok('10 sectors reported', r.sectors.length === 10, r.sectors.length);
+  // 7 positive, 1 flat, 2 negative -> diffusion = (7 + 0.5)/10*100 = 75%
+  ok('diffusion index = 75%', r.diffusion === 75, r.diffusion);
+  ok('score is positive (broad-based growth)', r.score > 0, r.score);
+  ok('top contributor is healthcare (+40, largest abs change)', r.topContributor.name === 'healthcare', r.topContributor.name);
+  // total abs = 40+5+3+2+1+1+2+0+1+4 = 59; healthcare share = 40/59
+  ok('concentration flags healthcare carrying most of the print', r.concentration > 60, r.concentration);
+}
+{
+  ok('no sector data -> null score, not a crash', breadthScore({}).score === null);
+}
+{
+  // Every sector shrinking -> diffusion 0%, score -1.
+  const mk = (base) => monthlySeries('2025-06', [base, base - 5]);
+  const sectors = { a: mk(1000), b: mk(1000), c: mk(1000) };
+  const r = breadthScore(sectors);
+  ok('all-shrinking -> diffusion 0%', r.diffusion === 0, r.diffusion);
+  ok('all-shrinking -> score -1 (saturated)', r.score === -1, r.score);
+}
+
+console.log('[revisionScore — payrolls current vs first-published]');
+{
+  // Current (most-revised) values run higher than what was first reported —
+  // consistent upward revisions, a genuinely bullish labor-market tell.
+  const current = monthlySeries('2024-01', [20000, 20150, 20320, 20500, 20690, 20900, 21130]);
+  const initial = monthlySeries('2024-01', [20000, 20120, 20260, 20410, 20560, 20720, 20900]); // each lower than current
+  const r = revisionScore(current, initial);
+  ok('latest revision is positive (revised up)', r.latestRevision > 0, r.latestRevision);
+  ok('reports revision history', r.history.length > 0 && r.history.length <= 6);
+  ok('score reflects the upward-revision pattern', r.score > 0, r.score);
+}
+{
+  ok('no overlapping dates -> null, not a crash', revisionScore(monthlySeries('2030-01', [1, 2]), monthlySeries('2010-01', [1, 2])).score === null);
+}
+
 console.log('[laborMarketScore — composite + participation trap flag]');
 {
   // Unemployment falling (strong) but participation ALSO falling hard (people leaving) -> trap flag.
@@ -123,13 +170,26 @@ console.log('[laborMarketScore — composite + participation trap flag]');
   const r = laborMarketScore({});
   ok('empty input -> null strength, not a crash', r.strength === null && r.coverage.length === 0);
 }
+{
+  // Full pipeline: sectors + revision data flow through laborMarketScore the
+  // same way fetchLaborData hands them off (data.sectors, data.payrollsInitialRelease).
+  const mk = (base, lastChg) => monthlySeries('2025-06', [base, base + lastChg]);
+  const sectors = { healthcare: mk(5000, 20), construction: mk(800, 5), leisure: mk(1600, 3) };
+  const current = monthlySeries('2024-01', [20000, 20150, 20320]);
+  const initial = monthlySeries('2024-01', [20000, 20100, 20260]);
+  const r = laborMarketScore({ payrolls: current, sectors, payrollsInitialRelease: initial });
+  ok('breadth dim present and feeds the composite', 'breadth' in r.dims && r.strength != null, JSON.stringify(r.coverage));
+  ok('revisionSurprise dim present (reported standalone)', 'revisionSurprise' in r.dims);
+}
 
-console.log('[LABOR_UNIVERSE]');
+console.log('[LABOR_UNIVERSE / SECTOR_UNIVERSE]');
 {
   ok('USD has all five factors', ['payrolls', 'unemployment', 'participation', 'wages', 'hours'].every(k => k in LABOR_UNIVERSE.USD));
   ok('other currencies have unemployment only', Object.entries(LABOR_UNIVERSE).filter(([k]) => k !== 'USD')
     .every(([, cfg]) => Object.keys(cfg).length === 1 && cfg.unemployment));
   ok('covers all 8 currencies from ECON_UNIVERSE', Object.keys(LABOR_UNIVERSE).length === 8, Object.keys(LABOR_UNIVERSE).join(','));
+  ok('SECTOR_UNIVERSE has 10 supersectors, all unique series IDs', Object.keys(SECTOR_UNIVERSE).length === 10
+    && new Set(Object.values(SECTOR_UNIVERSE)).size === 10, Object.values(SECTOR_UNIVERSE).join(','));
 }
 
 if (failures) { console.error(`\n${failures} FAILURE(S)`); process.exit(1); }

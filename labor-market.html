@@ -74,7 +74,7 @@
   <div class="card">
     <h2>Per-currency labor market read</h2>
     <div id="body" class="empty">Loading…</div>
-    <div class="note">Numeric composition, not an AI text read: payroll growth, wage growth, unemployment trend and participation trend are each scored independently (-1 weak/dovish-for-the-currency to +1 strong/hawkish-for-the-currency) against their own trailing history, then combined into a strength composite from payrolls + unemployment + participation only — wage growth is shown separately since fast wage growth is a strong-labor signal AND an inflation-risk signal at once, and blending them would hide that distinction. USD has full coverage (payrolls, wages, unemployment, participation); the other 7 currencies are unemployment-trend-only for now — see the note on each card. Refreshes automatically once/day; source is FRED (needs FRED_KEY on the server).</div>
+    <div class="note">Numeric composition, not an AI text read: each dimension is scored independently (-1 weak to +1 strong) against its own trailing history, then combined into a strength composite from payrolls + hiring breadth + unemployment + participation — wage growth and revision surprise are shown separately, not blended in, since fast wage growth is a strong-labor signal AND an inflation-risk signal at once, and a revision is a verdict on the PRIOR month's print, not this one. "Hiring breadth" is BLS's own diffusion-index framing (% of the 10 major industry sectors adding jobs, this month's) plus which single sector carried the most of the net change. "Revision surprise" compares the current, most-revised payrolls figure against what was FIRST reported for that same month (FRED's vintage/ALFRED data), so a print that looked weak on release day but got revised up shows up here. USD has full coverage; the other 7 currencies are unemployment-trend-only for now — see the note on each card. Refreshes automatically once/day; source is FRED (needs FRED_KEY on the server).</div>
   </div>
 </div>
 
@@ -83,8 +83,8 @@ const $ = id => document.getElementById(id);
 const esc = s => (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function jget(url, opts) { const r = await fetch(url, opts); return r.json(); }
 
-const DIM_LABELS = { payrollGrowth: 'Payroll growth', wageGrowth: 'Wage growth', unemploymentTrend: 'Unemployment', participationTrend: 'Participation' };
-const USD_ORDER = ['payrollGrowth', 'wageGrowth', 'unemploymentTrend', 'participationTrend'];
+const DIM_LABELS = { payrollGrowth: 'Payroll growth', wageGrowth: 'Wage growth', unemploymentTrend: 'Unemployment', participationTrend: 'Participation', breadth: 'Hiring breadth', revisionSurprise: 'Revision surprise' };
+const USD_ORDER = ['payrollGrowth', 'breadth', 'wageGrowth', 'unemploymentTrend', 'participationTrend', 'revisionSurprise'];
 
 function strengthChip(score) {
   if (score == null) return '<span class="chip na">no data</span>';
@@ -103,6 +103,8 @@ function dimDetail(key, d) {
   if (key === 'wageGrowth') return d.latestYoyPct != null ? `${d.latestYoyPct}% y/y · ${esc(d.latestDate || '')}` : '';
   if (key === 'unemploymentTrend') return d.latestLevel != null ? `${d.latestLevel}% · ${esc(d.latestDate || '')}` : '';
   if (key === 'participationTrend') return d.latestLevel != null ? `${d.latestLevel}% · ${esc(d.latestDate || '')}` : '';
+  if (key === 'breadth') return d.diffusion != null ? `${d.diffusion}% of sectors adding jobs · top: ${esc(d.topContributor?.name || '')} (${d.topContributor?.chg > 0 ? '+' : ''}${d.topContributor?.chg}k, ${d.concentration}% of net change)` : '';
+  if (key === 'revisionSurprise') return d.latestRevision != null ? `prior month revised ${d.latestRevision > 0 ? '+' : ''}${d.latestRevision}k vs first reported · ${esc(d.latestDate || '')}` : '';
   return '';
 }
 function dimRow(key, d) {
