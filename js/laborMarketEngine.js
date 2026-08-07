@@ -30,6 +30,17 @@ export const LABOR_UNIVERSE = Object.fromEntries(
 // payrolls series, CES0500000003 is THE average-hourly-earnings series BLS/
 // FRED headlines use for wage growth.
 LABOR_UNIVERSE.USD = { ...LABOR_UNIVERSE.USD, payrolls: 'PAYEMS', participation: 'CIVPART', wages: 'CES0500000003', hours: 'AWHAETP' };
+// JOLTS — the quits rate is the standard worker-confidence proxy (people only
+// quit voluntarily when they're confident of finding something else); job
+// openings rate is the standard labor-DEMAND read (open positions per 100
+// jobs). Both verified against live FRED series pages. Hires/layoffs levels
+// exist too (JTSHIL/JTSLDL) but aren't scored as their own dimensions here —
+// layoffs in particular is low-signal outside of recessions (near-zero
+// variance most of the cycle, only spikes sharply in a downturn), and adding
+// them would dilute the composite without a clear independent read the rate
+// series don't already cover.
+LABOR_UNIVERSE.USD.quitsRate = 'JTSQUR';
+LABOR_UNIVERSE.USD.jobOpenings = 'JTSJOR';
 
 // CHF: swap the OECD-harmonized rate (ECON_UNIVERSE's default, LRHUTTTTCHM156S)
 // for SECO's own registered-unemployment series (LMUNRLTTCHM647S) — that's
@@ -196,6 +207,27 @@ export function participationTrendScore(partObsMap) {
   return { latestLevel: latest?.value ?? null, latestDate: latest?.date ?? null, z, score: zToScore(z) };
 }
 
+// Quits confidence: the JOLTS quits rate, same "relative cycle high/low"
+// framing as participation. Workers quit voluntarily when they're confident
+// of finding something else — a rising quits rate reads positive directly.
+export function quitsScore(quitsObsMap) {
+  const series = toSeries(quitsObsMap);
+  const latest = series.at(-1);
+  if (series.length < 8) return { latestRate: latest?.value ?? null, latestDate: latest?.date ?? null, z: null, score: null };
+  const z = latestZScore(trailing3moAvg(series));
+  return { latestRate: latest?.value ?? null, latestDate: latest?.date ?? null, z, score: zToScore(z) };
+}
+
+// Job openings: the JOLTS openings rate — labor DEMAND, same framing again.
+// More open positions per 100 jobs reads positive directly (a tighter market).
+export function jobOpeningsScore(openingsObsMap) {
+  const series = toSeries(openingsObsMap);
+  const latest = series.at(-1);
+  if (series.length < 8) return { latestRate: latest?.value ?? null, latestDate: latest?.date ?? null, z: null, score: null };
+  const z = latestZScore(trailing3moAvg(series));
+  return { latestRate: latest?.value ?? null, latestDate: latest?.date ?? null, z, score: zToScore(z) };
+}
+
 // Breadth of hiring across the SECTOR_UNIVERSE supersectors — is job growth
 // broad-based or carried by one or two industries? `sectorData` = { <sector
 // name>: FRED Map, ... } (js/laborMarketEngine.js's fetchSectorBreadth output).
@@ -246,22 +278,25 @@ export function revisionScore(currentObsMap, initialObsMap) {
 }
 
 // Composite read for one currency. `data` = { payrolls?, wages?, unemployment?,
-// participation?, sectors?, payrollsInitialRelease? } each a raw FRED Map (or
-// undefined if that series isn't in LABOR_UNIVERSE for this currency).
-// Strength composite averages the dimensions that read as "is the labor
-// market tightening or loosening" (payrolls, unemployment, participation,
-// breadth) — wages and revisionSurprise are reported alongside but
-// deliberately excluded (see file header + revisionScore's own note).
+// participation?, quitsRate?, jobOpenings?, sectors?, payrollsInitialRelease? }
+// each a raw FRED Map (or undefined if that series isn't in LABOR_UNIVERSE for
+// this currency). Strength composite averages the dimensions that read as "is
+// the labor market tightening or loosening" (payrolls, unemployment,
+// participation, breadth, quits confidence, job openings) — wages and
+// revisionSurprise are reported alongside but deliberately excluded (see file
+// header + revisionScore's own note).
 export function laborMarketScore(data = {}) {
   const dims = {};
   if (data.payrolls) dims.payrollGrowth = payrollScore(data.payrolls);
   if (data.wages) dims.wageGrowth = wageScore(data.wages);
   if (data.unemployment) dims.unemploymentTrend = unemploymentTrendScore(data.unemployment);
   if (data.participation) dims.participationTrend = participationTrendScore(data.participation);
+  if (data.quitsRate) dims.quitsConfidence = quitsScore(data.quitsRate);
+  if (data.jobOpenings) dims.jobOpenings = jobOpeningsScore(data.jobOpenings);
   if (data.sectors) dims.breadth = breadthScore(data.sectors);
   if (data.payrolls && data.payrollsInitialRelease) dims.revisionSurprise = revisionScore(data.payrolls, data.payrollsInitialRelease);
 
-  const strengthInputs = [dims.payrollGrowth?.score, dims.unemploymentTrend?.score, dims.participationTrend?.score, dims.breadth?.score]
+  const strengthInputs = [dims.payrollGrowth?.score, dims.unemploymentTrend?.score, dims.participationTrend?.score, dims.breadth?.score, dims.quitsConfidence?.score, dims.jobOpenings?.score]
     .filter(s => s != null);
   const strength = strengthInputs.length ? +(strengthInputs.reduce((s, v) => s + v, 0) / strengthInputs.length).toFixed(2) : null;
 
