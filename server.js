@@ -82,7 +82,7 @@ import { parseRssItems as ecbParseRssItems } from './js/cbIndexFetch.js';
 import { BOE_MEETINGS, pendingAsOf as boePendingAsOf } from './js/boeCalendar.js';
 import { FETCHERS as BOE_FETCHERS, extractVote as boeExtractVote } from './js/boeFetch.js';
 import { BOJ_MEETINGS, pendingAsOf as bojPendingAsOf } from './js/bojCalendar.js';
-import { FETCHERS as BOJ_FETCHERS, extractVote as bojExtractVote } from './js/bojFetch.js';
+import { FETCHERS as BOJ_FETCHERS, extractVote as bojExtractVote, statementUrl as bojStatementUrl, outlookHighlightUrl as bojOutlookHighlightUrl, opinionsUrl as bojOpinionsUrl, minutesPdfUrl as bojMinutesPdfUrl } from './js/bojFetch.js';
 import { runTrendAB as _runTrendAB } from './js/trendFollowV2Engine.js';
 import { volSigmaSeries as _volSigmaSeries, nextSigma as _nextSigma } from './js/forecastCore.js';
 import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } from './js/creditLeadLagEngine.js';
@@ -3746,6 +3746,45 @@ app.get('/api/boj/fetch-status', async (_req, res) => {
   res.json({ ok: true, running: _bojCheckRunning, last: raw ? JSON.parse(raw) : null });
 });
 setInterval(() => { _bojRunCheck('poll'); }, 30 * 60_000);
+
+// Diagnostic endpoint — direct-URL construction (statement/outlook/opinions
+// same as boeFetch.js's pattern) can't distinguish "genuinely not yet
+// published" from "URL pattern is just wrong" the way the RSS-based ECB
+// fetcher can (which at least knows the feed itself loaded); a real 404
+// silently reads as notYetPublished and _bojAutoCheck logs nothing, which is
+// indistinguishable from normal waiting from the fetch-status log alone.
+// Hits every constructed URL for a given date directly and reports the raw
+// status + a body snippet, bypassing the notYetPublished classification —
+// same "get a real diagnostic out of the live environment this sandbox
+// can't reach" approach that found the ECB JS-rendering bug. Kept
+// permanently, same as /api/ecb/debug-index.
+app.get('/api/boj/debug-fetch', async (req, res) => {
+  const date = req.query.date;
+  if (!date) return res.status(400).json({ ok: false, error: 'pass ?date=YYYY-MM-DD' });
+  const UA = 'Mozilla/5.0 (compatible; MacroFX/1.0; +https://github.com/)';
+  const targets = [
+    { kind: 'statement', url: bojStatementUrl(date) },
+    { kind: 'outlook', url: bojOutlookHighlightUrl(date) },
+    { kind: 'opinions', url: bojOpinionsUrl(date) },
+    { kind: 'minutes', url: bojMinutesPdfUrl(date) },
+  ];
+  const results = [];
+  for (const t of targets) {
+    try {
+      const r = await fetch(t.url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(20_000) });
+      const buf = Buffer.from(await r.arrayBuffer());
+      const isPdf = buf.slice(0, 4).toString('latin1') === '%PDF';
+      results.push({
+        kind: t.kind, url: t.url, status: r.status, ok: r.ok, contentType: r.headers.get('content-type'),
+        bytes: buf.length, looksLikePdf: isPdf,
+        snippet: isPdf ? '(PDF binary — not shown)' : buf.toString('utf8').replace(/\s+/g, ' ').slice(0, 300),
+      });
+    } catch (e) {
+      results.push({ kind: t.kind, url: t.url, error: e.message });
+    }
+  }
+  res.json({ ok: true, dateChecked: date, results });
+});
 
 // ── Labor Market Strength Engine ──────────────────────────────────────────────
 // Numeric-composition score (payrolls, wages, unemployment, participation) —
