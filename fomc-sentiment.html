@@ -56,6 +56,14 @@
   .votenote{font-size:12.5px;color:var(--text2);margin-bottom:6px}
   .votenote b{color:var(--text)}
 
+  /* concern/confidence sub-dimensions */
+  .dims{margin:4px 0 12px}
+  .dim-row{display:grid;grid-template-columns:150px 1fr 34px;align-items:center;gap:8px;margin-bottom:5px}
+  .dim-lbl{font-size:11px;color:var(--text3)}
+  .dim-track{height:7px;background:var(--card2);border-radius:4px;position:relative;overflow:hidden}
+  .dim-fill{position:absolute;left:0;top:0;bottom:0;background:var(--blue);border-radius:4px}
+  .dim-val{font-size:10.5px;color:var(--text3);text-align:right;font-variant-numeric:tabular-nums}
+
   /* key quotes */
   .quote{background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-bottom:8px}
   .quote .qtext{font-size:13px;font-style:italic;color:var(--text);margin-bottom:5px}
@@ -160,6 +168,22 @@ function regimeChip(regime) {
 }
 function leanCls(lean) { return lean === 'BULLISH' ? 'up' : lean === 'BEARISH' ? 'dn' : 'nu'; }
 
+const DIM_LABELS = {
+  inflationConcern: 'Inflation concern',
+  laborConcern: 'Labor market concern',
+  growthConcern: 'Growth concern',
+  financialStabilityConcern: 'Financial stability concern',
+  committeeConfidence: 'Committee confidence',
+};
+function renderDims(dims) {
+  if (!dims) return '';
+  const rows = Object.entries(DIM_LABELS).filter(([k]) => typeof dims[k] === 'number').map(([k, lbl]) => {
+    const v = Math.max(0, Math.min(1, dims[k]));
+    return `<div class="dim-row"><span class="dim-lbl">${lbl}</span><div class="dim-track"><div class="dim-fill" style="width:${(v*100).toFixed(0)}%"></div></div><span class="dim-val">${v.toFixed(2)}</span></div>`;
+  }).join('');
+  return rows ? `<div class="dims">${rows}</div>` : '';
+}
+
 async function loadCalendar() {
   calendar = await jget('/api/fomc/calendar');
   const past = calendar.meetings.filter(m => Date.parse(m.date) <= Date.now());
@@ -218,6 +242,7 @@ function renderAnalysis() {
       <div class="gauge"><div class="mid"></div><div class="fill ${score >= 0 ? 'pos' : 'neg'}" style="width:${pct}%"></div></div>
       <span class="gauge-lbl">+1 Hawkish</span>
     </div>
+    ${renderDims(a.dimensions)}
     <div class="summary">${esc(a.summary || '')}</div>
     ${a.whatChanged ? `<div class="whatchanged"><b>What changed</b>${esc(a.whatChanged)}</div>` : ''}
     ${rel.vote ? `<div class="votenote"><b>Vote:</b> ${rel.vote.for}-${rel.vote.against}${rel.vote.dissenters?.length ? ` · dissent: ${rel.vote.dissenters.map(esc).join(', ')} (${esc(rel.vote.dissentReason || '')})` : ' (unanimous)'}</div>` : ''}

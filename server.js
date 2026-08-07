@@ -3069,12 +3069,19 @@ ${diffBlock}
 === FULL TEXT ===
 ${_redactFedChairName(clipped)}
 
+Also score five separate dimensions, each 0.0 (no signal of this in the text) to 1.0 (dominant theme) — these are MAGNITUDE of concern/confidence, not direction, and are independent of each other and of hawkishScore (e.g. text can show high inflation concern AND high growth concern at once):
+- inflationConcern: how much the text dwells on inflation running above/below target
+- laborConcern: how much it dwells on labor market softness or overheating
+- growthConcern: how much it dwells on growth/activity risks
+- financialStabilityConcern: how much it dwells on financial-system/market-stability risk
+- committeeConfidence: how confident vs. uncertain/hedged the tone reads about the outlook (0=deeply uncertain/hedged, 1=confident/decisive)
+
 Respond with ONLY valid JSON, no markdown:
-{"headline":"one-sentence front-page read, plain-English so-what first","hawkishScore":-1.0 to 1.0 (negative=dovish, positive=hawkish, 0=neutral),"regime":"HAWKISH|DOVISH|NEUTRAL|MIXED","confidence":"LOW|MEDIUM|HIGH","summary":"2-3 plain-spoken sentences","whatChanged":"1-2 sentences on what's different from last time, grounded ONLY in the wording changes above — say plainly if there was no material change","voteNote":"1 sentence on what the vote/dissent split implies for the policy debate, or null if no vote data was given","keyQuotes":[{"quote":"short verbatim excerpt from the text above, under 30 words","why":"why this line matters","asset":"USD|Rates|Equities|Gold","lean":"BULLISH|BEARISH|NEUTRAL"}] (max 5, ranked most market-moving first),"byAsset":[{"asset":"USD|Rates|Equities|Gold|FX majors","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line"}]}`;
+{"headline":"one-sentence front-page read, plain-English so-what first","hawkishScore":-1.0 to 1.0 (negative=dovish, positive=hawkish, 0=neutral),"regime":"HAWKISH|DOVISH|NEUTRAL|MIXED","confidence":"LOW|MEDIUM|HIGH (how confident YOU are in this read, not the Committee's tone)","dimensions":{"inflationConcern":0.0-1.0,"laborConcern":0.0-1.0,"growthConcern":0.0-1.0,"financialStabilityConcern":0.0-1.0,"committeeConfidence":0.0-1.0},"summary":"2-3 plain-spoken sentences","whatChanged":"1-2 sentences on what's different from last time, grounded ONLY in the wording changes above — say plainly if there was no material change","voteNote":"1 sentence on what the vote/dissent split implies for the policy debate, or null if no vote data was given","keyQuotes":[{"quote":"short verbatim excerpt from the text above, under 30 words","why":"why this line matters","asset":"USD|Rates|Equities|Gold","lean":"BULLISH|BEARISH|NEUTRAL"}] (max 5, ranked most market-moving first),"byAsset":[{"asset":"USD|Rates|Equities|Gold|FX majors","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line"}]}`;
 
   const antRes = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2500, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.', messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2800, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.', messages: [{ role: 'user', content: prompt }] }),
   });
   if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}: ${(await antRes.text()).slice(0, 200)}`);
   const antData = await antRes.json();
