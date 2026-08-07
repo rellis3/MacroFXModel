@@ -2,23 +2,32 @@
 //
 // Like the Fed and BoE (direct date-templated URLs), NOT like the ECB
 // (RSS discovery needed for an unpredictable hashed URL) — BoJ's English-site
-// URLs are directly constructible from the meeting's decision date, verified
-// against multiple real dated examples via web search:
-//   statement: /en/mopo/mpmdeci/state_{YYYY}/k{YYMMDD}a.htm
+// URLs are directly constructible from the meeting's decision date:
+//   statement: /en/mopo/mpmdeci/mpr_{YYYY}/k{YYMMDD}a.pdf
 //   outlook:   /en/mopo/outlook/highlight/ten{YYYYMM}.htm  (short HTML
 //              "Highlights" summary — the full Outlook Report is PDF-only
 //              AND its filename suffix (gor{YYMM}a.pdf vs gor{YYMM}b.pdf)
 //              was NOT consistently derivable from the date in the verified
 //              examples, so this uses the Highlights page instead, which has
 //              a clean, unambiguous, date-only naming pattern)
-//   opinions:  /en/mopo/mpmsche_minu/opinion_{YYYY}/opi{YYMMDD}.htm
-//   minutes:   /en/mopo/mpmsche_minu/minu_{YYYY}/g{YYMMDD}.pdf  (an .htm
-//              stub page also exists per date, but the full text is
-//              PDF-only, same as the Fed's/BoE's minutes/transcript docs)
+//   opinions:  /en/mopo/mpmsche_minu/opinion_{YYYY}/opi{YYMMDD}.pdf
+//   minutes:   /en/mopo/mpmsche_minu/minu_{YYYY}/g{YYMMDD}.pdf
 // In every pattern, the directory YEAR is the MEETING year (not the
-// publication year) and the filename date is the meeting's decision day —
-// confirmed consistent across every verified example, including ones where
-// publication crossed into the following calendar year.
+// publication year) and the filename date is the meeting's decision day.
+//
+// CORRECTION (2026-08-07, live diagnostic): the first version of this file
+// pointed `statement` at an HTML page under state_{YYYY}/k{YYMMDD}a.htm and
+// `opinions` at opinion_{YYYY}/opi{YYMMDD}.htm, based on web-search snippets
+// that turned out to be stale/wrong for the 2026 site — a live
+// /api/boj/debug-fetch check against boj.or.jp returned real 404s for both
+// (confirmed by their actual site, not a JS-rendering issue like the ECB's).
+// A follow-up search confirmed the ACTUAL live 2026 documents are PDFs at
+// mpr_{YYYY}/k{YYMMDD}a.pdf (statement) and opinion_{YYYY}/opi{YYMMDD}.pdf
+// (opinions) — e.g. https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2026/k260731a.pdf
+// and https://www.boj.or.jp/en/mopo/mpmsche_minu/opinion_2026/opi260123.pdf,
+// both indexed and real. `outlook` and `minutes` were separately confirmed
+// correct at the same time (ten202601.htm/ten202604.htm; g260428.pdf) — no
+// change needed there.
 //
 // No press-conference fetcher: research found no confirmed official English
 // transcript — BoJ's press-conference PDF lives at a Japanese-only
@@ -27,8 +36,10 @@
 //
 // CAVEAT (same as every other bank's fetch module): this sandbox's egress
 // policy blocks boj.or.jp, so none of this was verified against a live
-// fetch — only via web-search result snippets referencing real URLs/dates.
-// Re-check once deployed, same as fomcFetch.js/ecbFetch.js/boeFetch.js.
+// fetch from THIS environment — only via web-search result snippets
+// referencing real URLs/dates, cross-checked against a live diagnostic run
+// from the actual deployed server. Re-check again if anything else here
+// turns out wrong, same discipline that caught the two bugs above.
 import { htmlToText, stripBoilerplate } from './fomcFetch.js';
 
 const UA = 'Mozilla/5.0 (compatible; MacroFX/1.0; +https://github.com/)';
@@ -42,13 +53,13 @@ function yyyymm(dateStr) { const [y, m] = dateStr.split('-'); return `${y}${m}`;
 function meetingYear(dateStr) { return dateStr.slice(0, 4); }
 
 export function statementUrl(dateStr) {
-  return `${ORIGIN}/en/mopo/mpmdeci/state_${meetingYear(dateStr)}/k${yymmdd(dateStr)}a.htm`;
+  return `${ORIGIN}/en/mopo/mpmdeci/mpr_${meetingYear(dateStr)}/k${yymmdd(dateStr)}a.pdf`;
 }
 export function outlookHighlightUrl(dateStr) {
   return `${ORIGIN}/en/mopo/outlook/highlight/ten${yyyymm(dateStr)}.htm`;
 }
 export function opinionsUrl(dateStr) {
-  return `${ORIGIN}/en/mopo/mpmsche_minu/opinion_${meetingYear(dateStr)}/opi${yymmdd(dateStr)}.htm`;
+  return `${ORIGIN}/en/mopo/mpmsche_minu/opinion_${meetingYear(dateStr)}/opi${yymmdd(dateStr)}.pdf`;
 }
 export function minutesPdfUrl(dateStr) {
   return `${ORIGIN}/en/mopo/mpmsche_minu/minu_${meetingYear(dateStr)}/g${yymmdd(dateStr)}.pdf`;
@@ -67,25 +78,6 @@ async function fetchBuffer(url) {
   return { ok: true, buffer: Buffer.from(await r.arrayBuffer()) };
 }
 
-export async function fetchStatement(dateStr) {
-  const url = statementUrl(dateStr);
-  const r = await fetchText(url);
-  if (!r.ok) return { ...r, url, text: null };
-  return { ok: true, url, text: stripBoilerplate(htmlToText(r.raw)) };
-}
-export async function fetchOutlook(dateStr) {
-  const url = outlookHighlightUrl(dateStr);
-  const r = await fetchText(url);
-  if (!r.ok) return { ...r, url, text: null };
-  return { ok: true, url, text: stripBoilerplate(htmlToText(r.raw)) };
-}
-export async function fetchOpinions(dateStr) {
-  const url = opinionsUrl(dateStr);
-  const r = await fetchText(url);
-  if (!r.ok) return { ...r, url, text: null };
-  return { ok: true, url, text: stripBoilerplate(htmlToText(r.raw)) };
-}
-
 // PDF text extraction — same debug-mode workaround as fomcFetch.js's
 // pdfParse (importing the inner module skips a top-level branch that
 // crashes when there's no module.parent, which ESM dynamic import triggers).
@@ -95,12 +87,29 @@ async function pdfParse(buffer) {
   const parse = await _pdfParsePromise;
   return parse(buffer);
 }
-export async function fetchMinutes(dateStr) {
-  const url = minutesPdfUrl(dateStr);
+async function fetchPdfText(url) {
   const r = await fetchBuffer(url);
   if (!r.ok) return { ...r, url, text: null };
   const parsed = await pdfParse(r.buffer);
   return { ok: true, url, text: parsed.text.replace(/[ \t]+/g, ' ').replace(/\n\s*\n\s*/g, '\n\n').trim(), pages: parsed.numpages };
+}
+
+// PDF, not HTML — see the header comment's 2026-08-07 correction.
+export async function fetchStatement(dateStr) {
+  return fetchPdfText(statementUrl(dateStr));
+}
+export async function fetchOutlook(dateStr) {
+  const url = outlookHighlightUrl(dateStr);
+  const r = await fetchText(url);
+  if (!r.ok) return { ...r, url, text: null };
+  return { ok: true, url, text: stripBoilerplate(htmlToText(r.raw)) };
+}
+// PDF, not HTML — see the header comment's 2026-08-07 correction.
+export async function fetchOpinions(dateStr) {
+  return fetchPdfText(opinionsUrl(dateStr));
+}
+export async function fetchMinutes(dateStr) {
+  return fetchPdfText(minutesPdfUrl(dateStr));
 }
 
 export const FETCHERS = {
