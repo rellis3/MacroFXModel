@@ -76,6 +76,16 @@
   .a-chip b{font-weight:700} .a-chip.up b{color:var(--bull)} .a-chip.dn b{color:var(--bear)} .a-chip.nu b{color:var(--text2)}
   .a-chip .an{color:var(--text3)}
 
+  /* SEP raw table — actual dot-plot/projection numbers, not just the AI's paraphrase */
+  .septable{width:100%;border-collapse:collapse;margin-bottom:14px;font-size:12px}
+  .septable caption{text-align:left;font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;caption-side:top}
+  .septable td,.septable th{border:1px solid var(--border);padding:5px 8px;text-align:left;white-space:nowrap}
+  .septable th{background:var(--card2);color:var(--text2);font-weight:600}
+  .septable tr td:first-child{color:var(--text2);font-weight:600;white-space:normal}
+  .septable-wrap{overflow-x:auto;margin-bottom:4px}
+  .tdiff-line{font-size:12.5px;color:var(--text2);padding:3px 0;border-bottom:1px solid var(--border)}
+  .tdiff-line:last-child{border-bottom:none}
+
   /* redline diff */
   .redline{font-size:13px;line-height:1.85;color:var(--text2)}
   .redline .add{background:var(--bull-bg);color:var(--bull);border-radius:3px;padding:0 2px}
@@ -250,6 +260,7 @@ function renderAnalysis() {
     ${a.voteNote ? `<div class="votenote">${esc(a.voteNote)}</div>` : ''}
     ${(a.keyQuotes || []).map(q => `<div class="quote"><div class="qtext">“${esc(q.quote)}”</div><div class="qmeta"><span class="chip ${leanCls(q.lean)==='up'?'dove':q.lean==='BEARISH'?'hawk':'neu'}" style="font-size:9.5px">${esc(q.asset)} · ${esc(q.lean)}</span><span class="qwhy">${esc(q.why)}</span></div></div>`).join('')}
     ${a.byAsset?.length ? `<div class="assets" style="margin-top:8px">${a.byAsset.map(x => `<span class="a-chip ${leanCls(x.lean)}"><b>${esc(x.asset)} ${esc(x.lean)}</b><span class="an">${esc(x.note)}</span></span>`).join('')}</div>` : ''}
+    ${renderRawTables(rel.rawTables)}
     <div class="note">${rel.generatedAt ? `Analysed ${new Date(rel.generatedAt).toLocaleString()} · ` : ''}${rel.sourceUrl ? `<a href="${esc(rel.sourceUrl)}" target="_blank" rel="noopener">source ↗</a> · ` : ''}${rel.prevDate ? `diffed vs ${esc(rel.prevDate)}` : 'no prior release captured to diff against'}.</div>
   `;
   if (rel.diffSegments?.length) {
@@ -258,9 +269,27 @@ function renderAnalysis() {
     const removed = rel.diffSegments.filter(s => s.type === 'del').length;
     $('redlineStats').textContent = `vs ${rel.prevDate} ${curKind} — ${added} addition${added===1?'':'s'}, ${removed} removal${removed===1?'':'s'}`;
     $('redlineBody').innerHTML = rel.diffSegments.map(s => s.type === 'same' ? esc(s.text) : `<span class="${s.type}">${esc(s.text)}</span>`).join(' ');
+  } else if (rel.tableDiffLines?.length) {
+    $('redlineCard').style.display = '';
+    $('redlineStats').textContent = `vs ${rel.prevDate} SEP — ${rel.tableDiffLines.length} cell${rel.tableDiffLines.length === 1 ? '' : 's'} changed (columns matched by year, not position)`;
+    $('redlineBody').innerHTML = rel.tableDiffLines.map(l => `<div class="tdiff-line">${esc(l)}</div>`).join('');
   } else {
     $('redlineCard').style.display = 'none';
   }
+}
+
+// The actual SEP numbers (extractTables' raw grid — see js/fomcFetch.js),
+// not just the AI's paraphrase of them. Row/column labels come straight from
+// the Fed's own accessible-version markup.
+function renderRawTables(tables) {
+  if (!tables?.length) return '';
+  return tables.map((rows, i) => {
+    const [header, ...body] = rows;
+    return `<div class="septable-wrap"><table class="septable"><caption>SEP Table ${i + 1}${curKind === 'sep' ? ' (source figures)' : ''}</caption>
+      <thead><tr>${header.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead>
+      <tbody>${body.map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table></div>`;
+  }).join('');
 }
 
 async function loadTimeline() {

@@ -74,7 +74,7 @@ import { blendStreams as _blendStreams } from './js/streamBlend.js';
 import { runGauntlet as _runStrategyGauntlet, GAUNTLET_SPECS as _GAUNTLET_SPECS, SIGNALS as _LAB_SIGNALS } from './js/strategyLabEngine.js';
 import { FOMC_MEETINGS, pendingAsOf as fomcPendingAsOf } from './js/fomcCalendar.js';
 import { FETCHERS as FOMC_FETCHERS, extractVote as fomcExtractVote } from './js/fomcFetch.js';
-import { wordDiff as fomcWordDiff, diffToPromptLines as fomcDiffToPromptLines } from './js/fomcDiff.js';
+import { wordDiff as fomcWordDiff, diffToPromptLines as fomcDiffToPromptLines, diffTables as fomcDiffTables } from './js/fomcDiff.js';
 import { runTrendAB as _runTrendAB } from './js/trendFollowV2Engine.js';
 import { volSigmaSeries as _volSigmaSeries, nextSigma as _nextSigma } from './js/forecastCore.js';
 import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } from './js/creditLeadLagEngine.js';
@@ -3027,6 +3027,9 @@ function _fomcReadingGuidance(kind) {
   if (kind === 'minutes') {
     return `\nREADING TECHNIQUE for minutes specifically: minutes report views by DEGREE OF CONSENSUS, not by name — track the quantifier ladder ("a few" < "several" < "many" < "most" < "all") wherever it's used; that ladder tells you how contested a view is inside the committee, which is a stronger signal than the view itself. Also hunt specifically for "however"/"that said"/"nonetheless" clauses — the qualifier after one of these usually reveals the real underlying concern more than the sentence it follows. Note the stated balance of risks (which scenarios were explicitly weighed) if present.\n`;
   }
+  if (kind === 'sep') {
+    return `\nREADING TECHNIQUE for the SEP (dot plot) specifically: this is a data table, not prose — the row/column labels in the table ARE the ground truth, do not paraphrase a number without quoting its exact row+column label. THE SHIFT VS THE PREVIOUS SEP IS THE SIGNAL, not the absolute level — that's what the wording-changes block below is (a cell-level diff against the prior SEP table, not a word diff of prose). Specifically look for: (1) how the MEDIAN federal funds rate path moved by year, (2) whether the RANGE/dispersion between participants widened (rising disagreement) or narrowed (consensus forming), (3) whether the LONGER-RUN estimate moved (a structural read on where the committee thinks neutral rates sit, not a near-term signal), (4) whether the funds-rate path is internally consistent with the GDP/unemployment/inflation projections in the same table — a funds-rate path that doesn't match the inflation path signals more disagreement than the numbers alone show. keyQuotes for this document type should be exact "row label: value" pairs, not sentences.\n`;
+  }
   return '';
 }
 function _fomcPrevMeetingDate(meetingDate) {
@@ -3053,12 +3056,21 @@ async function _buildFomcAnalysis(kind, meetingDate) {
 
   // Diff vs the SAME document type from the previous meeting, when captured —
   // this is the redline the standalone page renders and the strongest single
-  // input for "what actually changed" (see js/fomcDiff.js).
-  let diffBlock = '', diffSegments = null;
+  // input for "what actually changed" (see js/fomcDiff.js). SEP tables get a
+  // structured cell-level diff (columns matched by year LABEL, not position,
+  // since the year columns roll forward every meeting) instead of a word
+  // diff over the markdown rendering — the education material is explicit
+  // that "the shift vs the previous SEP is the signal," so this needs to be
+  // exact, not word-diff-shaped.
+  let diffBlock = '', diffSegments = null, tableDiffLines = null;
   const prevDate = _fomcPrevMeetingDate(meetingDate);
   if (prevDate) {
     const prevRec = await _fomcGetRaw(kind, prevDate);
-    if (prevRec) {
+    if (kind === 'sep' && Array.isArray(prevRec?.tables) && Array.isArray(rawRec.tables)) {
+      tableDiffLines = fomcDiffTables(prevRec.tables, rawRec.tables);
+      diffBlock = `=== CELL-LEVEL CHANGES vs the ${prevDate} SEP table (columns matched by year label, not position) ===\n` +
+        (tableDiffLines.length ? tableDiffLines.slice(0, 60).join('\n') : '(no numeric cells changed vs the prior SEP)');
+    } else if (prevRec) {
       const d = fomcWordDiff(prevRec.text, text);
       diffSegments = d.segments;
       const lines = fomcDiffToPromptLines(d, 2); // 2+ word runs — skip punctuation-only noise
@@ -3100,7 +3112,14 @@ Respond with ONLY valid JSON, no markdown:
   const clean = (antData.content?.[0]?.text ?? '').replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
   const analysis = JSON.parse(clean);
 
-  const payload = { kind, meetingDate, analysis, vote, diffSegments, prevDate, sourceUrl: url, generatedAt: new Date().toISOString() };
+  const payload = {
+    kind, meetingDate, analysis, vote, diffSegments, tableDiffLines, prevDate, sourceUrl: url,
+    // Raw table grid for SEP only — traders need the actual dot-plot numbers,
+    // not just the AI's paraphrase of them (see fomc-sentiment.html's table
+    // render). Omitted for every other kind to keep those payloads small.
+    rawTables: kind === 'sep' ? (rawRec.tables ?? null) : undefined,
+    generatedAt: new Date().toISOString(),
+  };
   await kv.put(`fomc_analysis_${kind}_${meetingDate}`, JSON.stringify(payload)).catch(() => {});
   await kv.put('fomc_latest', JSON.stringify({ kind, meetingDate })).catch(() => {});
   return payload;
@@ -3120,7 +3139,7 @@ async function _fomcAutoCheck(reason = 'schedule') {
     try {
       const r = await FOMC_FETCHERS[rel.kind](rel.meetingDate);
       if (!r.ok) { if (!r.notYetPublished) log.push(`${rel.kind} ${rel.meetingDate} ✗ ${r.error || r.status}`); continue; }
-      await kv.put(`fomc_raw_${rel.kind}_${rel.meetingDate}`, JSON.stringify({ text: r.text, url: r.url, fetchedAt: new Date().toISOString() }));
+      await kv.put(`fomc_raw_${rel.kind}_${rel.meetingDate}`, JSON.stringify({ text: r.text, url: r.url, tables: r.tables ?? null, fetchedAt: new Date().toISOString() }));
       log.push(`${rel.kind} ${rel.meetingDate} ✓ fetched`);
       if (process.env.ANT_KEY) {
         try { await _buildFomcAnalysis(rel.kind, rel.meetingDate); log.push(`${rel.kind} ${rel.meetingDate} ✓ analysed`); }
