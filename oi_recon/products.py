@@ -32,10 +32,22 @@ PRODUCTS = [
          note='924-strike ladder per CLAUDE.md — the paste-size ceiling case'),
 
     # ── Equity index ─────────────────────────────────────────────────────────
-    dict(sym='NAS100_USD', venue='CME',   fut='NQ', slug='equities/nasdaq/nasdaq-100'),
-    dict(sym='SPX500_USD', venue='CME',   fut='ES', slug='equities/sp/e-mini-sandp-500'),
+    # `alts` = further paths to try when the first yields no product id. The three
+    # index products below all failed discovery on 2026-07-30 while US30 succeeded
+    # with the same shape, so the pattern is right and only the names were wrong —
+    # these are the plausible corrections, tried in order. Anything discover
+    # confirms is written back to cme_ids.json, so this list is a starting point,
+    # not a source of truth.
+    dict(sym='NAS100_USD', venue='CME',   fut='NQ', slug='equities/nasdaq/e-mini-nasdaq-100',
+         alts=['equities/nasdaq-100/e-mini-nasdaq-100', 'equities/nasdaq/nasdaq-100',
+               'equities/nasdaq/micro-e-mini-nasdaq-100']),
+    dict(sym='SPX500_USD', venue='CME',   fut='ES', slug='equities/sp-500/e-mini-sandp-500',
+         alts=['equities/sandp-500/e-mini-sandp-500', 'equities/sp/e-mini-sandp-500',
+               'equities/sp-500/e-mini-sandp-500-options']),
     dict(sym='US30_USD',   venue='CME',   fut='YM', slug='equities/dow-jones/e-mini-dow'),
-    dict(sym='US2000_USD', venue='CME',   fut='RTY', slug='equities/russell/e-mini-russell-2000'),
+    dict(sym='US2000_USD', venue='CME',   fut='RTY', slug='equities/russell-2000/e-mini-russell-2000',
+         alts=['equities/russell/e-mini-russell-2000',
+               'equities/russell-2000/e-mini-russell-2000-index']),
 
     # ── NOT CME — no cmegroup.com endpoint exists for these ───────────────────
     dict(sym='DE30_USD',   venue='EUREX', fut='FDAX', slug=None,

@@ -34,6 +34,16 @@ console.log('[calibration map]');
   ok('raw 74% is corrected down to ~59%', Math.abs(calibrateTouch(0.74) - 0.59) < 0.01, `${calibrateTouch(0.74)}`);
   // …and low ones nudged UP, which is the other half of the measured miss.
   ok('raw 5% is corrected up to ~11%', Math.abs(calibrateTouch(0.05) - 0.11) < 0.01, `${calibrateTouch(0.05)}`);
+  // The "everything shows 11%" bug: a raw 0% (a wall the horizon can't reach) must map
+  // to ~0, NOT clamp to the fitted bottom bin (0.11). Below the fitted floor the map
+  // interpolates from the origin.
+  ok('raw 0% → 0% (unreachable wall reads ~0, not the 11% floor)', calibrateTouch(0) === 0, `${calibrateTouch(0)}`);
+  ok('sub-floor raw interpolates from origin (2% → ~0.044, well under 0.11)', (() => {
+    const v = calibrateTouch(0.02);
+    return v > 0 && v < 0.11 && Math.abs(v - 0.044) < 0.005;
+  })(), `${calibrateTouch(0.02)}`);
+  ok('distinct far walls no longer collapse to one value (0% vs 2% differ)',
+    calibrateTouch(0.0) !== calibrateTouch(0.02), `${calibrateTouch(0)} vs ${calibrateTouch(0.02)}`);
   ok('mid-range is barely touched (24% → 23%)', Math.abs(calibrateTouch(0.24) - 0.23) < 0.01, `${calibrateTouch(0.24)}`);
   ok('interpolates between fitted points', (() => {
     const v = calibrateTouch(0.295);                      // between 0.24→0.23 and 0.34→0.31
@@ -112,6 +122,22 @@ console.log('[visit density]');
     return Math.abs(peak.mid - spot) < (d.hi - d.lo) * 0.3;
   })());
   ok('rel is normalised to the peak', Math.abs(Math.max(...d.bins.map(x => x.rel)) - 1) < 1e-9);
+}
+
+console.log("[reach labels — ETA + touch string]");
+{
+  const { fmtReachEta, reachLabel } = await import("./oiReachability.js");
+  ok("null bars → ?", fmtReachEta(null) === "?" );
+  ok("9 M5 bars → 45m", fmtReachEta(9,5) === "45m", fmtReachEta(9,5));
+  ok("60 M5 bars → 5h", fmtReachEta(60,5) === "5h", fmtReachEta(60,5));
+  ok("600 M5 bars → 2d", fmtReachEta(600,5) === "2d", fmtReachEta(600,5));
+  ok("reachLabel formats pct~eta", reachLabel({calibrated:0.82, medBarsToTouch:24},5) === "82%~2h", reachLabel({calibrated:0.82, medBarsToTouch:24},5));
+  ok("reachLabel empty when no prob", reachLabel({calibrated:null}) === "" && reachLabel(null) === "");
+  ok("reachLabel ~? when no median touch", reachLabel({calibrated:0.11, medBarsToTouch:null}) === "11%~?");
+  // A level that rounds to 0% (unreachable in the horizon) shows NOTHING, not "0%~?".
+  ok("reachLabel blanks a 0% level", reachLabel({calibrated:0, medBarsToTouch:null}) === "");
+  ok("reachLabel blanks a rounds-to-0% level", reachLabel({calibrated:0.004, medBarsToTouch:null}) === "", reachLabel({calibrated:0.004, medBarsToTouch:null}));
+  ok("reachLabel keeps a 1% level", reachLabel({calibrated:0.011, medBarsToTouch:null}) === "1%~?");
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

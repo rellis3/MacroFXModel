@@ -182,6 +182,9 @@ tr.dim td{opacity:.42}
       <button class="btn" id="unitBtn">Showing: SPOT-ADJ</button>
       <button class="btn" id="sortBtn">Walls: STRENGTH</button>
       <button class="btn" id="expBtn">⬇ Export lines</button>
+      <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);cursor:pointer" title="Export the lines in raw CME/COMEX futures price terms instead of OANDA spot — to overlay on a futures chart. Adds the basis back. Default: spot."><input type="checkbox" id="futTerms" style="cursor:pointer"> futures terms</label>
+      <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);cursor:pointer" title="Draw EVERY expiry's max-pain and call/put wall as lines (DTE-tagged, far ones faded), not just the primary + day set. For seeing the whole term structure on the chart."><input type="checkbox" id="allExp" style="cursor:pointer"> all expiries</label>
+      <button class="btn" id="reanBtn" title="Re-derive every pair's levels from the OI data already stored (adds the day-expiry / latest compute) — no re-paste. Pinned to the saved basis.">↻ Re-analyse all</button>
       <button class="btn" id="reload">Reload</button>
       <a class="btn" href="cot-extremes.html" style="text-decoration:none">COT positioning</a>
       <a class="btn" href="index.html" style="text-decoration:none">Dashboard</a>
@@ -263,6 +266,7 @@ const HELP = {
   perexp:['Per-expiry structure','Where each expiry pins, so you can see whether near and far horizons agree.','If a nearby expiry and a distant one pin at very different prices, expect the level to shift once the near one expires.'],
   reach:['Reachability','The chance price <b>touches</b> each wall within the horizon, from a Monte Carlo over the volatility cone. A wick counts.','The raw model is over-confident — a raw 94% only touches about 68% of the time — so these are CORRECTED against a reliability curve fitted on real EUR/USD data and verified out of sample to about 2pp. The curve is shown beside the numbers so you can see how much correction was applied. It says nothing about whether a wall then HOLDS.'],
   volmag:['Volume magnets','Strikes with the heaviest <b>volume traded today</b>, as opposed to resting open interest.','Volume is activity, open interest is commitment. A strike busy today with little open interest is a fresh fight, not an established wall.'],
+  fullbook:['Full-book GEX','Net dealer gamma summed across <b>every expiry</b>, each option weighted by its own gamma (which embeds its DTE and IV) — the whole-book view, versus the single-expiry Net GEX the walls and traded regime use.','The per-expiry rows show which expiry is driving the book (a near-dated contract counts far more per unit of OI, since gamma explodes toward expiry). Analysis only — the bot trades the single-expiry regime, not this. Needs a multi-expiry paste; per-expiry vol uses each expiry\'s ATM IV when the settlements table is pasted, else a flat guess.'],
 };
 const h = k => HELP[k] ? `<i class="h" data-k="${k}">?</i>` : '';
 const pips = (v,sp,k) => (Number.isFinite(v)&&Number.isFinite(sp)) ? ((v-sp)/pip(k)) : NaN;
@@ -666,7 +670,11 @@ function reachPanel(e, big){
 const norm = x => String(x||'').toLowerCase().replace(/[/_]/g,'');
 
 async function load(){
-  const r = await fetch('/api/kv/get?key=oi_store',{cache:'no-store'});
+  // /api/oi-store = the KV oi_store with each gexProfile self-healed (rebuilt from the
+  // stored raw paste if the localStorage quota-trim shed it), so the OI-by-strike chart
+  // and gamma-flip never come up blank for a trimmed pair. Falls back to the raw KV key.
+  let r = await fetch('/api/oi-store',{cache:'no-store'});
+  if(!r.ok) r = await fetch('/api/kv/get?key=oi_store',{cache:'no-store'});
   if(!r.ok) throw new Error('KV '+r.status);
   const j = await r.json();
   STORE = j.data || j.value || {};
@@ -858,6 +866,7 @@ function diagBar(e){
     Number.isFinite(e.futuresStale)&&Math.abs(e.futuresStale)>0?' ('+(e.futuresStale/pip(SYM)).toFixed(0)+'p stale)':''}</span>`);
   c.push(`<span class="chip ${e.refMove?.source==='flat-vol'?'warn':'good'}">move <b>${esc(e.refMove?.source||'—')}</b></span>`);
   c.push(`<span class="chip ${e.greeksFlow?'good':''}">greeks <b>${e.greeksFlow?e.greeksFlow.source+' · '+e.greeksFlow.dteDays+'d':'none'}</b></span>`);
+  if(e.greekVolMode) c.push(`<span class="chip ${(e.greekVolSource==='smile'||e.greekVolSource==='atm-iv')?'good':(e.greekVolMode==='smile'?'warn':'')}">γ vol <b>${e.greekVolMode==='smile'?'v2 · '+esc(e.greekVolSource||'flat'):'v1 · flat'}</b></span>`);
   if(/JPY|CAD|CHF/.test(SYM)) c.push(`<span class="chip ${e.cpSwapped?'warn':''}">C/P <b>${e.cpSwapped?'flipped to pair terms':'as quoted (6J/6C/6S)'}</b></span>`);
   if(e.dataWarning) c.push(`<span class="chip bad">⚠ ${esc(e.dataWarning)}</span>`);
   return `<div class="diag">${c.join('')}</div>`;
@@ -933,6 +942,29 @@ function flowPanel(e){
     + `</tbody></table>`;
 }
 
+function fullBookPanel(e){
+  const fb=e.fullBook;
+  if(!fb) return '<div class="empty">Full-book GEX needs a multi-expiry matrix.<br>Paste the full strike-by-expiry heatmap to populate this.</div>';
+  const isPin=fb.gex>0, col=c=>c?'var(--ok)':'var(--call)';
+  const single=e.exposures?.gex, singlePin=single>0;
+  const agree=(!Number.isFinite(single))?null:(isPin===singlePin);
+  const rows=(fb.byExpiry||[]).slice(0,6), mx=Math.max(...rows.map(r=>Math.abs(r.gex)),1);
+  const r=(k,v,n)=>`<tr><td class="muted">${k}</td><td>${v}</td><td class="muted" style="text-align:left">${n||''}</td></tr>`;
+  return `<table><tbody>`
+    + r('Full-book regime',`<b style="color:${col(isPin)}">${fb.regime}</b>`,`${fb.nExpiries} expiries · ${fb.volSource==='atm-iv'?'per-expiry ATM IV':'flat vol'}`)
+    + r('Full-book GEX',fOI(fb.gex),isPin?'long gamma &middot; ranges hold':'short gamma &middot; breaks run')
+    + r('Gamma flip',fb.flip?fx(show(fb.flip,e),SYM):'—','whole-book zero-gamma')
+    + r('vs single-expiry',`<b style="color:${col(singlePin)}">${!Number.isFinite(single)?'—':(singlePin?'PIN':'BREAKOUT')}</b>`,
+        agree==null?'':(agree?'agree':'⚠ DISAGREE — other expiries pull against the traded column'))
+    + `</tbody></table>`
+    + `<div class="note" style="margin:8px 0 4px">Which expiry drives the book</div><table><tbody>`
+    + rows.map(x=>{const p=x.gex>0; return `<tr><td>${x.dte==null?'—':x.dte+' DTE'}</td>`
+        + `<td style="color:${col(p)}">${p?'+':'−'}${x.sharePct}%</td>`
+        + `<td style="width:110px"><span class="bar" style="width:${(Math.abs(x.gex)/mx*96).toFixed(0)}px;background:${col(p)};opacity:.75"></span></td></tr>`;}).join('')
+    + `</tbody></table>`
+    + `<div class="note">Every strike across every expiry, each weighted by its own gamma (DTE + IV). Analysis view — the bot trades the single-expiry regime above, not this.</div>`;
+}
+
 function termTable(e){
   const ts=(e.termStructure||[]).slice().sort((a,b)=>a.dte-b.dte);
   if(!ts.length) return '<div class="empty">No per-expiry structure.<br>Paste the full strike-by-expiry matrix to populate this.</div>';
@@ -972,6 +1004,7 @@ function render(){
     + panel('c4','term','ATM IV term structure','term',chartTerm)
     + panel('c4','perexp','Per-expiry structure','perexp',termTable,true)
     + panel('c4','vol','Volume magnets','volmag',volumePanel,true)
+    + panel('c6','fullbook','Full-book GEX — all expiries','fullbook',fullBookPanel,true)
     + '<div class="p c12"><h3><span class="grow">Reachability \u2014 will price get there?'
       + h('reach') + '</span>'
       + '<button class="zoom" onclick="openZoom(\'reach\')">&#10530; Enlarge</button></h3>'
@@ -985,15 +1018,35 @@ function render(){
 document.getElementById('unitBtn').onclick=()=>{SPOTADJ=!SPOTADJ;render();};
 document.getElementById('sortBtn').onclick=()=>{SORT=(SORT==='strength')?'proximity':'strength';render();};
 document.getElementById('reload').onclick=()=>boot();
+// Re-derive every stored pair's levels from the OI already in KV (adds day-expiry / latest
+// compute) via the headless re-analyse endpoint — no re-paste. Pinned to the saved basis;
+// then reload so the fresh levels show.
+document.getElementById('reanBtn').onclick=async()=>{
+  const b=document.getElementById('reanBtn'); const was=b.textContent; b.disabled=true; b.textContent='re-analysing…';
+  try{
+    const r=await fetch('/api/oi/reanalyse',{method:'POST'});
+    const j=await r.json();
+    if(!j.ok) throw new Error(j.error||'failed');
+    const withDay=(j.reanalysed||[]).filter(x=>x.dayExpiry!=null).length;
+    b.textContent=`✓ ${j.count} pairs · ${withDay} with day levels`;
+    await boot();
+    setTimeout(()=>{ b.textContent=was; b.disabled=false; }, 3500);
+  }catch(err){ b.textContent='failed: '+err.message; b.disabled=false; setTimeout(()=>{ b.textContent=was; }, 4000); }
+};
 document.getElementById('zoom').addEventListener('click',ev=>{ if(ev.target.id==='zoom') closeZoom(); });
 document.addEventListener('keydown',ev=>{ if(ev.key==='Escape') closeZoom(); });
 
 // The same C+Z / OI paste block the vol-forecast page produces, reachable from here so
 // the TradingView lines can be grabbed without leaving the analysis.
 document.getElementById('expBtn').onclick=async()=>{
-  const b=document.getElementById('expBtn'); const was=b.textContent; b.textContent='fetching…';
+  const b=document.getElementById('expBtn'); const was=b.textContent; b.textContent='fetching + P(touch)…';
   try{
-    const r=await fetch('/api/vol-forecast/zones',{cache:'no-store'});
+    // '?reach=1' opts this export into the live calibrated P(touch) per level (one OANDA M5
+    // fetch + Monte-Carlo per pair). It is slower than the plain zones pull, so it lives on
+    // this OI-focused button rather than the vol-forecast pages, which stay fast.
+    const fut=document.getElementById('futTerms')?.checked ? '&terms=futures' : '';
+    const allE=document.getElementById('allExp')?.checked ? '&allExpiry=1' : '';
+    const r=await fetch('/api/vol-forecast/zones?reach=1'+fut+allE,{cache:'no-store'});
     const txt=await r.text();
     document.getElementById('zoomTitle').textContent='C+Z / OI export — paste into the TradingView indicator';
     document.getElementById('zoomBody').innerHTML='<button class="btn" id="cpBtn" style="margin-bottom:12px">Copy to clipboard</button>'

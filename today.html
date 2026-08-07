@@ -432,6 +432,8 @@
 
   <div class="gate" id="riskflags" style="display:none"></div>
 
+  <div class="gate" id="macroMoved" style="display:none"></div>
+
   <div class="qstrip" id="whenWatch" style="display:none"></div>
 
   <div class="news" id="newsPlay" style="display:none"></div>
@@ -664,6 +666,7 @@ let weekly = null;       // /api/vol-forecast/weekly — week-to-date range cons
 let oiStore = null;      // KV oi_store — CME options OI per pair (manual, stale-prone)
 let oiHistory = null;    // /api/oi-history — per-pair day-over-day deltas (walls firming/fading, flow)
 let hedgeAlerts = null;  // /api/hedge-alerts — last rolling corr + betas (dollar/rates/risk)
+let macroMoved = null;   // /api/macro-changes — per-series 1d/5d/20d change rows (what moved)
 let riskFlags = null;    // /api/risk-flags — cross-asset risk-flag composite (zoom 0)
 let cvol = null;         // /api/cvol — EVZ/GVZ implied vol levels + 5y percentiles
 const aiCache = {};      // per-pair cached AI TLDR, lazily fetched in the drawer
@@ -698,7 +701,7 @@ async function loadAll(manual) {
 const GATE_COUNTRIES = new Set(['US', 'EU', 'DE', 'GB', 'JP', 'CH', 'AU', 'CA', 'NZ', 'CN']);
 
 async function loadGate() {
-  const [ev, fr, ss, ct, oi, wk, ha, rf, cv, oh] = await Promise.all([
+  const [ev, fr, ss, ct, oi, wk, ha, rf, cv, oh, mc] = await Promise.all([
     jget('/api/events').catch(() => null),
     jget('/api/fred').catch(() => null),
     jget('/api/session-stats').catch(() => null),
@@ -709,6 +712,7 @@ async function loadGate() {
     jget('/api/risk-flags').catch(() => null),
     jget('/api/cvol').catch(() => null),
     jget('/api/oi-history').catch(() => null),
+    jget('/api/macro-changes').catch(() => null),
   ]);
   if (Array.isArray(ev)) events = ev;
   if (fr && Object.keys(fr).length) fred = fr;
@@ -720,8 +724,9 @@ async function loadGate() {
   if (ha?.last_corr || ha?.last_betas) hedgeAlerts = ha;
   if (rf?.ok) riskFlags = rf;
   if (cv?.ok) cvol = cv;
+  if (mc?.ok && mc.rows) macroMoved = mc.rows;
   getFredHist().then(() => render()).catch(() => {});   // populate HY OAS history for the credit gate
-  renderGate(); renderRiskFlags(); renderNewsPlay(); renderSummary(); render();
+  renderGate(); renderRiskFlags(); renderMacroMoved(); renderNewsPlay(); renderSummary(); render();
 }
 
 // ── Cross-asset risk flags + implied vol strip ───────────────────────────────
@@ -749,6 +754,37 @@ function renderRiskFlags() {
   el.style.display = 'flex';
   el.innerHTML = `<span class="glbl" title="${riskFlags.note ?? ''}">Risk state</span>` +
     lvlChip + flagChips + ivChip('EVZCLS', 'EUR', 'EURUSD') + ivChip('GVZCLS', 'Gold', 'GOLD');
+}
+
+// ── What moved — per-series macro change (today / 1w / 1m) ────────────────────
+// Directional deltas on the tracked macro series so you can see what's SHIFTING,
+// not just today's level. Fed to the AI briefs too (same /api/macro-changes).
+function renderMacroMoved() {
+  const el = $('macroMoved');
+  if (!macroMoved?.length) { el.style.display = 'none'; return; }
+  const win = { 1: '1d', 5: '5d', 20: '20d' };
+  // Colour by TODAY's move; for credit spreads, widening (up) is the risk-off tint.
+  const tint = (v, spread) => v == null || v === 0 ? 'var(--text3,#64748b)'
+    : (spread ? (v > 0 ? 'var(--red,#e06c75)' : 'var(--green,#7ec699)')
+             : (v > 0 ? 'var(--text,#e2e8f0)' : 'var(--text,#e2e8f0)'));
+  const chips = macroMoved.map(r => {
+    const spread = r.kind === 'spread';
+    const d1 = r.deltas?.[1];
+    const arrow = d1 == null ? '' : d1 > 0 ? '↑' : d1 < 0 ? '↓' : '→';
+    const parts = [1, 5, 20].map(n => {
+      const v = r.deltas?.[n];
+      if (v == null) return '';
+      return `<span style="color:${tint(v, spread)}">${win[n]} ${v > 0 ? '+' : ''}${v}${r.unit}</span>`;
+    }).filter(Boolean).join(' · ');
+    const lastFmt = r.kind === 'rate' ? `${(+r.last).toFixed(2)}%`
+      : r.kind === 'spread' ? `${Math.round(r.last * 100)}bps`
+      : r.kind === 'curve' ? `${Math.round(r.last)}bps`
+      : r.kind === 'flow' ? `$${Math.round(r.last)}bn` : (+r.last).toFixed(1);
+    const title = `${r.label}: now ${lastFmt}. Change vs prior day / week / month.${r.note ? ' ' + r.note + ' today.' : ''} Directional context, not a signal.`;
+    return `<span class="gev" title="${title}"><b>${r.label}</b> ${lastFmt} <span style="color:${tint(d1, spread)}">${arrow}</span> <span style="opacity:.8">${parts}</span>${r.note ? ` <i style="opacity:.7">${r.note}</i>` : ''}</span>`;
+  }).join('');
+  el.style.display = 'flex';
+  el.innerHTML = `<span class="glbl" title="Day-over-day / 1-week / 1-month change on the macro series we track. What's shifting, not just the level.">What moved</span>` + chips;
 }
 
 // ── Credit gate — corporate-spread risk appetite, the market's early warning ──
@@ -1711,6 +1747,38 @@ function buildMacro() {
       const body = `Oil is <b>${arrow(d)}</b> (around <b>$${o.toFixed(0)}</b>).`;
       const so = `That <b>${d > 0 ? 'helps' : 'pressures'} the oil-exporting Canadian dollar</b>${d > 0 ? ', and nudges inflation higher (which can keep rates up)' : ''}.`;
       threads.push({ ic: '🛢️', t: 'Oil', body, so });
+    }
+  }
+
+  // 6) Copper (AUD/NZD) — a bellwether for China/global industrial demand, which
+  // the commodity currencies key off even more directly than oil. Same fred_data_v3
+  // payload as wti, {value, prev}, just sourced server-side from OANDA D1 (fetchD1)
+  // instead of FRED since copper has no FRED series.
+  if (has('copper')) {
+    const c = v('copper'), d = dirOf('copper', 0.02);
+    if (d !== 0) {
+      const body = `Copper is <b>${arrow(d)}</b> (around <b>$${c.toFixed(2)}</b>/lb).`;
+      const so = `That <b>${d > 0 ? 'helps' : 'pressures'} the Aussie and Kiwi</b> — the commodity currencies most tied to metals demand.`;
+      threads.push({ ic: '🟠', t: 'Copper', body, so });
+    }
+  }
+
+  // 7) Equity indices — risk mood read straight from today's session move (SPX500
+  // preferred, NQ fallback — both already-tracked brief instruments, no new fetch).
+  {
+    const eqName = brief?.instruments?.SPX500 ? 'SPX500' : (brief?.instruments?.NQ ? 'NQ' : null);
+    const eq = eqName ? brief.instruments[eqName] : null;
+    if (eq?.current_price != null && eq.session_open) {
+      const label = eqName === 'SPX500' ? 'S&P 500' : 'Nasdaq';
+      const chgPct = (eq.current_price / eq.session_open - 1) * 100;
+      if (Math.abs(chgPct) >= 0.15) {
+        const up = chgPct > 0;
+        const body = `Stocks are telling their own story: the <b>${label} is ${up ? 'up' : 'down'} ${Math.abs(chgPct).toFixed(1)}%</b> from today's session open.`;
+        const so = up
+          ? `Stocks higher usually means investors feel comfortable taking risk — a tailwind for the <b>Aussie, Kiwi and Canadian dollar</b>, and a headwind for the safe-haven yen, franc and gold.`
+          : `Stocks lower usually means investors are pulling in risk — a headwind for the <b>Aussie, Kiwi and Canadian dollar</b>, and support for the safe-haven yen, franc and gold.`;
+        threads.push({ ic: '📊', t: 'Stocks (risk mood)', body, so });
+      }
     }
   }
 

@@ -129,6 +129,25 @@ def test_serialize_closed_groups_deals():
         assert f in r, f
 
 
+def test_serialized_rows_publish_the_broker_clock_offset():
+    # MT5 stamps time_open/time_close on the BROKER's clock. Both serialisers must
+    # ship the offset so a reader never has to assume the stamps are UTC.
+    now = 1700000000
+    tick = SimpleNamespace(bid=1.10000, ext=None, ask=1.10010, time=now + 3 * 3600)
+    fake = FakeMt5(positions=[_pos(1, MAGIC)], tick=tick)
+    b = _broker(fake)
+    b.clock._clock = lambda: now
+    assert b.server_offset_sec() == 3 * 3600
+    assert b.serialize_open_positions()[0]['tz_offset_sec'] == 3 * 3600
+
+
+def test_unmeasurable_offset_is_none_not_zero():
+    # Closed market / no tick time: publishing 0 would assert "these stamps are
+    # UTC", which is exactly the wrong claim. None means "unknown".
+    fake = FakeMt5(positions=[_pos(1, MAGIC)])          # default tick has no .time
+    assert fake and _broker(fake).serialize_open_positions()[0]['tz_offset_sec'] is None
+
+
 def test_enter_paper_mode_sends_nothing():
     fake = FakeMt5()
     assert _broker(fake).enter('EUR/USD', 'LONG', 1.09, 1.11, 0.5, 2.0, paper_mode=True) == -1

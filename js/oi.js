@@ -2,7 +2,8 @@ import { S } from './state.js';
 import { kvGet, kvSet } from './utils.js';
 import { wallStrengthTier, oiSkew, oiConcentration, clusterStrikes, wallFreshness, volumePCRatio } from './oiConfluence.js';
 import { gammaFlip } from './gammaFlow.js';
-import { charmVannaExposure, gexFlipPrice } from './gammaGreeks.js';
+import { charmVannaExposure, gexFlipPrice, gexFlipCrossings } from './gammaGreeks.js';
+import { fullBookGex } from './fullBookGex.js';
 import { expectedMove, expectedMoveFromStraddle, ivTermStructure, ivDynamics, riskReversal, vannaState } from './ivMetrics.js';
 
 // ── Storage ──────────────────────────────────────────────────────────────────
@@ -33,7 +34,12 @@ function _trimStoreForLocal(store, { rawText = false, profile = false } = {}) {
   for (const [k, v] of Object.entries(store)) {
     const c = { ...v };
     if (rawText) { delete c.rawOI; delete c.rawChg; delete c.rawVol; delete c.rawIV; delete c.rawIVTerm; }
-    if (profile) { delete c.gexProfile; delete c.ivSmile; }
+    if (profile) {
+      delete c.gexProfile; delete c.ivSmile;
+      // The near-dated set's per-strike profile is the same "rebuildable" bulk — drop it
+      // too, but keep the day walls/max-pain/regime (small, and what the bot trades).
+      if (c.dayExpiry && typeof c.dayExpiry === 'object') { c.dayExpiry = { ...c.dayExpiry }; delete c.dayExpiry.gexProfile; }
+    }
     if (c.expiries) {
       const ex = {};
       for (const [el, ev] of Object.entries(c.expiries)) {
@@ -178,7 +184,10 @@ export function openOIModal() {
     const b = document.getElementById('oiSwapCP');
     if (w) w.style.display = inv ? 'flex' : 'none';
     if (h) h.style.display = inv ? '' : 'none';
-    if (b) b.checked = inv && !!existing?.cpSwapped;
+    // Flip is the DEFAULT for inverted pairs now: a NEW inverted pair opens with the box
+    // ticked; a saved entry restores its own choice (an explicit un-flip persists). Old
+    // pre-default entries read as un-flipped here but a re-analyse migrates them to the flip.
+    if (b) b.checked = inv && (existing ? existing.cpSwapped !== false : true);
   }
   updateSmileHint();   // reopening with pastes already in place → show the hint straight away
   updateOIBasis();
@@ -187,7 +196,66 @@ export function openOIModal() {
   // blank even though KV still holds the full paste. Backfill from KV so the modal
   // never looks empty after a big save. Async; fills only still-blank boxes.
   _backfillRawFromKV(sym);
+  loadOIAutoTarget();
   document.getElementById('oiModalOverlay').classList.add('open');
+}
+
+// ── Where the nightly automated pull publishes ────────────────────────────────
+// A KV setting rather than a flag on the scraper, so the feed can be handed back to
+// manual pasting from any device — the machine running the sweep may be at home and
+// switched on for a fortnight while nobody is there to edit a command line.
+//
+// The checkbox reflects the SERVER's answer, never an optimistic local guess: a
+// failed write that left the box ticked would say the bots are on live data when
+// they are not, which is the one mistake this control exists to prevent.
+export async function loadOIAutoTarget() {
+  const box = document.getElementById('oiAutoTargetLive');
+  const state = document.getElementById('oiAutoTargetState');
+  if (!box || !state) return;
+  try {
+    const r = await fetch('/api/oi/auto-target', { cache: 'no-store' });
+    const j = await r.json();
+    if (!j?.ok) throw new Error(j?.error || 'read failed');
+    _paintOIAutoTarget(j);
+  } catch (e) {
+    box.checked = false;
+    box.disabled = true;
+    state.style.color = 'var(--amber)';
+    state.textContent = `unreachable — ${e.message}`;
+  }
+}
+
+function _paintOIAutoTarget(j) {
+  const box = document.getElementById('oiAutoTargetLive');
+  const state = document.getElementById('oiAutoTargetState');
+  if (!box || !state) return;
+  box.checked = j.live === true;
+  box.disabled = false;
+  const when = j.updatedAt ? new Date(j.updatedAt).toLocaleString('en-GB') : 'never set';
+  state.style.color = j.live ? 'var(--amber)' : 'var(--text3)';
+  state.textContent = j.live
+    ? `LIVE → oi_store · set ${when}`
+    : `shadow → oi_store_py · ${when}`;
+}
+
+export async function setOIAutoTarget(live) {
+  const box = document.getElementById('oiAutoTargetLive');
+  const state = document.getElementById('oiAutoTargetState');
+  if (state) { state.style.color = 'var(--text3)'; state.textContent = 'saving…'; }
+  if (box) box.disabled = true;
+  try {
+    const r = await fetch('/api/oi/auto-target', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ live: live === true, note: 'set from OI modal' }),
+    });
+    const j = await r.json();
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    _paintOIAutoTarget(j);
+  } catch (e) {
+    // Re-read rather than assume the intended value stuck.
+    if (state) { state.style.color = 'var(--red)'; state.textContent = `save failed — ${e.message}`; }
+    setTimeout(loadOIAutoTarget, 1200);
+  }
 }
 
 export function closeOIModal() {
@@ -204,9 +272,13 @@ export function closeOIModal() {
 // it with a spot field populated at some other time. Nothing recorded the gap, and the
 // dashboard reported the result as "you typed it" because the field simply had a value
 // in it. Returns null on failure so the caller falls back to whatever is on screen.
-async function fetchPairedQuote(pair) {
+// `baseUrl` is '' in the browser (relative URL resolves against the page) and an
+// origin under Node, where a relative /api/… has nothing to resolve against.
+// Both legs — futures price AND paired spot — come back in this ONE response, so
+// the basis is taken at a single instant rather than assembled from two moments.
+async function fetchPairedQuote(pair, baseUrl = '') {
   try {
-    const r = await fetch(`/api/futures-quote?pair=${encodeURIComponent(pair)}`, { cache: 'no-store' });
+    const r = await fetch(`${baseUrl}/api/futures-quote?pair=${encodeURIComponent(pair)}`, { cache: 'no-store' });
     const d = await r.json();
     if (!d?.ok || !(d.price > 0)) return null;
     return d;
@@ -269,8 +341,22 @@ export function updateSmileHint() {
     body = `⚠ Smile box holds <b>${smileCode}</b>, but the walls are on <b>${hint.code}</b>${hint.date ? ` (${hint.date})` : ''}. Charm/vanna/skew would describe a different expiry — re-paste ${hint.code}'s per-strike chain.`;
   } else if (haveChain && !smileCode) {
     body = `👉 Smile box holds a chain but no title line, so its expiry can't be confirmed — the walls are on <b>${hint.code || `~${hint.dte} DTE`}</b>. Re-paste including the title line if unsure.`;
-  } else if (hint.code) {
+  } else if (hint.code && hint.codeConfirmed) {
     body = `👉 Smile box (optional): paste expiry <b>${hint.code}</b>${hint.date ? ` (${hint.date}, ${hint.matchedDte ?? hint.dte} DTE)` : ''} — its per-strike chain. Include the title line so the LIVE futures price and DTE are read automatically.`;
+  } else if (hint.code) {
+    // NOT confirmed. This code was inferred by DTE proximity from the Settlements table,
+    // which MIXES weekly and monthly products. Stating it as fact sends the user hunting for
+    // a code that may not exist under the PRODUCT tab they have open — reported on gold: the
+    // hint asked for G4TQ6 while the PRODUCT (OG) tabs offered only OG5N6/OGU6/OGV6/…
+    // So lead with the EXPIRY DATE (unambiguous, and it maps to whichever tab holds it) and
+    // label the code as the closest row rather than the answer.
+    const wk = hint.matchedIsMonthly === false;
+    const dteTxt = (hint.matchedDte ?? hint.dte);
+    body = `👉 Smile box (optional): paste the chain for the expiry dated <b>${hint.date || `~${hint.dte} DTE`}</b>`
+      + `${hint.date && dteTxt != null ? ` (${dteTxt} DTE)` : ''}.`
+      + ` Closest Settlements row is <b>${hint.code}</b>${wk ? ' — a <b>weekly</b>' : ''}, but your OI heatmap carried no expiry code, so this could not be confirmed against the walls.`
+      + `${wk && hint.monthlyRoot ? ` If the OI you pasted was the monthly (<b>${hint.monthlyRoot}…</b>), pick that product's expiry on the matching date instead — weeklies and monthlies sit under separate PRODUCT tabs.` : ''}`
+      + ` Include the title line so the LIVE futures price and DTE are read automatically.`;
   } else {
     body = `👉 Smile box (optional): paste the ~<b>${hint.dte} DTE</b> expiry's per-strike chain (add the Settlements table above to get its exact code).`;
   }
@@ -300,6 +386,21 @@ if (typeof document !== 'undefined') {
 // For those three, the raw CME price must be inverted (1/price) to get the spot-equivalent.
 function futuresIsInverted(pair) {
   return pair === 'USD/JPY' || pair === 'USD/CAD' || pair === 'USD/CHF' || pair.includes('JPY');
+}
+
+// Convert a SPOT-equivalent level back to FUTURES/CME price terms — the exact inverse of
+// the analyse-time basis shift (Spot Level = CME Strike − Basis). For overlaying our levels
+// on a FUTURES chart (a colleague trading CME/COMEX sees strikes in futures terms, not spot).
+// Non-inverted: raw = level + basis. Inverted (6J/6C/6S): level = 1/raw − basis ⇒ raw = 1/(level+basis).
+// basis 0 (or clamped) means no shift was applied, so the level already IS in futures terms.
+export function oiFuturesTermsPrice(price, inst) {
+  const basis = Number.isFinite(inst?.basis) ? inst.basis : 0;
+  if (!(Number.isFinite(price) && basis)) return price;
+  if (futuresIsInverted(inst?.pair || '')) {
+    const denom = price + basis;
+    return denom !== 0 ? 1 / denom : price;
+  }
+  return price + basis;
 }
 
 // A genuine futures→spot basis is small: FX carry is a fraction of a %, gold
@@ -700,6 +801,29 @@ export function oiMatrixTermStructure(raw, minOI = 1) {
   return out;
 }
 
+// Per-expiry legs from the full matrix, basis-shifted to spot-equivalent prices, for the
+// FULL-BOOK GEX (aggregate every expiry, not just the selected one). Reuses _matrixRows
+// (one parse) and mirrors the basis/inversion the single-expiry parse applies. Drops
+// strikes below minOI per expiry and expiries with < 2 real strikes. Returns
+// [{ dte, strikes, calls, puts }] or null for the simple (non-matrix) format.
+export function oiMatrixExpiryLegs(raw, { basis = 0, inverted = false, minOI = 1 } = {}) {
+  const parsed = _matrixRows(raw);
+  if (!parsed) return null;
+  const shift = s => basis !== 0 ? (inverted ? 1 / s - basis : s - basis) : s;
+  const nExp = Math.max(0, ...parsed.rows.map(r => (Array.isArray(r.cp) ? r.cp.length : 0)));
+  const legs = [];
+  for (let e = 0; e < nExp; e++) {
+    const strikes = [], calls = [], puts = [];
+    for (const r of parsed.rows) {
+      const c = Math.abs(r.cp[e]?.[0] ?? 0), p = Math.abs(r.cp[e]?.[1] ?? 0);
+      if (c + p < minOI) continue;
+      strikes.push(shift(r.strike)); calls.push(c); puts.push(p);
+    }
+    if (strikes.length >= 2) legs.push({ dte: parsed.dtes[e] ?? null, strikes, calls, puts });
+  }
+  return legs.length ? legs : null;
+}
+
 export function oiParseTable(raw) {
   if (!raw || !raw.trim()) return null;
   const m = parseOIMatrix(raw);
@@ -805,7 +929,18 @@ export function parseIVSettlement(raw) {
   // price only on this view's title, so it is the one trustworthy source we get.
   const fm = raw.match(/\bvs\s+([\d,]+\.?\d*)/i);
   if (fm) { const f = parseFloat(fm[1].replace(/,/g, '')); if (Number.isFinite(f) && f > 0) out.futures = f; }
-  const em = raw.match(/\(([A-Z0-9|]+)\)\s*([A-Z]{2}\w{3})\s*\(/);
+  // Expiry code from the title, e.g. "Gold (OG|GC) G4TQ6 (26.40 DTE) vs …".
+  // `[A-Z]{2}\w{3}` demanded exactly five characters starting with TWO letters,
+  // which silently failed on two real shapes and left those products unable to
+  // CONFIRM which expiry sits in the smile box (they fell back to DTE matching,
+  // which is date-sensitive — see resolveSmileExpiry):
+  //     G4TQ6  — digit in position 2 (gold weeklies)
+  //     EWN6   — only four characters (ES/NQ weeklies)
+  // Verified against every code shape in the live book: EUUQ6 YM3Q6 G4TQ6 EWN6
+  // NEN6 RTMN6 JPUU6 CHUU6 CAUU6 ADUQ6 GBUQ6 OG5N6 BP5N6 E5DN6 E1AQ6 EW1Q6.
+  // Still anchored between the "(EUU|6E)" group and the " (26.40 DTE)" clause,
+  // so it cannot wander onto the product or underlying codes.
+  const em = raw.match(/\(([A-Z0-9|]+)\)\s*([A-Z][A-Z0-9]{2,4}\d)\s*\(/);
   if (em) out.expiryCode = em[2];
   for (const line of raw.split('\n')) {
     const c = line.replace(/\r$/, '').split('\t');
@@ -882,6 +1017,37 @@ function _parseDMY(s) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+// The CME Settlements table MIXES option products: for EUR/USD it lists weekday weeklies
+// (MO4N6 Monday, TU4N6 Tuesday, WE5N6 Wednesday...) alongside the monthlies (EUUQ6, EUUU6,
+// EUUV6...); gold lists G4TQ6-style weeklies beside the OG monthlies. They are SEPARATE
+// products in QuikStrike, each under its own PRODUCT tab.
+//
+// This matters because the smile hint used to name whichever row was nearest by DTE, which
+// can be a weekly while the walls were computed from a MONTHLY heatmap column. The user is
+// then told to paste an expiry that does not appear in the product list they are looking at
+// (reported on gold: hint asked for G4TQ6 while the PRODUCT (OG) tabs offered only
+// OG5N6/OGU6/OGV6/...). Unactionable.
+//
+// The monthly root is inferred from the data rather than hard-coded per instrument: it is
+// the symbol prefix that recurs across the MOST DISTINCT month-year suffixes. Monthlies
+// span many months under one root (EUU -> Q6,U6,V6,X6,Z6); a weekly root is tied to one or
+// two (MO4 -> N6). No CME product table to maintain.
+function _monthlyRoot(rows) {
+  const byPrefix = new Map();
+  for (const r of rows || []) {
+    const sym = String(r?.symbol || '');
+    if (sym.length < 4) continue;
+    const prefix = sym.slice(0, -2), suffix = sym.slice(-2);
+    if (!byPrefix.has(prefix)) byPrefix.set(prefix, new Set());
+    byPrefix.get(prefix).add(suffix);
+  }
+  let best = null, bestN = 1;                      // needs >=2 distinct months to be "monthly"
+  for (const [prefix, months] of byPrefix) {
+    if (months.size > bestN) { bestN = months.size; best = prefix; }
+  }
+  return best;
+}
+
 export function resolveSmileExpiry(rawOI, rawIVTerm, { dte = null, haveSmile = false, rawIV = '', now = null } = {}) {
   let primaryDte = null, primaryCode = null;
   if (rawOI && rawOI.trim()) {
@@ -905,6 +1071,11 @@ export function resolveSmileExpiry(rawOI, rawIVTerm, { dte = null, haveSmile = f
   const out = { dte: Number.isFinite(hintDte) ? hintDte : null, code: primaryCode, date: null,
                 matchedDte: null, matchedOn: primaryCode ? 'code' : null,
                 tableAsOf: null, tableStaleDays: null,
+                // `codeConfirmed` = the code came from the HEATMAP the walls were computed
+                // from, so it is the right product by construction. False means it was
+                // inferred from the Settlements table by DTE proximity and may name a
+                // different product (weekly vs monthly) — the UI must not state it as fact.
+                codeConfirmed: !!primaryCode, monthlyRoot: null, matchedIsMonthly: null,
                 haveSmile: !!haveSmile };
   if (Array.isArray(rows) && rows.length) {
     const liquid = rows.filter(r => r.straddle > 0 && r.iv > 0);
@@ -920,8 +1091,12 @@ export function resolveSmileExpiry(rawOI, rawIVTerm, { dte = null, haveSmile = f
         : pool.slice().sort((a, b) => a.dte - b.dte)[0];   // no DTE known → front liquid expiry
       if (m) out.matchedOn = Number.isFinite(hintDte) ? 'dte' : 'front';
     }
+    out.monthlyRoot = _monthlyRoot(pool);
     if (m) {
       out.code = m.symbol || out.code; out.date = m.expiry || null; out.matchedDte = m.dte ?? null;
+      out.codeConfirmed = out.matchedOn === 'code';
+      const sym = String(m.symbol || '');
+      out.matchedIsMonthly = out.monthlyRoot ? sym.startsWith(out.monthlyRoot) : null;
       if (out.dte == null) out.dte = m.dte ?? null;
       // How old is this Settlements table REALLY?
       //
@@ -1014,9 +1189,8 @@ export function oiRefMove(inst, pair) {
   return { move: spot * sig * Math.sqrt(dte / 365), source: 'flat-vol' };
 }
 
-export function oiGreeks(strike, spot, pair) {
-  const sigma = oiFlatVol(pair);
-  const T = OI_GREEK_T;
+export function oiGreeks(strike, spot, pair, T = OI_GREEK_T, sigma) {
+  if (!(sigma > 0)) sigma = oiFlatVol(pair);   // per-strike IV (v2 smile) when given, else flat vol (v1)
   const d1 = (Math.log(spot/strike) + 0.5*sigma*sigma*T) / (sigma*Math.sqrt(T));
   const nd1 = Math.exp(-0.5*d1*d1) / Math.sqrt(2*Math.PI);
   const gamma = nd1 / (spot*sigma*Math.sqrt(T));
@@ -1024,17 +1198,165 @@ export function oiGreeks(strike, spot, pair) {
   return { gamma, callDelta, putDelta: callDelta-1 };
 }
 
-export function oiCalcExposures(strikes, calls, puts, spot, pair) {
+// Contract size (multiplier) per instrument — the ONE definition, so the exposures,
+// the GEX profile and any rebuild all price gamma in the same units. Was inlined in
+// two places (oiCalcExposures + the profile loop); two copies drift, this doesn't.
+export function oiContractSize(pair) {
+  return isNQ(pair) ? 20 : isES(pair) ? 50 : isYM(pair) ? 5 : isRTY(pair) ? 50
+       : isFDAX(pair) ? 25 : isFTSE(pair) ? 10 : (pair || '').includes('XAU') ? 100 : 125000;
+}
+
+// Per-strike GEX profile from a spot-equivalent ladder — one definition, used by the
+// analyse path AND the rebuild below so both produce byte-identical rows. Raw OI rides
+// along (the only CONTIGUOUS per-strike record stored; topLevels is a top-N ranking),
+// so an OI-by-strike chart has somewhere to read callOI/putOI. Sorted by strike.
+export function buildGexProfile(strikes, calls, puts, spot, pair, T = OI_GREEK_T, sigmaFn = null, cs = null) {
+  const mult = Number.isFinite(cs) ? cs : oiContractSize(pair);
+  return strikes.map((s, i) => {
+    const { gamma } = oiGreeks(s, spot, pair, T, sigmaFn ? sigmaFn(s) : undefined);
+    const callGex = (calls[i] || 0) * gamma * mult * spot;
+    const putGex  = (puts[i]  || 0) * gamma * mult * spot;
+    return { strike: s, callOI: calls[i] || 0, putOI: puts[i] || 0, callGex, putGex, netGex: callGex - putGex };
+  }).sort((a, b) => a.strike - b.strike);
+}
+
+// SELF-HEAL: reconstruct a stored entry's gexProfile when the localStorage quota trim
+// shed it (`_saveLocalCache` drops gexProfile FIRST as "rebuildable"). Pure + network-free
+// — re-parses the stored raw matrix and re-applies the STORED basis / call-put swap / DTE
+// so the ladder lands exactly where the original did. The per-strike IV smile is trimmed
+// alongside the profile, so gamma falls back to flat vol (v1); heat and P(touch) read the
+// RELATIVE per-strike shape, which a uniform vol shift preserves — so a trimmed pair still
+// gets its hot/cold + touch labels instead of silently losing them. Returns the existing
+// profile untouched when present, or [] when there's no raw paste to rebuild from.
+export function rebuildGexProfile(inst) {
+  if (!inst) return [];
+  if (Array.isArray(inst.gexProfile) && inst.gexProfile.length) return inst.gexProfile;
+  const raw = inst.rawOI || Object.values(inst.expiries || {}).map(e => e?.rawOI).find(Boolean);
+  if (!raw || !String(raw).trim()) return [];
+  const parsed = oiParseTable(raw);
+  if (!parsed || parsed.strikes.length < 2) return [];
+  const pair = inst.pair || '';
+  const basis = Number.isFinite(inst.basis) ? inst.basis : 0;
+  let strikes = parsed.strikes;
+  if (basis !== 0) {
+    strikes = futuresIsInverted(pair) ? strikes.map(s => 1 / s - basis) : strikes.map(s => s - basis);
+  }
+  let calls = parsed.calls, puts = parsed.puts;
+  if (inst.cpSwapped) { const t = calls; calls = puts; puts = t; }
+  const spot = Number.isFinite(inst.spot) && inst.spot > 0 ? inst.spot : strikes[Math.floor(strikes.length / 2)];
+  const T = Math.min(365, Math.max(1, Number.isFinite(inst.dte) && inst.dte > 0 ? inst.dte : 14)) / 365;
+  return buildGexProfile(strikes, calls, puts, spot, pair, T, null, oiContractSize(pair));
+}
+
+// THE DAY'S TRADING BAND — how far price can plausibly travel today, as a fraction of price.
+// Drives which OI levels are "in play today" (shown/traded) vs far context. Built from the
+// forecast's annualised vol: σ_daily = σ_annual/√252, and a K-multiple of that for the tail.
+// K=3 is a one-sided ~99.7th percentile — DELIBERATELY beyond the largest normal day, because
+// missing a level price actually reaches is worse than a little extra width; a "catch" level
+// (nearest wall beyond the band) guarantees coverage past even this. Pure. Falls back to a
+// flat per-class vol when no live vol is available, so it always returns a sane band.
+export function oiDayBandFrac(volAnnualPct, pair, { k = 3, minFrac = 0.004 } = {}) {
+  let volPct = Number.isFinite(volAnnualPct) && volAnnualPct > 0 ? volAnnualPct : (oiFlatVol(pair) * 100);
+  const sigmaDaily = (volPct / 100) / Math.sqrt(252);   // annual→daily (252 trading days)
+  return Math.max(minFrac, k * sigmaDaily);             // half-width fraction of price; floored so a quiet day still shows a band
+}
+
+// Split levels into IN-BAND (within the day's band of spot), plus the nearest CATCH level
+// above and below the band (so a blowout always has a level ahead). Pure; used by both the
+// export/indicator and the bot so display and execution agree on "what's in play today".
+export function oiBandSelect(levels, spot, bandFrac, { withCatch = true } = {}) {
+  const arr = (Array.isArray(levels) ? levels : []).filter(l => Number.isFinite(l?.price) && l.price > 0);
+  if (!(spot > 0) || !(bandFrac > 0)) return { inBand: arr, catch: [] };
+  const lo = spot * (1 - bandFrac), hi = spot * (1 + bandFrac);
+  const inBand = arr.filter(l => l.price >= lo && l.price <= hi);
+  const catches = [];
+  if (withCatch) {
+    const above = arr.filter(l => l.price > hi).sort((a, b) => a.price - b.price)[0];
+    const below = arr.filter(l => l.price < lo).sort((a, b) => b.price - a.price)[0];
+    if (above) catches.push({ ...above, catch: true });
+    if (below) catches.push({ ...below, catch: true });
+  }
+  return { inBand, catch: catches, lo, hi };
+}
+
+export function oiCalcExposures(strikes, calls, puts, spot, pair, T = OI_GREEK_T, sigmaFn = null) {
   if (!spot || spot <= 0) return { gex: 0, dex: 0 };
-  const cs = isNQ(pair) ? 20 : isES(pair) ? 50 : isYM(pair) ? 5 : isRTY(pair) ? 50
-           : isFDAX(pair) ? 25 : isFTSE(pair) ? 10 : pair.includes('XAU') ? 100 : 125000;
+  const cs = oiContractSize(pair);
   let gex=0, dex=0;
   for (let i=0; i<strikes.length; i++) {
-    const {gamma, callDelta, putDelta} = oiGreeks(strikes[i], spot, pair);
+    const {gamma, callDelta, putDelta} = oiGreeks(strikes[i], spot, pair, T, sigmaFn ? sigmaFn(strikes[i]) : undefined);
     gex += (calls[i]-puts[i]) * gamma * cs * spot;
     dex += (calls[i]*callDelta + puts[i]*putDelta) * cs;
   }
   return { gex, dex };
+}
+
+// Levels for ONE expiry from its spot-equivalent ladder — the compact bundle the bot
+// trades and the chart/export draw, computed with the SAME bricks the primary path uses
+// (wallStrengthTier, oiCalcMaxPain, buildGexProfile, oiCalcExposures, gammaFlip) so a
+// near-dated expiry's walls match a primary one's by construction — no second copy of the
+// wall/greek math to drift. Pure/offline. Used for `inst.dayExpiry` (the reachable "day"
+// level set that sits alongside the far, liquid primary expiry).
+export function computeExpiryLevels(strikes, calls, puts, spot, pair, { dte = null, minOI = 20, numLevels = 8, sigmaFn = null } = {}) {
+  if (!Array.isArray(strikes) || strikes.length < 2 || !(spot > 0)) return null;
+  const T = Math.min(365, Math.max(1, Number.isFinite(dte) && dte > 0 ? dte : 14)) / 365;
+  const cs = oiContractSize(pair);
+  // 3× strength tiers: each wall's OI vs its 2-either-side neighbours (identical to the
+  // primary path — the `neigh` helper mirrors oi.js's inline version).
+  const byStrike = strikes.map((s, i) => ({ s, c: calls[i] || 0, p: puts[i] || 0 })).sort((a, b) => a.s - b.s);
+  const sIdx = new Map(byStrike.map((o, i) => [o.s, i]));
+  const neigh = (strike, key) => {
+    const i = sIdx.get(strike); if (i == null) return [];
+    return [i - 2, i - 1, i + 1, i + 2].filter(j => byStrike[j]).map(j => byStrike[j][key]);
+  };
+  const callWalls = strikes.map((s, i) => ({ strike: s, oi: calls[i] || 0 })).filter(w => w.oi >= minOI)
+    .sort((a, b) => b.oi - a.oi).slice(0, numLevels);
+  const putWalls = strikes.map((s, i) => ({ strike: s, oi: puts[i] || 0 })).filter(w => w.oi >= minOI)
+    .sort((a, b) => b.oi - a.oi).slice(0, numLevels);
+  for (const w of callWalls) { const t = wallStrengthTier(w.oi, neigh(w.strike, 'c')); w.mult = t.multiple; w.tier = t.tier; }
+  for (const w of putWalls)  { const t = wallStrengthTier(w.oi, neigh(w.strike, 'p')); w.mult = t.multiple; w.tier = t.tier; }
+  const maxPain = oiCalcMaxPain(strikes, calls, puts);
+  const gexProfile = buildGexProfile(strikes, calls, puts, spot, pair, T, sigmaFn, cs);
+  const exposures = oiCalcExposures(strikes, calls, puts, spot, pair, T, sigmaFn);
+  const cwHead = callWalls.filter(w => w.strike >= spot).sort((a, b) => a.strike - b.strike)[0] ?? callWalls[0] ?? null;
+  const pwHead = putWalls.filter(w => w.strike <= spot).sort((a, b) => b.strike - a.strike)[0] ?? putWalls[0] ?? null;
+  return {
+    dte: Number.isFinite(dte) ? dte : null,
+    maxPain, callWalls, putWalls,
+    callWall: cwHead?.strike ?? 0, putWall: pwHead?.strike ?? 0,
+    exposures, gexProfile,
+    gammaFlip: gammaFlip(gexProfile, spot),
+    regime: exposures.gex > 0 ? 'PIN' : exposures.gex < 0 ? 'BREAKOUT' : null,   // sign of net dealer GEX
+  };
+}
+
+// Pick the near-dated "day" expiry from the per-expiry legs: the SHORTEST-DTE leg that
+// still carries real near-money OI (so we surface a reachable level set, not the noise of
+// an all-but-empty front weekly). `near` = OI within `bandFrac` of spot; a leg qualifies
+// if its near-money OI clears EITHER `minNearFrac` of the strongest leg's OR an absolute
+// `minNearOI` floor — the relative gate alone punished instruments whose monthly dwarfs the
+// dailies (gold: a tradeable 1-DTE can still be <6% of the huge front monthly). Returns
+// `{ leg, dte, reason }` — leg null when nothing qualifies, with `reason` spelling out WHY
+// (so a missing day set is never silent). `reason:'ok'` when a leg was picked.
+export function pickNearExpiry(legs, spot, { belowDte = Infinity, minNearFrac = 0.06, minNearOI = 500, bandFrac = 0.03 } = {}) {
+  if (!Array.isArray(legs) || !legs.length || !(spot > 0)) return { leg: null, reason: 'no expiry legs parsed' };
+  const band = Math.abs(spot) * bandFrac;
+  const scored = legs.map(l => {
+    let near = 0;
+    for (let i = 0; i < l.strikes.length; i++) if (Math.abs(l.strikes[i] - spot) <= band) near += (l.calls[i] || 0) + (l.puts[i] || 0);
+    return { leg: l, dte: l.dte, near };
+  }).filter(x => Number.isFinite(x.dte));
+  const maxNear = scored.reduce((m, x) => Math.max(m, x.near), 0);
+  if (!(maxNear > 0)) return { leg: null, reason: 'no near-money OI in any expiry' };
+  const under = scored.filter(x => x.dte < belowDte);
+  if (!under.length) return { leg: null, reason: `primary is already the nearest expiry (none under ${belowDte}DTE)` };
+  const floor = Math.min(maxNear * minNearFrac, minNearOI);   // qualify on the LOWER bar — relative OR absolute
+  const cand = under.filter(x => x.near >= floor).sort((a, b) => a.dte - b.dte);
+  if (!cand.length) {
+    const best = under.slice().sort((a, b) => b.near - a.near)[0];
+    return { leg: null, reason: `nearest expiries too thin near spot — best is ${best.dte}DTE at ${Math.round(best.near)} lots (${Math.round(best.near / maxNear * 100)}% of the primary book, floor ${Math.round(floor)})` };
+  }
+  return { leg: cand[0].leg, dte: cand[0].dte, reason: 'ok' };
 }
 
 // ── Gravity + PIN/BREAKOUT regime ────────────────────────────────────────────
@@ -1139,24 +1461,35 @@ export function oiFmtChg(n) {
 
 // ── Process & save ───────────────────────────────────────────────────────────
 
-export async function processOIData() {
-  const pair = S.currentPair ? S.currentPair.symbol : document.getElementById('oiPairSelect').value;
-  const rawOI = document.getElementById('oiRawData').value;
-  const rawChg = document.getElementById('oiChangeData').value;
-  const rawVol = document.getElementById('oiVolumeData')?.value || '';
-  const rawIV = document.getElementById('oiIVData')?.value || '';   // optional QuikStrike settlement paste (implied vol → charm/vanna)
-  const rawIVTerm = document.getElementById('oiIVTermData')?.value || '';   // optional 2nd paste: "Settlements" per-expiry table → IV term structure
-  const expiryLabel = (document.getElementById('oiExpiryLabel')?.value || '').trim();
-  const dteRaw = parseFloat(document.getElementById('oiDTE')?.value);
-  const spotRaw    = parseFloat(document.getElementById('oiSpotPrice').value);
-  const futuresRaw = parseFloat(document.getElementById('oiFuturesPrice')?.value);
-  const numLevels = parseInt(document.getElementById('oiNumLevels').value) || 8;
-  const minOI = parseInt(document.getElementById('oiMinOI').value) || 20;
-
-  if (!rawOI.trim()) { oiToast('Paste CME OI data first', true); return; }
-
+// ── Derivation core ──────────────────────────────────────────────────────────
+// Everything the modal computes, with NO DOM: paste text in, a complete store
+// entry out. Split out of processOIData so the browser and a headless ingest run
+// the SAME code — the alternative was a second implementation in the scraper,
+// which is the drift failure TRADABILITY_REVIEW.md documents and the reason the
+// vendor-oracle test (js/oiPasteContract.test.mjs) exists.
+//
+// The six things the modal used to read off the DOM are now parameters:
+//   manualFutures  #oiFuturesPrice[data-manual]  — did the user type a price?
+//   swapCP         #oiSwapCP                     — inverted-pair call/put flip
+//   greekVol       #oiGreekVol                   — 'flat' | 'smile'
+//   dashboardQuote window._latestQuote           — last-resort spot
+//   priorEntry     oiLoadStore()[pair]           — for the per-expiry history fold
+//   baseUrl        (new)                         — '' in a browser; an origin in Node,
+//                                                  where a relative /api/… cannot resolve
+//
+// Returns { inst, … } — inst is COMPLETE and ready to store. It never half-builds:
+// a partial entry does not error, it just makes oiStoreToLevels return nothing and
+// the bots see a pair with no OI levels.
+export async function buildOIEntry({
+  pair, rawOI, rawChg = '', rawVol = '', rawIV = '', rawIVTerm = '',
+  expiryLabel = '', dteRaw = NaN, spotRaw = NaN, futuresRaw = NaN,
+  numLevels = 8, minOI = 20,
+  manualFutures = false, swapCP = undefined, greekVol = 'smile',   // swapCP: undefined = inverted-pair default (flip ON); false forces OFF
+  dashboardQuote = null, priorEntry = null, baseUrl = '', skipLiveQuote = false,
+} = {}) {
+  if (!rawOI || !rawOI.trim()) return { error: 'no OI data' };
   const parsed = oiParseTable(rawOI);
-  if (!parsed || parsed.strikes.length < 2) { oiToast('Could not parse — check data format', true); return; }
+  if (!parsed || parsed.strikes.length < 2) return { error: 'could not parse' };
 
   // Which expiry column the walls/max-pain were actually computed from. For a full
   // multi-expiry matrix paste this is auto-selected (nearest expiry with significant
@@ -1184,9 +1517,12 @@ export async function processOIData() {
   // ReferenceError on every Analyse click (optional chaining does not guard an
   // undeclared identifier, only a null one), and the .catch on the window binding
   // turned that into a silent no-op. Look the element up locally.
-  const _futEl = document.getElementById('oiFuturesPrice');
-  const _typed = _futEl?.dataset?.manual === '1';
-  const _live = await fetchPairedQuote(pair);
+  // (was: the #oiFuturesPrice data-manual marker; now a caller-supplied flag)
+  const _typed = !!manualFutures;
+  // skipLiveQuote: a re-analyse of a STORED entry pins the saved futures/spot so the levels
+  // are reproduced exactly (just enriched with any new compute) — no live re-fetch, so the
+  // basis can't silently drift to the current price. The dashboard/paste path leaves it off.
+  const _live = skipLiveQuote ? null : await fetchPairedQuote(pair, baseUrl);
   let futuresEff = null, futuresSource = null, futuresSymbol = null, quoteAt = null, livePairedSpot = null;
   if (_typed && Number.isFinite(futuresRaw)) {
     futuresEff = futuresRaw; futuresSource = 'manual';
@@ -1203,10 +1539,8 @@ export async function processOIData() {
   if (!Number.isFinite(futuresEff) && Number.isFinite(parsed.futures)) {
     futuresEff = parsed.futures; futuresSource = 'heatmap-header-settle';
   }
-  if (Number.isFinite(futuresEff)) {
-    const fe = document.getElementById('oiFuturesPrice');
-    if (fe && !fe.value) fe.value = String(futuresEff);
-  }
+  // The resolved futures price is returned to the caller, which decides
+  // whether to reflect it in any UI field.
   // How stale the fallback is, when we can measure it (live title vs settle header).
   const futuresStale = (Number.isFinite(_ivTitle?.futures) && Number.isFinite(parsed.futures))
     ? _ivTitle.futures - parsed.futures : null;
@@ -1224,8 +1558,8 @@ export async function processOIData() {
   let spot = null, spotSource = null;
   if (Number.isFinite(livePairedSpot) && livePairedSpot > 0) { spot = livePairedSpot; spotSource = 'live-paired'; }
   if (!spot && !isNaN(spotRaw)) { spot = spotRaw; spotSource = 'field'; }
-  if (!spot && window._latestQuote && S.currentPair && S.currentPair.symbol === pair) {
-    spot = window._latestQuote.price ?? window._latestQuote.mid; spotSource = 'dashboard-quote';
+  if (!spot && Number.isFinite(dashboardQuote) && dashboardQuote > 0) {
+    spot = dashboardQuote; spotSource = 'dashboard-quote';
   }
 
   // ── Basis conversion: Spot Level = CME Strike − Basis  (Basis = Futures − Spot) ──
@@ -1292,6 +1626,25 @@ export async function processOIData() {
   const _persArr = parsed.strikes.map(s => _persMap?.get(s) ?? 0);
   const termStructure = oiMatrixTermStructure(rawOI, minOI);   // null for the simple format
 
+  // Per-expiry SPOT-terms breakdown — the same max-pain / call-wall / put-wall that the
+  // primary path computes, but for EVERY expiry, basis-shifted so it lines up with the
+  // drawn levels (termStructure itself stays RAW for its existing consumers). Lets a user
+  // compare any single expiry against another desk's OI panel and confirm the raw-OI calcs
+  // (max pain is deterministic — same expiry + same chain ⇒ identical number).
+  const _shiftToSpot = (s) => !Number.isFinite(s) ? null
+    : (basis === 0 ? s : (futuresIsInverted(pair) ? 1 / s - basis : s - basis));
+  const perExpiry = (termStructure || []).map(e => ({
+    dte: e.dte, maxPain: _shiftToSpot(e.maxPain),
+    callWall: _shiftToSpot(e.callWall), putWall: _shiftToSpot(e.putWall), totalOI: e.totalOI,
+  }))
+    // A column with NO wall ≥ minOI is empty/thin — its max pain is computed on a handful of
+    // stray strikes and is garbage (e.g. a 9DTE reading 0.908 on EUR/USD). Require at least
+    // one real wall, and blank a max pain that lands absurdly far from spot, so neither the
+    // text table nor an all-expiry line draws junk.
+    .map(e => ({ ...e, maxPain: (spot > 0 && Number.isFinite(e.maxPain) && (e.maxPain < spot * 0.7 || e.maxPain > spot * 1.3)) ? null : e.maxPain }))
+    .filter(e => Number.isFinite(e.dte) && (Number.isFinite(e.callWall) || Number.isFinite(e.putWall)))
+    .sort((a, b) => a.dte - b.dte);
+
   // Apply basis shift to all strikes (converts futures strikes → spot-equivalent prices).
   // Inverted pairs (6J/6C/6S): CME strikes are in foreign-currency-per-USD space, so invert first.
   if (basis !== 0) {
@@ -1300,23 +1653,22 @@ export async function processOIData() {
       : parsed.strikes.map(s => s - basis);
   }
 
-  // ── INVERTED-PAIR CALL/PUT SWAP (opt-in, default OFF) ──────────────────────
+  // ── INVERTED-PAIR CALL/PUT SWAP (default ON for 6J/6C/6S) ──────────────────
   //
   // On 6J/6C/6S the CME quotes the FOREIGN currency in USD, so inverting the strike
   // also inverts what the option means. 6J is USD-per-JPY: a 6J CALL pays off when 6J
   // rises — JPY strengthening — which is USD/JPY FALLING. Heavy 6J call OI therefore
   // creates resistance in 6J terms and, once flipped into USD/JPY terms, a FLOOR.
-  // On that reading a 6J call wall is a USD/JPY PUT wall, and the labels — plus the
-  // direction the bot trades them — are currently backwards for three pairs.
+  // On that reading a 6J call wall is a USD/JPY PUT wall.
   //
-  // That argument is from contract mechanics, not from a reference number, and the
-  // live data neither confirms nor refutes it (USD/JPY's put walls also sit below
-  // spot; USD/CAD's call wall sits above). So this is a SWITCH, not a correction:
-  // default OFF preserves today's behaviour exactly, and flipping it per pair lets
-  // paper trading settle the question instead of a guess. Swapping here — before max
-  // pain, the walls, the GEX profile and everything downstream — means one flag
-  // reaches the export, both bots and the dashboard with no second copy to drift.
-  const cpSwapped = futuresIsInverted(pair) && !!document.getElementById('oiSwapCP')?.checked;
+  // This is now the DEFAULT for inverted pairs (2026-08): the un-flipped labels put
+  // every USD/JPY "put wall" ABOVE spot — puts are support, so that's backwards — and an
+  // external CME OI dashboard (Bennett's) plus the dealer-hedging economics both read it
+  // flipped. `swapCP === false` still forces it OFF per pair (the escape hatch), but the
+  // default (undefined) flips. Swapping here — before max pain, the walls, the GEX profile
+  // and everything downstream — means ONE flag reaches the export, both bots and the
+  // dashboard with no second copy to drift; the bot trades the flipped labels too.
+  const cpSwapped = futuresIsInverted(pair) && (swapCP !== false);
   if (cpSwapped) {
     [parsed.calls, parsed.puts] = [parsed.puts, parsed.calls];
     [parsed.callChg, parsed.putChg] = [parsed.putChg, parsed.callChg];
@@ -1326,10 +1678,16 @@ export async function processOIData() {
   if (!spot) spot = parsed.strikes[Math.floor(parsed.strikes.length / 2)];
 
   const maxPain = oiCalcMaxPain(parsed.strikes, parsed.calls, parsed.puts);
-  const exposures = oiCalcExposures(parsed.strikes, parsed.calls, parsed.puts, spot, pair);
+  // Greeks time-to-expiry: use the ACTUAL selected-expiry DTE (from pickPrimaryExpiry /
+  // the DTE tag) rather than the old fixed 14-DTE assumption. Gamma ∝ 1/√T, so this
+  // sharpens GEX magnitude and the gamma/GEX-flip levels to the expiry actually being
+  // analysed. Floored at 1 day (avoids the 0-DTE gamma singularity) and capped at 1y.
+  // IMPACT: shifts exposures.gex — hence the OI bot's PIN/BREAKOUT regime — and the
+  // flip nodes; wall / max-pain LEVELS are raw OI and unaffected. OI_GREEK_T stays the
+  // fallback when no DTE is known (the greek fns still default to it).
+  const greekT = Math.min(365, Math.max(1, Number.isFinite(dteEff) && dteEff > 0 ? dteEff : 14)) / 365;
 
-  const cs = isNQ(pair) ? 20 : isES(pair) ? 50 : isYM(pair) ? 5 : isRTY(pair) ? 50
-           : isFDAX(pair) ? 25 : isFTSE(pair) ? 10 : pair.includes('XAU') ? 100 : 125000;
+  const cs = oiContractSize(pair);
 
   // Charm/vanna exposure from a pasted implied-vol surface (CME QuikStrike settlement
   // table). Optional — only when the IV box is filled. Self-consistent: uses the IV
@@ -1412,6 +1770,93 @@ export async function processOIData() {
     rawIV,
   });
 
+  // ── Greek vol source — v1 (flat) vs v2 (pasted IV smile) ────────────────────
+  // v1 'flat' = the fixed per-class vol (oiFlatVol). v2 'smile' = the per-strike IV you
+  // paste (the SAME surface charm/vanna use), nearest-strike matched; strikes outside the
+  // smile fall back to the picked expiry's ATM IV, and flat vol is the last resort. Gamma
+  // ∝ 1/σ, so using the real ~7% FX IV instead of the 12% guess materially changes GEX and
+  // the flip. Default v1 (behaviour unchanged); flip to v2 to use the paste. Only differs
+  // when IV was actually pasted. Shifts exposures.gex → the bot's PIN/BREAKOUT regime.
+  // Default v2 (real IV): use the pasted smile / ATM IV when available, flat only as the
+  // fallback — so the bot and the vol-forecast export (which read the stored greeks) get
+  // the real-vol GEX/flip automatically. Force 'flat' on the select for a v1 A/B.
+  const greekVolMode = greekVol === 'flat' ? 'flat' : 'smile';
+  const flatSig = oiFlatVol(pair);
+  let _smK = null, _smIV = null, _atmRealVol = null;
+  if (ivSmile && Array.isArray(ivSmile.strikes) && ivSmile.strikes.length) {
+    _smK = ivSmile.strikes; _smIV = ivSmile.iv;
+    let bi = 0, bd = Infinity;
+    for (let i = 0; i < _smK.length; i++) { const d = Math.abs(_smK[i] - spot); if (d < bd) { bd = d; bi = i; } }
+    if (_smIV[bi] > 0) _atmRealVol = _smIV[bi];              // ATM of the smile (decimal)
+  }
+  if (_atmRealVol == null && Array.isArray(tsRows) && tsRows.length) {
+    const tgt = primaryExpiry?.dte ?? (Number.isFinite(dteEff) ? dteEff : null);
+    const liq = tsRows.filter(r => r.iv > 0);
+    const pick = liq.length
+      ? (Number.isFinite(tgt) ? liq.slice().sort((a, b) => Math.abs(a.dte - tgt) - Math.abs(b.dte - tgt))[0]
+                              : liq.slice().sort((a, b) => a.dte - b.dte)[0])
+      : null;
+    if (pick && pick.iv > 0) _atmRealVol = pick.iv / 100;    // term-structure iv is in percent
+  }
+  const _nearestSmileIV = (k) => {
+    if (!_smK) return null;
+    let bi = -1, bd = Infinity;
+    for (let i = 0; i < _smK.length; i++) { const d = Math.abs(_smK[i] - k); if (d < bd) { bd = d; bi = i; } }
+    return (bi >= 0 && _smIV[bi] > 0) ? _smIV[bi] : null;
+  };
+  const _useSmile = greekVolMode === 'smile' && (!!_smK || _atmRealVol != null);
+  const _sigCache = new Map();
+  const sigmaFor = (k) => {
+    if (_sigCache.has(k)) return _sigCache.get(k);
+    let v = flatSig;
+    if (_useSmile) { const s = _nearestSmileIV(k); v = (s > 0) ? s : (_atmRealVol > 0 ? _atmRealVol : flatSig); }
+    _sigCache.set(k, v); return v;
+  };
+  const greekVolSource = _useSmile ? (_smK ? 'smile' : 'atm-iv') : 'flat';
+  const exposures = oiCalcExposures(parsed.strikes, parsed.calls, parsed.puts, spot, pair, greekT, sigmaFor);
+
+  // ── Full-book GEX (v3) — aggregate gamma across EVERY expiry, each weighted by its own
+  // gamma via that expiry's DTE + ATM IV. The SpotGamma/SqueezeMetrics whole-book view.
+  // ANALYSIS-ONLY: computed alongside the single-expiry exposures above, NOT wired to the
+  // bot — the traded PIN/BREAKOUT regime stays on the validated single-expiry number until
+  // this is proven to read the tape better (most likely to matter on indices, not FX).
+  let fullBook = null, dayExpiry = null, dayExpiryReason = null;
+  {
+    const legs = oiMatrixExpiryLegs(rawOI, { basis, inverted: futuresIsInverted(pair), minOI });
+    // Each expiry's ATM IV from the settlements term structure (percent→decimal), matched
+    // by DTE; flat vol when absent. Per-strike skew per expiry is deferred — gamma is
+    // ATM-led, so the ATM level is the first-order correction.
+    const atmFor = (dte) => {
+      if (Array.isArray(tsRows) && tsRows.length && Number.isFinite(dte)) {
+        const liq = tsRows.filter(r => r.iv > 0);
+        const pick = liq.length ? liq.slice().sort((a, b) => Math.abs(a.dte - dte) - Math.abs(b.dte - dte))[0] : null;
+        if (pick && pick.iv > 0) return pick.iv / 100;
+      }
+      return flatSig;
+    };
+    if (legs && legs.length >= 2) {
+      for (const l of legs) l.sigma = atmFor(l.dte);
+      fullBook = fullBookGex(legs, spot, { mult: cs, flatSigma: flatSig });
+      if (fullBook) fullBook.volSource = (Array.isArray(tsRows) && tsRows.length) ? 'atm-iv' : 'flat';
+
+      // NEAR-DATED "day" level set — the shortest-DTE expiry with real near-money OI, so the
+      // bot trades levels price can reach in a day while the far primary stays as context.
+      // Same wall/greek bricks as the primary (computeExpiryLevels), its own DTE + ATM IV.
+      const primDte = Number.isFinite(dteEff) ? dteEff : (primaryExpiry?.dte ?? Infinity);
+      const pick = pickNearExpiry(legs, spot, { belowDte: primDte });
+      dayExpiryReason = pick.reason;
+      if (pick.leg) {
+        const nearLeg = pick.leg;
+        const sig = Number.isFinite(nearLeg.sigma) && nearLeg.sigma > 0 ? nearLeg.sigma : atmFor(nearLeg.dte);
+        dayExpiry = computeExpiryLevels(nearLeg.strikes, nearLeg.calls, nearLeg.puts, spot, pair,
+          { dte: nearLeg.dte, minOI, numLevels, sigmaFn: sig > 0 ? () => sig : null });
+      }
+    } else {
+      dayExpiryReason = legs && legs.length === 1 ? 'only one expiry column parsed (not a multi-expiry paste)'
+        : 'no multi-expiry matrix (simple paste)';
+    }
+  }
+
   const withOI = parsed.strikes.map((s,i) => {
     const {gamma, callDelta, putDelta} = oiGreeks(s, spot, pair);
     const callGex = parsed.calls[i] * gamma * cs * spot;
@@ -1427,17 +1872,9 @@ export async function processOIData() {
   withOI.sort((a,b)=>b.totalOI-a.totalOI);
   const topLevels = withOI.slice(0, numLevels);
 
-  const gexProfile = parsed.strikes.map((s,i) => {
-    const {gamma} = oiGreeks(s, spot, pair);
-    const callGex = parsed.calls[i] * gamma * cs * spot;
-    const putGex  = parsed.puts[i]  * gamma * cs * spot;
-    // Raw OI rides along with the gamma-weighted numbers. This is the only CONTIGUOUS
-    // per-strike record stored (topLevels is a top-N ranking, not a ladder), so an
-    // OI-by-strike chart has nowhere else to read from — the dashboard's version came
-    // out blank because it looked for callOI/putOI here and they didn't exist.
-    return { strike:s, callOI: parsed.calls[i], putOI: parsed.puts[i],
-             callGex, putGex, netGex: callGex - putGex };
-  }).sort((a,b) => a.strike - b.strike);
+  // The only CONTIGUOUS per-strike record stored (topLevels is a top-N ranking, not a
+  // ladder) — shared `buildGexProfile` so a quota-trim rebuild reproduces it exactly.
+  const gexProfile = buildGexProfile(parsed.strikes, parsed.calls, parsed.puts, spot, pair, greekT, sigmaFor, cs);
 
   // Ranked call walls (highest call OI first) and put walls (highest put OI first)
   const callWalls = parsed.strikes
@@ -1582,6 +2019,8 @@ export async function processOIData() {
     quoteAt,         // when that paired quote was taken, so a stale basis is provable
     futuresStale,    // live-title minus heatmap-settle, when both are available (how wrong the fallback would be)
     basisAt: Date.now(),   // the basis is only valid for the moment both legs were read (course L229)
+    dayExpiry,   // near-dated "day" level set (reachable walls/max-pain/regime); null when the primary already IS the nearest real expiry
+    dayExpiryReason,   // why there is (or isn't) a day set — surfaced so a missing one is never silent
     maxPain, exposures, topLevels, gexProfile,
     gammaFlip: gammaFlip(gexProfile, spot),   // nearest-spot interpolated crossing of the per-strike profile
     // The rigorous flip: total net GEX re-evaluated at candidate prices, root-found.
@@ -1591,7 +2030,16 @@ export async function processOIData() {
     // describing one book. Kept ALONGSIDE gammaFlip rather than replacing it, because
     // the bot and export already consume that field.
     gexFlip: gexFlipPrice(parsed.strikes, parsed.calls, parsed.puts, {
-      sigma: oiFlatVol(pair), T: OI_GREEK_T, mult: cs, spot }),
+      sigmaFn: sigmaFor, sigma: flatSig, T: greekT, mult: cs, spot }),
+    // EVERY crossing, each with the direction of the sign change. A one-sided book
+    // (USD/CAD, P/C 0.34) crosses three times, so the scalar above reports one edge
+    // of a short-gamma POCKET as if it were the whole structure - and which edge it
+    // picks moves with a few pips of basis. Both are stored: the scalar for every
+    // existing consumer, the array for anything that wants the real shape.
+    gexFlips: gexFlipCrossings(parsed.strikes, parsed.calls, parsed.puts, {
+      sigmaFn: sigmaFor, sigma: flatSig, T: greekT, mult: cs, spot }),
+    greekVolMode, greekVolSource,   // v1 'flat' vs v2 'smile'/'atm-iv' — which vol the gamma/GEX/flip used
+    fullBook,   // v3 full-book GEX across ALL expiries (analysis-only; bot uses single-expiry exposures)
     dataWarning,   // ⚠ set when spot is far outside the strike range (stale/mis-scaled paste) — flag, don't silently analyse
     greeksFlow,   // charm/vanna exposure from a pasted IV surface (null unless the IV box is filled)
     expectedMove: expMove,   // ATM straddle → option-implied ± range to expiry
@@ -1610,6 +2058,7 @@ export async function processOIData() {
     volFlow: (volPcRatio != null) ? { volPcRatio, oiPcRatio: +pcRatio.toFixed(2),   // today's flow vs resting positioning
       divergence: Math.abs(Math.log((volPcRatio || 1) / Math.max(pcRatio, 0.01))) > 0.4 } : null,
     termStructure,   // per-expiry max pain / walls / DTE — for the daily brief & analysis (not the bot)
+    perExpiry,       // SPOT-terms per-expiry {dte, maxPain, callWall, putWall} — for cross-desk comparison / calc verification
     primaryExpiry,   // the expiry the walls/max-pain were auto-selected from (DTE + near-money OI)
     dte: Number.isFinite(dteEff) ? dteEff : (primaryExpiry?.dte ?? null),
     totalCallOI, totalPutOI, pcRatio, totalCallChg, totalPutChg,
@@ -1624,17 +2073,56 @@ export async function processOIData() {
     rawIVTerm: rawIVTerm && rawIVTerm.trim() ? rawIVTerm : null   // "Settlements" term-structure paste (re-parse on reopen)
   };
 
-  const store = oiLoadStore();
   // Per-expiry: preserve prior expiry entries and record THIS paste under its label
   // (near-dated = strongest gamma/pin — Lesson 5). The top-level inst stays the
   // primary/combined view; `expiries` builds up a DTE-keyed sub-view over saves.
-  const priorExpiries = store[pair]?.expiries || {};
+  const priorExpiries = priorEntry?.expiries || {};
   if (expiryLabel && Number.isFinite(dteEff)) {
     priorExpiries[expiryLabel] = { dte: dteEff, savedAtMs: Date.now(),
       maxPain, callWall: inst.callWall, putWall: inst.putWall,
       callWalls: callWalls.slice(0, 8), putWalls: putWalls.slice(0, 8), pcRatio };
   }
   if (Object.keys(priorExpiries).length) inst.expiries = priorExpiries;
+  return { inst, parsed, maxPain, basis, basisClamped, primaryExpiry, ivPasteHint,
+           futuresEff, dteEff };
+}
+
+export async function processOIData() {
+  const pair = S.currentPair ? S.currentPair.symbol : document.getElementById('oiPairSelect').value;
+  const rawOI = document.getElementById('oiRawData').value;
+  const rawChg = document.getElementById('oiChangeData').value;
+  const rawVol = document.getElementById('oiVolumeData')?.value || '';
+  const rawIV = document.getElementById('oiIVData')?.value || '';   // optional QuikStrike settlement paste (implied vol → charm/vanna)
+  const rawIVTerm = document.getElementById('oiIVTermData')?.value || '';   // optional 2nd paste: "Settlements" per-expiry table → IV term structure
+  const expiryLabel = (document.getElementById('oiExpiryLabel')?.value || '').trim();
+  const dteRaw = parseFloat(document.getElementById('oiDTE')?.value);
+  const spotRaw    = parseFloat(document.getElementById('oiSpotPrice').value);
+  const futuresRaw = parseFloat(document.getElementById('oiFuturesPrice')?.value);
+  const numLevels = parseInt(document.getElementById('oiNumLevels').value) || 8;
+  const minOI = parseInt(document.getElementById('oiMinOI').value) || 20;
+
+
+  if (!rawOI.trim()) { oiToast('Paste CME OI data first', true); return; }
+
+  const store = oiLoadStore();
+  const res = await buildOIEntry({
+    pair, rawOI, rawChg, rawVol, rawIV, rawIVTerm, expiryLabel, dteRaw,
+    spotRaw, futuresRaw, numLevels, minOI,
+    manualFutures: document.getElementById('oiFuturesPrice')?.dataset?.manual === '1',
+    swapCP: !!document.getElementById('oiSwapCP')?.checked,
+    greekVol: document.getElementById('oiGreekVol')?.value,
+    dashboardQuote: (window._latestQuote && S.currentPair && S.currentPair.symbol === pair)
+      ? (window._latestQuote.price ?? window._latestQuote.mid) : null,
+    priorEntry: store[pair],
+  });
+  if (res.error) { oiToast(res.error === 'could not parse'
+    ? 'Could not parse — check data format' : 'Paste CME OI data first', true); return; }
+  const { inst, parsed, maxPain, basis, basisClamped, primaryExpiry, ivPasteHint, futuresEff } = res;
+  // Reflect the resolved futures price back into the field (UI only).
+  {
+    const fe = document.getElementById('oiFuturesPrice');
+    if (fe && !fe.value && Number.isFinite(futuresEff)) fe.value = String(futuresEff);
+  }
   store[pair] = inst;
   const _saved = oiSaveStore(store);   // async KV union-merge + local cache
 

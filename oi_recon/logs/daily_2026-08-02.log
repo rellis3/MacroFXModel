@@ -1,0 +1,41 @@
+ 
+================================================== 
+ RUN STARTED 02/08/2026 17:45:40.60 
+================================================== 
+
+=== DAILY OI - 2026-08-02 ===
+
+  [ingest] running...
+  [compare] running...
+
+=== VERDICT ===
+
+  capture   44 table(s) reused from quikstrike
+  ingest    11 complete Â· 0 skipped
+  compare   44 agree Â· 0 differ
+
+  target    oi_store_py
+
+  VERDICT   OK
+[02/08/2026 17:45:57.27] finished with exit code 0 
+ 
+================================================== 
+ RUN STARTED 02/08/2026 18:39:50.75 
+================================================== 
+
+=== DAILY OI - 2026-08-02 ===
+
+  [capture] running...
+  [ingest] running...
+  [compare] running...
+
+=== VERDICT ===
+
+  capture   44/44 tables captured
+  ingest    11 complete · 0 skipped
+  compare   44 agree · 0 differ
+
+  target    oi_store_py
+
+  VERDICT   OK
+[02/08/2026 18:47:11.11] finished with exit code 0 

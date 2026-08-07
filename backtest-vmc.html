@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backtest VMC test · does exhaustion confirm the fades?</title>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --panel2:#1c2230; --line:#30363d; --fg:#e6edf3; --dim:#8b949e;
+          --good:#3fb950; --bad:#f85149; --warn:#d29922; --accent:#58a6ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; }
+  header { padding:20px 24px; border-bottom:1px solid var(--line); }
+  h1 { margin:0 0 4px; font-size:20px; }
+  .sub { color:var(--dim); font-size:13px; max-width:820px; }
+  a { color:var(--accent); text-decoration:none; }
+  .wrap { padding:20px 24px; max-width:1080px; margin:0 auto; }
+  .explain { background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:12px 14px;
+             font-size:12.5px; color:var(--dim); margin-bottom:16px; }
+  .explain b { color:var(--fg); }
+  .bar { display:flex; gap:14px; align-items:center; margin-bottom:16px; flex-wrap:wrap; }
+  label { font-size:12px; color:var(--dim); }
+  select,button { background:var(--panel2); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:5px 10px; font-size:13px; }
+  button { cursor:pointer; } button:hover { border-color:var(--accent); }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin-bottom:18px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; }
+  .card h3 { margin:0 0 8px; font-size:13px; color:var(--dim); font-weight:600; }
+  .big { font-size:24px; font-weight:700; }
+  .big.good { color:var(--good); } .big.bad { color:var(--bad); }
+  .k { color:var(--dim); font-size:12px; }
+  table { width:100%; border-collapse:collapse; margin-top:6px; font-size:13px; }
+  th,td { text-align:right; padding:5px 8px; border-bottom:1px solid var(--line); font-variant-numeric:tabular-nums; }
+  th:first-child,td:first-child { text-align:left; }
+  th { color:var(--dim); font-weight:600; }
+  .good { color:var(--good); } .bad { color:var(--bad); } .warn { color:var(--warn); }
+  .verdict { border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin:16px 0; font-size:13.5px; }
+  .nfloor { color:var(--warn); font-size:11px; }
+  h2 { font-size:15px; margin:20px 0 6px; }
+  details { margin-top:10px; } summary { cursor:pointer; color:var(--accent); font-size:12px; }
+  .empty { color:var(--dim); padding:20px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Backtest VMC test — does exhaustion confirm the fades?</h1>
+  <div class="sub">The backtestSystem bot fades levels, but its confidence vote is built from <b>trend</b> features and
+  turned out mildly <b>anti-predictive</b> (higher conviction lost more). Hypothesis: a level fade should be confirmed
+  by <b>exhaustion</b> — fade support only when WaveTrend is oversold, fade resistance only when overbought. This reads
+  causal VMC (operator's 9/12/3) at each historical entry and buckets outcomes by VMC agreement. <a href="index.html">← Dashboard</a></div>
+</header>
+<div class="wrap">
+  <div class="explain">
+    <b>How to read it.</b> If <b>confirm</b> (VMC agreed with the fade) has a materially higher win-rate / expectancy
+    than <b>oppose</b>/<b>neutral</b>, VMC is a candidate entry gate worth validating out-of-sample. If not, it isn't —
+    and we don't force it. This is <b>exploratory</b>: n≈279 over one ~2-month window (Jun–Jul 2026), so a bucket under
+    30 trades is "no conclusion", and even a clean split here is a <b>steer, not proof</b> until confirmed OOS.
+    Gross R is netted for cost. Losses cap at ~1R (the stop works) — this is about <i>which fades to take</i>, not exits.
+  </div>
+  <div class="bar">
+    <label>Timeframe <select id="tf"><option>5</option><option selected>15</option><option>30</option><option>60</option></select> min</label>
+    <label>Exhaustion band ±<select id="ob"><option>35</option><option selected>45</option><option>53</option><option>60</option></select> WT</label>
+    <button id="run">Run</button>
+    <span id="stamp" class="sub"></span>
+  </div>
+  <div id="out"><div class="empty">Loading…</div></div>
+</div>
+<script>
+const pc = (x) => x == null || !isFinite(x) ? '—' : x.toFixed(0) + '%';
+const r3 = (x) => x == null || !isFinite(x) ? '—' : (x >= 0 ? '+' : '') + x.toFixed(3);
+const cls = (x) => x > 0 ? 'good' : (x < 0 ? 'bad' : '');
+const floor = (n) => n < 30 ? ` <span class="nfloor">(n<30)</span>` : '';
+
+function bucketRow(name, b) {
+  if (!b || !b.n) return `<tr><td>${name}</td><td>0</td><td>—</td><td>—</td></tr>`;
+  return `<tr><td>${name}${floor(b.n)}</td><td>${b.n}</td><td>${pc(b.winPct)}</td><td class="${cls(b.expR)}">${r3(b.expR)}R</td></tr>`;
+}
+
+function verdict(s) {
+  const c = s.confirmVsRest.confirm, r = s.confirmVsRest.rest;
+  if (!c.n || !r.n) return { txt: 'Not enough classified trades to judge yet.', cl: 'warn' };
+  const lift = c.expR - r.expR;
+  const solid = c.n >= 30 && r.n >= 30;
+  if (lift > 0.15 && c.winPct > r.winPct)
+    return { txt: `VMC-confirmed fades beat the rest by ${lift.toFixed(2)}R/trade and ${(c.winPct - r.winPct).toFixed(0)}pts of win-rate` +
+      (solid ? ' (both n≥30). A candidate gate — validate OOS before trusting it.' : ' — but at least one bucket is under 30 trades, so this is only a hint.'), cl: 'good' };
+  if (lift < -0.15)
+    return { txt: `VMC-confirm did WORSE than the rest (${lift.toFixed(2)}R). Exhaustion is not the missing gate here — don't add it.`, cl: 'bad' };
+  return { txt: `No material separation (${lift >= 0 ? '+' : ''}${lift.toFixed(2)}R). VMC exhaustion doesn't cleanly sort these fades — a null, not a fix.`, cl: 'warn' };
+}
+
+async function run() {
+  const tf = document.getElementById('tf').value, ob = document.getElementById('ob').value;
+  const out = document.getElementById('out');
+  out.innerHTML = '<div class="empty">Reconstructing VMC from M1…</div>';
+  try {
+    const d = await (await fetch(`/api/backtest-vmc?tf=${tf}&ob=${ob}`)).json();
+    if (!d.ok) throw new Error(d.error || 'failed');
+    document.getElementById('stamp').textContent =
+      `${d.nTrades} trades · WT ${d.wtParams.n1}/${d.wtParams.n2}/${d.wtParams.sp} · as of ${new Date(d.generatedAt).toLocaleString()}`;
+    const s = d.summary, v = verdict(s);
+    const bc = s.byClass;
+    out.innerHTML = `
+      <div class="cards">
+        <div class="card"><h3>VMC-confirmed fades</h3>
+          <div class="big ${cls(bc.confirm.expR)}">${r3(bc.confirm.expR)}R</div>
+          <div class="k">${bc.confirm.n} trades · ${pc(bc.confirm.winPct)} win${floor(bc.confirm.n)}</div></div>
+        <div class="card"><h3>Opposed + neutral</h3>
+          <div class="big ${cls(s.confirmVsRest.rest.expR)}">${r3(s.confirmVsRest.rest.expR)}R</div>
+          <div class="k">${s.confirmVsRest.rest.n} trades · ${pc(s.confirmVsRest.rest.winPct)} win</div></div>
+        <div class="card"><h3>All fades (baseline)</h3>
+          <div class="big ${cls(s.all.expR)}">${r3(s.all.expR)}R</div>
+          <div class="k">${s.all.n} trades · ${pc(s.all.winPct)} win</div></div>
+      </div>
+      <div class="verdict ${v.cl}"><b>Read:</b> ${v.txt}</div>
+
+      <h2>By VMC class at entry</h2>
+      <table><thead><tr><th>VMC at entry</th><th>n</th><th>win%</th><th>expectancy</th></tr></thead><tbody>
+        ${bucketRow('confirm (exhaustion agrees)', bc.confirm)}
+        ${bucketRow('oppose (momentum against)', bc.oppose)}
+        ${bucketRow('neutral (mid-band)', bc.neutral)}
+        ${bucketRow('unknown (no M1 / warm-up)', bc.unknown)}
+      </tbody></table>
+
+      <h2>Does it rescue the high-conviction losers?</h2>
+      <div class="k">The bot's conv≥0.4 bucket is its worst. If VMC-confirm turns it positive, that's the actionable gate.</div>
+      <table><thead><tr><th>bucket</th><th>n</th><th>win%</th><th>expectancy</th></tr></thead><tbody>
+        ${bucketRow('conv≥0.4 (all)', s.highConv.all)}
+        ${bucketRow('conv≥0.4 AND VMC-confirm', s.highConv.confirm)}
+      </tbody></table>
+
+      <details><summary>M1 coverage per pair &amp; recent classified trades</summary>
+        <table><thead><tr><th>pair</th><th>trades</th><th>VMC-covered</th><th>M1?</th></tr></thead><tbody>
+          ${Object.entries(d.perPair).map(([k, p]) => `<tr><td>${k}</td><td>${p.n}</td><td>${p.covered}</td><td>${p.hasM1 ? '✓' : '—'}</td></tr>`).join('')}
+        </tbody></table>
+        <table style="margin-top:10px"><thead><tr><th>entry (UTC)</th><th>pair</th><th>dir</th><th>WT1</th><th>VMC</th><th>net R</th><th>win</th></tr></thead><tbody>
+          ${d.trades.map(t => `<tr>
+            <td>${t.entry_ts ? new Date(t.entry_ts * 1000).toISOString().slice(5, 16).replace('T', ' ') : '—'}</td>
+            <td>${t.pair}</td><td>${t.direction}</td>
+            <td>${t.wt1 == null ? '—' : t.wt1.toFixed(0)}</td>
+            <td>${t.vmc}</td><td class="${cls(t.net_r)}">${r3(t.net_r)}</td>
+            <td>${t.win ? '<span class="good">W</span>' : '<span class="bad">L</span>'}</td></tr>`).join('')}
+        </tbody></table>
+      </details>`;
+  } catch (e) { out.innerHTML = `<div class="empty">Error: ${e.message}</div>`; }
+}
+document.getElementById('run').onclick = run;
+run();
+</script>
+</body>
+</html>

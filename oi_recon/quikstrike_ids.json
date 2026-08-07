@@ -1,0 +1,19 @@
+{
+  "_note": "QuikStrike product ids, supplied by the owner 2026-07-31. EUR/USD was independently confirmed by --learn-pid (pid 350, pf 61), which matched. `pf` is the product FAMILY, inferred here (FX=61, equity index=26) from two observed URLs: pid=350/pf=61 (EUR/USD) and pid=103/pf=26 (S&P). Where pf is null the minted URL's own value is left untouched. `match` is text the tool header must contain - the pull refuses to write unless it matches, so a wrong id fails loudly instead of silently pulling another product's book.",
+
+  "SPX500_USD": { "pid": 103, "pf": 26,   "match": "S&P 500" },
+  "NAS100_USD": { "pid": 121, "pf": 26,   "match": "Nasdaq" },
+  "US2000_USD": { "pid": 133, "pf": 26,   "match": "Russell" },
+
+  "//_130": "pid 130 was supplied as DAX but the tool header returned 'EXPIRATION: YM3Q6' - a DOW code. The product check refused rather than writing Dow's book to DE30_USD_*.tsv, which would have validated perfectly. Remapped to US30_USD, which was missing from this table anyway. DAX is a Eurex product, so QuikStrike (a CME tool) very likely does not carry it at all - run --learn-pid --product DE30_USD to confirm before assuming a pid exists.",
+  "US30_USD":   { "pid": 130, "pf": 26,   "match": "Dow" },
+
+  "XAU/USD":    { "pid": 40,  "pf": null, "match": "Gold" },
+
+  "EUR/USD":    { "pid": 350, "pf": 61,   "match": "EUR/USD" },
+  "AUD/USD":    { "pid": 351, "pf": 61,   "match": "AUD" },
+  "USD/CAD":    { "pid": 352, "pf": 61,   "match": "CAD" },
+  "USD/CHF":    { "pid": 353, "pf": 61,   "match": "CHF" },
+  "GBP/USD":    { "pid": 354, "pf": 61,   "match": "GBP" },
+  "USD/JPY":    { "pid": 355, "pf": 61,   "match": "JPY" }
+}

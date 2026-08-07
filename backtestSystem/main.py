@@ -17,7 +17,8 @@ from dotenv import load_dotenv
 from config    import load_config, sl_distance, tp_distance, chandelier_stop, _deep_merge
 from mt5_utils import (connect, fetch_bars_5m, fetch_bars_30m, fetch_bars_daily,
                        fetch_price, get_balance, get_open_positions, place_order,
-                       pip_size, london_now, move_sl_to_be, modify_sl, fetch_close_price)
+                       pip_size, london_now, move_sl_to_be, modify_sl, fetch_close_price,
+                       tz_offset_sec)
 import journal
 from levels    import (compute_asia_range, compute_monday_range, project_fib_levels,
                        detect_confluences, get_yesterday_range_bars)
@@ -373,7 +374,9 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
         return st
 
     # ── Kill switch ───────────────────────────────────────────────────────
-    block = kill.block_reason()
+    # Pass live balance so the close-detection-independent % drawdown guard works
+    # (catches SL/TP hits the bot never journalled — e.g. during a restart).
+    block = kill.block_reason(get_balance())
     if block:
         log.warning(f'  {pair}  BLOCKED — {block}')
         return st
@@ -423,6 +426,7 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
     level_entries[lkey] = level_entries.get(lkey, 0) + 1  # count attempt win or lose
     if ticket:
         log.info(f'  → ticket #{ticket}')
+        kill.record_open()               # count toward the daily trade cap
         if placed_tickets is not None:
             placed_tickets[ticket] = pair  # guard against MT5 positions_get() lag
         features_fired = [r['key'] for r in scored if r.get('icon', '·') != '·']
@@ -501,7 +505,10 @@ def main() -> None:
     journal.init(dashboard_url)
 
     pairs        = cfg.get('enabledPairs', [])
-    kill         = KillSwitch(cfg)
+    # Persist the kill-switch across restarts (the live bug: it was in-memory,
+    # the bot restarts often, so the daily loss counter zeroed before it tripped).
+    kill         = KillSwitch(cfg, state_path=os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), 'killswitch_state.json'))
     poll_interval = int(cfg.get('pollInterval', _DEFAULT_POLL))
 
     log.info('=== backtestSystem started ===')
@@ -531,6 +538,7 @@ def main() -> None:
             if today_date != last_date:
                 level_entries = {}
                 last_date     = today_date
+                kill.set_balance(get_balance())   # anchor day-start balance for the % drawdown guard
                 log.info(f'--- New day {today_date} ---  {kill.summary()}')
 
             in_window = within_trade_window(cfg)
@@ -660,6 +668,7 @@ def main() -> None:
                             'profit':     round(p.profit, 2),
                             'swap':       round(p.swap, 2),
                             'time_open':  int(p.time),
+                            'tz_offset_sec': tz_offset_sec(),
                             'comment':    str(p.comment or ''),
                         }
                         for p in open_pos

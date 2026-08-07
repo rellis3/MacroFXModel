@@ -15,7 +15,8 @@
 // Both sides go through the real js/oi.js parser, never a reimplementation, so this
 // compares the numbers the dashboard would actually use.
 import { readFileSync } from 'fs';
-import { parseOIMatrix, oiMatrixTermStructure, oiCalcMaxPain } from '../js/oi.js';
+import { parseOIMatrix, oiMatrixTermStructure, oiCalcMaxPain,
+         oiParseVolume } from '../js/oi.js';
 
 const argv = process.argv.slice(2);
 const flag = (name, dflt = null) => {
@@ -25,16 +26,228 @@ const flag = (name, dflt = null) => {
   argv.splice(i, 2);
   return v;
 };
-const base = flag('--base', 'http://localhost:3000');
+// Defaults to the deployed dashboard, because that is where the morning paste
+// actually lands. Pass --base http://localhost:3000 when running a local server.
+const base = flag('--base', 'https://macrofxmodel-production.up.railway.app');
 const kvPair = flag('--kv');
 const files = argv.filter(a => !a.startsWith('--'));
+
+const allDir = flag('--all');
+const sweepDir = flag('--sweep');
+
+// ── --sweep: the QuikStrike sweep's four boxes vs the morning pastes ─────────
+// Every comparison runs BOTH sides through js/oi.js, never a reimplementation,
+// so this compares the numbers the dashboard would actually use. Note the KV
+// side is the COMPACTED form oiAnalyse stores (js/oi.js:1788) - fewer rows than
+// the raw paste, same parsed result, which is what matters here.
+if (sweepDir) {
+  const { readdirSync, existsSync } = await import('fs');
+  const { join } = await import('path');
+  if (!existsSync(sweepDir)) die(`no such directory: ${sweepDir}`);
+  const store = await kvStore();
+  const { parseIVSettlement, parseSettlementTermStructure } = await import('../js/oi.js');
+
+  const files = readdirSync(sweepDir).filter(f => /_(rawOI|rawChg|rawVol|rawIVTerm)\.tsv$/.test(f));
+  const rows = [];
+  for (const f of files.sort()) {
+    const box = f.match(/_(raw[A-Za-z]+)\.tsv$/)[1];
+    const stem = f.slice(0, f.length - box.length - 5);
+    const sym = store[stem] ? stem
+              : store[stem.replace('_', '/')] ? stem.replace('_', '/') : null;
+    if (!sym) { rows.push({ sym: stem, box, note: 'no oi_store entry' }); continue; }
+    const pasted = store[sym]?.[box];
+    if (!pasted) { rows.push({ sym, box, note: 'not in KV' }); continue; }
+    const swept = readFileSync(join(sweepDir, f), 'utf8');
+    rows.push(cmpBox(sym, box, pasted, swept));
+  }
+
+  console.log(`\nPASTE (KV) vs SWEEP — ${rows.length} table(s)\n`);
+  console.log('  sym          box         paste            sweep            verdict');
+  let bad = 0;
+  for (const r of rows) {
+    if (r.note) { console.log(`  ${r.sym.padEnd(12)} ${r.box.padEnd(11)} ${r.note}`); continue; }
+    console.log(`  ${r.sym.padEnd(12)} ${r.box.padEnd(11)} ${r.p.padEnd(16)} ${r.s.padEnd(16)} ${r.verdict}`);
+    if (r.bad) bad++;
+  }
+  console.log(`\n  ${rows.length - bad} agree · ${bad} differ`);
+  console.log('\n  Differences are EXPECTED where the two sides are different sessions:');
+  console.log('  your paste is this morning\'s screen, the sweep is the latest settlement.');
+  console.log('  What matters is whether the LEVELS agree, not the raw counts.');
+  // Exit non-zero when tables disagree. This used to always exit 0, which would
+  // have made any wrapper report success regardless of the comparison - the exact
+  // silent-partial-success failure the sweep's own exit code was written to avoid.
+  process.exit(bad ? 1 : 0);
+
+  function cmpBox(sym, box, pasted, swept) {
+    try {
+      if (box === 'rawIVTerm') {
+        const P = parseSettlementTermStructure(pasted) || [];
+        const S = parseSettlementTermStructure(swept) || [];
+        const pm = new Map(P.map(r => [r.symbol, r]));
+        const shared = S.filter(r => pm.has(r.symbol));
+        const ivSame = shared.filter(r => Math.abs((pm.get(r.symbol).iv || 0) - (r.iv || 0)) < 0.005).length;
+        return { sym, box, p: `${P.length} expiries`, s: `${S.length} expiries`,
+                 verdict: `${ivSame}/${shared.length} ATM IV match`,
+                 bad: shared.length === 0 };
+      }
+      if (box === 'rawVol') {
+        const pv = oiParseVolume(pasted), sv = oiParseVolume(swept);
+        const pm = new Map(pv.map(v => [v.strike, v.volume]));
+        const shared = sv.filter(v => pm.has(v.strike));
+        const same = shared.filter(v => pm.get(v.strike) === v.volume).length;
+        return { sym, box, p: `${pv.length} strikes`, s: `${sv.length} strikes`,
+                 verdict: shared.length ? `${same}/${shared.length} strikes match` : 'no shared strikes',
+                 bad: !shared.length };
+      }
+      const P = parseOIMatrix(pasted), S = parseOIMatrix(swept);
+      if (!P || !S) return { sym, box, p: P ? 'ok' : 'null', s: S ? 'ok' : 'null',
+                             verdict: 'one side did not parse', bad: true };
+      const w = m => a => m.strikes[a.indexOf(Math.max(...a))];
+      const mpP = oiCalcMaxPain(P.strikes, P.calls, P.puts);
+      const mpS = oiCalcMaxPain(S.strikes, S.calls, S.puts);
+      const same = [mpP === mpS, w(P)(P.calls) === w(S)(S.calls), w(P)(P.puts) === w(S)(S.puts)];
+      return { sym, box, p: `mp ${mpP}`, s: `mp ${mpS}`,
+               verdict: `${same.filter(Boolean).length}/3 levels match (maxPain, call/put wall)`,
+               bad: same.filter(Boolean).length < 2 };
+    } catch (e) {
+      return { sym, box, note: 'threw: ' + e.message };
+    }
+  }
+}
+
+async function kvStore() {
+  let r;
+  try {
+    r = await fetch(`${base}/api/kv/get?key=oi_store`);
+  } catch (e) {
+    die(`cannot reach ${base} (${e.cause?.code || e.message}).\n`
+      + '        Start the dashboard locally and pass --base http://localhost:3000,\n'
+      + '        or pass the pasted table as a file instead.');
+  }
+  if (!r.ok) die(`KV read failed: HTTP ${r.status} from ${base}`);
+  const j = await r.json();
+  if (j.miss || !j.data) die('oi_store is empty in KV');
+  return j.data;
+}
+
+// ── --all: every fetched instrument against its paste, one summary table ─────
+if (allDir) {
+  const { readdirSync, existsSync } = await import('fs');
+  const { join } = await import('path');
+  if (!existsSync(allDir)) die(`no such directory: ${allDir}`);
+  const store = await kvStore();
+  // Prefer the manifest's symbol: safe_name() is not reversible ('EUR/USD' and
+  // 'EUR_USD' both flatten the same way), so guessing it back from the filename
+  // would silently mis-pair instruments.
+  // BOTH automated boxes get compared. Checking only the OI matrix would leave
+  // the volume matrix asserted-but-unverified, which is the kind of half-claim
+  // this whole exercise exists to avoid.
+  const FIELD = { oi: 'rawOI', vol: 'rawVol' };
+  let entries = [];
+  const mf = join(allDir, 'fetch_manifest.json');
+  if (existsSync(mf)) {
+    const m = JSON.parse(readFileSync(mf, 'utf8'));
+    entries = (m.files || []).filter(f => FIELD[f.kind] && f.sym)
+                             .map(f => ({ file: join(allDir, f.file), sym: f.sym, kind: f.kind }));
+  }
+  if (!entries.length) {                       // older manifest, or none: fall back
+    for (const f of readdirSync(allDir).filter(x => /_(oi|vol)_matrix\.tsv$/.test(x))) {
+      const kind = f.includes('_vol_matrix') ? 'vol' : 'oi';
+      const stem = f.replace(/_(oi|vol)_matrix\.tsv$/, '');
+      const sym = store[stem] ? stem
+                : store[stem.replace('_', '/')] ? stem.replace('_', '/') : null;
+      if (sym) entries.push({ file: join(allDir, f), sym, kind });
+      else console.log(`  (skip ${f} — no matching oi_store entry)`);
+    }
+  }
+  entries.sort((a, b) => a.sym.localeCompare(b.sym) || a.kind.localeCompare(b.kind));
+  if (!entries.length) die('nothing to compare — no fetched *_oi_matrix.tsv matched a paste');
+
+  console.log(`\nPASTE vs FETCH — ${entries.length} table(s), KV at ${base}\n`);
+  console.log('  sym          box  primary(paste/fetch)   maxPain        callWall       putWall        per-strike');
+  let anyBad = 0;
+  for (const { file, sym, kind } of entries) {
+    const e = store[sym];
+    const raw = e?.[FIELD[kind]];
+    if (!raw) { console.log(`  ${sym.padEnd(12)} ${kind.padEnd(4)} no ${FIELD[kind]} in KV — skipped`); continue; }
+    const fetched = readFileSync(file, 'utf8');
+
+    // VOLUME is stored differently and must be compared differently. oiAnalyse
+    // writes `rawVol` as a COMPACTED 'strike<TAB>volume' list (js/oi.js:1676),
+    // not the pasted heatmap — so parseOIMatrix can never read it. Both sides go
+    // through oiParseVolume instead, which aggregates call+put across expiries;
+    // that is the same brick the dashboard uses, so this compares its numbers.
+    if (kind === 'vol') {
+      const pv = oiParseVolume(raw), fv = oiParseVolume(fetched);
+      if (!pv.length || !fv.length) {
+        console.log(`  ${sym.padEnd(12)} vol  ${!pv.length ? 'PASTE' : 'FETCH'} yielded no volume rows`);
+        anyBad++; continue;
+      }
+      const pm = new Map(pv.map(v => [v.strike, v.volume]));
+      const fm = new Map(fv.map(v => [v.strike, v.volume]));
+      const shared = [...pm.keys()].filter(k => fm.has(k));
+      const same = shared.filter(k => pm.get(k) === fm.get(k)).length;
+      const tot = a => a.reduce((s, v) => s + v.volume, 0);
+      const note = shared.length ? `${same}/${shared.length} match` : 'no shared strikes';
+      const bad = shared.length === 0 || same < shared.length;
+      console.log(`  ${sym.padEnd(12)} vol  top ${String(pv[0].strike)}/${String(fv[0].strike)}`.padEnd(40)
+        + ` total ${tot(pv).toLocaleString()}/${tot(fv).toLocaleString()}`.padEnd(30) + ` ${note}`);
+      if (bad) anyBad++;
+      continue;
+    }
+
+    const P = parseOIMatrix(raw), F = parseOIMatrix(fetched);
+    if (!P || !F) {
+      console.log(`  ${sym.padEnd(12)} ${kind.padEnd(4)} ${!P ? 'PASTE' : 'FETCH'} did not parse`);
+      anyBad++; continue;
+    }
+    const w = m => a => m.strikes[a.indexOf(Math.max(...a))];
+    const pc = P.primaryExpiry?.code ?? '-', fc = F.primaryExpiry?.code ?? '-';
+    const mpP = oiCalcMaxPain(P.strikes, P.calls, P.puts);
+    const mpF = oiCalcMaxPain(F.strikes, F.calls, F.puts);
+    let strikeNote = 'n/a (diff expiry)';
+    if (pc === fc && pc !== '-') {
+      const pm = new Map(P.strikes.map((k, i) => [k, [P.calls[i], P.puts[i]]]));
+      const fm = new Map(F.strikes.map((k, i) => [k, [F.calls[i], F.puts[i]]]));
+      const shared = [...pm.keys()].filter(k => fm.has(k));
+      const diff = shared.filter(k => pm.get(k)[0] !== fm.get(k)[0] || pm.get(k)[1] !== fm.get(k)[1]);
+      strikeNote = `${shared.length - diff.length}/${shared.length} match`;
+      if (diff.length) anyBad++;
+    }
+    const cell = (a, b) => `${String(a)}/${String(b)}`.padEnd(14);
+    const flagIf = (a, b) => (String(a) === String(b) ? ' ' : '*');
+    console.log(`  ${sym.padEnd(12)} ${kind.padEnd(4)} ${cell(pc, fc)}${flagIf(pc, fc)} `
+      + `${cell(mpP, mpF)}${flagIf(mpP, mpF)} `
+      + `${cell(w(P)(P.calls), w(F)(F.calls))}${flagIf(w(P)(P.calls), w(F)(F.calls))} `
+      + `${cell(w(P)(P.puts), w(F)(F.puts))}${flagIf(w(P)(P.puts), w(F)(F.puts))} ${strikeNote}`);
+    if (mpP !== mpF) anyBad++;
+  }
+  console.log('\n  * = differs. Per-strike is only compared when both sides chose the');
+  console.log('    SAME primary expiry; otherwise the columns are not comparable and');
+  console.log('    you should raise --expiries on the fetch, not read a mismatch into it.');
+  console.log(anyBad ? `\n${anyBad} disagreement(s) — inspect with a single-pair run.`
+                     : '\nEvery compared instrument agrees.');
+  process.exit(anyBad ? 1 : 0);
+}
 
 async function pastedRaw() {
   if (!kvPair) {
     if (files.length < 2) die('need <pasted.tsv> <fetched.tsv>, or --kv "EUR/USD" <fetched.tsv>');
     return { raw: readFileSync(files[0], 'utf8'), from: files[0] };
   }
-  const r = await fetch(`${base}/api/kv/get?key=oi_store`);
+  // A refused connection here used to surface as an unhandled TypeError and a node
+  // stack trace, which reads like a broken script rather than "nothing is serving
+  // that port". Say what happened and what to do instead.
+  let r;
+  try {
+    r = await fetch(`${base}/api/kv/get?key=oi_store`);
+  } catch (e) {
+    die(`cannot reach ${base} (${e.cause?.code || e.message}).\n`
+      + '        Either start the dashboard locally, or point at the deployed one:\n'
+      + '          --base https://macrofxmodel-production.up.railway.app\n'
+      + '        Or skip KV entirely and pass the pasted table as a file:\n'
+      + '          node compare_matrix.mjs pasted.tsv fetched.tsv');
+  }
   if (!r.ok) die(`KV read failed: HTTP ${r.status} from ${base}`);
   const j = await r.json();
   if (j.miss) die('oi_store is empty in KV — paste in the dashboard first');

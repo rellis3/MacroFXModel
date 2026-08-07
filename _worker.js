@@ -43,9 +43,13 @@ function normalizeBotTag(raw) {
 }
 
 function isAllowedKVKey(key) {
-  const EXACT = new Set(['fred', 'fred2', 'oi_store', 'journal_store', 'journal_replay_store', 'journal_running_totals', 'cot_data', 'ifo_data', 'surprise_index', 'events_today', 'sentiment', 'bot_config', 'bot_status', 'bot_credentials', 'bot_override', 'backtestsystem_status', 'backtestsystem_credentials', 'backtestsystem_live_config', 'backtestsystem_journal', 'regime_bot_config', 'regime_bot_credentials', 'regime_bot_status', 'regime_bot_v2_config', 'regime_bot_v2_credentials', 'regime_bot_v2_status', 'rgv2_force_unlock', 'regime_bot_v4_config', 'regime_bot_v4_credentials', 'regime_bot_v4_status', 'rgv4_force_unlock', 'regime_bot_v7_config', 'regime_bot_v7_credentials', 'regime_bot_v7_status', 'rgv7_force_unlock', 'regime_bot_v7_audit_log', 'gold_bot_status', 'gold_bot_config', 'gold_bot_credentials', 'dyn_anchor_config', 'dyn_anchor_credentials', 'dyn_anchor_status', 'dyn_anchor_forecast', 'da_force_unlock', 'hedge_alerts_cache', 'hedge_audit_log', 'wt_winrate_v1', 'macro_equity_config', 'macro_equity_credentials', 'macro_equity_bot_status', 'hedge_bot_config', 'hedge_bot_credentials', 'hedge_bot_status', 'nq_qmr_status', 'nq_qmr_config', 'nq_qmr_audit', 'spx_qmr_status', 'spx_qmr_config', 'spx_qmr_audit', 'dow_qmr_status', 'dow_qmr_config', 'dow_qmr_audit', 'dax_qmr_status', 'dax_qmr_config', 'dax_qmr_audit', 'nq_qmr_validation', 'spx_qmr_validation', 'dow_qmr_validation', 'dax_qmr_validation', 'cog_signal_log', 'cog_shadow_log', 'zone_audit_history', 'volatility_bot_config', 'volatility_bot_credentials', 'volatility_bot_status', 'volatility_bot_plan', 'volatility_bot_audit_log', 'vol_force_unlock', 'range_line_bot_config', 'range_line_bot_credentials', 'range_line_bot_status', 'range_line_bot_plan', 'range_line_confluence', 'range_line_oi_live', 'range_line_bot_audit_log', 'rl_force_unlock', 'yield_spread_config', 'yield_spread_credentials', 'yield_spread_status', 'yield_spread_plan', 'yield_spread_audit', 'ys_force_unlock',
-    'oi_bot_config', 'oi_bot_credentials', 'oi_bot_status', 'oi_bot_zones', 'oi_bot_trades', 'oi_force_unlock']);
-  const PREFIXES = ['ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_', 'event_windows_', 'arima_price_', 'gold_', 'beta_', 'rgv1_', 'rgv2_', 'rgv4_', 'rgv7_', 'trade_hist_', 'confluence_'];
+  // 'oi_store_py' is the automated sweep's SHADOW of oi_store (oi_recon/). It is
+  // allowed here and marked persistent in kv.js, but is intentionally absent from
+  // PERMANENT_KEYS below, so it carries the 48h TTL while it is only being compared.
+  const EXACT = new Set(['fred', 'fred2', 'oi_store', 'oi_store_py', 'oi_expect_log', 'oi_auto_target', 'oi_sweep_last', 'journal_store', 'journal_replay_store', 'journal_running_totals', 'cot_data', 'ifo_data', 'surprise_index', 'events_today', 'sentiment', 'bot_config', 'bot_status', 'bot_credentials', 'bot_override', 'backtestsystem_status', 'backtestsystem_credentials', 'backtestsystem_live_config', 'backtestsystem_journal', 'regime_bot_config', 'regime_bot_credentials', 'regime_bot_status', 'regime_bot_v2_config', 'regime_bot_v2_credentials', 'regime_bot_v2_status', 'rgv2_force_unlock', 'regime_bot_v4_config', 'regime_bot_v4_credentials', 'regime_bot_v4_status', 'rgv4_force_unlock', 'regime_bot_v7_config', 'regime_bot_v7_credentials', 'regime_bot_v7_status', 'rgv7_force_unlock', 'regime_bot_v7_audit_log', 'gold_bot_status', 'gold_bot_config', 'gold_bot_credentials', 'dyn_anchor_config', 'dyn_anchor_credentials', 'dyn_anchor_status', 'dyn_anchor_forecast', 'da_force_unlock', 'hedge_alerts_cache', 'hedge_audit_log', 'wt_winrate_v1', 'macro_equity_config', 'macro_equity_credentials', 'macro_equity_bot_status', 'hedge_bot_config', 'hedge_bot_credentials', 'hedge_bot_status', 'nq_qmr_status', 'nq_qmr_config', 'nq_qmr_audit', 'spx_qmr_status', 'spx_qmr_config', 'spx_qmr_audit', 'dow_qmr_status', 'dow_qmr_config', 'dow_qmr_audit', 'dax_qmr_status', 'dax_qmr_config', 'dax_qmr_audit', 'nq_qmr_validation', 'spx_qmr_validation', 'dow_qmr_validation', 'dax_qmr_validation', 'cog_signal_log', 'cog_shadow_log', 'zone_audit_history', 'volatility_bot_config', 'volatility_bot_credentials', 'volatility_bot_status', 'volatility_bot_plan', 'volatility_bot_audit_log', 'vol_force_unlock', 'range_line_bot_config', 'range_line_bot_credentials', 'range_line_bot_status', 'range_line_bot_plan', 'range_line_confluence', 'range_line_oi_live', 'range_line_bot_audit_log', 'rl_force_unlock', 'yield_spread_config', 'yield_spread_credentials', 'yield_spread_status', 'yield_spread_plan', 'yield_spread_audit', 'ys_force_unlock',
+    'oi_bot_config', 'oi_bot_credentials', 'oi_bot_status', 'oi_bot_zones', 'oi_bot_trades', 'oi_force_unlock',
+    'pattern_bot_state', 'pattern_bot_status', 'pattern_bot_config']);
+  const PREFIXES = ['ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_', 'event_windows_', 'arima_price_', 'gold_', 'beta_', 'rgv1_', 'rgv2_', 'rgv4_', 'rgv7_', 'trade_hist_', 'confluence_', 'vmlog_'];
   if (EXACT.has(key)) return true;
   return PREFIXES.some(p => key.startsWith(p));
 }
@@ -931,6 +935,17 @@ export default {
           // Includes all user config, credentials, journals, and trained ML params.
           // Market-data keys get a 48h KV TTL as a hard safety net.
           const PERMANENT_KEYS = new Set([
+            // oi_expect_log accumulates the forward record of what each level's
+            // expectation claimed - it must survive, unlike oi_store_py which is a
+            // deliberately expiring shadow.
+            'oi_expect_log',
+            // oi_auto_target decides whether the nightly sweep feeds the live bots. If it
+            // expired it would silently revert to the shadow default, and a fortnight of
+            // intended-live captures would land nowhere the bots read.
+            'oi_auto_target',
+            // The heartbeat must outlive the 48h TTL or a fortnight-long outage would
+            // look identical to a key that simply expired.
+            'oi_sweep_last',
             'oi_store', 'journal_store', 'journal_replay_store', 'journal_running_totals',
             'tg_config', 'ai_alert_cfg', 'caps',
             'cot_data', 'cot_urls', 'cot_url',
@@ -969,7 +984,14 @@ export default {
             // delete hand-logged observations that cannot be recomputed.
             'cog_signal_log', 'cog_shadow_log',
           ]);
-          const isPermanent = PERMANENT_KEYS.has(key);
+          // PERMANENT_KEYS is exact-match, which cannot express a key that
+          // rotates (one per day). vmlog_* is the VuManChu forward-validation
+          // record — irreplaceable once the day has passed — so it needs a
+          // prefix rule or every day's log would silently expire after 48h,
+          // which is precisely the failure mode documented in CLAUDE.md.
+          const PERMANENT_PREFIXES = ['vmlog_'];
+          const isPermanent = PERMANENT_KEYS.has(key)
+            || PERMANENT_PREFIXES.some(p => key.startsWith(p));
           const kvOpts = isPermanent ? {} : { expirationTtl: 172800 }; // 48h
           await env.FX_SCORES.put(key, JSON.stringify({ data, timestamp }), kvOpts);
           // Persist closed trade history for bot status keys

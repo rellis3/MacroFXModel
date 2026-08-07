@@ -75,6 +75,63 @@ def strikes_from_settlements(payload: dict, field: str = 'openInterest') -> dict
     return out
 
 
+def quikstrike_code(contract_id: str, code: str, two_digits: str) -> str:
+    """CME contractId -> the code QuikStrike (and js/oi.js) actually speaks.
+
+    CME says 'EUUQ26'; QuikStrike says 'EUUQ6'. Same expiry, one-digit year vs two.
+    This is not cosmetic. `resolveSmileExpiry` matches the smile expiry to the term
+    table BY CODE precisely because a code is absolute where a DTE is not — emit
+    'EUUQ26' and that match silently fails, falling back to nearest-DTE matching,
+    which is the day-sensitive path the JS comments warn about. It also broke expiry
+    ORDERING here: with no code hit in the date seed, every expiry sorted equal, the
+    API's group order won, and a fetch returned eight monthlies and no weeklies.
+
+    Derived from the payload's own fields, never by string surgery on a guess:
+        contractId 'EUUQ26' - twoDigitsCode 'Q26' = root 'EUU';  root + code 'Q6'.
+    """
+    cid = (contract_id or '').strip()
+    two = (two_digits or '').strip()
+    if two and cid.endswith(two):
+        return cid[:-len(two)] + (code or '').strip()
+    return cid                                   # unknown shape: pass through
+
+
+def futures_from_parity(payload: dict):
+    """Imply the futures price from the option settles by put-call parity.
+
+    The settlements payload carries no underlying price, and without one
+    `pickPrimaryExpiry` cannot score NEAR-MONEY open interest — it falls back to
+    total OI, which is exactly the far-dated-tail-hedge distortion js/oi.js
+    documents as a pitfall. So the anchor is not optional.
+
+    Options on futures (Black-76): C - P = e^-rT (F - K), so F ~= K + (C - P) for
+    small rT. Evaluated at the most ATM strike, where the approximation is tightest
+    and both legs are liquid. Returns None if no strike has both legs priced —
+    better a missing anchor the caller can report than a fabricated one.
+    """
+    legs: dict = {}
+    for row in (payload or {}).get('settlements', []):
+        raw = str(row.get('strike', '')).strip()
+        if not raw or raw.lower() == 'total':
+            continue
+        try:
+            k = float(raw.replace(',', ''))
+        except ValueError:
+            continue
+        s = _num(row.get('settle'))
+        if k <= 0 or s <= 0:                       # 'CAB'/'-'/0 settles are unusable
+            continue
+        side = 'c' if str(row.get('type', '')).lower().startswith('c') else 'p'
+        legs.setdefault(k, {})[side] = s
+    both = [(abs(v['c'] - v['p']), k, v['c'] - v['p'])
+            for k, v in legs.items() if 'c' in v and 'p' in v]
+    if not both:
+        return None
+    _, k, diff = min(both)                         # most ATM strike
+    f = k + diff
+    return f if f > 0 else None
+
+
 def dte_for(code: str, code_dates: dict, as_of: date):
     """Calendar days to expiry for an expiry CODE.
 

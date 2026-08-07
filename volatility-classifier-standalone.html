@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Volatility Classifier — Exhaustion vs Continuation</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0a0e27;
+      color: #e0e6ed;
+      padding: 20px;
+    }
+    .container { max-width: 1400px; margin: 0 auto; }
+    h1 { margin-bottom: 20px; font-size: 24px; color: #60a5fa; }
+    
+    .controls {
+      background: #1a1f3a;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    label { font-size: 13px; color: #9ca3af; }
+    
+    select, input {
+      background: #0a0e27;
+      border: 1px solid #374151;
+      color: #e0e6ed;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    
+    button:hover { background: #2563eb; }
+    button:disabled { background: #374151; cursor: not-allowed; }
+    
+    .results {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    
+    .result-card {
+      background: #1a1f3a;
+      padding: 16px;
+      border-radius: 8px;
+      border: 2px solid transparent;
+    }
+    
+    .result-card.winner { border-color: #10b981; }
+    
+    .result-card h3 {
+      font-size: 16px;
+      margin-bottom: 12px;
+      color: #60a5fa;
+    }
+    
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid #374151;
+    }
+    
+    .metric:last-child { border-bottom: none; }
+    
+    .metric-label { color: #9ca3af; font-size: 13px; }
+    .metric-value { color: #e0e6ed; font-weight: 500; font-size: 13px; }
+    
+    .verdict {
+      background: #1a1f3a;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border-left: 4px solid #3b82f6;
+    }
+    
+    .verdict.success { border-left-color: #10b981; }
+    .verdict.failure { border-left-color: #ef4444; }
+    
+    .verdict h3 {
+      font-size: 16px;
+      margin-bottom: 8px;
+      color: #60a5fa;
+    }
+    
+    .verdict p {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #d1d5db;
+    }
+    
+    .log {
+      background: #1a1f3a;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    
+    .log-line { color: #9ca3af; }
+    .log-line.error { color: #ef4444; }
+    .log-line.success { color: #10b981; }
+    
+    .trade-log {
+      background: #1a1f3a;
+      padding: 16px;
+      border-radius: 8px;
+      margin-top: 20px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    
+    .trade-log h3 {
+      font-size: 16px;
+      margin-bottom: 12px;
+      color: #60a5fa;
+    }
+    
+    .trade-row {
+      display: grid;
+      grid-template-columns: 80px 60px 80px 80px 80px 100px 1fr;
+      gap: 12px;
+      padding: 8px;
+      border-bottom: 1px solid #374151;
+      font-size: 12px;
+    }
+    
+    .trade-row.header {
+      font-weight: 600;
+      color: #9ca3af;
+      position: sticky;
+      top: 0;
+      background: #1a1f3a;
+    }
+    
+    .trade-row.win { background: rgba(16, 185, 129, 0.1); }
+    .trade-row.loss { background: rgba(239, 68, 68, 0.1); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Volatility Classifier — Exhaustion vs Continuation</h1>
+    
+    <div class="controls">
+      <div class="control-group">
+        <label>Instrument:</label>
+        <select id="instrument">
+          <option value="eurusd">EUR/USD</option>
+          <option value="gbpusd">GBP/USD</option>
+          <option value="usdjpy">USD/JPY</option>
+          <option value="audusd">AUD/USD</option>
+          <option value="usdcad">USD/CAD</option>
+        </select>
+      </div>
+      
+      <div class="control-group">
+        <label>Days:</label>
+        <input type="number" id="dayCount" value="100" min="20" max="500" step="10">
+      </div>
+      
+      <div class="control-group">
+        <label>OOS %:</label>
+        <input type="number" id="oosPct" value="40" min="20" max="50" step="5">
+      </div>
+      
+      <div class="control-group">
+        <label>SL Mult:</label>
+        <input type="number" id="slMult" value="1.5" min="0.5" max="3" step="0.1">
+      </div>
+      
+      <div class="control-group">
+        <label>TP Mult:</label>
+        <input type="number" id="tpMult" value="2.0" min="0.5" max="5" step="0.1">
+      </div>
+      
+      <div class="control-group">
+        <label>VuManChu Win:</label>
+        <input type="number" id="vmcWin" value="10" min="5" max="30" step="1">
+      </div>
+      
+      <div class="control-group">
+        <label>Day-Type Win:</label>
+        <input type="number" id="dayTypeWin" value="20" min="10" max="50" step="5">
+      </div>
+      
+      <button id="runBtn">Run Backtest</button>
+    </div>
+    
+    <div class="log" id="log"></div>
+    
+    <div id="verdict"></div>
+    
+    <div class="results" id="results"></div>
+    
+    <div class="trade-log" id="tradeLog" style="display:none;">
+      <h3>Classifier Trades (OOS)</h3>
+      <div id="tradeLogContent"></div>
+    </div>
+  </div>
+
+<script type="module">
+import { computeBands, walkBars, volSigmaSeries, simulateEntry } from './js/forecastCore.js';
+import { classifyDayType } from './js/dayTypeCore.js';
+import { computeWaveTrend } from './js/vumanchuCore.js';
+import { loadM1ForPair } from './js/volBacktestM1Engine.js';
+
+// ============================================================================
+// LOGGING
+// ============================================================================
+function log(msg, type = 'info') {
+  const logDiv = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = `log-line ${type}`;
+  line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  logDiv.appendChild(line);
+  logDiv.scrollTop = logDiv.scrollHeight;
+}
+
+// ============================================================================
+// ASSET CLASS MAPPING
+// ============================================================================
+const ASSET_CLASS = {
+  'eurusd': 'fx_major',
+  'gbpusd': 'fx_major',
+  'usdjpy': 'fx_major',
+  'audusd': 'fx_major',
+  'usdcad': 'fx_major'
+};
+
+// ============================================================================
+// M1 DATA PROCESSING
+// ============================================================================
+function groupByDay(packed) {
+  const days = new Map();
+  
+  for (let i = 0; i < packed.n; i++) {
+    const ts = packed.times[i];
+    const date = new Date(ts * 1000);
+    const dateStr = date.toISOString().split('T')[0];
+    
+    if (!days.has(dateStr)) {
+      days.set(dateStr, []);
+    }
+    
+    days.get(dateStr).push({
+      time: ts,
+      open: packed.opens[i],
+      high: packed.highs[i],
+      low: packed.lows[i],
+      close: packed.closes[i]
+    });
+  }
+  
+  return days;
+}
+
+function buildDailySessions(packed) {
+  const dayMap = groupByDay(packed);
+  const sessions = [];
+  
+  for (const [dateStr, bars] of dayMap.entries()) {
+    if (bars.length < 100) continue; // Skip incomplete days
+    
+    const open = bars[0].open;
+    sessions.push({
+      date: dateStr,
+      open,
+      bars
+    });
+  }
+  
+  return sessions.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// ============================================================================
+// CLASSIFIER LOGIC
+// ============================================================================
+function classifyExhaustion(sessions, sessionIdx, vmcWin, dayTypeWin) {
+  // Build historical closes for day-type and VuManChu
+  const historicalBars = [];
+  
+  for (let i = 0; i <= sessionIdx; i++) {
+    historicalBars.push(...sessions[i].bars);
+  }
+  
+  // VuManChu on recent bars (last N bars across sessions)
+  const recentBars = historicalBars.slice(-500); // Last 500 M1 bars
+  const vmcData = computeWaveTrend(recentBars, vmcWin);
+  const wt1 = vmcData.wt1[vmcData.wt1.length - 1];
+  const wt2 = vmcData.wt2[vmcData.wt2.length - 1];
+  
+  // Day-type classifier on daily closes
+  const dailyCloses = sessions.slice(0, sessionIdx + 1).map(s => s.bars[s.bars.length - 1].close);
+  const T = classifyDayType({ 
+    closes: dailyCloses, 
+    idx: dailyCloses.length - 1, 
+    win: Math.min(dayTypeWin, dailyCloses.length - 1)
+  });
+  
+  // Multi-timeframe regime (simplified: SMA20 on daily closes)
+  const sma20 = dailyCloses.slice(-20).reduce((a, b) => a + b, 0) / Math.min(20, dailyCloses.length);
+  const regime = dailyCloses[dailyCloses.length - 1] > sma20 ? 'bull' : 'bear';
+  
+  return {
+    wt1,
+    wt2,
+    dayType: T.score,
+    regime,
+    // Exhaustion: extreme WT + low day-type (choppy) = fade
+    // Continuation: extreme WT + high day-type (trending) = follow
+    isExhaustion: Math.abs(wt1) > 50 && T.score < 0.4,
+    isContinuation: Math.abs(wt1) > 50 && T.score > 0.6
+  };
+}
+
+// ============================================================================
+// BACKTEST ENGINE
+// ============================================================================
+function runStrategy(sessions, assetClass, mode, opts) {
+  const { slMult, tpMult, vmcWin, dayTypeWin, oosPct } = opts;
+  const splitIdx = Math.floor(sessions.length * (1 - oosPct / 100));
+  
+  const records = [];
+  
+  // Build historical bars for volatility estimation
+  const allHistoricalBars = [];
+  
+  for (let i = 50; i < sessions.length; i++) {
+    const session = sessions[i];
+    
+    // Add previous session bars to history
+    if (i > 0) {
+      allHistoricalBars.push(...sessions[i - 1].bars);
+    }
+    
+    // Compute volatility forecast at session open (causal)
+    const sigma = volSigmaSeries(allHistoricalBars.map(b => ({
+      open: b.open,
+      high: b.high,
+      low: b.low,
+      close: b.close
+    })), assetClass).pop();
+    
+    if (!sigma || sigma <= 0) continue;
+    
+    const bands = computeBands(session.open, sigma, assetClass);
+    
+    // Walk M1 bars to find touches
+    for (let barIdx = 0; barIdx < session.bars.length; barIdx++) {
+      const bar = session.bars[barIdx];
+      
+      const touchedHigh = bar.high >= bands.HL75;
+      const touchedLow = bar.low <= -bands.HL75;
+      
+      if (!touchedHigh && !touchedLow) continue;
+      
+      let side, entry;
+      
+      if (mode === 'fade') {
+        // Always fade extremes
+        if (touchedHigh) {
+          side = 'sell';
+          entry = bands.HL75;
+        } else if (touchedLow) {
+          side = 'buy';
+          entry = -bands.HL75;
+        }
+      } else if (mode === 'follow') {
+        // Always follow extremes
+        if (touchedHigh) {
+          side = 'buy';
+          entry = bands.HL75;
+        } else if (touchedLow) {
+          side = 'sell';
+          entry = -bands.HL75;
+        }
+      } else if (mode === 'classifier') {
+        // Use classifier to decide
+        const signal = classifyExhaustion(sessions, i, vmcWin, dayTypeWin);
+        
+        if (touchedHigh) {
+          if (signal.isExhaustion) {
+            side = 'sell'; // Fade
+            entry = bands.HL75;
+          } else if (signal.isContinuation) {
+            side = 'buy'; // Follow
+            entry = bands.HL75;
+          } else {
+            continue; // No clear signal
+          }
+        } else if (touchedLow) {
+          if (signal.isExhaustion) {
+            side = 'buy'; // Fade
+            entry = -bands.HL75;
+          } else if (signal.isContinuation) {
+            side = 'sell'; // Follow
+            entry = -bands.HL75;
+          } else {
+            continue; // No clear signal
+          }
+        }
+      }
+      
+      if (!side) continue;
+      
+      // Set SL/TP
+      const slDist = sigma * slMult;
+      const tpDist = sigma * tpMult;
+      const sl = side === 'buy' ? entry - slDist : entry + slDist;
+      const tp = side === 'buy' ? entry + tpDist : entry - tpDist;
+      
+      // Walk forward from next bar to resolve trade
+      const remainingBars = session.bars.slice(barIdx + 1);
+      const result = walkBars(remainingBars, entry, tp, sl, side === 'buy', 'touch', session.open);
+      
+      if (result.exit) {
+        const pnl = result.pnl;
+        const isOOS = i >= splitIdx;
+        
+        records.push({
+          idx: i,
+          date: session.date,
+          side,
+          entry,
+          exit: result.exit,
+          pnl,
+          pnlR: pnl / sigma,
+          isOOS,
+          mode
+        });
+        
+        break; // One trade per day
+      }
+    }
+  }
+  
+  return records;
+}
+
+// ============================================================================
+// PERFORMANCE METRICS
+// ============================================================================
+function computeMetrics(records, isOOS = false) {
+  const filtered = isOOS ? records.filter(r => r.isOOS) : records.filter(r => !r.isOOS);
+  
+  if (filtered.length === 0) {
+    return {
+      trades: 0,
+      winRate: 0,
+      avgR: 0,
+      sharpe: 0,
+      totalR: 0,
+      maxDD: 0
+    };
+  }
+  
+  const wins = filtered.filter(r => r.pnlR > 0).length;
+  const winRate = wins / filtered.length;
+  const avgR = filtered.reduce((sum, r) => sum + r.pnlR, 0) / filtered.length;
+  
+  // Sharpe
+  const mean = avgR;
+  const variance = filtered.reduce((sum, r) => sum + Math.pow(r.pnlR - mean, 2), 0) / filtered.length;
+  const std = Math.sqrt(variance);
+  const sharpe = std > 0 ? mean / std : 0;
+  
+  // Total R
+  const totalR = filtered.reduce((sum, r) => sum + r.pnlR, 0);
+  
+  // Max DD
+  let peak = 0;
+  let maxDD = 0;
+  let cumR = 0;
+  for (const r of filtered) {
+    cumR += r.pnlR;
+    if (cumR > peak) peak = cumR;
+    const dd = peak - cumR;
+    if (dd > maxDD) maxDD = dd;
+  }
+  
+  return {
+    trades: filtered.length,
+    winRate: (winRate * 100).toFixed(1),
+    avgR: avgR.toFixed(3),
+    sharpe: sharpe.toFixed(2),
+    totalR: totalR.toFixed(2),
+    maxDD: maxDD.toFixed(2)
+  };
+}
+
+// ============================================================================
+// UI RENDERING
+// ============================================================================
+function renderResults(fadeRecords, followRecords, classifierRecords, oosPct) {
+  const fadeIS = computeMetrics(fadeRecords, false);
+  const fadeOOS = computeMetrics(fadeRecords, true);
+  
+  const followIS = computeMetrics(followRecords, false);
+  const followOOS = computeMetrics(followRecords, true);
+  
+  const classifierIS = computeMetrics(classifierRecords, false);
+  const classifierOOS = computeMetrics(classifierRecords, true);
+  
+  // Determine winner
+  const maxBaseline = Math.max(parseFloat(fadeOOS.sharpe), parseFloat(followOOS.sharpe));
+  const classifierSharpe = parseFloat(classifierOOS.sharpe);
+  const classifierTrades = classifierOOS.trades;
+  
+  const worked = classifierSharpe > maxBaseline + 0.2 && classifierTrades >= 30;
+  
+  // Render verdict
+  const verdictDiv = document.getElementById('verdict');
+  verdictDiv.className = `verdict ${worked ? 'success' : 'failure'}`;
+  verdictDiv.innerHTML = `
+    <h3>Pre-Registered Outcome: ${worked ? '✓ WORKED' : '✗ DID NOT WORK'}</h3>
+    <p>
+      <strong>Criteria:</strong> Classifier OOS Sharpe > max(fade, follow) by ≥0.2, with ≥30 OOS trades<br>
+      <strong>Result:</strong> Classifier OOS Sharpe = ${classifierOOS.sharpe}, 
+      Max Baseline = ${maxBaseline.toFixed(2)}, 
+      Classifier OOS Trades = ${classifierTrades}<br>
+      <strong>Verdict:</strong> ${worked 
+        ? 'Classifier beats baseline by required margin with sufficient trades' 
+        : classifierTrades < 30 
+          ? 'Insufficient OOS trades (need ≥30)' 
+          : 'Classifier does not beat baseline by ≥0.2 Sharpe'}
+    </p>
+  `;
+  
+  // Render cards
+  const resultsDiv = document.getElementById('results');
+  resultsDiv.innerHTML = `
+    <div class="result-card">
+      <h3>Always Fade</h3>
+      <div class="metric">
+        <span class="metric-label">IS Sharpe</span>
+        <span class="metric-value">${fadeIS.sharpe}</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">OOS Sharpe</span>
+        <span class="metric-value">${fadeOOS.sharpe}</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">IS Trades</span>
+        <span class="metric-value">${fadeIS.trades}</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">OOS Trades</span>
+        <span class="metric-value">${fadeOOS.trades}</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">OOS Win Rate</span>
+        <span class="metric-value">${fadeOOS.winRate}%</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">OOS Avg R</span>
+        <span class="metric-value">${fadeOOS.avgR}</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">OOS Total R</span>
+        <span class="metric-value">${fadeOOS.totalR}</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">OOS Max DD</span>
+        <span class="metric-value">${fadeOOS.maxDD}</span>
+      </div>
+    </div>
+    
+    <div class="result-card">
+      <h3>Always Follow</h3>
+      <div class="metric">
+        <span class="metric-label">IS Sharpe</span>
+        <span class="metric-value">${followIS.sharpe}</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">OOS Sharpe</span>
+        <span class="metric-value">${followOOS.sharpe}</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">IS Trades</span>
+        <span class="metric-value">${followIS.trades}</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">OOS Trades</span>
+        <span class="metric-value">${followOOS.trades}</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">OOS Win Rate</span>
+        <span class="metric-value">${followOOS.winRate}%</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">OOS Avg R</span>
+        <span class="metric-value">${followOOS.avgR}</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">OOS Total R</span>
+        <span class="metric-value">${followOOS.totalR}</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">OOS Max DD</span>
+        <span class="metric-value">${followOOS.maxDD}</span>
+      </div>
+    </div>
+    
+    <div class="result-card ${worked ? 'winner' : ''}">
+      <h3>Classifier (Exhaustion vs Continuation)</h3>
+      <div class="metric">
+        <span class="metric-label">IS Sharpe</span>
+        <span class="metric-value">${classifierIS.sharpe}</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">OOS Sharpe</span>
+        <span class="metric-value">${classifierOOS.sharpe}</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">IS Trades</span>
+        <span class="metric-value">${classifierIS.trades}</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">OOS Trades</span>
+        <span class="metric-value">${classifierOOS.trades}</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">OOS Win Rate</span>
+        <span class="metric-value">${classifierOOS.winRate}%</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">OOS Avg R</span>
+        <span class="metric-value">${classifierOOS.avgR}</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">OOS Total R</span>
+        <span class="metric-value">${classifierOOS.totalR}</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">OOS Max DD</span>
+        <span class="metric-value">${classifierOOS.maxDD}</span>
+      </div>
+    </div>
+  `;
+  
+  // Render trade log
+  const tradeLogDiv = document.getElementById('tradeLog');
+  const tradeLogContent = document.getElementById('tradeLogContent');
+  
+  const oosClassifierTrades = classifierRecords.filter(r => r.isOOS);
+  
+  if (oosClassifierTrades.length > 0) {
+    tradeLogDiv.style.display = 'block';
+    
+    let html = `
+      <div class="trade-row header">
+        <div>Date</div>
+        <div>Side</div>
+        <div>Entry</div>
+        <div>Exit</div>
+        <div>PnL (R)</div>
+        <div>Result</div>
+        <div>Mode</div>
+      </div>
+    `;
+    
+    for (const trade of oosClassifierTrades) {
+      const isWin = trade.pnlR > 0;
+      html += `
+        <div class="trade-row ${isWin ? 'win' : 'loss'}">
+          <div>${trade.date}</div>
+          <div>${trade.side}</div>
+          <div>${trade.entry.toFixed(5)}</div>
+          <div>${trade.exit.toFixed(5)}</div>
+          <div>${trade.pnlR.toFixed(2)}</div>
+          <div>${isWin ? 'WIN' : 'LOSS'}</div>
+          <div>${trade.mode}</div>
+        </div>
+      `;
+    }
+    
+    tradeLogContent.innerHTML = html;
+  } else {
+    tradeLogDiv.style.display = 'none';
+  }
+  
+  log('Backtest complete', 'success');
+}
+
+// ============================================================================
+// MAIN EXECUTION
+// ============================================================================
+document.getElementById('runBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  btn.textContent = 'Running...';
+  
+  // Clear previous results
+  document.getElementById('log').innerHTML = '';
+  document.getElementById('verdict').innerHTML = '';
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('tradeLog').style.display = 'none';
+  
+  const instrument = document.getElementById('instrument').value;
+  const dayCount = parseInt(document.getElementById('dayCount').value);
+  const oosPct = parseInt(document.getElementById('oosPct').value);
+  const slMult = parseFloat(document.getElementById('slMult').value);
+  const tpMult = parseFloat(document.getElementById('tpMult').value);
+  const vmcWin = parseInt(document.getElementById('vmcWin').value);
+  const dayTypeWin = parseInt(document.getElementById('dayTypeWin').value);
+  
+  try {
+    // Load M1 data
+    log(`Loading M1 data for ${instrument}...`);
+    const packed = await loadM1ForPair(instrument);
+    
+    if (!packed || packed.n === 0) {
+      throw new Error(`No M1 data found for ${instrument}. Check VolRangeForecaster/data/m1/ directory.`);
+    }
+    
+    log(`Loaded ${packed.n} M1 bars`, 'success');
+    
+    // Build daily sessions
+    log('Building daily sessions...');
+    const allSessions = buildDailySessions(packed);
+    log(`Built ${allSessions.length} daily sessions`, 'success');
+    
+    // Take last N days
+    const sessions = allSessions.slice(-dayCount);
+    log(`Using last ${sessions.length} days for backtest`);
+    
+    // Run backtests
+    log('Running fade strategy...');
+    const assetClass = ASSET_CLASS[instrument];
+    const opts = { slMult, tpMult, vmcWin, dayTypeWin, oosPct };
+    
+    const fadeRecords = runStrategy(sessions, assetClass, 'fade', opts);
+    log(`Fade: ${fadeRecords.length} trades`, 'success');
+    
+    log('Running follow strategy...');
+    const followRecords = runStrategy(sessions, assetClass, 'follow', opts);
+    log(`Follow: ${followRecords.length} trades`, 'success');
+    
+    log('Running classifier strategy...');
+    const classifierRecords = runStrategy(sessions, assetClass, 'classifier', opts);
+    log(`Classifier: ${classifierRecords.length} trades`, 'success');
+    
+    // Render results
+    renderResults(fadeRecords, followRecords, classifierRecords, oosPct);
+    
+  } catch (err) {
+    log(`Error: ${err.message}`, 'error');
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Run Backtest';
+  }
+});
+</script>
+</body>
+</html>

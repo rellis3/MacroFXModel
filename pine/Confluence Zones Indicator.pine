@@ -237,7 +237,12 @@ var string[] czTypes  = array.new_string()
 
 var float[]  oiPrices = array.new_float()
 var string[] oiTypes  = array.new_string()
+var string[] oiNotes  = array.new_string()   // expectation, e.g. "Reject (turns away)" / "Break (goes through)"
+var string[] oiHeats  = array.new_string()   // gamma heat at the level: "hot" / "warm" / "cold" (blank on older pastes)
+var string[] oiTouch  = array.new_string()   // calibrated P(touch) label, e.g. "82%~2h" (blank on older pastes)
 var int[]    oiTiers  = array.new_int()
+var int[]    oiDte    = array.new_int()       // expiry DTE of the level (0 = untagged / single-expiry paste)
+var int      oiMinDte = 0                      // nearest DTE among this symbol's tagged levels = the "day" set; larger = far context
 var string   oiRegime = na
 
 if barstate.isfirst
@@ -319,14 +324,48 @@ if barstate.isfirst
                         rhsParts = str.split(rhs, " ")
                         typ      = array.size(rhsParts) >= 1 ? str.trim(array.get(rhsParts, 0)) : rhs
                         int tier = 0
-                        if array.size(rhsParts) >= 2
-                            tstr = str.trim(array.get(rhsParts, 1))
-                            if str.startswith(tstr, "t")
-                                tier := int(str.tonumber(str.replace_all(tstr, "t", "")))
+                        int dte  = 0
+                        // Scan the tokens BEFORE the first ' . ' (the type + optional t{n} tier +
+                        // optional {n}dte expiry tag) — not the note words, which can end in "dte".
+                        headSeg   = str.split(rhs, " . ")
+                        head      = array.size(headSeg) >= 1 ? array.get(headSeg, 0) : rhs
+                        headParts = str.split(head, " ")
+                        if array.size(headParts) >= 2
+                            for hi = 1 to array.size(headParts) - 1
+                                tok = str.trim(array.get(headParts, hi))
+                                if str.startswith(tok, "t") and not na(str.tonumber(str.replace_all(tok, "t", "")))
+                                    tier := int(str.tonumber(str.replace_all(tok, "t", "")))
+                                if str.endswith(tok, "dte")
+                                    dte := int(str.tonumber(str.replace_all(tok, "dte", "")))
+                        // Expectation note: everything after the ' . ' marker. Absent on
+                        // older paste blocks, so default to empty and draw nothing.
+                        string note = ""
+                        string heat = ""
+                        string touch = ""
+                        noteParts = str.split(rhs, " . ")
+                        if array.size(noteParts) >= 2
+                            note := str.trim(array.get(noteParts, 1))
+                        // Heat is the SECOND ' . ' segment (index 2); '-' is a placeholder
+                        // that just holds the slot when only P(touch) is present.
+                        if array.size(noteParts) >= 3
+                            heat := str.trim(array.get(noteParts, 2))
+                            if heat == "-"
+                                heat := ""
+                        // P(touch) is the THIRD ' . ' segment (index 3). Blank on older pastes.
+                        if array.size(noteParts) >= 4
+                            touch := str.trim(array.get(noteParts, 3))
                         if not na(price) and price > 0
                             array.push(oiPrices, price)
                             array.push(oiTypes,  typ)
                             array.push(oiTiers,  na(tier) ? 0 : tier)
+                            array.push(oiNotes,  note)
+                            array.push(oiHeats,  heat)
+                            array.push(oiTouch,  touch)
+                            array.push(oiDte,    na(dte) ? 0 : dte)
+                            // Track the nearest tagged DTE for THIS symbol = the "day" set;
+                            // anything longer-dated is drawn as far context.
+                            if dte > 0 and (oiMinDte == 0 or dte < oiMinDte)
+                                oiMinDte := dte
                 continue
 
 // =====================================================
@@ -496,17 +535,38 @@ if barstate.islast
             zCol   = f_oiColour(zType)
             zStyle = f_oiStyle(zType)
             zW     = oi_base_w + (zTier >= 3 ? 2 : zTier == 2 ? 1 : 0)
+            // Gamma HEAT (additive): hot = a touch thicker + full colour, cold = thinner +
+            // faded (paper price passes through). Blank heat = unchanged from before.
+            zHeat  = i < array.size(oiHeats) ? array.get(oiHeats, i) : ""
+            zTouch = i < array.size(oiTouch) ? array.get(oiTouch, i) : ""
+            zW    := math.max(1, zW + (zHeat == "hot" ? 1 : zHeat == "cold" ? -1 : 0))
+            zColH  = zHeat == "cold" ? color.new(zCol, 60) : zHeat == "warm" ? color.new(zCol, 25) : zCol
+            // DTE tag: the nearest-dated set (== oiMinDte, or untagged) is the "day" — drawn
+            // normally; anything longer-dated is far context → dashed + faded + thin so it
+            // recedes behind the day levels without disappearing.
+            zDte   = i < array.size(oiDte) ? array.get(oiDte, i) : 0
+            isFar  = zDte > 0 and oiMinDte > 0 and zDte > oiMinDte
+            if isFar
+                zStyle := line.style_dashed
+                zColH  := color.new(zCol, 55)
+                zW     := 1
             ln = line.new(x1, zPrice, x2, zPrice,
-                 color=zCol, width=zW, style=zStyle,
+                 color=zColH, width=zW, style=zStyle,
                  xloc=xloc.bar_time, extend=zExt)
             array.push(oiLines, ln)
             if show_oi_lbl
                 string lText = zType
                 if zTier > 0
                     lText := lText + " t" + str.tostring(zTier)
+                if zDte > 0
+                    lText := lText + " " + str.tostring(zDte) + "d"
+                if zHeat != ""
+                    lText := lText + " " + zHeat
+                if zTouch != ""
+                    lText := lText + "  " + zTouch
                 lb = label.new(bar_index + 2, zPrice, lText,
                      style=label.style_label_left,
-                     color=lblBg, textcolor=zCol,
+                     color=lblBg, textcolor=zColH,
                      size=size.small)
                 array.push(oiLabels, lb)
 
@@ -663,10 +723,16 @@ if show_table and barstate.islast
                 zCol   = f_oiColour(zType)
                 pipDist = math.round(math.abs(close - zPrice) / pip, 1)
                 tierStr = zTier > 0 ? " t" + str.tostring(zTier) : ""
+                zDteT   = i < array.size(oiDte) ? array.get(oiDte, i) : 0
+                dteStr  = zDteT > 0 ? " " + str.tostring(zDteT) + "d" : ""
                 row += 1
                 bg = color.new(zCol, 82)
                 table.cell(czTable, 0, row, str.tostring(zPrice), text_color=zCol, text_size=size.tiny, bgcolor=bg)
-                table.cell(czTable, 1, row, zType + tierStr,      text_color=zCol, text_size=size.tiny, bgcolor=bg)
+                zNote  = i < array.size(oiNotes) ? array.get(oiNotes, i) : ""
+                zHeatT = i < array.size(oiHeats) ? array.get(oiHeats, i) : ""
+                zTouchT = i < array.size(oiTouch) ? array.get(oiTouch, i) : ""
+                noteStr = (zNote != "" ? "  " + zNote : "") + (zHeatT != "" ? "  [" + zHeatT + "]" : "") + (zTouchT != "" ? "  " + zTouchT : "")
+                table.cell(czTable, 1, row, zType + tierStr + dteStr + noteStr, text_color=zCol, text_size=size.tiny, bgcolor=bg)
                 table.cell(czTable, 2, row, str.tostring(pipDist) + "p", text_color=zCol, text_size=size.tiny, bgcolor=bg)
 
         // CZ zone rows

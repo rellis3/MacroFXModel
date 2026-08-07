@@ -25,4 +25,7 @@ restart_bot "level-bot" \
 restart_bot "gold-bot" \
     python Gold/main.py &
 
+restart_bot "pattern-live-bot" \
+    env DASHBOARD_URL=https://macrofxmodel-production.up.railway.app node PatternBot/pattern_live_bot.mjs &
+
 exec node server.js

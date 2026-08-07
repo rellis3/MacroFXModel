@@ -27,6 +27,13 @@ import { computeHMM5mV2, computeMacroContext } from './hmm5m-v2.js';
 import { trainHMM5mAll, loadTrainedParams, fetchFredMacro } from './hmm5m-train.js';
 import { detectPolarityFlip } from './js/polarity.js';
 import { assessEntry, resampleBars } from './js/vumanchu.js';
+import { renderVumanchuPNG, renderVumanchuSVG, vumanchuChartData, vumanchuCaption, MIN_BARS as VM_MIN_BARS } from './js/vumanchuChart.js';
+import { computeState as computeVumanchuState, lookupState as lookupVumanchuState,
+         interpret as interpretVumanchuState } from './js/vumanchuState.js';
+import { appendRows as vmAppendRows, readRange as vmReadRange, buildRow as vmBuildRow,
+         resolveDue as vmResolveDue, scoreRows as vmScoreRows, logKey as vmLogKey } from './js/vumanchuLogger.js';
+import { renderVumanchuMtfPNG, renderVumanchuMtfSVG, vumanchuMtfData, vumanchuMtfCaption, TF_SECONDS as VM_TF_SECONDS, AGREE_MODES as VM_AGREE_MODES } from './js/vumanchuMtf.js';
+import { renderMtfStackPNG, mtfStackData, mtfStackCaption, SERIES_SOURCES as MTF_SERIES_SOURCES, MAX_TFS as MTF_MAX_TFS, MIN_BARS as MTF_STACK_MIN_BARS } from './js/mtfStack.js';
 import { startVolForecastScheduler, forecastState, runVolForecast, getSessionStatus, ensureOhlcCache } from './js/volForecastScheduler.js';
 import { yangZhangVolSeries, hv20Series, ewmaVolSeries, computeForecast as _computeForecast } from './js/volForecast.js';
 import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
@@ -71,11 +78,14 @@ import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } fr
 import { compareForecastLines as _compareForecastLines } from './js/forecastDriftCompare.js';
 import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
 import { fetchWeekEvents as _fetchWeekEvents } from './js/econCalendar.js';
+import { buildMacroChanges as _buildMacroChanges, MACRO_CHANGE_SPEC as _MACRO_CHANGE_SPEC } from './js/macroChange.js';
 import { macroContext as _macroContext, macroContextByDate as _macroContextByDate, MACRO_FRED_SERIES as _MACRO_FRED_SERIES, riskSensFor as _riskSensFor } from './js/macroCore.js';
 import { analyzePair as _mcondAnalyzePair, summarizeRows as _mcondSummarize, verdict as _mcondVerdict } from './js/macroConditionerEngine.js';
 import { creditGate as _creditGateBrick } from './js/creditCore.js';
 import { creditRegime as _creditRegime } from './js/creditHmm.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
+import { resampleBars as plResampleBars, runPatternScan, annotateHtfAlignment as plAnnotateHtfAlignment, confidenceBucketStats as plConfidenceBucketStats, classifySwingStructure as plClassifySwingStructure } from './js/patternEngine.js';
+import { OANDA_INSTRUMENT_MAP, clampToNow, fetchIntradayOnce, fetchIntraday } from './js/oandaIntraday.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
 import { runRangeExtBacktest, summarizeRangeExt, RANGE_EXT_INSTRUMENTS } from './js/rangeExtEngine.js';
@@ -87,6 +97,7 @@ import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
 import { refreshRangeLineConfluence, packLiveM1 } from './js/rangeLineConfluenceProducer.js';
 import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas, classifyOIChange, oiWallStability, oiPriceConfirmation } from './js/oiConfluence.js';
 import { buildOILevelText } from './js/oiLevelExport.js';
+import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band
 import { buildOIZones, explainNoZones } from './js/oiZones.js';
 import { gammaFlip as computeGammaFlip, distanceToFlip, flipDrift, rolloffSummary } from './js/gammaFlow.js';
 import { buildRangeZones } from './js/rangeLineZones.js';
@@ -116,10 +127,12 @@ import { rvHarSigma as _rvHarSigma } from './js/indexRvHar.js';   // validated 5
 import { ccHvSigma as _ccHvSigma, ccHvMulti as _ccHvMulti, ccHvIntraday as _ccHvIntraday } from './js/ccHvSigma.js';   // COG's own σ method (close-to-close HV) for reproducing his index lines
 import { resampleTo as _resampleTo, extractBars } from './js/barUtils.js';   // resample the OANDA 1-min gap to 5-min before merging; extractBars slices the M1 packed arrays for the validator
 import { excursionFromM1, summarizeGiveback } from './js/giveback.js';   // per-bot give-back (MFE vs realised) analytics
+import { wtSeriesForPair, classifyEntry, summarize as summarizeVmc, OPERATOR_WT } from './js/backtestVmc.js';   // backtest VMC-confirmation test
+import { studyTrade as _studyExit, summarizeExitStudy } from './js/backtestExitStudy.js';   // backtest exit-rule replay (TP-resite/trail/BE/time-stop)
 import { volHorseRace as _volHorseRace, HR_MODELS as _HR_MODELS } from './js/volHorseRaceEngine.js';   // 8-model σ-forecast horse race per instrument (QLIKE/MZ), does HAR's gold win generalise
 import { scanConfirmedSignals as _scanConfirmedSignals, mergeLog as _mergeLog, forwardStats as _forwardStats } from './js/forwardTrackEngine.js';   // live post-research track record of the confirmed fade
 import { parseCalendarCsv as _parseCalendarCsv, pairCurrencies as _calPairCurrencies } from './js/newsCalendar.js';   // economic-calendar parser
-import { wallReachability as _oiWallReach, firstTouchRace as _oiFirstTouch, visitDensity as _oiVisitDensity, calibForHorizon as _oiCalibFor } from './js/oiReachability.js';   // calibrated P(touch) per OI wall
+import { wallReachability as _oiWallReach, firstTouchRace as _oiFirstTouch, visitDensity as _oiVisitDensity, calibForHorizon as _oiCalibFor, reachLabel as _oiReachLabel } from './js/oiReachability.js';   // calibrated P(touch) per OI wall
 import { buildIntradayContext as _fpBuildCtx, intradayCone as _fpCone, intradayTally as _fpTally, intradayRealizedZ as _fpRealZ, intradayReachability as _fpReach, reachabilityCalibration as _fpReachCalib, intradaySamplePaths as _fpPaths, dayRangeStatus as _fpDayRange, buildForecastContext as _fpBuildDaily, coneFromContext as _fpConeDaily, calibrationTally as _fpTallyDaily } from './js/forecastPathCore.js';   // forecast-path summary + reachability (cone claims API) + daily trend-direction (driftSource:'trend')
 import { makeClaim as _cfMakeClaim, shouldRecord as _cfShouldRecord, resolveClaims as _cfResolve, pruneStale as _cfPrune, summarizeForward as _cfSummarize } from './js/coneForwardTrack.js';   // cone forward-track (live claims vs outcomes)
 import { detectSurprise as _saDetect, shouldFire as _saShouldFire, recordFired as _saRecordFired, SURPRISE_DEFAULTS as _SA_DEFAULTS } from './js/surpriseAlertCore.js';   // cone surprise-alert (context ping, not a signal)
@@ -186,6 +199,34 @@ const REFRESH_LEVELS_MS  = parseInt(process.env.REFRESH_LEVELS_MS  || String(30 
 const HMM5M_REFRESH_MS        = parseInt(process.env.HMM5M_REFRESH_MS   || String(30 * 1000)); // 30s — V2 bot polls at 30s cadence
 const MACRO_REFRESH_MS        = parseInt(process.env.MACRO_REFRESH_MS    || String(6 * 60 * 60 * 1000)); // 6h — FRED data updates once daily
 const HMM5M_ALERT_COOLDOWN_MS = 15 * 60 * 1000; // min gap between regime-change Telegram alerts per pair
+
+// ── Bounded TTL caches ───────────────────────────────────────────────────────
+// Most caches here check `Date.now() - hit.ts < TTL` on READ but never delete,
+// so a stale entry is ignored yet never freed. That is fine for caches keyed by
+// instrument/pair (key space = the instrument list), but several are keyed by
+// user-supplied query params — `tb_${lookback}_${rebalDays}_${targetVol}_${costBps}`
+// has two floats in it — so the key space is bounded only by what someone types
+// into a URL, and each value holds a full backtest result. In a process that
+// lives as long as this one, that grows monotonically.
+//
+// `capMap` bounds them. Eviction CANNOT change a response: every one of these
+// caches is read as `hit ? return hit.data : recompute`, so an evicted key just
+// takes the miss branch and recomputes the identical value. The two branches are
+// already required to agree — that is what makes it a cache rather than state.
+// The only observable effect is recompute frequency.
+//
+// Caps are set well above any plausible single-session working set, so in normal
+// use nothing is ever evicted. Map iteration is insertion-ordered ⇒ FIFO.
+// This generalises the pattern already used for `_vmChartCache` and
+// `m1CandleCache` (via M1_CACHE_MAX).
+//
+// NOT for dedupe Sets (`_tdeShadowSeen`, `_tdePosShadowSeen`) — those are
+// double-book guards, not caches, and evicting a live key is a real defect.
+function capMap(map, max) {
+  while (map.size > max) map.delete(map.keys().next().value);
+}
+const CACHE_MAX_PARAM  = 200;   // caches keyed by query params (floats ⇒ unbounded key space)
+const CACHE_MAX_SERIES = 300;   // _m5SrvCache: 4 endpoints share it, date-range keys
 
 // ── Site login gate ──────────────────────────────────────────────────────────
 // Two independent password zones: 'main' (dashboard + cog/ + everything else)
@@ -471,6 +512,8 @@ const DEFAULT_CFG = {
   pairCooldownMin: 240, // minutes before any alert on the same pair (4 h default)
   onlyAligned: false,
   vuManChu:    'info',  // 'off' | 'info' (show in message only) | 'filter' (affect grade)
+  vuManChuChart: true,  // attach the rendered WaveTrend pane as a photo after each alert
+                        // (ignored when vuManChu is 'off' — see sendVumanchuChart)
   regimeChangeAlerts: true, // send Telegram when live 1m HMM regime changes
 };
 
@@ -1387,6 +1430,45 @@ async function sendTelegram(token, chatId, text) {
   } catch { return false; }
 }
 
+// sendPhoto sibling of sendTelegram — multipart, using Node 18+'s built-in
+// FormData/Blob (no dependency). NOTE the caption cap: Telegram allows 1024
+// characters on a photo caption vs 4096 on a message, which is why the bots keep
+// sending their full text alert and attach the chart as a SEPARATE photo rather
+// than folding the message into a caption — `formatAlert` output routinely
+// exceeds 1024 once the plain-English decoder block is appended.
+async function sendTelegramPhoto(token, chatId, png, caption = '') {
+  try {
+    const fd = new FormData();
+    fd.append('chat_id', String(chatId));
+    if (caption) { fd.append('caption', caption.slice(0, 1024)); fd.append('parse_mode', 'HTML'); }
+    fd.append('photo', new Blob([png], { type: 'image/png' }), 'vumanchu.png');
+    const r = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
+      method: 'POST', body: fd, signal: AbortSignal.timeout(20_000),
+    });
+    const j = await r.json();
+    if (j.ok !== true) console.error('[TG PHOTO]', j.description ?? 'failed');
+    return j.ok === true;
+  } catch (e) { console.error('[TG PHOTO]', e.message); return false; }
+}
+
+// Render + send the VuManChu pane for a pair, from the SAME M5 bars the alert
+// text read. Silent no-op when history is short or the chart is switched off, so
+// it can never block or break the text alert it accompanies.
+// Enable/disable with cfg.vuManChuChart (default ON whenever vuManChu !== 'off').
+async function sendVumanchuChart(sym, extraCaption = '') {
+  try {
+    if (!state.tg?.token || !state.tg?.chatId) return false;
+    const vmMode = state.cfg?.vuManChu ?? 'info';
+    if (vmMode === 'off' || state.cfg?.vuManChuChart === false) return false;
+    const bars = vumanchuM5Bars(sym);
+    if (!bars || bars.length < VM_MIN_BARS) return false;
+    const opts = { title: sym, subtitle: `M5 · ${Math.min(90, bars.length)} bars`, displayBars: 90, width: 1100, height: 400 };
+    const png = renderVumanchuPNG(bars, opts);
+    const caption = [vumanchuCaption(bars, opts), extraCaption].filter(Boolean).join('\n');
+    return await sendTelegramPhoto(state.tg.token, state.tg.chatId, png, caption);
+  } catch (e) { console.error('[VM CHART]', e.message); return false; }
+}
+
 function _gradeColor(grade) {
   return grade === 'A+' ? '#22c55e' : grade === 'A' ? '#4ade80' : grade === 'B' ? '#f59e0b' : grade === 'C' ? '#94a3b8' : '#ef4444';
 }
@@ -1447,6 +1529,25 @@ function computeGrade(entry, hmmData, swing30m = null) {
                 :                                       'CAUTION';
 
   return { grade, verdict, reasons: reasons.slice(0, 3), warnings: warnings.slice(0, 2) };
+}
+
+// The M5 series every VuManChu read in the monitor is taken from: the cached M1
+// monitor bars (`fetchHMMBars` — OANDA's raw STRING OHLC, hence the parseFloat)
+// resampled ×5. Extracted so the alert TEXT and the alert CHART are provably the
+// same bars; two copies of this prep is exactly how a picture starts disagreeing
+// with the caption beside it. Returns null when there isn't enough history.
+function vumanchuM5Bars(sym) {
+  const m1Bars = state.hmm5mBars?.[sym];
+  if (!m1Bars || m1Bars.length < 160) return null;
+  const parsedBars = m1Bars.map(b => ({
+    open:   parseFloat(b.open  ?? b.mid?.o ?? b.o ?? b.close ?? b.mid?.c ?? b.c),
+    high:   parseFloat(b.high  ?? b.mid?.h ?? b.h ?? b.close ?? b.mid?.c ?? b.c),
+    low:    parseFloat(b.low   ?? b.mid?.l ?? b.l ?? b.close ?? b.mid?.c ?? b.c),
+    close:  parseFloat(b.close ?? b.mid?.c ?? b.c),
+    volume: parseFloat(b.volume ?? b.vol ?? 0),
+  }));
+  const m5Bars = resampleBars(parsedBars, 5);
+  return m5Bars.length >= 31 ? m5Bars : null;
 }
 
 function formatAlert(sym, entry, price, distPips) {
@@ -1552,17 +1653,9 @@ function formatAlert(sym, entry, price, distPips) {
   let vmExplain = null;
   if (vmMode !== 'off') {
     try {
-      const m1Bars = state.hmm5mBars?.[sym];
-      if (m1Bars && m1Bars.length >= 160) {
-        const parsedBars = m1Bars.map(b => ({
-          open:   parseFloat(b.open  ?? b.mid?.o ?? b.o ?? b.close ?? b.mid?.c ?? b.c),
-          high:   parseFloat(b.high  ?? b.mid?.h ?? b.h ?? b.close ?? b.mid?.c ?? b.c),
-          low:    parseFloat(b.low   ?? b.mid?.l ?? b.l ?? b.close ?? b.mid?.c ?? b.c),
-          close:  parseFloat(b.close ?? b.mid?.c ?? b.c),
-          volume: parseFloat(b.volume ?? b.vol ?? 0),
-        }));
-        const m5Bars = resampleBars(parsedBars, 5);
-        if (m5Bars.length >= 31) {
+      const m5Bars = vumanchuM5Bars(sym);
+      if (m5Bars) {
+        {
           const vm = assessEntry(m5Bars, entry.direction);
 
           if (vmMode === 'filter' && vm.signal === 'oppose') {
@@ -1833,6 +1926,10 @@ async function monitorTick() {
           const msg  = formatAlert(sym, winner.eff, price, winner.distPips);
           const sent = await sendTelegram(state.tg.token, state.tg.chatId, msg);
 
+          // The VuManChu structure the message describes in words, as a picture
+          // beside it. Best-effort and awaited only so the two arrive in order.
+          if (sent) await sendVumanchuChart(sym);
+
           if (sent) { state.lastAlert = new Date().toISOString(); state.alertCount++; }
 
           console.log(`[MONITOR] ${sym} ${winner.eff.direction}${winner._polarFlip ? ' [FLIPPED]' : ''} @ ${winner.eff.price.toFixed(digits)} (${winner.distPips}p) — Telegram ${sent ? 'OK' : 'FAILED'}`);
@@ -1892,6 +1989,10 @@ function _forecastKeyForPair(pair) {
 async function _injectServerContext(pair, s) {
   const key = _forecastKeyForPair(pair);
   const fc  = key ? forecastState.latest.instruments[key] : null;
+
+  // Macro deltas (what moved 1d/5d/20d) — shared with the morning brief so the
+  // per-pair read can anchor on shifts ("10Y +6bps today"), not just levels.
+  if (!s.macroChanges) { try { const mc = await _loadMacroChanges(); if (mc?.text) s.macroChanges = mc.text; } catch { /* prompt tolerates absence */ } }
 
   if (fc && !s.volCone) {
     s.volCone = {
@@ -2115,6 +2216,9 @@ AUD/JPY carry: ${s.audjpy ?? 'N/A'}  (prev: ${s.audjpyPrev ?? 'N/A'})
 NFCI: ${s.nfci ?? 'N/A'}
 10Y TIPS real yield: ${s.tips ?? 'N/A'}%  |  Breakeven inflation: ${s.bei ?? 'N/A'}%
 Cross-asset risk sentiment: ${s.riskSentiment ?? 'N/A'}
+${s.macroChanges ? `
+WHAT MOVED (macro change vs prior day / 1w / 1m — anchor the read on the SHIFT, e.g. "10Y +6bps today → yields grinding higher, USD-supportive", not just the level):
+${s.macroChanges}` : ''}
 
 Foreign curves: ${s.foreignCurves ?? 'N/A'}
 
@@ -2534,6 +2638,28 @@ const _FED_CHAIR_NAMES = /\b(?:(?:Federal Reserve|Fed)\s+Chair(?:man|woman)?\s+|
 const _redactFedChairName = s => s.replace(_FED_CHAIR_NAMES, 'the Fed Chair');
 
 const _MORNING_BRIEF_KV = 'morning_brief_v1';
+
+// Day-over-day / 1w / 1m change on the tracked macro series, so the briefs can
+// SAY what moved ("10Y +6bps today → yields grinding higher"), not just the
+// level. Reads the fredhistory_series_<key> KV (already cached, ascending
+// [{date,value}]) and runs the pure macroChange brick. Cached 30 min.
+let _macroChangeCache = { at: 0, data: null };
+async function _loadMacroChanges() {
+  if (_macroChangeCache.data && Date.now() - _macroChangeCache.at < 30 * 60_000) return _macroChangeCache.data;
+  const keys = Object.keys(_MACRO_CHANGE_SPEC);
+  const hist = {};
+  await Promise.all(keys.map(async k => {
+    try { const raw = await kv.get(`fredhistory_series_${k}`); if (raw) hist[k] = JSON.parse(raw); } catch { /* series skipped */ }
+  }));
+  const data = _buildMacroChanges(hist, _MACRO_CHANGE_SPEC);
+  _macroChangeCache = { at: Date.now(), data };
+  return data;
+}
+app.get('/api/macro-changes', async (_req, res) => {
+  try { const d = await _loadMacroChanges(); res.json({ ok: true, rows: d.rows, windows: d.windows }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 let _morningBriefRunning = false;
 async function _buildMorningBrief() {
   const key = process.env.ANT_KEY;
@@ -2576,6 +2702,7 @@ async function _buildMorningBrief() {
   // Today's scheduled economic calendar (central-bank decisions, CPI/NFP, etc.).
   // Without this the brief cannot mention FOMC/ECB/BoE days — the prompt forbids
   // inventing events, so a tier-1 event that isn't fed here is silently omitted.
+  const macroChanges = await _loadMacroChanges().catch(() => null);
   const events = await _fetchTodayEvents().catch(() => []);
   const bigEvents = events
     .filter(e => ['high', 'medium'].includes((e.impact ?? '').toLowerCase()) && e.ms >= Date.now() - 60 * 60000)
@@ -2595,6 +2722,7 @@ NEVER name a specific central-bank official (Fed Chair, FOMC governor, ECB/BoE/B
 === MACRO SNAPSHOT (${fc?.session_label ?? 'today'}) ===
 ${macro}
 ${fc?.meta?.news_flag ? `Scheduled risk event today: ${fc.meta.news_flag}` : ''}
+${macroChanges?.text ? `\n=== WHAT MOVED (change vs prior day / 1w / 1m — USE THIS to say what's shifting, not just the level) ===\n${macroChanges.text}` : ''}
 
 === TODAY'S SCHEDULED ECONOMIC EVENTS ===
 ${bigEvents}
@@ -2605,6 +2733,7 @@ ${heads}
 READABILITY IS THE #1 GOAL — write for a sharp trader who is NOT a rates/vol specialist:
 - Every line must be understandable by a smart non-specialist. The FIRST time you use a desk term (2s10s, OAS, backwardation, EVZ, real yield, breakeven), add a 3-6 word plain gloss right there (e.g. "the 2s10s curve — long rates minus short — at +36bp").
 - Lead the headline and theme with the plain-English "so what" (what it means / what to do), not the metric. Speak numbers like a person ("the 10-year near 4.5%", "VIX easing to 15"), not to spurious decimals.
+- USE THE "WHAT MOVED" DELTAS. Anchor the read on what's actually SHIFTING, not just today's levels: e.g. "the 10-year is up 6bps today (and +12 on the week) — yields grinding higher, dollar-supportive", "credit spreads tightening 5bps this week — no stress signal". A level with no direction is half the story; say the move and what it implies.
 - Be honest about weight: rates/curve, credit spreads and the vol-risk-premium are the evidenced macro reads — lean on them. Don't state technicals or positioning as mechanism-of-fact, and don't manufacture a strong directional call from a quiet, data-light tape — say when it's a lean.
 - NO FOLKLORE-AS-FACT. Options positioning, implied-vol percentiles (EVZ/GVZ/VIX rank), gamma, technical levels and S/R do NOT reliably PREDICT what comes next — they describe where the market is positioned NOW. NEVER claim one "historically precedes", "reliably leads", "tends to precede", or "signals an incoming" move, and never say "the tape wants to" or state "smart money is doing X" as fact. Elevated EVZ means options are priced for a bigger move than realized — say exactly that ("options are braced for movement the tape hasn't delivered"), not that it foreshadows one. Describe positioning; hedge the inference.
 
@@ -4630,10 +4759,856 @@ app.get('/api/oanda_ohlc5m', async (req, res) => {
       .reverse();
     const result = { values, meta: { symbol, source: 'oanda', granularity: gran, partial: wantPartial, at: Date.now() } };
     _m5SrvCache.set(cacheKey, { data: result, ts: Date.now() });
+    capMap(_m5SrvCache, CACHE_MAX_SERIES);
     res.json(result);
   } catch (err) {
     console.error('[oanda_ohlc5m]', err.message);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ── VuManChu pane as an image ─────────────────────────────────────────────────
+// GET /api/vumanchu/chart?symbol=EUR/USD&tf=M15[&bars=160][&format=png|svg|json]
+//   [&w=1200&h=440][&vwap=wtdiff|cumvwap|none][&mf=0|1][&hidden=1][&tz=0][&title=]
+// Renders the WaveTrend pane (WT1/WT2 + fill, the yellow VWAP oscillator, and
+// divergence lines on both) via js/vumanchuChart.js. `format=json` returns the
+// reading/slope/divergence list that drives a Telegram caption.
+//
+// Bars come from OANDA in CHRONOLOGICAL order and are deliberately NOT reversed
+// here — unlike /api/oanda_ohlc5m, which flips to newest-first for the dashboard.
+// The chart brick requires oldest-first; feeding it reversed bars mirrors the
+// picture silently. `volume` is carried through (the other route drops it) so
+// vwap=cumvwap has real weights to work with.
+const _VM_GRAN = new Set(['M1', 'M5', 'M15', 'M30', 'H1', 'H4', 'D']);
+const _vmChartCache = new Map();
+
+async function _fetchVumanchuBars(symbol, gran, count) {
+  const instrument = _liqGateOandaSym(symbol.replace('/', '_'));
+  const url = `${_oandaBaseMe()}/v3/instruments/${encodeURIComponent(instrument)}/candles`
+            + `?granularity=${gran}&count=${Math.min(4900, count)}&price=M`;
+  const r = await fetch(url, {
+    headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
+    signal:  AbortSignal.timeout(20_000),
+  });
+  if (!r.ok) throw new Error(`OANDA ${r.status}: ${(await r.text().catch(() => 'err')).slice(0, 160)}`);
+  const d = await r.json();
+  if (!d.candles) throw new Error('No candles returned');
+  return d.candles.filter(c => c.mid && c.complete !== false).map(c => ({
+    open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c,
+    volume: c.volume ?? 1,
+    t: Math.floor(new Date(c.time).getTime() / 1000),
+  }));
+}
+
+app.get('/api/vumanchu/chart', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured' });
+  const symbol = req.query.symbol;
+  if (!symbol) return res.status(400).json({ error: 'symbol param required' });
+  const gran = String(req.query.tf || req.query.granularity || 'M15').toUpperCase();
+  if (!_VM_GRAN.has(gran)) return res.status(400).json({ error: `Unsupported tf: ${gran} (${[..._VM_GRAN].join('/')})` });
+  const format = String(req.query.format || 'png').toLowerCase();
+  if (!['png', 'svg', 'json'].includes(format)) return res.status(400).json({ error: 'format must be png|svg|json' });
+
+  const clamp = (v, lo, hi, dflt) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n))) : dflt; };
+  const displayBars = clamp(req.query.bars, VM_MIN_BARS, 1000, 160);
+  const opts = {
+    displayBars,
+    width:  clamp(req.query.w, 320, 2400, 1200),
+    height: clamp(req.query.h, 160, 1200, 440),
+    tzOffsetMin: clamp(req.query.tz, -840, 840, 0),
+    showHidden: req.query.hidden === '1' || req.query.hidden === 'true',
+    vwapSeries: ['wtdiff', 'cumvwap', 'none'].includes(String(req.query.vwap)) ? String(req.query.vwap) : 'wtdiff',
+    // Money Flow is ON by default. &mf=0 hides it. NOTE for FX: `volume` here is
+    // OANDA's TICK COUNT, so this is an activity-weighted candle-direction read,
+    // not money changing hands — see js/vumanchuChart.js.
+    showMoneyFlow: !(req.query.mf === '0' || req.query.mf === 'false'),
+    title: String(req.query.title || symbol).slice(0, 40),
+    subtitle: `${gran} · ${displayBars} bars`,
+  };
+  // &proj=1 overlays the forward WaveTrend fan: percentiles of where WT1 went
+  // the last N times it looked like this. Off by default so every existing
+  // caller (Telegram alerts included) is untouched.
+  const wantProj = req.query.proj === '1' || req.query.proj === 'true';
+
+  // Warm-up headroom: the WT EMAs plus room for divergence pivots before the
+  // visible window, so the drawn pane never shows the seeding transient.
+  const fetchCount = Math.min(4900, displayBars + 240);
+  const cacheKey = `vm_${format}_${symbol}_${gran}_${JSON.stringify(opts)}`;
+  const ttl = gran === 'D' ? 15 * 60_000 : gran.startsWith('H') ? 5 * 60_000 : 45_000;
+  const hit = _vmChartCache.get(cacheKey);
+  if (hit && Date.now() - hit.ts < ttl) {
+    if (format === 'json') return res.json(hit.data);
+    res.type(format === 'svg' ? 'image/svg+xml' : 'image/png');
+    res.set('Cache-Control', `public, max-age=${Math.floor(ttl / 1000)}`);
+    return res.send(hit.data);
+  }
+
+  try {
+    const bars = await _fetchVumanchuBars(symbol, gran, fetchCount);
+    if (bars.length < VM_MIN_BARS) {
+      return res.status(422).json({ error: `Only ${bars.length} bars available at ${gran}; need ≥${VM_MIN_BARS}` });
+    }
+    if (wantProj) {
+      // The fan was measured on a 5m grid, so it is only honest on a pane drawn
+      // at that granularity — the state vocabulary means something different at
+      // M1 or H1. Silently attaching it elsewhere would misrepresent it.
+      const instKey = _vmInstKey(symbol);
+      const t = _vmLoadProj();
+      if (!t) {
+        console.warn('[vumanchu/chart] proj=1 but no projection table on disk');
+      } else if (gran !== `M${t.event_tf_min ?? 5}`) {
+        console.warn(`[vumanchu/chart] proj=1 ignored: fan was measured on M${t.event_tf_min}, pane is ${gran}`);
+      }
+      if (gran === `M${t?.event_tf_min ?? 5}`) {
+        const st = computeVumanchuState(bars, { timeframes: [5], dropForming: true });
+        const code = st.per[5]?.code;
+        if (code) {
+          opts.projection = _vmProjectionFor(instKey, code);
+          if (!opts.projection) {
+            console.warn(`[vumanchu/chart] proj=1: no fan for ${instKey}/${code} `
+              + `(table has ${Object.keys(t.instruments || {}).join(',') || 'nothing'})`);
+          }
+          if (opts.projection) {
+            // Badge the read from the frozen table alongside the fan. NONE is
+            // shown as plainly as FADE — an overlay that only spoke when it had
+            // an opinion would make the engine look far more decisive than the
+            // ~2/3-of-bars-say-nothing measurement says it is.
+            const full = computeVumanchuState(bars, { timeframes: [1, 5, 15], dropForming: true });
+            const tbl = _vmLoadTable();
+            if (tbl) {
+              const hit = lookupVumanchuState(full, tbl, { instrument: instKey, horizon: 60 });
+              const v = interpretVumanchuState(full, hit);
+              opts.projection.label = hit?.matched
+                ? `${code} · ${v.read} ${hit.deltaPP > 0 ? '+' : ''}${hit.deltaPP}pp · n=${hit.n.toLocaleString()}`
+                : `${code} · NO READ · n=${opts.projection.n.toLocaleString()}`;
+            }
+          }
+        }
+      }
+    }
+    const data = format === 'json' ? { symbol, tf: gran, ...vumanchuChartData(bars, opts), caption: vumanchuCaption(bars, opts) }
+               : format === 'svg' ? renderVumanchuSVG(bars, opts)
+               : renderVumanchuPNG(bars, opts);
+    _vmChartCache.set(cacheKey, { data, ts: Date.now() });
+    if (_vmChartCache.size > 120) _vmChartCache.delete(_vmChartCache.keys().next().value);
+    if (format === 'json') return res.json(data);
+    res.type(format === 'svg' ? 'image/svg+xml' : 'image/png');
+    res.set('Cache-Control', `public, max-age=${Math.floor(ttl / 1000)}`);
+    return res.send(data);
+  } catch (err) {
+    console.error('[vumanchu/chart]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// POST /api/vumanchu/chart/send — push the pane to Telegram on demand.
+// Body: { symbol, tf?, bars?, caption?, token?, chatId? } (creds default to the
+// monitor's configured bot). Used by the dashboard's "Send to Telegram" button.
+app.post('/api/vumanchu/chart/send', express.json({ limit: '4kb' }), async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured' });
+  const { symbol, tf = 'M15', bars: nBars = 160, caption = '', token, chatId } = req.body ?? {};
+  const tok = token || state.tg?.token, cid = chatId || state.tg?.chatId;
+  if (!symbol) return res.status(400).json({ error: 'symbol required' });
+  if (!tok || !cid) return res.status(400).json({ error: 'No Telegram credentials configured' });
+  const gran = String(tf).toUpperCase();
+  if (!_VM_GRAN.has(gran)) return res.status(400).json({ error: `Unsupported tf: ${gran}` });
+  try {
+    const displayBars = Math.min(1000, Math.max(VM_MIN_BARS, Number(nBars) || 160));
+    const bars = await _fetchVumanchuBars(symbol, gran, Math.min(4900, displayBars + 240));
+    if (bars.length < VM_MIN_BARS) return res.status(422).json({ error: `Only ${bars.length} bars at ${gran}` });
+    const opts = { displayBars, title: symbol, subtitle: `${gran} · ${displayBars} bars`, width: 1100, height: 400 };
+    const png = renderVumanchuPNG(bars, opts);
+    const cap = [vumanchuCaption(bars, opts), String(caption).slice(0, 600)].filter(Boolean).join('\n');
+    const ok = await sendTelegramPhoto(tok, cid, png, cap);
+    res.json({ ok, bytes: png.length, caption: cap });
+  } catch (err) {
+    console.error('[vumanchu/chart/send]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// ── VuManChu MTF — two timeframes on one pane ─────────────────────────────────
+// GET /api/vumanchu/mtf?symbol=EUR/USD&fast=M5&slow=M30[&bars=200]
+//   [&agree=level|direction|zone][&format=png|svg|json][&w=&h=&tz=]
+//
+// The x-axis is the FAST timeframe; the slow wave is step-held onto it CAUSALLY
+// (each fast bar shows the last CLOSED slow bar), so the picture never shows a
+// slow reading before it existed. See js/vumanchuMtf.js for why `level` is the
+// default rather than the more intuitive `direction`.
+//
+// Sizing is the real constraint. The slow series needs its OWN warm-up, so it
+// must reach back over the whole fast window PLUS that warm-up — hence the
+// span-based count below rather than "same number of bars".
+const _MTF_WARM_SLOW = 220;   // slow bars of warm-up beyond the visible span
+app.get('/api/vumanchu/mtf', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured' });
+  const symbol = req.query.symbol;
+  if (!symbol) return res.status(400).json({ error: 'symbol param required' });
+  const fastTf = String(req.query.fast || 'M5').toUpperCase();
+  const slowTf = String(req.query.slow || 'M30').toUpperCase();
+  for (const [k, v] of [['fast', fastTf], ['slow', slowTf]]) {
+    if (!_VM_GRAN.has(v)) return res.status(400).json({ error: `Unsupported ${k} tf: ${v} (${[..._VM_GRAN].join('/')})` });
+  }
+  const fastSec = VM_TF_SECONDS[fastTf], slowSec = VM_TF_SECONDS[slowTf];
+  if (!(slowSec > fastSec)) {
+    return res.status(400).json({ error: `slow (${slowTf}) must be a COARSER timeframe than fast (${fastTf})` });
+  }
+  const format = String(req.query.format || 'png').toLowerCase();
+  if (!['png', 'svg', 'json'].includes(format)) return res.status(400).json({ error: 'format must be png|svg|json' });
+  const agree = String(req.query.agree || 'level');
+  if (!VM_AGREE_MODES.includes(agree)) return res.status(400).json({ error: `agree must be ${VM_AGREE_MODES.join('|')}` });
+
+  const clamp = (v, lo, hi, dflt) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n))) : dflt; };
+  const displayBars = clamp(req.query.bars, VM_MIN_BARS, 1000, 200);
+  const opts = {
+    displayBars, agreeMode: agree,
+    width:  clamp(req.query.w, 320, 2400, 1200),
+    height: clamp(req.query.h, 200, 1200, 460),
+    tzOffsetMin: clamp(req.query.tz, -840, 840, 0),
+    fastSec, slowSec, fastLabel: fastTf, slowLabel: slowTf,
+    title: String(req.query.title || symbol).slice(0, 40),
+  };
+
+  const fastCount = Math.min(4900, displayBars + 240);
+  // Slow bars needed to span the fast window, plus the slow series' own warm-up.
+  const slowCount = Math.min(4900, Math.ceil(fastCount * fastSec / slowSec) + _MTF_WARM_SLOW);
+  const cacheKey = `mtf_${format}_${symbol}_${fastTf}_${slowTf}_${JSON.stringify(opts)}`;
+  const ttl = fastSec >= 3600 ? 5 * 60_000 : 45_000;
+  const hit = _vmChartCache.get(cacheKey);
+  if (hit && Date.now() - hit.ts < ttl) {
+    if (format === 'json') return res.json(hit.data);
+    res.type(format === 'svg' ? 'image/svg+xml' : 'image/png');
+    res.set('Cache-Control', `public, max-age=${Math.floor(ttl / 1000)}`);
+    return res.send(hit.data);
+  }
+
+  try {
+    const [fastBars, slowBars] = await Promise.all([
+      _fetchVumanchuBars(symbol, fastTf, fastCount),
+      _fetchVumanchuBars(symbol, slowTf, slowCount),
+    ]);
+    for (const [k, b] of [[fastTf, fastBars], [slowTf, slowBars]]) {
+      if (b.length < VM_MIN_BARS) return res.status(422).json({ error: `Only ${b.length} ${k} bars available; need ≥${VM_MIN_BARS}` });
+    }
+    const data = format === 'json'
+      ? { symbol, ...vumanchuMtfData(fastBars, slowBars, opts), caption: vumanchuMtfCaption(fastBars, slowBars, opts) }
+      : format === 'svg' ? renderVumanchuMtfSVG(fastBars, slowBars, opts)
+      : renderVumanchuMtfPNG(fastBars, slowBars, opts);
+    _vmChartCache.set(cacheKey, { data, ts: Date.now() });
+    if (_vmChartCache.size > 120) _vmChartCache.delete(_vmChartCache.keys().next().value);
+    if (format === 'json') return res.json(data);
+    res.type(format === 'svg' ? 'image/svg+xml' : 'image/png');
+    res.set('Cache-Control', `public, max-age=${Math.floor(ttl / 1000)}`);
+    return res.send(data);
+  } catch (err) {
+    console.error('[vumanchu/mtf]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// POST /api/vumanchu/mtf/send — push the MTF pane to Telegram.
+app.post('/api/vumanchu/mtf/send', express.json({ limit: '4kb' }), async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured' });
+  const { symbol, fast = 'M5', slow = 'M30', bars: nBars = 200, agree = 'level', caption = '', token, chatId } = req.body ?? {};
+  const tok = token || state.tg?.token, cid = chatId || state.tg?.chatId;
+  if (!symbol) return res.status(400).json({ error: 'symbol required' });
+  if (!tok || !cid) return res.status(400).json({ error: 'No Telegram credentials configured' });
+  const fastTf = String(fast).toUpperCase(), slowTf = String(slow).toUpperCase();
+  if (!_VM_GRAN.has(fastTf) || !_VM_GRAN.has(slowTf)) return res.status(400).json({ error: 'Unsupported timeframe' });
+  const fastSec = VM_TF_SECONDS[fastTf], slowSec = VM_TF_SECONDS[slowTf];
+  if (!(slowSec > fastSec)) return res.status(400).json({ error: `slow (${slowTf}) must be coarser than fast (${fastTf})` });
+  if (!VM_AGREE_MODES.includes(String(agree))) return res.status(400).json({ error: `agree must be ${VM_AGREE_MODES.join('|')}` });
+  try {
+    const displayBars = Math.min(1000, Math.max(VM_MIN_BARS, Number(nBars) || 200));
+    const fastCount = Math.min(4900, displayBars + 240);
+    const slowCount = Math.min(4900, Math.ceil(fastCount * fastSec / slowSec) + _MTF_WARM_SLOW);
+    const [fastBars, slowBars] = await Promise.all([
+      _fetchVumanchuBars(symbol, fastTf, fastCount),
+      _fetchVumanchuBars(symbol, slowTf, slowCount),
+    ]);
+    if (fastBars.length < VM_MIN_BARS || slowBars.length < VM_MIN_BARS) {
+      return res.status(422).json({ error: `Not enough bars (${fastBars.length} ${fastTf}, ${slowBars.length} ${slowTf})` });
+    }
+    const opts = { displayBars, agreeMode: String(agree), fastSec, slowSec, fastLabel: fastTf, slowLabel: slowTf, title: symbol, width: 1100, height: 420 };
+    const png = renderVumanchuMtfPNG(fastBars, slowBars, opts);
+    const cap = [vumanchuMtfCaption(fastBars, slowBars, opts), String(caption).slice(0, 500)].filter(Boolean).join('\n');
+    const ok = await sendTelegramPhoto(tok, cid, png, cap);
+    res.json({ ok, bytes: png.length, caption: cap });
+  } catch (err) {
+    console.error('[vumanchu/mtf/send]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// ── MTF Stack — N timeframes of one directional series ────────────────────────
+// GET /api/vumanchu/mtf-stack?symbol=EUR/USD&tfs=M1,M3,M5,M15
+//   [&series=vwap_roll_dist|vwap_roll_slope|vwap_cum_dist|vwap_cum_slope|wt_hist|wt_level]
+//   [&bars=240][&window=20][&format=png|svg|json][&w=&h=&tz=]
+//
+// Timeframes OANDA does not serve natively (M2/M3/M4/M10 — its enum jumps M1, M2,
+// M4, M5, M10 and has no M3) are RESAMPLED from M1 via the shared `resampleBars`,
+// so "composite 3m" works. Native ones are fetched directly. M1 is fetched once and
+// reused for every derived timeframe.
+//
+// NOTE the degeneracy warning in js/mtfStack.js: a cumulative/session VWAP is
+// near timeframe-invariant, so the `vwap_cum_*` series return ~100% agreement as
+// arithmetic. They are exposed anyway (so the effect is inspectable) and both the
+// JSON and the rendered image say so.
+const _STACK_NATIVE = new Set(['M1', 'M5', 'M15', 'M30', 'H1', 'H4', 'D']);
+const _STACK_SERIES = Object.keys(MTF_SERIES_SOURCES);
+
+function _parseStackTfs(raw) {
+  const tfs = String(raw || 'M1,M5,M15').toUpperCase().split(',').map(s => s.trim()).filter(Boolean);
+  if (tfs.length < 2) throw new Error('tfs needs at least 2 timeframes, e.g. tfs=M1,M5,M15');
+  if (tfs.length > MTF_MAX_TFS) throw new Error(`tfs accepts at most ${MTF_MAX_TFS} timeframes`);
+  const seen = new Set();
+  for (const tf of tfs) {
+    const sec = VM_TF_SECONDS[tf];
+    if (!sec) throw new Error(`Unsupported timeframe: ${tf} (${Object.keys(VM_TF_SECONDS).join('/')})`);
+    if (seen.has(sec)) throw new Error(`Duplicate timeframe: ${tf}`);
+    seen.add(sec);
+    if (!_STACK_NATIVE.has(tf) && sec % 60 !== 0) throw new Error(`${tf} cannot be derived from M1`);
+  }
+  return tfs.sort((a, b) => VM_TF_SECONDS[a] - VM_TF_SECONDS[b]);
+}
+
+// Fetch every timeframe, resampling the non-native ones from a single M1 pull.
+async function _fetchStackBars(symbol, tfs, fastDisplayBars) {
+  const fastSec = VM_TF_SECONDS[tfs[0]], slowSec = VM_TF_SECONDS[tfs[tfs.length - 1]];
+  // Span the fast window plus enough of the SLOWEST timeframe to clear its warm-up.
+  const spanSec = (fastDisplayBars + 120) * fastSec + 160 * slowSec;
+  const derived = tfs.filter(tf => !_STACK_NATIVE.has(tf));
+  const needM1 = derived.length > 0 || tfs.includes('M1');
+  const out = {};
+  const m1Count = needM1 ? Math.min(4900, Math.ceil(spanSec / 60)) : 0;
+  const m1Bars = needM1 ? await _fetchVumanchuBars(symbol, 'M1', m1Count) : null;
+  await Promise.all(tfs.map(async tf => {
+    if (tf === 'M1') { out.M1 = m1Bars; return; }
+    if (_STACK_NATIVE.has(tf)) {
+      out[tf] = await _fetchVumanchuBars(symbol, tf, Math.min(4900, Math.ceil(spanSec / VM_TF_SECONDS[tf])));
+      return;
+    }
+    // Derived: aggregate M1 by an integer factor. resampleBars drops the trailing
+    // partial group, so the last bar is always a COMPLETE synthetic candle.
+    const factor = VM_TF_SECONDS[tf] / 60;
+    const agg = resampleBars(m1Bars, factor);
+    // resampleBars carries OHLCV but not the timestamp — restamp from each group's
+    // FIRST M1 bar so the causal alignment has real bar-start times to work with.
+    out[tf] = agg.map((b, i) => ({ ...b, t: m1Bars[i * factor].t }));
+  }));
+  return out;
+}
+
+app.get('/api/vumanchu/mtf-stack', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured' });
+  const symbol = req.query.symbol;
+  if (!symbol) return res.status(400).json({ error: 'symbol param required' });
+  const format = String(req.query.format || 'png').toLowerCase();
+  if (!['png', 'json'].includes(format)) return res.status(400).json({ error: 'format must be png|json' });
+  const series = String(req.query.series || 'vwap_roll_dist');
+  if (!_STACK_SERIES.includes(series)) return res.status(400).json({ error: `series must be ${_STACK_SERIES.join('|')}` });
+  let tfs;
+  try { tfs = _parseStackTfs(req.query.tfs); } catch (e) { return res.status(400).json({ error: e.message }); }
+
+  const clamp = (v, lo, hi, dflt) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n))) : dflt; };
+  const displayBars = clamp(req.query.bars, 60, 1200, 240);
+  const opts = {
+    source: series, displayBars,
+    seriesOpts: { window: clamp(req.query.window, 3, 200, 20), slopeBars: clamp(req.query.slopeBars, 1, 50, 1) },
+    width: clamp(req.query.w, 320, 2400, 1200),
+    height: clamp(req.query.h, 240, 1400, 520),
+    tzOffsetMin: clamp(req.query.tz, -840, 840, 0),
+    tfSeconds: Object.fromEntries(tfs.map(tf => [tf, VM_TF_SECONDS[tf]])),
+    title: String(req.query.title || symbol).slice(0, 40),
+  };
+
+  const cacheKey = `stack_${format}_${symbol}_${tfs.join('-')}_${JSON.stringify(opts)}`;
+  const ttl = VM_TF_SECONDS[tfs[0]] >= 3600 ? 5 * 60_000 : 45_000;
+  const hit = _vmChartCache.get(cacheKey);
+  if (hit && Date.now() - hit.ts < ttl) {
+    if (format === 'json') return res.json(hit.data);
+    res.type('image/png'); res.set('Cache-Control', `public, max-age=${Math.floor(ttl / 1000)}`);
+    return res.send(hit.data);
+  }
+  try {
+    const barsByTf = await _fetchStackBars(symbol, tfs, displayBars);
+    for (const tf of tfs) {
+      if (!barsByTf[tf] || barsByTf[tf].length < MTF_STACK_MIN_BARS) {
+        return res.status(422).json({ error: `Only ${barsByTf[tf]?.length ?? 0} ${tf} bars available; need ≥${MTF_STACK_MIN_BARS}` });
+      }
+    }
+    const data = format === 'json'
+      ? { symbol, ...mtfStackData(barsByTf, opts), caption: mtfStackCaption(barsByTf, opts) }
+      : renderMtfStackPNG(barsByTf, opts);
+    _vmChartCache.set(cacheKey, { data, ts: Date.now() });
+    if (_vmChartCache.size > 120) _vmChartCache.delete(_vmChartCache.keys().next().value);
+    if (format === 'json') return res.json(data);
+    res.type('image/png'); res.set('Cache-Control', `public, max-age=${Math.floor(ttl / 1000)}`);
+    return res.send(data);
+  } catch (err) {
+    console.error('[vumanchu/mtf-stack]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// ─── VuManChu state + forward-validation logger ──────────────────────────────
+// The live read (`/api/vumanchu/state`) keys into the FROZEN table the offline
+// lab produced (`vumanchuLab/data/vumanchu_state_table.json`). The brain stays
+// where it was measured; this only looks the current state up in it — the same
+// learn-offline / ship-a-file pattern as levelsV2 and the volatility bot.
+//
+// The logger writes every read to `vmlog_<UTC-date>` BEFORE the outcome exists,
+// then resolves it once the horizon has elapsed. That record is the only
+// out-of-sample evidence the VuManChu work will ever have, which is why the key
+// is registered in all three KV persistence gates.
+const _VM_STATE_TABLE_PATH = path.join(__dirname, 'vumanchuLab', 'data', 'vumanchu_state_table.json');
+const _VM_PROJ_PATH = path.join(__dirname, 'vumanchuLab', 'data', 'vumanchu_wt_projection.json');
+const _VM_TRANS_PATH = path.join(__dirname, 'vumanchuLab', 'data', 'vumanchu_transitions.json');
+let _vmTrans = null, _vmTransAt = 0;
+function _vmLoadTrans() {
+  if (_vmTrans && Date.now() - _vmTransAt < 300_000) return _vmTrans;
+  try { _vmTrans = JSON.parse(fs.readFileSync(_VM_TRANS_PATH, 'utf8')); _vmTransAt = Date.now(); }
+  catch { _vmTrans = null; }
+  return _vmTrans;
+}
+let _vmProj = null, _vmProjAt = 0;
+function _vmLoadProj() {
+  if (_vmProj && Date.now() - _vmProjAt < 300_000) return _vmProj;
+  try { _vmProj = JSON.parse(fs.readFileSync(_VM_PROJ_PATH, 'utf8')); _vmProjAt = Date.now(); }
+  catch { _vmProj = null; }
+  return _vmProj;
+}
+
+/** The forward WaveTrend fan for an instrument's CURRENT state, if we have one. */
+function _vmProjectionFor(instKey, code) {
+  const t = _vmLoadProj();
+  const row = t?.instruments?.[instKey]?.[code];
+  if (!row?.steps?.length) return null;
+  return { steps: row.steps, state: code, n: row.n,
+           label: `${code} · n=${row.n.toLocaleString()}` };
+}
+let _vmStateTable = null, _vmStateTableAt = 0;
+
+function _vmLoadTable() {
+  // Re-read at most every 5 min so a regenerated table is picked up without a
+  // redeploy, but a burst of requests does not hammer the disk.
+  if (_vmStateTable && Date.now() - _vmStateTableAt < 300_000) return _vmStateTable;
+  try {
+    _vmStateTable = JSON.parse(fs.readFileSync(_VM_STATE_TABLE_PATH, 'utf8'));
+    _vmStateTableAt = Date.now();
+  } catch (e) {
+    console.warn('[vumanchu/state] table unreadable:', e.message);
+    _vmStateTable = null;
+  }
+  return _vmStateTable;
+}
+
+// Instruments the frozen table actually covers. Reading a pair the table does
+// not contain would silently fall through to "no match" on every bar, so the
+// list is derived from the table rather than hard-coded.
+function _vmTableInstruments() {
+  const t = _vmLoadTable();
+  return t ? Object.keys(t.instruments || {}) : [];
+}
+
+// Map a table instrument key (gold, eurusd, nq) to the OANDA symbol the bar
+// fetcher wants.
+const _VM_OANDA_SYM = {
+  gold: 'XAU/USD', nq: 'NAS100/USD', spx: 'SPX500/USD', dow: 'US30/USD',
+  us30: 'US30/USD', us2000: 'US2000/USD',
+};
+// Symbol -> the key the frozen tables are indexed by. MUST go through the
+// instrument registry: naive string-mangling turns 'XAU/USD' into 'xauusd',
+// while every table is keyed 'gold'. That mismatch fails SILENTLY — a miss just
+// means "no fan" — which is exactly how the overlay shipped drawing nothing.
+function _vmInstKey(symbol) {
+  const raw = String(symbol);
+  for (const form of [raw, raw.replace('/', '_'), raw.replace('_', '/')]) {
+    try { const k = resolveKey(form); if (k) return k; } catch { /* try next */ }
+  }
+  return raw.toLowerCase().replace(/[\/_]/g, '');
+}
+
+function _vmSymbolFor(instKey) {
+  if (_VM_OANDA_SYM[instKey]) return _VM_OANDA_SYM[instKey];
+  const s = String(instKey).toUpperCase();
+  return s.length === 6 ? `${s.slice(0, 3)}/${s.slice(3)}` : s;
+}
+
+/** Per-minute return sd over the last `n` M1 bars — the scale the lab used. */
+function _vmSigma(bars, n = 500) {
+  const c = bars.slice(-n - 1).map(b => b.close);
+  if (c.length < 30) return null;
+  const r = [];
+  for (let i = 1; i < c.length; i++) if (c[i - 1] > 0) r.push(c[i] / c[i - 1] - 1);
+  const m = r.reduce((s, v) => s + v, 0) / r.length;
+  return Math.sqrt(r.reduce((s, v) => s + (v - m) ** 2, 0) / (r.length - 1));
+}
+
+/** Signed return over the prior `mins` minutes, from the M1 tail. */
+function _vmPriorMove(bars, mins) {
+  if (bars.length < mins + 1) return null;
+  const now = bars[bars.length - 1].close;
+  const then = bars[bars.length - 1 - mins].close;
+  return then > 0 ? now / then - 1 : null;
+}
+
+// One M1 pull per instrument per minute, shared by the route and the cron.
+// At 3 instruments a fetch-per-read was free; at 31 the page would make 31
+// sequential OANDA calls (30s+) and the cron would repeat the identical work
+// minutes later. The TTL is deliberately shorter than one M1 bar, so a cached
+// read can never be based on a bar older than the one currently forming.
+const _vmBarCache = new Map();
+async function _vmBars(instKey) {
+  const hit = _vmBarCache.get(instKey);
+  if (hit && Date.now() - hit.ts < 55_000) return hit.bars;
+  const bars = await _fetchVumanchuBars(_vmSymbolFor(instKey), 'M1', 1400);
+  _vmBarCache.set(instKey, { bars, ts: Date.now() });
+  if (_vmBarCache.size > 60) _vmBarCache.delete(_vmBarCache.keys().next().value);
+  return bars;
+}
+
+async function _vmReadState(instKey, horizon = 60) {
+  const table = _vmLoadTable();
+  if (!table) throw new Error('state table not built — run vumanchuLab/export_table.py');
+  const bars = await _vmBars(instKey);
+  if (bars.length < 400) throw new Error(`only ${bars.length} M1 bars for ${instKey}`);
+  const state = computeVumanchuState(bars, { timeframes: [1, 5, 15] });
+  const hit = lookupVumanchuState(state, table, { instrument: instKey, horizon });
+  const verdict = interpretVumanchuState(state, hit);
+  const last = bars[bars.length - 1];
+  return {
+    instrument: instKey, horizon,
+    slotTs: last.t, price: last.close,
+    sigma: _vmSigma(bars), priorMove: _vmPriorMove(bars, horizon),
+    state, hit, verdict,
+  };
+}
+
+// GET /api/vumanchu/state?symbol=gold[&horizon=60]
+// Omit `symbol` to read every instrument the frozen table covers.
+app.get('/api/vumanchu/state', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured' });
+  const table = _vmLoadTable();
+  if (!table) return res.status(503).json({ error: 'state table not built' });
+  const horizon = [60, 240].includes(+req.query.horizon) ? +req.query.horizon : 60;
+  const known = _vmTableInstruments();
+  const want = req.query.symbol
+    ? [String(req.query.symbol).toLowerCase().replace('/', '')]
+    : known;
+  const bad = want.filter(i => !known.includes(i));
+  if (bad.length) return res.status(400).json({ error: `no table rows for ${bad.join(',')}`, known });
+
+  const out = [];
+  // Batched concurrency: 31 sequential fetches took 30s+ and would time out a
+  // page load. Six at a time is a few seconds and stays well inside OANDA's
+  // rate limit. Failures are per-instrument so one bad symbol cannot blank the
+  // whole board.
+  const BATCH = 6;
+  for (let i = 0; i < want.length; i += BATCH) {
+    await Promise.all(want.slice(i, i + BATCH).map(async inst => {
+    try {
+      const r = await _vmReadState(inst, horizon);
+      out.push({
+        instrument: inst, horizon, at: r.slotTs, price: r.price,
+        read: r.verdict.read, why: r.verdict.why,
+        matched: r.hit.matched, cell: r.hit.cell, n: r.hit.n,
+        pRevert: r.hit.pRevert, baseline: r.hit.baseline, deltaPP: r.hit.deltaPP,
+        yearsSameSign: r.hit.yearsSameSign, years: r.hit.years,
+        yearMinPP: r.hit.yearMinPP, yearMaxPP: r.hit.yearMaxPP,
+        stackZone: r.state.stackZone,
+        codes: [1, 5, 15].map(tf => r.state.per[tf]?.code ?? null),
+        wt: [1, 5, 15].map(tf => r.state.per[tf]?.wt1 ?? null),
+      });
+    } catch (e) {
+      out.push({ instrument: inst, error: e.message });
+    }
+    }));
+  }
+  out.sort((a, b) => a.instrument.localeCompare(b.instrument));
+  res.json({ horizon, generatedAt: Math.floor(Date.now() / 1000), rows: out });
+});
+
+// GET /api/vumanchu/transitions?symbol=gold
+// "Is the aligned setup about to form?" — P(the 5m/15m/1h zone stack becomes
+// fully aligned) from wherever it is now.
+//
+// NOTE this is a DIFFERENT, slower stack than the 1m/5m/15m one the live read
+// uses. Deliberate: for "is a setup forming" a slower stack is the useful one,
+// and the response labels its timeframes so the two are never confused.
+//
+// The random-walk control ships with every number and is not optional. Measured
+// across 31 instruments the excess is a median of -1.50pp with only 14% of
+// cells positive — the real market aligns LESS often than a random walk. The
+// probabilities are correct and useful for "how often does this setup appear",
+// and they carry no information about price.
+app.get('/api/vumanchu/transitions', async (req, res) => {
+  const t = _vmLoadTrans();
+  if (!t) return res.status(503).json({ error: 'transition table not built' });
+  const inst = _vmInstKey(req.query.symbol || 'gold');
+  const block = t.instruments?.[inst];
+  if (!block) return res.status(404).json({ error: `no transitions for ${inst}`,
+                                            known: Object.keys(t.instruments || {}) });
+  let live = null;
+  if (process.env.OANDA_KEY) {
+    try {
+      const bars = await _vmBars(inst);
+      const st = computeVumanchuState(bars, { timeframes: t.timeframes });
+      const zs = t.timeframes.map(tf => st.per[tf]?.level ?? null);
+      if (zs.every(Boolean)) {
+        const nOS = zs.filter(z => z === 'OS').length, nOB = zs.filter(z => z === 'OB').length;
+        live = { zones: zs, state:
+          nOS === 3 ? '3-OS' : nOB === 3 ? '3-OB'
+          : nOS && nOB ? 'split'
+          : nOS === 2 ? '2-OS' : nOB === 2 ? '2-OB'
+          : nOS === 1 ? '1-OS' : nOB === 1 ? '1-OB' : '0-flat' };
+      }
+    } catch (e) { live = { error: e.message }; }
+  }
+  res.json({ instrument: inst, timeframes: t.timeframes, live,
+             current: live?.state ? block.real[live.state] ?? null : null,
+             states: block.real, note: t._read });
+});
+
+// GET /api/vumanchu/log?days=14 — the forward-validation record + its score.
+app.get('/api/vumanchu/log', async (req, res) => {
+  const days = Math.min(90, Math.max(1, +req.query.days || 14));
+  try {
+    const rows = await vmReadRange(kv, days);
+    // Score EVERY horizon, so the open question the offline work could not
+    // settle — which forward window the read is actually best at — is answered
+    // by the forward record itself rather than re-argued from the backtest.
+    const byHorizon = {};
+    for (const h of [15, 60, 240, 1440]) byHorizon[h] = vmScoreRows(rows, h);
+    res.json({ days, score: vmScoreRows(rows), byHorizon, rows: rows.slice(-4000) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── the cron: log a read per instrument, then resolve what is due ────────────
+const VM_LOG_MIN = Math.max(5, +(process.env.VM_LOG_MIN || 15));   // cadence, minutes
+let _vmLogBusy = false;
+
+async function _vmLogCycle() {
+  if (_vmLogBusy || !process.env.OANDA_KEY) return;
+  const known = _vmTableInstruments();
+  if (!known.length) return;
+  _vmLogBusy = true;
+  try {
+    const rows = [];
+    const BATCH = 6;
+    for (let i = 0; i < known.length; i += BATCH) {
+      await Promise.all(known.slice(i, i + BATCH).map(async inst => {
+      try {
+        const r = await _vmReadState(inst, 60);
+        rows.push(vmBuildRow({
+          instrument: inst, slotTs: r.slotTs, state: r.state, hit: r.hit,
+          verdict: r.verdict, price: r.price, sigma: r.sigma,
+          horizon: 60, priorMove: r.priorMove,
+        }));
+      } catch (e) {
+        console.warn(`[vmlog] ${inst}: ${e.message}`);
+      }
+      }));
+    }
+    const w = await vmAppendRows(kv, rows);
+
+    // Resolve anything whose horizon has elapsed. The longest horizon is 1440m,
+    // so a row needs a full day plus weekend slack before it can finish — look
+    // back 4 days or the 1440m outcomes would never be filled in.
+    const recent = await vmReadRange(kv, 4);
+    const priceAt = async (inst, ts) => {
+      try {
+        const bars = await _fetchVumanchuBars(_vmSymbolFor(inst), 'M1', 1400);
+        let best = null;
+        for (const b of bars) { if (b.t <= ts) best = b.close; else break; }
+        // Only price it if a bar exists reasonably near the due time — a stale
+        // pre-weekend close must not be scored as a real forward move.
+        const nearest = bars.filter(b => Math.abs(b.t - ts) < 3600);
+        return nearest.length ? best : null;
+      } catch { return null; }
+    };
+    // The intra-window path, so the log records HOW the move unfolded and not
+    // just where it ended. Reuses the cached M1 pull, so it costs nothing extra.
+    const pathAt = async (inst, fromTs, toTs, entry) => {
+      try {
+        const bars = await _vmBars(inst);
+        const seg = bars.filter(b => b.t > fromTs && b.t <= toTs);
+        if (seg.length < 2 || !Number.isFinite(entry) || entry <= 0) return null;
+        let mfe = 0, mae = 0, tMfe = 0;
+        for (const b of seg) {
+          const up = b.high / entry - 1, dn = b.low / entry - 1;
+          if (up > mfe) { mfe = up; tMfe = Math.round((b.t - fromTs) / 60); }
+          if (dn < mae) mae = dn;
+        }
+        return { mfe, mae, tMfeMin: tMfe };
+      } catch { return null; }
+    };
+
+    const byDay = {};
+    for (const r of recent) (byDay[vmLogKey((r.slotTs || 0) * 1000)] ||= []).push(r);
+    let resolved = 0;
+    for (const [key, group] of Object.entries(byDay)) {
+      const before = group.filter(r => r.resolved).length;
+      await vmResolveDue(group, priceAt, { pathAt });
+      const after = group.filter(r => r.resolved).length;
+      if (after > before) { await kv.put(key, JSON.stringify(group)); resolved += after - before; }
+    }
+    if (w.added || resolved) {
+      console.log(`[vmlog] logged ${w.added} read(s), resolved ${resolved}`);
+    }
+  } catch (e) {
+    console.error('[vmlog]', e.message);
+  } finally {
+    _vmLogBusy = false;
+  }
+}
+
+if (process.env.VM_LOG_ENABLED !== '0') {
+  setInterval(_vmLogCycle, VM_LOG_MIN * 60_000);
+  setTimeout(_vmLogCycle, 45_000);          // one shortly after boot
+}
+
+
+// GET /api/vumanchu/health — "is the logger actually running?"
+//
+// Deliberately separate from /api/vumanchu/log: this makes NO OANDA call and no
+// state computation, so it answers in milliseconds and still answers when the
+// data feed is down. Checking liveness through a route that itself depends on
+// the feed would report STALE for the one failure it is least able to
+// distinguish — a dead cron and a dead upstream look identical from there.
+//
+// It fails LOUD. A green tick that is technically true while nothing has been
+// written for two days is worse than no check at all, so `ok` is false the
+// moment writes stop arriving at roughly the configured cadence.
+app.get('/api/vumanchu/health', async (req, res) => {
+  try {
+    const rows = await vmReadRange(kv, 3);
+    const now = Math.floor(Date.now() / 1000);
+    const lastWrite = rows.reduce((m, r) => Math.max(m, r.loggedAt || 0), 0);
+    const minsSince = lastWrite ? Math.round((now - lastWrite) / 60) : null;
+
+    // Two missed cycles = something is wrong. Weekends are NOT excused: OANDA
+    // still serves bars for a closed market, so the cron should keep writing;
+    // silence means the cron itself stopped.
+    const staleAfter = VM_LOG_MIN * 2 + 5;
+    const ok = minsSince != null && minsSince <= staleAfter;
+
+    const today = rows.filter(r => (r.loggedAt || 0) > now - 86400);
+    const perInstrument = {};
+    for (const r of rows) {
+      const p = (perInstrument[r.instrument] ||= { rows: 0, lastSeenMin: null, reads: {} });
+      p.rows++;
+      p.reads[r.read] = (p.reads[r.read] || 0) + 1;
+      const age = Math.round((now - (r.loggedAt || 0)) / 60);
+      if (p.lastSeenMin == null || age < p.lastSeenMin) p.lastSeenMin = age;
+    }
+
+    res.json({
+      ok,
+      status: !lastWrite ? 'NO DATA — the cron has never written'
+            : ok ? 'RUNNING'
+            : `STALE — nothing written for ${minsSince} min (expected every ${VM_LOG_MIN})`,
+      cadenceMin: VM_LOG_MIN,
+      enabled: process.env.VM_LOG_ENABLED !== '0',
+      lastWriteUtc: lastWrite ? new Date(lastWrite * 1000).toISOString() : null,
+      minutesSinceLastWrite: minsSince,
+      last24h: {
+        logged: today.length,
+        resolved: today.filter(r => r.resolved).length,
+        pending: today.filter(r => !r.resolved).length,
+        skippedFlat: today.filter(r => r.skipped === 'flat').length,
+      },
+      last3d: { rows: rows.length, score: vmScoreRows(rows) },
+      perInstrument,
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, status: 'ERROR', error: e.message });
+  }
+});
+
+// ── daily heartbeat to Telegram ──────────────────────────────────────────────
+// The point of a holiday check-in is not having to remember to open a page. One
+// message a day says whether it is alive and what it has scored so far; if the
+// message stops arriving, that is itself the alert.
+const VM_HEARTBEAT_UTC = process.env.VM_HEARTBEAT_UTC || '07:30';
+let _vmHeartbeatSentOn = null;
+
+async function _vmHeartbeat() {
+  const tok = state.tg?.token, cid = state.tg?.chatId;
+  if (!tok || !cid) return;
+  try {
+    const rows = await vmReadRange(kv, 7);
+    const now = Math.floor(Date.now() / 1000);
+    const last = rows.reduce((m, r) => Math.max(m, r.loggedAt || 0), 0);
+    const mins = last ? Math.round((now - last) / 60) : null;
+    const alive = mins != null && mins <= VM_LOG_MIN * 2 + 5;
+    const day = rows.filter(r => (r.loggedAt || 0) > now - 86400);
+    const s = vmScoreRows(rows);
+
+    const lines = [
+      `${alive ? '✅' : '🔴'} <b>VuManChu logger — ${alive ? 'running' : 'NOT RUNNING'}</b>`,
+      last ? `last write ${mins} min ago (every ${VM_LOG_MIN} min)` : 'no writes yet',
+      '',
+      `<b>Last 24h</b>  ${day.length} logged · ${day.filter(r => r.resolved).length} resolved`,
+      `<b>7-day record</b>  ${s.scored} scored`,
+    ];
+    if (s.scored) {
+      lines.push(
+        `hit ${s.hitPct}% vs baseline ${s.claimedBaselinePct}% → <b>${s.edgePP > 0 ? '+' : ''}${s.edgePP}pp</b>`,
+        // Without the noise band a 3pp swing on 200 rows reads as a result. It
+        // is not, and the heartbeat should not let it look like one.
+        Math.abs(s.edgePP) < s.noiseBandPP
+          ? `inside the ±${s.noiseBandPP}pp noise band — too early to say`
+          : `outside the ±${s.noiseBandPP}pp noise band`);
+    } else {
+      lines.push('nothing scored yet');
+    }
+    await sendTelegram(tok, cid, lines.join('\n'));
+  } catch (e) {
+    console.error('[vm-heartbeat]', e.message);
+  }
+}
+
+if (process.env.VM_LOG_ENABLED !== '0' && process.env.VM_HEARTBEAT !== '0') {
+  setInterval(() => {
+    const d = new Date();
+    const hhmm = String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');
+    const today = d.toISOString().slice(0, 10);
+    if (hhmm === VM_HEARTBEAT_UTC && _vmHeartbeatSentOn !== today) {
+      _vmHeartbeatSentOn = today;
+      _vmHeartbeat();
+    }
+  }, 60_000);
+}
+
+// POST /api/vumanchu/mtf-stack/send — push the stack to Telegram.
+app.post('/api/vumanchu/mtf-stack/send', express.json({ limit: '4kb' }), async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured' });
+  const { symbol, tfs: rawTfs = 'M1,M5,M15', series = 'vwap_roll_dist', bars = 240, window = 20, caption = '', token, chatId } = req.body ?? {};
+  const tok = token || state.tg?.token, cid = chatId || state.tg?.chatId;
+  if (!symbol) return res.status(400).json({ error: 'symbol required' });
+  if (!tok || !cid) return res.status(400).json({ error: 'No Telegram credentials configured' });
+  if (!_STACK_SERIES.includes(String(series))) return res.status(400).json({ error: `series must be ${_STACK_SERIES.join('|')}` });
+  let tfs;
+  try { tfs = _parseStackTfs(Array.isArray(rawTfs) ? rawTfs.join(',') : rawTfs); } catch (e) { return res.status(400).json({ error: e.message }); }
+  try {
+    const displayBars = Math.min(1200, Math.max(60, Number(bars) || 240));
+    const barsByTf = await _fetchStackBars(symbol, tfs, displayBars);
+    for (const tf of tfs) {
+      if (!barsByTf[tf] || barsByTf[tf].length < MTF_STACK_MIN_BARS) return res.status(422).json({ error: `Not enough ${tf} bars` });
+    }
+    const opts = { source: String(series), displayBars, seriesOpts: { window: Number(window) || 20 },
+                   tfSeconds: Object.fromEntries(tfs.map(tf => [tf, VM_TF_SECONDS[tf]])),
+                   title: symbol, width: 1150, height: 500 };
+    const png = renderMtfStackPNG(barsByTf, opts);
+    const cap = [mtfStackCaption(barsByTf, opts), String(caption).slice(0, 500)].filter(Boolean).join('\n');
+    const ok = await sendTelegramPhoto(tok, cid, png, cap);
+    res.json({ ok, bytes: png.length, caption: cap });
+  } catch (err) {
+    console.error('[vumanchu/mtf-stack/send]', err.message);
+    res.status(502).json({ error: err.message });
   }
 });
 
@@ -4662,7 +5637,17 @@ async function fetchOandaCandleRange(instrument, gran, fromISO, toISO) {
       out.push({
         _ms: tMs,
         datetime: new Date(c.time).toLocaleString('sv-SE', { timeZone: 'Europe/London' }).substring(0, 19),
+        // `t` = TRUE UTC epoch seconds. `datetime` above is Europe/London wall-clock
+        // (kept for existing consumers); anything doing time maths should use `t`.
+        t: Math.floor(tMs / 1000),
         open: c.mid.o, high: c.mid.h, low: c.mid.l, close: c.mid.c,
+        // OANDA's tick count. Carried through because VWAP and Money-Flow style
+        // indicators are undefined without a weight, and until now NO route in this
+        // repo served volume-bearing bars over a long history — which made the
+        // volume half of VuManChu untestable on more than the last ~50 days.
+        // For FX this is a TICK count, not traded size; treat it as an activity
+        // proxy, never as real volume.
+        volume: c.volume ?? null,
       });
       lastTime = c.time;
     }
@@ -4697,6 +5682,7 @@ app.get('/api/ohlc-range', async (req, res) => {
     const values = await fetchOandaCandleRange(instrument, gran, fromISO, toISO);
     const result = { values, meta: { symbol, granularity: gran, from, to, count: values.length } };
     _m5SrvCache.set(cacheKey, { data: result, ts: Date.now() });
+    capMap(_m5SrvCache, CACHE_MAX_SERIES);
     res.json(result);
   } catch (err) {
     console.error('[ohlc-range]', err.message);
@@ -4782,9 +5768,17 @@ app.get('/api/vol-forecast/backtest-range', async (req, res) => {
       const slice = dailyD1.slice(Math.max(0, i - 800), i);    // strictly before d, scheduler window
       if (slice.length < 60) continue;
       let fc; try { fc = _computeForecast(slice, cls); } catch { continue; }
+      // Bot σ — the SAME source the Volatility Bot uses (volSigmaSeries via nextSigma,
+      // NOT _computeForecast, whose correction constants drift from the bot). Strictly
+      // before d ⇒ no lookahead. Lets the reversion page draw the bot's actual lines
+      // (COG geometry × this σ) as a distinct calc for touch analysis. NQ still swaps
+      // to cc-HV on the client (matching the bot), same as the COG calc does.
+      let botVa = null;
+      try { const bs = _nextSigma(slice, cls); if (bs > 0) botVa = +(bs * Math.sqrt(252) * 100).toFixed(2); } catch { /* bot σ is optional enrichment */ }
       days[d.date] = {
         hl_median: fc.hl_median, hl_75: fc.hl_75,
         oc_median: fc.oc_median, oc_75: fc.oc_75, vol_annual: fc.vol_annual,
+        bot_vol_annual: botVa,
       };
     }
     // For NQ, add the per-day close-to-close HV σ (London-aligned D1, window 30) that
@@ -4822,6 +5816,7 @@ app.get('/api/vol-forecast/backtest-range', async (req, res) => {
     }
     const result = { ok: true, pair: pair || symbol, cls, from, to, days, generated: true };
     _m5SrvCache.set(cacheKey, { data: result, ts: Date.now() });
+    capMap(_m5SrvCache, CACHE_MAX_SERIES);
     res.json(result);
   } catch (e) {
     console.error('[backtest-range]', e.message);
@@ -5075,6 +6070,7 @@ app.get('/api/yield-coupling', async (req, res) => {
       fxInstrument, availability, ceiling, spreads,
       note: 'Standardized (z) overlay. Bond price is inverse yield; spread oriented FX-bullish-when-positive. 2Y spreads are US-leg-only where OANDA has no foreign 2Y CFD. "Earliest" is the deepest M5 bar OANDA serves per instrument — the ceiling for any backtest.' };
     _yieldCoupCache.set(cacheKey, { data: result, ts: Date.now() });
+    capMap(_yieldCoupCache, CACHE_MAX_PARAM);
     res.json(result);
   } catch (err) {
     console.error('[yield-coupling]', err.message);
@@ -5290,6 +6286,7 @@ app.get('/api/trend-basket', async (req, res) => {
     }
     const data = { ...result, qualityAB, availability, universe: TREND_UNIVERSE.map(u => u.ccy) };
     _trendCache.set(cacheKey, { data, ts: Date.now() });
+    capMap(_trendCache, CACHE_MAX_PARAM);
     res.json(data);
   } catch (err) {
     console.error('[trend-basket]', err.message);
@@ -5338,6 +6335,7 @@ app.get('/api/econ-trend', async (req, res) => {
       universe: Object.keys(ECON_UNIVERSE),
     };
     _econTrendCache.set(cacheKey, { data, ts: Date.now() });
+    capMap(_econTrendCache, CACHE_MAX_PARAM);
     res.json(data);
   } catch (err) {
     console.error('[econ-trend]', err.message);
@@ -5407,6 +6405,7 @@ app.get('/api/credit-stress', async (req, res) => {
       priceAvailability, fredAvailability,
     };
     _csiCache.set(cacheKey, { data, ts: Date.now() });
+    capMap(_csiCache, CACHE_MAX_PARAM);
     res.json(data);
   } catch (err) {
     console.error('[credit-stress]', err.message);
@@ -5519,6 +6518,7 @@ app.get('/api/fx-carry', async (req, res) => {
 
     const data = { ...result, availability, universe: CARRY_UNIVERSE.map(u => u.ccy), financing, haircut };
     _carryCache.set(cacheKey, { data, ts: Date.now() });
+    capMap(_carryCache, CACHE_MAX_PARAM);
     res.json(data);
   } catch (err) {
     console.error('[fx-carry]', err.message);
@@ -5593,12 +6593,48 @@ async function _cogShadowWrite(date, patch) {
   await kv.put(COG_SHADOW_KV, JSON.stringify({ data: log.slice(0, 180), timestamp: Date.now() }));
   return log[i];
 }
-// FRED weekly series -> [{date,value}] ascending. Small windows; these are
-// weekly prints so a year is ~52 points.
-async function _cogFred(id, fromDate) {
+// DAILY TGA from the Treasury's Fiscal Data API - free, no key, current to the
+// prior business day. This is what makes G1 a DAILY signal: TGA and RRP both
+// publish daily and only WALCL is weekly, so net liquidity can move every day.
+// A purely weekly series cannot produce a fresh direction 60 times a year,
+// which was the standing objection to the entire macro thesis.
+// Returns [{date, value}] in $ MILLIONS, ascending - same unit as FRED's WALCL.
+async function _cogDailyTGA(days = 200) {
+  const url = 'https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1'
+            + '/accounting/dts/operating_cash_balance'
+            + '?sort=-record_date&page%5Bsize%5D=' + (days * 3)
+            + '&fields=record_date,account_type,close_today_bal,open_today_bal';
+  const r = await fetch(url, { signal: AbortSignal.timeout(25000) });
+  if (!r.ok) throw new Error('Treasury DTS HTTP ' + r.status);
+  const j = await r.json();
+  const out = [];
+  for (const row of (j.data || [])) {
+    if (!/Treasury General Account \(TGA\) Closing Balance/i.test(row.account_type || '')) continue;
+    // The newest row's close is often still the literal string 'null' until the
+    // statement finalises. Skip those rather than coercing them to 0.
+    // DTS quirk: on the row LABELLED 'Closing Balance', close_today_bal is the
+    // literal string 'null' and the figure sits in open_today_bal. Reading only
+    // close_today_bal returned an empty series, which silently fell back to
+    // FRED's WEEKLY WTREGEN - so 'FLOW day-over-day' was really a SEVEN-DAY
+    // change wearing a daily label. The fallback was working; the label was lying.
+    const c = Number(row.close_today_bal), o = Number(row.open_today_bal);
+    const v = (row.close_today_bal !== 'null' && Number.isFinite(c)) ? c
+            : (row.open_today_bal !== 'null' && Number.isFinite(o)) ? o : null;
+    if (v != null) out.push({ date: row.record_date, value: v });
+  }
+  return out.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// FRED series -> [{date,value}] ascending.
+// UNITS: FRED ships WALCL and WTREGEN in MILLIONS but RRPONTSYD in BILLIONS.
+// Subtracting them raw understates RRP by 1000x and silently deletes it from
+// net liquidity - our first emission reported $5,917.8bn, which is WALCL minus
+// TGA with RRP contributing nothing. `scale` normalises everything to millions.
+async function _cogFred(id, fromDate, scale = 1) {
   try {
     const m = await fetchFredSeries(id, fromDate, process.env.FRED_KEY);
     return [...m.entries()].map(([date, value]) => ({ date, value }))
+      .map(x => ({ date: x.date, value: x.value * scale }))
       .filter(x => Number.isFinite(x.value)).sort((a, b) => a.date.localeCompare(b.date));
   } catch { return []; }
 }
@@ -5627,52 +6663,78 @@ async function _cogBaseRange() {
   return null;
 }
 
-async function cogShadowRun(stage) {
+// UK label for the alert header. COG's UI shows UK time, so the owner compares
+// UK-to-UK; making them read UTC and convert in their head invites exactly the
+// confusion the late-night test alerts caused.
+function _cogUkNow() {
+  return new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London',
+    hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
+}
+
+async function cogShadowRun(stage, manual = false) {
+  const TAG = manual ? '\u{1F9EA} <b>[TEST - manually fired, not a scheduled signal]</b>\n' : '';
   const today = new Date().toISOString().substring(0, 10);
   if (_cogShadowSent.date !== today) { Object.assign(_cogShadowSent, { date: today, g1: false, g2: false, g3: false }); }
   if (_cogShadowSent[stage]) return;
+  // Claim the stage BEFORE any await. The scheduler ticks every 60s inside a
+  // 5-minute window, so setting this only on success let the timer re-enter
+  // while the first run was still awaiting network - three identical G3 alerts
+  // at 14:15, 14:16 and 14:19. Released on failure so a real error can retry.
+  _cogShadowSent[stage] = true;
   try {
     if (stage === 'g1') {
       const from = new Date(Date.now() - 400 * 864e5).toISOString().substring(0, 10);
-      const [walcl, tga, rrp, hy] = await Promise.all([
-        _cogFred('WALCL', from), _cogFred('WTREGEN', from),
-        _cogFred('RRPONTSYD', from), _cogFred('BAMLH0A0HYM2', from),
+      // RRPONTSYD is in BILLIONS on FRED -> x1000 to match WALCL/TGA millions.
+      // Daily TGA from Treasury; fall back to FRED's weekly WTREGEN if that feed
+      // dies, so a dead feed degrades to the old weekly reading rather than
+      // emitting a confidently wrong number.
+      const [walcl, rrp, hy] = await Promise.all([
+        _cogFred('WALCL', from), _cogFred('RRPONTSYD', from, 1000), _cogFred('BAMLH0A0HYM2', from),
       ]);
-      const g1 = computeCogG1({ walcl, tga, rrp, hy });
-      await _cogShadowWrite(today, { g1: { ...g1, at: new Date().toISOString() } });
-      await nqSendTg(`\u{1F30A} <b>COG-SHADOW | G1 TIDE</b>  ${g1.state}${g1.bias ? ' ' + g1.bias : ''}\n`
-        + `Net liquidity: $${g1.netLiquidityUsdBn}bn (${g1.netChgPct >= 0 ? '+' : ''}${g1.netChgPct}% / ${g1.rocWeeks}w)\n`
-        + `HY credit: ${g1.hyChgBp >= 0 ? '+' : ''}${g1.hyChgBp}bp\n${g1.reason}\n<i>Shadow only — no orders. Our inference, not COG's stated rule.</i>`);
-      _cogShadowSent.g1 = true;
+      let tga = [], tgaSource = 'treasury-daily';
+      try { tga = await _cogDailyTGA(); } catch (e) { tgaSource = 'fred-weekly-fallback: ' + e.message; }
+      if (!tga.length) { tga = await _cogFred('WTREGEN', from); tgaSource = 'fred-weekly-fallback'; }
+      const g1 = Object.assign({}, computeCogG1({ walcl, tga, rrp, hy }), { tgaSource });
+      await _cogShadowWrite(today, { g1: { ...g1, at: new Date().toISOString(), manual } });
+      await nqSendTg(TAG + `\u{1F30A} <b>COG-SHADOW | G1 TIDE</b>  ${_cogUkNow()} UK
+<b>BIAS ONLY - NOT a trade</b>  ${g1.state}${g1.bias ? ' ' + g1.bias : ''}\n`
+        + `Net liquidity: $${g1.netLiquidityUsdBn}bn  (as of ${g1.asOfDate})
+`
+        + `HY credit: ${g1.hyChgBp >= 0 ? '+' : ''}${g1.hyChgBp}bp\n${g1.reason}\n<i>Shadow only — no orders. No order from this message - the tradeable call comes at 14:15 UK in G3 MAGNET.</i>`);
     }
     if (stage === 'g2') {
       const oi = await _cogOiFor(COG_SHADOW_INST);
       const base = await _cogBaseRange();
       const g2 = computeCogG2(oi?.exposures?.gex, base?.rangePct);
-      await _cogShadowWrite(today, { g2: { ...g2, baseFrom: base?.from ?? null, at: new Date().toISOString() } });
-      await nqSendTg(`\u{26A1} <b>COG-SHADOW | G2 TRANSMISSION</b>  ${g2.state}\n`
+      await _cogShadowWrite(today, { g2: { ...g2, baseFrom: base?.from ?? null, at: new Date().toISOString(), manual } });
+      await nqSendTg(TAG + `\u{26A1} <b>COG-SHADOW | G2 TRANSMISSION</b>  ${_cogUkNow()} UK  ${g2.state}\n`
         + (g2.state === 'VALID'
           ? `Regime: ${g2.regime} (GEX ${g2.gexBn}bn)\nStandard:     stop ${g2.standard.stopPct}%  risk ${g2.standard.riskPct}%\nConservative: stop ${g2.conservative.stopPct}%  risk ${g2.conservative.riskPct}%\n${g2.reason}`
           : g2.reason)
         + `\n<i>Shadow only. GEX-to-stop mapping is OUR inference, uncalibrated.</i>`);
-      _cogShadowSent.g2 = true;
     }
     if (stage === 'g3') {
       const oi = await _cogOiFor(COG_SHADOW_INST);
       const g3 = computeCogG3(oi);
-      const rec = await _cogShadowWrite(today, { g3: { ...g3, at: new Date().toISOString() } });
+      const rec = await _cogShadowWrite(today, { g3: { ...g3, at: new Date().toISOString(), manual } });
       const call = combineCogGates(rec.g1 ?? {}, rec.g2 ?? {}, g3);
       await _cogShadowWrite(today, { call: { ...call, at: new Date().toISOString() } });
-      await nqSendTg(`\u{1F9F2} <b>COG-SHADOW | G3 MAGNET</b>  ${g3.state}\n`
-        + (g3.state === 'VALID' ? `${g3.reason}\n` : `${g3.reason}\n`)
-        + `\n<b>SHADOW CALL: ${call.action}${call.direction ? ' ' + call.direction : ''}</b>\n`
+      await nqSendTg(TAG + `\u{1F9F2} <b>COG-SHADOW | G3 MAGNET</b>  ${_cogUkNow()} UK` + `\n\n`
         + (call.action === 'TRADE'
-          ? `Target ${call.target}  ·  stop ${call.stopPct}%  ·  risk ${call.riskPct}%`
-          : call.reasons.join('\n'))
-        + `\n<i>Shadow only — no orders. Log COG's actual beside this in cog-replication/FORWARD_LOG.md.</i>`);
-      _cogShadowSent.g3 = true;
+            ? `\u{1F535} <b>TRADE: ${call.direction} NQ</b>\n`
+              + `Entry   market, now\n`
+              + `Stop    ${call.stopPct}% from entry\n`
+              + `Target  ${call.target}\n`
+              + `Risk    ${call.riskPct}% of account\n\n`
+              + `<i>why: ${g3.reason}</i>\n`
+            : `\u{26AA} <b>NO TRADE TODAY</b>\n`
+              + (call.reasons || []).map(r => '\u2022 ' + r).join('\n') + `\n`)
+        + `\n<i>Shadow only - no orders placed. Log COG's actual beside this in cog-replication/FORWARD_LOG.md.</i>`);
     }
-  } catch (e) { console.error('[cog-shadow ' + stage + ']', e.message); }
+  } catch (e) {
+    _cogShadowSent[stage] = false;   // let a genuine failure retry in-window
+    console.error('[cog-shadow ' + stage + ']', e.message);
+  }
 }
 
 setInterval(() => {
@@ -5691,7 +6753,7 @@ app.post('/api/cog-rep/shadow/run/:stage', async (req, res) => {
   const st = req.params.stage;
   if (!['g1', 'g2', 'g3'].includes(st)) return res.status(400).json({ ok: false, error: 'stage must be g1|g2|g3' });
   _cogShadowSent[st] = false;
-  await cogShadowRun(st);
+  await cogShadowRun(st, true);
   res.json({ ok: true, stage: st, entries: (await _cogShadowLoad()).slice(0, 3) });
 });
 
@@ -7395,6 +8457,7 @@ async function _getLiquidityGateBars(instrument, fromDate) {
       + `21:00/22:00 UTC anchor hours the day-bar builder requires`);
   }
   liqGateBarCache.set(cacheKey, { bars, fetchedAt: Date.now() });
+  capMap(liqGateBarCache, CACHE_MAX_PARAM);   // keyed `instrument:fromDate` ⇒ grows daily
   return bars;
 }
 
@@ -7751,7 +8814,7 @@ app.get('/api/trend/backtest', async (req, res) => {
     if (result.ok) { try { result.robustness = _trendRobustness(markets, { longShort, volTargetPort }); } catch (e) { result.robustness = { ok: false, error: e.message }; } }
     // True OOS: select lookback config on the IS half, evaluate on the held-out half.
     if (result.ok) { try { result.isOos = _trendIsOos(markets, { longShort, volTargetPort }); } catch (e) { result.isOos = { ok: false, error: e.message }; } }
-    if (result.ok) _trendBtCache.set(key, { at: Date.now(), data: result });
+    if (result.ok) { _trendBtCache.set(key, { at: Date.now(), data: result }); capMap(_trendBtCache, CACHE_MAX_PARAM); }
     res.status(result.ok ? 200 : 502).json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
@@ -7977,7 +9040,7 @@ app.get('/api/trend-v2/backtest', async (req, res) => {
     if (markets.length < 3) return res.status(502).json({ ok: false, error: `only ${markets.length} markets fetched`, skipped });
     const result = _runTrendAB(markets, { costBp, longShort, volTargetPort });
     result.universe = { requested: _TREND_UNIVERSE.length, used: markets.map(m => `${m.symbol}:${m.assetClass}`), skipped };
-    if (result.ok) _trendV2Cache.set(key, { at: Date.now(), data: result });
+    if (result.ok) { _trendV2Cache.set(key, { at: Date.now(), data: result }); capMap(_trendV2Cache, CACHE_MAX_PARAM); }
     res.status(result.ok ? 200 : 502).json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
@@ -8921,10 +9984,21 @@ async function _refreshOIBotZones() {
       // fallback so a wall-less breakout isn't left SL-only; gold/indices use their own.
       const isFx = !OI_BOT_UNIVERSE.includes(key);
       const fallbackTpR = isFx ? (cfg.fxFallbackTpR ?? 2.0) : (cfg.fallbackTpR ?? 0);
+      // The bot TRADES the near-dated "day" expiry when present: its walls are reachable
+      // intraday (the far primary walls price won't hit are chart/plan context only), and
+      // its regime is the near-dated GEX sign (user's call). `pickNearExpiry` already
+      // required real near-money OI, so this is never a thin/noisy front weekly. No day
+      // expiry (single-expiry paste) → tradeInst IS inst, so nothing changes.
+      const dayEx = inst.dayExpiry && typeof inst.dayExpiry === 'object' ? inst.dayExpiry : null;
+      const tradeInst = dayEx
+        ? { ...inst, dte: dayEx.dte, maxPain: dayEx.maxPain, callWalls: dayEx.callWalls, putWalls: dayEx.putWalls,
+            callWall: dayEx.callWall, putWall: dayEx.putWall, exposures: dayEx.exposures,
+            gexProfile: dayEx.gexProfile, gammaFlip: dayEx.gammaFlip, gexFlip: undefined, gexFlips: undefined, dayExpiry: undefined }
+        : inst;
       // Gamma-flow context (the "connecting info" around the flip). All no-new-data:
       // distance-to-flip = vol read; flip-drift = regime-change warning (from oi_history);
       // roll-off = near-expiry read. Fed to the planner (sizing/warning) AND surfaced.
-      const flip = Number.isFinite(inst.gammaFlip) ? inst.gammaFlip : computeGammaFlip(inst.gexProfile);
+      const flip = Number.isFinite(tradeInst.gammaFlip) ? tradeInst.gammaFlip : computeGammaFlip(tradeInst.gexProfile);
       const dist = distanceToFlip(inst.spot, flip);        // no ATR server-side → % based
       const flipSeries = (() => {
         const pk = Object.keys(hist || {}).find(k => String(k).toLowerCase().replace(/[/_]/g, '') === key);
@@ -8936,29 +10010,36 @@ async function _refreshOIBotZones() {
       const gammaFlow = { flip: flip ?? null, dist, drift, rolloff };
 
       const _vn = inst.greeksFlow?.vanna;
-      const zones = stale ? [] : buildOIZones(inst, inst.spot, { ...cfg, pip, stability, change, fallbackTpR,
+      const zones = stale ? [] : buildOIZones(tradeInst, inst.spot, { ...cfg, pip, stability, change, fallbackTpR,
         nearFlip: !!dist?.near, regimeWarning: drift?.toward ? `flip migrating toward spot (${drift.fromDate}→${drift.toDate}) — regime change loading` : null,
         expMove: inst.expectedMove ? { upper: inst.expectedMove.upper, lower: inst.expectedMove.lower } : null,
         refMove: inst.refMove?.move ?? null,
         // Level-ladder + react-at-level nodes: the gamma-flip regime boundary, the GEX-flip,
         // and the vanna-exposure flip, alongside walls/max-pain/vol-magnets on `inst`.
         gammaFlipLevel: Number.isFinite(flip) ? flip : null,
-        gexFlipLevel: Number.isFinite(inst.gexFlip) ? inst.gexFlip : (Number.isFinite(inst.gexFlipPrice) ? inst.gexFlipPrice : null),
+        gexFlipLevel: Number.isFinite(tradeInst.gexFlip) ? tradeInst.gexFlip : (Number.isFinite(inst.gexFlipPrice) ? inst.gexFlipPrice : null),
         vannaFlipLevel: Number.isFinite(inst.greeksFlow?.vannaFlip) ? inst.greeksFlow.vannaFlip : null,
         // Greek conditioners (theory-driven, from the pasted IV smile — null/false when no smile):
         // vanna tailwind/headwind sizes follow-vs-fade; charm amplifies the near-expiry pin.
         vannaState: _vn && _vn.firing ? { state: _vn.state, firing: true } : null,
         charmActive: Number.isFinite(inst.greeksFlow?.cex) && inst.greeksFlow.cex !== 0,
         vannaNote: _vn && _vn.firing ? `vanna ${_vn.state} firing (IV ${_vn.ivFalling ? 'falling' : 'rising'}) — indices strong, gold/FX weak` : null });
-      const gex = inst.exposures?.gex ?? 0;
+      const gex = tradeInst.exposures?.gex ?? 0;   // traded regime = near-dated when a day expiry is present
       // When an in-universe instrument yields no zones, say why (flat regime / no
       // strong walls / walls out of range) — so a blank plan is legibly intentional.
       let diag = null;
       if (!stale && zones.length === 0) {
-        try { diag = explainNoZones(inst, inst.spot, { ...cfg, pip }); } catch { diag = null; }
+        try { diag = explainNoZones(tradeInst, inst.spot, { ...cfg, pip }); } catch { diag = null; }
       }
-      instruments[key] = { spot: inst.spot ?? null, maxPain: inst.maxPain ?? null,
+      // Far/primary expiry kept as context on the plan (the user still wants to SEE the
+      // 14-day book) — it just isn't what the bot trades.
+      const farGex = inst.exposures?.gex ?? 0;
+      const farExpiry = dayEx ? { dte: inst.dte ?? null, maxPain: inst.maxPain ?? null,
+        regime: farGex > 0 ? 'PIN' : farGex < 0 ? 'BREAKOUT' : 'NEUTRAL',
+        callWall: inst.callWall ?? null, putWall: inst.putWall ?? null } : null;
+      instruments[key] = { spot: inst.spot ?? null, maxPain: tradeInst.maxPain ?? null, dte: tradeInst.dte ?? null,
         regime: gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : 'NEUTRAL', zones, zoneCount: zones.length, stale, diag,
+        farExpiry,   // the far primary book (null unless a nearer day expiry was traded instead)
         gammaFlow, termStructure: Array.isArray(inst.termStructure) ? inst.termStructure : null,
         greeksFlow: inst.greeksFlow ?? null, expectedMove: inst.expectedMove ?? null,
         ivDynamics: inst.ivDynamics ?? null, riskReversal: inst.riskReversal ?? null };
@@ -8987,11 +10068,172 @@ app.post('/api/oi-bot/zones/refresh', async (_req, res) => {
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// Re-analyse EVERY stored pair from the OI data ALREADY in `oi_store` — one hit to bring
+// every entry onto the latest compute (e.g. the near-dated `dayExpiry`) WITHOUT re-pasting.
+// This is what the OI modal's Analyse does, run headless per pair from the saved raw chain
+// via the SAME `buildOIEntry`, so the levels are identical to a manual re-analyse.
+//
+//   • default (pinned): reuses each entry's stored futures/spot → levels reproduced exactly,
+//     just enriched. The saved-at timestamp is preserved (the OI chain is as old as it was —
+//     a re-analyse doesn't make stale data look fresh).
+//   • ?live=1: re-fetches the live paired quote so the BASIS refreshes to the current price
+//     (levels shift with spot) — use when you want a fresh read on the same chain.
+//   • ?pair=EUR/USD,XAU/USD limits to specific pairs; omit to do all.
+//
+// Writes back with a union-merge (a fresh pair wins; a pair is never dropped) and refreshes
+// the OI-bot plan off the new store. This is also the shape an automated upload would use:
+// push the raw chains into `oi_store`, then POST here to derive every level in one place.
+app.post('/api/oi/reanalyse', async (req, res) => {
+  try {
+    const live = String(req.query.live || '') === '1';
+    const only = req.query.pair ? new Set(String(req.query.pair).split(',').map(s => s.trim()).filter(Boolean)) : null;
+    const raw = await kv.get('oi_store').catch(() => null);
+    const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
+    const pairs = Object.keys(store || {}).filter(p => !only || only.has(p));
+    const reanalysed = [], skipped = [], errors = [], fresh = {};
+    for (const pair of pairs) {
+      const inst = store[pair];
+      const rawOI = inst?.rawOI || Object.values(inst?.expiries || {}).map(e => e?.rawOI).find(Boolean);
+      if (!rawOI || !String(rawOI).trim()) { skipped.push({ pair, reason: 'no stored raw OI' }); continue; }
+      try {
+        const r = await _oiBuildEntry({
+          pair, rawOI,
+          rawChg: inst.rawChg || '', rawVol: inst.rawVol || '', rawIV: inst.rawIV || '', rawIVTerm: inst.rawIVTerm || '',
+          dteRaw:     Number.isFinite(inst.dte)     ? inst.dte     : NaN,
+          spotRaw:    Number.isFinite(inst.spot)    ? inst.spot    : NaN,
+          futuresRaw: Number.isFinite(inst.futures) ? inst.futures : NaN,
+          manualFutures: Number.isFinite(inst.futures),   // pin the stored basis anchor
+          swapCP: undefined,   // use the inverted-pair default (flip ON) so re-analyse migrates old un-flipped 6J/6C/6S entries
+
+          greekVol: inst.greekVolMode === 'flat' ? 'flat' : 'smile',
+          numLevels: Number.isFinite(inst.numLevels) ? inst.numLevels : 8,
+          minOI:     Number.isFinite(inst.minOI)     ? inst.minOI     : 20,
+          priorEntry: inst,          // preserve the per-expiry history
+          skipLiveQuote: !live,      // pinned unless ?live=1
+        });
+        if (r?.error) { errors.push({ pair, error: r.error }); continue; }
+        // The OI chain is as old as the original paste — keep its staleness honest.
+        if (inst.savedAt) r.inst.savedAt = inst.savedAt;
+        if (Number.isFinite(inst.savedAtMs)) r.inst.savedAtMs = inst.savedAtMs;
+        fresh[pair] = r.inst;
+        const gx = r.inst?.exposures?.gex ?? 0;
+        reanalysed.push({ pair, dte: r.inst?.dte ?? null,
+          dayExpiry: r.inst?.dayExpiry?.dte ?? null,
+          regime: gx > 0 ? 'PIN' : gx < 0 ? 'BREAKOUT' : 'NEUTRAL' });
+      } catch (e) { errors.push({ pair, error: e.message }); }
+    }
+    if (Object.keys(fresh).length) {
+      const merged = { ...store };
+      for (const [p, v] of Object.entries(fresh)) merged[p] = { ...(store[p] || {}), ...v };
+      await kv.put('oi_store', JSON.stringify({ data: merged, timestamp: Date.now() }));
+    }
+    let zonesRefreshed = null;
+    if (Object.keys(fresh).length) { try { zonesRefreshed = await _refreshOIBotZones(); } catch (e) { zonesRefreshed = `failed: ${e.message}`; } }
+    res.json({ ok: true, live, count: reanalysed.length, reanalysed, skipped, errors, zonesRefreshed });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 // ── Give-back analytics: per-bot MFE-vs-realised from the durable trade logs.
 // Answers "we run in profit intraday then end red — how, per bot?" on the
 // dashboard (no Python). Rows carry mfe_pips live now (pylego brokers); older
 // rows are enriched here from the M1 path via loadM1ForPair. Cached 5 min — the
 // M1 walk is the only cost. ?refresh=1 forces a recompute.
+// ── Backtest VMC-confirmation test: does WaveTrend exhaustion at entry separate
+// the backtestSystem bot's winning fades from its losing ones? The bot's own
+// confidence vote is anti-predictive (see analysis/backtest_entry_quality.py);
+// this reconstructs causal VMC at each historical entry from fresh R2 M1 and
+// buckets win-rate by VMC agreement. EXPLORATORY — n≈279, one forward window.
+// The enriched trade set is a committed snapshot (analysis/data/backtest_enriched.json).
+let _btVmcCache = {};
+app.get('/api/backtest-vmc', async (req, res) => {
+  try {
+    const tf = Math.max(1, Math.min(240, parseInt(req.query.tf) || 15));   // TF minutes
+    const ob = Math.max(20, Math.min(80, parseInt(req.query.ob) || 45));   // WT exhaustion band
+    const ck = `${tf}:${ob}`;
+    if (req.query.refresh !== '1' && _btVmcCache[ck] && Date.now() - _btVmcCache[ck].at < 30 * 60_000)
+      return res.json(_btVmcCache[ck].data);
+
+    const file = path.join(__dirname, 'analysis', 'data', 'backtest_enriched.json');
+    let trades;
+    try { trades = JSON.parse(fs.readFileSync(file, 'utf8')); }
+    catch { return res.status(404).json({ ok: false, error: 'backtest_enriched.json not found — export it first' }); }
+
+    // Group by instrument key; load M1 + build one causal WT series per pair.
+    const byKey = {};
+    for (const t of trades) {
+      const k = (() => { try { return resolveKey(t.pair); } catch { return String(t.pair || '').toLowerCase(); } })();
+      if (k && t.entry_ts) (byKey[k] ||= []).push(t);
+    }
+    const classified = [];
+    const perPair = {};
+    for (const [k, ts] of Object.entries(byKey)) {
+      let packed = null; try { packed = await loadM1ForPair(k, BT_M1_DIR); } catch { packed = null; }
+      const tmin = Math.min(...ts.map(t => t.entry_ts)) - 10 * 86400;   // 10-day WT warm-up
+      const tmax = Math.max(...ts.map(t => t.entry_ts)) + 3600;
+      const series = packed ? wtSeriesForPair(packed, tmin, tmax, tf, OPERATOR_WT) : null;
+      let covered = 0;
+      for (const t of ts) {
+        const c = classifyEntry(series, t.entry_ts, t.direction, ob);
+        if (c.cls !== 'unknown') covered++;
+        classified.push({ ...t, vmc: c.cls, wt1: c.wt1, signal: c.signal });
+      }
+      perPair[k] = { n: ts.length, covered, hasM1: !!packed };
+    }
+    const summary = summarizeVmc(classified);
+    const payload = {
+      ok: true, generatedAt: Date.now(), tf, ob, nTrades: trades.length,
+      wtParams: OPERATOR_WT, summary, perPair,
+      // recent classified trades for the table (newest first by entry_ts)
+      trades: classified.sort((a, b) => (b.entry_ts || 0) - (a.entry_ts || 0)).slice(0, 60),
+    };
+    _btVmcCache[ck] = { at: Date.now(), data: payload };
+    res.json(payload);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── Backtest exit-study: replay each trade's real M1 path under ALTERNATIVE exit
+// rules (closer fixed TP, chandelier trail, breakeven move, time-stop) vs the
+// actual exit. Answers whether the far ~2R+ target is leaving money / round-
+// tripping (analysis/backtest_entry_quality.py: RR>3 targets hit 1-in-7).
+// EXPLORATORY — same 279 trades, one window; gross R (cost ~equal across rules).
+let _btExitCache = null;
+app.get('/api/backtest-exit-study', async (req, res) => {
+  try {
+    if (req.query.refresh !== '1' && _btExitCache && Date.now() - _btExitCache.at < 30 * 60_000)
+      return res.json(_btExitCache.data);
+    const file = path.join(__dirname, 'analysis', 'data', 'backtest_enriched.json');
+    let trades;
+    try { trades = JSON.parse(fs.readFileSync(file, 'utf8')); }
+    catch { return res.status(404).json({ ok: false, error: 'backtest_enriched.json not found' }); }
+
+    const byKey = {};
+    for (const t of trades) {
+      const k = (() => { try { return resolveKey(t.pair); } catch { return String(t.pair || '').toLowerCase(); } })();
+      if (k && t.entry_ts && t.exit_ts) (byKey[k] ||= []).push(t);
+    }
+    const studies = [];
+    const perPair = {};
+    for (const [k, ts] of Object.entries(byKey)) {
+      let packed = null; try { packed = await loadM1ForPair(k, BT_M1_DIR); } catch { packed = null; }
+      let covered = 0;
+      for (const t of ts) {
+        // replay entry → a horizon past the actual exit (bounded so trailing/time
+        // rules can run on, but never runaway): min(exit+24h, entry+72h).
+        const to = Math.min(t.exit_ts + 24 * 3600, t.entry_ts + 72 * 3600);
+        const bars = packed ? extractBars(packed, t.entry_ts, to) : [];
+        if (bars.length < 2) continue;
+        studies.push({ ..._studyExit(bars, t), pair: t.pair, conv: t.conv, rr: t.rr, actualExit: t.pnl_r });
+        covered++;
+      }
+      perPair[k] = { n: ts.length, covered, hasM1: !!packed };
+    }
+    const summary = summarizeExitStudy(studies);
+    const payload = { ok: true, generatedAt: Date.now(), nTrades: trades.length, covered: studies.length, summary, perPair };
+    _btExitCache = { at: Date.now(), data: payload };
+    res.json(payload);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 let _givebackCache = { at: 0, data: null };
 app.get('/api/giveback', async (req, res) => {
   try {
@@ -9124,6 +10366,101 @@ app.get('/api/oi-levels', async (_req, res) => {
       if (levels.length) byInstrument[key] = levels;
     }
     res.json({ ok: true, byInstrument, instruments: Object.keys(byInstrument) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// The oi_store, but with each instrument's gexProfile SELF-HEALED — rebuilt from the
+// stored raw paste when the localStorage quota-trim shed it (it's dropped first as
+// "rebuildable"). The OI dashboard reads this instead of the raw KV key so the OI-by-
+// strike chart, heat and gamma-flip never come up blank just because a pair got trimmed.
+// Returns the SAME { data } envelope as /api/kv/get so the dashboard's read is unchanged.
+app.get('/api/oi-store', async (_req, res) => {
+  try {
+    const raw = await kv.get('oi_store').catch(() => null);
+    const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
+    for (const inst of Object.values(store || {})) {
+      if (inst && typeof inst === 'object'
+          && !(Array.isArray(inst.gexProfile) && inst.gexProfile.length)) {
+        const gp = _oiRebuildGex(inst);
+        if (gp.length) inst.gexProfile = gp;
+      }
+    }
+    res.json({ data: store });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── WHERE THE NIGHTLY SWEEP WRITES ───────────────────────────────────────────
+// The automated QuikStrike pull (oi_recon/) builds the same entries the OI modal
+// does. This setting decides whether it publishes them to `oi_store` — the key the
+// OI bot planner, the range-line snapshot and the history archive all read — or to
+// the `oi_store_py` shadow, where they are only compared.
+//
+// IT IS A KV SETTING, NOT A SCRIPT FLAG, DELIBERATELY. The scraper runs on a machine
+// at home; the decision to trust it has to be reversible from anywhere. Read nightly
+// by ingest.mjs, so unticking the box takes effect on the next run with nothing to
+// redeploy and no access to that machine needed.
+//
+// DEFAULTS TO SHADOW. A missing or unreadable key must never be interpreted as
+// permission to drive live bots — the safe direction is the one that happens by
+// accident.
+const OI_AUTO_TARGET_DEFAULT = { live: false, updatedAt: null, note: '' };
+
+async function _oiAutoTarget() {
+  try {
+    const raw = await kv.get('oi_auto_target');
+    if (!raw) return { ...OI_AUTO_TARGET_DEFAULT };
+    const p = JSON.parse(raw);
+    const v = p?.data ?? p;
+    return { ...OI_AUTO_TARGET_DEFAULT, ...v, live: v?.live === true };
+  } catch { return { ...OI_AUTO_TARGET_DEFAULT }; }
+}
+
+app.get('/api/oi/auto-target', async (_req, res) => {
+  try {
+    const cfg = await _oiAutoTarget();
+    res.json({ ok: true, ...cfg, key: cfg.live ? 'oi_store' : 'oi_store_py' });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post('/api/oi/auto-target', async (req, res) => {
+  try {
+    // Only an explicit boolean true switches the feed live. A truthy string from a
+    // hand-rolled curl ("false", "0") must not arm it.
+    const live = req.body?.live === true;
+    const cfg = { live, updatedAt: new Date().toISOString(),
+                  note: String(req.body?.note ?? '').slice(0, 200) };
+    await kv.put('oi_auto_target', JSON.stringify({ data: cfg, timestamp: Date.now() }));
+    console.log(`[oi-auto-target] nightly sweep now writes ${live ? 'oi_store (LIVE - bots read this)' : 'oi_store_py (shadow)'}`);
+    res.json({ ok: true, ...cfg, key: live ? 'oi_store' : 'oi_store_py' });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Nightly-sweep heartbeat. The scraper runs on a machine at home and posts its
+// verdict here; the server owns the Telegram credentials, so the local task never
+// holds a token and the alert comes from Railway like every other alert.
+//
+// A FAILED RUN IS NOT THE ONLY THING WORTH KNOWING. A scheduled task that stops
+// firing altogether — the machine asleep, the task disabled by a Windows update —
+// sends nothing at all, and silence is indistinguishable from success unless the
+// last heartbeat is recorded. So every run stamps `oi_sweep_last`, and the audit
+// reads it to spot the nights that never reported.
+app.post('/api/oi/sweep-alert', async (req, res) => {
+  try {
+    const ok = req.body?.ok === true;
+    const detail = String(req.body?.detail ?? '').slice(0, 1500);
+    const target = String(req.body?.target ?? '').slice(0, 40);
+    const stamp = { at: new Date().toISOString(), ok, target, detail };
+    await kv.put('oi_sweep_last', JSON.stringify({ data: stamp, timestamp: Date.now() })).catch(() => {});
+
+    // Only shout on failure. A nightly "it worked" for a fortnight trains you to
+    // ignore the one that matters.
+    let notified = false;
+    if (!ok && state.tg?.token && state.tg?.chatId && state.cfg?.serverEnabled !== false) {
+      notified = await sendTelegram(state.tg.token, state.tg.chatId,
+        `⚠️ <b>Nightly OI sweep FAILED</b>\n<code>${detail || 'no detail'}</code>\n\nTarget: ${target || 'unknown'}\nLevels for today were not captured. CME serves no history, so this day cannot be recovered.`,
+      ).catch(() => false);
+    }
+    res.json({ ok: true, notified });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
@@ -9280,7 +10617,7 @@ app.get('/api/vol-forecast/export', (_req, res) => {
 // Clusters Fibonacci retracements (3/5/10-day swings), previous daily opens/H/L,
 // weekly pivots, vol forecast absolute levels, and round numbers. Returns zones
 // with 2+ distinct level types. Format: CZ {price} : {count} {type1},{type2},...
-app.get('/api/vol-forecast/zones', async (_req, res) => {
+app.get('/api/vol-forecast/zones', async (req, res) => {
   if (!forecastState.latest) {
     return res.status(202).type('text/plain').send('Forecast not yet available — check back in 60s.');
   }
@@ -9304,7 +10641,57 @@ app.get('/api/vol-forecast/zones', async (_req, res) => {
       // COT rides along as a per-pair CONTEXT line only — it has no price coordinate, so
       // it is never emitted as an `OI {price}` level the indicator would draw.
       const cot = await _cotForExport();
-      const oiText = buildOILevelText(store, { generated: forecastState.latest.session_date, cot });
+      // P(touch) per level — calibrated reachability, live from M5, per pair. Opt-in via
+      // '?reach=1' so the default export stays fast (this fans out one OANDA fetch + a
+      // Monte-Carlo per pair). Fail-safe + time-bounded: any pair that errors, or the whole
+      // batch timing out, simply yields no touch labels — never a broken export.
+      let reachByPair = null;
+      if (String(req.query.reach || '') === '1' && process.env.OANDA_KEY) {
+        const OA = { 'EUR/USD':'EUR_USD','GBP/USD':'GBP_USD','USD/JPY':'USD_JPY','AUD/USD':'AUD_USD',
+          'XAU/USD':'XAU_USD','USD/CAD':'USD_CAD','USD/CHF':'USD_CHF','NAS100_USD':'NAS100_USD',
+          'SPX500_USD':'SPX500_USD','US30_USD':'US30_USD','US2000_USD':'US2000_USD','DE30_USD':'DE30_EUR','UK100_GBP':'UK100_GBP' };
+        const H = Math.max(4, Math.min(288, parseInt(req.query.reachH, 10) || 48));   // default 4h (calibrated horizon)
+        const oB = (process.env.OANDA_ENV || 'live') === 'practice' ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+        const forPair = async (k) => {
+          const osym = OA[k], inst = store[k];
+          if (!osym || !inst) return null;
+          const levels = (oiStoreToLevels(inst) || []).filter(l => Number.isFinite(l?.price) && l.price > 0);
+          if (!levels.length) return null;
+          const cr = await fetch(`${oB}/v3/instruments/${encodeURIComponent(osym)}/candles?granularity=M5&count=2000&price=M`,
+            { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(12_000) });
+          if (!cr.ok) return null;
+          const cj = await cr.json();
+          const bars = (cj.candles || []).filter(c => c.complete && c.mid).map(c => ({
+            time: Math.floor(new Date(c.time).getTime() / 1000), open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c }));
+          if (bars.length < 400) return null;
+          const ctx = _fpBuildCtx(bars, {});
+          const rows = _oiWallReach(ctx, bars.length, levels.map(l => ({ price: l.price, type: l.type })), H, { nPaths: 300 });
+          const m = {};
+          for (const r of rows) { const lab = _oiReachLabel(r, 5); if (lab) m[r.price.toFixed(6)] = lab; }
+          return Object.keys(m).length ? m : null;
+        };
+        try {
+          const keys = Object.keys(store).filter(k => OA[k]);
+          const compute = Promise.all(keys.map(k => forPair(k).then(r => [k, r]).catch(() => [k, null])));
+          const results = await Promise.race([compute, new Promise(r => setTimeout(() => r([]), 25_000))]);
+          const rp = {};
+          for (const [k, r] of results) if (r) rp[k] = r;
+          reachByPair = Object.keys(rp).length ? rp : null;
+        } catch { reachByPair = null; }
+      }
+      const terms = String(req.query.terms || '') === 'futures' ? 'futures' : 'spot';   // default spot; 'futures' for a futures/CME chart
+      const allExpiry = String(req.query.allExpiry || '') === '1';   // full unbounded term structure (vs the default day-band selection)
+      // The day's trading band per pair (from the forecast's annualised vol, K=3 ≈ beyond the
+      // 99th-pct day). Drives which OTHER-expiry walls show by default: in-band + a catch level.
+      // `?bandK=` overrides the multiplier. Flat-vol fallback inside oiDayBandFrac when no vol.
+      const bandK = Math.max(1, Math.min(6, parseFloat(req.query.bandK) || 3));
+      const bandByPair = {};
+      for (const p of Object.keys(store || {})) {
+        const fk = (() => { try { return _forecastKeyForPair(p); } catch { return null; } })();
+        const vol = fk && forecastState.latest?.instruments?.[fk]?.vol_annual;
+        bandByPair[p] = _oiDayBand(Number.isFinite(vol) ? vol : null, p, { k: bandK });
+      }
+      const oiText = buildOILevelText(store, { generated: forecastState.latest.session_date, cot, reachByPair, terms, allExpiry, bandByPair });
       if (oiText && !oiText.includes('no OI data')) text += '\n\n' + oiText;
     } catch { /* OI is a bonus section — never fail the zones export over it */ }
     res.type('text/plain').send(text);
@@ -11012,7 +12399,24 @@ app.get('/api/vol-backtest', (req, res) => {
     const instEquity = {};
     for (const inst of instruments) {
       const instTrades = trades.filter(r => r.instrument === inst && r.filled);
-      const byDay = {};
+      // The intra-window path, so the log records HOW the move unfolded and not
+    // just where it ended. Reuses the cached M1 pull, so it costs nothing extra.
+    const pathAt = async (inst, fromTs, toTs, entry) => {
+      try {
+        const bars = await _vmBars(inst);
+        const seg = bars.filter(b => b.t > fromTs && b.t <= toTs);
+        if (seg.length < 2 || !Number.isFinite(entry) || entry <= 0) return null;
+        let mfe = 0, mae = 0, tMfe = 0;
+        for (const b of seg) {
+          const up = b.high / entry - 1, dn = b.low / entry - 1;
+          if (up > mfe) { mfe = up; tMfe = Math.round((b.t - fromTs) / 60); }
+          if (dn < mae) mae = dn;
+        }
+        return { mfe, mae, tMfeMin: tMfe };
+      } catch { return null; }
+    };
+
+    const byDay = {};
       for (const r of instTrades) {
         const d = r.date.substring(0, 10);
         byDay[d] = (byDay[d] || 0) + r.pnl_pct;
@@ -14750,21 +16154,33 @@ app.get('/api/cross-pair-research', async (req, res) => {
 
 // Weekly backtest D1 candle viewer — fetches D1 bars from OANDA for a date range.
 // Used by the chart modal in weekly-vol-backtest.html (M1 parquets may not cover 2025+).
-// Route-only map for the d1/m15/m5 candle viewers. US2000 is served here for
+// Instrument map + intraday fetch live in js/oandaIntraday.js (shared with the
+// pattern-lab live-candles route below) — US2000 is included there for
 // forecast-path.html (it's in the vol-forecast trade list) WITHOUT adding it to
 // WEEKLY_INSTRUMENTS — that would silently widen the weekly backtest universe.
-const _wbtInstrMap = { ...Object.fromEntries(WBT_INSTRUMENTS.map(i => [i.name.toLowerCase(), i.oanda])), us2000: 'US2000_USD' };
+const _wbtInstrMap = OANDA_INSTRUMENT_MAP;
+const _wbtClampTo = clampToNow;
 
-// OANDA rejects a `to` timestamp in the future with HTTP 400 — so `to=<today>`
-// (today 23:59:59Z hasn't happened yet) breaks the request. Clamp to now.
-function _wbtClampTo(toDate) {
-  const iso = toDate + 'T23:59:59Z';
-  return new Date(iso).getTime() > Date.now() ? new Date().toISOString().replace(/\.\d+Z$/, 'Z') : iso;
+// Resolve an OANDA symbol for the d1/m15/m5 candle-viewer routes. Primary:
+// _wbtInstrMap (weeklyVolBacktestEngine's own names — eurusd, nq, spx500, de30,
+// uk100, us30, us2000 — what every existing caller (forecast-path.html,
+// weekly-vol-backtest.html, forecast-blend.html) has always passed; unchanged
+// behavior for all of them). Fallback: instrumentRegistry's canonical short keys
+// (spx/dax/ftse/dow/rut) — those differ from weeklyVolBacktestEngine's names for
+// every index except nq, so expected-moves.html's chart (which reads pair keys
+// straight off instrumentRegistry, same bug already fixed for /api/expected-
+// moves/run) 404'd on any index row after the first NAS100 one — 'nq' happens to
+// match both naming schemes, which is why that specific pair "just worked" and
+// made the bug look like a one-off flake rather than what it was.
+function _wbtResolveOanda(name) {
+  if (_wbtInstrMap[name]) return _wbtInstrMap[name];
+  const key = resolveKey(name);
+  return key ? (instrument(key).oanda ?? null) : null;
 }
 
 app.get('/api/weekly-vol-backtest/d1/:pair', async (req, res) => {
   const name  = req.params.pair.toLowerCase().replace(/[^a-z]/g, '');
-  const oanda = _wbtInstrMap[name];
+  const oanda = _wbtResolveOanda(name);
   if (!oanda) return res.status(404).json({ ok: false, error: `Unknown pair: ${name}` });
   if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
 
@@ -14797,67 +16213,17 @@ app.get('/api/weekly-vol-backtest/d1/:pair', async (req, res) => {
   }
 });
 
-// Fetch intraday candles (epoch-second times) for one OANDA instrument —
-// shared by the candle-viewer routes and the forecast-path summary. Throws on
-// a non-OK response with OANDA's errorMessage included.
-async function _wbtFetchIntradayOnce(oanda, gran, { from, to, count } = {}) {
-  const base = _oandaBaseW();
-  let url = `${base}/v3/instruments/${encodeURIComponent(oanda)}/candles?granularity=${gran}&price=M`;
-  if (from) url += `&from=${encodeURIComponent(from)}`;
-  if (to)   url += `&to=${encodeURIComponent(to)}`;
-  // count is valid with a `from` (OANDA returns `count` candles forward) or
-  // alone; it must NOT be combined with `to` (from+to defines the span).
-  if (count && !to) url += `&count=${count}`;
-  else if (!from && !to) url += `&count=200`;
-  const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(20_000) });
-  if (!r.ok) {
-    let msg = `OANDA HTTP ${r.status}`;
-    try { const j = await r.json(); if (j?.errorMessage) msg += ` — ${j.errorMessage}`; } catch { /* body not JSON */ }
-    throw new Error(msg);
-  }
-  const data = await r.json();
-  return (data.candles ?? [])
-    .filter(c => c.complete !== false && c.mid)
-    .map(c => ({ time: Math.floor(new Date(c.time).getTime() / 1000), open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c }));
-}
-
-// Fetch intraday candles (epoch-second times), PAGINATED past OANDA's 5000-
-// candle/request cap: walks the [from, to] window forward in time chunks so a
-// multi-month M15/M5 history stitches into one ascending, de-duplicated series.
-// The event-σ A/B needs ≥20 event windows → months of M15, not the ~50 days a
-// single request allows.
-async function _wbtFetchIntraday(oanda, gran, { from, to, count } = {}) {
-  const toMs = to ? new Date(_wbtClampTo(to)).getTime() : Date.now();
-  if (!from) return _wbtFetchIntradayOnce(oanda, gran, { count });   // count-only (no range)
-  // OANDA rejects a from+to request spanning >5000 candles ("Maximum value for
-  // 'count' exceeded") — it does NOT return the first 5000. So page with
-  // from+count (5000 forward from the cursor), advancing until we pass `to`.
-  let cursorMs = new Date(from + 'T00:00:00Z').getTime();
-  const out = [];
-  for (let page = 0; page < 24 && cursorMs < toMs; page++) {   // hard cap 24 pages
-    const chunk = await _wbtFetchIntradayOnce(oanda, gran, {
-      from: new Date(cursorMs).toISOString().replace(/\.\d+Z$/, 'Z'),
-      count: 5000,
-    });
-    if (!chunk.length) break;
-    let added = 0;
-    for (const c of chunk) {
-      if (c.time * 1000 > toMs) break;                                // past the window
-      if (!out.length || c.time > out[out.length - 1].time) { out.push(c); added++; }
-    }
-    const lastMs = chunk[chunk.length - 1].time * 1000;
-    if (lastMs >= toMs || chunk.length < 5000 || added === 0) break;  // reached `to` / caught up
-    cursorMs = lastMs + 1000;
-  }
-  return out;
-}
+// Intraday fetch (single page + paginated) now lives in js/oandaIntraday.js —
+// aliased here so the routes below didn't need touching.
+const _wbtFetchIntradayOnce = fetchIntradayOnce;
+const _wbtFetchIntraday = fetchIntraday;
 
 // Weekly backtest intraday candle viewer — same as D1 but at a finer
 // granularity, epoch-second times. One handler, mounted per granularity.
 function _wbtIntradayRoute(gran, defCount) {
   return async (req, res) => {
     const name  = req.params.pair.toLowerCase().replace(/[^a-z]/g, '');
-    const oanda = _wbtInstrMap[name];
+    const oanda = _wbtResolveOanda(name);
     if (!oanda) return res.status(404).json({ ok: false, error: `Unknown pair: ${name}` });
     if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
     try {
@@ -14870,6 +16236,96 @@ function _wbtIntradayRoute(gran, defCount) {
 }
 app.get('/api/weekly-vol-backtest/m15/:pair', _wbtIntradayRoute('M15', 200));
 app.get('/api/weekly-vol-backtest/m5/:pair',  _wbtIntradayRoute('M5',  500));
+
+// ── Expected-Move Board — one consolidated continue/fade + magnitude read per
+// pair. Default universe is FX+gold (POI_ALL_PAIRS, the same 26 pairs
+// forecast-blend.html covers); POI_INDEX_PAIRS opts into the 6 index CFDs on
+// request. Wires forecastPathCore (Cone A) + analogCone (Cone B) + coneBlend +
+// dayTypeCore + gammaFlow together via js/expectedMoveCore.js — no new math,
+// see that module's header. Async-job pattern, same as /api/poi-reaction/run.
+//
+// Indices caveat (NOT validated, flagged not silently ignored): Cone A's
+// session-shape profile (buildIntradayContext, forecastPathCore.js) buckets
+// drift/vol purely by UTC hour-of-day, which is right for FX's ~continuous
+// trading but untested for index/gold-future CFDs' own daily settlement
+// break (~22:00 UTC) — that hour's bucket will be built mostly from
+// reopen-gap bars instead of a typical trading hour. It won't crash (UTC-hour
+// bucketing doesn't require continuous data), it just hasn't been checked for
+// whether that changes cone quality vs FX. Cone B (regime/vol-bucketed
+// analogs) and dayTypeCore are both asset-class-agnostic already.
+const POI_INDEX_PAIRS = ['nq', 'spx500', 'us30', 'de30', 'uk100', 'us2000'];
+const expMoveJobs = new Map();
+function _purgeStaleExpMoveJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, j] of expMoveJobs) if (j.startedAt < cutoff) expMoveJobs.delete(id);
+}
+app.post('/api/expected-moves/run', express.json({ limit: '256kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+  const b = req.body ?? {};
+  const gran = (b.gran === 'M5' ? 'M5' : 'M15');
+  const H = Math.min(64, Math.max(4, Math.round(+b.H || 16)));
+  const universe = [...POI_ALL_PAIRS, ...POI_INDEX_PAIRS];
+  let pairs = Array.isArray(b.pairs) && b.pairs.length
+    ? b.pairs.map(p => String(p).toLowerCase().replace('/', '')).filter(p => universe.includes(p))
+    : POI_ALL_PAIRS;
+  if (!pairs.length) pairs = POI_ALL_PAIRS;
+
+  const jobId = `xm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleExpMoveJobs();
+  expMoveJobs.set(jobId, { status: 'running', startedAt, pairsTotal: pairs.length, pairsDone: 0 });
+
+  (async () => {
+    try {
+      const { computeExpectedMove } = await import('./js/expectedMoveCore.js');
+      const { pipSize, priceDigits, resolveKey, INSTRUMENTS } = await import('./js/instrumentRegistry.js');
+
+      let oiStore = {};
+      try {
+        const raw = await kv.get('oi_store');
+        if (raw) { const parsed = JSON.parse(raw); oiStore = parsed.data ?? parsed ?? {}; }
+      } catch { /* OI data is optional context — never fail the job for it */ }
+
+      const lookbackDays = gran === 'M5' ? 70 : 260;
+      const today = new Date().toISOString().substring(0, 10);
+      const fromD = new Date(Date.now() - lookbackDays * 86400e3).toISOString().substring(0, 10);
+
+      const results = [];
+      for (const pair of pairs) {
+        try {
+          const key = resolveKey(pair);
+          if (!key) throw new Error(`unknown pair: ${pair}`);
+          const oanda = _wbtResolveOanda(key);   // same resolver the d1/m15/m5 candle routes use — one place, not two independent fallbacks
+          if (!oanda) throw new Error(`no OANDA symbol for ${pair}`);
+          const bars = await _wbtFetchIntraday(oanda, gran, { from: fromD, to: today });
+          const display = INSTRUMENTS[key]?.display;
+          const oiInst = oiStore[display] ?? oiStore[key.toUpperCase()] ?? null;
+          const r = computeExpectedMove({ pair: key, bars, H, pip: pipSize(key), oiInst });
+          results.push({ ...r, pair: key, display: display ?? key.toUpperCase(), digits: priceDigits(key), n: bars.length });
+        } catch (e) {
+          results.push({ pair, ok: false, error: e?.message || String(e) });
+        }
+        const j = expMoveJobs.get(jobId); if (j) { j.pairsDone++; expMoveJobs.set(jobId, j); }
+      }
+
+      expMoveJobs.set(jobId, { status: 'done', startedAt, result: { gran, H, generatedAt: Date.now(), pairs: results } });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[expected-moves/run]', msg, e?.stack ?? '');
+      expMoveJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/expected-moves/status/:jobId', (req, res) => {
+  const job = expMoveJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', pairsDone: job.pairsDone, pairsTotal: job.pairsTotal });
+  if (job.status === 'error') return res.json({ ok: true, status: 'error', error: job.error });
+  res.json({ ok: true, status: 'done', ...job.result });
+});
 
 // ── Forecast-path summary — the cone's calibrated claims as a compact API ─────
 // Per pair: the LIVE 4h event-aware cone (P75 envelope + drift), the surprise
@@ -16234,6 +17690,7 @@ async function _fetchVolLevelCandles(sym, gran = 'M5', count = 150) {
       .map(c => ({ open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c,
                    t: Math.floor(new Date(c.time).getTime() / 1000) }));   // epoch sec, for session slicing
     _m5SrvCache.set(cacheKey, { data: bars, ts: Date.now() });
+    capMap(_m5SrvCache, CACHE_MAX_SERIES);
     return bars;
   } catch { return null; }
 }
@@ -18094,6 +19551,143 @@ app.get('/api/vol-backtest/candles/:pair', async (req, res) => {
   }
 });
 
+// ── Pattern Lab: chart-pattern detection & historical outcome scanner ────────
+// Detects flags/pennants, head & shoulders, double/triple tops-bottoms, and
+// triangles/channels (js/patternEngine.js) across timeframes resampled from
+// the same M1 parquet source as the vol-backtest routes above. Serves
+// precomputed scans written by scripts/pattern-lab-backtest.mjs when
+// available, falling back to a live (in-memory cached) compute otherwise.
+
+const PATTERN_LAB_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'analysis', 'output', 'pattern-lab');
+const PL_TF_MINUTES = { '1m': 1, '5m': 5, '15m': 15, '30m': 30, '1h': 60, '4h': 240, '1d': 1440 };
+const plScanCache = new Map(); // `${pair}:${minutes}` -> tfData
+
+function plNormalizeTf(tf) {
+  if (tf && PL_TF_MINUTES[tf] != null) return { minutes: PL_TF_MINUTES[tf], label: tf };
+  const minutes = parseInt(tf, 10) || 30;
+  const label = Object.entries(PL_TF_MINUTES).find(([, m]) => m === minutes)?.[0] || `${minutes}m`;
+  return { minutes, label };
+}
+
+async function plGetPacked(pair) {
+  if (!m1CandleCache.has(pair)) {
+    if (m1CandleCache.size >= M1_CACHE_MAX) m1CandleCache.delete(m1CandleCache.keys().next().value);
+    const packed = await loadM1ForPair(pair);
+    if (!packed) return null;
+    m1CandleCache.set(pair, packed);
+  }
+  return m1CandleCache.get(pair);
+}
+
+app.get('/api/pattern-lab/instruments', (_req, res) => {
+  const instruments = [...Object.keys(M1_DRIVE_IDS), 'gold'].sort();
+  let precomputed = [];
+  try { precomputed = fs.readdirSync(PATTERN_LAB_DIR).filter(f => f.endsWith('.json')).map(f => f.replace('.json', '')); } catch {}
+  res.json({ ok: true, instruments, precomputed });
+});
+
+app.get('/api/pattern-lab/candles/:pair', async (req, res) => {
+  const pair = req.params.pair.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const { minutes } = plNormalizeTf(req.query.tf);
+  const { from, to } = req.query;
+  try {
+    const packed = await plGetPacked(pair);
+    if (!packed) return res.status(404).json({ ok: false, error: `No M1 data for ${pair} — check R2 credentials or local parquet files` });
+    const bars = plResampleBars(packed, minutes);
+    const fromTs = from ? Math.floor(new Date(from + 'T00:00:00Z').getTime() / 1000) : 0;
+    const toTs   = to   ? Math.floor(new Date(to   + 'T23:59:59Z').getTime() / 1000) : 2_000_000_000;
+    const candles = [];
+    for (const b of bars) {
+      if (b.time >= fromTs && b.time <= toTs) candles.push({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close });
+      if (candles.length >= 20000) break;
+    }
+    res.json({ ok: true, pair, minutes, n: candles.length, candles });
+  } catch (e) {
+    console.error('[pattern-lab/candles]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Live candles straight from OANDA (not the static M1 parquet) — this is what
+// the live pattern scanner (PatternBot/pattern_live_bot.mjs) polls. Only the
+// granularities OANDA actually serves at intraday resolution are supported;
+// 1m is deliberately not exposed here (too noisy to alert on live, per the
+// historical study) even though the M1 parquet route above supports it.
+const PL_LIVE_GRAN = { '5m': 'M5', '15m': 'M15', '30m': 'M30', '1h': 'H1', '4h': 'H4', '1d': 'D' };
+
+app.get('/api/pattern-lab/live-candles/:pair', async (req, res) => {
+  const pair = req.params.pair.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const { label } = plNormalizeTf(req.query.tf);
+  const gran = PL_LIVE_GRAN[label];
+  if (!gran) return res.status(400).json({ ok: false, error: `tf must be one of ${Object.keys(PL_LIVE_GRAN).join(', ')}` });
+  const oanda = OANDA_INSTRUMENT_MAP[pair];
+  if (!oanda) return res.status(404).json({ ok: false, error: `Unknown pair: ${pair}` });
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+  const count = Math.min(5000, Math.max(50, parseInt(req.query.count, 10) || 500));
+  try {
+    const candles = await fetchIntradayOnce(oanda, gran, { count });
+    res.json({ ok: true, pair, tf: label, gran, n: candles.length, candles });
+  } catch (e) {
+    console.error('[pattern-lab/live-candles]', e.message);
+    res.status(/OANDA HTTP/.test(e.message) ? 502 : 500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get('/api/pattern-lab/scan/:pair', async (req, res) => {
+  const pair = req.params.pair.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const { minutes, label } = plNormalizeTf(req.query.tf);
+  const cacheKey = `${pair}:${minutes}`;
+  try {
+    if (!req.query.refresh) {
+      if (plScanCache.has(cacheKey)) return res.json({ ok: true, pair, tf: label, minutes, ...plScanCache.get(cacheKey) });
+
+      const diskFile = path.join(PATTERN_LAB_DIR, `${pair}.json`);
+      if (fs.existsSync(diskFile)) {
+        const full = JSON.parse(fs.readFileSync(diskFile, 'utf8'));
+        const tfData = full.timeframes[label];
+        if (tfData) {
+          plScanCache.set(cacheKey, tfData);
+          return res.json({ ok: true, pair, tf: label, minutes, ...tfData });
+        }
+      }
+    }
+
+    // Live compute fallback — also used for ?refresh=1 to force a re-scan.
+    const packed = await plGetPacked(pair);
+    if (!packed) return res.status(404).json({ ok: false, error: `No M1 data for ${pair} — check R2 credentials or local parquet files` });
+    const bars = plResampleBars(packed, minutes);
+    const { instances, stats } = runPatternScan(bars, {});
+
+    // Cross-timeframe confluence: annotate against the next-higher timeframe
+    // (e.g. 15m instances tagged against what the 1h trend is doing).
+    const higherMinutes = Object.values(PL_TF_MINUTES).filter(m => m > minutes).sort((a, b) => a - b)[0];
+    let htfLabel = null;
+    if (higherMinutes) {
+      htfLabel = Object.entries(PL_TF_MINUTES).find(([, m]) => m === higherMinutes)?.[0] || `${higherMinutes}m`;
+      const htfBars = plResampleBars(packed, higherMinutes);
+      const htfStructure = plClassifySwingStructure(htfBars, 5);
+      plAnnotateHtfAlignment(instances, htfBars, htfStructure, htfLabel);
+    }
+
+    const tfData = {
+      barCount: bars.length,
+      firstBarTime: bars[0]?.time ?? null,
+      lastBarTime: bars[bars.length - 1]?.time ?? null,
+      htfTimeframe: htfLabel,
+      stats,
+      confidenceBuckets: plConfidenceBucketStats(instances),
+      totalCount: instances.length,
+      shownCount: Math.min(instances.length, 500),
+      instances: instances.slice(-500),
+    };
+    plScanCache.set(cacheKey, tfData);
+    res.json({ ok: true, pair, tf: label, minutes, ...tfData });
+  } catch (e) {
+    console.error('[pattern-lab/scan]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // Beta history — reads bot/data/beta_history.jsonl for the correlation dashboard.
 // Optional query params: limit (max records, default 3000), downsample (bool).
 app.get('/api/beta-history', (req, res) => {
@@ -19227,10 +20821,23 @@ async function _loadMacroFredHistoryFull(onLog = () => {}) {
 }
 
 const tdeBackfillJobs = new Map();
+// The only job Map of ~65 without a purge — every other one has a _purgeStale*Jobs.
+// Each job holds a full `log` array for the life of the process. Stricter than the
+// neighbours on purpose: a backfill can run for a long time, so this only drops
+// jobs that have already FINISHED (the status route's own 404 is "not found or
+// expired", so an expired id is an anticipated state). A running job is never
+// evicted, so an in-flight poll can't be broken.
+function _purgeStaleTdeBackfillJobs() {
+  const cut = Date.now() - 60 * 60_000;
+  for (const [id, j] of tdeBackfillJobs) {
+    if (j.status !== 'running' && (j.startedAt ?? 0) < cut) tdeBackfillJobs.delete(id);
+  }
+}
 let tdeBackfillRunning = false;
 function tdeStartBackfillJob(pairs, { incremental, gapFill = true, macro = true }) {
   const jobId = `tdebf_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const job = { status: 'running', startedAt: Date.now(), log: [] };
+  _purgeStaleTdeBackfillJobs();
   tdeBackfillJobs.set(jobId, job);
   tdeBackfillRunning = true;
   (async () => {
@@ -19728,8 +21335,10 @@ async function refreshMacroContext() {
 }
 
 // ── Server-side FRED dashboard cache refresh ──────────────────────────────────
-// Fetches all 31 FRED series sequentially (600ms gaps = ~100 req/min) and stores
-// in fred_data_v3 KV. Runs at startup and every 6h so the /api/fred endpoint
+// Fetches all 31 FRED series sequentially (600ms gaps = ~100 req/min), merges in
+// a `copper` reading from OANDA D1 (not a FRED series — same {value, prev} shape
+// via the shared fetchD1 primitive), and stores the combined payload in
+// fred_data_v3 KV. Runs at startup and every 6h so the /api/fred endpoint
 // always serves from KV — no client-triggered concurrent FRED batches.
 const _FRED_DASH_SERIES = {
   vix: 'VIXCLS', vix3m: 'VXVCLS', us2y: 'GS2', us5y: 'GS5', us10y: 'GS10',
@@ -19756,6 +21365,7 @@ const _FREDHISTORY_SERIES = {
   us2y: 'GS2', us5y: 'GS5', us10y: 'GS10', dxy: 'DTWEXBGS',
   tips: 'DFII10', tips5: 'DFII5', bei: 'T10YIE', vix: 'VIXCLS',
   hy: 'BAMLH0A0HYM2', usd_jpy: 'DEXJPUS',
+  sofr: 'SOFR', rrp: 'RRPONTSYD',   // repo rate + reverse-repo facility usage (macro-change strip)
   de10y: 'IRLTLT01DEM156N', gb10y: 'IRLTLT01GBM156N',
   jp10y: 'IRLTLT01JPM156N', au10y: 'IRLTLT01AUM156N',
   ca10y: 'IRLTLT01CAM156N', ch10y: 'IRLTLT01CHM156N',
@@ -19862,12 +21472,25 @@ async function refreshFredDashboard(retry = 0) {
       await new Promise(res => setTimeout(res, 600)); // 600ms gap ≈ 100 req/min
     }
 
+    // Copper isn't a FRED series — pull it from OANDA D1 (shared fetchD1 primitive,
+    // same one the vol-forecast engine uses) and store it in the same {value, prev}
+    // shape so the daily-brief macro-backdrop thread can read it exactly like `wti`.
+    if (process.env.OANDA_KEY) {
+      try {
+        const bars = await _btFetchD1('XCU_USD', 2);
+        const last = bars.at(-1), prior = bars.at(-2);
+        out.copper = { value: last?.close ?? null, prev: prior?.close ?? null };
+      } catch {
+        out.copper = { value: null, prev: null };
+      }
+    }
+
     const critOk     = _FRED_DASH_CRIT.every(k => out[k]?.value != null);
     const validCount = Object.values(out).filter(v => v.value != null).length;
     if (critOk && validCount >= 10) {
       await kv.put(_FRED_DASH_KV, JSON.stringify({ d: out, t: Date.now() }), { expirationTtl: 86400 });
       await _writeBotFredKey(out);
-      console.log(`[FRED] Dashboard cache ready — ${validCount}/31 valid` +
+      console.log(`[FRED] Dashboard cache ready — ${validCount}/${Object.keys(out).length} valid` +
         ` VIX=${out.vix?.value} HY=${out.hy?.value} US10Y=${out.us10y?.value} NFCI=${out.nfci?.value}`);
     } else {
       const missing = _FRED_DASH_CRIT.filter(k => out[k]?.value == null);
@@ -20578,7 +22201,20 @@ function _qmrFwdMsgLines(fwd, todayStr) {
   return msg;
 }
 
+// QMR ALERTS ARE RETIRED (2026-07-30). The price-gate system was falsified on
+// 2026-07-29 - its entire edge was the free-hour backtest artifact - so
+// alerting on it is noise from a system we proved does not work, sitting
+// beside the COG-shadow alerts that DO matter. Gated at the single send point
+// rather than ripped out of four monitors: gate state still logs to KV for the
+// record, and this is one line to reverse.
+// COG-shadow messages pass through - they are tagged and are the live work.
+const QMR_ALERTS_RETIRED = true;
+
 async function nqSendTg(msg) {
+  if (QMR_ALERTS_RETIRED && !/COG-SHADOW/.test(msg)) {
+    console.log('[qmr] alert suppressed (system retired):', String(msg).slice(0, 60));
+    return;
+  }
   // Check NQ-specific TG config first, fall back to shared state.tg
   try {
     const cfg    = await nqLoadMonCfg();
@@ -21335,6 +22971,7 @@ async function _iqrRestoreFromKv(mon) {
 })();
 
 // ─────────────────────────────────────────────────────────────────────────────
+
 
 app.listen(PORT, () => {
   const oanda   = process.env.OANDA_KEY ? '✓' : '✗ missing';

@@ -41,6 +41,10 @@
  *     not an available answer.
  *   • This is a PROBABILITY of touch under a diffusion. It says nothing about whether
  *     the wall then holds or breaks — that is a separate, unproven question.
+ *   • The reliability map was fitted only over raw 5–94%. Below 5% (a far wall the
+ *     horizon can't reach) the calibration interpolates to the ORIGIN, so a raw 0%
+ *     reads ~0% — NOT the fitted bottom-bin 11%. Clamping every unreachable wall to a
+ *     flat 11% was a real bug (the whole table read "11%"); see `calibrateTouch`.
  */
 
 import { intradayCone, intradaySamplePaths, intradayReachability } from './forecastPathCore.js';
@@ -81,17 +85,47 @@ function _monotone(curve) {
   return curve.map(([x, y]) => { best = Math.max(best, y); return [x, best]; });
 }
 
-// Apply the map. Flat outside the fitted range rather than extrapolating — beyond the
-// data the honest answer is the edge value, not a straight line into 100%.
+// Apply the map. ABOVE the fitted range it stays FLAT at the top point (the ~69%
+// realised ceiling — no honest extrapolation into 100%). BELOW the lowest fitted
+// point it interpolates from the ORIGIN (raw 0 → 0), NOT flat at the bottom point:
+// clamping a raw 0% ("no simulated path reaches this wall") up to the 11% bottom-bin
+// value put a misleading 11% on every unreachable wall — the "everything shows 11%"
+// bug. The fit's lowest bin was ~5% predicted → ~11% realised; there is no data for
+// raw < 5%, and for a wall price genuinely cannot reach in the horizon the honest
+// answer is ~0, not 11%. Origin-anchoring is the least-assuming way to say that and
+// keeps the map monotone and continuous at the first fitted point.
 export function calibrateTouch(p, curve = REACH_CALIB) {
   if (!Number.isFinite(p)) return null;
   const c = _monotone(curve);
-  if (p <= c[0][0]) return c[0][1];
+  if (p <= 0) return 0;
+  if (p <= c[0][0]) return c[0][1] * (p / (c[0][0] || 1));   // interpolate 0 → first fitted point
   for (let i = 1; i < c.length; i++) {
     const [x0, y0] = c[i - 1], [x1, y1] = c[i];
     if (p <= x1) return y0 + (y1 - y0) * ((p - x0) / ((x1 - x0) || 1));
   }
   return c[c.length - 1][1];
+}
+
+// Compact ETA label from a median first-touch BAR count (each bar = `barMin` minutes).
+// null (fewer than half the paths touched → no reliable median) → '?'. e.g. 9 M5 bars
+// → '45m', 60 → '5h', 600 → '2d'. Pure.
+export function fmtReachEta(medBars, barMin = 5) {
+  if (!Number.isFinite(medBars) || medBars < 0) return '?';
+  const mins = medBars * barMin;
+  if (mins < 60) return `${Math.max(1, Math.round(mins))}m`;
+  if (mins < 60 * 24) return `${Math.round(mins / 60)}h`;
+  return `${Math.round(mins / 1440)}d`;
+}
+
+// One-token touch label for the export line: "82%~2h" (calibrated P(touch) + median ETA).
+// Empty string when there's no usable probability OR the level rounds to 0% (won't be
+// reached in the horizon) — so a far, unreachable level shows NOTHING rather than a wall of
+// "0%~?" noise, and the caller appends nothing. Pure.
+export function reachLabel(row, barMin = 5) {
+  if (!row || !Number.isFinite(row.calibrated)) return '';
+  const pct = Math.round(row.calibrated * 100);
+  if (pct <= 0) return '';   // unreachable in the window → blank, not "0%~?"
+  return `${pct}%~${fmtReachEta(row.medBarsToTouch, barMin)}`;
 }
 
 // Per-wall reachability. `walls` = [{price, type, label}]. Returns one row per wall,

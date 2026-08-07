@@ -399,7 +399,26 @@ console.log('[downstream wiring — export, indicator, bot]');
   ok('gex_flip carries the right price', lv.find(l => l.type === 'gex_flip')?.price === 4099.13);
 
   const txt = buildOILevelText({ 'XAU/USD': inst }, { generated: 'test' });
-  ok('C+Z export carries gex_flip to the indicator', /^OI .* : gex_flip$/m.test(txt), '');
+  // The line now carries a terse expectation after a ' . ' marker, so this is no
+  // longer end-anchored — but the TYPE TOKEN must still be exactly what the Pine
+  // parser reads, which is the actual contract. Asserted the way the indicator
+  // parses it (split on ' : ', then on spaces, token 0 = type, a 't'-prefixed
+  // token 1 = tier) so a future annotation cannot silently shift the type.
+  ok('C+Z export carries gex_flip to the indicator', /^OI .* : gex_flip(\s|$)/m.test(txt), '');
+  {
+    const oiLines = txt.split('\n').filter(l => l.startsWith('OI '));
+    const parsedLikePine = oiLines.map(l => {
+      const rhs = l.split(' : ')[1] ?? '';
+      const parts = rhs.split(' ');
+      return { type: parts[0], tier: (parts[1] || '').startsWith('t') ? parts[1] : null };
+    });
+    ok('every exported line still yields a clean type token for the indicator',
+      parsedLikePine.length > 0 && parsedLikePine.every(p => /^[a-z_]+$/.test(p.type)),
+      parsedLikePine.map(p => p.type).join(','));
+    ok('the annotation never lands where the tier is read',
+      parsedLikePine.every(p => p.tier === null || /^t\d$/.test(p.tier)),
+      parsedLikePine.map(p => p.tier).filter(Boolean).join(','));
+  }
   ok('export still carries the walls and max pain',
     /: call_wall/.test(txt) && /: put_wall/.test(txt) && /: max_pain/.test(txt));
 
@@ -422,6 +441,55 @@ console.log('[downstream wiring — export, indicator, bot]');
     withRef.map(z => z.mode + '@' + z.entry).join(' '));
   ok('and NOT flagged when neither expMove nor refMove exists (the gap that was live)',
     !noRef.some(flagged));
+}
+
+
+// ── The Settlements table mixes WEEKLY and MONTHLY products (regression, 2026-07-30) ──
+// Reported on gold: the smile hint said "paste expiry G4TQ6 (25/08/2026, 27 DTE)" while the
+// QuikStrike PRODUCT (OG) tabs offered only OG5N6 / OGU6 / OGV6 / OGX6 / OGZ6 / OGF7 / …
+// G4TQ6 is a real CME code, but a WEEKLY — a different product, under a different tab. The
+// hint was unactionable: it named something the user could not select.
+//
+// Cause: when the OI heatmap carries no expiry codes (its header is partial, so the
+// count-must-match rule correctly reports none), resolveSmileExpiry falls back to nearest
+// DTE across the whole Settlements pool — which mixes weeklies and monthlies — and then
+// presented that GUESS with the same wording as a code confirmed off the heatmap.
+console.log('[smile hint: weekly-vs-monthly product families]');
+{
+  const H = ['Symbol\tDTE\tExpiration', 'hdr\thdr\thdr'].join('\n');
+  const row = (sym, dte, exp) =>
+    [sym, dte, exp, '4000', '4010', '1', '2', '50', '1', '2', '18.5', '18.4', '0.1', '120', '1', '130', '1'].join('\t');
+  // Gold shape: one weekly at 27 DTE, monthlies further out.
+  const TERM = fx('oi-eurusd-settlements-term.txt');   // block-scoped elsewhere; load our own
+  const GOLD = [H, row('G4TQ6', 27, '25/08/2026'), row('OGU6', 40, '27/08/2026'),
+    row('OGV6', 70, '26/09/2026'), row('OGX6', 100, '27/10/2026'), row('OGZ6', 130, '25/11/2026')].join('\n');
+
+  const g = resolveSmileExpiry('', GOLD, { dte: 27, now: Date.UTC(2026, 6, 30) });
+  ok('CARD: reproduces the reported G4TQ6 pick', g.code === 'G4TQ6', String(g.code));
+  ok('a DTE-inferred code is NOT presented as confirmed', g.codeConfirmed === false, String(g.codeConfirmed));
+  ok('the monthly root is inferred from the data (OG), not hard-coded', g.monthlyRoot === 'OG', String(g.monthlyRoot));
+  ok('G4TQ6 is flagged as outside the monthly family', g.matchedIsMonthly === false, String(g.matchedIsMonthly));
+  ok('an expiry DATE is returned — the field that maps to a selectable tab',
+    g.date === '25/08/2026', String(g.date));
+
+  // Real EUR/USD: heatmap DOES carry codes, so the answer is confirmed and monthly.
+  const e = resolveSmileExpiry(MATRIX, TERM, { now: Date.UTC(2026, 6, 27) });
+  ok('with heatmap codes the result IS confirmed', e.codeConfirmed === true, String(e.codeConfirmed));
+  ok('real EUR/USD monthly root inferred as EUU', e.monthlyRoot === 'EUU', String(e.monthlyRoot));
+  ok('and the matched expiry is the monthly', e.matchedIsMonthly === true, String(e.matchedIsMonthly));
+
+  // Without heatmap codes, EUR/USD's own table also lands on a weekday weekly — same trap.
+  const w = resolveSmileExpiry('', TERM, { dte: 27, now: Date.UTC(2026, 6, 27) });
+  ok('EUR/USD DTE-fallback lands on a weekday weekly and says so',
+    w.codeConfirmed === false && w.matchedIsMonthly === false, `${w.code}/${w.matchedIsMonthly}`);
+  ok('a DTE that hits the monthly is reported as monthly',
+    resolveSmileExpiry('', TERM, { dte: 14 }).matchedIsMonthly === true);
+
+  // The monthly root must need >=2 distinct months — a lone contract is not a "family".
+  const ONE = [H, row('ZZZQ6', 10, '10/08/2026')].join('\n');
+  ok('a single contract does not define a monthly family',
+    resolveSmileExpiry('', ONE, { dte: 10 }).monthlyRoot === null,
+    String(resolveSmileExpiry('', ONE, { dte: 10 }).monthlyRoot));
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

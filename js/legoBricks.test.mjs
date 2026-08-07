@@ -21,6 +21,8 @@ import { refreshVolatilityPlan } from './volatilityBotProducer.js';
 import { bucketM1IntoSessions } from './forecastAnalyser.js';
 import { londonMidnightSec } from './volBacktestEngine.js';
 import { buildOILevelText } from './oiLevelExport.js';
+import { computeExpiryLevels, pickNearExpiry, buildOIEntry, oiDayBandFrac, oiBandSelect } from './oi.js';
+import { oiStoreToLevels } from './oiConfluence.js';
 
 let failures = 0;
 const ok   = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -182,6 +184,8 @@ ok('resolveKey aliases → eurusd', ['EUR/USD', 'EUR_USD', 'EURUSD', 'eurusd', '
 ok('pip sizes correct', pipSize('EUR/USD') === 0.0001 && pipSize('USD/JPY') === 0.01 && pipSize('XAU/USD') === 1.0);
 ok('gold canonical pip = 1.0 (not the 0.1 drift)', pipSize('gold') === 1.0);
 ok('NQ resolves via OANDA + assetClass index', instrument('NAS100_USD').key === 'nq' && instrument('nq').assetClass === 'index');
+ok('index short-name aliases resolve (us30/uk100/us2000 were missing from EXTRA_ALIASES)',
+  resolveKey('us30') === 'dow' && resolveKey('uk100') === 'ftse' && resolveKey('us2000') === 'rut' && resolveKey('rus2000') === 'rut');
 ok('unknown instrument throws', (() => { try { instrument('ZZZ/ZZZ'); return false; } catch { return true; } })());
 ok('registry covers ≥30 instruments', INSTRUMENT_KEYS.length >= 30);
 
@@ -649,6 +653,13 @@ console.log('\n[oiLevelExport]');
       putWalls:  [{ strike: 1.0900, oi: 8000, tier: 3 }, { strike: 1.0850, oi: 3000, tier: 1 }],
       exposures: { gex: 1200 },                          // positive net GEX → PIN
       volumeMagnets: [{ strike: 1.1025, volume: 5000 }], // today's heaviest volume
+      gexProfile: [                                       // gamma-heat source: peak near spot/max-pain
+        { strike: 1.0850, callGex: 10, putGex: 40 },
+        { strike: 1.0900, callGex: 200, putGex: 800 },
+        { strike: 1.0950, callGex: 1500, putGex: 1800 }, // peak → hot
+        { strike: 1.1000, callGex: 60, putGex: 20 },     // far → cold
+        { strike: 1.1050, callGex: 15, putGex: 8 },
+      ],
     },
     'NAS100_USD': {
       pair: 'NAS100_USD', spot: 20000, savedAt: '7/21/2026, 08:20:00',
@@ -673,10 +684,267 @@ console.log('\n[oiLevelExport]');
   ok('OI export tags PIN regime from +GEX', text.includes('regime PIN'));
   ok('OI export tags BREAKOUT regime from -GEX', text.includes('regime BREAKOUT'));
   ok('OI export emits volume magnet as oi_volume', text.includes('OI 1.10250 : oi_volume'));
+  // Gamma heat (levelHeat): appended as a SECOND ' . ' segment, AFTER the expectation,
+  // so the indicator's index-1 note read is undisturbed. Only when a gexProfile exists.
+  {
+    const lines = text.split('\n');
+    const mpLine = lines.find(l => l.startsWith('OI 1.09480 : max_pain'));
+    ok('OI export tags heat AFTER the expectation (max_pain near the peak → hot/warm)',
+      / \. [^.\n]+ \. (hot|warm|cold)\s*$/.test(mpLine || ''), mpLine);
+    ok('OI export marks a far level cold (call_wall 1.1000 away from the gamma peak)',
+      (lines.find(l => l.startsWith('OI 1.10000 : call_wall')) || '').endsWith(' . cold'));
+    const nqLine = lines.find(l => l.startsWith('OI 20200.00 : call_wall'));
+    ok('OI export adds NO heat segment when there is no gexProfile (NQ block)',
+      !/ \. (hot|warm|cold)\s*$/.test(nqLine || ''), nqLine);
+  }
+  // P(touch) as a THIRD ' . ' segment (index 3), keyed by exact price. Appended after the
+  // expectation (1) and heat (2); a '-' placeholder holds heat's slot if heat were absent.
+  {
+    const reachByPair = { 'EUR/USD': { '1.094800': '82%~2h' } };
+    const textR = buildOILevelText(store, { generated: 'x', reachByPair });
+    const mpR = textR.split('\n').find(l => l.startsWith('OI 1.09480 : max_pain'));
+    ok('OI export appends P(touch) after expectation + heat',
+      / \. [^.\n]+ \. (hot|warm|cold|-) \. 82%~2h\s*$/.test(mpR || ''), mpR);
+    ok('OI export omits P(touch) for levels with no reach entry',
+      !/82%~2h/.test(textR.split('\n').find(l => l.startsWith('OI 1.10000 : call_wall')) || ''));
+  }
+  // SELF-HEAL: an entry whose gexProfile was shed by the localStorage quota-trim
+  // (dropped FIRST as "rebuildable") still gets heat + P(touch), because the export
+  // rebuilds the profile from the stored raw paste. This is the EUR/USD "no gex
+  // profile in the morning" case — the profile is reconstructed, not lost.
+  {
+    const rawOI = [
+      '1.0850\t100\t400',
+      '1.0900\t2000\t8000',
+      '1.0950\t15000\t18000',   // heaviest OI, nearest spot → gamma peak → hot
+      '1.1000\t600\t200',       // light + off-peak → cold
+      '1.1050\t150\t80',
+    ].join('\n');
+    const trimmed = {
+      'EUR/USD': {
+        pair: 'EUR/USD', spot: 1.0955, dte: 4, basis: 0, savedAt: '7/21/2026, 08:15:00',
+        maxPain: 1.0948, callWall: 1.1000, putWall: 1.0900,
+        callWalls: [{ strike: 1.1000, oi: 9000, tier: 3 }],
+        putWalls:  [{ strike: 1.0900, oi: 8000, tier: 3 }],
+        exposures: { gex: 1200 },
+        rawOI,                    // gexProfile DELIBERATELY ABSENT (quota-trimmed)
+      },
+    };
+    const th = buildOILevelText(trimmed, { generated: 'x' });
+    const mp = th.split('\n').find(l => l.startsWith('OI 1.09480 : max_pain'));
+    ok('OI export self-heals heat from rawOI when gexProfile was quota-trimmed',
+      / \. (hot|warm|cold)\s*$/.test(mp || ''), mp);
+    const cw = th.split('\n').find(l => l.startsWith('OI 1.10000 : call_wall'));
+    ok('OI export self-heal marks the far call_wall cold', /\. cold\s*$/.test(cw || ''), cw);
+    // Rebuild + reach compose: the heat placeholder never eats the touch slot.
+    const thr = buildOILevelText(trimmed, { generated: 'x', reachByPair: { 'EUR/USD': { '1.094800': '82%~2h' } } });
+    const mpr = thr.split('\n').find(l => l.startsWith('OI 1.09480 : max_pain'));
+    ok('OI export self-heal composes with P(touch)',
+      / \. (hot|warm|cold|-) \. 82%~2h\s*$/.test(mpr || ''), mpr);
+  }
   ok('OI export parser lines all start with "OI "',
      text.split('\n').filter(l => /^\d|^-?\d/.test(l.trim())).every(l => l.startsWith('OI ')));
   // Empty store → graceful placeholder, never a throw.
   ok('OI export handles empty store gracefully', buildOILevelText({}).includes('no OI data'));
+}
+
+// ── near-dated "day" expiry: bricks + dual-expiry export ─────────────────────
+console.log('\n[oi day-expiry]');
+{
+  // computeExpiryLevels — walls/max-pain/regime from one spot-equivalent ladder.
+  const cel = computeExpiryLevels(
+    [1.08, 1.09, 1.10, 1.11, 1.12],
+    [100, 500, 3000, 800, 200],       // calls
+    [200, 4000, 3500, 300, 100],      // puts
+    1.10, 'EUR/USD', { dte: 2, minOI: 20 });
+  ok('computeExpiryLevels returns walls both sides', cel && cel.callWalls.length > 0 && cel.putWalls.length > 0);
+  ok('computeExpiryLevels carries its DTE', cel.dte === 2, `${cel?.dte}`);
+  ok('computeExpiryLevels tags a regime from GEX sign', cel.regime === 'PIN' || cel.regime === 'BREAKOUT', cel.regime);
+  ok('computeExpiryLevels max pain is finite', Number.isFinite(cel.maxPain), `${cel.maxPain}`);
+  ok('computeExpiryLevels builds a per-strike profile', Array.isArray(cel.gexProfile) && cel.gexProfile.length === 5);
+
+  // pickNearExpiry — the SHORTEST expiry that still has real near-money OI.
+  const legs = [
+    { dte: 2,  strikes: [1.09, 1.10, 1.11], calls: [2000, 3000, 1500], puts: [1800, 2800, 1400] },
+    { dte: 14, strikes: [1.09, 1.10, 1.11], calls: [3000, 5000, 2500], puts: [2800, 4800, 2400] },
+  ];
+  ok('pickNearExpiry picks the nearer expiry when it has real OI', pickNearExpiry(legs, 1.10, { belowDte: 14 })?.leg?.dte === 2);
+  const thin = [
+    { dte: 1,  strikes: [1.10, 1.11], calls: [5, 3], puts: [5, 2] },   // near but ~empty (15 lots — under both floors)
+    { dte: 14, strikes: [1.09, 1.10, 1.11], calls: [3000, 5000, 2500], puts: [2800, 4800, 2400] },
+  ];
+  const thinPick = pickNearExpiry(thin, 1.10, { belowDte: 14 });
+  ok('pickNearExpiry skips a too-thin front expiry (no day set)', thinPick.leg === null);
+  ok('pickNearExpiry says WHY it skipped (thin near spot)', /thin near spot/i.test(thinPick.reason), thinPick.reason);
+  // Absolute floor: a near expiry that is a small FRACTION of a huge monthly still
+  // qualifies if it clears the absolute lots floor (the gold case — dailies dwarfed by
+  // the monthly but still tradeable).
+  const goldLegs = [
+    { dte: 1,  strikes: [4040, 4050, 4060], calls: [300, 400, 250], puts: [280, 350, 220] },   // ~1800 lots near spot
+    { dte: 24, strikes: [4040, 4050, 4060], calls: [40000, 50000, 30000], puts: [38000, 48000, 28000] },  // huge monthly
+  ];
+  const gp = pickNearExpiry(goldLegs, 4050, { belowDte: 24 });
+  ok('pickNearExpiry surfaces a near expiry dwarfed by the monthly (absolute floor)', gp.leg?.dte === 1, `${gp.reason}`);
+
+  // Dual-expiry store → oiStoreToLevels emits BOTH sets, DTE-tagged.
+  const dual = {
+    'EUR/USD': {
+      pair: 'EUR/USD', spot: 1.0955, dte: 14, savedAt: '7/21/2026, 08:15:00',
+      maxPain: 1.0948, callWall: 1.1000, putWall: 1.0900,
+      callWalls: [{ strike: 1.1000, oi: 9000, tier: 'strong' }],
+      putWalls:  [{ strike: 1.0900, oi: 8000, tier: 'strong' }],
+      exposures: { gex: 1200 },                          // primary (far) → PIN
+      dayExpiry: {
+        dte: 2, maxPain: 1.0950,
+        callWalls: [{ strike: 1.0980, oi: 4000, tier: 'strong' }],
+        putWalls:  [{ strike: 1.0920, oi: 3500, tier: 'strong' }],
+        callWall: 1.0980, putWall: 1.0920,
+        exposures: { gex: -500 },                        // near-dated (day) → BREAKOUT
+        gexProfile: [{ strike: 1.0940, callGex: 50, putGex: 80 }, { strike: 1.0950, callGex: 600, putGex: 900 }, { strike: 1.0980, callGex: 40, putGex: 20 }],
+        gammaFlip: 1.0955, regime: 'BREAKOUT',
+      },
+    },
+  };
+  const dlevels = oiStoreToLevels(dual['EUR/USD']);
+  ok('oiStoreToLevels tags the far set with the primary DTE', dlevels.some(l => l.price === 1.1000 && l.dte === 14));
+  ok('oiStoreToLevels emits the near-dated day walls tagged with their DTE', dlevels.some(l => l.price === 1.0980 && l.dte === 2 && l.type === 'call_wall'));
+  ok('oiStoreToLevels emits the day max_pain', dlevels.some(l => l.price === 1.0950 && l.dte === 2 && l.type === 'max_pain'));
+
+  const dtext = buildOILevelText(dual, { generated: 'x' });
+  ok('dual export tags far walls with 14dte', /OI 1\.10000 : call_wall[^\n]* 14dte/.test(dtext), dtext.split('\n').find(l => l.startsWith('OI 1.10000')));
+  ok('dual export emits day walls tagged 2dte', /OI 1\.09800 : call_wall[^\n]* 2dte/.test(dtext), dtext.split('\n').find(l => l.startsWith('OI 1.09800')));
+  ok('dual export tints the NEAR-DATED regime (BREAKOUT), far book shown as long/short-gamma',
+    /regime BREAKOUT/.test(dtext) && /(long-gamma|short-gamma)/.test(dtext) && !/regime PIN/.test(dtext),
+    dtext.split('\n').find(l => l.includes('regime')));
+  // Single-expiry (no dayExpiry) → NO dte tags, byte-identical shape.
+  const single = { 'EUR/USD': { ...dual['EUR/USD'], dayExpiry: undefined } };
+  ok('no dayExpiry → no dte tag on any line', !/\ddte/.test(buildOILevelText(single, { generated: 'x' })));
+
+  // buildOIEntry (what /api/oi/reanalyse calls per stored pair) wires dayExpiry through
+  // end-to-end, HEADLESS + pinned to the stored basis (skipLiveQuote → no network).
+  const M = [
+    '\t6EU6', '1.0955\t6EU6', 'Strike\tNEAR', '2 DTE\tFAR', '30 DTE\tX', 'C\tP\tC\tP',
+    '1.0850\t120\t900\t400\t1500',
+    '1.0900\t3000\t6000\t5000\t7000',
+    '1.0950\t9000\t9500\t12000\t13000',
+    '1.1000\t2500\t1200\t6000\t3000',
+    '1.1050\t300\t150\t2000\t900',
+  ].join('\n');
+  const re = await buildOIEntry({ pair: 'EUR/USD', rawOI: M, spotRaw: 1.0955, futuresRaw: 1.0955, manualFutures: true, skipLiveQuote: true });
+  ok('buildOIEntry runs headless + pins the stored spot (skipLiveQuote)', !re.error && Math.abs(re.inst.spot - 1.0955) < 1e-9, re.error || `${re.inst?.spot}`);
+  ok('buildOIEntry populates the near-dated dayExpiry from a multi-expiry matrix', !!re.inst?.dayExpiry && re.inst.dayExpiry.dte === 2, `${re.inst?.dayExpiry?.dte}`);
+  ok('re-analysed dayExpiry carries its own walls + regime', re.inst?.dayExpiry
+    && Number.isFinite(re.inst.dayExpiry.callWall) && Number.isFinite(re.inst.dayExpiry.putWall)
+    && (re.inst.dayExpiry.regime === 'PIN' || re.inst.dayExpiry.regime === 'BREAKOUT'));
+
+  // Per-expiry SPOT-terms breakdown — for cross-desk comparison / calc verification. A
+  // LONGER expiry whose OI is centred below a rallied spot shows max-pain/walls below spot
+  // (exactly the "colleague's max pain is under our spot" case), while near expiries sit at
+  // spot. Proves the raw-OI calc is per-expiry and deterministic.
+  const cmpOI = [
+    '\t6EU6', '1.1545\t6EU6', 'Strike\tA', '1 DTE\tB', '30 DTE\tC', 'C\tP\tC\tP',
+    '1.1450\t50\t200\t8000\t9000',   // far expiry's heavy OI, below spot
+    '1.1545\t3000\t3500\t3000\t2500',
+    '1.1580\t2500\t600\t1500\t400',
+  ].join('\n');
+  const cmp = await buildOIEntry({ pair: 'EUR/USD', rawOI: cmpOI, spotRaw: 1.1545, futuresRaw: 1.1545, manualFutures: true, skipLiveQuote: true });
+  const pe = cmp.inst?.perExpiry || [];
+  ok('perExpiry has a row per expiry', pe.length === 2 && pe[0].dte === 1 && pe[1].dte === 30, pe.map(e => e.dte).join(','));
+  ok('a far expiry shows max pain BELOW spot (the cross-desk case)', pe.find(e => e.dte === 30)?.maxPain < 1.1545, `${pe.find(e => e.dte === 30)?.maxPain}`);
+  ok('a near expiry maxPain sits at/near spot', Math.abs((pe.find(e => e.dte === 1)?.maxPain ?? 0) - 1.1545) < 0.005);
+  // A near-EMPTY expiry column (no wall ≥ minOI → garbage max pain, e.g. 0.908 on EUR/USD)
+  // is dropped, so neither the text table nor an all-expiry line draws junk.
+  const emptyCol = [
+    '\t6EU6', '1.1532\t6EU6', 'Strike\tA', '1 DTE\tB', '9 DTE\tC', 'C\tP\tC\tP',
+    '1.1450\t3000\t5000\t2\t3', '1.1500\t2000\t2500\t1\t2', '1.1550\t2500\t600\t3\t1',
+  ].join('\n');
+  const ec = await buildOIEntry({ pair: 'EUR/USD', rawOI: emptyCol, spotRaw: 1.1532, futuresRaw: 1.1532, manualFutures: true, skipLiveQuote: true });
+  ok('perExpiry drops a near-empty column (no walls → junk max pain)',
+    (ec.inst.perExpiry || []).every(e => e.dte !== 9) && (ec.inst.perExpiry || []).some(e => e.dte === 1),
+    (ec.inst.perExpiry || []).map(e => e.dte).join(','));
+
+  // Inverted-pair (6J/6C/6S) call/put swap now defaults ON — a 6J CALL wall reads as a
+  // USD/JPY PUT wall (dealer-hedging convention; matches external CME OI dashboards). The
+  // un-flipped labels put every put wall ABOVE spot, which is backwards.
+  const jpyOI = [
+    '\t6J', '0.006337\t6J', 'Strike\tA', '30 DTE\tB', 'C\tP',
+    '0.006300\t500\t400', '0.006337\t9000\t800', '0.006370\t600\t7000',   // heavy CALL at 0.006337 (=USD/JPY 157.80)
+  ].join('\n');
+  const jf = await buildOIEntry({ pair: 'USD/JPY', rawOI: jpyOI, spotRaw: 157.8, futuresRaw: 0.006337, manualFutures: true, skipLiveQuote: true });
+  const jn = await buildOIEntry({ pair: 'USD/JPY', rawOI: jpyOI, spotRaw: 157.8, futuresRaw: 0.006337, manualFutures: true, skipLiveQuote: true, swapCP: false });
+  ok('inverted pair flips call/put by DEFAULT', jf.inst.cpSwapped === true);
+  ok('swapCP:false forces the flip OFF (escape hatch)', jn.inst.cpSwapped === false);
+  ok('flipped: the heavy-CALL 6J strike reads as a USD/JPY PUT wall',
+    jf.inst.putWalls.some(w => Math.abs(w.strike - 157.80) < 0.05 && w.oi === 9000),
+    jf.inst.putWalls.map(w => w.strike.toFixed(2) + ':' + w.oi).join(' '));
+  ok('un-flipped: the same strike reads as a CALL wall',
+    jn.inst.callWalls.some(w => Math.abs(w.strike - 157.80) < 0.05 && w.oi === 9000));
+  const eu = await buildOIEntry({ pair: 'EUR/USD', rawOI: '\t6E\n1.15\t6E\nStrike\tA\n30 DTE\tB\nC\tP\n1.1450\t500\t900\n1.1500\t3000\t2500\n1.1550\t2000\t400', spotRaw: 1.15, futuresRaw: 1.15, manualFutures: true, skipLiveQuote: true, swapCP: true });
+  ok('non-inverted pair never flips (swapCP:true ignored on EUR/USD)', eu.inst.cpSwapped === false);
+
+  // The day's trading band (from annualised vol, K=3 ≈ beyond the 99th-pct day) + catch level.
+  ok('oiDayBandFrac: gold ~18% vol → ~3.4% band', Math.abs(oiDayBandFrac(18, 'XAU/USD') - 0.034) < 0.002, `${oiDayBandFrac(18, 'XAU/USD')}`);
+  ok('oiDayBandFrac: EUR/USD ~7.5% vol → ~1.4% band', Math.abs(oiDayBandFrac(7.5, 'EUR/USD') - 0.0142) < 0.002, `${oiDayBandFrac(7.5, 'EUR/USD')}`);
+  ok('oiDayBandFrac: bigger K → wider band', oiDayBandFrac(10, 'USD/JPY', { k: 4 }) > oiDayBandFrac(10, 'USD/JPY', { k: 3 }));
+  ok('oiDayBandFrac: no vol → sane flat-vol fallback', oiDayBandFrac(null, 'EUR/USD') > 0.005 && oiDayBandFrac(null, 'EUR/USD') < 0.05);
+  {
+    const lv = [90, 98, 99, 101, 102, 110].map(p => ({ price: p, type: 'x' }));
+    const sel = oiBandSelect(lv, 100, 0.03);   // band [97, 103]
+    ok('oiBandSelect: keeps in-band levels', sel.inBand.map(l => l.price).join(',') === '98,99,101,102');
+    ok('oiBandSelect: catch = nearest beyond band each side', sel.catch.map(l => l.price).sort((a, b) => a - b).join(',') === '90,110'
+      && sel.catch.every(l => l.catch === true));
+    ok('oiBandSelect: no band → everything in-band, no catch', (() => { const s = oiBandSelect(lv, 100, 0); return s.inBand.length === 6 && s.catch.length === 0; })());
+  }
+  // Band-bounded export: a mid-expiry wall inside the band draws; the default export without a
+  // band is unchanged (no per-expiry lines unless allExpiry).
+  {
+    const many = [   // distinct per-expiry peaks: 1d cw1.1560, 5d cw1.1575/pw1.1520 (in band), 30d far
+      '\t6E', '1.1545\t6E', 'Strike\tA', '1 DTE\tB', '5 DTE\tC', '30 DTE\tD', 'C\tP\tC\tP\tC\tP',
+      '1.1450\t20\t50\t20\t60\t200\t9000', '1.1520\t100\t200\t300\t8000\t400\t500', '1.1530\t400\t9000\t200\t300\t300\t400',
+      '1.1560\t9000\t300\t500\t400\t600\t300', '1.1575\t300\t100\t8000\t200\t500\t200', '1.1650\t100\t50\t200\t40\t9000\t100',
+    ].join('\n');
+    const m = await buildOIEntry({ pair: 'EUR/USD', rawOI: many, spotRaw: 1.1545, futuresRaw: 1.1545, manualFutures: true, skipLiveQuote: true });
+    const band = oiDayBandFrac(7.5, 'EUR/USD');
+    const noBand = buildOILevelText({ 'EUR/USD': m.inst }, { generated: 'x' }).split('\n').filter(l => l.startsWith('OI '));
+    const withBand = buildOILevelText({ 'EUR/USD': m.inst }, { generated: 'x', bandByPair: { 'EUR/USD': band } }).split('\n').filter(l => l.startsWith('OI '));
+    ok('band export adds the in-band mid-expiry (5dte) walls', withBand.some(l => /5dte/.test(l)) && !noBand.some(l => /5dte/.test(l)), `${noBand.length}→${withBand.length}`);
+  }
+  const cmpTxt = buildOILevelText({ 'EUR/USD': cmp.inst }, { generated: 'x' });
+  ok('export renders the per-expiry breakdown block', /per-expiry \(mp = max pain/.test(cmpTxt) && /30DTE  mp /.test(cmpTxt));
+
+  // allExpiry: draw EVERY expiry's max-pain/walls as DTE-tagged OI lines, filling in the
+  // expiries the primary+day sets don't already cover. Default export must NOT gain them.
+  const many = [   // distinct per-expiry peaks so a middle expiry draws its own lines
+    '\t6EU6', '1.1545\t6EU6', 'Strike\tA', '1 DTE\tB', '5 DTE\tC', '30 DTE\tD', 'C\tP\tC\tP\tC\tP',
+    '1.1450\t20\t50\t20\t60\t200\t9000', '1.1520\t100\t200\t300\t8000\t400\t500', '1.1530\t400\t9000\t200\t300\t300\t400',
+    '1.1560\t9000\t300\t500\t400\t600\t300', '1.1575\t300\t100\t8000\t200\t500\t200', '1.1650\t100\t50\t200\t40\t9000\t100',
+  ].join('\n');
+  const mr = await buildOIEntry({ pair: 'EUR/USD', rawOI: many, spotRaw: 1.1545, futuresRaw: 1.1545, manualFutures: true, skipLiveQuote: true });
+  const defLines = buildOILevelText({ 'EUR/USD': mr.inst }, { generated: 'x' }).split('\n').filter(l => l.startsWith('OI '));
+  const allLines = buildOILevelText({ 'EUR/USD': mr.inst }, { generated: 'x', allExpiry: true }).split('\n').filter(l => l.startsWith('OI '));
+  ok('allExpiry adds OI lines beyond the default set', allLines.length > defLines.length, `${defLines.length} → ${allLines.length}`);
+  const coveredDtes = new Set([mr.inst.dte, mr.inst.dayExpiry?.dte].filter(Number.isFinite));
+  const midDte = (mr.inst.perExpiry || []).map(e => e.dte).find(d => !coveredDtes.has(d));
+  ok('allExpiry draws the uncovered middle expiry as lines', midDte != null && allLines.some(l => l.includes(`max_pain ${midDte}dte`)), `mid=${midDte}`);
+  ok('default export does NOT include that middle expiry', !defLines.some(l => l.includes(`max_pain ${midDte}dte`)));
+
+  // terms:'futures' adds the stored basis back so the lines overlay a FUTURES chart
+  // (a colleague on CME/COMEX). Default 'spot' is unchanged.
+  const goldStore = {
+    'XAU/USD': {
+      pair: 'XAU/USD', spot: 4110, basis: 4, dte: 1, savedAt: 'x',
+      maxPain: 4150, callWall: 4300, putWall: 3900,
+      callWalls: [{ strike: 4300, oi: 9000, tier: 'strong' }],
+      putWalls:  [{ strike: 3900, oi: 8000, tier: 'strong' }],
+      exposures: { gex: 500 },
+    },
+  };
+  const spotTxt = buildOILevelText(goldStore, { generated: 'x' });
+  const futTxt  = buildOILevelText(goldStore, { generated: 'x', terms: 'futures' });
+  ok('spot export draws the call wall at the spot strike (4300)', /OI 4300\.00 : call_wall/.test(spotTxt), spotTxt.split('\n').find(l => l.includes('call_wall')));
+  ok('futures export adds the basis back (+4 → 4304)', /OI 4304\.00 : call_wall/.test(futTxt), futTxt.split('\n').find(l => l.includes('call_wall')));
+  ok('futures export flags the terms on a context line', /futures\/CME terms/i.test(futTxt));
+  ok('spot export carries NO futures-terms note', !/futures\/CME terms/i.test(spotTxt));
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);

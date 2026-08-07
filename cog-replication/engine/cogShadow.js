@@ -35,38 +35,86 @@
 // is a headwind. HY credit is the risk-appetite switch — if credit is stressed,
 // liquidity does not reach equities.
 export function computeG1(series, opts = {}) {
-  const { rocWeeks = 4, creditStressBp = 25 } = opts;
+  const { rocWeeks = 4, creditStressBp = 25, flowThresholdBn = 10 } = opts;
+  // ALL SERIES MUST ARRIVE IN $ MILLIONS. FRED ships WALCL and WTREGEN in
+  // millions but RRPONTSYD in BILLIONS — subtracting them raw understates RRP
+  // by 1000x and silently deletes it from net liquidity. Our first emission did
+  // exactly that: it reported $5,917.8bn, which is WALCL − TGA with RRP
+  // contributing ~nothing. The caller converts; this function assumes millions
+  // and says so loudly because the failure is invisible in the output.
   const { walcl = [], tga = [], rrp = [], hy = [] } = series;
   const last = a => (a.length ? a[a.length - 1] : null);
   const back = (a, n) => (a.length > n ? a[a.length - 1 - n] : null);
 
-  const netNow = [walcl, tga, rrp].every(a => last(a) != null)
-    ? last(walcl).value - last(tga).value - last(rrp).value : null;
-  const netThen = [walcl, tga, rrp].every(a => back(a, rocWeeks) != null)
-    ? back(walcl, rocWeeks).value - back(tga, rocWeeks).value - back(rrp, rocWeeks).value : null;
-  if (netNow == null || netThen == null) {
-    return { state: 'INVALID', bias: null, reason: 'net liquidity inputs incomplete', netNow, netThen };
-  }
-  const netChgPct = netThen !== 0 ? (netNow - netThen) / Math.abs(netThen) * 100 : 0;
+  // Align a weekly series onto a daily date by taking the most recent print at
+  // or before that date — the only causal way to mix weekly WALCL with daily
+  // TGA/RRP.
+  const asOf = (arr, date) => {
+    let v = null;
+    for (const x of arr) { if (x.date <= date) v = x.value; else break; }
+    return v;
+  };
 
-  // Credit: widening HY over the same window is a veto, not a vote. Liquidity
-  // that cannot reach risk assets is not liquidity for this purpose.
+  // DAILY net liquidity. TGA and RRP publish daily; only WALCL is weekly, and
+  // it is the slowest-moving of the three. This is what makes a daily
+  // money-flow reading possible at all — a purely weekly series cannot produce
+  // a fresh directional signal 60 times a year, which was the standing
+  // objection to the whole macro thesis.
+  const daily = [];
+  for (const t of tga) {
+    const w = asOf(walcl, t.date), r = asOf(rrp, t.date);
+    if (w == null || r == null || !Number.isFinite(t.value)) continue;
+    daily.push({ date: t.date, net: w - t.value - r });
+  }
+  if (daily.length < 2) {
+    return { state: 'INVALID', bias: null, reason: 'daily net-liquidity series too short', days: daily.length };
+  }
+
+  const cur = daily[daily.length - 1], prev = daily[daily.length - 2];
+  const flowBn = (cur.net - prev.net) / 1000;                    // millions -> $bn
+  // The gap between the two most recent points. If the daily TGA feed fails we
+  // fall back to WEEKLY data, and a 7-day change reported as 'day-over-day' is
+  // a lie the output cannot detect. Carry the span so the label always matches
+  // the data, and widen the threshold proportionally - a weekly move of 10bn is
+  // not the same event as a daily one.
+  const flowSpanDays = Math.max(1, Math.round(
+    (new Date(cur.date) - new Date(prev.date)) / 864e5));
+
+  // TIDE — the persistent bias (multi-week trend).
+  const nBack = Math.min(daily.length - 1, rocWeeks * 5);        // ~5 business days/week
+  const tideThen = daily[daily.length - 1 - nBack];
+  const tideChgPct = tideThen && tideThen.net !== 0
+    ? (cur.net - tideThen.net) / Math.abs(tideThen.net) * 100 : 0;
+
+  // Credit is a VETO, not a vote: liquidity that cannot reach risk assets is
+  // not liquidity for this purpose.
   const hyNow = last(hy)?.value ?? null, hyThen = back(hy, rocWeeks)?.value ?? null;
   const hyChgBp = (hyNow != null && hyThen != null) ? (hyNow - hyThen) * 100 : null;
   const creditStressed = hyChgBp != null && hyChgBp > creditStressBp;
 
-  let bias = netChgPct > 0 ? 'LONG' : netChgPct < 0 ? 'SHORT' : null;
-  let state = bias ? 'VALID' : 'NEUTRAL';
+  const tideBias = tideChgPct > 0 ? 'LONG' : tideChgPct < 0 ? 'SHORT' : null;
+  const flowThr = flowThresholdBn * flowSpanDays;   // scale the bar to the span
+  const flowBias = flowBn > flowThr ? 'LONG' : flowBn < -flowThr ? 'SHORT' : null;
+
+  // BOTH readings are emitted. Which one tracks COG's Gate 1 is exactly what
+  // the forward record is for — picking one now would be inventing the answer.
+  let bias = tideBias, state = tideBias ? 'VALID' : 'NEUTRAL';
   if (creditStressed) { state = 'INVALID'; bias = null; }
 
   return {
     state, bias,
-    netLiquidityUsdBn: +(netNow / 1000).toFixed(1),      // FRED millions → $bn
-    netChgPct: +netChgPct.toFixed(2), rocWeeks,
+    netLiquidityUsdBn: +(cur.net / 1000).toFixed(1),
+    asOfDate: cur.date, dailyDays: daily.length,
+    tide: { chgPct: +tideChgPct.toFixed(2), overDays: nBack, bias: tideBias },
+    flow: { changeBn: +flowBn.toFixed(1), spanDays: flowSpanDays, isDaily: flowSpanDays === 1,
+            fromDate: prev.date, toDate: cur.date, bias: flowBias, thresholdBn: +flowThr.toFixed(1) },
+    agree: !!(tideBias && flowBias && tideBias === flowBias),
     hyNow, hyChgBp: hyChgBp == null ? null : +hyChgBp.toFixed(1), creditStressed,
     reason: creditStressed
       ? `HY credit widened ${hyChgBp?.toFixed(0)}bp over ${rocWeeks}w — liquidity is not reaching risk assets`
-      : `net liquidity ${netChgPct >= 0 ? 'rising' : 'falling'} ${Math.abs(netChgPct).toFixed(2)}% over ${rocWeeks}w`,
+      : `TIDE ${tideChgPct >= 0 ? '+' : ''}${tideChgPct.toFixed(2)}% over ${nBack}d`
+        + ` · FLOW ${flowBn >= 0 ? '+' : ''}${flowBn.toFixed(1)}bn over ${flowSpanDays}d`        + (flowSpanDays > 1 ? ' (WEEKLY FALLBACK - not the daily signal)' : '')
+        + (tideBias && flowBias && tideBias !== flowBias ? ' — TIDE and FLOW DISAGREE' : ''),
   };
 }
 
@@ -80,26 +128,60 @@ export function computeG1(series, opts = {}) {
 // rather than replacing it, so a broken/missing GEX degrades to a plain vol
 // stop instead of an invented one.
 export function computeG2(gex, baseRangePct, opts = {}) {
-  const { stopFraction = 0.45, riskPct = 1.0, negGexWiden = 1.35, posGexTighten = 0.85 } = opts;
-  if (!Number.isFinite(baseRangePct) || baseRangePct <= 0) {
-    return { state: 'INVALID', reason: 'no base range' };
-  }
+  // OBSERVED ENVELOPE — the owner has never seen COG quote a stop above 0.48%,
+  // and has seen 0.44% (standard) and 0.21% (conservative). Our first attempt
+  // produced 1.97% by scaling the daily range, which is 4x outside anything he
+  // has ever emitted. That is not a tuning gap, it falsifies the mapping.
+  //
+  // What his numbers actually say:
+  //   0.44 / 0.21 = 2.1   the two tiers are ONE number, halved
+  //   2.2 / 0.44 = 5.0    and 1.00 / 0.21 = 4.76 — leverage is ~5x in both
+  // So the stop does not scale with daily volatility. It sits in a tight
+  // 0.21-0.48% band, and Gate 2's real decision is WHICH TIER — the stop falls
+  // out of hitting ~5x leverage at the chosen risk.
+  //
+  // GEX therefore selects the tier rather than widening the stop: dealers short
+  // gamma means moves get amplified, which argues for LESS size, not a looser
+  // stop. Volatility still nudges the stop inside the observed band so the
+  // model is not purely hardcoded to him, but it can never leave that band.
+  const {
+    stopFloorPct = 0.20, stopCapPct = 0.48,   // the owner's observed envelope
+    anchorStopPct = 0.44,                     // his standard tier
+    targetLeverage = 5.0,                     // implied by both his tiers
+    volFraction = 0.30,                       // how much realised range nudges inside the band
+  } = opts;
+
   const gexBn = Number.isFinite(gex) ? gex / 1e9 : null;
   const regime = gexBn == null ? 'UNKNOWN' : gexBn < 0 ? 'SHORT_GAMMA' : 'LONG_GAMMA';
-  const mult = regime === 'SHORT_GAMMA' ? negGexWiden : regime === 'LONG_GAMMA' ? posGexTighten : 1;
 
-  const stopStd = +Math.max(baseRangePct * stopFraction * mult, 0.10).toFixed(3);
+  // Nudge within the band, then CLAMP. The clamp is empirical, from the owner's
+  // observation - flagged rather than buried, because it is the one number here
+  // fitted to COG rather than derived.
+  const raw = Number.isFinite(baseRangePct) && baseRangePct > 0
+    ? baseRangePct * volFraction : anchorStopPct;
+  const clamped = Math.min(Math.max(raw, stopFloorPct), stopCapPct);
+  const wasClamped = raw > stopCapPct || raw < stopFloorPct;
+
+  // Short gamma ⇒ amplified moves ⇒ take the conservative (half-size) tier.
+  const tier = regime === 'SHORT_GAMMA' ? 'conservative' : 'standard';
+  const stopStd = +clamped.toFixed(3);
+  const stopCons = +(clamped / 2).toFixed(3);
+
   return {
     state: 'VALID', regime, gexBn: gexBn == null ? null : +gexBn.toFixed(2),
-    baseRangePct: +baseRangePct.toFixed(3), gexMultiplier: mult,
-    // Two tiers, mirroring COG's own output shape.
-    standard:     { stopPct: stopStd, riskPct: +(riskPct * 2.2).toFixed(2) },
-    conservative: { stopPct: +(stopStd / 2).toFixed(3), riskPct: +riskPct.toFixed(2) },
-    reason: regime === 'SHORT_GAMMA'
-      ? `dealers SHORT gamma (GEX ${gexBn?.toFixed(1)}bn) — moves amplified, stop widened ${negGexWiden}×`
-      : regime === 'LONG_GAMMA'
-      ? `dealers LONG gamma (GEX ${gexBn?.toFixed(1)}bn) — moves dampened, stop tightened ${posGexTighten}×`
-      : 'no GEX available — plain volatility stop, no positioning adjustment',
+    baseRangePct: Number.isFinite(baseRangePct) ? +baseRangePct.toFixed(3) : null,
+    rawStopPct: +raw.toFixed(3), wasClamped, observedEnvelope: [stopFloorPct, stopCapPct],
+    recommendedTier: tier,
+    standard:     { stopPct: stopStd,  riskPct: +(stopStd * targetLeverage).toFixed(2) },
+    conservative: { stopPct: stopCons, riskPct: +(stopCons * targetLeverage).toFixed(2) },
+    reason: (wasClamped
+      ? `realised range implied ${raw.toFixed(2)}% — CLAMPED to COG's observed ${stopFloorPct}-${stopCapPct}% envelope. `
+      : '')
+      + (regime === 'SHORT_GAMMA'
+        ? `dealers SHORT gamma (GEX ${gexBn?.toFixed(1)}bn) — moves amplified, so take the CONSERVATIVE tier (less size, not a looser stop)`
+        : regime === 'LONG_GAMMA'
+        ? `dealers LONG gamma (GEX ${gexBn?.toFixed(1)}bn) — moves dampened, standard tier`
+        : 'no GEX — defaulting to standard tier'),
   };
 }
 

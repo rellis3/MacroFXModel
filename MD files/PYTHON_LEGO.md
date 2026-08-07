@@ -129,6 +129,16 @@ order (by drift risk × reuse, from `LEGO_MODULES.md §2` Python table):
    trade-spec-style call (`pair, direction, sl, tp, lots, …`), mirroring the JS
    "one entry primitive, parameterised" rule. Magic / symbol-resolver /
    pip-resolver / MT5 module are all injected, so it's reusable and offline-testable.
+   **`broker/clock.py`** — `ServerClock`: the measured broker-clock offset, and
+   the only place allowed to know that MT5 `.time` fields are on the broker's
+   wall clock rather than UTC. ✅ built. Measured (never hardcoded) from the
+   freshest tick across several majors, rounded to the quarter-hour, cached with
+   an hourly re-measure so a broker DST switch is picked up; stale weekend
+   quotes return `None` ("unknown"), never `0`. Injected `mt5` module + clock →
+   offline-testable (`clock_test.py`). `to_utc()` on the way OUT to the
+   dashboard (`tz_offset_sec`, §7); `to_server()` on the way IN to any MT5
+   range query. Symptom it exists to kill: a trade chart drawn 3h from the
+   trade, and session/hour analytics filed a whole bucket late.
 2. **`risk_guard.py`** — daily/monthly DD lockout (4 copies + an unwired
    `safety/risk_gate.py`). ✅ built (#546). Batch 5 (sizing & risk integrity):
    now also wired into the **volatility_bot + range_line_bot** loops (ddlimit
@@ -326,8 +336,25 @@ payload shape the dashboard expects (from `regime_bot` / `bot/main.py`):
 positions tab shows — keyed off the bot's unique `MAGIC` so each bot only reports
 its own trades. Field names (`ticket`, `symbol`, `direction`, `lots`,
 `open_price`, `close_price`, `profit`, `swap`, `commission`, `time_open`,
-`time_close`, `comment`) are part of the contract — the dashboard reads them by
-name.
+`time_close`, `tz_offset_sec`, `comment`) are part of the contract — the
+dashboard reads them by name.
+
+**`tz_offset_sec` — the row's TIME BASE (required).** MT5's `.time` fields are
+seconds since the epoch on the **broker's wall clock**, not UTC (+3h on the live
+account in summer); `PaperBroker` stamps real UTC. Both shapes land in the same
+Trade History table, so `time_open` / `time_close` are meaningless without
+knowing which. Every row therefore carries the shift that was applied to it:
+`0` for paper, the measured broker offset for MT5, `null` when it could not be
+measured (never 0 as a stand-in — that asserts "this is UTC"). Measure it with
+`pylego/broker/clock.py` (`ServerClock`), never a hardcoded constant: brokers
+switch EET/EEST on their own schedule and different accounts can sit on
+different servers. The dashboard reads `time - tz_offset_sec` to get true UTC and
+renders UK wall time.
+
+The same offset applies in reverse to every MT5 **range query** —
+`copy_rates_range` and `history_deals_get` compare against the broker's epochs,
+so a real-UTC datetime handed to them reads a shifted window. Use
+`ServerClock.to_server()` there.
 
 **Brick implications (for the upcoming `kv` + `broker/mt5` slices):**
 - `kv.py` must keep the `<bot>_config` / `<bot>_status` naming and the

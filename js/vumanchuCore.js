@@ -56,6 +56,11 @@ export function computeWaveTrend(bars, { n1 = 10, n2 = 21, sp = 4 } = {}) {
 }
 
 // ── Money Flow (directional volume pressure, ±100) ───────────────────────────
+// ⚠ NOT the VuManChu formula — see `computeMoneyFlowVMC` below, which is faithful
+// to the Pine `f_rsimfi`. This variant is volume-weighted, EMA-smoothed and
+// peak-normalised, and is kept unchanged because live consumers depend on it
+// (`js/vumanchu.js` → assessEntry → level-bot alerts; `poiReactionV1Engine`).
+// New work should use `computeMoneyFlowVMC`.
 export function computeMoneyFlow(bars, { period = 14 } = {}) {
   const raw = bars.map(b => {
     const range = (b.high - b.low) || 1e-10;
@@ -64,6 +69,36 @@ export function computeMoneyFlow(bars, { period = 14 } = {}) {
   });
   const peak = Math.max(...raw.map(Math.abs)) || 1;
   return ema(raw.map(v => v / peak * 100), period);
+}
+
+// ── Money Flow, FAITHFUL to the VuManChu Pine (`f_rsimfi`) ───────────────────
+// Reviewed against the operator's actual Pine source (2026-07-30):
+//
+//   f_rsimfi(_period, _multiplier, _tf) =>
+//       sma(((close - open) / (high - low)) * _multiplier, _period) - rsiMFIPosY
+//   defaults: rsiMFIperiod = 60, rsiMFIMultiplier = 150, rsiMFIPosY = 2.5
+//
+// Three material differences from `computeMoneyFlow` above, which is why this is a
+// SEPARATE function rather than a change to that one (it has live consumers —
+// `js/vumanchu.js` → `assessEntry` → the level-bot's Telegram alerts, and
+// `poiReactionV1Engine`; silently changing it would move live bot output):
+//   1. NO VOLUME. Despite the name, VuManChu's "MFI" is a pure candle-body ratio.
+//      The usual objection that money flow is meaningless on FX because there is
+//      no real volume therefore does NOT apply to the indicator as written.
+//   2. SMA over 60 bars, not EMA over 14.
+//   3. Scaled by a fixed multiplier (150) and shifted by a fixed offset (2.5) —
+//      no peak normalisation, so it is neither window-dependent nor
+//      outlier-dominated, and it lands naturally in a ±25-ish band that hugs zero
+//      on the ±100 WaveTrend scale. That is why a stock Cipher B pane shows it as
+//      a compact band rather than something the size of the wave.
+// The offset means the neutral line is at 0 AFTER subtraction, i.e. raw
+// sma(...) = 2.5 is "flat" — a deliberate slight bearish bias in the original.
+export function computeMoneyFlowVMC(bars, { period = 60, multiplier = 150, offset = 2.5 } = {}) {
+  const raw = bars.map(b => {
+    const range = (b.high - b.low);
+    return range > 0 ? ((b.close - b.open) / range) * multiplier : 0;
+  });
+  return sma(raw, period).map(v => Number.isFinite(v) ? v - offset : NaN);
 }
 
 // ── VWAP (cumulative from bar 0) + ±100 oscillator ───────────────────────────

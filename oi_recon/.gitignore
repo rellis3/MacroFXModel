@@ -2,3 +2,14 @@
 .chrome-profile/
 # Recon captures raw pages/JSON that may embed session ids.
 out/
+
+# Holds live QuikStrike insid/qsid - session identifiers, never commit.
+.qs_session.json
+
+# Scratch scripts from diagnosis runs - not part of the tool.
+.tmp/
+
+# Per-run output: one dated log per night plus the run journal the audit reads.
+# Machine-local records of what happened here, not source - and an unattended
+# fortnight would otherwise add fourteen files of churn to the repo.
+logs/
