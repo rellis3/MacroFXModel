@@ -233,6 +233,8 @@ function isCfKey(key) {
   if (key.startsWith('ecb_')) return true;
   // boe_* — same reasoning as fomc_/ecb_ above.
   if (key.startsWith('boe_')) return true;
+  // boj_* — same reasoning as fomc_/ecb_/boe_ above.
+  if (key.startsWith('boj_')) return true;
   return _CF_EXACT.has(key) || key.startsWith('journal_') || key.startsWith('ai_');
 }
 

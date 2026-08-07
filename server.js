@@ -81,6 +81,8 @@ import { FETCHERS as ECB_FETCHERS, PRESS_RSS_URL as ECB_PRESS_RSS_URL, yymmdd as
 import { parseRssItems as ecbParseRssItems } from './js/cbIndexFetch.js';
 import { BOE_MEETINGS, pendingAsOf as boePendingAsOf } from './js/boeCalendar.js';
 import { FETCHERS as BOE_FETCHERS, extractVote as boeExtractVote } from './js/boeFetch.js';
+import { BOJ_MEETINGS, pendingAsOf as bojPendingAsOf } from './js/bojCalendar.js';
+import { FETCHERS as BOJ_FETCHERS, extractVote as bojExtractVote } from './js/bojFetch.js';
 import { runTrendAB as _runTrendAB } from './js/trendFollowV2Engine.js';
 import { volSigmaSeries as _volSigmaSeries, nextSigma as _nextSigma } from './js/forecastCore.js';
 import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } from './js/creditLeadLagEngine.js';
@@ -3577,6 +3579,173 @@ app.get('/api/boe/fetch-status', async (_req, res) => {
   res.json({ ok: true, running: _boeCheckRunning, last: raw ? JSON.parse(raw) : null });
 });
 setInterval(() => { _boeRunCheck('poll'); }, 30 * 60_000);
+
+// ── BoJ Sentiment Engine ────────────────────────────────────────────────────
+// Same shape again, but structurally the most complex of the four banks:
+// unlike BoE's single same-day document, the BoJ has FOUR kinds spread
+// across very different lags — statement + outlook both same-day, opinions
+// ~1-2 weeks later, minutes ~40-60 days later (see js/bojCalendar.js's
+// window functions). No press-conference kind — no confirmed official
+// English transcript exists (see js/bojFetch.js's header comment).
+function _bojKindLabel(kind) {
+  return {
+    statement: 'BoJ STATEMENT ON MONETARY POLICY — the decision announcement, published the same day',
+    outlook: 'BoJ OUTLOOK FOR ECONOMIC ACTIVITY AND PRICES (Highlights) — the quarterly projections summary, published alongside 4 of the 8 meetings/year (Jan/Apr/Jul/Oct) — the BoJ\'s SEP/dot-plot equivalent',
+    opinions: 'BoJ SUMMARY OF OPINIONS — a faster, less-detailed readout of the policy board\'s discussion, published roughly a week after the decision, well before the full Minutes',
+    minutes: 'BoJ MINUTES OF THE MONETARY POLICY MEETING — the full, detailed record, published 40-60 days after the meeting (the most delayed of the four document types — read it as a delayed historical review, similar to how the Fed\'s Minutes or ECB\'s Accounts should be read)',
+  }[kind] || kind.toUpperCase();
+}
+function _bojReadingGuidance(kind) {
+  if (kind === 'statement') {
+    return `\nREADING TECHNIQUE: the vote split (see VOTE below) is a strong signal — the BoJ policy board votes member-by-member and typically NAMES the dissenter and their specific reasoning when the vote isn't unanimous, which is a much more direct read on internal debate than most central banks give you.\n`;
+  }
+  if (kind === 'minutes') {
+    return `\nREADING TECHNIQUE: this is a DELAYED HISTORICAL REVIEW, not fresh news — 40-60 days old by the time it's published, likely already stale relative to the statement/opinions from the SAME meeting and possibly even the NEXT meeting's statement. Read it for texture on the internal debate and any hints of what might come next, not as a fresh directional signal.\n`;
+  }
+  return '';
+}
+function _bojPrevMeetingDate(meetingDate) {
+  const idx = BOJ_MEETINGS.findIndex(m => m.date === meetingDate);
+  return idx > 0 ? BOJ_MEETINGS[idx - 1].date : null;
+}
+async function _bojGetRaw(kind, date) {
+  const raw = await kv.get(`boj_raw_${kind}_${date}`);
+  return raw ? JSON.parse(raw) : null;
+}
+
+async function _buildBojAnalysis(kind, meetingDate) {
+  const key = process.env.ANT_KEY;
+  if (!key) throw new Error('ANT_KEY not configured');
+  const rawRec = await _bojGetRaw(kind, meetingDate);
+  if (!rawRec) throw new Error(`no raw ${kind} text captured for ${meetingDate} yet`);
+  const { text, url } = rawRec;
+  const clipped = text.length > _FOMC_MAX_CHARS ? text.slice(0, _FOMC_MAX_CHARS) + '\n[...truncated...]' : text;
+
+  const vote = kind === 'statement' ? bojExtractVote(text) : null;
+  const voteBlock = vote
+    ? `=== VOTE ===\n${vote.unanimous ? 'Unanimous' : `Majority ${vote.majority}-${vote.minority}`}${vote.dissenters?.length ? '\n' + vote.dissenters.map(d => `Dissent: ${d.name} — ${d.reason}`).join('\n') : ''}`
+    : '';
+
+  let diffBlock = '', diffSegments = null;
+  const prevDate = _bojPrevMeetingDate(meetingDate);
+  if (prevDate) {
+    const prevRec = await _bojGetRaw(kind, prevDate);
+    if (prevRec) {
+      const d = fomcWordDiff(prevRec.text, text);
+      diffSegments = d.segments;
+      const lines = fomcDiffToPromptLines(d, 2);
+      diffBlock = `=== WORDING CHANGES vs the ${prevDate} ${kind} ===\n` +
+        (lines.length ? lines.slice(0, 40).join('\n') : '(no material wording changes — near-identical to the prior release)');
+    }
+  }
+
+  const prompt = `You are analysing the ${_bojKindLabel(kind)} from the ${meetingDate} BoJ Monetary Policy Meeting for an FX/macro trading desk. Read it for HAWKISH vs DOVISH signal and likely market impact on JPY — this feeds a central-bank sentiment page traders check right after release, so be specific and plain-spoken.
+${_bojReadingGuidance(kind)}
+NEVER name a specific individual (Governor, board member, reporter) anywhere in your output — refer to them only by role. A named individual anchors the read on personal reputation, which goes stale (or becomes wrong) the moment membership changes. Exception: if a VOTE dissent is given below with a named member, you may reference "the dissenting member" generically but still should not use their name in your output.
+
+Ground every claim in the text below — do NOT invent numbers, names, or events not present in it.
+
+${voteBlock}
+
+${diffBlock}
+
+=== FULL TEXT ===
+${clipped}
+
+Also score five separate dimensions, each 0.0 (no signal of this in the text) to 1.0 (dominant theme) — magnitude, not direction, independent of each other and of hawkishScore:
+- inflationConcern, laborConcern, growthConcern, financialStabilityConcern: how much the text dwells on each (the BoJ's central preoccupation is the "virtuous cycle of wages and prices" — laborConcern here should capture wage-growth/shunto-related discussion specifically, not just general labor-market commentary; financialStabilityConcern should capture JGB market functioning and yen-weakness spillover risk)
+- committeeConfidence: how confident vs. uncertain/hedged the tone reads (0=deeply uncertain/hedged, 1=confident/decisive)
+
+Respond with ONLY valid JSON, no markdown:
+{"headline":"one-sentence front-page read, plain-English so-what first","hawkishScore":-1.0 to 1.0 (negative=dovish, positive=hawkish, 0=neutral),"regime":"HAWKISH|DOVISH|NEUTRAL|MIXED","confidence":"LOW|MEDIUM|HIGH (how confident YOU are in this read)","dimensions":{"inflationConcern":0.0-1.0,"laborConcern":0.0-1.0,"growthConcern":0.0-1.0,"financialStabilityConcern":0.0-1.0,"committeeConfidence":0.0-1.0},"summary":"2-3 plain-spoken sentences","whatChanged":"1-2 sentences on what's different from last time, grounded ONLY in the wording changes above — say plainly if there was no material change","voteNote":"1 sentence on what the vote split/dissent implies for the policy debate, or null if no vote data was given","keyQuotes":[{"quote":"short verbatim excerpt from the text above, under 30 words","why":"why this line matters","asset":"JPY|JGBs|Equities","lean":"BULLISH|BEARISH|NEUTRAL"}] (max 5, ranked most market-moving first),"byAsset":[{"asset":"JPY|JGBs|Equities|FX majors","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line"}]}`;
+
+  const antRes = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2800, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.', messages: [{ role: 'user', content: prompt }] }),
+  });
+  if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}: ${(await antRes.text()).slice(0, 200)}`);
+  const antData = await antRes.json();
+  if (antData.stop_reason === 'max_tokens') throw new Error('response truncated — try again');
+  const clean = (antData.content?.[0]?.text ?? '').replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  const analysis = JSON.parse(clean);
+
+  const payload = { kind, meetingDate, analysis, vote, diffSegments, prevDate, sourceUrl: url, generatedAt: new Date().toISOString() };
+  await kv.put(`boj_analysis_${kind}_${meetingDate}`, JSON.stringify(payload)).catch(() => {});
+  await kv.put('boj_latest', JSON.stringify({ kind, meetingDate })).catch(() => {});
+  return payload;
+}
+
+async function _bojAutoCheck(reason = 'schedule') {
+  const pending = bojPendingAsOf(Date.now(), 120);
+  const log = [];
+  for (const rel of pending) {
+    const already = await _bojGetRaw(rel.kind, rel.meetingDate);
+    if (already) continue;
+    try {
+      const r = await BOJ_FETCHERS[rel.kind](rel.meetingDate);
+      if (!r.ok) { if (!r.notYetPublished) log.push(`${rel.kind} ${rel.meetingDate} ✗ ${r.error || r.status}`); continue; }
+      await kv.put(`boj_raw_${rel.kind}_${rel.meetingDate}`, JSON.stringify({ text: r.text, url: r.url, fetchedAt: new Date().toISOString() }));
+      log.push(`${rel.kind} ${rel.meetingDate} ✓ fetched`);
+      if (process.env.ANT_KEY) {
+        try { await _buildBojAnalysis(rel.kind, rel.meetingDate); log.push(`${rel.kind} ${rel.meetingDate} ✓ analysed`); }
+        catch (e) { log.push(`${rel.kind} ${rel.meetingDate} analysis ✗ ${e.message}`); }
+      }
+    } catch (e) { log.push(`${rel.kind} ${rel.meetingDate} ✗ ${e.message}`); }
+  }
+  await kv.put('boj_fetch_log', JSON.stringify({ at: new Date().toISOString(), reason, log })).catch(() => {});
+  if (log.length) console.log(`[boj] (${reason}) ${log.join(' · ')}`);
+  return log;
+}
+
+app.get('/api/boj/calendar', (_req, res) => {
+  res.json({ ok: true, meetings: BOJ_MEETINGS, pending: bojPendingAsOf(Date.now(), 120) });
+});
+app.get('/api/boj/latest', async (_req, res) => {
+  try {
+    const ptr = await kv.get('boj_latest');
+    if (!ptr) return res.json({ ok: false, error: 'No BoJ analysis yet — click Fetch now.' });
+    const { kind, meetingDate } = JSON.parse(ptr);
+    const raw = await kv.get(`boj_analysis_${kind}_${meetingDate}`);
+    if (!raw) return res.json({ ok: false, error: 'Pointer set but analysis missing — click Fetch now.' });
+    res.json({ ok: true, ...JSON.parse(raw) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/boj/meeting/:date', async (req, res) => {
+  const date = req.params.date;
+  const out = {};
+  for (const kind of ['statement', 'outlook', 'opinions', 'minutes']) {
+    const raw = await kv.get(`boj_analysis_${kind}_${date}`).catch(() => null);
+    if (raw) out[kind] = JSON.parse(raw);
+  }
+  res.json({ ok: true, meetingDate: date, releases: out });
+});
+app.get('/api/boj/history', async (req, res) => {
+  const n = Math.min(24, Math.max(1, parseInt(req.query.n) || 8));
+  const past = BOJ_MEETINGS.filter(m => Date.parse(m.date) <= Date.now()).slice(-n);
+  const out = [];
+  for (const m of past) {
+    const raw = await kv.get(`boj_analysis_statement_${m.date}`).catch(() => null);
+    if (raw) { const p = JSON.parse(raw); out.push({ meetingDate: m.date, headline: p.analysis?.headline, hawkishScore: p.analysis?.hawkishScore, regime: p.analysis?.regime }); }
+    else out.push({ meetingDate: m.date, headline: null, hawkishScore: null, regime: null });
+  }
+  res.json({ ok: true, history: out });
+});
+let _bojCheckRunning = false;
+function _bojRunCheck(reason) {
+  if (_bojCheckRunning) return false;
+  _bojCheckRunning = true;
+  _bojAutoCheck(reason).catch(() => {}).finally(() => { _bojCheckRunning = false; });
+  return true;
+}
+app.post('/api/boj/fetch-now', (_req, res) => {
+  const started = _bojRunCheck('manual');
+  res.json({ ok: true, started, alreadyRunning: !started });
+});
+app.get('/api/boj/fetch-status', async (_req, res) => {
+  const raw = await kv.get('boj_fetch_log').catch(() => null);
+  res.json({ ok: true, running: _bojCheckRunning, last: raw ? JSON.parse(raw) : null });
+});
+setInterval(() => { _bojRunCheck('poll'); }, 30 * 60_000);
 
 // ── Labor Market Strength Engine ──────────────────────────────────────────────
 // Numeric-composition score (payrolls, wages, unemployment, participation) —
