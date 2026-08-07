@@ -72,6 +72,7 @@ import { volOuDiagnostic as _volOuDiagnostic, scoreVolPredictsForwardVol as _sco
 import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS, buildPortfolioReturns as _trendBuildPortfolio, portfolioReturnsByDate as _trendReturnsByDate } from './js/trendFollowEngine.js';
 import { blendStreams as _blendStreams } from './js/streamBlend.js';
 import { runGauntlet as _runStrategyGauntlet, GAUNTLET_SPECS as _GAUNTLET_SPECS, SIGNALS as _LAB_SIGNALS } from './js/strategyLabEngine.js';
+import { fetchLaborData, laborMarketScore, LABOR_UNIVERSE } from './js/laborMarketEngine.js';
 import { FOMC_MEETINGS, pendingAsOf as fomcPendingAsOf } from './js/fomcCalendar.js';
 import { FETCHERS as FOMC_FETCHERS, extractVote as fomcExtractVote } from './js/fomcFetch.js';
 import { wordDiff as fomcWordDiff, diffToPromptLines as fomcDiffToPromptLines, diffTables as fomcDiffTables } from './js/fomcDiff.js';
@@ -3218,6 +3219,65 @@ app.get('/api/fomc/fetch-status', async (_req, res) => {
 // same running-guard as the manual trigger so the two can never overlap and
 // race on the same KV writes.
 setInterval(() => { _fomcRunCheck('poll'); }, 30 * 60_000);
+
+// ── Labor Market Strength Engine ──────────────────────────────────────────────
+// Numeric-composition score (payrolls, wages, unemployment, participation) —
+// NOT a text-reading engine like FOMC/Beige Book; the BLS Employment
+// Situation release is overwhelmingly numbers with a thin narrative section,
+// so the edge is scoring the numbers well (js/laborMarketEngine.js), not
+// running them through an LLM. USD gets full depth; the other 7 currencies
+// get unemployment-trend-only coverage (see that file's header for why).
+// Monthly-cadence data — refreshed once/day is more than enough, matching
+// the auto-brief's day-gate pattern rather than FOMC's 30-min poll.
+const _LABOR_MARKET_KV = 'labor_market_v1';
+async function _buildLaborMarketScores() {
+  const fredKey = process.env.FRED_KEY;
+  if (!fredKey) throw new Error('FRED_KEY not configured');
+  const byCcy = {}, availability = {};
+  await Promise.all(Object.keys(LABOR_UNIVERSE).map(async ccy => {
+    try {
+      const { data, availability: avail } = await fetchLaborData(ccy, fredKey);
+      byCcy[ccy] = laborMarketScore(data);
+      availability[ccy] = avail;
+    } catch (e) {
+      availability[ccy] = [{ error: e.message }];
+    }
+  }));
+  const payload = { byCcy, availability, generatedAt: new Date().toISOString() };
+  await kv.put(_LABOR_MARKET_KV, JSON.stringify(payload)).catch(() => {});
+  return payload;
+}
+app.get('/api/labor-market', async (_req, res) => {
+  try {
+    const raw = await kv.get(_LABOR_MARKET_KV);
+    if (!raw) return res.json({ ok: false, error: 'No labor market data yet — click Refresh.' });
+    res.json({ ok: true, ...JSON.parse(raw) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// Fire-and-forget + poll, same shape as /api/fomc/fetch-now — 8 currencies x
+// up to 5 series each is enough sequential/parallel FRED calls that a slow
+// network round-trip could plausibly run past a proxy's request timeout, and
+// there's no reason to risk the same bare "Failed to fetch" the FOMC page hit.
+let _laborMarketRunning = false;
+app.post('/api/labor-market/refresh', (_req, res) => {
+  if (_laborMarketRunning) return res.json({ ok: true, started: false, alreadyRunning: true });
+  _laborMarketRunning = true;
+  _buildLaborMarketScores().catch(() => {}).finally(() => { _laborMarketRunning = false; });
+  res.json({ ok: true, started: true });
+});
+app.get('/api/labor-market/refresh-status', async (_req, res) => {
+  const raw = await kv.get(_LABOR_MARKET_KV).catch(() => null);
+  res.json({ ok: true, running: _laborMarketRunning, last: raw ? JSON.parse(raw) : null });
+});
+let _laborMarketLastRun = null;
+setInterval(() => {
+  if (!process.env.FRED_KEY || _laborMarketRunning) return;
+  const today = new Date().toISOString().slice(0, 10);
+  if (_laborMarketLastRun === today) return;
+  _laborMarketLastRun = today;
+  _laborMarketRunning = true;
+  _buildLaborMarketScores().catch(() => {}).finally(() => { _laborMarketRunning = false; });
+}, 20 * 60_000);
 
 // ── Backtest AI analysis — sends config + results to Claude, returns structured feedback ──
 app.post('/api/ai-backtest', async (req, res) => {
