@@ -5,7 +5,7 @@ import {
   toSeries, monthOverMonth, yoyPct, latestZScore,
   payrollScore, wageScore, unemploymentTrendScore, participationTrendScore,
   breadthScore, revisionScore,
-  laborMarketScore, LABOR_UNIVERSE, SECTOR_UNIVERSE,
+  laborMarketScore, LABOR_UNIVERSE, SECTOR_UNIVERSE, UNEMPLOYMENT_UNIT_LABEL,
 } from './laborMarketEngine.js';
 
 let failures = 0;
@@ -190,6 +190,10 @@ console.log('[LABOR_UNIVERSE / SECTOR_UNIVERSE]');
   ok('covers all 8 currencies from ECON_UNIVERSE', Object.keys(LABOR_UNIVERSE).length === 8, Object.keys(LABOR_UNIVERSE).join(','));
   ok('SECTOR_UNIVERSE has 10 supersectors, all unique series IDs', Object.keys(SECTOR_UNIVERSE).length === 10
     && new Set(Object.values(SECTOR_UNIVERSE)).size === 10, Object.values(SECTOR_UNIVERSE).join(','));
+  ok('CHF uses SECO registered unemployment, not the OECD-harmonized rate', LABOR_UNIVERSE.CHF.unemployment === 'LMUNRLTTCHM647S', LABOR_UNIVERSE.CHF.unemployment);
+  ok('CHF still unemployment-only (one factor)', Object.keys(LABOR_UNIVERSE.CHF).length === 1);
+  ok('CHF is labeled as a level, not a % rate', UNEMPLOYMENT_UNIT_LABEL.CHF !== '%', UNEMPLOYMENT_UNIT_LABEL.CHF);
+  ok('every other currency defaults to %', Object.entries(UNEMPLOYMENT_UNIT_LABEL).filter(([c]) => c !== 'CHF').every(([, u]) => u === '%'));
 }
 
 if (failures) { console.error(`\n${failures} FAILURE(S)`); process.exit(1); }

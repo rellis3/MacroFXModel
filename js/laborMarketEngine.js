@@ -31,6 +31,24 @@ export const LABOR_UNIVERSE = Object.fromEntries(
 // FRED headlines use for wage growth.
 LABOR_UNIVERSE.USD = { ...LABOR_UNIVERSE.USD, payrolls: 'PAYEMS', participation: 'CIVPART', wages: 'CES0500000003', hours: 'AWHAETP' };
 
+// CHF: swap the OECD-harmonized rate (ECON_UNIVERSE's default, LRHUTTTTCHM156S)
+// for SECO's own registered-unemployment series (LMUNRLTTCHM647S) — that's
+// the print FX desks actually watch for Switzerland ("Swiss Unemployment
+// Rate" on any economic calendar is SECO's monthly figure, not the OECD one).
+// Verified against a live FRED series page. Ceiling: Switzerland's employment
+// survey (SAKE) and Wage Index are quarterly/annual at SOURCE — there is no
+// monthly payrolls- or wage-equivalent to add regardless of which FRED
+// series is used, so CHF stays unemployment-only, just the better series.
+// NOTE units: this is a REGISTERED-UNEMPLOYMENT LEVEL (persons), not a %
+// rate like every other currency's series — the scoring math doesn't care
+// (unemploymentTrendScore works relative to a series' own history either
+// way), but the UI needs UNEMPLOYMENT_UNIT_LABEL below to label it correctly
+// rather than assume "%" like everywhere else.
+LABOR_UNIVERSE.CHF = { unemployment: 'LMUNRLTTCHM647S' };
+
+export const UNEMPLOYMENT_UNIT_LABEL = Object.fromEntries(Object.keys(LABOR_UNIVERSE).map(ccy => [ccy, '%']));
+UNEMPLOYMENT_UNIT_LABEL.CHF = 'registered (thousands)';
+
 // BLS's CES supersector employment series — the industry breakdown behind the
 // headline payroll number (table B-1 of the Employment Situation release).
 // Each mnemonic below was individually confirmed against a live FRED series

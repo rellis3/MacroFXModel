@@ -72,7 +72,7 @@ import { volOuDiagnostic as _volOuDiagnostic, scoreVolPredictsForwardVol as _sco
 import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS, buildPortfolioReturns as _trendBuildPortfolio, portfolioReturnsByDate as _trendReturnsByDate } from './js/trendFollowEngine.js';
 import { blendStreams as _blendStreams } from './js/streamBlend.js';
 import { runGauntlet as _runStrategyGauntlet, GAUNTLET_SPECS as _GAUNTLET_SPECS, SIGNALS as _LAB_SIGNALS } from './js/strategyLabEngine.js';
-import { fetchLaborData, laborMarketScore, LABOR_UNIVERSE } from './js/laborMarketEngine.js';
+import { fetchLaborData, laborMarketScore, LABOR_UNIVERSE, UNEMPLOYMENT_UNIT_LABEL } from './js/laborMarketEngine.js';
 import { FOMC_MEETINGS, pendingAsOf as fomcPendingAsOf } from './js/fomcCalendar.js';
 import { FETCHERS as FOMC_FETCHERS, extractVote as fomcExtractVote } from './js/fomcFetch.js';
 import { wordDiff as fomcWordDiff, diffToPromptLines as fomcDiffToPromptLines, diffTables as fomcDiffTables } from './js/fomcDiff.js';
@@ -3243,7 +3243,7 @@ async function _buildLaborMarketScores() {
       availability[ccy] = [{ error: e.message }];
     }
   }));
-  const payload = { byCcy, availability, generatedAt: new Date().toISOString() };
+  const payload = { byCcy, availability, unemploymentUnits: UNEMPLOYMENT_UNIT_LABEL, generatedAt: new Date().toISOString() };
   await kv.put(_LABOR_MARKET_KV, JSON.stringify(payload)).catch(() => {});
   return payload;
 }
