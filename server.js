@@ -81,6 +81,8 @@ import { fetchTradeBalanceData, tradeBalanceScore, TRADE_BALANCE_UNIVERSE } from
 import { fetchRealYieldData, realYieldScore, REAL_YIELD_UNIVERSE } from './js/realYieldEngine.js';
 import { fetchPpiData, ppiCompositeScore, PPI_UNIVERSE } from './js/ppiEngine.js';
 import { buildScorecard as buildMacroScorecard, topBottomPair as macroTopBottomPair } from './js/macroScorecardEngine.js';
+import { fetchYieldCurveData, yieldCurveScore, YIELD_CURVE_UNIVERSE } from './js/yieldCurveEngine.js';
+import { fetchConsumerConfidenceData, consumerConfidenceCompositeScore, CONFIDENCE_UNIVERSE } from './js/consumerConfidenceEngine.js';
 import { FOMC_MEETINGS, pendingAsOf as fomcPendingAsOf } from './js/fomcCalendar.js';
 import { FETCHERS as FOMC_FETCHERS, extractVote as fomcExtractVote } from './js/fomcFetch.js';
 import { wordDiff as fomcWordDiff, diffToPromptLines as fomcDiffToPromptLines, diffTables as fomcDiffTables } from './js/fomcDiff.js';
@@ -4435,6 +4437,109 @@ setInterval(() => {
   _buildPpiScores().catch(() => {}).finally(() => { _ppiRunning = false; });
 }, 20 * 60_000);
 
+// ── Yield Curve Engine (see js/yieldCurveEngine.js) ─────────────────────────
+// Entirely derived — no new data source, both legs are series already
+// confirmed and in production use (short/long rates econTrendEngine.js's
+// ECON_UNIVERSE already fetches, and the same long-yield IDs Real Yield's
+// y10 leg already uses). Same daily-gate refresh pattern as every other
+// engine here.
+const _YIELD_CURVE_KV = 'yield_curve_v1';
+async function _buildYieldCurveScores() {
+  const fredKey = process.env.FRED_KEY;
+  if (!fredKey) throw new Error('FRED_KEY not configured');
+  const byCcy = {}, availability = {};
+  await Promise.all(Object.keys(YIELD_CURVE_UNIVERSE).map(async ccy => {
+    try {
+      const { data, availability: avail } = await fetchYieldCurveData(ccy, fredKey);
+      byCcy[ccy] = yieldCurveScore(data.long, data.short);
+      availability[ccy] = avail;
+    } catch (e) {
+      availability[ccy] = [{ error: e.message }];
+    }
+  }));
+  const payload = { byCcy, availability, generatedAt: new Date().toISOString() };
+  await kv.put(_YIELD_CURVE_KV, JSON.stringify(payload)).catch(() => {});
+  return payload;
+}
+app.get('/api/yield-curve', async (_req, res) => {
+  try {
+    const raw = await kv.get(_YIELD_CURVE_KV);
+    if (!raw) return res.json({ ok: false, error: 'No yield curve data yet — click Refresh.' });
+    res.json({ ok: true, ...JSON.parse(raw) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+let _yieldCurveRunning = false;
+app.post('/api/yield-curve/refresh', (_req, res) => {
+  if (_yieldCurveRunning) return res.json({ ok: true, started: false, alreadyRunning: true });
+  _yieldCurveRunning = true;
+  _buildYieldCurveScores().catch(() => {}).finally(() => { _yieldCurveRunning = false; });
+  res.json({ ok: true, started: true });
+});
+app.get('/api/yield-curve/refresh-status', async (_req, res) => {
+  const raw = await kv.get(_YIELD_CURVE_KV).catch(() => null);
+  res.json({ ok: true, running: _yieldCurveRunning, last: raw ? JSON.parse(raw) : null });
+});
+let _yieldCurveLastRun = null;
+setInterval(() => {
+  if (!process.env.FRED_KEY || _yieldCurveRunning) return;
+  const today = new Date().toISOString().slice(0, 10);
+  if (_yieldCurveLastRun === today) return;
+  _yieldCurveLastRun = today;
+  _yieldCurveRunning = true;
+  _buildYieldCurveScores().catch(() => {}).finally(() => { _yieldCurveRunning = false; });
+}, 20 * 60_000);
+
+// ── Consumer Confidence Engine (see js/consumerConfidenceEngine.js) ─────────
+// Demand-side mirror of the ISM/business-confidence engine — one series per
+// currency (Michigan for USD, OECD CSCICP02 family for the other 6; CAD
+// excluded, confirmed no live series at the source). Same daily-gated
+// refresh pattern as every other engine here.
+const _CONSUMER_CONFIDENCE_KV = 'consumer_confidence_v1';
+async function _buildConsumerConfidenceScores() {
+  const fredKey = process.env.FRED_KEY;
+  if (!fredKey) throw new Error('FRED_KEY not configured');
+  const byCcy = {}, availability = {};
+  await Promise.all(Object.keys(CONFIDENCE_UNIVERSE).map(async ccy => {
+    try {
+      const { data, availability: avail } = await fetchConsumerConfidenceData(ccy, fredKey);
+      byCcy[ccy] = consumerConfidenceCompositeScore(ccy, data);
+      availability[ccy] = avail;
+    } catch (e) {
+      availability[ccy] = [{ error: e.message }];
+    }
+  }));
+  const payload = { byCcy, availability, generatedAt: new Date().toISOString() };
+  await kv.put(_CONSUMER_CONFIDENCE_KV, JSON.stringify(payload)).catch(() => {});
+  return payload;
+}
+app.get('/api/consumer-confidence', async (_req, res) => {
+  try {
+    const raw = await kv.get(_CONSUMER_CONFIDENCE_KV);
+    if (!raw) return res.json({ ok: false, error: 'No consumer confidence data yet — click Refresh.' });
+    res.json({ ok: true, ...JSON.parse(raw) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+let _consumerConfidenceRunning = false;
+app.post('/api/consumer-confidence/refresh', (_req, res) => {
+  if (_consumerConfidenceRunning) return res.json({ ok: true, started: false, alreadyRunning: true });
+  _consumerConfidenceRunning = true;
+  _buildConsumerConfidenceScores().catch(() => {}).finally(() => { _consumerConfidenceRunning = false; });
+  res.json({ ok: true, started: true });
+});
+app.get('/api/consumer-confidence/refresh-status', async (_req, res) => {
+  const raw = await kv.get(_CONSUMER_CONFIDENCE_KV).catch(() => null);
+  res.json({ ok: true, running: _consumerConfidenceRunning, last: raw ? JSON.parse(raw) : null });
+});
+let _consumerConfidenceLastRun = null;
+setInterval(() => {
+  if (!process.env.FRED_KEY || _consumerConfidenceRunning) return;
+  const today = new Date().toISOString().slice(0, 10);
+  if (_consumerConfidenceLastRun === today) return;
+  _consumerConfidenceLastRun = today;
+  _consumerConfidenceRunning = true;
+  _buildConsumerConfidenceScores().catch(() => {}).finally(() => { _consumerConfidenceRunning = false; });
+}, 20 * 60_000);
+
 // ── Macro Scorecard (see js/macroScorecardEngine.js) ────────────────────────
 // The one place that reads across EVERY other engine's already-cached KV
 // and combines them into a single ranked per-currency view — no new
@@ -4467,7 +4572,7 @@ async function _loadCbSentiment() {
   return out;
 }
 async function _buildMacroScorecard() {
-  const [cpiRaw, gdpRaw, ismRaw, laborRaw, retailRaw, tradeRaw, realYieldRaw, ppiRaw, cbSentiment] = await Promise.all([
+  const [cpiRaw, gdpRaw, ismRaw, laborRaw, retailRaw, tradeRaw, realYieldRaw, ppiRaw, yieldCurveRaw, confidenceRaw, cbSentiment] = await Promise.all([
     kv.get(_CPI_KV).catch(() => null),
     kv.get(_GDP_KV).catch(() => null),
     kv.get(_ISM_KV).catch(() => null),
@@ -4476,6 +4581,8 @@ async function _buildMacroScorecard() {
     kv.get(_TRADE_BALANCE_KV).catch(() => null),
     kv.get(_REAL_YIELD_KV).catch(() => null),
     kv.get(_PPI_KV).catch(() => null),
+    kv.get(_YIELD_CURVE_KV).catch(() => null),
+    kv.get(_CONSUMER_CONFIDENCE_KV).catch(() => null),
     _loadCbSentiment(),
   ]);
   const cpi = cpiRaw ? JSON.parse(cpiRaw).byCcy : {};
@@ -4486,6 +4593,8 @@ async function _buildMacroScorecard() {
   const trade = tradeRaw ? JSON.parse(tradeRaw).byCcy : {};
   const realYield = realYieldRaw ? JSON.parse(realYieldRaw).byCcy : {};
   const ppi = ppiRaw ? JSON.parse(ppiRaw).byCcy : {};
+  const yieldCurve = yieldCurveRaw ? JSON.parse(yieldCurveRaw).byCcy : {};
+  const confidence = confidenceRaw ? JSON.parse(confidenceRaw).byCcy : {};
 
   const byCcyDims = {};
   for (const ccy of ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD']) {
@@ -4498,6 +4607,8 @@ async function _buildMacroScorecard() {
       retailSales: retail[ccy]?.spending ?? null,
       tradeBalance: trade[ccy]?.score ?? null,
       realYield: realYield[ccy]?.score ?? null,
+      yieldCurve: yieldCurve[ccy]?.score ?? null,
+      consumerConfidence: confidence[ccy]?.confidence ?? null,
       ...(ccy === 'USD' ? { ppi: ppi[ccy]?.pressure ?? null } : {}),
     };
   }

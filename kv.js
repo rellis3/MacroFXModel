@@ -202,7 +202,8 @@ const _CF_EXACT = new Set([
   // own (pure live aggregation over these) so nothing to add for it
   // directly, but it's silently empty too until these actually persist.
   'cpi_v1', 'gdp_v1', 'ism_v1', 'labor_market_v1', 'retail_sales_v1',
-  'trade_balance_v1', 'real_yield_v1', 'ppi_v1',
+  'trade_balance_v1', 'real_yield_v1', 'ppi_v1', 'yield_curve_v1',
+  'consumer_confidence_v1',
 ]);
 function isCfKey(key) {
   // kv_probe_* are throwaway keys the /api/kv-health round-trip writes to TEST the
