@@ -199,10 +199,26 @@ function solveN(A, b, n) {
 // content for future RV and often subsumes HAR terms (Busch-Christensen-Nielsen
 // 2011), strongest on equity indices, thinner on FX. Returns all-NaN if no ivVar,
 // so the estimator simply drops out of the bench where an instrument has no index.
+// Regressor scale: daily variances are ~1e-4 while the intercept column is 1, which
+// ill-conditions the 5-var normal equations (NQ blew up to QLIKE 7.5e5 unscaled).
+// Scale the variance columns + target to ~O(1) by 1/median(RV) — OLS is scale-
+// equivariant, so the unscaled prediction is mathematically identical but the solve
+// is numerically stable. (HAR-RV's 4-var solve stays as-is; only the wider IV system
+// needs it.)
+function _rvScale(rvSeries) {
+  const pos = [];
+  for (const v of rvSeries) if (v > 0 && Number.isFinite(v)) pos.push(v);
+  if (!pos.length) return 1e4;
+  pos.sort((a, b) => a - b);
+  const med = pos[pos.length >> 1];
+  return med > 0 ? 1 / med : 1e4;
+}
+
 function harIvPred(rvSeries, ivVar, { warmup = 60, dailyLag = 1, weekLag = 5, monthLag = 22 } = {}) {
   const n = rvSeries.length;
   const out = new Float64Array(n).fill(NaN);
   if (!ivVar || ivVar.length !== n) return out;
+  const S = _rvScale(rvSeries);
   const feat = (i) => {
     if (i - monthLag < 0) return null;
     const iv = ivVar[i - dailyLag];
@@ -210,14 +226,14 @@ function harIvPred(rvSeries, ivVar, { warmup = 60, dailyLag = 1, weekLag = 5, mo
     let wk = 0, mo = 0;
     for (let k = 1; k <= weekLag; k++)  wk += rvSeries[i - k];
     for (let k = 1; k <= monthLag; k++) mo += rvSeries[i - k];
-    return [1, rvSeries[i - dailyLag], wk / weekLag, mo / monthLag, iv];
+    return [1, rvSeries[i - dailyLag] * S, (wk / weekLag) * S, (mo / monthLag) * S, iv * S];
   };
   const XtX = Array.from({ length: 5 }, () => new Float64Array(5));
   const Xty = new Float64Array(5);
   let added = 0, nextAdd = monthLag;
   const addObs = (t) => {
     const x = feat(t); if (!x) return;
-    const y = rvSeries[t];
+    const y = rvSeries[t] * S;
     for (let a = 0; a < 5; a++) { Xty[a] += x[a] * y; for (let b = 0; b < 5; b++) XtX[a][b] += x[a] * x[b]; }
     added++;
   };
@@ -226,7 +242,7 @@ function harIvPred(rvSeries, ivVar, { warmup = 60, dailyLag = 1, weekLag = 5, mo
     const x = feat(i);
     if (x && added >= warmup) {
       const beta = solveN(XtX, Xty, 5);
-      if (beta) { let p = 0; for (let a = 0; a < 5; a++) p += beta[a] * x[a]; out[i] = Math.max(p, 1e-12); }
+      if (beta) { let p = 0; for (let a = 0; a < 5; a++) p += beta[a] * x[a]; out[i] = Math.max(p / S, 1e-12); }
     }
   }
   return out;
@@ -303,6 +319,7 @@ function harRvForecastNext(rvSeries, { warmup = 60, dailyLag = 1, weekLag = 5, m
 function harIvForecastNext(rvSeries, ivVar, { warmup = 60, dailyLag = 1, weekLag = 5, monthLag = 22 } = {}) {
   const n = rvSeries.length;
   if (!ivVar || ivVar.length !== n || n < monthLag + warmup) return null;
+  const S = _rvScale(rvSeries);
   const feat = (i) => {
     if (i - monthLag < 0) return null;
     const iv = ivVar[i - dailyLag];
@@ -310,14 +327,14 @@ function harIvForecastNext(rvSeries, ivVar, { warmup = 60, dailyLag = 1, weekLag
     let wk = 0, mo = 0;
     for (let k = 1; k <= weekLag; k++)  wk += rvSeries[i - k];
     for (let k = 1; k <= monthLag; k++) mo += rvSeries[i - k];
-    return [1, rvSeries[i - dailyLag], wk / weekLag, mo / monthLag, iv];
+    return [1, rvSeries[i - dailyLag] * S, (wk / weekLag) * S, (mo / monthLag) * S, iv * S];
   };
   const XtX = Array.from({ length: 5 }, () => new Float64Array(5));
   const Xty = new Float64Array(5);
   let added = 0;
   for (let t = monthLag; t < n; t++) {
     const x = feat(t); if (!x) continue;
-    const y = rvSeries[t];
+    const y = rvSeries[t] * S;
     for (let a = 0; a < 5; a++) { Xty[a] += x[a] * y; for (let b = 0; b < 5; b++) XtX[a][b] += x[a] * x[b]; }
     added++;
   }
@@ -326,7 +343,7 @@ function harIvForecastNext(rvSeries, ivVar, { warmup = 60, dailyLag = 1, weekLag
   const xNext = feat(n);
   if (!beta || !xNext) return null;
   let p = 0; for (let a = 0; a < 5; a++) p += beta[a] * xNext[a];
-  return Math.max(p, 1e-12);
+  return Math.max(p / S, 1e-12);
 }
 
 function latestSigmaForecast(bars, key, ctx) {

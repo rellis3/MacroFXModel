@@ -123,6 +123,24 @@ function matchedOOS(rv, ivVar) {
   ok(!noIV.estimators.some((e) => e.key === 'harIV'), 'harIV excluded from default run without ivVar (IV-gated)');
 }
 
+// ── 6b. ill-conditioning guard: tiny variance scale must NOT blow up QLIKE ────
+// Reproduces the NQ pathology — daily variances ~1e-4 with the intercept at 1
+// ill-conditioned the 5-var solve; the median-scaling fix must keep predictions
+// finite and realistic (no astronomical QLIKE from a clamped near-zero forecast).
+{
+  const r = rng(29); const n = 1400; const rv = new Float64Array(n); const ivPct = new Array(n).fill(NaN);
+  let reg = 1.5e-4;                                   // NQ-scale daily variance (~1.2% σ)
+  const regArr = new Float64Array(n);
+  for (let t = 0; t < n; t++) { if (r() < 0.04) reg = (0.5 + 2 * r()) * 1.5e-4; regArr[t] = reg; rv[t] = Math.max(reg * (0.6 + 0.8 * r()), 1e-9); }
+  for (let t = 0; t < n; t++) { const s = Math.sqrt(regArr[Math.min(t + 1, n - 1)]) * (0.9 + 0.2 * r()); ivPct[t] = s * Math.sqrt(252) * 100; }
+  const pIV = harIvPred(rv, ivVarSeries(ivPct));
+  const finite = [...pIV].filter((v) => Number.isFinite(v));
+  ok(finite.length > 500, 'tiny-scale: HAR-IV still produces forecasts');
+  ok(finite.every((v) => v > 0 && v < 1), 'tiny-scale: every forecast is a sane variance (no blow-up)');
+  const m = matchedOOS(rv, ivVarSeries(ivPct));
+  ok(Number.isFinite(m.iv) && m.iv < 5, `tiny-scale: HAR-IV OOS QLIKE finite & sane (${m.iv.toFixed(3)}), not 7e5`);
+}
+
 // ── 7. IV index map covers the ranked classes ────────────────────────────────
 ok(IV_INDEX_BY_INSTRUMENT.GOLD === 'GVZCLS' && IV_INDEX_BY_INSTRUMENT.NQ === 'VXNCLS' &&
    IV_INDEX_BY_INSTRUMENT.EURUSD === 'EVZCLS' && IV_INDEX_BY_INSTRUMENT.WTI === 'OVXCLS',
