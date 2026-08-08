@@ -2005,6 +2005,35 @@ function _forecastKeyForPair(pair) {
   return forecastState.latest?.instruments?.[key] ? key : null;
 }
 
+// Split a display pair ("EUR/USD", "GBP/JPY") or underscore symbol ("GBP_JPY")
+// into [base, quote] IFF both sides are one of the 8 currencies the Macro
+// Scorecard covers — null for gold/indices/anything else, so callers can
+// gate on it cleanly.
+const _KNOWN_CCY = new Set(['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD']);
+function _ccyPairFrom(str) {
+  const parts = String(str || '').split(/[/_]/);
+  if (parts.length !== 2) return null;
+  const [base, quote] = parts;
+  return (_KNOWN_CCY.has(base) && _KNOWN_CCY.has(quote)) ? [base, quote] : null;
+}
+// The AI-analysis prompt previously had ZERO Macro Scorecard content of any
+// kind (confirmed by review — buildAnalysisPrompt never referenced it). This
+// pulls both legs' full 11-dimension breakdown (not just the blended
+// composite) so the AI can see e.g. "GBP yieldCurve +0.4, consumerConfidence
+// -0.2" individually, not just one averaged number.
+async function _macroScorecardBlockFor(base, quote) {
+  try {
+    const sc = await _buildMacroScorecard();
+    const b = sc.ranked.find(r => r.ccy === base) ?? null;
+    const q = sc.ranked.find(r => r.ccy === quote) ?? null;
+    if (!b && !q) return null;
+    return {
+      [base]: b ? { composite: b.composite, coverage: b.coverage, dims: b.dims } : null,
+      [quote]: q ? { composite: q.composite, coverage: q.coverage, dims: q.dims } : null,
+    };
+  } catch { return null; }
+}
+
 // Enrich a client snapshot with server-known context before prompting: the vol
 // cone (already computed per instrument by the forecast producer), EVZ/GVZ
 // implied vol for the two instruments that have a real CBOE index, and the
@@ -2016,6 +2045,13 @@ async function _injectServerContext(pair, s) {
   // Macro deltas (what moved 1d/5d/20d) — shared with the morning brief so the
   // per-pair read can anchor on shifts ("10Y +6bps today"), not just levels.
   if (!s.macroChanges) { try { const mc = await _loadMacroChanges(); if (mc?.text) s.macroChanges = mc.text; } catch { /* prompt tolerates absence */ } }
+
+  // Macro Scorecard (11-dim fundamentals, both legs) — previously never
+  // reached this prompt at all.
+  if (!s.macroScorecard) {
+    const cc = _ccyPairFrom(pair);
+    if (cc) { const block = await _macroScorecardBlockFor(cc[0], cc[1]); if (block) s.macroScorecard = block; }
+  }
 
   if (fc && !s.volCone) {
     s.volCone = {
@@ -2296,6 +2332,15 @@ NOTE ON COT TIMING: this is a Tuesday snapshot released Friday, so it is ALWAYS 
 ${s.cotMarket ? `CROSS-MARKET POSITIONING (${s.cotMarket.n} instruments, report ${s.cotMarket.reportDate}) — is this pair's crowding idiosyncratic or part of a board-wide stretch?
 Extremes: ${s.cotMarket.extremes.length ? s.cotMarket.extremes.map(e => `${e.sym} ${e.pct}th (${e.side})`).join('  ·  ') : 'none at the 10th/90th percentile'}
 By group (median crowding percentile): ${s.cotMarket.byGroup.map(g => `${g.group} ${g.medPct ?? 'N/A'}`).join('  ·  ')}` : ''}
+
+MACRO SCORECARD (11-dimension real-economy composite per currency — CPI, GDP, business activity, labor market, retail sales, trade balance, real yield, yield curve, consumer confidence, PPI (USD only), central-bank tone — whatever's actually covered for that currency, averaged; missing dims are left out, not treated as neutral)
+${s.macroScorecard ? Object.entries(s.macroScorecard).map(([ccy, row]) => row
+    ? `${ccy}: composite ${row.composite != null ? (row.composite >= 0 ? '+' : '') + row.composite : 'N/A'} (${row.coverage.length}/11 dims covered)${Object.entries(row.dims || {}).filter(([, v]) => v != null).map(([k, v]) => `  ${k} ${v >= 0 ? '+' : ''}${v}`).join('')}`
+    : `${ccy}: no coverage yet`).join('\n') : '  Not available'}
+
+COMPOSITE SIGNAL (this dashboard's own combined read — averages whichever of technical regime, COT positioning, the Macro Scorecard, and carry are covered for this pair into one direction; arithmetic agreement across already-built signals, NOT a backtested rule — weight it as one more input, not a verdict)
+${s.pairComposite ? `${s.pairComposite.direction} — ${s.pairComposite.agree}/${s.pairComposite.total} legs agree (score ${s.pairComposite.score >= 0 ? '+' : ''}${s.pairComposite.score})
+Legs: ${(s.pairComposite.legs || []).join('  ·  ')}` : '  Not available'}
 
 HIGH CONFLUENCE ENTRIES (from multi-layer scanner)
 ${s.topEntries && s.topEntries.length > 0
@@ -2735,7 +2780,18 @@ async function _buildMorningBrief() {
   // project's own composite scores instead of flying blind on them.
   const scorecard = await _buildMacroScorecard().catch(() => null);
   const scorecardLines = scorecard?.ranked?.length
-    ? scorecard.ranked.map((r, i) => `${i + 1}. ${r.ccy} ${r.composite > 0 ? '+' : ''}${r.composite} (${r.coverage.length}/9 dims covered: ${r.coverage.join(', ')})`).join('\n')
+    ? scorecard.ranked.map((r, i) => {
+        // Yield curve and consumer confidence are folded into the composite
+        // like every other dim, but their raw value was previously invisible
+        // to the model — only the dim NAME showed up in coverage.join(), never
+        // the actual slope/inversion or confidence reading. Surface both
+        // explicitly since they're the newest, otherwise-invisible additions.
+        const extra = [];
+        if (r.dims?.yieldCurve != null) extra.push(`curve ${r.dims.yieldCurve >= 0 ? '+' : ''}${r.dims.yieldCurve}`);
+        if (r.dims?.consumerConfidence != null) extra.push(`confidence ${r.dims.consumerConfidence >= 0 ? '+' : ''}${r.dims.consumerConfidence}`);
+        const extraTxt = extra.length ? `  [${extra.join(', ')}]` : '';
+        return `${i + 1}. ${r.ccy} ${r.composite > 0 ? '+' : ''}${r.composite} (${r.coverage.length}/11 dims covered: ${r.coverage.join(', ')})${extraTxt}`;
+      }).join('\n')
       + (scorecard.pair ? `\nStrongest-vs-weakest pairing: ${scorecard.pair.long} vs ${scorecard.pair.short} (composite gap ${scorecard.pair.gap})` : '\nNo confident strongest-vs-weakest pairing — composite spreads are too tight today.')
     : null;
   const events = await _fetchTodayEvents().catch(() => []);
@@ -2758,7 +2814,7 @@ NEVER name a specific central-bank official (Fed Chair, FOMC governor, ECB/BoE/B
 ${macro}
 ${fc?.meta?.news_flag ? `Scheduled risk event today: ${fc.meta.news_flag}` : ''}
 ${macroChanges?.text ? `\n=== WHAT MOVED (change vs prior day / 1w / 1m — USE THIS to say what's shifting, not just the level) ===\n${macroChanges.text}` : ''}
-${scorecardLines ? `\n=== MACRO SCORECARD — this project's own cross-engine composite ranking, strongest to weakest (each currency's score averages whatever of central-bank sentiment/CPI/GDP/business-activity/labor-market/retail-sales/trade-balance/real-yield/PPI is currently covered for it, each already on a -1..+1 scale) ===\n${scorecardLines}\nUse this to ground the dollar/FX-complex section in this project's OWN scoring, not just generic yield/DXY levels — e.g. if USD ranks near the top with wide coverage, that's a real evidenced reason to lean dollar-supportive, not just a vibe. Don't overstate a thin-coverage score (few dims covered) with the same confidence as a well-covered one — say so if leaning on a partial read.` : ''}
+${scorecardLines ? `\n=== MACRO SCORECARD — this project's own cross-engine composite ranking, strongest to weakest (each currency's score averages whatever of central-bank sentiment/CPI/GDP/business-activity/labor-market/retail-sales/trade-balance/real-yield/yield-curve/consumer-confidence/PPI(USD) is currently covered for it, up to 11 dims, each already on a -1..+1 scale — bracketed [curve/confidence] figures below are those two dims' raw reading, not folded blindly into the average) ===\n${scorecardLines}\nUse this to ground the dollar/FX-complex section in this project's OWN scoring, not just generic yield/DXY levels — e.g. if USD ranks near the top with wide coverage, that's a real evidenced reason to lean dollar-supportive, not just a vibe. A curve reading near 0 or negative means the curve is flat/inverted for that currency — worth naming directly if it's driving the score. Don't overstate a thin-coverage score (few dims covered) with the same confidence as a well-covered one — say so if leaning on a partial read.` : ''}
 
 === TODAY'S SCHEDULED ECONOMIC EVENTS ===
 ${bigEvents}
@@ -2916,6 +2972,13 @@ async function _serverSnapshotFor(name, sym) {
     atrPct: fc?.vol_pct, priceVsAsia: session?.bias_detail,
   };
   try { const oiRaw = await kv.get('oi_store'); if (oiRaw) { const od = JSON.parse(oiRaw); const o = od.data?.[sym.replace('_', '/')] ?? od.data?.[sym]; if (o) snap.oi = { maxPain: o.maxPain, callWall: o.callWall, putWall: o.putWall, pcRatio: o.pcRatio, gex: o.exposures?.gex }; } } catch {}
+  // Macro Scorecard (11-dim fundamentals, both legs) — same block the manual
+  // Analyse path gets via _injectServerContext, added here too so the
+  // scheduled/auto-run analyses aren't thinner than the manual ones.
+  try {
+    const cc = _ccyPairFrom(sym);
+    if (cc) { const block = await _macroScorecardBlockFor(cc[0], cc[1]); if (block) snap.macroScorecard = block; }
+  } catch {}
   // COT positioning (real spec/leveraged-fund data) — same shape the prompt reads.
   try {
     const cotRaw = await kv.get('cot_extremes_v2');

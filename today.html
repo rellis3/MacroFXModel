@@ -3317,13 +3317,46 @@ function assembleSnapshot(r) {
     dataWarning: oi.inst?.dataWarning ?? null,   // mis-scaled/stale flag → the AI down-weights it
     volFlow: oi.inst?.volFlow ?? null,           // today's volume P/C flow vs resting OI P/C
     expiries: Object.entries(oi.inst?.expiries || {}).map(([label, e]) => ({ label, dte: e.dte, maxPain: e.maxPain, callWall: e.callWall, putWall: e.putWall })).sort((a, b) => (a.dte ?? 999) - (b.dte ?? 999)).slice(0, 4) };
-  // COT positioning (the shape the prompt reads) — real spec/leveraged-fund data
-  const ct = cotFor(r.name), rawCot = cot?.[COT_MAP[r.name]?.sym];
-  if (ct && rawCot) {
-    const flip = COT_MAP[r.name]?.flip, net = flip ? -(rawCot.specNet ?? 0) : (rawCot.specNet ?? 0);
-    s.cot = { reportDate: ct.reportDate, openInterest: rawCot.openInterest, levNet: net,
-      levNetChg: ct.wkChg, levPct: ct.pctile, crowdingPct: ct.crowd != null ? +ct.crowd.toFixed(1) : undefined };
-    s.cotBias = `specs net ${ct.dir}${ct.level ? ` (${ct.level})` : ''}`;
+  // COT positioning (the shape the prompt reads) — real spec/leveraged-fund data.
+  // `ct` alone is enough now: cotFor() already branches direct-major vs derived
+  // cross internally. Previously this required `rawCot` too (only ever set for
+  // the 7 direct-vs-USD majors), which silently dropped the derived read for
+  // every one of the 19 crosses even though cotFor() already computed it.
+  const ct = cotFor(r.name);
+  if (ct) {
+    const rawCot = cot?.[COT_MAP[r.name]?.sym];
+    if (rawCot) {
+      const flip = COT_MAP[r.name]?.flip, net = flip ? -(rawCot.specNet ?? 0) : (rawCot.specNet ?? 0);
+      s.cot = { reportDate: ct.reportDate, openInterest: rawCot.openInterest, levNet: net,
+        levNetChg: ct.wkChg, levPct: ct.pctile, crowdingPct: ct.crowd != null ? +ct.crowd.toFixed(1) : undefined };
+    } else if (ct.derived) {
+      // Cross pair — no single CFTC contract for it; derived from both legs'
+      // own positioning (js/pairCompositeEngine.js's cotPairBias).
+      s.cot = { derived: true, crowdingPct: ct.crowd != null ? +ct.crowd.toFixed(1) : undefined,
+        baseLeg: ct.baseRead, quoteLeg: ct.quoteRead };
+    }
+    s.cotBias = `specs net ${ct.dir}${ct.level ? ` (${ct.level})` : ''}${ct.derived ? ' — derived from both legs, no direct CFTC contract for this cross' : ''}`;
+  }
+  // Macro Scorecard (11-dim fundamentals, both legs) — previously never
+  // reached the AI prompt at all.
+  const cc = PAIR_CCY[r.name];
+  if (cc && macroScorecard?.ranked) {
+    const [base, quote] = cc;
+    const b = macroScorecard.ranked.find(x => x.ccy === base);
+    const q = macroScorecard.ranked.find(x => x.ccy === quote);
+    if (b || q) {
+      s.macroScorecard = {
+        [base]: b ? { composite: b.composite, coverage: b.coverage, dims: b.dims } : null,
+        [quote]: q ? { composite: q.composite, coverage: q.coverage, dims: q.dims } : null,
+      };
+    }
+  }
+  // Composite signal (js/pairCompositeEngine.js) — same read as the card's
+  // ⚖ chip, fed to the AI as one more labeled input, not asked to replace its reasoning.
+  const comp = pairSignalComposite(r);
+  if (comp?.score != null) {
+    s.pairComposite = { score: comp.score, direction: comp.direction, agree: comp.agree, total: comp.total,
+      legs: comp.legs.map(l => `${l.label}: ${l.score > 0 ? '+' : ''}${l.score}`) };
   }
   // Event risk for THIS pair — the calendar filtered to its own economies
   const evs = pairEvents(r.name).filter(e => e.ms >= Date.now() - 20 * 60000);
