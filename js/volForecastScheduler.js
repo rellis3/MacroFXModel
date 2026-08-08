@@ -360,6 +360,7 @@ export async function runVolForecast(targetDate) {
 
   const instruments = {};
   const errors      = [];
+  const harivDiag   = {};   // per-IV-instrument HAR-IV outcome, surfaced in meta for live diagnosis
 
   for (const cfg of INSTRUMENTS) {
     try {
@@ -376,13 +377,25 @@ export async function runVolForecast(targetDate) {
       if (HARIV_SHADOW_ON) {
         const code = IV_INDEX_BY_INSTRUMENT[cfg.name];
         const fredKey = process.env.FRED_KEY || process.env.FRED_API_KEY;
-        if (code && fredKey && ohlc[0]?.date) {
-          try {
-            const ivMap = await fetchFredSeries(code, ohlc[0].date, fredKey);
-            const ivPct = forwardFillToDates(ohlc.map(b => b.date), ivMap);
-            f.harIv = harIvShadowFields(ohlc, ivPct, cfg.assetClass, newsMult);
-            if (f.harIv) f.harIv.iv_index = code;
-          } catch (e) { f.harIv = null; console.warn(`[VOL-FORECAST] ${cfg.name} HAR-IV shadow failed: ${e.message}`); }
+        if (code) {
+          // Record why f.harIv did / didn't populate, so the COG-v2 fallback can be
+          // diagnosed live (via meta.hariv_diag) instead of guessed across a deploy.
+          if (!fredKey) { harivDiag[cfg.name] = 'no_fred_key'; }
+          else if (!ohlc[0]?.date) { harivDiag[cfg.name] = 'no_bar_date'; }
+          else {
+            try {
+              const ivMap = await fetchFredSeries(code, ohlc[0].date, fredKey);
+              const ivPct = forwardFillToDates(ohlc.map(b => b.date), ivMap);
+              const ivN   = ivPct.filter(Number.isFinite).length;
+              f.harIv = harIvShadowFields(ohlc, ivPct, cfg.assetClass, newsMult);
+              if (f.harIv) { f.harIv.iv_index = code; harivDiag[cfg.name] = `ok (${code}, ${ivN} obs)`; }
+              else         { harivDiag[cfg.name] = `shadow_null (${code}, ${ivN} obs of ${ohlc.length} bars)`; }
+            } catch (e) {
+              f.harIv = null;
+              harivDiag[cfg.name] = `fetch_failed: ${e.message}`;
+              console.warn(`[VOL-FORECAST] ${cfg.name} HAR-IV shadow failed: ${e.message}`);
+            }
+          }
         }
       }
       instruments[cfg.name] = f;
@@ -404,6 +417,7 @@ export async function runVolForecast(targetDate) {
       news_flag:   newsLabel,
       news_mult:   newsMult,
       data_source: dataSource,
+      ...(Object.keys(harivDiag).length ? { hariv_diag: harivDiag } : {}),
       ...(errors.length ? { errors } : {}),
     },
   };
