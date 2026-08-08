@@ -3941,13 +3941,30 @@ app.get('/api/beigebook/debug-fetch', async (req, res) => {
   if (!rel) return res.status(400).json({ ok: false, error: `no known Beige Book release on ${date} — check /api/beigebook/calendar` });
   const UA = 'Mozilla/5.0 (compatible; MacroFX/1.0; +https://github.com/)';
   const url = beigeBookUrl(rel.urlSuffix);
+  const out = { ok: true, dateChecked: date, urlSuffix: rel.urlSuffix, url };
   try {
     const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(20_000) });
     const raw = await r.text();
-    res.json({ ok: true, dateChecked: date, urlSuffix: rel.urlSuffix, url, status: r.status, httpOk: r.ok, contentType: r.headers.get('content-type'), bytes: raw.length, snippet: raw.replace(/\s+/g, ' ').slice(0, 300) });
+    out.raw = { status: r.status, httpOk: r.ok, contentType: r.headers.get('content-type'), bytes: raw.length, snippet: raw.replace(/\s+/g, ' ').slice(0, 300) };
+    // Angular apps (ng-app in the raw HTML) ship an empty client-rendered
+    // shell to a plain fetch() — the SAME failure mode that broke the ECB
+    // HTML scraper. Check for it directly rather than guessing from the
+    // snippet alone.
+    out.looksLikeAngularShell = /\bng-app=/.test(raw);
+    out.hasNationalSummaryMarker = /National Summary/i.test(raw);
+    out.hasDistrictMarker = /Federal Reserve Bank of (Boston|New York|Philadelphia|Cleveland|Richmond|Atlanta|Chicago|St\.? Louis|Minneapolis|Kansas City|Dallas|San Francisco)/i.test(raw);
   } catch (e) {
-    res.json({ ok: true, dateChecked: date, urlSuffix: rel.urlSuffix, url, error: e.message });
+    out.raw = { error: e.message };
   }
+  // Also run it through the ACTUAL production fetcher (same code path
+  // _beigeBookAutoCheck uses) so we see exactly what would land in KV.
+  try {
+    const processed = await fetchBeigeBook(rel.urlSuffix);
+    out.processed = { ok: processed.ok, notYetPublished: processed.notYetPublished, error: processed.error, textLength: processed.text?.length ?? null, textSnippet: processed.text ? processed.text.slice(0, 300) : null };
+  } catch (e) {
+    out.processed = { error: e.message };
+  }
+  res.json(out);
 });
 
 // ── Labor Market Strength Engine ──────────────────────────────────────────────
