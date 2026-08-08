@@ -3964,6 +3964,25 @@ app.get('/api/beigebook/debug-fetch', async (req, res) => {
   res.json(out);
 });
 
+// One-time cleanup utility: _beigeBookAutoCheck dedupes on "does a raw
+// capture already exist for this date" — correct in general (a captured
+// release is a point-in-time record, never re-fetched, see kv.js's
+// isCfKey() reasoning), but it means any release captured by the ORIGINAL
+// broken HTML-page fetcher (which returned HTTP 200 with garbage
+// nav-boilerplate "content", not a 404 — see js/beigeBookFetch.js's header)
+// is now permanently stuck: the engine thinks it's done and will never
+// retry, even with the corrected PDF fetcher in place, and even after
+// repeated "Fetch now" clicks. Deletes the stale raw + analysis KV entries
+// for one date so the next check retries cleanly. POST (not GET) since
+// this is destructive, unlike the read-only debug-fetch endpoint above.
+app.post('/api/beigebook/clear-stale', async (req, res) => {
+  const date = req.query.date;
+  if (!date) return res.status(400).json({ ok: false, error: 'pass ?date=YYYY-MM-DD (the Beige Book\'s own release date)' });
+  await kv.del(`beigebook_raw_${date}`).catch(() => {});
+  await kv.del(`beigebook_analysis_${date}`).catch(() => {});
+  res.json({ ok: true, cleared: date, note: 'now click "Fetch now" (or wait for the next 30-min poll) to retry with the corrected fetcher' });
+});
+
 // ── Labor Market Strength Engine ──────────────────────────────────────────────
 // Numeric-composition score (payrolls, wages, unemployment, participation) —
 // NOT a text-reading engine like FOMC/Beige Book; the BLS Employment
