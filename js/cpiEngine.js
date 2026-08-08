@@ -93,9 +93,12 @@ const zToScore = z => (z == null ? null : clip(z / 2.5));
 // Turns a raw FRED obs map into a YoY-% series regardless of whether the
 // underlying series is an index level (USD) or already a YoY% print
 // (everyone else) — the one piece of glue every dimension below needs.
+// Raw OECD pre-computed-YoY values arrive with long floating-point tails
+// (e.g. 2.943827113) — round to 2dp same as yoyPct() already does for the
+// index-derived path, so neither branch leaks unrounded precision.
 function toYoySeries(obsMap, meta) {
   const series = toSeries(obsMap);
-  return meta?.isIndex ? yoyPct(series) : series.map(pt => ({ ...pt, yoy: pt.value }));
+  return meta?.isIndex ? yoyPct(series) : series.map(pt => ({ ...pt, yoy: pt.value == null ? null : +pt.value.toFixed(2) }));
 }
 
 // ── Named dimensions ─────────────────────────────────────────────────────

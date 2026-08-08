@@ -62,6 +62,15 @@ console.log('[gdpScore — too little history]');
   ok('still reports the latest raw value', r.latestGrowth === 0.3);
 }
 
+console.log('[gdpScore — rounds long floating-point tails (live report: 0.518254492928838%)]');
+{
+  const m = new Map();
+  for (let i = 0; i < 8; i++) m.set(`q${String(i).padStart(2, '0')}`, 0.3);
+  m.set('q08', 0.518254492928838);
+  const r = gdpScore(m);
+  ok('latestGrowth rounds to 2dp', r.latestGrowth === 0.52, r.latestGrowth);
+}
+
 console.log('[GDP_UNIVERSE sanity]');
 {
   ok('covers all 8 currencies', ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD'].every(c => GDP_UNIVERSE[c]));

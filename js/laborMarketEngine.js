@@ -208,6 +208,11 @@ const clip = (v, lo = -1, hi = 1) => Math.max(lo, Math.min(hi, v));
 // extreme than that reads as maximally strong/weak rather than climbing
 // further — matches how markets treat a "blowout" or "collapse" print).
 const zToScore = z => (z == null ? null : clip(z / 2.5));
+// Raw OECD/FRED values (especially the non-US series) arrive with long
+// floating-point tails (e.g. 61.882736451) — round to 2dp for anything
+// surfaced as a headline "latest" reading; the z-score math above still
+// runs on the raw, unrounded value.
+const round2 = v => (v == null ? null : +v.toFixed(2));
 
 // ── Named dimensions ─────────────────────────────────────────────────────────
 
@@ -241,7 +246,7 @@ export function wageScore(wageObsMap, opts = {}) {
   const z = latestZScore(yoys, quarterly ? 8 : 24);
   const latest = series.at(-1);
   return {
-    latestYoyPct: latest?.yoy ?? null,
+    latestYoyPct: round2(latest?.yoy),
     latestDate: latest?.date ?? null,
     z, score: zToScore(z),
   };
@@ -275,10 +280,10 @@ export function unemploymentTrendScore(unempObsMap, opts = {}) {
   const { quarterly = false } = opts;
   const series = toSeries(unempObsMap);
   const latest = series.at(-1);
-  if (series.length < 8) return { latestLevel: latest?.value ?? null, latestDate: latest?.date ?? null, z: null, score: null };
+  if (series.length < 8) return { latestLevel: round2(latest?.value), latestDate: latest?.date ?? null, z: null, score: null };
   const smoothed = quarterly ? series.map(p => p.value) : trailing3moAvg(series);
   const z = latestZScore(smoothed, quarterly ? 8 : 24);
-  return { latestLevel: latest?.value ?? null, latestDate: latest?.date ?? null, z, score: zToScore(z == null ? null : -z) };
+  return { latestLevel: round2(latest?.value), latestDate: latest?.date ?? null, z, score: zToScore(z == null ? null : -z) };
 }
 
 // Participation trend: same "relative cycle high/low" framing — rising
@@ -289,10 +294,10 @@ export function participationTrendScore(partObsMap, opts = {}) {
   const { quarterly = false } = opts;
   const series = toSeries(partObsMap);
   const latest = series.at(-1);
-  if (series.length < 8) return { latestLevel: latest?.value ?? null, latestDate: latest?.date ?? null, z: null, score: null };
+  if (series.length < 8) return { latestLevel: round2(latest?.value), latestDate: latest?.date ?? null, z: null, score: null };
   const smoothed = quarterly ? series.map(p => p.value) : trailing3moAvg(series);
   const z = latestZScore(smoothed, quarterly ? 8 : 24);
-  return { latestLevel: latest?.value ?? null, latestDate: latest?.date ?? null, z, score: zToScore(z) };
+  return { latestLevel: round2(latest?.value), latestDate: latest?.date ?? null, z, score: zToScore(z) };
 }
 
 // Quits confidence: the JOLTS quits rate, same "relative cycle high/low"
@@ -301,9 +306,9 @@ export function participationTrendScore(partObsMap, opts = {}) {
 export function quitsScore(quitsObsMap) {
   const series = toSeries(quitsObsMap);
   const latest = series.at(-1);
-  if (series.length < 8) return { latestRate: latest?.value ?? null, latestDate: latest?.date ?? null, z: null, score: null };
+  if (series.length < 8) return { latestRate: round2(latest?.value), latestDate: latest?.date ?? null, z: null, score: null };
   const z = latestZScore(trailing3moAvg(series));
-  return { latestRate: latest?.value ?? null, latestDate: latest?.date ?? null, z, score: zToScore(z) };
+  return { latestRate: round2(latest?.value), latestDate: latest?.date ?? null, z, score: zToScore(z) };
 }
 
 // Job openings: the JOLTS openings rate — labor DEMAND, same framing again.
@@ -311,9 +316,9 @@ export function quitsScore(quitsObsMap) {
 export function jobOpeningsScore(openingsObsMap) {
   const series = toSeries(openingsObsMap);
   const latest = series.at(-1);
-  if (series.length < 8) return { latestRate: latest?.value ?? null, latestDate: latest?.date ?? null, z: null, score: null };
+  if (series.length < 8) return { latestRate: round2(latest?.value), latestDate: latest?.date ?? null, z: null, score: null };
   const z = latestZScore(trailing3moAvg(series));
-  return { latestRate: latest?.value ?? null, latestDate: latest?.date ?? null, z, score: zToScore(z) };
+  return { latestRate: round2(latest?.value), latestDate: latest?.date ?? null, z, score: zToScore(z) };
 }
 
 // Breadth of hiring across the SECTOR_UNIVERSE supersectors — is job growth

@@ -77,14 +77,19 @@ const zToScore = z => (z == null ? null : clip(z / 2.5));
 // alongside the z-score rather than folded into it, since it's a binary,
 // universally-recognized signal a reader looks for directly regardless of
 // how unusual the print is relative to its own history.
+// Raw OECD values arrive with long floating-point tails (e.g.
+// 0.518254492928838) — round to 2dp for anything surfaced as a headline
+// "latest" reading; the underlying z-score math still runs on the raw value.
+const round2 = v => (v == null ? null : +v.toFixed(2));
+
 export function gdpScore(obsMap) {
   const series = toSeries(obsMap);
   const latest = series.at(-1);
   const prev = series.at(-2);
-  if (series.length < 8) return { latestGrowth: latest?.value ?? null, latestDate: latest?.date ?? null, z: null, score: null, recessionFlag: false };
+  if (series.length < 8) return { latestGrowth: round2(latest?.value), latestDate: latest?.date ?? null, z: null, score: null, recessionFlag: false };
   const z = latestZScore(series.map(p => p.value));
   const recessionFlag = latest?.value < 0 && prev?.value < 0;
-  return { latestGrowth: latest?.value ?? null, latestDate: latest?.date ?? null, z, score: zToScore(z), recessionFlag };
+  return { latestGrowth: round2(latest?.value), latestDate: latest?.date ?? null, z, score: zToScore(z), recessionFlag };
 }
 
 // Fetch the one configured series for one currency. Never throws — a

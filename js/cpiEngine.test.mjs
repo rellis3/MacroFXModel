@@ -73,6 +73,14 @@ console.log('[cpiScore — composite + core reported standalone]');
   ok('empty input -> no dims, pressure null, not a crash', r.coverage.length === 0 && r.pressure === null);
 }
 
+console.log('[levelVsTargetScore — rounds long floating-point tails on pre-computed-YoY series]');
+{
+  const m = new Map([['2024-01-01', 2.943827113847]]);
+  const meta = { series: 'CPALTT01GBM659N', isIndex: false };
+  const r = levelVsTargetScore(m, meta);
+  ok('latestYoy rounds to 2dp', r.latestYoy === 2.94, r.latestYoy);
+}
+
 console.log('[CPI_UNIVERSE sanity]');
 {
   ok('covers all 8 currencies', ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD'].every(c => CPI_UNIVERSE[c]));

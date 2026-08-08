@@ -80,6 +80,9 @@ export function latestZScore(values, lookback = 24, minBaseline = 6) {
 
 const clip = (v, lo = -1, hi = 1) => Math.max(lo, Math.min(hi, v));
 const zToScore = z => (z == null ? null : clip(z / 2.5));
+// Raw OECD/Fed values arrive with long floating-point tails — round to 2dp
+// for anything surfaced as a headline "latest" reading.
+const round2 = v => (v == null ? null : +v.toFixed(2));
 
 // ── Named dimensions ─────────────────────────────────────────────────────
 
@@ -102,9 +105,9 @@ export function industrialProductionScore(obsMap) {
 export function diffusionIndexScore(obsMap, lookback = 24) {
   const series = toSeries(obsMap);
   const latest = series.at(-1);
-  if (series.length < 8) return { latestValue: latest?.value ?? null, latestDate: latest?.date ?? null, z: null, score: null, expanding: null };
+  if (series.length < 8) return { latestValue: round2(latest?.value), latestDate: latest?.date ?? null, z: null, score: null, expanding: null };
   const z = latestZScore(series.map(p => p.value), lookback);
-  return { latestValue: latest?.value ?? null, latestDate: latest?.date ?? null, z, score: zToScore(z), expanding: latest?.value > 0 };
+  return { latestValue: round2(latest?.value), latestDate: latest?.date ?? null, z, score: zToScore(z), expanding: latest?.value > 0 };
 }
 
 // Business confidence (non-USD currencies) — same diffusion-style

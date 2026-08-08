@@ -262,6 +262,19 @@ console.log('[laborMarketScore — composite + participation trap flag]');
   ok('revisionSurprise dim present (reported standalone)', 'revisionSurprise' in r.dims);
 }
 
+console.log('[rounding — long floating-point tails from raw OECD values are rounded to 2dp]');
+{
+  const m = monthlySeries('2023-01', [3.1, 2.943827113847]);
+  const r = wageScore(m, { isIndex: false });
+  ok('wageScore latestYoyPct rounds to 2dp', r.latestYoyPct === 2.94, r.latestYoyPct);
+}
+{
+  const vals = Array.from({ length: 19 }, () => 62.0);
+  const m = monthlySeries('2023-01', [...vals, 61.882736451]);
+  const r = participationTrendScore(m);
+  ok('participationTrendScore latestLevel rounds to 2dp', r.latestLevel === 61.88, r.latestLevel);
+}
+
 console.log('[laborMarketScore — universe opts threading (isIndex/quarterly reach the right dimension)]');
 {
   // EUR-style: pre-computed-YoY quarterly wages + quarterly participation,
