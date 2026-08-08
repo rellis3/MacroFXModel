@@ -3979,6 +3979,29 @@ app.get('/api/beigebook/debug-fetch', async (req, res) => {
   try {
     const processed = await fetchBeigeBook(rel.urlSuffix);
     out.processed = { ok: processed.ok, notYetPublished: processed.notYetPublished, error: processed.error, textLength: processed.text?.length ?? null, textSnippet: processed.text ? processed.text.slice(0, 300) : null };
+    // Not inside a <script> tag, so it should survive htmlToText — check
+    // whether it actually did, and where, rather than assuming the first
+    // 300 chars (pure boilerplate) are representative of the whole thing.
+    if (processed.text) {
+      const idx = processed.text.search(/National Summary/i);
+      out.processed.nationalSummaryFoundInProcessedText = idx !== -1;
+      if (idx !== -1) {
+        out.processed.nationalSummaryIndexInProcessedText = idx;
+        out.processed.snippetAroundNationalSummary = processed.text.slice(Math.max(0, idx - 100), idx + 400);
+      }
+    }
+    // If it's missing from the processed text despite being outside a
+    // <script> tag in the raw HTML, show the raw markup immediately
+    // surrounding it — the most likely culprit is a malformed-tag edge
+    // case (e.g. an Angular binding attribute containing a bare ">", which
+    // htmlToText's simplistic `<[^>]+>` regex can't handle) mangling the
+    // extraction right around that point.
+    if (out.hasNationalSummaryMarker && !(out.processed?.nationalSummaryFoundInProcessedText)) {
+      const r2 = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(20_000) });
+      const raw2 = await r2.text();
+      const rawIdx = raw2.search(/National Summary/i);
+      out.rawMarkupAroundNationalSummary = raw2.slice(Math.max(0, rawIdx - 400), rawIdx + 600);
+    }
   } catch (e) {
     out.processed = { error: e.message };
   }
