@@ -3975,13 +3975,18 @@ app.get('/api/beigebook/debug-fetch', async (req, res) => {
 // repeated "Fetch now" clicks. Deletes the stale raw + analysis KV entries
 // for one date so the next check retries cleanly. POST (not GET) since
 // this is destructive, unlike the read-only debug-fetch endpoint above.
-app.post('/api/beigebook/clear-stale', async (req, res) => {
+async function _beigeBookClearStale(req, res) {
   const date = req.query.date;
   if (!date) return res.status(400).json({ ok: false, error: 'pass ?date=YYYY-MM-DD (the Beige Book\'s own release date)' });
   await kv.del(`beigebook_raw_${date}`).catch(() => {});
   await kv.del(`beigebook_analysis_${date}`).catch(() => {});
   res.json({ ok: true, cleared: date, note: 'now click "Fetch now" (or wait for the next 30-min poll) to retry with the corrected fetcher' });
-});
+}
+// GET as well as POST — this is a narrowly-scoped, idempotent, single-key
+// cleanup (not a general destructive action), and it needs to be tappable
+// as a plain link from a phone browser with no dev-tools access.
+app.get('/api/beigebook/clear-stale', _beigeBookClearStale);
+app.post('/api/beigebook/clear-stale', _beigeBookClearStale);
 
 // ── Labor Market Strength Engine ──────────────────────────────────────────────
 // Numeric-composition score (payrolls, wages, unemployment, participation) —
