@@ -859,7 +859,7 @@ footer{margin-top:40px;padding:18px 0;border-top:1px solid var(--border-soft);fo
           <span class="usd-panel-label" id="scorecardPairLabel">loading…</span>
         </div>
         <div class="usd-contrib" id="scorecardRows"></div>
-        <div class="usd-panel-note">Cross-engine fundamental composite per currency — CPI, GDP, business activity, labor market, retail sales, trade balance, real yield, PPI (USD) and central-bank tone, averaged over whatever's covered. Different data entirely from the FRED Z-scores above (real economic releases, not market-priced Z-scores). <a href="macro-scorecard.html" target="_blank" style="color:inherit;text-decoration:underline">Full breakdown ›</a></div>
+        <div class="usd-panel-note">Cross-engine fundamental composite per currency — CPI, GDP, business activity, labor market, retail sales, trade balance, real yield, yield curve, consumer confidence, PPI (USD) and central-bank tone, averaged over whatever's covered. Different data entirely from the FRED Z-scores above (real economic releases, not market-priced Z-scores). <a href="macro-scorecard.html" target="_blank" style="color:inherit;text-decoration:underline">Full breakdown ›</a></div>
       </div>
     </div>
   </div>
@@ -1105,10 +1105,11 @@ function rateDiffFor(sym){
 
 // Macro Scorecard per-pair edge (js/macroScorecardEngine.js) — a richer sibling
 // to rateDiffFor above: that's ONE factor (the nominal rate spread); this is
-// up to 9 real economic dimensions (CPI/GDP/labor/business-activity/retail-
-// sales/trade-balance/real-yield/PPI/central-bank-tone) per currency, diffed
-// base-minus-quote. Only defined for 6-letter FX symbols (EURUSD etc, base =
-// first 3 chars, quote = last 3) — indices/gold aren't currency pairs.
+// up to 11 real economic dimensions (CPI/GDP/labor/business-activity/retail-
+// sales/trade-balance/real-yield/yield-curve/consumer-confidence/PPI/central-bank-tone) per
+// currency, diffed base-minus-quote. Only defined for 6-letter FX symbols
+// (EURUSD etc, base = first 3 chars, quote = last 3) — indices/gold aren't
+// currency pairs.
 function macroScorecardCcy(ccy){
   return S.macroScorecard?.ranked?.find(r=>r.ccy===ccy) ?? null;
 }
@@ -1164,7 +1165,7 @@ function renderScorecardPanel(){
   rowsEl.innerHTML = ranked.map(r=>{
     const cls = r.composite>=0?'pos':'neg';
     const pct = Math.min(50, Math.abs(r.composite)*50);
-    return `<div class="uc-row"><span class="uc-sym">${r.ccy}</span><div class="uc-bar-wrap"><div class="uc-bar ${cls}" style="width:${pct}%"></div></div><span class="uc-z mono">${r.composite>0?'+':''}${r.composite} (${r.coverage.length}/9)</span></div>`;
+    return `<div class="uc-row"><span class="uc-sym">${r.ccy}</span><div class="uc-bar-wrap"><div class="uc-bar ${cls}" style="width:${pct}%"></div></div><span class="uc-z mono">${r.composite>0?'+':''}${r.composite} (${r.coverage.length}/11)</span></div>`;
   }).join('') || `<div class="pending" style="padding:8px 0">No currencies have any coverage yet.</div>`;
 }
 
@@ -1457,7 +1458,7 @@ async function renderDrill(){
             <div style="font-size:10.5px;color:var(--text3);margin-top:2px">${Math.abs(me.edge)<0.15 ? 'No clear fundamental edge either way' : (me.edge>0 ? `Fundamentals favour ${me.base}` : `Fundamentals favour ${me.quote}`)}</div>
           </div>
         </div>
-        <div class="forward-line"><span>${me.base} ${me.baseScore>0?'+':''}${me.baseScore} (${me.baseCov}/9) &nbsp;vs&nbsp; ${me.quote} ${me.quoteScore>0?'+':''}${me.quoteScore} (${me.quoteCov}/9)</span><a href="macro-scorecard.html" target="_blank" style="font-size:10.5px;font-weight:600">Full breakdown ›</a></div>`}
+        <div class="forward-line"><span>${me.base} ${me.baseScore>0?'+':''}${me.baseScore} (${me.baseCov}/11) &nbsp;vs&nbsp; ${me.quote} ${me.quoteScore>0?'+':''}${me.quoteScore} (${me.quoteCov}/11)</span><a href="macro-scorecard.html" target="_blank" style="font-size:10.5px;font-weight:600">Full breakdown ›</a></div>`}
       </div>
     </div>
 

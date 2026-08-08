@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Business Activity</title>
+<title>Yield Curve</title>
 <style>
   :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;
     --text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
@@ -28,7 +28,7 @@
   .note{color:var(--text3);font-size:11px;line-height:1.5;margin-top:10px}
   .empty{color:var(--text2);font-size:13px;line-height:1.6;padding:8px 0}
 
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
   .ccard{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:13px 14px}
   .ccard.usd{grid-column:1 / -1;background:var(--card)}
   .ccard .ctitle{display:flex;align-items:center;gap:8px;margin-bottom:8px}
@@ -37,21 +37,18 @@
   .chip{display:inline-flex;align-items:center;gap:4px;border-radius:6px;padding:2px 9px;font-size:10.5px;font-weight:700}
   .chip.strong{background:var(--bull-bg);color:var(--bull)} .chip.weak{background:var(--bear-bg);color:var(--bear)}
   .chip.neu{background:rgba(110,118,129,.15);color:var(--text2)} .chip.na{background:var(--card2);color:var(--text3);border:1px solid var(--border)}
+  .chip.inv{background:var(--amber-bg);color:var(--amber)}
 
   .gauge{position:relative;height:8px;background:var(--bg);border-radius:4px;margin:6px 0 10px}
   .gauge .mid{position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--border)}
   .gauge .fill{position:absolute;top:0;bottom:0;border-radius:4px}
   .gauge .fill.pos{left:50%;background:var(--bull)} .gauge .fill.neg{right:50%;background:var(--bear)}
 
-  .dim-row{display:grid;grid-template-columns:130px 1fr 46px;align-items:center;gap:7px;margin-bottom:5px;font-size:11px}
-  .dim-lbl{color:var(--text3)}
-  .dim-track{height:6px;background:var(--bg);border-radius:3px;position:relative;overflow:hidden}
-  .dim-fill{position:absolute;top:0;bottom:0;border-radius:3px}
-  .dim-fill.pos{left:50%;background:var(--bull)} .dim-fill.neg{right:50%;background:var(--bear)}
-  .dim-val{font-size:10px;color:var(--text3);text-align:right;font-variant-numeric:tabular-nums}
-  .dim-detail{font-size:10px;color:var(--text3);margin:-2px 0 6px}
-
-  .coverage-note{font-size:10px;color:var(--text3);margin-top:6px}
+  .growth-val{font-size:22px;font-weight:700;margin-bottom:2px}
+  .growth-val.pos{color:var(--bull)} .growth-val.neg{color:var(--bear)} .growth-val.na{color:var(--text3)}
+  .growth-lbl{font-size:10.5px;color:var(--text3);margin-bottom:8px}
+  .subdim{font-size:11px;color:var(--text2);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+  .subdim b{color:var(--text)}
 
   .spin{display:inline-block;width:11px;height:11px;border:2px solid var(--text3);border-top-color:var(--blue);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-1px}
   @keyframes sp{to{transform:rotate(360deg)}}
@@ -60,7 +57,7 @@
 <body>
 
 <div class="hdr">
-  <h1>🏭 Business Activity</h1>
+  <h1>📉 Yield Curve</h1>
   <div class="spacer"></div>
   <span class="stamp" id="lastCheck"></span>
   <button class="hbtn primary" id="refreshBtn" onclick="refreshNow()">⟳ Refresh</button>
@@ -72,12 +69,12 @@
   <a class="hbtn" href="cpi.html">CPI / Inflation</a>
   <a class="hbtn" href="gdp.html">GDP / Growth</a>
   <a class="hbtn" href="labor-market.html">Labor Market</a>
+  <a class="hbtn" href="ism.html">Business Activity</a>
   <a class="hbtn" href="retail-sales.html">Retail Sales</a>
   <a class="hbtn" href="trade-balance.html">Trade Balance</a>
   <a class="hbtn" href="real-yield.html">Real Yield</a>
   <a class="hbtn" href="ppi.html">PPI</a>
   <a class="hbtn" href="macro-scorecard.html">Macro Scorecard</a>
-  <a class="hbtn" href="yield-curve.html">Yield Curve</a>
   <a class="hbtn" href="consumer-confidence.html">Consumer Confidence</a>
   <a class="hbtn" href="today.html">Daily Brief</a>
   <a class="hbtn" href="index.html">Dashboard</a>
@@ -85,9 +82,9 @@
 
 <div class="wrap">
   <div class="card">
-    <h2>Per-currency business activity read</h2>
+    <h2>Per-currency yield curve read</h2>
     <div id="body" class="empty">Loading…</div>
-    <div class="note"><b>Not ISM/PMI data</b> — the actual ISM Manufacturing/Services PMI was pulled from FRED by ISM itself in 2016 and isn't available through any free API. USD instead uses three real, confirmed proxies: Industrial Production (YoY% trend), and the Philadelphia Fed / Empire State regional manufacturing surveys (diffusion-style indices, already centered near zero — positive means expansion). The other 7 currencies show a "Business Confidence" dimension from the OECD's Business Tendency Survey instead — a real, free, updating series, but explicitly NOT a PMI equivalent (different survey design, different scale, unsynchronized release calendar) — don't read it as "the UK's ISM," it isn't one. All dimensions are z-scored against their own trailing history. Refreshes automatically once/day; source is FRED (needs FRED_KEY on the server).</div>
+    <div class="note">Derived, not a new data source: 10Y government bond yield minus a short-term/policy-adjacent rate, per currency — reuses series this project already fetches elsewhere. Positive = normal upward-sloping curve (the historical norm — long-term lenders paid more than short-term). Negative = inverted, the classic signal markets are pricing rate cuts / a slowdown ahead. The raw slope is directly comparable across currencies (a percentage-point spread), so it's shown as the primary number; "Trend" z-scores it against its own trailing history — is this currency's curve unusually flat, steep, or inverted relative to its own recent norm. Refreshes automatically once/day; source is FRED (needs FRED_KEY on the server).</div>
   </div>
 </div>
 
@@ -96,48 +93,33 @@ const $ = id => document.getElementById(id);
 const esc = s => (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function jget(url, opts) { const r = await fetch(url, opts); return r.json(); }
 
-const DIM_LABELS = { industrialProduction: 'Industrial production', philFed: 'Philly Fed survey', empireState: 'Empire State survey', businessConfidence: 'Business confidence' };
-const USD_ORDER = ['industrialProduction', 'philFed', 'empireState'];
-
-function activityChip(score) {
-  if (score == null) return '<span class="chip na">no data</span>';
-  if (score > 0.25) return '<span class="chip strong">EXPANDING</span>';
-  if (score < -0.25) return '<span class="chip weak">CONTRACTING</span>';
-  return '<span class="chip neu">NEUTRAL</span>';
+function strengthChip(r) {
+  if (r?.score == null) return '<span class="chip na">no data</span>';
+  if (r.inverted) return '<span class="chip inv">INVERTED</span>';
+  if (r.score > 0.25) return '<span class="chip strong">STEEPENING</span>';
+  if (r.score < -0.25) return '<span class="chip weak">FLATTENING</span>';
+  return '<span class="chip neu">STEADY</span>';
 }
 function gauge(score) {
   if (score == null) return '';
   const pct = Math.min(50, Math.abs(score) * 50);
   return `<div class="gauge"><div class="mid"></div><div class="fill ${score >= 0 ? 'pos' : 'neg'}" style="width:${pct}%"></div></div>`;
 }
-function dimDetail(key, d) {
-  if (!d) return '';
-  if (key === 'industrialProduction') return d.latestYoy != null ? `${d.latestYoy > 0 ? '+' : ''}${d.latestYoy}% y/y · ${esc(d.latestDate || '')}` : '';
-  if (key === 'philFed' || key === 'empireState' || key === 'businessConfidence') return d.latestValue != null ? `${d.latestValue > 0 ? '+' : ''}${d.latestValue} (${d.expanding ? 'expansion' : 'contraction'} territory) · ${esc(d.latestDate || '')}` : '';
-  return '';
-}
-function dimRow(key, d) {
-  if (!d) return '';
-  const s = d.score;
-  const pct = s == null ? 0 : Math.min(50, Math.abs(s) * 50);
-  const cls = s == null ? '' : (s >= 0 ? 'pos' : 'neg');
-  return `<div class="dim-row"><span class="dim-lbl">${DIM_LABELS[key]}</span><div class="dim-track">${s != null ? `<div class="dim-fill ${cls}" style="width:${pct}%"></div>` : ''}</div><span class="dim-val">${s != null ? s.toFixed(2) : '—'}</span></div>
-    <div class="dim-detail">${dimDetail(key, d)}</div>`;
-}
 
 function renderCcy(ccy, r, isUsd) {
-  const dims = r?.dims || {};
-  const order = isUsd ? USD_ORDER : ['businessConfidence'];
+  const g = r?.latestSlope;
+  const gCls = g == null ? 'na' : (g >= 0 ? 'pos' : 'neg');
   return `<div class="ccard ${isUsd ? 'usd' : ''}">
-    <div class="ctitle"><span class="ccy">${ccy}</span>${activityChip(r?.activity)}</div>
-    ${gauge(r?.activity)}
-    ${order.map(k => dimRow(k, dims[k])).join('')}
-    ${!isUsd ? '<div class="coverage-note">Business confidence, not PMI — see note below</div>' : ''}
+    <div class="ctitle"><span class="ccy">${ccy}</span>${strengthChip(r)}</div>
+    <div class="growth-val ${gCls}">${g != null ? `${g > 0 ? '+' : ''}${g}pp` : '—'}</div>
+    <div class="growth-lbl">10Y − short · ${esc(r?.latestDate || '—')}</div>
+    ${gauge(r?.score)}
+    <div class="subdim">Long: <b>${r?.latestLong != null ? `${r.latestLong}%` : '—'}</b> · Short: <b>${r?.latestShort != null ? `${r.latestShort}%` : '—'}</b></div>
   </div>`;
 }
 
 async function load() {
-  const r = await jget('/api/ism');
+  const r = await jget('/api/yield-curve');
   if (!r.ok) {
     $('body').innerHTML = `<div class="empty">${esc(r.error || 'No data yet')} — click Refresh (needs FRED_KEY configured on the server).</div>`;
     return;
@@ -151,9 +133,9 @@ async function refreshNow() {
   const btn = $('refreshBtn');
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Refreshing…';
   try {
-    await jget('/api/ism/refresh', { method: 'POST' });
+    await jget('/api/yield-curve/refresh', { method: 'POST' });
     for (let i = 0; i < 40; i++) {
-      const st = await jget('/api/ism/refresh-status');
+      const st = await jget('/api/yield-curve/refresh-status');
       if (!st.running) break;
       await new Promise(res => setTimeout(res, 2000));
     }
