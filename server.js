@@ -84,7 +84,7 @@ import { FETCHERS as BOE_FETCHERS, extractVote as boeExtractVote } from './js/bo
 import { BOJ_MEETINGS, pendingAsOf as bojPendingAsOf } from './js/bojCalendar.js';
 import { FETCHERS as BOJ_FETCHERS, extractVote as bojExtractVote, statementUrl as bojStatementUrl, outlookViewUrl as bojOutlookViewUrl, outlookFullUrl as bojOutlookFullUrl, opinionsUrl as bojOpinionsUrl, minutesPdfUrl as bojMinutesPdfUrl } from './js/bojFetch.js';
 import { BEIGE_BOOK_RELEASES, pendingAsOf as beigeBookPendingAsOf } from './js/beigeBookCalendar.js';
-import { fetchBeigeBook } from './js/beigeBookFetch.js';
+import { fetchBeigeBook, beigeBookUrl } from './js/beigeBookFetch.js';
 import { runTrendAB as _runTrendAB } from './js/trendFollowV2Engine.js';
 import { volSigmaSeries as _volSigmaSeries, nextSigma as _nextSigma } from './js/forecastCore.js';
 import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } from './js/creditLeadLagEngine.js';
@@ -3927,6 +3927,28 @@ app.get('/api/beigebook/fetch-status', async (_req, res) => {
   res.json({ ok: true, running: _beigeBookCheckRunning, last: raw ? JSON.parse(raw) : null });
 });
 setInterval(() => { _beigeBookRunCheck('poll'); }, 30 * 60_000);
+
+// Diagnostic endpoint — same reasoning as /api/boj/debug-fetch: a 404 on a
+// direct-constructed URL silently reads as notYetPublished and
+// _beigeBookAutoCheck logs nothing, indistinguishable from genuine waiting.
+// Hits the constructed URL directly and reports the raw status + a body
+// snippet, bypassing the notYetPublished classification. Kept permanently,
+// same as the other banks' debug endpoints.
+app.get('/api/beigebook/debug-fetch', async (req, res) => {
+  const date = req.query.date;
+  if (!date) return res.status(400).json({ ok: false, error: 'pass ?date=YYYY-MM-DD (the Beige Book\'s own release date, not the FOMC meeting date)' });
+  const rel = BEIGE_BOOK_RELEASES.find(r => r.date === date);
+  if (!rel) return res.status(400).json({ ok: false, error: `no known Beige Book release on ${date} — check /api/beigebook/calendar` });
+  const UA = 'Mozilla/5.0 (compatible; MacroFX/1.0; +https://github.com/)';
+  const url = beigeBookUrl(rel.urlSuffix);
+  try {
+    const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(20_000) });
+    const raw = await r.text();
+    res.json({ ok: true, dateChecked: date, urlSuffix: rel.urlSuffix, url, status: r.status, httpOk: r.ok, contentType: r.headers.get('content-type'), bytes: raw.length, snippet: raw.replace(/\s+/g, ' ').slice(0, 300) });
+  } catch (e) {
+    res.json({ ok: true, dateChecked: date, urlSuffix: rel.urlSuffix, url, error: e.message });
+  }
+});
 
 // ── Labor Market Strength Engine ──────────────────────────────────────────────
 // Numeric-composition score (payrolls, wages, unemployment, participation) —
