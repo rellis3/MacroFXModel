@@ -132,12 +132,14 @@
       <button data-c="original" class="on">Original</button>
       <button data-c="cog">COG</button>
       <button data-c="bot" title="The Volatility Bot's actual lines: COG geometry × the bot's σ (volSigmaSeries — the backtest math the bot uses, not the vol-forecast σ the COG calc uses; NQ swaps to cc-HV like the bot). Works on both Backtest and Archive source.">Bot</button>
+      <button data-c="cogv2" title="COG for fx/indices, but GOLD uses HAR-IV σ (GVZ) + the forecaster's per-asset (non-COG-widened) bands — the bench's OOS gold winner. Needs the per-day hariv_annual enrichment (FRED GVZ); falls back to COG for gold if unavailable.">COG v2</button>
     </div>
     <label title="Overlay OTHER calcs' lines on top of the active Calc above, view-only (no touch markers, no trades) — so you can see how far apart Original/COG/Bot place their levels for the same day.">Compare</label>
     <span class="seg" id="calcCompare">
       <button data-cc="original" title="Overlay Original's lines">+Orig</button>
       <button data-cc="cog" title="Overlay COG's lines">+COG</button>
       <button data-cc="bot" title="Overlay Bot's lines">+Bot</button>
+      <button data-cc="cogv2" title="Overlay COG v2's lines (gold=HAR-IV)">+COGv2</button>
     </span>
     <div class="seg" id="touch">
       <button data-t="markers" title="Mark with a coloured dot where price first reached each armed level that day">● Markers</button>
@@ -295,11 +297,15 @@ function unitFor(name) {
 
 // COG's reverse-engineered constants — identical to forecast-replay / vol-forecast-v2.
 const COG_C = { hl50: 1.56, hl75: 1.93, oc50: 0.74, oc75: 1.24 };
+// COG-v2 gold constants = forecaster per-asset (commodity) calibration, NO COG
+// widening: BM/HN × commodity corr (js/volBacktestEngine.js): 1.572×0.898, 2.049×0.914,
+// 0.6745×1.144, 1.1503×1.092. Paired with the per-day HAR-IV σ (f.hariv_annual).
+const GOLD_C = { hl50: 1.412, hl75: 1.873, oc50: 0.772, oc75: 1.256 };
 const COG_SQRT252 = Math.sqrt(252);
 const _REPLAY_CCHV = new Set(['nq']);
 const $ = id => document.getElementById(id);
 function calcMode() { return $('calc').querySelector('button.on')?.dataset.c || 'original'; }
-function calcLabel() { const m = calcMode(); return m === 'cog' ? 'COG' : m === 'bot' ? 'Bot' : 'Original'; }
+function calcLabel() { const m = calcMode(); return m === 'cogv2' ? 'COG v2' : m === 'cog' ? 'COG' : m === 'bot' ? 'Bot' : 'Original'; }
 function srcMode()  { return $('src').querySelector('button.on')?.dataset.s || 'backtest'; }
 function tfGran()   { return $('tf').querySelector('button.on')?.dataset.g || 'M15'; }
 function setStatus(t) { $('status').textContent = t; }
@@ -311,6 +317,16 @@ function setStatus(t) { $('status').textContent = t; }
 function bandsFor(f, mode) {
   if (!f) return null;
   mode = mode || calcMode();
+  const name = ($('pair').value || '').toLowerCase();
+  // COG v2: gold → HAR-IV σ (f.hariv_annual) × the forecaster's calibrated (non-COG)
+  // constants; fx/indices (and gold when HAR-IV is unavailable) → fall through to COG.
+  if (mode === 'cogv2') {
+    if (name === 'gold' && f.hariv_annual > 0) {
+      const s = f.hariv_annual / COG_SQRT252;
+      return { hl_median: GOLD_C.hl50 * s, hl_75: GOLD_C.hl75 * s, oc_median: GOLD_C.oc50 * s, oc_75: GOLD_C.oc75 * s };
+    }
+    mode = 'cog';
+  }
   // COG geometry for both COG and BOT — they differ only in the σ SOURCE:
   //   COG = the vol-forecast σ (f.vol_annual, with correction constants)
   //   BOT = the bot's σ (f.bot_vol_annual = volSigmaSeries, no corrections)
@@ -319,7 +335,6 @@ function bandsFor(f, mode) {
   // the same OANDA D1 history forward with nextSigma()); falls back to the COG σ
   // only if that lookup itself fails for a given day, so the calc still draws.
   if (mode === 'cog' || mode === 'bot') {
-    const name = ($('pair').value || '').toLowerCase();
     let va = (mode === 'bot') ? (f.bot_vol_annual ?? f.vol_annual) : f.vol_annual;
     if (_REPLAY_CCHV.has(name) && f.cchv_annual > 4 && f.cchv_annual < 200) va = f.cchv_annual;
     if (!(va > 0)) return null;
@@ -331,7 +346,7 @@ function bandsFor(f, mode) {
 
 // ── State ────────────────────────────────────────────────────────────────────
 const state = { armed: new Set(LADDER_LINES.map(l => l.key)), showStats: false, style: 'fade_all', sltpMode: 'level', eod: 'kill', showOsc: false, compareCalcs: new Set() };
-const CALC_TAG = { original: 'Orig', cog: 'COG', bot: 'Bot' };
+const CALC_TAG = { original: 'Orig', cog: 'COG', bot: 'Bot', cogv2: 'COGv2' };
 const HOLD_SESSIONS = 5;   // 'let run' holds a trade at most this many sessions past EOD
 function styleMode() { return $('style').querySelector('button.on')?.dataset.y || 'fade_all'; }
 function eodModeSel() { return $('eod').querySelector('button.on')?.dataset.e || 'kill'; }

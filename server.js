@@ -39,7 +39,7 @@ import { yangZhangVolSeries, hv20Series, ewmaVolSeries, computeForecast as _comp
 import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
 import { computeHitRates, isHitRatesComputing, HR_INSTRUMENTS } from './js/hitRateBackfill.js';
 import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
-import { runBench as runVolBench, sigmaSeriesForExport, benchCtx, realizedVarSeries as _realizedVarSeries, IV_INDEX_BY_INSTRUMENT as _IV_INDEX, ivVarSeries as _ivVarSeries }   from './js/volForecastBench.js';
+import { runBench as runVolBench, sigmaSeriesForExport, benchCtx, realizedVarSeries as _realizedVarSeries, IV_INDEX_BY_INSTRUMENT as _IV_INDEX, ivVarSeries as _ivVarSeries, harIvForecastNext as _harIvForecastNext }   from './js/volForecastBench.js';
 import { coverageFromBars }                                          from './js/forecastCoverage.js';
 import { deskSnapshot }                                              from './js/analyticsDesk.js';
 import { benchInstrument as hurstBenchInstrument, poolBench as hurstPoolBench } from './js/hurstBench.js';
@@ -5598,6 +5598,33 @@ function forwardFillAlign(dateIndex, sparseMap) {
   });
 }
 
+// Enrich reversion `days` with a per-day HAR-IV σ (`hariv_annual`) for instruments
+// that have a listed IV index (gold→GVZ) — the COG-v2 gold σ, walked forward per day
+// (no lookahead: each day fits harIvForecastNext on the D1 slice strictly before it +
+// the GVZ series aligned to those dates). Lets forecast-reversion draw the COG-v2 gold
+// lines historically. Best-effort: no IV index / no FRED_KEY / fetch fail → left unset
+// (client falls back to COG), so Original/COG/Bot always render. `bars` = the same
+// sorted D1 history the bot_vol_annual enrichment already fetched; `byDate` its index.
+async function _attachHarIvSigma(days, bars, byDate, pair) {
+  const code = _IV_INDEX[String(pair).toUpperCase()];
+  const fredKey = process.env.FRED_KEY || process.env.FRED_API_KEY;
+  if (!code || !fredKey || !bars?.length) return;
+  let gvz;
+  try { gvz = await fetchFredSeries(code, bars[0].date, fredKey); } catch { return; }
+  if (!gvz || gvz.size < 60) return;
+  for (const d of Object.keys(days)) {
+    const idx = byDate.get(d);
+    if (idx == null || idx < 60) continue;
+    const slice = bars.slice(Math.max(0, idx - 800), idx);
+    if (slice.length < 60) continue;
+    try {
+      const ivPct = forwardFillAlign(slice.map(b => b.date), gvz);
+      const sig = _harIvForecastNext(_realizedVarSeries(slice, 'gk'), _ivVarSeries(ivPct));
+      if (sig > 0) days[d].hariv_annual = +(sig * Math.sqrt(252) * 100).toFixed(2);
+    } catch { /* per-day HAR-IV is optional enrichment — leave unset */ }
+  }
+}
+
 // Daily Treasury General Account balance from Treasury's Daily Treasury
 // Statement (Table I — Operating Cash Balance), via the public Fiscal Data
 // API. This is the genuinely-daily counterpart to FRED's WTREGEN (weekly).
@@ -7270,6 +7297,7 @@ app.get('/api/vol-forecast/archive/range', async (req, res) => {
             if (bs > 0) days[d].bot_vol_annual = +(bs * Math.sqrt(252) * 100).toFixed(2);
           } catch { /* bot σ is optional enrichment — leave unset for this date */ }
         }
+        await _attachHarIvSigma(days, dailyD1.bars, byDate, pair);   // COG-v2 gold σ (HAR-IV/GVZ)
       } catch (_) { /* unknown pair / OANDA unreachable — Original/COG still work */ }
     }
     res.json({ ok: true, pair, from, to, days });
@@ -7368,6 +7396,9 @@ app.get('/api/vol-forecast/backtest-range', async (req, res) => {
         }
       } catch (_) { /* CC-HV is optional enrichment — platform vol_annual remains the fallback */ }
     }
+    // COG-v2 gold σ (HAR-IV/GVZ), walk-forward per day — reuse the D1 bars we already have.
+    try { await _attachHarIvSigma(days, dailyD1, new Map(dailyD1.map((b, i) => [b.date, i])), pair); }
+    catch (_) { /* optional — Original/COG/Bot still render */ }
     const result = { ok: true, pair: pair || symbol, cls, from, to, days, generated: true };
     _m5SrvCache.set(cacheKey, { data: result, ts: Date.now() });
     capMap(_m5SrvCache, CACHE_MAX_SERIES);
