@@ -75,6 +75,7 @@ import { runGauntlet as _runStrategyGauntlet, GAUNTLET_SPECS as _GAUNTLET_SPECS,
 import { fetchLaborData, laborMarketScore, LABOR_UNIVERSE, UNEMPLOYMENT_UNIT_LABEL } from './js/laborMarketEngine.js';
 import { fetchCpiData, cpiScore, CPI_UNIVERSE } from './js/cpiEngine.js';
 import { fetchGdpData, gdpScore, GDP_UNIVERSE } from './js/gdpEngine.js';
+import { fetchIsmData, ismScore, ISM_UNIVERSE } from './js/ismEngine.js';
 import { FOMC_MEETINGS, pendingAsOf as fomcPendingAsOf } from './js/fomcCalendar.js';
 import { FETCHERS as FOMC_FETCHERS, extractVote as fomcExtractVote } from './js/fomcFetch.js';
 import { wordDiff as fomcWordDiff, diffToPromptLines as fomcDiffToPromptLines, diffTables as fomcDiffTables } from './js/fomcDiff.js';
@@ -4153,6 +4154,59 @@ setInterval(() => {
   _gdpLastRun = today;
   _gdpRunning = true;
   _buildGdpScores().catch(() => {}).finally(() => { _gdpRunning = false; });
+}, 20 * 60_000);
+
+// ── Business Activity Engine (ISM backlog item — see js/ismEngine.js) ──────
+// Third numeric-composition module. The actual ISM Manufacturing/Services
+// PMI is confirmed NOT on FRED (pulled in 2016) — USD instead scores real
+// confirmed proxies (Industrial Production + Philly Fed + Empire State
+// surveys); the other 7 currencies get a distinctly-named "business
+// confidence" dimension (OECD BTS composite indicator) rather than
+// anything presented as PMI-equivalent. Same daily-gate refresh pattern.
+const _ISM_KV = 'ism_v1';
+async function _buildIsmScores() {
+  const fredKey = process.env.FRED_KEY;
+  if (!fredKey) throw new Error('FRED_KEY not configured');
+  const byCcy = {}, availability = {};
+  await Promise.all(Object.keys(ISM_UNIVERSE).map(async ccy => {
+    try {
+      const { data, availability: avail } = await fetchIsmData(ccy, fredKey);
+      byCcy[ccy] = ismScore(ccy, data);
+      availability[ccy] = avail;
+    } catch (e) {
+      availability[ccy] = [{ error: e.message }];
+    }
+  }));
+  const payload = { byCcy, availability, generatedAt: new Date().toISOString() };
+  await kv.put(_ISM_KV, JSON.stringify(payload)).catch(() => {});
+  return payload;
+}
+app.get('/api/ism', async (_req, res) => {
+  try {
+    const raw = await kv.get(_ISM_KV);
+    if (!raw) return res.json({ ok: false, error: 'No business activity data yet — click Refresh.' });
+    res.json({ ok: true, ...JSON.parse(raw) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+let _ismRunning = false;
+app.post('/api/ism/refresh', (_req, res) => {
+  if (_ismRunning) return res.json({ ok: true, started: false, alreadyRunning: true });
+  _ismRunning = true;
+  _buildIsmScores().catch(() => {}).finally(() => { _ismRunning = false; });
+  res.json({ ok: true, started: true });
+});
+app.get('/api/ism/refresh-status', async (_req, res) => {
+  const raw = await kv.get(_ISM_KV).catch(() => null);
+  res.json({ ok: true, running: _ismRunning, last: raw ? JSON.parse(raw) : null });
+});
+let _ismLastRun = null;
+setInterval(() => {
+  if (!process.env.FRED_KEY || _ismRunning) return;
+  const today = new Date().toISOString().slice(0, 10);
+  if (_ismLastRun === today) return;
+  _ismLastRun = today;
+  _ismRunning = true;
+  _buildIsmScores().catch(() => {}).finally(() => { _ismRunning = false; });
 }, 20 * 60_000);
 
 // ── Backtest AI analysis — sends config + results to Claude, returns structured feedback ──
