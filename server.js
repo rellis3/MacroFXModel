@@ -84,7 +84,7 @@ import { FETCHERS as BOE_FETCHERS, extractVote as boeExtractVote } from './js/bo
 import { BOJ_MEETINGS, pendingAsOf as bojPendingAsOf } from './js/bojCalendar.js';
 import { FETCHERS as BOJ_FETCHERS, extractVote as bojExtractVote, statementUrl as bojStatementUrl, outlookViewUrl as bojOutlookViewUrl, outlookFullUrl as bojOutlookFullUrl, opinionsUrl as bojOpinionsUrl, minutesPdfUrl as bojMinutesPdfUrl } from './js/bojFetch.js';
 import { BEIGE_BOOK_RELEASES, pendingAsOf as beigeBookPendingAsOf } from './js/beigeBookCalendar.js';
-import { fetchBeigeBook, beigeBookUrl } from './js/beigeBookFetch.js';
+import { fetchBeigeBook, beigeBookPdfUrl } from './js/beigeBookFetch.js';
 import { runTrendAB as _runTrendAB } from './js/trendFollowV2Engine.js';
 import { volSigmaSeries as _volSigmaSeries, nextSigma as _nextSigma } from './js/forecastCore.js';
 import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } from './js/creditLeadLagEngine.js';
@@ -3867,7 +3867,7 @@ async function _beigeBookAutoCheck(reason = 'schedule') {
     const already = await _beigeBookGetRaw(rel.meetingDate);
     if (already) continue;
     try {
-      const r = await fetchBeigeBook(rel.urlSuffix);
+      const r = await fetchBeigeBook(rel.meetingDate);
       if (!r.ok) { if (!r.notYetPublished) log.push(`${rel.meetingDate} ✗ ${r.error || r.status}`); continue; }
       await kv.put(`beigebook_raw_${rel.meetingDate}`, JSON.stringify({ text: r.text, url: r.url, fomcMeetingDate: rel.fomcMeetingDate, fetchedAt: new Date().toISOString() }));
       log.push(`${rel.meetingDate} ✓ fetched`);
@@ -3934,74 +3934,30 @@ setInterval(() => { _beigeBookRunCheck('poll'); }, 30 * 60_000);
 // Hits the constructed URL directly and reports the raw status + a body
 // snippet, bypassing the notYetPublished classification. Kept permanently,
 // same as the other banks' debug endpoints.
+// CORRECTION (2026-08-08): the HTML "reader" page this endpoint originally
+// diagnosed turned out to be an AngularJS SPA whose real content never
+// reaches a plain fetch() — see js/beigeBookFetch.js's header for the full
+// story of how a live check here (through several iterations) proved it.
+// Now checks the PDF this engine actually fetches, same shape as the other
+// banks' debug endpoints.
 app.get('/api/beigebook/debug-fetch', async (req, res) => {
   const date = req.query.date;
   if (!date) return res.status(400).json({ ok: false, error: 'pass ?date=YYYY-MM-DD (the Beige Book\'s own release date, not the FOMC meeting date)' });
   const rel = BEIGE_BOOK_RELEASES.find(r => r.date === date);
   if (!rel) return res.status(400).json({ ok: false, error: `no known Beige Book release on ${date} — check /api/beigebook/calendar` });
   const UA = 'Mozilla/5.0 (compatible; MacroFX/1.0; +https://github.com/)';
-  const url = beigeBookUrl(rel.urlSuffix);
-  const out = { ok: true, dateChecked: date, urlSuffix: rel.urlSuffix, url };
+  const url = beigeBookPdfUrl(date);
+  const out = { ok: true, dateChecked: date, url };
   try {
     const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(20_000) });
-    const raw = await r.text();
-    out.raw = { status: r.status, httpOk: r.ok, contentType: r.headers.get('content-type'), bytes: raw.length, snippet: raw.replace(/\s+/g, ' ').slice(0, 300) };
-    // Angular apps (ng-app in the raw HTML) ship an empty client-rendered
-    // shell to a plain fetch() — the SAME failure mode that broke the ECB
-    // HTML scraper. Check for it directly rather than guessing from the
-    // snippet alone.
-    out.looksLikeAngularShell = /\bng-app=/.test(raw);
-    out.hasNationalSummaryMarker = /National Summary/i.test(raw);
-    out.hasDistrictMarker = /Federal Reserve Bank of (Boston|New York|Philadelphia|Cleveland|Richmond|Atlanta|Chicago|St\.? Louis|Minneapolis|Kansas City|Dallas|San Francisco)/i.test(raw);
-    // htmlToText (js/fomcFetch.js) unconditionally strips ALL <script>
-    // tags before extracting text — fine for a normal page, but if this
-    // Angular app hydrates its content from a JSON data-island INSIDE a
-    // <script> tag (a common SPA pattern), that strip would destroy the
-    // real Beige Book text before it's ever seen as prose, even though the
-    // raw HTML "contains" it. Check directly: is the marker text inside a
-    // <script> block specifically?
-    const scriptBlocks = [...raw.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
-    out.scriptBlockCount = scriptBlocks.length;
-    const summaryInScript = scriptBlocks.find(m => /National Summary/i.test(m[2]));
-    out.nationalSummaryFoundInsideScriptTag = !!summaryInScript;
-    if (summaryInScript) {
-      out.matchingScriptTagAttrs = summaryInScript[1].trim();
-      out.matchingScriptContentLength = summaryInScript[2].length;
-      out.matchingScriptSnippet = summaryInScript[2].slice(
-        Math.max(0, summaryInScript[2].search(/National Summary/i) - 100), 400
-      ).replace(/\s+/g, ' ');
-    }
+    const buf = Buffer.from(await r.arrayBuffer());
+    out.raw = { status: r.status, httpOk: r.ok, contentType: r.headers.get('content-type'), bytes: buf.length, looksLikePdf: buf.slice(0, 4).toString('latin1') === '%PDF' };
   } catch (e) {
     out.raw = { error: e.message };
   }
-  // Also run it through the ACTUAL production fetcher (same code path
-  // _beigeBookAutoCheck uses) so we see exactly what would land in KV.
   try {
-    const processed = await fetchBeigeBook(rel.urlSuffix);
-    out.processed = { ok: processed.ok, notYetPublished: processed.notYetPublished, error: processed.error, textLength: processed.text?.length ?? null, textSnippet: processed.text ? processed.text.slice(0, 300) : null };
-    // Not inside a <script> tag, so it should survive htmlToText — check
-    // whether it actually did, and where, rather than assuming the first
-    // 300 chars (pure boilerplate) are representative of the whole thing.
-    if (processed.text) {
-      const idx = processed.text.search(/National Summary/i);
-      out.processed.nationalSummaryFoundInProcessedText = idx !== -1;
-      if (idx !== -1) {
-        out.processed.nationalSummaryIndexInProcessedText = idx;
-        out.processed.snippetAroundNationalSummary = processed.text.slice(Math.max(0, idx - 100), idx + 400);
-      }
-    }
-    // If it's missing from the processed text despite being outside a
-    // <script> tag in the raw HTML, show the raw markup immediately
-    // surrounding it — the most likely culprit is a malformed-tag edge
-    // case (e.g. an Angular binding attribute containing a bare ">", which
-    // htmlToText's simplistic `<[^>]+>` regex can't handle) mangling the
-    // extraction right around that point.
-    if (out.hasNationalSummaryMarker && !(out.processed?.nationalSummaryFoundInProcessedText)) {
-      const r2 = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(20_000) });
-      const raw2 = await r2.text();
-      const rawIdx = raw2.search(/National Summary/i);
-      out.rawMarkupAroundNationalSummary = raw2.slice(Math.max(0, rawIdx - 400), rawIdx + 600);
-    }
+    const processed = await fetchBeigeBook(date);
+    out.processed = { ok: processed.ok, notYetPublished: processed.notYetPublished, error: processed.error, pages: processed.pages ?? null, textLength: processed.text?.length ?? null, textSnippet: processed.text ? processed.text.slice(0, 400) : null };
   } catch (e) {
     out.processed = { error: e.message };
   }
