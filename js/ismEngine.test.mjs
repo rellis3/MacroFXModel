@@ -72,6 +72,15 @@ console.log('[ismScore — non-USD composite IS the single businessConfidence sc
   ok('activity equals the businessConfidence score directly', r.activity === r.dims.businessConfidence.score);
 }
 
+console.log('[diffusionIndexScore — rounds long floating-point tails]');
+{
+  const m = new Map();
+  for (let i = 0; i < 8; i++) m.set(`d${String(i).padStart(2, '0')}`, 3);
+  m.set('d08', -12.847362991);
+  const r = diffusionIndexScore(m);
+  ok('latestValue rounds to 2dp', r.latestValue === -12.85, r.latestValue);
+}
+
 console.log('[ISM_UNIVERSE sanity]');
 {
   ok('covers all 8 currencies', ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD'].every(c => ISM_UNIVERSE[c]));
