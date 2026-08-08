@@ -1526,16 +1526,10 @@ function loadSession(date) {
 }
 
 // ── triggerRefresh ────────────────────────────────────────────────────────────
-function triggerRefresh() {
-  const btn = document.getElementById('vfRefreshBtn');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = '↻ Refreshing…';
-  }
-
-  const date = viewingDate || null;
-
-  Promise.all([
+// Re-fetch the (already computed) forecast + session for `date` and re-render.
+// This does NOT recompute server-side — see triggerRefresh for that.
+function _reloadForecastView(date) {
+  return Promise.all([
     fetch(date ? `/api/vol-forecast?date=${date}` : '/api/vol-forecast').then(r => r.json()),
     fetch(date ? `/api/vol-forecast/session?date=${date}` : '/api/vol-forecast/session').then(r => r.json())
   ])
@@ -1555,16 +1549,41 @@ function triggerRefresh() {
     if (levelsViewActive) renderLevelsTable();
     renderCurrencyStrength(currentWeekly);
     // renderV2Grid already calls loadAllM5Charts — no duplicate call needed
-  })
-  .catch(err => {
-    console.error('triggerRefresh error:', err);
-  })
-  .finally(() => {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = '↻ Refresh';
-    }
+    return forecast;
   });
+}
+
+// Refresh = actually RECOMPUTE the live session server-side (runVolForecast →
+// attaches HAR-IV/COG-v2 σ), then poll until computed_at advances, then render.
+// Historical views can't be recomputed via this endpoint, so they just re-fetch.
+async function triggerRefresh() {
+  const btn = document.getElementById('vfRefreshBtn');
+  const setBtn = (t, dis) => { if (btn) { btn.textContent = t; btn.disabled = dis; } };
+  const date = viewingDate || null;
+
+  setBtn('↻ Refreshing…', true);
+  try {
+    if (date) { await _reloadForecastView(date); return; }   // historical: view-only reload
+
+    const prevAt = liveForecast?.computed_at || null;
+    try { await fetch('/api/vol-forecast/refresh', { method: 'POST' }); }
+    catch (e) { console.warn('refresh POST failed, falling back to reload:', e); }
+
+    // Poll for the recompute to land (runVolForecast is fire-and-forget, ~30–60s).
+    let landed = false;
+    for (let i = 0; i < 30; i++) {
+      await new Promise(r => setTimeout(r, 3000));
+      let fc; try { fc = await fetch('/api/vol-forecast').then(r => r.json()); } catch { continue; }
+      if (fc?.computed_at && fc.computed_at !== prevAt) { landed = true; break; }
+      setBtn(`↻ Recomputing… ${(i + 1) * 3}s`, true);
+    }
+    await _reloadForecastView(null);
+    if (!landed) console.warn('triggerRefresh: computed_at did not advance within poll window');
+  } catch (err) {
+    console.error('triggerRefresh error:', err);
+  } finally {
+    setBtn('↻ Refresh', false);
+  }
 }
 
 // ── loadSessionStats ──────────────────────────────────────────────────────────
