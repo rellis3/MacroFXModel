@@ -1279,7 +1279,61 @@ export function oiBandSelect(levels, spot, bandFrac, { withCatch = true } = {}) 
   return { inBand, catch: catches, lo, hi };
 }
 
+// Re-project a stored inst's spot-equivalent LEVELS onto a fresh futures→spot basis, WITHOUT
+// touching the OI-derived structure (the walls-as-strikes, greeks, regime all stay from the
+// daily analyse — OI is a daily snapshot; only the futures→spot projection is live). The basis
+// is subtracted LINEARLY in the strike→spot shift — even for inverted pairs, where only the
+// strike is inverted, not the basis — so EVERY level moves by exactly −Δbasis. Pure. This is
+// the light intraday "basis control" (keeps greeks/regime stable, avoids intraday flicker).
+export function oiReprojectBasis(inst, { newBasis, newSpot, newFutures } = {}) {
+  if (!inst || typeof inst !== 'object' || !Number.isFinite(newBasis)) return inst;
+  const d = newBasis - (Number.isFinite(inst.basis) ? inst.basis : 0);   // Δbasis
+  const out = { ...inst, basis: newBasis, basisAt: Date.now() };
+  if (Number.isFinite(newSpot))    out.spot = newSpot;
+  if (Number.isFinite(newFutures)) out.futures = newFutures;
+  if (Math.abs(d) < 1e-12) return out;   // futures/spot updated, no level move
+  const sh = (v) => Number.isFinite(v) ? v - d : v;
+  const shWalls = (a) => Array.isArray(a) ? a.map(w => ({ ...w, strike: sh(w.strike) })) : a;
+  out.maxPain = sh(inst.maxPain); out.callWall = sh(inst.callWall); out.putWall = sh(inst.putWall);
+  out.gammaFlip = sh(inst.gammaFlip); out.gexFlip = sh(inst.gexFlip);
+  out.callWalls = shWalls(inst.callWalls); out.putWalls = shWalls(inst.putWalls);
+  out.topLevels = shWalls(inst.topLevels); out.volumeMagnets = shWalls(inst.volumeMagnets);
+  out.gexProfile = shWalls(inst.gexProfile);
+  if (Array.isArray(inst.clusters)) out.clusters = inst.clusters.map(c => ({ ...c, center: sh(c.center) }));
+  if (Array.isArray(inst.gexFlips)) out.gexFlips = inst.gexFlips.map(f => ({ ...f, price: sh(f.price) }));
+  if (Array.isArray(inst.perExpiry)) out.perExpiry = inst.perExpiry.map(e => ({ ...e, maxPain: sh(e.maxPain), callWall: sh(e.callWall), putWall: sh(e.putWall) }));
+  if (inst.expectedMove) out.expectedMove = { ...inst.expectedMove, upper: sh(inst.expectedMove.upper), lower: sh(inst.expectedMove.lower) };
+  if (inst.greeksFlow) out.greeksFlow = { ...inst.greeksFlow, charmFlip: sh(inst.greeksFlow.charmFlip), vannaFlip: sh(inst.greeksFlow.vannaFlip) };
+  if (inst.dayExpiry && typeof inst.dayExpiry === 'object') {
+    const de = inst.dayExpiry;
+    out.dayExpiry = { ...de, maxPain: sh(de.maxPain), callWall: sh(de.callWall), putWall: sh(de.putWall),
+      gammaFlip: sh(de.gammaFlip), gexFlip: sh(de.gexFlip),
+      callWalls: shWalls(de.callWalls), putWalls: shWalls(de.putWalls), gexProfile: shWalls(de.gexProfile) };
+  }
+  return out;
+}
+
+// Live basis control (COG): re-fetch the paired futures/spot quote for a stored inst and
+// re-project its levels onto the fresh basis. Returns { inst, changed, dPips } — `changed`
+// false (inst untouched) when there's no quote, the basis is implausible, or the move is
+// sub-threshold. Reuses fetchPairedQuote / futuresIsInverted / basisImplausible — no copy.
+export async function oiRefreshBasis(inst, { baseUrl = '', minPipFrac = 1e-6 } = {}) {
+  if (!inst || !inst.pair) return { inst, changed: false };
+  const live = await fetchPairedQuote(inst.pair, baseUrl).catch(() => null);
+  if (!live || !Number.isFinite(live.price) || !Number.isFinite(live.spot) || live.spot <= 0) return { inst, changed: false };
+  const newFutures = live.price, newSpot = live.spot;
+  const futuresSpot = futuresIsInverted(inst.pair) ? 1 / newFutures : newFutures;
+  const newBasis = futuresSpot - newSpot;
+  if (basisImplausible(newBasis, newSpot)) return { inst, changed: false };
+  const d = newBasis - (Number.isFinite(inst.basis) ? inst.basis : 0);
+  if (Math.abs(d) < newSpot * minPipFrac) {   // sub-pip drift — refresh spot/futures only, no re-project
+    return { inst: { ...inst, spot: newSpot, futures: newFutures, basis: newBasis, basisAt: Date.now() }, changed: false, dPips: 0 };
+  }
+  return { inst: oiReprojectBasis(inst, { newBasis, newSpot, newFutures }), changed: true, dPips: d };
+}
+
 export function oiCalcExposures(strikes, calls, puts, spot, pair, T = OI_GREEK_T, sigmaFn = null) {
+  if (!spot || spot <= 0) return { gex: 0, dex: 0 };
   if (!spot || spot <= 0) return { gex: 0, dex: 0 };
   const cs = oiContractSize(pair);
   let gex=0, dex=0;

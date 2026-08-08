@@ -116,7 +116,7 @@ import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
 import { refreshRangeLineConfluence, packLiveM1 } from './js/rangeLineConfluenceProducer.js';
 import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas, classifyOIChange, oiWallStability, oiPriceConfirmation } from './js/oiConfluence.js';
 import { buildOILevelText } from './js/oiLevelExport.js';
-import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band
+import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control
 import { buildOIZones, explainNoZones } from './js/oiZones.js';
 import { gammaFlip as computeGammaFlip, distanceToFlip, flipDrift, rolloffSummary } from './js/gammaFlow.js';
 import { buildRangeZones } from './js/rangeLineZones.js';
@@ -11464,6 +11464,37 @@ async function _refreshOIBotZones() {
 }
 setInterval(_refreshOIBotZones, 10 * 60_000);
 setTimeout(_refreshOIBotZones, 60_000);
+
+// LIVE BASIS CONTROL (COG, 2026-08): the futures→spot basis is usually ~2 pips stable, but
+// on some days (rate surprises, futures roll/expiry — and amplified on the inverted 6J/6C/6S
+// pairs) it drifts further, and a stale conversion then puts every level a handful of pips
+// off. Every 15 min, re-fetch the paired quote per pair and re-project the stored levels onto
+// the fresh basis (LIGHT: only the futures→spot projection moves — greeks/regime stay from the
+// daily analyse, so no intraday flicker), then push the drifted lines to the bot by refreshing
+// its plan. Fail-safe: any pair that can't quote, or an implausible basis, is left untouched.
+async function _refreshOIBasis() {
+  try {
+    const raw = await kv.get('oi_store').catch(() => null);
+    const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
+    let changed = 0;
+    for (const [pair, inst] of Object.entries(store || {})) {
+      if (!inst || typeof inst !== 'object') continue;
+      try {
+        const r = await _oiRefreshBasis(inst);
+        if (r?.changed) { store[pair] = r.inst; changed++; }
+        else if (r?.inst) store[pair] = r.inst;   // spot/futures freshened even on sub-pip drift
+      } catch { /* leave this pair as-is */ }
+    }
+    if (changed) {
+      await kv.put('oi_store', JSON.stringify({ data: store, timestamp: Date.now() }));
+      try { await _refreshOIBotZones(); } catch { /* zones refresh is best-effort */ }   // push drifted lines to the bot
+      console.log(`[oi-basis] re-projected ${changed} pair(s) onto a fresh basis + refreshed bot zones`);
+    }
+    return changed;
+  } catch (e) { console.warn('[oi-basis] refresh failed:', e.message); return 0; }
+}
+setInterval(_refreshOIBasis, 15 * 60_000);
+setTimeout(_refreshOIBasis, 90_000);
 
 app.get('/api/oi-bot/zones', async (req, res) => {
   try {
