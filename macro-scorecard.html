@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Macro Scorecard</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;
+    --text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+    --bull:#10b981;--bear:#f97316;--amber:#d29922;--blue:#4f7df0;--red:#f85149;
+    --bull-bg:rgba(16,185,129,.12);--bear-bg:rgba(249,115,22,.12);--amber-bg:rgba(210,153,34,.12);--blue-bg:rgba(79,125,240,.12);}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:13px/1.55 -apple-system,'Segoe UI',Roboto,sans-serif;padding-bottom:60px}
+  a{color:var(--blue);text-decoration:none}
+  button{font-family:inherit;cursor:pointer}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.94);backdrop-filter:blur(8px);
+       border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .hdr h1{font-size:17px;font-weight:700}
+  .hdr .spacer{flex:1}
+  .hdr .stamp{font-size:10.5px;color:var(--text3)}
+  .hbtn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600}
+  .hbtn:hover{color:var(--text);border-color:var(--text3)} .hbtn:disabled{opacity:.5;cursor:default}
+  .hbtn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+
+  .wrap{max-width:1000px;margin:0 auto;padding:16px 18px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+  .card h2{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin:0 0 12px}
+  .note{color:var(--text3);font-size:11px;line-height:1.5;margin-top:10px}
+  .empty{color:var(--text2);font-size:13px;line-height:1.6;padding:8px 0}
+
+  .pair{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .pair .leg{flex:1;min-width:140px;border-radius:10px;padding:14px;text-align:center}
+  .pair .leg.long{background:var(--bull-bg);border:1px solid var(--bull)}
+  .pair .leg.short{background:var(--bear-bg);border:1px solid var(--bear)}
+  .pair .leg .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-bottom:4px}
+  .pair .leg .ccy{font-size:26px;font-weight:800}
+  .pair .leg.long .ccy{color:var(--bull)} .pair .leg.short .ccy{color:var(--bear)}
+  .pair .vs{color:var(--text3);font-size:12px;font-weight:700}
+  .pair .gap{width:100%;text-align:center;color:var(--text3);font-size:11px;margin-top:8px}
+
+  .row{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid var(--border);cursor:pointer}
+  .row:last-child{border-bottom:none}
+  .row:hover{background:var(--card2)}
+  .row .rank{width:22px;color:var(--text3);font-size:11px;font-weight:700;text-align:center}
+  .row .ccy{width:48px;font-size:15px;font-weight:800}
+  .row .barwrap{flex:1;position:relative;height:10px;background:var(--bg);border-radius:5px}
+  .row .barwrap .mid{position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--border)}
+  .row .barwrap .fill{position:absolute;top:0;bottom:0;border-radius:5px}
+  .row .barwrap .fill.pos{left:50%;background:var(--bull)} .row .barwrap .fill.neg{right:50%;background:var(--bear)}
+  .row .composite{width:56px;text-align:right;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+  .row .composite.pos{color:var(--bull)} .row .composite.neg{color:var(--bear)}
+  .row .cov{width:60px;text-align:right;color:var(--text3);font-size:10.5px}
+  .row .chev{width:14px;color:var(--text3);font-size:11px;transition:transform .15s}
+  .row.open .chev{transform:rotate(90deg)}
+
+  .breakdown{display:none;padding:4px 4px 14px 34px}
+  .breakdown.open{display:block}
+  .dim{display:flex;align-items:center;gap:10px;padding:5px 0;font-size:12px}
+  .dim a{color:var(--text2);flex:1}
+  .dim a:hover{color:var(--text)}
+  .dim .val{width:52px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+  .dim .val.pos{color:var(--bull)} .dim .val.neg{color:var(--bear)} .dim .val.na{color:var(--text3);font-weight:400}
+
+  .uncovered{color:var(--text3);font-size:11.5px;margin-top:4px}
+  .uncovered b{color:var(--text2)}
+
+  .spin{display:inline-block;width:11px;height:11px;border:2px solid var(--text3);border-top-color:var(--blue);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-1px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1>🏆 Macro Scorecard</h1>
+  <div class="spacer"></div>
+  <span class="stamp" id="lastCheck"></span>
+  <button class="hbtn primary" id="refreshBtn" onclick="load()">⟳ Refresh</button>
+  <a class="hbtn" href="fomc-sentiment.html">FOMC Sentiment</a>
+  <a class="hbtn" href="ecb-sentiment.html">ECB Sentiment</a>
+  <a class="hbtn" href="boe-sentiment.html">BoE Sentiment</a>
+  <a class="hbtn" href="boj-sentiment.html">BoJ Sentiment</a>
+  <a class="hbtn" href="beige-book.html">Beige Book</a>
+  <a class="hbtn" href="cpi.html">CPI / Inflation</a>
+  <a class="hbtn" href="gdp.html">GDP / Growth</a>
+  <a class="hbtn" href="labor-market.html">Labor Market</a>
+  <a class="hbtn" href="ism.html">Business Activity</a>
+  <a class="hbtn" href="retail-sales.html">Retail Sales</a>
+  <a class="hbtn" href="trade-balance.html">Trade Balance</a>
+  <a class="hbtn" href="real-yield.html">Real Yield</a>
+  <a class="hbtn" href="ppi.html">PPI</a>
+  <a class="hbtn" href="today.html">Daily Brief</a>
+  <a class="hbtn" href="index.html">Dashboard</a>
+</div>
+
+<div class="wrap">
+  <div class="card" id="pairCard" style="display:none">
+    <h2>Strongest vs weakest — the trade view</h2>
+    <div class="pair" id="pairBody"></div>
+  </div>
+
+  <div class="card">
+    <h2>Ranked composite (strongest → weakest)</h2>
+    <div id="body" class="empty">Loading…</div>
+    <div id="uncoveredWrap"></div>
+    <div class="note">Averages whatever's actually covered for each currency across every engine on this dashboard: central-bank text sentiment (USD/EUR/GBP/JPY only — the 4 with a built sentiment engine), CPI, GDP, business activity, labor market, retail sales, trade balance, real yield, and PPI (USD only). Every dimension already arrives on the same -1..+1 scale from its own engine, so this is a plain equal-weight average — no dimension is judged more important than another without real evidence for a specific weighting. Missing data is treated as missing, not neutral: a currency covered on 3 of 9 dimensions is flagged as partial coverage, not silently averaged as if the other 6 read zero. Click a row to see which dimensions drove its score. Reads live off every other engine's already-cached data — refreshing here doesn't re-fetch FRED, it just re-aggregates; refresh the individual pages to pull fresh source data.</div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function jget(url, opts) { const r = await fetch(url, opts); return r.json(); }
+
+const DIM_LABEL = {
+  cbSentiment: 'Central-bank sentiment', cpi: 'CPI / Inflation', gdp: 'GDP / Growth',
+  ism: 'Business Activity', laborMarket: 'Labor Market', retailSales: 'Retail Sales',
+  tradeBalance: 'Trade Balance', realYield: 'Real Yield', ppi: 'PPI',
+};
+const CB_PAGE = { USD: 'fomc-sentiment.html', EUR: 'ecb-sentiment.html', GBP: 'boe-sentiment.html', JPY: 'boj-sentiment.html' };
+function dimHref(dim, ccy) {
+  if (dim === 'cbSentiment') return CB_PAGE[ccy] || '#';
+  return { cpi: 'cpi.html', gdp: 'gdp.html', ism: 'ism.html', laborMarket: 'labor-market.html',
+    retailSales: 'retail-sales.html', tradeBalance: 'trade-balance.html', realYield: 'real-yield.html', ppi: 'ppi.html' }[dim] || '#';
+}
+
+function gauge(v) {
+  const pct = Math.min(50, Math.abs(v) * 50);
+  return `<div class="barwrap"><div class="mid"></div><div class="fill ${v >= 0 ? 'pos' : 'neg'}" style="width:${pct}%"></div></div>`;
+}
+
+function renderPair(pair) {
+  if (!pair) { $('pairCard').style.display = 'none'; return; }
+  $('pairCard').style.display = '';
+  $('pairBody').innerHTML = `
+    <div class="leg long"><div class="lbl">Favor strength</div><div class="ccy">${pair.long}</div></div>
+    <div class="vs">vs</div>
+    <div class="leg short"><div class="lbl">Favor weakness</div><div class="ccy">${pair.short}</div></div>
+    <div class="gap">composite gap ${pair.gap}</div>`;
+}
+
+function renderBreakdown(row) {
+  const parts = Object.entries(row.dims).map(([dim, v]) => {
+    const cls = v == null ? 'na' : (v >= 0 ? 'pos' : 'neg');
+    const label = DIM_LABEL[dim] || dim;
+    const valTxt = v == null ? 'no data' : (v > 0 ? `+${v}` : `${v}`);
+    return `<div class="dim"><a href="${dimHref(dim, row.ccy)}">${esc(label)}</a><span class="val ${cls}">${valTxt}</span></div>`;
+  }).join('');
+  return `<div class="breakdown" id="bd-${row.ccy}">${parts}</div>`;
+}
+
+function renderRow(row, rank) {
+  const cls = row.composite >= 0 ? 'pos' : 'neg';
+  const compTxt = row.composite > 0 ? `+${row.composite}` : `${row.composite}`;
+  return `<div class="row" onclick="toggleRow('${row.ccy}')">
+    <div class="rank">${rank}</div>
+    <div class="ccy">${row.ccy}</div>
+    ${gauge(row.composite)}
+    <div class="composite ${cls}">${compTxt}</div>
+    <div class="cov">${row.coverage.length}/9 dims</div>
+    <div class="chev">▸</div>
+  </div>` + renderBreakdown(row);
+}
+
+function toggleRow(ccy) {
+  const bd = $(`bd-${ccy}`);
+  if (!bd) return;
+  const row = bd.previousElementSibling;
+  bd.classList.toggle('open');
+  row.classList.toggle('open');
+}
+
+async function load() {
+  const btn = $('refreshBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Loading…';
+  try {
+    const r = await jget('/api/macro-scorecard');
+    if (!r.ok) {
+      $('body').innerHTML = `<div class="empty">${esc(r.error || 'No data yet')}</div>`;
+      return;
+    }
+    $('lastCheck').textContent = `Generated ${new Date(r.generatedAt).toLocaleString()}`;
+    renderPair(r.pair);
+    if (!r.ranked?.length) {
+      $('body').innerHTML = `<div class="empty">No currencies have any coverage yet — visit the individual pages and click Refresh to populate data (needs FRED_KEY configured on the server).</div>`;
+    } else {
+      $('body').innerHTML = r.ranked.map((row, i) => renderRow(row, i + 1)).join('');
+    }
+    $('uncoveredWrap').innerHTML = r.uncovered?.length
+      ? `<div class="uncovered">No coverage yet: <b>${r.uncovered.join(', ')}</b> — visit their individual pages and click Refresh.</div>` : '';
+  } catch (e) {
+    $('body').innerHTML = `<div class="empty">Could not reach the server: ${esc(e.message)}</div>`;
+  } finally {
+    btn.disabled = false; btn.innerHTML = '⟳ Refresh';
+  }
+}
+
+load();
+</script>
+</body>
+</html>
