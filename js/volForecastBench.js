@@ -205,6 +205,11 @@ function solveN(A, b, n) {
 // equivariant, so the unscaled prediction is mathematically identical but the solve
 // is numerically stable. (HAR-RV's 4-var solve stays as-is; only the wider IV system
 // needs it.)
+// A variance forecast below this fraction of the instrument's median RV is never
+// legitimate (σ < 10% of typical daily σ) — used to floor HAR-IV so an unconstrained
+// OLS that predicts ≤0 can't blow up QLIKE or export a near-zero σ downstream.
+const VAR_FLOOR_FRAC = 0.01;
+
 function _rvScale(rvSeries) {
   const pos = [];
   for (const v of rvSeries) if (v > 0 && Number.isFinite(v)) pos.push(v);
@@ -219,6 +224,7 @@ function harIvPred(rvSeries, ivVar, { warmup = 60, dailyLag = 1, weekLag = 5, mo
   const out = new Float64Array(n).fill(NaN);
   if (!ivVar || ivVar.length !== n) return out;
   const S = _rvScale(rvSeries);
+  const FLOOR = (1 / S) * VAR_FLOOR_FRAC;   // 1/S = median RV; never forecast below 1% of it
   const feat = (i) => {
     if (i - monthLag < 0) return null;
     const iv = ivVar[i - dailyLag];
@@ -242,7 +248,12 @@ function harIvPred(rvSeries, ivVar, { warmup = 60, dailyLag = 1, weekLag = 5, mo
     const x = feat(i);
     if (x && added >= warmup) {
       const beta = solveN(XtX, Xty, 5);
-      if (beta) { let p = 0; for (let a = 0; a < 5; a++) p += beta[a] * x[a]; out[i] = Math.max(p / S, 1e-12); }
+      // Unconstrained OLS can predict ≤0 variance (it did on NQ → QLIKE 7.5e5 via the
+      // 1e-12 clamp). Floor at 1% of median RV: below any legitimate forecast, so it
+      // never distorts a real one, but caps the QLIKE explosion AND is live-safe (a σ
+      // that feeds bands must never be ~0). Scale-equivariant scaling could not fix
+      // this — the fit genuinely wants negative; only a floor bounds it.
+      if (beta) { let p = 0; for (let a = 0; a < 5; a++) p += beta[a] * x[a]; out[i] = Math.max(p / S, FLOOR); }
     }
   }
   return out;
@@ -320,6 +331,7 @@ function harIvForecastNext(rvSeries, ivVar, { warmup = 60, dailyLag = 1, weekLag
   const n = rvSeries.length;
   if (!ivVar || ivVar.length !== n || n < monthLag + warmup) return null;
   const S = _rvScale(rvSeries);
+  const FLOOR = (1 / S) * VAR_FLOOR_FRAC;
   const feat = (i) => {
     if (i - monthLag < 0) return null;
     const iv = ivVar[i - dailyLag];
@@ -343,7 +355,7 @@ function harIvForecastNext(rvSeries, ivVar, { warmup = 60, dailyLag = 1, weekLag
   const xNext = feat(n);
   if (!beta || !xNext) return null;
   let p = 0; for (let a = 0; a < 5; a++) p += beta[a] * xNext[a];
-  return Math.max(p / S, 1e-12);
+  return Math.max(p / S, FLOOR);
 }
 
 function latestSigmaForecast(bars, key, ctx) {
