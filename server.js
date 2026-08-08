@@ -74,6 +74,7 @@ import { blendStreams as _blendStreams } from './js/streamBlend.js';
 import { runGauntlet as _runStrategyGauntlet, GAUNTLET_SPECS as _GAUNTLET_SPECS, SIGNALS as _LAB_SIGNALS } from './js/strategyLabEngine.js';
 import { fetchLaborData, laborMarketScore, LABOR_UNIVERSE, UNEMPLOYMENT_UNIT_LABEL } from './js/laborMarketEngine.js';
 import { fetchCpiData, cpiScore, CPI_UNIVERSE } from './js/cpiEngine.js';
+import { fetchGdpData, gdpScore, GDP_UNIVERSE } from './js/gdpEngine.js';
 import { FOMC_MEETINGS, pendingAsOf as fomcPendingAsOf } from './js/fomcCalendar.js';
 import { FETCHERS as FOMC_FETCHERS, extractVote as fomcExtractVote } from './js/fomcFetch.js';
 import { wordDiff as fomcWordDiff, diffToPromptLines as fomcDiffToPromptLines, diffTables as fomcDiffTables } from './js/fomcDiff.js';
@@ -4099,6 +4100,59 @@ setInterval(() => {
   _cpiLastRun = today;
   _cpiRunning = true;
   _buildCpiScores().catch(() => {}).finally(() => { _cpiRunning = false; });
+}, 20 * 60_000);
+
+// ── GDP / Growth Numeric-Composition Engine ─────────────────────────────────
+// Same shape again: pure numeric score from FRED series (js/gdpEngine.js),
+// not a text-reading engine. Quarterly cadence for all 8 currencies (one
+// uniform OECD series family — no US-annualized-vs-rest-of-world-QoQ
+// mismatch to handle, see that file's header). Daily refresh is already
+// far more often than the data itself changes; kept for consistency with
+// CPI/labor market's day-gate pattern rather than a shorter interval.
+const _GDP_KV = 'gdp_v1';
+async function _buildGdpScores() {
+  const fredKey = process.env.FRED_KEY;
+  if (!fredKey) throw new Error('FRED_KEY not configured');
+  const byCcy = {}, availability = {};
+  await Promise.all(Object.keys(GDP_UNIVERSE).map(async ccy => {
+    try {
+      const { data, availability: avail } = await fetchGdpData(ccy, fredKey);
+      byCcy[ccy] = gdpScore(data);
+      availability[ccy] = avail;
+    } catch (e) {
+      availability[ccy] = [{ error: e.message }];
+    }
+  }));
+  const payload = { byCcy, availability, generatedAt: new Date().toISOString() };
+  await kv.put(_GDP_KV, JSON.stringify(payload)).catch(() => {});
+  return payload;
+}
+app.get('/api/gdp', async (_req, res) => {
+  try {
+    const raw = await kv.get(_GDP_KV);
+    if (!raw) return res.json({ ok: false, error: 'No GDP data yet — click Refresh.' });
+    res.json({ ok: true, ...JSON.parse(raw) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+let _gdpRunning = false;
+app.post('/api/gdp/refresh', (_req, res) => {
+  if (_gdpRunning) return res.json({ ok: true, started: false, alreadyRunning: true });
+  _gdpRunning = true;
+  _buildGdpScores().catch(() => {}).finally(() => { _gdpRunning = false; });
+  res.json({ ok: true, started: true });
+});
+app.get('/api/gdp/refresh-status', async (_req, res) => {
+  const raw = await kv.get(_GDP_KV).catch(() => null);
+  res.json({ ok: true, running: _gdpRunning, last: raw ? JSON.parse(raw) : null });
+});
+let _gdpLastRun = null;
+setInterval(() => {
+  if (!process.env.FRED_KEY || _gdpRunning) return;
+  const today = new Date().toISOString().slice(0, 10);
+  if (_gdpLastRun === today) return;
+  _gdpLastRun = today;
+  _gdpRunning = true;
+  _buildGdpScores().catch(() => {}).finally(() => { _gdpRunning = false; });
 }, 20 * 60_000);
 
 // ── Backtest AI analysis — sends config + results to Claude, returns structured feedback ──
