@@ -123,22 +123,27 @@ function matchedOOS(rv, ivVar) {
   ok(!noIV.estimators.some((e) => e.key === 'harIV'), 'harIV excluded from default run without ivVar (IV-gated)');
 }
 
-// ── 6b. ill-conditioning guard: tiny variance scale must NOT blow up QLIKE ────
-// Reproduces the NQ pathology — daily variances ~1e-4 with the intercept at 1
-// ill-conditioned the 5-var solve; the median-scaling fix must keep predictions
-// finite and realistic (no astronomical QLIKE from a clamped near-zero forecast).
+// ── 6b. the REAL NQ pathology: OLS predicts ≤0 variance → floor must bound QLIKE ──
+// Scaling can't fix this (OLS is scale-equivariant — it genuinely wants negative).
+// Build an IV that ANTI-correlates with RV in-sample (→ negative IV coefficient), then
+// spike IV out-of-sample so the fit extrapolates to negative predicted variance. The
+// floor (1% of median RV) must catch it: every forecast stays a sane variance and OOS
+// QLIKE stays finite/bounded instead of the 7.5e5 blow-up.
 {
-  const r = rng(29); const n = 1400; const rv = new Float64Array(n); const ivPct = new Array(n).fill(NaN);
-  let reg = 1.5e-4;                                   // NQ-scale daily variance (~1.2% σ)
-  const regArr = new Float64Array(n);
-  for (let t = 0; t < n; t++) { if (r() < 0.04) reg = (0.5 + 2 * r()) * 1.5e-4; regArr[t] = reg; rv[t] = Math.max(reg * (0.6 + 0.8 * r()), 1e-9); }
-  for (let t = 0; t < n; t++) { const s = Math.sqrt(regArr[Math.min(t + 1, n - 1)]) * (0.9 + 0.2 * r()); ivPct[t] = s * Math.sqrt(252) * 100; }
-  const pIV = harIvPred(rv, ivVarSeries(ivPct));
+  const r = rng(29); const n = 1400; const rv = new Float64Array(n); const ivVar = new Float64Array(n).fill(NaN);
+  const med = 1.5e-4;
+  for (let t = 0; t < n; t++) rv[t] = Math.max(med * (0.4 + 1.2 * r()), 1e-9);   // NQ-scale RV
+  // IV daily-variance anti-correlated with RV in-sample (high IV where RV is low)
+  for (let t = 0; t < n; t++) ivVar[t] = Math.max(med * (1.6 - (rv[t] / med)) + med * 0.1 * r(), 1e-9);
+  const cut = Math.floor(n * 0.6);
+  for (let t = cut; t < n; t++) if (r() < 0.05) ivVar[t] *= 12;                    // OOS IV spikes → OLS extrapolates negative
+  const pIV = harIvPred(rv, ivVar);
   const finite = [...pIV].filter((v) => Number.isFinite(v));
-  ok(finite.length > 500, 'tiny-scale: HAR-IV still produces forecasts');
-  ok(finite.every((v) => v > 0 && v < 1), 'tiny-scale: every forecast is a sane variance (no blow-up)');
-  const m = matchedOOS(rv, ivVarSeries(ivPct));
-  ok(Number.isFinite(m.iv) && m.iv < 5, `tiny-scale: HAR-IV OOS QLIKE finite & sane (${m.iv.toFixed(3)}), not 7e5`);
+  const floor = med * 0.01;
+  ok(finite.length > 400, 'pathology: HAR-IV still produces forecasts');
+  ok(finite.every((v) => v >= floor * 0.999), 'pathology: every forecast floored ≥ 1% median RV (never ~0)');
+  const m = matchedOOS(rv, ivVar);
+  ok(Number.isFinite(m.iv) && m.iv < 1e4, `pathology: OOS QLIKE bounded (${m.iv.toFixed(1)}), not 7.5e5`);
 }
 
 // ── 7. IV index map covers the ranked classes ────────────────────────────────
