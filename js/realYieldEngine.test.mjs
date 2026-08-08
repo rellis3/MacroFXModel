@@ -81,6 +81,19 @@ console.log('[realYieldScore — too little merged history]');
   ok('still reports the latest raw level', r.latestReal === 2.2, r.latestReal);
 }
 
+console.log('[realYieldScore — score field itself is rounded, not just latestReal]');
+{
+  // CPI flat at 0 so real = y10 directly; y10 follows the same
+  // oscillate-then-moderate-jump pattern every other engine's regression
+  // test uses to reproduce the z/2.5 float tail.
+  const y10Obs = new Map(), cpiObs = new Map();
+  for (let i = 0; i < 19; i++) { y10Obs.set(`d${String(i).padStart(2, '0')}`, i % 2 === 0 ? 1.05 : 0.95); cpiObs.set(`d${String(i).padStart(2, '0')}`, 0); }
+  y10Obs.set('d19', 1.03); cpiObs.set('d19', 0);
+  const meta = { series: 'x', isIndex: false };
+  const r = realYieldScore(y10Obs, cpiObs, meta);
+  ok('score has no floating-point tail', r.score === +r.score.toFixed(2), r.score);
+}
+
 console.log('[REAL_YIELD_UNIVERSE sanity]');
 {
   ok('covers all 8 currencies', ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD'].every(c => REAL_YIELD_UNIVERSE[c]));

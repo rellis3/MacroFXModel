@@ -66,7 +66,7 @@ export function latestZScore(values, lookback = 24, minBaseline = 6) {
 }
 
 const clip = (v, lo = -1, hi = 1) => Math.max(lo, Math.min(hi, v));
-const zToScore = z => (z == null ? null : clip(z / 2.5));
+const zToScore = z => (z == null ? null : round2(clip(z / 2.5)));
 // Raw OECD/FRED values arrive with long floating-point tails — round to 2dp
 // for anything surfaced as a headline "latest" reading.
 const round2 = v => (v == null ? null : +v.toFixed(2));

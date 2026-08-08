@@ -207,7 +207,7 @@ const clip = (v, lo = -1, hi = 1) => Math.max(lo, Math.min(hi, v));
 // z-score -> [-1, 1] strength scale, saturating at +/-2.5 sigma (a print more
 // extreme than that reads as maximally strong/weak rather than climbing
 // further — matches how markets treat a "blowout" or "collapse" print).
-const zToScore = z => (z == null ? null : clip(z / 2.5));
+const zToScore = z => (z == null ? null : round2(clip(z / 2.5)));
 // Raw OECD/FRED values (especially the non-US series) arrive with long
 // floating-point tails (e.g. 61.882736451) — round to 2dp for anything
 // surfaced as a headline "latest" reading; the z-score math above still
@@ -347,7 +347,7 @@ export function breadthScore(sectorData = {}) {
 
   // Diffusion centered at 50% -> [-1,1]: 100% (every sector adding) = +1,
   // 0% (every sector shedding) = -1, 50% (even split) = neutral.
-  const score = clip((diffusion - 50) / 50);
+  const score = round2(clip((diffusion - 50) / 50));
   return { sectors: entries.sort((a, b) => b.chg - a.chg), diffusion, topContributor, concentration, score };
 }
 

@@ -203,6 +203,29 @@ console.log('[breadthScore — diffusion index + concentration]');
   ok('all-shrinking -> score -1 (saturated)', r.score === -1, r.score);
 }
 
+console.log('[breadthScore — score field itself is rounded, not just diffusion]');
+{
+  // 4 of 7 sectors growing, 0 flat, 3 shrinking -> diffusion 57.1%,
+  // (57.1-50)/50 leaves a float tail (0.14200000000000002) same class of
+  // bug as zToScore's z/2.5 — breadthScore computes its own clip() inline.
+  const mk = (base, chg) => monthlySeries('2025-06', [base, base + chg]);
+  const sectors = {
+    a: mk(1000, 5), b: mk(1000, 3), c: mk(1000, 2), d: mk(1000, 1),
+    e: mk(1000, -2), f: mk(1000, -1), g: mk(1000, -3),
+  };
+  const r = breadthScore(sectors);
+  ok('score has no floating-point tail', r.score === +r.score.toFixed(2), r.score);
+}
+
+console.log('[unemploymentTrendScore — score field itself is rounded, not just latestLevel]');
+{
+  const m = new Map();
+  for (let i = 0; i < 19; i++) m.set(`d${String(i).padStart(2, '0')}`, i % 2 === 0 ? 1.05 : 0.95);
+  m.set('d19', 1.03);
+  const r = unemploymentTrendScore(m);
+  ok('score has no floating-point tail', r.score === +r.score.toFixed(2), r.score);
+}
+
 console.log('[revisionScore — payrolls current vs first-published]');
 {
   // Current (most-revised) values run higher than what was first reported —

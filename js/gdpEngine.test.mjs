@@ -71,6 +71,18 @@ console.log('[gdpScore — rounds long floating-point tails (live report: 0.5182
   ok('latestGrowth rounds to 2dp', r.latestGrowth === 0.52, r.latestGrowth);
 }
 
+console.log('[gdpScore — score field itself is rounded, not just latestGrowth (live report: +0.9560000000000001 etc. in the Macro Scorecard breakdown)]');
+{
+  // A mid-range, non-saturating z (0.55) still leaves a float tail after
+  // /2.5 (0.55/2.5 -> 0.22000000000000003) — zToScore must round its own
+  // output, not just rely on latestZScore's z already being rounded.
+  const m = new Map();
+  for (let i = 0; i < 19; i++) m.set(`q${String(i).padStart(2, '0')}`, i % 2 === 0 ? 1.05 : 0.95);
+  m.set('q19', 1.03);
+  const r = gdpScore(m);
+  ok('score has no floating-point tail', r.score === +r.score.toFixed(2), r.score);
+}
+
 console.log('[GDP_UNIVERSE sanity]');
 {
   ok('covers all 8 currencies', ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD'].every(c => GDP_UNIVERSE[c]));

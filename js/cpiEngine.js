@@ -88,7 +88,15 @@ export function latestZScore(values, lookback = 24, minBaseline = 6) {
 }
 
 const clip = (v, lo = -1, hi = 1) => Math.max(lo, Math.min(hi, v));
-const zToScore = z => (z == null ? null : clip(z / 2.5));
+// z/2.5 division reintroduces floating-point tails even when z itself is
+// already rounded (e.g. 2.39/2.5 -> 0.9560000000000001) — round the
+// composite score at its one shared chokepoint so every dims/composite
+// field downstream is clean, not just the "latest value" fields PR #1143
+// fixed. Surfaced live by the Macro Scorecard's per-dimension breakdown,
+// which is the first place these .score/.pressure/etc fields were ever
+// displayed raw instead of just driving a chip/gauge width.
+const round2 = v => (v == null ? null : +v.toFixed(2));
+const zToScore = z => (z == null ? null : round2(clip(z / 2.5)));
 
 // Turns a raw FRED obs map into a YoY-% series regardless of whether the
 // underlying series is an index level (USD) or already a YoY% print
@@ -112,7 +120,7 @@ export function levelVsTargetScore(obsMap, meta, target = INFLATION_TARGET, band
   const series = toYoySeries(obsMap, meta);
   const latest = series.at(-1);
   if (latest?.yoy == null) return { latestYoy: null, latestDate: null, target, score: null };
-  return { latestYoy: latest.yoy, latestDate: latest.date, target, score: clip((latest.yoy - target) / band) };
+  return { latestYoy: latest.yoy, latestDate: latest.date, target, score: round2(clip((latest.yoy - target) / band)) };
 }
 
 // Trend vs. its OWN trailing history — catches "still above target but
