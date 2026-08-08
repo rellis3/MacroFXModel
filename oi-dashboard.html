@@ -52,6 +52,11 @@ a{color:var(--acc)}
 .pricebar .k{font-size:11.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--tx3)}
 .pricebar .v{font-family:var(--mono);font-size:25px;margin-top:2px}
 .pricebar .n{font-size:12px;color:var(--tx3);margin-top:1px;font-family:var(--mono)}
+.pricebar .drift{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-family:var(--mono);margin-top:4px}
+.pricebar .drift .dot{width:6px;height:6px;border-radius:50%;background:var(--tx3);display:inline-block}
+.pricebar .drift .dot.flat{background:var(--tx3)}
+.pricebar .stamp{font-size:11px;color:var(--tx3);font-family:var(--mono);margin-top:4px}
+.pricebar .stamp b{color:var(--acc);font-weight:600}
 
 /* diagnostics — the point of the page: never lose the provenance again */
 .diag{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 16px}
@@ -270,6 +275,18 @@ const HELP = {
 };
 const h = k => HELP[k] ? `<i class="h" data-k="${k}">?</i>` : '';
 const pips = (v,sp,k) => (Number.isFinite(v)&&Number.isFinite(sp)) ? ((v-sp)/pip(k)) : NaN;
+// Short clock stamp, e.g. "07:07" — for the "updated" / "since" readouts on the card.
+const hhmm = ms => Number.isFinite(ms) ? new Date(ms).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '—';
+// How far live spot has walked from where TODAY's levels were anchored (inst.daySpot @ daySpotAt).
+// The 15-min basis control keeps inst.spot live; daySpot is fixed at the day's first analyse, so
+// this reads "price is +18p / 0.12% from the levels' reference" — how in-play today's walls are.
+function driftBadge(e){
+  if(!Number.isFinite(e.spot)||!Number.isFinite(e.daySpot)||!e.daySpot) return '';
+  const dp=(e.spot-e.daySpot)/pip(SYM), pct=(e.spot-e.daySpot)/e.daySpot*100, since=hhmm(e.daySpotAt);
+  if(Math.abs(dp)<0.5) return `<span class="drift"><span class="dot flat"></span>flat since ${since}</span>`;
+  const up=dp>0, col=up?'var(--call)':'var(--put)';
+  return `<span class="drift" style="color:${col}">${up?'▲':'▼'} ${dp>=0?'+':''}${dp.toFixed(0)}p · ${pct>=0?'+':''}${pct.toFixed(2)}% since ${since}</span>`;
+}
 
 // ── zoom: any panel can be opened full-screen ──
 function openZoom(key){
@@ -838,11 +855,13 @@ function priceBar(e){
   const paired = e.spotSource==='live-paired';
   return `<div class="pricebar">
     <div><div class="k">CFD spot</div><div class="v"${paired?'':' style="color:var(--warn)"'}>${fx(e.spot,SYM)}</div>
-      <div class="n">${paired?'paired with futures':esc(e.spotSource||'field at save')}</div></div>
+      <div class="n">${paired?'paired with futures':esc(e.spotSource||'field at save')}</div>
+      ${driftBadge(e)}</div>
     <div><div class="k">CME futures</div><div class="${staleCls}">${fx(e.futures,SYM)}</div>
       <div class="n">${esc(e.futuresSymbol?e.futuresSymbol+' · ':'')}${esc(src)}</div></div>
     <div><div class="k">Basis</div><div class="v">${Number.isFinite(b)?(b>=0?'+':'')+ (b/pv).toFixed(1)+'p':'—'}</div>
-      <div class="n">${paired?'both legs same instant ✓':'legs NOT paired ⚠'}</div></div>
+      <div class="n">${paired?'both legs same instant ✓':'legs NOT paired ⚠'}</div>
+      ${e.basisAt?`<div class="stamp">updated <b>${hhmm(e.basisAt)}</b></div>`:''}</div>
     <div><div class="k">Reference move</div><div class="v">${e.refMove?fx(e.refMove.move,SYM):'—'}</div>
       <div class="n">${esc(e.refMove?.source||'—')}${e.refMove&&e.spot?' · ±'+(e.refMove.move/e.spot*100).toFixed(2)+'%':''}</div></div>
     <div><div class="k">Expiry</div><div class="v">${esc(e.primaryExpiry?.code||'—')}</div>

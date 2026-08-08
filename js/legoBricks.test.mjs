@@ -914,7 +914,7 @@ console.log('\n[oi day-expiry]');
   // "basis control"); distances and OI-derived structure stay put; spot/futures/basis freshen.
   {
     const inst = {
-      pair: 'EUR/USD', spot: 1.1500, futures: 1.1503, basis: 0.0003,
+      pair: 'EUR/USD', spot: 1.1500, daySpot: 1.1490, daySpotAt: 111, futures: 1.1503, basis: 0.0003,
       maxPain: 1.1450, callWall: 1.1600, putWall: 1.1400, gammaFlip: 1.1480, gexFlip: 1.1470,
       callWalls: [{ strike: 1.1600, oi: 9000 }], putWalls: [{ strike: 1.1400, oi: 8000 }],
       gexFlips: [{ price: 1.1470 }], volumeMagnets: [{ strike: 1.1550 }], clusters: [{ center: 1.1590 }],
@@ -930,8 +930,21 @@ console.log('\n[oi day-expiry]');
       && close(rp.perExpiry[0].callWall, 1.1605 - d) && close(rp.dayExpiry.putWall, 1.1410 - d) && close(rp.dayExpiry.callWalls[0].strike, 1.1590 - d));
     ok('reproject leaves DISTANCE fields (expectedMove.move) untouched', close(rp.expectedMove.move, 0.0300) && close(rp.expectedMove.upper, 1.1650 - d));
     ok('reproject freshens spot/futures/basis', close(rp.spot, 1.1502) && close(rp.futures, 1.1510) && close(rp.basis, 0.0008));
+    ok('reproject preserves the day-anchor (daySpot fixed while spot moves)', close(rp.daySpot, 1.1490) && rp.daySpotAt === 111);
     const same = oiReprojectBasis(inst, { newBasis: 0.0003, newSpot: 1.1501, newFutures: 1.1504 });   // Δ=0 → no level move
     ok('reproject with zero Δbasis moves no levels', close(same.maxPain, 1.1450) && close(same.spot, 1.1501));
+    ok('reproject preserves day-anchor even with zero Δbasis', close(same.daySpot, 1.1490) && same.daySpotAt === 111);
+  }
+
+  // Day-anchor spot: buildOIEntry stamps daySpot/daySpotAt, and a same-day re-analyse carries
+  // the ORIGINAL anchor forward (so "drift from start of day" doesn't reset when the chain is
+  // re-derived or the basis refreshes intraday).
+  {
+    const oi = ['\t6EU6', '1.1545\t6EU6', 'Strike\tC\tP', '1.1500\t100\t9000', '1.1600\t9000\t100'].join('\n');
+    const first = await buildOIEntry({ pair: 'EUR/USD', rawOI: oi, spotRaw: 1.1545, futuresRaw: 1.1545, manualFutures: true, skipLiveQuote: true });
+    ok('buildOIEntry stamps a day-anchor spot', Math.abs(first.inst.daySpot - 1.1545) < 1e-9 && Number.isFinite(first.inst.daySpotAt));
+    const again = await buildOIEntry({ pair: 'EUR/USD', rawOI: oi, spotRaw: 1.1560, futuresRaw: 1.1560, manualFutures: true, skipLiveQuote: true, priorEntry: first.inst });
+    ok('same-day re-analyse keeps the original day-anchor', Math.abs(again.inst.daySpot - 1.1545) < 1e-9 && again.inst.daySpotAt === first.inst.daySpotAt && Math.abs(again.inst.spot - 1.1560) < 1e-9);
   }
   const cmpTxt = buildOILevelText({ 'EUR/USD': cmp.inst }, { generated: 'x' });
   ok('export renders the per-expiry breakdown block', /per-expiry \(mp = max pain/.test(cmpTxt) && /30DTE  mp /.test(cmpTxt));
